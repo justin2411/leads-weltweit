@@ -2,7 +2,7 @@
 # Sendet nie Mails.
 name: kaeufer
 on:
-  schedule: [{ cron: "13 5 * * 0" }]   # sonntags: Käufer-Vorrat auffüllen
+  schedule: [{ cron: "13 5 * * *" }]   # täglich: Käufer-Vorrat auffüllen (vor dem Automatiklauf 12:17 UTC)
   workflow_dispatch:
     inputs:
       max:

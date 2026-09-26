@@ -274,9 +274,8 @@ def _bodacc_dep(db: DB, args, dep: str) -> None:
 
 
 # Muss zu den Käufer-Regionen in osm.py passen (Käufer brauchen Leads aus ihrem Markt)
-UK_POSTCODE_AREAS = {"M", "SK", "BL", "OL", "WN", "WA", "LS", "BD", "HX", "HD", "WF", "B", "WS", "WV", "DY", "L",
-                     "CH", "BS", "E", "EC", "N", "NW", "SE", "SW", "W", "WC", "G", "EH", "CF", "NE", "S", "NG",
-                     "LE", "SO"}
+from lib.regions import UK as _UK_AREAS  # noqa: E402
+UK_POSTCODE_AREAS = set().union(*_UK_AREAS.values())
 
 
 def cmd_uk_bulk(db: DB, args) -> None:

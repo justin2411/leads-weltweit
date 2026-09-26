@@ -28,8 +28,14 @@ jobs:
         continue-on-error: true
         run: |
           python scripts/watch.py careers
-          python scripts/watch.py ny-incorporations --days 10 --limit 300
+          python scripts/watch.py ny-incorporations --days 10 --limit 2000
           python scripts/watch.py fr-incorporations --departement 69,75,92,59 --days 10 --limit 200
+      - name: Neugründungen UK (Companies House, montags)
+        continue-on-error: true
+        run: |
+          if [ "$(date -u +%u)" = 1 ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            python scripts/watch.py uk-bulk --days 45 --limit 12000
+          fi
       - name: Signale und Website-Prüfung
         run: |
           python scripts/watch.py detect

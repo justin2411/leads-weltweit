@@ -213,7 +213,7 @@ def main(argv=None) -> int:
     n = bad = 0
     counts: dict[str, int] = {}
     total_cap = int(os.environ.get("MAX_TOTAL_MAILS", "100000"))  # Inhaber 26.09.2026: 250 pro Tag fortlaufend
-    total = len(db.select("messages", {"select": "id"}))
+    total = len(db.select_all("messages", {"select": "id"}))
     for p in prospects:
         e = exps.get((p["segment_id"], p["country"]))
         if not e or (p["segment_id"], p["country"]) not in ready:
@@ -225,7 +225,7 @@ def main(argv=None) -> int:
             print(f"Gesamtgrenze {total_cap} erreicht")
             break
         planned = e.get("planned_count") or 50
-        if counts.setdefault(e["id"], len(db.select("messages", {"experiment_id": f"eq.{e['id']}", "select": "id"}))) >= planned:
+        if counts.setdefault(e["id"], len(db.select_all("messages", {"experiment_id": f"eq.{e['id']}", "select": "id"}))) >= planned:
             continue
         if db.select("messages", {"prospect_id": f"eq.{p['id']}", "experiment_id": f"eq.{e['id']}", "select": "id"}):
             continue
