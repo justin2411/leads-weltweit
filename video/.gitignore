@@ -1,7 +1,3 @@
-frames/
-stills/
-*.wav
+out/
 *.onnx
 *.bin
-timing_*.json
-*.mp4

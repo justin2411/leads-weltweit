@@ -1,3 +1,2 @@
 # Seiten für Bildschirmfotos (eine pro Zeile). Änderung dieser Datei startet den Workflow "ansicht".
-uk/accountants?r=ace4962f2cdee190469408051bc4ac909c74b47db92c4d80
-uk/accountants
+uk/insurance-brokers

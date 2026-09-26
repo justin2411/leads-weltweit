@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { consentText, t } from "@/lib/consent";
+import VIDEOS from "@/content/videos.json";
 import { getSettings, isOwner, loadPage, pageIsPublic } from "@/lib/pages";
 import { BRAND, siteUrl } from "@/lib/site";
 import { checkoutMode, lineItemFor, priceLabel, stripeEnabled, type Plan } from "@/lib/stripe";
@@ -93,7 +94,7 @@ const css = `
 .lp input[type=text],.lp input[type=email]{padding:10px 12px;border:1px solid var(--line);border-radius:8px;font:inherit;background:transparent;color:inherit}
 .lp .grid1{display:grid;gap:12px;margin-top:10px}.lp .small{font-size:13px;color:var(--soft);margin:0}
 .lp .btn.big{font-size:18px;padding:14px 24px;cursor:pointer}.lp .quick{margin-top:24px;max-width:560px}
-.lp details.fields{border:0;padding:0}.lp .hp{position:absolute;left:-9999px}
+.lp details.fields{border:0;padding:0}.lp .vid{width:100%;max-width:960px;aspect-ratio:16/9;border-radius:12px;background:#0a1324;display:block}.lp .hp{position:absolute;left:-9999px}
 .lp footer{padding:28px 0;border-top:1px solid var(--line);color:var(--soft);font-size:14px}.lp footer a{color:inherit;margin-right:16px}
 .lp .banner{background:#b91c1c;color:#fff;padding:10px 16px;font-weight:600}.lp .ok{color:#15803d;font-weight:600}.lp .err{color:#b91c1c;font-weight:600}
 .lp details{border-bottom:1px solid var(--line);padding:10px 0}.lp summary{cursor:pointer;font-weight:600}
@@ -118,6 +119,7 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
   const headline = fill(v.headline, P, lang);
   const subheadline = v.subheadline ? fill(v.subheadline, P, lang) : null;
   const cta = fill(v.cta_label, P, lang);
+  const video = (VIDEOS as Record<string, { src: string; poster: string; seconds: number }>)[page.slug];
   // Mail-Empfänger mit bekannter Adresse: ein Klick genügt, alles ist vorausgefüllt (Angaben änderbar).
   const oneClick = Boolean(personal?.email && personal.firma && !sp.angefragt);
   const SampleHidden = () => (<>
@@ -153,6 +155,13 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
           </div>
         )}
       </div>
+
+      {video && (
+        <section id="video"><div className="wrap"><h2>{L.video(video.seconds)}</h2>
+          {/* Eigenes Video, keine Drittanbieter, lädt erst beim Abspielen */}
+          <video className="vid" controls playsInline preload="none" poster={video.poster} src={video.src} />
+        </div></section>
+      )}
 
       {signals.length > 0 && (
         <section><div className="wrap"><h2>{L.what}</h2>

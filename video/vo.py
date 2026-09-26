@@ -1,18 +1,21 @@
-import json, sys, soundfile as sf, numpy as np
+"""Sprecherstimme je Zielgruppe: python vo.py segments/<slug>.json [stimme]  ->  out/<slug>/vo.wav + timing.json"""
+import json, os, sys
+import numpy as np, soundfile as sf
 from kokoro_onnx import Kokoro
-k = Kokoro("kokoro.onnx", "voices-v1.0.bin")
-voice = sys.argv[1] if len(sys.argv) > 1 else "bm_george"
-lines = json.load(open("script.json"))
-out, timings, t, sr = [], [], 0.0, 24000
-for i, line in enumerate(lines):
-    samples, sr = k.create(line["text"], voice=voice, speed=line.get("speed", 0.95), lang="en-gb")
-    pause = np.zeros(int(sr * line.get("pause", 0.55)), dtype=np.float32)
-    d = len(samples) / sr
-    timings.append({"id": line["id"], "start": round(t, 3), "end": round(t + d, 3), "text": line["text"]})
-    out += [samples, pause]
-    t += d + len(pause) / sr
-lead = np.zeros(int(sr * 0.6), dtype=np.float32)
-sf.write(f"vo_{voice}.wav", np.concatenate([lead] + out + [np.zeros(int(sr*2.5), dtype=np.float32)]), sr)
-for x in timings: x["start"] += 0.6; x["end"] += 0.6
-json.dump({"voice": voice, "total": round(t + 0.6 + 2.5, 2), "lines": timings}, open(f"timing_{voice}.json", "w"), indent=1)
-print(voice, round(t + 3.1, 1), "s")
+
+seg = json.load(open(sys.argv[1]))
+voice = sys.argv[2] if len(sys.argv) > 2 else "bf_emma"
+name = seg["slug"].split("/")[-1]
+os.makedirs(f"out/{name}", exist_ok=True)
+k = Kokoro(os.environ.get("KOKORO_MODEL", "kokoro.onnx"), os.environ.get("KOKORO_VOICES", "voices-v1.0.bin"))
+parts, lines, t, sr, lead = [], [], 0.6, 24000, 0.6
+for line in seg["script"]:
+    audio, sr = k.create(line["text"], voice=voice, speed=line.get("speed", 0.95), lang="en-gb")
+    d = len(audio) / sr
+    lines.append({"id": line["id"], "start": round(t, 3), "end": round(t + d, 3), "text": line["text"]})
+    pause = line.get("pause", 0.55)
+    parts += [audio, np.zeros(int(sr * pause), dtype=np.float32)]
+    t += d + pause
+sf.write(f"out/{name}/vo.wav", np.concatenate([np.zeros(int(sr * lead), dtype=np.float32)] + parts + [np.zeros(int(sr * 2.5), dtype=np.float32)]), sr)
+json.dump({"voice": voice, "total": round(t + 2.5, 2), "lines": lines}, open(f"out/{name}/timing.json", "w"), indent=1)
+print(name, round(t + 2.5, 1), "s")
