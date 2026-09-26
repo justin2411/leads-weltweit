@@ -1,7 +1,7 @@
 import { sendConsentMail } from "@/lib/mail";
 import { recordEvent } from "@/lib/page-events";
 import { BRAND, siteUrl } from "@/lib/site";
-import { STATUS_MAP, stripeEnabled, verifyStripeSignature } from "@/lib/stripe";
+import { STATUS_MAP, stripeKeys, verifyStripeSignature } from "@/lib/stripe";
 import { db } from "@/lib/supabase";
 import { filterToken } from "@/lib/tokens";
 
@@ -13,12 +13,17 @@ async function log(subject: string, reasoning: string, ok: boolean, metrics: Rec
 
 /** Stripe: Abschluss -> Kunde + Abo + Willkommensmail; Änderungen, Kündigungen, fehlgeschlagene Zahlungen. */
 export async function POST(req: Request) {
-  if (!stripeEnabled()) return new Response("disabled", { status: 503 });
+  const live = stripeKeys("live");
+  const test = stripeKeys("test");
+  if (!live && !test) return new Response("disabled", { status: 503 });
   const body = await req.text();
-  if (!verifyStripeSignature(process.env.STRIPE_WEBHOOK_SECRET!, req.headers.get("stripe-signature"), body)) {
-    return new Response("invalid signature", { status: 400 });
-  }
+  const sig = req.headers.get("stripe-signature");
+  const signedLive = !!live && verifyStripeSignature(live.webhook, sig, body);
+  const signedTest = !signedLive && !!test && verifyStripeSignature(test.webhook, sig, body);
+  if (!signedLive && !signedTest) return new Response("invalid signature", { status: 400 });
   const event = JSON.parse(body) as { id: string; type: string; livemode: boolean; data: { object: any } };
+  // Ein Test-Ereignis darf nie über das Live-Secret kommen und umgekehrt
+  if (event.livemode !== signedLive) return new Response("mode mismatch", { status: 400 });
   const o = event.data.object;
   try {
     if (event.type === "checkout.session.completed" && o.mode === "subscription") {
@@ -27,7 +32,8 @@ export async function POST(req: Request) {
       const company = o.custom_fields?.find((c: any) => c.key === "company")?.text?.value || o.customer_details?.name || email;
       const { data: cust, error: e1 } = await db()
         .from("customers")
-        .upsert({ stripe_customer_id: o.customer, company_name: company, country: m.country ?? "UK", billing_email: email, status: "active",
+        .upsert({ stripe_customer_id: o.customer, company_name: company, country: m.country ?? "UK", billing_email: email,
+                  status: event.livemode ? "active" : "trial", notes: event.livemode ? null : "Stripe-Testmodus (kein echter Kunde)",
                   updated_at: new Date().toISOString() }, { onConflict: "stripe_customer_id" })
         .select("id")
         .single();
@@ -39,7 +45,7 @@ export async function POST(req: Request) {
       }, { onConflict: "stripe_subscription_id" });
       if (e2) throw new Error(e2.message);
       await db().from("customer_filters").upsert({ customer_id: cust.id, segment_id: m.segment_id }, { onConflict: "customer_id", ignoreDuplicates: true });
-      await recordEvent(m.variant_id, "purchase");
+      if (event.livemode) await recordEvent(m.variant_id, "purchase");
       const link = `${siteUrl()}/kunde/filter?t=${filterToken(cust.id, process.env.SESSION_SECRET ?? "")}`;
       await db().from("customers").update({ filter_token_issued_at: new Date().toISOString() }).eq("id", cust.id);
       await sendConsentMail(email, `Welcome to ${BRAND}`,

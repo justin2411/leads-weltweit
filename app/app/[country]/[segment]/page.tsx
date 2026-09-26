@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { consentText, t } from "@/lib/consent";
 import { getSettings, isOwner, loadPage, pageIsPublic } from "@/lib/pages";
 import { BRAND, siteUrl } from "@/lib/site";
-import { stripeEnabled } from "@/lib/stripe";
+import { checkoutMode, priceFor, stripeEnabled } from "@/lib/stripe";
 import { pickVariant } from "@/lib/variants";
 import { Tracker } from "./tracker";
 
@@ -66,7 +66,9 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
   const { page, variant: v, settings, preview, sp } = r;
   const L = t(page.language);
   const plans = (v.pricing ?? settings.pricing ?? []) as NonNullable<typeof settings.pricing>;
-  const canBuy = stripeEnabled() && plans.length > 0 && !preview;
+  const mode = checkoutMode({ vercelEnv: process.env.VERCEL_ENV, ownerPreview: preview });
+  const buyable = plans.filter((p) => priceFor(p, mode));
+  const canBuy = stripeEnabled(mode) && buyable.length > 0;
   const samples = (v.sample_leads ?? []) as { company: string; location?: string; event: string; date?: string; source?: string }[];
   const signals = (v.signals ?? []) as { title: string; text: string }[];
   const faq = (v.faq ?? []) as { q: string; a: string }[];
@@ -108,10 +110,12 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
 
       {canBuy && (
         <section id="plans"><div className="wrap"><h2>{L.pricing}</h2>
-          <div className="grid">{plans.map((p) => (
+          {mode === "test" && <p className="note">Stripe-Testmodus: keine echte Zahlung (Testkarte 4242 4242 4242 4242).</p>}
+          <div className="grid">{buyable.map((p) => (
             <form className="card" key={p.key} method="post" action="/api/checkout">
               <h3>{p.name}</h3><p><strong>{p.price_label}</strong> {L.perMonth}</p>{p.description && <p className="note">{p.description}</p>}
               <input type="hidden" name="variant_id" value={v.id} /><input type="hidden" name="package" value={p.key} />
+              {preview && <input type="hidden" name="vorschau" value="1" />}
               <button className="btn pri" type="submit" data-cta>{L.subscribe}</button>
             </form>))}</div>
         </div></section>
@@ -122,12 +126,13 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
         {sp.fehler && <p className="err">{L.error}</p>}
         <form method="post" action="/api/sample-request">
           <input type="hidden" name="variant_id" value={v.id} />
+          {preview && <input type="hidden" name="vorschau" value="1" />}
           <label className="hp" aria-hidden="true">Website<input type="text" name="website" tabIndex={-1} autoComplete="off" /></label>
           <label>{L.company}<input type="text" name="company" required maxLength={200} /></label>
           <label>{L.email}<input type="email" name="email" required maxLength={200} /></label>
           <label>{L.region}<input type="text" name="region" maxLength={200} /></label>
           <label className="consent"><input type="checkbox" name="consent" value="yes" required /> <span>{consentText(page.language)} <a href="/datenschutz">{L.legal[1]}</a></span></label>
-          <button className="btn pri" type="submit" data-cta disabled={preview}>{L.send}</button>
+          <button className="btn pri" type="submit" data-cta>{L.send}</button>
         </form>
       </div></section>
 

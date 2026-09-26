@@ -63,3 +63,16 @@ test("Umgebungsvariablen: nur gesetzt/fehlt, nie Werte", () => {
   assert.equal(s.find((e) => e.name === "STRIPE_SECRET_KEY")?.set, false);
   assert.ok(!JSON.stringify(s).includes("supabase.co"));
 });
+
+import { checkoutMode, priceFor, stripeKeys } from "./stripe.ts";
+test("Stripe: Test- und Live-Schlüssel getrennt, nie vertauscht", () => {
+  const env = { STRIPE_SECRET_KEY: "rk_live_x", STRIPE_WEBHOOK_SECRET: "whsec_l", STRIPE_TEST_SECRET_KEY: "sk_test_y", STRIPE_TEST_WEBHOOK_SECRET: "whsec_t" };
+  assert.equal(stripeKeys("live", env)?.secret, "rk_live_x");
+  assert.equal(stripeKeys("test", env)?.secret, "sk_test_y");
+  assert.equal(stripeKeys("test", { ...env, STRIPE_TEST_SECRET_KEY: "sk_live_z" }), null);   // Live-Schlüssel im Test-Feld
+  assert.equal(stripeKeys("live", { ...env, STRIPE_SECRET_KEY: "sk_test_z" }), null);       // Test-Schlüssel im Live-Feld
+  assert.equal(checkoutMode({ vercelEnv: "production", ownerPreview: false }), "live");
+  assert.equal(checkoutMode({ vercelEnv: "production", ownerPreview: true }), "test");
+  assert.equal(checkoutMode({ vercelEnv: "preview", ownerPreview: false }), "test");
+  assert.equal(priceFor({ stripe_price_id: "price_live", stripe_test_price_id: "price_test" }, "test"), "price_test");
+});

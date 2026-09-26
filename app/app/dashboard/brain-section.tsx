@@ -1,6 +1,6 @@
 import { envStatus } from "@/lib/env";
 import { legalTextsReady } from "@/lib/legal";
-import { stripeEnabled, stripeTestMode } from "@/lib/stripe";
+import { stripeEnabled } from "@/lib/stripe";
 import { db } from "@/lib/supabase";
 import { reviewDecision, setStatus, updateSetting } from "./brain-actions";
 
@@ -61,7 +61,7 @@ export async function BrainSection() {
         </form>
         <p className="muted">
           Rechtstexte: {legalFiles ? "fertig" : <span className="bad">noch Platzhalter – Landingpages bleiben offline</span>} ·
-          Stripe: {stripeEnabled() ? (stripeTestMode() ? "Testmodus" : "LIVE") : "aus (Schlüssel fehlen)"} ·
+          Stripe live: {stripeEnabled("live") ? "bereit" : "aus"} · Stripe Test: {stripeEnabled("test") ? "bereit" : "aus"} ·
           Preise: {Array.isArray(s.pricing) && s.pricing.length ? `${s.pricing.length} Pakete` : "nicht hinterlegt"}
         </p>
       </div>

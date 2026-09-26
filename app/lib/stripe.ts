@@ -1,15 +1,34 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 /**
- * Stripe ohne SDK (nur fetch). Ohne STRIPE_SECRET_KEY und STRIPE_WEBHOOK_SECRET ist der Bezahlablauf aus.
- * Testmodus: Schlüssel mit sk_test_… verwenden.
+ * Stripe ohne SDK (nur fetch). Zwei Schlüsselpaare:
+ *   live: STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET               (echte Zahlungen, nur öffentliche Seiten in Produktion)
+ *   test: STRIPE_TEST_SECRET_KEY + STRIPE_TEST_WEBHOOK_SECRET     (Vorschau-Deployments und Inhaber-Vorschau)
+ * Fehlt ein Paar, ist dieser Modus aus.
  */
-export function stripeEnabled(): boolean {
-  return !!(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_WEBHOOK_SECRET);
+export type StripeMode = "live" | "test";
+
+export function stripeKeys(mode: StripeMode, env: Record<string, string | undefined> = process.env) {
+  const secret = mode === "live" ? env.STRIPE_SECRET_KEY : env.STRIPE_TEST_SECRET_KEY;
+  const webhook = mode === "live" ? env.STRIPE_WEBHOOK_SECRET : env.STRIPE_TEST_WEBHOOK_SECRET;
+  // Sicherheitsnetz: im Testmodus nur Testschlüssel, im Live-Modus nie Testschlüssel
+  const isTestKey = /^(sk|rk)_test_/.test(secret || "");
+  if (!secret || !webhook || (mode === "test") !== isTestKey) return null;
+  return { secret, webhook };
 }
 
-export function stripeTestMode(): boolean {
-  return /^(sk|rk)_test_/.test(process.env.STRIPE_SECRET_KEY || "");
+export function stripeEnabled(mode: StripeMode = "live", env: Record<string, string | undefined> = process.env): boolean {
+  return stripeKeys(mode, env) !== null;
+}
+
+/** Welcher Modus für einen Kauf gilt: Vorschau-Deployments und Inhaber-Vorschau immer Test. */
+export function checkoutMode(opts: { vercelEnv?: string; ownerPreview: boolean }): StripeMode {
+  return opts.ownerPreview || (opts.vercelEnv ?? "production") !== "production" ? "test" : "live";
+}
+
+/** Preis-ID je Modus aus einem Paket (stripe_price_id live, stripe_test_price_id test). */
+export function priceFor(plan: { stripe_price_id?: string; stripe_test_price_id?: string } | undefined, mode: StripeMode) {
+  return mode === "live" ? plan?.stripe_price_id : plan?.stripe_test_price_id;
 }
 
 /** Stripe-Signatur prüfen (Header "t=…,v1=…"), Toleranz 5 Minuten. */
@@ -38,11 +57,13 @@ export function formEncode(obj: Record<string, unknown>, prefix = ""): string {
   return out.filter(Boolean).join("&");
 }
 
-export async function stripe(path: string, params?: Record<string, unknown>, method = "POST"): Promise<any> {
+export async function stripe(path: string, params?: Record<string, unknown>, mode: StripeMode = "live", method = "POST"): Promise<any> {
+  const keys = stripeKeys(mode);
+  if (!keys) throw new Error(`Stripe ${mode} nicht eingerichtet`);
   const res = await fetch(`https://api.stripe.com/v1/${path}`, {
     method,
     headers: {
-      Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+      Authorization: `Bearer ${keys.secret}`,
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body: method === "GET" ? undefined : formEncode(params ?? {}),
