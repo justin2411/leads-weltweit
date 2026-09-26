@@ -162,7 +162,7 @@ def regional_counts(db) -> dict:
         county[o["company_id"]] = o.get("details") or {}
     out: dict = {}
     for l in db.select("leads", {"status": "in.(new,sample)", "limit": "100000",
-                                  "select": "segment_id,country,company_id,watch_companies(address,region)"}):
+                                  "select": "segment_id,country,company_id,watch_companies(address,region,city)"}):
         for area in areas.get(l["country"], {}):
             if lead_matches(l["country"], area, l["watch_companies"], county.get(l["company_id"])):
                 k = (l["segment_id"], l["country"], area)
