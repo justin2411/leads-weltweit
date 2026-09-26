@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       schritt:
-        description: "osm, register-ny, register-fr, kaeufer, karriereseiten, leads (kombinierbar, z. B. kaeufer+karriereseiten) oder alles"
+        description: "osm, entwuerfe, register-ny, register-fr, kaeufer, karriereseiten, leads (kombinierbar, z. B. kaeufer+karriereseiten) oder alles"
         required: true
         default: alles
       kandidaten:
@@ -53,6 +53,11 @@ jobs:
         run: |
           ls candidates/*-employers.csv >/dev/null 2>&1 && python scripts/watch.py import-employers candidates/*-employers.csv --country UK || true
           python scripts/watch.py careers
+      - name: Entwürfe schreiben (nur Status draft)
+        if: ${{ contains(inputs.schritt, 'entwuerfe') || inputs.schritt == 'alles' }}
+        env:
+          SENDER_NAME: ${{ secrets.SENDER_NAME }}
+        run: python scripts/drafts.py
       - name: Signale erkennen
         if: ${{ contains(inputs.schritt, 'leads') || inputs.schritt == 'alles' || contains(inputs.schritt, 'register-ny') || contains(inputs.schritt, 'register-fr') || contains(inputs.schritt, 'karriereseiten') }}
         run: python scripts/watch.py detect
