@@ -63,7 +63,8 @@ def cta_button(company: str, region: str | None, lang: str) -> str:
             f'<p style="margin:-14px 0 20px 0;font-family:{FONT};font-size:12px;color:{MUTED};">{html.escape(hint)}</p>')
 
 
-def render(body_text: str, footer_text: str, lang: str = "en", cta: str = "") -> str:
+def render(body_text: str, footer_text: str, lang: str = "en", cta: str = "",
+           signer: tuple[str, str] | None = None) -> str:
     """body_text: Text ohne Signatur-Block (Signatur wird aus Umgebung gebaut), footer_text: Pflichtfußzeile."""
     # Text in Absätze; Gruß + Signatur (letzter Absatz) gesondert gestalten
     paras = [p.strip() for p in re.split(r"\n\s*\n", body_text.strip()) if p.strip()]
@@ -74,6 +75,8 @@ def render(body_text: str, footer_text: str, lang: str = "en", cta: str = "") ->
     company = brand()
     name = os.environ.get("SENDER_NAME") or company
     title = os.environ.get("SENDER_TITLE") or ("Fondateur" if lang == "fr" else "Founder")
+    if signer:
+        name, title = signer
     tagline = ("Signaux de recrutement et de croissance pour les prestataires B2B" if lang == "fr"
                else "Hiring and growth signals for B2B service firms")
     extras = [x for x in (os.environ.get("SENDER_WEBSITE"), os.environ.get("SENDER_PHONE")) if x]

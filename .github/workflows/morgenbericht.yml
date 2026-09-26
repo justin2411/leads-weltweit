@@ -1,0 +1,21 @@
+# Morgenbericht an den Inhaber, täglich ca. 06:45 Uhr deutscher Zeit (04:47 UTC im Sommer).
+name: morgenbericht
+on:
+  schedule: [{ cron: "47 4 * * *" }]
+  workflow_dispatch:
+jobs:
+  bericht:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      MAIL_FROM: ${{ secrets.MAIL_FROM }}
+      OWNER_EMAIL: ${{ secrets.OWNER_EMAIL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - run: python scripts/outreach.py sync --days 30
+      - run: python scripts/report.py --send

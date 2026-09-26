@@ -40,18 +40,18 @@ def detect_job_leads(company: dict, observations: list[dict], today: dt.date) ->
     )
     for o, days in long_open:
         since = open_since(o)
-        basis = "laut Stellenanzeige" if o.get("posted_on") and _d(o["posted_on"]) <= since else "seit unserem ersten Fund"
+        basis = "per job advert" if o.get("posted_on") and _d(o["posted_on"]) <= since else "since we first saw it"
         urgency = "high" if days >= 60 else "medium"
         leads.append({
             "signal_type": "job_open_30d",
             "event_date": since.isoformat(),
-            "event_summary": f"Stelle „{o.get('title') or 'ohne Titel'}“ ist seit {days} Tagen offen ({basis}, seit {since:%d.%m.%Y}).",
-            "source_name": o.get("source_name") or "Karriereseite",
+            "event_summary": f"Role “{o.get('title') or 'untitled'}” open for {days} days ({basis}, since {since:%-d %b %Y}).",
+            "source_name": o.get("source_name") or "Careers page",
             "source_url": o.get("source_url"),
             "urgency": urgency,
             "urgency_reason": (
-                f"{days} Tage ohne Besetzung; ab 60 Tagen steigt der Druck, externe Hilfe zu holen."
-                if urgency == "high" else f"{days} Tage offen; typischer Zeitpunkt, an dem Firmen Personalvermittler einbeziehen."
+                f"{days} days unfilled; after 60 days the pressure to bring in outside help rises."
+                if urgency == "high" else f"{days} days open; a typical point at which employers involve an agency."
             ),
             "opener": (
                 f"I noticed {company['name']} has been advertising the {o.get('title') or 'open'} role since "
@@ -68,11 +68,11 @@ def detect_job_leads(company: dict, observations: list[dict], today: dt.date) ->
         leads.append({
             "signal_type": "jobs_3plus",
             "event_date": week_start.isoformat(),
-            "event_summary": f"{len(jobs)} offene Stellen gleichzeitig auf der Karriereseite ({titles}).",
-            "source_name": jobs[0].get("source_name") or "Karriereseite",
+            "event_summary": f"{len(jobs)} open roles at the same time on the careers page ({titles}).",
+            "source_name": jobs[0].get("source_name") or "Careers page",
             "source_url": jobs[0].get("source_url"),
             "urgency": "high" if len(jobs) >= 6 else "medium",
-            "urgency_reason": f"{len(jobs)} parallele Ausschreibungen, älteste seit {first:%d.%m.%Y}.",
+            "urgency_reason": f"{len(jobs)} roles advertised in parallel, the oldest since {first:%-d %b %Y}.",
             "opener": f"{company['name']} currently lists {len(jobs)} open roles on its careers page. "
                       f"Are you handling all of that hiring in-house?",
             "observation_ids": [o["id"] for o in jobs if o.get("id")],
@@ -106,12 +106,15 @@ def detect_incorporation_lead(company: dict, obs: dict, today: dt.date, max_age_
     return {
         "signal_type": "new_incorporation",
         "event_date": inc.isoformat(),
-        "event_summary": f"{company['name']} wurde am {inc:%d.%m.%Y} im Register eingetragen"
-                         + (f" ({company['city']})." if company.get("city") else "."),
+        "event_summary": (f"{company['name']} immatriculée le {inc:%d/%m/%Y}" if company.get("country") == "FR"
+                          else f"{company['name']} registered on {inc:%-d %b %Y}")
+                         + (f" ({str(company['city']).title()})." if company.get("city") else "."),
         "source_name": obs.get("source_name"),
         "source_url": obs.get("source_url"),
         "urgency": urgency,
-        "urgency_reason": f"Gründung vor {age} Tagen; Website, Auftritt und Dienstleister werden typischerweise jetzt ausgewählt.",
+        "urgency_reason": (f"Créée il y a {age} jours ; les nouvelles sociétés choisissent généralement leurs prestataires "
+                           "dans les premières semaines." if company.get("country") == "FR" else
+                           f"Registered {age} days ago; new companies typically choose their providers in the first weeks."),
         "opener": f"Congratulations on setting up {company['name']} this {inc:%B}. "
                   "Have you already decided who will build your website?",
         "observation_ids": [obs["id"]] if obs.get("id") else [],
@@ -131,12 +134,12 @@ def detect_website_lead(company: dict, obs: dict) -> dict | None:
     return {
         "signal_type": "outdated_website",
         "event_date": seen.isoformat() if seen else None,
-        "event_summary": "Website wirkt veraltet: " + "; ".join(findings[:4]) + ".",
-        "source_name": "Firmenwebsite (eigene Prüfung)",
+        "event_summary": "Website looks dated: " + "; ".join(findings[:4]) + ".",
+        "source_name": "Company website (own check)",
         "source_url": obs.get("source_url"),
         "urgency": urgency,
-        "urgency_reason": f"{len(findings)} technische Befunde auf der Startseite (Stand {seen:%d.%m.%Y})." if seen
-                          else f"{len(findings)} technische Befunde.",
+        "urgency_reason": f"{len(findings)} technical findings on the homepage (checked {seen:%-d %b %Y})." if seen
+                          else f"{len(findings)} technical findings.",
         "opener": f"I had a look at the {company['name']} website"
                   + (" on my phone" if any("mobil" in f for f in findings) else "")
                   + " and noticed a few things that look dated. Is a refresh on your list this year?",
@@ -155,6 +158,28 @@ SEGMENT_FOR = {
 
 # Zusätzliche Käufergruppen für dasselbe Signal (S9 Finanzberater: Wachstum und Gründung von Arbeitgebern)
 ALSO_FOR = {"jobs_3plus": ["S9"], "new_incorporation": ["S9", "S4", "S5"]}
+
+
+OPENERS = {
+    ("new_incorporation", "S2", "en"): "Congratulations on setting up {name} this {month}. Have you already decided who will build your website?",
+    ("new_incorporation", "S4", "en"): "Congratulations on setting up {name} this {month}. Have you arranged business insurance for the new company yet?",
+    ("new_incorporation", "S5", "en"): "Congratulations on setting up {name} this {month}. Have you already chosen an accountant for the new company?",
+    ("new_incorporation", "S9", "en"): "Congratulations on setting up {name} this {month}. Have you had a chance to think about protection and pensions for the business?",
+    ("new_incorporation", "S2", "fr"): "Félicitations pour la création de {name}. Avez-vous déjà choisi qui réalisera votre site web ?",
+    ("new_incorporation", "S4", "fr"): "Félicitations pour la création de {name}. Avez-vous déjà organisé les assurances de la nouvelle société ?",
+    ("new_incorporation", "S5", "fr"): "Félicitations pour la création de {name}. Avez-vous déjà choisi votre expert-comptable ?",
+    ("new_incorporation", "S9", "fr"): "Félicitations pour la création de {name}. Avez-vous déjà réfléchi à la protection du dirigeant et à l'épargne salariale ?",
+    ("jobs_3plus", "S9", "en"): "{name} is currently hiring for several roles. Is a workplace pension or benefits review on the agenda as the team grows?",
+}
+
+
+def opener_for(lead: dict, segment: str, company: dict) -> str:
+    lang = "fr" if company.get("country") == "FR" else "en"
+    tpl = OPENERS.get((lead["signal_type"], segment, lang))
+    if not tpl:
+        return lead["opener"]
+    d = _d(lead.get("event_date")) or dt.date.today()
+    return tpl.format(name=company["name"], month=f"{d:%B}")
 
 
 def segment_for(lead: dict) -> str | None:

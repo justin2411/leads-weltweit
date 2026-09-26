@@ -82,11 +82,14 @@ CLASSIFY_SCHEMA = {
     "additionalProperties": False,
 }
 
-CLASSIFY_PROMPT = """You classify a reply to a short B2B cold email. We offered a free sample of 10 "trigger leads"
-(companies with a current reason to buy, from public sources) to a service firm.
+CLASSIFY_PROMPT = """You classify a reply to a short B2B cold email from NextGen Profit. Business context: we sell
+"trigger leads" (companies with a current reason to buy, e.g. new registrations or long-open vacancies, from public
+sources) to service firms as a recurring weekly subscription. The cold email offered a free sample of 10 leads; the
+goal is to turn interested firms into recurring subscribers.
 
 Return JSON:
-- intent: "buy" (wants to subscribe/buy, asks for price, contract, call or meeting), "sample" (yes / send the sample /
+- intent: "buy" (wants regular/weekly leads, a subscription or more leads, asks for price, contract, call or meeting,
+  or answers our questions about towns and weekly volume), "sample" (yes / send the sample /
   interested), "question" (asks something before deciding), "not_interested", "unsubscribe" (asks not to be contacted),
   "out_of_office" (auto-reply), or "other".
 - faq: which of these topics the questions are about: sources, frequency, regions, data_privacy, format, how_it_works;
@@ -105,7 +108,7 @@ KEYWORDS = [
                     r"désinscri\w*|ne plus (me|nous) contacter)\b"),
     ("out_of_office", r"\b(out of (the )?office|on (annual )?leave|away until|absent|congés?|automatic reply)\b"),
     ("buy", r"\b(price|pricing|cost|how much|subscribe|subscription|contract|invoice|call|meeting|demo|tarif|prix|"
-            r"abonnement|rendez-vous)\b"),
+            r"abonnement|rendez-vous|weekly|per week|every week|regular(ly)?|more leads|par semaine|chaque semaine)\b"),
     ("not_interested", r"\b(not interested|no thanks|no thank you|pas intéressé|non merci)\b"),
     ("sample", r"\b(yes|sure|please send|send (it|the sample|over)|interested|happy to (see|take a look)|oui|volontiers|"
                r"envoyez|would like to receive|free sample request|souhaitons recevoir|merci d'envoyer|"
@@ -170,9 +173,23 @@ def _text(msg: EmailMessage) -> str:
     return t.strip()
 
 
+def owner_name() -> str:
+    return os.environ.get("SENDER_NAME") or "Justin Koch"
+
+
+def assistant_title(lang: str) -> str:
+    return (f"Assistant digital de {owner_name()}" if lang == "fr" else f"Digital assistant to {owner_name()}")
+
+
 def signature(lang: str) -> str:
-    from drafts import signature as sig
-    return sig(lang)
+    """Der Assistent tritt offen als Assistent im Auftrag des Inhabers auf."""
+    from lib.rules import brand
+    return f"{assistant_title(lang)}\n{brand()}"
+
+
+def signer(lang: str) -> tuple[str, str]:
+    from lib.rules import brand
+    return (assistant_title(lang), brand())
 
 
 def send_reply(to: str, subject: str, text: str, in_reply_to: str | None, lang: str,
@@ -188,7 +205,7 @@ def send_reply(to: str, subject: str, text: str, in_reply_to: str | None, lang: 
         headers = {"In-Reply-To": in_reply_to, "References": in_reply_to}
     payload = {"from": os.environ["MAIL_FROM"], "to": [to],
                "subject": subject if subject.lower().startswith(("re:", "aw:")) else f"Re: {subject}",
-               "text": full, "html": render(text, footer, lang), "headers": headers,
+               "text": full, "html": render(text, footer, lang, signer=signer(lang)), "headers": headers,
                "reply_to": os.environ.get("REPLY_TO") or os.environ["MAIL_FROM"]}
     if attachments:
         payload["attachments"] = [{"filename": n, "content": base64.b64encode(b).decode()} for n, b in attachments]
@@ -260,42 +277,47 @@ def sample_files(seg: str, country: str) -> list[tuple[str, bytes]]:
 
 
 def sample_text(lang: str, region: str | None, has_files: bool, regional: bool = True) -> str | None:
-    """Antwort mit der Probe: klar gegliedert, keine Preise, keine Zusagen.
-    regional=False: Probe stammt nicht aus der Region des Käufers -> das offen sagen."""
+    """Antwort mit der Probe, im Namen des Inhabers. Ziel: wiederkehrende Lieferung (Abo), keine Preise."""
     if not has_files:
         return None
     if not regional:
         region = None
+    o = owner_name()
+    first = o.split(" ")[0]
     if lang == "fr":
         return (
             "Bonjour,\n\n"
-            "Merci pour votre retour. Comme convenu, vous trouverez ci-joint votre échantillon gratuit de 10 pistes"
-            + (f" pour {region}" if region else "") + ".\n\n"
+            f"Je suis l'assistant de {o} chez NextGen Profit. Merci pour votre intérêt : comme promis, vous trouverez "
+            "ci-joint votre échantillon gratuit de 10 pistes" + (f" pour {region}" if region else "") + ".\n\n"
             + ("" if regional else "Pour ce premier échantillon, nous avons utilisé des pistes récentes de notre base "
-               "élargie ; un abonnement est filtré sur vos villes.\n\n")
-            + "Contenu du fichier :\n"
+               "élargie ; la livraison régulière est filtrée sur vos villes.\n\n")
+            + "Chaque ligne contient :\n"
             "- l'entreprise et sa localisation\n"
-            "- l'événement (création, postes ouverts, nouveau site) avec sa date\n"
+            "- l'événement (création, postes ouverts, nouveau site) et sa date\n"
             "- la source officielle, pour vérifier chaque piste\n"
             "- un niveau d'urgence et une phrase d'accroche\n\n"
-            "Si ces pistes vous sont utiles, je peux vous proposer une liste hebdomadaire ciblée sur vos villes et "
-            "votre spécialité. Il suffit de répondre à ce message.\n\n"
-            "Je serais heureux d'avoir votre avis sur l'échantillon.\n\n"
+            "Le service régulier livre chaque semaine de nouvelles pistes de ce type, filtrées sur vos villes et votre "
+            "spécialité. Pour vous préparer une proposition adaptée, pourriez-vous me dire :\n"
+            "1. quelles villes ou départements vous intéressent,\n"
+            "2. combien de nouvelles pistes par semaine vous pourriez traiter ?\n\n"
+            f"{first} vous recontactera ensuite personnellement.\n\n"
             "Bien cordialement,\n" + signature(lang))
     return (
         "Hello,\n\n"
-        "Thank you for getting back to me. As promised, please find attached your free sample of 10 leads"
-        + (f" for {region}" if region else "") + ".\n\n"
-        + ("" if regional else "For this first sample we used current leads from our wider dataset; a subscription is "
-           "filtered to the towns you work in.\n\n")
-        + "What the file contains:\n"
+        f"I am {o}'s assistant at NextGen Profit. Thank you for your interest – as promised, please find attached "
+        "your free sample of 10 leads" + (f" for {region}" if region else "") + ".\n\n"
+        + ("" if regional else "For this first sample we used current leads from our wider dataset; the regular "
+           "delivery is filtered to the towns you work in.\n\n")
+        + "Each row contains:\n"
         "- the company and its location\n"
         "- the event (new registration, long-open roles, new site) and its date\n"
         "- the official source, so every lead can be checked\n"
         "- an urgency rating and a suggested opening line\n\n"
-        "If the leads are useful, I can set up a weekly list focused on your towns and specialism. "
-        "Simply reply to this email.\n\n"
-        "I would value your feedback on the sample.\n\n"
+        "The regular service delivers new leads like these every week, filtered to your towns and specialism. "
+        "So that we can prepare a suitable proposal, could you let me know:\n"
+        "1. which towns or counties matter most to you, and\n"
+        "2. roughly how many new leads per week your team could follow up?\n\n"
+        f"{first} will then get back to you personally.\n\n"
         "Best regards,\n" + signature(lang))
 
 
@@ -367,11 +389,13 @@ def main(argv=None) -> int:
             keys = [k for k in c["faq"] if k in FAQ[lang if lang in FAQ else 'en']]
             answers = "\n\n".join(FAQ[lang if lang in FAQ else "en"][k] for k in keys)
             if lang == "fr":
-                body = (f"Bonjour,\n\nMerci pour votre question.\n\n{answers}\n\nSouhaitez-vous recevoir "
-                        f"l'échantillon gratuit de 10 pistes pour votre région ?\n\nBien cordialement,\n{signature(lang)}")
+                body = (f"Bonjour,\n\nJe suis l'assistant de {owner_name()} chez NextGen Profit. Merci pour votre "
+                        f"question.\n\n{answers}\n\nSouhaitez-vous recevoir l'échantillon gratuit de 10 pistes pour "
+                        f"votre région ? Il suffit de répondre « oui ».\n\nBien cordialement,\n{signature(lang)}")
             else:
-                body = (f"Hello,\n\nThanks for your question.\n\n{answers}\n\nWould you like me to send the free "
-                        f"sample of 10 leads for your area?\n\nBest regards,\n{signature(lang)}")
+                body = (f"Hello,\n\nI am {owner_name()}'s assistant at NextGen Profit – thank you for your question."
+                        f"\n\n{answers}\n\nWould you like me to send you the free sample of 10 leads for your area? "
+                        f"A simple \"yes\" is enough.\n\nBest regards,\n{signature(lang)}")
             send_reply(sender, subject, body, mid, lang)
         elif action == "owner":
             notify_owner(f"[Leads] Interessent: {p['company_name']} – {c['summary_de'][:80]}",
@@ -380,9 +404,12 @@ def main(argv=None) -> int:
                          f"Antwort von {sender}:\n\n{text[:3000]}\n\n"
                          f"Bitte selbst antworten (Antworten in deinem Postfach). Ich habe nur eine kurze "
                          f"Eingangsbestätigung geschickt.")
-            hold = ("Bonjour,\n\nMerci pour votre message. Je reviens vers vous personnellement dans la journée.\n\n"
+            first = owner_name().split(" ")[0]
+            hold = (f"Bonjour,\n\nMerci pour votre message. Je suis l'assistant de {owner_name()} ; j'ai transmis "
+                    f"votre demande à {first}, qui vous répondra personnellement dans la journée.\n\n"
                     f"Bien cordialement,\n{signature(lang)}") if lang == "fr" else (
-                    "Hello,\n\nThanks for your message. I will get back to you personally today.\n\n"
+                    f"Hello,\n\nThank you for your message. I am {owner_name()}'s assistant and have passed your "
+                    f"request on to {first}, who will get back to you personally today.\n\n"
                     f"Best regards,\n{signature(lang)}")
             send_reply(sender, subject, hold, mid, lang)
         handled[action if action in handled else "owner"] += 1
