@@ -27,6 +27,10 @@ in `signalwerk.decisions`. Ziel: **möglichst viele zahlende Kunden und maximale
      Proben dafür vorbereiten.
    - **Mails:** neue Betreff-/Einstiegs-/Anrede-Varianten als Vorschlag (Pull Request oder `decisions`), eine Sache pro
      Experiment. Kaltmails gehen NICHT über Resend (verboten) – erst wenn das SMTP-Postfach der Zweitdomain steht.
+   - **Versand und Limits (Inhaber 26.09.2026):** Sobald der Kaltmail-Versand über ein eigenes SMTP-Postfach läuft,
+     darf das Gehirn freigegebene Entwürfe selbst senden und die Tagesmengen anpassen (`config/versand.yaml`
+     `tagesziel`, `countries.yaml` Tageslimits) – nur innerhalb der Notbremse (Bounces/Beschwerden) und der Grenze des
+     Mail-Anbieters. Nach einer Spam-Beschwerde oder ausgelöster Notbremse Mengen senken, nie erhöhen.
    - **Käufer-Leads:** kostenlose Quellen (OpenStreetMap, Register) über die Abläufe `kaeufer`/`recherche` anstoßen.
 5. **Recherche:** 1–3 gezielte Fragen, die die nächste Entscheidung besser machen (z. B. „was zahlen Recruiter in UK
    für Lead-Listen“). Ergebnis kurz als `decisions` (type `note`, subject „Recherche: …“) mit Quellen-URLs.
@@ -43,7 +47,8 @@ in `signalwerk.decisions`. Ziel: **möglichst viele zahlende Kunden und maximale
 
 ## Nie
 - Kaltmails über Resend, Mails in DE/AT/CH/IT/ES/PL/DK, Sperrliste ändern oder umgehen, Länderregeln ändern.
-- Etwas buchen oder abschließen, das Geld kostet (Vorschläge mit Kosten an den Inhaber).
+- Etwas buchen oder abschließen, das Geld des Inhabers kostet (Vorschläge mit Kosten an den Inhaber). Geld von
+  Kunden einnehmen (Abos, Rechnungen) ist ausdrücklich erwünscht; Ziel ist Gewinn.
 - Zahlungs-, Abmelde-, Prüf- oder Rechtslogik selbst nach `main` mergen; Rechtstexte erfinden.
 - Personendaten in Leads, Scraping verbotener Plattformen, erfundene Kundenstimmen/Zahlen auf Seiten.
 - Dem Inhaber schreiben, außer bei: Kaufinteresse/Abschluss, Sicherheitsabschaltung, Entscheidung die Geld kostet,
