@@ -25,13 +25,28 @@ export async function BrainSection() {
     sb.from("decisions").select("*").order("created_at", { ascending: false }).limit(30),
     sb.from("sample_requests").select("id, company_name, email, region, segment_id, country, status, created_at").order("created_at", { ascending: false }).limit(20),
   ]);
+  const envTable = (
+    <>
+      <h2>Umgebungsvariablen (Vercel)</h2>
+      <div className="scroll"><table>
+        <thead><tr><th>Name</th><th>Wofür</th><th>Pflicht</th><th>Gesetzt</th></tr></thead>
+        <tbody>{envStatus().map((e) => (
+          <tr key={e.name}><td><code>{e.name}</code></td><td>{e.purpose}</td><td>{e.required ? "ja" : "optional"}</td>
+            <td className={e.set ? "ok" : e.required ? "bad" : "muted"}>{e.set ? "ja" : "fehlt"}</td></tr>
+        ))}</tbody>
+      </table></div>
+
+    </>
+  );
   const err = [settings, pages, decisions, requests].find((r) => r.error)?.error;
-  if (err) return <p className="bad">Gehirn-Tabellen fehlen oder Fehler: {err.message} (Migration 20260927090000 angewendet?)</p>;
+  if (err) return <>{envTable}<p className="bad">Gehirn-Tabellen fehlen oder Fehler: {err.message} (Migration 20260927090000 angewendet?)</p></>;
   const s: any = settings.data ?? {};
   const legalFiles = legalTextsReady();
 
   return (
     <>
+      {envTable}
+
       <h2>Schalter</h2>
       <div className="card">
         <Toggle k="brain_enabled" on={!!s.brain_enabled} label="Gehirn aktiv (aus = nur beobachten)" />
@@ -50,15 +65,6 @@ export async function BrainSection() {
           Preise: {Array.isArray(s.pricing) && s.pricing.length ? `${s.pricing.length} Pakete` : "nicht hinterlegt"}
         </p>
       </div>
-
-      <h2>Umgebungsvariablen (Vercel)</h2>
-      <div className="scroll"><table>
-        <thead><tr><th>Name</th><th>Wofür</th><th>Pflicht</th><th>Gesetzt</th></tr></thead>
-        <tbody>{envStatus().map((e) => (
-          <tr key={e.name}><td><code>{e.name}</code></td><td>{e.purpose}</td><td>{e.required ? "ja" : "optional"}</td>
-            <td className={e.set ? "ok" : e.required ? "bad" : "muted"}>{e.set ? "ja" : "fehlt"}</td></tr>
-        ))}</tbody>
-      </table></div>
 
       <h2>Seiten</h2>
       <div className="scroll"><table>
