@@ -54,7 +54,7 @@ def upsert_observation(db: DB, company_id: str, kind: str, key: str, **fields) -
 
 def cmd_careers(db: DB, args) -> None:
     session = requests.Session()
-    companies = db.select("watch_companies", {"active": "eq.true", "careers_url": "not.is.null"})
+    companies = db.select_all("watch_companies", {"active": "eq.true", "careers_url": "not.is.null", "order": "id"})
     for c in companies:
         ats = ats_endpoint(c["careers_url"])
         try:
@@ -91,7 +91,7 @@ def cmd_careers(db: DB, args) -> None:
 
 def cmd_websites(db: DB, args) -> None:
     session = requests.Session()
-    for c in db.select("watch_companies", {"active": "eq.true", "website": "not.is.null"}):
+    for c in db.select_all("watch_companies", {"active": "eq.true", "website": "not.is.null", "order": "id"}):
         url = c["website"] if c["website"].startswith("http") else "http://" + c["website"]
         try:
             r = polite_get(url, last_fetched=_ts(c.get("website_fetched_at")), session=session)
@@ -363,7 +363,7 @@ def cmd_sitecheck(db: DB, args) -> None:
 
 def cmd_detect(db: DB, args) -> None:
     n = 0
-    for c in db.select("watch_companies", {"active": "eq.true"}):
+    for c in db.select_all("watch_companies", {"active": "eq.true", "order": "id"}):
         obs = db.select("observations", {"company_id": f"eq.{c['id']}"})
         found = detect_job_leads(c, obs, TODAY)
         for o in obs:

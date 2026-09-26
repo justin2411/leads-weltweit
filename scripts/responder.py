@@ -244,11 +244,11 @@ def regional_sample(db, seg: str, country: str, region: str | None) -> tuple[lis
     import io
     from lib.regions import area_of, lead_matches
     area = area_of(region)
-    rows = db.select("leads", {"segment_id": f"eq.{seg}", "country": f"eq.{country}", "status": "in.(new,sample)",
+    rows = db.select_all("leads", {"segment_id": f"eq.{seg}", "country": f"eq.{country}", "status": "in.(new,sample)",
                                "select": "id,event_summary,event_date,source_name,source_url,source_date,urgency,"
                                          "urgency_reason,opener,signal_type,company_id,observation_ids,"
                                          "watch_companies(name,legal_form,city,region,address)",
-                               "order": "event_date.desc", "limit": "3000"})
+                               "order": "event_date.desc,id"})
     picked, per = [], {}
     for l in rows:
         co = l["watch_companies"]

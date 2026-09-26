@@ -42,6 +42,17 @@ class DB:
     def select(self, table: str, params: dict | None = None) -> list[dict]:
         return self._check(self.s.get(f"{self.base}/{table}", params=params or {}, timeout=self.timeout))
 
+    def select_all(self, table: str, params: dict | None = None, page: int = 1000) -> list[dict]:
+        """Alle Zeilen (PostgREST liefert standardmäßig höchstens 1000 pro Abfrage)."""
+        out, offset = [], 0
+        base = {k: v for k, v in (params or {}).items() if k != "limit"}
+        while True:
+            rows = self.select(table, {**base, "limit": str(page), "offset": str(offset)})
+            out += rows
+            if len(rows) < page:
+                return out
+            offset += page
+
     def insert(self, table: str, rows: list[dict] | dict, *, upsert_on: str | None = None,
                ignore_duplicates: bool = False) -> list[dict]:
         headers = {"Prefer": "return=representation"}

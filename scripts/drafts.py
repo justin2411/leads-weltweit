@@ -157,12 +157,12 @@ def regional_counts(db) -> dict:
     from lib.regions import FR, UK, US, lead_matches
     areas = {"UK": UK, "US": US, "FR": FR}
     county = {}
-    for o in db.select("observations", {"kind": "eq.incorporation", "select": "company_id,details",
-                                        "limit": "100000"}):
+    for o in db.select_all("observations", {"kind": "eq.incorporation", "select": "company_id,details",
+                                            "order": "id"}):
         county[o["company_id"]] = o.get("details") or {}
     out: dict = {}
-    for l in db.select("leads", {"status": "in.(new,sample)", "limit": "100000",
-                                  "select": "segment_id,country,company_id,watch_companies(address,region,city)"}):
+    for l in db.select_all("leads", {"status": "in.(new,sample)", "order": "id",
+                                      "select": "segment_id,country,company_id,watch_companies(address,region,city)"}):
         for area in areas.get(l["country"], {}):
             if lead_matches(l["country"], area, l["watch_companies"], county.get(l["company_id"])):
                 k = (l["segment_id"], l["country"], area)
@@ -200,7 +200,7 @@ def main(argv=None) -> int:
     from lib.db import DB
     db = DB()
     exps = {(e["segment_id"], e["country"]): e for e in db.select("experiments", {"variant": f"eq.{args.variant}"})}
-    prospects = db.select("prospects", {"check_status": "eq.ok"})
+    prospects = db.select_all("prospects", {"check_status": "eq.ok", "order": "created_at"})
     examples = load_examples(db)
     # CLAUDE.md 5.1: ohne mindestens 10 echte Probe-Leads kein Entwurf und kein Versand
     samples = {}

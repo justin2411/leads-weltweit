@@ -42,10 +42,10 @@ def main() -> int:
         seg, c = e["segment_id"], e["country"]
         existing = db.select("leads", {"segment_id": f"eq.{seg}", "country": f"eq.{c}", "status": "eq.sample",
                                        "select": "id"})
-        leads = db.select("leads", {"segment_id": f"eq.{seg}", "country": f"eq.{c}",
+        leads = db.select_all("leads", {"segment_id": f"eq.{seg}", "country": f"eq.{c}",
                                     "status": "in.(new,sample)",
                                     "select": "*,watch_companies(name,legal_form,city,region,address,website)",
-                                    "order": "event_date.desc", "limit": "2000"})
+                                    "order": "event_date.desc,id"})
         leads = [l for l in leads if not looks_personal(l["watch_companies"]["name"])]
         leads.sort(key=lambda l: (URG.get(l["urgency"], 3), -(int((l.get("event_date") or "1900-01-01").replace("-", "")))))
         chosen, per_company = [], {}
