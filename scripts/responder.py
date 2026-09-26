@@ -36,7 +36,7 @@ import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from lib.rules import normalize_domain  # noqa: E402
+from lib.rules import brand, normalize_domain  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 INTENTS = ["buy", "sample", "question", "not_interested", "unsubscribe", "out_of_office", "other"]
@@ -178,7 +178,7 @@ def send_reply(to: str, subject: str, text: str, in_reply_to: str | None, lang: 
                attachments: list[tuple[str, bytes]] | None = None) -> str | None:
     from lib.html_email import render
     from lib.rules import render_footer
-    company = os.environ.get("SENDER_COMPANY") or "Signalwerk"
+    company = brand()
     footer = render_footer(lang, sender_name=company, postal_address=os.environ.get("SENDER_POSTAL_ADDRESS", ""),
                            company=normalize_domain(to.split("@")[-1]), unsubscribe_url=None)
     full = text.rstrip() + "\n\n" + footer
@@ -293,7 +293,7 @@ def main(argv=None) -> int:
                     db.insert("email_events", {"message_id": m["id"], "type": "sample_requested",
                                                "note": "Probe automatisch gesendet"})
             if action == "sample_owner" or not body:
-                notify_owner(f"[Signalwerk] Bitte ansehen: {p['company_name']}",
+                notify_owner(f"[Leads] Bitte ansehen: {p['company_name']}",
                              f"{p['company_name']} ({p['segment_id']}/{p['country']}) hat geantwortet.\n\n"
                              f"Einordnung: {c['summary_de']}\nProbe gesendet: {'ja' if body else 'nein (keine Datei)'}\n\n"
                              f"Antwort von {sender}:\n\n{text[:3000]}")
@@ -308,7 +308,7 @@ def main(argv=None) -> int:
                         f"sample of 10 leads for your area?\n\nBest regards,\n{signature(lang)}")
             send_reply(sender, subject, body, mid, lang)
         elif action == "owner":
-            notify_owner(f"[Signalwerk] Interessent: {p['company_name']} – {c['summary_de'][:80]}",
+            notify_owner(f"[Leads] Interessent: {p['company_name']} – {c['summary_de'][:80]}",
                          f"{p['company_name']} ({p['segment_id']}/{p['country']}, {p.get('region') or ''}) "
                          f"hat geantwortet.\n\nEinordnung: {c['intent']} – {c['summary_de']}\n\n"
                          f"Antwort von {sender}:\n\n{text[:3000]}\n\n"

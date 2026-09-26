@@ -14,7 +14,7 @@ from urllib.parse import urlparse
 
 import requests
 
-USER_AGENT = "SignalwerkBot/0.1 (+company-signal research; respects robots.txt; max 1 request/page/day)"
+USER_AGENT = "NextGenProfitBot/0.1 (+company-signal research; respects robots.txt; max 1 request/page/day)"
 
 # CLAUDE.md Abschnitt 2: kein Scraping dieser Plattformen (auch nicht über Subdomains).
 BLOCKED_HOSTS = (

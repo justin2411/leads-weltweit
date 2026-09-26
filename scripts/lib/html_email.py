@@ -29,15 +29,18 @@ def render(body_text: str, footer_text: str, lang: str = "en") -> str:
     closing = paras.pop() if paras else ""
     closing_lines = closing.splitlines()
     bye = closing_lines[0] if closing_lines else ""
-    name = os.environ.get("SENDER_NAME") or "Signalwerk"
-    company = os.environ.get("SENDER_COMPANY") or "Signalwerk"
+    from lib.rules import brand
+    company = brand()
+    name = os.environ.get("SENDER_NAME") or company
     title = os.environ.get("SENDER_TITLE") or ("Fondateur" if lang == "fr" else "Founder")
     tagline = ("Signaux de recrutement et de croissance pour les prestataires B2B" if lang == "fr"
                else "Hiring and growth signals for B2B service firms")
     extras = [x for x in (os.environ.get("SENDER_WEBSITE"), os.environ.get("SENDER_PHONE")) if x]
 
+    parts = company.split(" ", 1)
+    head, tail = (parts[0], " " + parts[1]) if len(parts) == 2 else (company, "")
     wordmark = (f'<span style="font-family:{FONT};font-size:22px;font-weight:800;letter-spacing:-0.4px;color:{NAVY};">'
-                f'Signal<span style="color:{ORANGE};">werk</span></span>')
+                f'{html.escape(head)}<span style="color:{ORANGE};">{html.escape(tail)}</span></span>')
     extras_html = "".join(
         f'<div style="font-family:{FONT};font-size:13px;line-height:20px;color:{MUTED};">{html.escape(x)}</div>'
         for x in extras)

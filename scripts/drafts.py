@@ -18,7 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from lib.rules import lint_draft  # noqa: E402
+from lib.rules import brand, lint_draft  # noqa: E402
 
 GENERIC_SPEC = {"recruitment", "general recruitment", "financial advice", "independent financial advice",
                 "web design", "small business websites", "unverified", "", "it support", "commercial insurance",
@@ -41,8 +41,8 @@ def _clean_name(name: str) -> str:
 
 def signature(lang: str) -> str:
     """Signatur aus Umgebungsvariablen (GitHub-Secrets/Variablen). Nur Angaben, die es wirklich gibt."""
-    name = os.environ.get("SENDER_NAME") or "Signalwerk"
-    company = os.environ.get("SENDER_COMPANY") or "Signalwerk"
+    name = os.environ.get("SENDER_NAME") or brand()
+    company = brand()
     title = os.environ.get("SENDER_TITLE") or ("Fondateur" if lang == "fr" else "Founder")
     tagline = ("Signaux de recrutement et de croissance pour les prestataires B2B" if lang == "fr"
                else "Hiring and growth signals for B2B service firms")
@@ -76,7 +76,7 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
         subject = f"Hiring signals from {area} employers"
         first = (f"I noticed {firm} places {spec} staff across {area}, so this may be relevant."
                  if has_spec else f"I noticed {firm} recruits for employers across {area}, so this may be relevant.")
-        core = ("Signalwerk monitors local employers' own careers pages and flags the moments that usually lead "
+        core = (f"{brand()} monitors local employers' own careers pages and flags the moments that usually lead "
                 "to agency work: roles open for 30+ days, roles re-advertised, or several vacancies at once.")
         detail = ("Each lead shows the company, the role, when we first saw it and the source, "
                   "so your consultants can call with a specific reason.")
@@ -85,7 +85,7 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
         subject = f"Newly registered businesses in {area}"
         first = (f"I noticed {firm} builds {spec} for clients around {area}, so this may be relevant."
                  if has_spec else f"I noticed {firm} builds websites for businesses around {area}, so this may be relevant.")
-        core = ("Signalwerk tracks official state filings and flags companies registered in the last few weeks. "
+        core = (f"{brand()} tracks official state filings and flags companies registered in the last few weeks. "
                 "New owners are usually choosing their website, branding and online presence right now.")
         detail = ex or "Each lead shows the company, the registration date, the county and the official source."
         ask = f"Would a free sample of 10 recent registrations from {area} be useful?"
@@ -93,7 +93,7 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
         subject = f"New and growing companies in {area}"
         first = (f"I noticed {firm} focuses on {spec} for clients around {area}, so this may be relevant."
                  if has_spec else f"I noticed {firm} advises business owners around {area}, so this may be relevant.")
-        core = ("Signalwerk flags local companies at the moments when owners look for advice: a new registration, "
+        core = (f"{brand()} flags local companies at the moments when owners look for advice: a new registration, "
                 "a hiring push or a new site. That is when pensions, protection and benefits come up.")
         detail = ex or "Each lead shows the company, the event, the date and the official source."
         ask = f"Would a free sample of 10 current leads from {area} be useful?"
@@ -101,7 +101,7 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
         subject = f"Growing businesses around {area}"
         first = (f"I noticed {firm} provides {spec} to businesses around {area}, so this may be relevant."
                  if has_spec else f"I noticed {firm} looks after IT for businesses around {area}, so this may be relevant.")
-        core = ("Signalwerk flags local companies at the moments when IT needs change: a new office, a hiring push "
+        core = (f"{brand()} flags local companies at the moments when IT needs change: a new office, a hiring push "
                 "or an open IT support role that has not been filled. Those are good reasons for an MSP to call.")
         detail = ex or "Each lead shows the company, what happened, when we saw it and the source."
         ask = f"Would a free sample of 10 current leads from {area} be useful?"
@@ -109,7 +109,7 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
         subject = f"New and expanding businesses in {area}"
         first = (f"I noticed {firm} arranges {spec} for businesses around {area}, so this may be relevant."
                  if has_spec else f"I noticed {firm} arranges business insurance around {area}, so this may be relevant.")
-        core = ("Signalwerk tracks official company registrations and local expansion signals. A newly registered "
+        core = (f"{brand()} tracks official company registrations and local expansion signals. A newly registered "
                 "company usually needs liability, property and employer cover in its first weeks.")
         detail = ex or "Each lead shows the company, the registration date, the location and the official source."
         ask = f"Would a free sample of 10 recent leads from {area} be useful?"
@@ -117,7 +117,7 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
         subject = f"Newly registered companies in {area}"
         first = (f"I noticed {firm} offers {spec} to businesses around {area}, so this may be relevant."
                  if has_spec else f"I noticed {firm} works with small businesses around {area}, so this may be relevant.")
-        core = ("Signalwerk tracks official company registrations and employers hiring for finance roles. New "
+        core = (f"{brand()} tracks official company registrations and employers hiring for finance roles. New "
                 "directors are usually choosing an accountant and payroll provider in their first weeks.")
         detail = ex or "Each lead shows the company, the registration date, the location and the official source."
         ask = f"Would a free sample of 10 recent leads from {area} be useful?"
@@ -125,21 +125,21 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
         subject = f"Signaux de recrutement à {area}"
         first = (f"J'ai vu que {firm} recrute des profils {spec} dans la région de {area}." if has_spec
                  else f"J'ai vu que {firm} accompagne les entreprises de la région de {area} dans leurs recrutements.")
-        core = ("Signalwerk suit les pages carrières des employeurs locaux et repère les moments qui mènent souvent "
+        core = (f"{brand()} suit les pages carrières des employeurs locaux et repère les moments qui mènent souvent "
                 "à un mandat : postes ouverts depuis plus de 30 jours, annonces republiées ou plusieurs postes à la fois.")
         detail = "Chaque piste indique l'entreprise, le poste, la date et la source."
         ask = f"Un échantillon gratuit de 10 pistes actuelles à {area} vous serait-il utile ?"
     elif seg == "S2":
         subject = f"Sociétés nouvellement créées à {area}"
         first = f"J'ai vu que {firm} conçoit des sites web pour les entreprises de la région de {area}."
-        core = ("Signalwerk suit les annonces officielles de création au BODACC. Une société qui vient d'être "
+        core = (f"{brand()} suit les annonces officielles de création au BODACC. Une société qui vient d'être "
                 "immatriculée choisit en ce moment son site, son identité visuelle et sa présence en ligne.")
         detail = ex or "Chaque piste indique la société, la date de l'annonce, la ville et la source officielle."
         ask = f"Un échantillon gratuit de 10 créations récentes à {area} vous serait-il utile ?"
     else:  # S9 FR
         subject = f"Nouveaux dirigeants à {area}"
         first = f"J'ai vu que {firm} accompagne les chefs d'entreprise de la région de {area}."
-        core = ("Signalwerk repère les entreprises locales au moment où leurs dirigeants cherchent conseil : création "
+        core = (f"{brand()} repère les entreprises locales au moment où leurs dirigeants cherchent conseil : création "
                 "récente, vague de recrutements ou nouveau site. C'est là que se posent les questions de protection "
                 "et d'épargne salariale.")
         detail = ex or "Chaque piste indique la société, l'événement, la date et la source officielle."

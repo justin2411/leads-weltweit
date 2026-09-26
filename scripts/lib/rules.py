@@ -218,6 +218,12 @@ def lint_draft(subject: str, body: str, language: str = "en") -> CheckResult:
     return CheckResult(ok=not errors, errors=errors, warnings=warnings)
 
 
+def brand() -> str:
+    """Markenname in Mails (Secret SENDER_COMPANY), Standard NextGen Profit."""
+    import os
+    return os.environ.get("SENDER_COMPANY") or "NextGen Profit"
+
+
 FOOTER = {
     "en": (
         "—\n{sender_name} · {postal_address}\n"

@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lib.rules import lint_draft  # noqa: E402
 
 EXAMPLE = {"{agency}": "Northpoint Recruitment", "{specialism}": "engineering", "{region}": "Greater Manchester",
-           "{town}": "Bolton", "{firm}": "Northbridge Financial Planning", "{specialism}": "workplace pensions", "{sender}": "Signalwerk", "{city}": "Austin", "{niche}": "restaurant", "{state}": "Texas"}
+           "{town}": "Bolton", "{firm}": "Northbridge Financial Planning", "{specialism}": "workplace pensions", "{sender}": "NextGen Profit", "{city}": "Austin", "{niche}": "restaurant", "{state}": "Texas"}
 
 EXAMPLE_FR = {**EXAMPLE, "{region}": "Lyon", "{town}": "Villeurbanne", "{firm}": "Atelier Rhône Conseil",
               "{specialism}": "industrie", "{niche}": "commerces"}
