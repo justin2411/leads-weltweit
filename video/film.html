@@ -1,0 +1,211 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Inter;src:url(fonts/inter-latin-400-normal.woff2);font-weight:400}
+@font-face{font-family:Inter;src:url(fonts/inter-latin-600-normal.woff2);font-weight:600}
+@font-face{font-family:Inter;src:url(fonts/inter-latin-700-normal.woff2);font-weight:700}
+@font-face{font-family:Inter;src:url(fonts/inter-latin-800-normal.woff2);font-weight:800}
+:root{--bg:#0a1324;--bg2:#0f1c33;--card:#132440;--line:#24385c;--ink:#eef3fb;--soft:#9fb0cc;--brand:#3b6ff5;--brand2:#7aa2ff;--ok:#34d399;--warm:#fbbf24}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);font-family:Inter,sans-serif;color:var(--ink)}
+#stage{position:absolute;inset:0;background:radial-gradient(1200px 700px at 70% 20%,#16284a 0%,var(--bg) 60%)}
+.scene{position:absolute;inset:0;opacity:0}
+.abs{position:absolute}
+.h1{font-size:76px;font-weight:800;letter-spacing:-1.5px;line-height:1.08}
+.h2{font-size:52px;font-weight:700;letter-spacing:-1px;line-height:1.15}
+.lbl{font-size:22px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--brand2)}
+.soft{color:var(--soft)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.35)}
+.pill{display:inline-block;padding:8px 18px;border-radius:99px;font-size:22px;font-weight:600;background:rgba(59,111,245,.18);color:var(--brand2);border:1px solid rgba(122,162,255,.35)}
+.dot{position:absolute;width:10px;height:10px;border-radius:50%;background:var(--brand2)}
+.mini{width:420px;padding:22px 26px}
+.mini .n{font-size:26px;font-weight:700}.mini .m{font-size:20px;color:var(--soft);margin-top:6px}
+.tag{font-size:16px;font-weight:700;letter-spacing:2px;color:var(--ok)}
+#cap{position:absolute;left:50%;bottom:54px;transform:translateX(-50%);max-width:1400px;text-align:center;font-size:32px;font-weight:600;line-height:1.35;color:#fff;background:rgba(5,10,20,.62);padding:12px 26px;border-radius:12px}
+.src{width:470px;height:250px;padding:34px}
+.src .t{font-size:32px;font-weight:700;margin-top:18px}.src .s{font-size:22px;color:var(--soft);margin-top:8px}
+.ico{width:64px;height:64px;border-radius:16px;background:rgba(59,111,245,.2);display:flex;align-items:center;justify-content:center;font-size:34px}
+.row{display:grid;grid-template-columns:380px 330px 260px 250px;gap:0;padding:18px 28px;font-size:22px;border-top:1px solid var(--line)}
+.row.head{font-size:17px;font-weight:700;letter-spacing:2px;color:var(--soft);border-top:0}
+.badge{display:flex;align-items:center;gap:14px;font-size:28px;font-weight:600}
+.badge i{font-style:normal;width:44px;height:44px;border-radius:50%;background:rgba(52,211,153,.18);color:var(--ok);display:flex;align-items:center;justify-content:center;font-size:24px}
+.phone{width:400px;height:790px;border-radius:56px;background:#05080f;border:10px solid #1e2b44;padding:22px;box-shadow:0 40px 120px rgba(0,0,0,.5)}
+.screen{width:100%;height:100%;border-radius:38px;background:#fff;color:#0f1b2d;padding:34px 26px;overflow:hidden;position:relative}
+</style></head>
+<body><div id="stage">
+
+<!-- A: hook -->
+<div class="scene" id="A">
+  <div class="abs lbl" style="left:140px;top:170px">Companies House · this week</div>
+  <div class="abs h1" id="A_h" style="left:140px;top:220px;width:900px">New companies,<br>registered near you.</div>
+  <div class="abs soft" id="A_s" style="left:140px;top:420px;font-size:30px;width:820px">Many of them will choose an accountant in their first weeks.</div>
+  <div id="A_dots"></div>
+  <div class="abs card mini" id="A_c1" style="left:1180px;top:210px"><div class="tag">NEW COMPANY</div><div class="n">Northfield Logistics Ltd</div><div class="m">Registered 20 Aug · Stockport</div></div>
+  <div class="abs card mini" id="A_c2" style="left:1300px;top:420px"><div class="tag">NEW COMPANY</div><div class="n">Brightside Dental Ltd</div><div class="m">Registered 19 Aug · Salford</div></div>
+  <div class="abs card mini" id="A_c3" style="left:1150px;top:630px"><div class="tag">NEW COMPANY</div><div class="n">Harbour &amp; Pike Studio Ltd</div><div class="m">Registered 18 Aug · Altrincham</div></div>
+  <div class="abs soft" id="A_n" style="left:1180px;top:820px;font-size:18px">Illustrative examples</div>
+</div>
+
+<!-- B: early -->
+<div class="scene" id="B">
+  <div class="abs h2" style="left:0;right:0;top:250px;text-align:center">Getting in touch early makes a real difference.</div>
+  <div class="abs" style="left:260px;top:520px;width:1400px;height:8px;border-radius:4px;background:var(--line)"></div>
+  <div class="abs" id="B_fill" style="left:260px;top:520px;height:8px;border-radius:4px;background:linear-gradient(90deg,var(--ok),var(--brand))"></div>
+  <div id="B_ticks"></div>
+  <div class="abs" id="B_you" style="left:330px;top:600px"><span class="pill" style="background:rgba(52,211,153,.18);color:var(--ok);border-color:rgba(52,211,153,.4)">You, here</span></div>
+</div>
+
+<!-- C: brand -->
+<div class="scene" id="C">
+  <div class="abs" id="C_logo" style="left:0;right:0;top:390px;text-align:center">
+    <div style="font-size:112px;font-weight:800;letter-spacing:-3px">NextGen <span style="color:var(--brand2)">Profit</span></div>
+    <div class="soft" style="font-size:34px;margin-top:18px">Leads with a reason to call.</div>
+  </div>
+</div>
+
+<!-- D: sources -->
+<div class="scene" id="D">
+  <div class="abs lbl" style="left:140px;top:150px">Checked every day</div>
+  <div class="abs h2" style="left:140px;top:195px">Only official, public sources.</div>
+  <div class="abs card src" id="D1" style="left:140px;top:400px"><div class="ico">🏛</div><div class="t">Companies House</div><div class="s">New registrations, changes</div></div>
+  <div class="abs card src" id="D2" style="left:725px;top:400px"><div class="ico">📰</div><div class="t">Public notices</div><div class="s">Official announcements</div></div>
+  <div class="abs card src" id="D3" style="left:1310px;top:400px"><div class="ico">💼</div><div class="t">Careers pages</div><div class="s">Local employers' own sites</div></div>
+  <div class="abs" id="D_scan" style="top:380px;width:6px;height:290px;background:linear-gradient(var(--brand2),transparent);box-shadow:0 0 40px var(--brand2)"></div>
+  <div class="abs soft" id="D_no" style="left:140px;top:740px;font-size:26px">No scraped platforms. No personal data.</div>
+</div>
+
+<!-- E: event -> lead -->
+<div class="scene" id="E">
+  <div class="abs lbl" style="left:140px;top:150px">Signal detected</div>
+  <div class="abs h2" style="left:140px;top:195px;width:760px">Every event, dated and sourced.</div>
+  <div class="abs pill" id="E_p1" style="left:140px;top:420px">● New registration</div>
+  <div class="abs pill" id="E_p2" style="left:140px;top:490px;background:rgba(251,191,36,.15);color:var(--warm);border-color:rgba(251,191,36,.4)">● Finance role open 34 days</div>
+  <div class="abs card" id="E_card" style="left:960px;top:230px;width:820px;padding:44px">
+    <div class="tag">NEW LEAD</div>
+    <div style="font-size:44px;font-weight:800;margin-top:10px">Northfield Logistics Ltd</div>
+    <div class="soft" style="font-size:24px;margin-top:6px">Unit 4, Hempshaw Lane · Stockport</div>
+    <div id="E_l1" style="margin-top:30px;font-size:26px">📅 Registered on 20 Aug 2026</div>
+    <div id="E_l2" style="margin-top:14px;font-size:26px">🔗 Source: Companies House record</div>
+    <div id="E_l3" style="margin-top:14px;font-size:26px">⚡ Urgency: <b style="color:var(--ok)">high</b> – first weeks of trading</div>
+  </div>
+  <div class="abs soft" style="left:960px;top:820px;font-size:18px">Illustrative example</div>
+</div>
+
+<!-- F: filter -->
+<div class="scene" id="F">
+  <div class="abs lbl" style="left:140px;top:150px">Made for your firm</div>
+  <div class="abs h2" style="left:140px;top:195px">Filtered, rated, ready to use.</div>
+  <div id="F_dots"></div>
+  <div class="abs" id="F_region" style="left:140px;top:420px"><span class="pill" style="font-size:30px;padding:12px 26px">📍 Greater Manchester</span></div>
+  <div class="abs" style="left:140px;top:540px;font-size:24px;font-weight:600" id="F_ql">Freshness &amp; relevance</div>
+  <div class="abs" style="left:140px;top:585px;width:560px;height:18px;border-radius:9px;background:var(--line)"></div>
+  <div class="abs" id="F_bar" style="left:140px;top:585px;height:18px;border-radius:9px;background:linear-gradient(90deg,var(--brand),var(--ok))"></div>
+  <div class="abs card" id="F_line" style="left:900px;top:400px;width:880px;padding:40px">
+    <div class="tag" style="color:var(--brand2)">SUGGESTED OPENING LINE</div>
+    <div id="F_type" style="font-size:32px;line-height:1.4;margin-top:16px;min-height:140px"></div>
+  </div>
+</div>
+
+<!-- G: monday -->
+<div class="scene" id="G">
+  <div class="abs card" id="G_cal" style="left:140px;top:170px;width:220px;height:230px;text-align:center;overflow:hidden">
+    <div style="background:var(--brand);font-size:26px;font-weight:700;padding:14px">MONDAY</div>
+    <div style="font-size:110px;font-weight:800;margin-top:6px">07<span style="font-size:40px">:00</span></div>
+  </div>
+  <div class="abs h2" style="left:420px;top:210px;width:600px">Every Monday, a short list for your region.</div>
+  <div class="abs card" id="G_tab" style="left:140px;top:460px;width:1260px;overflow:hidden">
+    <div class="row head"><div>COMPANY</div><div>EVENT</div><div>AREA</div><div>SOURCE</div></div>
+    <div class="row" id="G_r1"><div>Northfield Logistics Ltd</div><div>New registration</div><div>Stockport</div><div class="soft">Companies House</div></div>
+    <div class="row" id="G_r2"><div>Brightside Dental Ltd</div><div>New registration</div><div>Salford</div><div class="soft">Companies House</div></div>
+    <div class="row" id="G_r3"><div>Kestrel Print Ltd</div><div>Finance role, 34 days</div><div>Bolton</div><div class="soft">Careers page</div></div>
+    <div class="row" id="G_r4"><div>Harbour &amp; Pike Studio Ltd</div><div>New registration</div><div>Altrincham</div><div class="soft">Companies House</div></div>
+  </div>
+  <div class="abs" style="left:1470px;top:470px;display:grid;gap:34px">
+    <div class="badge" id="G_b1"><i>✓</i>Company data only</div>
+    <div class="badge" id="G_b2"><i>✓</i>Date &amp; source on every lead</div>
+    <div class="badge" id="G_b3"><i>✓</i>Each lead delivered once</div>
+  </div>
+</div>
+
+<!-- H: cta -->
+<div class="scene" id="H">
+  <div class="abs lbl" style="left:140px;top:250px">Free sample</div>
+  <div class="abs h1" style="left:140px;top:300px;width:900px">10 leads from your area.<br><span style="color:var(--brand2)">One click.</span></div>
+  <div class="abs soft" style="left:140px;top:520px;font-size:30px;width:800px">No card, no obligation. Your details are already filled in from our email.</div>
+  <div class="abs phone" id="H_phone" style="left:1330px;top:60px"><div class="screen">
+    <div style="font-size:17px;font-weight:700">NextGen Profit</div>
+    <div style="margin-top:26px;display:inline-block;border:1.5px solid #1d4ed8;color:#1d4ed8;border-radius:99px;padding:5px 12px;font-size:14px;font-weight:600">Prepared for your firm</div>
+    <div style="font-size:31px;font-weight:800;line-height:1.12;margin-top:16px">New companies in your area that still need an accountant</div>
+    <div style="font-size:16px;color:#51607a;margin-top:14px;line-height:1.45">Every week you get a short list of businesses registered nearby – each dated, with its official source.</div>
+    <div id="H_btn" style="margin-top:26px;background:#1d4ed8;color:#fff;border-radius:10px;text-align:center;padding:16px;font-size:19px;font-weight:700">Send me 10 free leads</div>
+    <div style="font-size:12px;color:#51607a;margin-top:10px;line-height:1.4">We will send the sample to the address we emailed.</div>
+    <div id="H_ok" style="margin-top:22px;color:#15803d;font-weight:700;font-size:18px;opacity:0">✓ Sample requested</div>
+    <div id="H_tap" style="position:absolute;width:70px;height:70px;border-radius:50%;background:rgba(29,78,216,.25);border:3px solid rgba(29,78,216,.6);left:160px;top:380px;opacity:0"></div>
+  </div></div>
+</div>
+
+<!-- I: end -->
+<div class="scene" id="I">
+  <div class="abs" style="left:0;right:0;top:330px;text-align:center">
+    <div style="font-size:104px;font-weight:800;letter-spacing:-3px">NextGen <span style="color:var(--brand2)">Profit</span></div>
+    <div style="font-size:40px;font-weight:600;margin-top:18px">The right companies, at the right moment.</div>
+    <div style="margin-top:46px"><span class="pill" style="font-size:30px;padding:14px 30px">nextgen-profit.de</span></div>
+  </div>
+</div>
+
+<div id="cap"></div>
+</div>
+<script>
+const T = window.TIMING;
+const L = Object.fromEntries(T.lines.map(l => [l.id, l]));
+const $ = id => document.getElementById(id);
+const clamp = (x, a=0, b=1) => Math.max(a, Math.min(b, x));
+const ease = x => { x = clamp(x); return x<.5 ? 4*x*x*x : 1 - Math.pow(-2*x+2,3)/2; };
+const out = x => 1 - Math.pow(1 - clamp(x), 3);
+const prog = (t, a, d) => clamp((t - a) / d);
+function show(el, t, a, d=0.6, dy=40) { const p = out(prog(t, a, d)); el.style.opacity = p; el.style.transform = `translateY(${(1-p)*dy}px)`; }
+// Szenenfenster: Start = Satzbeginn, Ende = Beginn der nächsten Szene
+const order = ["A","B","C","D","E","F","G","H","I"], ids = ["hook","early","brand","sources","event","filter","monday","cta","end"];
+const win = order.map((s,i) => [s, i ? L[ids[i]].start - 0.35 : 0, i < order.length-1 ? L[ids[i+1]].start - 0.35 : T.total + 1]);
+// Punkte-Netz (Szene A, F)
+function dots(id, n, seed, box) { let h=""; let r=seed; const rnd=()=>{r=(r*16807)%2147483647;return r/2147483647;};
+  for (let i=0;i<n;i++){ h+=`<div class="dot" data-d="${rnd()}" style="left:${box[0]+rnd()*box[2]}px;top:${box[1]+rnd()*box[3]}px"></div>`; } $(id).innerHTML=h; }
+dots("A_dots", 70, 7, [1080, 120, 760, 820]); dots("F_dots", 60, 11, [140, 650, 700, 260]);
+$("B_ticks").innerHTML = [["Week 1",260],["Week 2",600],["Week 4",1000],["Week 8",1600]].map(([w,x])=>`<div class="abs soft" style="left:${x}px;top:470px;font-size:22px">${w}</div>`).join("");
+const LINE = "Congratulations on the new company. Have you already chosen an accountant for your first year-end? We work with new businesses in Stockport.";
+function render(t) {
+  for (const [s, a, b] of win) { const el = $(s); const o = Math.min(prog(t, a, 0.5), 1 - prog(t, b - 0.5, 0.5)); el.style.opacity = o; el.style.display = o > 0 ? "block" : "none"; }
+  // A
+  const a0 = 0; show($("A_h"), t, a0+0.3); show($("A_s"), t, L.hook.start + 3.4);
+  document.querySelectorAll("#A_dots .dot").forEach(d => { const k = +d.dataset.d; const p = prog(t, 0.2 + k*6, 0.5); d.style.opacity = p*0.8; d.style.transform = `scale(${0.4+p*0.6+0.25*Math.sin((t+k*9)*3)*p})`; });
+  show($("A_c1"), t, 1.4, 0.7, 60); show($("A_c2"), t, 2.6, 0.7, 60); show($("A_c3"), t, 3.8, 0.7, 60); show($("A_n"), t, 4.4);
+  // B
+  const b0 = L.early.start; $("B_fill").style.width = (1400 * ease(prog(t, b0, 2.2))) + "px";
+  show($("B_you"), t, b0 + 0.6, 0.6, 20);
+  // C
+  const c0 = L.brand.start; const cp = out(prog(t, c0 - 0.2, 0.9)); $("C_logo").style.opacity = cp; $("C_logo").style.transform = `scale(${0.94 + 0.06*cp})`;
+  // D
+  const d0 = L.sources.start; show($("D1"), t, d0 + 1.2); show($("D2"), t, d0 + 2.3); show($("D3"), t, d0 + 3.6); show($("D_no"), t, d0 + 4.8);
+  const sp = prog(t, d0 + 1.2, 5.2); $("D_scan").style.left = (140 + sp * 1640) + "px"; $("D_scan").style.opacity = sp > 0 && sp < 1 ? 1 : 0;
+  // E
+  const e0 = L.event.start; show($("E_p1"), t, e0 + 1.4, 0.5, 20); show($("E_p2"), t, e0 + 2.6, 0.5, 20);
+  show($("E_card"), t, e0 + 3.4, 0.8, 60); show($("E_l1"), t, e0 + 4.6, 0.4, 14); show($("E_l2"), t, e0 + 5.4, 0.4, 14); show($("E_l3"), t, e0 + 6.4, 0.4, 14);
+  // F
+  const f0 = L.filter.start;
+  document.querySelectorAll("#F_dots .dot").forEach((d,i) => { const k = +d.dataset.d; const p = ease(prog(t, f0 + 0.2 + k*0.6, 1.2)); const keep = i % 5 === 0;
+    d.style.opacity = keep ? 1 : 1 - p; d.style.transform = `translate(${keep ? -p*60 : 0}px, ${keep ? -p*160 : p*40}px)`; d.style.background = keep && p > .5 ? "var(--ok)" : "var(--brand2)"; });
+  show($("F_region"), t, f0 + 0.6, 0.5, 20); show($("F_ql"), t, f0 + 1.8, 0.4, 10); $("F_bar").style.width = (560 * 0.86 * ease(prog(t, f0 + 2.0, 1.4))) + "px";
+  show($("F_line"), t, f0 + 2.6, 0.6, 40); const n = Math.floor(LINE.length * prog(t, f0 + 3.0, 3.4)); $("F_type").textContent = LINE.slice(0, n) + (n < LINE.length && n > 0 ? "▍" : "");
+  // G
+  const g0 = L.monday.start; show($("G_cal"), t, g0, 0.6, 30);
+  ["G_r1","G_r2","G_r3","G_r4"].forEach((id,i) => show($(id), t, g0 + 1.2 + i*0.45, 0.5, 16)); show($("G_tab"), t, g0 + 0.8, 0.6, 30);
+  show($("G_b1"), t, g0 + 3.4, 0.5, 16); show($("G_b2"), t, g0 + 4.2, 0.5, 16); show($("G_b3"), t, g0 + 5.4, 0.5, 16);
+  // H
+  const h0 = L.cta.start; show($("H_phone"), t, h0, 0.8, 80); const tap = t - (h0 + 3.6);
+  $("H_tap").style.opacity = tap > 0 && tap < 0.9 ? 1 - tap/0.9 : 0; $("H_tap").style.transform = `scale(${0.6 + clamp(tap/0.9)*0.8})`;
+  $("H_btn").style.transform = tap > 0 && tap < 0.25 ? "scale(.96)" : "none"; $("H_ok").style.opacity = out(prog(t, h0 + 4.0, 0.4));
+  // Untertitel
+  const cur = T.lines.find(l => t >= l.start - 0.1 && t <= l.end + 0.3); $("cap").textContent = cur ? cur.text : ""; $("cap").style.opacity = cur ? 1 : 0;
+}
+window.render = render;
+</script></body></html>
