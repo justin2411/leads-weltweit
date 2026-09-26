@@ -93,6 +93,13 @@ SEGMENTS = {
 }
 SEGMENT_COUNTRIES = {"S1": ["UK", "US", "FR"], "S2": ["UK", "US", "FR"], "S9": ["UK", "US", "FR"],
                      "S3": ["UK", "US"], "S4": ["UK", "US"], "S5": ["UK", "US"]}
+from lib import catalog  # noqa: E402
+
+for _sid, _cfg in catalog.osm_segments().items():
+    SEGMENTS.setdefault(_sid, _cfg)
+for _sid, _c in catalog.countries().items():
+    SEGMENT_COUNTRIES.setdefault(_sid, _c)
+
 EXCLUDE_NAME = re.compile(r"\b(hsbc|barclays|lloyds|natwest|santander|aviva|axa|allianz|state farm|allstate|"
                           r"geico|farmers|nationwide|liberty mutual|progressive|h&r block|jackson hewitt|"
                           r"pwc|deloitte|kpmg|ernst|grant thornton|bdo|rsm|currys|best buy|apple)\b", re.I)
@@ -170,12 +177,19 @@ def main(argv=None) -> int:
     ap.add_argument("--segment", default="all")
     ap.add_argument("--country", default="all")
     ap.add_argument("--out-dir", default="candidates/osm")
+    ap.add_argument("--only-active", action="store_true", help="nur Zielgruppen im Test (Status testing/winner)")
     args = ap.parse_args(argv)
+    if args.only_active:
+        from lib.db import DB
+        active = {s["id"] for s in DB().select("segments", {"status": "in.(testing,winner)", "select": "id"})}
+        if args.segment != "all" and args.segment not in active:
+            print(f"{args.segment} ist nicht im Test – übersprungen")
+            return 0
     out = Path(args.out_dir)
     out.mkdir(parents=True, exist_ok=True)
     segs = list(SEGMENTS) if args.segment == "all" else [args.segment]
     for seg in segs:
-        for c in SEGMENT_COUNTRIES[seg]:
+        for c in SEGMENT_COUNTRIES.get(seg, []):
             if args.country not in ("all", c):
                 continue
             rows = candidates(seg, c)

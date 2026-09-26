@@ -1,0 +1,85 @@
+# Katalog zusätzlicher Zielgruppen (Käufer), die das System selbst starten darf
+# (Entscheidung Inhaber 26.09.2026: „eigene Ideen und neue Zielgruppen selbstständig entwickeln und aufbauen“).
+#
+# scripts/optimize.py startet eine Zielgruppe aus diesem Katalog (Status idea -> testing), wenn Platz ist.
+# Neue Ideen: einfach einen Eintrag ergänzen (die wöchentliche Lern-Sitzung von Claude tut das selbst).
+# Pflicht je Eintrag: echte Signale, die wir liefern können (derzeit v. a. new_incorporation in UK/US),
+# OpenStreetMap-Filter zum Finden der Käufer und Mailtext nach CLAUDE.md Abschnitt 7 (70–120 Wörter, ehrlich,
+# keine Garantien, keine erfundenen Zahlen). Platzhalter: {firm} {area} {spec} {brand}; Opener: {name} {month}.
+#
+# Reihenfolge = Priorität beim Start.
+zielgruppen:
+  - id: S11
+    name: "Wirtschaftskanzleien (Gesellschaftsrecht, Verträge für Neugründungen)"
+    begruendung: "Neugründungen brauchen Gesellschaftervereinbarung, AGB und Arbeitsverträge; Kanzleien zahlen für frühe Mandate."
+    laender: [UK, US]
+    signale: [new_incorporation]
+    osm_filter: ['["office"="lawyer"]']
+    muster: "commercial|business|corporate|company|solicitor|law|legal|attorney"
+    spezialisierung: "business law"
+    betreff: "Newly registered companies in {area}"
+    erster_satz: "I noticed {firm} advises businesses around {area} on {spec}, so this may be relevant."
+    kern: "{brand} tracks official company registrations. In their first months, new directors usually need a shareholder agreement, terms of business and their first employment contracts."
+    detail: "Each lead shows the company, the registration date, the location and the official source."
+    frage: "Would a free sample of 10 recent registrations from {area} be useful?"
+    opener: "Congratulations on setting up {name} this {month}. Have you put a shareholder agreement and terms of business in place yet?"
+
+  - id: S12
+    name: "Marketingagenturen (Kundengewinnung für junge Firmen)"
+    begruendung: "Neue Firmen suchen ihre ersten Kunden; Marketingagenturen verkaufen genau das, getrennt von Webagenturen (S2) testbar."
+    laender: [UK, US]
+    signale: [new_incorporation]
+    osm_filter: ['["office"="advertising_agency"]', '["office"="marketing"]']
+    muster: "marketing|seo|social|ads|advert|brand|media|\\bpr\\b|growth"
+    spezialisierung: "marketing"
+    betreff: "New businesses looking for customers in {area}"
+    erster_satz: "I noticed {firm} runs {spec} for businesses around {area}, so this may be relevant."
+    kern: "{brand} tracks official company registrations. A newly registered business is working out how to win its first customers, which is usually when owners look for marketing help."
+    detail: "Each lead shows the company, the registration date, the location and the official source."
+    frage: "Would a free sample of 10 recent registrations from {area} be useful?"
+    opener: "Congratulations on setting up {name} this {month}. Have you decided how you will win your first customers?"
+
+  - id: S6
+    name: "Büroausstattung, Coworking, Gewerbeimmobilien"
+    begruendung: "Neugründungen und wachsende Firmen brauchen Arbeitsplätze, Besprechungsräume oder eine Geschäftsadresse."
+    laender: [UK, US]
+    signale: [new_incorporation, jobs_3plus]
+    osm_filter: ['["amenity"="coworking_space"]', '["office"="coworking"]']
+    muster: null
+    spezialisierung: "flexible office space"
+    betreff: "New companies needing space in {area}"
+    erster_satz: "I noticed {firm} offers {spec} around {area}, so this may be relevant."
+    kern: "{brand} tracks official company registrations and local hiring signals. A newly registered company, or one hiring several people at once, often needs desks, meeting rooms or a business address within weeks."
+    detail: "Each lead shows the company, the event, the date, the location and the official source."
+    frage: "Would a free sample of 10 current leads from {area} be useful?"
+    opener: "Congratulations on setting up {name} this {month}. Have you found a base for the team yet?"
+
+  - id: S10
+    name: "Werbetechnik und Druckereien"
+    begruendung: "Neue Firmen brauchen Schilder, Visitenkarten und Drucksachen in den ersten Wochen."
+    laender: [UK, US]
+    signale: [new_incorporation]
+    osm_filter: ['["craft"="signmaker"]', '["shop"="copyshop"]', '["craft"="printer"]', '["shop"="printing"]']
+    muster: null
+    spezialisierung: "signs and print"
+    betreff: "Newly registered businesses in {area}"
+    erster_satz: "I noticed {firm} produces {spec} for businesses around {area}, so this may be relevant."
+    kern: "{brand} tracks official company registrations. New businesses need signage, business cards and printed materials in their first weeks, and many have not picked a supplier yet."
+    detail: "Each lead shows the company, the registration date, the location and the official source."
+    frage: "Would a free sample of 10 recent registrations from {area} be useful?"
+    opener: "Congratulations on setting up {name} this {month}. Have you sorted out signage and printed materials yet?"
+
+  - id: S7
+    name: "Gebäudereinigung und Facility Services"
+    begruendung: "Firmen mit neuen Räumen vergeben die Reinigung in den ersten Monaten."
+    laender: [UK, US]
+    signale: [new_incorporation, jobs_3plus]
+    osm_filter: ['["craft"="cleaning"]', '["office"="cleaning"]', '["shop"="cleaning"]']
+    muster: "clean|facilit|hygien|janitor|maintenance"
+    spezialisierung: "commercial cleaning"
+    betreff: "New and growing businesses in {area}"
+    erster_satz: "I noticed {firm} provides {spec} around {area}, so this may be relevant."
+    kern: "{brand} tracks official company registrations and local hiring signals. A company that takes on premises or grows its team usually sets up regular cleaning in its first months."
+    detail: "Each lead shows the company, the event, the date, the location and the official source."
+    frage: "Would a free sample of 10 current leads from {area} be useful?"
+    opener: "Congratulations on setting up {name} this {month}. Have you arranged cleaning for your premises yet?"

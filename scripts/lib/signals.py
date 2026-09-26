@@ -174,8 +174,9 @@ OPENERS = {
 
 
 def opener_for(lead: dict, segment: str, company: dict) -> str:
+    from lib import catalog
     lang = "fr" if company.get("country") == "FR" else "en"
-    tpl = OPENERS.get((lead["signal_type"], segment, lang))
+    tpl = OPENERS.get((lead["signal_type"], segment, lang)) or catalog.opener(segment, lang)
     if not tpl:
         return lead["opener"]
     d = _d(lead.get("event_date")) or dt.date.today()
@@ -186,6 +187,9 @@ def segment_for(lead: dict) -> str | None:
     return SEGMENT_FOR.get((lead["signal_type"], lead.get("topic", "general")))
 
 
-def segments_for(lead: dict) -> list[str]:
+def segments_for(lead: dict, active_catalog: set[str] | None = None) -> list[str]:
+    """Zielgruppen für ein Signal; aktive Katalog-Zielgruppen (config/zielgruppen.yaml) kommen dazu."""
+    from lib import catalog
     main = segment_for(lead)
-    return ([main] if main else []) + ALSO_FOR.get(lead["signal_type"], [])
+    extra = catalog.also_for(active_catalog or set()).get(lead["signal_type"], [])
+    return ([main] if main else []) + ALSO_FOR.get(lead["signal_type"], []) + extra

@@ -18,6 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from lib import catalog  # noqa: E402
 from lib.rules import brand, lint_draft  # noqa: E402
 
 GENERIC_SPEC = {"recruitment", "general recruitment", "financial advice", "independent financial advice",
@@ -121,6 +122,8 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
                 "directors are usually choosing an accountant and payroll provider in their first weeks.")
         detail = ex or "Each lead shows the company, the registration date, the location and the official source."
         ask = f"Would a free sample of 10 recent leads from {area} be useful?"
+    elif not fr and seg in catalog.entries():
+        subject, first, core, detail, ask = catalog.draft(seg, firm, area, spec if has_spec else "", brand(), ex)
     elif seg == "S1":
         subject = f"Signaux de recrutement à {area}"
         first = (f"J'ai vu que {firm} recrute des profils {spec} dans la région de {area}." if has_spec
@@ -199,7 +202,9 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     from lib.db import DB
     db = DB()
-    exps = {(e["segment_id"], e["country"]): e for e in db.select("experiments", {"variant": f"eq.{args.variant}"})}
+    # nur laufende Experimente (gestoppte und abgeschlossene bekommen keine neuen Entwürfe)
+    exps = {(e["segment_id"], e["country"]): e for e in db.select("experiments", {"variant": f"eq.{args.variant}"})
+            if e.get("decision") != "killed" and e.get("status") != "done"}
     prospects = db.select_all("prospects", {"check_status": "eq.ok", "order": "created_at"})
     examples = load_examples(db)
     # CLAUDE.md 5.1: ohne mindestens 10 echte Probe-Leads kein Entwurf und kein Versand

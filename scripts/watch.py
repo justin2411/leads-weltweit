@@ -361,9 +361,16 @@ def cmd_sitecheck(db: DB, args) -> None:
 
 
 def cmd_detect(db: DB, args) -> None:
+    from lib import catalog
     n = 0
+    active = {s["id"] for s in db.select("segments", {"status": "in.(testing,winner)", "select": "id"})}
+    active_catalog = active & set(catalog.entries())
+    # alle Beobachtungen auf einmal statt einer Abfrage je Firma
+    by_company: dict[str, list[dict]] = {}
+    for o in db.select_all("observations", {"order": "id"}):
+        by_company.setdefault(o["company_id"], []).append(o)
     for c in db.select_all("watch_companies", {"active": "eq.true", "order": "id"}):
-        obs = db.select("observations", {"company_id": f"eq.{c['id']}"})
+        obs = by_company.get(c["id"], [])
         found = detect_job_leads(c, obs, TODAY)
         for o in obs:
             if o["kind"] == "incorporation":
@@ -373,7 +380,7 @@ def cmd_detect(db: DB, args) -> None:
                 lead = detect_website_lead(c, o)
                 found += [lead] if lead else []
         for lead in found:
-            for seg in segments_for(lead):
+            for seg in segments_for(lead, active_catalog):
                 row = {k: v for k, v in lead.items() if k != "topic"}
                 row["opener"] = opener_for(lead, seg, c)
                 row.update({"company_id": c["id"], "segment_id": seg, "country": c["country"],
