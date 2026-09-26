@@ -46,7 +46,7 @@ export async function POST(req: Request) {
       if (e2) throw new Error(e2.message);
       await db().from("customer_filters").upsert({ customer_id: cust.id, segment_id: m.segment_id }, { onConflict: "customer_id", ignoreDuplicates: true });
       if (event.livemode) await recordEvent(m.variant_id, "purchase");
-      const link = `${siteUrl()}/kunde/filter?t=${filterToken(cust.id, process.env.SESSION_SECRET ?? "")}`;
+      const link = `${siteUrl()}/kunde/filter?t=${filterToken(cust.id, process.env.SESSION_SECRET?.trim() ?? "")}`;
       await db().from("customers").update({ filter_token_issued_at: new Date().toISOString() }).eq("id", cust.id);
       await sendConsentMail(email, `Welcome to ${BRAND}`,
         `Hello,\n\nthank you for subscribing${event.livemode ? "" : " (TEST MODE)"}.\n\nPlease tell us which areas, signals and industries you want ` +

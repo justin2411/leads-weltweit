@@ -19,7 +19,7 @@ export async function getSettings(): Promise<Settings> {
 export async function isOwner(): Promise<boolean> {
   // Nur lesen – Landingpages setzen nie Cookies.
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
-  return verifySession(token, process.env.SESSION_SECRET);
+  return verifySession(token, process.env.SESSION_SECRET?.trim());
 }
 
 /** Öffentlich sichtbar? Seite live, Rechtstexte fertig und freigegeben. */

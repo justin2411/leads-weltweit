@@ -18,7 +18,7 @@ const list = (v: FormDataEntryValue | null) =>
 async function save(formData: FormData) {
   "use server";
   const token = String(formData.get("t") ?? "");
-  const id = verifyFilterToken(token, process.env.SESSION_SECRET);
+  const id = verifyFilterToken(token, process.env.SESSION_SECRET?.trim());
   if (!id) redirect("/kunde/filter?abgelaufen=1");
   const { error } = await db().from("customer_filters").upsert({
     customer_id: id,
@@ -35,7 +35,7 @@ async function save(formData: FormData) {
 
 export default async function FilterPage({ searchParams }: { searchParams: Promise<{ t?: string; ok?: string; abgelaufen?: string }> }) {
   const sp = await searchParams;
-  const id = verifyFilterToken(sp.t, process.env.SESSION_SECRET);
+  const id = verifyFilterToken(sp.t, process.env.SESSION_SECRET?.trim());
   if (!id) return <main><h1>Link expired</h1><p>Please reply to our welcome email and we will send you a new link.</p></main>;
   const { data: f } = await db().from("customer_filters").select("*").eq("customer_id", id).maybeSingle();
   return (
