@@ -178,7 +178,7 @@ def owner_name() -> str:
 
 
 def assistant_title(lang: str) -> str:
-    return (f"Assistant digital de {owner_name()}" if lang == "fr" else f"Digital assistant to {owner_name()}")
+    return (f"Assistant de {owner_name()}" if lang == "fr" else f"Assistant to {owner_name()}")
 
 
 def signature(lang: str) -> str:
