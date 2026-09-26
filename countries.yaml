@@ -8,7 +8,7 @@
 #   language           Sprache der Mails
 #   generic_only       nur allgemeine Firmenadressen (info@, hello@, office@ ...), keine Personenadressen
 #   company_forms_only nur Kapitalgesellschaften anschreiben (keine Einzelunternehmer/Personengesellschaften)
-#   daily_limit        maximale Mails pro Tag in dieses Land (erhöht auf Wunsch des Inhabers 26.09.2026: Ziel 250/Tag)
+#   daily_limit        maximale Mails pro Tag in dieses Land (erhöht auf Wunsch des Inhabers 26.09.2026: Ziel 100/Tag)
 #   postal_footer      Pflichtfußzeile mit Postanschrift (CAN-SPAM u. a.)
 #   notes              Kurzbegründung. Nicht als Rechtsberatung verstehen; offene Punkte stehen unter "open_question".
 

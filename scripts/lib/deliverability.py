@@ -4,8 +4,8 @@ from __future__ import annotations
 import datetime as dt
 
 # Tag seit der ersten gesendeten Mail -> maximale Mails pro Tag (über alle Länder zusammen).
-# Ziel des Inhabers (26.09.2026): 250 pro Tag, hochgefahren über gut zwei Wochen.
-DEFAULT_WARMUP = [(0, 25), (2, 50), (5, 100), (9, 150), (13, 200), (17, 250)]
+# Ziel des Inhabers (26.09.2026): 100 pro Tag (Resend Gratis), hochgefahren über gut eine Woche.
+DEFAULT_WARMUP = [(0, 25), (2, 50), (5, 75), (8, 100)]
 HARD_MAX_PER_DAY = 250
 
 

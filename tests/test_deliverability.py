@@ -12,7 +12,7 @@ class DeliverabilityTest(unittest.TestCase):
     def test_warmup(self):
         d = dt.date(2026, 10, 1)
         self.assertEqual(warmup_cap(None, d), 25)
-        self.assertEqual(warmup_cap(d, d + dt.timedelta(days=5)), 90)   # Gratis-Tarif: 100 - 10 Puffer
+        self.assertEqual(warmup_cap(d, d + dt.timedelta(days=5)), 75)
         self.assertEqual(warmup_cap(d, d + dt.timedelta(days=30)), 90)
 
     def test_stop(self):
