@@ -1,0 +1,7 @@
+frames/
+stills/
+*.wav
+*.onnx
+*.bin
+timing_*.json
+*.mp4
