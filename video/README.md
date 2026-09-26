@@ -1,7 +1,7 @@
 # Erklärvideo (kostenlos, ohne externe Dienste)
 
-1. Text: `script.json` (ein Eintrag pro Satz; ehrlich, keine erfundenen Zahlen, keine Garantien).
-2. Stimme: `python vo.py bf_emma` – Kokoro-TTS (Apache-2.0), Modelle aus den Releases von thewh1teagle/kokoro-onnx
+1. Text und Szenentexte je Zielgruppe: `segments/<slug>.json` (ehrlich, keine erfundenen Zahlen, keine Garantien).
+2. Stimme: `./build.sh <slug>` (Stimme, Bilder, MP4 nach app/public/video/, Eintrag in app/content/videos.json) – Stimme – Kokoro-TTS (Apache-2.0), Modelle aus den Releases von thewh1teagle/kokoro-onnx
    (`kokoro-v1.0.int8.onnx` als `kokoro.onnx`, `voices-v1.0.bin`). Erzeugt `vo_<stimme>.wav` und `timing_<stimme>.json`.
 3. Bilder: `node render.mjs stills` (Kontrollbilder) bzw. `node render.mjs video 25` (Einzelbilder, Playwright/Chromium).
    `film.html` rendert jede Szene deterministisch über `render(t)`; Szenen richten sich nach den Satzzeiten.

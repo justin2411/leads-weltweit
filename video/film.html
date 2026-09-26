@@ -38,7 +38,7 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);font-f
 <div class="scene" id="A">
   <div class="abs lbl" style="left:140px;top:170px">Companies House · this week</div>
   <div class="abs h1" id="A_h" style="left:140px;top:220px;width:900px">New companies,<br>registered near you.</div>
-  <div class="abs soft" id="A_s" style="left:140px;top:420px;font-size:30px;width:820px">Many of them will choose an accountant in their first weeks.</div>
+  <div class="abs soft" id="A_s" data-k="hook_sub" style="left:140px;top:420px;font-size:30px;width:820px"></div>
   <div id="A_dots"></div>
   <div class="abs card mini" id="A_c1" style="left:1180px;top:210px"><div class="tag">NEW COMPANY</div><div class="n">Northfield Logistics Ltd</div><div class="m">Registered 20 Aug · Stockport</div></div>
   <div class="abs card mini" id="A_c2" style="left:1300px;top:420px"><div class="tag">NEW COMPANY</div><div class="n">Brightside Dental Ltd</div><div class="m">Registered 19 Aug · Salford</div></div>
@@ -79,7 +79,7 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);font-f
   <div class="abs lbl" style="left:140px;top:150px">Signal detected</div>
   <div class="abs h2" style="left:140px;top:195px;width:760px">Every event, dated and sourced.</div>
   <div class="abs pill" id="E_p1" style="left:140px;top:420px">● New registration</div>
-  <div class="abs pill" id="E_p2" style="left:140px;top:490px;background:rgba(251,191,36,.15);color:var(--warm);border-color:rgba(251,191,36,.4)">● Finance role open 34 days</div>
+  <div class="abs pill" id="E_p2" style="left:140px;top:490px;background:rgba(251,191,36,.15);color:var(--warm);border-color:rgba(251,191,36,.4)" data-k="signal2"></div>
   <div class="abs card" id="E_card" style="left:960px;top:230px;width:820px;padding:44px">
     <div class="tag">NEW LEAD</div>
     <div style="font-size:44px;font-weight:800;margin-top:10px">Northfield Logistics Ltd</div>
@@ -117,7 +117,7 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);font-f
     <div class="row head"><div>COMPANY</div><div>EVENT</div><div>AREA</div><div>SOURCE</div></div>
     <div class="row" id="G_r1"><div>Northfield Logistics Ltd</div><div>New registration</div><div>Stockport</div><div class="soft">Companies House</div></div>
     <div class="row" id="G_r2"><div>Brightside Dental Ltd</div><div>New registration</div><div>Salford</div><div class="soft">Companies House</div></div>
-    <div class="row" id="G_r3"><div>Kestrel Print Ltd</div><div>Finance role, 34 days</div><div>Bolton</div><div class="soft">Careers page</div></div>
+    <div class="row" id="G_r3"><div>Kestrel Print Ltd</div><div data-k="signal2_short"></div><div>Bolton</div><div class="soft">Careers page</div></div>
     <div class="row" id="G_r4"><div>Harbour &amp; Pike Studio Ltd</div><div>New registration</div><div>Altrincham</div><div class="soft">Companies House</div></div>
   </div>
   <div class="abs" style="left:1470px;top:470px;display:grid;gap:34px">
@@ -135,7 +135,7 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);font-f
   <div class="abs phone" id="H_phone" style="left:1330px;top:60px"><div class="screen">
     <div style="font-size:17px;font-weight:700">NextGen Profit</div>
     <div style="margin-top:26px;display:inline-block;border:1.5px solid #1d4ed8;color:#1d4ed8;border-radius:99px;padding:5px 12px;font-size:14px;font-weight:600">Prepared for your firm</div>
-    <div style="font-size:31px;font-weight:800;line-height:1.12;margin-top:16px">New companies in your area that still need an accountant</div>
+    <div style="font-size:31px;font-weight:800;line-height:1.12;margin-top:16px" data-k="phone_h"></div>
     <div style="font-size:16px;color:#51607a;margin-top:14px;line-height:1.45">Every week you get a short list of businesses registered nearby – each dated, with its official source.</div>
     <div id="H_btn" style="margin-top:26px;background:#1d4ed8;color:#fff;border-radius:10px;text-align:center;padding:16px;font-size:19px;font-weight:700">Send me 10 free leads</div>
     <div style="font-size:12px;color:#51607a;margin-top:10px;line-height:1.4">We will send the sample to the address we emailed.</div>
@@ -172,7 +172,9 @@ function dots(id, n, seed, box) { let h=""; let r=seed; const rnd=()=>{r=(r*1680
   for (let i=0;i<n;i++){ h+=`<div class="dot" data-d="${rnd()}" style="left:${box[0]+rnd()*box[2]}px;top:${box[1]+rnd()*box[3]}px"></div>`; } $(id).innerHTML=h; }
 dots("A_dots", 70, 7, [1080, 120, 760, 820]); dots("F_dots", 60, 11, [140, 650, 700, 260]);
 $("B_ticks").innerHTML = [["Week 1",260],["Week 2",600],["Week 4",1000],["Week 8",1600]].map(([w,x])=>`<div class="abs soft" style="left:${x}px;top:470px;font-size:22px">${w}</div>`).join("");
-const LINE = "Congratulations on the new company. Have you already chosen an accountant for your first year-end? We work with new businesses in Stockport.";
+const CFG = window.CFG;
+document.querySelectorAll("[data-k]").forEach(el => { el.textContent = CFG.text[el.dataset.k]; });
+const LINE = CFG.text.opening_line;
 function render(t) {
   for (const [s, a, b] of win) { const el = $(s); const o = Math.min(prog(t, a, 0.5), 1 - prog(t, b - 0.5, 0.5)); el.style.opacity = o; el.style.display = o > 0 ? "block" : "none"; }
   // A

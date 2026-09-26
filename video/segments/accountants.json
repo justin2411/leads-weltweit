@@ -1,0 +1,52 @@
+{
+ "slug": "uk/accountants",
+ "text": {
+  "hook_sub": "Many of them will choose an accountant in their first weeks.",
+  "signal2": "● Finance role open 34 days",
+  "signal2_short": "Finance role, 34 days",
+  "phone_h": "New companies in your area that still need an accountant",
+  "opening_line": "Congratulations on the new company. Have you already chosen an accountant for your first year-end? We work with new businesses in Stockport."
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "Every week, thousands of new companies are registered across the UK. In their first few weeks, many of them are looking for an accountant."
+  },
+  {
+   "id": "early",
+   "text": "Getting in touch early makes a real difference.",
+   "pause": 0.8
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit spots those moments for you.",
+   "pause": 0.8
+  },
+  {
+   "id": "sources",
+   "text": "Every day, we check official sources: Companies House, public notices, and the careers pages of local businesses."
+  },
+  {
+   "id": "event",
+   "text": "When something happens, like a new registration, or a finance role that stays open for weeks, we record it, with the date and a link to the source."
+  },
+  {
+   "id": "filter",
+   "text": "Then we filter it for your area, rate how fresh and relevant it is, and add a suggested opening line.",
+   "pause": 0.8
+  },
+  {
+   "id": "monday",
+   "text": "Every Monday, you get a short, ready-to-use list for your region. Company data only. And every lead is delivered to you once."
+  },
+  {
+   "id": "cta",
+   "text": "Want to see what that looks like for your area? Request ten free sample leads. It takes one click.",
+   "pause": 0.7
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. The right companies, at the right moment."
+  }
+ ]
+}
