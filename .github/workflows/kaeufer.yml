@@ -1,0 +1,34 @@
+# Käufer suchen und prüfen – parallel je Zielgruppe und Land (OpenStreetMap -> Website -> Prüfregeln).
+# Sendet nie Mails.
+name: kaeufer
+on:
+  workflow_dispatch:
+    inputs:
+      max:
+        description: "Höchstzahl gefundener Adressen je Zielgruppe/Land"
+        default: "100"
+jobs:
+  suchen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        combo: [S1-UK, S2-UK, S9-UK, S3-UK, S4-UK, S5-UK, S1-US, S2-US, S9-US, S3-US, S4-US, S5-US, S1-FR, S2-FR, S9-FR]
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      COMBO: ${{ matrix.combo }}
+      MAX: ${{ inputs.max }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - name: Kandidaten aus OpenStreetMap
+        run: python scripts/osm.py --segment "${COMBO%-*}" --country "${COMBO#*-}" --out-dir candidates/osm
+      - name: Websites prüfen (Adresse, Rechtsform)
+        run: python scripts/prospects.py --max "$MAX" candidates/osm/${COMBO}.csv
+      - name: Prüfregeln
+        run: python scripts/outreach.py check --db
