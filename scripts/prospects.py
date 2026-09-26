@@ -67,7 +67,7 @@ def detect_legal_form(country: str, name: str, text: str) -> tuple[str | None, s
     return (("Ltd" if reg_no else None), reg_no) if country == "UK" else (None, None)
 
 
-def scan(website: str, session: requests.Session) -> dict:
+def scan(website: str, session: requests.Session, generic: set[str] | None = None) -> dict:
     base = website if website.startswith("http") else "https://" + website
     emails: dict[str, str] = {}
     text_all = ""
@@ -88,7 +88,10 @@ def scan(website: str, session: requests.Session) -> dict:
             e = e.lower().strip(".")
             if not SKIP_EMAIL.search(e):
                 emails.setdefault(e, r.url)
-        if len(emails) >= 3 and path:
+        dom = normalize_domain(urlparse(base).hostname or "")
+        has_generic = any(e.split("@")[0] in (generic or set()) and e.endswith(dom) for e in emails)
+        # Startseite + mind. eine Kontakt-/Impressumsseite (für Rechtsform), dann aufhören
+        if has_generic and path and len(pages) >= 2:
             break
     return {"emails": emails, "text": text_all, "pages": pages,
             "final_domain": normalize_domain(urlparse(base).hostname or "")}
@@ -99,6 +102,7 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("csv", nargs="+")
     ap.add_argument("--dry-run", action="store_true", help="nur anzeigen, nichts speichern")
+    ap.add_argument("--max", type=int, default=0, help="pro Datei aufhören, sobald so viele Adressen gefunden sind")
     args = ap.parse_args(argv)
 
     cfg = load_countries()
@@ -110,10 +114,15 @@ def main(argv=None) -> int:
     session = requests.Session()
     found = missing = 0
     for path in args.csv:
+        found_here = 0
         with open(path, encoding="utf-8") as fh:
             for row in csv.DictReader(fh):
+                if args.max and found_here >= args.max:
+                    break
                 domain = normalize_domain(row["website"])
-                res = scan(row["website"], session)
+                if db and db.select("prospects", {"domain": f"eq.{domain}", "select": "id"}):
+                    continue  # schon geprüft
+                res = scan(row["website"], session, generic)
                 email, is_gen = pick_email(set(res["emails"]), domain, generic)
                 legal, reg_no = detect_legal_form(row["country"], row["company_name"], res["text"])
                 status = f"{email or '-':<40} {'allg.' if is_gen else 'pers.' if email else '':<6} {legal or '?':<5}"
@@ -122,6 +131,7 @@ def main(argv=None) -> int:
                     missing += 1
                     continue
                 found += 1
+                found_here += 1
                 if db:
                     size_note = row.get("size_note") or None
                     if reg_no:

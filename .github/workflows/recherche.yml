@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       schritt:
-        description: "register-ny, register-fr, kaeufer, karriereseiten, leads (kombinierbar, z. B. kaeufer+karriereseiten) oder alles"
+        description: "osm, register-ny, register-fr, kaeufer, karriereseiten, leads (kombinierbar, z. B. kaeufer+karriereseiten) oder alles"
         required: true
         default: alles
       kandidaten:
@@ -16,6 +16,7 @@ concurrency: { group: recherche, cancel-in-progress: false }
 jobs:
   run:
     runs-on: ubuntu-latest
+    timeout-minutes: 300
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -33,6 +34,15 @@ jobs:
       - name: Neugründungen Frankreich (BODACC)
         if: ${{ contains(inputs.schritt, 'register-fr') || inputs.schritt == 'alles' }}
         run: python scripts/watch.py fr-incorporations --departement 69 --days 30 --limit 400
+      - name: Kandidaten aus OpenStreetMap
+        if: ${{ contains(inputs.schritt, 'osm') }}
+        run: |
+          python scripts/osm.py --out-dir candidates/osm
+          python scripts/prospects.py --max 60 candidates/osm/*.csv
+          python scripts/outreach.py check --db
+      - uses: actions/upload-artifact@v4
+        if: ${{ contains(inputs.schritt, 'osm') }}
+        with: { name: osm-kandidaten, path: candidates/osm/, retention-days: 30 }
       - name: Käufer-Websites prüfen
         if: ${{ contains(inputs.schritt, 'kaeufer') || inputs.schritt == 'alles' }}
         run: |
