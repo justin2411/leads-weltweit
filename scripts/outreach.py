@@ -111,12 +111,19 @@ def unsubscribe_headers(unsub_url: str | None) -> dict:
     return {"List-Unsubscribe": f"<mailto:{addr}?subject=unsubscribe>"}
 
 
-def html_version(body: str, footer: str, lang: str) -> str | None:
+def _area(region: str | None) -> str | None:
+    from drafts import _place
+    return _place(region)[1] if region else None
+
+
+def html_version(body: str, footer: str, lang: str, company: str | None = None,
+                 region: str | None = None) -> str | None:
     """Gestaltete HTML-Alternative (ohne Bilder/Tracking). EMAIL_HTML=0 schaltet sie ab."""
     if os.environ.get("EMAIL_HTML", "1") == "0":
         return None
-    from lib.html_email import render
-    return render(body, footer, lang)
+    from lib.html_email import cta_button, render
+    cta = cta_button(company, region, lang) if company else ""
+    return render(body, footer, lang, cta)
 
 
 def deliver(to: str, subject: str, text: str, unsub_url: str | None, html: str | None = None) -> dict:
@@ -259,7 +266,8 @@ def cmd_send(args) -> int:
 
         try:
             provider_fields = deliver(m["to_email"], m["subject"], text, unsub,
-                                      html_version(m["body"], footer, m.get("language") or "en"))
+                                      html_version(m["body"], footer, m.get("language") or "en",
+                                                   p["company_name"], _area(p.get("region"))))
         except Exception as exc:  # noqa: BLE001 - Versandfehler melden, nicht abbrechen
             print(f"FEHLER Versand {m['to_email']}: {exc}")
             continue
@@ -303,7 +311,7 @@ def cmd_test(args) -> int:
                            unsubscribe_url=unsubscribe_target("test"))
     text = body.rstrip() + "\n\n" + footer
     print(f"Prüfung: {lint.summary()}\n\nBetreff: [TEST] {subject}\n\n{text}\n")
-    out = deliver(args.to, f"[TEST] {subject}", text, unsubscribe_target("test"), html_version(body, footer, lang))
+    out = deliver(args.to, f"[TEST] {subject}", text, unsubscribe_target("test"), html_version(body, footer, lang, name, _area(region)))
     print(f"gesendet an {args.to}: {out}")
     return 0
 

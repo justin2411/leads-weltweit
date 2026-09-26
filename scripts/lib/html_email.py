@@ -22,7 +22,34 @@ def _p(text: str) -> str:
             f"{html.escape(text).replace(chr(10), '<br>')}</p>")
 
 
-def render(body_text: str, footer_text: str, lang: str = "en") -> str:
+def cta_button(company: str, region: str | None, lang: str) -> str:
+    """Button, der eine fertige Antwort-Mail öffnet (mailto an REPLY_TO). Kein Weblink, kein Tracking."""
+    from urllib.parse import quote
+    to = (os.environ.get("REPLY_TO") or os.environ.get("MAIL_FROM") or "").split("<")[-1].strip("> ")
+    if not to:
+        return ""
+    if lang == "fr":
+        label = "Oui, envoyez-moi les 10 pistes gratuites"
+        subj = "Oui – merci d'envoyer les 10 pistes d'essai"
+        body = (f"Bonjour,\n\nOui, merci de nous envoyer l'échantillon gratuit de 10 pistes"
+                f"{' pour ' + region if region else ''}.\n\nSociété : {company}\n")
+        hint = "Un clic ouvre une réponse prête à envoyer."
+    else:
+        label = "Yes, send me the 10 free sample leads"
+        subj = "Yes – please send the 10 sample leads"
+        body = (f"Hello,\n\nYes, please send us the free sample of 10 leads"
+                f"{' for ' + region if region else ''}.\n\nCompany: {company}\n")
+        hint = "One click opens a ready-to-send reply."
+    href = f"mailto:{to}?subject={quote(subj)}&body={quote(body)}"
+    return (f'<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 24px 0;"><tr>'
+            f'<td style="background:{ORANGE};border-radius:6px;">'
+            f'<a href="{html.escape(href)}" style="display:inline-block;padding:12px 22px;font-family:{FONT};'
+            f'font-size:15px;font-weight:700;color:#FFFFFF;text-decoration:none;">{html.escape(label)}</a>'
+            f'</td></tr></table>'
+            f'<p style="margin:-14px 0 20px 0;font-family:{FONT};font-size:12px;color:{MUTED};">{html.escape(hint)}</p>')
+
+
+def render(body_text: str, footer_text: str, lang: str = "en", cta: str = "") -> str:
     """body_text: Text ohne Signatur-Block (Signatur wird aus Umgebung gebaut), footer_text: Pflichtfußzeile."""
     # Text in Absätze; Gruß + Signatur (letzter Absatz) gesondert gestalten
     paras = [p.strip() for p in re.split(r"\n\s*\n", body_text.strip()) if p.strip()]
@@ -57,6 +84,7 @@ def render(body_text: str, footer_text: str, lang: str = "en") -> str:
 <tr><td style="padding:28px 40px 8px 40px;">{wordmark}</td></tr>
 <tr><td style="padding:20px 40px 4px 40px;">
 {''.join(_p(p) for p in paras)}
+{cta}
 <p style="margin:8px 0 20px 0;font-family:{FONT};font-size:15px;line-height:24px;color:{INK};">{html.escape(bye)}</p>
 <table role="presentation" cellpadding="0" cellspacing="0"><tr>
 <td style="border-left:3px solid {ORANGE};padding:2px 0 2px 14px;">
