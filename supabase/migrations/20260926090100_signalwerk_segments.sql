@@ -31,5 +31,9 @@ insert into signalwerk.segments (id, name, description, signals, email_countries
   ('S8', 'Deutschland, alle Segmente',
    'Alle Käufergruppen in Deutschland. Keine E-Mail: nur Anrufliste und Briefvorlage.',
    array['job_open_30d','new_incorporation','new_location','outdated_website'],
-   array[]::text[], 'idea')
+   array[]::text[], 'idea'),
+  ('S9', 'Finanzberater (unabhängige Finanzberatung, Betriebsrente, Firmenkunden)',
+   'Unabhängige Finanzberater und kleine Beratungsfirmen, die Unternehmer und Arbeitgeber beraten.',
+   array['new_incorporation','hiring_wave','jobs_3plus','new_location'],
+   array['UK','IE','US'], 'idea')
 on conflict (id) do nothing;

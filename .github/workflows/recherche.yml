@@ -11,7 +11,7 @@ on:
         default: alles
       kandidaten:
         description: "CSV-Dateien für 'kaeufer' (Leerzeichen-getrennt)"
-        default: "candidates/S*-US-NY.csv candidates/S1-UK-GM.csv"
+        default: "candidates/S2-US-NY.csv candidates/S1-UK-GM.csv candidates/S9-UK-GM.csv"
 concurrency: { group: recherche, cancel-in-progress: false }
 jobs:
   run:
@@ -33,7 +33,7 @@ jobs:
       - name: Käufer-Websites prüfen
         if: ${{ inputs.schritt == 'kaeufer' || inputs.schritt == 'alles' }}
         run: |
-          python scripts/prospects.py $KANDIDATEN
+          python scripts/prospects.py $(ls $KANDIDATEN 2>/dev/null)
           python scripts/outreach.py check --db
       - name: Arbeitgeber übernehmen und Karriereseiten prüfen
         if: ${{ inputs.schritt == 'karriereseiten' || inputs.schritt == 'alles' }}

@@ -153,5 +153,14 @@ SEGMENT_FOR = {
 }
 
 
+# Zusätzliche Käufergruppen für dasselbe Signal (S9 Finanzberater: Wachstum und Gründung von Arbeitgebern)
+ALSO_FOR = {"jobs_3plus": ["S9"], "new_incorporation": ["S9"]}
+
+
 def segment_for(lead: dict) -> str | None:
     return SEGMENT_FOR.get((lead["signal_type"], lead.get("topic", "general")))
+
+
+def segments_for(lead: dict) -> list[str]:
+    main = segment_for(lead)
+    return ([main] if main else []) + ALSO_FOR.get(lead["signal_type"], [])

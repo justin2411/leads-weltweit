@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lib.rules import lint_draft  # noqa: E402
 
 EXAMPLE = {"{agency}": "Northpoint Recruitment", "{specialism}": "engineering", "{region}": "Greater Manchester",
-           "{town}": "Bolton", "{sender}": "Signalwerk", "{city}": "Austin", "{niche}": "restaurant", "{state}": "Texas"}
+           "{town}": "Bolton", "{firm}": "Northbridge Financial Planning", "{specialism}": "workplace pensions", "{sender}": "Signalwerk", "{city}": "Austin", "{niche}": "restaurant", "{state}": "Texas"}
 
 bad = 0
 for f in sorted(Path(__file__).resolve().parents[1].glob("drafts/*.md")):

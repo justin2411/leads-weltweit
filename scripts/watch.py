@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lib.db import DB  # noqa: E402
 from lib.fetch import FetchRefused, ats_endpoint, extract_job_postings, parse_ats_jobs, polite_get  # noqa: E402
 from lib.signals import (  # noqa: E402
-    detect_incorporation_lead, detect_job_leads, detect_website_lead, segment_for,
+    detect_incorporation_lead, detect_job_leads, detect_website_lead, segments_for,
 )
 from lib.site_audit import audit_html  # noqa: E402
 
@@ -218,14 +218,13 @@ def cmd_detect(db: DB, args) -> None:
                 lead = detect_website_lead(c, o)
                 found += [lead] if lead else []
         for lead in found:
-            seg = segment_for(lead)
-            if not seg:
-                continue
-            row = {k: v for k, v in lead.items() if k != "topic"}
-            row.update({"company_id": c["id"], "segment_id": seg, "country": c["country"],
-                        "source_date": TODAY.isoformat()})
-            db.insert("leads", row, upsert_on="company_id,segment_id,signal_type,event_date", ignore_duplicates=True)
-            n += 1
+            for seg in segments_for(lead):
+                row = {k: v for k, v in lead.items() if k != "topic"}
+                row.update({"company_id": c["id"], "segment_id": seg, "country": c["country"],
+                            "source_date": TODAY.isoformat()})
+                db.insert("leads", row, upsert_on="company_id,segment_id,signal_type,event_date",
+                          ignore_duplicates=True)
+                n += 1
     print(f"{n} Signale geprüft/übernommen")
 
 
