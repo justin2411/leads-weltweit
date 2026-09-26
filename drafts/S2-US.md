@@ -2,6 +2,7 @@
 
 Vorlagen, noch ohne echte Empfänger. `{…}` wird pro Agentur individuell ersetzt.
 Versand erst, wenn es echte Probe-Leads für den Bundesstaat bzw. die Stadt gibt.
+Erste Quelle ist das Register von New York (data.ny.gov). Deshalb zuerst Agenturen im Großraum New York anschreiben: Käufer brauchen Leads aus ihrem eigenen Markt.
 
 ---
 ## Vorlage 1: Neugründungen ohne Website

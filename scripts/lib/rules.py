@@ -232,9 +232,20 @@ FOOTER = {
 }
 
 
-def render_footer(language: str, *, sender_name: str, postal_address: str, company: str, unsubscribe_url: str) -> str:
+# Abmeldung per Antwort (solange die Vercel-App noch nicht live ist)
+UNSUBSCRIBE_BY_REPLY = {
+    "en": "simply reply with \"unsubscribe\" and we will remove {company} permanently.",
+    "fr": "répondez simplement « désinscrire » et nous retirerons {company} définitivement.",
+}
+
+
+def render_footer(language: str, *, sender_name: str, postal_address: str, company: str,
+                  unsubscribe_url: str | None) -> str:
+    """Pflichtfußzeile. Ohne unsubscribe_url: Abmeldung per Antwort."""
     if not sender_name or not postal_address:
         raise ValueError("Absendername und Postanschrift sind Pflicht für die Fußzeile")
-    return FOOTER.get(language, FOOTER["en"]).format(
-        sender_name=sender_name, postal_address=postal_address, company=company, unsubscribe_url=unsubscribe_url
+    lang = language if language in FOOTER else "en"
+    target = unsubscribe_url or UNSUBSCRIBE_BY_REPLY[lang].format(company=company)
+    return FOOTER[lang].format(
+        sender_name=sender_name, postal_address=postal_address, company=company, unsubscribe_url=target
     )

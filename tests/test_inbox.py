@@ -52,6 +52,12 @@ class DeliverSmtpTest(unittest.TestCase):
                "SMTP_USER": "u", "SMTP_PASSWORD": "p", "SMTP_PORT": "465"}
         with mock.patch.dict(os.environ, env), mock.patch("smtplib.SMTP_SSL") as smtp:
             out = outreach.deliver("info@acme.co.uk", "Subject", "Body", "https://x/api/unsubscribe?t=ab")
+        with mock.patch.dict(os.environ, {**env, "REPLY_TO": "justin@example.com"}), mock.patch("smtplib.SMTP_SSL") as smtp2:
+            outreach.deliver("info@acme.co.uk", "Subject", "Body", None)
+        reply_msg = smtp2.return_value.__enter__.return_value.send_message.call_args[0][0]
+        self.assertEqual(reply_msg["List-Unsubscribe"], "<mailto:justin@example.com?subject=unsubscribe>")
+        self.assertIsNone(reply_msg["List-Unsubscribe-Post"])
+        self.assertEqual(reply_msg["Reply-To"], "justin@example.com")
         sent = smtp.return_value.__enter__.return_value.send_message.call_args[0][0]
         self.assertEqual(sent.get_content_type(), "text/plain")
         self.assertEqual(sent["List-Unsubscribe-Post"], "List-Unsubscribe=One-Click")

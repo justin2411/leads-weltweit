@@ -95,17 +95,34 @@ def _auto_send_allowed(db, experiment: dict) -> tuple[bool, str]:
     return True, "Dauerfreigabe"
 
 
-def deliver(to: str, subject: str, text: str, unsub_url: str) -> dict:
+def unsubscribe_target(token: str) -> str | None:
+    """Link zur Abmeldung, oder None = Abmeldung per Antwort (UNSUBSCRIBE_MODE=reply, Standard)."""
+    if os.environ.get("UNSUBSCRIBE_MODE", "reply") == "link":
+        return f"{os.environ['APP_BASE_URL'].rstrip('/')}/api/unsubscribe?t={token}"
+    return None
+
+
+def unsubscribe_headers(unsub_url: str | None) -> dict:
+    if unsub_url:
+        return {"List-Unsubscribe": f"<{unsub_url}>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}
+    reply_to = os.environ.get("REPLY_TO") or os.environ["MAIL_FROM"]
+    addr = reply_to.split("<")[-1].strip(">").strip()
+    return {"List-Unsubscribe": f"<mailto:{addr}?subject=unsubscribe>"}
+
+
+def deliver(to: str, subject: str, text: str, unsub_url: str | None) -> dict:
     """Sendet eine reine Textmail. MAIL_TRANSPORT=smtp (z. B. Zoho) oder resend.
 
     Rückgabe: Felder für messages (resend_id bzw. smtp_message_id).
     """
-    headers = {"List-Unsubscribe": f"<{unsub_url}>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}
+    headers = unsubscribe_headers(unsub_url)
+    reply_to = os.environ.get("REPLY_TO")
     if os.environ.get("MAIL_TRANSPORT", "smtp") == "resend":
         import requests
         r = requests.post(RESEND_URL, timeout=30, headers={
             "Authorization": f"Bearer {os.environ['RESEND_API_KEY']}",
-        }, json={"from": os.environ["MAIL_FROM"], "to": [to], "subject": subject, "text": text, "headers": headers})
+        }, json={"from": os.environ["MAIL_FROM"], "to": [to], "subject": subject, "text": text, "headers": headers,
+                 **({"reply_to": reply_to} if reply_to else {})})
         if r.status_code >= 400:
             raise RuntimeError(f"Resend {r.status_code} {r.text}")
         return {"resend_id": r.json().get("id")}
@@ -119,6 +136,8 @@ def deliver(to: str, subject: str, text: str, unsub_url: str) -> dict:
     msg["From"] = sender
     msg["To"] = to
     msg["Subject"] = subject
+    if reply_to:
+        msg["Reply-To"] = reply_to
     msg["Date"] = formatdate(localtime=False)
     msg["Message-ID"] = make_msgid(domain=sender.rsplit("@", 1)[-1].strip(">"))
     for k, v in headers.items():
@@ -142,7 +161,8 @@ def cmd_send(args) -> int:
     live = args.live
     if live:
         transport = os.environ.get("MAIL_TRANSPORT", "smtp")
-        needed = ["MAIL_FROM", "SENDER_NAME", "SENDER_POSTAL_ADDRESS", "APP_BASE_URL"]
+        needed = ["MAIL_FROM", "SENDER_NAME", "SENDER_POSTAL_ADDRESS"]
+        needed += ["APP_BASE_URL"] if os.environ.get("UNSUBSCRIBE_MODE", "reply") == "link" else ["REPLY_TO"]
         needed += ["SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD"] if transport == "smtp" else ["RESEND_API_KEY"]
         for var in needed:
             if not os.environ.get(var):
@@ -157,7 +177,6 @@ def cmd_send(args) -> int:
 
     rows = db.select("messages", {"status": "eq.approved", "order": "approved_at.asc", "limit": str(args.limit),
                                   "select": "*,prospects(*),experiments(*)"})
-    base = os.environ.get("APP_BASE_URL", "https://example.invalid").rstrip("/")
     n_sent = 0
     for m in rows:
         p, e = m["prospects"], m["experiments"]
@@ -187,7 +206,7 @@ def cmd_send(args) -> int:
                 print(f"NICHT GESENDET {m['to_email']}: keine Freigabe für diesen Lauf ({why})")
                 continue
 
-        unsub = f"{base}/api/unsubscribe?t={m['unsubscribe_token']}"
+        unsub = unsubscribe_target(m["unsubscribe_token"])
         footer = render_footer(m.get("language") or "en",
                                sender_name=os.environ.get("SENDER_NAME", "Signalwerk"),
                                postal_address=os.environ.get("SENDER_POSTAL_ADDRESS", "<Postanschrift>"),
@@ -219,6 +238,70 @@ def cmd_send(args) -> int:
     return 0
 
 
+RESEND_EVENT_MAP = {"delivered": "delivered", "bounced": "bounced", "complained": "complained",
+                    "delivery_delayed": "delivery_delayed", "failed": "failed"}
+
+
+def cmd_sync(args) -> int:
+    """Holt den Zustellstatus gesendeter Mails von Resend (Ersatz für den Webhook, solange Vercel fehlt)."""
+    import requests
+    from lib.db import DB
+
+    db = DB()
+    since = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=args.days)).isoformat()
+    rows = db.select("messages", {"status": "eq.sent", "resend_id": "not.is.null", "sent_at": f"gte.{since}",
+                                  "select": "id,to_email,resend_id"})
+    counts: dict[str, int] = {}
+    for m in rows:
+        r = requests.get(f"{RESEND_URL}/{m['resend_id']}", timeout=30,
+                         headers={"Authorization": f"Bearer {os.environ['RESEND_API_KEY']}"})
+        if r.status_code >= 400:
+            print(f"FEHLER {m['to_email']}: {r.status_code} {r.text}")
+            continue
+        last = r.json().get("last_event")
+        typ = RESEND_EVENT_MAP.get(last or "")
+        if not typ:
+            continue
+        counts[typ] = counts.get(typ, 0) + 1
+        db.insert("email_events", {"message_id": m["id"], "resend_id": m["resend_id"], "type": typ,
+                                   "dedupe_key": f"resend:{m['resend_id']}:{typ}", "note": "Resend-Status (sync)"},
+                  upsert_on="dedupe_key", ignore_duplicates=True)
+        if typ in ("bounced", "complained"):
+            db.rpc("suppress_email", {"p_email": m["to_email"], "p_reason": "bounce" if typ == "bounced" else "complaint",
+                                      "p_source": "resend-sync"})
+            print(f"GESPERRT {m['to_email']} ({typ})")
+    print(f"{len(rows)} Mails geprüft: {counts or 'keine neuen Ereignisse'}")
+    return 0
+
+
+REPLY_KINDS = {"neutral": "reply", "positive": "reply_positive", "negative": "reply_negative",
+               "sample": "sample_requested", "optout": "reply_negative"}
+
+
+def cmd_reply(args) -> int:
+    """Antwort erfassen. --kind optout sperrt Adresse und Domain dauerhaft."""
+    from lib.db import DB
+
+    db = DB()
+    email = args.email.strip().lower()
+    msgs = db.select("messages", {"status": "eq.sent", "select": "id,to_email,resend_id", "order": "sent_at.desc",
+                                  "or": f"(to_email.eq.{email},to_email.like.*@{email.split('@')[-1]})", "limit": "1"})
+    if not msgs:
+        print(f"Hinweis: keine gesendete Mail an {email} gefunden; Ereignis ohne Zuordnung")
+    note = ("Abmeldung per Antwort. " if args.kind == "optout" else "") + (args.note or "")
+    db.insert("email_events", {"message_id": msgs[0]["id"] if msgs else None, "type": REPLY_KINDS[args.kind],
+                               "note": note.strip()})
+    if args.kind in ("sample", "positive"):
+        db.insert("email_events", {"message_id": msgs[0]["id"] if msgs else None, "type": "reply",
+                                   "note": "Antwort (automatisch mit erfasst)"})
+    if args.kind == "optout":
+        for addr in {email, *(m["to_email"] for m in msgs)}:
+            db.rpc("suppress_email", {"p_email": addr, "p_reason": "reply_optout", "p_source": "reply"})
+        print(f"GESPERRT {email} und Domain")
+    print("erfasst")
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -241,6 +324,16 @@ def main(argv=None) -> int:
     s.add_argument("--owner-ok", help="Wortlaut/Datum der Freigabe des Inhabers für diesen Lauf")
     s.add_argument("--limit", type=int, default=200)
     s.set_defaults(func=cmd_send)
+
+    y = sub.add_parser("sync", help="Zustellstatus von Resend holen, Bounces/Beschwerden sperren")
+    y.add_argument("--days", type=int, default=30)
+    y.set_defaults(func=cmd_sync)
+
+    r = sub.add_parser("reply", help="Antwort erfassen")
+    r.add_argument("--email", required=True)
+    r.add_argument("--kind", required=True, choices=sorted(REPLY_KINDS))
+    r.add_argument("--note")
+    r.set_defaults(func=cmd_reply)
 
     args = ap.parse_args(argv)
     if args.cmd == "check" and not args.db and not (args.email and args.country):
