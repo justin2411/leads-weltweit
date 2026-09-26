@@ -1,0 +1,232 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Inter;src:url(../fonts/inter-latin-600-normal.woff2);font-weight:600}
+@font-face{font-family:Inter;src:url(../fonts/inter-latin-700-normal.woff2);font-weight:700}
+@font-face{font-family:Inter;src:url(../fonts/inter-latin-800-normal.woff2);font-weight:800}
+:root{--bg:#070e1c;--ink:#eef3fb;--soft:#8fa2c4;--brand:#3b6ff5;--brand2:#7aa2ff;--ok:#34d399;--line:#1c2d4d}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);font-family:Inter,sans-serif;color:var(--ink)}
+#bg{position:absolute;inset:-200px;background:
+  radial-gradient(900px 600px at var(--gx,60%) var(--gy,30%),rgba(59,111,245,.22),transparent 70%),
+  radial-gradient(700px 500px at 20% 90%,rgba(52,211,153,.08),transparent 70%)}
+#grid{position:absolute;inset:0;opacity:.35;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:80px 80px}
+.scene{position:absolute;inset:0;opacity:0;display:none}
+.abs{position:absolute}
+svg{position:absolute;left:0;top:0}
+.logo{font-size:128px;font-weight:800;letter-spacing:-4px;display:flex;gap:28px;justify-content:center}
+.mask{overflow:hidden;display:inline-block;padding-bottom:12px}
+.mask>span{display:inline-block}
+.chip{display:inline-flex;align-items:center;gap:10px;padding:12px 22px;border-radius:99px;font-size:28px;font-weight:600;background:rgba(122,162,255,.14);border:1px solid rgba(122,162,255,.35);color:#dbe6ff}
+.card{position:absolute;background:linear-gradient(180deg,#15284a,#101f3b);border:1px solid #2a4170;box-shadow:0 40px 120px rgba(0,0,0,.5);overflow:hidden}
+.mini{position:absolute;width:150px;height:96px;border-radius:14px;background:#15284a;border:1px solid #2a4170}
+.mini:before{content:"";position:absolute;left:16px;top:18px;width:90px;height:12px;border-radius:6px;background:#7aa2ff}
+.mini:after{content:"";position:absolute;left:16px;top:44px;width:118px;height:10px;border-radius:5px;background:#2e4677;box-shadow:0 20px 0 #2e4677}
+.ill{font-size:18px;color:var(--soft)}
+</style></head>
+<body>
+<div id="bg"></div><div id="grid"></div>
+
+<!-- A: Stadt, neue Firmen leuchten auf -->
+<div class="scene" id="A"><svg width="1920" height="1080" id="A_svg"></svg></div>
+
+<!-- B: Wer ist zuerst da? -->
+<div class="scene" id="B"><svg width="1920" height="1080" id="B_svg"></svg></div>
+
+<!-- C: Marke -->
+<div class="scene" id="C">
+  <div class="abs" style="left:0;right:0;top:400px">
+    <div class="logo"><span class="mask"><span id="C1">NextGen</span></span><span class="mask"><span id="C2" style="color:var(--brand2)">Profit</span></span></div>
+    <div class="abs" id="C_line" style="left:50%;top:170px;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--brand),var(--ok));transform:translateX(-50%)"></div>
+  </div>
+</div>
+
+<!-- D: Radar über offiziellen Quellen -->
+<div class="scene" id="D">
+  <svg width="1920" height="1080" id="D_svg"></svg>
+  <div class="abs" id="D_sweep" style="left:560px;top:140px;width:800px;height:800px;border-radius:50%;background:conic-gradient(from 0deg,rgba(122,162,255,.45),rgba(122,162,255,0) 70deg,transparent 360deg)"></div>
+</div>
+
+<!-- E: Blip -> Lead-Karte -> Region -->
+<div class="scene" id="E">
+  <svg width="1920" height="1080" id="E_svg"></svg>
+  <div class="card" id="E_card">
+    <div id="E_in" style="padding:46px 52px;opacity:0">
+      <div style="font-size:50px;font-weight:800;letter-spacing:-1px">Northfield Logistics Ltd</div>
+      <div style="display:flex;gap:16px;margin-top:30px;flex-wrap:wrap">
+        <span class="chip" id="E_c1">📅 20 Aug 2026</span><span class="chip" id="E_c2">🔗 Companies House</span><span class="chip" id="E_c3" data-k="chip3"></span>
+      </div>
+    </div>
+  </div>
+  <div class="abs" id="E_pinwrap" style="left:1310px;top:300px;width:420px;text-align:center">
+    <svg width="120" height="160" viewBox="0 0 120 160" id="E_pin" style="position:relative;display:block;margin:0 auto"><path d="M60 156 C60 156 8 92 8 58 A52 52 0 1 1 112 58 C112 92 60 156 60 156Z" fill="#34d399"/><circle cx="60" cy="58" r="20" fill="#070e1c"/></svg>
+    <div id="E_reg" style="margin-top:22px"><span class="chip" data-k="region"></span></div>
+  </div>
+  <div class="abs ill" id="E_ill" style="left:120px;top:990px">Illustrative example</div>
+</div>
+
+<!-- F: Montag, Posteingang -->
+<div class="scene" id="F">
+  <svg width="1920" height="1080" id="F_svg"></svg>
+  <div id="F_minis"></div>
+  <div class="abs" id="F_mon" style="left:0;right:0;top:170px;text-align:center"><span class="chip" style="font-size:34px">Monday · 07:00</span></div>
+</div>
+
+<!-- G: Ein Klick -->
+<div class="scene" id="G">
+  <div class="abs" id="G_phone" style="left:760px;top:90px;width:400px;height:800px;border-radius:58px;background:#03060c;border:10px solid #1f2e4a;box-shadow:0 50px 140px rgba(0,0,0,.55)">
+    <div style="position:absolute;inset:18px;border-radius:40px;background:#fff;overflow:hidden">
+      <div style="margin:44px 30px 0;height:14px;width:120px;border-radius:7px;background:#0f1b2d"></div>
+      <div style="margin:34px 30px 0;height:30px;width:260px;border-radius:8px;background:#0f1b2d"></div>
+      <div style="margin:14px 30px 0;height:30px;width:200px;border-radius:8px;background:#0f1b2d"></div>
+      <div style="margin:26px 30px 0;height:12px;width:280px;border-radius:6px;background:#cbd5e1"></div>
+      <div style="margin:12px 30px 0;height:12px;width:240px;border-radius:6px;background:#cbd5e1"></div>
+      <div id="G_btn" style="position:absolute;left:30px;right:30px;top:330px;height:74px;border-radius:14px;background:#1d4ed8;color:#fff;font-size:21px;font-weight:700;display:flex;align-items:center;justify-content:center"><span id="G_btxt" data-k="btn"></span>
+        <svg id="G_chk" width="44" height="44" viewBox="0 0 44 44" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)"><path d="M10 23 L19 32 L35 13" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="40" stroke-dashoffset="40" id="G_path"/></svg>
+      </div>
+      <div id="G_tap" style="position:absolute;left:170px;top:337px;width:60px;height:60px;border-radius:50%;border:4px solid rgba(29,78,216,.7);opacity:0"></div>
+    </div>
+  </div>
+  <div id="G_parts"></div>
+  <div class="abs" id="G_free" style="left:0;right:0;top:930px;text-align:center"><span class="chip" style="font-size:32px;color:#bff5dc;border-color:rgba(52,211,153,.5);background:rgba(52,211,153,.12)">10 free leads · no obligation</span></div>
+</div>
+
+<!-- H: Ende -->
+<div class="scene" id="H">
+  <div class="abs" style="left:0;right:0;top:360px;text-align:center">
+    <div class="logo" style="font-size:112px"><span class="mask"><span id="H1">NextGen</span></span><span class="mask"><span id="H2" style="color:var(--brand2)">Profit</span></span></div>
+    <div id="H_tag" style="font-size:38px;font-weight:600;color:#cfdaf0;margin-top:14px">The right companies, at the right moment.</div>
+    <div id="H_url" style="margin-top:44px"><span class="chip" style="font-size:30px">nextgen-profit.de</span></div>
+  </div>
+</div>
+
+<script>
+const T = window.TIMING, CFG = window.CFG;
+document.querySelectorAll("[data-k]").forEach(el => { el.textContent = CFG.text[el.dataset.k]; });
+const L = Object.fromEntries(T.lines.map(l => [l.id, l]));
+const $ = id => document.getElementById(id);
+const cl = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const p = (t, a, d) => cl((t - a) / d);
+const eio = x => { x = cl(x); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+const eo = x => 1 - Math.pow(1 - cl(x), 3);
+const back = x => { x = cl(x); const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+const lerp = (a, b, k) => a + (b - a) * k;
+let seed = 3; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const NS = "http://www.w3.org/2000/svg";
+const mk = (svg, tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); $(svg).appendChild(e); return e; };
+
+// Szenenfenster
+const ids = ["hook", "race", "brand", "radar", "lead", "inbox", "cta", "end"], sc = ["A", "B", "C", "D", "E", "F", "G", "H"];
+const win = sc.map((s, i) => [s, i ? L[ids[i]].start - 0.45 : 0, i < sc.length - 1 ? L[ids[i + 1]].start - 0.45 : T.total + 1]);
+
+// A: Straßen + Gebäude
+const streets = [];
+for (let i = 0; i < 7; i++) streets.push(mk("A_svg", "line", { x1: 0, y1: 150 + i * 130 + (i % 2) * 30, x2: 1920, y2: 120 + i * 130, stroke: "#23407a", "stroke-width": 3 }));
+for (let i = 0; i < 11; i++) streets.push(mk("A_svg", "line", { x1: 90 + i * 175, y1: 0, x2: 130 + i * 170, y2: 1080, stroke: "#23407a", "stroke-width": 3 }));
+streets.forEach(s => { const len = 2200; s.setAttribute("stroke-dasharray", len); s.dataset.len = len; });
+const blds = [];
+for (let i = 0; i < 46; i++) {
+  const x = 140 + Math.floor(rnd() * 10) * 172 + rnd() * 60, y = 170 + Math.floor(rnd() * 6) * 130 + rnd() * 40, at = 0.4 + rnd() * 3.0;
+  const ring = mk("A_svg", "circle", { cx: x + 14, cy: y + 14, r: 0, fill: "none", stroke: "#7aa2ff", "stroke-width": 3 });
+  const b = mk("A_svg", "rect", { x, y, width: 28, height: 28, rx: 7, fill: "#7aa2ff" });
+  blds.push({ b, ring, at, x, y });
+}
+// B: Ziel + drei Wege
+const target = { x: 1240, y: 540 };
+const tgGlow = mk("B_svg", "circle", { cx: target.x, cy: target.y, r: 90, fill: "rgba(52,211,153,.12)" });
+const tg = mk("B_svg", "rect", { x: target.x - 60, y: target.y - 60, width: 120, height: 120, rx: 26, fill: "#15284a", stroke: "#34d399", "stroke-width": 4 });
+const racers = [
+  { from: [260, 250], c: [700, 120], col: "#4b5d80", dur: 3.4 },
+  { from: [220, 860], c: [640, 980], col: "#4b5d80", dur: 3.0 },
+  { from: [200, 560], c: [720, 470], col: "#7aa2ff", dur: 1.7 }];
+racers.forEach(r => {
+  const d = `M${r.from[0]} ${r.from[1]} Q${r.c[0]} ${r.c[1]} ${target.x - 70} ${target.y}`;
+  r.path = mk("B_svg", "path", { d, fill: "none", stroke: r.col, "stroke-width": 4, "stroke-dasharray": "10 14", opacity: .8 });
+  r.dot = mk("B_svg", "circle", { r: 16, fill: r.col });
+  r.len = r.path.getTotalLength();
+});
+const burst = mk("B_svg", "circle", { cx: target.x, cy: target.y, r: 0, fill: "none", stroke: "#34d399", "stroke-width": 5 });
+// D: Radar
+const RC = { x: 960, y: 540 };
+[130, 260, 390].forEach(r => mk("D_svg", "circle", { cx: RC.x, cy: RC.y, r, fill: "none", stroke: "#23407a", "stroke-width": 2 }));
+mk("D_svg", "line", { x1: RC.x - 400, y1: RC.y, x2: RC.x + 400, y2: RC.y, stroke: "#1c2d4d", "stroke-width": 2 });
+mk("D_svg", "line", { x1: RC.x, y1: RC.y - 400, x2: RC.x, y2: RC.y + 400, stroke: "#1c2d4d", "stroke-width": 2 });
+const srcs = [["🏛", -150], ["📰", -30], ["💼", 90]].map(([ic, ang], i) => {
+  const a = ang * Math.PI / 180, x = RC.x + Math.cos(a) * 390, y = RC.y + Math.sin(a) * 390;
+  const c = mk("D_svg", "circle", { cx: x, cy: y, r: 54, fill: "#15284a", stroke: "#7aa2ff", "stroke-width": 3 });
+  const tx = mk("D_svg", "text", { x, y: y + 18, "text-anchor": "middle", "font-size": 50 }); tx.textContent = ic;
+  return { c, tx, i };
+});
+const blips = [];
+for (let i = 0; i < 14; i++) { const ang = rnd() * 360, rr = 80 + rnd() * 290; blips.push({ ang, el: mk("D_svg", "circle", { cx: RC.x + Math.cos(ang * Math.PI / 180) * rr, cy: RC.y + Math.sin(ang * Math.PI / 180) * rr, r: 9, fill: "#7aa2ff", opacity: 0 }) }); }
+const hero = { x: RC.x + 170, y: RC.y - 120 };
+const heroEl = mk("D_svg", "circle", { cx: hero.x, cy: hero.y, r: 14, fill: "#34d399", opacity: 0 });
+const heroRing = mk("D_svg", "circle", { cx: hero.x, cy: hero.y, r: 14, fill: "none", stroke: "#34d399", "stroke-width": 4, opacity: 0 });
+// E: Region
+const region = mk("E_svg", "path", { d: "M1300 470 C1330 380 1450 330 1540 360 C1650 395 1730 470 1700 560 C1670 660 1560 720 1450 700 C1350 682 1270 580 1300 470Z", fill: "rgba(52,211,153,.08)", stroke: "#34d399", "stroke-width": 4 });
+const regLen = region.getTotalLength(); region.setAttribute("stroke-dasharray", regLen);
+// F: Umschlag
+const env = { x: 760, y: 470, w: 400, h: 270 };
+mk("F_svg", "rect", { x: env.x, y: env.y, width: env.w, height: env.h, rx: 22, fill: "#15284a", stroke: "#7aa2ff", "stroke-width": 4 });
+const flap = mk("F_svg", "path", { d: `M${env.x} ${env.y} L${env.x + env.w / 2} ${env.y + 150} L${env.x + env.w} ${env.y}`, fill: "#1b3260", stroke: "#7aa2ff", "stroke-width": 4, "stroke-linejoin": "round" });
+const envFront = mk("F_svg", "path", { d: `M${env.x} ${env.y + env.h} L${env.x + env.w / 2} ${env.y + 120} L${env.x + env.w} ${env.y + env.h}`, fill: "none", stroke: "#2e4677", "stroke-width": 3 });
+const badge = mk("F_svg", "circle", { cx: env.x + env.w - 6, cy: env.y + 6, r: 0, fill: "#34d399" });
+const minis = []; for (let i = 0; i < 5; i++) { const d = document.createElement("div"); d.className = "mini"; $("F_minis").appendChild(d); minis.push(d); }
+// G: Partikel
+const parts = []; for (let i = 0; i < 26; i++) { const d = document.createElement("div"); d.className = "abs"; const s = 8 + rnd() * 10;
+  Object.assign(d.style, { width: s + "px", height: s + "px", borderRadius: rnd() > .5 ? "50%" : "3px", background: ["#34d399", "#7aa2ff", "#fbbf24", "#ffffff"][i % 4] });
+  $("G_parts").appendChild(d); parts.push({ d, a: rnd() * Math.PI * 2, v: 240 + rnd() * 320, rot: rnd() * 720 }); }
+
+function render(t) {
+  for (const [s, a, b] of win) { const el = $(s); const o = Math.min(p(t, a, .45), 1 - p(t, b - .45, .45)); el.style.opacity = o; el.style.display = o > 0 ? "block" : "none"; }
+  $("bg").style.setProperty("--gx", (55 + 12 * Math.sin(t * .15)) + "%"); $("bg").style.setProperty("--gy", (30 + 10 * Math.cos(t * .12)) + "%");
+  $("grid").style.transform = `translate(${-(t * 12) % 80}px, ${-(t * 6) % 80}px)`;
+  // A
+  const aZoom = 1 + 0.06 * eio(p(t, 0, 8)); $("A").style.transform = `scale(${aZoom})`;
+  streets.forEach((s, i) => s.setAttribute("stroke-dashoffset", s.dataset.len * (1 - eio(p(t, 0.1 + i * .06, 1.6)))));
+  blds.forEach(o => { const k = p(t, o.at, .5); o.b.setAttribute("opacity", eo(k)); o.b.setAttribute("transform", `translate(${o.x + 14} ${o.y + 14}) scale(${back(k)}) translate(${-o.x - 14} ${-o.y - 14})`);
+    const r = p(t, o.at, 1.4); o.ring.setAttribute("r", 14 + r * 70); o.ring.setAttribute("opacity", r > 0 && r < 1 ? (1 - r) * .9 : 0); });
+  // B
+  const b0 = L.race.start; const tk = back(p(t, b0 - .2, .7)); tg.setAttribute("transform", `translate(${target.x} ${target.y}) scale(${tk}) translate(${-target.x} ${-target.y})`);
+  racers.forEach(r => { const k = eio(p(t, b0 + .6, r.dur)); const pt = r.path.getPointAtLength(r.len * k); r.dot.setAttribute("cx", pt.x); r.dot.setAttribute("cy", pt.y); r.path.setAttribute("stroke-dashoffset", -t * 30); });
+  const hit = p(t, b0 + .6 + 1.7, 1.0); burst.setAttribute("r", 60 + hit * 170); burst.setAttribute("opacity", hit > 0 && hit < 1 ? 1 - hit : 0);
+  tgGlow.setAttribute("r", 90 + 30 * eo(hit) + 8 * Math.sin(t * 4)); tg.setAttribute("fill", hit > 0 ? "#123a37" : "#15284a");
+  // C
+  const c0 = L.brand.start - .3; $("C1").style.transform = `translateY(${(1 - eo(p(t, c0, .7))) * 150}px)`; $("C2").style.transform = `translateY(${(1 - eo(p(t, c0 + .18, .7))) * 150}px)`;
+  $("C_line").style.width = (760 * eio(p(t, c0 + .7, .8))) + "px";
+  // D
+  const d0 = L.radar.start; const ang = (t - d0) * 150; $("D_sweep").style.transform = `rotate(${ang}deg)`; $("D_sweep").style.opacity = eo(p(t, d0 - .3, .6));
+  srcs.forEach(s => { const k = back(p(t, d0 + .5 + s.i * .45, .6)); const cx = +s.c.getAttribute("cx"), cy = +s.c.getAttribute("cy");
+    [s.c, s.tx].forEach(e => e.setAttribute("transform", `translate(${cx} ${cy}) scale(${k}) translate(${-cx} ${-cy})`)); });
+  blips.forEach(b => { const since = ((ang - b.ang) % 360 + 360) % 360; const vis = ang > b.ang ? Math.max(0, 1 - since / 200) : 0; b.el.setAttribute("opacity", vis * .9); });
+  const hk = p(t, d0 + 3.4, .5); heroEl.setAttribute("opacity", eo(hk)); heroEl.setAttribute("r", 14 + 4 * Math.sin(t * 6) * hk);
+  const hr = ((t - d0 - 3.4) % 1.1) / 1.1; heroRing.setAttribute("r", 14 + hr * 50); heroRing.setAttribute("opacity", hk > 0 ? (1 - hr) : 0);
+  // E: Kreis -> Karte -> nach links, Region + Pin
+  const e0 = L.lead.start - .2, m = eio(p(t, e0, .9)), mv = eio(p(t, e0 + 1.9, .8));
+  const W = lerp(28, 900, m), H = lerp(28, 300, m), cx = lerp(hero.x, 960, m) + lerp(0, -330, mv), cy = lerp(hero.y, 520, m);
+  Object.assign($("E_card").style, { width: W + "px", height: H + "px", left: (cx - W / 2) + "px", top: (cy - H / 2) + "px", borderRadius: lerp(14, 26, m) + "px", background: m < .3 ? "#34d399" : "" });
+  $("E_in").style.opacity = eo(p(t, e0 + .8, .4));
+  ["E_c1", "E_c2", "E_c3"].forEach((id, i) => { const k = back(p(t, e0 + 1.0 + i * .35, .5)); $(id).style.transform = `scale(${k})`; $(id).style.opacity = cl(k); });
+  region.setAttribute("stroke-dashoffset", regLen * (1 - eio(p(t, e0 + 2.0, .8)))); region.setAttribute("fill-opacity", eo(p(t, e0 + 2.5, .5)));
+  const pin = p(t, e0 + 2.5, .7); $("E_pin").style.transform = `translateY(${(1 - back(pin)) * -260}px)`; $("E_pin").style.opacity = cl(pin * 3);
+  $("E_reg").style.opacity = eo(p(t, e0 + 3.0, .4)); $("E_ill").style.opacity = eo(p(t, e0 + 1, .5)) * .8;
+  // F: Karten fliegen in den Umschlag, Klappe schließt
+  const f0 = L.inbox.start - .1; $("F_mon").style.opacity = eo(p(t, f0 + .1, .5)); $("F_mon").style.transform = `translateY(${(1 - eo(p(t, f0 + .1, .5))) * -30}px)`;
+  minis.forEach((d, i) => { const k = eio(p(t, f0 + .4 + i * .32, .8)); const sx = 180 + i * 40, sy = 380 + (i % 2) * 260;
+    const x = lerp(sx, env.x + env.w / 2 - 75, k), y = lerp(sy, env.y + 90, k) - Math.sin(k * Math.PI) * 180;
+    Object.assign(d.style, { left: x + "px", top: y + "px", transform: `rotate(${lerp(-12 + i * 6, 0, k)}deg) scale(${lerp(1, .6, k)})`, opacity: k >= 1 ? 0 : cl(p(t, f0 + .2 + i * .32, .3)) }); });
+  const fl = eio(p(t, f0 + 2.3, .5)); flap.setAttribute("transform", `translate(0 ${env.y}) scale(1 ${lerp(-1, 1, fl)}) translate(0 ${-env.y})`);
+  badge.setAttribute("r", 22 * back(p(t, f0 + 2.8, .5)));
+  // G
+  const g0 = L.cta.start - .2; const ph = eo(p(t, g0, .8)); $("G_phone").style.transform = `translateY(${(1 - ph) * 260}px) rotate(${(1 - ph) * 6}deg)`; $("G_phone").style.opacity = ph;
+  const tap = t - (g0 + 2.1); $("G_tap").style.opacity = tap > 0 && tap < .7 ? 1 - tap / .7 : 0; $("G_tap").style.transform = `scale(${.5 + cl(tap / .7) * 1.4})`;
+  const done = p(t, g0 + 2.3, .35); $("G_btn").style.background = done > 0 ? "#10b981" : "#1d4ed8"; $("G_btn").style.transform = tap > 0 && tap < .2 ? "scale(.95)" : "none";
+  $("G_btxt").style.opacity = 1 - done; $("G_path").setAttribute("stroke-dashoffset", 40 * (1 - eio(p(t, g0 + 2.4, .5))));
+  parts.forEach(q => { const k = p(t, g0 + 2.4, 1.3); const d = q.v * eo(k); Object.assign(q.d.style, { left: (960 + Math.cos(q.a) * d) + "px", top: (455 + Math.sin(q.a) * d + 160 * k * k) + "px", opacity: k > 0 ? 1 - k : 0, transform: `rotate(${q.rot * k}deg)` }); });
+  $("G_free").style.opacity = eo(p(t, g0 + 3.0, .5));
+  // H
+  const h0 = L.end.start - .3; $("H1").style.transform = `translateY(${(1 - eo(p(t, h0, .7))) * 140}px)`; $("H2").style.transform = `translateY(${(1 - eo(p(t, h0 + .18, .7))) * 140}px)`;
+  $("H_tag").style.opacity = eo(p(t, h0 + 1.0, .6)); $("H_url").style.opacity = eo(p(t, h0 + 1.6, .6));
+}
+window.render = render;
+</script></body></html>

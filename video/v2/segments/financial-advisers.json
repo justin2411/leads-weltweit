@@ -1,0 +1,49 @@
+{
+ "slug": "uk/financial-advisers",
+ "text": {
+  "chip3": "⚡ New company",
+  "region": "Greater Manchester",
+  "btn": "Send me 10 free leads"
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "Every week, new companies are registered near you.",
+   "pause": 1.0
+  },
+  {
+   "id": "race",
+   "text": "New directors face new questions about pensions and protection. The question is: who reaches them first?",
+   "pause": 0.9
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit finds them for you.",
+   "pause": 0.8
+  },
+  {
+   "id": "radar",
+   "text": "Every day, we watch official sources, and spot the moment something changes.",
+   "pause": 0.8
+  },
+  {
+   "id": "lead",
+   "text": "Then we turn it into a lead: dated, sourced, and matched to your area.",
+   "pause": 1.4
+  },
+  {
+   "id": "inbox",
+   "text": "Every Monday, a short list lands in your inbox.",
+   "pause": 0.9
+  },
+  {
+   "id": "cta",
+   "text": "Try it free: ten leads from your area, in one click.",
+   "pause": 1.0
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. The right companies, at the right moment."
+  }
+ ]
+}
