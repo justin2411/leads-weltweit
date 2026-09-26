@@ -57,12 +57,10 @@ def domains() -> None:
         print(f"  {d['name']:<32} verifiziert={d.get('verified')}{extra}")
     print("\nALLE PROJEKTE IM TEAM (Produktionsadressen)")
     for p in call("GET", "/v9/projects", params={"limit": "50"})["projects"]:
-        aliases = [a.get("domain") for a in (p.get("targets", {}).get("production", {}) or {}).get("alias", []) or []] \
-            if isinstance((p.get("targets", {}).get("production", {}) or {}).get("alias"), list) else []
         try:
             names = [d["name"] for d in call("GET", f"/v9/projects/{p['id']}/domains")["domains"]]
         except SystemExit:
-            names = aliases
+            names = []
         print(f"  {p['name']:<28} {p['id']}  {', '.join(names) or '-'}")
 
 
