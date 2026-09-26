@@ -131,6 +131,9 @@ _ATS = [
     (re.compile(r"jobs\.(?:eu\.)?lever\.co/([^/?#]+)", re.I), "lever"),
     (re.compile(r"(?:boards|job-boards)(?:\.eu)?\.greenhouse\.io/([^/?#]+)", re.I), "greenhouse"),
     (re.compile(r"apply\.workable\.com/([^/?#]+)|([a-z0-9-]+)\.workable\.com", re.I), "workable"),
+    (re.compile(r"([a-z0-9-]+)\.recruitee\.com", re.I), "recruitee"),
+    (re.compile(r"([a-z0-9-]+)\.breezy\.hr", re.I), "breezy"),
+    (re.compile(r"([a-z0-9-]+)\.pinpointhq\.com", re.I), "pinpoint"),
 ]
 
 
@@ -144,6 +147,12 @@ def ats_endpoint(careers_url: str) -> tuple[str, str] | None:
                 return kind, f"https://{host}/v0/postings/{slug}?mode=json"
             if kind == "greenhouse":
                 return kind, f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs"
+            if kind == "recruitee":
+                return kind, f"https://{slug}.recruitee.com/api/offers/"
+            if kind == "breezy":
+                return kind, f"https://{slug}.breezy.hr/json"
+            if kind == "pinpoint":
+                return kind, f"https://{slug}.pinpointhq.com/postings.json"
             return kind, f"https://apply.workable.com/api/v1/widget/accounts/{slug}"
     return None
 
@@ -173,4 +182,22 @@ def parse_ats_jobs(kind: str, data) -> list[dict]:
             jobs.append({"title": j.get("title", ""), "url": j.get("url") or j.get("shortlink"),
                          "date_posted": _iso(j.get("published_on") or j.get("created_at")),
                          "locality": j.get("city"), "identifier": j.get("shortcode")})
+    elif kind == "recruitee":
+        for j in (data or {}).get("offers", []):
+            jobs.append({"title": j.get("title", ""), "url": j.get("careers_url"),
+                         "date_posted": _iso(j.get("published_at") or j.get("created_at")),
+                         "locality": j.get("city"), "identifier": str(j.get("id"))})
+    elif kind == "breezy":
+        for j in data or []:
+            loc = j.get("location") or {}
+            jobs.append({"title": j.get("name", ""), "url": j.get("url"),
+                         "date_posted": _iso(j.get("published_date")),
+                         "locality": loc.get("city") if isinstance(loc, dict) else None, "identifier": j.get("id")})
+    elif kind == "pinpoint":
+        items = data.get("data", []) if isinstance(data, dict) else data or []
+        for j in items:
+            a = j.get("attributes", j)
+            jobs.append({"title": a.get("title", ""), "url": a.get("url") or j.get("links", {}).get("self"),
+                         "date_posted": _iso(a.get("published_at") or a.get("created_at")),
+                         "locality": a.get("location_name"), "identifier": str(j.get("id"))})
     return jobs
