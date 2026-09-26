@@ -158,3 +158,5 @@ Für jedes Segment in jedem Land:
 4. Segmente S1–S8 in `segments` anlegen.
 5. Mit **S1 (Personalvermittlung) in UK** und **S2 (Webagenturen) in US** beginnen: je 10 Probe-Leads bauen, dann das Experiment vorbereiten.
 6. Dem Inhaber einen ersten Bericht mit den Proben und 10 Beispiel-Entwürfen vorlegen.
+
+- **Kundenlieferung (26.09.2026, „mach einfach“):** `scripts/deliveries.py` + `.github/workflows/kundenlieferung.yml`, montags ca. 07:00. Kunde anlegen mit `add-customer` (Preis nur vom Inhaber). Erste Lieferung jedes Kunden geht als Vorschau an den Inhaber und erst nach `approve` raus; danach automatisch. Jeder Lead höchstens einmal pro Abo, nur aus den gebuchten Regionen.

@@ -1,0 +1,39 @@
+# Wöchentliche Lieferung an zahlende Kunden: montags ca. 07:00 deutscher Zeit (04:53 UTC im Sommer).
+# Erste Lieferung jedes Kunden: Vorschau an den Inhaber, Versand erst nach 'approve'.
+name: kundenlieferung
+on:
+  schedule: [{ cron: "53 4 * * 1" }]
+  workflow_dispatch:
+    inputs:
+      befehl:
+        description: "prepare+send (Standard) oder approve"
+        default: "prepare+send"
+      abo:
+        description: "Abo-ID (nur für approve)"
+        required: false
+concurrency: { group: kundenlieferung, cancel-in-progress: false }
+jobs:
+  liefern:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      MAIL_FROM: ${{ secrets.MAIL_FROM }}
+      REPLY_TO: ${{ secrets.REPLY_TO }}
+      OWNER_EMAIL: ${{ secrets.OWNER_EMAIL }}
+      SENDER_NAME: ${{ secrets.SENDER_NAME }}
+      SENDER_POSTAL_ADDRESS: ${{ secrets.SENDER_POSTAL_ADDRESS }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - name: Erste Lieferung freigeben
+        if: ${{ inputs.befehl == 'approve' }}
+        run: python scripts/deliveries.py approve --subscription "${{ inputs.abo }}" --freigabe "Inhaber per GitHub, ${{ github.actor }}"
+      - name: Vorbereiten
+        if: ${{ inputs.befehl != 'approve' }}
+        run: python scripts/deliveries.py prepare
+      - name: Senden
+        run: python scripts/deliveries.py send --live
