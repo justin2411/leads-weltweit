@@ -40,5 +40,30 @@ class ResponderTest(unittest.TestCase):
         self.assertIsNone(r.sample_text("fr", "Lyon", False))
 
 
+class AutoReplyTest(unittest.TestCase):
+    def test_holiday_notice_is_out_of_office(self):
+        import os
+        from responder import classify, decide
+        os.environ.pop("ANTHROPIC_API_KEY", None)
+        text = ("Thank you for your email. In observance of the Sukkos Holiday, our office will be closed until "
+                "Monday, October 5. During that time I will not have access to my email but will respond upon my "
+                "return on Monday, October 5.")
+        c = classify(text)
+        self.assertEqual(c["intent"], "out_of_office")
+        self.assertEqual(decide(c), "ignore")
+
+    def test_headers(self):
+        from email.message import EmailMessage
+        from responder import is_auto_reply
+        m = EmailMessage()
+        m["Subject"] = "Re: Leads for Brooklyn"
+        self.assertFalse(is_auto_reply(m))
+        m["Auto-Submitted"] = "auto-replied"
+        self.assertTrue(is_auto_reply(m))
+        m2 = EmailMessage()
+        m2["Subject"] = "Automatic reply: Leads for Brooklyn"
+        self.assertTrue(is_auto_reply(m2))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -22,7 +22,7 @@ from drafts import _clean_name, _place, signature  # noqa: E402
 from lib.rules import lint_draft  # noqa: E402
 
 NEGATIVE = {"bounced", "complained", "failed", "reply", "reply_positive", "reply_negative", "sample_requested",
-            "unsubscribed"}
+            "unsubscribed", "auto_reply"}
 
 SIGNAL = {
     "S1": ("employers whose job adverts have stayed open for 30+ days", "employeurs dont les offres restent ouvertes"),

@@ -106,7 +106,12 @@ Reply text:
 KEYWORDS = [
     ("unsubscribe", r"\b(unsubscribe|remove (me|us)|stop (emailing|contacting)|do not (contact|email)|opt[- ]?out|"
                     r"désinscri\w*|ne plus (me|nous) contacter)\b"),
-    ("out_of_office", r"\b(out of (the )?office|on (annual )?leave|away until|absent|congés?|automatic reply)\b"),
+    ("out_of_office", r"\b(out of (the )?office|on (annual )?leave|away until|absent|congés?|automatic reply|"
+                      r"auto(matic|mated)?[- ]?(reply|response)|(office|we) (will be|is|are) closed|closed until|"
+                      r"(no|not have|limited) access to (my |our )?e-?mail|upon (my|our) return|when i return|"
+                      r"return(ing)? (to the office )?on (monday|tuesday|wednesday|thursday|friday)|"
+                      r"away from (the|my) (office|desk)|on (vacation|holiday)|currently (away|travelling|traveling)|"
+                      r"réponse automatique|de retour le)\b"),
     ("buy", r"\b(price|pricing|cost|how much|subscribe|subscription|contract|invoice|call|meeting|demo|tarif|prix|"
             r"abonnement|rendez-vous|weekly|per week|every week|regular(ly)?|more leads|par semaine|chaque semaine)\b"),
     ("not_interested", r"\b(not interested|no thanks|no thank you|pas intéressé|non merci)\b"),
@@ -114,6 +119,22 @@ KEYWORDS = [
                r"envoyez|would like to receive|free sample request|souhaitons recevoir|merci d'envoyer|"
                r"demande d'échantillon)\b"),
 ]
+
+
+AUTO_SUBJECT = re.compile(r"^(automatic reply|auto(matic)?[- ]?(reply|response)|out of (the )?office|abwesen|"
+                          r"réponse automatique|absence|away:|auto:)", re.I)
+
+
+def is_auto_reply(msg) -> bool:
+    """Abwesenheitsnotizen und andere Autoresponder an den Kopfzeilen erkennen (RFC 3834 u. a.)."""
+    auto = (msg.get("Auto-Submitted") or "").strip().lower()
+    if auto and auto != "no":
+        return True
+    if any(msg.get(h) for h in ("X-Autoreply", "X-Autorespond", "X-Auto-Response-Suppress-Out")):
+        return True
+    if (msg.get("Precedence") or "").strip().lower() in ("auto_reply", "bulk", "junk"):
+        return True
+    return bool(AUTO_SUBJECT.match((msg.get("Subject") or "").strip()))
 
 
 def classify(text: str) -> dict:
@@ -367,7 +388,11 @@ def main(argv=None) -> int:
         m = sent[0]
         lang = m.get("language") or "en"
         text = _text(msg)
-        c = classify(text)
+        if is_auto_reply(msg):
+            c = {"intent": "out_of_office", "faq": ["none"], "needs_owner": False,
+                 "summary_de": "Automatische Antwort (Kopfzeilen)", "by": "headers"}
+        else:
+            c = classify(text)
         action = decide(c)
         # Probe schon verschickt? Dann ist ein weiteres "Ja" Kaufinteresse (wöchentliche Lieferung), keine zweite Probe.
         if action in ("sample", "sample_owner"):
@@ -382,7 +407,7 @@ def main(argv=None) -> int:
             continue
 
         event_type = {"buy": "reply_positive", "sample": "sample_requested", "not_interested": "reply_negative",
-                      "unsubscribe": "reply_negative"}.get(c["intent"], "reply")
+                      "unsubscribe": "reply_negative", "out_of_office": "auto_reply"}.get(c["intent"], "reply")
         db.insert("email_events", {"message_id": m["id"], "type": event_type, "dedupe_key": dedupe,
                                    "note": f"{c['summary_de']} | Aktion: {action}",
                                    "payload": {"intent": c["intent"], "faq": c.get("faq"), "by": c["by"]}})
@@ -421,9 +446,12 @@ def main(argv=None) -> int:
                          f"{p['company_name']} ({p['segment_id']}/{p['country']}, {p.get('region') or ''}) "
                          f"hat geantwortet.\n\nEinordnung: {c['intent']} – {c['summary_de']}\n\n"
                          f"Antwort von {sender}:\n\n{text[:3000]}\n\n"
-                         f"Bitte selbst antworten (Antworten in deinem Postfach). Ich habe nur eine kurze "
-                         f"Eingangsbestätigung geschickt.")
-            first = owner_name().split(" ")[0]
+                         f"Bitte selbst antworten (Antworten in deinem Postfach)."
+                         + (" Ich habe nur eine kurze Eingangsbestätigung geschickt." if c["intent"] in ("buy", "question")
+                            else " Ich habe nicht geantwortet."))
+            if c["intent"] not in ("buy", "question"):
+                handled["owner"] += 1
+                continue  # unklar: nur den Inhaber informieren, keine Zusage an den Absender
             hold = ("Bonjour,\n\nMerci pour votre message. Je reviens vers vous personnellement dans la journée "
                     "avec les détails.\n\n"
                     f"Bien cordialement,\n{signature(lang)}") if lang == "fr" else (
