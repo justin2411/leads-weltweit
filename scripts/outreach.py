@@ -27,6 +27,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lib.rules import (  # noqa: E402
     check_prospect, country_rules, lint_draft, load_countries, render_footer,
 )
@@ -269,6 +270,28 @@ def cmd_send(args) -> int:
     return 0
 
 
+def cmd_test(args) -> int:
+    """Testmail an den Inhaber: echter Entwurf + echte Fußzeile, Betreff mit [TEST]. Speichert nichts."""
+    from drafts import build
+    example = {"S1": ("Northpoint Recruitment Ltd", "engineering and manufacturing", "Stockport, Greater Manchester"),
+               "S2": ("Brooklyn Pixel Studio LLC", "restaurant websites", "Brooklyn, NY"),
+               "S9": ("Northbridge Financial Planning Ltd", "workplace pensions and employee benefits",
+                      "Altrincham, Greater Manchester")}
+    name, spec, region = example[args.segment]
+    p = {"segment_id": args.segment, "country": args.country, "company_name": name,
+         "specialization": spec, "region": region}
+    subject, body, lang = build(p, os.environ.get("SENDER_NAME", "Signalwerk"))
+    lint = lint_draft(subject, body, lang)
+    footer = render_footer(lang, sender_name=os.environ.get("SENDER_NAME", "Signalwerk"),
+                           postal_address=os.environ.get("SENDER_POSTAL_ADDRESS", ""), company=name,
+                           unsubscribe_url=unsubscribe_target("test"))
+    text = body.rstrip() + "\n\n" + footer
+    print(f"Prüfung: {lint.summary()}\n\nBetreff: [TEST] {subject}\n\n{text}\n")
+    out = deliver(args.to, f"[TEST] {subject}", text, unsubscribe_target("test"))
+    print(f"gesendet an {args.to}: {out}")
+    return 0
+
+
 RESEND_EVENT_MAP = {"delivered": "delivered", "bounced": "bounced", "complained": "complained",
                     "delivery_delayed": "delivery_delayed", "failed": "failed"}
 
@@ -356,6 +379,12 @@ def main(argv=None) -> int:
     s.add_argument("--limit", type=int, default=200)
     s.add_argument("--pause", type=float, default=0, help="Sekunden zwischen zwei Mails (mit Zufall)")
     s.set_defaults(func=cmd_send)
+
+    t = sub.add_parser("test", help="Testmail an den Inhaber (nicht an Käufer)")
+    t.add_argument("--to", required=True)
+    t.add_argument("--segment", default="S1", choices=["S1", "S2", "S9"])
+    t.add_argument("--country", default="UK")
+    t.set_defaults(func=cmd_test)
 
     y = sub.add_parser("sync", help="Zustellstatus von Resend holen, Bounces/Beschwerden sperren")
     y.add_argument("--days", type=int, default=30)
