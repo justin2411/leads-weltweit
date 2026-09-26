@@ -46,9 +46,10 @@ test("Geschäftliche E-Mail", () => {
   assert.equal(isBusinessEmail("kein-at-zeichen"), false);
 });
 
-test("Rechtstexte sind Platzhalter -> nichts veröffentlichen", () => {
-  assert.equal(legalTextsReady(), false);
-  assert.equal(canPublish(true), false);
+test("Rechtstexte fertig; veröffentlichen erst mit Freigabe (legal_ready)", () => {
+  assert.equal(legalTextsReady(), true);
+  assert.equal(canPublish(false), false);
+  assert.equal(canPublish(true), true);
 });
 
 test("Einwilligungstext je Sprache", () => {
