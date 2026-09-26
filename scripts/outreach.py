@@ -168,6 +168,23 @@ def cmd_send(args) -> int:
             if not os.environ.get(var):
                 raise SystemExit(f"{var} fehlt")
 
+    from lib.deliverability import domain_accepts_mail, emergency_stop, interleave, warmup_cap
+
+    # Notbremse über die letzten 30 Tage, über alle Experimente
+    since = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=30)).isoformat()
+    recent = db.select("messages", {"status": "eq.sent", "sent_at": f"gte.{since}", "select": "id"})
+    ev = db.select("email_events", {"created_at": f"gte.{since}", "type": "in.(bounced,complained)",
+                                    "select": "message_id,type"})
+    stop = emergency_stop(len(recent), len({e["message_id"] for e in ev if e["type"] == "bounced"}),
+                          len({e["message_id"] for e in ev if e["type"] == "complained"}))
+    if stop:
+        print(f"NOTBREMSE: {stop}")
+        return 2
+
+    first = db.select("messages", {"status": "eq.sent", "select": "sent_at", "order": "sent_at.asc", "limit": "1"})
+    first_day = dt.date.fromisoformat(first[0]["sent_at"][:10]) if first else None
+    cap = warmup_cap(first_day, dt.date.today())
+
     today = dt.date.today().isoformat()
     sent_today: dict[str, int] = {}
     for row in db.select("messages", {"status": "eq.sent", "sent_at": f"gte.{today}",
@@ -175,8 +192,10 @@ def cmd_send(args) -> int:
         c = row["prospects"]["country"]
         sent_today[c] = sent_today.get(c, 0) + 1
 
-    rows = db.select("messages", {"status": "eq.approved", "order": "approved_at.asc", "limit": str(args.limit),
-                                  "select": "*,prospects(*),experiments(*)"})
+    rows = interleave(db.select("messages", {"status": "eq.approved", "order": "approved_at.asc",
+                                             "limit": str(args.limit), "select": "*,prospects(*),experiments(*)"}))
+    already = sum(sent_today.values())
+    print(f"Aufwärmphase: heute max. {cap} Mails insgesamt, bereits gesendet: {already}")
     n_sent = 0
     for m in rows:
         p, e = m["prospects"], m["experiments"]
@@ -195,6 +214,14 @@ def cmd_send(args) -> int:
                 db.update("messages", {"id": m["id"]}, {"status": "blocked", "blocked_reason": "; ".join(problems)})
             continue
 
+        if sum(sent_today.values()) >= cap:
+            print(f"Tagesgrenze der Aufwärmphase ({cap}) erreicht, Rest folgt an den nächsten Tagen")
+            break
+        if not domain_accepts_mail(m["to_email"].split("@")[-1]):
+            print(f"BLOCKIERT {m['to_email']}: Domain nimmt keine Mails an")
+            if live:
+                db.update("messages", {"id": m["id"]}, {"status": "blocked", "blocked_reason": "kein MX-Eintrag"})
+            continue
         limit = int(rules.get("daily_limit", cfg["defaults"]["daily_limit"]))
         if sent_today.get(country, 0) >= limit:
             print(f"Tageslimit {country} ({limit}) erreicht, Rest morgen")
@@ -234,6 +261,10 @@ def cmd_send(args) -> int:
         sent_today[country] = sent_today.get(country, 0) + 1
         n_sent += 1
         print(f"GESENDET {m['to_email']}")
+        if args.pause:
+            import random
+            import time
+            time.sleep(args.pause * random.uniform(0.6, 1.4))  # nicht im Takt senden
     print(f"\n{'gesendet' if live else 'Probelauf, würde senden'}: {n_sent}")
     return 0
 
@@ -323,6 +354,7 @@ def main(argv=None) -> int:
     s.add_argument("--live", action="store_true", help="wirklich senden")
     s.add_argument("--owner-ok", help="Wortlaut/Datum der Freigabe des Inhabers für diesen Lauf")
     s.add_argument("--limit", type=int, default=200)
+    s.add_argument("--pause", type=float, default=0, help="Sekunden zwischen zwei Mails (mit Zufall)")
     s.set_defaults(func=cmd_send)
 
     y = sub.add_parser("sync", help="Zustellstatus von Resend holen, Bounces/Beschwerden sperren")

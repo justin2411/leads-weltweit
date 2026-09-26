@@ -1,20 +1,26 @@
-# Mails senden: nur manuell über "Run workflow". Der Start ist die Freigabe des Inhabers für diesen Lauf.
-# Gesendet werden nur Entwürfe mit Status "approved", im Rahmen der Tageslimits aus countries.yaml.
+# Mails senden. Nur freigegebene Entwürfe (Status "approved"), mit Aufwärmphase, Notbremse und MX-Prüfung.
+#  - manuell: "Run workflow" (Standard: Probelauf)
+#  - täglich automatisch NUR, wenn der Inhaber die Repository-Variable SENDEN_AKTIV auf "ja" setzt
+#    (Settings -> Secrets and variables -> Actions -> Variables). Auf "nein" setzen stoppt sofort.
 name: mails-senden
 on:
   workflow_dispatch:
     inputs:
       freigabe:
-        description: "Freigabe (z. B. 'Justin, 26.09.2026, S1 UK + S2 US')"
+        description: "Freigabe (z. B. 'Justin, 26.09.2026, alle freigegebenen Entwürfe')"
         required: true
       probelauf:
         description: "Nur Probelauf (nichts senden)"
         type: boolean
         default: true
+  schedule:
+    - cron: "23 14 * * 1-5"   # werktags 14:23 UTC: Vormittag US-Ostküste, Nachmittag UK/FR
 concurrency: { group: mails-senden, cancel-in-progress: false }
 jobs:
   send:
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.SENDEN_AKTIV == 'ja' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -25,15 +31,17 @@ jobs:
       SENDER_NAME: ${{ secrets.SENDER_NAME }}
       SENDER_POSTAL_ADDRESS: ${{ secrets.SENDER_POSTAL_ADDRESS }}
       UNSUBSCRIBE_MODE: reply
-      FREIGABE: ${{ inputs.freigabe }}
+      FREIGABE: ${{ inputs.freigabe || 'tägliche Freigabe über Variable SENDEN_AKTIV=ja' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
       - run: pip install -r requirements.txt
+      - name: Zustellstatus holen (Notbremse braucht aktuelle Bounces)
+        run: python scripts/outreach.py sync --days 30
       - name: Probelauf
-        if: ${{ inputs.probelauf }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.probelauf }}
         run: python scripts/outreach.py send
       - name: Senden
-        if: ${{ !inputs.probelauf }}
-        run: python scripts/outreach.py send --live --owner-ok "$FREIGABE"
+        if: ${{ (github.event_name == 'workflow_dispatch' && !inputs.probelauf) || github.event_name == 'schedule' }}
+        run: python scripts/outreach.py send --live --owner-ok "$FREIGABE" --pause 40
