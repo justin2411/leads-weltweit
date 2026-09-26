@@ -1,0 +1,40 @@
+{
+  "segment_id": "S1",
+  "en": {
+    "headline": "Employers in your area who are struggling to hire",
+    "subheadline": "Each week we flag local companies with roles open for 30+ days or several vacancies at once – with the role, the date we first saw it and the source.",
+    "cta_label": "Get 10 free sample leads",
+    "signals": [
+      {
+        "title": "Roles open 30+ days",
+        "text": "A vacancy that stays open for a month is often the moment a hiring manager is open to agency support."
+      },
+      {
+        "title": "Several roles at once",
+        "text": "Companies hiring for three or more roles at the same time usually need help with volume."
+      },
+      {
+        "title": "Source for every lead",
+        "text": "Each lead links to the employer's own careers page, so your consultants can call with a specific reason."
+      }
+    ],
+    "faq": [
+      {
+        "q": "Where does the data come from?",
+        "a": "From official company registers, official announcements and companies' own careers pages. We do not use LinkedIn, job boards or other platforms whose terms forbid it."
+      },
+      {
+        "q": "Do you include personal data?",
+        "a": "No. Each lead contains company data only: name, address, website, main phone number where published, the event and its source."
+      },
+      {
+        "q": "How often do I receive leads?",
+        "a": "Every Monday as a spreadsheet, filtered to your areas and signals. Each lead is delivered to you only once."
+      },
+      {
+        "q": "What does the free sample include?",
+        "a": "10 current leads from your area, with the same fields as the regular delivery. No obligation."
+      }
+    ]
+  }
+}

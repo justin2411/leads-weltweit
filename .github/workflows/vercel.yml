@@ -1,0 +1,25 @@
+# Vercel verwalten (eingeschränkt): Status, Variable für Preview freigeben, neu deployen.
+# Braucht das GitHub-Secret VERCEL_TOKEN. Zeigt nie Werte von Variablen.
+name: vercel
+on:
+  workflow_dispatch:
+    inputs:
+      befehl:
+        description: "status | preview-add | redeploy"
+        default: status
+      arg:
+        description: "preview-add: Namen mit Komma; redeploy: Branch (z. B. main)"
+        default: ""
+jobs:
+  vercel:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      BEFEHL: ${{ inputs.befehl }}
+      ARG: ${{ inputs.arg }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install requests
+      - run: python scripts/vercel_admin.py "$BEFEHL" "$ARG"

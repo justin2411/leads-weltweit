@@ -8,7 +8,7 @@ import { db, suppressEmail } from "@/lib/supabase";
 
 export async function requireOwner() {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
-  if (!verifySession(token, process.env.SESSION_SECRET)) redirect("/login");
+  if (!verifySession(token, process.env.SESSION_SECRET?.trim())) redirect("/login");
 }
 
 /** Inhaber gibt einen Entwurf frei (Status draft -> approved). */

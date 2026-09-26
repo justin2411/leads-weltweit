@@ -1,0 +1,40 @@
+{
+  "segment_id": "S3",
+  "en": {
+    "headline": "Local businesses whose IT needs are changing",
+    "subheadline": "Each week we flag companies near you that are newly registered, growing or looking for IT staff – with the date and the source.",
+    "cta_label": "Get 10 free sample leads",
+    "signals": [
+      {
+        "title": "New companies",
+        "text": "A new company sets up email, devices and security in its first months."
+      },
+      {
+        "title": "Hiring for IT roles",
+        "text": "An open IT support role can be a reason to offer managed support instead."
+      },
+      {
+        "title": "Official source",
+        "text": "Every lead shows where it comes from."
+      }
+    ],
+    "faq": [
+      {
+        "q": "Where does the data come from?",
+        "a": "From official company registers, official announcements and companies' own careers pages. We do not use LinkedIn, job boards or other platforms whose terms forbid it."
+      },
+      {
+        "q": "Do you include personal data?",
+        "a": "No. Each lead contains company data only: name, address, website, main phone number where published, the event and its source."
+      },
+      {
+        "q": "How often do I receive leads?",
+        "a": "Every Monday as a spreadsheet, filtered to your areas and signals. Each lead is delivered to you only once."
+      },
+      {
+        "q": "What does the free sample include?",
+        "a": "10 current leads from your area, with the same fields as the regular delivery. No obligation."
+      }
+    ]
+  }
+}

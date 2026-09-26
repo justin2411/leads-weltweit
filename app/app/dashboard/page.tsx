@@ -1,5 +1,6 @@
 import { db } from "@/lib/supabase";
 import { approveDraft, logReply, rejectDraft, requireOwner } from "./actions";
+import { BrainSection } from "./brain-section";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,8 @@ export default async function Dashboard() {
     <main>
       <h1>Signalwerk</h1>
       <p className="muted">Gesperrte Einträge: {suppression.count ?? 0}</p>
+
+      <BrainSection />
 
       <h2>Experimente</h2>
       <div className="scroll">

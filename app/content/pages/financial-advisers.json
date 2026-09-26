@@ -1,0 +1,73 @@
+{
+  "segment_id": "S9",
+  "en": {
+    "headline": "Business owners at the moment they look for advice",
+    "subheadline": "Each week we flag local companies that were just registered or are hiring several people – the moments when pensions, protection and benefits come up.",
+    "cta_label": "Get 10 free sample leads",
+    "signals": [
+      {
+        "title": "New registrations",
+        "text": "New directors start thinking about protection and pensions for the business."
+      },
+      {
+        "title": "Hiring several people",
+        "text": "A growing team raises workplace pension and benefits questions."
+      },
+      {
+        "title": "Official source",
+        "text": "Every lead shows where it comes from."
+      }
+    ],
+    "faq": [
+      {
+        "q": "Where does the data come from?",
+        "a": "From official company registers, official announcements and companies' own careers pages. We do not use LinkedIn, job boards or other platforms whose terms forbid it."
+      },
+      {
+        "q": "Do you include personal data?",
+        "a": "No. Each lead contains company data only: name, address, website, main phone number where published, the event and its source."
+      },
+      {
+        "q": "How often do I receive leads?",
+        "a": "Every Monday as a spreadsheet, filtered to your areas and signals. Each lead is delivered to you only once."
+      },
+      {
+        "q": "What does the free sample include?",
+        "a": "10 current leads from your area, with the same fields as the regular delivery. No obligation."
+      }
+    ]
+  },
+  "fr": {
+    "headline": "Les dirigeants au moment où ils cherchent conseil",
+    "subheadline": "Chaque semaine, nous repérons les entreprises de votre région qui viennent d'être créées – le moment où se posent les questions de protection et d'épargne salariale.",
+    "cta_label": "Recevoir 10 pistes gratuites",
+    "signals": [
+      {
+        "title": "Créations récentes",
+        "text": "Les nouveaux dirigeants réfléchissent à leur protection et à celle de l'entreprise."
+      },
+      {
+        "title": "Source officielle",
+        "text": "Chaque piste indique d'où elle vient."
+      }
+    ],
+    "faq": [
+      {
+        "q": "D'où viennent les données ?",
+        "a": "Des registres officiels, des annonces légales (BODACC) et des pages carrières des entreprises. Nous n'utilisons ni LinkedIn ni les sites d'emploi."
+      },
+      {
+        "q": "Y a-t-il des données personnelles ?",
+        "a": "Non. Chaque piste contient uniquement des données d'entreprise : nom, adresse, site, standard si publié, l'événement et sa source."
+      },
+      {
+        "q": "À quelle fréquence ?",
+        "a": "Chaque lundi, sous forme de tableau, filtré sur vos zones et signaux. Chaque piste ne vous est livrée qu'une fois."
+      },
+      {
+        "q": "Que contient l'échantillon gratuit ?",
+        "a": "10 pistes actuelles de votre zone, avec les mêmes champs que la livraison régulière. Sans engagement."
+      }
+    ]
+  }
+}
