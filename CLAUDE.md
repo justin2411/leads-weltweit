@@ -164,7 +164,7 @@ Für jedes Segment in jedem Land:
 
 ## 10. Stand 26.09.2026 (Inhaber)
 
-- **Resend verbietet Kaltakquise.** Resend nur für Mails an Empfänger mit Einwilligung: Lieferungen an zahlende Kunden, Bestätigungen von Probe-Anfragen, Willkommensmails, Antworten an Leute, die selbst geschrieben haben. Kaltmails erst wieder über ein eigenes SMTP-Postfach auf einer anderen Zweitdomain (gibt es noch nicht, nichts einrichten). `config/versand.yaml` steht auf `aktiv: false`.
+- **Resend verbietet Kaltakquise.** Resend nur für Mails an Empfänger mit Einwilligung: Lieferungen an zahlende Kunden, Bestätigungen von Probe-Anfragen, Willkommensmails, Antworten an Leute, die selbst geschrieben haben. Kaltmails über ein eigenes SMTP-Postfach bei Strato auf **nextgen-profit.de** (Entscheidung Inhaber 26.09.2026: keine Zweitdomain). Voraussetzung: MX, SPF, DKIM und DMARC für Strato in Vercel DNS gesetzt und geprüft (`scripts/dns_check.py`). `config/versand.yaml` steht auf `aktiv: false`.
 - **Gehirn:** `BRAIN.md` ergänzt diese Datei (bei Widersprüchen gilt CLAUDE.md). Landingpages unter `/[country]/[segment]` aus der Datenbank, Rechtstexte in `app/content/legal.ts` (Platzhalter bis der Inhaber liefert; bis dahin kein Live-Schalten). Stripe nur im Testmodus, solange der Inhaber nichts anderes sagt.
 - **Supabase:** Projekt „callcenter“ (`udkkchduyrkzuktlknbc`), Schema `signalwerk`. Migrationen erst nach Zeigen und Ja des Inhabers anwenden.
 - **Branches:** `main` ist Produktion (Vercel). Änderungen per Pull Request nach `main`.
