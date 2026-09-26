@@ -10,12 +10,14 @@ from lib.rules import lint_draft  # noqa: E402
 EXAMPLE = {"{agency}": "Northpoint Recruitment", "{specialism}": "engineering", "{region}": "Greater Manchester",
            "{town}": "Bolton", "{firm}": "Northbridge Financial Planning", "{specialism}": "workplace pensions", "{sender}": "Signalwerk", "{city}": "Austin", "{niche}": "restaurant", "{state}": "Texas"}
 
+EXAMPLE_FR = {**EXAMPLE, "{region}": "Lyon", "{town}": "Villeurbanne", "{firm}": "Atelier Rhône Conseil",
+              "{specialism}": "industrie", "{niche}": "commerces"}
 bad = 0
 for f in sorted(Path(__file__).resolve().parents[1].glob("drafts/*.md")):
     for block in f.read_text(encoding="utf-8").split("\n---\n")[1:]:
         m = re.search(r"## ([^\n]*)\nSubject: ([^\n]*)\n\n(.*)", block, re.S)
         subj, body = m.group(2), m.group(3).strip()
-        for k, v in EXAMPLE.items():
+        for k, v in (EXAMPLE_FR if "-FR" in f.name else EXAMPLE).items():
             subj, body = subj.replace(k, v), body.replace(k, v)
         r = lint_draft(subj, body, "fr" if "-FR" in f.name else "en")
         bad += not r.ok

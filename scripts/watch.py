@@ -205,6 +205,69 @@ def cmd_ny_incorporations(db: DB, args) -> None:
     print(f"{len(rows)} Neugründungen übernommen")
 
 
+BODACC_URL = "https://bodacc-datadila.opendatasoft.com/api/explore/v2.1/catalog/datasets/annonces-commerciales/records"
+
+
+def parse_bodacc_record(rec: dict) -> dict | None:
+    """Neugründung aus dem BODACC. Nur Gesellschaften (personne morale); Einzelunternehmer
+    tragen den Namen einer Person und werden übersprungen."""
+    import json
+    raw = rec.get("listepersonnes")
+    try:
+        data = json.loads(raw) if isinstance(raw, str) else (raw or {})
+    except json.JSONDecodeError:
+        return None
+    pers = data.get("personne") if isinstance(data, dict) else None
+    if isinstance(pers, list):
+        pers = pers[0] if pers else None
+    if not isinstance(pers, dict) or pers.get("typePersonne") != "pm":
+        return None
+    reg = rec.get("registre") or []
+    siren = (reg[-1] if isinstance(reg, list) and reg else str(reg)).replace(" ", "")
+    if not siren:
+        return None
+    return {
+        "name": pers.get("denomination") or rec.get("commercant"),
+        "legal_form": pers.get("formeJuridique"),
+        "city": rec.get("ville"), "postcode": rec.get("cp"),
+        "siren": siren, "published_on": (rec.get("dateparution") or "")[:10] or None,
+        "notice_id": rec.get("id"), "tribunal": rec.get("tribunal"),
+    }
+
+
+def cmd_fr_incorporations(db: DB, args) -> None:
+    """Neugründungen aus dem BODACC (amtliche Bekanntmachungen, offene Schnittstelle)."""
+    since = (TODAY - dt.timedelta(days=args.days)).isoformat()
+    dep = args.departement.replace('"', "")
+    n = offset = 0
+    while offset < args.limit:
+        r = requests.get(BODACC_URL, timeout=60, params={
+            "where": f'familleavis="creation" and numerodepartement="{dep}" and dateparution>=date\'{since}\'',
+            "order_by": "dateparution desc", "limit": "100", "offset": str(offset),
+        })
+        r.raise_for_status()
+        results = r.json().get("results", [])
+        if not results:
+            break
+        for rec in results:
+            it = parse_bodacc_record(rec)
+            if not it:
+                continue
+            comp = _upsert_company(db, {
+                "name": it["name"], "legal_form": it["legal_form"], "country": "FR", "region": dep,
+                "city": it["city"], "address": it["postcode"], "registry_source": "bodacc_siren",
+                "registry_id": it["siren"],
+            })
+            upsert_observation(db, comp["id"], "incorporation", it["siren"], title="Création (BODACC)",
+                               details={"tribunal": it["tribunal"], "legal_form": it["legal_form"]},
+                               source_name="BODACC (annonces commerciales)",
+                               source_url=f"https://www.bodacc.fr/pages/annonces-commerciales-detail/?q.id=id:{it['notice_id']}",
+                               posted_on=it["published_on"])
+            n += 1
+        offset += 100
+    print(f"{n} Gesellschaftsgründungen übernommen (Département {dep})")
+
+
 def cmd_detect(db: DB, args) -> None:
     n = 0
     for c in db.select("watch_companies", {"active": "eq.true"}):
@@ -231,7 +294,8 @@ def cmd_detect(db: DB, args) -> None:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("cmd", choices=["careers", "websites", "uk-incorporations", "ny-incorporations", "detect", "daily",
-                                    "import-employers"])
+                                    "import-employers", "fr-incorporations"])
+    ap.add_argument("--departement", default="69")
     ap.add_argument("files", nargs="*")
     ap.add_argument("--country", default="UK")
     ap.add_argument("--days", type=int, default=30)
@@ -241,7 +305,7 @@ def main(argv=None) -> int:
     db = DB()
     steps = {"careers": [cmd_careers], "websites": [cmd_websites], "uk-incorporations": [cmd_uk_incorporations],
              "ny-incorporations": [cmd_ny_incorporations], "detect": [cmd_detect],
-             "import-employers": [cmd_import_employers],
+             "import-employers": [cmd_import_employers], "fr-incorporations": [cmd_fr_incorporations],
              "daily": [cmd_careers, cmd_websites, cmd_detect]}[args.cmd]
     for step in steps:
         step(db, args)

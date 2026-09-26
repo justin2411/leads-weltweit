@@ -35,6 +35,8 @@ SKIP_EMAIL = re.compile(r"\.(png|jpg|jpeg|gif|svg|webp)$|example\.|sentry|wixpre
 LEGAL_PATTERNS = {
     "UK": [(r"\bLLP\b", "LLP"), (r"\b(Ltd\.?|Limited)\b", "Ltd"), (r"\bPLC\b", "PLC")],
     "IE": [(r"\bDAC\b", "DAC"), (r"\b(Ltd\.?|Limited)\b", "Ltd")],
+    "FR": [(r"\bSASU\b", "SASU"), (r"\bSAS\b", "SAS"), (r"\bSARL\b", "SARL"), (r"\bEURL\b", "EURL"),
+           (r"\bS\.A\.\b|\bSA\b(?= au capital)", "SA")],
     "US": [(r"\bL\.?L\.?C\.?\b", "LLC"), (r"\b(Inc\.?|Incorporated)\b", "Inc"), (r"\bCorp(oration)?\b", "Corp")],
 }
 UK_REGISTERED = re.compile(r"(company (registration )?(no\.?|number)|registered in (england|scotland|wales))[^0-9]{0,30}(\d{6,8}|SC\d{6})", re.I)
