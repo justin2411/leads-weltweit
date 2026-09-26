@@ -1,0 +1,33 @@
+# Bildschirmfotos der Landingpages vom aktuellen Branch (Handy + Desktop) nach docs/ansicht/.
+# Startet, wenn .github/ansicht.txt geändert wird. Zählt keine Aufrufe, sendet nichts ab.
+name: ansicht
+on:
+  workflow_dispatch:
+  push:
+    paths: [".github/ansicht.txt"]
+permissions:
+  contents: write
+jobs:
+  fotos:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SITE_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: npm ci && npm run build
+        working-directory: app
+      - run: (npm start > /tmp/next.log 2>&1 &) && npx -y wait-on http://localhost:3000 -t 60000
+        working-directory: app
+      - run: npm i --no-save playwright@1 && npx playwright install --with-deps chromium
+      - run: node scripts/ansicht.mjs
+      - name: Fotos speichern
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898499+github-actions[bot]@users.noreply.github.com"
+          git add docs/ansicht
+          git commit -m "Bildschirmfotos der Landingpages" || exit 0
+          git push
