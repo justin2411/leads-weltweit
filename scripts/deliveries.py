@@ -40,15 +40,18 @@ def week_start(today: dt.date | None = None) -> dt.date:
 
 
 def select_leads(leads: list[dict], sub: dict, already: set[str], details: dict[str, dict],
-                 match=None) -> list[dict]:
-    """Passende, noch nicht gelieferte Leads für ein Abo, höchstens max_per_week, max. 3 je Firma."""
+                 match=None, tags: dict[str, dict] | None = None, cfilter: dict | None = None) -> list[dict]:
+    """Passende, noch nicht gelieferte Leads für ein Abo, höchstens max_per_week, max. 3 je Firma.
+
+    tags/cfilter (BRAIN.md 5.3): Qualitätswert ab 60 und Abgleich mit customer_filters, falls vorhanden.
+    """
     if match is None:
         from lib.regions import lead_matches as match
     f = sub.get("filters") or {}
     country = f.get("country")
     areas = f.get("areas") or []
     types = set(f.get("signal_types") or [])
-    cap = int(f.get("max_per_week") or DEFAULT_MAX)
+    cap = int((cfilter or {}).get("max_per_week") or f.get("max_per_week") or DEFAULT_MAX)
     picked, per = [], {}
     for l in leads:
         if l["id"] in already or l["segment_id"] != sub["segment_id"] or l["country"] != country:
@@ -56,6 +59,13 @@ def select_leads(leads: list[dict], sub: dict, already: set[str], details: dict[
         if types and l["signal_type"] not in types:
             continue
         co = l.get("watch_companies") or {}
+        if tags is not None:
+            from match import MIN_QUALITY, matches_filter
+            tag = tags.get(l["id"])
+            if not tag or tag["quality"] < MIN_QUALITY:
+                continue
+            if cfilter and not matches_filter(l, tag, co, cfilter):
+                continue
         if areas and not any(match(country, a, co, details.get(l["id"])) for a in areas):
             continue
         if per.get(l["company_id"], 0) >= 3:
@@ -173,16 +183,29 @@ def cmd_prepare(args) -> int:
         print("Keine aktiven Abos – nichts zu liefern.")
         return 0
     leads, details = _load_leads(db, dt.date.today() - dt.timedelta(days=FRESH_DAYS))
+    ids = [l["id"] for l in leads]
+    tags = {}
+    for i in range(0, len(ids), 150):
+        for t in db.select("lead_tags", {"lead_id": f"in.({','.join(ids[i:i + 150])})"}):
+            tags[t["lead_id"]] = t
     previews = []
     for s in subs:
         if db.select("deliveries", {"subscription_id": f"eq.{s['id']}", "period_start": f"eq.{period}",
                                     "select": "id"}):
             print(f"= {s['customers']['company_name']}: Lieferung für {period} existiert schon")
             continue
+        # jeder Lead höchstens einmal pro Kunde (über alle seine Abos)
         already = set()
-        for d in db.select_all("deliveries", {"subscription_id": f"eq.{s['id']}", "select": "lead_ids"}):
+        sub_ids = [x["id"] for x in db.select("subscriptions", {"customer_id": f"eq.{s['customer_id']}", "select": "id"})]
+        for d in db.select_all("deliveries", {"subscription_id": f"in.({','.join(sub_ids)})", "select": "lead_ids"}):
             already.update(d["lead_ids"] or [])
-        picked = select_leads(leads, s, already, details)
+        cf = db.select("customer_filters", {"customer_id": f"eq.{s['customer_id']}"})
+        picked = select_leads(leads, s, already, details, tags=tags, cfilter=cf[0] if cf else None)
+        if len(picked) < 5:
+            db.insert("decisions", {"type": "delivery", "subject": f"Wenig Leads für {s['customers']['company_name']}",
+                                    "reasoning": f"Nur {len(picked)} passende Leads (Qualität ab 60) für {period} – "
+                                                 "nicht mit schwachen Leads aufgefüllt (BRAIN.md 5.3).",
+                                    "metrics": {"leads": len(picked)}, "status": "done"})
         first = not s["first_delivery_approved"]
         status = "prepared" if first else "approved"
         db.insert("deliveries", {"subscription_id": s["id"], "period_start": period.isoformat(),

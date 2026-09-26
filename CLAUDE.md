@@ -161,3 +161,11 @@ Für jedes Segment in jedem Land:
 
 - **Kundenlieferung (26.09.2026, „mach einfach“):** `scripts/deliveries.py` + `.github/workflows/kundenlieferung.yml`, montags ca. 07:00. Kunde anlegen mit `add-customer` (Preis nur vom Inhaber). Erste Lieferung jedes Kunden geht als Vorschau an den Inhaber und erst nach `approve` raus; danach automatisch. Jeder Lead höchstens einmal pro Abo, nur aus den gebuchten Regionen.
 - **Versand ohne Aufwärmphase (26.09.2026, „ja ändere es und sende … jeden Tag, auch heute 100 Mails“, Upload ausdrücklich bestätigt):** Notbremse: Bounce-Quote über 5 %, bewertet erst ab 100 gesendeten Mails (Nachtrag „lockerer“) (Spam-Beschwerde stoppt weiterhin sofort). Versand und Automatiklauf täglich inkl. Wochenende, Tagesziel 100 (`config/versand.yaml`: `aufwaermphase: false`, `tagesziel`), begrenzt durch `anbieter_tageslimit` − 10.
+
+## 10. Stand 26.09.2026 (Inhaber)
+
+- **Resend verbietet Kaltakquise.** Resend nur für Mails an Empfänger mit Einwilligung: Lieferungen an zahlende Kunden, Bestätigungen von Probe-Anfragen, Willkommensmails, Antworten an Leute, die selbst geschrieben haben. Kaltmails erst wieder über ein eigenes SMTP-Postfach auf einer anderen Zweitdomain (gibt es noch nicht, nichts einrichten). `config/versand.yaml` steht auf `aktiv: false`.
+- **Gehirn:** `BRAIN.md` ergänzt diese Datei (bei Widersprüchen gilt CLAUDE.md). Landingpages unter `/[country]/[segment]` aus der Datenbank, Rechtstexte in `app/content/legal.ts` (Platzhalter bis der Inhaber liefert; bis dahin kein Live-Schalten). Stripe nur im Testmodus, solange der Inhaber nichts anderes sagt.
+- **Supabase:** Projekt „callcenter“ (`udkkchduyrkzuktlknbc`), Schema `signalwerk`. Migrationen erst nach Zeigen und Ja des Inhabers anwenden.
+- **Branches:** `main` ist Produktion (Vercel). Änderungen per Pull Request nach `main`.
+

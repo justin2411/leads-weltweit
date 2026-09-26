@@ -1,0 +1,73 @@
+{
+  "segment_id": "S2",
+  "en": {
+    "headline": "Newly registered businesses that still need a website",
+    "subheadline": "Each week we list companies registered in your area in the last few weeks, from official registers – with the registration date and source.",
+    "cta_label": "Get 10 free sample leads",
+    "signals": [
+      {
+        "title": "New registrations",
+        "text": "New owners usually choose their website, branding and online presence in their first weeks."
+      },
+      {
+        "title": "No website found yet",
+        "text": "Where we could not find a website for a new company, we say so in the lead."
+      },
+      {
+        "title": "Official source",
+        "text": "Every lead shows where it comes from, so you can check it before you call."
+      }
+    ],
+    "faq": [
+      {
+        "q": "Where does the data come from?",
+        "a": "From official company registers, official announcements and companies' own careers pages. We do not use LinkedIn, job boards or other platforms whose terms forbid it."
+      },
+      {
+        "q": "Do you include personal data?",
+        "a": "No. Each lead contains company data only: name, address, website, main phone number where published, the event and its source."
+      },
+      {
+        "q": "How often do I receive leads?",
+        "a": "Every Monday as a spreadsheet, filtered to your areas and signals. Each lead is delivered to you only once."
+      },
+      {
+        "q": "What does the free sample include?",
+        "a": "10 current leads from your area, with the same fields as the regular delivery. No obligation."
+      }
+    ]
+  },
+  "fr": {
+    "headline": "Les entreprises nouvellement créées dans votre région",
+    "subheadline": "Chaque semaine, nous listons les sociétés immatriculées récemment près de chez vous, d'après les annonces officielles – avec la date et la source.",
+    "cta_label": "Recevoir 10 pistes gratuites",
+    "signals": [
+      {
+        "title": "Créations récentes",
+        "text": "Les nouveaux dirigeants choisissent leur site et leur identité visuelle dans les premières semaines."
+      },
+      {
+        "title": "Source officielle",
+        "text": "Chaque piste indique d'où elle vient, pour la vérifier avant d'appeler."
+      }
+    ],
+    "faq": [
+      {
+        "q": "D'où viennent les données ?",
+        "a": "Des registres officiels, des annonces légales (BODACC) et des pages carrières des entreprises. Nous n'utilisons ni LinkedIn ni les sites d'emploi."
+      },
+      {
+        "q": "Y a-t-il des données personnelles ?",
+        "a": "Non. Chaque piste contient uniquement des données d'entreprise : nom, adresse, site, standard si publié, l'événement et sa source."
+      },
+      {
+        "q": "À quelle fréquence ?",
+        "a": "Chaque lundi, sous forme de tableau, filtré sur vos zones et signaux. Chaque piste ne vous est livrée qu'une fois."
+      },
+      {
+        "q": "Que contient l'échantillon gratuit ?",
+        "a": "10 pistes actuelles de votre zone, avec les mêmes champs que la livraison régulière. Sans engagement."
+      }
+    ]
+  }
+}

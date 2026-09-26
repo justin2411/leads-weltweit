@@ -1,0 +1,40 @@
+{
+  "segment_id": "S5",
+  "en": {
+    "headline": "New companies choosing an accountant right now",
+    "subheadline": "Each week we list companies registered in your area in the last few weeks and employers hiring for finance roles – with date and source.",
+    "cta_label": "Get 10 free sample leads",
+    "signals": [
+      {
+        "title": "New registrations",
+        "text": "New directors usually choose an accountant and payroll provider in their first weeks."
+      },
+      {
+        "title": "Finance roles open",
+        "text": "An employer struggling to fill a bookkeeping role may be open to outsourcing it."
+      },
+      {
+        "title": "Official source",
+        "text": "Every lead shows where it comes from."
+      }
+    ],
+    "faq": [
+      {
+        "q": "Where does the data come from?",
+        "a": "From official company registers, official announcements and companies' own careers pages. We do not use LinkedIn, job boards or other platforms whose terms forbid it."
+      },
+      {
+        "q": "Do you include personal data?",
+        "a": "No. Each lead contains company data only: name, address, website, main phone number where published, the event and its source."
+      },
+      {
+        "q": "How often do I receive leads?",
+        "a": "Every Monday as a spreadsheet, filtered to your areas and signals. Each lead is delivered to you only once."
+      },
+      {
+        "q": "What does the free sample include?",
+        "a": "10 current leads from your area, with the same fields as the regular delivery. No obligation."
+      }
+    ]
+  }
+}
