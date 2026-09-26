@@ -24,7 +24,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lib.fetch import USER_AGENT, host_blocked  # noqa: E402
 from lib.rules import normalize_domain  # noqa: E402
 
-OVERPASS = "https://overpass-api.de/api/interpreter"
+OVERPASS_MIRRORS = ["https://overpass-api.de/api/interpreter",
+                    "https://overpass.private.coffee/api/interpreter",
+                    "https://maps.mail.ru/osm/tools/overpass/api/interpreter"]
 
 # (Land, Regionsname, Süd, West, Nord, Ost)
 AREAS = {
@@ -44,26 +46,60 @@ SEGMENTS = {
     "S9": {"filters": ['["office"="financial_advisor"]', '["office"="financial"]'],
            "pattern": re.compile(r"financ|wealth|pension|planning|advis|ifa|patrimoine|conseil|invest", re.I),
            "specialization": "financial advice"},
-    "S2": {"filters": ['["office"="it"]', '["office"="advertising_agency"]', '["office"="company"]',
-                       '["craft"="graphic_design"]', '["office"="graphic_design"]'],
+    "S2": {"filters": ['["office"="it"]', '["office"="advertising_agency"]', '["craft"="graphic_design"]',
+                       '["office"="graphic_design"]'],
            "pattern": re.compile(r"web|digital|design|studio|site|agence|creative|pixel|media", re.I),
            "specialization": "web design"},
+    "S3": {"filters": ['["office"="it"]', '["shop"="computer"]["repair"]', '["craft"="computer"]'],
+           "pattern": re.compile(r"\bit\b|tech|comput|network|support|managed|cyber|system|cloud|solutions", re.I),
+           "specialization": "IT support"},
+    "S4": {"filters": ['["office"="insurance"]'],
+           "pattern": re.compile(r"broker|insurance|risk|assur", re.I),
+           "specialization": "commercial insurance"},
+    "S5": {"filters": ['["office"="accountant"]', '["office"="tax_advisor"]'],
+           "pattern": None,
+           "specialization": "accounting"},
 }
-SEGMENT_COUNTRIES = {"S1": ["UK", "US", "FR"], "S2": ["UK", "US", "FR"], "S9": ["UK", "US", "FR"]}
+SEGMENT_COUNTRIES = {"S1": ["UK", "US", "FR"], "S2": ["UK", "US", "FR"], "S9": ["UK", "US", "FR"],
+                     "S3": ["UK", "US"], "S4": ["UK", "US"], "S5": ["UK", "US"]}
+EXCLUDE_NAME = re.compile(r"\b(hsbc|barclays|lloyds|natwest|santander|aviva|axa|allianz|state farm|allstate|"
+                          r"geico|farmers|nationwide|liberty mutual|progressive|h&r block|jackson hewitt|"
+                          r"pwc|deloitte|kpmg|ernst|grant thornton|bdo|rsm|currys|best buy|apple)\b", re.I)
+
+
+def _run(q: str) -> list[dict] | None:
+    for attempt in range(4):
+        url = OVERPASS_MIRRORS[attempt % len(OVERPASS_MIRRORS)]
+        try:
+            r = requests.post(url, data={"data": q}, timeout=200, headers={"User-Agent": USER_AGENT})
+            if r.status_code == 200:
+                return r.json().get("elements", [])
+        except (requests.RequestException, ValueError):
+            pass
+        time.sleep(20 * (attempt + 1))  # Overpass-Nutzungsregeln: bei 429/504 warten
+    return None
 
 
 def query(filters: list[str], bbox: tuple[float, float, float, float]) -> list[dict]:
+    """Je Filter eine kleine Abfrage; bei Zeitüberschreitung Gebiet vierteln. Fehler brechen nichts ab."""
     s, w, n, e = bbox
-    parts = "".join(f'nwr{f}["website"]({s},{w},{n},{e});nwr{f}["contact:website"]({s},{w},{n},{e});'
-                    for f in filters)
-    q = f"[out:json][timeout:120];({parts});out tags center;"
-    for attempt in range(3):
-        r = requests.post(OVERPASS, data={"data": q}, timeout=180, headers={"User-Agent": USER_AGENT})
-        if r.status_code == 200:
-            return r.json().get("elements", [])
-        time.sleep(30 * (attempt + 1))  # Overpass-Nutzungsregeln: bei 429/504 warten
-    r.raise_for_status()
-    return []
+    out = []
+    for f in filters:
+        q = (f'[out:json][timeout:150];(nwr{f}["website"]({s},{w},{n},{e});'
+             f'nwr{f}["contact:website"]({s},{w},{n},{e}););out tags center;')
+        res = _run(q)
+        if res is None and (n - s) > 0.12:
+            mid_lat, mid_lon = (s + n) / 2, (w + e) / 2
+            res = []
+            for bb in ((s, w, mid_lat, mid_lon), (s, mid_lon, mid_lat, e), (mid_lat, w, n, mid_lon),
+                       (mid_lat, mid_lon, n, e)):
+                res += query([f], bb)
+        elif res is None:
+            print(f"  Hinweis: Overpass nicht erreichbar für {f} {bbox}, übersprungen")
+            res = []
+        out += res
+        time.sleep(3)
+    return out
 
 
 def candidates(segment: str, country: str) -> list[dict]:
@@ -80,6 +116,8 @@ def candidates(segment: str, country: str) -> list[dict]:
                                                                          r"sites\.google|business\.site", site, re.I):
                 continue
             label = t.get("name", "")
+            if EXCLUDE_NAME.search(label):
+                continue
             if cfg["pattern"] and not cfg["pattern"].search(f"{label} {site} {t.get('description', '')}"):
                 continue
             seen.add(dom)

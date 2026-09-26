@@ -10,6 +10,7 @@ Jeder Entwurf wird gegen die Schreibregeln geprüft; Fehler landen in messages.c
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import os
 import re
 import sys
@@ -20,7 +21,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lib.rules import lint_draft  # noqa: E402
 
 GENERIC_SPEC = {"recruitment", "general recruitment", "financial advice", "independent financial advice",
-                "web design", "small business websites", "unverified", ""}
+                "web design", "small business websites", "unverified", "", "it support", "commercial insurance",
+                "accounting"}
 
 
 def _place(region: str | None) -> tuple[str, str]:
@@ -95,6 +97,30 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
                 "a hiring push or a new site. That is when pensions, protection and benefits come up.")
         detail = ex or "Each lead shows the company, the event, the date and the official source."
         ask = f"Would a free sample of 10 current leads from {area} be useful?"
+    elif seg == "S3" and not fr:
+        subject = f"Growing businesses around {area}"
+        first = (f"I noticed {firm} provides {spec} to businesses around {area}, so this may be relevant."
+                 if has_spec else f"I noticed {firm} looks after IT for businesses around {area}, so this may be relevant.")
+        core = ("Signalwerk flags local companies at the moments when IT needs change: a new office, a hiring push "
+                "or an open IT support role that has not been filled. Those are good reasons for an MSP to call.")
+        detail = ex or "Each lead shows the company, what happened, when we saw it and the source."
+        ask = f"Would a free sample of 10 current leads from {area} be useful?"
+    elif seg == "S4" and not fr:
+        subject = f"New and expanding businesses in {area}"
+        first = (f"I noticed {firm} arranges {spec} for businesses around {area}, so this may be relevant."
+                 if has_spec else f"I noticed {firm} arranges business insurance around {area}, so this may be relevant.")
+        core = ("Signalwerk tracks official company registrations and local expansion signals. A newly registered "
+                "company usually needs liability, property and employer cover in its first weeks.")
+        detail = ex or "Each lead shows the company, the registration date, the location and the official source."
+        ask = f"Would a free sample of 10 recent leads from {area} be useful?"
+    elif seg == "S5" and not fr:
+        subject = f"Newly registered companies in {area}"
+        first = (f"I noticed {firm} offers {spec} to businesses around {area}, so this may be relevant."
+                 if has_spec else f"I noticed {firm} works with small businesses around {area}, so this may be relevant.")
+        core = ("Signalwerk tracks official company registrations and employers hiring for finance roles. New "
+                "directors are usually choosing an accountant and payroll provider in their first weeks.")
+        detail = ex or "Each lead shows the company, the registration date, the location and the official source."
+        ask = f"Would a free sample of 10 recent leads from {area} be useful?"
     elif seg == "S1":
         subject = f"Signaux de recrutement à {area}"
         first = (f"J'ai vu que {firm} recrute des profils {spec} dans la région de {area}." if has_spec
@@ -151,16 +177,33 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--variant", default="v1")
+    ap.add_argument("--approve", help="Freigabe des Inhabers (Wortlaut/Datum): Entwürfe ohne Regelverstoß freigeben")
     args = ap.parse_args(argv)
     from lib.db import DB
     db = DB()
     exps = {(e["segment_id"], e["country"]): e for e in db.select("experiments", {"variant": f"eq.{args.variant}"})}
     prospects = db.select("prospects", {"check_status": "eq.ok"})
     examples = load_examples(db)
+    # CLAUDE.md 5.1: ohne mindestens 10 echte Probe-Leads kein Entwurf und kein Versand
+    samples = {}
+    for l in db.select("leads", {"status": "eq.sample", "select": "segment_id,country"}):
+        k = (l["segment_id"], l["country"])
+        samples[k] = samples.get(k, 0) + 1
+    ready = {k for k, v in samples.items() if v >= 10}
+    print("Probe vorhanden für:", ", ".join(f"{a}/{b}" for a, b in sorted(ready)) or "keine")
     n = bad = 0
+    counts: dict[str, int] = {}
+    total_cap = int(os.environ.get("MAX_TOTAL_MAILS", "1000"))  # Inhaber 26.09.2026: 1000 Mails insgesamt
+    total = len(db.select("messages", {"select": "id"}))
     for p in prospects:
         e = exps.get((p["segment_id"], p["country"]))
-        if not e:
+        if not e or (p["segment_id"], p["country"]) not in ready:
+            continue
+        if total + n >= total_cap:
+            print(f"Gesamtgrenze {total_cap} erreicht")
+            break
+        planned = e.get("planned_count") or 50
+        if counts.setdefault(e["id"], len(db.select("messages", {"experiment_id": f"eq.{e['id']}", "select": "id"}))) >= planned:
             continue
         if db.select("messages", {"prospect_id": f"eq.{p['id']}", "experiment_id": f"eq.{e['id']}", "select": "id"}):
             continue
@@ -172,9 +215,13 @@ def main(argv=None) -> int:
         bad += 0 if lint.ok else 1
         print(f"{p['segment_id']}/{p['country']} {p['email']:<40} {lint.summary()}")
         if not args.dry_run:
+            approve = bool(args.approve) and lint.ok
             db.insert("messages", {"prospect_id": p["id"], "experiment_id": e["id"], "to_email": p["email"],
-                                   "subject": subject, "body": body, "language": lang, "status": "draft",
-                                   "check_errors": lint.errors})
+                                   "subject": subject, "body": body, "language": lang,
+                                   "status": "approved" if approve else "draft", "check_errors": lint.errors,
+                                   **({"approved_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+                                       "approved_by": f"Inhaber: {args.approve}"} if approve else {})})
+            counts[e["id"]] = counts.get(e["id"], 0) + 1
     print(f"\n{n} Entwürfe, davon {bad} mit Regelverstoß")
     return 0
 

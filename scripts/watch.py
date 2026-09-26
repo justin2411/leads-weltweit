@@ -268,6 +268,64 @@ def cmd_fr_incorporations(db: DB, args) -> None:
     print(f"{n} Gesellschaftsgründungen übernommen (Département {dep})")
 
 
+UK_POSTCODE_AREAS = {"M", "SK", "BL", "OL", "WN", "WA", "LS", "BD", "HX", "HD", "WF", "B", "L", "BS"}
+
+
+def cmd_uk_bulk(db: DB, args) -> None:
+    """Neugründungen aus dem kostenlosen Monats-Abzug von Companies House (ohne API-Schlüssel).
+
+    Nur Private Limited Companies in ausgewählten Regionen; nur Firmendaten (Name, Nummer, Ort, SIC)."""
+    import csv
+    import io
+    import re as _re
+    import zipfile
+    idx = requests.get("https://download.companieshouse.gov.uk/en_output.html", timeout=60).text
+    m = _re.search(r'href="(BasicCompanyDataAsOneFile-[\d-]+\.zip)"', idx)
+    if not m:
+        raise SystemExit("Companies-House-Abzug nicht gefunden")
+    url = "https://download.companieshouse.gov.uk/" + m.group(1)
+    path = "/tmp/ch.zip"
+    with requests.get(url, stream=True, timeout=600) as r:
+        r.raise_for_status()
+        with open(path, "wb") as fh:
+            for chunk in r.iter_content(1 << 20):
+                fh.write(chunk)
+    since = TODAY - dt.timedelta(days=args.days)
+    n = 0
+    with zipfile.ZipFile(path) as z:
+        name = z.namelist()[0]
+        with z.open(name) as raw:
+            reader = csv.DictReader(io.TextIOWrapper(raw, encoding="utf-8", errors="replace"))
+            for row in reader:
+                row = {k.strip(): (v or "").strip() for k, v in row.items() if k}
+                try:
+                    inc = dt.datetime.strptime(row.get("IncorporationDate", ""), "%d/%m/%Y").date()
+                except ValueError:
+                    continue
+                if inc < since or row.get("CompanyCategory") != "Private Limited Company":
+                    continue
+                pc = row.get("RegAddress.PostCode", "").upper()
+                area = _re.match(r"[A-Z]+", pc)
+                if not area or area.group(0) not in UK_POSTCODE_AREAS:
+                    continue
+                num = row.get("CompanyNumber")
+                comp = _upsert_company(db, {
+                    "name": row.get("CompanyName"), "legal_form": "Ltd", "country": "UK",
+                    "city": row.get("RegAddress.PostTown") or None, "address": pc or None,
+                    "registry_source": "companies_house", "registry_id": num,
+                    "industry": row.get("SICCode.SicText_1") or None,
+                })
+                upsert_observation(db, comp["id"], "incorporation", num, title="Eintragung Companies House",
+                                   details={"sic": row.get("SICCode.SicText_1"), "postcode_area": area.group(0)},
+                                   source_name="Companies House",
+                                   source_url=f"https://find-and-update.company-information.service.gov.uk/company/{num}",
+                                   posted_on=inc.isoformat())
+                n += 1
+                if args.limit and n >= args.limit:
+                    break
+    print(f"{n} UK-Neugründungen übernommen (seit {since})")
+
+
 def cmd_detect(db: DB, args) -> None:
     n = 0
     for c in db.select("watch_companies", {"active": "eq.true"}):
@@ -294,7 +352,7 @@ def cmd_detect(db: DB, args) -> None:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("cmd", choices=["careers", "websites", "uk-incorporations", "ny-incorporations", "detect", "daily",
-                                    "import-employers", "fr-incorporations"])
+                                    "import-employers", "fr-incorporations", "uk-bulk"])
     ap.add_argument("--departement", default="69")
     ap.add_argument("files", nargs="*")
     ap.add_argument("--country", default="UK")
@@ -306,6 +364,7 @@ def main(argv=None) -> int:
     steps = {"careers": [cmd_careers], "websites": [cmd_websites], "uk-incorporations": [cmd_uk_incorporations],
              "ny-incorporations": [cmd_ny_incorporations], "detect": [cmd_detect],
              "import-employers": [cmd_import_employers], "fr-incorporations": [cmd_fr_incorporations],
+             "uk-bulk": [cmd_uk_bulk],
              "daily": [cmd_careers, cmd_websites, cmd_detect]}[args.cmd]
     for step in steps:
         step(db, args)

@@ -1,0 +1,6 @@
+# Täglicher automatischer Versand (werktags 14:23 UTC) über .github/workflows/send.yml.
+# Nur der Inhaber schaltet das ein. Gesendet werden nur freigegebene Entwürfe, mit Aufwärmphase,
+# Notbremse (Bounces > 3 % oder 1 Spam-Beschwerde) und Tagesgrenzen aus countries.yaml.
+aktiv: false
+freigabe: ""   # Wortlaut und Datum der Freigabe des Inhabers
+gesamtgrenze: 1000

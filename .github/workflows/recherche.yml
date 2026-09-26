@@ -6,13 +6,18 @@ on:
   workflow_dispatch:
     inputs:
       schritt:
-        description: "osm, entwuerfe, register-ny, register-fr, kaeufer, karriereseiten, leads (kombinierbar, z. B. kaeufer+karriereseiten) oder alles"
+        description: "osm, register-uk, proben, entwuerfe, register-ny, register-fr, kaeufer, karriereseiten, leads (kombinierbar, z. B. kaeufer+karriereseiten) oder alles"
         required: true
         default: alles
+      freigabe:
+        description: "Nur für 'entwuerfe': Freigabe des Inhabers (leer = nur Entwürfe, nichts freigeben)"
+        default: ""
       kandidaten:
         description: "CSV-Dateien für 'kaeufer' (Leerzeichen-getrennt)"
         default: "candidates/S2-US-NY.csv candidates/S1-UK-GM.csv candidates/S9-UK-GM.csv"
 concurrency: { group: recherche, cancel-in-progress: false }
+permissions:
+  contents: write
 jobs:
   run:
     runs-on: ubuntu-latest
@@ -31,6 +36,9 @@ jobs:
       - name: Neugründungen New York
         if: ${{ contains(inputs.schritt, 'register-ny') || inputs.schritt == 'alles' }}
         run: python scripts/watch.py ny-incorporations --days 45 --limit 300
+      - name: Neugründungen UK (Companies House Monatsabzug)
+        if: ${{ contains(inputs.schritt, 'register-uk') || inputs.schritt == 'alles' }}
+        run: python scripts/watch.py uk-bulk --days 60 --limit 1500
       - name: Neugründungen Frankreich (BODACC)
         if: ${{ contains(inputs.schritt, 'register-fr') || inputs.schritt == 'alles' }}
         run: python scripts/watch.py fr-incorporations --departement 69 --days 30 --limit 400
@@ -38,7 +46,7 @@ jobs:
         if: ${{ contains(inputs.schritt, 'osm') }}
         run: |
           python scripts/osm.py --out-dir candidates/osm
-          python scripts/prospects.py --max 60 candidates/osm/*.csv
+          python scripts/prospects.py --max 100 candidates/osm/*.csv
           python scripts/outreach.py check --db
       - uses: actions/upload-artifact@v4
         if: ${{ contains(inputs.schritt, 'osm') }}
@@ -53,11 +61,28 @@ jobs:
         run: |
           ls candidates/*-employers.csv >/dev/null 2>&1 && python scripts/watch.py import-employers candidates/*-employers.csv --country UK || true
           python scripts/watch.py careers
-      - name: Entwürfe schreiben (nur Status draft)
+      - name: Signale erkennen (vor Proben)
+        if: ${{ contains(inputs.schritt, 'proben') || contains(inputs.schritt, 'entwuerfe') }}
+        run: python scripts/watch.py detect
+      - name: Probe-Leads auswählen und ins Repo schreiben
+        if: ${{ contains(inputs.schritt, 'proben') || contains(inputs.schritt, 'entwuerfe') || inputs.schritt == 'alles' }}
+        run: |
+          python scripts/samples.py
+          git config user.name "signalwerk-bot"
+          git config user.email "signalwerk-bot@users.noreply.github.com"
+          git add samples/
+          git diff --cached --quiet || (git commit -m "Probe-Leads aktualisiert" && git push)
+      - name: Entwürfe schreiben
         if: ${{ contains(inputs.schritt, 'entwuerfe') || inputs.schritt == 'alles' }}
         env:
           SENDER_NAME: ${{ secrets.SENDER_NAME }}
-        run: python scripts/drafts.py
+          SENDER_COMPANY: ${{ secrets.SENDER_COMPANY }}
+          SENDER_TITLE: ${{ secrets.SENDER_TITLE }}
+          SENDER_WEBSITE: ${{ secrets.SENDER_WEBSITE }}
+          SENDER_PHONE: ${{ secrets.SENDER_PHONE }}
+          FREIGABE: ${{ inputs.freigabe }}
+        run: |
+          if [ -n "$FREIGABE" ]; then python scripts/drafts.py --approve "$FREIGABE"; else python scripts/drafts.py; fi
       - name: Signale erkennen
-        if: ${{ contains(inputs.schritt, 'leads') || inputs.schritt == 'alles' || contains(inputs.schritt, 'register-ny') || contains(inputs.schritt, 'register-fr') || contains(inputs.schritt, 'karriereseiten') }}
+        if: ${{ contains(inputs.schritt, 'leads') || inputs.schritt == 'alles' || contains(inputs.schritt, 'register-ny') || contains(inputs.schritt, 'register-fr') || contains(inputs.schritt, 'register-uk') || contains(inputs.schritt, 'karriereseiten') }}
         run: python scripts/watch.py detect

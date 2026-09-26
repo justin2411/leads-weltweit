@@ -154,7 +154,7 @@ SEGMENT_FOR = {
 
 
 # Zusätzliche Käufergruppen für dasselbe Signal (S9 Finanzberater: Wachstum und Gründung von Arbeitgebern)
-ALSO_FOR = {"jobs_3plus": ["S9"], "new_incorporation": ["S9"]}
+ALSO_FOR = {"jobs_3plus": ["S9"], "new_incorporation": ["S9", "S4", "S5"]}
 
 
 def segment_for(lead: dict) -> str | None:
