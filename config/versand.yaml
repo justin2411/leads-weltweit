@@ -1,7 +1,7 @@
 # Täglicher automatischer Versand (werktags 14:23 UTC) über .github/workflows/send.yml.
 # Gesendet werden nur freigegebene Entwürfe, mit Aufwärmphase (Ziel 100/Tag: 90 Kaltmails + 10 Reserve für Antworten), Notbremse
 # (Bounces > 3 % oder 1 Spam-Beschwerde) und Tagesgrenzen aus countries.yaml.
-aktiv: false
+aktiv: true
 freigabe: "Justin Koch, Chat 26.09.2026: 'du kannst dann einfach starten wenn du alles hast' / 'dann mach 100 pro tag'"
 gesamtgrenze: 1000
 # Tagesgrenze des Versanddienstes: Resend Gratis = 100. Nach Upgrade auf Resend Pro auf 260 setzen.
