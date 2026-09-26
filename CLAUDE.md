@@ -169,3 +169,4 @@ Für jedes Segment in jedem Land:
 - **Supabase:** Projekt „callcenter“ (`udkkchduyrkzuktlknbc`), Schema `signalwerk`. Migrationen erst nach Zeigen und Ja des Inhabers anwenden.
 - **Branches:** `main` ist Produktion (Vercel). Änderungen per Pull Request nach `main`.
 
+- **Domain-Wechsel (sobald die Nameserver von nextgen-profit.de umgestellt sind):** Hauptadresse `https://www.nextgen-profit.de`, `nextgen-profit.de` leitet auf www um. Dann: `SITE_URL` in Vercel auf `https://www.nextgen-profit.de` setzen und neu deployen; Resend-Webhook auf `https://www.nextgen-profit.de/api/webhooks/resend` umstellen (Endpunkt bearbeiten → Secret bleibt; neuer Endpunkt → neues `whsec_…` als `RESEND_WEBHOOK_SECRET` in Vercel eintragen); Stripe-Webhook ebenso auf `/api/webhooks/stripe` (bei neuem Endpunkt neues `STRIPE_WEBHOOK_SECRET`). Resend-DNS-Einträge `send`, `rsend`, `resend._domainkey` nie ändern.
