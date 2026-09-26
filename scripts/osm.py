@@ -32,11 +32,15 @@ OVERPASS_MIRRORS = ["https://overpass-api.de/api/interpreter",
 AREAS = {
     "UK": [("Greater Manchester", 53.34, -2.73, 53.69, -1.91), ("West Yorkshire", 53.52, -2.17, 53.97, -1.20),
            ("West Midlands", 52.35, -2.20, 52.66, -1.42), ("Merseyside", 53.30, -3.10, 53.57, -2.75),
-           ("London", 51.28, -0.51, 51.69, 0.33), ("Bristol", 51.38, -2.73, 51.55, -2.47)],
+           ("London", 51.28, -0.51, 51.69, 0.33), ("Bristol", 51.38, -2.73, 51.55, -2.47),
+           ("Glasgow", 55.78, -4.45, 55.95, -4.05), ("Edinburgh", 55.88, -3.35, 55.99, -3.08),
+           ("Cardiff", 51.43, -3.28, 51.55, -3.10), ("Newcastle", 54.93, -1.75, 55.05, -1.50),
+           ("Sheffield", 53.32, -1.58, 53.45, -1.35), ("Nottingham", 52.90, -1.25, 53.02, -1.05),
+           ("Leicester", 52.58, -1.20, 52.69, -1.05), ("Southampton", 50.87, -1.48, 50.96, -1.33)],
     "US": [("New York City", 40.49, -74.26, 40.92, -73.70), ("Long Island", 40.55, -73.75, 41.10, -71.85),
            ("Westchester", 40.88, -73.98, 41.37, -73.48)],
     "FR": [("Lyon", 45.60, 4.70, 45.92, 5.10), ("Paris", 48.80, 2.22, 48.92, 2.47),
-           ("Lille", 50.55, 2.90, 50.72, 3.20)],
+           ("Lille", 50.55, 2.90, 50.72, 3.20), ("Hauts-de-Seine", 48.78, 2.15, 48.95, 2.32)],
 }
 
 # Segment -> OSM-Filter und optional ein Namens-/Website-Muster zur Eingrenzung

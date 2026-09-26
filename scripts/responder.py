@@ -210,6 +210,45 @@ def notify_owner(subject: str, text: str) -> None:
     r.raise_for_status()
 
 
+def regional_sample(db, seg: str, country: str, region: str | None) -> tuple[list[tuple[str, bytes]], bool]:
+    """10 Leads aus der Region des Käufers als CSV. (Dateien, regional?) – sonst Landes-Probe."""
+    import csv
+    import io
+    from lib.regions import area_of, lead_matches
+    area = area_of(region)
+    rows = db.select("leads", {"segment_id": f"eq.{seg}", "country": f"eq.{country}", "status": "in.(new,sample)",
+                               "select": "id,event_summary,event_date,source_name,source_url,source_date,urgency,"
+                                         "urgency_reason,opener,signal_type,company_id,observation_ids,"
+                                         "watch_companies(name,legal_form,city,region,address)",
+                               "order": "event_date.desc", "limit": "3000"})
+    picked, per = [], {}
+    for l in rows:
+        co = l["watch_companies"]
+        details = None
+        if country == "US" and l.get("observation_ids"):
+            obs = db.select("observations", {"id": f"eq.{l['observation_ids'][0]}", "select": "details"})
+            details = obs[0]["details"] if obs else None
+        if not lead_matches(country, area, co, details) or per.get(l["company_id"], 0) >= 3:
+            continue
+        per[l["company_id"]] = per.get(l["company_id"], 0) + 1
+        picked.append(l)
+        if len(picked) >= 10:
+            break
+    if len(picked) < 10:
+        return sample_files(seg, country), False
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["company", "legal_form", "location", "event", "event_date", "source", "source_url", "checked_on",
+                "urgency", "urgency_reason", "opener"])
+    for l in picked:
+        co = l["watch_companies"]
+        w.writerow([co["name"], co.get("legal_form") or "", ", ".join(x for x in (co.get("city"), area) if x),
+                    l["event_summary"], l.get("event_date") or "", l["source_name"], l.get("source_url") or "",
+                    l["source_date"], l["urgency"], l["urgency_reason"], l["opener"]])
+    name = re.sub(r"[^A-Za-z0-9]+", "-", area or country).strip("-")
+    return [(f"sample-10-leads-{name}.csv", buf.getvalue().encode("utf-8"))], True
+
+
 def sample_files(seg: str, country: str) -> list[tuple[str, bytes]]:
     d = ROOT / "samples" / seg / country
     files = []
@@ -220,16 +259,21 @@ def sample_files(seg: str, country: str) -> list[tuple[str, bytes]]:
     return files
 
 
-def sample_text(lang: str, region: str | None, has_files: bool) -> str | None:
-    """Antwort mit der Probe: klar gegliedert, keine Preise, keine Zusagen."""
+def sample_text(lang: str, region: str | None, has_files: bool, regional: bool = True) -> str | None:
+    """Antwort mit der Probe: klar gegliedert, keine Preise, keine Zusagen.
+    regional=False: Probe stammt nicht aus der Region des Käufers -> das offen sagen."""
     if not has_files:
         return None
+    if not regional:
+        region = None
     if lang == "fr":
         return (
             "Bonjour,\n\n"
             "Merci pour votre retour. Comme convenu, vous trouverez ci-joint votre échantillon gratuit de 10 pistes"
             + (f" pour {region}" if region else "") + ".\n\n"
-            "Contenu du fichier :\n"
+            + ("" if regional else "Pour ce premier échantillon, nous avons utilisé des pistes récentes de notre base "
+               "élargie ; un abonnement est filtré sur vos villes.\n\n")
+            + "Contenu du fichier :\n"
             "- l'entreprise et sa localisation\n"
             "- l'événement (création, postes ouverts, nouveau site) avec sa date\n"
             "- la source officielle, pour vérifier chaque piste\n"
@@ -242,7 +286,9 @@ def sample_text(lang: str, region: str | None, has_files: bool) -> str | None:
         "Hello,\n\n"
         "Thank you for getting back to me. As promised, please find attached your free sample of 10 leads"
         + (f" for {region}" if region else "") + ".\n\n"
-        "What the file contains:\n"
+        + ("" if regional else "For this first sample we used current leads from our wider dataset; a subscription is "
+           "filtered to the towns you work in.\n\n")
+        + "What the file contains:\n"
         "- the company and its location\n"
         "- the event (new registration, long-open roles, new site) and its date\n"
         "- the official source, so every lead can be checked\n"
@@ -304,8 +350,9 @@ def main(argv=None) -> int:
             for addr in {sender}:
                 db.rpc("suppress_email", {"p_email": addr, "p_reason": "reply_optout", "p_source": "responder"})
         elif action in ("sample", "sample_owner"):
-            files = sample_files(p["segment_id"], p["country"])
-            body = sample_text(lang, p.get("region"), bool(files))
+            files, regional = regional_sample(db, p["segment_id"], p["country"], p.get("region"))
+            from lib.regions import area_of
+            body = sample_text(lang, area_of(p.get("region")), bool(files), regional)
             if body:
                 send_reply(sender, subject, body, mid, lang, files)
                 if event_type != "sample_requested":

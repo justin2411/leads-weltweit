@@ -238,7 +238,12 @@ def parse_bodacc_record(rec: dict) -> dict | None:
 def cmd_fr_incorporations(db: DB, args) -> None:
     """Neugründungen aus dem BODACC (amtliche Bekanntmachungen, offene Schnittstelle)."""
     since = (TODAY - dt.timedelta(days=args.days)).isoformat()
-    dep = args.departement.replace('"', "")
+    for dep in [d.strip().replace('"', "") for d in args.departement.split(",") if d.strip()]:
+        _bodacc_dep(db, args, dep)
+
+
+def _bodacc_dep(db: DB, args, dep: str) -> None:
+    since = (TODAY - dt.timedelta(days=args.days)).isoformat()
     n = offset = 0
     while offset < args.limit:
         r = requests.get(BODACC_URL, timeout=60, params={
@@ -268,7 +273,10 @@ def cmd_fr_incorporations(db: DB, args) -> None:
     print(f"{n} Gesellschaftsgründungen übernommen (Département {dep})")
 
 
-UK_POSTCODE_AREAS = {"M", "SK", "BL", "OL", "WN", "WA", "LS", "BD", "HX", "HD", "WF", "B", "L", "BS"}
+# Muss zu den Käufer-Regionen in osm.py passen (Käufer brauchen Leads aus ihrem Markt)
+UK_POSTCODE_AREAS = {"M", "SK", "BL", "OL", "WN", "WA", "LS", "BD", "HX", "HD", "WF", "B", "WS", "WV", "DY", "L",
+                     "CH", "BS", "E", "EC", "N", "NW", "SE", "SW", "W", "WC", "G", "EH", "CF", "NE", "S", "NG",
+                     "LE", "SO"}
 
 
 def cmd_uk_bulk(db: DB, args) -> None:

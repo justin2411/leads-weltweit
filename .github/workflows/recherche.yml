@@ -38,10 +38,10 @@ jobs:
         run: python scripts/watch.py ny-incorporations --days 45 --limit 300
       - name: Neugründungen UK (Companies House Monatsabzug)
         if: ${{ contains(inputs.schritt, 'register-uk') || inputs.schritt == 'alles' }}
-        run: python scripts/watch.py uk-bulk --days 60 --limit 1500
+        run: python scripts/watch.py uk-bulk --days 60 --limit 6000
       - name: Neugründungen Frankreich (BODACC)
         if: ${{ contains(inputs.schritt, 'register-fr') || inputs.schritt == 'alles' }}
-        run: python scripts/watch.py fr-incorporations --departement 69 --days 30 --limit 400
+        run: python scripts/watch.py fr-incorporations --departement 69,75,92,59 --days 30 --limit 400
       - name: Kandidaten aus OpenStreetMap
         if: ${{ contains(inputs.schritt, 'osm') }}
         run: |

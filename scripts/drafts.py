@@ -152,6 +152,24 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
     return subject, body, lang
 
 
+def regional_counts(db) -> dict:
+    """(Segment, Land, Käufer-Region) -> Anzahl Leads aus dieser Region."""
+    from lib.regions import FR, UK, US, lead_matches
+    areas = {"UK": UK, "US": US, "FR": FR}
+    county = {}
+    for o in db.select("observations", {"kind": "eq.incorporation", "select": "company_id,details",
+                                        "limit": "100000"}):
+        county[o["company_id"]] = o.get("details") or {}
+    out: dict = {}
+    for l in db.select("leads", {"status": "in.(new,sample)", "limit": "100000",
+                                  "select": "segment_id,country,company_id,watch_companies(address,region)"}):
+        for area in areas.get(l["country"], {}):
+            if lead_matches(l["country"], area, l["watch_companies"], county.get(l["company_id"])):
+                k = (l["segment_id"], l["country"], area)
+                out[k] = out.get(k, 0) + 1
+    return out
+
+
 def load_examples(db) -> dict:
     """Je Segment und Land ein echter Probe-Lead (status sample) für den Beleg-Satz."""
     out = {}
@@ -190,6 +208,7 @@ def main(argv=None) -> int:
         k = (l["segment_id"], l["country"])
         samples[k] = samples.get(k, 0) + 1
     ready = {k for k, v in samples.items() if v >= 10}
+    regional = regional_counts(db)
     print("Probe vorhanden für:", ", ".join(f"{a}/{b}" for a, b in sorted(ready)) or "keine")
     n = bad = 0
     counts: dict[str, int] = {}
@@ -199,6 +218,9 @@ def main(argv=None) -> int:
         e = exps.get((p["segment_id"], p["country"]))
         if not e or (p["segment_id"], p["country"]) not in ready:
             continue
+        from lib.regions import area_of
+        if regional.get((p["segment_id"], p["country"], area_of(p.get("region"))), 0) < 10:
+            continue  # ehrlich bleiben: nur anschreiben, wo wir 10 Leads aus der Region des Käufers haben
         if total + n >= total_cap:
             print(f"Gesamtgrenze {total_cap} erreicht")
             break
