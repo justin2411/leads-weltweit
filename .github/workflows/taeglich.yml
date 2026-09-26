@@ -40,7 +40,7 @@ jobs:
           git config user.name "signalwerk-bot"
           git config user.email "signalwerk-bot@users.noreply.github.com"
           git add samples/
-          git diff --cached --quiet || (git commit -m "Probe-Leads aktualisiert" && git pull --rebase -q && git push)
+          git diff --cached --quiet || (git commit -m "Probe-Leads aktualisiert" && git pull --rebase -q && git push) || echo "Push übersprungen"
       - name: Nachfassmails
         run: python scripts/followups.py --apply
       - name: Neue Entwürfe (Freigabe laut config/versand.yaml)
