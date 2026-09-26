@@ -1,7 +1,7 @@
 # Täglicher automatischer Versand (jeden Tag 14:23 UTC) über .github/workflows/send.yml.
 # Gesendet werden nur freigegebene Entwürfe, mit Aufwärmphase (Ziel 100/Tag: 90 Kaltmails + 10 Reserve für Antworten), Notbremse
 # (Bounces > 3 % oder 1 Spam-Beschwerde) und Tagesgrenzen aus countries.yaml.
-aktiv: true
+aktiv: false   # 26.09.2026: Resend verbietet Kaltakquise – Kaltmails erst wieder über eigenes SMTP-Postfach auf Zweitdomain
 # Inhaber 26.09.2026: „sende jeden Tag, auch heute 100“ -> keine Aufwärmphase, Tagesziel 100
 # (tatsächlich höchstens anbieter_tageslimit - 10 = 90 Kaltmails, Rest für Antworten/Berichte)
 aufwaermphase: false
