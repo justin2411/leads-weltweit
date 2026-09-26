@@ -14,7 +14,7 @@ on:
         type: boolean
         default: true
   schedule:
-    - cron: "23 14 * * 1-5"   # werktags 14:23 UTC: Vormittag US-Ostküste, Nachmittag UK/FR
+    - cron: "23 14 * * *"   # täglich 14:23 UTC: Vormittag US-Ostküste, Nachmittag UK/FR
 concurrency: { group: mails-senden, cancel-in-progress: false }
 jobs:
   send:

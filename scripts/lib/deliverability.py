@@ -22,10 +22,25 @@ def provider_cap() -> int:
 
 BOUNCE_STOP = 0.03       # über 3 % Bounces -> Versand stoppen
 COMPLAINT_STOP = 1       # eine einzige Spam-Beschwerde -> Versand stoppen
-MIN_SAMPLE = 20          # Bounce-Quote erst ab 20 gesendeten Mails bewerten
+MIN_SAMPLE = 50          # Bounce-Quote erst ab 50 gesendeten Mails bewerten (Entscheidung Inhaber 26.09.2026)
+
+
+def _cfg(key: str) -> str | None:
+    import re
+    from pathlib import Path
+    cfg = Path(__file__).resolve().parents[2] / "config" / "versand.yaml"
+    try:
+        m = re.search(rf"^{key}:\s*(\S+)", cfg.read_text(), re.M)
+        return m.group(1) if m else None
+    except OSError:
+        return None
 
 
 def warmup_cap(first_sent: dt.date | None, today: dt.date, schedule=None) -> int:
+    if _cfg("aufwaermphase") == "false" and schedule is None:
+        # Inhaber hat die Aufwärmphase abgeschaltet (26.09.2026): gleich das Tagesziel
+        target = int(_cfg("tagesziel") or 100)
+        return max(0, min(target, HARD_MAX_PER_DAY, provider_cap() - 10))
     schedule = sorted(schedule or DEFAULT_WARMUP)
     day = 0 if first_sent is None else (today - first_sent).days
     cap = schedule[0][1]
