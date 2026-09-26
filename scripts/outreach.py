@@ -103,6 +103,22 @@ def unsubscribe_target(token: str) -> str | None:
     return None
 
 
+LANDING_LINE = {"en": "Examples from your area: {url}", "fr": "Exemples de votre région : {url}"}
+
+
+def landing_link(db, cache: dict, segment_id: str, country: str, token: str) -> str | None:
+    """Persönlicher Link zur Landingpage (/<land>/<segment>?r=<token>), nur wenn die Seite live ist."""
+    base = (os.environ.get("APP_BASE_URL") or os.environ.get("SITE_URL") or "").rstrip("/")
+    if not base or not token:
+        return None
+    key = (segment_id, country)
+    if key not in cache:
+        rows = db.select("landing_pages", {"segment_id": f"eq.{segment_id}", "country": f"eq.{country}",
+                                           "status": "eq.live", "select": "slug"})
+        cache[key] = rows[0]["slug"] if rows else None
+    return f"{base}/{cache[key]}?r={token}" if cache[key] else None
+
+
 def unsubscribe_headers(unsub_url: str | None) -> dict:
     if unsub_url:
         return {"List-Unsubscribe": f"<{unsub_url}>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}
@@ -209,6 +225,7 @@ def cmd_send(args) -> int:
 
     today = dt.date.today().isoformat()
     sent_today: dict[str, int] = {}
+    pages: dict = {}  # (segment, land) -> slug der Live-Seite
     for row in db.select("messages", {"status": "eq.sent", "sent_at": f"gte.{today}",
                                       "select": "id,prospects(country)"}):
         c = row["prospects"]["country"]
@@ -262,7 +279,12 @@ def cmd_send(args) -> int:
                                sender_name=brand(),
                                postal_address=os.environ.get("SENDER_POSTAL_ADDRESS", "<Postanschrift>"),
                                company=p["company_name"], unsubscribe_url=unsub)
-        text = m["body"].rstrip() + "\n\n" + footer
+        body = m["body"].rstrip()
+        link = landing_link(db, pages, e["segment_id"], country, m["unsubscribe_token"]) if kind == "initial" else None
+        if link:
+            lang = m.get("language") if m.get("language") in LANDING_LINE else "en"
+            body += "\n\n" + LANDING_LINE[lang].format(url=link)
+        text = body + "\n\n" + footer
         if not live:
             print(f"PROBELAUF würde senden an {m['to_email']} ({country}, Experiment {e['segment_id']}/{e['variant']}): {m['subject']}")
             sent_today[country] = sent_today.get(country, 0) + 1
@@ -271,7 +293,7 @@ def cmd_send(args) -> int:
 
         try:
             provider_fields = deliver(m["to_email"], m["subject"], text, unsub,
-                                      html_version(m["body"], footer, m.get("language") or "en",
+                                      html_version(body, footer, m.get("language") or "en",
                                                    p["company_name"] if kind != "sample_followup" else None,
                                                    _area(p.get("region"))))
         except Exception as exc:  # noqa: BLE001 - Versandfehler melden, nicht abbrechen

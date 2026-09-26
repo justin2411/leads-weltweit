@@ -4,13 +4,40 @@ import { consentText, t } from "@/lib/consent";
 import { getSettings, isOwner, loadPage, pageIsPublic } from "@/lib/pages";
 import { BRAND, siteUrl } from "@/lib/site";
 import { checkoutMode, lineItemFor, priceLabel, stripeEnabled, type Plan } from "@/lib/stripe";
+import { cleanFirm, fill, fillDeep, splitRegion, type Personal } from "@/lib/personalize";
+import { db } from "@/lib/supabase";
 import { pickVariant } from "@/lib/variants";
 import { Tracker } from "./tracker";
 
 export const dynamic = "force-dynamic";
 
 type Params = Promise<{ country: string; segment: string }>;
-type Search = Promise<{ vorschau?: string; v?: string; angefragt?: string; fehler?: string }>;
+type Search = Promise<{ vorschau?: string; v?: string; angefragt?: string; fehler?: string; r?: string }>;
+
+type Sample = { company: string; location?: string; event: string; date?: string; source?: string };
+
+/** Persönliche Angaben aus dem Mail-Link (?r=<Token der Mail>) – nur wenn die Mail zu dieser Zielgruppe gehört. */
+async function personalFor(token: string | undefined, page: { segment_id: string; country: string }): Promise<Personal | null> {
+  if (!token || !/^[A-Za-z0-9_-]{8,80}$/.test(token)) return null;
+  const { data } = await db().from("messages").select("prospects(company_name, region, specialization, segment_id, country)")
+    .eq("unsubscribe_token", token).maybeSingle();
+  const p: any = data?.prospects;
+  if (!p || p.segment_id !== page.segment_id || p.country !== page.country) return null;
+  const { ort, region } = splitRegion(p.region);
+  return { firma: cleanFirm(p.company_name), ort, region, branche: p.specialization ?? undefined };
+}
+
+/** Echte Probe-Leads aus der Region des Empfängers (Firmendaten, als Beispiel markiert). */
+async function regionalSamples(page: { segment_id: string; country: string }, region: string | undefined): Promise<Sample[]> {
+  if (!region) return [];
+  const { data } = await db().from("leads")
+    .select("event_summary, event_date, source_name, watch_companies!inner(name, city, region)")
+    .eq("segment_id", page.segment_id).eq("country", page.country).in("status", ["sample", "new"])
+    .or(`region.ilike.%${region.replace(/[%,()]/g, "")}%,city.ilike.%${region.replace(/[%,()]/g, "")}%`, { foreignTable: "watch_companies" })
+    .order("event_date", { ascending: false }).limit(5);
+  return (data ?? []).map((l: any) => ({ company: l.watch_companies.name, location: l.watch_companies.city ?? undefined,
+    event: String(l.event_summary).slice(0, 160), date: l.event_date ?? undefined, source: l.source_name }));
+}
 
 async function resolve(params: Params, searchParams: Search) {
   const { country, segment } = await params;
@@ -32,8 +59,8 @@ export async function generateMetadata({ params, searchParams }: { params: Param
   const r = await resolve(params, searchParams);
   if (!r) return { robots: { index: false, follow: false } };
   return {
-    title: `${r.variant.headline} | ${BRAND}`,
-    description: r.variant.subheadline ?? undefined,
+    title: `${fill(r.variant.headline, {}, r.page.language)} | ${BRAND}`,
+    description: r.variant.subheadline ? fill(r.variant.subheadline, {}, r.page.language) : undefined,
     alternates: { canonical: `${siteUrl()}/${r.slug}` },
     robots: r.isPublic ? { index: true, follow: true } : { index: false, follow: false },
   };
@@ -43,7 +70,13 @@ const css = `
 .lp{--ink:#0f1b2d;--soft:#51607a;--brand:#1d4ed8;--line:#e2e8f0;--tint:#f5f8ff;color:var(--ink);background:#fff;font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
 @media (prefers-color-scheme:dark){.lp{--ink:#e8edf6;--soft:#a3b0c6;--brand:#7aa2ff;--line:#2a3345;--tint:#141b28;background:#0c111b}}
 .lp .wrap{max-width:1040px;margin:0 auto;padding:0 16px}.lp header{padding:18px 0;border-bottom:1px solid var(--line)}
-.lp .mark{font-weight:800;letter-spacing:.02em}.lp .hero{padding:56px 0 40px}.lp h1{font-size:clamp(28px,4.5vw,44px);line-height:1.15;margin:0 0 14px}
+.lp .mark{font-weight:800;letter-spacing:.02em}.lp .hero{padding-top:56px;padding-bottom:40px}
+.lp .for{display:inline-block;font-size:13px;font-weight:600;color:var(--brand);border:1px solid var(--brand);border-radius:99px;padding:3px 12px;margin-bottom:14px}
+.lp .samples{display:grid;gap:12px}.lp .sample{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:var(--tint)}
+.lp .sample .co{font-weight:700}.lp .sample .meta{color:var(--soft);font-size:13px;margin-top:6px}
+@media (max-width:640px){.lp .wrap{padding:0 20px}.lp .hero{padding-top:32px;padding-bottom:28px}.lp h1{font-size:28px}
+.lp .sub{font-size:17px}.lp .btn{display:block;width:100%;text-align:center}.lp section{padding:28px 0}.lp .card{padding:14px}
+.lp footer a{display:inline-block;margin:0 16px 8px 0}}.lp h1{font-size:clamp(28px,4.5vw,44px);line-height:1.15;margin:0 0 14px}
 .lp .sub{font-size:19px;color:var(--soft);max-width:720px}.lp .btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
 .lp .btn{display:inline-block;padding:12px 20px;border-radius:8px;font-weight:600;text-decoration:none;border:1px solid var(--brand)}
 .lp .btn.pri{background:var(--brand);color:#fff}.lp .btn.sec{color:var(--brand)}
@@ -69,9 +102,16 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
   const mode = checkoutMode({ vercelEnv: process.env.VERCEL_ENV, ownerPreview: preview });
   const buyable = plans.filter((p) => lineItemFor(p, mode, BRAND));
   const canBuy = stripeEnabled(mode) && buyable.length > 0;
-  const samples = (v.sample_leads ?? []) as { company: string; location?: string; event: string; date?: string; source?: string }[];
-  const signals = (v.signals ?? []) as { title: string; text: string }[];
-  const faq = (v.faq ?? []) as { q: string; a: string }[];
+  const personal = preview && !sp.r ? null : await personalFor(sp.r, page);
+  const P: Personal = personal ?? {};
+  const lang = page.language;
+  const regional = await regionalSamples(page, personal?.region);
+  const samples = regional.length >= 3 ? regional : ((v.sample_leads ?? []) as Sample[]);
+  const signals = fillDeep((v.signals ?? []) as { title: string; text: string }[], P, lang);
+  const faq = fillDeep((v.faq ?? []) as { q: string; a: string }[], P, lang);
+  const headline = fill(v.headline, P, lang);
+  const subheadline = v.subheadline ? fill(v.subheadline, P, lang) : null;
+  const cta = fill(v.cta_label, P, lang);
 
   return (
     <div className="lp" lang={page.language}>
@@ -81,10 +121,11 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
       <header><div className="wrap"><span className="mark">{BRAND}</span></div></header>
 
       <div className="wrap hero">
-        <h1>{v.headline}</h1>
-        {v.subheadline && <p className="sub">{v.subheadline}</p>}
+        {personal?.firma && <div className="for">{lang === "fr" ? `Préparé pour ${personal.firma}` : `Prepared for ${personal.firma}`}</div>}
+        <h1>{headline}</h1>
+        {subheadline && <p className="sub">{subheadline}</p>}
         <div className="btns">
-          <a className="btn pri" href="#sample" data-cta>{v.cta_label}</a>
+          <a className="btn pri" href="#sample" data-cta>{cta}</a>
           {canBuy && <a className="btn sec" href="#plans" data-cta>{L.subscribe}</a>}
         </div>
       </div>
@@ -97,10 +138,12 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
 
       {samples.length > 0 && (
         <section><div className="wrap"><h2>{L.examples}</h2><p className="note">{L.examplesNote}</p>
-          <div className="scroll"><table><thead><tr><th></th><th>Company</th><th>Event</th><th>Date</th><th>{L.source}</th></tr></thead>
-            <tbody>{samples.map((s, i) => (
-              <tr key={i}><td><span className="tag">{L.example}</span></td><td>{s.company}{s.location ? `, ${s.location}` : ""}</td>
-                <td>{s.event}</td><td>{s.date ?? ""}</td><td>{s.source ?? ""}</td></tr>))}</tbody></table></div>
+          <div className="samples">{samples.map((s, i) => (
+            <div className="sample" key={i}>
+              <span className="tag">{L.example}</span>{" "}<span className="co">{s.company}{s.location ? `, ${s.location}` : ""}</span>
+              <div>{s.event}</div>
+              <div className="meta">{[s.date, s.source && `${L.source}: ${s.source}`].filter(Boolean).join(" · ")}</div>
+            </div>))}</div>
         </div></section>
       )}
 
@@ -127,10 +170,11 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
         <form method="post" action="/api/sample-request">
           <input type="hidden" name="variant_id" value={v.id} />
           {preview && <input type="hidden" name="vorschau" value="1" />}
+          {personal && sp.r && <input type="hidden" name="r" value={sp.r} />}
           <label className="hp" aria-hidden="true">Website<input type="text" name="website" tabIndex={-1} autoComplete="off" /></label>
-          <label>{L.company}<input type="text" name="company" required maxLength={200} /></label>
+          <label>{L.company}<input type="text" name="company" required maxLength={200} defaultValue={personal?.firma ?? ""} /></label>
           <label>{L.email}<input type="email" name="email" required maxLength={200} /></label>
-          <label>{L.region}<input type="text" name="region" maxLength={200} /></label>
+          <label>{L.region}<input type="text" name="region" maxLength={200} defaultValue={personal?.region ?? ""} /></label>
           <label className="consent"><input type="checkbox" name="consent" value="yes" required /> <span>{consentText(page.language)} <a href="/datenschutz">{L.legal[1]}</a></span></label>
           <button className="btn pri" type="submit" data-cta>{L.send}</button>
         </form>

@@ -1,39 +1,43 @@
 {
   "segment_id": "S3",
   "en": {
-    "headline": "Local businesses whose IT needs are changing",
-    "subheadline": "Each week we flag companies near you that are newly registered, growing or looking for IT staff – with the date and the source.",
-    "cta_label": "Get 10 free sample leads",
+    "headline": "Businesses in {region} whose IT needs are changing",
+    "subheadline": "Every week {firma} gets companies around {ort} that were just registered, are growing or are looking for IT staff – the moments when email, devices and security get set up or outsourced.",
+    "cta_label": "Get 10 free leads from {region}",
     "signals": [
       {
         "title": "New companies",
-        "text": "A new company sets up email, devices and security in its first months."
+        "text": "A new business sets up email, devices, backups and security in its first months – ideally with a partner from day one."
       },
       {
-        "title": "Hiring for IT roles",
-        "text": "An open IT support role can be a reason to offer managed support instead."
+        "title": "Open IT roles",
+        "text": "An IT support vacancy that stays open is a good reason to offer managed support instead."
       },
       {
-        "title": "Official source",
-        "text": "Every lead shows where it comes from."
+        "title": "Checked and sourced",
+        "text": "Each lead shows the company, date, address and the source."
       }
     ],
     "faq": [
       {
+        "q": "Which companies would {firma} receive?",
+        "a": "Only companies in the areas you choose – for example {region} – with a fresh, dated event that gives you a reason to get in touch. Each lead is delivered to you once."
+      },
+      {
         "q": "Where does the data come from?",
-        "a": "From official company registers, official announcements and companies' own careers pages. We do not use LinkedIn, job boards or other platforms whose terms forbid it."
+        "a": "Official company registers, official announcements and companies' own careers pages. We do not use LinkedIn, job boards or other platforms whose terms forbid it."
       },
       {
-        "q": "Do you include personal data?",
-        "a": "No. Each lead contains company data only: name, address, website, main phone number where published, the event and its source."
+        "q": "Is there personal data in the leads?",
+        "a": "No. Company data only: name, address, website, main phone number where published, the event and its source."
       },
       {
-        "q": "How often do I receive leads?",
-        "a": "Every Monday as a spreadsheet, filtered to your areas and signals. Each lead is delivered to you only once."
+        "q": "How does this fit an MSP?",
+        "a": "Managed service providers grow by signing businesses before an in-house setup takes root. The weekly list gives {firma} those businesses in {region}."
       },
       {
         "q": "What does the free sample include?",
-        "a": "10 current leads from your area, with the same fields as the regular delivery. No obligation."
+        "a": "10 current leads from {region}, with the same fields as the weekly delivery. No obligation, no card required."
       }
     ]
   }

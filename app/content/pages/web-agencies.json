@@ -1,72 +1,76 @@
 {
   "segment_id": "S2",
   "en": {
-    "headline": "Newly registered businesses that still need a website",
-    "subheadline": "Each week we list companies registered in your area in the last few weeks, from official registers – with the registration date and source.",
-    "cta_label": "Get 10 free sample leads",
+    "headline": "New businesses in {region} that still need a website",
+    "subheadline": "Every week {firma} gets companies registered around {ort} in recent weeks – often before they have a website, branding or online presence. Where we could not find a website, the lead says so.",
+    "cta_label": "Get 10 free leads from {region}",
     "signals": [
       {
-        "title": "New registrations",
-        "text": "New owners usually choose their website, branding and online presence in their first weeks."
+        "title": "Registered in the last weeks",
+        "text": "New owners pick their web designer early. Being first with a relevant offer matters more than being cheapest."
       },
       {
         "title": "No website found yet",
-        "text": "Where we could not find a website for a new company, we say so in the lead."
+        "text": "We check each new company for an existing site and note it when none is found – your warmest leads."
       },
       {
-        "title": "Official source",
-        "text": "Every lead shows where it comes from, so you can check it before you call."
+        "title": "Checked and sourced",
+        "text": "Each lead shows the company, date, address and the official register entry."
       }
     ],
     "faq": [
       {
+        "q": "Which companies would {firma} receive?",
+        "a": "Only companies in the areas you choose – for example {region} – with a fresh, dated event that gives you a reason to get in touch. Each lead is delivered to you once."
+      },
+      {
         "q": "Where does the data come from?",
-        "a": "From official company registers, official announcements and companies' own careers pages. We do not use LinkedIn, job boards or other platforms whose terms forbid it."
+        "a": "Official company registers, official announcements and companies' own careers pages. We do not use LinkedIn, job boards or other platforms whose terms forbid it."
       },
       {
-        "q": "Do you include personal data?",
-        "a": "No. Each lead contains company data only: name, address, website, main phone number where published, the event and its source."
+        "q": "Is there personal data in the leads?",
+        "a": "No. Company data only: name, address, website, main phone number where published, the event and its source."
       },
       {
-        "q": "How often do I receive leads?",
-        "a": "Every Monday as a spreadsheet, filtered to your areas and signals. Each lead is delivered to you only once."
+        "q": "How does this fit a web agency?",
+        "a": "New companies need a site, a logo and a way to be found. The weekly list gives {firma} those companies in {region} while the decision is still open."
       },
       {
         "q": "What does the free sample include?",
-        "a": "10 current leads from your area, with the same fields as the regular delivery. No obligation."
+        "a": "10 current leads from {region}, with the same fields as the weekly delivery. No obligation, no card required."
       }
     ]
   },
   "fr": {
-    "headline": "Les entreprises nouvellement créées dans votre région",
-    "subheadline": "Chaque semaine, nous listons les sociétés immatriculées récemment près de chez vous, d'après les annonces officielles – avec la date et la source.",
-    "cta_label": "Recevoir 10 pistes gratuites",
+    "headline": "Les nouvelles entreprises de {region} qui n'ont pas encore de site",
+    "subheadline": "Chaque semaine, {firma} reçoit les sociétés créées récemment autour de {ort}, souvent avant qu'elles aient un site ou une identité visuelle.",
+    "cta_label": "Recevoir 10 pistes gratuites de {region}",
     "signals": [
       {
         "title": "Créations récentes",
-        "text": "Les nouveaux dirigeants choisissent leur site et leur identité visuelle dans les premières semaines."
+        "text": "Les nouveaux dirigeants choisissent leur prestataire web dans les premières semaines."
       },
       {
         "title": "Source officielle",
-        "text": "Chaque piste indique d'où elle vient, pour la vérifier avant d'appeler."
+        "text": "Chaque piste indique la société, la date, l'adresse et l'annonce BODACC."
       }
     ],
     "faq": [
       {
+        "q": "Quelles entreprises {firma} recevrait-elle ?",
+        "a": "Uniquement des entreprises de vos zones – par exemple {region} – avec un événement récent et daté qui justifie une prise de contact. Chaque piste ne vous est livrée qu'une fois."
+      },
+      {
         "q": "D'où viennent les données ?",
-        "a": "Des registres officiels, des annonces légales (BODACC) et des pages carrières des entreprises. Nous n'utilisons ni LinkedIn ni les sites d'emploi."
+        "a": "Registres officiels, annonces légales (BODACC) et pages carrières des entreprises. Ni LinkedIn ni sites d'emploi."
       },
       {
         "q": "Y a-t-il des données personnelles ?",
-        "a": "Non. Chaque piste contient uniquement des données d'entreprise : nom, adresse, site, standard si publié, l'événement et sa source."
-      },
-      {
-        "q": "À quelle fréquence ?",
-        "a": "Chaque lundi, sous forme de tableau, filtré sur vos zones et signaux. Chaque piste ne vous est livrée qu'une fois."
+        "a": "Non. Uniquement des données d'entreprise : nom, adresse, site, standard si publié, l'événement et sa source."
       },
       {
         "q": "Que contient l'échantillon gratuit ?",
-        "a": "10 pistes actuelles de votre zone, avec les mêmes champs que la livraison régulière. Sans engagement."
+        "a": "10 pistes actuelles de {region}, avec les mêmes champs que la livraison hebdomadaire. Sans engagement."
       }
     ]
   }
