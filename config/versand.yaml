@@ -6,3 +6,4 @@ freigabe: "Justin Koch, Chat 26.09.2026: 'du kannst dann einfach starten wenn du
 gesamtgrenze: 1000
 # Tagesgrenze des Versanddienstes: Resend Gratis = 100. Nach Upgrade auf Resend Pro auf 260 setzen.
 anbieter_tageslimit: 100
+kaufinteresse_an: justin.koch@horbach.de   # Meldungen bei Kaufinteresse/Rückfragen (Morgenbericht geht an OWNER_EMAIL)

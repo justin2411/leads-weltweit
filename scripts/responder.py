@@ -215,8 +215,20 @@ def send_reply(to: str, subject: str, text: str, in_reply_to: str | None, lang: 
     return r.json().get("id")
 
 
+def alert_address() -> str | None:
+    """Adresse für Kaufinteresse aus config/versand.yaml (kaufinteresse_an), sonst OWNER_EMAIL."""
+    cfg = ROOT / "config" / "versand.yaml"
+    try:
+        m = re.search(r"^kaufinteresse_an:\s*(\S+@\S+)", cfg.read_text(), re.M)
+        if m:
+            return m.group(1)
+    except OSError:
+        pass
+    return os.environ.get("OWNER_EMAIL")
+
+
 def notify_owner(subject: str, text: str) -> None:
-    owner = os.environ.get("OWNER_EMAIL")
+    owner = alert_address()
     if not owner:
         print("  WARNUNG: OWNER_EMAIL fehlt – Meldung nur im Protokoll")
         return
