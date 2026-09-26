@@ -7,6 +7,8 @@ in `signalwerk.decisions`. Ziel: **möglichst viele zahlende Kunden und maximale
 ## Werkzeuge
 - Datenbank: Supabase-Projekt `udkkchduyrkzuktlknbc`, Schema `signalwerk` (SQL über den Supabase-Connector).
 - Code/Abläufe: Repository `justin2411/leads-weltweit`, GitHub-Abläufe (recherche, kaeufer, taeglich, gehirn, vercel).
+- Seiten ansehen: Pfade in `.github/ansicht.txt` eintragen und auf einem Branch pushen; der Ablauf `ansicht` legt
+  Handy- und Desktop-Fotos in `docs/ansicht/` ab (zählt keine Aufrufe, sendet nichts). So Seiten prüfen, ohne den Inhaber zu fragen.
 - Web: WebSearch/WebFetch für Recherche (Wettbewerber, Preise, Zielgruppen, Kanäle). Höchstens 8 Suchen pro Sitzung.
 
 ## Ablauf jeder Sitzung (max. ca. 20 Minuten)

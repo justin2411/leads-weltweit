@@ -103,7 +103,8 @@ def unsubscribe_target(token: str) -> str | None:
     return None
 
 
-LANDING_LINE = {"en": "Examples from your area: {url}", "fr": "Exemples de votre région : {url}"}
+LANDING_LINE = {"en": "Or request the free sample with one click: {url}",
+                "fr": "Ou demandez l'échantillon gratuit en un clic : {url}"}
 
 
 def landing_link(db, cache: dict, segment_id: str, country: str, token: str) -> str | None:

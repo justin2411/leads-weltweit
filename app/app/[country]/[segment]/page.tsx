@@ -17,14 +17,18 @@ type Search = Promise<{ vorschau?: string; v?: string; angefragt?: string; fehle
 type Sample = { company: string; location?: string; event: string; date?: string; source?: string };
 
 /** Persönliche Angaben aus dem Mail-Link (?r=<Token der Mail>) – nur wenn die Mail zu dieser Zielgruppe gehört. */
-async function personalFor(token: string | undefined, page: { segment_id: string; country: string }): Promise<Personal | null> {
+type Recipient = Personal & { email?: string; gebiet?: string };
+
+async function personalFor(token: string | undefined, page: { segment_id: string; country: string }): Promise<Recipient | null> {
   if (!token || !/^[A-Za-z0-9_-]{8,80}$/.test(token)) return null;
-  const { data } = await db().from("messages").select("prospects(company_name, region, specialization, segment_id, country)")
+  const { data } = await db().from("messages").select("to_email, prospects(company_name, region, specialization, segment_id, country)")
     .eq("unsubscribe_token", token).maybeSingle();
   const p: any = data?.prospects;
   if (!p || p.segment_id !== page.segment_id || p.country !== page.country) return null;
   const { ort, region } = splitRegion(p.region);
-  return { firma: cleanFirm(p.company_name), ort, region, branche: p.specialization ?? undefined };
+  const gebiet = [ort, region].filter((x, i, a) => x && a.indexOf(x) === i).join(", ") || undefined;
+  return { firma: cleanFirm(p.company_name), ort, region, branche: p.specialization ?? undefined,
+    email: data?.to_email ?? undefined, gebiet };
 }
 
 /** Echte Probe-Leads aus der Region des Empfängers (Firmendaten, als Beispiel markiert). */
@@ -87,7 +91,9 @@ const css = `
 .lp .tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;background:var(--brand);color:#fff}
 .lp form{display:grid;gap:12px;max-width:560px}.lp label{display:grid;gap:4px;font-size:14px;font-weight:600}
 .lp input[type=text],.lp input[type=email]{padding:10px 12px;border:1px solid var(--line);border-radius:8px;font:inherit;background:transparent;color:inherit}
-.lp .consent{display:flex;gap:8px;font-weight:400;align-items:flex-start}.lp .hp{position:absolute;left:-9999px}
+.lp .grid1{display:grid;gap:12px;margin-top:10px}.lp .small{font-size:13px;color:var(--soft);margin:0}
+.lp .btn.big{font-size:18px;padding:14px 24px;cursor:pointer}.lp .quick{margin-top:24px;max-width:560px}
+.lp details.fields{border:0;padding:0}.lp .hp{position:absolute;left:-9999px}
 .lp footer{padding:28px 0;border-top:1px solid var(--line);color:var(--soft);font-size:14px}.lp footer a{color:inherit;margin-right:16px}
 .lp .banner{background:#b91c1c;color:#fff;padding:10px 16px;font-weight:600}.lp .ok{color:#15803d;font-weight:600}.lp .err{color:#b91c1c;font-weight:600}
 .lp details{border-bottom:1px solid var(--line);padding:10px 0}.lp summary{cursor:pointer;font-weight:600}
@@ -112,6 +118,16 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
   const headline = fill(v.headline, P, lang);
   const subheadline = v.subheadline ? fill(v.subheadline, P, lang) : null;
   const cta = fill(v.cta_label, P, lang);
+  // Mail-Empfänger mit bekannter Adresse: ein Klick genügt, alles ist vorausgefüllt (Angaben änderbar).
+  const oneClick = Boolean(personal?.email && personal.firma && !sp.angefragt);
+  const SampleHidden = () => (<>
+    <input type="hidden" name="variant_id" value={v.id} />
+    {preview && <input type="hidden" name="vorschau" value="1" />}
+    {sp.r && <input type="hidden" name="r" value={sp.r} />}
+    <input type="hidden" name="company" value={personal?.firma ?? ""} />
+    <input type="hidden" name="email" value={personal?.email ?? ""} />
+    <input type="hidden" name="region" value={personal?.gebiet ?? ""} />
+  </>);
 
   return (
     <div className="lp" lang={page.language}>
@@ -124,10 +140,18 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
         {personal?.firma && <div className="for">{lang === "fr" ? `Préparé pour ${personal.firma}` : `Prepared for ${personal.firma}`}</div>}
         <h1>{headline}</h1>
         {subheadline && <p className="sub">{subheadline}</p>}
-        <div className="btns">
-          <a className="btn pri" href="#sample" data-cta>{cta}</a>
-          {canBuy && <a className="btn sec" href="#plans" data-cta>{L.subscribe}</a>}
-        </div>
+        {oneClick ? (
+          <form className="quick" method="post" action="/api/sample-request">
+            <SampleHidden />
+            <button className="btn pri big" type="submit" name="consent" value="yes" data-cta>{L.send}</button>
+            <p className="small">{L.sendTo(personal!.email!)} {consentText(lang)} <a href="/datenschutz">{L.legal[1]}</a></p>
+          </form>
+        ) : (
+          <div className="btns">
+            <a className="btn pri" href="#sample" data-cta>{cta}</a>
+            {canBuy && <a className="btn sec" href="#plans" data-cta>{L.subscribe}</a>}
+          </div>
+        )}
       </div>
 
       {signals.length > 0 && (
@@ -172,11 +196,17 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
           {preview && <input type="hidden" name="vorschau" value="1" />}
           {personal && sp.r && <input type="hidden" name="r" value={sp.r} />}
           <label className="hp" aria-hidden="true">Website<input type="text" name="website" tabIndex={-1} autoComplete="off" /></label>
-          <label>{L.company}<input type="text" name="company" required maxLength={200} defaultValue={personal?.firma ?? ""} /></label>
-          <label>{L.email}<input type="email" name="email" required maxLength={200} /></label>
-          <label>{L.region}<input type="text" name="region" maxLength={200} defaultValue={personal?.region ?? ""} /></label>
-          <label className="consent"><input type="checkbox" name="consent" value="yes" required /> <span>{consentText(page.language)} <a href="/datenschutz">{L.legal[1]}</a></span></label>
-          <button className="btn pri" type="submit" data-cta>{L.send}</button>
+          {oneClick && <p>{L.sendTo(personal!.email!)}</p>}
+          <details className="fields" open={!oneClick}>
+            {oneClick && <summary>{L.change}</summary>}
+            <div className="grid1">
+              <label>{L.company}<input type="text" name="company" required maxLength={200} defaultValue={personal?.firma ?? ""} /></label>
+              <label>{L.email}<input type="email" name="email" required maxLength={200} defaultValue={personal?.email ?? ""} /></label>
+              <label>{L.region}<input type="text" name="region" maxLength={200} defaultValue={personal?.gebiet ?? ""} /></label>
+            </div>
+          </details>
+          <button className="btn pri big" type="submit" name="consent" value="yes" data-cta>{L.send}</button>
+          <p className="small">{consentText(lang)} <a href="/datenschutz">{L.legal[1]}</a></p>
         </form>
       </div></section>
 
