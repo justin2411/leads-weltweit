@@ -225,7 +225,9 @@ def cmd_send(args) -> int:
             problems.append(f"Land {country} nicht erlaubt")
         if db.is_suppressed(m["to_email"]):
             problems.append("gesperrt")
-        lint = lint_draft(m["subject"], m["body"], m.get("language") or "en")
+        kind = m.get("kind") or "initial"
+        lint = lint_draft(m["subject"], m["body"], m.get("language") or "en",
+                          **({} if kind == "initial" else {"min_words": 30, "max_words": 120, "require_sample": False}))
         problems += lint.errors
         if problems:
             print(f"BLOCKIERT {m['to_email']}: {'; '.join(problems)}")

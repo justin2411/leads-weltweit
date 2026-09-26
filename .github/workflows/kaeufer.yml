@@ -2,6 +2,7 @@
 # Sendet nie Mails.
 name: kaeufer
 on:
+  schedule: [{ cron: "13 5 * * 0" }]   # sonntags: Käufer-Vorrat auffüllen
   workflow_dispatch:
     inputs:
       max:
@@ -20,7 +21,7 @@ jobs:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       COMBO: ${{ matrix.combo }}
-      MAX: ${{ inputs.max }}
+      MAX: ${{ inputs.max || '150' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -32,3 +33,24 @@ jobs:
         run: python scripts/prospects.py --max "$MAX" candidates/osm/${COMBO}.csv
       - name: Prüfregeln
         run: python scripts/outreach.py check --db
+
+  arbeitgeber:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        area: ["UK|Greater Manchester", "UK|West Yorkshire", "UK|West Midlands", "UK|London", "UK|Bristol",
+               "UK|Merseyside", "US|New York City", "US|Long Island", "FR|Lyon", "FR|Paris"]
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      AREA: ${{ matrix.area }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - name: Arbeitgeber mit Karriereseite finden
+        run: python scripts/employers.py --country "${AREA%%|*}" --area "${AREA#*|}" --limit 300

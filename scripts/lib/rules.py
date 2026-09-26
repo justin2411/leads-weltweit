@@ -164,7 +164,8 @@ def word_count(text: str) -> int:
     return len(re.findall(r"\b[\w'’-]+\b", text, flags=re.UNICODE))
 
 
-def lint_draft(subject: str, body: str, language: str = "en") -> CheckResult:
+def lint_draft(subject: str, body: str, language: str = "en", min_words: int = 70, max_words: int = 120,
+               require_sample: bool = True) -> CheckResult:
     """Prüft einen Entwurf gegen die Schreibregeln (Abschnitt 7)."""
     errors: list[str] = []
     warnings: list[str] = []
@@ -183,8 +184,8 @@ def lint_draft(subject: str, body: str, language: str = "en") -> CheckResult:
         errors.append("nur reiner Text, kein HTML")
 
     n = word_count(body)
-    if n < 70 or n > 120:
-        errors.append(f"Text hat {n} Wörter (erlaubt 70–120)")
+    if n < min_words or n > max_words:
+        errors.append(f"Text hat {n} Wörter (erlaubt {min_words}–{max_words})")
 
     for pat in FORBIDDEN_PATTERNS.get(language, FORBIDDEN_PATTERNS["en"]):
         for text, where in ((subject, "Betreff"), (body, "Text")):
@@ -212,7 +213,7 @@ def lint_draft(subject: str, body: str, language: str = "en") -> CheckResult:
         warnings.append("ein Absatz ist länger als 60 Wörter")
 
     sample_words = {"en": r"\b(free|no[- ]cost)\b.*\bsample\b|\bsample\b", "fr": r"\béchantillon\b|\bgratuit"}
-    if not re.search(sample_words.get(language, sample_words["en"]), body, flags=re.IGNORECASE):
+    if require_sample and not re.search(sample_words.get(language, sample_words["en"]), body, flags=re.IGNORECASE):
         warnings.append("Angebot der kostenlosen Probe mit 10 Leads fehlt")
 
     return CheckResult(ok=not errors, errors=errors, warnings=warnings)

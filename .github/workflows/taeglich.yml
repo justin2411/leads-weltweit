@@ -1,0 +1,49 @@
+# Täglicher Automatiklauf (werktags 12:17 UTC, vor dem Versand um 14:23 UTC). Sendet selbst keine Mails.
+# Quellen aktualisieren -> Signale erkennen -> Website-Prüfung -> Proben -> Nachfassmails -> neue Entwürfe (freigegeben).
+name: taeglich
+on:
+  schedule: [{ cron: "17 12 * * 1-5" }]
+  workflow_dispatch:
+concurrency: { group: recherche, cancel-in-progress: false }
+permissions:
+  contents: write
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SENDER_NAME: ${{ secrets.SENDER_NAME }}
+      SENDER_COMPANY: ${{ secrets.SENDER_COMPANY }}
+      SENDER_TITLE: ${{ secrets.SENDER_TITLE }}
+      SENDER_WEBSITE: ${{ secrets.SENDER_WEBSITE }}
+      SENDER_PHONE: ${{ secrets.SENDER_PHONE }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - name: Quellen
+        continue-on-error: true
+        run: |
+          python scripts/watch.py careers
+          python scripts/watch.py ny-incorporations --days 10 --limit 300
+          python scripts/watch.py fr-incorporations --departement 69,75,92,59 --days 10 --limit 200
+      - name: Signale und Website-Prüfung
+        run: |
+          python scripts/watch.py detect
+          python scripts/watch.py sitecheck --limit 150
+      - name: Proben aktualisieren
+        run: |
+          python scripts/samples.py
+          git config user.name "signalwerk-bot"
+          git config user.email "signalwerk-bot@users.noreply.github.com"
+          git add samples/
+          git diff --cached --quiet || (git commit -m "Probe-Leads aktualisiert" && git pull --rebase -q && git push)
+      - name: Nachfassmails
+        run: python scripts/followups.py --apply
+      - name: Neue Entwürfe (Freigabe laut config/versand.yaml)
+        run: |
+          FREIGABE=$(grep -E '^freigabe:' config/versand.yaml | cut -d'"' -f2)
+          python scripts/drafts.py --approve "$FREIGABE"

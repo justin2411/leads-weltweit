@@ -334,6 +334,33 @@ def cmd_uk_bulk(db: DB, args) -> None:
     print(f"{n} UK-Neugründungen übernommen (seit {since})")
 
 
+def cmd_sitecheck(db: DB, args) -> None:
+    """Neugründungen (letzte 30 Tage): gibt es schon eine Website? Ergänzt die Webagentur-Leads (S2)."""
+    from lib.sitecheck import find_website
+    session = requests.Session()
+    since = (TODAY - dt.timedelta(days=30)).isoformat()
+    leads = db.select("leads", {"segment_id": "eq.S2", "signal_type": "eq.new_incorporation", "event_date": f"gte.{since}",
+                                "select": "id,company_id,event_summary,watch_companies(id,name,country,website_checked_at)",
+                                "limit": str(args.limit)})
+    n = found = 0
+    for l in leads:
+        co = l["watch_companies"]
+        if co.get("website_checked_at"):
+            continue
+        site, checked = find_website(co["name"], co["country"], session)
+        db.update("watch_companies", {"id": co["id"]}, {"website_checked_at": NOW.isoformat(),
+                                                        **({"website": site} if site else {})})
+        n += 1
+        if site:
+            found += 1
+            continue
+        fr = co["country"] == "FR"
+        extra = (f" Aucun site trouvé ({', '.join(checked[:3])} vérifiés le {TODAY:%d/%m/%Y})." if fr else
+                 f" No website found yet (checked {', '.join(checked[:3])} on {TODAY:%-d %b %Y}).")
+        db.update("leads", {"id": l["id"]}, {"event_summary": l["event_summary"].rstrip() + extra, "urgency": "high"})
+    print(f"{n} Neugründungen geprüft, {found} mit Website, {n - found} ohne gefundene Website")
+
+
 def cmd_detect(db: DB, args) -> None:
     n = 0
     for c in db.select("watch_companies", {"active": "eq.true"}):
@@ -361,7 +388,7 @@ def cmd_detect(db: DB, args) -> None:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("cmd", choices=["careers", "websites", "uk-incorporations", "ny-incorporations", "detect", "daily",
-                                    "import-employers", "fr-incorporations", "uk-bulk"])
+                                    "import-employers", "fr-incorporations", "uk-bulk", "sitecheck"])
     ap.add_argument("--departement", default="69")
     ap.add_argument("files", nargs="*")
     ap.add_argument("--country", default="UK")
@@ -373,7 +400,7 @@ def main(argv=None) -> int:
     steps = {"careers": [cmd_careers], "websites": [cmd_websites], "uk-incorporations": [cmd_uk_incorporations],
              "ny-incorporations": [cmd_ny_incorporations], "detect": [cmd_detect],
              "import-employers": [cmd_import_employers], "fr-incorporations": [cmd_fr_incorporations],
-             "uk-bulk": [cmd_uk_bulk],
+             "uk-bulk": [cmd_uk_bulk], "sitecheck": [cmd_sitecheck],
              "daily": [cmd_careers, cmd_websites, cmd_detect]}[args.cmd]
     for step in steps:
         step(db, args)

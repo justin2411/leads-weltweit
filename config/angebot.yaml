@@ -1,0 +1,15 @@
+# Angebotspakete für Interessenten. PREISE LEGT NUR DER INHABER FEST (CLAUDE.md Abschnitt 6).
+# Automatische Mails nennen nie Preise; diese Datei dient dem Inhaber für Angebote und PayPal-Rechnungsentwürfe.
+waehrung: GBP   # UK; USA: USD; Frankreich: EUR
+pakete:
+  - name: Starter
+    beschreibung: "bis zu 30 neue Leads pro Woche, 1 Region, 1 Signaltyp"
+    preis_monat: null      # vom Inhaber festzulegen
+  - name: Pro
+    beschreibung: "bis zu 100 neue Leads pro Woche, bis zu 3 Regionen, alle passenden Signale"
+    preis_monat: null
+  - name: Exklusiv
+    beschreibung: "wie Pro, aber exklusiv: pro Region und Zielgruppe nur ein Kunde"
+    preis_monat: null
+testphase: "erste Woche kostenlos (Vorschlag, vom Inhaber zu bestätigen)"
+mindestlaufzeit: "monatlich kündbar (Vorschlag)"

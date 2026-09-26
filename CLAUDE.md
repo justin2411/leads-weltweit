@@ -148,6 +148,8 @@ Für jedes Segment in jedem Land:
 
 - **Freigabe (26.09.2026, Chat):** „du kannst dann einfach starten wenn du alles hast, musst mich nicht nochmal fragen“. Damit dürfen Entwürfe, die alle Prüfungen bestehen, ohne weitere Rückfrage freigegeben und im Rahmen von Aufwärmphase, Tageslimits und Notbremse versendet werden (bis 1000 Mails). Notbremse oder Spam-Beschwerde stoppen den Versand; dann wieder den Inhaber fragen.
 
+- **Umsatz-Maßnahmen (26.09.2026, „stell alles ein außer Website“):** eine Nachfassmail nach 4 Tagen ohne Antwort, eine Nachfrage 3 Tage nach der Probe (`scripts/followups.py`), täglicher Automatiklauf (`.github/workflows/taeglich.yml`), Arbeitgeber-Suche für S1 (`scripts/employers.py`), Website-Prüfung für Neugründungen (`watch.py sitecheck`). Angebotspakete in `config/angebot.yaml` – Preise nur vom Inhaber.
+
 ## 9. Reihenfolge für den Start
 
 1. Repo-Struktur anlegen (`/app` Vercel-App, `/supabase/migrations`, `/scripts`, `/samples`, `countries.yaml`, diese Datei). Bestehenden Code aus `outreach/` übernehmen und auf Supabase umstellen.

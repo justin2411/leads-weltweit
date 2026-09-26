@@ -369,6 +369,14 @@ def main(argv=None) -> int:
         text = _text(msg)
         c = classify(text)
         action = decide(c)
+        # Probe schon verschickt? Dann ist ein weiteres "Ja" Kaufinteresse (wöchentliche Lieferung), keine zweite Probe.
+        if action in ("sample", "sample_owner"):
+            ids = [x["id"] for x in db.select("messages", {"prospect_id": f"eq.{p['id']}", "select": "id"})]
+            if ids and db.select("email_events", {"message_id": f"in.({','.join(ids)})", "type": "eq.sample_requested",
+                                                  "select": "id"}):
+                action = "owner"
+                c["intent"] = "buy"
+                c["summary_de"] = "Will nach der Probe weitermachen (wöchentliche Lieferung): " + c.get("summary_de", "")
         print(f"{p['company_name']:<35} {c['intent']:<14} -> {action:<12} ({c['by']}) {c['summary_de']}")
         if not args.apply:
             continue
