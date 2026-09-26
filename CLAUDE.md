@@ -144,7 +144,7 @@ Für jedes Segment in jedem Land:
 
 - Erste Welle: **1000 Mails insgesamt** über mehrere Zielgruppen und Länder (UK, US, FR); die Grenze von drei Segmenten gleichzeitig ist dafür aufgehoben. Pro Experiment weiterhin nur eine Sache ändern.
 - Versand mit Aufwärmphase und Notbremse (`scripts/lib/deliverability.py`); Schalter `config/versand.yaml`.
-- **Antwort-Assistent** (`scripts/responder.py`): beantwortet Probe-Anfragen und Standardfragen aus festen Textbausteinen selbst, sperrt Abmeldungen, meldet sich beim Inhaber nur bei Kaufinteresse, Preis-/Terminfragen oder Unklarem. Automatische Antworten nennen nie Preise, Garantien oder Zusagen.
+- **Antwort-Assistent** (`scripts/responder.py`, antwortet im Namen des Inhabers – Entscheidung 26.09.2026): beantwortet Probe-Anfragen und Standardfragen aus festen Textbausteinen selbst, sperrt Abmeldungen, meldet sich beim Inhaber nur bei Kaufinteresse, Preis-/Terminfragen oder Unklarem. Automatische Antworten nennen nie Preise, Garantien oder Zusagen.
 
 - **Freigabe (26.09.2026, Chat):** „du kannst dann einfach starten wenn du alles hast, musst mich nicht nochmal fragen“. Damit dürfen Entwürfe, die alle Prüfungen bestehen, ohne weitere Rückfrage freigegeben und im Rahmen von Aufwärmphase, Tageslimits und Notbremse versendet werden (bis 1000 Mails). Notbremse oder Spam-Beschwerde stoppen den Versand; dann wieder den Inhaber fragen.
 

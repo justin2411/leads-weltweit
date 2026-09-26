@@ -182,14 +182,13 @@ def assistant_title(lang: str) -> str:
 
 
 def signature(lang: str) -> str:
-    """Der Assistent tritt offen als Assistent im Auftrag des Inhabers auf."""
-    from lib.rules import brand
-    return f"{assistant_title(lang)}\n{brand()}"
+    """Antworten gehen im Namen des Inhabers raus (Entscheidung Inhaber 26.09.2026) – gleiche Signatur wie die Erstmail."""
+    from drafts import signature as sig
+    return sig(lang)
 
 
-def signer(lang: str) -> tuple[str, str]:
-    from lib.rules import brand
-    return (assistant_title(lang), brand())
+def signer(lang: str) -> None:
+    return None  # Standard-Signatur des Inhabers
 
 
 def send_reply(to: str, subject: str, text: str, in_reply_to: str | None, lang: str,
@@ -287,7 +286,7 @@ def sample_text(lang: str, region: str | None, has_files: bool, regional: bool =
     if lang == "fr":
         return (
             "Bonjour,\n\n"
-            f"Je suis l'assistant de {o} chez NextGen Profit. Merci pour votre intérêt : comme promis, vous trouverez "
+            "Merci pour votre intérêt : comme promis, vous trouverez "
             "ci-joint votre échantillon gratuit de 10 pistes" + (f" pour {region}" if region else "") + ".\n\n"
             + ("" if regional else "Pour ce premier échantillon, nous avons utilisé des pistes récentes de notre base "
                "élargie ; la livraison régulière est filtrée sur vos villes.\n\n")
@@ -297,14 +296,14 @@ def sample_text(lang: str, region: str | None, has_files: bool, regional: bool =
             "- la source officielle, pour vérifier chaque piste\n"
             "- un niveau d'urgence et une phrase d'accroche\n\n"
             "Le service régulier livre chaque semaine de nouvelles pistes de ce type, filtrées sur vos villes et votre "
-            "spécialité. Pour vous préparer une proposition adaptée, pourriez-vous me dire :\n"
+            "spécialité. Pour vous préparer une proposition adaptée, pourriez-vous m'indiquer :\n"
             "1. quelles villes ou départements vous intéressent,\n"
             "2. combien de nouvelles pistes par semaine vous pourriez traiter ?\n\n"
-            f"{first} vous recontactera ensuite personnellement.\n\n"
+            "Je vous prépare ensuite une proposition adaptée.\n\n"
             "Bien cordialement,\n" + signature(lang))
     return (
         "Hello,\n\n"
-        f"I am {o}'s assistant at NextGen Profit. Thank you for your interest – as promised, please find attached "
+        "Thank you for your interest – as promised, please find attached "
         "your free sample of 10 leads" + (f" for {region}" if region else "") + ".\n\n"
         + ("" if regional else "For this first sample we used current leads from our wider dataset; the regular "
            "delivery is filtered to the towns you work in.\n\n")
@@ -314,10 +313,10 @@ def sample_text(lang: str, region: str | None, has_files: bool, regional: bool =
         "- the official source, so every lead can be checked\n"
         "- an urgency rating and a suggested opening line\n\n"
         "The regular service delivers new leads like these every week, filtered to your towns and specialism. "
-        "So that we can prepare a suitable proposal, could you let me know:\n"
+        "So that I can prepare a suitable proposal, could you let me know:\n"
         "1. which towns or counties matter most to you, and\n"
         "2. roughly how many new leads per week your team could follow up?\n\n"
-        f"{first} will then get back to you personally.\n\n"
+        "I will then put together a proposal that fits.\n\n"
         "Best regards,\n" + signature(lang))
 
 
@@ -389,11 +388,11 @@ def main(argv=None) -> int:
             keys = [k for k in c["faq"] if k in FAQ[lang if lang in FAQ else 'en']]
             answers = "\n\n".join(FAQ[lang if lang in FAQ else "en"][k] for k in keys)
             if lang == "fr":
-                body = (f"Bonjour,\n\nJe suis l'assistant de {owner_name()} chez NextGen Profit. Merci pour votre "
+                body = (f"Bonjour,\n\nMerci pour votre "
                         f"question.\n\n{answers}\n\nSouhaitez-vous recevoir l'échantillon gratuit de 10 pistes pour "
                         f"votre région ? Il suffit de répondre « oui ».\n\nBien cordialement,\n{signature(lang)}")
             else:
-                body = (f"Hello,\n\nI am {owner_name()}'s assistant at NextGen Profit – thank you for your question."
+                body = (f"Hello,\n\nThank you for your question."
                         f"\n\n{answers}\n\nWould you like me to send you the free sample of 10 leads for your area? "
                         f"A simple \"yes\" is enough.\n\nBest regards,\n{signature(lang)}")
             send_reply(sender, subject, body, mid, lang)
@@ -405,11 +404,10 @@ def main(argv=None) -> int:
                          f"Bitte selbst antworten (Antworten in deinem Postfach). Ich habe nur eine kurze "
                          f"Eingangsbestätigung geschickt.")
             first = owner_name().split(" ")[0]
-            hold = (f"Bonjour,\n\nMerci pour votre message. Je suis l'assistant de {owner_name()} ; j'ai transmis "
-                    f"votre demande à {first}, qui vous répondra personnellement dans la journée.\n\n"
+            hold = ("Bonjour,\n\nMerci pour votre message. Je reviens vers vous personnellement dans la journée "
+                    "avec les détails.\n\n"
                     f"Bien cordialement,\n{signature(lang)}") if lang == "fr" else (
-                    f"Hello,\n\nThank you for your message. I am {owner_name()}'s assistant and have passed your "
-                    f"request on to {first}, who will get back to you personally today.\n\n"
+                    "Hello,\n\nThank you for your message. I will get back to you personally today with the details.\n\n"
                     f"Best regards,\n{signature(lang)}")
             send_reply(sender, subject, hold, mid, lang)
         handled[action if action in handled else "owner"] += 1
