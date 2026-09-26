@@ -21,9 +21,14 @@ class ResponderTest(unittest.TestCase):
         self.assertEqual(self.act("I am out of the office until Monday"), "ignore")
         self.assertEqual(self.act("Hmm, who are you?"), "owner")
         # Antwort über den Button
-        self.assertEqual(self.act("Hello,\n\nYes, please send us the free sample of 10 leads for Greater Manchester."
-                                  "\n\nCompany: Northpoint Recruitment Ltd\n"), "sample")
-        self.assertEqual(self.act("Bonjour,\n\nOui, merci de nous envoyer l'échantillon gratuit de 10 pistes."), "sample")
+        import os as _os
+        from lib.html_email import cta_button
+        from urllib.parse import unquote
+        _os.environ["REPLY_TO"] = "info@example.com"
+        for lang in ("en", "fr"):
+            html = cta_button("Northpoint Recruitment Ltd", "Greater Manchester", lang)
+            body = unquote(html.split("body=")[1].split('"')[0])
+            self.assertEqual(self.act(body), "sample", body)
 
     def test_decide_faq(self):
         self.assertEqual(r.decide({"intent": "question", "faq": ["sources"], "needs_owner": False}), "faq")

@@ -28,18 +28,32 @@ def cta_button(company: str, region: str | None, lang: str) -> str:
     to = (os.environ.get("REPLY_TO") or os.environ.get("MAIL_FROM") or "").split("<")[-1].strip("> ")
     if not to:
         return ""
+    first = (os.environ.get("SENDER_NAME") or "").split(" ")[0]
+    area = region or ""
     if lang == "fr":
         label = "Oui, envoyez-moi les 10 pistes gratuites"
-        subj = "Oui – merci d'envoyer les 10 pistes d'essai"
-        body = (f"Bonjour,\n\nOui, merci de nous envoyer l'échantillon gratuit de 10 pistes"
-                f"{' pour ' + region if region else ''}.\n\nSociété : {company}\n")
-        hint = "Un clic ouvre une réponse prête à envoyer."
+        subj = f"Demande d'échantillon gratuit – 10 pistes{' ' + area if area else ''}"
+        body = (f"Bonjour{' ' + first if first else ''},\n\n"
+                f"Merci pour votre message. Nous souhaitons recevoir l'échantillon gratuit de 10 pistes"
+                f"{' pour ' + area if area else ''}.\n\n"
+                f"Société : {company}\n"
+                f"Zone souhaitée : {area or '(à préciser)'}\n"
+                f"Spécialité / remarques : \n\n"
+                f"Merci d'envoyer l'échantillon à cette adresse e-mail.\n\n"
+                f"Cordialement\n")
+        hint = "Un clic ouvre une demande prête à envoyer – vous pouvez la compléter."
     else:
         label = "Yes, send me the 10 free sample leads"
-        subj = "Yes – please send the 10 sample leads"
-        body = (f"Hello,\n\nYes, please send us the free sample of 10 leads"
-                f"{' for ' + region if region else ''}.\n\nCompany: {company}\n")
-        hint = "One click opens a ready-to-send reply."
+        subj = f"Free sample request – 10 leads{' for ' + area if area else ''}"
+        body = (f"Hello{' ' + first if first else ''},\n\n"
+                f"Thank you for your email. We would like to receive the free sample of 10 leads"
+                f"{' for ' + area if area else ''}.\n\n"
+                f"Company: {company}\n"
+                f"Area of focus: {area or '(please specify)'}\n"
+                f"Specialism / notes: \n\n"
+                f"Please send the sample to this email address.\n\n"
+                f"Kind regards\n")
+        hint = "One click opens a ready-to-send request – feel free to add your focus."
     href = f"mailto:{to}?subject={quote(subj)}&body={quote(body)}"
     return (f'<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 24px 0;"><tr>'
             f'<td style="background:{ORANGE};border-radius:6px;">'

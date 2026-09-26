@@ -108,7 +108,8 @@ KEYWORDS = [
             r"abonnement|rendez-vous)\b"),
     ("not_interested", r"\b(not interested|no thanks|no thank you|pas intéressé|non merci)\b"),
     ("sample", r"\b(yes|sure|please send|send (it|the sample|over)|interested|happy to (see|take a look)|oui|volontiers|"
-               r"envoyez)\b"),
+               r"envoyez|would like to receive|free sample request|souhaitons recevoir|merci d'envoyer|"
+               r"demande d'échantillon)\b"),
 ]
 
 
@@ -219,19 +220,37 @@ def sample_files(seg: str, country: str) -> list[tuple[str, bytes]]:
     return files
 
 
-def sample_text(lang: str, region: str | None, has_files: bool) -> str:
+def sample_text(lang: str, region: str | None, has_files: bool) -> str | None:
+    """Antwort mit der Probe: klar gegliedert, keine Preise, keine Zusagen."""
     if not has_files:
         return None
     if lang == "fr":
-        return ("Bonjour,\n\nMerci pour votre réponse. Vous trouverez ci-joint l'échantillon gratuit de 10 pistes"
-                + (f" ({region})" if region else "") + ". Chaque ligne indique l'entreprise, l'événement, la date, "
-                "la source officielle et une phrase d'accroche.\n\nSi vous le souhaitez, nous pouvons adapter la "
-                "sélection à vos villes ou à votre spécialité. Qu'en pensez-vous ?\n\nBien cordialement,\n"
-                + signature(lang))
-    return ("Hello,\n\nThanks for coming back to me. Attached is your free sample of 10 leads"
-            + (f" for {region}" if region else "") + ". Each row shows the company, the event, the date, the "
-            "official source and a suggested opening line.\n\nIf useful, we can focus the next list on your towns "
-            "or specialism. What do you think of the sample?\n\nBest regards,\n" + signature(lang))
+        return (
+            "Bonjour,\n\n"
+            "Merci pour votre retour. Comme convenu, vous trouverez ci-joint votre échantillon gratuit de 10 pistes"
+            + (f" pour {region}" if region else "") + ".\n\n"
+            "Contenu du fichier :\n"
+            "- l'entreprise et sa localisation\n"
+            "- l'événement (création, postes ouverts, nouveau site) avec sa date\n"
+            "- la source officielle, pour vérifier chaque piste\n"
+            "- un niveau d'urgence et une phrase d'accroche\n\n"
+            "Si ces pistes vous sont utiles, je peux vous proposer une liste hebdomadaire ciblée sur vos villes et "
+            "votre spécialité. Il suffit de répondre à ce message.\n\n"
+            "Je serais heureux d'avoir votre avis sur l'échantillon.\n\n"
+            "Bien cordialement,\n" + signature(lang))
+    return (
+        "Hello,\n\n"
+        "Thank you for getting back to me. As promised, please find attached your free sample of 10 leads"
+        + (f" for {region}" if region else "") + ".\n\n"
+        "What the file contains:\n"
+        "- the company and its location\n"
+        "- the event (new registration, long-open roles, new site) and its date\n"
+        "- the official source, so every lead can be checked\n"
+        "- an urgency rating and a suggested opening line\n\n"
+        "If the leads are useful, I can set up a weekly list focused on your towns and specialism. "
+        "Simply reply to this email.\n\n"
+        "I would value your feedback on the sample.\n\n"
+        "Best regards,\n" + signature(lang))
 
 
 def main(argv=None) -> int:
