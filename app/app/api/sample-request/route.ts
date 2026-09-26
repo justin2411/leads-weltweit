@@ -26,7 +26,8 @@ export async function POST(req: Request) {
   const isPublic = v.status === "live" && pageIsPublic(page, await getSettings());
   const test = !isPublic && f.get("vorschau") === "1" && (await isOwner());
   if (!isPublic && !test) return new Response("Not found", { status: 404 });
-  const pv = test ? `vorschau=1&v=${v.variant_key}&` : "";
+  const rTok = String(f.get("r") ?? "");
+  const pv = (test ? `vorschau=1&v=${v.variant_key}&` : "") + (/^[A-Za-z0-9_-]{8,80}$/.test(rTok) ? `r=${rTok}&` : "");
   if (String(f.get("website") ?? "")) return back(page.slug, "angefragt=1", pv); // Honeypot: Bots still verwerfen
 
   const company = String(f.get("company") ?? "").trim().slice(0, 200);

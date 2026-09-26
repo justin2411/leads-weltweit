@@ -1,39 +1,43 @@
 {
   "segment_id": "S5",
   "en": {
-    "headline": "New companies choosing an accountant right now",
-    "subheadline": "Each week we list companies registered in your area in the last few weeks and employers hiring for finance roles – with date and source.",
-    "cta_label": "Get 10 free sample leads",
+    "headline": "New companies in {region} that still need an accountant",
+    "subheadline": "Every week {firma} gets a short list of businesses registered around {ort} in the last few weeks – before they have picked an accountant or payroll provider. Each lead is dated and links to the official register.",
+    "cta_label": "Get 10 free leads from {region}",
     "signals": [
       {
-        "title": "New registrations",
-        "text": "New directors usually choose an accountant and payroll provider in their first weeks."
+        "title": "Registered in the last weeks",
+        "text": "New directors choose their accountant early – often before the first VAT, payroll or year-end deadline. Reaching them in week one beats reaching them in month six."
       },
       {
-        "title": "Finance roles open",
-        "text": "An employer struggling to fill a bookkeeping role may be open to outsourcing it."
+        "title": "Hiring for finance roles",
+        "text": "Local employers with a bookkeeping or payroll vacancy open for weeks are a natural conversation about outsourcing."
       },
       {
-        "title": "Official source",
-        "text": "Every lead shows where it comes from."
+        "title": "Checked and sourced",
+        "text": "Every lead shows the company, registration date, address and the Companies House record, so {firma} can verify it before calling."
       }
     ],
     "faq": [
       {
+        "q": "Which companies would {firma} receive?",
+        "a": "Only companies in the areas you choose – for example {region} – with a fresh, dated event that gives you a reason to get in touch. Each lead is delivered to you once."
+      },
+      {
         "q": "Where does the data come from?",
-        "a": "From official company registers, official announcements and companies' own careers pages. We do not use LinkedIn, job boards or other platforms whose terms forbid it."
+        "a": "Official company registers, official announcements and companies' own careers pages. We do not use LinkedIn, job boards or other platforms whose terms forbid it."
       },
       {
-        "q": "Do you include personal data?",
-        "a": "No. Each lead contains company data only: name, address, website, main phone number where published, the event and its source."
+        "q": "Is there personal data in the leads?",
+        "a": "No. Company data only: name, address, website, main phone number where published, the event and its source."
       },
       {
-        "q": "How often do I receive leads?",
-        "a": "Every Monday as a spreadsheet, filtered to your areas and signals. Each lead is delivered to you only once."
+        "q": "How does this fit an accountancy practice?",
+        "a": "Most practices win new clients by being first to a new director. We do the watching; your team gets a ready list with a reason to call and a suggested opening line."
       },
       {
         "q": "What does the free sample include?",
-        "a": "10 current leads from your area, with the same fields as the regular delivery. No obligation."
+        "a": "10 current leads from {region}, with the same fields as the weekly delivery. No obligation, no card required."
       }
     ]
   }

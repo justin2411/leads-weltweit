@@ -1,72 +1,76 @@
 {
   "segment_id": "S9",
   "en": {
-    "headline": "Business owners at the moment they look for advice",
-    "subheadline": "Each week we flag local companies that were just registered or are hiring several people – the moments when pensions, protection and benefits come up.",
-    "cta_label": "Get 10 free sample leads",
+    "headline": "Business owners in {region} at the moment they need advice",
+    "subheadline": "Every week {firma} gets companies around {ort} that were just registered or are hiring several people – the points where pensions, protection and employee benefits come up.",
+    "cta_label": "Get 10 free leads from {region}",
     "signals": [
       {
-        "title": "New registrations",
-        "text": "New directors start thinking about protection and pensions for the business."
+        "title": "New directors",
+        "text": "Setting up a company raises questions about director protection, pensions and how to pay themselves tax-efficiently."
       },
       {
-        "title": "Hiring several people",
-        "text": "A growing team raises workplace pension and benefits questions."
+        "title": "Teams growing",
+        "text": "Employers hiring several people at once need workplace pensions and often start looking at benefits."
       },
       {
-        "title": "Official source",
-        "text": "Every lead shows where it comes from."
+        "title": "Checked and sourced",
+        "text": "Each lead shows the company, date, address and the official source, so {firma} can prepare the first conversation."
       }
     ],
     "faq": [
       {
+        "q": "Which companies would {firma} receive?",
+        "a": "Only companies in the areas you choose – for example {region} – with a fresh, dated event that gives you a reason to get in touch. Each lead is delivered to you once."
+      },
+      {
         "q": "Where does the data come from?",
-        "a": "From official company registers, official announcements and companies' own careers pages. We do not use LinkedIn, job boards or other platforms whose terms forbid it."
+        "a": "Official company registers, official announcements and companies' own careers pages. We do not use LinkedIn, job boards or other platforms whose terms forbid it."
       },
       {
-        "q": "Do you include personal data?",
-        "a": "No. Each lead contains company data only: name, address, website, main phone number where published, the event and its source."
+        "q": "Is there personal data in the leads?",
+        "a": "No. Company data only: name, address, website, main phone number where published, the event and its source."
       },
       {
-        "q": "How often do I receive leads?",
-        "a": "Every Monday as a spreadsheet, filtered to your areas and signals. Each lead is delivered to you only once."
+        "q": "How does this fit a financial adviser?",
+        "a": "Business owners rarely look for an adviser until something changes. We flag those changes in {region} so your first call is timely and relevant."
       },
       {
         "q": "What does the free sample include?",
-        "a": "10 current leads from your area, with the same fields as the regular delivery. No obligation."
+        "a": "10 current leads from {region}, with the same fields as the weekly delivery. No obligation, no card required."
       }
     ]
   },
   "fr": {
-    "headline": "Les dirigeants au moment où ils cherchent conseil",
-    "subheadline": "Chaque semaine, nous repérons les entreprises de votre région qui viennent d'être créées – le moment où se posent les questions de protection et d'épargne salariale.",
-    "cta_label": "Recevoir 10 pistes gratuites",
+    "headline": "Les dirigeants de {region} au moment où ils ont besoin de conseil",
+    "subheadline": "Chaque semaine, {firma} reçoit les sociétés créées récemment autour de {ort} – le moment où se posent la protection du dirigeant et l'épargne salariale.",
+    "cta_label": "Recevoir 10 pistes gratuites de {region}",
     "signals": [
       {
-        "title": "Créations récentes",
-        "text": "Les nouveaux dirigeants réfléchissent à leur protection et à celle de l'entreprise."
+        "title": "Nouveaux dirigeants",
+        "text": "La création d'une société soulève des questions de protection, de retraite et de rémunération du dirigeant."
       },
       {
         "title": "Source officielle",
-        "text": "Chaque piste indique d'où elle vient."
+        "text": "Chaque piste indique la société, la date, l'adresse et l'annonce BODACC correspondante."
       }
     ],
     "faq": [
       {
+        "q": "Quelles entreprises {firma} recevrait-elle ?",
+        "a": "Uniquement des entreprises de vos zones – par exemple {region} – avec un événement récent et daté qui justifie une prise de contact. Chaque piste ne vous est livrée qu'une fois."
+      },
+      {
         "q": "D'où viennent les données ?",
-        "a": "Des registres officiels, des annonces légales (BODACC) et des pages carrières des entreprises. Nous n'utilisons ni LinkedIn ni les sites d'emploi."
+        "a": "Registres officiels, annonces légales (BODACC) et pages carrières des entreprises. Ni LinkedIn ni sites d'emploi."
       },
       {
         "q": "Y a-t-il des données personnelles ?",
-        "a": "Non. Chaque piste contient uniquement des données d'entreprise : nom, adresse, site, standard si publié, l'événement et sa source."
-      },
-      {
-        "q": "À quelle fréquence ?",
-        "a": "Chaque lundi, sous forme de tableau, filtré sur vos zones et signaux. Chaque piste ne vous est livrée qu'une fois."
+        "a": "Non. Uniquement des données d'entreprise : nom, adresse, site, standard si publié, l'événement et sa source."
       },
       {
         "q": "Que contient l'échantillon gratuit ?",
-        "a": "10 pistes actuelles de votre zone, avec les mêmes champs que la livraison régulière. Sans engagement."
+        "a": "10 pistes actuelles de {region}, avec les mêmes champs que la livraison hebdomadaire. Sans engagement."
       }
     ]
   }
