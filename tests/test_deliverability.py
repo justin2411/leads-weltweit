@@ -17,9 +17,9 @@ class DeliverabilityTest(unittest.TestCase):
 
     def test_stop(self):
         self.assertIsNone(emergency_stop(10, 2, 0))          # zu wenig Daten
-        self.assertIsNotNone(emergency_stop(60, 2, 0))       # 3,3 %
-        self.assertIsNone(emergency_stop(40, 1, 0))          # 2,5 %
-        self.assertIsNone(emergency_stop(25, 1, 0))          # 4 %, aber erst ab 50 bewertet
+        self.assertIsNotNone(emergency_stop(120, 7, 0))      # 5,8 %
+        self.assertIsNone(emergency_stop(120, 5, 0))         # 4,2 %
+        self.assertIsNone(emergency_stop(25, 1, 0))          # 4 %, aber erst ab 100 bewertet
         self.assertIsNotNone(emergency_stop(5, 0, 1))        # Beschwerde
 
     def test_interleave(self):

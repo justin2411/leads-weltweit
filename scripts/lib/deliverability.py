@@ -20,9 +20,9 @@ def provider_cap() -> int:
     except OSError:
         return 90
 
-BOUNCE_STOP = 0.03       # über 3 % Bounces -> Versand stoppen
+BOUNCE_STOP = 0.05       # über 5 % Bounces -> Versand stoppen (Inhaber 26.09.2026: „lockerer“)
 COMPLAINT_STOP = 1       # eine einzige Spam-Beschwerde -> Versand stoppen
-MIN_SAMPLE = 50          # Bounce-Quote erst ab 50 gesendeten Mails bewerten (Entscheidung Inhaber 26.09.2026)
+MIN_SAMPLE = 100         # Bounce-Quote erst ab 100 gesendeten Mails bewerten (Entscheidung Inhaber 26.09.2026)
 
 
 def _cfg(key: str) -> str | None:
