@@ -9,7 +9,7 @@ export function stripeEnabled(): boolean {
 }
 
 export function stripeTestMode(): boolean {
-  return (process.env.STRIPE_SECRET_KEY || "").startsWith("sk_test_");
+  return /^(sk|rk)_test_/.test(process.env.STRIPE_SECRET_KEY || "");
 }
 
 /** Stripe-Signatur prüfen (Header "t=…,v1=…"), Toleranz 5 Minuten. */
