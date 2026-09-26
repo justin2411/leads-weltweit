@@ -140,6 +140,12 @@ Für jedes Segment in jedem Land:
 4. Probleme: Quellen, die nicht mehr funktionieren; Zustellbarkeit; offene Rechtsfragen
 5. Was du vom Inhaber brauchst (Freigaben, Entscheidungen)
 
+## 8a. Entscheidungen des Inhabers (26.09.2026)
+
+- Erste Welle: **1000 Mails insgesamt** über mehrere Zielgruppen und Länder (UK, US, FR); die Grenze von drei Segmenten gleichzeitig ist dafür aufgehoben. Pro Experiment weiterhin nur eine Sache ändern.
+- Versand mit Aufwärmphase und Notbremse (`scripts/lib/deliverability.py`); Schalter `config/versand.yaml`.
+- **Antwort-Assistent** (`scripts/responder.py`): beantwortet Probe-Anfragen und Standardfragen aus festen Textbausteinen selbst, sperrt Abmeldungen, meldet sich beim Inhaber nur bei Kaufinteresse, Preis-/Terminfragen oder Unklarem. Automatische Antworten nennen nie Preise, Garantien oder Zusagen.
+
 ## 9. Reihenfolge für den Start
 
 1. Repo-Struktur anlegen (`/app` Vercel-App, `/supabase/migrations`, `/scripts`, `/samples`, `countries.yaml`, diese Datei). Bestehenden Code aus `outreach/` übernehmen und auf Supabase umstellen.

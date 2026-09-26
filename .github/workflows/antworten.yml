@@ -1,0 +1,50 @@
+# Antwort-Assistent: stündlich Antworten lesen, Proben/FAQ automatisch beantworten, Inhaber bei Kaufinteresse benachrichtigen.
+# Läuft nur, wenn IMAP_HOST gesetzt ist (eigenes Postfach für Antworten).
+name: antworten
+on:
+  schedule: [{ cron: "7 6-21 * * *" }]
+  workflow_dispatch:
+    inputs:
+      probelauf:
+        type: boolean
+        default: true
+concurrency: { group: antworten, cancel-in-progress: false }
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      MAIL_FROM: ${{ secrets.MAIL_FROM }}
+      REPLY_TO: ${{ secrets.REPLY_TO }}
+      OWNER_EMAIL: ${{ secrets.OWNER_EMAIL }}
+      SENDER_NAME: ${{ secrets.SENDER_NAME }}
+      SENDER_COMPANY: ${{ secrets.SENDER_COMPANY }}
+      SENDER_TITLE: ${{ secrets.SENDER_TITLE }}
+      SENDER_WEBSITE: ${{ secrets.SENDER_WEBSITE }}
+      SENDER_PHONE: ${{ secrets.SENDER_PHONE }}
+      SENDER_POSTAL_ADDRESS: ${{ secrets.SENDER_POSTAL_ADDRESS }}
+      IMAP_HOST: ${{ secrets.IMAP_HOST }}
+      IMAP_USER: ${{ secrets.IMAP_USER }}
+      IMAP_PASSWORD: ${{ secrets.IMAP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - name: Postfach eingerichtet?
+        id: gate
+        run: if [ -n "$IMAP_HOST" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "IMAP noch nicht eingerichtet"; fi
+      - name: Bounces aus dem Postfach
+        if: ${{ steps.gate.outputs.ok == 'true' }}
+        run: python scripts/inbox.py --days 14 --apply
+      - name: Antworten bearbeiten
+        if: ${{ steps.gate.outputs.ok == 'true' }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.probelauf }}" = "true" ]; then
+            python scripts/responder.py
+          else
+            python scripts/responder.py --apply
+          fi
