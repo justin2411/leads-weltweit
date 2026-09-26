@@ -1,0 +1,101 @@
+# Welche Länder dürfen per E-Mail angeschrieben werden?
+#
+# Nur Länder mit allowed: true dürfen Kaltmails bekommen (CLAUDE.md, Abschnitt 2).
+# Alles, was hier fehlt, gilt als NICHT erlaubt.
+#
+# Felder:
+#   allowed            E-Mail-Versand grundsätzlich erlaubt
+#   language           Sprache der Mails
+#   generic_only       nur allgemeine Firmenadressen (info@, hello@, office@ ...), keine Personenadressen
+#   company_forms_only nur Kapitalgesellschaften anschreiben (keine Einzelunternehmer/Personengesellschaften)
+#   daily_limit        maximale Mails pro Tag in dieses Land (Start-Wert; Erhöhung nur mit Freigabe)
+#   postal_footer      Pflichtfußzeile mit Postanschrift (CAN-SPAM u. a.)
+#   notes              Kurzbegründung. Nicht als Rechtsberatung verstehen; offene Punkte stehen unter "open_question".
+
+defaults:
+  daily_limit: 20
+  postal_footer: true
+
+countries:
+  US:
+    allowed: true
+    language: en
+    generic_only: false
+    company_forms_only: false
+    daily_limit: 25
+    notes: "CAN-SPAM: Opt-out-Modell. Pflicht: korrekter Absender, nicht irreführender Betreff, Postanschrift, funktionierende Abmeldung (Umsetzung binnen 10 Werktagen)."
+  UK:
+    allowed: true
+    language: en
+    generic_only: true
+    company_forms_only: true
+    daily_limit: 20
+    notes: "PECR: B2B-Mails an 'corporate subscribers' (Ltd, LLP, PLC) ohne Einwilligung zulässig; Einzelunternehmer und Personengesellschaften brauchen Einwilligung."
+    open_question: "Reicht bei Ltd-Firmen eine allgemeine Adresse aus, oder ist eine Interessenabwägung nach UK GDPR zu dokumentieren? Vom Inhaber bestätigen lassen."
+  IE:
+    allowed: true
+    language: en
+    generic_only: true
+    company_forms_only: true
+    daily_limit: 15
+    notes: "S.I. 336/2011: B2B-Direktmarketing per Mail an Unternehmen mit Opt-out zulässig; Einzelpersonen brauchen Einwilligung."
+  NL:
+    allowed: true
+    language: en
+    generic_only: true
+    company_forms_only: true
+    daily_limit: 15
+    notes: "Telecommunicatiewet 11.7: juristische Personen (B.V., N.V.) Opt-out; Einzelunternehmer (eenmanszaak, vof) brauchen Einwilligung."
+  SE:
+    allowed: true
+    language: en
+    generic_only: true
+    company_forms_only: true
+    daily_limit: 15
+    notes: "Marknadsföringslagen: Einwilligungspflicht nur für natürliche Personen; juristische Personen (AB) Opt-out."
+  BE:
+    allowed: true
+    language: en
+    generic_only: true
+    company_forms_only: true
+    daily_limit: 10
+    notes: "KB 04.04.2003: Ausnahme für juristische Personen bei unpersönlichen Adressen (info@ ...)."
+    open_question: "Sprache: Englisch oder Französisch/Niederländisch je Region? Vor Start klären."
+  FR:
+    allowed: true
+    language: fr
+    generic_only: false
+    company_forms_only: true
+    daily_limit: 15
+    notes: "CNIL: B2B-Mails ohne Einwilligung zulässig, wenn der Inhalt zum Beruf der Person passt; Opt-out Pflicht."
+
+  # Niemals Kaltmails. Nur Anruflisten und Briefe (S8).
+  DE: { allowed: false, language: de, notes: "UWG § 7: keine Kaltmails. Nur Anrufliste/Brief." }
+  AT: { allowed: false, language: de, notes: "TKG § 174: keine Kaltmails." }
+  CH: { allowed: false, language: de, notes: "UWG Art. 3 lit. o: keine Kaltmails." }
+  IT: { allowed: false, language: it, notes: "Keine Kaltmails." }
+  ES: { allowed: false, language: es, notes: "Keine Kaltmails." }
+  PL: { allowed: false, language: pl, notes: "Keine Kaltmails." }
+  DK: { allowed: false, language: da, notes: "Keine Kaltmails." }
+
+# Allgemeine Postfächer, die bei generic_only erlaubt sind (lokaler Teil vor dem @).
+generic_local_parts:
+  - info
+  - hello
+  - hi
+  - contact
+  - contactus
+  - enquiries
+  - enquiry
+  - inquiries
+  - office
+  - mail
+  - admin
+  - team
+  - sales
+  - business
+  - general
+  - reception
+  - studio
+  - bonjour
+  - accueil
