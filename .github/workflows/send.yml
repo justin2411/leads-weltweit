@@ -35,6 +35,7 @@ jobs:
       SENDER_NAME: ${{ secrets.SENDER_NAME }}
       SENDER_POSTAL_ADDRESS: ${{ secrets.SENDER_POSTAL_ADDRESS }}
       UNSUBSCRIBE_MODE: reply
+      APP_BASE_URL: ${{ vars.SITE_URL || 'https://www.nextgen-profit.de' }}   # persönlicher Seitenlink in der Erstmail
       FREIGABE: ${{ inputs.freigabe || 'Dauerfreigabe des Inhabers laut config/versand.yaml' }}
     steps:
       - uses: actions/checkout@v4

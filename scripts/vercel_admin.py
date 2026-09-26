@@ -46,6 +46,22 @@ def status() -> None:
         meta = d.get("meta") or {}
         print(f"  {when}  {d.get('target') or 'preview':<10} {d.get('state', ''):<8} "
               f"{meta.get('githubCommitRef', '?')}@{(meta.get('githubCommitSha') or '')[:7]}  {d['url']}")
+    domains()
+
+
+def domains() -> None:
+    """Nur lesen: Domains dieses Projekts und aller Projekte im Team (wer bedient welche Adresse?)."""
+    print("\nDOMAINS DIESES PROJEKTS")
+    for d in call("GET", f"/v9/projects/{PROJECT}/domains")["domains"]:
+        extra = f" -> leitet um auf {d['redirect']}" if d.get("redirect") else ""
+        print(f"  {d['name']:<32} verifiziert={d.get('verified')}{extra}")
+    print("\nALLE PROJEKTE IM TEAM (Produktionsadressen)")
+    for p in call("GET", "/v9/projects", params={"limit": "50"})["projects"]:
+        try:
+            names = [d["name"] for d in call("GET", f"/v9/projects/{p['id']}/domains")["domains"]]
+        except SystemExit:
+            names = []
+        print(f"  {p['name']:<28} {p['id']}  {', '.join(names) or '-'}")
 
 
 def preview_add(names: list[str]) -> None:
