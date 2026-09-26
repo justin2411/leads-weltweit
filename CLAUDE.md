@@ -146,6 +146,8 @@ Für jedes Segment in jedem Land:
 - Versand mit Aufwärmphase und Notbremse (`scripts/lib/deliverability.py`); Schalter `config/versand.yaml`.
 - **Antwort-Assistent** (`scripts/responder.py`): beantwortet Probe-Anfragen und Standardfragen aus festen Textbausteinen selbst, sperrt Abmeldungen, meldet sich beim Inhaber nur bei Kaufinteresse, Preis-/Terminfragen oder Unklarem. Automatische Antworten nennen nie Preise, Garantien oder Zusagen.
 
+- **Freigabe (26.09.2026, Chat):** „du kannst dann einfach starten wenn du alles hast, musst mich nicht nochmal fragen“. Damit dürfen Entwürfe, die alle Prüfungen bestehen, ohne weitere Rückfrage freigegeben und im Rahmen von Aufwärmphase, Tageslimits und Notbremse versendet werden (bis 1000 Mails). Notbremse oder Spam-Beschwerde stoppen den Versand; dann wieder den Inhaber fragen.
+
 ## 9. Reihenfolge für den Start
 
 1. Repo-Struktur anlegen (`/app` Vercel-App, `/supabase/migrations`, `/scripts`, `/samples`, `countries.yaml`, diese Datei). Bestehenden Code aus `outreach/` übernehmen und auf Supabase umstellen.
