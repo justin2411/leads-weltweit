@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { consentText, t } from "@/lib/consent";
 import { getSettings, isOwner, loadPage, pageIsPublic } from "@/lib/pages";
 import { BRAND, siteUrl } from "@/lib/site";
-import { checkoutMode, priceFor, stripeEnabled } from "@/lib/stripe";
+import { checkoutMode, lineItemFor, priceLabel, stripeEnabled, type Plan } from "@/lib/stripe";
 import { pickVariant } from "@/lib/variants";
 import { Tracker } from "./tracker";
 
@@ -65,9 +65,9 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
   if (!r) notFound();
   const { page, variant: v, settings, preview, sp } = r;
   const L = t(page.language);
-  const plans = (v.pricing ?? settings.pricing ?? []) as NonNullable<typeof settings.pricing>;
+  const plans = (v.pricing ?? settings.pricing ?? []) as Plan[];
   const mode = checkoutMode({ vercelEnv: process.env.VERCEL_ENV, ownerPreview: preview });
-  const buyable = plans.filter((p) => priceFor(p, mode));
+  const buyable = plans.filter((p) => lineItemFor(p, mode, BRAND));
   const canBuy = stripeEnabled(mode) && buyable.length > 0;
   const samples = (v.sample_leads ?? []) as { company: string; location?: string; event: string; date?: string; source?: string }[];
   const signals = (v.signals ?? []) as { title: string; text: string }[];
@@ -113,7 +113,7 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
           {mode === "test" && <p className="note">Stripe-Testmodus: keine echte Zahlung (Testkarte 4242 4242 4242 4242).</p>}
           <div className="grid">{buyable.map((p) => (
             <form className="card" key={p.key} method="post" action="/api/checkout">
-              <h3>{p.name}</h3><p><strong>{p.price_label}</strong> {L.perMonth}</p>{p.description && <p className="note">{p.description}</p>}
+              <h3>{p.name}</h3><p><strong>{priceLabel(p)}</strong> {L.perMonth}</p>{p.description && <p className="note">{p.description}</p>}
               <input type="hidden" name="variant_id" value={v.id} /><input type="hidden" name="package" value={p.key} />
               {preview && <input type="hidden" name="vorschau" value="1" />}
               <button className="btn pri" type="submit" data-cta>{L.subscribe}</button>

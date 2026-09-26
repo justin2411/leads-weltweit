@@ -1,7 +1,8 @@
 import { recordEvent } from "@/lib/page-events";
 import { getSettings, isOwner, pageIsPublic } from "@/lib/pages";
 import { siteUrl } from "@/lib/site";
-import { checkoutMode, priceFor, stripe, stripeEnabled } from "@/lib/stripe";
+import { BRAND } from "@/lib/site";
+import { checkoutMode, lineItemFor, stripe, stripeEnabled, type Plan } from "@/lib/stripe";
 import { db } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -30,15 +31,16 @@ export async function POST(req: Request) {
   const mode = checkoutMode({ vercelEnv: process.env.VERCEL_ENV, ownerPreview });
   if (!stripeEnabled(mode)) return new Response("Bezahlung ist noch nicht eingerichtet.", { status: 503 });
   // Nur Preise, die der Inhaber hinterlegt hat
-  const plan = ((v.pricing ?? settings.pricing ?? []) as any[]).find((p) => p.key === pkg);
-  const price = priceFor(plan, mode);
-  if (!price) return new Response("Unbekanntes Paket", { status: 400 });
+  const plan = ((v.pricing ?? settings.pricing ?? []) as Plan[]).find((p) => p.key === pkg);
+  const item = lineItemFor(plan, mode, BRAND);
+  if (!item) return new Response("Unbekanntes Paket", { status: 400 });
 
-  const meta = { segment_id: page.segment_id, country: page.country, variant_id: v.id, package: pkg, mode };
+  const meta = { segment_id: page.segment_id, country: page.country, variant_id: v.id, package: pkg, mode,
+                 amount_cents: String(plan?.amount_cents ?? ""), currency: plan?.currency ?? "" };
   const back = ownerPreview ? `${siteUrl()}/${page.slug}?vorschau=1&v=${v.variant_key}` : `${siteUrl()}/${page.slug}`;
   const session = await stripe("checkout/sessions", {
     mode: "subscription",
-    line_items: { 0: { price, quantity: 1 } },
+    line_items: { 0: item },
     success_url: `${siteUrl()}/danke?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${back}#plans`,
     billing_address_collection: "required",

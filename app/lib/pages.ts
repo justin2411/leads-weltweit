@@ -7,7 +7,7 @@ import { db } from "@/lib/supabase";
 export type Settings = {
   brain_enabled: boolean; auto_publish_pages: boolean; auto_merge_content: boolean;
   max_new_pages_per_week: number; legal_ready: boolean;
-  pricing: { key: string; name: string; price_label: string; stripe_price_id?: string; stripe_test_price_id?: string; description?: string }[] | null;
+  pricing: import("@/lib/stripe").Plan[] | null;
 };
 
 export async function getSettings(): Promise<Settings> {

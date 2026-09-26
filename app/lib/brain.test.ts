@@ -64,7 +64,7 @@ test("Umgebungsvariablen: nur gesetzt/fehlt, nie Werte", () => {
   assert.ok(!JSON.stringify(s).includes("supabase.co"));
 });
 
-import { checkoutMode, priceFor, stripeKeys } from "./stripe.ts";
+import { checkoutMode, lineItemFor, planValid, priceLabel, stripeKeys } from "./stripe.ts";
 test("Stripe: Test- und Live-Schlüssel getrennt, nie vertauscht", () => {
   const env = { STRIPE_SECRET_KEY: "rk_live_x", STRIPE_WEBHOOK_SECRET: "whsec_l", STRIPE_TEST_SECRET_KEY: "sk_test_y", STRIPE_TEST_WEBHOOK_SECRET: "whsec_t" };
   assert.equal(stripeKeys("live", env)?.secret, "rk_live_x");
@@ -74,5 +74,16 @@ test("Stripe: Test- und Live-Schlüssel getrennt, nie vertauscht", () => {
   assert.equal(checkoutMode({ vercelEnv: "production", ownerPreview: false }), "live");
   assert.equal(checkoutMode({ vercelEnv: "production", ownerPreview: true }), "test");
   assert.equal(checkoutMode({ vercelEnv: "preview", ownerPreview: false }), "test");
-  assert.equal(priceFor({ stripe_price_id: "price_live", stripe_test_price_id: "price_test" }, "test"), "price_test");
+  assert.deepEqual(lineItemFor({ key: "a", name: "A", stripe_price_id: "price_live", stripe_test_price_id: "price_test" }, "test", "X"), { price: "price_test", quantity: 1 });
+});
+
+test("Preise aus der Datenbank (vom Gehirn gesetzt)", () => {
+  const p = { key: "pro", name: "Pro", amount_cents: 19900, currency: "gbp" };
+  const item: any = lineItemFor(p, "live", "NextGen Profit");
+  assert.equal(item.price_data.unit_amount, 19900);
+  assert.equal(item.price_data.recurring.interval, "month");
+  assert.equal(priceLabel(p), "£199");
+  assert.equal(planValid({ ...p, amount_cents: 50 }), false);        // unter 1
+  assert.equal(planValid({ ...p, currency: "chf" }), false);         // unbekannte Währung
+  assert.equal(lineItemFor({ key: "x", name: "X" }, "live", "B"), null);
 });
