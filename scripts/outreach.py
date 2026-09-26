@@ -269,7 +269,8 @@ def cmd_send(args) -> int:
         try:
             provider_fields = deliver(m["to_email"], m["subject"], text, unsub,
                                       html_version(m["body"], footer, m.get("language") or "en",
-                                                   p["company_name"], _area(p.get("region"))))
+                                                   p["company_name"] if kind != "sample_followup" else None,
+                                                   _area(p.get("region"))))
         except Exception as exc:  # noqa: BLE001 - Versandfehler melden, nicht abbrechen
             print(f"FEHLER Versand {m['to_email']}: {exc}")
             continue
