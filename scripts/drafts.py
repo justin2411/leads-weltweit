@@ -193,7 +193,7 @@ def main(argv=None) -> int:
     print("Probe vorhanden für:", ", ".join(f"{a}/{b}" for a, b in sorted(ready)) or "keine")
     n = bad = 0
     counts: dict[str, int] = {}
-    total_cap = int(os.environ.get("MAX_TOTAL_MAILS", "1000"))  # Inhaber 26.09.2026: 1000 Mails insgesamt
+    total_cap = int(os.environ.get("MAX_TOTAL_MAILS", "100000"))  # Inhaber 26.09.2026: 250 pro Tag fortlaufend
     total = len(db.select("messages", {"select": "id"}))
     for p in prospects:
         e = exps.get((p["segment_id"], p["country"]))

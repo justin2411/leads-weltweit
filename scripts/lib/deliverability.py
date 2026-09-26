@@ -4,8 +4,21 @@ from __future__ import annotations
 import datetime as dt
 
 # Tag seit der ersten gesendeten Mail -> maximale Mails pro Tag (über alle Länder zusammen).
-DEFAULT_WARMUP = [(0, 10), (3, 15), (7, 25), (14, 40), (21, 60)]
-HARD_MAX_PER_DAY = 80  # Resend Gratis-Tarif: 100/Tag; Puffer für Tests und Antworten
+# Ziel des Inhabers (26.09.2026): 250 pro Tag, hochgefahren über gut zwei Wochen.
+DEFAULT_WARMUP = [(0, 25), (2, 50), (5, 100), (9, 150), (13, 200), (17, 250)]
+HARD_MAX_PER_DAY = 250
+
+
+def provider_cap() -> int:
+    """Tagesgrenze des Versanddienstes aus config/versand.yaml (Resend Gratis: 100, Pro: deutlich mehr)."""
+    import re
+    from pathlib import Path
+    cfg = Path(__file__).resolve().parents[2] / "config" / "versand.yaml"
+    try:
+        m = re.search(r"^anbieter_tageslimit:\s*(\d+)", cfg.read_text(), re.M)
+        return int(m.group(1)) if m else 90
+    except OSError:
+        return 90
 
 BOUNCE_STOP = 0.03       # über 3 % Bounces -> Versand stoppen
 COMPLAINT_STOP = 1       # eine einzige Spam-Beschwerde -> Versand stoppen
@@ -19,7 +32,8 @@ def warmup_cap(first_sent: dt.date | None, today: dt.date, schedule=None) -> int
     for start, limit in schedule:
         if day >= start:
             cap = limit
-    return min(cap, HARD_MAX_PER_DAY)
+    # Puffer von 10 für Testmails und automatische Antworten
+    return max(0, min(cap, HARD_MAX_PER_DAY, provider_cap() - 10))
 
 
 def emergency_stop(sent: int, bounced: int, complained: int) -> str | None:

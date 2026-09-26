@@ -400,7 +400,7 @@ def main(argv=None) -> int:
     s = sub.add_parser("send", help="freigegebene Mails senden (Standard: Probelauf)")
     s.add_argument("--live", action="store_true", help="wirklich senden")
     s.add_argument("--owner-ok", help="Wortlaut/Datum der Freigabe des Inhabers für diesen Lauf")
-    s.add_argument("--limit", type=int, default=200)
+    s.add_argument("--limit", type=int, default=400)
     s.add_argument("--pause", type=float, default=0, help="Sekunden zwischen zwei Mails (mit Zufall)")
     s.set_defaults(func=cmd_send)
 

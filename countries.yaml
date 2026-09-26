@@ -8,7 +8,7 @@
 #   language           Sprache der Mails
 #   generic_only       nur allgemeine Firmenadressen (info@, hello@, office@ ...), keine Personenadressen
 #   company_forms_only nur Kapitalgesellschaften anschreiben (keine Einzelunternehmer/Personengesellschaften)
-#   daily_limit        maximale Mails pro Tag in dieses Land (Start-Wert; Erhöhung nur mit Freigabe)
+#   daily_limit        maximale Mails pro Tag in dieses Land (erhöht auf Wunsch des Inhabers 26.09.2026: Ziel 250/Tag)
 #   postal_footer      Pflichtfußzeile mit Postanschrift (CAN-SPAM u. a.)
 #   notes              Kurzbegründung. Nicht als Rechtsberatung verstehen; offene Punkte stehen unter "open_question".
 
@@ -22,14 +22,14 @@ countries:
     language: en
     generic_only: false
     company_forms_only: false
-    daily_limit: 25
+    daily_limit: 110
     notes: "CAN-SPAM: Opt-out-Modell. Pflicht: korrekter Absender, nicht irreführender Betreff, Postanschrift, funktionierende Abmeldung (Umsetzung binnen 10 Werktagen)."
   UK:
     allowed: true
     language: en
     generic_only: true
     company_forms_only: true
-    daily_limit: 20
+    daily_limit: 100
     notes: "PECR: B2B-Mails an 'corporate subscribers' (Ltd, LLP, PLC) ohne Einwilligung zulässig; Einzelunternehmer und Personengesellschaften brauchen Einwilligung."
     open_question: "Reicht bei Ltd-Firmen eine allgemeine Adresse aus, oder ist eine Interessenabwägung nach UK GDPR zu dokumentieren? Vom Inhaber bestätigen lassen."
   IE:
@@ -37,28 +37,28 @@ countries:
     language: en
     generic_only: true
     company_forms_only: true
-    daily_limit: 15
+    daily_limit: 30
     notes: "S.I. 336/2011: B2B-Direktmarketing per Mail an Unternehmen mit Opt-out zulässig; Einzelpersonen brauchen Einwilligung."
   NL:
     allowed: true
     language: en
     generic_only: true
     company_forms_only: true
-    daily_limit: 15
+    daily_limit: 30
     notes: "Telecommunicatiewet 11.7: juristische Personen (B.V., N.V.) Opt-out; Einzelunternehmer (eenmanszaak, vof) brauchen Einwilligung."
   SE:
     allowed: true
     language: en
     generic_only: true
     company_forms_only: true
-    daily_limit: 15
+    daily_limit: 20
     notes: "Marknadsföringslagen: Einwilligungspflicht nur für natürliche Personen; juristische Personen (AB) Opt-out."
   BE:
     allowed: true
     language: en
     generic_only: true
     company_forms_only: true
-    daily_limit: 10
+    daily_limit: 15
     notes: "KB 04.04.2003: Ausnahme für juristische Personen bei unpersönlichen Adressen (info@ ...)."
     open_question: "Sprache: Englisch oder Französisch/Niederländisch je Region? Vor Start klären."
   FR:
@@ -66,7 +66,7 @@ countries:
     language: fr
     generic_only: false
     company_forms_only: true
-    daily_limit: 15
+    daily_limit: 60
     notes: "CNIL: B2B-Mails ohne Einwilligung zulässig, wenn der Inhalt zum Beruf der Person passt; Opt-out Pflicht."
 
   # Niemals Kaltmails. Nur Anruflisten und Briefe (S8).

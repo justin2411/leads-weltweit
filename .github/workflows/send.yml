@@ -20,7 +20,7 @@ jobs:
   send:
     if: ${{ vars.SENDEN_AKTIV != 'nein' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 180
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -53,4 +53,4 @@ jobs:
         run: python scripts/outreach.py send
       - name: Senden
         if: ${{ steps.gate.outputs.ok == 'true' && ((github.event_name == 'workflow_dispatch' && !inputs.probelauf) || github.event_name == 'schedule') }}
-        run: python scripts/outreach.py send --live --owner-ok "$FREIGABE" --pause 40
+        run: python scripts/outreach.py send --live --owner-ok "$FREIGABE" --pause 20
