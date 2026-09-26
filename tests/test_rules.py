@@ -82,7 +82,7 @@ class LintTest(unittest.TestCase):
     def test_footer_reply_mode(self):
         f = render_footer("en", sender_name="Signalwerk", postal_address="Street 1, Berlin", company="Acme Ltd",
                           unsubscribe_url=None)
-        self.assertIn('reply with "unsubscribe"', f)
+        self.assertIn('reply "unsubscribe"', f)
         self.assertIn("Street 1, Berlin", f)
 
     def test_footer_requires_address(self):

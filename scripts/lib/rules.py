@@ -220,23 +220,24 @@ def lint_draft(subject: str, body: str, language: str = "en") -> CheckResult:
 
 FOOTER = {
     "en": (
-        "--\n{sender_name}, {postal_address}\n"
-        "You are receiving this one-off message because {company} publishes this address as a business contact. "
-        "To receive no further emails: {unsubscribe_url}"
+        "—\n{sender_name} · {postal_address}\n"
+        "You received this one-time email because {company} lists this address publicly as a business contact. "
+        "{unsubscribe_url}"
     ),
     "fr": (
-        "--\n{sender_name}, {postal_address}\n"
+        "—\n{sender_name} · {postal_address}\n"
         "Vous recevez ce message unique car {company} publie cette adresse comme contact professionnel. "
-        "Pour ne plus recevoir d'e-mails : {unsubscribe_url}"
+        "{unsubscribe_url}"
     ),
 }
 
 
 # Abmeldung per Antwort (solange die Vercel-App noch nicht live ist)
 UNSUBSCRIBE_BY_REPLY = {
-    "en": "simply reply with \"unsubscribe\" and we will remove {company} permanently.",
-    "fr": "répondez simplement « désinscrire » et nous retirerons {company} définitivement.",
+    "en": "If you would rather not hear from us, reply \"unsubscribe\" and we will not contact {company} again.",
+    "fr": "Pour ne plus recevoir de messages, répondez « désinscrire » et nous ne contacterons plus {company}.",
 }
+UNSUBSCRIBE_LINK = {"en": "To opt out: {url}", "fr": "Pour vous désinscrire : {url}"}
 
 
 def render_footer(language: str, *, sender_name: str, postal_address: str, company: str,
@@ -245,7 +246,8 @@ def render_footer(language: str, *, sender_name: str, postal_address: str, compa
     if not sender_name or not postal_address:
         raise ValueError("Absendername und Postanschrift sind Pflicht für die Fußzeile")
     lang = language if language in FOOTER else "en"
-    target = unsubscribe_url or UNSUBSCRIBE_BY_REPLY[lang].format(company=company)
+    target = (UNSUBSCRIBE_LINK[lang].format(url=unsubscribe_url) if unsubscribe_url
+              else UNSUBSCRIBE_BY_REPLY[lang].format(company=company))
     return FOOTER[lang].format(
         sender_name=sender_name, postal_address=postal_address, company=company, unsubscribe_url=target
     )

@@ -115,7 +115,7 @@ Für jedes Segment in jedem Land:
 
 ## 7. Schreibregeln für Mails
 
-- 70–120 Wörter, reiner Text, kurze Absätze
+- 70–120 Wörter, kurze Absätze. Gestaltete HTML-Version erlaubt (Entscheidung Inhaber 26.09.2026), aber nur ohne Bilder, ohne externe Ressourcen und ohne Tracking, immer mit Text-Version (`scripts/lib/html_email.py`)
 - Betreff konkret, bezogen auf Nische und Region, höchstens 60 Zeichen, keine Emojis
 - Erster Satz zeigt, dass wir die Firma kennen (Spezialisierung, Region)
 - Kern: welche Firmen wir finden und warum das für ihr Geschäft ein Anlass ist, mit 1–2 passenden Signalen

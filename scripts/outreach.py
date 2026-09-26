@@ -111,7 +111,15 @@ def unsubscribe_headers(unsub_url: str | None) -> dict:
     return {"List-Unsubscribe": f"<mailto:{addr}?subject=unsubscribe>"}
 
 
-def deliver(to: str, subject: str, text: str, unsub_url: str | None) -> dict:
+def html_version(body: str, footer: str, lang: str) -> str | None:
+    """Gestaltete HTML-Alternative (ohne Bilder/Tracking). EMAIL_HTML=0 schaltet sie ab."""
+    if os.environ.get("EMAIL_HTML", "1") == "0":
+        return None
+    from lib.html_email import render
+    return render(body, footer, lang)
+
+
+def deliver(to: str, subject: str, text: str, unsub_url: str | None, html: str | None = None) -> dict:
     """Sendet eine reine Textmail. MAIL_TRANSPORT=smtp (z. B. Zoho) oder resend.
 
     Rückgabe: Felder für messages (resend_id bzw. smtp_message_id).
@@ -123,6 +131,7 @@ def deliver(to: str, subject: str, text: str, unsub_url: str | None) -> dict:
         r = requests.post(RESEND_URL, timeout=30, headers={
             "Authorization": f"Bearer {os.environ['RESEND_API_KEY']}",
         }, json={"from": os.environ["MAIL_FROM"], "to": [to], "subject": subject, "text": text, "headers": headers,
+                 **({"html": html} if html else {}),
                  **({"reply_to": reply_to} if reply_to else {})})
         if r.status_code >= 400:
             raise RuntimeError(f"Resend {r.status_code} {r.text}")
@@ -143,7 +152,9 @@ def deliver(to: str, subject: str, text: str, unsub_url: str | None) -> dict:
     msg["Message-ID"] = make_msgid(domain=sender.rsplit("@", 1)[-1].strip(">"))
     for k, v in headers.items():
         msg[k] = v
-    msg.set_content(text)  # nur Text: kein Öffnungs-Tracking
+    msg.set_content(text)  # Text-Version immer dabei; HTML ohne Bilder, kein Öffnungs-Tracking
+    if html:
+        msg.add_alternative(html, subtype="html")
     port = int(os.environ.get("SMTP_PORT", "465"))
     cls = smtplib.SMTP_SSL if port == 465 else smtplib.SMTP
     with cls(os.environ["SMTP_HOST"], port, timeout=30) as smtp:
@@ -236,7 +247,7 @@ def cmd_send(args) -> int:
 
         unsub = unsubscribe_target(m["unsubscribe_token"])
         footer = render_footer(m.get("language") or "en",
-                               sender_name=os.environ.get("SENDER_NAME", "Signalwerk"),
+                               sender_name=os.environ.get("SENDER_COMPANY") or "Signalwerk",
                                postal_address=os.environ.get("SENDER_POSTAL_ADDRESS", "<Postanschrift>"),
                                company=p["company_name"], unsubscribe_url=unsub)
         text = m["body"].rstrip() + "\n\n" + footer
@@ -247,7 +258,8 @@ def cmd_send(args) -> int:
             continue
 
         try:
-            provider_fields = deliver(m["to_email"], m["subject"], text, unsub)
+            provider_fields = deliver(m["to_email"], m["subject"], text, unsub,
+                                      html_version(m["body"], footer, m.get("language") or "en"))
         except Exception as exc:  # noqa: BLE001 - Versandfehler melden, nicht abbrechen
             print(f"FEHLER Versand {m['to_email']}: {exc}")
             continue
@@ -280,14 +292,18 @@ def cmd_test(args) -> int:
     name, spec, region = example[args.segment]
     p = {"segment_id": args.segment, "country": args.country, "company_name": name,
          "specialization": spec, "region": region}
-    subject, body, lang = build(p, os.environ.get("SENDER_NAME", "Signalwerk"))
+    ex = None
+    if args.segment in ("S2", "S9") and args.country == "US":
+        ex = {"company": "Myrtle Avenue Soap Company LLC", "event": "registered", "date": "24 September 2026",
+              "source": "NY Department of State"}
+    subject, body, lang = build(p, example=ex)
     lint = lint_draft(subject, body, lang)
-    footer = render_footer(lang, sender_name=os.environ.get("SENDER_NAME", "Signalwerk"),
+    footer = render_footer(lang, sender_name=os.environ.get("SENDER_COMPANY") or "Signalwerk",
                            postal_address=os.environ.get("SENDER_POSTAL_ADDRESS", ""), company=name,
                            unsubscribe_url=unsubscribe_target("test"))
     text = body.rstrip() + "\n\n" + footer
     print(f"Prüfung: {lint.summary()}\n\nBetreff: [TEST] {subject}\n\n{text}\n")
-    out = deliver(args.to, f"[TEST] {subject}", text, unsubscribe_target("test"))
+    out = deliver(args.to, f"[TEST] {subject}", text, unsubscribe_target("test"), html_version(body, footer, lang))
     print(f"gesendet an {args.to}: {out}")
     return 0
 
