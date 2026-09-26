@@ -162,7 +162,7 @@ def deliver(to: str, subject: str, text: str, unsub_url: str | None, html: str |
     msg.set_content(text)  # Text-Version immer dabei; HTML ohne Bilder, kein Öffnungs-Tracking
     if html:
         msg.add_alternative(html, subtype="html")
-    port = int(os.environ.get("SMTP_PORT", "465"))
+    port = int(os.environ.get("SMTP_PORT") or "465")
     cls = smtplib.SMTP_SSL if port == 465 else smtplib.SMTP
     with cls(os.environ["SMTP_HOST"], port, timeout=30) as smtp:
         if port != 465:
@@ -180,6 +180,9 @@ def cmd_send(args) -> int:
     live = args.live
     if live:
         transport = os.environ.get("MAIL_TRANSPORT", "smtp")
+        if transport == "resend":
+            raise SystemExit("Kaltmails über Resend sind verboten (Resend-Bedingungen, Inhaber 26.09.2026) – "
+                             "MAIL_TRANSPORT=smtp mit eigenem Postfach verwenden")
         needed = ["MAIL_FROM", "SENDER_NAME", "SENDER_POSTAL_ADDRESS"]
         needed += ["APP_BASE_URL"] if os.environ.get("UNSUBSCRIBE_MODE", "reply") == "link" else ["REPLY_TO"]
         needed += ["SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD"] if transport == "smtp" else ["RESEND_API_KEY"]

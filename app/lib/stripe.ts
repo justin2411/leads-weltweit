@@ -26,9 +26,49 @@ export function checkoutMode(opts: { vercelEnv?: string; ownerPreview: boolean }
   return opts.ownerPreview || (opts.vercelEnv ?? "production") !== "production" ? "test" : "live";
 }
 
-/** Preis-ID je Modus aus einem Paket (stripe_price_id live, stripe_test_price_id test). */
-export function priceFor(plan: { stripe_price_id?: string; stripe_test_price_id?: string } | undefined, mode: StripeMode) {
-  return mode === "live" ? plan?.stripe_price_id : plan?.stripe_test_price_id;
+export type Plan = {
+  key: string; name: string; description?: string; price_label?: string;
+  amount_cents?: number; currency?: string; interval?: "month" | "year";
+  stripe_price_id?: string; stripe_test_price_id?: string;
+};
+
+/** Technische Plausibilität (kein Preislimit des Inhabers): 1–10.000 pro Monat, bekannte Währung. */
+export function planValid(p: Plan | undefined): boolean {
+  if (!p) return false;
+  if (p.amount_cents !== undefined) {
+    return Number.isInteger(p.amount_cents) && p.amount_cents >= 100 && p.amount_cents <= 1_000_000
+      && ["eur", "gbp", "usd"].includes((p.currency ?? "").toLowerCase());
+  }
+  return false;
+}
+
+/**
+ * Checkout-Position für ein Paket: feste Stripe-Preis-ID (falls hinterlegt) oder Preis direkt aus der Datenbank
+ * (price_data). So kann das Gehirn Preise selbst setzen, ohne in Stripe Preise anzulegen.
+ */
+export function lineItemFor(plan: Plan | undefined, mode: StripeMode, brand: string): Record<string, unknown> | null {
+  if (!plan) return null;
+  const id = mode === "live" ? plan.stripe_price_id : plan.stripe_test_price_id;
+  if (id) return { price: id, quantity: 1 };
+  if (!planValid(plan)) return null;
+  return {
+    quantity: 1,
+    price_data: {
+      currency: plan.currency!.toLowerCase(),
+      unit_amount: plan.amount_cents,
+      recurring: { interval: plan.interval ?? "month" },
+      product_data: { name: `${brand} – ${plan.name}` },
+    },
+  };
+}
+
+/** Anzeige, z. B. "£199" oder "249 €". */
+export function priceLabel(plan: Plan): string {
+  if (plan.price_label) return plan.price_label;
+  if (plan.amount_cents === undefined) return "";
+  const cur = (plan.currency ?? "eur").toUpperCase();
+  return new Intl.NumberFormat(cur === "EUR" ? "de-DE" : "en-GB", { style: "currency", currency: cur, maximumFractionDigits: 0 })
+    .format(plan.amount_cents / 100);
 }
 
 /** Stripe-Signatur prüfen (Header "t=…,v1=…"), Toleranz 5 Minuten. */
