@@ -101,21 +101,19 @@ def detect_incorporation_lead(company: dict, obs: dict, today: dt.date, max_age_
     age = (today - inc).days
     if age < 0 or age > max_age_days:
         return None
-    has_site = bool(company.get("website"))
-    urgency = "high" if age <= 30 and not has_site else "medium" if age <= 45 else "low"
+    # Ob die Firma schon eine Website hat, steht nicht im Register; nichts behaupten, was wir nicht geprüft haben.
+    urgency = "high" if age <= 30 else "medium" if age <= 45 else "low"
     return {
         "signal_type": "new_incorporation",
         "event_date": inc.isoformat(),
-        "event_summary": f"{company['name']} wurde am {inc:%d.%m.%Y} eingetragen"
-                         + ("; keine eigene Website gefunden." if not has_site else "."),
+        "event_summary": f"{company['name']} wurde am {inc:%d.%m.%Y} im Register eingetragen"
+                         + (f" ({company['city']})." if company.get("city") else "."),
         "source_name": obs.get("source_name"),
         "source_url": obs.get("source_url"),
         "urgency": urgency,
-        "urgency_reason": f"Gründung vor {age} Tagen"
-                          + ("; noch ohne Website, der Bedarf entsteht jetzt." if not has_site else "."),
+        "urgency_reason": f"Gründung vor {age} Tagen; Website, Auftritt und Dienstleister werden typischerweise jetzt ausgewählt.",
         "opener": f"Congratulations on setting up {company['name']} this {inc:%B}. "
-                  + ("Do you already have someone lined up for your website?" if not has_site
-                     else "Is your website where you want it to be for launch?"),
+                  "Have you already decided who will build your website?",
         "observation_ids": [obs["id"]] if obs.get("id") else [],
         "topic": "general",
     }

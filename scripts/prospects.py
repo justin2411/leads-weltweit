@@ -1,0 +1,139 @@
+#!/usr/bin/env python3
+"""Käufer-Kandidaten aus einer CSV-Datei übernehmen und auf ihrer Website prüfen.
+
+  python scripts/prospects.py candidates/S2-US-NY.csv
+
+CSV-Spalten: segment,country,company_name,website,region,specialization,size_note,found_via
+
+Für jeden Kandidaten:
+  - Startseite und typische Kontaktseiten abrufen (robots.txt, 1x/Tag, keine gesperrten Plattformen)
+  - veröffentlichte Firmen-E-Mail-Adresse finden (allgemeine Adressen bevorzugt, nur eigene Domain)
+  - Rechtsform aus Impressum/Fußzeile ablesen (Ltd, LLP, LLC, Inc ...)
+  - als prospect speichern (unchecked); danach `outreach.py check --db`
+Keine Personennamen, keine Kontaktformulare.
+"""
+from __future__ import annotations
+
+import csv
+import re
+import sys
+from pathlib import Path
+from urllib.parse import urljoin, urlparse
+
+import requests
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from lib.fetch import FetchRefused, polite_get  # noqa: E402
+from lib.rules import load_countries, normalize_domain  # noqa: E402
+
+CONTACT_PATHS = ["", "/contact", "/contact-us", "/contact/", "/contact-us/", "/about", "/about-us", "/imprint",
+                 "/legal", "/privacy-policy"]
+EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+SKIP_EMAIL = re.compile(r"\.(png|jpg|jpeg|gif|svg|webp)$|example\.|sentry|wixpress|domain\.com|yourdomain|email\.com", re.I)
+
+LEGAL_PATTERNS = {
+    "UK": [(r"\bLLP\b", "LLP"), (r"\b(Ltd\.?|Limited)\b", "Ltd"), (r"\bPLC\b", "PLC")],
+    "IE": [(r"\bDAC\b", "DAC"), (r"\b(Ltd\.?|Limited)\b", "Ltd")],
+    "US": [(r"\bL\.?L\.?C\.?\b", "LLC"), (r"\b(Inc\.?|Incorporated)\b", "Inc"), (r"\bCorp(oration)?\b", "Corp")],
+}
+UK_REGISTERED = re.compile(r"(company (registration )?(no\.?|number)|registered in (england|scotland|wales))[^0-9]{0,30}(\d{6,8}|SC\d{6})", re.I)
+
+
+def pick_email(emails: set[str], domain: str, generic: set[str]) -> tuple[str | None, bool]:
+    own = sorted(e for e in emails if normalize_domain(e.split("@")[1]) == domain or e.split("@")[1].endswith("." + domain))
+    gen = [e for e in own if e.split("@")[0] in generic]
+    order = ["info", "hello", "contact", "enquiries", "office", "studio", "team", "sales", "mail", "admin"]
+    gen.sort(key=lambda e: order.index(e.split("@")[0]) if e.split("@")[0] in order else 99)
+    if gen:
+        return gen[0], True
+    return (own[0], False) if own else (None, False)
+
+
+def detect_legal_form(country: str, name: str, text: str) -> tuple[str | None, str | None]:
+    """Rechtsform und (UK) Registernummer, wie auf der Website veröffentlicht."""
+    reg = UK_REGISTERED.search(text)
+    reg_no = reg.group(5) if reg else None
+    # Firmenname mit Rechtsform in der Nähe von ©/Registered/Company bevorzugen
+    for pat, form in LEGAL_PATTERNS.get(country, []):
+        if re.search(pat, name, re.I):
+            return form, reg_no
+    for pat, form in LEGAL_PATTERNS.get(country, []):
+        m = re.search(r"(©|&copy;|copyright|registered|company)[^<\n]{0,120}" + pat, text, re.I)
+        if m:
+            return form, reg_no
+    return (("Ltd" if reg_no else None), reg_no) if country == "UK" else (None, None)
+
+
+def scan(website: str, session: requests.Session) -> dict:
+    base = website if website.startswith("http") else "https://" + website
+    emails: dict[str, str] = {}
+    text_all = ""
+    pages = []
+    for path in CONTACT_PATHS:
+        url = urljoin(base.rstrip("/") + "/", path.lstrip("/")) if path else base
+        try:
+            r = polite_get(url, last_fetched=None, session=session)
+        except (FetchRefused, requests.RequestException) as e:
+            pages.append(f"{url}: {e.__class__.__name__}")
+            continue
+        if r.status_code >= 400 or "html" not in r.headers.get("content-type", "html"):
+            continue
+        html = r.text
+        text_all += "\n" + html[-20000:] + "\n" + html[:5000]
+        pages.append(r.url)
+        for e in EMAIL_RE.findall(html.replace("&#64;", "@").replace("%40", "@")):
+            e = e.lower().strip(".")
+            if not SKIP_EMAIL.search(e):
+                emails.setdefault(e, r.url)
+        if len(emails) >= 3 and path:
+            break
+    return {"emails": emails, "text": text_all, "pages": pages,
+            "final_domain": normalize_domain(urlparse(base).hostname or "")}
+
+
+def main(argv=None) -> int:
+    import argparse
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("csv", nargs="+")
+    ap.add_argument("--dry-run", action="store_true", help="nur anzeigen, nichts speichern")
+    args = ap.parse_args(argv)
+
+    cfg = load_countries()
+    generic = {g.lower() for g in cfg.get("generic_local_parts") or []}
+    db = None
+    if not args.dry_run:
+        from lib.db import DB
+        db = DB()
+    session = requests.Session()
+    found = missing = 0
+    for path in args.csv:
+        with open(path, encoding="utf-8") as fh:
+            for row in csv.DictReader(fh):
+                domain = normalize_domain(row["website"])
+                res = scan(row["website"], session)
+                email, is_gen = pick_email(set(res["emails"]), domain, generic)
+                legal, reg_no = detect_legal_form(row["country"], row["company_name"], res["text"])
+                status = f"{email or '-':<40} {'allg.' if is_gen else 'pers.' if email else '':<6} {legal or '?':<5}"
+                print(f"{row['company_name'][:38]:<40} {status} {reg_no or ''}")
+                if not email:
+                    missing += 1
+                    continue
+                found += 1
+                if db:
+                    size_note = row.get("size_note") or None
+                    if reg_no:
+                        size_note = f"{size_note or ''} | Company No. {reg_no} (Website)".strip(" |")
+                    db.insert("prospects", {
+                        "segment_id": row["segment"], "company_name": row["company_name"], "legal_form": legal,
+                        "country": row["country"], "region": row.get("region") or None, "website": row["website"],
+                        "domain": domain, "email": email, "email_is_generic": is_gen,
+                        "specialization": row.get("specialization") or None, "size_note": size_note,
+                        "source_url": res["emails"][email],
+                    }, upsert_on="domain", ignore_duplicates=True)
+    print(f"\n{found} mit veröffentlichter Adresse, {missing} ohne")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

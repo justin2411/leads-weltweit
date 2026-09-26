@@ -119,3 +119,58 @@ def extract_job_postings(html: str, base_url: str = "") -> list[dict]:
                 if isinstance(node.get("identifier"), dict) else node.get("identifier"),
             })
     return jobs
+
+
+# ---------------------------------------------------------------------------
+# Offizielle, öffentliche Job-Schnittstellen von Bewerbungssystemen (keine Plattform-Suche,
+# nur die Stellen der jeweiligen Firma, so wie sie sie selbst veröffentlicht).
+# ---------------------------------------------------------------------------
+import datetime as _dt  # noqa: E402
+
+_ATS = [
+    (re.compile(r"jobs\.(?:eu\.)?lever\.co/([^/?#]+)", re.I), "lever"),
+    (re.compile(r"(?:boards|job-boards)(?:\.eu)?\.greenhouse\.io/([^/?#]+)", re.I), "greenhouse"),
+    (re.compile(r"apply\.workable\.com/([^/?#]+)|([a-z0-9-]+)\.workable\.com", re.I), "workable"),
+]
+
+
+def ats_endpoint(careers_url: str) -> tuple[str, str] | None:
+    for pat, kind in _ATS:
+        m = pat.search(careers_url or "")
+        if m:
+            slug = next(g for g in m.groups() if g)
+            if kind == "lever":
+                host = "api.eu.lever.co" if ".eu.lever.co" in careers_url else "api.lever.co"
+                return kind, f"https://{host}/v0/postings/{slug}?mode=json"
+            if kind == "greenhouse":
+                return kind, f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs"
+            return kind, f"https://apply.workable.com/api/v1/widget/accounts/{slug}"
+    return None
+
+
+def _iso(value) -> str | None:
+    if value is None or value == "":
+        return None
+    if isinstance(value, (int, float)):
+        return _dt.datetime.fromtimestamp(value / 1000, _dt.timezone.utc).date().isoformat()
+    return str(value)[:10]
+
+
+def parse_ats_jobs(kind: str, data) -> list[dict]:
+    jobs = []
+    if kind == "lever":
+        for j in data or []:
+            cat = j.get("categories") or {}
+            jobs.append({"title": j.get("text", ""), "url": j.get("hostedUrl"), "date_posted": _iso(j.get("createdAt")),
+                         "locality": cat.get("location"), "identifier": j.get("id")})
+    elif kind == "greenhouse":
+        for j in (data or {}).get("jobs", []):
+            jobs.append({"title": j.get("title", ""), "url": j.get("absolute_url"),
+                         "date_posted": _iso(j.get("first_published")),  # updated_at ist kein Veröffentlichungsdatum
+                         "locality": (j.get("location") or {}).get("name"), "identifier": str(j.get("id"))})
+    elif kind == "workable":
+        for j in (data or {}).get("jobs", []):
+            jobs.append({"title": j.get("title", ""), "url": j.get("url") or j.get("shortlink"),
+                         "date_posted": _iso(j.get("published_on") or j.get("created_at")),
+                         "locality": j.get("city"), "identifier": j.get("shortcode")})
+    return jobs

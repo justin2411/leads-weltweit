@@ -25,7 +25,7 @@ import requests
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lib.db import DB  # noqa: E402
-from lib.fetch import FetchRefused, extract_job_postings, polite_get  # noqa: E402
+from lib.fetch import FetchRefused, ats_endpoint, extract_job_postings, parse_ats_jobs, polite_get  # noqa: E402
 from lib.signals import (  # noqa: E402
     detect_incorporation_lead, detect_job_leads, detect_website_lead, segment_for,
 )
@@ -56,8 +56,10 @@ def cmd_careers(db: DB, args) -> None:
     session = requests.Session()
     companies = db.select("watch_companies", {"active": "eq.true", "careers_url": "not.is.null"})
     for c in companies:
+        ats = ats_endpoint(c["careers_url"])
         try:
-            r = polite_get(c["careers_url"], last_fetched=_ts(c.get("careers_fetched_at")), session=session)
+            r = polite_get(ats[1] if ats else c["careers_url"], last_fetched=_ts(c.get("careers_fetched_at")),
+                           session=session)
         except FetchRefused as e:
             print(f"übersprungen {c['name']}: {e}")
             continue
@@ -68,7 +70,7 @@ def cmd_careers(db: DB, args) -> None:
         if r.status_code >= 400:
             print(f"Fehler {c['name']}: HTTP {r.status_code}")
             continue
-        jobs = extract_job_postings(r.text, r.url)
+        jobs = parse_ats_jobs(ats[0], r.json()) if ats else extract_job_postings(r.text, r.url)
         seen_keys = set()
         for j in jobs:
             key = j.get("identifier") or j.get("url") or hashlib.sha1(j["title"].encode()).hexdigest()
@@ -80,9 +82,9 @@ def cmd_careers(db: DB, args) -> None:
         # Stellen, die nicht mehr da sind, als beendet markieren
         for o in db.select("observations", {"company_id": f"eq.{c['id']}", "kind": "eq.job_posting",
                                             "gone_since": "is.null"}):
-            if o["key"] not in seen_keys and jobs is not None:
+            if o["key"] not in seen_keys:
                 db.update("observations", {"id": o["id"]}, {"gone_since": TODAY.isoformat()})
-        print(f"{c['name']}: {len(jobs)} Stellen (JSON-LD)")
+        print(f"{c['name']}: {len(jobs)} Stellen ({ats[0] if ats else 'JSON-LD'})")
         if not jobs:
             print("  Hinweis: keine strukturierten Stellendaten gefunden; Seite ggf. manuell prüfen")
 
@@ -101,6 +103,31 @@ def cmd_websites(db: DB, args) -> None:
         upsert_observation(db, c["id"], "website_audit", "homepage", title="Startseiten-Prüfung",
                            details=audit, source_name="Firmenwebsite", source_url=r.url)
         print(f"{c['name']}: Punkte {audit['score']} {audit['findings']}")
+
+
+def cmd_import_employers(db: DB, args) -> None:
+    """Arbeitgeber mit eigener Karriereseite in die Beobachtungsliste übernehmen (CSV)."""
+    import csv
+    from lib.fetch import host_blocked
+    from lib.rules import normalize_domain
+    n = 0
+    for path in args.files:
+        with open(path, encoding="utf-8") as fh:
+            for row in csv.DictReader(fh):
+                if not row.get("careers_url") or host_blocked(row["careers_url"]):
+                    print(f"übersprungen {row.get('name')}: keine eigene Karriereseite")
+                    continue
+                domain = normalize_domain(row.get("website"))
+                if domain and db.select("watch_companies", {"domain": f"eq.{domain}", "select": "id"}):
+                    continue
+                db.insert("watch_companies", {
+                    "name": row["name"], "country": args.country, "city": row.get("city") or None,
+                    "website": row.get("website") or None, "domain": domain or None,
+                    "careers_url": row["careers_url"], "industry": row.get("industry") or None,
+                    "notes": f"gefunden über {row.get('found_via', '')}".strip(),
+                })
+                n += 1
+    print(f"{n} Arbeitgeber übernommen")
 
 
 def _upsert_company(db: DB, row: dict) -> dict:
@@ -204,7 +231,10 @@ def cmd_detect(db: DB, args) -> None:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", choices=["careers", "websites", "uk-incorporations", "ny-incorporations", "detect", "daily"])
+    ap.add_argument("cmd", choices=["careers", "websites", "uk-incorporations", "ny-incorporations", "detect", "daily",
+                                    "import-employers"])
+    ap.add_argument("files", nargs="*")
+    ap.add_argument("--country", default="UK")
     ap.add_argument("--days", type=int, default=30)
     ap.add_argument("--limit", type=int, default=100)
     ap.add_argument("--location"); ap.add_argument("--sic"); ap.add_argument("--county")
@@ -212,6 +242,7 @@ def main(argv=None) -> int:
     db = DB()
     steps = {"careers": [cmd_careers], "websites": [cmd_websites], "uk-incorporations": [cmd_uk_incorporations],
              "ny-incorporations": [cmd_ny_incorporations], "detect": [cmd_detect],
+             "import-employers": [cmd_import_employers],
              "daily": [cmd_careers, cmd_websites, cmd_detect]}[args.cmd]
     for step in steps:
         step(db, args)
