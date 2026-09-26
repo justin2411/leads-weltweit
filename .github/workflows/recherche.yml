@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       schritt:
-        description: "register-ny | kaeufer | karriereseiten | leads | alles"
+        description: "register-ny, kaeufer, karriereseiten, leads (kombinierbar, z. B. kaeufer+karriereseiten) oder alles"
         required: true
         default: alles
       kandidaten:
@@ -28,18 +28,18 @@ jobs:
         with: { python-version: "3.11" }
       - run: pip install -r requirements.txt
       - name: Neugründungen New York
-        if: ${{ inputs.schritt == 'register-ny' || inputs.schritt == 'alles' }}
+        if: ${{ contains(inputs.schritt, 'register-ny') || inputs.schritt == 'alles' }}
         run: python scripts/watch.py ny-incorporations --days 45 --limit 300
       - name: Käufer-Websites prüfen
-        if: ${{ inputs.schritt == 'kaeufer' || inputs.schritt == 'alles' }}
+        if: ${{ contains(inputs.schritt, 'kaeufer') || inputs.schritt == 'alles' }}
         run: |
           python scripts/prospects.py $(ls $KANDIDATEN 2>/dev/null)
           python scripts/outreach.py check --db
       - name: Arbeitgeber übernehmen und Karriereseiten prüfen
-        if: ${{ inputs.schritt == 'karriereseiten' || inputs.schritt == 'alles' }}
+        if: ${{ contains(inputs.schritt, 'karriereseiten') || inputs.schritt == 'alles' }}
         run: |
           ls candidates/*-employers.csv >/dev/null 2>&1 && python scripts/watch.py import-employers candidates/*-employers.csv --country UK || true
           python scripts/watch.py careers
       - name: Signale erkennen
-        if: ${{ inputs.schritt == 'leads' || inputs.schritt == 'alles' || inputs.schritt == 'register-ny' || inputs.schritt == 'karriereseiten' }}
+        if: ${{ contains(inputs.schritt, 'leads') || inputs.schritt == 'alles' || contains(inputs.schritt, 'register-ny') || contains(inputs.schritt, 'karriereseiten') }}
         run: python scripts/watch.py detect
