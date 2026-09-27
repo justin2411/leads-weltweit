@@ -121,9 +121,12 @@ async function resolve(params: Params, searchParams: Search) {
 export async function generateMetadata({ params, searchParams }: { params: Params; searchParams: Search }): Promise<Metadata> {
   const r = await resolve(params, searchParams);
   if (!r) return { robots: { index: false, follow: false } };
+  const CW = countryWords(r.page.country);
+  const W = { ...segmentCopy(r.slug, r.page.language).words, ...CW };
+  const P = { region: CW.land, ort: CW.land };
   return {
-    title: `${fill(r.variant.headline, {}, r.page.language, segmentCopy(r.slug, r.page.language).words)} | ${BRAND}`,
-    description: r.variant.subheadline ? fill(r.variant.subheadline, {}, r.page.language, segmentCopy(r.slug, r.page.language).words) : undefined,
+    title: `${localize(fill(r.variant.headline, P, r.page.language, W), r.page.country)} | ${BRAND}`,
+    description: r.variant.subheadline ? localize(fill(r.variant.subheadline, P, r.page.language, W), r.page.country) : undefined,
     alternates: { canonical: `${siteUrl()}/${r.slug}` },
     robots: r.isPublic ? { index: true, follow: true } : { index: false, follow: false },
   };

@@ -42,6 +42,9 @@ function Icon({ d }: { d: string }) {
 /** Firmenname in Texten (MASK) verwischt darstellen. */
 const masked = (v: string) => v.split(MASK).flatMap((part, j) => j ? [<span className="mask" key={j}>xxxxxxxxxx</span>, part] : [part]);
 
+/** Gleiche Reihenfolge der Branchen in jedem Land. */
+const ORDER = ["accountants", "financial-advisers", "insurance-brokers", "recruitment", "web-agencies", "it-services"];
+
 const i = (n: number) => ({ "--i": n }) as CSSProperties;
 
 /** Abschnittskopf: Linie, Überschrift Wort für Wort (ohne Punkt), optional Einleitung. */
@@ -173,7 +176,7 @@ export async function Home({ lang }: { lang: HomeLang }) {
             {countries.map((c) => <label key={c} htmlFor={`cc-${c}`}><span aria-hidden="true">{COUNTRIES[c].flag}</span>{COUNTRIES[c].name[lang]}</label>)}
           </div>)}
         <div className="cards">
-          {pages.map((p, k) => (
+          {[...pages].sort((a, b) => ORDER.indexOf(segKey(a.slug)) - ORDER.indexOf(segKey(b.slug))).map((p, k) => (
             <a className="card glow" href={`/${p.slug}`} key={p.slug} data-cc={p.country} data-rv style={i(k % 5)}>
               <h3>{ind(p)[0]}</h3>{ind(p)[1] && <p>{ind(p)[1]}</p>}
               <span className="go">{t.indGo} <i>→</i></span>

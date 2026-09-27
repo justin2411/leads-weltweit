@@ -162,7 +162,7 @@ export const HOME: Record<HomeLang, HomeText> = {
     sources: ["Companies House", "NY Department of State", "BODACC Frankreich", "Karriereseiten der Unternehmen", "Amtliche Bekanntmachungen"],
     covH: "Auf öffentlichen Daten gebaut, jeden Tag geprüft", covGold: ["jeden", "Tag", "geprüft"],
     stat: ["Unternehmen in den amtlichen Registern unserer Märkte", "neue Unternehmen pro Jahr in unserem Blick", "datierte Signale erfasst", "kostenlose Leads in jeder Probe"],
-    statsNote: "Register: 4,93 Millionen Unternehmen im britischen Register Companies House (März 2026) und 13,7 Millionen aktive Rechtseinheiten im französischen Register SIRENE (INSEE). Signale werden live aus unserer Datenbank gezählt. Die Jahreszahl ist hochgerechnet aus den Neugründungen, die wir derzeit pro Tag in Großbritannien, den USA und Frankreich erfassen.",
+    statsNote: "Register: 4,93 Millionen Unternehmen im britischen Register Companies House (März 2026) und 13,7 Millionen aktive Rechtseinheiten im französischen Register SIRENE (INSEE). Signale werden live aus unserer Datenbank gezählt. Die Jahreszahl ist hochgerechnet aus den Neugründungen, die wir derzeit pro Tag im Vereinigten Königreich, in den USA und in Frankreich erfassen.",
     filmH: (s) => `So funktioniert es in ${s} Sekunden`, filmGold: (s) => [String(s), "Sekunden"],
     filmIntro: "Exklusive Leads, jeden Montag geliefert, für jede Branche, die an Unternehmen verkauft.",
     methH: "Von öffentlichen Daten zu Ihrem nächsten Kunden", methGold: ["Ihrem", "nächsten", "Kunden"],
@@ -211,6 +211,6 @@ export const HOME: Record<HomeLang, HomeText> = {
       { q: "Wie oft kommen neue Leads?", a: "Jeden Montagmorgen als PDF-Briefing und Tabelle." },
     ],
     mailSubject: "Anfrage: kostenlose Probe mit 10 Leads",
-    mailBody: "Guten Tag,\n\nwir möchten gern die kostenlose Probe mit 10 aktuellen Leads erhalten.\n\nUnternehmen:\nUnsere Leistungen (zum Beispiel Steuerberatung, Versicherung, Personalvermittlung):\nLand (Großbritannien, USA oder Frankreich):\n\nBitte senden Sie die Probe an diese E-Mail-Adresse.\n\nMit freundlichen Grüßen\n",
+    mailBody: "Guten Tag,\n\nwir möchten gern die kostenlose Probe mit 10 aktuellen Leads erhalten.\n\nUnternehmen:\nUnsere Leistungen (zum Beispiel Steuerberatung, Versicherung, Personalvermittlung):\nLand (Vereinigtes Königreich, USA oder Frankreich):\n\nBitte senden Sie die Probe an diese E-Mail-Adresse.\n\nMit freundlichen Grüßen\n",
   },
 };
