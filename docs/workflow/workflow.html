@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>NextGen Profit – Workflow und Kontaktpunkte</title>
+<style>
+  @page { size: A4; margin: 14mm 13mm 14mm 13mm; }
+  :root { --navy:#0B1428; --navy2:#16233F; --gold:#B8914F; --gold2:#D8BD8A; --ink:#1B2233; --mut:#5B6478;
+          --ok:#1F7A4D; --okbg:#E6F4EC; --fix:#8A5A00; --fixbg:#FFF3D6; --bad:#A12A2A; --badbg:#FBE7E7; --line:#E3E6EC; }
+  * { box-sizing:border-box; }
+  body { font-family: "DejaVu Sans", Arial, sans-serif; color:var(--ink); font-size:9.2pt; line-height:1.42; margin:0; }
+  h1 { font-size:21pt; margin:0 0 2mm; color:var(--navy); letter-spacing:-.3px; }
+  h2 { font-size:13pt; color:var(--navy); margin:7mm 0 2.5mm; padding-bottom:1.5mm; border-bottom:1.5px solid var(--gold); }
+  h3 { font-size:10.5pt; margin:4mm 0 1.5mm; color:var(--navy); }
+  p { margin:0 0 2mm; }
+  .cover { background:var(--navy); color:#fff; border-radius:3mm; padding:9mm 10mm 8mm; margin-bottom:5mm; }
+  .cover h1 { color:#fff; }
+  .cover .sub { color:var(--gold2); font-size:10.5pt; }
+  .cover .meta { color:#AEB7C9; font-size:8.5pt; margin-top:3mm; }
+  .kpis { display:grid; grid-template-columns:repeat(5,1fr); gap:2.5mm; margin-top:5mm; }
+  .kpi { background:var(--navy2); border:1px solid #2A3A5E; border-radius:2mm; padding:2.5mm 3mm; }
+  .kpi b { display:block; font-size:15pt; color:var(--gold2); }
+  .kpi span { font-size:7.6pt; color:#C9D0DE; }
+  .legend { display:flex; gap:4mm; font-size:8pt; margin:1mm 0 2mm; flex-wrap:wrap; }
+  .tag { display:inline-block; border-radius:1.2mm; padding:.3mm 1.6mm; font-size:7.4pt; font-weight:bold; white-space:nowrap; }
+  .ok { background:var(--okbg); color:var(--ok); } .fix { background:var(--fixbg); color:var(--fix); }
+  .bad { background:var(--badbg); color:var(--bad); } .own { background:#E8ECF7; color:#2B3F77; }
+  table { width:100%; border-collapse:collapse; margin:1mm 0 2mm; }
+  th { background:var(--navy); color:#fff; text-align:left; font-size:8pt; padding:1.6mm 2mm; }
+  td { border-bottom:1px solid var(--line); padding:1.6mm 2mm; vertical-align:top; font-size:8.4pt; }
+  tr { page-break-inside:avoid; }
+  td.n { color:var(--gold); font-weight:bold; width:6mm; }
+  .phase td { background:#F4EFE6; color:var(--navy); font-weight:bold; font-size:8.6pt; letter-spacing:.3px; }
+  .box { border:1px solid var(--line); border-left:3px solid var(--gold); border-radius:1.5mm; padding:2.5mm 3.5mm; margin:2mm 0; page-break-inside:avoid; }
+  .box.red { border-left-color:var(--bad); } .box.green { border-left-color:var(--ok); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:3mm; }
+  ol.rank { padding-left:5mm; margin:1mm 0; } ol.rank li { margin-bottom:2mm; page-break-inside:avoid; }
+  .small { font-size:7.8pt; color:var(--mut); }
+  .pb { page-break-before:always; }
+  svg text { font-family:"DejaVu Sans", Arial, sans-serif; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="sub">NextGen Profit · Signalwerk</div>
+  <h1 style="margin-top:1mm">Workflow und Kontaktpunkte</h1>
+  <div class="sub">vom ersten Kontakt bis zur wöchentlichen Lieferung</div>
+  <div class="meta">Stand 27.09.2026, abends · geprüft: Code auf <i>main</i>, Workflows, Datenbank</div>
+  <div class="kpis">
+    <div class="kpi"><b>90</b><span>Kaltmails gesendet (26.09.)</span></div>
+    <div class="kpi"><b>5</b><span>Bounces (5,6 %)</span></div>
+    <div class="kpi"><b>0</b><span>echte Antworten bisher</span></div>
+    <div class="kpi"><b>1</b><span>Probe-Anfrage über Website</span></div>
+    <div class="kpi"><b>0</b><span>lieferfertige Probe-Sets</span></div>
+  </div>
+</div>
+
+<h2>1. Der Weg eines Kunden auf einen Blick</h2>
+<p>Jeder Kasten ist ein Kontaktpunkt. Blau = Käufer sieht etwas, Gold = Kauf/Geld, Grau gestrichelt = fehlt noch.
+Unter den Kästen: wann es passiert und über welchen Kanal.</p>
+
+<svg viewBox="0 0 760 540" width="100%" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8C95A8"/></marker>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#B8914F"/></marker>
+  </defs>
+  <!-- Phasenbänder -->
+  <g font-size="10" font-weight="bold" fill="#0B1428">
+    <rect x="0" y="0" width="760" height="150" fill="#F6F7FA" rx="8"/>
+    <text x="10" y="16">1 · AKQUISE</text>
+    <rect x="0" y="160" width="760" height="150" fill="#F6F7FA" rx="8"/>
+    <text x="10" y="176">2 · PROBE</text>
+    <rect x="0" y="320" width="760" height="220" fill="#FBF7EF" rx="8"/>
+    <text x="10" y="336">3 · KAUF UND DANACH</text>
+  </g>
+  <g font-size="9.5">
+    <!-- Phase 1 -->
+    <g transform="translate(20,32)">
+      <rect width="150" height="54" rx="6" fill="#0B1428"/><text x="75" y="22" fill="#fff" text-anchor="middle" font-weight="bold">Erstmail</text>
+      <text x="75" y="38" fill="#D8BD8A" text-anchor="middle">persönlicher Seitenlink</text>
+      <text x="75" y="72" fill="#5B6478" text-anchor="middle" font-size="8.5">Tag 0 · täglich 14:23 UTC</text>
+      <text x="75" y="85" fill="#5B6478" text-anchor="middle" font-size="8.5">Strato-SMTP · 150/Tag</text>
+    </g>
+    <g transform="translate(210,32)">
+      <rect width="150" height="54" rx="6" fill="#16233F"/><text x="75" y="22" fill="#fff" text-anchor="middle" font-weight="bold">Landingpage</text>
+      <text x="75" y="38" fill="#D8BD8A" text-anchor="middle">Video · Beispiele · FAQ</text>
+      <text x="75" y="72" fill="#5B6478" text-anchor="middle" font-size="8.5">„Vorbereitet für {Firma}“</text>
+      <text x="75" y="85" fill="#5B6478" text-anchor="middle" font-size="8.5">Web · UK / US / FR</text>
+    </g>
+    <g transform="translate(400,32)">
+      <rect width="150" height="54" rx="6" fill="#0B1428"/><text x="75" y="22" fill="#fff" text-anchor="middle" font-weight="bold">Nachfassmail</text>
+      <text x="75" y="38" fill="#D8BD8A" text-anchor="middle">„Soll ich sie schicken?“</text>
+      <text x="75" y="72" fill="#5B6478" text-anchor="middle" font-size="8.5">Tag 4 ohne Antwort</text>
+      <text x="75" y="85" fill="#5B6478" text-anchor="middle" font-size="8.5">Strato-SMTP · einmalig</text>
+    </g>
+    <g transform="translate(590,32)">
+      <rect width="150" height="54" rx="6" fill="#fff" stroke="#0B1428"/><text x="75" y="22" fill="#0B1428" text-anchor="middle" font-weight="bold">Antwort-Assistent</text>
+      <text x="75" y="38" fill="#5B6478" text-anchor="middle">liest Antworten, KI-Einordnung</text>
+      <text x="75" y="72" fill="#5B6478" text-anchor="middle" font-size="8.5">stündlich 06–21 UTC</text>
+      <text x="75" y="85" fill="#5B6478" text-anchor="middle" font-size="8.5">Ja · Frage · Kauf · Abmeldung</text>
+    </g>
+    <path d="M170,59 H206" stroke="#8C95A8" stroke-width="1.6" marker-end="url(#a)"/>
+    <path d="M360,59 H396" stroke="#8C95A8" stroke-width="1.6" marker-end="url(#a)"/>
+    <path d="M550,59 H586" stroke="#8C95A8" stroke-width="1.6" marker-end="url(#a)"/>
+    <text x="20" y="135" fill="#A12A2A" font-size="8.5">Abmeldung / Bounce → dauerhaft gesperrt</text>
+
+    <!-- Phase 2 -->
+    <g transform="translate(20,192)">
+      <rect width="150" height="54" rx="6" fill="#16233F"/><text x="75" y="22" fill="#fff" text-anchor="middle" font-weight="bold">Probe anfordern</text>
+      <text x="75" y="38" fill="#D8BD8A" text-anchor="middle">1 Klick auf der Seite</text>
+      <text x="75" y="72" fill="#5B6478" text-anchor="middle" font-size="8.5">oder „Ja“ per Antwort</text>
+      <text x="75" y="85" fill="#5B6478" text-anchor="middle" font-size="8.5">Bestätigung per Resend</text>
+    </g>
+    <g transform="translate(210,192)">
+      <rect width="150" height="54" rx="6" fill="#0B1428"/><text x="75" y="22" fill="#fff" text-anchor="middle" font-weight="bold">Probe-Mail</text>
+      <text x="75" y="38" fill="#D8BD8A" text-anchor="middle">10 Leads · PDF + CSV</text>
+      <text x="75" y="72" fill="#5B6478" text-anchor="middle" font-size="8.5">sofort / stündlich</text>
+      <text x="75" y="85" fill="#A12A2A" text-anchor="middle" font-size="8.5" font-weight="bold">blockiert: 0 vollständige Leads</text>
+    </g>
+    <g transform="translate(400,192)">
+      <rect width="150" height="54" rx="6" fill="#0B1428"/><text x="75" y="22" fill="#fff" text-anchor="middle" font-weight="bold">Probe-Nachfrage</text>
+      <text x="75" y="38" fill="#D8BD8A" text-anchor="middle">„Montag starten?“</text>
+      <text x="75" y="72" fill="#5B6478" text-anchor="middle" font-size="8.5">3 Tage nach der Probe</text>
+      <text x="75" y="85" fill="#5B6478" text-anchor="middle" font-size="8.5">Strato-SMTP</text>
+    </g>
+    <g transform="translate(590,192)">
+      <rect width="150" height="54" rx="6" fill="#fff" stroke="#B8914F" stroke-width="1.5"/><text x="75" y="22" fill="#0B1428" text-anchor="middle" font-weight="bold">Kaufinteresse</text>
+      <text x="75" y="38" fill="#5B6478" text-anchor="middle">Meldung an Inhaber</text>
+      <text x="75" y="72" fill="#5B6478" text-anchor="middle" font-size="8.5">Käufer: „melde mich heute“</text>
+      <text x="75" y="85" fill="#8A5A00" text-anchor="middle" font-size="8.5">Inhaber antwortet selbst</text>
+    </g>
+    <path d="M170,219 H206" stroke="#8C95A8" stroke-width="1.6" marker-end="url(#a)"/>
+    <path d="M360,219 H396" stroke="#8C95A8" stroke-width="1.6" marker-end="url(#a)"/>
+    <path d="M550,219 H586" stroke="#8C95A8" stroke-width="1.6" marker-end="url(#a)"/>
+    <path d="M665,118 V188" stroke="#8C95A8" stroke-width="1.6" marker-end="url(#a)"/>
+    <path d="M600,124 C 420,150 150,140 95,188" stroke="#8C95A8" stroke-width="1.3" fill="none" stroke-dasharray="4 3" marker-end="url(#a)"/>
+    <text x="330" y="148" fill="#5B6478" font-size="8.5">„Ja“ → Probe</text>
+    <path d="M285,118 V150 H95 V188" stroke="#8C95A8" stroke-width="1.3" fill="none" marker-end="url(#a)" opacity=".0"/>
+
+    <!-- Phase 3 -->
+    <g transform="translate(20,352)">
+      <rect width="130" height="54" rx="6" fill="#B8914F"/><text x="65" y="22" fill="#fff" text-anchor="middle" font-weight="bold">Preisseite</text>
+      <text x="65" y="38" fill="#fff" text-anchor="middle">Pakete + Regler</text>
+      <text x="65" y="72" fill="#5B6478" text-anchor="middle" font-size="8.5">Link im Proben-PDF</text>
+      <text x="65" y="85" fill="#5B6478" text-anchor="middle" font-size="8.5">150–10.000 Leads/Woche</text>
+    </g>
+    <g transform="translate(170,352)">
+      <rect width="130" height="54" rx="6" fill="#B8914F"/><text x="65" y="22" fill="#fff" text-anchor="middle" font-weight="bold">Stripe-Kasse</text>
+      <text x="65" y="38" fill="#fff" text-anchor="middle">Abo live</text>
+      <text x="65" y="72" fill="#5B6478" text-anchor="middle" font-size="8.5">Kontingent + Willkommen</text>
+      <text x="65" y="85" fill="#5B6478" text-anchor="middle" font-size="8.5">zurück → Preisseite</text>
+    </g>
+    <g transform="translate(320,352)">
+      <rect width="130" height="54" rx="6" fill="#16233F"/><text x="65" y="22" fill="#fff" text-anchor="middle" font-weight="bold">Danke-Seite</text>
+      <text x="65" y="38" fill="#D8BD8A" text-anchor="middle">Wunsch-Formular</text>
+      <text x="65" y="72" fill="#5B6478" text-anchor="middle" font-size="8.5">direkt nach Zahlung</text>
+      <text x="65" y="85" fill="#5B6478" text-anchor="middle" font-size="8.5">Signale · Branchen · Regionen</text>
+    </g>
+    <g transform="translate(470,352)">
+      <rect width="130" height="54" rx="6" fill="#0B1428"/><text x="65" y="22" fill="#fff" text-anchor="middle" font-weight="bold">Willkommensmail</text>
+      <text x="65" y="38" fill="#D8BD8A" text-anchor="middle">Blau-Gold · Formular-Link</text>
+      <text x="65" y="72" fill="#5B6478" text-anchor="middle" font-size="8.5">sofort · Resend</text>
+      <text x="65" y="85" fill="#5B6478" text-anchor="middle" font-size="8.5">+ Verkaufsmeldung an dich</text>
+    </g>
+    <g transform="translate(620,352)">
+      <rect width="120" height="54" rx="6" fill="#0B1428"/><text x="60" y="22" fill="#fff" text-anchor="middle" font-weight="bold">Lieferung</text>
+      <text x="60" y="38" fill="#D8BD8A" text-anchor="middle">jeden Montag</text>
+      <text x="60" y="72" fill="#5B6478" text-anchor="middle" font-size="8.5">1. Mal: Vorschau an dich</text>
+      <text x="60" y="85" fill="#5B6478" text-anchor="middle" font-size="8.5">danach automatisch</text>
+    </g>
+    <path d="M150,379 H166" stroke="#B8914F" stroke-width="1.8" marker-end="url(#g)"/>
+    <path d="M300,379 H316" stroke="#B8914F" stroke-width="1.8" marker-end="url(#g)"/>
+    <path d="M450,379 H466" stroke="#8C95A8" stroke-width="1.6" marker-end="url(#a)"/>
+    <path d="M600,379 H616" stroke="#8C95A8" stroke-width="1.6" marker-end="url(#a)"/>
+    <path d="M285,278 C 285,320 85,310 85,348" stroke="#8C95A8" stroke-width="1.3" fill="none" marker-end="url(#a)"/>
+
+    <!-- fehlende Kontaktpunkte -->
+    <g font-size="8.5">
+      <g transform="translate(20,472)"><rect width="135" height="50" rx="6" fill="none" stroke="#A12A2A" stroke-dasharray="4 3"/>
+        <text x="67" y="20" text-anchor="middle" fill="#A12A2A" font-weight="bold">Zahlung fehlgeschlagen</text><text x="67" y="35" text-anchor="middle" fill="#5B6478">Lieferung stoppt still</text></g>
+      <g transform="translate(168,472)"><rect width="135" height="50" rx="6" fill="none" stroke="#A12A2A" stroke-dasharray="4 3"/>
+        <text x="67" y="20" text-anchor="middle" fill="#A12A2A" font-weight="bold">Kündigung</text><text x="67" y="35" text-anchor="middle" fill="#5B6478">keine Rückgewinnung</text></g>
+      <g transform="translate(316,472)"><rect width="135" height="50" rx="6" fill="none" stroke="#A12A2A" stroke-dasharray="4 3"/>
+        <text x="67" y="20" text-anchor="middle" fill="#A12A2A" font-weight="bold">Formular-Erinnerung</text><text x="67" y="35" text-anchor="middle" fill="#5B6478">wenn Wünsche fehlen</text></g>
+      <g transform="translate(464,472)"><rect width="135" height="50" rx="6" fill="none" stroke="#A12A2A" stroke-dasharray="4 3"/>
+        <text x="67" y="20" text-anchor="middle" fill="#A12A2A" font-weight="bold">Feedback · Upgrade</text><text x="67" y="35" text-anchor="middle" fill="#5B6478">z. B. nach 4 Wochen</text></g>
+      <g transform="translate(612,472)"><rect width="128" height="50" rx="6" fill="none" stroke="#A12A2A" stroke-dasharray="4 3"/>
+        <text x="64" y="20" text-anchor="middle" fill="#A12A2A" font-weight="bold">Kaufabbruch</text><text x="64" y="35" text-anchor="middle" fill="#5B6478">Kasse verlassen</text></g>
+    </g>
+    <text x="20" y="462" fill="#A12A2A" font-size="8.5" font-weight="bold">FEHLT NOCH</text>
+  </g>
+</svg>
+
+<h2>2. Deine Kontaktpunkte als Inhaber</h2>
+<table>
+  <tr><th>Meldung</th><th>Wann</th><th>An</th><th>Was du tust</th></tr>
+  <tr><td><b>Morgenbericht</b></td><td>täglich ca. 06:47 (dt. Zeit)</td><td>OWNER_EMAIL</td><td>lesen; Zahlen der letzten 24 h, Tabelle pro Experiment</td></tr>
+  <tr><td><b>Kaufinteresse / Rückfrage</b></td><td>sobald eine Antwort kommt</td><td>justin.koch@horbach.de</td><td>selbst antworten – der Käufer hat „ich melde mich heute“ bekommen</td></tr>
+  <tr><td><b>Probe nicht lieferbar</b> <span class="tag fix">neu</span></td><td>einmal pro Anfrage</td><td>justin.koch@horbach.de</td><td>persönlich melden oder abwarten, bis Leads vollständig sind</td></tr>
+  <tr><td><b>Neuer Kunde</b></td><td>sofort nach Zahlung</td><td>deinetop5@gmail.com</td><td>nichts, nur Info (Paket, Preis, Kontakt)</td></tr>
+  <tr><td><b>Erste Lieferung (Vorschau)</b></td><td>Montag vor der 1. Lieferung</td><td>OWNER_EMAIL</td><td>prüfen und in GitHub freigeben (<i>kundenlieferung → approve</i>)</td></tr>
+</table>
+<p class="small">Die Meldungen gehen heute an drei verschiedene Adressen. Empfehlung: alles an eine Adresse bündeln (siehe Abschnitt 5).</p>
+
+<div class="pb"></div>
+<h2>3. Alle Kontaktpunkte im Detail</h2>
+<div class="legend"><span class="tag ok">läuft</span><span class="tag fix">heute repariert/neu</span><span class="tag bad">blockiert / fehlt</span><span class="tag own">braucht dich</span></div>
+<table>
+  <tr><th></th><th>Kontaktpunkt</th><th>Wann · Kanal</th><th>Inhalt</th><th>Status</th></tr>
+  <tr class="phase"><td colspan="5">AKQUISE</td></tr>
+  <tr><td class="n">1</td><td><b>Entwürfe + Freigabe</b></td><td>täglich 12:17 UTC · intern</td><td>Erstmail je Käufer, Prüfregeln (70–120 Wörter, keine Garantien), Dauerfreigabe</td><td><span class="tag ok">läuft</span></td></tr>
+  <tr><td class="n">2</td><td><b>Erstmail</b></td><td>täglich 14:23 UTC · Strato info@</td><td>landesweites Angebot, Button „Meine kostenlosen Leads ansehen“ mit persönlichem Link, Abmeldung per Antwort</td><td><span class="tag fix">repariert</span><br><span class="small">27.09. kein Versand wegen Fehler, behoben (#61)</span></td></tr>
+  <tr><td class="n">3</td><td><b>Persönliche Landingpage</b></td><td>Klick aus der Mail · Web</td><td>„Vorbereitet für {Firma}“, Branchen-Video, 3 Beispiel-Leads, FAQ, 1-Klick-Probe</td><td><span class="tag ok">läuft</span></td></tr>
+  <tr><td class="n">4</td><td><b>Nachfassmail</b></td><td>4 Tage nach der Erstmail · Strato</td><td>kurzer Hinweis, „Soll ich die Probe schicken?“; erste am 30.09.</td><td><span class="tag fix">repariert</span><br><span class="small">wäre überschrieben worden; Text jetzt landesweit</span></td></tr>
+  <tr><td class="n">5</td><td><b>Antwort-Assistent</b></td><td>stündlich 06–21 UTC · Antwort im Thread</td><td>„Ja“ → Probe · Frage → FAQ · Kauf → dich melden · Abmeldung → Sperre · Abwesenheit → Nachfassmail später</td><td><span class="tag ok">läuft</span></td></tr>
+  <tr class="phase"><td colspan="5">PROBE</td></tr>
+  <tr><td class="n">6</td><td><b>Probe-Anfrage (Web)</b></td><td>1 Klick · Bestätigung per Resend</td><td>„Ihre Anfrage ist bestätigt“, Einwilligung wird gespeichert</td><td><span class="tag fix">neu</span><br><span class="small">wurde nie ausgeliefert, jetzt stündlich</span></td></tr>
+  <tr><td class="n">7</td><td><b>Probe-Mail</b></td><td>sofort · Resend (Einwilligung)</td><td>10 Leads als PDF-Report + CSV, Tipp „hohe Priorität zuerst“, Pakete im PDF, „Montag starten?“</td><td><span class="tag bad">blockiert</span><br><span class="small">0 Segmente mit 10 vollständigen Leads</span></td></tr>
+  <tr><td class="n">8</td><td><b>Probe-Nachfrage</b></td><td>3 Tage nach der Probe · Strato</td><td>„Haben Sie sich die Leads angesehen? Montag starten?“</td><td><span class="tag ok">läuft</span><br><span class="small">nur noch wenn die Probe wirklich rausging</span></td></tr>
+  <tr><td class="n">9</td><td><b>Kaufinteresse</b></td><td>sofort · Mail an dich + Eingangsbestätigung</td><td>Käufer erhält „Ich melde mich heute persönlich“</td><td><span class="tag own">braucht dich</span></td></tr>
+  <tr class="phase"><td colspan="5">KAUF</td></tr>
+  <tr><td class="n">10</td><td><b>Preisseite</b></td><td>Link im Proben-PDF · Web</td><td>Starter / Pro / eigener Umfang per Regler (150–10.000 pro Woche), Ablauf 01-02-03, Angebot per Mail</td><td><span class="tag ok">läuft</span></td></tr>
+  <tr><td class="n">11</td><td><b>Stripe-Kasse</b></td><td>live · Stripe</td><td>Kontingent pro Monat, Begrüßung zur Partnerschaft; zurück → Preisseite</td><td><span class="tag ok">läuft</span></td></tr>
+  <tr><td class="n">12</td><td><b>Danke-Seite</b></td><td>direkt nach Zahlung · Web</td><td>Zusammenfassung, erster Liefertermin, Wunsch-Formular (Signale, Branchen, Regionen, Ausschlüsse)</td><td><span class="tag ok">läuft</span></td></tr>
+  <tr><td class="n">13</td><td><b>Willkommensmail</b></td><td>sofort · Resend</td><td>Glückwunsch, Paket-Fakten, Link zu den Wünschen (30 Tage gültig), Signatur, Blau-Gold</td><td><span class="tag ok">läuft</span></td></tr>
+  <tr class="phase"><td colspan="5">NACH DEM KAUF</td></tr>
+  <tr><td class="n">14</td><td><b>Erste Lieferung</b></td><td>Montag · Vorschau an dich</td><td>PDF + CSV; geht erst nach deiner Freigabe raus</td><td><span class="tag own">braucht dich</span></td></tr>
+  <tr><td class="n">15</td><td><b>Wöchentliche Lieferung</b></td><td>montags ca. 07:00 · Resend</td><td>„Ihre neuen Leads – Woche vom …“, nur vollständige Leads, jeder Lead nur einmal pro Abo</td><td><span class="tag ok">läuft</span></td></tr>
+  <tr><td class="n">16</td><td><b>Zahlung fehlgeschlagen</b></td><td>–</td><td>Status wird „past_due“, Lieferung stoppt, niemand wird informiert</td><td><span class="tag bad">fehlt</span></td></tr>
+  <tr><td class="n">17</td><td><b>Kündigung</b></td><td>–</td><td>Status wird gesetzt, keine Bestätigung, kein Rückgewinn-Versuch</td><td><span class="tag bad">fehlt</span></td></tr>
+  <tr><td class="n">18</td><td><b>Formular-Erinnerung, Feedback, Upgrade</b></td><td>–</td><td>kein Kontakt zwischen den Lieferungen</td><td><span class="tag bad">fehlt</span></td></tr>
+</table>
+
+<div class="pb"></div>
+<h2>4. Heute gefunden und behoben</h2>
+<div class="grid2">
+  <div class="box green"><b>Versand stand still</b><br>Seit #38 brach jeder Versandlauf ab (fehlerhafte Datenbankabfrage). Am 27.09. ging deshalb keine Mail raus. Behoben in #61, Versand neu gestartet.</div>
+  <div class="box green"><b>Web-Proben kamen nie an</b><br>Die Seite sagt „Ihre Leads sind unterwegs“, ausgeliefert wurde aber nichts (lief nur im abgeschalteten Gehirn). Jetzt stündlich; wenn nicht lieferbar, bekommst du eine Meldung.</div>
+  <div class="box green"><b>Nachfassmails wären kaputt gewesen</b><br>Vor jedem Versand wurden alle offenen Mails mit dem Erstmail-Text überschrieben, also auch Nachfassmails. Ab 30.09. wäre das passiert.</div>
+  <div class="box green"><b>Falsche Probe-Nachfrage</b><br>Konnte keine Probe gebaut werden, galt sie trotzdem als gesendet, und 3 Tage später kam „Haben Sie sich die Leads angesehen?“. Jetzt: ehrliche Eingangsbestätigung.</div>
+  <div class="box green"><b>Anreicherung erreichte Arbeitgeber nicht</b><br>Nur die 600 neuesten Firmen wurden geprüft, Firmen mit Website (Personalvermittlung, IT) kamen nie dran. Jetzt zuerst.</div>
+  <div class="box green"><b>Texte widersprachen sich</b><br>Nachfass-, Proben- und FAQ-Texte sprachen noch von „Ihrer Stadt“ und „keine Kontaktdaten“. Jetzt landesweit und mit Geschäftsführer aus dem Register.</div>
+</div>
+
+<h2>5. Was wir noch optimieren sollten (nach Wirkung auf Umsatz)</h2>
+<ol class="rank">
+  <li><b>Lieferfähigkeit der Proben – deine Entscheidung.</b> Die Regel „nur vollständige Leads“ verlangt Telefon <i>und</i> E-Mail <i>und</i> Ansprechperson <i>und</i> Website <i>und</i> Adresse. Das erfüllt heute <b>kein einziger</b> Lead. Die Websites liefern meist Telefon, aber oft keine E-Mail (nur Kontaktformular), und UK-Geschäftsführer fehlen ohne Companies-House-Schlüssel. Folge: jedes „Ja“ und jede Web-Anfrage läuft ins Leere, auch <b>Forward Role Recruitment</b> (UK, Personalvermittlung, Anfrage heute 12:24 UTC).<br>
+  <span class="small">Vorschlag: Pflicht = Website, Adresse, zentrale Telefonnummer, Ereignis mit Quelle. E-Mail und Name sind „wenn vorhanden“, sonst steht „Ask for the owner / managing director“, wie in CLAUDE.md für fehlende Namen vorgesehen.</span></li>
+  <li><b>Bounce-Quote im Blick behalten.</b> 5 von 90 Mails kamen zurück (5,6 %). Die Notbremse stoppt den Versand ab 100 gesendeten Mails bei über 5 %. Wenn die neuen Mails ähnlich oft zurückkommen, hält der Versand an. Gegenmittel: Adressen vor dem Versand strenger prüfen (nur Adressen von der Firmenwebsite, keine geratenen).</li>
+  <li><b>Companies-House-Schlüssel eintragen</b> (kostenlos). Damit kommen für UK Geschäftsführer, Adresse und Status direkt aus dem Register.</li>
+  <li><b>Käufer mit Kunde verknüpfen.</b> Der Link im Proben-PDF zur Preisseite trägt keine Kennung. Folge: ein zahlender Kunde bekommt eventuell weiter Nachfassmails, und die Auswertung sieht nie, welches Experiment verkauft hat. Lösung: persönlichen Link bis zur Kasse durchreichen.</li>
+  <li><b>Heißes Interesse schneller schließen.</b> Bei Kaufinteresse zusätzlich den Link zur Preisseite mitschicken, und dir eine Erinnerung, wenn nach 24 h keine Antwort von dir rausging.</li>
+  <li><b>Zahlung fehlgeschlagen / Kündigung:</b> freundliche Mail an den Kunden mit Link zum Aktualisieren der Zahlung, Meldung an dich, nach Kündigung eine Rückgewinn-Mail nach 30 Tagen.</li>
+  <li><b>Erste Lieferung ohne Klick in GitHub:</b> Freigabe-Knopf im Dashboard oder automatische Freigabe, wenn du bis Montag 12 Uhr nichts sagst. Sonst verpasst der Kunde den in der Willkommensmail genannten Termin.</li>
+  <li><b>Erinnerung an das Wunsch-Formular</b> 2 Tage nach dem Kauf, wenn es noch leer ist; Link neu ausstellen statt nach 30 Tagen ablaufen.</li>
+  <li><b>Kundenbindung:</b> Feedback-Mail nach 4 Wochen („Welche Leads haben gepasst?“) und Upgrade-Hinweis, wenn das Kontingent regelmäßig ausgeschöpft wird.</li>
+  <li><b>Alle Meldungen an eine Adresse</b> (heute: horbach.de, gmail, OWNER_EMAIL).</li>
+  <li><b>Messung ehrlicher machen:</b> Über Strato gibt es keine „zugestellt“-Ereignisse; Auswertungen, die „50 zugestellt“ verlangen, greifen deshalb nie. Zählen auf „gesendet minus Bounces“ umstellen; doppelte Antwort-Zählung entfernen.</li>
+  <li><b>Einheitlicher Absender:</b> Kaltmails kommen von info@ über Strato, Proben und Antworten über Resend, die Willkommensmail signiert „Das Team“ mit fester Hamburger Adresse. Besser: überall dieselbe Person, dieselbe Signatur.</li>
+</ol>
+
+<h2>6. Was ich von dir brauche</h2>
+<div class="box red"><b>1. Entscheidung zur Vollständigkeit</b> (Punkt 5.1): Dürfen Proben und Lieferungen Leads ohne E-Mail und ohne Namen enthalten, wenn Website, Adresse und Telefon geprüft sind?</div>
+<div class="box"><b>2. Companies-House-Schlüssel</b> als GitHub-Secret <code>COMPANIES_HOUSE_API_KEY</code> (developer.company-information.service.gov.uk → Application → REST-API-Key).</div>
+<div class="box"><b>3. Forward Role Recruitment</b> persönlich eine Nachricht schicken (Probe angefordert, noch nicht lieferbar).</div>
+<div class="box"><b>4. Freigabe für die Punkte 5.4 bis 5.10</b> – ich baue sie dann nacheinander, jeweils mit Test.</div>
+
+<p class="small" style="margin-top:6mm">Erstellt aus Code, Workflows und Datenbank am 27.09.2026. Quelle der Zahlen: Tabelle <i>messages</i>, <i>email_events</i>, <i>sample_requests</i>, <i>customers</i> (Schema signalwerk).</p>
+</body>
+</html>
