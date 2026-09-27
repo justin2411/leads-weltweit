@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-from lib.deliverability import DEFAULT_WARMUP, emergency_stop, interleave, warmup_cap  # noqa: E402
+from lib.deliverability import DEFAULT_WARMUP, emergency_stop, interleave, provider_cap, warmup_cap  # noqa: E402
 
 
 class DeliverabilityTest(unittest.TestCase):
@@ -13,7 +13,8 @@ class DeliverabilityTest(unittest.TestCase):
         d = dt.date(2026, 10, 1)
         self.assertEqual(warmup_cap(None, d, DEFAULT_WARMUP), 25)
         self.assertEqual(warmup_cap(d, d + dt.timedelta(days=5), DEFAULT_WARMUP), 75)
-        self.assertEqual(warmup_cap(d, d + dt.timedelta(days=30), DEFAULT_WARMUP), 90)
+        # Endstufe 100, aber nie über der Anbietergrenze minus 10 Reserve (config/versand.yaml)
+        self.assertEqual(warmup_cap(d, d + dt.timedelta(days=30), DEFAULT_WARMUP), min(100, provider_cap() - 10))
 
     def test_stop(self):
         self.assertIsNone(emergency_stop(10, 2, 0))          # zu wenig Daten
