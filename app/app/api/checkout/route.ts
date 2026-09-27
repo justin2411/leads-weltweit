@@ -36,14 +36,19 @@ export async function POST(req: Request) {
 
   const meta = { segment_id: page.segment_id, country: page.country, variant_id: v.id, package: pkg, mode,
                  amount_cents: String(plan?.amount_cents ?? ""), currency: plan?.currency ?? "" };
-  const back = ownerPreview ? `${siteUrl()}/${page.slug}?vorschau=1&v=${v.variant_key}` : `${siteUrl()}/${page.slug}`;
+  // Zurück aus Stripe: auf die Pläne-Seite (/start), nicht auf die Landingpage
+  const q = new URLSearchParams();
+  if (ownerPreview) { q.set("vorschau", "1"); q.set("v", v.variant_key); }
+  const r = String(f.get("r") ?? "");
+  if (/^[A-Za-z0-9_-]{8,80}$/.test(r)) q.set("r", r);
+  const back = `${siteUrl()}/${page.slug}/start${q.size ? `?${q}` : ""}`;
   let session: any;
   try {
     session = await stripe("checkout/sessions", {
     mode: "subscription",
     line_items: { 0: item },
     success_url: `${siteUrl()}/danke?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${back}#plans`,
+    cancel_url: back,
     billing_address_collection: "required",
     custom_fields: { 0: { key: "company", label: { type: "custom", custom: page.language === "fr" ? "Entreprise" : "Company name" }, type: "text" } },
     metadata: meta,

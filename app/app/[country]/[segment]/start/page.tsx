@@ -143,6 +143,7 @@ export default async function StartPage({ params, searchParams }: { params: Para
                   <input type="hidden" name="variant_id" value={v.id} />
                   <input type="hidden" name="package" value={p.key} />
                   {preview && <input type="hidden" name="vorschau" value="1" />}
+                  {sp.r && <input type="hidden" name="r" value={sp.r} />}
                   <button className={`btn ${hi ? "gold" : "line"} big`} type="submit">{T.pick} {p.name} <span className="ar">→</span></button>
                 </form>
               ) : (
