@@ -340,7 +340,8 @@ def cmd_sitecheck(db: DB, args) -> None:
     session = requests.Session()
     since = (TODAY - dt.timedelta(days=30)).isoformat()
     q = {"signal_type": "eq.new_incorporation", "event_date": f"gte.{since}", "order": "event_date.desc",
-         "select": "id,company_id,segment_id,event_summary,watch_companies!inner(id,name,country,website_checked_at)",
+         "select": "id,company_id,segment_id,event_summary,watch_companies!inner(id,name,country,region,city,address,"
+                   "registry_source,registry_id,website_checked_at)",
          "watch_companies.website_checked_at": "is.null", "limit": str(args.limit * 3)}
     if args.segment != "all":
         q["segment_id"] = f"eq.{args.segment}"
@@ -352,7 +353,7 @@ def cmd_sitecheck(db: DB, args) -> None:
         if co.get("website_checked_at") or co["id"] in seen or n >= args.limit:
             continue
         seen.add(co["id"])
-        site, checked = find_website(co["name"], co["country"], session)
+        site, checked = find_website(co["name"], co["country"], session, company=co)
         db.update("watch_companies", {"id": co["id"]}, {"website_checked_at": NOW.isoformat(),
                                                         **({"website": site} if site else {})})
         n += 1
@@ -369,7 +370,12 @@ def cmd_sitecheck(db: DB, args) -> None:
 
 
 def cmd_contacts(db: DB, args) -> None:
-    """Zentrale Telefonnummer und Sammel-E-Mail (info@ …) von der eigenen Website der Firma, höchstens alle 30 Tage."""
+    """Seit 27.09.2026: übernimmt scripts/enrich.py (Website prüfen, Vorwahl passend, MX geprüft, Qualität).
+    Der alte Weg unten würde die geprüften Kontakte mit ungeprüften überschreiben und bleibt nur als Rückfall."""
+    if not getattr(args, "legacy", False):
+        from enrich import main as enrich_main
+        enrich_main(["run", "--limit", str(getattr(args, "limit", 200))])
+        return
     from lib.contacts import fetch_contacts
     session = requests.Session()
     done = {o["company_id"]: o for o in db.select_all("observations", {"kind": "eq.other", "key": "eq.contact",
@@ -479,6 +485,7 @@ def main(argv=None) -> int:
     ap.add_argument("--days", type=int, default=30)
     ap.add_argument("--limit", type=int, default=100)
     ap.add_argument("--segment", default="S2", help="sitecheck: Segment oder 'all'")
+    ap.add_argument("--legacy", action="store_true", help="contacts: alter Weg ohne Prüfung")
     ap.add_argument("--location"); ap.add_argument("--sic"); ap.add_argument("--county")
     args = ap.parse_args(argv)
     db = DB()

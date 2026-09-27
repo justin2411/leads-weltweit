@@ -46,11 +46,12 @@ FAQ = {
     "en": {
         "sources": "All leads come from public records (company registers, official notices) and companies' own "
                    "websites and careers pages. Every lead lists its source and the date we checked it.",
-        "frequency": "New leads are detected daily; subscribers receive a weekly list for their region and signals.",
-        "regions": "We currently cover the UK, the US (New York metro first) and France, and can focus on the "
-                   "towns or counties you work in.",
-        "data_privacy": "Leads contain company data only: company name, location, website, the event and its source. "
-                        "No personal contact details of employees.",
+        "frequency": "New leads are detected daily; subscribers receive a weekly list for their country and signals.",
+        "regions": "We currently cover the UK, the US and France, each country-wide. If you only work in certain "
+                   "areas, you can narrow the weekly list down after signing up.",
+        "data_privacy": "Leads contain company data: name, address, website, the central phone number and email, the "
+                        "event and its source, plus the owner or director named in the public register or the "
+                        "company's legal notice. No private contact details and no other employees.",
         "format": "You receive a spreadsheet (CSV/Excel) and a clear overview page; each lead has the company, "
                   "the event, the date, the source, an urgency rating and a suggested opening line.",
         "how_it_works": "We monitor public sources for events that create a reason to talk: new registrations, "
@@ -60,9 +61,11 @@ FAQ = {
         "sources": "Toutes les pistes proviennent de sources publiques (registres, annonces officielles) et des sites "
                    "des entreprises. Chaque piste indique sa source et la date de vérification.",
         "frequency": "Les pistes sont détectées chaque jour ; les abonnés reçoivent une liste hebdomadaire.",
-        "regions": "Nous couvrons actuellement la France, le Royaume-Uni et les États-Unis, avec un ciblage par ville.",
-        "data_privacy": "Uniquement des données d'entreprise : nom, localisation, site, événement et source. "
-                        "Aucune coordonnée personnelle.",
+        "regions": "Nous couvrons actuellement la France, le Royaume-Uni et les États-Unis, chaque pays en entier. "
+                   "Après l'inscription, vous pouvez limiter la liste à vos régions.",
+        "data_privacy": "Des données d'entreprise : nom, adresse, site, téléphone et e-mail de l'entreprise, événement "
+                        "et source, ainsi que le dirigeant inscrit au registre public ou dans les mentions légales. "
+                        "Aucune coordonnée privée, aucun autre salarié.",
         "format": "Un tableur (CSV/Excel) et une page de synthèse ; chaque piste comprend l'entreprise, l'événement, "
                   "la date, la source, un niveau d'urgence et une phrase d'accroche.",
         "how_it_works": "Nous surveillons des sources publiques et repérons les moments propices : créations, postes "
@@ -262,12 +265,23 @@ def notify_owner(subject: str, text: str) -> None:
     r.raise_for_status()
 
 
+def sample_delay_text(lang: str) -> str:
+    """Eingangsbestätigung, wenn noch keine 10 vollständigen Leads bereitliegen (keine Zusage zu Zeit oder Menge)."""
+    if lang == "fr":
+        return ("Bonjour,\n\nMerci pour votre réponse. Je prépare votre échantillon de 10 pistes vérifiées "
+                "et je vous l'envoie personnellement dès qu'il est prêt.\n\n"
+                f"Bien cordialement,\n{signature(lang)}")
+    return ("Hello,\n\nThank you for your reply. I am putting together your sample of 10 verified leads "
+            "and will send it to you personally as soon as it is ready.\n\n"
+            f"Best regards,\n{signature(lang)}")
+
+
 def regional_sample(db, seg: str, country: str, region: str | None) -> tuple[list[tuple[str, bytes]], bool]:
     """10 vollständige Leads aus dem ganzen Land (Inhaber 27.09.2026). (Dateien, True) – sonst ([], False)."""
     from deliveries import REQUIRE_CONTACT, _lang, contact_companies, enrich, to_csv
     from lib.regions import area_of, lead_matches
     area = None  # Leads aus dem ganzen Land (Inhaber 27.09.2026), keine Regionsauswahl mehr
-    known = contact_companies(db) if REQUIRE_CONTACT else None
+    known = contact_companies(db, website_optional=(seg == "S2")) if REQUIRE_CONTACT else None
     rows = db.select_all("leads", {"segment_id": f"eq.{seg}", "country": f"eq.{country}", "status": "in.(new,sample)",
                                "select": "id,event_summary,event_date,source_name,source_url,source_date,urgency,"
                                          "urgency_reason,opener,signal_type,company_id,observation_ids,"
@@ -368,9 +382,9 @@ def sample_text(lang: str, region: str | None, has_files: bool, regional: bool =
                          "des zones voisines. La livraison régulière ne couvre que vos villes.")
         parts += [
             "Mon conseil : commencez par les pistes en priorité haute. Leur besoin est le plus urgent, et la phrase d'accroche vous porte pendant la première minute de l'appel.",
-            "Si cela vous convient, vous recevez une nouvelle liste comme celle-ci chaque lundi, uniquement pour votre zone "
+            "Si cela vous convient, vous recevez une nouvelle liste comme celle-ci chaque lundi, partout en France "
             "et réservée à votre entreprise.",
-            "On commence lundi prochain ? Répondez simplement avec les villes à couvrir.",
+            "On commence lundi prochain ? Un simple « oui » suffit.",
             "Bien cordialement,\n" + signature(lang),
         ]
     else:
@@ -386,8 +400,8 @@ def sample_text(lang: str, region: str | None, has_files: bool, regional: bool =
                          "The regular delivery only covers your towns.")
         parts += [
             "My tip: start with the leads marked high priority. They need help most urgently, and the opening line gets you through the first minute of the call.",
-            "If the leads work for you, you get a new list like this every Monday, only for your area and reserved for your firm.",
-            "Shall we start next Monday? Just reply with the towns you want covered.",
+            "If the leads work for you, you get a new list like this every Monday, from across the country and reserved for your firm.",
+            "Shall we start next Monday? A simple \"yes\" is enough.",
             "Kind regards,\n" + signature(lang),
         ]
     return "\n\n".join(parts)
@@ -460,6 +474,14 @@ def main(argv=None) -> int:
 
         event_type = {"buy": "reply_positive", "sample": "sample_requested", "not_interested": "reply_negative",
                       "unsubscribe": "reply_negative", "out_of_office": "auto_reply"}.get(c["intent"], "reply")
+        files = body = blocks = None
+        if action in ("sample", "sample_owner"):
+            files, _ = regional_sample(db, p["segment_id"], p["country"], p.get("region"))
+            body, blocks = sample_mail(lang, None, files, True)  # Leads aus dem ganzen Land, kein Regionshinweis
+            if not body and event_type == "sample_requested":
+                # Probe nicht lieferbar: nicht als "Probe gesendet" zählen, sonst fragt followups.py nach einer
+                # Probe, die nie ankam.
+                event_type = "reply_positive"
         db.insert("email_events", {"message_id": m["id"], "type": event_type, "dedupe_key": dedupe,
                                    "note": f"{c['summary_de']} | Aktion: {action}",
                                    "payload": {"intent": c["intent"], "faq": c.get("faq"), "by": c["by"]}})
@@ -468,14 +490,13 @@ def main(argv=None) -> int:
             for addr in {sender}:
                 db.rpc("suppress_email", {"p_email": addr, "p_reason": "reply_optout", "p_source": "responder"})
         elif action in ("sample", "sample_owner"):
-            files, regional = regional_sample(db, p["segment_id"], p["country"], p.get("region"))
-            from lib.regions import area_of
-            body, blocks = sample_mail(lang, None, files, True)  # Leads aus dem ganzen Land, kein Regionshinweis
             if body:
                 send_reply(sender, subject, body, mid, lang, files, blocks, requested=True)
                 if event_type != "sample_requested":
                     db.insert("email_events", {"message_id": m["id"], "type": "sample_requested",
                                                "note": "Probe automatisch gesendet"})
+            else:
+                send_reply(sender, subject, sample_delay_text(lang), mid, lang)
             if action == "sample_owner" or not body:
                 notify_owner(f"[Leads] Bitte ansehen: {p['company_name']}",
                              f"{p['company_name']} ({p['segment_id']}/{p['country']}) hat geantwortet.\n\n"
@@ -486,11 +507,11 @@ def main(argv=None) -> int:
             answers = "\n\n".join(FAQ[lang if lang in FAQ else "en"][k] for k in keys)
             if lang == "fr":
                 body = (f"Bonjour,\n\nMerci pour votre "
-                        f"question.\n\n{answers}\n\nSouhaitez-vous recevoir l'échantillon gratuit de 10 pistes pour "
-                        f"votre région ? Il suffit de répondre « oui ».\n\nBien cordialement,\n{signature(lang)}")
+                        f"question.\n\n{answers}\n\nSouhaitez-vous recevoir l'échantillon gratuit de 10 pistes "
+                        f"actuelles ? Il suffit de répondre « oui ».\n\nBien cordialement,\n{signature(lang)}")
             else:
                 body = (f"Hello,\n\nThank you for your question."
-                        f"\n\n{answers}\n\nWould you like me to send you the free sample of 10 leads for your area? "
+                        f"\n\n{answers}\n\nWould you like me to send you the free sample of 10 current leads? "
                         f"A simple \"yes\" is enough.\n\nBest regards,\n{signature(lang)}")
             send_reply(sender, subject, body, mid, lang)
         elif action == "owner":

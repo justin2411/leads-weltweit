@@ -49,7 +49,8 @@ def fr_dirigeant(siren: str, session: requests.Session) -> dict | None:
     for d in res[0].get("dirigeants") or []:
         if d.get("type_dirigeant") == "personne physique" and d.get("nom"):
             first = (d.get("prenoms") or "").split()[0] if d.get("prenoms") else ""
-            return {"name": _title(f"{first} {d['nom']}".strip()), "role": d.get("qualite") or "Dirigeant",
+            nom = re.sub(r"\s*\([^)]*\)", "", d["nom"]).strip()  # Gebrauchsname in Klammern weglassen
+            return {"name": _title(f"{first} {nom}".strip()), "role": d.get("qualite") or "Dirigeant",
                     "source": "Registre national des entreprises"}
     return None
 

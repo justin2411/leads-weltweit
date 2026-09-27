@@ -25,26 +25,42 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
       - run: pip install -r requirements.txt
+      - name: Schalter Lead-Suche (config/pipeline.yaml)
+        id: gate
+        run: |
+          if grep -Eq '^lead_suche:\s*true' config/pipeline.yaml; then
+            echo "suche=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Lead-Suche pausiert (config/pipeline.yaml: lead_suche: false)" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Quellen
+        if: steps.gate.outputs.suche == 'true'
+        timeout-minutes: 30
         continue-on-error: true
         run: |
           python scripts/watch.py careers
           python scripts/watch.py ny-incorporations --days 10 --limit 2000
           python scripts/watch.py fr-incorporations --departement 69,75,92,59 --days 10 --limit 200
       - name: Neugründungen UK (Companies House, montags)
+        if: steps.gate.outputs.suche == 'true'
         continue-on-error: true
         run: |
           if [ "$(date -u +%u)" = 1 ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             python scripts/watch.py uk-bulk --days 45 --limit 12000
           fi
       - name: Signale und Website-Prüfung
+        if: steps.gate.outputs.suche == 'true'
+        # darf Nachfassmails und Entwürfe nie blockieren (27.09.: Zeitlimit des ganzen Laufs überschritten)
+        timeout-minutes: 60
+        continue-on-error: true
         run: |
           python scripts/watch.py detect
           python scripts/watch.py sitecheck --limit 150
-          python scripts/watch.py sitecheck --segment all --limit 400
-          python scripts/watch.py contacts --limit 400
           python scripts/watch.py people --limit 600
+          # Website finden/prüfen, Kontakte, Qualität: scripts/enrich.py (auch eigener Workflow anreichern.yml)
+          python scripts/enrich.py run --limit 300
       - name: Proben aktualisieren
+        continue-on-error: true
         run: |
           python scripts/samples.py
           git config user.name "signalwerk-bot"

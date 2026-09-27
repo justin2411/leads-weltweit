@@ -6,6 +6,7 @@ import { homeFeed, homeStats, MASK, publicPages, type PublicPage } from "@/lib/s
 import { BrandShell, SiteFooter, SiteHeader, Words } from "./chrome";
 import { HOME, HOME_LANGS, HOME_PATH, type HomeLang } from "./home-i18n";
 import { HeroNet, SignalFeed } from "./motion";
+import { COUNTRIES, segKey, type CountryCode } from "@/lib/country";
 
 // Register (Inhaber 27.09.2026 „über 18 Millionen“): Companies House 4.930.634 (effektives Register, März 2026,
 // GOV.UK Companies register activities 2025/26) + INSEE SIRENE 13,7 Mio. aktive Rechtseinheiten (2022) = 18,6 Mio.
@@ -41,6 +42,9 @@ function Icon({ d }: { d: string }) {
 /** Firmenname in Texten (MASK) verwischt darstellen. */
 const masked = (v: string) => v.split(MASK).flatMap((part, j) => j ? [<span className="mask" key={j}>xxxxxxxxxx</span>, part] : [part]);
 
+/** Gleiche Reihenfolge der Branchen in jedem Land. */
+const ORDER = ["accountants", "financial-advisers", "insurance-brokers", "recruitment", "web-agencies", "it-services"];
+
 const i = (n: number) => ({ "--i": n }) as CSSProperties;
 
 /** Abschnittskopf: Linie, Überschrift Wort für Wort (ohne Punkt), optional Einleitung. */
@@ -67,9 +71,13 @@ export async function Home({ lang }: { lang: HomeLang }) {
   const video = V[`${lang}:home`] ?? V["uk/accountants"];
   const example = feed.find((f) => f.opener) ?? feed[0];
   const ind = (p: PublicPage): [string, string] => {
-    const seg = p.slug.split("/")[1];
+    const seg = segKey(p.slug);
     return t.industries[seg] ?? [p.name, p.blurb];
   };
+  // Länder mit öffentlichen Seiten; Startland je Sprache
+  const countries = (["UK", "US", "FR"] as CountryCode[]).filter((c) => pages.some((p) => p.country === c));
+  const pref: CountryCode = lang === "fr" ? "FR" : "UK";
+  const defCountry = countries.includes(pref) ? pref : countries[0];
   const mailto = `mailto:${CONTACT}?subject=${encodeURIComponent(t.mailSubject)}&body=${encodeURIComponent(t.mailBody)}`;
   const ld = {
     "@context": "https://schema.org", "@type": "Organization", name: BRAND, legalName: LEGAL_NAME, url: siteUrl(), email: CONTACT,
@@ -161,10 +169,16 @@ export async function Home({ lang }: { lang: HomeLang }) {
 
       <section id="industries" style={{ paddingTop: example ? 32 : undefined }}><div className="wrap">
         <Head title={t.indH} gold={t.indGold} intro={t.indIntro} />
+        {/* Länder-Umschalter ohne JavaScript: Radio + CSS; Standard je Sprache */}
+        {countries.map((c) => <input key={c} type="radio" name="cc" id={`cc-${c}`} className="cc-in" defaultChecked={c === defCountry} />)}
+        {countries.length > 1 && (
+          <div className="cswitch" data-rv role="group" aria-label={t.countryPick}>
+            {countries.map((c) => <label key={c} htmlFor={`cc-${c}`}><span aria-hidden="true">{COUNTRIES[c].flag}</span><b>{COUNTRIES[c].name[lang]}</b><em>{c === "UK" ? "UK" : c === "US" ? (lang === "fr" ? "É.-U." : "US") : COUNTRIES[c].name[lang]}</em></label>)}
+          </div>)}
         <div className="cards">
-          {pages.map((p, k) => (
-            <a className="card glow" href={`/${p.slug}`} key={p.slug} data-rv style={i(k)}>
-              <div className="cc">{t.country[p.country] ?? p.country}</div><h3>{ind(p)[0]}</h3>{ind(p)[1] && <p>{ind(p)[1]}</p>}
+          {[...pages].sort((a, b) => ORDER.indexOf(segKey(a.slug)) - ORDER.indexOf(segKey(b.slug))).map((p, k) => (
+            <a className="card glow" href={`/${p.slug}`} key={p.slug} data-cc={p.country} data-rv style={i(k % 5)}>
+              <h3>{ind(p)[0]}</h3>{ind(p)[1] && <p>{ind(p)[1]}</p>}
               <span className="go">{t.indGo} <i>→</i></span>
             </a>))}
           {pages.length === 0 && <div className="card"><h3>{t.soon[0]}</h3><p>{t.soon[1]}</p></div>}

@@ -236,8 +236,14 @@ def cmd_send(args) -> int:
         c = row["prospects"]["country"]
         sent_today[c] = sent_today.get(c, 0) + 1
 
-    rows = interleave(db.select("messages", {"status": "eq.approved", "order": "approved_at.asc",
-                                             "limit": str(args.limit), "select": "*,prospects(*),experiments(*)"}))
+    sel = "*,prospects(*),experiments(*)"
+    # Nachfassmails zuerst: ihr Zeitpunkt (4 Tage nach der Erstmail, 3 Tage nach der Probe) zählt, sonst warten sie
+    # hinter dem Rückstau neuer Erstmails.
+    later = db.select("messages", {"status": "eq.approved", "kind": "neq.initial", "order": "approved_at.asc",
+                                   "limit": str(args.limit), "select": sel})
+    rows = later + interleave(db.select("messages", {"status": "eq.approved", "kind": "eq.initial",
+                                                     "order": "approved_at.asc", "limit": str(args.limit),
+                                                     "select": sel}))
     already = sum(sent_today.values())
     print(f"Aufwärmphase: heute max. {cap} Mails insgesamt, bereits gesendet: {already}")
     n_sent = 0

@@ -18,49 +18,56 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from drafts import _clean_name, _place, signature  # noqa: E402
+from drafts import LAND, _clean_name, signature  # noqa: E402
 from lib.rules import lint_draft  # noqa: E402
 
 NEGATIVE = {"bounced", "complained", "failed", "reply", "reply_positive", "reply_negative", "sample_requested",
-            "unsubscribed", "auto_reply"}
+            "unsubscribed"}  # auto_reply (Abwesenheit) bricht die Nachfassmail nicht ab
 
 SIGNAL = {
     "S1": ("employers whose job adverts have stayed open for 30+ days", "employeurs dont les offres restent ouvertes"),
     "S2": ("newly registered businesses", "sociétés nouvellement créées"),
-    "S3": ("growing local businesses", "entreprises locales en croissance"),
+    "S3": ("growing businesses", "entreprises en croissance"),
     "S4": ("newly registered and expanding businesses", "sociétés nouvellement créées"),
     "S5": ("newly registered companies", "sociétés nouvellement créées"),
     "S9": ("new and growing companies", "entreprises nouvelles et en croissance"),
 }
 
 
+def _land(p: dict, lang: str) -> str:
+    """Landesweit statt regional (Inhaber 27.09.2026): 'across the UK' / 'partout en France'."""
+    if lang == "fr":
+        return "partout en France"
+    return "across " + LAND.get((p.get("country") or "").upper(), "your country")
+
+
 def followup_text(p: dict, lang: str) -> tuple[str, str]:
     firm = _clean_name(p["company_name"])
-    _, area = _place(p.get("region"))
-    en, fr = SIGNAL.get(p["segment_id"], ("local companies with a current reason to buy", "entreprises locales"))
+    land = _land(p, lang)
+    en, fr = SIGNAL.get(p["segment_id"], ("companies with a current reason to buy", "entreprises avec un besoin actuel"))
     if lang == "fr":
-        body = (f"Bonjour,\n\nJuste un petit rappel de mon message sur les {fr} autour de {area}.\n\n"
-                f"L'échantillon est prêt : 10 pistes actuelles pour {area}, avec téléphone, e-mail et une phrase "
-                f"d'accroche. Gratuit, sans engagement, et vous voyez tout de suite si cela vous correspond.\n\n"
-                f"Je vous l'envoie ?\n\nBien cordialement,\n{signature(lang)}")
+        body = (f"Bonjour,\n\nJuste un petit rappel de mon message sur les {fr} {land}.\n\n"
+                f"L'échantillon est prêt : 10 pistes actuelles, chacune avec sa source, les coordonnées de "
+                f"l'entreprise et une phrase d'accroche. Gratuit, sans engagement, et vous voyez tout de suite si "
+                f"cela vous correspond.\n\nJe vous l'envoie ?\n\nBien cordialement,\n{signature(lang)}")
     else:
-        body = (f"Hello {firm} team,\n\nJust a short nudge on my note about {en} around {area}.\n\n"
-                f"The sample is ready to go: 10 current leads for {area}, each with phone, email and an opening line. "
-                f"It's free, there is no obligation, and you will see within a few minutes whether it fits.\n\n"
-                f"Shall I send it over?\n\nBest regards,\n{signature(lang)}")
-    return body, area
+        body = (f"Hello {firm} team,\n\nJust a short nudge on my note about {en} {land}.\n\n"
+                f"The sample is ready to go: 10 current leads, each with its source, the company's contact details "
+                f"and an opening line. It's free, there is no obligation, and you will see within a few minutes "
+                f"whether it fits.\n\nShall I send it over?\n\nBest regards,\n{signature(lang)}")
+    return body, land
 
 
 def sample_followup_text(p: dict, lang: str) -> str:
-    _, area = _place(p.get("region"))
+    land = _land(p, lang)
     if lang == "fr":
-        return (f"Bonjour,\n\nAvez-vous pu jeter un œil aux pistes pour {area} ?\n\n"
-                f"Si une ou deux entreprises vous ont parlé, imaginez la même liste chaque lundi, uniquement pour vos "
-                f"villes et réservée à votre entreprise. Rien à installer, vous répondez et nous nous occupons du reste.\n\n"
+        return (f"Bonjour,\n\nAvez-vous pu jeter un œil aux 10 pistes que je vous ai envoyées ?\n\n"
+                f"Si une ou deux entreprises vous ont parlé, imaginez une nouvelle liste chaque lundi, {land} et "
+                f"réservée à votre entreprise. Rien à installer, vous répondez et nous nous occupons du reste.\n\n"
                 f"On démarre lundi prochain ?\n\nBien cordialement,\n{signature(lang)}")
-    return (f"Hello,\n\nDid you get a chance to look at the leads for {area}?\n\n"
-            f"If one or two of them caught your eye, picture the same list every Monday, only for your towns and "
-            f"reserved for your firm. Nothing to set up: you reply, we take care of the rest.\n\n"
+    return (f"Hello,\n\nDid you get a chance to look at the 10 leads I sent over?\n\n"
+            f"If one or two of them caught your eye, picture a fresh list every Monday, {land} and reserved for "
+            f"your firm. Nothing to set up: you reply, we take care of the rest.\n\n"
             f"Shall we start next Monday?\n\nBest regards,\n{signature(lang)}")
 
 

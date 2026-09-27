@@ -1,0 +1,60 @@
+# Lead-Anreicherung: Website finden und prüfen, Telefon/Sammel-E-Mail/Adresse/Ansprechperson ergänzen,
+# Vollständigkeit bewerten (scripts/enrich.py). Viermal täglich + von Hand mit eigenem Limit.
+# Nur kostenlose Quellen: DNS, die eigenen Websites der Firmen (robots.txt, 1 Anfrage/s je Domain,
+# jede Firma höchstens alle 30 Tage), Companies House API, recherche-entreprises, data.ny.gov.
+# Keine Suchmaschinen, keine Plattformen. Sendet keine Mails.
+name: anreichern
+on:
+  schedule: [{ cron: "41 2,8,15,20 * * *" }]
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Firmen je Lauf (neueste Leads zuerst, Live-Seiten zuerst)"
+        default: "250"
+      alle_segmente:
+        description: "auch Länder/Segmente ohne Live-Landingpage (true/false)"
+        default: "false"
+concurrency: { group: recherche, cancel-in-progress: false }   # nicht parallel zu taeglich.yml (gleiche Firmen)
+permissions:
+  contents: read
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      COMPANIES_HOUSE_API_KEY: ${{ secrets.COMPANIES_HOUSE_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Schalter Lead-Suche (config/pipeline.yaml)
+        id: gate
+        run: |
+          if grep -Eq '^lead_suche:\s*true' config/pipeline.yaml || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "suche=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Lead-Suche pausiert (config/pipeline.yaml: lead_suche: false)" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.suche == 'true'
+        with: { python-version: "3.11" }
+      - run: pip install requests PyYAML dnspython
+        if: steps.gate.outputs.suche == 'true'
+      - name: Anreichern
+        if: steps.gate.outputs.suche == 'true'
+        run: |
+          ALLE=""; NOTE=""
+          [ "${{ github.event.inputs.alle_segmente }}" = "true" ] && ALLE="--all-segments"
+          # Tagesnotiz in decisions nur einmal am Tag (letzter Lauf) oder bei Handstart
+          { [ "$(date -u +%H)" = "20" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; } && NOTE="--note"
+          python scripts/enrich.py run --limit "${{ github.event.inputs.limit || '250' }}" --workers 6 $NOTE $ALLE \
+            | tee enrich.log
+      - name: Zusammenfassung
+        if: always() && steps.gate.outputs.suche == 'true'
+        run: |
+          {
+            echo '### Lead-Anreicherung'
+            echo '```'
+            grep -A40 '^Lauf:' enrich.log || tail -40 enrich.log || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -26,6 +26,9 @@ GENERIC_SPEC = {"recruitment", "general recruitment", "financial advice", "indep
                 "accounting"}
 
 
+LAND = {"UK": "the UK", "US": "the US", "IE": "Ireland", "NL": "the Netherlands", "SE": "Sweden", "BE": "Belgium", "FR": "France"}
+
+
 def _place(region: str | None) -> tuple[str, str]:
     """(Ort, Großraum) aus 'Stockport, Greater Manchester' bzw. 'Brooklyn, NY'."""
     parts = [p.strip() for p in (region or "").split(",") if p.strip()]
@@ -67,7 +70,8 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
     """(Betreff, Text, Sprache) für einen Käufer. example = echter Probe-Lead aus dem Markt des Käufers."""
     seg, country = p["segment_id"], p["country"]
     firm = _clean_name(p["company_name"])
-    town, area = _place(p.get("region"))
+    # Leads aus dem ganzen Land (Inhaber 27.09.2026), keine Region im Text
+    area = LAND.get(country, "your country")
     spec = (p.get("specialization") or "").strip()
     has_spec = spec.lower() not in GENERIC_SPEC
     fr = country == "FR"
@@ -80,39 +84,41 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
     me = (os.environ.get("SENDER_NAME") or "").split(" ")[0]
     if fr:
         need, kind, subject = {
-            "S1": (f"des employeurs de {area} qui ont en ce moment un vrai besoin de recrutement, par exemple un poste "
+            "S1": (f"des employeurs de toute la France qui ont en ce moment un vrai besoin de recrutement, par exemple un poste "
                    "ouvert depuis des semaines ou plusieurs embauches à la fois", "cabinet",
-                   f"Employeurs à {area} qui cherchent de l'aide pour recruter"),
-            "S2": (f"des entreprises de {area} tout juste créées qui ont encore besoin de leur site web", "agence",
-                   f"Nouvelles entreprises à {area} sans site web"),
-        }.get(seg, (f"des dirigeants de {area} qui viennent de créer leur entreprise et se posent leurs premières "
-                    "questions de retraite et de prévoyance", "cabinet", f"Nouveaux dirigeants à {area}"))
+                   "Employeurs en France qui cherchent de l'aide pour recruter"),
+            "S2": (f"des entreprises de toute la France tout juste créées qui ont encore besoin de leur site web", "agence",
+                   "Nouvelles entreprises en France sans site web"),
+        }.get(seg, (f"des dirigeants de toute la France qui viennent de créer leur entreprise et se posent leurs premières "
+                    "questions de retraite et de prévoyance", "cabinet", "Nouveaux dirigeants en France"))
         intro = (f"Je suis {me}, fondateur de {brand()}." if me else f"Je suis le fondateur de {brand()}.")
         first = f"{intro} Nous livrons des pistes qui se transforment en chiffre d'affaires : {need}."
-        core = (f"Elles arrivent chaque lundi, avec téléphone, e-mail et une phrase d'accroche. Chaque piste ne va qu'à "
+        core = (f"Elles arrivent chaque lundi en briefing PDF et en tableau, avec téléphone, e-mail, interlocuteur et une "
+                f"phrase d'accroche. Chaque piste ne va qu'à "
                 f"une seule {'agence' if kind == 'agence' else 'entreprise'} de votre secteur.")
-        ask = f"J'ai préparé pour vous un échantillon gratuit de 10 pistes actuelles à {area}. Je vous l'envoie ?"
+        ask = f"J'ai préparé pour vous un échantillon gratuit de 10 pistes actuelles de toute la France. Je vous l'envoie ?"
         greet, bye = "Bonjour,", "Bien cordialement,"
     else:
         need, kind, subject = {
-            "S1": (f"employers in {area} with a real need for recruitment help right now, such as roles open for weeks "
-                   "or several hires at once", "agency", f"{area} employers who need recruitment help"),
-            "S2": (f"companies in {area} that were just founded and still need their website", "web agency",
-                   f"New businesses in {area} that need a website"),
-            "S3": (f"companies in {area} that are growing fast and will soon need IT support", "IT firm",
-                   f"Growing businesses around {area}"),
-            "S4": (f"new businesses in {area} that need their first liability, property and employer cover", "broker",
-                   f"New businesses in {area} that need cover"),
-            "S5": (f"companies in {area} that were just founded and still need an accountant", "practice",
-                   f"New companies in {area} that need an accountant"),
-            "S9": (f"new company directors in {area} facing pension and protection questions for the first time",
-                   "advice firm", f"New company directors in {area}"),
-        }.get(seg, (f"companies in {area} with a concrete reason to buy right now", "firm",
-                    f"Companies in {area} with a reason to buy"))
+            "S1": (f"employers across {area} with a real need for recruitment help right now, such as roles open for weeks "
+                   "or several hires at once", "agency", f"Employers across {area} who need recruitment help"),
+            "S2": (f"companies across {area} that were just founded and still need their website", "web agency",
+                   f"New businesses across {area} that need a website"),
+            "S3": (f"companies across {area} that are growing fast and will soon need IT support", "IT firm",
+                   f"Growing businesses across {area}"),
+            "S4": (f"new businesses across {area} that need their first liability, property and employer cover", "broker",
+                   f"New businesses across {area} that need cover"),
+            "S5": (f"companies across {area} that were just founded and still need an accountant", "practice",
+                   f"New companies across {area} needing an accountant"),
+            "S9": (f"new company directors across {area} facing pension and protection questions for the first time",
+                   "advice firm", f"New company directors across {area}"),
+        }.get(seg, (f"companies across {area} with a concrete reason to buy right now", "firm",
+                    f"Companies across {area} with a reason to buy"))
         intro = f"I'm {me}, founder of {brand()}." if me else f"I'm the founder of {brand()}."
         first = f"{intro} We deliver leads you can turn into revenue: {need}."
-        core = f"They arrive every Monday, each with phone, email and an opening line. Each lead goes to one {kind} only."
-        ask = f"I've put together a free sample of 10 current leads from {area} for you. Shall I send it over?"
+        core = (f"They arrive every Monday as a short PDF briefing and a spreadsheet, each with phone, email, the contact person "
+                f"and an opening line. Each lead goes to one {kind} only.")
+        ask = f"I've put together a free sample of 10 current leads from across {area} for you. Shall I send it over?"
         greet, bye = f"Hi {firm} team,", "Best regards,"
     parts = [greet, first] + ([ex] if ex else []) + [core, ask, f"{bye}\n{sender or signature(lang)}"]
     body = "\n\n".join(parts)
@@ -164,7 +170,7 @@ def refresh(db, dry_run: bool = False) -> int:
     """Offene Entwürfe neu schreiben (gleicher Käufer, aktueller Text). Verstößt der neue Text gegen eine Regel,
     geht ein freigegebener Entwurf zurück auf draft – nie umgekehrt."""
     n = back = 0
-    for m in db.select_all("messages", {"status": "in.(draft,approved)", "sent_at": "is.null", "order": "id",
+    for m in db.select_all("messages", {"status": "in.(draft,approved)", "sent_at": "is.null", "kind": "eq.initial", "order": "id",
                                          "select": "id,status,subject,body,prospects(*)"}):
         p = m.get("prospects")
         if not p:
@@ -179,7 +185,7 @@ def refresh(db, dry_run: bool = False) -> int:
             back += 1
         n += 1
         if not dry_run:
-            db.update("messages", {"id": f"eq.{m['id']}"}, upd)
+            db.update("messages", {"id": m["id"]}, upd)
     print(f"{n} Entwürfe neu geschrieben, {back} wegen Regelverstoß zurück auf draft")
     return 0
 
@@ -206,7 +212,6 @@ def main(argv=None) -> int:
         k = (l["segment_id"], l["country"])
         samples[k] = samples.get(k, 0) + 1
     ready = {k for k, v in samples.items() if v >= 10}
-    regional = regional_counts(db)
     print("Probe vorhanden für:", ", ".join(f"{a}/{b}" for a, b in sorted(ready)) or "keine")
     n = bad = 0
     counts: dict[str, int] = {}
@@ -216,9 +221,6 @@ def main(argv=None) -> int:
         e = exps.get((p["segment_id"], p["country"]))
         if not e or (p["segment_id"], p["country"]) not in ready:
             continue
-        from lib.regions import area_of
-        if regional.get((p["segment_id"], p["country"], area_of(p.get("region"))), 0) < 10:
-            continue  # ehrlich bleiben: nur anschreiben, wo wir 10 Leads aus der Region des Käufers haben
         if total + n >= total_cap:
             print(f"Gesamtgrenze {total_cap} erreicht")
             break
