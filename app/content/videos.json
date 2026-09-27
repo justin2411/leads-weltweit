@@ -18,5 +18,10 @@
     "src": "/video/fr-home-accountants.mp4",
     "poster": "/video/fr-home-accountants.jpg",
     "seconds": 50
+  },
+  "de:home": {
+    "src": "/video/de-home-accountants.mp4",
+    "poster": "/video/de-home-accountants.jpg",
+    "seconds": 50
   }
 }
