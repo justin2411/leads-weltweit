@@ -37,11 +37,11 @@ svg{position:absolute;left:0;top:0;overflow:visible}
 <div class="scene" id="A">
   <div id="A_zoom" class="abs" style="inset:0"><svg width="1920" height="1080" id="A_svg"></svg></div>
   <div class="card" id="A_rec" style="left:1110px;top:470px;width:520px;border-radius:22px;padding:30px 34px;opacity:0">
-    <div class="lbl" style="color:var(--ok)">New company</div>
+    <div class="lbl" style="color:var(--ok)" data-i="newco">New company</div>
     <div style="font-size:34px;font-weight:800;margin-top:10px">Northfield Logistics Ltd</div>
     <div id="A_type" style="font-size:26px;color:#cfdaf0;margin-top:12px;min-height:34px"></div>
   </div>
-  <div class="abs ill" id="A_ill" style="left:1110px;top:690px;opacity:0">Illustrative example</div>
+  <div class="abs ill" id="A_ill" style="left:1110px;top:690px;opacity:0" data-i="ill">Illustrative example</div>
 </div>
 
 <!-- B: Spannung – die Zeit läuft -->
@@ -59,42 +59,42 @@ svg{position:absolute;left:0;top:0;overflow:visible}
 <div class="scene" id="D">
   <svg width="1920" height="1080" id="D_svg"></svg>
   <div class="abs" id="D_sweep" style="left:560px;top:140px;width:800px;height:800px;border-radius:50%;background:conic-gradient(from 0deg,rgba(122,162,255,.45),rgba(122,162,255,0) 70deg,transparent 360deg)"></div>
-  <div class="srcl" id="D_l0">Companies House</div><div class="srcl" id="D_l1">Public notices</div><div class="srcl" id="D_l2">Careers pages</div>
-  <div class="abs" id="D_day" style="left:120px;top:110px"><span class="chip">🕘 Checked daily</span></div>
+  <div class="srcl" id="D_l0">Companies House</div><div class="srcl" id="D_l1" data-i="notices">Public notices</div><div class="srcl" id="D_l2" data-i="careers">Careers pages</div>
+  <div class="abs" id="D_day" style="left:120px;top:110px"><span class="chip" data-i="daily">🕘 Checked daily</span></div>
 </div>
 
 <!-- E: Blip -> Lead-Karte mit Einstiegssatz -->
 <div class="scene" id="E">
   <div class="card" id="E_card">
     <div id="E_in" style="padding:44px 52px;opacity:0">
-      <div class="lbl" style="color:var(--ok)">New lead</div>
+      <div class="lbl" style="color:var(--ok)" data-i="newlead">New lead</div>
       <div style="font-size:52px;font-weight:800;letter-spacing:-1px;margin-top:8px">Northfield Logistics Ltd</div>
       <div style="display:flex;gap:16px;margin-top:26px">
-        <span class="chip" id="E_c1">📅 20 Aug 2026</span><span class="chip" id="E_c2">🔗 Companies House</span><span class="chip" id="E_c3">📍 Stockport</span>
+        <span class="chip" id="E_c1" data-i="date">📅 20 Aug 2026</span><span class="chip" id="E_c2">🔗 Companies House</span><span class="chip" id="E_c3">📍 Stockport</span>
       </div>
       <div id="E_lw" style="margin-top:30px;border-left:4px solid var(--ok);padding:6px 0 6px 22px;opacity:0">
-        <div class="lbl" style="font-size:18px;color:var(--ok)">Suggested opening line</div>
+        <div class="lbl" style="font-size:18px;color:var(--ok)" data-i="opener">Suggested opening line</div>
         <div id="E_line" style="font-size:30px;line-height:1.4;margin-top:8px;color:#e6eefc;min-height:84px"></div>
       </div>
     </div>
   </div>
-  <div class="abs ill" id="E_ill" style="left:120px;top:990px">Illustrative example</div>
+  <div class="abs ill" id="E_ill" style="left:120px;top:990px" data-i="ill">Illustrative example</div>
 </div>
 
 <!-- Q: Qualitätsprüfung -->
 <div class="scene" id="Q">
   <svg width="1920" height="1080" id="Q_svg"></svg>
   <div id="Q_cards"></div>
-  <div class="abs" id="Q_head" style="left:0;right:0;top:130px;text-align:center"><span class="chip" style="font-size:32px">Quality score · minimum 60</span></div>
-  <div class="abs ill" style="left:120px;top:990px">Illustrative scores</div>
+  <div class="abs" id="Q_head" style="left:0;right:0;top:130px;text-align:center"><span class="chip" style="font-size:32px" data-i="score">Quality score · minimum 60</span></div>
+  <div class="abs ill" style="left:120px;top:990px" data-i="ills">Illustrative scores</div>
 </div>
 
 <!-- F: Montag, Posteingang -->
 <div class="scene" id="F">
   <svg width="1920" height="1080" id="F_svg"></svg>
   <div id="F_minis"></div>
-  <div class="abs" id="F_mon" style="left:0;right:0;top:170px;text-align:center"><span class="chip" style="font-size:34px">Monday · 07:00</span></div>
-  <div class="abs" id="F_reg" style="left:0;right:0;top:800px;text-align:center"><span class="chip" data-k="region"></span>&nbsp;&nbsp;<span class="chip" style="color:#bff5dc;border-color:rgba(52,211,153,.5);background:rgba(52,211,153,.12)">✓ Delivered once</span></div>
+  <div class="abs" id="F_mon" style="left:0;right:0;top:170px;text-align:center"><span class="chip" style="font-size:34px" data-i="monday">Monday · 07:00</span></div>
+  <div class="abs" id="F_reg" style="left:0;right:0;top:800px;text-align:center"><span class="chip" data-k="region"></span>&nbsp;&nbsp;<span class="chip" style="color:#bff5dc;border-color:rgba(52,211,153,.5);background:rgba(52,211,153,.12)" data-i="once">✓ Delivered once</span></div>
 </div>
 
 <!-- G: Ein Klick -->
@@ -113,14 +113,14 @@ svg{position:absolute;left:0;top:0;overflow:visible}
     </div>
   </div>
   <div id="G_parts"></div>
-  <div class="abs" id="G_free" style="left:0;right:0;top:930px;text-align:center"><span class="chip" style="font-size:32px;color:#bff5dc;border-color:rgba(52,211,153,.5);background:rgba(52,211,153,.12)">10 free leads · judge for yourself</span></div>
+  <div class="abs" id="G_free" style="left:0;right:0;top:930px;text-align:center"><span class="chip" style="font-size:32px;color:#bff5dc;border-color:rgba(52,211,153,.5);background:rgba(52,211,153,.12)" data-i="free">10 free leads · judge for yourself</span></div>
 </div>
 
 <!-- H: Ende -->
 <div class="scene" id="H">
   <div class="abs" style="left:0;right:0;top:360px;text-align:center">
     <div class="logo" style="font-size:112px"><span class="mask"><span id="H1">NextGen</span></span><span class="mask"><span id="H2" style="color:var(--brand2)">Profit</span></span></div>
-    <div id="H_tag" style="font-size:38px;font-weight:600;color:#cfdaf0;margin-top:14px">The right companies, at the right moment.</div>
+    <div id="H_tag" style="font-size:38px;font-weight:600;color:#cfdaf0;margin-top:14px" data-i="tag">The right companies, at the right moment.</div>
     <div id="H_url" style="margin-top:44px"><span class="chip" style="font-size:30px">nextgen-profit.de</span></div>
   </div>
 </div>
@@ -130,6 +130,13 @@ svg{position:absolute;left:0;top:0;overflow:visible}
 const T = window.TIMING, CFG = window.CFG;
 document.querySelectorAll("[data-k]").forEach(el => { el.textContent = CFG.text[el.dataset.k]; });
 const L = Object.fromEntries(T.lines.map(l => [l.id, l]));
+// Texte im Bild je Sprache (CFG.lang: en, fr, de)
+const UI = ({
+  en: { newco: "New company", ill: "Illustrative example", notices: "Public notices", careers: "Careers pages", daily: "🕘 Checked daily", newlead: "New lead", date: "📅 20 Aug 2026", opener: "Suggested opening line", score: "Quality score · minimum 60", ills: "Illustrative scores", monday: "Monday · 07:00", once: "✓ Delivered once", free: "10 free leads · judge for yourself", tag: "The right companies, at the right moment.", inc: "Incorporated today · Stockport" },
+  fr: { newco: "Nouvelle entreprise", ill: "Exemple illustratif", notices: "Annonces légales", careers: "Pages carrières", daily: "🕘 Vérifié chaque jour", newlead: "Nouvelle piste", date: "📅 20 août 2026", opener: "Phrase d'accroche", score: "Score qualité · minimum 60", ills: "Scores illustratifs", monday: "Lundi · 07:00", once: "✓ Livrée une seule fois", free: "10 pistes gratuites · jugez vous-même", tag: "Les bonnes entreprises, au bon moment.", inc: "Créée aujourd'hui · Stockport" },
+  de: { newco: "Neues Unternehmen", ill: "Beispiel zur Veranschaulichung", notices: "Bekanntmachungen", careers: "Karriereseiten", daily: "🕘 Täglich geprüft", newlead: "Neuer Lead", date: "📅 20. Aug. 2026", opener: "Einstiegssatz", score: "Qualitätswert · mindestens 60", ills: "Beispielwerte", monday: "Montag · 07:00", once: "✓ Nur einmal geliefert", free: "10 kostenlose Leads · urteilen Sie selbst", tag: "Die richtigen Unternehmen, im richtigen Moment.", inc: "Heute gegründet · Stockport" },
+})[CFG.lang || "en"];
+document.querySelectorAll("[data-i]").forEach((e) => { e.textContent = UI[e.dataset.i]; });
 const $ = id => document.getElementById(id);
 const cl = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
 const p = (t, a, d) => cl((t - a) / d);
@@ -222,7 +229,7 @@ function render(t) {
   const fk = p(t, L.hook.start + 1.2, .5); foc.setAttribute("opacity", eo(fk)); scaleAt(foc, FOC.x, FOC.y, back(fk) * (1 + .08 * Math.sin(t * 5)));
   const fr = ((t - L.hook.start - 1.2) % 1.2) / 1.2; focRing.setAttribute("r", 18 + fr * 60); focRing.setAttribute("opacity", fk > 0 ? 1 - fr : 0);
   const rk = p(t, L.hook.start + 2.0, .5); $("A_rec").style.opacity = eo(rk); $("A_rec").style.transform = `translateX(${(1 - eo(rk)) * 60}px)`;
-  $("A_type").textContent = type("Incorporated today · Stockport", p(t, L.hook.start + 2.4, 1.0)); $("A_ill").style.opacity = eo(rk) * .8;
+  $("A_type").textContent = type(UI.inc, p(t, L.hook.start + 2.4, 1.0)); $("A_ill").style.opacity = eo(rk) * .8;
   // B: Uhr läuft ab, Konkurrenz rückt an, Rot steigt
   const b0 = L.tension.start - .3, bk = p(t, b0, 4.0);
   clock.setAttribute("stroke-dashoffset", 2 * Math.PI * 170 * eio(bk));
