@@ -202,7 +202,7 @@ export default async function Home() {
 
       <section className="offer" id="sample"><div className="wrap">
         <div>
-          <Head eyebrow="Free sample" title="See it for your area, ten leads free" gold={["ten", "leads", "free"]}
+          <Head eyebrow="Free sample" title={"See it for your area,\nten leads free"} gold={["ten", "leads", "free"]}
             intro="Tell us what you offer and which area you cover. You receive ten current leads in the format of the weekly delivery." />
           <div className="cta-row" data-rv><a className="btn gold big mag" href={mailto}>Request the sample by email <span className="ar">→</span></a></div>
           <div className="fine"><span>No charge</span><span>No card</span><span>No obligation</span></div>
