@@ -42,9 +42,36 @@ export async function homeStats(): Promise<HomeStats> {
 }
 
 /** Echte Beispiel-Leads aus den Proben (status sample), nur Firmendaten, je Firma einmal, für die laufende Anzeige. */
-export async function homeFeed(): Promise<HomeFeedItem[]> {
+/** Ereignis in der Sprache der Seite (Inhalt unverändert, nur übersetzt). */
+function eventText(signal: string, raw: string, dateIso: string | null, lang: "en" | "fr" | "de"): string {
+  const d = dateIso ? day(dateIso, lang) : "";
+  const n = raw.match(/(\d+)\s+open roles/i)?.[1];
+  const T = {
+    en: { reg: `Newly registered${d ? ` on ${d}` : ""}`, many: (k: string) => `${k} open roles at the same time on the careers page`, open: "Role open for more than 30 days" },
+    fr: { reg: `Immatriculée${d ? ` le ${d}` : " récemment"}`, many: (k: string) => `${k} postes ouverts en même temps sur la page carrières`, open: "Poste ouvert depuis plus de 30 jours" },
+    de: { reg: `Neu eingetragen${d ? ` am ${d}` : ""}`, many: (k: string) => `${k} offene Stellen gleichzeitig auf der Karriereseite`, open: "Stelle seit über 30 Tagen offen" },
+  }[lang];
+  if (signal === "new_incorporation" || /registered on/i.test(raw)) return T.reg;
+  if (signal === "jobs_3plus" && n) return T.many(n);
+  if (signal === "job_open_30d") return T.open;
+  return raw;
+}
+
+function day(iso: string, lang: "en" | "fr" | "de"): string {
+  return new Date(iso + "T12:00:00Z").toLocaleDateString({ en: "en-GB", fr: "fr-FR", de: "de-DE" }[lang], { day: "numeric", month: "short", year: "numeric" });
+}
+
+function sourceText(src: string, lang: "en" | "fr" | "de"): string {
+  const s = src.replace(/\s*\(.*\)$/, "");
+  const m = s.match(/^(?:Careers page|Karriereseite)\s+(.+)$/i);
+  if (m) return { en: `Careers page ${m[1]}`, fr: `Page carrières ${m[1]}`, de: `Karriereseite ${m[1]}` }[lang];
+  return s;
+}
+
+/** Echte Beispiel-Leads aus den Proben (status sample), nur Firmendaten, je Firma einmal, in der Sprache der Seite. */
+export async function homeFeed(lang: "en" | "fr" | "de" = "en"): Promise<HomeFeedItem[]> {
   const { data } = await db().from("leads")
-    .select("event_summary, event_date, source_name, country, company_id, opener, urgency, watch_companies!inner(name, city)")
+    .select("event_summary, event_date, source_name, signal_type, country, company_id, opener, urgency, watch_companies!inner(name, city)")
     .eq("status", "sample").eq("country", "UK").order("event_date", { ascending: false }).limit(60);
   const seen = new Set<string>();
   const out: HomeFeedItem[] = [];
@@ -54,14 +81,15 @@ export async function homeFeed(): Promise<HomeFeedItem[]> {
     const name = String(l.watch_companies.name);
     let ev = String(l.event_summary).split(/(?<=\.)\s/)[0].split(" (")[0].replace(/\.$/, "");
     if (ev.toUpperCase().startsWith(name.toUpperCase())) ev = ev.slice(name.length).trim();
-    ev = ev.replace(/^registered/i, "Newly registered").replace(/\s*[–—]\s*/g, ", ");
+    ev = ev.replace(/\s*[–—]\s*/g, ", ");
+    ev = eventText(String(l.signal_type ?? ""), ev, l.event_date, lang);
     out.push({
       company: nice(name),
       place: nice(String(l.watch_companies.city ?? "").replace(/\s*\(.*$/, "")),
       event: ev.charAt(0).toUpperCase() + ev.slice(1),
-      date: l.event_date ? new Date(l.event_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "",
-      source: String(l.source_name).replace(/\s*\(.*\)$/, ""),
-      opener: String(l.opener ?? "").replace(/\s*[–—]\s*/g, ", "),
+      date: l.event_date ? day(l.event_date, lang) : "",
+      source: sourceText(String(l.source_name), lang),
+      opener: String(l.opener ?? "").replace(/\s*[–—]\s*/g, ", ").split(name).join(nice(name)),
       urgency: String(l.urgency ?? ""),
     });
   }
