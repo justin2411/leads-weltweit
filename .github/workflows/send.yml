@@ -53,6 +53,9 @@ jobs:
       - name: Zustellstatus holen (Notbremse braucht aktuelle Bounces)
         if: ${{ steps.gate.outputs.ok == 'true' }}
         run: python scripts/outreach.py sync --days 30
+      - name: Offene Entwürfe auf den aktuellen Text bringen
+        if: ${{ steps.gate.outputs.ok == 'true' && !(github.event_name == 'workflow_dispatch' && inputs.probelauf) }}
+        run: python scripts/drafts.py --refresh
       - name: Probelauf
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.probelauf }}
         run: python scripts/outreach.py send
