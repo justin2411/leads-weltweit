@@ -1,18 +1,21 @@
 import { LEGAL } from "@/content/legal";
+import { BrandShell, PageHead, SiteFooter, SiteHeader } from "./chrome";
 
 export function LegalPage({ doc }: { doc: keyof typeof LEGAL }) {
   const d = LEGAL[doc];
   return (
-    <main style={{ maxWidth: 760 }}>
-      {d.placeholder && (
-        <p className="bad" style={{ border: "2px solid var(--bad)", padding: 12, borderRadius: 8, fontWeight: 600 }}>
-          PLATZHALTER – NOCH NICHT VERÖFFENTLICHEN. Solange dieser Text ein Platzhalter ist, bleiben alle Landingpages offline.
-        </p>
-      )}
-      <h1>{d.title}</h1>
-      {d.body.split("\n\n").map((p, i) => (
-        <p key={i} style={{ whiteSpace: "pre-line" }}>{p}</p>
-      ))}
-    </main>
+    <BrandShell lang="de">
+      <SiteHeader cta={["/#sample", "Free sample"]} />
+      <PageHead eyebrow="NextGen Profit" title={d.title} />
+      <div className="wrap" style={{ paddingBottom: 96 }}>
+        <article className="doc">
+          {d.placeholder && (
+            <p className="warn">PLATZHALTER, NOCH NICHT VERÖFFENTLICHEN. Solange dieser Text ein Platzhalter ist, bleiben alle Landingpages offline.</p>
+          )}
+          {d.body.split("\n\n").map((p, i) => <p key={i}>{p}</p>)}
+        </article>
+      </div>
+      <SiteFooter labels={["Impressum", "Datenschutz", "AGB"]} />
+    </BrandShell>
   );
 }

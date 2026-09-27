@@ -10,6 +10,9 @@ import { personalFor } from "@/lib/recipient";
 import { db } from "@/lib/supabase";
 import { pickVariant } from "@/lib/variants";
 import { Tracker } from "./tracker";
+import type { CSSProperties } from "react";
+import { BrandShell, SiteFooter, SiteHeader, Words } from "../../chrome";
+import { HeroNet } from "../../motion";
 
 export const dynamic = "force-dynamic";
 
@@ -57,36 +60,6 @@ export async function generateMetadata({ params, searchParams }: { params: Param
   };
 }
 
-const css = `
-.lp{--ink:#0f1b2d;--soft:#51607a;--brand:#1d4ed8;--line:#e2e8f0;--tint:#f5f8ff;color:var(--ink);background:#fff;font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
-@media (prefers-color-scheme:dark){.lp{--ink:#e8edf6;--soft:#a3b0c6;--brand:#7aa2ff;--line:#2a3345;--tint:#141b28;background:#0c111b}}
-.lp .wrap{max-width:1040px;margin:0 auto;padding:0 16px}.lp header{padding:18px 0;border-bottom:1px solid var(--line)}
-.lp .mark{font-weight:800;letter-spacing:.02em}.lp .hero{padding-top:56px;padding-bottom:40px}
-.lp .for{display:inline-block;font-size:13px;font-weight:600;color:var(--brand);border:1px solid var(--brand);border-radius:99px;padding:3px 12px;margin-bottom:14px}
-.lp .samples{display:grid;gap:12px}.lp .sample{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:var(--tint)}
-.lp .sample .co{font-weight:700}.lp .sample .meta{color:var(--soft);font-size:13px;margin-top:6px}
-@media (max-width:640px){.lp .wrap{padding:0 20px}.lp .hero{padding-top:32px;padding-bottom:28px}.lp h1{font-size:28px}
-.lp .sub{font-size:17px}.lp .btn{display:block;width:100%;text-align:center}.lp section{padding:28px 0}.lp .card{padding:14px}
-.lp footer a{display:inline-block;margin:0 16px 8px 0}}.lp h1{font-size:clamp(28px,4.5vw,44px);line-height:1.15;margin:0 0 14px}
-.lp .sub{font-size:19px;color:var(--soft);max-width:720px}.lp .btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
-.lp .btn{display:inline-block;padding:12px 20px;border-radius:8px;font-weight:600;text-decoration:none;border:1px solid var(--brand)}
-.lp .btn.pri{background:var(--brand);color:#fff}.lp .btn.sec{color:var(--brand)}
-.lp section{padding:36px 0;border-top:1px solid var(--line)}.lp h2{font-size:24px;margin:0 0 16px}
-.lp .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}.lp .card{background:var(--tint);border:1px solid var(--line);border-radius:10px;padding:16px}
-.lp .card h3{margin:0 0 6px;font-size:17px}.lp .note{color:var(--soft);font-size:14px}.lp table{width:100%;border-collapse:collapse;font-size:14px}
-.lp th,.lp td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}.lp .scroll{overflow-x:auto}
-.lp .tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;background:var(--brand);color:#fff}
-.lp .step{margin-top:24px;max-width:640px;border:2px solid var(--brand);border-radius:14px;padding:22px 24px;background:var(--tint)}
-.lp .step h2{margin:0 0 12px}.lp .checks{list-style:none;padding:0;margin:0 0 18px;display:grid;gap:10px}
-.lp .checks li{padding-left:30px;position:relative}.lp .checks li:before{content:"✓";position:absolute;left:0;color:#15803d;font-weight:800}
-.lp .step .btns{margin-top:6px}.lp .step .small{margin-top:14px}.lp .done{font-size:19px;margin-top:22px}
-.lp .small{font-size:13px;color:var(--soft);margin:0}
-.lp .btn.big{font-size:18px;padding:14px 24px;cursor:pointer}
-.lp .vid{width:100%;max-width:960px;aspect-ratio:16/9;border-radius:12px;background:#0a1324;display:block}
-.lp footer{padding:28px 0;border-top:1px solid var(--line);color:var(--soft);font-size:14px}.lp footer a{color:inherit;margin-right:16px}
-.lp .banner{background:#b91c1c;color:#fff;padding:10px 16px;font-weight:600}.lp .ok{color:#15803d;font-weight:600}.lp .err{color:#b91c1c;font-weight:600}
-.lp details{border-bottom:1px solid var(--line);padding:10px 0}.lp summary{cursor:pointer;font-weight:600}
-`;
 
 export default async function LandingPage({ params, searchParams }: { params: Params; searchParams: Search }) {
   const r = await resolve(params, searchParams);
@@ -102,10 +75,11 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
   const lang = page.language;
   const regional = await regionalSamples(page, personal?.region);
   const samples = regional.length >= 3 ? regional : ((v.sample_leads ?? []) as Sample[]);
+  const nd = (x: string) => x.replace(/\s+[–—]\s+/g, ", ");
   const signals = fillDeep((v.signals ?? []) as { title: string; text: string }[], P, lang);
   const faq = fillDeep((v.faq ?? []) as { q: string; a: string }[], P, lang);
-  const headline = fill(v.headline, P, lang);
-  const subheadline = v.subheadline ? fill(v.subheadline, P, lang) : null;
+  const headline = nd(fill(v.headline, P, lang));
+  const subheadline = v.subheadline ? nd(fill(v.subheadline, P, lang)) : null;
   const cta = fill(v.cta_label, P, lang);
   const video = (VIDEOS as Record<string, { src: string; poster: string; seconds: number }>)[page.slug];
   // Kein Formular: Knopf -> zweiter Schritt (Bedingungen) -> ein Klick sendet die Probe. Adresse kommt aus dem Mail-Link.
@@ -114,11 +88,13 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
   const stepHref = `?${[keep, "schritt=probe"].filter(Boolean).join("&")}#probe`;
   const backHref = `?${keep}#top`;
   const step = sp.schritt === "probe" && !sp.angefragt;
-  const mailto = `mailto:${CONTACT}?subject=${encodeURIComponent(`${L.mailSubject} – ${page.slug}`)}&body=${encodeURIComponent(L.mailBody)}`;
+  const mailto = `mailto:${CONTACT}?subject=${encodeURIComponent(`${L.mailSubject}: ${page.slug}`)}&body=${encodeURIComponent(L.mailBody)}`;
+  const i = (n: number) => ({ "--i": n }) as CSSProperties;
+  const fr = lang === "fr";
   const Probe = () => (
-    <div className="step" id="probe">
+    <div className="panel" id="probe">
       <h2>{L.stepTitle}</h2>
-      <ul className="checks">
+      <ul className="ticks">
         <li><b>{L.free}</b> {L.freeText}</li>
         <li><b>{L.noObl}</b> {L.noOblText}</li>
         <li>{known ? L.sendsTo(personal!.gebiet, personal!.email!) : L.sendsToUnknown}</li>
@@ -129,93 +105,103 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
           <input type="hidden" name="variant_id" value={v.id} />
           {preview && <input type="hidden" name="vorschau" value="1" />}
           <input type="hidden" name="r" value={sp.r} />
-          <div className="btns"><button className="btn pri big" type="submit" name="consent" value="yes" data-cta>{L.confirm}</button>
-            <a className="btn sec" href={backHref}>{L.back}</a></div>
+          <div className="cta-row" style={{ marginTop: 6 }}><button className="btn gold big mag" type="submit" name="consent" value="yes" data-cta>{L.confirm} <span className="ar">→</span></button>
+            <a className="btn ghost" href={backHref}>{L.back}</a></div>
           <p className="small">{consentText(lang)} <a href="/datenschutz">{L.legal[1]}</a></p>
         </form>
       ) : (
-        <div className="btns"><a className="btn pri big" href={mailto} data-cta>{L.byMail}</a><a className="btn sec" href={backHref}>{L.back}</a></div>
+        <div className="cta-row" style={{ marginTop: 6 }}><a className="btn gold big mag" href={mailto} data-cta>{L.byMail} <span className="ar">→</span></a><a className="btn ghost" href={backHref}>{L.back}</a></div>
       )}
     </div>
   );
-  const Start = ({ label }: { label: string }) => <a className="btn pri big" href={stepHref} data-cta>{label}</a>;
+  const Start = ({ label }: { label: string }) => <a className="btn gold big mag" href={stepHref} data-cta>{label} <span className="ar">→</span></a>;
+  const Head = ({ eyebrow, title }: { eyebrow: string; title: string }) => (
+    <div data-rv><div className="rule" /><div className="eyebrow">{eyebrow}</div><h2 className="rvw" data-rv><Words text={title} /></h2></div>
+  );
 
   return (
-    <div className="lp" lang={page.language} id="top">
-      <style dangerouslySetInnerHTML={{ __html: css }} />
+    <BrandShell lang={page.language}>
       {preview && <div className="banner">VORSCHAU (nicht öffentlich) · Seite {page.status} · Variante {v.variant_key} ({v.status}) · keine Ereignisse gezählt</div>}
       <Tracker variantId={v.id} enabled={!preview} />
-      <header><div className="wrap"><span className="mark">{BRAND}</span></div></header>
+      <SiteHeader links={video ? [["#video", fr ? "Vidéo" : "Film"]] : []} cta={[stepHref, fr ? "Échantillon gratuit" : "Free sample"]} />
 
-      <div className="wrap hero">
-        {personal?.firma && <div className="for">{lang === "fr" ? `Préparé pour ${personal.firma}` : `Prepared for ${personal.firma}`}</div>}
-        <h1>{headline}</h1>
-        {subheadline && <p className="sub">{subheadline}</p>}
-        {sp.angefragt ? <p className="ok done">{known ? L.thanksTo(personal!.email!) : L.thanks}</p>
-          : sp.fehler ? <p className="err">{L.error}</p> : null}
-        {step ? <Probe /> : !sp.angefragt && (
-          <div className="btns"><Start label={known ? L.send : cta} />{canBuy && <a className="btn sec" href="#plans" data-cta>{L.subscribe}</a>}</div>
-        )}
+      <div className="hero solo" id="top">
+        <HeroNet />
+        <div className="spot" aria-hidden="true" />
+        <div className="wrap">
+          {personal?.firma && <div className="for later" style={{ "--d": ".05s" } as CSSProperties}>{fr ? `Préparé pour ${personal.firma}` : `Prepared for ${personal.firma}`}</div>}
+          <h1><Words text={headline} /></h1>
+          {subheadline && <p className="lede later" style={{ "--d": ".7s" } as CSSProperties}>{subheadline}</p>}
+          {sp.angefragt ? <p className="ok">{known ? L.thanksTo(personal!.email!) : L.thanks}</p>
+            : sp.fehler ? <p className="err">{L.error}</p> : null}
+          {step ? <Probe /> : !sp.angefragt && (
+            <div className="cta-row later" style={{ "--d": ".9s" } as CSSProperties}><Start label={known ? L.send : cta} />{canBuy && <a className="btn ghost mag" href="#plans" data-cta>{L.subscribe}</a>}</div>
+          )}
+          {!step && !sp.angefragt && <div className="fine later" style={{ "--d": "1.05s" } as CSSProperties}><span>{L.free.replace(/\.$/, "")}</span><span>{L.noObl.replace(/\.$/, "")}</span></div>}
+        </div>
       </div>
 
       {video && (
-        <section id="video"><div className="wrap"><h2>{L.video(video.seconds)}</h2>
+        <section className="dark" id="video"><div className="wrap">
+          <Head eyebrow={fr ? "Le film" : "The film"} title={L.video(video.seconds)} />
           {/* Eigenes Video, keine Drittanbieter, lädt erst beim Abspielen */}
-          <video className="vid" controls playsInline preload="none" poster={video.poster} src={video.src} />
+          <div className="frame" data-rv><video controls playsInline preload="none" poster={video.poster} src={video.src} /></div>
         </div></section>
       )}
 
       {signals.length > 0 && (
-        <section><div className="wrap"><h2>{L.what}</h2>
-          <div className="grid">{signals.map((s, i) => <div className="card" key={i}><h3>{s.title}</h3><p>{s.text}</p></div>)}</div>
+        <section><div className="wrap"><Head eyebrow={fr ? "Signaux" : "Signals"} title={L.what} />
+          <div className="cards">{signals.map((sg, k) => <div className="card glow lift" key={k} data-rv style={i(k)}><h3>{nd(sg.title)}</h3><p>{nd(sg.text)}</p></div>)}</div>
         </div></section>
       )}
 
       {samples.length > 0 && (
-        <section><div className="wrap"><h2>{L.examples}</h2><p className="note">{L.examplesNote}</p>
-          <div className="samples">{samples.map((s, i) => (
-            <div className="sample" key={i}>
-              <span className="tag">{L.example}</span>{" "}<span className="co">{s.company}{s.location ? `, ${s.location}` : ""}</span>
-              <div>{s.event}</div>
-              <div className="meta">{[s.date, s.source && `${L.source}: ${s.source}`].filter(Boolean).join(" · ")}</div>
+        <section className="tinted"><div className="wrap"><Head eyebrow={fr ? "Exemples" : "Examples"} title={L.examples} />
+          <p className="intro" style={{ marginTop: -30 }}>{L.examplesNote}</p>
+          <div className="leads">{samples.map((sm, k) => (
+            <div className="lead" key={k} data-rv style={i(k)}>
+              <span className="tag">{L.example}</span><span className="co">{sm.company}{sm.location ? `, ${sm.location}` : ""}</span>
+              <div>{nd(sm.event)}</div>
+              <div className="meta">{[sm.date, sm.source && `${L.source}: ${sm.source}`].filter(Boolean).join(" · ")}</div>
             </div>))}</div>
         </div></section>
       )}
 
-      <section><div className="wrap"><h2>{L.how}</h2>
-        <div className="grid">{L.steps.map((s, i) => <div className="card" key={i}><h3>{i + 1}.</h3><p>{s}</p></div>)}</div>
+      <section><div className="wrap"><Head eyebrow={fr ? "Méthode" : "Method"} title={L.how} />
+        <div className="steps three" data-rv>{L.steps.map((st, k) => <div className="step" key={k} style={i(k)}><div className="n">{k + 1}</div><p style={{ marginTop: 22 }}>{st}</p></div>)}</div>
       </div></section>
 
       {canBuy && (
-        <section id="plans"><div className="wrap"><h2>{L.pricing}</h2>
+        <section id="plans" className="tinted"><div className="wrap"><Head eyebrow={fr ? "Offres" : "Plans"} title={L.pricing} />
           {mode === "test" && <p className="note">Stripe-Testmodus: keine echte Zahlung (Testkarte 4242 4242 4242 4242).</p>}
-          <div className="grid">{buyable.map((p) => (
-            <form className="card" key={p.key} method="post" action="/api/checkout">
-              <h3>{p.name}</h3><p><strong>{priceLabel(p)}</strong> {L.perMonth}</p>{p.description && <p className="note">{p.description}</p>}
-              <input type="hidden" name="variant_id" value={v.id} /><input type="hidden" name="package" value={p.key} />
+          <div className="cards">{buyable.map((pl, k) => (
+            <form className="card glow lift" key={pl.key} method="post" action="/api/checkout" data-rv style={i(k)}>
+              <h3>{pl.name}</h3><div className="price">{priceLabel(pl)} <small>{L.perMonth}</small></div>{pl.description && <p className="note">{pl.description}</p>}
+              <input type="hidden" name="variant_id" value={v.id} /><input type="hidden" name="package" value={pl.key} />
               {preview && <input type="hidden" name="vorschau" value="1" />}
-              <button className="btn pri" type="submit" data-cta>{L.subscribe}</button>
+              <button className="btn gold" style={{ marginTop: 18 }} type="submit" data-cta>{L.subscribe}</button>
             </form>))}</div>
         </div></section>
       )}
 
       {!step && !sp.angefragt && (
-        <section id="sample"><div className="wrap"><h2>{L.sampleTitle}</h2>
-          <p>{L.free} · {L.noObl} · {known ? L.sendsTo(personal!.gebiet, personal!.email!) : L.sendsToUnknown}</p>
-          <div className="btns"><Start label={L.send} /></div>
+        <section className="offer" id="sample"><div className="wrap">
+          <div><Head eyebrow={fr ? "Échantillon gratuit" : "Free sample"} title={L.sampleTitle} />
+            <p className="intro">{known ? L.sendsTo(personal!.gebiet, personal!.email!) : L.sendsToUnknown}</p>
+            <div className="cta-row" data-rv><Start label={L.send} /></div>
+            <div className="fine"><span>{L.free.replace(/\.$/, "")}</span><span>{L.noObl.replace(/\.$/, "")}</span></div>
+          </div>
+          <div data-rv><ol className="olist">{L.steps.map((st, k) => <li key={k}>{st}</li>)}</ol></div>
         </div></section>
       )}
 
       {faq.length > 0 && (
-        <section><div className="wrap"><h2>{L.faq}</h2>
-          {faq.map((f, i) => <details key={i}><summary>{f.q}</summary><p>{f.a}</p></details>)}
+        <section><div className="wrap faq"><Head eyebrow={fr ? "Questions" : "Questions"} title={L.faq} />
+          {faq.map((f, k) => <details key={k} data-rv style={i(k)}><summary>{nd(f.q)}</summary><p>{nd(f.a)}</p></details>)}
         </div></section>
       )}
 
-      <footer><div className="wrap">
-        <a href="/impressum">{L.legal[0]}</a><a href="/datenschutz">{L.legal[1]}</a><a href="/agb">{L.legal[2]}</a>
-        <span>© {new Date().getFullYear()} {BRAND}</span>
-      </div></footer>
-    </div>
+      <SiteFooter labels={L.legal} />
+    </BrandShell>
   );
 }
