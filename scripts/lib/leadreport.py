@@ -126,7 +126,7 @@ T2 = {
                    ("Every Monday", "A fresh report like this one, as PDF and spreadsheet for your CRM."),
                    ("You call and win clients", "Phone, email, sales tip and opening line are in every lead.")],
            "inc_h": "In every lead", "inc": ["Company and location", "What happened, with date", "Phone and email", "Priority", "Sales tip", "Opening line"],
-           "plans_h": "Plans", "per": "per month", "start": "Ready to start?",
+           "plans_h": "Plans", "per": "per month", "btn": "Start my weekly leads", "btn1": "See plans and start", "start": "Ready to start?",
            "cta": "Just reply to our email with your towns. Your first delivery arrives next Monday.",
            "p1": "10 leads selected for you", "p1s": "Company data only · phone and email from the company's own website",
            "plan_txt": {"starter": "Up to 30 new leads per week from 1 area. Every lead exclusive to your firm.",
@@ -140,7 +140,7 @@ T2 = {
                    ("Chaque lundi", "Un nouveau rapport comme celui-ci, en PDF et en tableau pour votre CRM."),
                    ("Vous appelez et gagnez des clients", "Téléphone, e-mail, conseil de vente et phrase d'accroche dans chaque piste.")],
            "inc_h": "Dans chaque piste", "inc": ["Entreprise et lieu", "L'événement, avec la date", "Téléphone et e-mail", "Priorité", "Conseil de vente", "Phrase d'accroche"],
-           "plans_h": "Formules", "per": "par mois", "start": "On commence ?",
+           "plans_h": "Formules", "per": "par mois", "btn": "Recevoir mes pistes chaque semaine", "btn1": "Voir les formules", "start": "On commence ?",
            "cta": "Répondez simplement à notre e-mail avec vos villes. Votre première livraison arrive lundi prochain.",
            "p1": "10 pistes sélectionnées pour vous", "p1s": "Données d'entreprise uniquement · téléphone et e-mail issus du site de l'entreprise",
            "plan_txt": {"starter": "Jusqu'à 30 nouvelles pistes par semaine dans 1 zone. Chaque piste réservée à votre entreprise.",
@@ -162,7 +162,7 @@ def _clip(s: str, n: int) -> str:
 
 
 def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str | None = None,
-               period: dt.date | None = None, plans: list[dict] | None = None) -> str:
+               period: dt.date | None = None, plans: list[dict] | None = None, cta_url: str | None = None) -> str:
     """Seite 1: Logo und bis zu 10 Leads. Seite 2 (nur wenn plans übergeben, also bei Proben): Wert, Ablauf, Pakete."""
     t, t2 = T.get(lang, T["en"]), T2.get(lang, T2["en"])
     groups = group_rows(data)[:10]
@@ -202,7 +202,7 @@ def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str
 <ul class="inc">{''.join(f'<li>{e(x)}</li>' for x in t2['inc'])}</ul>
 <h2>{t2['plans_h']}</h2>
 <div class="plans">{pl}</div>
-<div class="cta"><b>{t2['start']}</b><p>{t2['cta']}</p><span>nextgen-profit.de</span></div>
+<div class="cta"><b>{t2['start']}</b><p>{t2['cta']}</p>{f'<a class="btn" href="{e(cta_url)}">{t2["btn"]} &rarr;</a>' if cta_url else '<span>nextgen-profit.de</span>'}</div>
 </div></section>"""
     return f"""<!doctype html><html lang="{lang}"><head><meta charset="utf-8"><style>
 {_font(400)}{_font(600)}{_font(700)}{_font(800)}
@@ -246,23 +246,26 @@ section{{width:210mm;height:297mm;position:relative;overflow:hidden;page-break-a
 .pp{{font-size:26px;font-weight:800;color:#0b1428;margin:1.5mm 0 2mm}}.pp small{{font-size:11px;font-weight:600;color:#6b7486}}
 .plan p{{font-size:10.5px;line-height:1.5;color:#39404d}}
 .cta{{margin-top:12mm;border-radius:14px;padding:6mm 7mm;background:radial-gradient(400px 200px at 90% 0%,rgba(216,189,138,.25),transparent 60%),linear-gradient(135deg,#0b1428,#14243f);color:#e8e2d4;position:relative}}
+.btn{{display:inline-block;margin-top:5mm;background:linear-gradient(135deg,#ecd6a6,#b08d57);color:#141008;font-weight:700;font-size:13px;padding:3.5mm 8mm;border-radius:99px;text-decoration:none}}
+.btn1{{position:absolute;right:14mm;top:6.5mm;background:linear-gradient(135deg,#ecd6a6,#b08d57);color:#141008;font-weight:700;font-size:11px;padding:2.2mm 5mm;border-radius:99px;text-decoration:none}}
 .cta b{{font-size:17px;color:#fff}}.cta p{{font-size:11.5px;margin-top:1.5mm;max-width:130mm}}.cta span{{position:absolute;right:7mm;bottom:6mm;color:#d8bd8a;font-weight:700;font-size:11px}}
 </style></head><body>
 <section class="p1"><header class="bar"><div class="logo">NextGen <i>Profit</i></div></header>
 <div class="in"><div class="ttl"><h1>{t2['p1'] if len(groups) >= 10 else e(str(len(groups))) + ' ' + t['firms']}{(' · ' + e(area)) if area else ''}</h1><span>{e(when)}{(' · ' + e(firm)) if firm else ''}</span></div>
 <div class="grid">{''.join(cards)}</div></div>
-<div class="ft"><span>{t['conf']}</span><span>{t2['p1s']}</span></div></section>
+<div class="ft"><span>{t['conf']}</span><span>{t2['p1s']}</span></div>
+{f'<a class="btn1" href="{e(cta_url)}">{t2["btn1"]} &rarr;</a>' if cta_url else ''}</section>
 {page2}
 </body></html>"""
 
 
 def render_pdf(data: bytes, lang: str = "en", area: str | None = None, firm: str | None = None,
-               period: dt.date | None = None, plans: list[dict] | None = None) -> bytes | None:
+               period: dt.date | None = None, plans: list[dict] | None = None, cta_url: str | None = None) -> bytes | None:
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
         return None
-    doc = build_html(data, lang, area, firm, period, plans)
+    doc = build_html(data, lang, area, firm, period, plans, cta_url)
     try:
         with sync_playwright() as p:
             import os
@@ -296,11 +299,12 @@ def clean_csv(data: bytes, lang: str = "en") -> bytes:
 
 
 def attachments(csv_bytes: bytes, lang: str, area: str | None = None, firm: str | None = None,
-                period: dt.date | None = None, name: str = "leads", plans: list[dict] | None = None) -> list[tuple[str, bytes]]:
+                period: dt.date | None = None, name: str = "leads", plans: list[dict] | None = None,
+                cta_url: str | None = None) -> list[tuple[str, bytes]]:
     """PDF-Report (falls möglich) + bereinigte CSV für CRM/Excel."""
     slug = "-" + re.sub(r"[^A-Za-z0-9]+", "-", area).strip("-") if area else ""
     out = []
-    pdf = render_pdf(csv_bytes, lang, area, firm, period, plans)
+    pdf = render_pdf(csv_bytes, lang, area, firm, period, plans, cta_url)
     if pdf:
         out.append((f"NextGen-Profit-Lead-Report{slug}.pdf", pdf))
     out.append((f"{name}{slug}.csv", clean_csv(csv_bytes, lang)))
