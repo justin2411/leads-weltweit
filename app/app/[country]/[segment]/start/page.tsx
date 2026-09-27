@@ -130,15 +130,15 @@ const CSS = `
 .bx .plan2 ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}.bx .plan2 li{font-size:15.5px;display:flex;gap:10px}.bx .plan2 li:before{content:"✓";color:var(--gold);font-weight:800;flex:none}
 .bx .plan2 .pl{font-size:13.5px;font-weight:700;color:#8a6a33;padding-top:12px;border-top:1px solid var(--line)}
 .bx .plan2 form,.bx .plan2 .go{margin-top:auto}.bx .plan2 .btn{width:100%;justify-content:center}
-.bx .how{margin-top:56px;max-width:1080px}
-.bx .how .hd{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);font-weight:700;margin:0 0 16px}
-.bx .flow{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.bx .flow li{position:relative;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px 24px 24px}
-.bx .flow .n{display:flex;align-items:center;gap:12px;margin-bottom:14px}
-.bx .flow .n span{font-size:30px;font-weight:800;letter-spacing:-.03em;line-height:1;background:linear-gradient(135deg,#d4b075,#8a6a33);-webkit-background-clip:text;background-clip:text;color:transparent}
-.bx .flow .n i{flex:1;height:1px;background:linear-gradient(90deg,rgba(176,141,87,.55),rgba(176,141,87,0))}
-.bx .flow b{display:block;font-size:17px;margin-bottom:6px;letter-spacing:-.01em}.bx .flow p{margin:0;color:var(--soft);font-size:14.5px;line-height:1.55}
-@media (max-width:820px){.bx .flow{grid-template-columns:1fr}}
+.bx .sx-how{margin-top:56px;max-width:1080px}
+.bx .sx-how .hd{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);font-weight:700;margin:0 0 16px}
+.bx .sx-steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.bx .sx-steps li{position:relative;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px 24px 24px}
+.bx .sx-steps .n{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.bx .sx-steps .n span{font-size:30px;font-weight:800;letter-spacing:-.03em;line-height:1;background:linear-gradient(135deg,#d4b075,#8a6a33);-webkit-background-clip:text;background-clip:text;color:transparent}
+.bx .sx-steps .n i{flex:1;height:1px;background:linear-gradient(90deg,rgba(176,141,87,.55),rgba(176,141,87,0))}
+.bx .sx-steps b{display:block;font-size:17px;margin-bottom:6px;letter-spacing:-.01em}.bx .sx-steps p{margin:0;color:var(--soft);font-size:14.5px;line-height:1.55}
+@media (max-width:820px){.bx .sx-steps{grid-template-columns:1fr}}
 .bx .start .note{margin-top:28px;max-width:920px;color:var(--soft);font-size:14.5px}
 `;
 
@@ -211,8 +211,8 @@ export default async function StartPage({ params, searchParams }: { params: Para
         </div>
 
         {!online && <p className="note">{T.mailNote}</p>}
-        <div className="how"><div className="hd">{T.how}</div>
-          <ol className="flow">{(online ? T.steps : T.stepsMail).map(([h, d], k) => (
+        <div className="sx-how"><div className="hd">{T.how}</div>
+          <ol className="sx-steps">{(online ? T.steps : T.stepsMail).map(([h, d], k) => (
             <li key={h}><div className="n"><span>{String(k + 1).padStart(2, "0")}</span><i /></div><b>{h}</b><p>{d}</p></li>))}</ol>
         </div>
         <p className="note">{T.q} <a href={`mailto:${CONTACT}`}>{CONTACT}</a>.</p>
