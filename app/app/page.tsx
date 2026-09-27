@@ -55,7 +55,7 @@ const i = (n: number) => ({ "--i": n }) as CSSProperties;
 function Head({ eyebrow, title, gold, intro }: { eyebrow: string; title: string; gold?: string[]; intro?: string }) {
   return (
     <div data-rv>
-      <div className="rule" /><div className="eyebrow">{eyebrow}</div>
+      <div className="rule" />
       <h2 className="rvw" data-rv><Words text={title} gold={gold} /></h2>
       {intro && <p className="intro">{intro}</p>}
     </div>

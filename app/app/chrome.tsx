@@ -67,7 +67,6 @@ export function PageHead({ eyebrow, title }: { eyebrow: string; title: string })
   return (
     <div className="hero solo">
       <div className="wrap" style={{ paddingBottom: 130 }}>
-        <div className="eyebrow later" style={{ "--d": ".1s" } as CSSProperties}>{eyebrow}</div>
         <h1><Words text={title} /></h1>
       </div>
     </div>

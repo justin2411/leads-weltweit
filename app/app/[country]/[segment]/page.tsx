@@ -116,7 +116,7 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
   );
   const Start = ({ label }: { label: string }) => <a className="btn gold big mag" href={stepHref} data-cta>{label} <span className="ar">→</span></a>;
   const Head = ({ eyebrow, title }: { eyebrow: string; title: string }) => (
-    <div data-rv><div className="rule" /><div className="eyebrow">{eyebrow}</div><h2 className="rvw" data-rv><Words text={title} /></h2></div>
+    <div data-rv><div className="rule" /><h2 className="rvw" data-rv><Words text={title} /></h2></div>
   );
 
   return (
