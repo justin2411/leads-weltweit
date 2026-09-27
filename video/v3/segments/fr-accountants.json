@@ -11,46 +11,48 @@
   {
    "id": "hook",
    "text": "En ce moment, une nouvelle entreprise près de chez vous choisit son expert-comptable.",
-   "pause": 1.1
+   "pause": 0.94
   },
   {
    "id": "tension",
    "text": "Tout est une question de timing. Si vous appelez trop tard, la décision est déjà prise.",
-   "pause": 0.8
+   "pause": 0.68
   },
   {
    "id": "brand",
    "text": "NextGen Profit vous y amène en premier.",
-   "pause": 0.7
+   "pause": 0.59
   },
   {
    "id": "radar",
    "text": "Chaque jour, nous consultons les registres officiels, les annonces légales et les pages carrières, et repérons le moment où quelque chose change.",
-   "pause": 0.4
+   "pause": 0.34
   },
   {
    "id": "lead",
    "text": "Chaque signal devient une piste : avec la date, la source officielle et une phrase d'accroche.",
-   "pause": 0.5
+   "pause": 0.42
   },
   {
    "id": "quality",
    "text": "Chaque piste est notée selon sa fraîcheur et sa pertinence. Si elle ne passe pas le seuil, vous ne la voyez jamais.",
-   "pause": 0.6
+   "pause": 0.51
   },
   {
    "id": "inbox",
    "text": "Chaque lundi, uniquement des pistes de votre zone. Chacune livrée une seule fois.",
-   "pause": 0.6
+   "pause": 0.51
   },
   {
    "id": "cta",
    "text": "Ne nous croyez pas sur parole. Recevez dix pistes gratuites et jugez par vous-même. Un seul clic suffit.",
-   "pause": 0.7
+   "pause": 0.59
   },
   {
    "id": "end",
-   "text": "NextGen Profit. Les bonnes entreprises, au bon moment."
+   "text": "NextGen Profit. Les bonnes entreprises, au bon moment.",
+   "pause": 0.47
   }
- ]
+ ],
+ "speed": 1.1
 }

@@ -60,7 +60,8 @@ export async function Home({ lang }: { lang: HomeLang }) {
     homeStats().catch(() => ({ companies: 0, signals: 0 })),
     homeFeed().catch(() => []),
   ]);
-  const video = (VIDEOS as Record<string, { src: string; poster: string; seconds: number }>)["uk/accountants"];
+  const V = VIDEOS as Record<string, { src: string; poster: string; seconds: number }>;
+  const video = V[`${lang}:home`] ?? V["uk/accountants"];
   const example = feed.find((f) => f.opener) ?? feed[0];
   const ind = (p: PublicPage): [string, string] => {
     const seg = p.slug.split("/")[1];
@@ -82,7 +83,7 @@ export async function Home({ lang }: { lang: HomeLang }) {
         <div className="wrap">
           <div>
             <div className="eyebrow later" style={{ "--d": ".05s" } as CSSProperties}>{t.eyebrow}</div>
-            <h1><Words text={t.h1} gold={t.h1gold} /></h1>
+            <h1 className={t.h1.length > 44 ? "long" : undefined}><Words text={t.h1} gold={t.h1gold} /></h1>
             <p className="lede later" style={{ "--d": ".75s" } as CSSProperties}>{t.lede}</p>
             <div className="cta-row later" style={{ "--d": ".95s" } as CSSProperties}>
               <a className="btn gold" href="#sample">{t.btn} <span className="ar">→</span></a>

@@ -11,46 +11,47 @@
   {
    "id": "hook",
    "text": "Genau jetzt sucht ein neues Unternehmen in Ihrer Nähe seinen Steuerberater.",
-   "pause": 1.1
+   "pause": 0.88
   },
   {
    "id": "tension",
    "text": "Es kommt auf den Moment an. Wer zu spät anruft, kommt nach der Entscheidung.",
-   "pause": 0.8
+   "pause": 0.64
   },
   {
    "id": "brand",
    "text": "Mit NextGen Profit sind Sie früher da.",
-   "pause": 0.7
+   "pause": 0.56
   },
   {
    "id": "radar",
    "text": "Jeden Tag prüfen wir amtliche Register, Bekanntmachungen und Karriereseiten und erkennen, wenn sich etwas ändert.",
-   "pause": 0.4
+   "pause": 0.32
   },
   {
    "id": "lead",
    "text": "Aus jedem Signal wird ein Lead: mit Datum, amtlicher Quelle und einem Einstiegssatz.",
-   "pause": 0.5
+   "pause": 0.4
   },
   {
    "id": "quality",
    "text": "Jeder Lead wird nach Aktualität und Relevanz bewertet. Was die Hürde nicht schafft, sehen Sie nie.",
-   "pause": 0.6
+   "pause": 0.48
   },
   {
    "id": "inbox",
    "text": "Jeden Montag nur Leads aus Ihrer Region. Jeder Lead nur einmal.",
-   "pause": 0.6
+   "pause": 0.48
   },
   {
    "id": "cta",
    "text": "Verlassen Sie sich nicht auf unser Wort. Holen Sie sich zehn kostenlose Leads und urteilen Sie selbst. Ein Klick genügt.",
-   "pause": 0.7
+   "pause": 0.56
   },
   {
    "id": "end",
-   "text": "NextGen Profit. Die richtigen Unternehmen, im richtigen Moment."
+   "text": "NextGen Profit. Die richtigen Unternehmen, im richtigen Moment.",
+   "pause": 0.44
   }
  ]
 }

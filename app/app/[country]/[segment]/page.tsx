@@ -10,7 +10,7 @@ import { personalFor } from "@/lib/recipient";
 import { db } from "@/lib/supabase";
 import { pickVariant } from "@/lib/variants";
 import { Tracker } from "./tracker";
-import { segmentCopy } from "@/content/segment-words";
+import { PREMIUM, segmentCopy } from "@/content/segment-words";
 import type { CSSProperties } from "react";
 import { BrandShell, SiteFooter, SiteHeader, Words } from "../../chrome";
 import { HeroNet } from "../../motion";
@@ -30,18 +30,38 @@ function day(d: string | undefined, lang: string): string | undefined {
   return new Date(d + "T12:00:00Z").toLocaleDateString(lang === "fr" ? "fr-FR" : "en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
-type Sample = { company: string; location?: string; event: string; date?: string; source?: string };
+const SIGNAL_LABEL: Record<"en" | "fr", Record<string, string>> = {
+  en: { new_incorporation: "Newly registered", job_open_30d: "Role open 30+ days", jobs_3plus: "Several roles open", new_location: "New location", website_outdated: "Outdated website" },
+  fr: { new_incorporation: "Création récente", job_open_30d: "Poste ouvert depuis 30 jours", jobs_3plus: "Plusieurs postes ouverts", new_location: "Nouveau site", website_outdated: "Site web vieillissant" },
+};
+const PRIO: Record<"en" | "fr", Record<string, string>> = {
+  en: { high: "High priority", medium: "Medium priority", low: "Low priority" },
+  fr: { high: "Priorité haute", medium: "Priorité moyenne", low: "Priorité basse" },
+};
+
+/** "ACME LTD registered on 31 Aug 2026 (London)." -> "" ; sonst Firmenname vorne und Klammern entfernen. */
+function cleanEvent(ev: string, company: string): string {
+  let e = ev.split(" (")[0].trim().replace(/\.$/, "");
+  if (e.toUpperCase().startsWith(company.toUpperCase())) e = e.slice(company.length).trim();
+  if (/^registered on /i.test(e)) return "";
+  return e ? e[0].toUpperCase() + e.slice(1) : "";
+}
+
+type Sample = { company: string; location?: string; event: string; date?: string; source?: string; signal?: string; urgency?: string; opener?: string };
 
 /** Echte Probe-Leads aus der Region des Empfängers (Firmendaten, als Beispiel markiert). */
 async function regionalSamples(page: { segment_id: string; country: string }, region: string | undefined): Promise<Sample[]> {
   if (!region) return [];
   const { data } = await db().from("leads")
-    .select("event_summary, event_date, source_name, watch_companies!inner(name, city, region)")
+    .select("event_summary, event_date, source_name, signal_type, urgency, opener, company_id, watch_companies!inner(name, city, region)")
     .eq("segment_id", page.segment_id).eq("country", page.country).in("status", ["sample", "new"])
     .or(`region.ilike.%${region.replace(/[%,()]/g, "")}%,city.ilike.%${region.replace(/[%,()]/g, "")}%`, { foreignTable: "watch_companies" })
-    .order("event_date", { ascending: false }).limit(5);
-  return (data ?? []).map((l: any) => ({ company: l.watch_companies.name, location: l.watch_companies.city ?? undefined,
-    event: String(l.event_summary).slice(0, 160), date: l.event_date ?? undefined, source: l.source_name }));
+    .order("event_date", { ascending: false }).limit(30);
+  const seen = new Set<string>();
+  return (data ?? []).filter((l: any) => !seen.has(l.company_id) && seen.add(l.company_id)).slice(0, 6)
+    .map((l: any) => ({ company: l.watch_companies.name, location: l.watch_companies.city ?? undefined,
+      event: String(l.event_summary).slice(0, 160), date: l.event_date ?? undefined, source: l.source_name,
+      signal: l.signal_type ?? undefined, urgency: l.urgency ?? undefined, opener: l.opener ?? undefined }));
 }
 
 async function resolve(params: Params, searchParams: Search) {
@@ -95,7 +115,9 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
   const headline = F(v.headline);
   const subheadline = v.subheadline ? F(v.subheadline) : null;
   const cta = fill(v.cta_label, P, lang, W);
-  const video = (VIDEOS as Record<string, { src: string; poster: string; seconds: number }>)[page.slug];
+  const VV = VIDEOS as Record<string, { src: string; poster: string; seconds: number }>;
+  // Video in der Sprache der Seite (z. B. "fr:fr/experts-comptables"), sonst das der Seite
+  const video = VV[`${lang}:${page.slug}`] ?? VV[page.slug];
   // Kein Formular: Knopf -> zweiter Schritt (Bedingungen) -> ein Klick sendet die Probe. Adresse kommt aus dem Mail-Link.
   const known = Boolean(personal?.email && personal.firma);
   const keep = [preview && `vorschau=1&v=${v.variant_key}`, sp.r && /^[A-Za-z0-9_-]{8,80}$/.test(sp.r) && `r=${sp.r}`].filter(Boolean).join("&");
@@ -174,12 +196,26 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
       {samples.length > 0 && (
         <section className="tinted"><div className="wrap"><Head eyebrow="" title={fr ? L.examples : F(personal?.region ? "Example leads from {region}" : "Example leads")} />
           <p className="intro">{L.examplesNote}</p>
-          <div className="leads">{samples.map((sm, k) => (
-            <div className="lead" key={k} data-rv style={i(k)}>
-              <span className="tag">{L.example}</span><span className="co">{nice(sm.company)}{sm.location ? `, ${nice(sm.location)}` : ""}</span>
-              <div>{nd(sm.event)}</div>
-              <div className="meta">{[day(sm.date, lang), sm.source && `${L.source}: ${sm.source}`].filter(Boolean).join(" · ")}</div>
-            </div>))}</div>
+          <div className="leadgrid">{samples.map((sm, k) => {
+            const label = SIGNAL_LABEL[fr ? "fr" : "en"][sm.signal ?? ""] ?? null;
+            const detail = cleanEvent(sm.event, sm.company);
+            const why = sm.signal ? SC.why[sm.signal] : undefined;
+            return (
+              <article className="leadx" key={k} data-rv style={i(k)}>
+                <header>
+                  <div><div className="co">{nice(sm.company)}</div>{sm.location && <div className="loc">{nice(sm.location)}</div>}</div>
+                  <span className="ex">{L.example}</span>
+                </header>
+                <div className="sig">{label && <span className="pill">{label}</span>}<span className="dt">{day(sm.date, lang)}</span></div>
+                {detail && <p className="det">{nd(detail)}</p>}
+                {why && <p className="why"><b>{fr ? "Pourquoi c'est une opportunité" : F("Why it matters for {beruf}")}</b>{F(why)}</p>}
+                {sm.opener && <p className="op">“{nd(sm.opener)}”</p>}
+                <footer>
+                  {sm.source && <span>{L.source}: {sm.source}</span>}
+                  {sm.urgency && <span className={`prio p-${sm.urgency}`}>{PRIO[fr ? "fr" : "en"][sm.urgency] ?? sm.urgency}</span>}
+                </footer>
+              </article>);
+          })}</div>
         </div></section>
       )}
 
@@ -190,6 +226,18 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
         <div><Head eyebrow="" title={F(SC.stepsTitle)} />
           <ol className="olist light" data-rv>{SC.steps.map((st, k) => <li key={k}>{F(st)}</li>)}</ol>
         </div>
+      </div></section>
+
+      <section className="tinted"><div className="wrap">
+        <Head eyebrow="" title={F(SC.revenueTitle)} />
+        <div className="cards">{SC.revenue.map(([h, d], k) => (
+          <div className="card glow lift" key={h} data-rv style={i(k)}><div className="num">{k + 1}</div><h3>{F(h)}</h3><p>{F(d)}</p></div>))}</div>
+      </div></section>
+
+      <section className="dark"><div className="wrap">
+        <Head eyebrow="" title={F(PREMIUM[fr ? "fr" : "en"].title)} />
+        <div className="prem">{PREMIUM[fr ? "fr" : "en"].items.map(([h, d], k) => (
+          <div key={h} data-rv style={i(k)}><h3>{F(h)}</h3><p>{F(d)}</p></div>))}</div>
       </div></section>
 
       {canBuy && (
