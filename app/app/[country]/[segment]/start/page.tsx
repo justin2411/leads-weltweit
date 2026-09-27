@@ -23,10 +23,13 @@ const TXT = {
       starter: ["Up to 30 new leads per week", "Weekly PDF briefing and spreadsheet", "Phone, email and contact person", "Every lead exclusive to your firm"],
       pro: ["Up to 100 new leads per week", "All signals that fit your business", "Weekly PDF briefing and spreadsheet", "Every lead exclusive to your firm"],
     } as Record<string, string[]>,
-    trust: [["Monthly", "Cancel by email at any time, effective at the end of the paid month."], ["Secure payment", "Card payment via Stripe. We never see your card details."],
-            ["Exclusive", "Each lead goes to one firm in your field only."]],
-    afterMail: "Once you start, you choose your focus and signals in a short form. Your first delivery arrives the following Monday.",
-    after: "After payment you choose your focus and signals in a short form. Your first delivery arrives the following Monday.",
+    how: "How it works",
+    steps: [["Choose your plan", "Pick the number of leads that fits your team and pay securely by card via Stripe."],
+            ["Set your focus", "Right after payment you get a short form by email. Choose the signals and the kind of companies you want, it takes two minutes."],
+            ["Leads every Monday", "From the following Monday a fresh PDF briefing and spreadsheet land in your inbox. Each lead goes to one firm in your field only."]],
+    stepsMail: [["Choose your plan", "Pick the number of leads that fits your team and send us a short email. We reply with your invoice."],
+            ["Set your focus", "With the invoice you get a short form. Choose the signals and the kind of companies you want, it takes two minutes."],
+            ["Leads every Monday", "From the following Monday a fresh PDF briefing and spreadsheet land in your inbox. Each lead goes to one firm in your field only."]],
     mail: "Start by email", mailNote: "Online payment opens shortly. Until then we start your subscription by email and send an invoice.",
     perLead: "From about {p} per lead", perLeadC: "The more leads, the lower the price per lead",
     subject: "Start", q: "Questions? Just reply to our email or write to",
@@ -41,10 +44,13 @@ const TXT = {
       starter: ["Jusqu'à 30 nouvelles pistes par semaine", "Briefing PDF et tableau chaque semaine", "Téléphone, e-mail et interlocuteur", "Chaque piste réservée à votre entreprise"],
       pro: ["Jusqu'à 100 nouvelles pistes par semaine", "Tous les signaux utiles", "Briefing PDF et tableau chaque semaine", "Chaque piste réservée à votre entreprise"],
     } as Record<string, string[]>,
-    trust: [["Mensuel", "Résiliable par e-mail à tout moment, effet à la fin du mois payé."], ["Paiement sécurisé", "Paiement par carte via Stripe. Nous ne voyons jamais vos données de carte."],
-            ["Exclusif", "Chaque piste va à une seule entreprise de votre secteur."]],
-    afterMail: "Dès le démarrage, vous choisissez votre cible et vos signaux dans un court formulaire. Votre première livraison arrive le lundi suivant.",
-    after: "Après le paiement, vous choisissez votre cible et vos signaux dans un court formulaire. Votre première livraison arrive le lundi suivant.",
+    how: "Comment ça marche",
+    steps: [["Choisissez votre formule", "Choisissez le nombre de pistes adapté à votre équipe et payez par carte en toute sécurité via Stripe."],
+            ["Définissez votre cible", "Juste après le paiement, vous recevez un court formulaire par e-mail. Choisissez les signaux et le type d'entreprises souhaités, en deux minutes."],
+            ["Des pistes chaque lundi", "Dès le lundi suivant, un nouveau briefing PDF et un tableau arrivent dans votre boîte. Chaque piste va à une seule entreprise de votre secteur."]],
+    stepsMail: [["Choisissez votre formule", "Choisissez le nombre de pistes adapté à votre équipe et envoyez-nous un court e-mail. Nous répondons avec votre facture."],
+            ["Définissez votre cible", "Avec la facture, vous recevez un court formulaire. Choisissez les signaux et le type d'entreprises souhaités, en deux minutes."],
+            ["Des pistes chaque lundi", "Dès le lundi suivant, un nouveau briefing PDF et un tableau arrivent dans votre boîte. Chaque piste va à une seule entreprise de votre secteur."]],
     mail: "Démarrer par e-mail", mailNote: "Le paiement en ligne ouvre bientôt. D'ici là, nous démarrons votre abonnement par e-mail et envoyons une facture.",
     perLead: "À partir d'environ {p} par piste", perLeadC: "Plus de pistes, prix unitaire plus bas",
     subject: "Démarrer", q: "Des questions ? Répondez simplement à notre e-mail ou écrivez à",
@@ -78,8 +84,12 @@ const CSS = `
 .bx .plan2 ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}.bx .plan2 li{font-size:15.5px;display:flex;gap:10px}.bx .plan2 li:before{content:"✓";color:var(--gold);font-weight:800;flex:none}
 .bx .plan2 .pl{font-size:13.5px;font-weight:700;color:#8a6a33;padding-top:12px;border-top:1px solid var(--line)}
 .bx .plan2 form,.bx .plan2 .go{margin-top:auto}.bx .plan2 .btn{width:100%;justify-content:center}
-.bx .trust{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:22px;margin-top:48px;max-width:1080px}
-.bx .trust b{display:block;font-size:15px;margin-bottom:4px}.bx .trust p{margin:0;color:var(--soft);font-size:14.5px}
+.bx .how{margin-top:64px;max-width:1080px}
+.bx .how h2{margin:0 0 22px;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+.bx .steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:22px;counter-reset:st}
+.bx .steps li{position:relative;border-top:1px solid var(--line);padding:22px 0 0 58px}
+.bx .steps li:before{counter-increment:st;content:counter(st);position:absolute;left:0;top:18px;width:40px;height:40px;border-radius:50%;border:1.5px solid var(--gold);color:var(--gold);font-weight:800;font-size:17px;display:flex;align-items:center;justify-content:center}
+.bx .steps b{display:block;font-size:16.5px;margin-bottom:6px}.bx .steps p{margin:0;color:var(--soft);font-size:14.5px;line-height:1.55}
 .bx .start .note{margin-top:28px;max-width:920px;color:var(--soft);font-size:14.5px}
 `;
 
@@ -147,8 +157,10 @@ export default async function StartPage({ params, searchParams }: { params: Para
         </div>
 
         {!online && <p className="note">{T.mailNote}</p>}
-        <div className="trust">{T.trust.filter((_, k) => online || k !== 1).map(([h, d]) => <div key={h}><b>{h}</b><p>{d}</p></div>)}</div>
-        <p className="note">{online ? T.after : T.afterMail} {T.q} <a href={`mailto:${CONTACT}`}>{CONTACT}</a>.</p>
+        <section className="how"><h2>{T.how}</h2>
+          <ol className="steps">{(online ? T.steps : T.stepsMail).map(([h, d]) => <li key={h}><b>{h}</b><p>{d}</p></li>)}</ol>
+        </section>
+        <p className="note">{T.q} <a href={`mailto:${CONTACT}`}>{CONTACT}</a>.</p>
       </div></main>
       <SiteFooter lang={lang} />
     </BrandShell>
