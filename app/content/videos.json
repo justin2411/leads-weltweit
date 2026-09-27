@@ -1,5 +1,17 @@
 {
-  "uk/accountants": { "src": "/video/uk-accountants.mp4", "poster": "/video/uk-accountants.jpg", "seconds": 58 },
-  "uk/insurance-brokers": { "src": "/video/uk-insurance-brokers.mp4", "poster": "/video/uk-insurance-brokers.jpg", "seconds": 58 },
-  "uk/financial-advisers": { "src": "/video/uk-financial-advisers.mp4", "poster": "/video/uk-financial-advisers.jpg", "seconds": 61 }
+  "uk/accountants": {
+    "src": "/video/uk-accountants.mp4",
+    "poster": "/video/uk-accountants.jpg",
+    "seconds": 50
+  },
+  "uk/insurance-brokers": {
+    "src": "/video/uk-insurance-brokers.mp4",
+    "poster": "/video/uk-insurance-brokers.jpg",
+    "seconds": 50
+  },
+  "uk/financial-advisers": {
+    "src": "/video/uk-financial-advisers.mp4",
+    "poster": "/video/uk-financial-advisers.jpg",
+    "seconds": 52
+  }
 }

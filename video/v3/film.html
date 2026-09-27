@@ -1,0 +1,289 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Inter;src:url(../fonts/inter-latin-600-normal.woff2);font-weight:600}
+@font-face{font-family:Inter;src:url(../fonts/inter-latin-700-normal.woff2);font-weight:700}
+@font-face{font-family:Inter;src:url(../fonts/inter-latin-800-normal.woff2);font-weight:800}
+:root{--bg:#070e1c;--ink:#eef3fb;--soft:#8fa2c4;--brand:#3b6ff5;--brand2:#7aa2ff;--ok:#34d399;--bad:#f87171;--warm:#fbbf24;--line:#1c2d4d}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);font-family:Inter,sans-serif;color:var(--ink)}
+#bg{position:absolute;inset:-200px;background:
+  radial-gradient(900px 600px at var(--gx,60%) var(--gy,30%),rgba(59,111,245,.22),transparent 70%),
+  radial-gradient(700px 500px at 20% 90%,rgba(52,211,153,.08),transparent 70%)}
+#grid{position:absolute;inset:0;opacity:.35;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:80px 80px}
+#vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 45%,rgba(190,30,30,.55) 100%);opacity:0}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+.scene{position:absolute;inset:0;opacity:0;display:none;transform-origin:960px 540px}
+.abs{position:absolute}
+svg{position:absolute;left:0;top:0;overflow:visible}
+.logo{font-size:128px;font-weight:800;letter-spacing:-4px;display:flex;gap:28px;justify-content:center}
+.mask{overflow:hidden;display:inline-block;padding-bottom:12px}.mask>span{display:inline-block}
+.chip{display:inline-flex;align-items:center;gap:10px;padding:12px 22px;border-radius:99px;font-size:28px;font-weight:600;background:rgba(122,162,255,.14);border:1px solid rgba(122,162,255,.35);color:#dbe6ff;white-space:nowrap}
+.card{position:absolute;background:linear-gradient(180deg,#15284a,#101f3b);border:1px solid #2a4170;box-shadow:0 40px 120px rgba(0,0,0,.5);overflow:hidden}
+.mini{position:absolute;width:150px;height:96px;border-radius:14px;background:#15284a;border:1px solid #2a4170}
+.mini:before{content:"";position:absolute;left:16px;top:18px;width:90px;height:12px;border-radius:6px;background:#7aa2ff}
+.mini:after{content:"";position:absolute;left:16px;top:44px;width:118px;height:10px;border-radius:5px;background:#2e4677;box-shadow:0 20px 0 #2e4677}
+.qc{position:absolute;width:300px;height:190px;border-radius:20px;background:#15284a;border:3px solid #2a4170;padding:24px}
+.qc .l1{width:190px;height:18px;border-radius:7px;background:#7aa2ff}.qc .l2{width:240px;height:13px;border-radius:5px;background:#2e4677;margin-top:14px}
+.qc .sc{position:absolute;right:20px;bottom:14px;font-size:56px;font-weight:800;color:#dbe6ff}
+.lbl{font-size:22px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--brand2)}
+.ill{font-size:18px;color:var(--soft)}
+.srcl{position:absolute;font-size:22px;font-weight:600;color:#cfdaf0;text-align:center;width:260px}
+</style></head>
+<body>
+<div id="bg"></div><div id="grid"></div>
+
+<!-- A: Stadt, dann Zoom auf eine neue Firma -->
+<div class="scene" id="A">
+  <div id="A_zoom" class="abs" style="inset:0"><svg width="1920" height="1080" id="A_svg"></svg></div>
+  <div class="card" id="A_rec" style="left:1110px;top:470px;width:520px;border-radius:22px;padding:30px 34px;opacity:0">
+    <div class="lbl" style="color:var(--ok)">New company</div>
+    <div style="font-size:34px;font-weight:800;margin-top:10px">Northfield Logistics Ltd</div>
+    <div id="A_type" style="font-size:26px;color:#cfdaf0;margin-top:12px;min-height:34px"></div>
+  </div>
+  <div class="abs ill" id="A_ill" style="left:1110px;top:690px;opacity:0">Illustrative example</div>
+</div>
+
+<!-- B: Spannung – die Zeit läuft -->
+<div class="scene" id="B"><svg width="1920" height="1080" id="B_svg"></svg></div>
+
+<!-- C: Auflösung + Marke -->
+<div class="scene" id="C">
+  <svg width="1920" height="1080" id="C_svg"></svg>
+  <div class="abs" style="left:0;right:0;top:640px">
+    <div class="logo" style="font-size:110px"><span class="mask"><span id="C1">NextGen</span></span><span class="mask"><span id="C2" style="color:var(--brand2)">Profit</span></span></div>
+  </div>
+</div>
+
+<!-- D: Radar mit Quellen -->
+<div class="scene" id="D">
+  <svg width="1920" height="1080" id="D_svg"></svg>
+  <div class="abs" id="D_sweep" style="left:560px;top:140px;width:800px;height:800px;border-radius:50%;background:conic-gradient(from 0deg,rgba(122,162,255,.45),rgba(122,162,255,0) 70deg,transparent 360deg)"></div>
+  <div class="srcl" id="D_l0">Companies House</div><div class="srcl" id="D_l1">Public notices</div><div class="srcl" id="D_l2">Careers pages</div>
+  <div class="abs" id="D_day" style="left:120px;top:110px"><span class="chip">🕘 Checked daily</span></div>
+</div>
+
+<!-- E: Blip -> Lead-Karte mit Einstiegssatz -->
+<div class="scene" id="E">
+  <div class="card" id="E_card">
+    <div id="E_in" style="padding:44px 52px;opacity:0">
+      <div class="lbl" style="color:var(--ok)">New lead</div>
+      <div style="font-size:52px;font-weight:800;letter-spacing:-1px;margin-top:8px">Northfield Logistics Ltd</div>
+      <div style="display:flex;gap:16px;margin-top:26px">
+        <span class="chip" id="E_c1">📅 20 Aug 2026</span><span class="chip" id="E_c2">🔗 Companies House</span><span class="chip" id="E_c3">📍 Stockport</span>
+      </div>
+      <div id="E_lw" style="margin-top:30px;border-left:4px solid var(--ok);padding:6px 0 6px 22px;opacity:0">
+        <div class="lbl" style="font-size:18px;color:var(--ok)">Suggested opening line</div>
+        <div id="E_line" style="font-size:30px;line-height:1.4;margin-top:8px;color:#e6eefc;min-height:84px"></div>
+      </div>
+    </div>
+  </div>
+  <div class="abs ill" id="E_ill" style="left:120px;top:990px">Illustrative example</div>
+</div>
+
+<!-- Q: Qualitätsprüfung -->
+<div class="scene" id="Q">
+  <svg width="1920" height="1080" id="Q_svg"></svg>
+  <div id="Q_cards"></div>
+  <div class="abs" id="Q_head" style="left:0;right:0;top:130px;text-align:center"><span class="chip" style="font-size:32px">Quality score · minimum 60</span></div>
+  <div class="abs ill" style="left:120px;top:990px">Illustrative scores</div>
+</div>
+
+<!-- F: Montag, Posteingang -->
+<div class="scene" id="F">
+  <svg width="1920" height="1080" id="F_svg"></svg>
+  <div id="F_minis"></div>
+  <div class="abs" id="F_mon" style="left:0;right:0;top:170px;text-align:center"><span class="chip" style="font-size:34px">Monday · 07:00</span></div>
+  <div class="abs" id="F_reg" style="left:0;right:0;top:800px;text-align:center"><span class="chip" data-k="region"></span>&nbsp;&nbsp;<span class="chip" style="color:#bff5dc;border-color:rgba(52,211,153,.5);background:rgba(52,211,153,.12)">✓ Delivered once</span></div>
+</div>
+
+<!-- G: Ein Klick -->
+<div class="scene" id="G">
+  <div class="abs" id="G_phone" style="left:760px;top:90px;width:400px;height:800px;border-radius:58px;background:#03060c;border:10px solid #1f2e4a;box-shadow:0 50px 140px rgba(0,0,0,.55)">
+    <div style="position:absolute;inset:18px;border-radius:40px;background:#fff;overflow:hidden">
+      <div style="margin:44px 30px 0;height:14px;width:120px;border-radius:7px;background:#0f1b2d"></div>
+      <div style="margin:34px 30px 0;height:30px;width:260px;border-radius:8px;background:#0f1b2d"></div>
+      <div style="margin:14px 30px 0;height:30px;width:200px;border-radius:8px;background:#0f1b2d"></div>
+      <div style="margin:26px 30px 0;height:12px;width:280px;border-radius:6px;background:#cbd5e1"></div>
+      <div style="margin:12px 30px 0;height:12px;width:240px;border-radius:6px;background:#cbd5e1"></div>
+      <div id="G_btn" style="position:absolute;left:30px;right:30px;top:330px;height:74px;border-radius:14px;background:#1d4ed8;color:#fff;font-size:21px;font-weight:700;display:flex;align-items:center;justify-content:center"><span id="G_btxt" data-k="btn"></span>
+        <svg id="G_chk" width="44" height="44" viewBox="0 0 44 44" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)"><path d="M10 23 L19 32 L35 13" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="40" stroke-dashoffset="40" id="G_path"/></svg>
+      </div>
+      <div id="G_tap" style="position:absolute;left:170px;top:337px;width:60px;height:60px;border-radius:50%;border:4px solid rgba(29,78,216,.7);opacity:0"></div>
+    </div>
+  </div>
+  <div id="G_parts"></div>
+  <div class="abs" id="G_free" style="left:0;right:0;top:930px;text-align:center"><span class="chip" style="font-size:32px;color:#bff5dc;border-color:rgba(52,211,153,.5);background:rgba(52,211,153,.12)">10 free leads · judge for yourself</span></div>
+</div>
+
+<!-- H: Ende -->
+<div class="scene" id="H">
+  <div class="abs" style="left:0;right:0;top:360px;text-align:center">
+    <div class="logo" style="font-size:112px"><span class="mask"><span id="H1">NextGen</span></span><span class="mask"><span id="H2" style="color:var(--brand2)">Profit</span></span></div>
+    <div id="H_tag" style="font-size:38px;font-weight:600;color:#cfdaf0;margin-top:14px">The right companies, at the right moment.</div>
+    <div id="H_url" style="margin-top:44px"><span class="chip" style="font-size:30px">nextgen-profit.de</span></div>
+  </div>
+</div>
+<div id="vig"></div><div id="flash"></div>
+
+<script>
+const T = window.TIMING, CFG = window.CFG;
+document.querySelectorAll("[data-k]").forEach(el => { el.textContent = CFG.text[el.dataset.k]; });
+const L = Object.fromEntries(T.lines.map(l => [l.id, l]));
+const $ = id => document.getElementById(id);
+const cl = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const p = (t, a, d) => cl((t - a) / d);
+const eio = x => { x = cl(x); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+const eo = x => 1 - Math.pow(1 - cl(x), 3);
+const back = x => { x = cl(x); const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+const lerp = (a, b, k) => a + (b - a) * k;
+const type = (s, k) => { const n = Math.floor(s.length * cl(k)); return s.slice(0, n) + (k > 0 && k < 1 ? "▍" : ""); };
+let seed = 3; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const NS = "http://www.w3.org/2000/svg";
+const mk = (svg, tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); $(svg).appendChild(e); return e; };
+const scaleAt = (el, x, y, s) => el.setAttribute("transform", `translate(${x} ${y}) scale(${s}) translate(${-x} ${-y})`);
+
+const ids = ["hook", "tension", "brand", "radar", "lead", "quality", "inbox", "cta", "end"], sc = ["A", "B", "C", "D", "E", "Q", "F", "G", "H"];
+const win = sc.map((s, i) => [s, i ? L[ids[i]].start - 0.45 : 0, i < sc.length - 1 ? L[ids[i + 1]].start - 0.45 : T.total + 1]);
+
+// A
+const streets = [];
+for (let i = 0; i < 7; i++) streets.push(mk("A_svg", "line", { x1: 0, y1: 150 + i * 130 + (i % 2) * 30, x2: 1920, y2: 120 + i * 130, stroke: "#23407a", "stroke-width": 3 }));
+for (let i = 0; i < 11; i++) streets.push(mk("A_svg", "line", { x1: 90 + i * 175, y1: 0, x2: 130 + i * 170, y2: 1080, stroke: "#23407a", "stroke-width": 3 }));
+streets.forEach(s => s.setAttribute("stroke-dasharray", 2200));
+const blds = [];
+for (let i = 0; i < 46; i++) {
+  const x = 140 + Math.floor(rnd() * 10) * 172 + rnd() * 60, y = 170 + Math.floor(rnd() * 6) * 130 + rnd() * 40, at = 0.3 + rnd() * 2.2;
+  const ring = mk("A_svg", "circle", { cx: x + 14, cy: y + 14, r: 0, fill: "none", stroke: "#7aa2ff", "stroke-width": 3 });
+  const b = mk("A_svg", "rect", { x, y, width: 28, height: 28, rx: 7, fill: "#7aa2ff" });
+  blds.push({ b, ring, at, x, y });
+}
+const FOC = { x: 900, y: 470 };
+const focRing = mk("A_svg", "circle", { cx: FOC.x, cy: FOC.y, r: 0, fill: "none", stroke: "#34d399", "stroke-width": 4 });
+const foc = mk("A_svg", "rect", { x: FOC.x - 18, y: FOC.y - 18, width: 36, height: 36, rx: 9, fill: "#34d399", opacity: 0 });
+// B
+const TG = { x: 960, y: 520 };
+const ring = mk("B_svg", "circle", { cx: TG.x, cy: TG.y, r: 170, fill: "none", stroke: "#1c2d4d", "stroke-width": 14 });
+const clock = mk("B_svg", "circle", { cx: TG.x, cy: TG.y, r: 170, fill: "none", stroke: "#7aa2ff", "stroke-width": 14, "stroke-linecap": "round", "stroke-dasharray": 2 * Math.PI * 170, transform: `rotate(-90 ${TG.x} ${TG.y})` });
+const tgB = mk("B_svg", "rect", { x: TG.x - 60, y: TG.y - 60, width: 120, height: 120, rx: 26, fill: "#15284a", stroke: "#7aa2ff", "stroke-width": 4 });
+const lock = mk("B_svg", "text", { x: TG.x, y: TG.y + 22, "text-anchor": "middle", "font-size": 64, opacity: 0 }); lock.textContent = "🔒";
+const comps = [[120, 140], [1800, 180], [150, 950], [1780, 920], [960, 1060]].map(([x, y], i) => ({ x, y, d: mk("B_svg", "circle", { r: 16, fill: "#5b6b8c" }), dl: .4 + i * .25 }));
+// C: blauer Punkt kommt früh an
+const TC = { x: 960, y: 380 };
+const tcGlow = mk("C_svg", "circle", { cx: TC.x, cy: TC.y, r: 80, fill: "rgba(52,211,153,.14)" });
+const tc = mk("C_svg", "rect", { x: TC.x - 55, y: TC.y - 55, width: 110, height: 110, rx: 24, fill: "#123a37", stroke: "#34d399", "stroke-width": 4 });
+const cPath = mk("C_svg", "path", { d: `M180 520 Q560 180 ${TC.x - 60} ${TC.y}`, fill: "none", stroke: "#7aa2ff", "stroke-width": 4, "stroke-dasharray": "10 14" });
+const cDot = mk("C_svg", "circle", { r: 18, fill: "#7aa2ff" }); const cLen = cPath.getTotalLength();
+const cBurst = mk("C_svg", "circle", { cx: TC.x, cy: TC.y, r: 0, fill: "none", stroke: "#34d399", "stroke-width": 5 });
+// D
+const RC = { x: 960, y: 540 };
+[130, 260, 390].forEach(r => mk("D_svg", "circle", { cx: RC.x, cy: RC.y, r, fill: "none", stroke: "#23407a", "stroke-width": 2 }));
+const srcs = [["🏛", -150], ["📰", -30], ["💼", 90]].map(([ic, ang], i) => {
+  const a = ang * Math.PI / 180, x = RC.x + Math.cos(a) * 390, y = RC.y + Math.sin(a) * 390;
+  const c = mk("D_svg", "circle", { cx: x, cy: y, r: 58, fill: "#15284a", stroke: "#7aa2ff", "stroke-width": 3 });
+  const tx = mk("D_svg", "text", { x, y: y + 18, "text-anchor": "middle", "font-size": 52 }); tx.textContent = ic;
+  const lb = $("D_l" + i); lb.style.left = (x - 130) + "px"; lb.style.top = (y + (i === 2 ? 70 : -110)) + "px";
+  return { c, tx, i, x, y, lb };
+});
+const blips = [];
+for (let i = 0; i < 16; i++) { const ang = rnd() * 360, rr = 80 + rnd() * 290; blips.push({ ang, el: mk("D_svg", "circle", { cx: RC.x + Math.cos(ang * Math.PI / 180) * rr, cy: RC.y + Math.sin(ang * Math.PI / 180) * rr, r: 9, fill: "#7aa2ff", opacity: 0 }) }); }
+const hero = { x: RC.x + 170, y: RC.y - 120 };
+const heroEl = mk("D_svg", "circle", { cx: hero.x, cy: hero.y, r: 14, fill: "#34d399", opacity: 0 });
+const heroRing = mk("D_svg", "circle", { cx: hero.x, cy: hero.y, r: 14, fill: "none", stroke: "#34d399", "stroke-width": 4, opacity: 0 });
+// Q: Förderband mit Prüftor
+const GATE = 960;
+mk("Q_svg", "line", { x1: 0, y1: 640, x2: 1920, y2: 640, stroke: "#23407a", "stroke-width": 4, "stroke-dasharray": "18 14", id: "Q_belt" });
+const gate = mk("Q_svg", "rect", { x: GATE - 8, y: 330, width: 16, height: 330, rx: 8, fill: "#7aa2ff" });
+const gateGlow = mk("Q_svg", "rect", { x: GATE - 40, y: 330, width: 80, height: 330, rx: 30, fill: "rgba(122,162,255,.18)" });
+const SCORES = [92, 41, 78, 55, 88, 83];
+const qcs = SCORES.map((s, i) => { const d = document.createElement("div"); d.className = "qc"; d.innerHTML = `<div class="l1"></div><div class="l2"></div><div class="l2" style="width:140px"></div><div class="sc">–</div>`; $("Q_cards").appendChild(d); return { d, s, i }; });
+// F
+const env = { x: 760, y: 470, w: 400, h: 270 };
+mk("F_svg", "rect", { x: env.x, y: env.y, width: env.w, height: env.h, rx: 22, fill: "#15284a", stroke: "#7aa2ff", "stroke-width": 4 });
+const flap = mk("F_svg", "path", { d: `M${env.x} ${env.y} L${env.x + env.w / 2} ${env.y + 150} L${env.x + env.w} ${env.y}`, fill: "#1b3260", stroke: "#7aa2ff", "stroke-width": 4, "stroke-linejoin": "round" });
+mk("F_svg", "path", { d: `M${env.x} ${env.y + env.h} L${env.x + env.w / 2} ${env.y + 120} L${env.x + env.w} ${env.y + env.h}`, fill: "none", stroke: "#2e4677", "stroke-width": 3 });
+const badge = mk("F_svg", "circle", { cx: env.x + env.w - 6, cy: env.y + 6, r: 0, fill: "#34d399" });
+const minis = []; for (let i = 0; i < 5; i++) { const d = document.createElement("div"); d.className = "mini"; $("F_minis").appendChild(d); minis.push(d); }
+// G
+const parts = []; for (let i = 0; i < 30; i++) { const d = document.createElement("div"); d.className = "abs"; const s = 8 + rnd() * 10;
+  Object.assign(d.style, { width: s + "px", height: s + "px", borderRadius: rnd() > .5 ? "50%" : "3px", background: ["#34d399", "#7aa2ff", "#fbbf24", "#ffffff"][i % 4] });
+  $("G_parts").appendChild(d); parts.push({ d, a: rnd() * Math.PI * 2, v: 240 + rnd() * 340, rot: rnd() * 720 }); }
+
+function render(t) {
+  for (const [s, a, b] of win) { const el = $(s); const o = Math.min(p(t, a, .45), 1 - p(t, b - .45, .45)); el.style.opacity = o; el.style.display = o > 0 ? "block" : "none"; }
+  $("bg").style.setProperty("--gx", (55 + 12 * Math.sin(t * .15)) + "%"); $("bg").style.setProperty("--gy", (30 + 10 * Math.cos(t * .12)) + "%");
+  $("grid").style.transform = `translate(${-(t * 12) % 80}px, ${-(t * 6) % 80}px)`;
+  // A: Stadt baut sich auf, dann Kamerafahrt auf eine Firma
+  const zk = eio(p(t, L.hook.start + 1.0, 1.5));
+  $("A_zoom").style.transform = `translate(${(700 - FOC.x) * zk}px, ${(540 - FOC.y) * zk}px) scale(${1 + 0.9 * zk})`; $("A_zoom").style.transformOrigin = `${FOC.x}px ${FOC.y}px`;
+  streets.forEach((s, i) => s.setAttribute("stroke-dashoffset", 2200 * (1 - eio(p(t, 0.05 + i * .05, 1.4)))));
+  blds.forEach(o => { const k = p(t, o.at, .5); o.b.setAttribute("opacity", eo(k) * (1 - .6 * zk)); scaleAt(o.b, o.x + 14, o.y + 14, back(k));
+    const r = p(t, o.at, 1.4); o.ring.setAttribute("r", 14 + r * 70); o.ring.setAttribute("opacity", r > 0 && r < 1 ? (1 - r) * .9 : 0); });
+  const fk = p(t, L.hook.start + 1.2, .5); foc.setAttribute("opacity", eo(fk)); scaleAt(foc, FOC.x, FOC.y, back(fk) * (1 + .08 * Math.sin(t * 5)));
+  const fr = ((t - L.hook.start - 1.2) % 1.2) / 1.2; focRing.setAttribute("r", 18 + fr * 60); focRing.setAttribute("opacity", fk > 0 ? 1 - fr : 0);
+  const rk = p(t, L.hook.start + 2.0, .5); $("A_rec").style.opacity = eo(rk); $("A_rec").style.transform = `translateX(${(1 - eo(rk)) * 60}px)`;
+  $("A_type").textContent = type("Incorporated today · Stockport", p(t, L.hook.start + 2.4, 1.0)); $("A_ill").style.opacity = eo(rk) * .8;
+  // B: Uhr läuft ab, Konkurrenz rückt an, Rot steigt
+  const b0 = L.tension.start - .3, bk = p(t, b0, 4.0);
+  clock.setAttribute("stroke-dashoffset", 2 * Math.PI * 170 * eio(bk));
+  clock.setAttribute("stroke", bk < .5 ? "#7aa2ff" : bk < .8 ? "#fbbf24" : "#f87171");
+  comps.forEach(c => { const k = eio(p(t, b0 + c.dl, 3.4)); c.d.setAttribute("cx", lerp(c.x, TG.x + (c.x - TG.x) * .14, k)); c.d.setAttribute("cy", lerp(c.y, TG.y + (c.y - TG.y) * .14, k)); });
+  const lk = p(t, b0 + 4.0, .4); lock.setAttribute("opacity", eo(lk)); tgB.setAttribute("stroke", lk > 0 ? "#f87171" : "#7aa2ff"); tgB.setAttribute("fill", lk > 0 ? "#2a1620" : "#15284a");
+  const shake = lk > 0 && lk < 1 ? Math.sin(t * 80) * 8 * (1 - lk) : 0; $("B").style.transform = `translateX(${shake}px)`;
+  const inB = t > win[1][1] && t < win[1][2]; $("vig").style.opacity = inB ? .15 + .6 * eio(bk) : 0;
+  // Blitz beim Übergang zur Marke
+  const fl = p(t, L.brand.start - .5, .5); $("flash").style.opacity = fl > 0 && fl < 1 ? .35 * (1 - fl) : 0;
+  // C: blauer Punkt früh da, grüner Burst, Logo
+  const c0 = L.brand.start - .4; const ck = eio(p(t, c0, 1.0)); const pt = cPath.getPointAtLength(cLen * ck); cDot.setAttribute("cx", pt.x); cDot.setAttribute("cy", pt.y);
+  cPath.setAttribute("stroke-dashoffset", -t * 30); const cb = p(t, c0 + 1.0, .9); cBurst.setAttribute("r", 60 + cb * 200); cBurst.setAttribute("opacity", cb > 0 && cb < 1 ? 1 - cb : 0);
+  tcGlow.setAttribute("r", 80 + 30 * eo(cb) + 8 * Math.sin(t * 4)); scaleAt(tc, TC.x, TC.y, back(p(t, c0 - .2, .6)));
+  $("C1").style.transform = `translateY(${(1 - eo(p(t, c0 + .9, .7))) * 150}px)`; $("C2").style.transform = `translateY(${(1 - eo(p(t, c0 + 1.08, .7))) * 150}px)`;
+  // D
+  const d0 = L.radar.start; const ang = (t - d0) * 140; $("D_sweep").style.transform = `rotate(${ang}deg)`; $("D_sweep").style.opacity = eo(p(t, d0 - .3, .6));
+  srcs.forEach(s => { const k = back(p(t, d0 + 1.6 + s.i * .9, .6)); [s.c, s.tx].forEach(e => scaleAt(e, s.x, s.y, k)); s.lb.style.opacity = eo(p(t, d0 + 1.9 + s.i * .9, .4)); });
+  $("D_day").style.opacity = eo(p(t, d0 + .2, .5));
+  blips.forEach(b => { const since = ((ang - b.ang) % 360 + 360) % 360; const vis = ang > b.ang ? Math.max(0, 1 - since / 200) : 0; b.el.setAttribute("opacity", vis * .9); });
+  const hk = p(t, d0 + 5.0, .5); heroEl.setAttribute("opacity", eo(hk)); heroEl.setAttribute("r", 14 + 4 * Math.sin(t * 6) * hk);
+  const hr = ((t - d0 - 5.0) % 1.1) / 1.1; heroRing.setAttribute("r", 14 + hr * 50); heroRing.setAttribute("opacity", hk > 0 ? (1 - hr) : 0);
+  // E
+  const e0 = L.lead.start - .3, m = eio(p(t, e0, .9));
+  const W = lerp(28, 1180, m), H = lerp(28, 470, m), cx = lerp(hero.x, 960, m), cy = lerp(hero.y, 520, m);
+  Object.assign($("E_card").style, { width: W + "px", height: H + "px", left: (cx - W / 2) + "px", top: (cy - H / 2) + "px", borderRadius: lerp(14, 28, m) + "px", background: m < .3 ? "#34d399" : "" });
+  $("E_in").style.opacity = eo(p(t, e0 + .8, .4));
+  ["E_c1", "E_c2", "E_c3"].forEach((id, i) => { const k = back(p(t, e0 + 1.2 + i * .4, .5)); $(id).style.transform = `scale(${k})`; $(id).style.opacity = cl(k); });
+  $("E_lw").style.opacity = eo(p(t, e0 + 2.6, .4)); $("E_line").textContent = type(CFG.text.line, p(t, e0 + 2.8, 2.6)); $("E_ill").style.opacity = eo(p(t, e0 + 1, .5)) * .8;
+  // Q: Karten laufen durchs Prüftor
+  const q0 = L.quality.start - .3;
+  $("Q_head").style.opacity = eo(p(t, q0, .5)); $("Q_head").style.transform = `translateY(${(1 - eo(p(t, q0, .5))) * -30}px)`;
+  document.getElementById("Q_belt").setAttribute("stroke-dashoffset", -t * 160);
+  gateGlow.setAttribute("opacity", .6 + .4 * Math.sin(t * 8));
+  qcs.forEach(q => { const start = q0 + .3 + q.i * .75, k = (t - start) / 3.2; const x = lerp(-260, 2000, k);
+    const pass = q.s >= 60, past = x + 150 > GATE; const sc = q.d.querySelector(".sc");
+    const scoreK = cl((x + 150 - (GATE - 140)) / 140);
+    sc.textContent = scoreK > 0 ? Math.round(q.s * scoreK) : "–";
+    let y = 450, rot = 0, op = k > -0.05 && k < 1.05 ? 1 : 0;
+    if (past && !pass) { const f = cl((x + 150 - GATE) / 260); y += f * f * 420; rot = f * 25; op *= 1 - f; }
+    q.d.style.borderColor = past ? (pass ? "#34d399" : "#f87171") : "#2a4170";
+    sc.style.color = past ? (pass ? "#34d399" : "#f87171") : "#dbe6ff";
+    Object.assign(q.d.style, { left: x + "px", top: y + "px", transform: `rotate(${rot}deg)`, opacity: op, boxShadow: past && pass ? "0 0 40px rgba(52,211,153,.35)" : "none" }); });
+  // F
+  const f0 = L.inbox.start - .1; $("F_mon").style.opacity = eo(p(t, f0 + .1, .5)); $("F_mon").style.transform = `translateY(${(1 - eo(p(t, f0 + .1, .5))) * -30}px)`;
+  minis.forEach((d, i) => { const k = eio(p(t, f0 + .4 + i * .32, .8)); const sx = 180 + i * 40, sy = 380 + (i % 2) * 260;
+    const x = lerp(sx, env.x + env.w / 2 - 75, k), y = lerp(sy, env.y + 90, k) - Math.sin(k * Math.PI) * 180;
+    Object.assign(d.style, { left: x + "px", top: y + "px", transform: `rotate(${lerp(-12 + i * 6, 0, k)}deg) scale(${lerp(1, .6, k)})`, opacity: k >= 1 ? 0 : cl(p(t, f0 + .2 + i * .32, .3)) }); });
+  const flp = eio(p(t, f0 + 2.3, .5)); flap.setAttribute("transform", `translate(0 ${env.y}) scale(1 ${lerp(-1, 1, flp)}) translate(0 ${-env.y})`);
+  badge.setAttribute("r", 22 * back(p(t, f0 + 2.8, .5))); $("F_reg").style.opacity = eo(p(t, f0 + 2.6, .5));
+  // G
+  const g0 = L.cta.start - .2; const ph = eo(p(t, g0, .8)); $("G_phone").style.transform = `translateY(${(1 - ph) * 260}px) rotate(${(1 - ph) * 6}deg)`; $("G_phone").style.opacity = ph;
+  const tapAt = g0 + 3.4, tap = t - tapAt; $("G_tap").style.opacity = tap > 0 && tap < .7 ? 1 - tap / .7 : 0; $("G_tap").style.transform = `scale(${.5 + cl(tap / .7) * 1.4})`;
+  const pulse = t < tapAt ? 1 + .04 * Math.sin(t * 7) : 1;
+  const done = p(t, tapAt + .2, .35); $("G_btn").style.background = done > 0 ? "#10b981" : "#1d4ed8"; $("G_btn").style.transform = tap > 0 && tap < .2 ? "scale(.95)" : `scale(${pulse})`;
+  $("G_btxt").style.opacity = 1 - done; $("G_path").setAttribute("stroke-dashoffset", 40 * (1 - eio(p(t, tapAt + .3, .5))));
+  parts.forEach(q => { const k = p(t, tapAt + .3, 1.3); const d = q.v * eo(k); Object.assign(q.d.style, { left: (960 + Math.cos(q.a) * d) + "px", top: (455 + Math.sin(q.a) * d + 160 * k * k) + "px", opacity: k > 0 ? 1 - k : 0, transform: `rotate(${q.rot * k}deg)` }); });
+  $("G_free").style.opacity = eo(p(t, g0 + 1.0, .5));
+  // H
+  const h0 = L.end.start - .3; $("H1").style.transform = `translateY(${(1 - eo(p(t, h0, .7))) * 140}px)`; $("H2").style.transform = `translateY(${(1 - eo(p(t, h0 + .18, .7))) * 140}px)`;
+  $("H_tag").style.opacity = eo(p(t, h0 + 1.0, .6)); $("H_url").style.opacity = eo(p(t, h0 + 1.6, .6));
+}
+window.render = render;
+</script></body></html>

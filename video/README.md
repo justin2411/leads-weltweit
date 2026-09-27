@@ -8,3 +8,10 @@
 4. Zusammenfügen: `ffmpeg -framerate 25 -i frames/f%05d.jpg -i vo_bf_emma.wav -af loudnorm=I=-16:TP=-1.5 -ar 48000 -c:v libx264 -crf 21 -pix_fmt yuv420p -c:a aac -shortest out.mp4`
 
 Firmennamen im Video sind erfundene Beispiele und als „Illustrative example(s)“ gekennzeichnet. Keine echten Empfänger zeigen.
+
+## Version 3 (`v3/`): mehr Spannung und Verkauf
+Szenen: Stadt → Zoom auf eine neue Firma · Uhr läuft ab (Konkurrenz rückt an) · Marke („gets you there early“) · Radar über den Quellen ·
+Lead-Karte mit Einstiegssatz · Qualitätsprüfung (Mindestwert 60, darunter wird nicht geliefert) · Montag-Postfach · Ein-Klick-Probe · Abschluss.
+Ton: `v3/mix.py <slug>` legt einen leisen Klangteppich, einen Puls in der Spannungsszene und einen Whoosh unter die Stimme (Stimme −16 LUFS, Teppich deutlich leiser).
+Bauen (aus `video/v3`): `python3 ../vo.py segments/<slug>.json` → `node ../render.mjs <slug> video 25` → `python3 mix.py <slug>` → ffmpeg mit `out/<slug>/mix.wav`.
+Aussagen nur belegbar: Qualitätswert und Mindestwert 60 (scripts/match.py), Quelle und Datum je Lead, jeder Lead einmal je Abo. Keine Superlative wie „die besten Leads“.

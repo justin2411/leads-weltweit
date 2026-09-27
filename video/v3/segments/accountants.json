@@ -1,0 +1,54 @@
+{
+ "slug": "uk/accountants",
+ "text": {
+  "region": "📍 Greater Manchester",
+  "btn": "Send me 10 free leads",
+  "line": "Congratulations on the new company. Have you chosen an accountant for your first year-end yet?"
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "Right now, a new company near you is choosing its accountant.",
+   "pause": 1.2
+  },
+  {
+   "id": "tension",
+   "text": "Timing is everything. Call too late, and the decision has already been made.",
+   "pause": 0.9
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit gets you there early.",
+   "pause": 0.8
+  },
+  {
+   "id": "radar",
+   "text": "Every day, we check Companies House, public notices, and local careers pages, and catch the moment something changes.",
+   "pause": 0.5
+  },
+  {
+   "id": "lead",
+   "text": "Each signal becomes a lead: with the date, the official source, and a suggested opening line.",
+   "pause": 0.6
+  },
+  {
+   "id": "quality",
+   "text": "Every lead is scored for freshness and relevance. If it doesn't make the cut, you never see it.",
+   "pause": 0.7
+  },
+  {
+   "id": "inbox",
+   "text": "Every Monday, only leads from your area. Each one delivered to you once.",
+   "pause": 0.7
+  },
+  {
+   "id": "cta",
+   "text": "Don't take our word for it. Get ten free leads from your area, and judge for yourself. It takes one click.",
+   "pause": 0.8
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. The right companies, at the right moment."
+  }
+ ]
+}
