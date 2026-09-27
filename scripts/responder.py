@@ -295,7 +295,8 @@ def regional_sample(db, seg: str, country: str, region: str | None) -> tuple[lis
     enrich(db, picked, known)
     data = to_csv(picked, _lang(country), area)
     name = re.sub(r"[^A-Za-z0-9]+", "-", area or country).strip("-")
-    return [(f"sample-10-leads-{name}.csv", data)], True
+    from lib.leadreport import attachments
+    return attachments(data, _lang(country), area, name="sample-leads"), True
 
 
 def sample_files(seg: str, country: str) -> list[tuple[str, bytes]]:
@@ -304,7 +305,8 @@ def sample_files(seg: str, country: str) -> list[tuple[str, bytes]]:
     for name in ("leads.csv",):
         p = d / name
         if p.exists():
-            files.append((f"signalwerk-sample-{seg}-{country}.csv", p.read_bytes()))
+            from lib.leadreport import attachments
+            files += attachments(p.read_bytes(), "fr" if country == "FR" else "en", name=f"sample-{seg}-{country}")
     return files
 
 
@@ -314,7 +316,8 @@ def has_contacts(files: list[tuple[str, bytes]]) -> bool:
     import io
     if not files:
         return False
-    rows = list(csv.DictReader(io.StringIO(files[0][1].decode("utf-8-sig", "replace"))))
+    data = next((b for n, b in files if n.endswith(".csv")), b"")
+    rows = list(csv.DictReader(io.StringIO(data.decode("utf-8-sig", "replace"))))
     return bool(rows) and all((r.get("phone") or "").strip() and (r.get("email") or "").strip() for r in rows)
 
 
@@ -330,8 +333,9 @@ def sample_text(lang: str, region: str | None, has_files: bool, regional: bool =
     if lang == "fr":
         parts = [
             "Bonjour,",
-            "Merci pour votre demande. Vous trouverez en pièce jointe votre échantillon gratuit de 10 pistes récentes"
-            + (f" pour {region}" if region else "") + ", préparé exactement au format de notre livraison hebdomadaire.",
+            "Merci pour votre demande. Vous trouverez en pièce jointe votre échantillon gratuit"
+            + (f" pour {region}" if region else "") + " : un rapport de pistes en PDF, préparé exactement comme notre "
+            "livraison hebdomadaire, et les mêmes pistes en tableau pour votre CRM.",
         ]
         if not regional:
             parts.append("Pour ce premier échantillon, nous n'avions pas encore dix événements récents dans votre zone. "
@@ -342,7 +346,7 @@ def sample_text(lang: str, region: str | None, has_files: bool, regional: bool =
         parts += [
             ("Chaque piste indique l'entreprise avec son téléphone et son e-mail, un court profil, " if contacts else
              "Chaque piste indique l'entreprise et sa localisation, ")
-            + "l'événement et sa date, la source officielle pour vérification et une phrase d'accroche pour le premier "
+            + "l'événement et sa date, le type de source et une phrase d'accroche pour le premier "
             "contact. Dans la livraison régulière, chaque piste comprend le téléphone et l'e-mail de l'entreprise et ne va "
             "qu'à une seule entreprise de votre secteur.",
             "Notre conseil : choisissez les deux ou trois pistes qui vous correspondent le mieux et contactez-les "
@@ -357,8 +361,9 @@ def sample_text(lang: str, region: str | None, has_files: bool, regional: bool =
     else:
         parts = [
             "Hello,",
-            "Thank you for your request. Attached is your free sample of 10 current leads"
-            + (f" for {region}" if region else "") + ", prepared in exactly the format of our weekly delivery.",
+            "Thank you for your request. Attached is your free sample"
+            + (f" for {region}" if region else "") + ": a lead report as a PDF, prepared exactly like our weekly "
+            "delivery, and the same leads as a spreadsheet for your CRM.",
         ]
         if not regional:
             parts.append("For this first sample we did not yet have ten recent events in your area, so it also "
@@ -368,7 +373,7 @@ def sample_text(lang: str, region: str | None, has_files: bool, regional: bool =
         parts += [
             ("Every lead shows the company with its phone number and email, a short profile, " if contacts else
              "Every lead shows the company and its location, ")
-            + "the event and its date, the official source so you can verify it and a suggested opening line for the "
+            + "the event and its date, the type of source and a suggested opening line for the "
             "first call. In the regular delivery, every lead includes the company's phone number and email and goes to "
             "only one firm in your field.",
             "Our suggestion: pick the two or three leads that fit your firm best and contact them this week, while "

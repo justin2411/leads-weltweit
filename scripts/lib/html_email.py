@@ -160,7 +160,8 @@ def preview_rows(files: list[tuple[str, bytes]]) -> list[dict]:
     if not files:
         return []
     out = []
-    for r in csv.DictReader(io.StringIO(files[0][1].decode("utf-8-sig", "replace"))):
+    data = next((b for n, b in files if n.endswith(".csv")), b"")
+    for r in csv.DictReader(io.StringIO(data.decode("utf-8-sig", "replace"))):
         ev = re.sub(r"\s*[–—]\s*", ", ", (r.get("event") or "").split(". ")[0].rstrip("."))
         ev = ev.split(" (")[0]
         name = r.get("company") or ""

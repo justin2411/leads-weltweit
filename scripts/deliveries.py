@@ -33,8 +33,8 @@ FRESH_DAYS = 14          # nur Leads, die höchstens so alt sind
 DEFAULT_MAX = 30         # Leads pro Woche, falls im Abo nichts steht
 # Reihenfolge so, wie der Kunde arbeitet: wer, wie erreichbar, worum es geht, was sagen, woher belegt.
 CSV_HEADER = ["company", "phone", "email", "website", "location", "company_profile", "event", "event_date",
-              "why_now", "priority", "sales_tip", "question_to_ask", "opening_line",
-              "source", "source_url", "checked_on", "legal_form", "industry"]
+              "why_now", "priority", "signal", "sales_tip", "question_to_ask", "opening_line",
+              "source", "checked_on", "legal_form", "industry"]
 # Kunde bekommt nur Leads mit zentraler Telefonnummer UND Sammel-E-Mail (Inhaber 27.09.2026: "immer beides").
 REQUIRE_CONTACT = True
 
@@ -155,8 +155,8 @@ def to_csv(leads: list[dict], lang: str = "en", area: str | None = None) -> byte
         where = ", ".join(x for x in (co.get("city"), area or co.get("region")) if x)
         w.writerow([co.get("name", ""), l.get("_phone", ""), l.get("_email", ""), l.get("_website", ""), where,
                     company_profile(l, lang), l["event_summary"], l.get("event_date") or "", l["urgency_reason"],
-                    l["urgency"], l.get("_tip", ""), l.get("_question", ""), l["opener"],
-                    l["source_name"], l.get("source_url") or "", l["source_date"], co.get("legal_form") or "",
+                    l["urgency"], l.get("signal_type") or "", l.get("_tip", ""), l.get("_question", ""), l["opener"],
+                    l["source_name"], l["source_date"], co.get("legal_form") or "",
                     l.get("_industry", "")])
     # BOM, damit Excel Umlaute und Akzente richtig anzeigt
     return ("\ufeff" + buf.getvalue()).encode("utf-8")
@@ -169,8 +169,9 @@ def delivery_text(lang: str, n: int, period: dt.date, areas: list[str]) -> tuple
         subject = f"Vos nouvelles pistes – semaine du {period:%d/%m/%Y}"
         body = (f"Bonjour,\n\nVous trouverez ci-joint vos {n} nouvelles pistes de la semaine"
                 + (f" pour {where}" if where else "") + ".\n\n"
-                "Chaque ligne indique le téléphone et l'e-mail de l'entreprise, un court profil, l'événement avec sa date "
-                "et sa source officielle, un conseil de vente, une question pour ouvrir l'échange et une phrase d'accroche. "
+                "Le rapport en PDF présente chaque entreprise avec son téléphone et son e-mail, un court profil, "
+                "l'événement et sa date, un conseil de vente et une phrase d'accroche. Le tableau joint contient les mêmes "
+                "pistes pour votre CRM. "
                 "Si vous souhaitez ajuster les villes ou les types de signaux, répondez simplement à ce message.\n\n"
                 "Bien cordialement,\n" + signature(lang))
         if n == 0:
@@ -182,8 +183,8 @@ def delivery_text(lang: str, n: int, period: dt.date, areas: list[str]) -> tuple
     subject = f"Your new leads – week of {period:%d %B %Y}"
     body = (f"Hello,\n\nPlease find attached your {n} new leads for this week"
             + (f" in {where}" if where else "") + ".\n\n"
-            "Each row gives the company's phone number and email, a short profile, the event with its date and "
-            "official source, a sales tip, a question to open the call and a suggested opening line. "
+            "The PDF report shows each company with its phone number and email, a short profile, the event and its "
+            "date, a sales tip and a suggested opening line. The attached spreadsheet has the same leads for your CRM. "
             "If you would like to adjust the towns or signal types, simply reply to this email.\n\n"
             "Best regards,\n" + signature(lang))
     if n == 0:
@@ -315,8 +316,10 @@ def _notify_first(previews: list[tuple[dict, list[dict]]]) -> None:
         lines.append(f"- {c['company_name']} ({c['country']}, {s['segment_id']}, {', '.join(s['filters'].get('areas') or [])}): "
                      f"{len(picked)} Leads an {c['billing_email']}")
         lines.append(f"  Freigabe: GitHub → Actions → kundenlieferung → Run workflow, Befehl 'approve', Abo {s['id']}")
-        files.append((re.sub(r"[^A-Za-z0-9]+", "-", c["company_name"]).strip("-") + ".csv",
-                      to_csv(picked, _lang(c["country"]))))
+        from lib.leadreport import attachments
+        files += attachments(to_csv(picked, _lang(c["country"])), _lang(c["country"]),
+                             ", ".join(s["filters"].get("areas") or []) or None, c["company_name"],
+                             name=re.sub(r"[^A-Za-z0-9]+", "-", c["company_name"]).strip("-"))
     lines.append("\nOder im Chat mit Claude: „Lieferung für <Firma> freigeben“.")
     _resend([owner], f"Freigabe: erste Lieferung für {len(previews)} Kunden", "\n".join(lines), attachments=files)
     print(f"Vorschau an {owner} geschickt")
@@ -358,7 +361,9 @@ def cmd_send(args) -> int:
         period = dt.date.fromisoformat(d["period_start"])
         subject, body = delivery_text(lang, len(leads), period, s["filters"].get("areas") or [])
         footer = f"{brand()} · {os.environ.get('SENDER_POSTAL_ADDRESS', '')}".strip(" ·")
-        files = [(f"leads-{period.isoformat()}.csv", to_csv(leads, lang))] if leads else None
+        from lib.leadreport import attachments
+        files = attachments(to_csv(leads, lang), lang, ", ".join(s["filters"].get("areas") or []) or None,
+                            c["company_name"], period, name=f"leads-{period.isoformat()}") if leads else None
         if not args.live:
             print(f"[Probelauf] {c['company_name']} <{c['billing_email']}>: {len(leads)} Leads, Betreff „{subject}“")
             continue
