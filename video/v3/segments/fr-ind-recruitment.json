@@ -1,0 +1,88 @@
+{
+ "slug": "ind/fr-recruitment",
+ "lang": "fr",
+ "voice": "ff_siwis",
+ "film": "seg.html",
+ "text": {},
+ "ui": {
+  "for": "Pour les cabinets de recrutement",
+  "icon": "🤝",
+  "first": "✓  Appeler avant qu'ils abandonnent",
+  "sig": [
+   [
+    "⏳",
+    "Ouvert 30+ jours",
+    "Difficile à pourvoir seul"
+   ],
+   [
+    "👥",
+    "Plusieurs embauches",
+    "Trois postes ou plus"
+   ],
+   [
+    "🔁",
+    "Offre republiée",
+    "Le même poste, encore"
+   ]
+  ],
+  "co": "Mécanique Faucon SAS",
+  "event": "6 postes ouverts · le plus ancien 38 jours · Villeurbanne",
+  "prio": "Priorité haute",
+  "profile": "Industrie, équipe atelier en croissance",
+  "tip": "Proposer une short-list pour le plus ancien poste",
+  "opener": "J'ai vu que votre poste de technicien de maintenance est ouvert depuis quelques semaines. Une short-list vous aiderait-elle ?",
+  "vals": [
+   "📄  Un poste",
+   "👥  Plusieurs placements",
+   "✓  Un client qui revient"
+  ]
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "En ce moment, des employeurs près de chez vous peinent à recruter. La plupart n'appelleront jamais un cabinet d'eux-mêmes.",
+   "pause": 0.6
+  },
+  {
+   "id": "tension",
+   "text": "Nous le voyons sur leurs propres pages carrières : postes ouverts depuis des semaines, plusieurs embauches à la fois.",
+   "pause": 0.5
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit vous amène ces employeurs.",
+   "pause": 0.5
+  },
+  {
+   "id": "lead",
+   "text": "Chaque piste est prête à appeler : téléphone, e-mail de l'entreprise, un court profil et un conseil de vente pour les recruteurs.",
+   "pause": 0.45
+  },
+  {
+   "id": "exclusive",
+   "text": "Et elle n'est qu'à vous. Aucun autre cabinet de votre secteur ne reçoit la même piste.",
+   "pause": 0.5
+  },
+  {
+   "id": "weekly",
+   "text": "Chaque lundi, de nouvelles pistes de vos villes arrivent dans votre boîte mail.",
+   "pause": 0.45
+  },
+  {
+   "id": "revenue",
+   "text": "Un employeur avec plusieurs postes ouverts peut signifier plusieurs placements.",
+   "pause": 0.5
+  },
+  {
+   "id": "cta",
+   "text": "Testez gratuitement : dix pistes de votre zone, sans engagement.",
+   "pause": 0.55
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. Les bonnes entreprises, au bon moment.",
+   "pause": 0.4
+  }
+ ],
+ "speed": 1.08
+}

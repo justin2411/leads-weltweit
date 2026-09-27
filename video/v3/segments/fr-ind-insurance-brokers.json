@@ -1,0 +1,88 @@
+{
+ "slug": "ind/fr-insurance-brokers",
+ "lang": "fr",
+ "voice": "ff_siwis",
+ "film": "seg.html",
+ "text": {},
+ "ui": {
+  "for": "Pour les courtiers en assurance",
+  "icon": "🛡️",
+  "first": "✓  Premier devis, premier client",
+  "sig": [
+   [
+    "🏛",
+    "Nouvelle entreprise",
+    "À assurer dès le premier jour"
+   ],
+   [
+    "👥",
+    "Premiers salariés",
+    "Prévoyance à mettre en place"
+   ],
+   [
+    "📈",
+    "Forte croissance",
+    "Contrats à revoir"
+   ]
+  ],
+  "co": "Cuisines Lumière SAS",
+  "event": "Créée il y a 9 jours · Lyon",
+  "prio": "Priorité haute",
+  "profile": "Cuisiniste, nouveaux locaux, premiers salariés",
+  "tip": "Commencer par la RC pro et les locaux",
+  "opener": "Félicitations pour la création. Votre responsabilité civile et vos locaux sont-ils déjà assurés ?",
+  "vals": [
+   "🛡️  RC professionnelle",
+   "🏢  Locaux et salariés",
+   "✓  Renouvelé chaque année"
+  ]
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "Chaque nouvelle entreprise doit être assurée avant d'ouvrir ses portes. Le courtier qui appelle en premier obtient le devis.",
+   "pause": 0.6
+  },
+  {
+   "id": "tension",
+   "text": "Nous repérons le moment : créations, premiers salariés, équipes qui grandissent vite.",
+   "pause": 0.5
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit vous amène ces entreprises.",
+   "pause": 0.5
+  },
+  {
+   "id": "lead",
+   "text": "Chaque piste est prête à appeler : téléphone, e-mail de l'entreprise, un court profil et un conseil de vente pour les courtiers.",
+   "pause": 0.45
+  },
+  {
+   "id": "exclusive",
+   "text": "Et elle n'est qu'à vous. Aucun autre cabinet de courtage de votre secteur ne reçoit la même piste.",
+   "pause": 0.5
+  },
+  {
+   "id": "weekly",
+   "text": "Chaque lundi, de nouvelles pistes de vos villes arrivent dans votre boîte mail.",
+   "pause": 0.45
+  },
+  {
+   "id": "revenue",
+   "text": "Un client, c'est la responsabilité civile, les locaux et la prévoyance, renouvelés chaque année.",
+   "pause": 0.5
+  },
+  {
+   "id": "cta",
+   "text": "Testez gratuitement : dix pistes de votre zone, sans engagement.",
+   "pause": 0.55
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. Les bonnes entreprises, au bon moment.",
+   "pause": 0.4
+  }
+ ],
+ "speed": 1.08
+}

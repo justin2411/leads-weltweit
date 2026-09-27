@@ -1,0 +1,88 @@
+{
+ "slug": "ind/fr-financial-advisers",
+ "lang": "fr",
+ "voice": "ff_siwis",
+ "film": "seg.html",
+ "text": {},
+ "ui": {
+  "for": "Pour les conseillers financiers",
+  "icon": "📈",
+  "first": "✓  Le bon moment pour conseiller",
+  "sig": [
+   [
+    "🏛",
+    "Nouveau dirigeant",
+    "Entreprise tout juste créée"
+   ],
+   [
+    "👥",
+    "Premiers salariés",
+    "Prévoyance à organiser"
+   ],
+   [
+    "📈",
+    "Équipe en croissance",
+    "Avantages salariés"
+   ]
+  ],
+  "co": "Studio Numérique Presqu'île",
+  "event": "Créée il y a 5 jours · Lyon",
+  "prio": "Priorité haute",
+  "profile": "Agence digitale, deux nouveaux dirigeants",
+  "tip": "Commencer par rémunération et retraite",
+  "opener": "Félicitations pour la création. Avez-vous déjà réfléchi à votre rémunération et à votre retraite ?",
+  "vals": [
+   "🏦  Retraite",
+   "🛡️  Prévoyance",
+   "✓  Client pro et privé"
+  ]
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "Les nouveaux dirigeants ont de grandes questions d'argent : retraite, prévoyance, rémunération. Peu ont déjà un conseiller.",
+   "pause": 0.6
+  },
+  {
+   "id": "tension",
+   "text": "Nous repérons le moment : nouveaux dirigeants, premiers salariés, équipes en croissance.",
+   "pause": 0.5
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit vous amène ces dirigeants.",
+   "pause": 0.5
+  },
+  {
+   "id": "lead",
+   "text": "Chaque piste est prête à appeler : téléphone, e-mail de l'entreprise, un court profil et un conseil de vente pour les conseillers.",
+   "pause": 0.45
+  },
+  {
+   "id": "exclusive",
+   "text": "Et elle n'est qu'à vous. Aucun autre cabinet de conseil de votre secteur ne reçoit la même piste.",
+   "pause": 0.5
+  },
+  {
+   "id": "weekly",
+   "text": "Chaque lundi, de nouvelles pistes de vos villes arrivent dans votre boîte mail.",
+   "pause": 0.45
+  },
+  {
+   "id": "revenue",
+   "text": "Un dirigeant peut devenir un client professionnel et privé, pour de nombreuses années.",
+   "pause": 0.5
+  },
+  {
+   "id": "cta",
+   "text": "Testez gratuitement : dix pistes de votre zone, sans engagement.",
+   "pause": 0.55
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. Les bonnes entreprises, au bon moment.",
+   "pause": 0.4
+  }
+ ],
+ "speed": 1.08
+}

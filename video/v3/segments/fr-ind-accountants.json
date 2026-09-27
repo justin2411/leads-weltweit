@@ -1,0 +1,88 @@
+{
+ "slug": "ind/fr-accountants",
+ "lang": "fr",
+ "voice": "ff_siwis",
+ "film": "seg.html",
+ "text": {},
+ "ui": {
+  "for": "Pour les experts-comptables",
+  "icon": "📊",
+  "first": "✓  Appeler en premier, gagner le client",
+  "sig": [
+   [
+    "🏛",
+    "Nouvelle entreprise",
+    "Immatriculée ces dernières semaines"
+   ],
+   [
+    "💶",
+    "Première paie",
+    "Premiers salariés en vue"
+   ],
+   [
+    "📋",
+    "Poste en finance",
+    "Besoin d'aide pour la comptabilité"
+   ]
+  ],
+  "co": "Transports Rhône Services",
+  "event": "Créée il y a 6 jours · Lyon",
+  "prio": "Priorité haute",
+  "profile": "Transport, nouveau dirigeant, pas encore d'expert-comptable",
+  "tip": "Proposer un forfait de démarrage : TVA et paie",
+  "opener": "Félicitations pour la création. Avez-vous déjà choisi votre expert-comptable pour le premier bilan ?",
+  "vals": [
+   "📒  Tenue comptable",
+   "🧾  TVA et paie",
+   "✓  Un client pour des années"
+  ]
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "Chaque semaine, de nouvelles entreprises près de chez vous choisissent leur expert-comptable. Le premier cabinet qui appelle a le plus de chances.",
+   "pause": 0.6
+  },
+  {
+   "id": "tension",
+   "text": "Nous repérons le moment : créations, premières embauches, postes en finance qui restent ouverts.",
+   "pause": 0.5
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit vous amène ces entreprises.",
+   "pause": 0.5
+  },
+  {
+   "id": "lead",
+   "text": "Chaque piste est prête à appeler : téléphone, e-mail de l'entreprise, un court profil et un conseil de vente pour les experts-comptables.",
+   "pause": 0.45
+  },
+  {
+   "id": "exclusive",
+   "text": "Et elle n'est qu'à vous. Aucun autre cabinet de votre secteur ne reçoit la même piste.",
+   "pause": 0.5
+  },
+  {
+   "id": "weekly",
+   "text": "Chaque lundi, de nouvelles pistes de vos villes arrivent dans votre boîte mail.",
+   "pause": 0.45
+  },
+  {
+   "id": "revenue",
+   "text": "Un nouveau client, c'est de la tenue comptable, de la TVA et de la paie pendant des années.",
+   "pause": 0.5
+  },
+  {
+   "id": "cta",
+   "text": "Testez gratuitement : dix pistes de votre zone, sans engagement.",
+   "pause": 0.55
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. Les bonnes entreprises, au bon moment.",
+   "pause": 0.4
+  }
+ ],
+ "speed": 1.08
+}

@@ -1,0 +1,88 @@
+{
+ "slug": "ind/fr-web-agencies",
+ "lang": "fr",
+ "voice": "ff_siwis",
+ "film": "seg.html",
+ "text": {},
+ "ui": {
+  "for": "Pour les agences web",
+  "icon": "🌐",
+  "first": "✓  Premier appel, premier site",
+  "sig": [
+   [
+    "🏛",
+    "Nouvelle entreprise",
+    "Tout juste immatriculée"
+   ],
+   [
+    "🔍",
+    "Aucun site trouvé",
+    "Domaines vérifiés"
+   ],
+   [
+    "📈",
+    "Entreprise en croissance",
+    "Site de départ dépassé"
+   ]
+  ],
+  "co": "Services Maison Chêne",
+  "event": "Créée il y a 4 jours · aucun site trouvé",
+  "prio": "Priorité haute",
+  "profile": "Services à domicile, clientèle locale, pas de site",
+  "tip": "Montrer un site simple avec prise de rendez-vous",
+  "opener": "Félicitations pour la création. Un site simple avec prise de rendez-vous vous aiderait-il à trouver vos premiers clients ?",
+  "vals": [
+   "🌐  Site web",
+   "🔧  Hébergement et suivi",
+   "✓  Un client après la mise en ligne"
+  ]
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "Chaque semaine, de nouvelles entreprises démarrent sans site web. L'agence qui appelle en premier le construit.",
+   "pause": 0.6
+  },
+  {
+   "id": "tension",
+   "text": "Nous vérifions pour chaque nouvelle entreprise s'il existe un site, et signalons celles qui n'en ont pas encore.",
+   "pause": 0.5
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit vous amène ces entreprises.",
+   "pause": 0.5
+  },
+  {
+   "id": "lead",
+   "text": "Chaque piste est prête à appeler : téléphone, e-mail de l'entreprise, un court profil et un conseil de vente pour les agences web.",
+   "pause": 0.45
+  },
+  {
+   "id": "exclusive",
+   "text": "Et elle n'est qu'à vous. Aucune autre agence de votre secteur ne reçoit la même piste.",
+   "pause": 0.5
+  },
+  {
+   "id": "weekly",
+   "text": "Chaque lundi, de nouvelles pistes de vos villes arrivent dans votre boîte mail.",
+   "pause": 0.45
+  },
+  {
+   "id": "revenue",
+   "text": "Un premier site mène souvent à l'hébergement, aux mises à jour et au référencement.",
+   "pause": 0.5
+  },
+  {
+   "id": "cta",
+   "text": "Testez gratuitement : dix pistes de votre zone, sans engagement.",
+   "pause": 0.55
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. Les bonnes entreprises, au bon moment.",
+   "pause": 0.4
+  }
+ ],
+ "speed": 1.08
+}

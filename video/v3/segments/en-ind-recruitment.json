@@ -1,0 +1,88 @@
+{
+ "slug": "ind/en-recruitment",
+ "lang": "en",
+ "voice": "bf_emma",
+ "film": "seg.html",
+ "text": {},
+ "ui": {
+  "for": "For recruitment agencies",
+  "icon": "🤝",
+  "first": "✓  Call before they give up",
+  "sig": [
+   [
+    "⏳",
+    "Open 30+ days",
+    "Hard to fill alone"
+   ],
+   [
+    "👥",
+    "Several hires",
+    "Three or more roles at once"
+   ],
+   [
+    "🔁",
+    "Reposted role",
+    "Same job, again"
+   ]
+  ],
+  "co": "Kestrel Engineering Ltd",
+  "event": "6 roles open · longest 38 days · Bolton",
+  "prio": "High priority",
+  "profile": "Engineering firm, growing site team",
+  "tip": "Offer a shortlist for the longest open role",
+  "opener": "I saw your maintenance engineer role has been open for a few weeks. Would a shortlist help?",
+  "vals": [
+   "📄  One role",
+   "👥  Several placements",
+   "✓  A client who comes back"
+  ]
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "Right now, employers near you are struggling to fill roles. Most of them will never call an agency first.",
+   "pause": 0.6
+  },
+  {
+   "id": "tension",
+   "text": "We see it on their own careers pages: roles open for weeks, several hires at once.",
+   "pause": 0.5
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit brings these employers to you.",
+   "pause": 0.5
+  },
+  {
+   "id": "lead",
+   "text": "Each lead is ready to call: phone, company email, a short profile and a sales tip written for recruiters.",
+   "pause": 0.45
+  },
+  {
+   "id": "exclusive",
+   "text": "And it's yours alone. No other agency in your industry gets the same lead.",
+   "pause": 0.5
+  },
+  {
+   "id": "weekly",
+   "text": "Every Monday, fresh leads from your towns arrive in your inbox.",
+   "pause": 0.45
+  },
+  {
+   "id": "revenue",
+   "text": "One employer with several open roles can mean several placements.",
+   "pause": 0.5
+  },
+  {
+   "id": "cta",
+   "text": "Test it free: ten leads from your area, no strings attached.",
+   "pause": 0.55
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. The right companies, at the right moment.",
+   "pause": 0.4
+  }
+ ],
+ "speed": 1.0
+}
