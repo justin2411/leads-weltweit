@@ -179,8 +179,10 @@ export async function Home({ lang }: { lang: HomeLang }) {
       <section className="offer" id="sample"><div className="wrap">
         <div>
           <Head title={t.offerH} gold={t.offerGold} intro={t.offerIntro} />
-          <div className="cta-row" data-rv><a className="btn gold big" href={mailto}>{t.offerBtn} <span className="ar">→</span></a></div>
-          <div className="fine">{t.offerFine.map((f) => <span key={f}>{f}</span>)}</div>
+          <div className="cta-stack" data-rv>
+            <a className="btn gold big" href={mailto}>{t.offerBtn} <span className="ar">→</span></a>
+            <div className="fine">{t.offerFine.map((f) => <span key={f}>{f}</span>)}</div>
+          </div>
         </div>
         <div data-rv>
           <ol className="olist">

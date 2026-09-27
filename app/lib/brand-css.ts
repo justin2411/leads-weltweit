@@ -44,6 +44,7 @@ export const BRAND_CSS = `
 .bx .cta-row{display:flex;gap:14px;flex-wrap:wrap;margin-top:36px}
 .bx .fine{margin-top:18px;font-size:13px;color:var(--night-soft);letter-spacing:.02em}
 .bx .fine span+span:before{content:"";display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--gold);margin:0 12px 3px}
+.bx .cta-stack{display:inline-flex;flex-direction:column;align-items:center;margin-top:36px;max-width:100%}.bx .cta-stack .fine{text-align:center}
 
 /* Trigger-Begriffe der Branche */
 .bx .chips{list-style:none;margin:22px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
@@ -335,7 +336,7 @@ export const BRAND_CSS = `
   .bx .nav .links .langs a{padding:4px 7px;font-size:11px}
   .bx .nav .links .pill,.bx .nav .links .pill:hover{border:0;background:none;padding:6px 0;font-size:13px;white-space:nowrap;color:var(--gold2)}
   .bx .hero .feed-wrap{display:none}
-  .bx .lede{font-size:17px}.bx .btn{width:100%;justify-content:center}
+  .bx .lede{font-size:17px}.bx .btn{width:100%;justify-content:center}.bx .cta-stack{display:flex}
   .bx .band .row{flex-direction:column;align-items:flex-start;gap:12px}.bx .band .marquee{width:100%}
   .bx .stat{padding:26px 16px}.bx .stat:after{left:16px}.bx .steps,.bx .steps.three{grid-template-columns:1fr}.bx .step{padding-right:0}
   .bx .facts{grid-template-columns:1fr}.bx .fact:nth-child(2n){padding-left:0;border-left:0}
