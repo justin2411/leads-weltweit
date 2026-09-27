@@ -205,6 +205,8 @@ const css = `
 }
 `;
 
+// Register (Inhaber 27.09.2026 „über 18 Millionen“): Companies House 4.930.634 (effektives Register, März 2026,
+// GOV.UK Companies register activities 2025/26) + INSEE SIRENE 13,7 Mio. aktive Rechtseinheiten (2022) = 18,6 Mio.
 // Hochrechnung (Stand 27.09.2026): neue Firmen pro Tag je Land × 365, abgerundet.
 // UK 12.698 in 35 Tagen ≈ 132.000, US 600 in 2 Tagen ≈ 110.000, FR 362 in 6 Tagen ≈ 22.000 → ≈ 264.000 pro Jahr.
 const YEARLY = 250000;
@@ -303,12 +305,12 @@ export default async function Home() {
         <div data-rv><div className="rule" /><div className="eyebrow">Our coverage</div>
           <h2>Built on public record, <em>checked every day.</em></h2></div>
         <div className="stats" data-rv="2">
+          <div className="stat"><b data-count={18} data-suffix="M+">18M+</b><span>companies in the official registers of our markets</span></div>
           <div className="stat"><b data-count={YEARLY} data-suffix="+">{YEARLY.toLocaleString("en-GB")}+</b><span>new companies a year within our view</span></div>
           <div className="stat"><b data-count={stats.signals}>{stats.signals.toLocaleString("en-GB")}</b><span>dated signals recorded</span></div>
-          <div className="stat"><b data-count={3}>3</b><span>markets: UK, US and France</span></div>
           <div className="stat"><b data-count={10}>10</b><span>free leads in every sample</span></div>
         </div>
-        <p className="stats-note">Signals are counted live from our database. The yearly figure is projected from the new registrations we currently record per day in the UK, US and France.</p>
+        <p className="stats-note">Registers: 4.93 million companies on the UK Companies House register (March 2026) and 13.7 million active legal units in the French SIRENE register (INSEE). Signals are counted live from our database. The yearly figure is projected from the new registrations we currently record per day in the UK, US and France.</p>
       </div></section>
 
       {video && (
