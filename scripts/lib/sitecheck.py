@@ -1,53 +1,27 @@
-"""Hat eine frisch eingetragene Firma schon eine Website? Prüft nur naheliegende Domains aus dem Firmennamen.
+"""Hat eine frisch eingetragene Firma schon eine Website? Seit 27.09.2026 nur noch GEPRÜFTE Treffer.
 
-Ergebnis ist eine ehrliche Aussage: gefunden (mit Adresse) oder "unter den geprüften Domains nichts gefunden".
+Früher reichte ein Wort des Firmennamens auf der Seite – das brachte falsche Treffer (fremde Firmen gleichen
+Namens, Nummern aus Massachusetts oder Dubai). Jetzt entscheidet dieselbe Prüfung wie in scripts/enrich.py
+(lib.websites.score_match: Registernummer, PLZ, voller Name, passende Vorwahl).
 """
 from __future__ import annotations
 
-import re
-import socket
-
 import requests
 
-from lib.fetch import USER_AGENT
-
-SUFFIX = re.compile(r"\b(ltd|limited|llc|l\.l\.c\.|inc|incorporated|corp|corporation|co|company|plc|llp|sas|sasu|sarl|"
-                    r"eurl|sa|sci|the|group|holdings?)\b\.?", re.I)
-TLDS = {"UK": [".co.uk", ".uk", ".com"], "US": [".com"], "FR": [".fr", ".com"]}
+from lib.websites import domain_candidates as _candidates
 
 
 def candidates(name: str, country: str) -> list[str]:
-    core = SUFFIX.sub(" ", name.lower())
-    core = re.sub(r"&", "and", core)
-    slug = re.sub(r"[^a-z0-9]+", "", core)
-    dashed = re.sub(r"[^a-z0-9]+", "-", core).strip("-")
-    if len(slug) < 4:
-        return []
-    out = []
-    for tld in TLDS.get(country, [".com"]):
-        out.append(slug + tld)
-        if dashed != slug:
-            out.append(dashed + tld)
-    return out[:5]
+    return _candidates(name, country)
 
 
-def find_website(name: str, country: str, session: requests.Session | None = None) -> tuple[str | None, list[str]]:
-    """(gefundene Website oder None, geprüfte Domains)."""
-    session = session or requests.Session()
-    checked = []
-    words = [w for w in re.findall(r"[a-z]{4,}", SUFFIX.sub(" ", name.lower()))][:3]
-    for dom in candidates(name, country):
-        checked.append(dom)
-        try:
-            socket.gethostbyname(dom)
-        except OSError:
-            continue
-        try:
-            r = session.get(f"https://{dom}", timeout=10, headers={"User-Agent": USER_AGENT}, allow_redirects=True)
-        except requests.RequestException:
-            continue
-        text = r.text[:20000].lower() if r.status_code < 400 else ""
-        parked = re.search(r"domain (is )?for sale|parked|buy this domain|coming soon|godaddy|sedo", text)
-        if text and not parked and any(w in text for w in words):
-            return r.url, checked
-    return None, checked
+def find_website(name: str, country: str, session: requests.Session | None = None,
+                 company: dict | None = None) -> tuple[str | None, list[str]]:
+    """(geprüfte Website oder None, geprüfte Domains). `company` mit Adresse/Registernummer macht die Prüfung schärfer."""
+    from enrich import Fetcher, find_website as _find
+    fetcher = Fetcher()
+    if session is not None:
+        fetcher.session = session
+    found = _find({**(company or {}), "name": name, "country": country, "website": None}, fetcher)
+    site = found["site"]
+    return (site["url"] if site and site["verified"] else None), found["checked"]

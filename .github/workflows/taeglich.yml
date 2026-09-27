@@ -41,9 +41,9 @@ jobs:
         run: |
           python scripts/watch.py detect
           python scripts/watch.py sitecheck --limit 150
-          python scripts/watch.py sitecheck --segment all --limit 400
-          python scripts/watch.py contacts --limit 400
           python scripts/watch.py people --limit 600
+          # Website finden/prüfen, Kontakte, Qualität: scripts/enrich.py (auch eigener Workflow anreichern.yml)
+          python scripts/enrich.py run --limit 300
       - name: Proben aktualisieren
         run: |
           python scripts/samples.py

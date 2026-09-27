@@ -108,7 +108,10 @@ def contact_companies(db) -> dict[str, dict]:
     found = {r["company_id"]: {**r["details"], "page": r.get("source_url")} for r in rows}
     people = {r["company_id"] for r in db.select_all("observations", {"kind": "eq.other", "key": "eq.person",
                                                                        "details->>name": "not.is.null", "select": "company_id"})}
-    ids = sorted(set(found) & people)
+    # enrich.py: Daten widersprechen sich (Website nicht geprüft, E-Mail-Domain fremd, Vorwahl aus anderem Land)
+    blocked = {r["company_id"] for r in db.select_all("observations", {"kind": "eq.other", "key": "eq.quality",
+                                                                        "details->>blocking": "eq.true", "select": "company_id"})}
+    ids = sorted((set(found) & people) - blocked)
     complete = set()
     for i in range(0, len(ids), 100):
         for c in db.select("watch_companies", {"id": f"in.({','.join(ids[i:i + 100])})", "website": "not.is.null",
