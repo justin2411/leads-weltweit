@@ -115,96 +115,154 @@ def group_rows(data: bytes) -> list[dict]:
     return out
 
 
+# Seite 2 (nur bei Proben): Wert, Ablauf, Pakete. Preise kommen aus der Datenbank (settings.pricing), nie erfunden.
+T2 = {
+    "en": {"h": "Why these leads turn into revenue",
+           "why": [("A real reason to buy", "Every company has just done something that creates demand for your service: founded, hiring, growing, moving."),
+                   ("You call first", "Leads arrive days after the event, often before the company has found a provider."),
+                   ("Only for your firm", "Each lead goes to one firm in your field and area. No competitor calls the same company.")],
+           "how_h": "How it works",
+           "how": [("You choose your area", "Towns or counties you serve, and the signals that fit your business."),
+                   ("Every Monday", "A fresh report like this one, as PDF and spreadsheet for your CRM."),
+                   ("You call and win clients", "Phone, email, sales tip and opening line are in every lead.")],
+           "inc_h": "In every lead", "inc": ["Company and location", "What happened, with date", "Phone and email", "Priority", "Sales tip", "Opening line"],
+           "plans_h": "Plans", "per": "per month", "start": "Ready to start?",
+           "cta": "Just reply to our email with your towns. Your first delivery arrives next Monday.",
+           "p1": "10 leads selected for you", "p1s": "Company data only · phone and email from the company's own website",
+           "plan_txt": {"starter": "Up to 30 new leads per week from 1 area. Every lead exclusive to your firm.",
+                        "pro": "Up to 100 new leads per week from up to 3 areas, all matching signals. Every lead exclusive to your firm."}},
+    "fr": {"h": "Pourquoi ces pistes génèrent du chiffre d'affaires",
+           "why": [("Une vraie raison d'acheter", "Chaque entreprise vient de faire quelque chose qui crée un besoin : création, recrutement, croissance, déménagement."),
+                   ("Vous appelez en premier", "Les pistes arrivent quelques jours après l'événement, souvent avant que l'entreprise ait trouvé un prestataire."),
+                   ("Réservé à votre entreprise", "Chaque piste va à une seule entreprise de votre secteur et de votre zone.")],
+           "how_h": "Comment ça marche",
+           "how": [("Vous choisissez votre zone", "Les villes ou départements que vous couvrez, et les signaux qui vous conviennent."),
+                   ("Chaque lundi", "Un nouveau rapport comme celui-ci, en PDF et en tableau pour votre CRM."),
+                   ("Vous appelez et gagnez des clients", "Téléphone, e-mail, conseil de vente et phrase d'accroche dans chaque piste.")],
+           "inc_h": "Dans chaque piste", "inc": ["Entreprise et lieu", "L'événement, avec la date", "Téléphone et e-mail", "Priorité", "Conseil de vente", "Phrase d'accroche"],
+           "plans_h": "Formules", "per": "par mois", "start": "On commence ?",
+           "cta": "Répondez simplement à notre e-mail avec vos villes. Votre première livraison arrive lundi prochain.",
+           "p1": "10 pistes sélectionnées pour vous", "p1s": "Données d'entreprise uniquement · téléphone et e-mail issus du site de l'entreprise",
+           "plan_txt": {"starter": "Jusqu'à 30 nouvelles pistes par semaine dans 1 zone. Chaque piste réservée à votre entreprise.",
+                        "pro": "Jusqu'à 100 nouvelles pistes par semaine dans 3 zones maximum, tous les signaux utiles. Chaque piste réservée à votre entreprise."}},
+}
+CUR = {"gbp": "£", "eur": "€", "usd": "$"}
+
+
+def _money(plan: dict) -> str:
+    amt = (plan.get("amount_cents") or 0) / 100
+    sym = CUR.get((plan.get("currency") or "").lower(), "")
+    txt = f"{amt:,.0f}" if amt == int(amt) else f"{amt:,.2f}"
+    return f"{txt} {sym}".strip() if (plan.get("currency") or "").lower() == "eur" else f"{sym}{txt}"
+
+
+def _clip(s: str, n: int) -> str:
+    s = (s or "").strip()
+    return s if len(s) <= n else s[: n - 1].rsplit(" ", 1)[0].rstrip(",;:") + "…"
+
+
 def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str | None = None,
-               period: dt.date | None = None) -> str:
-    t = T.get(lang, T["en"])
-    groups = group_rows(data)
-    n_sig = sum(len(g["rows"]) for g in groups)
+               period: dt.date | None = None, plans: list[dict] | None = None) -> str:
+    """Seite 1: Logo und bis zu 10 Leads. Seite 2 (nur wenn plans übergeben, also bei Proben): Wert, Ablauf, Pakete."""
+    t, t2 = T.get(lang, T["en"]), T2.get(lang, T2["en"])
+    groups = group_rows(data)[:10]
     e = html.escape
     cards = []
     for g in groups:
         r = g["rows"][0]
         sig = r.get("signal") or ("new_incorporation" if "regist" in (r.get("event") or "").lower() else "")
         urg = r.get("urgency") or r.get("priority") or ""
-        loc = ", ".join(x for x in [(r.get("location") or "").strip()] if x)
-        why = r.get("why_now") or r.get("urgency_reason") or ""
-        why = re.sub(r"(\d{2})\.(\d{2})\.(\d{4})", lambda m: _day(f"{m.group(3)}-{m.group(2)}-{m.group(1)}", lang), why)
-        tip = r.get("sales_tip") or ""
-        opener = r.get("opening_line") or r.get("opener") or ""
-        profile = r.get("company_profile") or ""
-        contact = [(t["phone"], r.get("phone")), (t["email"], r.get("email")), (t["web"], re.sub(r"^https?://(www\.)?", "", r.get("website") or "").rstrip("/"))]
-        contact = [(k, v) for k, v in contact if v]
-        also = [_event(x.get("event", ""), x.get("company", "")) for x in g["rows"][1:3]]
-        chips = [t["sig"].get(sig, "")] + [t["sig"].get(x.get("signal") or "", "") for x in g["rows"][1:]]
-        chips = list(dict.fromkeys(c for c in chips if c))
-        kind = _source_kind(r.get("source", ""), sig)
+        loc = (r.get("location") or "").strip()
+        opener = (r.get("opening_line") or r.get("opener") or "").replace((r.get("company") or "").strip() or "\0", g["company"])
+        web = re.sub(r"^https?://(www\.)?", "", r.get("website") or "").rstrip("/")
+        contact = [("tel", r.get("phone")), ("mail", r.get("email")), ("web", web)]
+        contact = [(k, v) for k, v in contact if v][:2]
         cards.append(f"""
-<section class="card">
-  <div class="top"><div><h2>{e(g['company'])}</h2><div class="loc">{e(loc)}</div></div>
-    <span class="prio p-{e(urg)}">{e(t['prio'].get(urg, ''))}</span></div>
-  <div class="chips">{''.join(f'<span>{e(c)}</span>' for c in chips)}</div>
-  {f'<p class="profile">{e(profile)}</p>' if profile else ''}
-  <div class="grid">
-    <div><h3>{t['what']}</h3><p>{e(_event(r.get('event', ''), r.get('company', '')))}</p>
-      {''.join(f'<p class="also">+ {e(a)}</p>' for a in also if a)}</div>
-    {f'<div><h3>{t["why"]}</h3><p>{e(why)}</p></div>' if why else ''}
-  </div>
-  {f'<div class="tip"><h3>{t["tip"]}</h3><p>{e(tip)}</p></div>' if tip else ''}
-  {f'<blockquote><h3>{t["open"]}</h3>“{e(opener)}”</blockquote>' if opener else ''}
-  {('<div class="contact">' + ''.join(f'<div><span>{e(k)}</span>{e(v)}</div>' for k, v in contact) + '</div>') if contact else ''}
-  <div class="meta">{t['detected']} {e(_day(r.get('event_date', ''), lang))} · {t['checked']} {e(_day(r.get('checked_on', ''), lang))} · {e(t['src'][kind])}</div>
-</section>""")
+<article class="lead">
+  <div class="hd"><div class="nm">{e(g['company'])}</div>{f'<span class="pr p-{e(urg)}">{e(t["prio"].get(urg, ""))}</span>' if urg else ''}</div>
+  <div class="sub">{e(loc)}{' · ' if loc and sig else ''}<b>{e(t['sig'].get(sig, ''))}</b></div>
+  <p class="ev">{e(_clip(_event(r.get('event', ''), r.get('company', '')), 110))}</p>
+  {f'<p class="op">“{e(_clip(opener, 150))}”</p>' if opener else ''}
+  <div class="ct">{''.join(f'<span class="{k}">{e(v)}</span>' for k, v in contact)}</div>
+</article>""")
     when = _day((period or dt.date.today()).isoformat(), lang)
+    page2 = ""
+    if plans:
+        pl = "".join(f"""<div class="plan{' hi' if k == len(plans) - 1 else ''}"><div class="pn">{e(p.get('name', ''))}</div>
+<div class="pp">{e(_money(p))}<small> {t2['per']}</small></div><p>{e(t2['plan_txt'].get(p.get('key', ''), ''))}</p></div>"""
+                     for k, p in enumerate(plans))
+        page2 = f"""<section class="p2">
+<header class="bar"><div class="logo">NextGen <i>Profit</i></div></header>
+<div class="in">
+<h1>{t2['h']}</h1>
+<div class="why">{''.join(f'<div><b>{e(h)}</b><p>{e(d)}</p></div>' for h, d in t2['why'])}</div>
+<h2>{t2['how_h']}</h2>
+<ol class="how">{''.join(f'<li><b>{e(h)}</b><p>{e(d)}</p></li>' for h, d in t2['how'])}</ol>
+<h2>{t2['inc_h']}</h2>
+<ul class="inc">{''.join(f'<li>{e(x)}</li>' for x in t2['inc'])}</ul>
+<h2>{t2['plans_h']}</h2>
+<div class="plans">{pl}</div>
+<div class="cta"><b>{t2['start']}</b><p>{t2['cta']}</p><span>nextgen-profit.de</span></div>
+</div></section>"""
     return f"""<!doctype html><html lang="{lang}"><head><meta charset="utf-8"><style>
 {_font(400)}{_font(600)}{_font(700)}{_font(800)}
-@page{{size:A4;margin:14mm 0 12mm}}@page:first{{margin:0}}
+@page{{size:A4;margin:0}}
 *{{box-sizing:border-box;margin:0;padding:0}}
 body{{font-family:Inter,Helvetica,Arial,sans-serif;color:#15203a;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
-.cover{{height:297mm;background:radial-gradient(900px 600px at 80% 10%,rgba(216,189,138,.18),transparent 60%),linear-gradient(160deg,#0b1428,#081026 70%);color:#f2efe8;padding:28mm 22mm;position:relative;page-break-after:always}}
-.logo{{font-size:30px;font-weight:800;letter-spacing:-.5px}}.logo i{{font-style:normal;color:#d8bd8a}}
-.cover .rule{{width:60px;height:2px;background:#d8bd8a;margin:70mm 0 10mm}}
-.cover h1{{font-size:54px;font-weight:800;letter-spacing:-1.5px;line-height:1.05}}
-.cover .sub{{font-size:20px;color:#c9cfdb;margin-top:6mm}}
-.stats{{display:flex;gap:14mm;margin-top:18mm}}.stats b{{display:block;font-size:40px;color:#f3e1b9;font-weight:800}}.stats span{{font-size:13px;color:#9aa6ba;letter-spacing:.14em;text-transform:uppercase}}
-.cover .for{{position:absolute;left:22mm;bottom:40mm;font-size:14px;color:#9aa6ba;letter-spacing:.14em;text-transform:uppercase}}.cover .for b{{display:block;color:#f2efe8;font-size:22px;letter-spacing:0;text-transform:none;margin-top:2mm}}
-.cover .conf{{position:absolute;left:22mm;right:22mm;bottom:20mm;border-top:1px solid rgba(216,189,138,.35);padding-top:5mm;font-size:12px;color:#d8bd8a;letter-spacing:.16em;text-transform:uppercase;display:flex;justify-content:space-between}}
-.page{{padding:0 16mm}}
-.how{{border:1px solid #e6dcc8;background:#fbf8f1;border-radius:14px;padding:6mm 7mm;margin-bottom:7mm}}.how h3{{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#a07f46;margin-bottom:2mm}}
-.how ol{{padding-left:5mm;font-size:12.5px;line-height:1.6;color:#39404d}}
-.card{{border:1px solid #e3e6ee;border-radius:16px;padding:7mm 8mm 5mm;margin-bottom:6mm;page-break-inside:avoid;position:relative;overflow:hidden;background:#fff}}
-.card:before{{content:"";position:absolute;left:0;top:0;right:0;height:3px;background:linear-gradient(90deg,#0b1428,#d8bd8a,#0b1428)}}
-.top{{display:flex;justify-content:space-between;align-items:flex-start;gap:6mm}}
-h2{{font-size:21px;font-weight:800;letter-spacing:-.3px;color:#0b1428}}.loc{{font-size:12.5px;color:#6b7486;margin-top:1mm}}
-.prio{{font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:2mm 3.5mm;border-radius:99px;white-space:nowrap;background:#0b1428;color:#f3e1b9}}
-.prio.p-medium{{background:#f3ead8;color:#7a5b24}}.prio.p-low{{background:#eef0f4;color:#6b7486}}
-.chips{{display:flex;gap:2mm;flex-wrap:wrap;margin:3.5mm 0 1mm}}.chips span{{font-size:10.5px;font-weight:600;padding:1.2mm 3mm;border-radius:99px;background:linear-gradient(135deg,#e7cf9f,#c29d5c);color:#1a1408}}
-.profile{{font-size:12px;color:#39404d;margin-top:2mm}}
-.grid{{display:grid;grid-template-columns:1fr 1fr;gap:6mm;margin-top:4mm}}
-h3{{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#a07f46;font-weight:700;margin-bottom:1.2mm}}
-.grid p{{font-size:12.5px;line-height:1.5;color:#1f2940}}.grid p.also{{font-size:11.5px;color:#6b7486;margin-top:1mm}}
-.tip{{margin-top:4mm;background:#0b1428;color:#e8e2d4;border-radius:10px;padding:3.5mm 5mm}}.tip h3{{color:#d8bd8a}}.tip p{{font-size:12.5px;line-height:1.5}}
-blockquote{{margin-top:4mm;border-left:3px solid #d8bd8a;padding:1mm 0 1mm 5mm;font-size:13px;line-height:1.55;color:#1f2940;font-style:italic}}blockquote h3{{font-style:normal}}
-.contact{{display:flex;gap:8mm;margin-top:4mm;padding-top:3mm;border-top:1px dashed #e3e6ee;font-size:12.5px;font-weight:600}}.contact span{{display:block;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b7486;font-weight:700}}
-.meta{{margin-top:4mm;font-size:10.5px;color:#8a92a3}}
-.foot{{font-size:10px;color:#8a92a3;text-align:center;margin-top:4mm}}
+section{{width:210mm;height:297mm;position:relative;overflow:hidden;page-break-after:always}}
+.bar{{height:20mm;background:linear-gradient(120deg,#0b1428,#101d38);display:flex;align-items:center;padding:0 14mm;border-bottom:1.2mm solid #d8bd8a}}
+.logo{{font-size:21px;font-weight:800;letter-spacing:-.4px;color:#f2efe8}}.logo i{{font-style:normal;color:#d8bd8a}}
+.in{{padding:7mm 14mm 0}}
+.p1 .ttl{{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4.5mm}}
+.p1 .ttl h1{{font-size:19px;font-weight:800;letter-spacing:-.3px;color:#0b1428}}.p1 .ttl span{{font-size:10.5px;color:#6b7486}}
+.grid{{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:45.5mm;gap:3.5mm}}
+.lead{{border:1px solid #e3e6ee;border-radius:10px;padding:3.6mm 4.2mm 3mm;position:relative;overflow:hidden;background:#fff;display:flex;flex-direction:column}}
+.lead:before{{content:"";position:absolute;left:0;top:0;bottom:0;width:1.2mm;background:linear-gradient(180deg,#d8bd8a,#b08d57)}}
+.hd{{display:flex;justify-content:space-between;gap:3mm;align-items:flex-start}}
+.nm{{font-size:13.5px;font-weight:800;color:#0b1428;letter-spacing:-.2px;line-height:1.2}}
+.pr{{flex:none;font-size:7.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:1mm 2.2mm;border-radius:99px;background:#0b1428;color:#f3e1b9}}
+.pr.p-medium{{background:#f3ead8;color:#7a5b24}}.pr.p-low{{background:#eef0f4;color:#6b7486}}
+.sub{{font-size:9.5px;color:#6b7486;margin-top:.8mm}}.sub b{{color:#a07f46;font-weight:700}}
+.ev{{font-size:10.5px;line-height:1.4;color:#1f2940;margin-top:1.8mm;font-weight:600}}
+.op{{font-size:9.5px;line-height:1.4;color:#4a5263;font-style:italic;margin-top:1.4mm;border-left:.6mm solid #d8bd8a;padding-left:2mm}}
+.ct{{margin-top:auto;padding-top:1.8mm;border-top:1px dashed #e3e6ee;display:flex;gap:4mm;flex-wrap:wrap;font-size:9.5px;font-weight:700;color:#0b1428}}
+.ct span:before{{font-weight:700;color:#a07f46;margin-right:1mm}}.ct .tel:before{{content:"T"}}.ct .mail:before{{content:"E"}}.ct .web:before{{content:"W"}}
+.ft{{position:absolute;left:14mm;right:14mm;bottom:7mm;display:flex;justify-content:space-between;font-size:8.5px;color:#8a92a3;letter-spacing:.06em}}
+.p2 .in{{padding:12mm 16mm 0}}
+.p2 h1{{font-size:24px;font-weight:800;letter-spacing:-.5px;color:#0b1428;margin-bottom:6mm}}
+.p2 h2{{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#a07f46;font-weight:700;margin:11mm 0 4.5mm}}
+.why{{display:grid;grid-template-columns:repeat(3,1fr);gap:5mm}}.why div{{background:#0b1428;color:#e8e2d4;border-radius:12px;padding:5mm}}
+.why b{{display:block;color:#f3e1b9;font-size:13px;margin-bottom:2mm}}.why p{{font-size:10.5px;line-height:1.5}}
+.how{{list-style:none;counter-reset:s;display:grid;grid-template-columns:repeat(3,1fr);gap:5mm}}
+.how li{{counter-increment:s;border:1px solid #e3e6ee;border-radius:12px;padding:5mm;position:relative}}
+.how li:before{{content:counter(s);display:grid;place-items:center;width:8mm;height:8mm;border-radius:50%;border:1px solid #d8bd8a;color:#a07f46;font-weight:700;font-size:12px;margin-bottom:3mm}}
+.how b{{font-size:12.5px;color:#0b1428}}.how p{{font-size:10.5px;line-height:1.5;color:#4a5263;margin-top:1.5mm}}
+.inc{{list-style:none;display:grid;grid-template-columns:repeat(3,1fr);gap:3mm 5mm}}
+.inc li{{font-size:11.5px;font-weight:600;color:#0b1428;padding:3mm 4mm;border-radius:10px;background:#fbf8f1;border:1px solid #efe5d3}}
+.inc li:before{{content:"✓";color:#a07f46;font-weight:800;margin-right:2mm}}
+.plans{{display:grid;grid-template-columns:1fr 1fr;gap:5mm}}.plan{{border:1px solid #e3e6ee;border-radius:12px;padding:5mm 6mm}}
+.plan.hi{{border:1.5px solid #d8bd8a;background:#fbf8f1}}
+.pn{{font-size:10px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;color:#6b7486}}
+.pp{{font-size:26px;font-weight:800;color:#0b1428;margin:1.5mm 0 2mm}}.pp small{{font-size:11px;font-weight:600;color:#6b7486}}
+.plan p{{font-size:10.5px;line-height:1.5;color:#39404d}}
+.cta{{margin-top:12mm;border-radius:14px;padding:6mm 7mm;background:radial-gradient(400px 200px at 90% 0%,rgba(216,189,138,.25),transparent 60%),linear-gradient(135deg,#0b1428,#14243f);color:#e8e2d4;position:relative}}
+.cta b{{font-size:17px;color:#fff}}.cta p{{font-size:11.5px;margin-top:1.5mm;max-width:130mm}}.cta span{{position:absolute;right:7mm;bottom:6mm;color:#d8bd8a;font-weight:700;font-size:11px}}
 </style></head><body>
-<div class="cover"><div class="logo">NextGen <i>Profit</i></div><div class="rule"></div>
-<h1>{t['title']}</h1><div class="sub">{e(area or '')}{' · ' if area else ''}{t['week']} {e(when)}</div>
-<div class="stats"><div><b>{len(groups)}</b><span>{t['firms']}</span></div><div><b>{n_sig}</b><span>{t['signals']}</span></div></div>
-{f'<div class="for">{t["for"]}<b>{e(firm)}</b></div>' if firm else ''}
-<div class="conf"><span>{t['conf']}</span><span>nextgen-profit.de</span></div></div>
-<div class="page"><div class="how"><h3>{t['how']}</h3><ol><li>{t['how1']}</li><li>{t['how2']}</li><li>{t['how3']}</li></ol></div>
-{''.join(cards)}<p class="foot">{t['foot']} · NextGen Profit</p></div>
+<section class="p1"><header class="bar"><div class="logo">NextGen <i>Profit</i></div></header>
+<div class="in"><div class="ttl"><h1>{t2['p1'] if len(groups) >= 10 else e(str(len(groups))) + ' ' + t['firms']}{(' · ' + e(area)) if area else ''}</h1><span>{e(when)}{(' · ' + e(firm)) if firm else ''}</span></div>
+<div class="grid">{''.join(cards)}</div></div>
+<div class="ft"><span>{t['conf']}</span><span>{t2['p1s']}</span></div></section>
+{page2}
 </body></html>"""
 
 
 def render_pdf(data: bytes, lang: str = "en", area: str | None = None, firm: str | None = None,
-               period: dt.date | None = None) -> bytes | None:
+               period: dt.date | None = None, plans: list[dict] | None = None) -> bytes | None:
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
         return None
-    doc = build_html(data, lang, area, firm, period)
+    doc = build_html(data, lang, area, firm, period, plans)
     try:
         with sync_playwright() as p:
             import os
@@ -238,11 +296,11 @@ def clean_csv(data: bytes, lang: str = "en") -> bytes:
 
 
 def attachments(csv_bytes: bytes, lang: str, area: str | None = None, firm: str | None = None,
-                period: dt.date | None = None, name: str = "leads") -> list[tuple[str, bytes]]:
+                period: dt.date | None = None, name: str = "leads", plans: list[dict] | None = None) -> list[tuple[str, bytes]]:
     """PDF-Report (falls möglich) + bereinigte CSV für CRM/Excel."""
     slug = "-" + re.sub(r"[^A-Za-z0-9]+", "-", area).strip("-") if area else ""
     out = []
-    pdf = render_pdf(csv_bytes, lang, area, firm, period)
+    pdf = render_pdf(csv_bytes, lang, area, firm, period, plans)
     if pdf:
         out.append((f"NextGen-Profit-Lead-Report{slug}.pdf", pdf))
     out.append((f"{name}{slug}.csv", clean_csv(csv_bytes, lang)))
