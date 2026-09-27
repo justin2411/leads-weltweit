@@ -194,14 +194,13 @@ def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str
   {f'<p class="op"><b>{t["open"]}</b>“{e(opener)}”</p>' if opener else ''}
 </article>""")
     when = _day((period or dt.date.today()).isoformat(), lang)
-    btn1 = f'<a class="btn1" href="{e(cta_url)}">{t2["btn1"]} &rarr;</a>' if cta_url else ''
     head = (t2['p1'] if len(groups) >= 10 else f"{len(groups)} {t['firms']}") + (f" · {area}" if area else "")
     pages = []
     for k in range(0, max(len(cards), 1), 5):
         ttl = (f'<div class="ttl"><h1>{e(head)}</h1><span>{e(when)}{(" · " + e(firm)) if firm else ""}</span></div>' if k == 0 else "")
         pages.append(f"""<section class="p1"><header class="bar"><div class="logo">NextGen <i>Profit</i></div></header>
 <div class="in">{ttl}<div class="grid">{''.join(cards[k:k + 5])}</div></div>
-<div class="ft"><span>{t['conf']}</span><span>{t2['p1s']}</span></div>{btn1}</section>""")
+<div class="ft"><span>{t['conf']}</span><span>{t2['p1s']}</span></div></section>""")
     pages = "\n".join(pages)
     page2 = ""
     if plans:
