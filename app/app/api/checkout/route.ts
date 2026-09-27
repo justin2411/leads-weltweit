@@ -11,6 +11,18 @@ export const dynamic = "force-dynamic";
  * Öffentliche Seite in Produktion: Live-Schlüssel. Vorschau-Deployments und Inhaber-Vorschau: Test-Schlüssel.
  * Ohne passende Schlüssel deaktiviert.
  */
+const PER_WEEK: Record<string, number> = { starter: 30, pro: 100 };
+const CHECKOUT_TXT = {
+  en: {
+    desc: (w: number, m: number) => `Up to ${w} new trigger leads per week (about ${m} per month), each exclusive to your firm. Every Monday a PDF briefing and spreadsheet with phone, email, contact person and a short sales briefing per company.`,
+    welcome: `Welcome to ${BRAND}. We look forward to working with you. Right after payment you get a short form to set your focus, and your first leads arrive the following Monday.`,
+  },
+  fr: {
+    desc: (w: number, m: number) => `Jusqu'à ${w} nouvelles pistes par semaine (environ ${m} par mois), chacune réservée à votre entreprise. Chaque lundi un briefing PDF et un tableau avec téléphone, e-mail, interlocuteur et un court briefing commercial par entreprise.`,
+    welcome: `Bienvenue chez ${BRAND}. Nous nous réjouissons de travailler avec vous. Juste après le paiement, vous recevez un court formulaire pour définir votre cible, et vos premières pistes arrivent le lundi suivant.`,
+  },
+};
+
 export async function POST(req: Request) {
   const f = await req.formData();
   const variantId = String(f.get("variant_id") ?? "");
@@ -31,29 +43,40 @@ export async function POST(req: Request) {
   if (!stripeEnabled(mode)) return new Response("Bezahlung ist noch nicht eingerichtet.", { status: 503 });
   // Nur Preise, die der Inhaber hinterlegt hat
   const plan = ((v.pricing ?? settings.pricing ?? []) as Plan[]).find((p) => p.key === pkg);
-  const item = lineItemFor(plan, mode, BRAND);
+  const item: any = lineItemFor(plan, mode, BRAND);
   if (!item) return new Response("Unbekanntes Paket", { status: 400 });
+  const lang = page.language === "fr" ? "fr" : "en";
+  const T = CHECKOUT_TXT[lang];
+  const week = PER_WEEK[pkg];
+  // Kontingent auf der Stripe-Seite unter dem Paketnamen (nur bei Preis aus der Datenbank möglich)
+  if (week && item.price_data) item.price_data.product_data.description = T.desc(week, Math.round(week * 52 / 12));
 
   const meta = { segment_id: page.segment_id, country: page.country, variant_id: v.id, package: pkg, mode,
                  amount_cents: String(plan?.amount_cents ?? ""), currency: plan?.currency ?? "" };
-  const back = ownerPreview ? `${siteUrl()}/${page.slug}?vorschau=1&v=${v.variant_key}` : `${siteUrl()}/${page.slug}`;
+  // Zurück aus Stripe: auf die Pläne-Seite (/start), nicht auf die Landingpage
+  const q = new URLSearchParams();
+  if (ownerPreview) { q.set("vorschau", "1"); q.set("v", v.variant_key); }
+  const r = String(f.get("r") ?? "");
+  if (/^[A-Za-z0-9_-]{8,80}$/.test(r)) q.set("r", r);
+  const back = `${siteUrl()}/${page.slug}/start${q.size ? `?${q}` : ""}`;
   let session: any;
   try {
     session = await stripe("checkout/sessions", {
     mode: "subscription",
     line_items: { 0: item },
     success_url: `${siteUrl()}/danke?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${back}#plans`,
+    cancel_url: back,
     billing_address_collection: "required",
     custom_fields: { 0: { key: "company", label: { type: "custom", custom: page.language === "fr" ? "Entreprise" : "Company name" }, type: "text" } },
     metadata: meta,
     subscription_data: { metadata: meta },
-    locale: page.language === "fr" ? "fr" : "en",
+    locale: lang,
+    custom_text: { submit: { message: T.welcome } },
   }, mode);
   } catch (e) {
     // Nie eine nackte 500: Fehler protokollieren, Kunde bekommt eine Seite mit E-Mail-Weg
     console.error("checkout", pkg, mode, (e as Error).message);
-    return failPage(page.language === "fr" ? "fr" : "en", pkg, page.slug, back);
+    return failPage(lang, pkg, page.slug, back);
   }
   if (mode === "live") await recordEvent(v.id, "checkout_started");
   return Response.redirect(session.url, 303);
