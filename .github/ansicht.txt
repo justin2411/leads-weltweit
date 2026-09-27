@@ -1,5 +1,7 @@
 # Seiten für Bildschirmfotos (eine pro Zeile, "/" = Startseite). Änderung dieser Datei startet den Workflow "ansicht".
-/uk/accountants
-/uk/insurance-brokers
+/
+/fr
+/de
+/uk/accountants?r=520975d2b8d39914c9475dc0a86b028f65389973e84d1924
 /uk/financial-advisers
-/impressum
+/privacy

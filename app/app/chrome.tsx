@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { Inter } from "next/font/google";
 import { BRAND_CSS } from "@/lib/brand-css";
 import { CONTACT, LEGAL_NAME } from "@/lib/site";
+import { LEGAL_LABELS, LEGAL_PATHS } from "@/content/legal-i18n";
 import { Motion } from "./motion";
 
 // Schrift wird beim Build selbst gehostet (kein Abruf bei Google durch Besucher, DSGVO).
@@ -44,26 +45,33 @@ export function Mark() {
   return <a className="mark" href="/">NextGen <i>Profit</i></a>;
 }
 
-export function SiteHeader({ links = [], cta }: { links?: [string, string][]; cta?: [string, string] }) {
+export function SiteHeader({ links = [], cta, langs }: { links?: [string, string][]; cta?: [string, string]; langs?: [string, string, boolean][] }) {
   return (
     <header className="nav"><div className="wrap">
       <Mark />
       <nav className="links" aria-label="Main">
         {links.map(([href, label]) => <a key={href} href={href}>{label}</a>)}
+        {langs && (
+          <span className="langs" aria-label="Language">
+            {langs.map(([code, href, on]) => <a key={code} href={href} className={on ? "on" : undefined} aria-current={on ? "page" : undefined} hrefLang={code.toLowerCase()}>{code}</a>)}
+          </span>
+        )}
         {cta && <a className="pill" href={cta[0]}>{cta[1]}</a>}
       </nav>
     </div></header>
   );
 }
 
-export function SiteFooter({ labels = ["Legal notice", "Privacy policy", "Terms"] }: { labels?: readonly string[] }) {
+export function SiteFooter({ lang = "en" }: { lang?: string }) {
+  const k = (lang === "fr" || lang === "de" ? lang : "en") as keyof typeof LEGAL_PATHS;
+  const labels = LEGAL_LABELS[k], paths = LEGAL_PATHS[k];
   return (
     <footer><div className="wrap">
       <div>
         <Mark />
         <address>Poststraße 14-16 · 20354 Hamburg · Germany<br /><a href={`mailto:${CONTACT}`}>{CONTACT}</a></address>
       </div>
-      <nav aria-label="Legal"><a href="/impressum">{labels[0]}</a><a href="/datenschutz">{labels[1]}</a><a href="/agb">{labels[2]}</a></nav>
+      <nav aria-label="Legal"><a href={paths.impressum}>{labels[0]}</a><a href={paths.datenschutz}>{labels[1]}</a><a href={paths.agb}>{labels[2]}</a></nav>
       <div style={{ width: "100%", marginTop: 8 }}>© {new Date().getFullYear()} {LEGAL_NAME}</div>
     </div></footer>
   );

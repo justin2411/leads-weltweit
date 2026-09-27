@@ -107,7 +107,7 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
           <input type="hidden" name="r" value={sp.r} />
           <div className="cta-row" style={{ marginTop: 6 }}><button className="btn gold big" type="submit" name="consent" value="yes" data-cta>{L.confirm} <span className="ar">→</span></button>
             <a className="btn ghost" href={backHref}>{L.back}</a></div>
-          <p className="small">{consentText(lang)} <a href="/datenschutz">{L.legal[1]}</a></p>
+          <p className="small">{consentText(lang)} <a href={fr ? "/confidentialite" : "/privacy"}>{L.legal[1]}</a></p>
         </form>
       ) : (
         <div className="cta-row" style={{ marginTop: 6 }}><a className="btn gold big" href={mailto} data-cta>{L.byMail} <span className="ar">→</span></a><a className="btn ghost" href={backHref}>{L.back}</a></div>
@@ -200,7 +200,7 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
         </div></section>
       )}
 
-      <SiteFooter labels={L.legal} />
+      <SiteFooter lang={lang} />
     </BrandShell>
   );
 }

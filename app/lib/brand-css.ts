@@ -21,7 +21,10 @@ export const BRAND_CSS = `
 .bx .nav .links{display:flex;gap:30px;align-items:center}.bx .nav .links a{color:#c9d1de;text-decoration:none;font-size:14px;position:relative}
 .bx .nav .links a:not(.pill):after{content:"";position:absolute;left:0;right:0;bottom:-4px;height:1px;background:var(--gold2);transform:scaleX(0);transform-origin:right;transition:transform .35s}
 .bx .nav .links a:not(.pill):hover:after{transform:scaleX(1);transform-origin:left}
-.bx .nav .links a:hover{color:#fff}.bx .nav .links .pill{border:1px solid rgba(216,189,138,.5);color:#f4efe6;padding:8px 16px;border-radius:99px;transition:background .3s,border-color .3s}
+.bx .nav .links a:hover{color:#fff}
+.bx .nav .langs{display:inline-flex;gap:2px;padding:3px;border:1px solid rgba(255,255,255,.12);border-radius:99px}
+.bx .nav .links .langs a{font-size:12px;font-weight:600;letter-spacing:.06em;padding:4px 9px;border-radius:99px;color:#9aa6ba}
+.bx .nav .links .langs a:after{display:none}.bx .nav .links .langs a.on{background:rgba(216,189,138,.16);color:var(--gold2)}.bx .nav .links .pill{border:1px solid rgba(216,189,138,.5);color:#f4efe6;padding:8px 16px;border-radius:99px;transition:background .3s,border-color .3s}
 .bx .nav .links .pill:hover{background:rgba(216,189,138,.12);border-color:var(--gold2)}
 
 /* Hero */
@@ -262,7 +265,7 @@ export const BRAND_CSS = `
 }
 @media (max-width:640px){
   .bx{font-size:16px}.bx .wrap{padding:0 18px}
-  .bx .nav .links a:not(.pill){display:none}
+  .bx .nav .links>a:not(.pill){display:none}.bx .nav .links{gap:10px}
   .bx .lede{font-size:17px}.bx .btn{width:100%;justify-content:center}
   .bx .band .row{flex-direction:column;align-items:flex-start;gap:12px}.bx .band .marquee{width:100%}
   .bx .stat{padding:26px 16px}.bx .stat:after{left:16px}.bx .steps,.bx .steps.three{grid-template-columns:1fr}.bx .step{padding-right:0}
