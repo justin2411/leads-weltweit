@@ -1,0 +1,144 @@
+{
+ "key": "us/insurance-brokers",
+ "file": "v4-us-insurance-brokers",
+ "lang": "en",
+ "tts": "en-us",
+ "voice": "af_heart",
+ "speed": 1.08,
+ "film": "film.html",
+ "ui": {
+  "newco": "New company",
+  "ill": "Illustrative example",
+  "daily": "Checked daily",
+  "newlead": "New lead",
+  "brief": "Sales briefing",
+  "why": "Why now",
+  "needs": "Likely needs",
+  "win": "How to win",
+  "opener": "Opening line",
+  "score": "Quality score · minimum 60",
+  "ills": "Illustrative scores",
+  "pdf": "PDF briefing",
+  "sheet": "Spreadsheet",
+  "nosoft": "No software needed",
+  "excl": "Exclusive · one firm per industry",
+  "free": "10 free leads · judge for yourself",
+  "btn": "Get 10 free leads",
+  "tag": "The right companies, at the right moment.",
+  "prio": "High priority",
+  "f": [
+   "Phone",
+   "Email",
+   "Website",
+   "Contact",
+   "Address",
+   "Sector"
+  ],
+  "phone_hd": "Free sample",
+  "where": "Across the US",
+  "monday": "Every Monday",
+  "src": [
+   "Secretary of State",
+   "Public notices",
+   "Careers pages"
+  ],
+  "today": "Filed today",
+  "for": "For commercial insurance agents",
+  "sig": [
+   [
+    "bank",
+    "New business filed",
+    "Coverage from day one"
+   ],
+   [
+    "users",
+    "First employees",
+    "Workers' comp"
+   ],
+   [
+    "store",
+    "New location",
+    "Property coverage"
+   ]
+  ],
+  "lead": {
+   "co": "Brightline Cabinets LLC",
+   "dom": "brightlinecabinets",
+   "event": "Filed 9 days ago",
+   "sector": "Cabinet making",
+   "why": "New location, first hires",
+   "needs": "General liability, workers' comp",
+   "win": "Lead with general liability",
+   "opener": "Congratulations on the new business. Are your general liability and workers' comp already in place?",
+   "phone": "(614) 555-0147",
+   "email": "info@brightlinecabinets.com",
+   "web": "www.brightlinecabinets.com",
+   "contact": "Owner · M. Alvarez",
+   "addr": "2150 Harlan Ave, Columbus, OH",
+   "date": "Sep 24, 2026",
+   "src": "Secretary of State"
+  }
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "Right now, a new business in the US needs coverage before it opens its doors.",
+   "pause": 0.55
+  },
+  {
+   "id": "tension",
+   "text": "Call too late, and the decision is already made.",
+   "pause": 0.8
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit gets you there early.",
+   "pause": 0.55
+  },
+  {
+   "id": "radar",
+   "text": "Every day, we check state business filings, public notices and careers pages, across the US.",
+   "pause": 0.3
+  },
+  {
+   "id": "signals",
+   "text": "We flag what matters to agents: new business filings, first employees, new locations.",
+   "pause": 0.45
+  },
+  {
+   "id": "lead",
+   "text": "Each lead has phone, email, website, the owner's name where public, and the event with date and source.",
+   "pause": 0.3
+  },
+  {
+   "id": "brief",
+   "text": "Plus a short sales briefing: why now, what they likely need, and how to win them.",
+   "pause": 1.2
+  },
+  {
+   "id": "quality",
+   "text": "Every lead is scored. Below sixty, we don't deliver it.",
+   "pause": 0.45
+  },
+  {
+   "id": "monday",
+   "text": "Every Monday, you get a PDF briefing and a spreadsheet. No software needed.",
+   "pause": 0.4
+  },
+  {
+   "id": "exclusive",
+   "text": "And each lead goes to one firm per industry. Not to your competitors.",
+   "pause": 0.5
+  },
+  {
+   "id": "cta",
+   "text": "Start with ten free leads, and judge for yourself.",
+   "pause": 0.55
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. The right companies, at the right moment.",
+   "pause": 0.3
+  }
+ ]
+}

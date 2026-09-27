@@ -1,0 +1,144 @@
+{
+ "key": "us/recruitment",
+ "file": "v4-us-recruitment",
+ "lang": "en",
+ "tts": "en-us",
+ "voice": "af_heart",
+ "speed": 1.08,
+ "film": "film.html",
+ "ui": {
+  "newco": "New company",
+  "ill": "Illustrative example",
+  "daily": "Checked daily",
+  "newlead": "New lead",
+  "brief": "Sales briefing",
+  "why": "Why now",
+  "needs": "Likely needs",
+  "win": "How to win",
+  "opener": "Opening line",
+  "score": "Quality score · minimum 60",
+  "ills": "Illustrative scores",
+  "pdf": "PDF briefing",
+  "sheet": "Spreadsheet",
+  "nosoft": "No software needed",
+  "excl": "Exclusive · one firm per industry",
+  "free": "10 free leads · judge for yourself",
+  "btn": "Get 10 free leads",
+  "tag": "The right companies, at the right moment.",
+  "prio": "High priority",
+  "f": [
+   "Phone",
+   "Email",
+   "Website",
+   "Contact",
+   "Address",
+   "Sector"
+  ],
+  "phone_hd": "Free sample",
+  "where": "Across the US",
+  "monday": "Every Monday",
+  "src": [
+   "Secretary of State",
+   "Public notices",
+   "Careers pages"
+  ],
+  "today": "Filed today",
+  "for": "For staffing & recruiting firms",
+  "sig": [
+   [
+    "hourglass",
+    "Open 30+ days",
+    "Hard to fill alone"
+   ],
+   [
+    "repeat",
+    "Reposted job",
+    "Same job, again"
+   ],
+   [
+    "users",
+    "3+ openings",
+    "Growing team"
+   ]
+  ],
+  "lead": {
+   "co": "Bluestem Precision Machining Inc.",
+   "dom": "bluestemmachining",
+   "event": "5 openings · longest 38 days",
+   "sector": "Manufacturing",
+   "why": "Jobs open for weeks",
+   "needs": "CNC machinists, maintenance techs",
+   "win": "Shortlist for the longest opening",
+   "opener": "I noticed your maintenance tech opening has been posted for a while. Would a shortlist help?",
+   "phone": "(614) 555-0147",
+   "email": "info@bluestemmachining.com",
+   "web": "www.bluestemmachining.com",
+   "contact": "Owner · M. Alvarez",
+   "addr": "2150 Harlan Ave, Columbus, OH",
+   "date": "Sep 24, 2026",
+   "src": "Careers page"
+  }
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "Right now, an employer in the US has had a job open for weeks.",
+   "pause": 0.55
+  },
+  {
+   "id": "tension",
+   "text": "Call too late, and the decision is already made.",
+   "pause": 0.8
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit gets you there early.",
+   "pause": 0.55
+  },
+  {
+   "id": "radar",
+   "text": "Every day, we check state business filings, public notices and careers pages, across the US.",
+   "pause": 0.3
+  },
+  {
+   "id": "signals",
+   "text": "We flag what matters to recruiters: jobs open for thirty days or more, jobs posted again, several hires at once.",
+   "pause": 0.45
+  },
+  {
+   "id": "lead",
+   "text": "Each lead has phone, email, website, the owner's name where public, and the event with date and source.",
+   "pause": 0.3
+  },
+  {
+   "id": "brief",
+   "text": "Plus a short sales briefing: why now, what they likely need, and how to win them.",
+   "pause": 1.2
+  },
+  {
+   "id": "quality",
+   "text": "Every lead is scored. Below sixty, we don't deliver it.",
+   "pause": 0.45
+  },
+  {
+   "id": "monday",
+   "text": "Every Monday, you get a PDF briefing and a spreadsheet. No software needed.",
+   "pause": 0.4
+  },
+  {
+   "id": "exclusive",
+   "text": "And each lead goes to one firm per industry. Not to your competitors.",
+   "pause": 0.5
+  },
+  {
+   "id": "cta",
+   "text": "Start with ten free leads, and judge for yourself.",
+   "pause": 0.55
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. The right companies, at the right moment.",
+   "pause": 0.3
+  }
+ ]
+}

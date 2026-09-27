@@ -1,0 +1,144 @@
+{
+ "key": "uk/web-agencies",
+ "file": "v4-uk-web-agencies",
+ "lang": "en",
+ "tts": "en-gb",
+ "voice": "bf_emma",
+ "speed": 1.06,
+ "film": "film.html",
+ "ui": {
+  "newco": "New company",
+  "ill": "Illustrative example",
+  "daily": "Checked daily",
+  "newlead": "New lead",
+  "brief": "Sales briefing",
+  "why": "Why now",
+  "needs": "Likely needs",
+  "win": "How to win",
+  "opener": "Opening line",
+  "score": "Quality score · minimum 60",
+  "ills": "Illustrative scores",
+  "pdf": "PDF briefing",
+  "sheet": "Spreadsheet",
+  "nosoft": "No software needed",
+  "excl": "Exclusive · one firm per industry",
+  "free": "10 free leads · judge for yourself",
+  "btn": "Get 10 free leads",
+  "tag": "The right companies, at the right moment.",
+  "prio": "High priority",
+  "f": [
+   "Phone",
+   "Email",
+   "Website",
+   "Contact",
+   "Address",
+   "Sector"
+  ],
+  "phone_hd": "Free sample",
+  "where": "Across the UK",
+  "monday": "Monday · 07:00",
+  "src": [
+   "Companies House",
+   "Public notices",
+   "Careers pages"
+  ],
+  "today": "Incorporated today",
+  "for": "For web agencies",
+  "sig": [
+   [
+    "bank",
+    "New company",
+    "Just incorporated"
+   ],
+   [
+    "search",
+    "No website found",
+    "Domains checked"
+   ],
+   [
+    "monitor",
+    "Not mobile-friendly",
+    "Outdated site"
+   ]
+  ],
+  "lead": {
+   "co": "Oakridge Home Services Ltd",
+   "dom": "oakridgehomeservices",
+   "event": "Incorporated 4 days ago",
+   "sector": "Home services",
+   "why": "New company, no website found",
+   "needs": "Simple site with booking",
+   "win": "Offer a starter website",
+   "opener": "Congratulations on the new company. Would a simple website with online booking help win your first customers?",
+   "phone": "0113 496 0418",
+   "email": "info@oakridgehomeservices.co.uk",
+   "web": "No website found",
+   "contact": "Director · S. Hartley",
+   "addr": "Unit 4, Mill Lane, Leeds",
+   "date": "24 Sep 2026",
+   "src": "Companies House"
+  }
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "Right now, a new company in the UK is trading without a website.",
+   "pause": 0.55
+  },
+  {
+   "id": "tension",
+   "text": "Call too late, and the decision is already made.",
+   "pause": 0.8
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit gets you there early.",
+   "pause": 0.55
+  },
+  {
+   "id": "radar",
+   "text": "Every day, we check Companies House, public notices and careers pages, across the whole UK.",
+   "pause": 0.3
+  },
+  {
+   "id": "signals",
+   "text": "We flag what matters to web agencies: new companies, no website found, sites that aren't mobile-friendly.",
+   "pause": 0.45
+  },
+  {
+   "id": "lead",
+   "text": "Each lead has phone, email, website, the director's name, and the event with date and source.",
+   "pause": 0.3
+  },
+  {
+   "id": "brief",
+   "text": "Plus a short sales briefing: why now, what they likely need, and how to win them.",
+   "pause": 1.2
+  },
+  {
+   "id": "quality",
+   "text": "Every lead is scored. Below sixty, we don't deliver it.",
+   "pause": 0.45
+  },
+  {
+   "id": "monday",
+   "text": "Every Monday, you get a PDF briefing and a spreadsheet. No software needed.",
+   "pause": 0.4
+  },
+  {
+   "id": "exclusive",
+   "text": "And each lead goes to one firm per industry. Not to your competitors.",
+   "pause": 0.5
+  },
+  {
+   "id": "cta",
+   "text": "Start with ten free leads, and judge for yourself.",
+   "pause": 0.55
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. The right companies, at the right moment.",
+   "pause": 0.3
+  }
+ ]
+}
