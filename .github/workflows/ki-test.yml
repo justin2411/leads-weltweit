@@ -1,0 +1,37 @@
+# Prüft, ob der Anthropic-Schlüssel (Secret ANTHROPIC_API_KEY) funktioniert: ordnet drei Beispiel-Antworten ein.
+# Sendet nichts, schreibt nichts in die Datenbank. Kosten: wenige Cent-Bruchteile.
+name: ki-test
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/ki-antworten]
+    paths: [.github/workflows/ki-test.yml, scripts/responder.py]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - name: Beispiel-Antworten einordnen
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then echo "Secret ANTHROPIC_API_KEY fehlt"; exit 1; fi
+          cd scripts && python - <<'PY'
+          from responder import classify, decide
+          samples = [
+              "Yes please, send over the sample for Manchester.",
+              "How much is the weekly list and where does the data come from?",
+              "Please remove us from your mailing list.",
+          ]
+          ok = 0
+          for t in samples:
+              c = classify(t)
+              print(f"{c['by']:7} {c['intent']:15} -> {decide(c):12} | {c['summary_de']}")
+              ok += c["by"] == "claude"
+          assert ok == len(samples), "Claude wurde nicht genutzt (siehe Hinweis oben)"
+          print("Schlüssel funktioniert.")
+          PY

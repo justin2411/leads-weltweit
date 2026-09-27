@@ -144,7 +144,7 @@ def classify(text: str) -> dict:
             import anthropic
             client = anthropic.Anthropic()
             resp = client.messages.create(
-                model=os.environ.get("CLAUDE_MODEL", "claude-opus-5"),
+                model=os.environ.get("CLAUDE_MODEL") or "claude-sonnet-5",
                 max_tokens=1024,
                 output_config={"effort": "low", "format": {"type": "json_schema", "schema": CLASSIFY_SCHEMA}},
                 messages=[{"role": "user", "content": CLASSIFY_PROMPT.format(text=body)}],
@@ -155,7 +155,7 @@ def classify(text: str) -> dict:
                 data["by"] = "claude"
                 return data
         except Exception as exc:  # noqa: BLE001 - Fallback auf Regeln
-            print(f"  Hinweis: Claude-Einordnung fehlgeschlagen ({exc.__class__.__name__}), nutze Regeln")
+            print(f"  Hinweis: Claude-Einordnung fehlgeschlagen ({exc.__class__.__name__}: {str(exc)[:200]}), nutze Regeln")
     low = body.lower()
     for intent, pat in KEYWORDS:
         if re.search(pat, low):
