@@ -47,7 +47,7 @@ def signature(lang: str) -> str:
     title = os.environ.get("SENDER_TITLE") or ("Fondateur" if lang == "fr" else "Founder")
     tagline = ("Signaux de recrutement et de croissance pour les prestataires B2B" if lang == "fr"
                else "Hiring and growth signals for B2B service firms")
-    lines = [name, f"{title}, {company}" if name != company else company, tagline]
+    lines = [name, f"{title}, {company}", tagline] if name != company else [company, tagline]
     lines += [x for x in (os.environ.get("SENDER_WEBSITE"), os.environ.get("SENDER_PHONE")) if x]
     return "\n".join(lines)
 
@@ -149,6 +149,10 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
         ask = f"Un échantillon gratuit de 10 pistes actuelles à {area} vous serait-il utile ?"
 
     greet, bye = ("Bonjour,", "Bien cordialement,") if fr else (f"Hello {firm} team,", "Best regards,")
+    # Lieferumfang und Exklusivität (stimmt: deliveries.py liefert nur mit Telefon und E-Mail, je Branche exklusiv)
+    detail += (" Nous ajoutons le téléphone et l'e-mail de l'entreprise, et chaque piste ne va qu'à une seule "
+               "entreprise de votre secteur." if fr else
+               " We add the company's phone number and email, and each lead goes to only one firm in your field.")
     body = f"{greet}\n\n{first}\n\n{core}\n\n{detail}\n\n{ask}\n\n{bye}\n{sender or signature(lang)}"
     if len(subject) > 60:
         subject = subject[:57].rsplit(" ", 1)[0]

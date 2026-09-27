@@ -77,7 +77,7 @@ def cmd_careers(db: DB, args) -> None:
             key = f"{key}|{j['title']}"
             seen_keys.add(key)
             upsert_observation(db, c["id"], "job_posting", key, title=j["title"], details=j,
-                               source_name=f"Karriereseite {c['name']}", source_url=j.get("url") or r.url,
+                               source_name=f"{'Page carrières' if c.get('country') == 'FR' else 'Careers page'} {c['name']}", source_url=j.get("url") or r.url,
                                posted_on=j.get("date_posted"))
         # Stellen, die nicht mehr da sind, als beendet markieren
         for o in db.select("observations", {"company_id": f"eq.{c['id']}", "kind": "eq.job_posting",

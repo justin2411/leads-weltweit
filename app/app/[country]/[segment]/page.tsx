@@ -127,6 +127,8 @@ export async function generateMetadata({ params, searchParams }: { params: Param
 }
 
 
+const SHOW_PRICES = false;
+
 export default async function LandingPage({ params, searchParams }: { params: Params; searchParams: Search }) {
   const r = await resolve(params, searchParams);
   if (!r) notFound();
@@ -135,7 +137,8 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
   const plans = (v.pricing ?? settings.pricing ?? []) as Plan[];
   const mode = checkoutMode({ vercelEnv: process.env.VERCEL_ENV, ownerPreview: preview });
   const buyable = plans.filter((p) => lineItemFor(p, mode, BRAND));
-  const canBuy = stripeEnabled(mode) && buyable.length > 0;
+  // Preise öffentlich noch nicht zeigen (Inhaber 27.09.2026); nur in der Vorschau des Inhabers sichtbar
+  const canBuy = (preview || SHOW_PRICES) && stripeEnabled(mode) && buyable.length > 0;
   const personal = preview && !sp.r ? null : await personalFor(sp.r, page);
   const P: Personal = personal ?? {};
   const lang = page.language;
@@ -157,7 +160,6 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
   const known = Boolean(personal?.email && personal.firma);
   const keep = [preview && `vorschau=1&v=${v.variant_key}`, sp.r && /^[A-Za-z0-9_-]{8,80}$/.test(sp.r) && `r=${sp.r}`].filter(Boolean).join("&");
   const stepHref = `?${[keep, "schritt=probe"].filter(Boolean).join("&")}#probe`;
-  const backHref = `?${keep}#top`;
   const step = sp.schritt === "probe" && !sp.angefragt;
   const mailto = `mailto:${CONTACT}?subject=${encodeURIComponent(`${L.mailSubject}: ${page.slug}`)}&body=${encodeURIComponent(L.mailBody)}`;
   const i = (n: number) => ({ "--i": n }) as CSSProperties;
@@ -177,11 +179,11 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
           {preview && <input type="hidden" name="vorschau" value="1" />}
           <input type="hidden" name="r" value={sp.r} />
           <div className="cta-row" style={{ marginTop: 6 }}><button className="btn gold big" type="submit" name="consent" value="yes" data-cta>{L.confirm} <span className="ar">→</span></button>
-            <a className="btn ghost" href={backHref}>{L.back}</a></div>
+</div>
           <p className="small">{consentText(lang)} <a href={fr ? "/confidentialite" : "/privacy"}>{L.legal[1]}</a></p>
         </form>
       ) : (
-        <div className="cta-row" style={{ marginTop: 6 }}><a className="btn gold big" href={mailto} data-cta>{L.byMail} <span className="ar">→</span></a><a className="btn ghost" href={backHref}>{L.back}</a></div>
+        <div className="cta-row" style={{ marginTop: 6 }}><a className="btn gold big" href={mailto} data-cta>{L.byMail} <span className="ar">→</span></a></div>
       )}
     </div>
   );
@@ -262,25 +264,6 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
           })}</div>
         </div></section>
       )}
-
-      <section className="tight"><div className="wrap">
-        <div className="deliv">
-          <div className="report" data-rv>
-            <div className="rp-head">
-              <span className="pulse" aria-hidden="true" />
-              <div><b>{F(fr ? "Aperçu : votre livraison avec NextGen Profit" : "Preview: your delivery with NextGen Profit")}</b>
-                <span>{fr ? "Chaque lundi · 07:00" : "Every Monday · 07:00"}</span></div>
-            </div>
-            <h3 className="rp-title">{F(SC.getsTitle)}</h3>
-            <ul className="rp-list">{SC.gets.map((g, k) => (
-              <li key={k} style={i(k)}><span className="ic" aria-hidden="true">{["◆", "◇", "◈", "❝"][k % 4]}</span>{F(g)}</li>))}</ul>
-          </div>
-          <div className="flow" data-rv>
-            <h3>{F(SC.stepsTitle)}</h3>
-            <ol>{SC.steps.map((st, k) => <li key={k} style={i(k)}><span className="dot">{k + 1}</span><p>{F(st)}</p></li>)}</ol>
-          </div>
-        </div>
-      </div></section>
 
       <section className="tinted tight"><div className="wrap">
         <Head eyebrow="" title={F(SC.revenueTitle)} />
