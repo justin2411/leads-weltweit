@@ -397,6 +397,47 @@ def cmd_contacts(db: DB, args) -> None:
     print(f"{n} Websites auf allgemeine Kontakte geprüft, {hit} mit Telefon oder Sammel-E-Mail")
 
 
+def cmd_people(db: DB, args) -> None:
+    """Ansprechperson (Name, Rolle) aus öffentlichen Registern für Firmen mit aktuellen Leads (CLAUDE.md 8a)."""
+    from lib.people import fr_dirigeant, ny_contact, uk_officer
+    session = requests.Session()
+    key = os.environ.get("COMPANIES_HOUSE_API_KEY")
+    done = {o["company_id"] for o in db.select_all("observations", {"kind": "eq.other", "key": "eq.person", "select": "company_id"})}
+    since = (TODAY - dt.timedelta(days=60)).isoformat()
+    ids = sorted({l["company_id"] for l in db.select_all("leads", {"status": "in.(new,sample)", "event_date": f"gte.{since}",
+                                                                    "select": "company_id"})} - done)
+    n = hit = 0
+    for i in range(0, len(ids), 100):
+        for c in db.select("watch_companies", {"id": f"in.({','.join(ids[i:i + 100])})",
+                                               "select": "id,name,registry_source,registry_id"}):
+            if n >= args.limit:
+                break
+            src, rid = c.get("registry_source"), (c.get("registry_id") or "").strip()
+            if not rid:
+                continue
+            try:
+                if src == "companies_house":
+                    if not key:
+                        continue
+                    found = uk_officer(rid, key, session)
+                elif src == "bodacc_siren":
+                    found = fr_dirigeant(rid, session)
+                elif src == "ny_dos":
+                    found = ny_contact(rid, c["name"], session)
+                else:
+                    continue
+            except requests.RequestException:
+                continue
+            n += 1
+            db.insert("observations", {"company_id": c["id"], "kind": "other", "key": "person",
+                                       "first_seen": TODAY.isoformat(), "last_seen": TODAY.isoformat(),
+                                       "source_name": (found or {}).get("source") or src,
+                                       "details": {"name": (found or {}).get("name"), "role": (found or {}).get("role")}},
+                      upsert_on="company_id,kind,key")
+            hit += bool(found)
+    print(f"{n} Firmen im Register geprüft, {hit} mit Ansprechperson")
+
+
 def cmd_detect(db: DB, args) -> None:
     from lib import catalog
     n = 0
@@ -431,7 +472,7 @@ def cmd_detect(db: DB, args) -> None:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("cmd", choices=["careers", "websites", "uk-incorporations", "ny-incorporations", "detect", "daily",
-                                    "import-employers", "fr-incorporations", "uk-bulk", "sitecheck", "contacts"])
+                                    "import-employers", "fr-incorporations", "uk-bulk", "sitecheck", "contacts", "people"])
     ap.add_argument("--departement", default="69")
     ap.add_argument("files", nargs="*")
     ap.add_argument("--country", default="UK")
@@ -444,7 +485,7 @@ def main(argv=None) -> int:
     steps = {"careers": [cmd_careers], "websites": [cmd_websites], "uk-incorporations": [cmd_uk_incorporations],
              "ny-incorporations": [cmd_ny_incorporations], "detect": [cmd_detect],
              "import-employers": [cmd_import_employers], "fr-incorporations": [cmd_fr_incorporations],
-             "uk-bulk": [cmd_uk_bulk], "sitecheck": [cmd_sitecheck], "contacts": [cmd_contacts],
+             "uk-bulk": [cmd_uk_bulk], "sitecheck": [cmd_sitecheck], "contacts": [cmd_contacts], "people": [cmd_people],
              "daily": [cmd_careers, cmd_websites, cmd_contacts, cmd_detect]}[args.cmd]
     for step in steps:
         step(db, args)
