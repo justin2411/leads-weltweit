@@ -1,68 +1,34 @@
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import { BRAND, CONTACT } from "@/lib/site";
 import { db } from "@/lib/supabase";
 import { verifyFilterToken } from "@/lib/tokens";
+import { BrandShell, SiteFooter, SiteHeader } from "../../chrome";
+import { FilterForm, FORM_CSS } from "./form";
 
 export const dynamic = "force-dynamic";
-export const metadata = { robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: `Your lead preferences | ${BRAND}`, robots: { index: false, follow: false } };
 
-const SIGNALS = [
-  ["new_incorporation", "Newly registered companies"],
-  ["job_open_30d", "Roles open 30+ days"],
-  ["jobs_3plus", "3+ roles at once"],
-  ["outdated_website", "Outdated or missing website"],
-] as const;
-
-const list = (v: FormDataEntryValue | null) =>
-  String(v ?? "").split(/[,\n;]/).map((s) => s.trim()).filter(Boolean).slice(0, 50);
-
-/** Gebuchte Leads pro Woche aus den aktiven Abos (Obergrenze für das Formular). */
-async function booked(customerId: string): Promise<number> {
-  const { data } = await db().from("subscriptions").select("filters, package").eq("customer_id", customerId).in("status", ["active", "past_due"]);
-  const per: Record<string, number> = { starter: 30, pro: 100 };
-  return Math.max(0, ...(data ?? []).map((x: any) => Number(x.filters?.max_per_week) || per[x.package] || 0));
-}
-
-async function save(formData: FormData) {
-  "use server";
-  const token = String(formData.get("t") ?? "");
-  const id = verifyFilterToken(token, process.env.SESSION_SECRET?.trim());
-  if (!id) redirect("/kunde/filter?abgelaufen=1");
-  const { error } = await db().from("customer_filters").upsert({
-    customer_id: id,
-    regions: list(formData.get("regions")),
-    signals: formData.getAll("signals").map(String).filter((s) => SIGNALS.some(([k]) => k === s)),
-    industries: list(formData.get("industries")),
-    exclusions: list(formData.get("exclusions")),
-    max_per_week: Math.min(Math.max(Number(formData.get("max_per_week") || 30), 1), (await booked(id)) || 500),
-    updated_at: new Date().toISOString(),
-  }, { onConflict: "customer_id" });
-  if (error) throw new Error(error.message);
-  redirect(`/kunde/filter?t=${encodeURIComponent(token)}&ok=1`);
-}
+const CSS = `.bx .kf{padding:56px 0 88px}.bx .kf .ff{margin-top:0}.bx .kf .note{margin-top:22px;color:var(--soft);font-size:14.5px}`;
 
 export default async function FilterPage({ searchParams }: { searchParams: Promise<{ t?: string; ok?: string; abgelaufen?: string }> }) {
   const sp = await searchParams;
   const id = verifyFilterToken(sp.t, process.env.SESSION_SECRET?.trim());
-  if (!id) return <main><h1>Link expired</h1><p>Please reply to our welcome email and we will send you a new link.</p></main>;
-  const { data: f } = await db().from("customer_filters").select("*").eq("customer_id", id).maybeSingle();
-  const cap = (await booked(id)) || 500;
+  let body;
+  if (!id) {
+    body = <section className="ff"><h2>This link has expired</h2><p className="sub">Please reply to our welcome email or write to <a href={`mailto:${CONTACT}`}>{CONTACT}</a> and we will send you a new link.</p></section>;
+  } else {
+    const { data: f } = await db().from("customer_filters").select("*").eq("customer_id", id).maybeSingle();
+    const { data: c } = await db().from("customers").select("country").eq("id", id).maybeSingle();
+    body = <FilterForm token={sp.t!} f={f} back={`/kunde/filter?t=${sp.t}`} lang={c?.country === "FR" ? "fr" : "en"} saved={!!sp.ok} />;
+  }
   return (
-    <main style={{ maxWidth: 640 }}>
-      <h1>Your lead preferences</h1>
-      {sp.ok && <p className="ok">Saved – thank you.</p>}
-      <form action={save} style={{ display: "grid", gap: 12 }}>
-        <input type="hidden" name="t" value={sp.t} />
-        <label>Areas (towns or counties, comma separated)<br /><input name="regions" defaultValue={(f?.regions ?? []).join(", ")} style={{ width: "100%" }} /></label>
-        <fieldset><legend>Signals</legend>
-          {SIGNALS.map(([k, label]) => (
-            <label key={k} style={{ display: "block" }}><input type="checkbox" name="signals" value={k} defaultChecked={(f?.signals ?? []).includes(k)} /> {label}</label>
-          ))}
-        </fieldset>
-        <label>Industries or job types (optional)<br /><input name="industries" defaultValue={(f?.industries ?? []).join(", ")} style={{ width: "100%" }} /></label>
-        <label>Exclude (company names or keywords, optional)<br /><input name="exclusions" defaultValue={(f?.exclusions ?? []).join(", ")} style={{ width: "100%" }} /></label>
-        <label>Maximum leads per week<br /><input name="max_per_week" type="number" min={1} max={cap} defaultValue={Math.min(f?.max_per_week ?? cap, cap)} /></label>
-        <button className="primary" type="submit">Save</button>
-      </form>
-    </main>
+    <BrandShell lang="en" extraCss={FORM_CSS + CSS}>
+      <SiteHeader />
+      <main className="kf"><div className="wrap">
+        {body}
+        <p className="note">Questions? Write to <a href={`mailto:${CONTACT}`}>{CONTACT}</a>.</p>
+      </div></main>
+      <SiteFooter />
+    </BrandShell>
   );
 }

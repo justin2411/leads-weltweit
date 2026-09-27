@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { BRAND, CONTACT, siteUrl } from "@/lib/site";
+import { BRAND, CONTACT } from "@/lib/site";
 import { stripe, stripeEnabled, type StripeMode } from "@/lib/stripe";
 import { db } from "@/lib/supabase";
 import { filterToken } from "@/lib/tokens";
 import { PER_WEEK, perMonth } from "@/lib/custom-price";
 import { BrandShell, SiteFooter, SiteHeader } from "../chrome";
+import { FilterForm, FORM_CSS } from "../kunde/filter/form";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: `Welcome | ${BRAND}`, robots: { index: false, follow: false } };
@@ -82,8 +83,8 @@ async function loadSession(id: string | undefined) {
   }
 }
 
-export default async function Danke({ searchParams }: { searchParams: Promise<{ session_id?: string }> }) {
-  const { session_id } = await searchParams;
+export default async function Danke({ searchParams }: { searchParams: Promise<{ session_id?: string; ok?: string; w?: string }> }) {
+  const { session_id, ok, w } = await searchParams;
   const found = await loadSession(session_id);
   const lang = found?.s.locale === "fr" ? "fr" : "en";
   const T = TXT[lang];
@@ -99,16 +100,23 @@ export default async function Danke({ searchParams }: { searchParams: Promise<{ 
   const first = new Intl.DateTimeFormat(lang === "fr" ? "fr-FR" : "en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(nextMonday());
   const planName = m.package === "custom" ? (lang === "fr" ? "Sur mesure" : "Custom") : m.package ? m.package[0].toUpperCase() + m.package.slice(1) : "";
 
-  // Direktlink zum Formular, sobald der Webhook den Kunden angelegt hat (sonst kommt er per Mail)
-  let formLink: string | null = null;
+  // Formular direkt hier, sobald der Webhook den Kunden angelegt hat (meist sofort; sonst kurz neu laden, danach per Mail)
+  let token: string | null = null;
+  let filters: any = null;
   const secret = process.env.SESSION_SECRET?.trim();
   if (s?.customer && secret) {
     const { data: c } = await db().from("customers").select("id").eq("stripe_customer_id", s.customer).maybeSingle();
-    if (c?.id) formLink = `${siteUrl()}/kunde/filter?t=${filterToken(c.id, secret)}`;
+    if (c?.id) {
+      token = filterToken(c.id, secret);
+      filters = (await db().from("customer_filters").select("*").eq("customer_id", c.id).maybeSingle()).data;
+    }
   }
+  const tries = Math.min(Number(w) || 0, 6);
+  const retry = found && !token && tries < 6 ? `/danke?session_id=${session_id}&w=${tries + 1}` : null;
 
   return (
-    <BrandShell lang={lang} extraCss={CSS}>
+    <BrandShell lang={lang} extraCss={CSS + FORM_CSS}>
+      {retry && <meta httpEquiv="refresh" content={`3;url=${retry}`} />}
       <SiteHeader />
       <main className="wl"><div className="wrap">
         <div className="eyebrow"><i>✓</i>{T.eyebrow}{found?.mode === "test" ? " · TEST" : ""}</div>
@@ -127,11 +135,12 @@ export default async function Danke({ searchParams }: { searchParams: Promise<{ 
         <div className="wl-next"><div className="hd">{T.next}</div>
           <ol className="wl-steps">
             <li className={found ? "done" : ""}><div className="n"><span>01</span><i />{found && <em>✓</em>}</div><b>{T.s1[0]}</b><p>{T.s1[1]}</p></li>
-            <li><div className="n"><span>02</span><i /></div><b>{T.s2[0]}</b><p>{formLink ? T.s2[1] : T.s2mail}</p>
-              {formLink && <a className="btn gold big" href={formLink}>{T.btn} <span className="ar">→</span></a>}</li>
+            <li><div className="n"><span>02</span><i /></div><b>{T.s2[0]}</b><p>{token ? T.s2[1] : T.s2mail}</p>
+              {token && <a className="btn gold big" href="#focus">{T.btn} <span className="ar">↓</span></a>}</li>
             <li><div className="n"><span>03</span><i /></div><b>{T.s3[0]}</b><p>{T.s3[1].replace("{d}", first)}</p></li>
           </ol>
         </div>
+        {token && <FilterForm token={token} f={filters} back={`/danke?session_id=${session_id}`} lang={lang} saved={!!ok} />}
         <p className="note">{T.q} <a href={`mailto:${CONTACT}`}>{CONTACT}</a>.</p>
       </div></main>
       <SiteFooter lang={lang} />
