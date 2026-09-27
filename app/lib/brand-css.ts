@@ -148,6 +148,7 @@ export const BRAND_CSS = `
   background:radial-gradient(380px circle at var(--x,50%) var(--y,50%),rgba(176,141,87,.16),transparent 45%)}
 .bx .glow:hover:after{opacity:1}
 .bx .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:20px}
+.bx .cards.two{grid-template-columns:repeat(2,1fr)}@media (max-width:760px){.bx .cards.two{grid-template-columns:1fr}}
 .bx .card{display:block;text-decoration:none;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:30px;position:relative;overflow:hidden;transition:transform .45s cubic-bezier(.2,.7,.1,1),box-shadow .45s,border-color .45s}
 .bx .card:before{content:"";position:absolute;inset:0 0 auto 0;height:2px;background:linear-gradient(90deg,var(--gold),transparent);transform:scaleX(0);transform-origin:left;transition:transform .6s}
 .bx a.card:hover,.bx .card.lift:hover{transform:translateY(-6px);box-shadow:0 34px 70px -38px rgba(22,27,36,.45);border-color:#d6c7ad}.bx .card:hover:before{transform:scaleX(1)}
@@ -181,7 +182,7 @@ export const BRAND_CSS = `
 .bx .leadx .why{margin:0;font-size:14.5px;color:#39404d;background:#faf6ee;border:1px solid #efe5d3;border-radius:12px;padding:10px 12px}
 .bx .leadx .why b{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:3px}
 .bx .leadx .op{margin:0;font-size:14.5px;color:var(--soft);border-left:2px solid var(--gold);padding-left:12px}
-.bx .leadx footer{margin-top:auto;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--soft);border-top:1px solid var(--line);padding-top:12px}
+.bx .leadx .ft{margin-top:auto;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--soft);border-top:1px solid var(--line);padding-top:12px}
 .bx .leadx .prio{font-weight:600}.bx .leadx .p-high{color:#b45309}.bx .leadx .p-medium{color:var(--gold)}
 .motion .bx .leadgrid>[data-rv]{transition-delay:calc(var(--i,0) * 90ms)}
 .bx .card .num{width:36px;height:36px;border-radius:50%;border:1px solid var(--gold);color:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:600;margin-bottom:14px}
