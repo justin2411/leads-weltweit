@@ -16,12 +16,12 @@ export function Motion() {
     const reduce = calm();
     const els = Array.from(document.querySelectorAll<HTMLElement>("[data-rv],[data-count]"));
     const count = (el: HTMLElement) => {
-      const to = Number(el.dataset.count || 0), suf = el.dataset.suffix ?? "";
-      if (reduce || !to) { el.textContent = to.toLocaleString("en-GB") + suf; return; }
+      const to = Number(el.dataset.count || 0), suf = el.dataset.suffix ?? "", loc = el.dataset.loc || "en-GB";
+      if (reduce || !to) { el.textContent = to.toLocaleString(loc) + suf; return; }
       const t0 = performance.now(), dur = 2000;
       const step = (t: number) => {
         const p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 4);
-        el.textContent = Math.round(to * e).toLocaleString("en-GB") + (p < 1 ? "" : suf);
+        el.textContent = Math.round(to * e).toLocaleString(loc) + (p < 1 ? "" : suf);
         if (p < 1) requestAnimationFrame(step);
       };
       requestAnimationFrame(step);

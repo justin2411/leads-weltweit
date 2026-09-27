@@ -54,6 +54,7 @@ function Head({ title, gold, intro }: { title: string; gold?: string[]; intro?: 
 export async function Home({ lang }: { lang: HomeLang }) {
   const t = HOME[lang];
   const loc = { en: "en-GB", fr: "fr-FR", de: "de-DE" }[lang];
+  const mio = { en: "M+", fr: " M+", de: " Mio.+" }[lang];
   const [pages, stats, feed] = await Promise.all([
     publicPages().catch(() => []),
     homeStats().catch(() => ({ companies: 0, signals: 0 })),
@@ -106,9 +107,9 @@ export async function Home({ lang }: { lang: HomeLang }) {
       <section><div className="wrap">
         <Head title={t.covH} gold={t.covGold} />
         <div className="stats" data-rv>
-          <div className="stat" style={i(0)}><b data-count={18} data-suffix="M+">18M+</b><span>{t.stat[0]}</span></div>
-          <div className="stat" style={i(1)}><b data-count={YEARLY} data-suffix="+">{YEARLY.toLocaleString(loc)}+</b><span>{t.stat[1]}</span></div>
-          <div className="stat" style={i(2)}><b data-count={stats.signals}>{stats.signals.toLocaleString(loc)}</b><span>{t.stat[2]}</span></div>
+          <div className="stat" style={i(0)}><b data-count={18} data-suffix={mio} data-loc={loc}>18{mio}</b><span>{t.stat[0]}</span></div>
+          <div className="stat" style={i(1)}><b data-count={YEARLY} data-suffix="+" data-loc={loc}>{YEARLY.toLocaleString(loc)}+</b><span>{t.stat[1]}</span></div>
+          <div className="stat" style={i(2)}><b data-count={stats.signals} data-loc={loc}>{stats.signals.toLocaleString(loc)}</b><span>{t.stat[2]}</span></div>
           <div className="stat" style={i(3)}><b data-count={10}>10</b><span>{t.stat[3]}</span></div>
         </div>
         <p className="stats-note">{t.statsNote}</p>

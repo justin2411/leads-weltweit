@@ -19,6 +19,16 @@ export const dynamic = "force-dynamic";
 type Params = Promise<{ country: string; segment: string }>;
 type Search = Promise<{ vorschau?: string; v?: string; angefragt?: string; fehler?: string; r?: string; schritt?: string }>;
 
+/** Registernamen in GROSSBUCHSTABEN lesbar machen, Datum lokal formatieren (Inhalt bleibt gleich). */
+function nice(s: string): string {
+  if (s !== s.toUpperCase()) return s;
+  return s.toLowerCase().replace(/\b([a-z])/g, (c) => c.toUpperCase()).replace(/\bLlp\b/g, "LLP").replace(/\bPlc\b/g, "PLC");
+}
+function day(d: string | undefined, lang: string): string | undefined {
+  if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+  return new Date(d + "T12:00:00Z").toLocaleDateString(lang === "fr" ? "fr-FR" : "en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
 type Sample = { company: string; location?: string; event: string; date?: string; source?: string };
 
 /** Echte Probe-Leads aus der Region des Empfängers (Firmendaten, als Beispiel markiert). */
@@ -156,12 +166,12 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
 
       {samples.length > 0 && (
         <section className="tinted"><div className="wrap"><Head eyebrow={fr ? "Exemples" : "Examples"} title={L.examples} />
-          <p className="intro" style={{ marginTop: -30 }}>{L.examplesNote}</p>
+          <p className="intro">{L.examplesNote}</p>
           <div className="leads">{samples.map((sm, k) => (
             <div className="lead" key={k} data-rv style={i(k)}>
-              <span className="tag">{L.example}</span><span className="co">{sm.company}{sm.location ? `, ${sm.location}` : ""}</span>
+              <span className="tag">{L.example}</span><span className="co">{nice(sm.company)}{sm.location ? `, ${nice(sm.location)}` : ""}</span>
               <div>{nd(sm.event)}</div>
-              <div className="meta">{[sm.date, sm.source && `${L.source}: ${sm.source}`].filter(Boolean).join(" · ")}</div>
+              <div className="meta">{[day(sm.date, lang), sm.source && `${L.source}: ${sm.source}`].filter(Boolean).join(" · ")}</div>
             </div>))}</div>
         </div></section>
       )}

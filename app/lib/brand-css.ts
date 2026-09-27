@@ -38,7 +38,7 @@ export const BRAND_CSS = `
 .bx h1{font-weight:700;font-size:clamp(40px,5.6vw,72px);line-height:1.04;letter-spacing:-.03em;margin:18px 0 24px}
 .bx .hero.solo h1{font-size:clamp(34px,4.6vw,58px)}
 .bx .lede{font-size:19px;color:#c3cbd8;max-width:580px;margin:0}
-.bx .for{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--gold2);border:1px solid rgba(216,189,138,.45);border-radius:99px;padding:5px 14px;background:rgba(216,189,138,.08)}
+.bx .for{display:inline-flex;width:fit-content;justify-self:start;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--gold2);border:1px solid rgba(216,189,138,.45);border-radius:99px;padding:5px 14px;background:rgba(216,189,138,.08)}
 .bx .for:before{content:"";width:6px;height:6px;border-radius:50%;background:#5bd49a;box-shadow:0 0 0 0 rgba(91,212,154,.6);animation:pulse 2s infinite}
 .bx .cta-row{display:flex;gap:14px;flex-wrap:wrap;margin-top:36px}
 .bx .fine{margin-top:18px;font-size:13px;color:var(--night-soft);letter-spacing:.02em}
