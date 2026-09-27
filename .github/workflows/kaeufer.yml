@@ -51,6 +51,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
+      - name: Schalter Lead-Suche (config/pipeline.yaml)
+        id: gate
+        run: |
+          if grep -Eq '^lead_suche:\s*true' config/pipeline.yaml || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "suche=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Lead-Suche pausiert (config/pipeline.yaml: lead_suche: false)" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
       - run: pip install -r requirements.txt
-      - name: Arbeitgeber mit Karriereseite finden
+        if: steps.gate.outputs.suche == 'true'
+      - name: Arbeitgeber mit Karriereseite finden (Lead-Inhalte, pausierbar)
+        if: steps.gate.outputs.suche == 'true'
         run: python scripts/employers.py --country "${AREA%%|*}" --area "${AREA#*|}" --limit 300
