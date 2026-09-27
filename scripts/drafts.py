@@ -185,7 +185,7 @@ def refresh(db, dry_run: bool = False) -> int:
             back += 1
         n += 1
         if not dry_run:
-            db.update("messages", {"id": f"eq.{m['id']}"}, upd)
+            db.update("messages", {"id": m["id"]}, upd)
     print(f"{n} Entwürfe neu geschrieben, {back} wegen Regelverstoß zurück auf draft")
     return 0
 
