@@ -331,6 +331,10 @@ export const BRAND_CSS = `
 @media (max-width:640px){
   .bx{font-size:16px}.bx .wrap{padding:0 18px}
   .bx .nav .links>a:not(.pill){display:none}.bx .nav .links{gap:10px}
+  .bx .mark{font-size:18px;white-space:nowrap}
+  .bx .nav .links .langs a{padding:4px 7px;font-size:11px}
+  .bx .nav .links .pill,.bx .nav .links .pill:hover{border:0;background:none;padding:6px 0;font-size:13px;white-space:nowrap;color:var(--gold2)}
+  .bx .hero .feed-wrap{display:none}
   .bx .lede{font-size:17px}.bx .btn{width:100%;justify-content:center}
   .bx .band .row{flex-direction:column;align-items:flex-start;gap:12px}.bx .band .marquee{width:100%}
   .bx .stat{padding:26px 16px}.bx .stat:after{left:16px}.bx .steps,.bx .steps.three{grid-template-columns:1fr}.bx .step{padding-right:0}
@@ -340,5 +344,6 @@ export const BRAND_CSS = `
   .bx section{padding:64px 0}.bx .intro{margin-bottom:36px;font-size:17px}
   .bx .panel{padding:22px 18px}.bx .doc{padding:30px 22px;margin-top:-48px}
   .bx footer nav a{margin:0 18px 0 0}
-}
+}@media (max-width:380px){.bx .mark{font-size:16px}.bx .nav .links{gap:6px}.bx .nav .links .langs a{padding:4px 5px}}
+
 `;
