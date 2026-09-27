@@ -342,7 +342,7 @@ def sample_text(lang: str, region: str | None, has_files: bool, regional: bool =
             parts.append("Votre zone n'avait pas encore assez d'événements récents, l'échantillon contient donc aussi "
                          "des zones voisines. La livraison régulière ne couvre que vos villes.")
         parts += [
-            "Mon conseil : appelez cette semaine les deux ou trois qui vous correspondent le mieux, tant que le besoin est frais.",
+            "Mon conseil : commencez par les pistes en priorité haute. Leur besoin est le plus urgent, et la phrase d'accroche vous porte pendant la première minute de l'appel.",
             "Si cela vous convient, vous recevez une nouvelle liste comme celle-ci chaque lundi, uniquement pour votre zone "
             "et réservée à votre entreprise.",
             "On commence lundi prochain ? Répondez simplement avec les villes à couvrir.",
@@ -360,7 +360,7 @@ def sample_text(lang: str, region: str | None, has_files: bool, regional: bool =
             parts.append("Your area did not yet have enough recent events, so the sample also includes nearby areas. "
                          "The regular delivery only covers your towns.")
         parts += [
-            "My tip: call the two or three best fits this week, while the need is fresh.",
+            "My tip: start with the leads marked high priority. They need help most urgently, and the opening line gets you through the first minute of the call.",
             "If the leads work for you, you get a new list like this every Monday, only for your area and reserved for your firm.",
             "Shall we start next Monday? Just reply with the towns you want covered.",
             "Kind regards,\n" + signature(lang),
