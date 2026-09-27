@@ -258,25 +258,19 @@ def main(argv=None) -> int:
 
 def _send_sample(db, r: dict) -> None:
     """10 Leads aus der Region als CSV an den Anfragenden (eigener Betreff, kein gefälschtes 'Re:')."""
-    import base64
-    import requests
     from lib.regions import area_of
-    from responder import regional_sample, sample_text
+    from responder import regional_sample, sample_mail, sample_subject, send_reply
     if db.rpc("is_suppressed", {"p_email": r["email"]}):
         db.update("sample_requests", {"id": r["id"]}, {"status": "rejected", "note": "gesperrt"})
         return
     lang = "fr" if r.get("country") == "FR" else "en"
     files, regional = regional_sample(db, r["segment_id"], r["country"], r.get("region"))
-    body = sample_text(lang, area_of(r.get("region")), bool(files), regional)
+    area = area_of(r.get("region"))
+    body, blocks = sample_mail(lang, area, files, regional)
     if not body or not (os.environ.get("RESEND_API_KEY") and os.environ.get("MAIL_FROM")):
         return
-    res = requests.post("https://api.resend.com/emails", timeout=30,
-                        headers={"Authorization": f"Bearer {os.environ['RESEND_API_KEY']}"},
-                        json={"from": os.environ["MAIL_FROM"], "to": [r["email"]],
-                              "subject": "Votre échantillon de 10 pistes" if lang == "fr" else "Your sample of 10 leads",
-                              "text": body, **({"reply_to": os.environ["REPLY_TO"]} if os.environ.get("REPLY_TO") else {}),
-                              "attachments": [{"filename": n, "content": base64.b64encode(b).decode()} for n, b in files]})
-    res.raise_for_status()
+    # gleiche gestaltete Mail wie der Antwort-Assistent (Text + HTML, Pflichtfußzeile), eigener Betreff ohne "Re:"
+    send_reply(r["email"], sample_subject(lang, area if regional else None), body, None, lang, files, blocks, requested=True)
     db.update("sample_requests", {"id": r["id"]}, {"status": "sent", "sent_at": dt.datetime.now(dt.timezone.utc).isoformat()})
 
 

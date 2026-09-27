@@ -244,17 +244,24 @@ UNSUBSCRIBE_BY_REPLY = {
     "en": "If you would rather not hear from us, reply \"unsubscribe\" and we will not contact {company} again.",
     "fr": "Pour ne plus recevoir de messages, répondez « désinscrire » et nous ne contacterons plus {company}.",
 }
+# Fußzeile für Mails, die der Empfänger selbst angefordert hat (z. B. die Probe)
+FOOTER_REQUESTED = {
+    "en": "—\n{sender_name} · {postal_address}\nYou are receiving this email because you requested a free sample from us. "
+          "{unsubscribe_url}",
+    "fr": "—\n{sender_name} · {postal_address}\nVous recevez ce message car vous nous avez demandé un échantillon gratuit. "
+          "{unsubscribe_url}",
+}
 UNSUBSCRIBE_LINK = {"en": "To opt out: {url}", "fr": "Pour vous désinscrire : {url}"}
 
 
 def render_footer(language: str, *, sender_name: str, postal_address: str, company: str,
-                  unsubscribe_url: str | None) -> str:
-    """Pflichtfußzeile. Ohne unsubscribe_url: Abmeldung per Antwort."""
+                  unsubscribe_url: str | None, requested: bool = False) -> str:
+    """Pflichtfußzeile. Ohne unsubscribe_url: Abmeldung per Antwort. requested: vom Empfänger angefordert."""
     if not sender_name or not postal_address:
         raise ValueError("Absendername und Postanschrift sind Pflicht für die Fußzeile")
     lang = language if language in FOOTER else "en"
     target = (UNSUBSCRIBE_LINK[lang].format(url=unsubscribe_url) if unsubscribe_url
               else UNSUBSCRIBE_BY_REPLY[lang].format(company=company))
-    return FOOTER[lang].format(
+    return (FOOTER_REQUESTED if requested else FOOTER)[lang].format(
         sender_name=sender_name, postal_address=postal_address, company=company, unsubscribe_url=target
     )

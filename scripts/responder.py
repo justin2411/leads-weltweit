@@ -116,7 +116,8 @@ KEYWORDS = [
             r"abonnement|rendez-vous|weekly|per week|every week|regular(ly)?|more leads|par semaine|chaque semaine)\b"),
     ("not_interested", r"\b(not interested|no thanks|no thank you|pas intéressé|non merci)\b"),
     ("sample", r"\b(yes|sure|please send|send (it|the sample|over)|interested|happy to (see|take a look)|oui|volontiers|"
-               r"envoyez|would like to receive|free sample request|souhaitons recevoir|merci d'envoyer|"
+               r"envoyez|would like to receive|glad to receive|(free )?sample request|souhaitons recevoir|heureux de recevoir|"
+               r"merci d'envoyer|"
                r"demande d'échantillon)\b"),
 ]
 
@@ -213,19 +214,21 @@ def signer(lang: str) -> None:
 
 
 def send_reply(to: str, subject: str, text: str, in_reply_to: str | None, lang: str,
-               attachments: list[tuple[str, bytes]] | None = None) -> str | None:
+               attachments: list[tuple[str, bytes]] | None = None, blocks: dict[str, str] | None = None,
+               requested: bool = False) -> str | None:
     from lib.html_email import render
     from lib.rules import render_footer
     company = brand()
     footer = render_footer(lang, sender_name=company, postal_address=os.environ.get("SENDER_POSTAL_ADDRESS", ""),
-                           company=normalize_domain(to.split("@")[-1]), unsubscribe_url=None)
+                           company=normalize_domain(to.split("@")[-1]), unsubscribe_url=None, requested=requested)
     full = text.rstrip() + "\n\n" + footer
     headers = {}
     if in_reply_to:
         headers = {"In-Reply-To": in_reply_to, "References": in_reply_to}
-    payload = {"from": os.environ["MAIL_FROM"], "to": [to],
-               "subject": subject if subject.lower().startswith(("re:", "aw:")) else f"Re: {subject}",
-               "text": full, "html": render(text, footer, lang, signer=signer(lang)), "headers": headers,
+    # "Re:" nur bei echten Antworten (nie gefälscht)
+    subj = subject if not in_reply_to or subject.lower().startswith(("re:", "aw:")) else f"Re: {subject}"
+    payload = {"from": os.environ["MAIL_FROM"], "to": [to], "subject": subj,
+               "text": full, "html": render(text, footer, lang, signer=signer(lang), blocks=blocks), "headers": headers,
                "reply_to": os.environ.get("REPLY_TO") or os.environ["MAIL_FROM"]}
     if attachments:
         payload["attachments"] = [{"filename": n, "content": base64.b64encode(b).decode()} for n, b in attachments]
@@ -308,49 +311,76 @@ def sample_files(seg: str, country: str) -> list[tuple[str, bytes]]:
     return files
 
 
-def sample_text(lang: str, region: str | None, has_files: bool, regional: bool = True) -> str | None:
-    """Antwort mit der Probe, im Namen des Inhabers. Ziel: wiederkehrende Lieferung (Abo), keine Preise."""
+def sample_text(lang: str, region: str | None, has_files: bool, regional: bool = True, preview: str = "") -> str | None:
+    """Mail mit der Probe, im Namen des Inhabers. Ziel: wiederkehrende Lieferung (Abo), keine Preise, keine Zusagen.
+    preview: optionaler Absatz mit den ersten Einträgen (in HTML als Tabelle dargestellt)."""
     if not has_files:
         return None
     if not regional:
         region = None
-    o = owner_name()
-    first = o.split(" ")[0]
+    parts: list[str]
     if lang == "fr":
-        return (
-            "Bonjour,\n\n"
-            "Merci pour votre intérêt : comme promis, vous trouverez "
-            "ci-joint votre échantillon gratuit de 10 pistes" + (f" pour {region}" if region else "") + ".\n\n"
-            + ("" if regional else "Pour ce premier échantillon, nous avons utilisé des pistes récentes de notre base "
-               "élargie ; la livraison régulière est filtrée sur vos villes.\n\n")
-            + "Chaque ligne contient :\n"
-            "- l'entreprise et sa localisation\n"
-            "- l'événement (création, postes ouverts, nouveau site) et sa date\n"
-            "- la source officielle, pour vérifier chaque piste\n"
-            "- un niveau d'urgence et une phrase d'accroche\n\n"
-            "Le service régulier livre chaque semaine de nouvelles pistes de ce type, filtrées sur vos villes et votre "
-            "spécialité. Pour vous préparer une proposition adaptée, pourriez-vous m'indiquer :\n"
-            "1. quelles villes ou départements vous intéressent,\n"
-            "2. combien de nouvelles pistes par semaine vous pourriez traiter ?\n\n"
-            "Je vous prépare ensuite une proposition adaptée.\n\n"
-            "Bien cordialement,\n" + signature(lang))
-    return (
-        "Hello,\n\n"
-        "Thank you for your interest – as promised, please find attached "
-        "your free sample of 10 leads" + (f" for {region}" if region else "") + ".\n\n"
-        + ("" if regional else "For this first sample we used current leads from our wider dataset; the regular "
-           "delivery is filtered to the towns you work in.\n\n")
-        + "Each row contains:\n"
-        "- the company and its location\n"
-        "- the event (new registration, long-open roles, new site) and its date\n"
-        "- the official source, so every lead can be checked\n"
-        "- an urgency rating and a suggested opening line\n\n"
-        "The regular service delivers new leads like these every week, filtered to your towns and specialism. "
-        "So that I can prepare a suitable proposal, could you let me know:\n"
-        "1. which towns or counties matter most to you, and\n"
-        "2. roughly how many new leads per week your team could follow up?\n\n"
-        "I will then put together a proposal that fits.\n\n"
-        "Best regards,\n" + signature(lang))
+        parts = [
+            "Bonjour,",
+            "Merci pour votre demande. Vous trouverez en pièce jointe votre échantillon gratuit de 10 pistes récentes"
+            + (f" pour {region}" if region else "") + ", préparé exactement au format de notre livraison hebdomadaire.",
+        ]
+        if not regional:
+            parts.append("Pour ce premier échantillon, nous n'avions pas encore dix événements récents dans votre zone. "
+                         "Il contient donc aussi des pistes de zones voisines. La livraison régulière ne comprend que "
+                         "les villes que vous choisissez.")
+        if preview:
+            parts.append(preview)
+        parts += [
+            "Chaque piste indique l'entreprise et sa localisation, l'événement et sa date, la source officielle pour "
+            "vérification, un niveau de priorité et une phrase d'accroche pour le premier contact.",
+            "Notre conseil : choisissez les deux ou trois pistes qui vous correspondent le mieux et contactez-les "
+            "cette semaine, tant que l'événement est récent.",
+            "Si l'échantillon vous est utile, je vous prépare volontiers une liste hebdomadaire adaptée à votre "
+            "cabinet. Deux questions m'aideraient :\n"
+            "1. Quelles villes ou quels départements devons-nous couvrir ?\n"
+            "2. Combien de nouvelles pistes par semaine votre équipe peut-elle traiter ?",
+            "Une courte réponse à cet e-mail suffit.",
+            "Bien cordialement,\n" + signature(lang),
+        ]
+    else:
+        parts = [
+            "Hello,",
+            "Thank you for your request. Attached is your free sample of 10 current leads"
+            + (f" for {region}" if region else "") + ", prepared in exactly the format of our weekly delivery.",
+        ]
+        if not regional:
+            parts.append("For this first sample we did not yet have ten recent events in your area, so it also "
+                         "includes leads from neighbouring areas. The regular delivery only covers the towns you choose.")
+        if preview:
+            parts.append(preview)
+        parts += [
+            "Every lead shows the company and its location, the event and its date, the official source so you can "
+            "verify it, a priority rating and a suggested opening line for the first contact.",
+            "Our suggestion: pick the two or three leads that fit your firm best and contact them this week, while "
+            "the event is still recent.",
+            "If the sample is useful, I would be glad to set up a weekly list tailored to your firm. Two short "
+            "questions would help me prepare it:\n"
+            "1. Which towns or counties should we cover?\n"
+            "2. Roughly how many new leads per week can your team follow up?",
+            "A short reply to this email is all it takes.",
+            "Kind regards,\n" + signature(lang),
+        ]
+    return "\n\n".join(parts)
+
+
+def sample_mail(lang: str, region: str | None, files: list[tuple[str, bytes]], regional: bool) -> tuple[str | None, dict]:
+    """(Text, HTML-Blöcke) für die Probe-Mail: Text mit Vorschau-Absatz, HTML mit Vorschau-Tabelle."""
+    from lib.html_email import preview_rows, sample_preview
+    ptext, phtml = sample_preview(preview_rows(files), lang)
+    body = sample_text(lang, region, bool(files), regional, ptext)
+    return body, ({ptext: phtml} if ptext else {})
+
+
+def sample_subject(lang: str, region: str | None) -> str:
+    if lang == "fr":
+        return f"Votre échantillon : 10 pistes{' pour ' + region if region else ''}"
+    return f"Your sample: 10 leads{' for ' + region if region else ''}"
 
 
 def main(argv=None) -> int:
@@ -418,9 +448,9 @@ def main(argv=None) -> int:
         elif action in ("sample", "sample_owner"):
             files, regional = regional_sample(db, p["segment_id"], p["country"], p.get("region"))
             from lib.regions import area_of
-            body = sample_text(lang, area_of(p.get("region")), bool(files), regional)
+            body, blocks = sample_mail(lang, area_of(p.get("region")), files, regional)
             if body:
-                send_reply(sender, subject, body, mid, lang, files)
+                send_reply(sender, subject, body, mid, lang, files, blocks, requested=True)
                 if event_type != "sample_requested":
                     db.insert("email_events", {"message_id": m["id"], "type": "sample_requested",
                                                "note": "Probe automatisch gesendet"})

@@ -32,28 +32,28 @@ def cta_button(company: str, region: str | None, lang: str) -> str:
     area = region or ""
     if lang == "fr":
         label = "Oui, envoyez-moi les 10 pistes gratuites"
-        subj = f"Demande d'échantillon gratuit – 10 pistes{' ' + area if area else ''}"
+        subj = f"Demande d'échantillon : 10 pistes{' pour ' + area if area else ''}"
         body = (f"Bonjour{' ' + first if first else ''},\n\n"
-                f"Merci pour votre message. Nous souhaitons recevoir l'échantillon gratuit de 10 pistes"
+                f"Merci pour votre message. Nous serions heureux de recevoir l'échantillon gratuit de 10 pistes"
                 f"{' pour ' + area if area else ''}.\n\n"
                 f"Société : {company}\n"
-                f"Zone souhaitée : {area or '(à préciser)'}\n"
-                f"Spécialité / remarques : \n\n"
-                f"Merci d'envoyer l'échantillon à cette adresse e-mail.\n\n"
-                f"Cordialement\n")
-        hint = "Un clic ouvre une demande prête à envoyer – vous pouvez la compléter."
+                f"Zone couverte : {area or '(à compléter)'}\n"
+                f"Nos prestations : \n\n"
+                f"Vous pouvez envoyer l'échantillon à cette adresse.\n\n"
+                f"Bien cordialement\n")
+        hint = "Un clic ouvre une demande déjà rédigée. Vous pouvez la compléter avant l'envoi."
     else:
         label = "Yes, send me the 10 free sample leads"
-        subj = f"Free sample request – 10 leads{' for ' + area if area else ''}"
-        body = (f"Hello{' ' + first if first else ''},\n\n"
-                f"Thank you for your email. We would like to receive the free sample of 10 leads"
+        subj = f"Sample request: 10 leads{' for ' + area if area else ''}"
+        body = (f"Dear {first or 'team'},\n\n"
+                f"Thank you for your email. We would be glad to receive the free sample of 10 leads"
                 f"{' for ' + area if area else ''}.\n\n"
                 f"Company: {company}\n"
-                f"Area of focus: {area or '(please specify)'}\n"
-                f"Specialism / notes: \n\n"
+                f"Area we cover: {area or '(please add)'}\n"
+                f"Our services: \n\n"
                 f"Please send the sample to this email address.\n\n"
                 f"Kind regards\n")
-        hint = "One click opens a ready-to-send request – feel free to add your focus."
+        hint = "One click opens a prepared request. You can add details before sending."
     href = f"mailto:{to}?subject={quote(subj)}&body={quote(body)}"
     return (f'<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 24px 0;"><tr>'
             f'<td style="background:{ORANGE};border-radius:6px;">'
@@ -64,8 +64,9 @@ def cta_button(company: str, region: str | None, lang: str) -> str:
 
 
 def render(body_text: str, footer_text: str, lang: str = "en", cta: str = "",
-           signer: tuple[str, str] | None = None) -> str:
-    """body_text: Text ohne Signatur-Block (Signatur wird aus Umgebung gebaut), footer_text: Pflichtfußzeile."""
+           signer: tuple[str, str] | None = None, blocks: dict[str, str] | None = None) -> str:
+    """body_text: Text ohne Signatur-Block (Signatur wird aus Umgebung gebaut), footer_text: Pflichtfußzeile.
+    blocks: Absatz-Text -> fertiges HTML (z. B. Vorschau-Tabelle der Probe statt der Textliste)."""
     # Text in Absätze; Gruß + Signatur (letzter Absatz) gesondert gestalten
     paras = [p.strip() for p in re.split(r"\n\s*\n", body_text.strip()) if p.strip()]
     closing = paras.pop() if paras else ""
@@ -100,7 +101,7 @@ def render(body_text: str, footer_text: str, lang: str = "en", cta: str = "",
 <tr><td style="height:4px;background:{NAVY};border-radius:10px 10px 0 0;font-size:0;line-height:0;">&nbsp;</td></tr>
 <tr><td style="padding:28px 40px 8px 40px;">{wordmark}</td></tr>
 <tr><td style="padding:20px 40px 4px 40px;">
-{''.join(_p(p) for p in paras)}
+{''.join((blocks or {}).get(p) or _p(p) for p in paras)}
 {cta}
 <p style="margin:8px 0 20px 0;font-family:{FONT};font-size:15px;line-height:24px;color:{INK};">{html.escape(bye)}</p>
 <table role="presentation" cellpadding="0" cellspacing="0"><tr>
@@ -117,3 +118,64 @@ def render(body_text: str, footer_text: str, lang: str = "en", cta: str = "",
 </table>
 </td></tr></table>
 </body></html>"""
+
+
+def sample_preview(rows: list[dict], lang: str = "en") -> tuple[str, str]:
+    """Vorschau der ersten Probe-Leads: (Text-Absatz, gestaltete HTML-Tabelle). Nur Firmendaten."""
+    rows = rows[:3]
+    if not rows:
+        return "", ""
+    fr = lang == "fr"
+    head = "Aperçu des premières pistes :" if fr else "A preview of the first entries:"
+    lines = [head]
+    for r in rows:
+        meta = ", ".join(x for x in (r.get("date"), r.get("source")) if x)
+        where = f", {r['location']}" if r.get("location") else ""
+        lines.append(f"• {r['company']}{where}: {r['event']}" + (f" ({meta})" if meta else ""))
+    text = "\n".join(lines)
+    cells = []
+    for i, r in enumerate(rows):
+        border = "" if i == len(rows) - 1 else f"border-bottom:1px solid {LINE};"
+        meta = " · ".join(html.escape(x) for x in (r.get("date"), r.get("source")) if x)
+        cells.append(
+            f'<tr><td style="padding:14px 18px;{border}">'
+            f'<div style="font-family:{FONT};font-size:14px;line-height:20px;font-weight:700;color:{NAVY};">'
+            f'{html.escape(r["company"])}<span style="font-weight:400;color:{MUTED};">'
+            f'{html.escape(", " + r["location"]) if r.get("location") else ""}</span></div>'
+            f'<div style="font-family:{FONT};font-size:14px;line-height:21px;color:{INK};margin-top:2px;">{html.escape(r["event"])}</div>'
+            f'<div style="font-family:{FONT};font-size:12px;line-height:18px;color:{MUTED};margin-top:4px;">{meta}</div>'
+            f"</td></tr>")
+    label = "Aperçu" if fr else "Preview"
+    table = (f'<p style="margin:0 0 8px 0;font-family:{FONT};font-size:11px;letter-spacing:1.5px;text-transform:uppercase;'
+             f'font-weight:700;color:{ORANGE};">{label}</p>'
+             f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px 0;'
+             f'border:1px solid {LINE};border-radius:8px;background:#FAFBFC;">{"".join(cells)}</table>')
+    return text, table
+
+
+def preview_rows(files: list[tuple[str, bytes]]) -> list[dict]:
+    """Erste Zeilen aus der Probe-CSV lesen (Spalten company, location, event, event_date, source)."""
+    import csv
+    import io
+    if not files:
+        return []
+    out = []
+    for r in csv.DictReader(io.StringIO(files[0][1].decode("utf-8", "replace"))):
+        ev = re.sub(r"\s*[–—]\s*", ", ", (r.get("event") or "").split(". ")[0].rstrip("."))
+        ev = ev.split(" (")[0]
+        name = r.get("company") or ""
+        if ev.upper().startswith(name.upper()):
+            ev = ev[len(name):].strip()
+            ev = ev[:1].upper() + ev[1:]
+        ev = re.sub(r"^[Rr]egistered on .*$", "Newly registered", ev)
+        d = r.get("event_date") or ""
+        if re.match(r"^\d{4}-\d{2}-\d{2}$", d):
+            import datetime as _dt
+            d = _dt.date.fromisoformat(d).strftime("%-d %b %Y")
+        if name.isupper():
+            name = re.sub(r"\bLlp\b", "LLP", name.title())
+        out.append({"company": name, "location": (r.get("location") or "").split(",")[0].strip().title(),
+                    "event": ev[:140], "date": d, "source": re.sub(r"\s*\(.*\)$", "", r.get("source") or "")})
+        if len(out) >= 3:
+            break
+    return out

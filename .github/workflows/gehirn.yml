@@ -22,6 +22,11 @@ jobs:
       REPLY_TO: ${{ secrets.REPLY_TO }}
       OWNER_EMAIL: ${{ secrets.OWNER_EMAIL }}
       SENDER_NAME: ${{ secrets.SENDER_NAME }}
+      SENDER_COMPANY: ${{ secrets.SENDER_COMPANY }}
+      SENDER_TITLE: ${{ secrets.SENDER_TITLE }}
+      SENDER_WEBSITE: ${{ secrets.SENDER_WEBSITE }}
+      SENDER_PHONE: ${{ secrets.SENDER_PHONE }}
+      SENDER_POSTAL_ADDRESS: ${{ secrets.SENDER_POSTAL_ADDRESS }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
