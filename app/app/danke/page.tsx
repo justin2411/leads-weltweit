@@ -3,7 +3,6 @@ import { BRAND, CONTACT } from "@/lib/site";
 import { stripe, stripeEnabled, type StripeMode } from "@/lib/stripe";
 import { db } from "@/lib/supabase";
 import { filterToken } from "@/lib/tokens";
-import { isOwner } from "@/lib/pages";
 import { PER_WEEK, perMonth } from "@/lib/custom-price";
 import { BrandShell, SiteFooter, SiteHeader } from "../chrome";
 import { FilterForm, FORM_CSS } from "../kunde/filter/form";
@@ -86,8 +85,9 @@ async function loadSession(id: string | undefined) {
 
 export default async function Danke({ searchParams }: { searchParams: Promise<{ session_id?: string; ok?: string; w?: string; demo?: string }> }) {
   const { session_id, ok, w, demo: demoParam } = await searchParams;
-  // Vorschau für den Inhaber (Dashboard-Login): Musterkauf, Formular ohne Speichern
-  const demo = demoParam === "1" && (await isOwner());
+  // Vorschau mit Musterkauf, Formular speichert nichts. Ohne Login-Prüfung: das Login-Cookie ist SameSite=strict
+  // und fehlt, wenn der Link aus einer anderen App geöffnet wird; die Vorschau enthält keine echten Daten.
+  const demo = demoParam === "1";
   const found = demo
     ? { mode: "test" as StripeMode, s: { locale: "en", currency: "gbp", amount_total: 160500, customer: null,
         metadata: { package: "custom", weekly: "1200" }, customer_details: { email: "hello@example-recruitment.co.uk" },
