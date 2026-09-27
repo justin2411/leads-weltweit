@@ -113,7 +113,7 @@ export default async function StartPage({ params, searchParams }: { params: Para
         <div className="eyebrow">{T.eyebrow}</div>
         <h1>{T.title}</h1>
         <p className="lede">{T.lede}</p>
-        {who?.firma && <div className="for">{T.for} {who.firma}{who.gebiet ? ` · ${who.gebiet}` : ""}</div>}
+        {who?.firma && <div className="for">{T.for} {who.firma}</div>}
 
         <div className="plans2">{plans.map((p, k) => {
           const hi = k === plans.length - 1 && plans.length > 1;
