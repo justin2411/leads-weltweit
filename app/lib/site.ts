@@ -5,3 +5,4 @@ export function siteUrl(): string {
 }
 
 export const BRAND = process.env.BRAND_NAME || "NextGen Profit";
+export const CONTACT = process.env.CONTACT_EMAIL || "info@nextgen-profit.de";

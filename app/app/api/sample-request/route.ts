@@ -5,11 +5,12 @@ import { getSettings, isOwner, pageIsPublic } from "@/lib/pages";
 import { BRAND, siteUrl } from "@/lib/site";
 import { db } from "@/lib/supabase";
 import { isBusinessEmail } from "@/lib/variants";
+import { personalFor } from "@/lib/recipient";
 
 export const dynamic = "force-dynamic";
 
 function back(slug: string, q: string, preview = "") {
-  return Response.redirect(`${siteUrl()}/${slug}?${preview}${q}#sample`, 303);
+  return Response.redirect(`${siteUrl()}/${slug}?${preview}${q}#top`, 303);
 }
 
 /** Probe-Anfrage aus dem Formular. Speichert Einwilligung mit Wortlaut und Zeitstempel. */
@@ -28,11 +29,11 @@ export async function POST(req: Request) {
   if (!isPublic && !test) return new Response("Not found", { status: 404 });
   const rTok = String(f.get("r") ?? "");
   const pv = (test ? `vorschau=1&v=${v.variant_key}&` : "") + (/^[A-Za-z0-9_-]{8,80}$/.test(rTok) ? `r=${rTok}&` : "");
-  if (String(f.get("website") ?? "")) return back(page.slug, "angefragt=1", pv); // Honeypot: Bots still verwerfen
-
-  const company = String(f.get("company") ?? "").trim().slice(0, 200);
-  const email = String(f.get("email") ?? "").trim().toLowerCase().slice(0, 200);
-  const region = String(f.get("region") ?? "").trim().slice(0, 200);
+  // Kein Formular mehr: Firma, Adresse und Gebiet kommen serverseitig aus dem Mail-Link, nie aus Eingaben.
+  const who = await personalFor(rTok, page);
+  const company = (who?.firma ?? "").slice(0, 200);
+  const email = (who?.email ?? "").trim().toLowerCase().slice(0, 200);
+  const region = (who?.gebiet ?? "").slice(0, 200);
   if (!company || !isBusinessEmail(email) || f.get("consent") !== "yes") return back(page.slug, "fehler=1", pv);
 
   const { data: suppressed } = await db().rpc("is_suppressed", { p_email: email });
