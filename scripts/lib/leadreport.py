@@ -140,7 +140,7 @@ T2 = {
            "p1": "10 leads selected for you", "p1s": "Business contact details from public registers and company websites",
            "plan_txt": {"starter": "Up to 30 new leads per week. Every lead exclusive to your firm.",
                         "pro": "Up to 100 new leads per week, all matching signals. Every lead exclusive to your firm."},
-           "custom_n": "Custom", "custom_p": "Your number",
+           "tagline": "New clients. At the right moment.", "custom_n": "Custom", "custom_p": "Your number",
            "custom_t": "Tell us how many leads you need per week, and we will make you an offer that fits your team."},
     "fr": {"h": "Pourquoi ces pistes génèrent du chiffre d'affaires",
            "why": [("Une vraie raison d'acheter", "Chaque entreprise vient de faire quelque chose qui crée un besoin : création, recrutement, croissance, déménagement."),
@@ -163,7 +163,7 @@ T2 = {
            "p1": "10 pistes sélectionnées pour vous", "p1s": "Coordonnées professionnelles issues de registres publics et des sites des entreprises",
            "plan_txt": {"starter": "Jusqu'à 30 nouvelles pistes par semaine. Chaque piste réservée à votre entreprise.",
                         "pro": "Jusqu'à 100 nouvelles pistes par semaine, tous les signaux utiles. Chaque piste réservée à votre entreprise."},
-           "custom_n": "Sur mesure", "custom_p": "Votre volume",
+           "tagline": "De nouveaux clients. Au bon moment.", "custom_n": "Sur mesure", "custom_p": "Votre volume",
            "custom_t": "Dites-nous combien de pistes il vous faut par semaine, nous vous faisons une offre adaptée à votre équipe."},
 }
 CUR = {"gbp": "£", "eur": "€", "usd": "$"}
@@ -267,7 +267,9 @@ def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str
 <div class="sec"><h3>{t2['plans_h']}</h3></div>
 <div class="plans">{pl}</div>
 <div class="cta"><div><b>{t2['start']}</b><p>{t2['cta']}</p></div>{f'<a class="btn" href="{e(cta_url)}">{t2["btn"]} &rarr;</a>' if cta_url else ''}</div>
-</div>{foot(total)}</section>"""
+</div>
+<div class="orn"><div class="orn-line"><span class="ln l"></span><span class="dm"></span><span class="ln r"></span></div>
+<div class="orn-logo">NextGen <i>Profit</i></div><div class="orn-tag">{t2['tagline']}</div></div>{foot(total)}</section>"""
     return f"""<!doctype html><html lang="{lang}"><head><meta charset="utf-8"><style>
 {_font(400)}{_font(600)}{_font(700)}{_font(800)}
 @page{{size:A4;margin:0}}
@@ -322,6 +324,13 @@ h4{{font-size:6.8px;letter-spacing:.16em;text-transform:uppercase;color:#a07f46;
 .plan p{{font-size:10px;line-height:1.5;color:#475064}}
 .cta{{margin-top:12mm;display:flex;justify-content:space-between;align-items:center;gap:8mm;padding:6mm 7mm;border-radius:12px;background:#fbf8f1;border:.2mm solid #ece3d0}}
 .cta b{{font-size:15px;color:#0b1428}}.cta p{{font-size:10.5px;color:#475064;margin-top:1mm}}
+.orn{{position:absolute;left:16mm;right:16mm;bottom:17mm;height:62mm;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:6mm;
+  background:radial-gradient(90mm 38mm at 50% 100%,rgba(216,189,138,.20),transparent 70%)}}
+.orn-line{{display:flex;align-items:center;gap:4mm;width:120mm;margin-bottom:6mm}}
+.orn-line .ln{{display:block;flex:1;height:.3mm;background:linear-gradient(90deg,rgba(201,168,106,0),#c9a86a)}}.orn-line .ln.r{{background:linear-gradient(90deg,#c9a86a,rgba(201,168,106,0))}}
+.orn-line .dm{{display:block;flex:none;width:2.6mm;height:2.6mm;transform:rotate(45deg);border:.35mm solid #b08d57;background:#fdfbf6;box-shadow:0 0 0 1.4mm #fff,0 0 0 1.7mm #e3d3b0}}
+.orn-logo{{font-size:22px;font-weight:800;letter-spacing:-.5px;color:#0b1428}}.orn-logo i{{font-style:normal;color:#b08d57}}
+.orn-tag{{margin-top:2mm;font-size:8.4px;letter-spacing:.34em;text-transform:uppercase;color:#a07f46;font-weight:600}}
 .btn{{flex:none;background:linear-gradient(135deg,#e7cf9f,#b08d57);color:#141008;font-weight:700;font-size:12px;padding:3.5mm 7mm;border-radius:99px;text-decoration:none}}
 </style></head><body>
 {''.join(pages)}
