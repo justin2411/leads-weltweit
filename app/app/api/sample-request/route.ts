@@ -1,5 +1,6 @@
 import { consentText } from "@/lib/consent";
 import { sendConsentMail } from "@/lib/mail";
+import { renderMail, type MailBlock } from "@/lib/mail-html";
 import { recordEvent } from "@/lib/page-events";
 import { getSettings, isOwner, pageIsPublic } from "@/lib/pages";
 import { BRAND, siteUrl } from "@/lib/site";
@@ -48,14 +49,42 @@ export async function POST(req: Request) {
   if (!test) await recordEvent(v.id, "sample_request");
 
   if (!suppressed) {
-    const fr = page.language === "fr";
-    await sendConsentMail(
-      email,
-      fr ? `Votre échantillon gratuit – ${BRAND}` : `Your free sample – ${BRAND}`,
-      fr
-        ? `Bonjour,\n\nMerci pour votre demande. Nous préparons 10 pistes${region ? ` pour ${region}` : ""} et vous les envoyons sous peu.\n\nVous avez donné votre accord ainsi : « ${consent} »\n\nPour ne plus rien recevoir, répondez simplement « désinscription ».\n\n${BRAND}\n${siteUrl()}`
-        : `Hello,\n\nThank you for your request. We are preparing 10 leads${region ? ` for ${region}` : ""} and will send them shortly.\n\nYou agreed as follows: "${consent}"\n\nTo stop hearing from us, simply reply "unsubscribe".\n\n${BRAND}\n${siteUrl()}`,
-    ).catch(() => null); // Anfrage ist gespeichert; Bestätigung ist optional
+    const m = confirmationMail(page.language === "fr" ? "fr" : "en", region, consent);
+    await sendConsentMail(email, m.subject, m.text, m.html).catch(() => null); // Anfrage ist gespeichert; Bestätigung ist optional
   }
   return back(page.slug, "angefragt=1", pv);
+}
+
+/** Bestätigung der Probe-Anfrage: Text- und HTML-Version, ohne Preise und ohne Zeitversprechen. */
+function confirmationMail(lang: "en" | "fr", region: string, consent: string) {
+  const fr = lang === "fr";
+  const area = region ? (fr ? ` pour ${region}` : ` for ${region}`) : "";
+  const subject = fr ? `Votre demande d'échantillon est confirmée${area}` : `Your sample request is confirmed${area}`;
+  const blocks: MailBlock[] = fr ? [
+    { p: "Bonjour," },
+    { p: `Merci pour votre demande. Nous préparons maintenant 10 pistes récentes${area}, issues de sources officielles, et vous les envoyons à cette adresse.` },
+    { title: "La suite", steps: [
+      "Vous recevez 10 pistes au format de notre livraison hebdomadaire, chacune avec sa date et sa source officielle.",
+      "Vous contactez les entreprises qui vous correspondent.",
+      "Ensuite, nous vous demandons brièvement comment cela s'est passé.",
+    ] },
+    { p: "L'échantillon est gratuit et sans engagement." },
+    { note: `Pour vos archives, votre accord : « ${consent} » Pour ne plus rien recevoir, répondez simplement « désinscription ».` },
+  ] : [
+    { p: "Hello," },
+    { p: `Thank you for your request. We are now preparing 10 current leads${area} from official sources and will send them to this address.` },
+    { title: "What happens next", steps: [
+      "You receive 10 leads in the format of our weekly delivery, each with its date and official source.",
+      "You contact the companies that fit your firm.",
+      "Afterwards we briefly ask how it went.",
+    ] },
+    { p: "The sample is free of charge and there is no obligation." },
+    { note: `For your records, you agreed as follows: "${consent}" To stop hearing from us, simply reply "unsubscribe".` },
+  ];
+  const closing = fr ? "Bien cordialement," : "Kind regards,";
+  const signer = `${BRAND}`;
+  const footer = `${BRAND} · Poststraße 14-16, 20354 Hamburg, Germany\n${siteUrl().replace(/^https?:\/\//, "")}`;
+  const text = blocks.map((b) => ("p" in b ? b.p : "note" in b ? b.note : `${b.title ? b.title + ":\n" : ""}${b.steps.map((s, i) => `${i + 1}. ${s}`).join("\n")}`))
+    .join("\n\n") + `\n\n${closing}\n${signer}\n\n${footer}`;
+  return { subject, text, html: renderMail({ lang, brand: BRAND, blocks, closing, signer, footer }) };
 }
