@@ -77,61 +77,53 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
     # Aufbau (Schreibregeln Abschnitt 7): Bezug zur Firma, der Moment (warum jetzt), wie leicht es ist, ein kleines Ja.
     # Psychologie ohne Tricks: Timing statt Druck, Einfachheit, echte Exklusivität, Probe als Geschenk, Ja/Nein-Frage.
     if fr:
-        first_generic = {"S1": f"J'ai vu que {firm} accompagne les entreprises de la région de {area} dans leurs recrutements.",
-                         "S2": f"J'ai vu que {firm} conçoit des sites web pour les entreprises de la région de {area}."}
-        first = (f"J'ai vu que {firm} recrute des profils {spec} dans la région de {area}." if seg == "S1" and has_spec
-                 else first_generic.get(seg, f"J'ai vu que {firm} accompagne les chefs d'entreprise de la région de {area}."))
+        # Einstieg: direkte Frage mit Firma und Region (zeigt Bezug und weckt Neugier)
+        first = {
+            "S1": f"Nous aidons les cabinets de recrutement comme {firm} à joindre les employeurs de {area} au moment où ils peinent à recruter.",
+            "S2": f"Nous aidons les agences web comme {firm} à joindre les nouvelles entreprises de {area} avant qu'elles aient choisi leur prestataire.",
+        }.get(seg, f"Nous aidons les conseillers comme {firm} à joindre les nouveaux dirigeants de {area} au moment où se posent les questions de retraite et de prévoyance.")
         subject, core = {
             "S1": (f"Employeurs à {area} qui peinent à recruter",
-                   f"Autour de {area}, certains employeurs ont le même poste ouvert depuis des semaines ou recrutent "
-                   "plusieurs personnes à la fois. C'est souvent le moment où ils sont le plus ouverts à un cabinet."),
+                   "C'est souvent le moment où ils sont le plus ouverts à un cabinet, et vous seriez le premier à appeler."),
             "S2": (f"Nouvelles entreprises à {area}",
-                   f"Chaque semaine, de nouvelles sociétés sont créées autour de {area}. Dans les premières semaines, "
-                   "elles choisissent leur site web, souvent avec la première agence qui les contacte."),
-        }.get(seg, (f"Nouveaux dirigeants à {area}",
-                    f"Les nouveaux dirigeants autour de {area} se posent leurs premières questions de rémunération, de "
-                    "retraite et de prévoyance. Peu ont déjà un conseiller."))
+                   "Dans les premières semaines, elles choisissent souvent l'agence qui les contacte en premier."),
+        }.get(seg, (f"Nouveaux dirigeants à {area}", "Peu ont déjà un conseiller : le premier échange utile compte."))
         easy = ("C'est simple : chaque lundi, une courte liste avec l'entreprise, le téléphone, l'e-mail et une phrase "
-                "d'accroche. Aucun logiciel, rien à installer, et chaque entreprise ne va qu'à une seule entreprise de "
-                "votre secteur.")
+                "d'accroche. Aucun logiciel, rien à installer, et chaque entreprise est réservée à une seule entreprise "
+                "de votre secteur.")
         ask = f"Un simple « oui » suffit : je vous envoie un échantillon gratuit de 10 pistes actuelles pour {area} ?"
     elif seg in ("S1", "S2", "S3", "S4", "S5", "S9") or seg not in catalog.entries():
-        what = {"S1": ("places {spec} staff", "recruits for employers"), "S2": ("builds {spec}", "builds websites for businesses"),
-                "S3": ("provides {spec}", "looks after IT for businesses"), "S4": ("arranges {spec}", "arranges business insurance"),
-                "S5": ("offers {spec}", "works with small businesses"), "S9": ("focuses on {spec}", "advises business owners")}
-        w = what.get(seg, ("works in {spec}", "works with businesses"))
-        first = f"I noticed {firm} {(w[0].format(spec=spec) if has_spec else w[1])} around {area}, so this may be relevant."
+        # Einstieg: direkte Frage mit Firma und Region (zeigt Bezug und weckt Neugier)
+        # Einstieg als klare Aussage: was wir für Firmen wie diese tun (keine erfundenen Kunden oder Zahlen)
+        first = {
+            "S1": f"We help recruitment agencies like {firm} reach employers in {area} at the moment they are struggling to fill a role.",
+            "S2": f"We help web agencies like {firm} reach new businesses in {area} before they have chosen who builds their website.",
+            "S3": f"We help IT service firms like {firm} reach growing companies in {area} just before they need IT support.",
+            "S4": f"We help brokers like {firm} reach new businesses in {area} while their first cover is still being arranged.",
+            "S5": f"We help accountancy practices like {firm} reach new companies in {area} before they have chosen an accountant.",
+            "S9": f"We help advisers like {firm} reach new company directors in {area} when pensions and protection first come up.",
+        }.get(seg, f"We help firms like {firm} reach companies in {area} at the moment they have a reason to buy.")
         subject, core = {
             "S1": (f"{area} employers struggling to fill roles",
-                   f"Some employers around {area} have had the same roles open for weeks, or are hiring several people "
-                   "at once. That is usually when they are most open to an agency."),
+                   "That's usually when they're most open to an agency, and you'd be the first to call."),
             "S2": (f"New businesses in {area}",
-                   f"Every week new companies are registered around {area}. In their first weeks, owners decide on their "
-                   "website, often with whoever reaches them first."),
-            "S3": (f"Growing businesses around {area}",
-                   f"Companies around {area} that open an office or hire fast soon need IT support. Reaching them in "
-                   "that moment makes the first call easy."),
-            "S4": (f"New businesses in {area} that need cover",
-                   f"A company registered around {area} in the last weeks needs liability, property and employer cover "
-                   "soon. The broker who calls first usually gets to quote."),
+                   "In their first weeks, owners often pick whoever reaches them first."),
+            "S3": (f"Growing businesses around {area}", "Reaching them in that moment makes the first call easy."),
+            "S4": (f"New businesses in {area} that need cover", "The broker who calls first usually gets to quote."),
             "S5": (f"New companies in {area} choosing an accountant",
-                   f"Most new directors around {area} choose their accountant in the first weeks. The practice that "
-                   "calls at that moment has the easiest conversation."),
-            "S9": (f"New company directors in {area}",
-                   f"New directors around {area} face their first questions on pay, pensions and protection. Few have "
-                   "an adviser yet."),
-        }.get(seg, (f"Companies in {area} with a reason to buy",
-                    f"Every week, companies around {area} are founded, hire or grow. That is when they choose new suppliers."))
-        easy = ("It's simple: every Monday you get a short list with the company, phone number, email and an opening "
-                "line. No software, nothing to set up, and each company goes to only one firm in your field.")
+                   "The practice that calls at that moment has the easiest conversation."),
+            "S9": (f"New company directors in {area}", "Few have an adviser yet, so the first sensible conversation counts."),
+        }.get(seg, (f"Companies in {area} with a reason to buy", "That's when they choose new suppliers."))
+        easy = ("It's simple: every Monday a short list with company, phone, email and an opening line. No software, "
+                "nothing to set up, and each company goes to one firm in your field only.")
         ask = f"No strings attached, a quick \"yes\" is enough: shall I send you a free sample of 10 current leads from {area}?"
     else:
         subject, first, core, _detail, _ask = catalog.draft(seg, firm, area, spec if has_spec else "", brand(), ex)
-        easy = ("It's simple: every Monday you get a short list with the company, phone number, email and an opening "
-                "line. No software, nothing to set up, and each company goes to only one firm in your field.")
+        easy = ("It's simple: every Monday a short list with company, phone, email and an opening line. No software, "
+                "nothing to set up, and each company goes to one firm in your field only.")
         ask = f"No strings attached, a quick \"yes\" is enough: shall I send you a free sample of 10 current leads from {area}?"
 
-    greet, bye = ("Bonjour,", "Bien cordialement,") if fr else (f"Hello {firm} team,", "Best regards,")
+    greet, bye = ("Bonjour,", "Bien cordialement,") if fr else (f"Hi {firm} team,", "Best regards,")
     detail = f"{ex}\n\n{easy}" if ex else easy
     body = f"{greet}\n\n{first}\n\n{core}\n\n{detail}\n\n{ask}\n\n{bye}\n{sender or signature(lang)}"
     if len(subject) > 60:

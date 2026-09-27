@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -103,13 +104,13 @@ def unsubscribe_target(token: str) -> str | None:
     return None
 
 
-LANDING_LINE = {"en": "How it works in 60 seconds, and your free sample with one click: {url}",
+LANDING_LINE = {"en": "How it works in under a minute, and your free sample with one click: {url}",
                 "fr": "Comment ça marche en une minute, et votre échantillon gratuit en un clic : {url}"}
 
 
 def landing_link(db, cache: dict, segment_id: str, country: str, token: str) -> str | None:
     """Persönlicher Link zur Landingpage (/<land>/<segment>?r=<token>), nur wenn die Seite live ist."""
-    base = (os.environ.get("APP_BASE_URL") or os.environ.get("SITE_URL") or "").rstrip("/")
+    base = (os.environ.get("APP_BASE_URL") or os.environ.get("SITE_URL") or "https://www.nextgen-profit.de").rstrip("/")
     if not base or not token:
         return None
     key = (segment_id, country)
@@ -134,11 +135,14 @@ def _area(region: str | None) -> str | None:
 
 
 def html_version(body: str, footer: str, lang: str, company: str | None = None,
-                 region: str | None = None) -> str | None:
+                 region: str | None = None, url: str | None = None) -> str | None:
     """Gestaltete HTML-Alternative (ohne Bilder/Tracking). EMAIL_HTML=0 schaltet sie ab."""
     if os.environ.get("EMAIL_HTML", "1") == "0":
         return None
-    from lib.html_email import cta_button, render
+    from lib.html_email import cta_button, page_button, render
+    if url:  # Knopf zur persönlichen Landingpage; die Textzeile mit dem nackten Link entfällt im HTML
+        body = "\n\n".join(p for p in re.split(r"\n\s*\n", body) if url not in p)
+        return render(body, footer, lang, page_button(url, lang))
     cta = cta_button(company, region, lang) if company else ""
     return render(body, footer, lang, cta)
 
@@ -296,7 +300,7 @@ def cmd_send(args) -> int:
             provider_fields = deliver(m["to_email"], m["subject"], text, unsub,
                                       html_version(body, footer, m.get("language") or "en",
                                                    p["company_name"] if kind != "sample_followup" else None,
-                                                   _area(p.get("region"))))
+                                                   _area(p.get("region")), link))
         except Exception as exc:  # noqa: BLE001 - Versandfehler melden, nicht abbrechen
             print(f"FEHLER Versand {m['to_email']}: {exc}")
             continue
@@ -340,9 +344,14 @@ def cmd_test(args) -> int:
     footer = render_footer(lang, sender_name=legal_name(),
                            postal_address=os.environ.get("SENDER_POSTAL_ADDRESS", ""), company=name,
                            unsubscribe_url=unsubscribe_target("test"))
+    from lib.db import DB
+    link = landing_link(DB(), {}, args.segment, args.country, "test")
+    if link:
+        body = body.rstrip() + "\n\n" + LANDING_LINE[lang if lang in LANDING_LINE else "en"].format(url=link)
     text = body.rstrip() + "\n\n" + footer
     print(f"Prüfung: {lint.summary()}\n\nBetreff: [TEST] {subject}\n\n{text}\n")
-    out = deliver(args.to, f"[TEST] {subject}", text, unsubscribe_target("test"), html_version(body, footer, lang, name, _area(region)))
+    out = deliver(args.to, f"[TEST] {subject}", text, unsubscribe_target("test"),
+                  html_version(body, footer, lang, name, _area(region), link))
     print(f"gesendet an {args.to}: {out}")
     return 0
 
