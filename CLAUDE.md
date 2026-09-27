@@ -116,10 +116,10 @@ Für jedes Segment in jedem Land:
 ## 7. Schreibregeln für Mails
 
 - 70–120 Wörter, kurze Absätze. Gestaltete HTML-Version erlaubt (Entscheidung Inhaber 26.09.2026), aber nur ohne Bilder, ohne externe Ressourcen und ohne Tracking, immer mit Text-Version (`scripts/lib/html_email.py`)
-- Betreff konkret, bezogen auf Nische und Region, höchstens 60 Zeichen, keine Emojis
+- Betreff konkret, bezogen auf Nische und Land, höchstens 60 Zeichen, keine Emojis
 - Erster Satz zeigt, dass wir die Firma kennen (Spezialisierung, Region)
 - Kern: welche Firmen wir finden und warum das für ihr Geschäft ein Anlass ist, mit 1–2 passenden Signalen
-- Angebot: kostenlose Probe mit 10 Leads aus ihrer Region, unverbindlich
+- Angebot: kostenlose Probe mit 10 Leads aus ihrem Land, unverbindlich (landesweit statt regional, Inhaber 27.09.2026)
 - Schluss: eine einfache Ja/Nein-Frage
 - Sprache des Landes (FR Französisch, sonst Englisch), Anrede ohne Personennamen, wenn nur allgemeine Adressen erlaubt sind
 - Verboten: Garantien, Dringlichkeit, erfundene Zahlen, Übertreibungen
@@ -160,7 +160,8 @@ Für jedes Segment in jedem Land:
 6. Dem Inhaber einen ersten Bericht mit den Proben und 10 Beispiel-Entwürfen vorlegen.
 
 - **Ansprechperson im Lead (Inhaber 27.09.2026: „doch ansprechperson dürfen wir, ändere das“):** Leads dürfen Name und Rolle einer Ansprechperson enthalten – nur Inhaber, Geschäftsführer oder vertretungsberechtigte Personen aus öffentlichen Registern (z. B. Companies House, Handelsregister) oder aus dem Impressum der Firmenwebsite. Weiterhin keine privaten Telefonnummern oder privaten E-Mail-Adressen, keine anderen Mitarbeitenden. Fehlt ein Name, steht die Rolle („Ask for …“). Offene Rechtsfrage für EU/UK (Informationspflicht nach Art. 14 DSGVO bei Weitergabe an Kunden) liegt beim Inhaber.
-- **Kundenlieferung (26.09.2026, „mach einfach“):** `scripts/deliveries.py` + `.github/workflows/kundenlieferung.yml`, montags ca. 07:00. Kunde anlegen mit `add-customer` (Preis nur vom Inhaber). Erste Lieferung jedes Kunden geht als Vorschau an den Inhaber und erst nach `approve` raus; danach automatisch. Jeder Lead höchstens einmal pro Abo, nur aus den gebuchten Regionen.
+- **Landesweit statt regional (Inhaber 27.09.2026):** Leads, Proben, Landingpages, Kaltmails und Videos nennen keine Städte oder Regionen mehr, sondern das ganze Land („across the UK“, „partout en France“). Landingpages für UK, US und FR; die Startseite schaltet per Länder-Umschalter.
+- **Kundenlieferung (26.09.2026, „mach einfach“):** `scripts/deliveries.py` + `.github/workflows/kundenlieferung.yml`, montags ca. 07:00. Kunde anlegen mit `add-customer` (Preis nur vom Inhaber). Erste Lieferung jedes Kunden geht als Vorschau an den Inhaber und erst nach `approve` raus; danach automatisch. Jeder Lead höchstens einmal pro Abo, aus dem gebuchten Land (optional eingeschränkt auf Regionen aus dem Kundenformular).
 - **Versand ohne Aufwärmphase (26.09.2026, „ja ändere es und sende … jeden Tag, auch heute 100 Mails“, Upload ausdrücklich bestätigt):** Notbremse: Bounce-Quote über 5 %, bewertet erst ab 100 gesendeten Mails (Nachtrag „lockerer“) (Spam-Beschwerde stoppt weiterhin sofort). Versand und Automatiklauf täglich inkl. Wochenende, Tagesziel 100 (`config/versand.yaml`: `aufwaermphase: false`, `tagesziel`), begrenzt durch `anbieter_tageslimit` − 10.
 
 ## 10. Stand 26.09.2026 (Inhaber)
