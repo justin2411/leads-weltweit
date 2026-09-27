@@ -173,7 +173,7 @@ export async function Home({ lang }: { lang: HomeLang }) {
         {countries.map((c) => <input key={c} type="radio" name="cc" id={`cc-${c}`} className="cc-in" defaultChecked={c === defCountry} />)}
         {countries.length > 1 && (
           <div className="cswitch" data-rv role="group" aria-label={t.countryPick}>
-            {countries.map((c) => <label key={c} htmlFor={`cc-${c}`}><span aria-hidden="true">{COUNTRIES[c].flag}</span>{COUNTRIES[c].name[lang]}</label>)}
+            {countries.map((c) => <label key={c} htmlFor={`cc-${c}`}><span aria-hidden="true">{COUNTRIES[c].flag}</span><b>{COUNTRIES[c].name[lang]}</b><em>{c === "UK" ? "UK" : c === "US" ? (lang === "fr" ? "É.-U." : "US") : COUNTRIES[c].name[lang]}</em></label>)}
           </div>)}
         <div className="cards">
           {[...pages].sort((a, b) => ORDER.indexOf(segKey(a.slug)) - ORDER.indexOf(segKey(b.slug))).map((p, k) => (

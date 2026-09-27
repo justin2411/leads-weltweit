@@ -71,20 +71,24 @@ async function countrySamples(page: { segment_id: string; country: string }): Pr
   const obsIds = [...new Set(rows.map((l) => l.observation_ids?.[0]).filter(Boolean))].slice(0, 200);
   const sic = new Map<string, string>();
   if (obsIds.length) {
-    const { data: obs } = await db().from("observations").select("id, details").in("id", obsIds);
+    const { data: obs } = await db().from("observations").select("id, details").in("id", obsIds.slice(0, 120));
     for (const o of (obs ?? []) as any[]) if (o.details?.sic) sic.set(o.id, String(o.details.sic));
   }
   // Vielfalt: erst verschiedene Signale, dann verschiedene Branchen und Tage, jede Firma einmal
   const picked: any[] = [], firms = new Set<string>(), sigs = new Set<string>(), divs = new Set<string>(), days = new Map<string, number>();
   // gleiche Firma unter zwei Einträgen (z. B. "Manchester" und "Greater Manchester") nicht doppelt zeigen
   const evs = new Set<string>();
-  const evKey = (l: any) => `${l.signal_type}|${cleanEvent(String(l.event_summary), String(l.watch_companies.name)).match(/\d+/)?.[0] ?? ""}|${l.event_date}`;
+  // nur Stellen-Signale zusammenfassen (gleiche Anzahl Stellen am selben Tag = gleiche Firma); Neugründungen je Firma
+  const evKey = (l: any) => l.signal_type === "new_incorporation" ? `inc|${l.company_id}`
+    : `${l.signal_type}|${cleanEvent(String(l.event_summary), String(l.watch_companies.name)).match(/\d+/)?.[0] ?? ""}|${l.event_date}`;
   const take = (l: any) => { picked.push(l); firms.add(l.company_id); firms.add(String(l.watch_companies.name).toLowerCase()); evs.add(evKey(l)); sigs.add(l.signal_type); days.set(l.event_date, (days.get(l.event_date) ?? 0) + 1);
     const d = (sic.get(l.observation_ids?.[0]) ?? "").slice(0, 2); if (d) divs.add(d); };
   for (const pass of [0, 1, 2]) {
     for (const l of rows) {
       if (picked.length >= 6) break;
       if (firms.has(l.company_id) || firms.has(String(l.watch_companies.name).toLowerCase()) || evs.has(evKey(l))) continue;
+      // nur lateinische Schrift (z. B. japanische Stellentitel eines Konzerns wirken auf der Seite fremd)
+      if (/[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af\u0400-\u04ff\u0600-\u06ff]/.test(String(l.event_summary))) continue;
       const d = (sic.get(l.observation_ids?.[0]) ?? "").slice(0, 2);
       if (pass === 0 && sigs.has(l.signal_type)) continue;
       if (pass === 1 && ((d && divs.has(d)) || (days.get(l.event_date) ?? 0) >= 2)) continue;
