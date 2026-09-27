@@ -174,7 +174,8 @@ OPENERS = {
 }
 
 
-SEGMENT_SLUG = {"S5": "accountants", "S4": "insurance-brokers", "S9": "financial-advisers"}
+SEGMENT_SLUG = {"S5": "accountants", "S4": "insurance-brokers", "S9": "financial-advisers", "S1": "recruitment",
+                "S2": "web-agencies"}
 
 
 def industry_hint(segment: str, sic: str | None) -> tuple[str, str] | None:

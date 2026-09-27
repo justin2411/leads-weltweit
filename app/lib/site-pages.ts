@@ -8,7 +8,7 @@ const NAMES: Record<string, { name: string; blurb: string }> = {
   "insurance-brokers": { name: "Commercial insurance brokers", blurb: "New and growing businesses at the moment liability, property and employer cover is arranged." },
   "financial-advisers": { name: "Financial advisers", blurb: "New directors and growing employers, at the point when pensions, protection and benefits come up." },
   recruitment: { name: "Recruitment agencies", blurb: "Employers with roles open for weeks, repeated postings or several hires at once." },
-  "web-agencies": { name: "Web agencies", blurb: "New companies and businesses with outdated or missing websites." },
+  "web-agencies": { name: "Web agencies", blurb: "Newly registered companies without a website, when site, domain and email are set up." },
   "it-services": { name: "IT & managed service providers", blurb: "New sites, fast-growing teams and open IT roles." },
 };
 

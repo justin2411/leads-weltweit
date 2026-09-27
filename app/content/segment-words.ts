@@ -143,6 +143,68 @@ const EN: Record<string, SegmentCopy> = {
       ["Local and personal", "{firma} would pick the towns, so every meeting would be within reach."],
     ],
   },
+  recruitment: {
+    words: { beruf: "recruiters", team: "your agency", zielkunden: "employers that are hiring", leistung: "permanent and temporary staffing", anlass: "a role open for weeks or several hires at once" },
+    chips: ["Roles open 30+ days", "Several hires at once", "Reposted roles", "New sites"],
+    stepsTitle: "How {firma} could call the right employer first",
+    steps: [
+      "We read the careers pages of local employers around {ort} every day and note when each role first appeared.",
+      "We keep only employers where hiring is hard or growing fast, the moment outside help with {leistung} is welcome.",
+      "As a client, {firma} would get the list every Monday, with the roles, how long they have been open and an opening line written for {beruf}.",
+    ],
+    getsTitle: "What {firma} would receive every Monday",
+    gets: [
+      "Employers around {ort} with roles open for more than 30 days",
+      "Companies hiring several people at the same time",
+      "The employer's own careers page as source, with the date we first saw each role",
+      "The company's phone number and email, a short profile and a sales tip for {beruf} with every lead",
+      "A short opening line that refers to {anlass}",
+    ],
+    sampleTitle: "10 hiring employers from {region}, free",
+    why: {
+      job_open_30d: "A role still open after 30 days: the employer has tried alone and is more likely to accept help.",
+      jobs_3plus: "Several open roles at once: more work than an internal team can handle, a reason to call about {leistung}.",
+      new_incorporation: "A new company that will soon hire its first people.",
+    },
+    revenueTitle: "How {firma} could turn this into placements",
+    revenue: [
+      ["Call where it hurts", "An employer with a role open for weeks already knows the cost of the vacancy. The call from {firma} would solve a real problem."],
+      ["More than one role", "Companies hiring several people at once can become a client for more than one placement."],
+      ["No job board scraping", "The source is the employer's own careers page, so {team} would reach employers competitors find later."],
+      ["Your area only", "{firma} would pick the towns. Every lead would be in the market your consultants know."],
+    ],
+  },
+  "web-agencies": {
+    words: { beruf: "web agencies", team: "your studio", zielkunden: "new and growing businesses", leistung: "websites, online shops and SEO", anlass: "a new company without a website yet" },
+    chips: ["New companies", "No website yet", "Outdated sites", "Growing teams"],
+    stepsTitle: "How {firma} could win the first website",
+    steps: [
+      "We check new company registrations around {ort} every day and look for a live website under the company's name.",
+      "We keep businesses without a website or with an outdated one, the moment {leistung} are needed.",
+      "As a client, {firma} would get the list every Monday, with date, source and an opening line written for {beruf}.",
+    ],
+    getsTitle: "What {firma} would receive every Monday",
+    gets: [
+      "Companies registered around {ort} in recent weeks, with registered address and date",
+      "Whether a website was found, and which domains we checked",
+      "The official Companies House record for every lead",
+      "The company's phone number and email, a short profile and a sales tip for {beruf} with every lead",
+      "A short opening line that refers to {anlass}",
+    ],
+    sampleTitle: "10 new businesses from {region} without a website, free",
+    why: {
+      new_incorporation: "A company that is just starting: its first website, domain and email are usually still ahead.",
+      job_open_30d: "A business hiring for weeks: a better careers page or website could help it find people.",
+      jobs_3plus: "A growing business often outgrows the site it started with.",
+    },
+    revenueTitle: "How {firma} could turn this into projects",
+    revenue: [
+      ["The first website", "A new company needs a site, a domain and email. Reaching it early would put {firma} in the first conversation."],
+      ["Checked, not guessed", "Each lead notes which domains we checked, so {team} would know there is no site yet before calling."],
+      ["From build to retainer", "A first site often leads to hosting, updates and SEO, work that continues after launch."],
+      ["Local clients", "{firma} would pick the towns, so every lead would be a business nearby."],
+    ],
+  },
 };
 
 const EN_DEFAULT: SegmentCopy = {

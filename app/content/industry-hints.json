@@ -217,6 +217,68 @@
     "Advisory and finance firms often want key person and shareholder protection from the start.",
     "Have you looked at key person or shareholder protection yet?"
    ]
+  },
+  "web-agencies": {
+   "construction": [
+    "Trades win work by referral and search; a simple site with services, areas and reviews brings enquiries.",
+    "Would a simple site with your services and areas help bring in enquiries?"
+   ],
+   "retail": [
+    "A shop needs opening hours, products and ideally online orders from the first day.",
+    "Are you planning to sell online as well as in the shop?"
+   ],
+   "hospitality": [
+    "Guests look up menus, opening hours and bookings online before they visit.",
+    "Do you have a page with menu, opening hours and bookings yet?"
+   ],
+   "transport": [
+    "Business customers check a haulier or courier online before they ask for a quote.",
+    "Would a site with a quote form help you win business customers?"
+   ],
+   "property": [
+    "Landlords and agents need listings and a professional first impression online.",
+    "Do you have a site for your properties or services yet?"
+   ],
+   "tech": [
+    "IT companies are judged by their own site; a weak one costs credibility.",
+    "Is a professional site for the new company already planned?"
+   ],
+   "professional": [
+    "Consultants are checked online before the first meeting; a clear profile builds trust.",
+    "Do you have a site that explains your services yet?"
+   ],
+   "health": [
+    "Patients and clients search for services, prices and booking online.",
+    "Would online booking on your own site help you?"
+   ],
+   "education": [
+    "Courses and tutors are found through search; timetables and sign-up belong on the site.",
+    "Do you have a page where people can see courses and sign up?"
+   ],
+   "personal": [
+    "Salons and personal services live from bookings and reviews online.",
+    "Would online booking on your own site be useful?"
+   ],
+   "leisure": [
+    "Events and leisure businesses need dates, tickets and pictures online.",
+    "Do you have a site for dates and bookings yet?"
+   ],
+   "services": [
+    "Service firms are compared online; a clear site with prices or a quote form brings requests.",
+    "Would a site with a quote form help you get requests?"
+   ],
+   "manufacturing": [
+    "Buyers look for capabilities and certifications online before they call.",
+    "Do you have a site that shows what you make and for whom?"
+   ],
+   "finance": [
+    "Financial firms need a trustworthy site with the right regulatory information.",
+    "Is a professional site with the required information planned?"
+   ],
+   "farming": [
+    "Farm shops and producers sell more with a site and direct orders.",
+    "Would a site with direct orders be useful for you?"
+   ]
   }
  }
 }
