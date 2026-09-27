@@ -11,6 +11,7 @@ import { db } from "@/lib/supabase";
 import { pickVariant } from "@/lib/variants";
 import { Tracker } from "./tracker";
 import { PREMIUM, segmentCopy } from "@/content/segment-words";
+import { countryWords, localize, segKey } from "@/lib/country";
 import HINTS from "@/content/industry-hints.json";
 import type { CSSProperties } from "react";
 import { BrandShell, SiteFooter, SiteHeader, Words } from "../../chrome";
@@ -59,14 +60,11 @@ function cleanEvent(ev: string, company: string): string {
 
 type Sample = { company: string; location?: string; district?: string; industry?: string; sicCode?: string; noWebsite?: boolean; event: string; date?: string; source?: string; signal?: string; urgency?: string; opener?: string };
 
-/** Echte Probe-Leads aus der Region des Empfängers (Firmendaten, als Beispiel markiert). */
-async function regionalSamples(page: { segment_id: string; country: string }, places: (string | undefined)[]): Promise<Sample[]> {
-  const terms = [...new Set(places.map((x) => x?.replace(/[%,()]/g, "").trim()).filter((x): x is string => !!x && x.length > 2))];
-  if (!terms.length) return [];
+/** Echte Probe-Leads aus dem ganzen Land (Firmendaten, als Beispiel markiert). */
+async function countrySamples(page: { segment_id: string; country: string }): Promise<Sample[]> {
   const { data } = await db().from("leads")
     .select("event_summary, event_date, source_name, signal_type, urgency, opener, company_id, observation_ids, watch_companies!inner(name, city, region, address)")
     .eq("segment_id", page.segment_id).eq("country", page.country).in("status", ["sample", "new"])
-    .or(terms.flatMap((r) => [`region.ilike.%${r}%`, `city.ilike.%${r}%`]).join(","), { foreignTable: "watch_companies" })
     .order("event_date", { ascending: false }).limit(200);
   const rows = (data ?? []) as any[];
   // Branche (SIC) aus der Beobachtung holen, damit die Beispiele unterscheidbar sind
@@ -145,22 +143,24 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
   // Preise öffentlich noch nicht zeigen (Inhaber 27.09.2026); nur in der Vorschau des Inhabers sichtbar
   const canBuy = (preview || SHOW_PRICES) && stripeEnabled(mode) && buyable.length > 0;
   const personal = preview && !sp.r ? null : await personalFor(sp.r, page);
-  const P: Personal = personal ?? {};
+  // Leads aus dem ganzen Land: {region}/{ort} in älteren Texten meinen das Land
+  const CW = countryWords(page.country);
+  const P: Personal = { ...(personal ?? {}), region: CW.land, ort: CW.land };
   const lang = page.language;
-  const regional = await regionalSamples(page, [personal?.ort, personal?.region]);
-  const samples = (regional.length >= 3 ? regional : ((v.sample_leads ?? []) as Sample[])).slice(0, 3);
+  const live = await countrySamples(page).catch(() => [] as Sample[]);
+  const samples = (live.length >= 3 ? live : ((v.sample_leads ?? []) as Sample[])).slice(0, 3);
   const nd = (x: string) => x.replace(/\s+[–—]\s+/g, ", ");
   const SC = segmentCopy(page.slug, lang);
-  const W = SC.words;
+  const W = { ...SC.words, ...CW };
   // Platzhalter füllen; Satzanfang groß (z. B. "{team} calls" -> "Your practice calls")
-  const F = (x: string) => { const r = nd(fill(x, P, lang, W)); return r ? r[0].toUpperCase() + r.slice(1) : r; };
-  const faq = fillDeep((v.faq ?? []) as { q: string; a: string }[], P, lang, W);
+  const F = (x: string) => { const r = localize(nd(fill(x, P, lang, W)), page.country); return r ? r[0].toUpperCase() + r.slice(1) : r; };
+  const faq = fillDeep((v.faq ?? []) as { q: string; a: string }[], P, lang, W).map((f) => ({ q: localize(f.q, page.country), a: localize(f.a, page.country) }));
   const headline = F(v.headline);
   const subheadline = v.subheadline ? F(v.subheadline) : null;
-  const cta = fill(v.cta_label, P, lang, W);
+  const cta = localize(fill(v.cta_label, P, lang, W), page.country);
   const VV = VIDEOS as Record<string, { src: string; poster: string; seconds: number }>;
   // Video in der Sprache der Seite (z. B. "fr:fr/experts-comptables"), sonst das der Seite
-  const video = VV[`${lang}:${page.slug}`] ?? VV[`${lang}:ind/${page.slug.split("/")[1]}`] ?? VV[page.slug];
+  const video = VV[page.slug] ?? VV[`${lang}:${page.slug}`] ?? VV[`${lang}:ind/${segKey(page.slug)}`];
   // Kein Formular: Knopf -> zweiter Schritt (Bedingungen) -> ein Klick sendet die Probe. Adresse kommt aus dem Mail-Link.
   const known = Boolean(personal?.email && personal.firma);
   const keep = [preview && `vorschau=1&v=${v.variant_key}`, sp.r && /^[A-Za-z0-9_-]{8,80}$/.test(sp.r) && `r=${sp.r}`].filter(Boolean).join("&");
@@ -175,7 +175,7 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
       <ul className="ticks">
         <li><b>{L.free}</b> {L.freeText}</li>
         <li><b>{L.noObl}</b> {L.noOblText}</li>
-        <li>{known ? L.sendsTo(personal!.gebiet, personal!.email!) : L.sendsToUnknown}</li>
+        <li>{known ? L.sendsTo(CW.land, personal!.email!) : L.sendsToUnknown}</li>
         <li>{L.followUp}</li>
       </ul>
       {known ? (
@@ -232,14 +232,14 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
       )}
 
       {samples.length > 0 && (
-        <section className="tinted tight"><div className="wrap"><Head eyebrow="" title={fr ? L.examples : F(personal?.region ? "Example leads from {region}" : "Example leads")} />
+        <section className="tinted tight"><div className="wrap"><Head eyebrow="" title={fr ? L.examples : F("Example leads from across {land}")} />
           <p className="intro">{L.examplesNote}</p>
           <div className="leadgrid p3">{samples.map((s0, k) => {
             // ältere Beispiele (sample_leads) haben kein Signal: Neugründung am Text erkennen
             const sm = { ...s0, signal: s0.signal ?? (/registered on/i.test(s0.event) ? "new_incorporation" : undefined) };
             const label = SIGNAL_LABEL[fr ? "fr" : "en"][sm.signal ?? ""] ?? null;
             const detail = cleanEvent(sm.event, sm.company);
-            const hint = industryHint(page.slug.split("/")[1] ?? "", sm.sicCode);
+            const hint = industryHint(segKey(page.slug), sm.sicCode);
             const why = hint?.[0] ?? (sm.signal ? SC.why[sm.signal] : undefined);
             const month = sm.date ? new Date(sm.date + "T12:00:00Z").toLocaleDateString("en-GB", { month: "long" }) : "";
             const opener = hint && sm.signal === "new_incorporation" && !fr
@@ -299,7 +299,7 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
       {!step && !sp.angefragt && (
         <section className="offer tight" id="sample"><div className="wrap">
           <div><Head eyebrow="" title={F(SC.sampleTitle)} />
-            <p className="intro">{known ? L.sendsTo(personal!.gebiet, personal!.email!) : L.sendsToUnknown}</p>
+            <p className="intro">{known ? L.sendsTo(CW.land, personal!.email!) : L.sendsToUnknown}</p>
             <div className="cta-stack solo" data-rv><Start label={L.send} /><Fine /></div>
           </div>
         </div></section>

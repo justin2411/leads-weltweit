@@ -154,6 +154,20 @@ export const BRAND_CSS = `
 .bx .card:before{content:"";position:absolute;inset:0 0 auto 0;height:2px;background:linear-gradient(90deg,var(--gold),transparent);transform:scaleX(0);transform-origin:left;transition:transform .6s}
 .bx a.card:hover,.bx .card.lift:hover{transform:translateY(-6px);box-shadow:0 34px 70px -38px rgba(22,27,36,.45);border-color:#d6c7ad}.bx .card:hover:before{transform:scaleX(1)}
 .bx .card .cc{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+.bx .cc-in{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
+.bx .cswitch{display:inline-flex;flex-wrap:wrap;gap:6px;padding:6px;border:1px solid var(--line);border-radius:99px;background:var(--card);margin:0 0 28px}
+.bx .cswitch label{cursor:pointer;display:flex;gap:9px;align-items:center;padding:10px 20px;border-radius:99px;font-size:15px;font-weight:600;color:var(--soft);transition:background .3s,color .3s}
+.bx .cswitch label:hover{color:var(--ink)}
+.bx .cswitch label span{font-size:18px;line-height:1}
+.bx #cc-UK:checked ~ .cswitch label[for=cc-UK]{background:linear-gradient(135deg,#e2c894,#b08d57);color:#141008}
+.bx #cc-UK:focus-visible ~ .cswitch label[for=cc-UK]{outline:2px solid var(--gold);outline-offset:2px}
+.bx #cc-UK:checked ~ .cards .card[data-cc]:not([data-cc=UK]){display:none}
+.bx #cc-US:checked ~ .cswitch label[for=cc-US]{background:linear-gradient(135deg,#e2c894,#b08d57);color:#141008}
+.bx #cc-US:focus-visible ~ .cswitch label[for=cc-US]{outline:2px solid var(--gold);outline-offset:2px}
+.bx #cc-US:checked ~ .cards .card[data-cc]:not([data-cc=US]){display:none}
+.bx #cc-FR:checked ~ .cswitch label[for=cc-FR]{background:linear-gradient(135deg,#e2c894,#b08d57);color:#141008}
+.bx #cc-FR:focus-visible ~ .cswitch label[for=cc-FR]{outline:2px solid var(--gold);outline-offset:2px}
+.bx #cc-FR:checked ~ .cards .card[data-cc]:not([data-cc=FR]){display:none}
 .bx .card h3{font-weight:600;font-size:22px;margin:10px 0 10px;line-height:1.25;letter-spacing:-.01em}
 .bx .card p{color:var(--soft);margin:0 0 4px;font-size:16px}.bx .card .go{display:inline-block;margin-top:18px;font-weight:600;font-size:15px}
 .bx .card .go i{font-style:normal;display:inline-block;transition:transform .3s}.bx a.card:hover .go i{transform:translateX(5px)}
