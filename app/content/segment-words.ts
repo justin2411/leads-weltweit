@@ -29,7 +29,7 @@ export const PREMIUM: Record<"en" | "fr", { title: string; items: [string, strin
     title: "Why these are premium leads",
     items: [
       ["Fresh", "Events from the last weeks, not a database that was bought years ago."],
-      ["Verified", "Every lead carries the date and the official source, so {firma} could check it in seconds."],
+      ["Verified", "Every lead is checked against official registers or the company's own website, with the date we found it."],
       ["Rated", "Each lead is scored for freshness and relevance. Anything below our minimum is never sent."],
       ["Local", "Only the towns {firma} would choose, so every call would be in {team}'s own market."],
       ["Ready to call", "Phone number and company email with every lead, plus an opening line written for {beruf} that refers to the actual event."],
@@ -40,7 +40,7 @@ export const PREMIUM: Record<"en" | "fr", { title: string; items: [string, strin
     title: "Pourquoi ce sont des pistes premium",
     items: [
       ["Récentes", "Des événements des dernières semaines, pas une base achetée il y a des années."],
-      ["Vérifiées", "Chaque piste indique la date et la source officielle, {firma} pourrait la vérifier en quelques secondes."],
+      ["Vérifiées", "Chaque piste est vérifiée dans les registres officiels ou sur le site de l'entreprise, avec la date."],
       ["Notées", "Chaque piste est notée selon sa fraîcheur et sa pertinence. En dessous de notre seuil, elle n'est jamais envoyée."],
       ["Locales", "Uniquement les villes que {firma} choisirait."],
       ["Prêtes à appeler", "Téléphone et e-mail de l'entreprise pour chaque piste, et une phrase d'accroche qui fait référence à l'événement."],

@@ -45,10 +45,11 @@ def signature(lang: str) -> str:
     name = os.environ.get("SENDER_NAME") or brand()
     company = brand()
     title = os.environ.get("SENDER_TITLE") or ("Fondateur" if lang == "fr" else "Founder")
-    tagline = ("Signaux de recrutement et de croissance pour les prestataires B2B" if lang == "fr"
-               else "Hiring and growth signals for B2B service firms")
+    tagline = ("Pistes exclusives au bon moment pour les prestataires B2B" if lang == "fr"
+               else "Exclusive trigger leads for B2B service firms")
     lines = [name, f"{title}, {company}", tagline] if name != company else [company, tagline]
-    lines += [x for x in (os.environ.get("SENDER_WEBSITE"), os.environ.get("SENDER_PHONE")) if x]
+    site = os.environ.get("SENDER_WEBSITE") or "www.nextgen-profit.de"
+    lines += [x for x in (site.replace("https://", "").rstrip("/"), os.environ.get("SENDER_PHONE")) if x]
     return "\n".join(lines)
 
 
@@ -79,7 +80,7 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
                  if has_spec else f"I noticed {firm} recruits for employers across {area}, so this may be relevant.")
         core = (f"{brand()} monitors local employers' own careers pages and flags the moments that usually lead "
                 "to agency work: roles open for 30+ days, roles re-advertised, or several vacancies at once.")
-        detail = ("Each lead shows the company, the role, when we first saw it and the source, "
+        detail = ("Each lead shows the company, the role and when we first saw it, "
                   "so your consultants can call with a specific reason.")
         ask = f"Would a free sample of 10 current leads from {area} be useful?"
     elif seg == "S2" and not fr:

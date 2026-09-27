@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt && python -m playwright install --with-deps chromium
       - name: Erste Lieferung freigeben
         if: ${{ inputs.befehl == 'approve' }}
         run: python scripts/deliveries.py approve --subscription "${{ inputs.abo }}" --freigabe "Inhaber per GitHub, ${{ github.actor }}"

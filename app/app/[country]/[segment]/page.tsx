@@ -257,7 +257,8 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
                 {why && <p className="why"><b>{fr ? "Conseil de vente" : F("Sales tip for {beruf}")}</b>{F(why)}</p>}
                 {opener && <p className="op"><b>{fr ? "Phrase d'accroche" : "Opening line"}</b>“{nd(opener)}”</p>}
                 <div className="ft">
-                  {sm.source && <span>{L.source}: {sm.source}</span>}
+                  {sm.source && <span>{L.source}: {/career|karriere|carri/i.test(sm.source) || sm.signal?.startsWith("job")
+                    ? (fr ? "Page carrières de l'employeur" : "Employer's careers page") : (fr ? "Registre officiel" : "Official company register")}</span>}
                   {sm.urgency && <span className={`prio p-${sm.urgency}`}>{PRIO[fr ? "fr" : "en"][sm.urgency] ?? sm.urgency}</span>}
                 </div>
               </article>);
