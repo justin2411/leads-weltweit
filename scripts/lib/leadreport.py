@@ -122,53 +122,49 @@ T2 = {
     "en": {"h": "Why these leads turn into revenue",
            "why": [("A real reason to buy", "Every company has just done something that creates demand for your service: founded, hiring, growing, moving."),
                    ("You call first", "Leads arrive days after the event, often before the company has found a provider."),
-                   ("Only for your firm", "Each lead goes to one firm in your field and area. No competitor calls the same company.")],
+                   ("Only for your firm", "Each lead goes to one firm in your field only. No competitor calls the same company.")],
            "how_h": "How it works",
-           "how": [("You choose your area", "Towns or counties you serve, and the signals that fit your business."),
+           "how": [("You choose your focus", "The industries and signals that fit your business, or simply the whole country."),
                    ("Every Monday", "A fresh report like this one, as PDF and spreadsheet for your CRM."),
-                   ("You call and win clients", "Phone, email, sales tip and opening line are in every lead.")],
+                   ("You call and win clients", "Phone, email, contact person and a short sales briefing in every lead.")],
            "inc_h": "In every lead", "inc": ["Company and location", "What happened, with date", "Phone and email", "Priority", "Sales tip", "Opening line"],
            "plans_h": "Plans", "per": "per month", "btn": "Start my weekly leads", "btn1": "See plans and start", "start": "Ready to start?",
-           "cta": "Just reply to our email with your towns. Your first delivery arrives next Monday.",
+           "cta": "Pick a plan or tell us your number of leads. Your first delivery arrives next Monday.",
            "b_co": "Company profile", "b_ev": "Why it's an opportunity", "b_tip": "Sales approach", "b_what": "What happened", "h_why": "Why now", "h_needs": "What they likely need", "h_win": "How to win them", "w_offer": "Offer:", "w_ask": "Ask:", "doc": "Lead briefing", "h_sit": "The situation", "h_angle": "Your angle", "h_obj": "If they hesitate", "h_call": "Call guide", "h_mail": "Follow-up email, ready to send", "i_addr": "Address", "i_ask": "Ask for", "i_contact": "Contact person", "i_co": "Company",
            "ey": "A personal note", "intro_h": "Thank you for your first order",
-           "intro": "We are glad to have you on board. Our goal is simple: to bring you new clients at exactly the right moment. "
-                    "Every week we look for companies that need what you offer right now, because they have just been founded, are hiring or are growing, "
-                    "and we hand them to you first, with everything you need to start the conversation. We look forward to your first wins.",
+           "intro": "Our goal is simple: <b>new clients for you, at exactly the right moment.</b> Every week we find companies that need what you offer <b>right now</b> and hand them to you <b>first</b>, with everything you need to start the conversation.",
            "intro_h_s": "Your free sample",
-           "intro_s": "Thank you for your interest in NextGen Profit. Our goal is simple: to bring you new clients at exactly the right moment. "
-                      "The companies below need what you offer right now, because they have just been founded, are hiring or are growing. "
-                      "Each one comes with everything you need to start the conversation. We hope they bring you your first new client.",
+           "intro_s": "Here are <b>10 companies</b> that need what you offer <b>right now</b>: just founded, hiring or growing. Each one comes with <b>phone, email and contact person</b> and a short briefing on how to win them.",
            "role": "Founder, NextGen Profit",
            "f_ind": "Industry", "f_form": "Legal form", "f_reg": "Registered", "f_loc": "Location", "f_web": "Website", "f_noweb": "none found yet",
            "p1": "10 leads selected for you", "p1s": "Business contact details from public registers and company websites",
-           "plan_txt": {"starter": "Up to 30 new leads per week from 1 area. Every lead exclusive to your firm.",
-                        "pro": "Up to 100 new leads per week from up to 3 areas, all matching signals. Every lead exclusive to your firm."}},
+           "plan_txt": {"starter": "Up to 30 new leads per week. Every lead exclusive to your firm.",
+                        "pro": "Up to 100 new leads per week, all matching signals. Every lead exclusive to your firm."},
+           "custom_n": "Custom", "custom_p": "Your number",
+           "custom_t": "Tell us how many leads you need per week, and we will make you an offer that fits your team."},
     "fr": {"h": "Pourquoi ces pistes génèrent du chiffre d'affaires",
            "why": [("Une vraie raison d'acheter", "Chaque entreprise vient de faire quelque chose qui crée un besoin : création, recrutement, croissance, déménagement."),
                    ("Vous appelez en premier", "Les pistes arrivent quelques jours après l'événement, souvent avant que l'entreprise ait trouvé un prestataire."),
-                   ("Réservé à votre entreprise", "Chaque piste va à une seule entreprise de votre secteur et de votre zone.")],
+                   ("Réservé à votre entreprise", "Chaque piste va à une seule entreprise de votre secteur.")],
            "how_h": "Comment ça marche",
-           "how": [("Vous choisissez votre zone", "Les villes ou départements que vous couvrez, et les signaux qui vous conviennent."),
+           "how": [("Vous choisissez votre cible", "Les secteurs et signaux qui vous conviennent, ou simplement tout le pays."),
                    ("Chaque lundi", "Un nouveau rapport comme celui-ci, en PDF et en tableau pour votre CRM."),
-                   ("Vous appelez et gagnez des clients", "Téléphone, e-mail, conseil de vente et phrase d'accroche dans chaque piste.")],
+                   ("Vous appelez et gagnez des clients", "Téléphone, e-mail, interlocuteur et un court briefing commercial dans chaque piste.")],
            "inc_h": "Dans chaque piste", "inc": ["Entreprise et lieu", "L'événement, avec la date", "Téléphone et e-mail", "Priorité", "Conseil de vente", "Phrase d'accroche"],
            "plans_h": "Formules", "per": "par mois", "btn": "Recevoir mes pistes chaque semaine", "btn1": "Voir les formules", "start": "On commence ?",
-           "cta": "Répondez simplement à notre e-mail avec vos villes. Votre première livraison arrive lundi prochain.",
+           "cta": "Choisissez une formule ou indiquez votre volume. Votre première livraison arrive lundi prochain.",
            "b_co": "Profil de l'entreprise", "b_ev": "Pourquoi c'est une opportunité", "b_tip": "Approche commerciale", "b_what": "Ce qui s'est passé", "h_why": "Pourquoi maintenant", "h_needs": "Leurs besoins probables", "h_win": "Comment les gagner", "w_offer": "Proposez :", "w_ask": "Demandez :", "doc": "Briefing pistes", "h_sit": "La situation", "h_angle": "Votre angle", "h_obj": "S'ils hésitent", "h_call": "Guide d'appel", "h_mail": "E-mail de relance, prêt à envoyer", "i_addr": "Adresse", "i_ask": "Demander", "i_contact": "Interlocuteur", "i_co": "Entreprise",
            "ey": "Un mot personnel", "intro_h": "Merci pour votre première commande",
-           "intro": "Nous sommes ravis de vous compter parmi nos clients. Notre objectif est simple : vous apporter de nouveaux clients au bon moment. "
-                    "Chaque semaine, nous repérons les entreprises qui ont besoin de votre service maintenant, parce qu'elles viennent d'être créées, recrutent ou grandissent, "
-                    "et nous vous les transmettons en premier, avec tout ce qu'il faut pour engager la conversation. Au plaisir de vos premiers succès.",
+           "intro": "Notre objectif est simple : <b>de nouveaux clients pour vous, au bon moment.</b> Chaque semaine, nous trouvons les entreprises qui ont besoin de votre service <b>maintenant</b> et vous les transmettons <b>en premier</b>, avec tout ce qu'il faut pour engager la conversation.",
            "intro_h_s": "Votre échantillon gratuit",
-           "intro_s": "Merci de votre intérêt pour NextGen Profit. Notre objectif est simple : vous apporter de nouveaux clients au bon moment. "
-                      "Les entreprises ci-dessous ont besoin de votre service maintenant, parce qu'elles viennent d'être créées, recrutent ou grandissent. "
-                      "Chacune est accompagnée de tout ce qu'il faut pour engager la conversation.",
+           "intro_s": "Voici <b>10 entreprises</b> qui ont besoin de votre service <b>maintenant</b> : créées récemment, en recrutement ou en croissance. Chacune avec <b>téléphone, e-mail et interlocuteur</b> et un court briefing pour la gagner.",
            "role": "Fondateur, NextGen Profit",
            "f_ind": "Secteur", "f_form": "Forme juridique", "f_reg": "Immatriculée", "f_loc": "Lieu", "f_web": "Site web", "f_noweb": "pas encore trouvé",
            "p1": "10 pistes sélectionnées pour vous", "p1s": "Coordonnées professionnelles issues de registres publics et des sites des entreprises",
-           "plan_txt": {"starter": "Jusqu'à 30 nouvelles pistes par semaine dans 1 zone. Chaque piste réservée à votre entreprise.",
-                        "pro": "Jusqu'à 100 nouvelles pistes par semaine dans 3 zones maximum, tous les signaux utiles. Chaque piste réservée à votre entreprise."}},
+           "plan_txt": {"starter": "Jusqu'à 30 nouvelles pistes par semaine. Chaque piste réservée à votre entreprise.",
+                        "pro": "Jusqu'à 100 nouvelles pistes par semaine, tous les signaux utiles. Chaque piste réservée à votre entreprise."},
+           "custom_n": "Sur mesure", "custom_p": "Votre volume",
+           "custom_t": "Dites-nous combien de pistes il vous faut par semaine, nous vous faisons une offre adaptée à votre équipe."},
 }
 CUR = {"gbp": "£", "eur": "€", "usd": "$"}
 
@@ -200,6 +196,7 @@ def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str
         "pin": '<path d="M12 21s7-6.2 7-11.5A7 7 0 005 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
         "user": '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/>',
         "co": '<path d="M4 21V5l8-2v18M12 9h8v12M7 8h2M7 12h2M7 16h2M15 13h2M15 17h2"/>',
+        "cal": '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
     }
     ic = lambda k: f'<svg viewBox="0 0 24 24">{icon[k]}</svg>'
     cards = []
@@ -219,10 +216,12 @@ def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str
         prole = (r.get("contact_role") or "").strip()
         addr = (r.get("address") or "").strip() or loc
         meta = " · ".join(x for x in [ind, r.get("legal_form"), loc] if x)
+        dated = _day(r.get("event_date", ""), lang)
         facts = [("phone", t["phone"], r.get("phone")), ("mail", t["email"], r.get("email")), ("web", t["web"], web),
                  ("user", t2["i_contact"], f"{person}{(' · ' + prole) if prole else ''}" if person else ""),
-                 ("pin", t2["i_addr"], addr)]
-        facts = [f for f in facts if f[2]]
+                 ("pin", t2["i_addr"], addr),
+                 ("cal", t2["f_reg"] if sig == "new_incorporation" else t["detected"], dated)]
+        facts = [(k, lbl, v or "–") for k, lbl, v in facts]
         cards.append(f"""
 <article class="lead">
   <div class="no">{num:02d}</div>
@@ -235,17 +234,16 @@ def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str
       <div><h4>{t2['h_needs']}</h4><ul>{''.join(f'<li>{e(x)}</li>' for x in bf['needs'])}</ul></div>
       <div><h4>{t2['h_win']}</h4><p><b>{t2['w_offer']}</b> {e(bf['offer'])}</p><p><b>{t2['w_ask']}</b> <i>“{e(bf['ask'])}”</i></p></div>
     </div>
-    {f'<p class="op"><span>{t["open"]}</span>“{e(opener)}”</p>' if opener else ''}
   </div>
 </article>""")
     when = _day((period or dt.date.today()).isoformat(), lang)
     sample = bool(plans)
     head = t2["p1"] if len(groups) >= 10 else f"{len(groups)} {t['firms']}"
     intro = f"""<div class="intro"><h1>{t2['intro_h_s'] if sample else t2['intro_h']}{(', ' + e(firm)) if firm else ''}.</h1>
-<p>{t2['intro_s'] if sample else t2['intro']}</p><div class="sig">NextGen <i>Profit</i></div></div>"""
+<p>{t2['intro_s'].replace('<b>10 ', f'<b>{len(groups)} ') if sample else t2['intro']}</p></div>"""
     chunks, k = [], 0
     while k < max(len(cards), 1):
-        size = 2 if k == 0 else 3
+        size = 3 if k == 0 else (4 if len(cards) - k > 3 else 3)
         chunks.append((k, cards[k:k + size]))
         k += size
     total = len(chunks) + (1 if plans else 0)
@@ -260,6 +258,7 @@ def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str
         pl = "".join(f"""<div class="plan{' hi' if k == len(plans) - 1 else ''}"><div class="pn">{e(p.get('name', ''))}</div>
 <div class="pp">{e(_money(p))}<small> {t2['per']}</small></div><p>{e(t2['plan_txt'].get(p.get('key', ''), ''))}</p></div>"""
                      for k, p in enumerate(plans))
+        pl += f"""<div class="plan cu"><div class="pn">{t2['custom_n']}</div><div class="pp">{t2['custom_p']}</div><p>{t2['custom_t']}</p></div>"""
         page2 = f"""<section class="pg p2">{top()}<div class="in">
 <h1 class="h1">{t2['h']}</h1>
 <div class="why3">{''.join(f'<div><b>{e(h)}</b><p>{e(d)}</p></div>' for h, d in t2['why'])}</div>
@@ -280,13 +279,13 @@ body{{font-family:Inter,Helvetica,Arial,sans-serif;color:#1c2536;-webkit-print-c
 .doc{{font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:#8a92a3;font-weight:600}}
 .in{{padding:7mm 16mm 0;flex:1;display:flex;flex-direction:column;min-height:0;margin-bottom:17mm}}
 .ft{{position:absolute;left:16mm;right:16mm;bottom:8mm;display:flex;justify-content:space-between;font-size:7.8px;letter-spacing:.08em;color:#9aa1ae;border-top:.2mm solid #eceae4;padding-top:2.5mm}}
-.intro{{padding:1mm 0 6mm;margin-bottom:5mm;border-bottom:.2mm solid #eceae4}}
-.intro h1{{font-size:24px;font-weight:800;letter-spacing:-.7px;line-height:1.15;color:#0b1428;margin-bottom:3mm}}
-.intro p{{font-size:10.8px;line-height:1.68;color:#475064;max-width:168mm}}
+.intro{{padding:0 0 5mm;margin-bottom:4mm;border-bottom:.2mm solid #eceae4}}
+.intro h1{{font-size:22px;font-weight:800;letter-spacing:-.7px;line-height:1.15;color:#0b1428;margin-bottom:3mm}}
+.intro p{{font-size:13.2px;line-height:1.6;color:#39404d;max-width:172mm}}.intro p b{{color:#0b1428;font-weight:700}}
 .sig{{margin-top:3.5mm;font-size:11.5px;font-weight:800;letter-spacing:-.2px;color:#0b1428}}.sig i{{font-style:normal;color:#b08d57}}
 .sec{{margin:0 0 4mm}}.sec h3{{font-size:8.2px;letter-spacing:.18em;text-transform:uppercase;color:#a07f46;font-weight:700}}
-.grid{{display:flex;flex-direction:column;flex:1;justify-content:space-around}}
-.lead{{display:grid;grid-template-columns:11mm 1fr;gap:3mm;padding:4mm 0 4mm;border-bottom:.2mm solid #eceae4;overflow:hidden}}
+.grid{{display:flex;flex-direction:column}}
+.lead{{display:grid;grid-template-columns:11mm 1fr;gap:3mm;padding:3.6mm 0 3.8mm;border-bottom:.2mm solid #eceae4;overflow:hidden}}
 .lead:last-child{{border-bottom:0}}
 .no{{font-size:20px;font-weight:800;color:#d9c49a;letter-spacing:-.5px;line-height:1}}
 .main{{min-width:0;display:flex;flex-direction:column;gap:2.6mm}}
@@ -315,9 +314,10 @@ h4{{font-size:6.8px;letter-spacing:.16em;text-transform:uppercase;color:#a07f46;
 .how{{list-style:none;counter-reset:s;display:grid;grid-template-columns:repeat(3,1fr);gap:6mm;margin-bottom:10mm}}
 .how li{{counter-increment:s}}.how li:before{{content:"0" counter(s);display:block;font-size:18px;font-weight:800;color:#d9c49a;margin-bottom:1.5mm}}
 .how b{{font-size:11.5px;color:#0b1428}}.how p{{font-size:10px;line-height:1.55;color:#475064;margin-top:1mm}}
-.plans{{display:grid;grid-template-columns:1fr 1fr;gap:6mm}}.plan{{border:.2mm solid #e3e0d8;border-radius:10px;padding:5mm 6mm}}
+.plans{{display:grid;grid-template-columns:repeat(3,1fr);gap:5mm}}.plan{{border:.2mm solid #e3e0d8;border-radius:10px;padding:5mm 6mm}}
 .plan.hi{{border:.4mm solid #c9a86a;background:#fdfbf6}}
 .pn{{font-size:8px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;color:#8a92a3}}
+.plan.cu{{border-style:dashed}}.plan.cu .pp{{font-size:18px;padding:1.6mm 0 1.2mm}}
 .pp{{font-size:26px;font-weight:800;color:#0b1428;margin:1.5mm 0 2mm}}.pp small{{font-size:10px;font-weight:600;color:#8a92a3}}
 .plan p{{font-size:10px;line-height:1.5;color:#475064}}
 .cta{{margin-top:12mm;display:flex;justify-content:space-between;align-items:center;gap:8mm;padding:6mm 7mm;border-radius:12px;background:#fbf8f1;border:.2mm solid #ece3d0}}
