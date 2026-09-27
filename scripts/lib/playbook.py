@@ -1,113 +1,123 @@
-"""Vertriebs-Briefing je Lead für den Lead-Report: Lage, Ansatz, Gesprächsleitfaden, Einwand, Nachfassmail.
+"""Vertriebs-Briefing je Lead: warum jetzt, was die Firma wahrscheinlich braucht, wie man sie gewinnt.
 
-Fließtext wie von einem Vertriebsleiter. Firmenbezogenes kommt nur aus den Lead-Daten (Name, Datum, Stelle, Anzahl);
-alles andere sind allgemeine, ehrliche Empfehlungen je Signal und Branche des Käufers – keine erfundenen Fakten.
+Konkret statt generisch: kombiniert die echten Lead-Daten (Branche, Alter der Firma, Ort, Stellentitel, Anzahl
+Stellen) mit einem Playbook je Käufer-Zielgruppe und Branche der Lead-Firma (salesplay.json) sowie den
+Branchen-Tipps der Website (app/content/industry-hints.json). Keine erfundenen Fakten über die Firma.
 """
 from __future__ import annotations
 
+import datetime as dt
+import json
 import re
+from pathlib import Path
 
-# Was der Käufer (Zielgruppe) anbietet und welchen Nutzen er in einem Satz verspricht
-SEG = {
-    "en": {
-        "S1": ("recruitment support", "a shortlist of pre-screened candidates within days, so the role is filled faster"),
-        "S2": ("a new website", "a website that brings enquiries from the first month"),
-        "S3": ("managed IT support", "reliable IT, security and support without hiring an IT person"),
-        "S4": ("business insurance", "the right cover in place before the first contract, vehicle or employee"),
-        "S5": ("bookkeeping, payroll and tax support", "clean books, payroll and tax deadlines handled from the start"),
-        "S6": ("office space and fit-out", "a ready-to-use workspace without months of planning"),
-        "S7": ("commercial cleaning", "a clean, professional site from day one without managing staff"),
-        "S9": ("your service", "a quick, visible result with little effort on their side"),
-    },
-}
+HERE = Path(__file__).resolve().parent
+PLAY = json.loads((HERE / "salesplay.json").read_text(encoding="utf-8"))
+try:
+    HINTS = json.loads((HERE.parents[1] / "app" / "content" / "industry-hints.json").read_text(encoding="utf-8"))
+except OSError:
+    HINTS = {"groups": {}, "hints": {}}
+SLUG = {"S5": "accountants", "S4": "insurance-brokers", "S2": "web-agencies", "S9": "financial-advisers"}
 
-# Branchenspezifischer Winkel für Stellen-Signale (offene Stelle / mehrere Stellen)
-JOB_ANGLE = {
-    "S1": "Offer a shortlist of two or three pre-screened candidates for exactly this role within a week, on a success-fee basis. "
-          "The risk for them is low, and the value is obvious because the search has already cost them weeks.",
-    "S5": "If the open role is in finance, offer to cover the work until it is filled: bookkeeping, payroll or month-end close. "
-          "If it is another role, the growing workload still lands on their accounts. Either way, you take pressure off immediately.",
-    "S3": "Growing teams need laptops, accounts and security set up for every new hire. Offer to take onboarding IT off their plate "
-          "so new people are productive on day one.",
-    "S4": "More staff means new cover: employers' liability, key-person and possibly vehicles. Offer a short review so nothing is "
-          "missing as the team grows.",
-}
-
-
-# Nach wem fragen (Rolle, nie ein Personenname – CLAUDE.md: keine Mitarbeiterdaten)
-ASK_FOR = {
-    "S1": {"_": "Hiring manager or HR", "new_incorporation": "The founder"},
-    "S2": {"_": "Owner or marketing lead"},
-    "S3": {"_": "Owner or office manager", "jobs_3plus": "Operations or office manager"},
-    "S4": {"_": "Owner or managing director"},
-    "S5": {"_": "Owner or finance lead", "new_incorporation": "The founder / owner"},
-    "S6": {"_": "Owner or operations manager"},
-    "S7": {"_": "Facilities or office manager"},
-}
-
-
-def ask_for(segment: str | None, signal: str) -> str:
-    m = ASK_FOR.get(segment or "", {})
-    return m.get(signal) or m.get("_") or ("The founder / owner" if signal == "new_incorporation" else "Owner or managing director")
+# Branche der Lead-Firma aus SIC-Code oder Branchentext
+GROUP_WORDS = [
+    ("hospitality", r"restaurant|caf[eé]|coffee|food|beverage|\bbar\b|\bpub\b|hotel|catering|bakery|takeaway"),
+    ("construction", r"construct|build|roof|plumb|electric|joiner|carpent|civil eng|install|renovat"),
+    ("retail", r"retail|shop|store|e-?commerce|wholesale|boutique"),
+    ("transport", r"transport|freight|logistic|haulage|courier|delivery|taxi|removal"),
+    ("property", r"real estate|property|letting|landlord|estate agent|housing"),
+    ("tech", r"software|computer|\bit\b|digital|\bdata\b|tech|\bweb\b|\bapp\b|cyber"),
+    ("health", r"health|dental|medical|clinic|\bcare\b|pharma|therap|wellness|fitness|nursing"),
+    ("professional", r"consult|legal|\blaw\b|accountan|management|marketing|advis|architect|design|recruit"),
+]
+ROLE_WORDS = [
+    ("finance", r"account|finance|payroll|bookkeep|controller|audit|\btax\b|payable|receivable|credit"),
+    ("tech", r"developer|software|\bit\b|devops|\bdata\b|support analyst|network|cyber|pre-sales|line support"),
+    ("sales", r"sales|account manager|business development|\bbdm\b|commercial"),
+    ("care", r"\bcare\b|nurse|nursing|clinical|health|support worker|dental|nursery|early years|educator"),
+    ("hospitality", r"chef|kitchen|waiter|barista|bar staff|hospitality|front of house|housekeep"),
+    ("logistics", r"driver|warehouse|courier|forklift|logistic|delivery|picker"),
+    ("trades", r"technician|electrician|plumber|joiner|mechanic|welder|fitter|engineer|operative|builder"),
+]
+US_TERMS = [("VAT registration and the domestic reverse charge on building work", "Sales tax on materials and equipment where it applies"),
+            ("CIS returns for subcontractors every month from the first job", "1099 reporting and payments for subcontractors from the first job"),
+            ("A CIS and VAT setup package", "A 1099 and sales tax setup package"), ("monthly CIS returns", "1099 reporting"),
+            ("CIS returns", "1099 reporting"), ("CIS", "1099 reporting"),
+            ("VAT", "sales tax"), ("auto-enrolment", "401(k) setup"), ("Auto-enrolment", "401(k) setup"),
+            ("Workplace pension", "401(k) plan"), ("workplace pension", "401(k) plan"), ("corporation tax", "business taxes"),
+            ("tronc", "tip pooling"), ("Self-assessment", "Personal tax returns"), ("R&D tax relief", "R&D tax credits"),
+            ("director's pay", "owner's pay"), ("Director's pay", "Owner's pay")]
 
 
-def _role(event: str) -> str:
+def group_of(industry: str, sic: str = "") -> str:
+    g = (HINTS.get("groups") or {}).get((sic or "")[:2])
+    if g:
+        return g
+    t = (industry or "").lower()
+    for name, pat in GROUP_WORDS:
+        if re.search(pat, t):
+            return name
+    return "services"
+
+
+def role_of(role: str) -> str:
+    t = (role or "").lower()
+    for name, pat in ROLE_WORDS:
+        if re.search(pat, t):
+            return name
+    return "general"
+
+
+def _us(text: str, country: str) -> str:
+    if country != "US":
+        return text
+    for a, b in US_TERMS:
+        text = text.replace(a, b)
+    return text
+
+
+def _age(date_iso: str) -> int | None:
+    try:
+        return (dt.date.today() - dt.date.fromisoformat((date_iso or "")[:10])).days
+    except ValueError:
+        return None
+
+
+def briefing(signal: str, segment: str | None, event: str, date_iso: str, opener: str, question: str = "",
+             industry: str = "", city: str = "", country: str = "UK", sic: str = "") -> dict:
+    """why (konkret), needs (3 Punkte), offer, ask, opener."""
+    seg = segment if segment in PLAY else "S5"
+    grp = group_of(industry, sic)
     m = re.search(r"[“\"]([^”\"]+)[”\"]", event or "")
-    return m.group(1) if m else ""
+    role = m.group(1) if m else ""
+    days = (re.search(r"open for (\d+) days", event or "") or [None, ""])[1]
+    n = (re.search(r"(\d+) open roles", event or "") or [None, ""])[1]
+    age = _age(date_iso)
+    ind = (industry or "").strip().rstrip(".")
+    where = f" in {city}" if city else ""
+    hint = ((HINTS.get("hints") or {}).get(SLUG.get(seg, ""), {}) or {}).get(grp)
 
-
-def _num(event: str, pat: str) -> str:
-    m = re.search(pat, event or "")
-    return m.group(1) if m else ""
-
-
-def briefing(signal: str, segment: str | None, company: str, event: str, date: str, opener: str, question: str,
-             tip: str = "", lang: str = "en") -> dict:
-    """Texte für einen Lead. Rückgabe: situation, angle, steps (Gesprächsleitfaden), objection, followup (Betreff, Text)."""
-    service, value = SEG["en"].get(segment or "", SEG["en"]["S9"])
-    role, days = _role(event), _num(event, r"open for (\d+) days")
-    n = _num(event, r"(\d+) open roles")
-    q = question or "How are you handling this at the moment?"
-    if signal == "new_incorporation":
-        situation = (f"{company} was registered on {date}. In the first weeks after registration, new owners set up "
-                     "banking, tax, insurance and their online presence, and they choose most of their providers right now. "
-                     "Whoever calls first with a clear, simple offer usually wins the account, and a first provider often stays for years.")
-        angle = (f"Position {service} as one thing they can tick off this month. Founders are short on time, so make it easy: "
-                 f"a fixed starter package, a short setup call and a clear promise: {value}.")
-        objection = ("If they say it is too early: agree, and point out that setting it up properly from the start is cheaper than "
-                     "fixing it later. Offer to call back on a fixed date and send a one-page overview today, so they have you on file.")
-        subj = "Congratulations on the new company"
-        mail = (f"Hi {company} team,\n\ncongratulations again on setting up the company. As mentioned on the phone, we help new "
-                f"businesses get {service} sorted from day one: {value}.\n\nWould 15 minutes on Thursday or Friday work for a quick call?")
-    elif signal in ("job_open_30d", "jobs_3plus"):
-        if signal == "job_open_30d":
-            situation = (f"{company} has been advertising {('the role “' + role + '”') if role else 'a role'}"
-                         f"{(' for ' + days + ' days') if days else ' for weeks'}. A role that stays open this long usually means "
-                         "the internal search is not working, and the gap costs them every week: work piles up, overtime grows "
-                         "and other staff have to cover.")
-        else:
-            situation = (f"{company} currently lists {n or 'several'} open roles at the same time. That is a growing business with "
-                         "a stretched team: more people, more processes and more admin, all at once. Growing companies are open to "
-                         "outside help because they simply cannot do everything themselves right now.")
-        angle = JOB_ANGLE.get(segment or "", f"Offer {service} as a way to take pressure off while they grow: {value}. "
-                              "Keep the first step small and easy to say yes to.")
-        objection = ("If they say they are handling it internally: respect that, then ask how long they are willing to keep the "
-                     "gap open. Offer help only for that period. A small, time-limited start is much easier to accept than a big commitment.")
-        subj = f"About the {role} role" if role else "Supporting your growth"
-        mail = (f"Hi {company} team,\n\nthanks for your time today. As discussed, we can take some of the pressure off while "
-                f"{('the ' + role + ' role is open') if role else 'you are hiring'}: {value}.\n\n"
-                "Shall I send you a short proposal for the next four weeks?")
+    if seg == "S1":
+        p = PLAY["S1"]["new_incorporation"] if signal == "new_incorporation" else PLAY["S1"]["_roles"][role_of(role)]
+    elif signal.startswith("job") and role_of(role) in (PLAY[seg].get("_roles") or {}):
+        p = PLAY[seg]["_roles"][role_of(role)]  # die offene Stelle selbst ist der Anlass
     else:
-        situation = (f"Something changed at {company} recently ({event.rstrip('.')}). Change creates new needs, and companies "
-                     "look for new providers exactly in these moments.")
-        angle = f"Offer {service} as a simple first step: {value}."
-        objection = "If they are not interested: ask one question about their plans and offer to send a short summary by email."
-        subj = "A quick idea after the recent change"
-        mail = f"Hi {company} team,\n\nthanks for your time today. As mentioned, we help with {service}: {value}.\n\nWould a short call next week work?"
-    steps = [
-        ("Open", f"“{opener}”" if opener else f"Introduce yourself and mention what you noticed at {company}."),
-        ("Ask", f"“{q}” Listen for who handles it today and what worries them."),
-        ("Bridge", tip or f"Connect their answer to your offer: {value}."),
-        ("Close", "Ask for one small next step: “Shall we book 15 minutes this week?” Agree a date before you hang up."),
-    ]
-    return {"situation": situation, "angle": angle, "steps": steps, "objection": objection, "followup": (subj, mail)}
+        p = PLAY[seg].get(grp) or PLAY[seg]["services"]
+
+    if signal == "new_incorporation":
+        when = f"{age} days ago" if age is not None and 0 <= age <= 60 else "recently"
+        why = f"Registered {when}{(' as a ' + ind.lower() + ' business') if ind else ''}{where}."
+        why += " " + (hint[0] if hint else "New owners choose most of their providers in the first weeks, and the first one often stays for years.")
+    elif signal == "job_open_30d":
+        why = (f"Has been advertising {('“' + role + '”') if role else 'a role'} for {days or 'several'} days"
+               f"{where}. A vacancy this old means the internal search has stalled and the work is piling up.")
+    elif signal == "jobs_3plus":
+        why = (f"Hiring for {n or 'several'} roles at the same time{where}. A growing business with a stretched team "
+               "buys outside help, because it cannot do everything itself right now.")
+    else:
+        why = f"{(event or '').rstrip('.')}{where}. Change like this creates new needs, and companies pick new providers exactly now."
+
+    ask = (hint[1] if hint and signal == "new_incorporation" else "") or p.get("ask") or question
+    cap = lambda x: x[:1].upper() + x[1:]
+    return {"why": _us(why, country), "needs": [cap(_us(x, country)) for x in p["needs"][:3]],
+            "offer": _us(p["offer"], country), "ask": _us(ask, country), "opener": opener, "group": grp}
