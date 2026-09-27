@@ -48,3 +48,11 @@ jobs:
           else
             python scripts/responder.py --apply
           fi
+      - name: Probe-Anfragen von Landingpages beantworten
+        # unabhängig vom Postfach: Anfragen kommen über die Website (Einwilligung -> Resend erlaubt)
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.probelauf }}" = "true" ]; then
+            python scripts/web_samples.py
+          else
+            python scripts/web_samples.py --apply
+          fi

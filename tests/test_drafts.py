@@ -31,5 +31,28 @@ class RefreshTest(unittest.TestCase):
         self.assertEqual(db.updates[0][1], {"id": "0204b147-cdab-4280-9091-39ea5bd21aa5"})
 
 
+class RefreshOnlyInitialTest(unittest.TestCase):
+    def test_refresh_leaves_followups_alone(self):
+        seen = {}
+
+        class DB(FakeDB):
+            def select_all(self, table, params):
+                seen.update(params)
+                return []
+        drafts.refresh(DB([]))
+        self.assertEqual(seen.get("kind"), "eq.initial")
+
+
+class FollowupTextTest(unittest.TestCase):
+    def test_country_wide(self):
+        import followups
+        p = {"company_name": "Acme Recruitment Ltd", "segment_id": "S1", "country": "UK", "region": "Leeds, West Yorkshire"}
+        body, _ = followups.followup_text(p, "en")
+        self.assertIn("across the UK", body)
+        self.assertNotIn("Leeds", body)
+        self.assertNotIn("Leeds", followups.sample_followup_text(p, "en"))
+        self.assertIn("partout en France", followups.followup_text({**p, "country": "FR"}, "fr")[0])
+
+
 if __name__ == "__main__":
     unittest.main()
