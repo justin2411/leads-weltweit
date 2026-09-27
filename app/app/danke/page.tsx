@@ -4,6 +4,7 @@ import { stripe, stripeEnabled, type StripeMode } from "@/lib/stripe";
 import { db } from "@/lib/supabase";
 import { filterToken } from "@/lib/tokens";
 import { PER_WEEK, perMonth } from "@/lib/custom-price";
+import { firstDelivery } from "@/lib/welcome-mail";
 import { BrandShell, SiteFooter, SiteHeader } from "../chrome";
 import { FilterForm, FORM_CSS } from "../kunde/filter/form";
 
@@ -64,12 +65,6 @@ const CSS = `
 @media (max-width:520px){.bx .wl-sum{grid-template-columns:1fr}.bx .wl-sum div{border-left:0;border-top:1px solid var(--line)}.bx .wl-sum div:first-child{border-top:0}}
 `;
 
-/** Erste Lieferung: Montag mit mindestens zwei Tagen Vorlauf (Formular + Freigabe der ersten Lieferung). */
-function nextMonday(now = new Date()): Date {
-  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 2));
-  d.setUTCDate(d.getUTCDate() + ((8 - d.getUTCDay()) % 7));
-  return d;
-}
 
 async function loadSession(id: string | undefined) {
   if (!id || !/^cs_(live|test)_[A-Za-z0-9]{10,200}$/.test(id)) return null;
@@ -104,7 +99,7 @@ export default async function Danke({ searchParams }: { searchParams: Promise<{ 
   const price = s?.amount_total != null
     ? new Intl.NumberFormat(loc, { style: "currency", currency: cur, maximumFractionDigits: s.amount_total % 100 ? 2 : 0 }).format(s.amount_total / 100) : "";
   const num = (n: number) => new Intl.NumberFormat(lang === "fr" ? "fr-FR" : "en-GB").format(n);
-  const first = new Intl.DateTimeFormat(lang === "fr" ? "fr-FR" : "en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(nextMonday());
+  const first = new Intl.DateTimeFormat(lang === "fr" ? "fr-FR" : "en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(firstDelivery());
   const planName = m.package === "custom" ? (lang === "fr" ? "Sur mesure" : "Custom") : m.package ? m.package[0].toUpperCase() + m.package.slice(1) : "";
 
   // Formular direkt hier, sobald der Webhook den Kunden angelegt hat (meist sofort; sonst kurz neu laden, danach per Mail)
