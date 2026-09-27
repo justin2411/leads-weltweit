@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import VIDEOS from "@/content/videos.json";
 import { BRAND, CONTACT, LEGAL_NAME, siteUrl } from "@/lib/site";
-import { homeFeed, homeStats, publicPages, type PublicPage } from "@/lib/site-pages";
+import { homeFeed, homeStats, MASK, publicPages, type PublicPage } from "@/lib/site-pages";
 import { BrandShell, SiteFooter, SiteHeader, Words } from "./chrome";
 import { HOME, HOME_LANGS, HOME_PATH, type HomeLang } from "./home-i18n";
 import { HeroNet, SignalFeed } from "./motion";
@@ -37,6 +37,9 @@ const ICONS: Record<string, string> = {
 function Icon({ d }: { d: string }) {
   return <svg viewBox="0 0 24 24" aria-hidden="true" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>;
 }
+
+/** Firmenname in Texten (MASK) verwischt darstellen. */
+const masked = (v: string) => v.split(MASK).flatMap((part, j) => j ? [<span className="mask" key={j}>xxxxxxxxxx</span>, part] : [part]);
 
 const i = (n: number) => ({ "--i": n }) as CSSProperties;
 
@@ -85,11 +88,13 @@ export async function Home({ lang }: { lang: HomeLang }) {
             <div className="eyebrow later" style={{ "--d": ".05s" } as CSSProperties}>{t.eyebrow}</div>
             <h1 className={t.h1.length > 44 ? "long" : undefined}><Words text={t.h1} gold={t.h1gold} /></h1>
             <p className="lede later" style={{ "--d": ".75s" } as CSSProperties}>{t.lede}</p>
-            <div className="cta-row later" style={{ "--d": ".95s" } as CSSProperties}>
-              <a className="btn gold" href="#sample">{t.btn} <span className="ar">→</span></a>
+            <div className="cta-row later" style={{ "--d": ".95s", alignItems: "flex-start" } as CSSProperties}>
+              <div className="cta-stack">
+                <a className="btn gold" href="#sample">{t.btn} <span className="ar">→</span></a>
+                <div className="fine">{t.fine.map((f) => <span key={f}>{f}</span>)}</div>
+              </div>
               {video && <a className="btn ghost" href="#film">{t.film}</a>}
             </div>
-            <div className="fine later" style={{ "--d": "1.1s" } as CSSProperties}>{t.fine.map((f) => <span key={f}>{f}</span>)}</div>
           </div>
           <div className="feed-wrap">
             <SignalFeed items={feed} label={t.feedLabel} />
@@ -141,7 +146,8 @@ export async function Home({ lang }: { lang: HomeLang }) {
                 [t.exRows[4], example.source], [t.exRows[5], example.urgency ? ({ en: { high: "High", medium: "Medium", low: "Low" }, fr: { high: "Haute", medium: "Moyenne", low: "Basse" }, de: { high: "Hoch", medium: "Mittel", low: "Niedrig" } }[lang] as Record<string, string>)[example.urgency] ?? example.urgency : "", "prio"],
                 [t.exRows[6], example.opener ? `“${example.opener}”` : "", "quote"]] as [string, string, string?][])
                 .filter(([, v]) => v).flatMap(([k, v, cls], n) => [
-                  <dt key={k + "t"} style={i(n)}>{k}</dt>, <dd key={k + "d"} className={cls} style={i(n)}>{cls === "prio" ? <span>{v}</span> : v}</dd>])}
+                  <dt key={k + "t"} style={i(n)}>{k}</dt>, <dd key={k + "d"} className={cls} style={i(n)}>{cls === "prio" ? <span>{v}</span>
+                    : n === 0 ? <span className="mask">{v}</span> : masked(v)}</dd>])}
             </dl>
           </div>
           <div>
@@ -179,7 +185,7 @@ export async function Home({ lang }: { lang: HomeLang }) {
       <section className="offer" id="sample"><div className="wrap">
         <div>
           <Head title={t.offerH} gold={t.offerGold} intro={t.offerIntro} />
-          <div className="cta-stack" data-rv>
+          <div className="cta-stack solo" data-rv>
             <a className="btn gold big" href={mailto}>{t.offerBtn} <span className="ar">→</span></a>
             <div className="fine">{t.offerFine.map((f) => <span key={f}>{f}</span>)}</div>
           </div>

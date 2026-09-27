@@ -90,6 +90,9 @@ function sourceText(src: string, lang: "en" | "fr" | "de"): string {
 }
 
 /** Echte Beispiel-Leads aus den Proben (status sample), nur Firmendaten, je Firma einmal, in der Sprache der Seite. */
+/** Platzhalter für den Firmennamen in Texten; die Seite zeigt ihn verwischt. */
+export const MASK = "\u2060\u2060";
+
 export async function homeFeed(lang: "en" | "fr" | "de" = "en"): Promise<HomeFeedItem[]> {
   const { data } = await db().from("leads")
     .select("event_summary, event_date, source_name, signal_type, country, company_id, opener, urgency, watch_companies!inner(name, city)")
@@ -105,14 +108,15 @@ export async function homeFeed(lang: "en" | "fr" | "de" = "en"): Promise<HomeFee
     if (ev.toUpperCase().startsWith(name.toUpperCase())) ev = ev.slice(name.length).trim();
     ev = ev.replace(/\s*[–—]\s*/g, ", ");
     ev = eventText(String(l.signal_type ?? ""), ev, l.event_date, lang);
+    // Firmenname nie öffentlich zeigen (sonst verschenken wir den Lead): Platzhalter, im Browser verwischt
     out.push({
-      company: nice(name),
+      company: "x".repeat(Math.min(16, Math.max(8, name.length))),
       place: nice(String(l.watch_companies.city ?? "").replace(/\s*\(.*$/, "")),
       event: ev.charAt(0).toUpperCase() + ev.slice(1),
       date: l.event_date ? day(l.event_date, lang) : "",
-      source: sourceText(String(l.source_name), lang),
-      opener: openerText(String(l.signal_type ?? ""), String(l.opener ?? "").replace(/\s*[–—]\s*/g, ", ").split(name).join(nice(name)),
-        nice(name), roles, lang),
+      source: sourceText(String(l.source_name), lang).split(name).join("").split(nice(name)).join("").trim(),
+      opener: openerText(String(l.signal_type ?? ""), String(l.opener ?? "").replace(/\s*[–—]\s*/g, ", ").split(name).join(MASK),
+        MASK, roles, lang),
       urgency: String(l.urgency ?? ""),
     });
   }

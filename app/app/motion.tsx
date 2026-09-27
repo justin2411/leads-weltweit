@@ -155,7 +155,7 @@ export function SignalFeed({ items, label }: { items: FeedItem[]; label: string 
       <ul>
         {shown.map((it, k) => (
           <li key={`${i}-${k}`} className={k === 0 ? "new" : ""}>
-            <div className="co">{it.company}<span>{it.place}</span></div>
+            <div className="co"><i className="mask">{it.company}</i><span>{it.place}</span></div>
             <div className="ev">{it.event}</div>
             <div className="mt">{it.date} · {it.source}</div>
           </li>
