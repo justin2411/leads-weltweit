@@ -267,7 +267,7 @@ def regional_sample(db, seg: str, country: str, region: str | None) -> tuple[lis
     from deliveries import REQUIRE_CONTACT, _lang, contact_companies, enrich, to_csv
     from lib.regions import area_of, lead_matches
     area = None  # Leads aus dem ganzen Land (Inhaber 27.09.2026), keine Regionsauswahl mehr
-    known = contact_companies(db) if REQUIRE_CONTACT else None
+    known = contact_companies(db, website_optional=(seg == "S2")) if REQUIRE_CONTACT else None
     rows = db.select_all("leads", {"segment_id": f"eq.{seg}", "country": f"eq.{country}", "status": "in.(new,sample)",
                                "select": "id,event_summary,event_date,source_name,source_url,source_date,urgency,"
                                          "urgency_reason,opener,signal_type,company_id,observation_ids,"

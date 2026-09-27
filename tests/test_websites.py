@@ -272,3 +272,13 @@ class ApplyTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCompleteOnlyS2(unittest.TestCase):
+    def test_webagenturen_ohne_website(self):
+        from lib.leadreport import complete_only
+        head = "company,phone,email,website,address,contact_name\n"
+        row = "Acme Ltd,+44 20 7946 0000,info@acme.co.uk,,1 High St,Jane Doe\n"
+        data = (head + row).encode()
+        self.assertNotIn(b"Acme", complete_only(data, "S5"))
+        self.assertIn(b"Acme", complete_only(data, "S2"))
