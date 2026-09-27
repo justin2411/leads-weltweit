@@ -1,0 +1,87 @@
+{
+ "slug": "ind/de-web-agencies",
+ "lang": "de",
+ "voice": "piper:de_DE-thorsten-high",
+ "film": "seg.html",
+ "text": {},
+ "ui": {
+  "for": "Für Webagenturen",
+  "icon": "🌐",
+  "first": "✓  Erster Anruf, erste Website",
+  "sig": [
+   [
+    "🏛",
+    "Neugründung",
+    "Gerade eingetragen"
+   ],
+   [
+    "🔍",
+    "Keine Website gefunden",
+    "Domains geprüft"
+   ],
+   [
+    "📈",
+    "Wachsende Firma",
+    "Erste Website zu klein"
+   ]
+  ],
+  "co": "Eichental Hausservice GmbH",
+  "event": "Vor 4 Tagen eingetragen · keine Website gefunden",
+  "prio": "Hohe Priorität",
+  "profile": "Hausservice, lokale Kunden, noch keine Website",
+  "tip": "Einfache Website mit Terminbuchung zeigen",
+  "opener": "Glückwunsch zur Gründung. Würde Ihnen eine einfache Website mit Online-Terminbuchung bei den ersten Kunden helfen?",
+  "vals": [
+   "🌐  Website",
+   "🔧  Hosting und Pflege",
+   "✓  Kunde nach dem Start"
+  ]
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "Jede Woche starten neue Unternehmen ohne Website. Die Agentur, die zuerst anruft, baut sie.",
+   "pause": 0.6
+  },
+  {
+   "id": "tension",
+   "text": "Wir prüfen bei jeder Neugründung, ob es schon eine Website gibt, und markieren die ohne.",
+   "pause": 0.5
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit bringt Ihnen diese Unternehmen.",
+   "pause": 0.5
+  },
+  {
+   "id": "lead",
+   "text": "Jeder Lead ist bereit für den Anruf: Telefon, Firmen-E-Mail, Kurzprofil und ein Vertriebstipp für Webagenturen.",
+   "pause": 0.45
+  },
+  {
+   "id": "exclusive",
+   "text": "Und er gehört nur Ihnen. Keine andere Agentur Ihrer Branche bekommt denselben Lead.",
+   "pause": 0.5
+  },
+  {
+   "id": "weekly",
+   "text": "Jeden Montag kommen neue Leads aus Ihren Städten in Ihr Postfach.",
+   "pause": 0.45
+  },
+  {
+   "id": "revenue",
+   "text": "Aus der ersten Website werden oft Hosting, Pflege und Suchmaschinenoptimierung.",
+   "pause": 0.5
+  },
+  {
+   "id": "cta",
+   "text": "Testen Sie es kostenlos: zehn Leads aus Ihrer Region, unverbindlich.",
+   "pause": 0.55
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. Die richtigen Unternehmen, im richtigen Moment.",
+   "pause": 0.4
+  }
+ ]
+}

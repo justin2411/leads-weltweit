@@ -1,0 +1,88 @@
+{
+ "slug": "ind/en-web-agencies",
+ "lang": "en",
+ "voice": "bf_emma",
+ "film": "seg.html",
+ "text": {},
+ "ui": {
+  "for": "For web agencies",
+  "icon": "🌐",
+  "first": "✓  First call, first website",
+  "sig": [
+   [
+    "🏛",
+    "New company",
+    "Just registered"
+   ],
+   [
+    "🔍",
+    "No website found",
+    "Domains checked"
+   ],
+   [
+    "📈",
+    "Growing business",
+    "Outgrew its first site"
+   ]
+  ],
+  "co": "Oakridge Home Services Ltd",
+  "event": "Registered 4 days ago · no website found",
+  "prio": "High priority",
+  "profile": "Home services, local customers, no site yet",
+  "tip": "Show a simple site with a booking form",
+  "opener": "Congratulations on the new company. Would a simple website with online booking help you win your first customers?",
+  "vals": [
+   "🌐  Website",
+   "🔧  Hosting and updates",
+   "✓  A client after launch"
+  ]
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "Every week, new companies start trading without a website. The agency that calls first builds it.",
+   "pause": 0.6
+  },
+  {
+   "id": "tension",
+   "text": "We check each new company for a live website, and flag the ones that have none yet.",
+   "pause": 0.5
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit brings these businesses to you.",
+   "pause": 0.5
+  },
+  {
+   "id": "lead",
+   "text": "Each lead is ready to call: phone, company email, a short profile and a sales tip written for web agencies.",
+   "pause": 0.45
+  },
+  {
+   "id": "exclusive",
+   "text": "And it's yours alone. No other agency in your industry gets the same lead.",
+   "pause": 0.5
+  },
+  {
+   "id": "weekly",
+   "text": "Every Monday, fresh leads from your towns arrive in your inbox.",
+   "pause": 0.45
+  },
+  {
+   "id": "revenue",
+   "text": "A first website often leads to hosting, updates and search work after launch.",
+   "pause": 0.5
+  },
+  {
+   "id": "cta",
+   "text": "Test it free: ten leads from your area, no strings attached.",
+   "pause": 0.55
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. The right companies, at the right moment.",
+   "pause": 0.4
+  }
+ ],
+ "speed": 1.0
+}

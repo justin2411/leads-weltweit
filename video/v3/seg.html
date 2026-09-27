@@ -1,0 +1,123 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<!-- Branchen-Film: Moment, Signale, Marke, Lead-Karte, Exklusivität, Montag, Wert, Probe. Logik in seg.js, Texte im Segment (ui). -->
+<style>
+@font-face{font-family:Inter;src:url(../fonts/inter-latin-400-normal.woff2);font-weight:400}
+@font-face{font-family:Inter;src:url(../fonts/inter-latin-600-normal.woff2);font-weight:600}
+@font-face{font-family:Inter;src:url(../fonts/inter-latin-700-normal.woff2);font-weight:700}
+@font-face{font-family:Inter;src:url(../fonts/inter-latin-800-normal.woff2);font-weight:800}
+:root{--bg:#081226;--ink:#f2efe8;--soft:#9aa6ba;--gold:#d8bd8a;--gold2:#f3e1b9;--ok:#5fd3a3;--bad:#e88080;--line:#1a2a48;--card:#0f1d38;--card2:#132544}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);font-family:Inter,sans-serif;color:var(--ink)}
+#bg{position:absolute;inset:-200px;background:radial-gradient(1000px 700px at var(--gx,60%) var(--gy,30%),rgba(216,189,138,.13),transparent 70%),radial-gradient(800px 600px at 15% 85%,rgba(80,120,200,.12),transparent 70%)}
+#dots{position:absolute;inset:0;opacity:.5;background-image:radial-gradient(rgba(154,166,186,.22) 1.5px,transparent 1.6px);background-size:48px 48px}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+.scene{position:absolute;inset:0;opacity:0;display:none}
+.abs{position:absolute}
+svg{position:absolute;left:0;top:0;overflow:visible}
+.logo{font-size:120px;font-weight:800;letter-spacing:-4px;display:flex;gap:26px;justify-content:center}
+.mask{overflow:hidden;display:inline-block;padding-bottom:12px}.mask>span{display:inline-block}
+.chip{display:inline-flex;align-items:center;gap:12px;padding:14px 26px;border-radius:99px;font-size:30px;font-weight:600;background:rgba(216,189,138,.1);border:1px solid rgba(216,189,138,.4);color:var(--gold2);white-space:nowrap}
+.chip.ok{background:rgba(95,211,163,.1);border-color:rgba(95,211,163,.45);color:#c9f3e1}
+.ind{position:absolute;padding:16px 28px;border-radius:18px;font-size:30px;font-weight:600;background:var(--card);border:1px solid #28406b;white-space:nowrap;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.lc{position:absolute;width:360px;border-radius:20px;background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid #2c4675;padding:22px 26px;box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.lc .t{height:18px;width:200px;border-radius:9px;background:var(--gold)}.lc .s{height:12px;border-radius:6px;background:#2d4674;margin-top:14px}
+.head{position:absolute;left:0;right:0;text-align:center;font-size:64px;font-weight:800;letter-spacing:-2px}
+.sub{font-size:24px;font-weight:600;letter-spacing:4px;text-transform:uppercase;color:var(--gold)}
+.ill{position:absolute;left:120px;top:1000px;font-size:20px;color:var(--soft)}
+.field{display:flex;align-items:center;gap:14px;font-size:30px;font-weight:600;padding:14px 0;border-bottom:1px solid #22375f}
+.field b{color:var(--ok);font-size:30px}
+</style></head>
+<body>
+<div id="bg"></div><div id="dots"></div>
+
+<!-- A: Branche und Moment -->
+<div class="scene" id="A">
+  <svg width="1920" height="1080" id="A_svg"></svg>
+  <div class="abs" id="A_for" style="left:0;right:0;top:170px;text-align:center"><span class="chip" data-u="for"></span></div>
+  <div class="abs" id="A_icon" style="left:835px;top:380px;width:250px;height:250px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:120px;background:radial-gradient(circle,rgba(216,189,138,.22),rgba(216,189,138,.04) 70%);border:2px solid rgba(216,189,138,.55)"><span data-u="icon"></span></div>
+  <div id="A_cos"></div>
+  <div class="abs" id="A_first" style="left:0;right:0;top:800px;text-align:center"><span class="chip ok" data-u="first"></span></div>
+</div>
+
+<!-- B: Signale der Branche -->
+<div class="scene" id="B">
+  <svg width="1920" height="1080" id="B_svg"></svg>
+  <div id="B_sig"></div>
+</div>
+
+<!-- C: Marke -->
+<div class="scene" id="C">
+  <svg width="1920" height="1080" id="C_svg"></svg>
+  <div class="abs" style="left:0;right:0;top:470px"><div class="logo"><span class="mask"><span id="C1">NextGen</span></span><span class="mask"><span id="C2" style="color:var(--gold)">Profit</span></span></div></div>
+</div>
+
+<!-- D: ein Lead, fertig zum Anruf -->
+<div class="scene" id="D">
+  <div class="lc" id="D_card" style="left:560px;top:150px;width:800px;padding:40px 48px">
+    <div style="display:flex;justify-content:space-between;align-items:center"><div class="sub" style="font-size:20px" data-i="newlead"></div><span class="chip" style="font-size:22px;padding:8px 18px" data-u="prio"></span></div>
+    <div style="font-size:48px;font-weight:800;margin:10px 0 6px;letter-spacing:-1px" data-u="co"></div>
+    <div style="font-size:28px;color:var(--gold2);font-weight:600" data-u="event"></div>
+    <div class="field" id="D_f0" style="margin-top:14px"><b>✓</b><span data-i="phone"></span></div>
+    <div class="field" id="D_f1"><b>✓</b><span data-i="email"></span></div>
+    <div class="field" id="D_f2"><b>✓</b><span data-u="profile"></span></div>
+    <div class="field" id="D_f3"><b>✓</b><span data-u="tip"></span></div>
+    <div id="D_op" style="margin-top:22px;border-left:4px solid var(--gold);padding:6px 0 6px 22px;font-size:28px;line-height:1.4;color:#e9e4d8;min-height:84px"></div>
+  </div>
+  <div class="ill" data-i="illex"></div>
+</div>
+
+<!-- E: exklusiv -->
+<div class="scene" id="E">
+  <svg width="1920" height="1080" id="E_svg"></svg>
+  <div class="lc" id="E_lead" style="width:380px"><div style="display:flex;justify-content:space-between;align-items:center"><div class="t"></div><span id="E_lock" style="font-size:40px">🔒</span></div><div class="s" style="width:300px"></div><div class="s" style="width:240px"></div></div>
+  <div id="E_firms"></div>
+  <div class="abs" id="E_tag" style="left:0;right:0;top:900px;text-align:center"><span class="chip" data-i="excl"></span></div>
+</div>
+
+<!-- F: jeden Montag -->
+<div class="scene" id="F">
+  <svg width="1920" height="1080" id="F_svg"></svg>
+  <div class="abs" id="F_mon" style="left:0;right:0;top:120px;text-align:center"><span class="chip" data-i="monday"></span></div>
+  <div id="F_cal"></div>
+  <div class="lc" id="F_open" style="left:1110px;top:300px;width:620px;padding:34px 40px;display:none">
+    <div class="sub" style="font-size:20px" data-i="newlead"></div>
+    <div style="font-size:40px;font-weight:800;margin:8px 0 14px" data-i="coname"></div>
+    <div class="field" id="F_f0"><b>✓</b><span data-i="phone"></span></div>
+    <div class="field" id="F_f1"><b>✓</b><span data-i="email"></span></div>
+    <div class="field" id="F_f2"><b>✓</b><span data-i="profile"></span></div>
+    <div class="field" id="F_f3" style="border:0"><b>✓</b><span data-i="tip"></span></div>
+  </div>
+  <div class="abs" id="F_easy" style="left:0;right:0;top:930px;text-align:center"><span class="chip ok" data-i="nosoft"></span></div>
+</div>
+
+<!-- R: Wert für die Branche -->
+<div class="scene" id="R">
+  <svg width="1920" height="1080" id="R_svg"></svg>
+  <div id="R_vals"></div>
+  <div class="ill" data-i="illus"></div>
+</div>
+
+<!-- G: kostenlos starten -->
+<div class="scene" id="G">
+  <div class="abs" style="left:0;right:0;top:300px;text-align:center">
+    <div id="G_big" style="font-size:150px;font-weight:800;letter-spacing:-5px;line-height:1"><span data-i="ten"></span></div>
+    <div id="G_sub" style="font-size:44px;font-weight:600;color:var(--soft);margin-top:18px" data-i="area"></div>
+    <div id="G_btn" style="display:inline-flex;align-items:center;gap:16px;margin-top:56px;padding:30px 60px;border-radius:99px;background:linear-gradient(180deg,var(--gold2),var(--gold));color:#1a1408;font-size:38px;font-weight:800;position:relative"><span data-i="btn"></span>
+      <svg id="G_chk" width="50" height="50" viewBox="0 0 44 44" style="position:relative"><path d="M10 23 L19 32 L35 13" fill="none" stroke="#1a1408" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="40" stroke-dashoffset="40" id="G_path"/></svg>
+    </div>
+  </div>
+  <div id="G_parts"></div>
+</div>
+
+<!-- H: Ende -->
+<div class="scene" id="H">
+  <div class="abs" style="left:0;right:0;top:360px;text-align:center">
+    <div class="logo" style="font-size:112px"><span class="mask"><span id="H1">NextGen</span></span><span class="mask"><span id="H2" style="color:var(--gold)">Profit</span></span></div>
+    <div id="H_tag" style="font-size:40px;font-weight:600;color:#d9dde6;margin-top:16px" data-i="tag"></div>
+    <div id="H_url" style="margin-top:46px"><span class="chip" style="font-size:30px">nextgen-profit.de</span></div>
+  </div>
+</div>
+<div id="flash"></div>
+
+<script src="seg.js"></script></body></html>

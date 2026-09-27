@@ -1,0 +1,87 @@
+{
+ "slug": "ind/de-accountants",
+ "lang": "de",
+ "voice": "piper:de_DE-thorsten-high",
+ "film": "seg.html",
+ "text": {},
+ "ui": {
+  "for": "Für Steuerberater",
+  "icon": "📊",
+  "first": "✓  Zuerst anrufen, Mandant gewinnen",
+  "sig": [
+   [
+    "🏛",
+    "Neugründung",
+    "In den letzten Wochen eingetragen"
+   ],
+   [
+    "💶",
+    "Erste Lohnabrechnung",
+    "Erste Mitarbeitende kommen"
+   ],
+   [
+    "📋",
+    "Stelle Buchhaltung",
+    "Hilfe bei den Zahlen gesucht"
+   ]
+  ],
+  "co": "Nordhafen Logistik GmbH",
+  "event": "Vor 6 Tagen eingetragen · Hamburg",
+  "prio": "Hohe Priorität",
+  "profile": "Logistik, neuer Geschäftsführer, noch ohne Steuerberater",
+  "tip": "Startpaket anbieten: Umsatzsteuer und Lohn",
+  "opener": "Glückwunsch zur Gründung. Haben Sie für Ihren ersten Jahresabschluss schon einen Steuerberater?",
+  "vals": [
+   "📒  Buchhaltung",
+   "🧾  Umsatzsteuer und Lohn",
+   "✓  Mandant über Jahre"
+  ]
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "Jede Woche wählen neue Unternehmen in Ihrer Nähe ihren Steuerberater. Die Kanzlei, die zuerst anruft, hat die besten Chancen.",
+   "pause": 0.6
+  },
+  {
+   "id": "tension",
+   "text": "Wir erkennen den Moment: Neugründungen, erste Lohnabrechnung, offene Stellen in der Buchhaltung.",
+   "pause": 0.5
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit bringt Ihnen diese Unternehmen.",
+   "pause": 0.5
+  },
+  {
+   "id": "lead",
+   "text": "Jeder Lead ist bereit für den Anruf: Telefon, Firmen-E-Mail, Kurzprofil und ein Vertriebstipp für Steuerberater.",
+   "pause": 0.45
+  },
+  {
+   "id": "exclusive",
+   "text": "Und er gehört nur Ihnen. Keine andere Kanzlei Ihrer Branche bekommt denselben Lead.",
+   "pause": 0.5
+  },
+  {
+   "id": "weekly",
+   "text": "Jeden Montag kommen neue Leads aus Ihren Städten in Ihr Postfach.",
+   "pause": 0.45
+  },
+  {
+   "id": "revenue",
+   "text": "Ein neuer Mandant bedeutet Buchhaltung, Umsatzsteuer und Lohn über Jahre.",
+   "pause": 0.5
+  },
+  {
+   "id": "cta",
+   "text": "Testen Sie es kostenlos: zehn Leads aus Ihrer Region, unverbindlich.",
+   "pause": 0.55
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. Die richtigen Unternehmen, im richtigen Moment.",
+   "pause": 0.4
+  }
+ ]
+}

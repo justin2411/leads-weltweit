@@ -1,0 +1,87 @@
+{
+ "slug": "ind/de-recruitment",
+ "lang": "de",
+ "voice": "piper:de_DE-thorsten-high",
+ "film": "seg.html",
+ "text": {},
+ "ui": {
+  "for": "Für Personalvermittler",
+  "icon": "🤝",
+  "first": "✓  Anrufen, bevor sie aufgeben",
+  "sig": [
+   [
+    "⏳",
+    "Seit 30+ Tagen offen",
+    "Allein schwer zu besetzen"
+   ],
+   [
+    "👥",
+    "Mehrere Stellen",
+    "Drei oder mehr gleichzeitig"
+   ],
+   [
+    "🔁",
+    "Erneut ausgeschrieben",
+    "Dieselbe Stelle, wieder"
+   ]
+  ],
+  "co": "Falkenwerk Technik GmbH",
+  "event": "6 offene Stellen · älteste 38 Tage · Dortmund",
+  "prio": "Hohe Priorität",
+  "profile": "Maschinenbau, wachsendes Werkstattteam",
+  "tip": "Shortlist für die älteste Stelle anbieten",
+  "opener": "Ich habe gesehen, dass Ihre Stelle als Servicetechniker seit einigen Wochen offen ist. Würde Ihnen eine Shortlist helfen?",
+  "vals": [
+   "📄  Eine Stelle",
+   "👥  Mehrere Vermittlungen",
+   "✓  Ein Kunde, der wiederkommt"
+  ]
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "Gerade jetzt suchen Arbeitgeber in Ihrer Nähe verzweifelt Personal. Die meisten rufen nie von selbst einen Personalvermittler an.",
+   "pause": 0.6
+  },
+  {
+   "id": "tension",
+   "text": "Wir sehen es auf ihren eigenen Karriereseiten: Stellen, die seit Wochen offen sind, mehrere Einstellungen auf einmal.",
+   "pause": 0.5
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit bringt Ihnen diese Arbeitgeber.",
+   "pause": 0.5
+  },
+  {
+   "id": "lead",
+   "text": "Jeder Lead ist bereit für den Anruf: Telefon, Firmen-E-Mail, Kurzprofil und ein Vertriebstipp für Personalvermittler.",
+   "pause": 0.45
+  },
+  {
+   "id": "exclusive",
+   "text": "Und er gehört nur Ihnen. Keine andere Vermittlung Ihrer Branche bekommt denselben Lead.",
+   "pause": 0.5
+  },
+  {
+   "id": "weekly",
+   "text": "Jeden Montag kommen neue Leads aus Ihren Städten in Ihr Postfach.",
+   "pause": 0.45
+  },
+  {
+   "id": "revenue",
+   "text": "Ein Arbeitgeber mit mehreren offenen Stellen kann mehrere Vermittlungen bedeuten.",
+   "pause": 0.5
+  },
+  {
+   "id": "cta",
+   "text": "Testen Sie es kostenlos: zehn Leads aus Ihrer Region, unverbindlich.",
+   "pause": 0.55
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. Die richtigen Unternehmen, im richtigen Moment.",
+   "pause": 0.4
+  }
+ ]
+}

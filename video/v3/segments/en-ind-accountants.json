@@ -1,0 +1,88 @@
+{
+ "slug": "ind/en-accountants",
+ "lang": "en",
+ "voice": "bf_emma",
+ "film": "seg.html",
+ "text": {},
+ "ui": {
+  "for": "For accountants",
+  "icon": "📊",
+  "first": "✓  Call first, win the client",
+  "sig": [
+   [
+    "🏛",
+    "New company",
+    "Registered in the last weeks"
+   ],
+   [
+    "💷",
+    "First payroll",
+    "First employees on the way"
+   ],
+   [
+    "📋",
+    "Finance role open",
+    "Help wanted with the books"
+   ]
+  ],
+  "co": "Northfield Logistics Ltd",
+  "event": "Registered 6 days ago · Stockport",
+  "prio": "High priority",
+  "profile": "Transport firm, new director, no accountant yet",
+  "tip": "Offer a fixed-fee start: VAT and payroll",
+  "opener": "Congratulations on the new company. Have you chosen an accountant for your first year-end yet?",
+  "vals": [
+   "📒  Bookkeeping",
+   "🧾  VAT and payroll",
+   "✓  A client for years"
+  ]
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "Every week, new companies near you choose their accountant. The first practice to call has the best chance.",
+   "pause": 0.6
+  },
+  {
+   "id": "tension",
+   "text": "We spot the moment: new registrations, first payroll, finance roles that stay open.",
+   "pause": 0.5
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit brings these companies to you.",
+   "pause": 0.5
+  },
+  {
+   "id": "lead",
+   "text": "Each lead is ready to call: phone, company email, a short profile and a sales tip written for accountants.",
+   "pause": 0.45
+  },
+  {
+   "id": "exclusive",
+   "text": "And it's yours alone. No other practice in your industry gets the same lead.",
+   "pause": 0.5
+  },
+  {
+   "id": "weekly",
+   "text": "Every Monday, fresh leads from your towns arrive in your inbox.",
+   "pause": 0.45
+  },
+  {
+   "id": "revenue",
+   "text": "One new client can mean bookkeeping, VAT and payroll for years.",
+   "pause": 0.5
+  },
+  {
+   "id": "cta",
+   "text": "Test it free: ten leads from your area, no strings attached.",
+   "pause": 0.55
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. The right companies, at the right moment.",
+   "pause": 0.4
+  }
+ ],
+ "speed": 1.0
+}

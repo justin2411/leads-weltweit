@@ -1,0 +1,87 @@
+{
+ "slug": "ind/de-financial-advisers",
+ "lang": "de",
+ "voice": "piper:de_DE-thorsten-high",
+ "film": "seg.html",
+ "text": {},
+ "ui": {
+  "for": "Für Finanzberater",
+  "icon": "📈",
+  "first": "✓  Der richtige Moment für Beratung",
+  "sig": [
+   [
+    "🏛",
+    "Neuer Geschäftsführer",
+    "Firma gerade gegründet"
+   ],
+   [
+    "👥",
+    "Erste Mitarbeitende",
+    "Betriebsrente wird Thema"
+   ],
+   [
+    "📈",
+    "Wachsendes Team",
+    "Benefits gefragt"
+   ]
+  ],
+  "co": "Hafenblick Digital GmbH",
+  "event": "Vor 5 Tagen eingetragen · München",
+  "prio": "Hohe Priorität",
+  "profile": "Digitalagentur, zwei neue Geschäftsführer",
+  "tip": "Mit Gehalt und Altersvorsorge einsteigen",
+  "opener": "Glückwunsch zur Gründung. Haben Sie Ihr Geschäftsführergehalt und Ihre Altersvorsorge schon geplant?",
+  "vals": [
+   "🏦  Altersvorsorge",
+   "🛡️  Absicherung",
+   "✓  Firmen- und Privatkunde"
+  ]
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "Neue Geschäftsführer haben große Geldfragen: Altersvorsorge, Absicherung, das eigene Gehalt. Nur wenige haben schon einen Berater.",
+   "pause": 0.6
+  },
+  {
+   "id": "tension",
+   "text": "Wir erkennen den Moment: neue Geschäftsführer, erste Mitarbeitende, wachsende Teams.",
+   "pause": 0.5
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit bringt Ihnen diese Unternehmer.",
+   "pause": 0.5
+  },
+  {
+   "id": "lead",
+   "text": "Jeder Lead ist bereit für den Anruf: Telefon, Firmen-E-Mail, Kurzprofil und ein Vertriebstipp für Berater.",
+   "pause": 0.45
+  },
+  {
+   "id": "exclusive",
+   "text": "Und er gehört nur Ihnen. Keine andere Beratung Ihrer Branche bekommt denselben Lead.",
+   "pause": 0.5
+  },
+  {
+   "id": "weekly",
+   "text": "Jeden Montag kommen neue Leads aus Ihren Städten in Ihr Postfach.",
+   "pause": 0.45
+  },
+  {
+   "id": "revenue",
+   "text": "Ein Geschäftsführer kann Firmenkunde und Privatkunde werden, über viele Jahre.",
+   "pause": 0.5
+  },
+  {
+   "id": "cta",
+   "text": "Testen Sie es kostenlos: zehn Leads aus Ihrer Region, unverbindlich.",
+   "pause": 0.55
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. Die richtigen Unternehmen, im richtigen Moment.",
+   "pause": 0.4
+  }
+ ]
+}

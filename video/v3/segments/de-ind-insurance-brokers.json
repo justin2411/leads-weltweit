@@ -1,0 +1,87 @@
+{
+ "slug": "ind/de-insurance-brokers",
+ "lang": "de",
+ "voice": "piper:de_DE-thorsten-high",
+ "film": "seg.html",
+ "text": {},
+ "ui": {
+  "for": "Für Versicherungsmakler",
+  "icon": "🛡️",
+  "first": "✓  Zuerst anbieten, zuerst gewinnen",
+  "sig": [
+   [
+    "🏛",
+    "Neugründung",
+    "Braucht Schutz ab Tag eins"
+   ],
+   [
+    "👥",
+    "Erste Mitarbeitende",
+    "Absicherung wird Thema"
+   ],
+   [
+    "📈",
+    "Starkes Wachstum",
+    "Verträge passen nicht mehr"
+   ]
+  ],
+  "co": "Lichtwerk Küchen GmbH",
+  "event": "Vor 9 Tagen eingetragen · Köln",
+  "prio": "Hohe Priorität",
+  "profile": "Küchenbauer, neue Räume, erste Mitarbeitende",
+  "tip": "Mit Betriebshaftpflicht einsteigen",
+  "opener": "Glückwunsch zur Gründung. Sind Betriebshaftpflicht und Inhalt schon abgesichert?",
+  "vals": [
+   "🛡️  Betriebshaftpflicht",
+   "🏢  Inhalt und Personal",
+   "✓  Jedes Jahr verlängert"
+  ]
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "Jedes neue Unternehmen braucht Versicherungsschutz, bevor es startet. Der Makler, der zuerst anruft, darf anbieten.",
+   "pause": 0.6
+  },
+  {
+   "id": "tension",
+   "text": "Wir erkennen den Moment: Neugründungen, erste Mitarbeitende, schnell wachsende Teams.",
+   "pause": 0.5
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit bringt Ihnen diese Unternehmen.",
+   "pause": 0.5
+  },
+  {
+   "id": "lead",
+   "text": "Jeder Lead ist bereit für den Anruf: Telefon, Firmen-E-Mail, Kurzprofil und ein Vertriebstipp für Makler.",
+   "pause": 0.45
+  },
+  {
+   "id": "exclusive",
+   "text": "Und er gehört nur Ihnen. Kein anderes Maklerbüro Ihrer Branche bekommt denselben Lead.",
+   "pause": 0.5
+  },
+  {
+   "id": "weekly",
+   "text": "Jeden Montag kommen neue Leads aus Ihren Städten in Ihr Postfach.",
+   "pause": 0.45
+  },
+  {
+   "id": "revenue",
+   "text": "Ein Kunde kann Haftpflicht, Inhalt und Mitarbeiterabsicherung bedeuten, Jahr für Jahr verlängert.",
+   "pause": 0.5
+  },
+  {
+   "id": "cta",
+   "text": "Testen Sie es kostenlos: zehn Leads aus Ihrer Region, unverbindlich.",
+   "pause": 0.55
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. Die richtigen Unternehmen, im richtigen Moment.",
+   "pause": 0.4
+  }
+ ]
+}

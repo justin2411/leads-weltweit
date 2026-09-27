@@ -1,0 +1,88 @@
+{
+ "slug": "ind/en-insurance-brokers",
+ "lang": "en",
+ "voice": "bf_emma",
+ "film": "seg.html",
+ "text": {},
+ "ui": {
+  "for": "For insurance brokers",
+  "icon": "🛡️",
+  "first": "✓  First to quote, first to win",
+  "sig": [
+   [
+    "🏛",
+    "New company",
+    "Needs cover from day one"
+   ],
+   [
+    "👥",
+    "First employees",
+    "Employer's liability due"
+   ],
+   [
+    "📈",
+    "Fast growth",
+    "Cover no longer fits"
+   ]
+  ],
+  "co": "Brightline Kitchens Ltd",
+  "event": "Registered 9 days ago · Leeds",
+  "prio": "High priority",
+  "profile": "Kitchen fitter, new premises, first staff",
+  "tip": "Lead with public and employer's liability",
+  "opener": "Congratulations on the new business. Is your liability and employer cover already in place?",
+  "vals": [
+   "🛡️  Liability",
+   "🏢  Property and staff",
+   "✓  Renewed every year"
+  ]
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "Every new business needs cover before it opens its doors. The broker who calls first gets to quote.",
+   "pause": 0.6
+  },
+  {
+   "id": "tension",
+   "text": "We spot the moment: new companies, first employees, teams that grow fast.",
+   "pause": 0.5
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit brings these businesses to you.",
+   "pause": 0.5
+  },
+  {
+   "id": "lead",
+   "text": "Each lead is ready to call: phone, company email, a short profile and a sales tip written for brokers.",
+   "pause": 0.45
+  },
+  {
+   "id": "exclusive",
+   "text": "And it's yours alone. No other brokerage in your industry gets the same lead.",
+   "pause": 0.5
+  },
+  {
+   "id": "weekly",
+   "text": "Every Monday, fresh leads from your towns arrive in your inbox.",
+   "pause": 0.45
+  },
+  {
+   "id": "revenue",
+   "text": "One client can mean liability, property and employer cover, renewed year after year.",
+   "pause": 0.5
+  },
+  {
+   "id": "cta",
+   "text": "Test it free: ten leads from your area, no strings attached.",
+   "pause": 0.55
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. The right companies, at the right moment.",
+   "pause": 0.4
+  }
+ ],
+ "speed": 1.0
+}
