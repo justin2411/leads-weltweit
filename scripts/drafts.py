@@ -74,58 +74,48 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
     lang = "fr" if fr else "en"
     ex = _example_line(example, lang)
 
-    # Aufbau (Schreibregeln Abschnitt 7): Bezug zur Firma, der Moment (warum jetzt), wie leicht es ist, ein kleines Ja.
-    # Psychologie ohne Tricks: Timing statt Druck, Einfachheit, echte Exklusivität, Probe als Geschenk, Ja/Nein-Frage.
+    # Aufbau (Inhaber 27.09.2026, Richtung "C, auf den Punkt"): persönlich vom Gründer, klarer Nutzen
+    # (Leads, mit denen der Käufer Umsatz machen kann, weil die Firmen einen konkreten Anlass haben),
+    # Lieferung und Exklusivität in einem Satz, Probe als fertiges Geschenk, Ja/Nein-Frage.
+    me = (os.environ.get("SENDER_NAME") or "").split(" ")[0]
     if fr:
-        # Einstieg: direkte Frage mit Firma und Region (zeigt Bezug und weckt Neugier)
-        first = {
-            "S1": f"Nous aidons les cabinets de recrutement comme {firm} à joindre les employeurs de {area} au moment où ils peinent à recruter.",
-            "S2": f"Nous aidons les agences web comme {firm} à joindre les nouvelles entreprises de {area} avant qu'elles aient choisi leur prestataire.",
-        }.get(seg, f"Nous aidons les conseillers comme {firm} à joindre les nouveaux dirigeants de {area} au moment où se posent les questions de retraite et de prévoyance.")
-        subject, core = {
-            "S1": (f"Employeurs à {area} qui peinent à recruter",
-                   "C'est souvent le moment où ils sont le plus ouverts à un cabinet, et vous seriez le premier à appeler."),
-            "S2": (f"Nouvelles entreprises à {area}",
-                   "Dans les premières semaines, elles choisissent souvent l'agence qui les contacte en premier."),
-        }.get(seg, (f"Nouveaux dirigeants à {area}", "Peu ont déjà un conseiller : le premier échange utile compte."))
-        easy = ("C'est simple : chaque lundi, une courte liste avec l'entreprise, le téléphone, l'e-mail et une phrase "
-                "d'accroche. Aucun logiciel, rien à installer, et chaque entreprise est réservée à une seule entreprise "
-                "de votre secteur.")
-        ask = f"Un simple « oui » suffit : je vous envoie un échantillon gratuit de 10 pistes actuelles pour {area} ?"
-    elif seg in ("S1", "S2", "S3", "S4", "S5", "S9") or seg not in catalog.entries():
-        # Einstieg: direkte Frage mit Firma und Region (zeigt Bezug und weckt Neugier)
-        # Einstieg als klare Aussage: was wir für Firmen wie diese tun (keine erfundenen Kunden oder Zahlen)
-        first = {
-            "S1": f"We help recruitment agencies like {firm} reach employers in {area} at the moment they are struggling to fill a role.",
-            "S2": f"We help web agencies like {firm} reach new businesses in {area} before they have chosen who builds their website.",
-            "S3": f"We help IT service firms like {firm} reach growing companies in {area} just before they need IT support.",
-            "S4": f"We help brokers like {firm} reach new businesses in {area} while their first cover is still being arranged.",
-            "S5": f"We help accountancy practices like {firm} reach new companies in {area} before they have chosen an accountant.",
-            "S9": f"We help advisers like {firm} reach new company directors in {area} when pensions and protection first come up.",
-        }.get(seg, f"We help firms like {firm} reach companies in {area} at the moment they have a reason to buy.")
-        subject, core = {
-            "S1": (f"{area} employers struggling to fill roles",
-                   "That's usually when they're most open to an agency, and you'd be the first to call."),
-            "S2": (f"New businesses in {area}",
-                   "In their first weeks, owners often pick whoever reaches them first."),
-            "S3": (f"Growing businesses around {area}", "Reaching them in that moment makes the first call easy."),
-            "S4": (f"New businesses in {area} that need cover", "The broker who calls first usually gets to quote."),
-            "S5": (f"New companies in {area} choosing an accountant",
-                   "The practice that calls at that moment has the easiest conversation."),
-            "S9": (f"New company directors in {area}", "Few have an adviser yet, so the first sensible conversation counts."),
-        }.get(seg, (f"Companies in {area} with a reason to buy", "That's when they choose new suppliers."))
-        easy = ("It's simple: every Monday a short list with company, phone, email and an opening line. No software, "
-                "nothing to set up, and each company goes to one firm in your field only.")
-        ask = f"No strings attached, a quick \"yes\" is enough: shall I send you a free sample of 10 current leads from {area}?"
+        need, kind, subject = {
+            "S1": (f"des employeurs de {area} qui ont en ce moment un vrai besoin de recrutement, par exemple un poste "
+                   "ouvert depuis des semaines ou plusieurs embauches à la fois", "cabinet",
+                   f"Employeurs à {area} qui cherchent de l'aide pour recruter"),
+            "S2": (f"des entreprises de {area} tout juste créées qui ont encore besoin de leur site web", "agence",
+                   f"Nouvelles entreprises à {area} sans site web"),
+        }.get(seg, (f"des dirigeants de {area} qui viennent de créer leur entreprise et se posent leurs premières "
+                    "questions de retraite et de prévoyance", "cabinet", f"Nouveaux dirigeants à {area}"))
+        intro = (f"Je suis {me}, fondateur de {brand()}." if me else f"Je suis le fondateur de {brand()}.")
+        first = f"{intro} Nous livrons des pistes qui se transforment en chiffre d'affaires : {need}."
+        core = (f"Elles arrivent chaque lundi, avec téléphone, e-mail et une phrase d'accroche. Chaque piste ne va qu'à "
+                f"une seule {'agence' if kind == 'agence' else 'entreprise'} de votre secteur.")
+        ask = f"J'ai préparé pour vous un échantillon gratuit de 10 pistes actuelles à {area}. Je vous l'envoie ?"
+        greet, bye = "Bonjour,", "Bien cordialement,"
     else:
-        subject, first, core, _detail, _ask = catalog.draft(seg, firm, area, spec if has_spec else "", brand(), ex)
-        easy = ("It's simple: every Monday a short list with company, phone, email and an opening line. No software, "
-                "nothing to set up, and each company goes to one firm in your field only.")
-        ask = f"No strings attached, a quick \"yes\" is enough: shall I send you a free sample of 10 current leads from {area}?"
-
-    greet, bye = ("Bonjour,", "Bien cordialement,") if fr else (f"Hi {firm} team,", "Best regards,")
-    detail = f"{ex}\n\n{easy}" if ex else easy
-    body = f"{greet}\n\n{first}\n\n{core}\n\n{detail}\n\n{ask}\n\n{bye}\n{sender or signature(lang)}"
+        need, kind, subject = {
+            "S1": (f"employers in {area} with a real need for recruitment help right now, such as roles open for weeks "
+                   "or several hires at once", "agency", f"{area} employers who need recruitment help"),
+            "S2": (f"companies in {area} that were just founded and still need their website", "web agency",
+                   f"New businesses in {area} that need a website"),
+            "S3": (f"companies in {area} that are growing fast and will soon need IT support", "IT firm",
+                   f"Growing businesses around {area}"),
+            "S4": (f"new businesses in {area} that need their first liability, property and employer cover", "broker",
+                   f"New businesses in {area} that need cover"),
+            "S5": (f"companies in {area} that were just founded and still need an accountant", "practice",
+                   f"New companies in {area} that need an accountant"),
+            "S9": (f"new company directors in {area} facing pension and protection questions for the first time",
+                   "advice firm", f"New company directors in {area}"),
+        }.get(seg, (f"companies in {area} with a concrete reason to buy right now", "firm",
+                    f"Companies in {area} with a reason to buy"))
+        intro = f"I'm {me}, founder of {brand()}." if me else f"I'm the founder of {brand()}."
+        first = f"{intro} We deliver leads you can turn into revenue: {need}."
+        core = f"They arrive every Monday, each with phone, email and an opening line. Each lead goes to one {kind} only."
+        ask = f"I've put together a free sample of 10 current leads from {area} for you. Shall I send it over?"
+        greet, bye = f"Hi {firm} team,", "Best regards,"
+    parts = [greet, first] + ([ex] if ex else []) + [core, ask, f"{bye}\n{sender or signature(lang)}"]
+    body = "\n\n".join(parts)
     if len(subject) > 60:
         subject = subject[:57].rsplit(" ", 1)[0]
     return subject, body, lang
