@@ -22,11 +22,18 @@ export function BrandShell({ lang, children, extraCss }: { lang: string; childre
 export function Words({ text, gold = [], start = 0 }: { text: string; gold?: string[]; start?: number }) {
   const clean = text.trim().replace(/[.。]+$/u, "");
   const goldSet = new Set(gold.map((g) => g.toLowerCase()));
+  // Zeilenumbruch: "\n" im Text beginnt eine neue Zeile
+  let n = start;
   return (
     <>
-      {clean.split(/\s+/).map((w, i) => (
-        <span key={i}>
-          <span className={`w${goldSet.has(w.toLowerCase().replace(/[.,!?]/g, "")) ? " gold-t" : ""}`} style={{ "--i": i + start } as CSSProperties}>{w}</span>{" "}
+      {clean.split("\n").map((line, li) => (
+        <span key={li}>
+          {li > 0 && <br />}
+          {line.trim().split(/\s+/).map((w, i) => (
+            <span key={i}>
+              <span className={`w${goldSet.has(w.toLowerCase().replace(/[.,!?]/g, "")) ? " gold-t" : ""}`} style={{ "--i": n++ } as CSSProperties}>{w}</span>{" "}
+            </span>
+          ))}
         </span>
       ))}
     </>
@@ -66,9 +73,7 @@ export function SiteFooter({ labels = ["Legal notice", "Privacy policy", "Terms"
 export function PageHead({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
     <div className="hero solo">
-      <div className="spot" aria-hidden="true" />
       <div className="wrap" style={{ paddingBottom: 130 }}>
-        <div className="eyebrow later" style={{ "--d": ".1s" } as CSSProperties}>{eyebrow}</div>
         <h1><Words text={title} /></h1>
       </div>
     </div>

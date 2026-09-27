@@ -105,18 +105,18 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
           <input type="hidden" name="variant_id" value={v.id} />
           {preview && <input type="hidden" name="vorschau" value="1" />}
           <input type="hidden" name="r" value={sp.r} />
-          <div className="cta-row" style={{ marginTop: 6 }}><button className="btn gold big mag" type="submit" name="consent" value="yes" data-cta>{L.confirm} <span className="ar">→</span></button>
+          <div className="cta-row" style={{ marginTop: 6 }}><button className="btn gold big" type="submit" name="consent" value="yes" data-cta>{L.confirm} <span className="ar">→</span></button>
             <a className="btn ghost" href={backHref}>{L.back}</a></div>
           <p className="small">{consentText(lang)} <a href="/datenschutz">{L.legal[1]}</a></p>
         </form>
       ) : (
-        <div className="cta-row" style={{ marginTop: 6 }}><a className="btn gold big mag" href={mailto} data-cta>{L.byMail} <span className="ar">→</span></a><a className="btn ghost" href={backHref}>{L.back}</a></div>
+        <div className="cta-row" style={{ marginTop: 6 }}><a className="btn gold big" href={mailto} data-cta>{L.byMail} <span className="ar">→</span></a><a className="btn ghost" href={backHref}>{L.back}</a></div>
       )}
     </div>
   );
-  const Start = ({ label }: { label: string }) => <a className="btn gold big mag" href={stepHref} data-cta>{label} <span className="ar">→</span></a>;
+  const Start = ({ label }: { label: string }) => <a className="btn gold big" href={stepHref} data-cta>{label} <span className="ar">→</span></a>;
   const Head = ({ eyebrow, title }: { eyebrow: string; title: string }) => (
-    <div data-rv><div className="rule" /><div className="eyebrow">{eyebrow}</div><h2 className="rvw" data-rv><Words text={title} /></h2></div>
+    <div data-rv><div className="rule" /><h2 className="rvw" data-rv><Words text={title} /></h2></div>
   );
 
   return (
@@ -127,7 +127,6 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
 
       <div className="hero solo" id="top">
         <HeroNet />
-        <div className="spot" aria-hidden="true" />
         <div className="wrap">
           {personal?.firma && <div className="for later" style={{ "--d": ".05s" } as CSSProperties}>{fr ? `Préparé pour ${personal.firma}` : `Prepared for ${personal.firma}`}</div>}
           <h1><Words text={headline} /></h1>
@@ -135,7 +134,7 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
           {sp.angefragt ? <p className="ok">{known ? L.thanksTo(personal!.email!) : L.thanks}</p>
             : sp.fehler ? <p className="err">{L.error}</p> : null}
           {step ? <Probe /> : !sp.angefragt && (
-            <div className="cta-row later" style={{ "--d": ".9s" } as CSSProperties}><Start label={known ? L.send : cta} />{canBuy && <a className="btn ghost mag" href="#plans" data-cta>{L.subscribe}</a>}</div>
+            <div className="cta-row later" style={{ "--d": ".9s" } as CSSProperties}><Start label={known ? L.send : cta} />{canBuy && <a className="btn ghost" href="#plans" data-cta>{L.subscribe}</a>}</div>
           )}
           {!step && !sp.angefragt && <div className="fine later" style={{ "--d": "1.05s" } as CSSProperties}><span>{L.free.replace(/\.$/, "")}</span><span>{L.noObl.replace(/\.$/, "")}</span></div>}
         </div>

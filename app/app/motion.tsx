@@ -7,7 +7,7 @@ const calm = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
 /**
  * Alle Effekte der öffentlichen Seiten: Einblenden beim Scrollen, hochzählende Zahlen, Lichtschein unter der Maus
- * (Hero und Karten), leicht magnetische Buttons, Neigen der Lead-Karte, Fortschrittsbalken, kompakte Navigation.
+ * (Karten), Fortschrittsbalken, kompakte Navigation.
  * Ohne JavaScript und bei "Bewegung reduzieren" bleibt alles sofort sichtbar.
  */
 export function Motion() {
@@ -56,35 +56,16 @@ export function Motion() {
     }, { rootMargin: "0px 0px -8% 0px", threshold: 0.12 });
     els.forEach((el) => io.observe(el));
 
-    // Lichtschein, Magnet-Buttons, Neigen
+    // Lichtschein auf Karten
     const fine = matchMedia("(pointer: fine)").matches;
     if (fine) {
       on("pointermove", (e) => {
         const t = e.target as HTMLElement | null;
-        const hero = t?.closest?.<HTMLElement>(".hero");
-        if (hero) {
-          const r = hero.getBoundingClientRect();
-          hero.style.setProperty("--mx", `${e.clientX - r.left}px`);
-          hero.style.setProperty("--my", `${e.clientY - r.top}px`);
-        }
         const g = t?.closest?.<HTMLElement>(".glow");
         if (g) {
           const r = g.getBoundingClientRect();
           g.style.setProperty("--x", `${e.clientX - r.left}px`);
           g.style.setProperty("--y", `${e.clientY - r.top}px`);
-        }
-        const b = t?.closest?.<HTMLElement>(".btn.mag");
-        document.querySelectorAll<HTMLElement>(".btn.mag").forEach((x) => { if (x !== b) x.style.transform = ""; });
-        if (b) {
-          const r = b.getBoundingClientRect();
-          b.style.transform = `translate(${(e.clientX - r.left - r.width / 2) * 0.18}px,${(e.clientY - r.top - r.height / 2) * 0.28}px)`;
-        }
-        const c = t?.closest?.<HTMLElement>(".tilt");
-        document.querySelectorAll<HTMLElement>(".tilt").forEach((x) => { if (x !== c) x.style.transform = ""; });
-        if (c) {
-          const r = c.getBoundingClientRect();
-          const px = (e.clientX - r.left) / r.width - 0.5, py = (e.clientY - r.top) / r.height - 0.5;
-          c.style.transform = `perspective(900px) rotateY(${px * 7}deg) rotateX(${-py * 7}deg)`;
         }
       });
     }
