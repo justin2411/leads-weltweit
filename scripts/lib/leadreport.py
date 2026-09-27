@@ -195,7 +195,7 @@ def _clip(s: str, n: int) -> str:
 
 def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str | None = None,
                period: dt.date | None = None, plans: list[dict] | None = None, cta_url: str | None = None,
-               segment: str | None = None, country: str = "UK") -> str:
+               segment: str | None = None, country: str = "UK", layout: tuple[int, int] = (3, 4)) -> str:
     """Seite 1: persönliche Einleitung und die ersten Leads; danach 3 Leads pro Seite; bei Proben (plans) eine
     Abschlussseite mit Nutzen, Ablauf, Paketen und Button zur Zahlungsseite."""
     t, t2 = T.get(lang, T["en"]), T2.get(lang, T2["en"])
@@ -255,7 +255,8 @@ def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str
 <p>{t2['intro_s'].replace('<b>10 ', f'<b>{len(groups)} ') if sample else t2['intro']}</p></div>"""
     chunks, k = [], 0
     while k < max(len(cards), 1):
-        size = 3 if k == 0 else (4 if len(cards) - k > 3 else 3)
+        first, rest = layout
+        size = first if k == 0 else (rest if len(cards) - k > rest - 1 else len(cards) - k)
         chunks.append((k, cards[k:k + size]))
         k += size
     total = len(chunks) + (1 if plans else 0)
@@ -358,13 +359,17 @@ def render_pdf(data: bytes, lang: str = "en", area: str | None = None, firm: str
         from playwright.sync_api import sync_playwright
     except ImportError:
         return None
-    doc = build_html(data, lang, area, firm, period, plans, cta_url, segment, country)
     try:
         with sync_playwright() as p:
             import os
             b = p.chromium.launch(executable_path=os.environ.get("CHROMIUM_PATH") or None)
-            page = b.new_page()
-            page.set_content(doc, wait_until="load")
+            page = b.new_page(viewport={"width": 794, "height": 1123})
+            # Gleiches Aussehen bei jedem Inhalt: läuft eine Seite über, weniger Leads pro Seite
+            for layout in ((3, 4), (3, 3), (2, 3), (2, 2), (1, 2)):
+                page.set_content(build_html(data, lang, area, firm, period, plans, cta_url, segment, country, layout),
+                                 wait_until="load")
+                if not page.evaluate("[...document.querySelectorAll('.pg .in')].some(e => e.scrollHeight > e.clientHeight + 1)"):
+                    break
             pdf = page.pdf(format="A4", print_background=True, prefer_css_page_size=True)
             b.close()
             return pdf
@@ -373,22 +378,34 @@ def render_pdf(data: bytes, lang: str = "en", area: str | None = None, firm: str
         return None
 
 
-def clean_csv(data: bytes, lang: str = "en") -> bytes:
-    """CSV für den Kunden: ohne Links und ohne konkrete Fundstelle (nur Art der Quelle)."""
+CSV_COLS = {
+    "en": ["No.", "Company", "Priority", "Signal", "Industry", "Legal form", "Phone", "Email", "Website", "Contact person",
+           "Contact role", "Address", "Date", "Why now", "What they likely need", "Offer", "Ask"],
+    "fr": ["N°", "Entreprise", "Priorité", "Signal", "Secteur", "Forme juridique", "Téléphone", "E-mail", "Site web",
+           "Interlocuteur", "Fonction", "Adresse", "Date", "Pourquoi maintenant", "Besoins probables", "Proposez", "Demandez"],
+}
+
+
+def clean_csv(data: bytes, lang: str = "en", segment: str | None = None, country: str = "UK") -> bytes:
+    """Tabelle zum PDF: dieselben Firmen in derselben Reihenfolge mit denselben Angaben – keine Quellen, keine Links."""
     t = T.get(lang, T["en"])
-    rows = list(csv.DictReader(io.StringIO(data.decode("utf-8-sig", "replace"))))
-    if not rows:
-        return data
-    cols = [c for c in rows[0].keys() if c not in ("source_url",)]
     buf = io.StringIO()
-    w = csv.DictWriter(buf, fieldnames=cols, extrasaction="ignore")
-    w.writeheader()
-    for r in rows:
-        r = dict(r)
-        if "source" in r:
-            r["source"] = t["src"][_source_kind(r.get("source", ""), r.get("signal") or "")]
-        w.writerow(r)
-    return ("﻿" + buf.getvalue()).encode("utf-8")
+    w = csv.writer(buf)
+    w.writerow(CSV_COLS.get(lang, CSV_COLS["en"]))
+    for num, g in enumerate(group_rows(data)[:10], 1):
+        r = g["rows"][0]
+        sig = r.get("signal") or ("new_incorporation" if "regist" in (r.get("event") or "").lower() else "")
+        urg = r.get("urgency") or r.get("priority") or ""
+        loc = (r.get("location") or "").strip()
+        ind = (r.get("industry") or "").split(" - ")[-1].strip()
+        sic = (r.get("industry") or "")[:5] if (r.get("industry") or "")[:2].isdigit() else ""
+        bf = briefing(sig, segment, r.get("event", ""), r.get("event_date", ""), "", (r.get("question_to_ask") or "").strip(),
+                      ind, loc.split(",")[0], country, sic)
+        w.writerow([num, g["company"], t["prio"].get(urg, ""), t["sig"].get(sig, ""), ind, r.get("legal_form") or "",
+                    r.get("phone") or "", r.get("email") or "", re.sub(r"^https?://(www\.)?", "", r.get("website") or "").rstrip("/"),
+                    r.get("contact_name") or "", r.get("contact_role") or "", (r.get("address") or "").strip() or loc,
+                    (r.get("event_date") or "")[:10], bf["why"], " | ".join(bf["needs"]), bf["offer"], bf["ask"]])
+    return ("\ufeff" + buf.getvalue()).encode("utf-8")
 
 
 REQUIRED = ("phone", "email", "website", "address", "contact_name")
@@ -419,5 +436,5 @@ def attachments(csv_bytes: bytes, lang: str, area: str | None = None, firm: str 
     pdf = render_pdf(csv_bytes, lang, area, firm, period, plans, cta_url, segment, country)
     if pdf:
         out.append((f"NextGen-Profit-Lead-Report{slug}.pdf", pdf))
-    out.append((f"{name}{slug}.csv", clean_csv(csv_bytes, lang)))
+    out.append((f"{name}{slug}.csv", clean_csv(csv_bytes, lang, segment, country)))
     return out
