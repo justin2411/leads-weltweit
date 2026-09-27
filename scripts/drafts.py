@@ -74,86 +74,65 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
     lang = "fr" if fr else "en"
     ex = _example_line(example, lang)
 
-    if seg == "S1" and not fr:
-        subject = f"Hiring signals from {area} employers"
-        first = (f"I noticed {firm} places {spec} staff across {area}, so this may be relevant."
-                 if has_spec else f"I noticed {firm} recruits for employers across {area}, so this may be relevant.")
-        core = (f"{brand()} monitors local employers' own careers pages and flags the moments that usually lead "
-                "to agency work: roles open for 30+ days, roles re-advertised, or several vacancies at once.")
-        detail = ("Each lead shows the company, the role and when we first saw it, "
-                  "so your consultants can call with a specific reason.")
-        ask = f"Would a free sample of 10 current leads from {area} be useful?"
-    elif seg == "S2" and not fr:
-        subject = f"Newly registered businesses in {area}"
-        first = (f"I noticed {firm} builds {spec} for clients around {area}, so this may be relevant."
-                 if has_spec else f"I noticed {firm} builds websites for businesses around {area}, so this may be relevant.")
-        core = (f"{brand()} tracks official state filings and flags companies registered in the last few weeks. "
-                "New owners are usually choosing their website, branding and online presence right now.")
-        detail = ex or "Each lead shows the company, the registration date, the county and the official source."
-        ask = f"Would a free sample of 10 recent registrations from {area} be useful?"
-    elif seg == "S9" and not fr:
-        subject = f"New and growing companies in {area}"
-        first = (f"I noticed {firm} focuses on {spec} for clients around {area}, so this may be relevant."
-                 if has_spec else f"I noticed {firm} advises business owners around {area}, so this may be relevant.")
-        core = (f"{brand()} flags local companies at the moments when owners look for advice: a new registration, "
-                "a hiring push or a new site. That is when pensions, protection and benefits come up.")
-        detail = ex or "Each lead shows the company, the event, the date and the official source."
-        ask = f"Would a free sample of 10 current leads from {area} be useful?"
-    elif seg == "S3" and not fr:
-        subject = f"Growing businesses around {area}"
-        first = (f"I noticed {firm} provides {spec} to businesses around {area}, so this may be relevant."
-                 if has_spec else f"I noticed {firm} looks after IT for businesses around {area}, so this may be relevant.")
-        core = (f"{brand()} flags local companies at the moments when IT needs change: a new office, a hiring push "
-                "or an open IT support role that has not been filled. Those are good reasons for an MSP to call.")
-        detail = ex or "Each lead shows the company, what happened, when we saw it and the source."
-        ask = f"Would a free sample of 10 current leads from {area} be useful?"
-    elif seg == "S4" and not fr:
-        subject = f"New and expanding businesses in {area}"
-        first = (f"I noticed {firm} arranges {spec} for businesses around {area}, so this may be relevant."
-                 if has_spec else f"I noticed {firm} arranges business insurance around {area}, so this may be relevant.")
-        core = (f"{brand()} tracks official company registrations and local expansion signals. A newly registered "
-                "company usually needs liability, property and employer cover in its first weeks.")
-        detail = ex or "Each lead shows the company, the registration date, the location and the official source."
-        ask = f"Would a free sample of 10 recent leads from {area} be useful?"
-    elif seg == "S5" and not fr:
-        subject = f"Newly registered companies in {area}"
-        first = (f"I noticed {firm} offers {spec} to businesses around {area}, so this may be relevant."
-                 if has_spec else f"I noticed {firm} works with small businesses around {area}, so this may be relevant.")
-        core = (f"{brand()} tracks official company registrations and employers hiring for finance roles. New "
-                "directors are usually choosing an accountant and payroll provider in their first weeks.")
-        detail = ex or "Each lead shows the company, the registration date, the location and the official source."
-        ask = f"Would a free sample of 10 recent leads from {area} be useful?"
-    elif not fr and seg in catalog.entries():
-        subject, first, core, detail, ask = catalog.draft(seg, firm, area, spec if has_spec else "", brand(), ex)
-    elif seg == "S1":
-        subject = f"Signaux de recrutement à {area}"
-        first = (f"J'ai vu que {firm} recrute des profils {spec} dans la région de {area}." if has_spec
-                 else f"J'ai vu que {firm} accompagne les entreprises de la région de {area} dans leurs recrutements.")
-        core = (f"{brand()} suit les pages carrières des employeurs locaux et repère les moments qui mènent souvent "
-                "à un mandat : postes ouverts depuis plus de 30 jours, annonces republiées ou plusieurs postes à la fois.")
-        detail = "Chaque piste indique l'entreprise, le poste, la date et la source."
-        ask = f"Un échantillon gratuit de 10 pistes actuelles à {area} vous serait-il utile ?"
-    elif seg == "S2":
-        subject = f"Sociétés nouvellement créées à {area}"
-        first = f"J'ai vu que {firm} conçoit des sites web pour les entreprises de la région de {area}."
-        core = (f"{brand()} suit les annonces officielles de création au BODACC. Une société qui vient d'être "
-                "immatriculée choisit en ce moment son site, son identité visuelle et sa présence en ligne.")
-        detail = ex or "Chaque piste indique la société, la date de l'annonce, la ville et la source officielle."
-        ask = f"Un échantillon gratuit de 10 créations récentes à {area} vous serait-il utile ?"
-    else:  # S9 FR
-        subject = f"Nouveaux dirigeants à {area}"
-        first = f"J'ai vu que {firm} accompagne les chefs d'entreprise de la région de {area}."
-        core = (f"{brand()} repère les entreprises locales au moment où leurs dirigeants cherchent conseil : création "
-                "récente, vague de recrutements ou nouveau site. C'est là que se posent les questions de protection "
-                "et d'épargne salariale.")
-        detail = ex or "Chaque piste indique la société, l'événement, la date et la source officielle."
-        ask = f"Un échantillon gratuit de 10 pistes actuelles à {area} vous serait-il utile ?"
+    # Aufbau (Schreibregeln Abschnitt 7): Bezug zur Firma, der Moment (warum jetzt), wie leicht es ist, ein kleines Ja.
+    # Psychologie ohne Tricks: Timing statt Druck, Einfachheit, echte Exklusivität, Probe als Geschenk, Ja/Nein-Frage.
+    if fr:
+        first_generic = {"S1": f"J'ai vu que {firm} accompagne les entreprises de la région de {area} dans leurs recrutements.",
+                         "S2": f"J'ai vu que {firm} conçoit des sites web pour les entreprises de la région de {area}."}
+        first = (f"J'ai vu que {firm} recrute des profils {spec} dans la région de {area}." if seg == "S1" and has_spec
+                 else first_generic.get(seg, f"J'ai vu que {firm} accompagne les chefs d'entreprise de la région de {area}."))
+        subject, core = {
+            "S1": (f"Employeurs à {area} qui peinent à recruter",
+                   f"Autour de {area}, certains employeurs ont le même poste ouvert depuis des semaines ou recrutent "
+                   "plusieurs personnes à la fois. C'est souvent le moment où ils sont le plus ouverts à un cabinet."),
+            "S2": (f"Nouvelles entreprises à {area}",
+                   f"Chaque semaine, de nouvelles sociétés sont créées autour de {area}. Dans les premières semaines, "
+                   "elles choisissent leur site web, souvent avec la première agence qui les contacte."),
+        }.get(seg, (f"Nouveaux dirigeants à {area}",
+                    f"Les nouveaux dirigeants autour de {area} se posent leurs premières questions de rémunération, de "
+                    "retraite et de prévoyance. Peu ont déjà un conseiller."))
+        easy = ("C'est simple : chaque lundi, une courte liste avec l'entreprise, le téléphone, l'e-mail et une phrase "
+                "d'accroche. Aucun logiciel, rien à installer, et chaque entreprise ne va qu'à une seule entreprise de "
+                "votre secteur.")
+        ask = f"Un simple « oui » suffit : je vous envoie un échantillon gratuit de 10 pistes actuelles pour {area} ?"
+    elif seg in ("S1", "S2", "S3", "S4", "S5", "S9") or seg not in catalog.entries():
+        what = {"S1": ("places {spec} staff", "recruits for employers"), "S2": ("builds {spec}", "builds websites for businesses"),
+                "S3": ("provides {spec}", "looks after IT for businesses"), "S4": ("arranges {spec}", "arranges business insurance"),
+                "S5": ("offers {spec}", "works with small businesses"), "S9": ("focuses on {spec}", "advises business owners")}
+        w = what.get(seg, ("works in {spec}", "works with businesses"))
+        first = f"I noticed {firm} {(w[0].format(spec=spec) if has_spec else w[1])} around {area}, so this may be relevant."
+        subject, core = {
+            "S1": (f"{area} employers struggling to fill roles",
+                   f"Some employers around {area} have had the same roles open for weeks, or are hiring several people "
+                   "at once. That is usually when they are most open to an agency."),
+            "S2": (f"New businesses in {area}",
+                   f"Every week new companies are registered around {area}. In their first weeks, owners decide on their "
+                   "website, often with whoever reaches them first."),
+            "S3": (f"Growing businesses around {area}",
+                   f"Companies around {area} that open an office or hire fast soon need IT support. Reaching them in "
+                   "that moment makes the first call easy."),
+            "S4": (f"New businesses in {area} that need cover",
+                   f"A company registered around {area} in the last weeks needs liability, property and employer cover "
+                   "soon. The broker who calls first usually gets to quote."),
+            "S5": (f"New companies in {area} choosing an accountant",
+                   f"Most new directors around {area} choose their accountant in the first weeks. The practice that "
+                   "calls at that moment has the easiest conversation."),
+            "S9": (f"New company directors in {area}",
+                   f"New directors around {area} face their first questions on pay, pensions and protection. Few have "
+                   "an adviser yet."),
+        }.get(seg, (f"Companies in {area} with a reason to buy",
+                    f"Every week, companies around {area} are founded, hire or grow. That is when they choose new suppliers."))
+        easy = ("It's simple: every Monday you get a short list with the company, phone number, email and an opening "
+                "line. No software, nothing to set up, and each company goes to only one firm in your field.")
+        ask = f"No strings attached, a quick \"yes\" is enough: shall I send you a free sample of 10 current leads from {area}?"
+    else:
+        subject, first, core, _detail, _ask = catalog.draft(seg, firm, area, spec if has_spec else "", brand(), ex)
+        easy = ("It's simple: every Monday you get a short list with the company, phone number, email and an opening "
+                "line. No software, nothing to set up, and each company goes to only one firm in your field.")
+        ask = f"No strings attached, a quick \"yes\" is enough: shall I send you a free sample of 10 current leads from {area}?"
 
     greet, bye = ("Bonjour,", "Bien cordialement,") if fr else (f"Hello {firm} team,", "Best regards,")
-    # Lieferumfang und Exklusivität (stimmt: deliveries.py liefert nur mit Telefon und E-Mail, je Branche exklusiv)
-    detail += (" Nous ajoutons le téléphone et l'e-mail de l'entreprise, et chaque piste ne va qu'à une seule "
-               "entreprise de votre secteur." if fr else
-               " We add the company's phone number and email, and each lead goes to only one firm in your field.")
+    detail = f"{ex}\n\n{easy}" if ex else easy
     body = f"{greet}\n\n{first}\n\n{core}\n\n{detail}\n\n{ask}\n\n{bye}\n{sender or signature(lang)}"
     if len(subject) > 60:
         subject = subject[:57].rsplit(" ", 1)[0]

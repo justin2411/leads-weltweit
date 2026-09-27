@@ -167,11 +167,11 @@ def delivery_text(lang: str, n: int, period: dt.date, areas: list[str]) -> tuple
     where = ", ".join(areas)
     if lang == "fr":
         subject = f"Vos nouvelles pistes – semaine du {period:%d/%m/%Y}"
-        body = (f"Bonjour,\n\nVous trouverez ci-joint vos {n} nouvelles pistes de la semaine"
-                + (f" pour {where}" if where else "") + ".\n\n"
+        body = (f"Bonjour,\n\nVoici vos {n} nouvelles pistes de la semaine"
+                + (f" pour {where}" if where else "") + ", réservées à votre entreprise.\n\n"
                 "Le rapport en PDF présente chaque entreprise avec son téléphone et son e-mail, un court profil, "
                 "l'événement et sa date, un conseil de vente et une phrase d'accroche. Le tableau joint contient les mêmes "
-                "pistes pour votre CRM. "
+                "pistes pour votre CRM. Commencez par les priorités hautes : le moment y est le meilleur. "
                 "Si vous souhaitez ajuster les villes ou les types de signaux, répondez simplement à ce message.\n\n"
                 "Bien cordialement,\n" + signature(lang))
         if n == 0:
@@ -181,10 +181,11 @@ def delivery_text(lang: str, n: int, period: dt.date, areas: list[str]) -> tuple
                     "Bien cordialement,\n" + signature(lang))
         return subject, body
     subject = f"Your new leads – week of {period:%d %B %Y}"
-    body = (f"Hello,\n\nPlease find attached your {n} new leads for this week"
-            + (f" in {where}" if where else "") + ".\n\n"
+    body = (f"Hello,\n\nHere are your {n} new leads for this week"
+            + (f" in {where}" if where else "") + ", reserved for your firm.\n\n"
             "The PDF report shows each company with its phone number and email, a short profile, the event and its "
             "date, a sales tip and a suggested opening line. The attached spreadsheet has the same leads for your CRM. "
+            "Start with the high-priority ones: that is where the timing is best. "
             "If you would like to adjust the towns or signal types, simply reply to this email.\n\n"
             "Best regards,\n" + signature(lang))
     if n == 0:

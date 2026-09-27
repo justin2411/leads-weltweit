@@ -193,7 +193,9 @@ def lint_draft(subject: str, body: str, language: str = "en", min_words: int = 7
             if m:
                 errors.append(f"verbotene Formulierung im {where}: '{m.group(0)}'")
 
-    if re.search(r"https?://|www\.", body, flags=re.IGNORECASE):
+    # Eigene Website in der Signatur ist erlaubt (Inhaber 27.09.2026), fremde Links nicht
+    if re.search(r"https?://|www\.", re.sub(r"(https?://)?(www\.)?nextgen-profit\.de/?", "", body, flags=re.IGNORECASE),
+                 flags=re.IGNORECASE):
         errors.append("keine Links im Text (nur die Abmeldung in der Fußzeile)")
     if re.search(r"unsubscribe|désinscri|abmeld", body, flags=re.IGNORECASE):
         warnings.append("Abmeldehinweis steht im Text; die Fußzeile kommt vom System")
