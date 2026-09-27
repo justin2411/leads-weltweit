@@ -58,7 +58,7 @@ export async function Home({ lang }: { lang: HomeLang }) {
   const [pages, stats, feed] = await Promise.all([
     publicPages().catch(() => []),
     homeStats().catch(() => ({ companies: 0, signals: 0 })),
-    homeFeed().catch(() => []),
+    homeFeed(lang).catch(() => []),
   ]);
   const V = VIDEOS as Record<string, { src: string; poster: string; seconds: number }>;
   const video = V[`${lang}:home`] ?? V["uk/accountants"];
@@ -138,7 +138,7 @@ export async function Home({ lang }: { lang: HomeLang }) {
             <span className="tagx">{t.exTag}</span>
             <dl>
               {([[t.exRows[0], example.company, "big"], [t.exRows[1], example.place], [t.exRows[2], example.event], [t.exRows[3], example.date],
-                [t.exRows[4], example.source], [t.exRows[5], example.urgency ? example.urgency[0].toUpperCase() + example.urgency.slice(1) : "", "prio"],
+                [t.exRows[4], example.source], [t.exRows[5], example.urgency ? ({ en: { high: "High", medium: "Medium", low: "Low" }, fr: { high: "Haute", medium: "Moyenne", low: "Basse" }, de: { high: "Hoch", medium: "Mittel", low: "Niedrig" } }[lang] as Record<string, string>)[example.urgency] ?? example.urgency : "", "prio"],
                 [t.exRows[6], example.opener ? `“${example.opener}”` : "", "quote"]] as [string, string, string?][])
                 .filter(([, v]) => v).flatMap(([k, v, cls], n) => [
                   <dt key={k + "t"} style={i(n)}>{k}</dt>, <dd key={k + "d"} className={cls} style={i(n)}>{cls === "prio" ? <span>{v}</span> : v}</dd>])}
