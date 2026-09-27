@@ -27,7 +27,7 @@ Diese Regeln gelten immer, auch wenn eine Aufgabe dadurch langsamer wird.
 - Keine Tracking-Pixel für Öffnungen.
 
 **Daten**
-- Lead-Inhalte (die Firmen, über die wir berichten): **nur Firmendaten** (Name, Adresse, Website, zentrale Telefonnummer, Ereignis, Quelle). Keine Namen, persönlichen E-Mails oder Telefonnummern von Mitarbeitenden.
+- Lead-Inhalte (die Firmen, über die wir berichten): **nur Firmendaten** (Name, Adresse, Website, zentrale Telefonnummer, Ereignis, Quelle). Keine Namen, persönlichen E-Mails oder Telefonnummern von Mitarbeitenden. Ausnahme seit 27.09.2026: Name und Rolle von Inhabern/Geschäftsführern aus öffentlichen Registern oder dem Impressum (siehe Abschnitt 8a).
 - Quellen: öffentliche Register, amtliche Bekanntmachungen, Firmenwebsites und deren Karriereseiten, offizielle offene Schnittstellen. **Kein Scraping** von LinkedIn, Indeed, StepStone, Glassdoor, Xing, Google Maps oder anderen Plattformen, deren Bedingungen es verbieten. robots.txt beachten, höchstens einmal täglich pro Seite abrufen.
 - Keine geheimen Schlüssel im Code oder in Commits. Alles über Umgebungsvariablen.
 
@@ -159,6 +159,7 @@ Für jedes Segment in jedem Land:
 5. Mit **S1 (Personalvermittlung) in UK** und **S2 (Webagenturen) in US** beginnen: je 10 Probe-Leads bauen, dann das Experiment vorbereiten.
 6. Dem Inhaber einen ersten Bericht mit den Proben und 10 Beispiel-Entwürfen vorlegen.
 
+- **Ansprechperson im Lead (Inhaber 27.09.2026: „doch ansprechperson dürfen wir, ändere das“):** Leads dürfen Name und Rolle einer Ansprechperson enthalten – nur Inhaber, Geschäftsführer oder vertretungsberechtigte Personen aus öffentlichen Registern (z. B. Companies House, Handelsregister) oder aus dem Impressum der Firmenwebsite. Weiterhin keine privaten Telefonnummern oder privaten E-Mail-Adressen, keine anderen Mitarbeitenden. Fehlt ein Name, steht die Rolle („Ask for …“). Offene Rechtsfrage für EU/UK (Informationspflicht nach Art. 14 DSGVO bei Weitergabe an Kunden) liegt beim Inhaber.
 - **Kundenlieferung (26.09.2026, „mach einfach“):** `scripts/deliveries.py` + `.github/workflows/kundenlieferung.yml`, montags ca. 07:00. Kunde anlegen mit `add-customer` (Preis nur vom Inhaber). Erste Lieferung jedes Kunden geht als Vorschau an den Inhaber und erst nach `approve` raus; danach automatisch. Jeder Lead höchstens einmal pro Abo, nur aus den gebuchten Regionen.
 - **Versand ohne Aufwärmphase (26.09.2026, „ja ändere es und sende … jeden Tag, auch heute 100 Mails“, Upload ausdrücklich bestätigt):** Notbremse: Bounce-Quote über 5 %, bewertet erst ab 100 gesendeten Mails (Nachtrag „lockerer“) (Spam-Beschwerde stoppt weiterhin sofort). Versand und Automatiklauf täglich inkl. Wochenende, Tagesziel 100 (`config/versand.yaml`: `aufwaermphase: false`, `tagesziel`), begrenzt durch `anbieter_tageslimit` − 10.
 

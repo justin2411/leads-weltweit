@@ -16,7 +16,7 @@ import io
 import re
 from pathlib import Path
 
-from lib.playbook import ask_for, briefing
+from lib.playbook import briefing
 
 ROOT = Path(__file__).resolve().parents[2]
 FONTS = ROOT / "video" / "fonts"
@@ -130,9 +130,18 @@ T2 = {
            "inc_h": "In every lead", "inc": ["Company and location", "What happened, with date", "Phone and email", "Priority", "Sales tip", "Opening line"],
            "plans_h": "Plans", "per": "per month", "btn": "Start my weekly leads", "btn1": "See plans and start", "start": "Ready to start?",
            "cta": "Just reply to our email with your towns. Your first delivery arrives next Monday.",
-           "b_co": "Company profile", "b_ev": "Why it's an opportunity", "b_tip": "Sales approach", "b_what": "What happened", "h_sit": "The situation", "h_angle": "Your angle", "h_obj": "If they hesitate", "h_call": "Call guide", "h_mail": "Follow-up email, ready to send", "i_addr": "Address", "i_ask": "Ask for", "i_co": "Company",
+           "b_co": "Company profile", "b_ev": "Why it's an opportunity", "b_tip": "Sales approach", "b_what": "What happened", "h_sit": "The situation", "h_angle": "Your angle", "h_obj": "If they hesitate", "h_call": "Call guide", "h_mail": "Follow-up email, ready to send", "i_addr": "Address", "i_ask": "Ask for", "i_contact": "Contact person", "i_co": "Company",
+           "ey": "A personal note", "intro_h": "Thank you for your first order",
+           "intro": "We are glad to have you on board. Our goal is simple: to bring you new clients at exactly the right moment. "
+                    "Every week we look for companies that need what you offer right now, because they have just been founded, are hiring or are growing, "
+                    "and we hand them to you first, with everything you need to start the conversation. We look forward to your first wins.",
+           "intro_h_s": "Your free sample",
+           "intro_s": "Thank you for your interest in NextGen Profit. Our goal is simple: to bring you new clients at exactly the right moment. "
+                      "The companies below need what you offer right now, because they have just been founded, are hiring or are growing. "
+                      "Each one comes with everything you need to start the conversation. We hope they bring you your first new client.",
+           "role": "Founder, NextGen Profit",
            "f_ind": "Industry", "f_form": "Legal form", "f_reg": "Registered", "f_loc": "Location", "f_web": "Website", "f_noweb": "none found yet",
-           "p1": "10 leads selected for you", "p1s": "Company data only · phone and email from the company's own website",
+           "p1": "10 leads selected for you", "p1s": "Business contact details from public registers and company websites",
            "plan_txt": {"starter": "Up to 30 new leads per week from 1 area. Every lead exclusive to your firm.",
                         "pro": "Up to 100 new leads per week from up to 3 areas, all matching signals. Every lead exclusive to your firm."}},
     "fr": {"h": "Pourquoi ces pistes génèrent du chiffre d'affaires",
@@ -146,9 +155,18 @@ T2 = {
            "inc_h": "Dans chaque piste", "inc": ["Entreprise et lieu", "L'événement, avec la date", "Téléphone et e-mail", "Priorité", "Conseil de vente", "Phrase d'accroche"],
            "plans_h": "Formules", "per": "par mois", "btn": "Recevoir mes pistes chaque semaine", "btn1": "Voir les formules", "start": "On commence ?",
            "cta": "Répondez simplement à notre e-mail avec vos villes. Votre première livraison arrive lundi prochain.",
-           "b_co": "Profil de l'entreprise", "b_ev": "Pourquoi c'est une opportunité", "b_tip": "Approche commerciale", "b_what": "Ce qui s'est passé", "h_sit": "La situation", "h_angle": "Votre angle", "h_obj": "S'ils hésitent", "h_call": "Guide d'appel", "h_mail": "E-mail de relance, prêt à envoyer", "i_addr": "Adresse", "i_ask": "Demander", "i_co": "Entreprise",
+           "b_co": "Profil de l'entreprise", "b_ev": "Pourquoi c'est une opportunité", "b_tip": "Approche commerciale", "b_what": "Ce qui s'est passé", "h_sit": "La situation", "h_angle": "Votre angle", "h_obj": "S'ils hésitent", "h_call": "Guide d'appel", "h_mail": "E-mail de relance, prêt à envoyer", "i_addr": "Adresse", "i_ask": "Demander", "i_contact": "Interlocuteur", "i_co": "Entreprise",
+           "ey": "Un mot personnel", "intro_h": "Merci pour votre première commande",
+           "intro": "Nous sommes ravis de vous compter parmi nos clients. Notre objectif est simple : vous apporter de nouveaux clients au bon moment. "
+                    "Chaque semaine, nous repérons les entreprises qui ont besoin de votre service maintenant, parce qu'elles viennent d'être créées, recrutent ou grandissent, "
+                    "et nous vous les transmettons en premier, avec tout ce qu'il faut pour engager la conversation. Au plaisir de vos premiers succès.",
+           "intro_h_s": "Votre échantillon gratuit",
+           "intro_s": "Merci de votre intérêt pour NextGen Profit. Notre objectif est simple : vous apporter de nouveaux clients au bon moment. "
+                      "Les entreprises ci-dessous ont besoin de votre service maintenant, parce qu'elles viennent d'être créées, recrutent ou grandissent. "
+                      "Chacune est accompagnée de tout ce qu'il faut pour engager la conversation.",
+           "role": "Fondateur, NextGen Profit",
            "f_ind": "Secteur", "f_form": "Forme juridique", "f_reg": "Immatriculée", "f_loc": "Lieu", "f_web": "Site web", "f_noweb": "pas encore trouvé",
-           "p1": "10 pistes sélectionnées pour vous", "p1s": "Données d'entreprise uniquement · téléphone et e-mail issus du site de l'entreprise",
+           "p1": "10 pistes sélectionnées pour vous", "p1s": "Coordonnées professionnelles issues de registres publics et des sites des entreprises",
            "plan_txt": {"starter": "Jusqu'à 30 nouvelles pistes par semaine dans 1 zone. Chaque piste réservée à votre entreprise.",
                         "pro": "Jusqu'à 100 nouvelles pistes par semaine dans 3 zones maximum, tous les signaux utiles. Chaque piste réservée à votre entreprise."}},
 }
@@ -192,7 +210,10 @@ def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str
         co = " · ".join(x for x in [r.get("industry"), r.get("legal_form"),
                                     (t2["f_reg"] + " " + _day(r.get("event_date", ""), lang)) if sig == "new_incorporation" else ""] if x)
         info = [(t["phone"], r.get("phone") or "–"), (t["email"], r.get("email") or "–"), (t["web"], web or t2["f_noweb"]),
-                (t2["i_addr"], addr), (t2["i_ask"], ask_for(segment, sig)), (t2["i_co"], co or "–")]
+                (t2["i_addr"], addr),
+                (t2["i_contact"], (r.get("contact_name") or "").strip() + (f" ({r.get('contact_role').strip()})" if (r.get("contact_role") or "").strip() else "")),
+                (t2["i_co"], co or "–")]
+        info = [(k, v) for k, v in info if v and v.strip()]
         cards.append(f"""
 <article class="lead">
   <div class="hd"><div class="nm">{e(g['company'])}</div>
@@ -206,11 +227,20 @@ def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str
 </article>""")
     when = _day((period or dt.date.today()).isoformat(), lang)
     head = (t2['p1'] if len(groups) >= 10 else f"{len(groups)} {t['firms']}") + (f" · {area}" if area else "")
+    sample = bool(plans)
+    intro = f"""<div class="intro"><div class="ey">{t2['ey']}</div><div class="ih">{t2['intro_h_s'] if sample else t2['intro_h']}{(' · ' + e(firm)) if firm else ''}</div>
+<p>{t2['intro_s'] if sample else t2['intro']}</p>
+<div class="sig"><span class="sn">NextGen <i>Profit</i></span></div></div>"""
+    chunks, k = [], 0
+    while k < max(len(cards), 1):
+        size = 2 if k == 0 else 3
+        chunks.append((k, cards[k:k + size]))
+        k += size
     pages = []
-    for k in range(0, max(len(cards), 1), 3):
-        ttl = (f'<div class="ttl"><h1>{e(head)}</h1><span>{e(when)}{(" · " + e(firm)) if firm else ""}</span></div>' if k == 0 else "")
+    for k, chunk in chunks:
+        ttl = (f'{intro}<div class="ttl"><h1>{e(head)}</h1><span>{e(when)}</span></div>' if k == 0 else "")
         pages.append(f"""<section class="p1"><header class="bar"><div class="logo">NextGen <i>Profit</i></div></header>
-<div class="in">{ttl}<div class="grid">{''.join(cards[k:k + 3])}</div></div>
+<div class="in">{ttl}<div class="grid">{''.join(chunk)}</div></div>
 <div class="ft"><span>{t['conf']}</span><span>{t2['p1s']}</span></div></section>""")
     pages = "\n".join(pages)
     page2 = ""
@@ -258,7 +288,15 @@ section{{width:210mm;height:297mm;position:relative;overflow:hidden;page-break-a
 .body>div+div{{border-left:1px solid #eef0f4;padding-left:4mm}}
 h4{{font-size:7.2px;letter-spacing:.14em;text-transform:uppercase;color:#a07f46;font-weight:700;margin:0 0 1mm}}
 .body p{{font-size:8.9px;line-height:1.45;color:#1f2940;margin:0}}
-.p1 ~ .p1 .lead{{height:83mm}}.p1 .bar{{height:17mm}}.p1 .in{{padding-top:4.5mm}}.p1 .ttl{{margin-bottom:2.5mm}}.p1 .ttl h1{{font-size:17px}}
+.p1 ~ .p1 .lead{{height:83mm}}
+.intro{{position:relative;margin:2mm 0 7mm;padding:1mm 0 1mm 7mm;border-left:.9mm solid #c9a86a}}
+.ey{{font-size:7.8px;letter-spacing:.22em;text-transform:uppercase;color:#a07f46;font-weight:700;margin-bottom:2mm}}
+.ih{{font-size:21px;font-weight:800;color:#0b1428;letter-spacing:-.5px;line-height:1.15;margin-bottom:2.6mm}}
+.intro p{{font-size:10.8px;line-height:1.65;color:#39404d;max-width:165mm}}
+.sig{{margin-top:3.6mm;display:flex;align-items:center;gap:3mm}}
+.sig:before{{content:"";width:9mm;height:1px;background:#c9a86a}}
+.sn{{font-size:12.5px;font-weight:800;letter-spacing:-.2px;color:#0b1428}}.sn i{{font-style:normal;color:#b08d57}}
+.sr{{font-size:8.6px;letter-spacing:.14em;text-transform:uppercase;color:#a07f46;font-weight:700}}
 .ft{{position:absolute;left:14mm;right:14mm;bottom:7mm;display:flex;justify-content:space-between;font-size:8.5px;color:#8a92a3;letter-spacing:.06em}}
 .p2 .in{{padding:12mm 16mm 0}}
 .p2 h1{{font-size:24px;font-weight:800;letter-spacing:-.5px;color:#0b1428;margin-bottom:6mm}}
