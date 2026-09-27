@@ -128,6 +128,7 @@ T2 = {
            "inc_h": "In every lead", "inc": ["Company and location", "What happened, with date", "Phone and email", "Priority", "Sales tip", "Opening line"],
            "plans_h": "Plans", "per": "per month", "btn": "Start my weekly leads", "btn1": "See plans and start", "start": "Ready to start?",
            "cta": "Just reply to our email with your towns. Your first delivery arrives next Monday.",
+           "b_co": "Company", "b_ev": "Why now", "b_tip": "How to approach",
            "p1": "10 leads selected for you", "p1s": "Company data only · phone and email from the company's own website",
            "plan_txt": {"starter": "Up to 30 new leads per week from 1 area. Every lead exclusive to your firm.",
                         "pro": "Up to 100 new leads per week from up to 3 areas, all matching signals. Every lead exclusive to your firm."}},
@@ -142,6 +143,7 @@ T2 = {
            "inc_h": "Dans chaque piste", "inc": ["Entreprise et lieu", "L'événement, avec la date", "Téléphone et e-mail", "Priorité", "Conseil de vente", "Phrase d'accroche"],
            "plans_h": "Formules", "per": "par mois", "btn": "Recevoir mes pistes chaque semaine", "btn1": "Voir les formules", "start": "On commence ?",
            "cta": "Répondez simplement à notre e-mail avec vos villes. Votre première livraison arrive lundi prochain.",
+           "b_co": "Entreprise", "b_ev": "Pourquoi maintenant", "b_tip": "Comment l'aborder",
            "p1": "10 pistes sélectionnées pour vous", "p1s": "Données d'entreprise uniquement · téléphone et e-mail issus du site de l'entreprise",
            "plan_txt": {"starter": "Jusqu'à 30 nouvelles pistes par semaine dans 1 zone. Chaque piste réservée à votre entreprise.",
                         "pro": "Jusqu'à 100 nouvelles pistes par semaine dans 3 zones maximum, tous les signaux utiles. Chaque piste réservée à votre entreprise."}},
@@ -174,16 +176,25 @@ def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str
         urg = r.get("urgency") or r.get("priority") or ""
         loc = (r.get("location") or "").strip()
         opener = (r.get("opening_line") or r.get("opener") or "").replace((r.get("company") or "").strip() or "\0", g["company"])
-        web = re.sub(r"^https?://(www\.)?", "", r.get("website") or "").rstrip("/")
-        contact = [("tel", r.get("phone")), ("mail", r.get("email")), ("web", web)]
-        contact = [(k, v) for k, v in contact if v][:2]
+        profile = (r.get("company_profile") or "").strip()
+        tip = (r.get("sales_tip") or "").strip()
+        why = (r.get("why_now") or "").strip()
+        ev = _event(r.get("event", ""), r.get("company", ""))
         cards.append(f"""
 <article class="lead">
-  <div class="hd"><div class="nm">{e(g['company'])}</div>{f'<span class="pr p-{e(urg)}">{e(t["prio"].get(urg, ""))}</span>' if urg else ''}</div>
-  <div class="sub">{e(loc)}{' · ' if loc and sig else ''}<b>{e(t['sig'].get(sig, ''))}</b></div>
-  <p class="ev">{e(_clip(_event(r.get('event', ''), r.get('company', '')), 110))}</p>
-  {f'<p class="op">“{e(_clip(opener, 150))}”</p>' if opener else ''}
-  <div class="ct">{''.join(f'<span class="{k}">{e(v)}</span>' for k, v in contact)}</div>
+  <div class="c1">
+    <div class="nm">{e(g['company'])}</div>
+    <div class="tags">{f'<span class="pr p-{e(urg)}">{e(t["prio"].get(urg, ""))}</span>' if urg else ''}<span class="sg">{e(t['sig'].get(sig, ''))}</span></div>
+    <div class="ct"><div><i>T</i>{e(r.get('phone') or '–')}</div><div><i>E</i>{e(r.get('email') or '–')}</div></div>
+  </div>
+  <div class="c2">
+    <h4>{t2['b_co']}</h4><p>{e(profile) or e(loc) or '–'}</p>
+    <h4>{t2['b_ev']}</h4><p class="ev">{e(ev)}{(' ' + e(why) + '.') if why and len(ev) < 60 else ''}</p>
+  </div>
+  <div class="c3">
+    <h4>{t2['b_tip']}</h4><p>{e(tip) or '–'}</p>
+    {f'<p class="op">“{e(opener)}”</p>' if opener else ''}
+  </div>
 </article>""")
     when = _day((period or dt.date.today()).isoformat(), lang)
     page2 = ""
@@ -215,18 +226,24 @@ section{{width:210mm;height:297mm;position:relative;overflow:hidden;page-break-a
 .in{{padding:7mm 14mm 0}}
 .p1 .ttl{{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4.5mm}}
 .p1 .ttl h1{{font-size:19px;font-weight:800;letter-spacing:-.3px;color:#0b1428}}.p1 .ttl span{{font-size:10.5px;color:#6b7486}}
-.grid{{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:45.5mm;gap:3.5mm}}
-.lead{{border:1px solid #e3e6ee;border-radius:10px;padding:3.6mm 4.2mm 3mm;position:relative;overflow:hidden;background:#fff;display:flex;flex-direction:column}}
+.grid{{display:flex;flex-direction:column;gap:1.6mm}}
+.lead{{display:grid;grid-template-columns:58mm 1fr 1.2fr;gap:3.5mm;height:23.6mm;border:1px solid #e3e6ee;border-radius:9px;padding:2mm 4mm 2mm 5mm;position:relative;overflow:hidden;background:#fff}}
 .lead:before{{content:"";position:absolute;left:0;top:0;bottom:0;width:1.2mm;background:linear-gradient(180deg,#d8bd8a,#b08d57)}}
-.hd{{display:flex;justify-content:space-between;gap:3mm;align-items:flex-start}}
-.nm{{font-size:13.5px;font-weight:800;color:#0b1428;letter-spacing:-.2px;line-height:1.2}}
-.pr{{flex:none;font-size:7.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:1mm 2.2mm;border-radius:99px;background:#0b1428;color:#f3e1b9}}
-.pr.p-medium{{background:#f3ead8;color:#7a5b24}}.pr.p-low{{background:#eef0f4;color:#6b7486}}
-.sub{{font-size:9.5px;color:#6b7486;margin-top:.8mm}}.sub b{{color:#a07f46;font-weight:700}}
-.ev{{font-size:10.5px;line-height:1.4;color:#1f2940;margin-top:1.8mm;font-weight:600}}
-.op{{font-size:9.5px;line-height:1.4;color:#4a5263;font-style:italic;margin-top:1.4mm;border-left:.6mm solid #d8bd8a;padding-left:2mm}}
-.ct{{margin-top:auto;padding-top:1.8mm;border-top:1px dashed #e3e6ee;display:flex;gap:4mm;flex-wrap:wrap;font-size:9.5px;font-weight:700;color:#0b1428}}
-.ct span:before{{font-weight:700;color:#a07f46;margin-right:1mm}}.ct .tel:before{{content:"T"}}.ct .mail:before{{content:"E"}}.ct .web:before{{content:"W"}}
+.c1{{display:flex;flex-direction:column;min-width:0}}
+.nm{{font-size:11.5px;font-weight:800;color:#0b1428;letter-spacing:-.2px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+.tags{{display:flex;gap:1.2mm;margin-top:.8mm}}
+.pr,.sg{{font-size:6.6px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.5mm 1.8mm;border-radius:99px;white-space:nowrap}}
+.pr{{background:#0b1428;color:#f3e1b9}}.pr.p-medium{{background:#f3ead8;color:#7a5b24}}.pr.p-low{{background:#eef0f4;color:#6b7486}}
+.sg{{background:linear-gradient(135deg,#ecd6a6,#c29d5c);color:#1a1408}}
+.ct{{margin-top:auto;background:#f7f3ea;border:1px solid #efe5d3;border-radius:6px;padding:.8mm 2mm;font-size:8.8px;font-weight:700;color:#0b1428}}
+.ct div{{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4}}.ct i{{font-style:normal;color:#a07f46;margin-right:1.4mm}}
+.c2,.c3{{min-width:0;border-left:1px solid #eef0f4;padding-left:3.5mm;overflow:hidden}}
+h4{{font-size:6.6px;letter-spacing:.14em;text-transform:uppercase;color:#a07f46;font-weight:700;margin:0 0 .3mm}}
+.c2 p,.c3 p{{font-size:8.3px;line-height:1.3;color:#1f2940;margin-bottom:.9mm;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}}
+.c2 p.ev{{font-weight:600}}
+.c3 .op{{font-style:italic;color:#4a5263;border-left:.5mm solid #d8bd8a;padding-left:1.6mm;margin:0}}
+.p1 .bar{{height:17mm}}.p1 .in{{padding-top:4.5mm}}.p1 .ttl{{margin-bottom:3mm}}.p1 .ttl h1{{font-size:17px}}
+.btn1{{top:4.8mm!important}}
 .ft{{position:absolute;left:14mm;right:14mm;bottom:7mm;display:flex;justify-content:space-between;font-size:8.5px;color:#8a92a3;letter-spacing:.06em}}
 .p2 .in{{padding:12mm 16mm 0}}
 .p2 h1{{font-size:24px;font-weight:800;letter-spacing:-.5px;color:#0b1428;margin-bottom:6mm}}
