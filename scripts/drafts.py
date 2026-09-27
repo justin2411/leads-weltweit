@@ -79,9 +79,9 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
     if fr:
         # Einstieg: direkte Frage mit Firma und Region (zeigt Bezug und weckt Neugier)
         first = {
-            "S1": f"Et si {firm} savait, chaque lundi, quels employeurs autour de {area} cherchent depuis des semaines à pourvoir un poste ?",
-            "S2": f"Et si {firm} savait, chaque lundi, quelles entreprises viennent d'être créées autour de {area} et vont choisir leur site web ?",
-        }.get(seg, f"Et si {firm} savait, chaque lundi, quels dirigeants autour de {area} viennent de créer leur entreprise ?")
+            "S1": f"Nous aidons les cabinets de recrutement comme {firm} à joindre les employeurs de {area} au moment où ils peinent à recruter.",
+            "S2": f"Nous aidons les agences web comme {firm} à joindre les nouvelles entreprises de {area} avant qu'elles aient choisi leur prestataire.",
+        }.get(seg, f"Nous aidons les conseillers comme {firm} à joindre les nouveaux dirigeants de {area} au moment où se posent les questions de retraite et de prévoyance.")
         subject, core = {
             "S1": (f"Employeurs à {area} qui peinent à recruter",
                    "C'est souvent le moment où ils sont le plus ouverts à un cabinet, et vous seriez le premier à appeler."),
@@ -94,14 +94,15 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
         ask = f"Un simple « oui » suffit : je vous envoie un échantillon gratuit de 10 pistes actuelles pour {area} ?"
     elif seg in ("S1", "S2", "S3", "S4", "S5", "S9") or seg not in catalog.entries():
         # Einstieg: direkte Frage mit Firma und Region (zeigt Bezug und weckt Neugier)
+        # Einstieg als klare Aussage: was wir für Firmen wie diese tun (keine erfundenen Kunden oder Zahlen)
         first = {
-            "S1": f"What if {firm} knew, every Monday, which employers in {area} have been trying to fill a role for weeks?",
-            "S2": f"What if {firm} knew, every Monday, which companies in {area} were just founded and still need a website?",
-            "S3": f"What if {firm} knew, every Monday, which companies in {area} are growing fast and will soon need IT support?",
-            "S4": f"What if {firm} knew, every Monday, which new businesses in {area} need cover in the next few weeks?",
-            "S5": f"What if {firm} knew, every Monday, which companies in {area} were just founded and are about to choose an accountant?",
-            "S9": f"What if {firm} knew, every Monday, which new company directors in {area} are facing their first pension and protection questions?",
-        }.get(seg, f"What if {firm} knew, every Monday, which companies in {area} have a fresh reason to buy?")
+            "S1": f"We help recruitment agencies like {firm} reach employers in {area} at the moment they are struggling to fill a role.",
+            "S2": f"We help web agencies like {firm} reach new businesses in {area} before they have chosen who builds their website.",
+            "S3": f"We help IT service firms like {firm} reach growing companies in {area} just before they need IT support.",
+            "S4": f"We help brokers like {firm} reach new businesses in {area} while their first cover is still being arranged.",
+            "S5": f"We help accountancy practices like {firm} reach new companies in {area} before they have chosen an accountant.",
+            "S9": f"We help advisers like {firm} reach new company directors in {area} when pensions and protection first come up.",
+        }.get(seg, f"We help firms like {firm} reach companies in {area} at the moment they have a reason to buy.")
         subject, core = {
             "S1": (f"{area} employers struggling to fill roles",
                    "That's usually when they're most open to an agency, and you'd be the first to call."),
