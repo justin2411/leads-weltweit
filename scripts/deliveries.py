@@ -35,7 +35,7 @@ DEFAULT_MAX = 30         # Leads pro Woche, falls im Abo nichts steht
 CSV_HEADER = ["company", "phone", "email", "website", "location", "company_profile", "event", "event_date",
               "why_now", "priority", "signal", "sales_tip", "question_to_ask", "opening_line",
               "source", "checked_on", "legal_form", "industry", "address", "contact_name", "contact_role"]
-# Kunde bekommt nur Leads mit zentraler Telefonnummer UND Sammel-E-Mail (Inhaber 27.09.2026: "immer beides").
+# Kunde bekommt nur vollständige Leads: Telefon, Sammel-E-Mail, Website, Adresse, Ansprechperson (Inhaber 27.09.2026).
 REQUIRE_CONTACT = True
 
 
@@ -99,10 +99,21 @@ def add_industry(db, leads: list[dict]) -> None:
 
 
 def contact_companies(db) -> dict[str, dict]:
-    """Firmen mit veröffentlichter zentraler Telefonnummer und Sammel-E-Mail (watch.py contacts)."""
+    """Firmen mit VOLLSTÄNDIGEN Daten – nur diese gehen an Kunden und in Proben (Inhaber 27.09.2026: „wichtig ist,
+    dass man immer alle Daten der Leads hat und die dann erst rausschickt“): Telefon und Sammel-E-Mail
+    (watch.py contacts), Website und Adresse (watch_companies) und Ansprechperson (watch.py people)."""
     rows = db.select_all("observations", {"kind": "eq.other", "key": "eq.contact", "details->>email": "not.is.null",
                                           "details->>phone": "not.is.null", "select": "company_id,details,source_url"})
-    return {r["company_id"]: {**r["details"], "page": r.get("source_url")} for r in rows}
+    found = {r["company_id"]: {**r["details"], "page": r.get("source_url")} for r in rows}
+    people = {r["company_id"] for r in db.select_all("observations", {"kind": "eq.other", "key": "eq.person",
+                                                                       "details->>name": "not.is.null", "select": "company_id"})}
+    ids = sorted(set(found) & people)
+    complete = set()
+    for i in range(0, len(ids), 100):
+        for c in db.select("watch_companies", {"id": f"in.({','.join(ids[i:i + 100])})", "website": "not.is.null",
+                                               "address": "not.is.null", "select": "id"}):
+            complete.add(c["id"])
+    return {k: v for k, v in found.items() if k in complete}
 
 
 def add_contacts(db, leads: list[dict], known: dict[str, dict] | None = None) -> None:
@@ -271,7 +282,7 @@ def cmd_prepare(args) -> int:
         known = contact_companies(db)
         before = len(leads)
         leads = [l for l in leads if l["company_id"] in known]
-        print(f"{len(leads)} von {before} frischen Leads mit Telefon und E-Mail")
+        print(f"{len(leads)} von {before} frischen Leads vollständig (Telefon, E-Mail, Website, Adresse, Ansprechperson)")
     ids = [l["id"] for l in leads]
     tags = {}
     for i in range(0, len(ids), 150):
@@ -327,7 +338,8 @@ def _notify_first(previews: list[tuple[dict, list[dict]]]) -> None:
         from lib.leadreport import attachments
         files += attachments(to_csv(picked, _lang(c["country"])), _lang(c["country"]),
                              ", ".join(s["filters"].get("areas") or []) or None, c["company_name"],
-                             name=re.sub(r"[^A-Za-z0-9]+", "-", c["company_name"]).strip("-"))
+                             name=re.sub(r"[^A-Za-z0-9]+", "-", c["company_name"]).strip("-"),
+                             segment=s.get("segment_id"), country=c["country"])
     lines.append("\nOder im Chat mit Claude: „Lieferung für <Firma> freigeben“.")
     _resend([owner], f"Freigabe: erste Lieferung für {len(previews)} Kunden", "\n".join(lines), attachments=files)
     print(f"Vorschau an {owner} geschickt")
@@ -371,7 +383,8 @@ def cmd_send(args) -> int:
         footer = f"{brand()} · {os.environ.get('SENDER_POSTAL_ADDRESS', '')}".strip(" ·")
         from lib.leadreport import attachments
         files = attachments(to_csv(leads, lang), lang, ", ".join(s["filters"].get("areas") or []) or None,
-                            c["company_name"], period, name=f"leads-{period.isoformat()}") if leads else None
+                            c["company_name"], period, name=f"leads-{period.isoformat()}",
+                            segment=s.get("segment_id"), country=c["country"]) if leads else None
         if not args.live:
             print(f"[Probelauf] {c['company_name']} <{c['billing_email']}>: {len(leads)} Leads, Betreff „{subject}“")
             continue

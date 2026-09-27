@@ -391,12 +391,31 @@ def clean_csv(data: bytes, lang: str = "en") -> bytes:
     return ("﻿" + buf.getvalue()).encode("utf-8")
 
 
+REQUIRED = ("phone", "email", "website", "address", "contact_name")
+
+
+def complete_only(data: bytes) -> bytes:
+    """Nur Zeilen mit allen Pflichtangaben (Inhaber 27.09.2026). Ältere CSVs ohne diese Spalten bleiben unverändert."""
+    rows = list(csv.DictReader(io.StringIO(data.decode("utf-8-sig", "replace"))))
+    if not rows or not all(k in rows[0] for k in REQUIRED):
+        return data
+    keep = [r for r in rows if all((r.get(k) or "").strip() for k in REQUIRED)]
+    buf = io.StringIO()
+    w = csv.DictWriter(buf, fieldnames=list(rows[0].keys()))
+    w.writeheader()
+    w.writerows(keep)
+    return ("\ufeff" + buf.getvalue()).encode("utf-8")
+
+
 def attachments(csv_bytes: bytes, lang: str, area: str | None = None, firm: str | None = None,
                 period: dt.date | None = None, name: str = "leads", plans: list[dict] | None = None,
                 cta_url: str | None = None, segment: str | None = None, country: str = "UK") -> list[tuple[str, bytes]]:
     """PDF-Report (falls möglich) + bereinigte CSV für CRM/Excel."""
     slug = "-" + re.sub(r"[^A-Za-z0-9]+", "-", area).strip("-") if area else ""
     out = []
+    csv_bytes = complete_only(csv_bytes)
+    if not group_rows(csv_bytes):
+        return []
     pdf = render_pdf(csv_bytes, lang, area, firm, period, plans, cta_url, segment, country)
     if pdf:
         out.append((f"NextGen-Profit-Lead-Report{slug}.pdf", pdf))

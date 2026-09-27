@@ -288,15 +288,44 @@ def regional_sample(db, seg: str, country: str, region: str | None) -> tuple[lis
         picked.append(l)
         if len(picked) >= 10:
             break
+    if len(picked) < 10 and area:
+        # nicht genug vollständige Leads aus der Region: vollständige Leads aus dem ganzen Land
+        return _country_sample(db, seg, country, rows, known)
     if len(picked) < 10:
-        return sample_files(seg, country), False
+        return [], False  # nie unvollständige Leads verschicken; Inhaber wird benachrichtigt
     for l in picked:
         l["segment_id"] = seg
     enrich(db, picked, known)
     data = to_csv(picked, _lang(country), area)
     name = re.sub(r"[^A-Za-z0-9]+", "-", area or country).strip("-")
     from lib.leadreport import attachments
-    return attachments(data, _lang(country), area, name="sample-leads"), True
+    return attachments(data, _lang(country), area, name="sample-leads", **sample_extras(db, seg, country)), True
+
+
+def sample_extras(db, seg: str, country: str) -> dict:
+    """Für das Proben-PDF: Pakete (settings.pricing), Link zur Zahlungsseite, Zielgruppe und Land."""
+    base = (os.environ.get("APP_BASE_URL") or os.environ.get("SITE_URL") or "https://www.nextgen-profit.de").rstrip("/")
+    plans = ((db.select("settings", {"select": "pricing"}) or [{}])[0].get("pricing")) or None
+    page = db.select("landing_pages", {"segment_id": f"eq.{seg}", "country": f"eq.{country}", "status": "eq.live", "select": "slug"})
+    return {"plans": plans, "cta_url": f"{base}/{page[0]['slug']}/start" if page else None, "segment": seg, "country": country}
+
+
+def _country_sample(db, seg: str, country: str, rows: list[dict], known) -> tuple[list[tuple[str, bytes]], bool]:
+    from deliveries import _lang, enrich, to_csv
+    picked, per = [], {}
+    for l in rows:
+        if known is not None and l["company_id"] not in known or per.get(l["company_id"], 0) >= 1:
+            continue
+        per[l["company_id"]] = 1
+        picked.append({**l, "segment_id": seg})
+        if len(picked) >= 10:
+            break
+    if len(picked) < 10:
+        return [], False
+    enrich(db, picked, known)
+    from lib.leadreport import attachments
+    return attachments(to_csv(picked, _lang(country)), _lang(country), None, name="sample-leads",
+                       **sample_extras(db, seg, country)), False
 
 
 def sample_files(seg: str, country: str) -> list[tuple[str, bytes]]:
