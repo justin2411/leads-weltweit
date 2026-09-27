@@ -54,7 +54,7 @@ export const FORM_CSS = `
 type F = { regions?: string[]; signals?: string[]; industries?: string[]; exclusions?: string[] } | null;
 
 /** Wunschprofil als Formular (eingebettet auf der Danke-Seite und unter /kunde/filter). */
-export function FilterForm({ token, f, back, lang, saved }: { token: string; f: F; back: string; lang: "en" | "fr"; saved?: boolean }) {
+export function FilterForm({ token, f, back, lang, saved, demo }: { token: string; f: F; back: string; lang: "en" | "fr"; saved?: boolean; demo?: boolean }) {
   const T = TXT[lang];
   const chosen = f?.signals?.length ? f.signals : Object.keys(T.sig);
   return (
@@ -80,7 +80,8 @@ export function FilterForm({ token, f, back, lang, saved }: { token: string; f: 
         </div>
         <label><span className="lb">{T.exclusions}<em>{T.optional}</em></span>
           <input type="text" name="exclusions" placeholder={T.exclusionsPh} defaultValue={(f?.exclusions ?? []).join(", ")} /></label>
-        <button className="btn gold big" type="submit">{T.save} <span className="ar">→</span></button>
+        <button className="btn gold big" type={demo ? "button" : "submit"}>{T.save} <span className="ar">→</span></button>
+        {demo && <p className="hint">Preview only – nothing is saved.</p>}
       </form>
     </section>
   );

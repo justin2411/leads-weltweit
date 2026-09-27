@@ -3,6 +3,7 @@ import { BRAND, CONTACT } from "@/lib/site";
 import { stripe, stripeEnabled, type StripeMode } from "@/lib/stripe";
 import { db } from "@/lib/supabase";
 import { filterToken } from "@/lib/tokens";
+import { isOwner } from "@/lib/pages";
 import { PER_WEEK, perMonth } from "@/lib/custom-price";
 import { BrandShell, SiteFooter, SiteHeader } from "../chrome";
 import { FilterForm, FORM_CSS } from "../kunde/filter/form";
@@ -83,9 +84,15 @@ async function loadSession(id: string | undefined) {
   }
 }
 
-export default async function Danke({ searchParams }: { searchParams: Promise<{ session_id?: string; ok?: string; w?: string }> }) {
-  const { session_id, ok, w } = await searchParams;
-  const found = await loadSession(session_id);
+export default async function Danke({ searchParams }: { searchParams: Promise<{ session_id?: string; ok?: string; w?: string; demo?: string }> }) {
+  const { session_id, ok, w, demo: demoParam } = await searchParams;
+  // Vorschau für den Inhaber (Dashboard-Login): Musterkauf, Formular ohne Speichern
+  const demo = demoParam === "1" && (await isOwner());
+  const found = demo
+    ? { mode: "test" as StripeMode, s: { locale: "en", currency: "gbp", amount_total: 160500, customer: null,
+        metadata: { package: "custom", weekly: "1200" }, customer_details: { email: "hello@example-recruitment.co.uk" },
+        custom_fields: [{ key: "company", text: { value: "Example Recruitment Ltd" } }] } }
+    : await loadSession(session_id);
   const lang = found?.s.locale === "fr" ? "fr" : "en";
   const T = TXT[lang];
   const s: any = found?.s;
@@ -111,6 +118,7 @@ export default async function Danke({ searchParams }: { searchParams: Promise<{ 
       filters = (await db().from("customer_filters").select("*").eq("customer_id", c.id).maybeSingle()).data;
     }
   }
+  if (demo) token = "demo";
   const tries = Math.min(Number(w) || 0, 6);
   const retry = found && !token && tries < 6 ? `/danke?session_id=${session_id}&w=${tries + 1}` : null;
 
@@ -140,7 +148,7 @@ export default async function Danke({ searchParams }: { searchParams: Promise<{ 
             <li><div className="n"><span>03</span><i /></div><b>{T.s3[0]}</b><p>{T.s3[1].replace("{d}", first)}</p></li>
           </ol>
         </div>
-        {token && <FilterForm token={token} f={filters} back={`/danke?session_id=${session_id}`} lang={lang} saved={!!ok} />}
+        {token && <FilterForm token={token} f={filters} back={`/danke?session_id=${session_id}`} lang={lang} saved={!!ok} demo={demo} />}
         <p className="note">{T.q} <a href={`mailto:${CONTACT}`}>{CONTACT}</a>.</p>
       </div></main>
       <SiteFooter lang={lang} />
