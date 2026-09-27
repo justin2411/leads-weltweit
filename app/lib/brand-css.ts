@@ -106,8 +106,12 @@ export const BRAND_CSS = `
 .bx .stats-note{font-size:13px;color:var(--soft);margin-top:16px}
 
 /* Video */
-.bx .frame{position:relative;border-radius:22px;padding:10px;background:linear-gradient(135deg,rgba(216,189,138,.55),rgba(255,255,255,.06) 40%,rgba(216,189,138,.25));box-shadow:0 60px 120px -50px rgba(0,0,0,.8)}
-.bx .frame video{display:block;width:100%;aspect-ratio:16/9;border-radius:14px;background:#000}
+.bx .frame{position:relative;border-radius:18px;padding:2px;isolation:isolate;
+  background:conic-gradient(from var(--a),rgba(216,189,138,.12),rgba(246,230,194,.95),rgba(216,189,138,.5),rgba(91,212,154,.35),rgba(216,189,138,.12) 55%,rgba(216,189,138,.12));
+  animation:spin 9s linear infinite;box-shadow:0 60px 120px -50px rgba(0,0,0,.85)}
+.bx .frame:before{content:"";position:absolute;inset:-18px;z-index:-1;border-radius:34px;filter:blur(28px);opacity:.35;
+  background:conic-gradient(from var(--a),transparent,rgba(216,189,138,.6),transparent 40%);animation:spin 9s linear infinite}
+.bx .frame video{display:block;width:100%;aspect-ratio:16/9;border-radius:16px;background:#000}
 
 /* Schritte */
 .bx .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:0;position:relative}
