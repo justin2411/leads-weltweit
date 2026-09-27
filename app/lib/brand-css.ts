@@ -346,4 +346,25 @@ export const BRAND_CSS = `
   .bx footer nav a{margin:0 18px 0 0}
 }@media (max-width:380px){.bx .mark{font-size:16px}.bx .nav .links{gap:6px}.bx .nav .links .langs a{padding:4px 5px}}
 
+
+/* Produktseiten kompakt, Beispiel-Leads hochwertig */
+.bx section.tight{padding:68px 0}
+.bx .wrap.narrow{max-width:1000px}
+.bx .leadx.lux{background:linear-gradient(180deg,#132341,#0d182d);border:1px solid rgba(216,189,138,.28);color:#eef1f6;box-shadow:0 30px 70px -40px rgba(8,14,28,.8),inset 0 1px 0 rgba(255,255,255,.05)}
+.bx .leadx.lux:before{width:100%;height:2px;bottom:auto;background:linear-gradient(90deg,transparent,var(--gold2),transparent)}
+.bx .leadx.lux:hover{border-color:rgba(216,189,138,.6)}
+.bx .leadx.lux .co{color:#fff;font-size:20px}
+.bx .leadx.lux .loc,.bx .leadx.lux .dt,.bx .leadx.lux .prof .lbl{color:#9aa6ba}
+.bx .leadx.lux .ex{background:rgba(216,189,138,.14);color:var(--gold2)}
+.bx .leadx.lux .det,.bx .leadx.lux .prof p{color:#d5dae3}
+.bx .leadx.lux .why{background:rgba(216,189,138,.08);border-color:rgba(216,189,138,.25);color:#e8e2d4}
+.bx .leadx.lux .why b,.bx .leadx.lux .op b{color:var(--gold2)}
+.bx .leadx.lux .op{color:#c9d0db}
+.bx .leadx.lux .ft{border-top-color:rgba(255,255,255,.08);color:#9aa6ba}
+.bx .leadx.lux .p-high{color:#f0c27a}
+.bx .leadx.lux .tagw{background:rgba(95,211,163,.12);border-color:rgba(95,211,163,.35);color:#9be6c4}
+.bx .leadx .incl{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.bx .leadx .incl li{font-size:12px;font-weight:600;padding:4px 10px;border-radius:99px;background:rgba(95,211,163,.1);border:1px solid rgba(95,211,163,.3);color:#9be6c4}
+.bx .leadx .incl li:before{content:"✓ ";color:#5fd3a3}
+@media (max-width:640px){.bx section.tight{padding:52px 0}}
 `;

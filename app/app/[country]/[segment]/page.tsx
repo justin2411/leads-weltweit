@@ -146,14 +146,13 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
   const W = SC.words;
   // Platzhalter füllen; Satzanfang groß (z. B. "{team} calls" -> "Your practice calls")
   const F = (x: string) => { const r = nd(fill(x, P, lang, W)); return r ? r[0].toUpperCase() + r.slice(1) : r; };
-  const signals = fillDeep((v.signals ?? []) as { title: string; text: string }[], P, lang, W);
   const faq = fillDeep((v.faq ?? []) as { q: string; a: string }[], P, lang, W);
   const headline = F(v.headline);
   const subheadline = v.subheadline ? F(v.subheadline) : null;
   const cta = fill(v.cta_label, P, lang, W);
   const VV = VIDEOS as Record<string, { src: string; poster: string; seconds: number }>;
   // Video in der Sprache der Seite (z. B. "fr:fr/experts-comptables"), sonst das der Seite
-  const video = VV[`${lang}:${page.slug}`] ?? VV[page.slug];
+  const video = VV[`${lang}:${page.slug}`] ?? VV[`${lang}:ind/${page.slug.split("/")[1]}`] ?? VV[page.slug];
   // Kein Formular: Knopf -> zweiter Schritt (Bedingungen) -> ein Klick sendet die Probe. Adresse kommt aus dem Mail-Link.
   const known = Boolean(personal?.email && personal.firma);
   const keep = [preview && `vorschau=1&v=${v.variant_key}`, sp.r && /^[A-Za-z0-9_-]{8,80}$/.test(sp.r) && `r=${sp.r}`].filter(Boolean).join("&");
@@ -216,21 +215,15 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
       </div>
 
       {video && (
-        <section className="dark" id="video"><div className="wrap">
+        <section className="dark tight" id="video"><div className="wrap narrow">
           <Head eyebrow={fr ? "Le film" : "The film"} title={L.video(video.seconds)} />
           {/* Eigenes Video, keine Drittanbieter, lädt erst beim Abspielen */}
           <div className="frame" data-rv><video controls playsInline preload="none" poster={video.poster} src={video.src} /></div>
         </div></section>
       )}
 
-      {signals.length > 0 && (
-        <section><div className="wrap"><Head eyebrow="" title={fr ? L.what : F("What we flag for {beruf}")} />
-          <div className="cards">{signals.map((sg, k) => <div className="card glow lift" key={k} data-rv style={i(k)}><h3>{nd(sg.title)}</h3><p>{nd(sg.text)}</p></div>)}</div>
-        </div></section>
-      )}
-
       {samples.length > 0 && (
-        <section className="tinted"><div className="wrap"><Head eyebrow="" title={fr ? L.examples : F(personal?.region ? "Example leads from {region}" : "Example leads")} />
+        <section className="tinted tight"><div className="wrap"><Head eyebrow="" title={fr ? L.examples : F(personal?.region ? "Example leads from {region}" : "Example leads")} />
           <p className="intro">{L.examplesNote}</p>
           <div className="leadgrid">{samples.map((sm, k) => {
             const label = SIGNAL_LABEL[fr ? "fr" : "en"][sm.signal ?? ""] ?? null;
@@ -243,7 +236,7 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
               : sm.opener ? sm.opener.split(sm.company).join(nice(sm.company)) : undefined;
             const age = sm.date ? Math.max(0, Math.round((Date.now() - Date.parse(sm.date + "T12:00:00Z")) / 864e5)) : undefined;
             return (
-              <article className="leadx" key={k} data-rv style={i(k)}>
+              <article className="leadx lux" key={k} data-rv style={i(k)}>
                 <header>
                   <div><div className="co">{nice(sm.company)}</div>{sm.location && <div className="loc">{nice(sm.location)}{sm.district ? ` · ${sm.district}` : ""}</div>}</div>
                   <span className="ex">{L.example}</span>
@@ -256,6 +249,9 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
                       age !== undefined && (fr ? `créée il y a ${age} jours` : `incorporated ${age} days ago`),
                       sm.noWebsite && (fr ? "pas encore de site web" : "no website yet")].filter(Boolean).join(" · ")}</p></div>)}
                 {detail && <p className="det">{nd(detail)}</p>}
+                <ul className="incl" aria-label={fr ? "Inclus dans la livraison" : "Included in the delivery"}>
+                  <li>{fr ? "Téléphone" : "Phone"}</li><li>{fr ? "E-mail" : "Email"}</li><li>{fr ? "Profil" : "Profile"}</li><li>{fr ? "Conseil de vente" : "Sales tip"}</li>
+                </ul>
                 {why && <p className="why"><b>{fr ? "Conseil de vente" : F("Sales tip for {beruf}")}</b>{F(why)}</p>}
                 {opener && <p className="op"><b>{fr ? "Phrase d'accroche" : "Opening line"}</b>“{nd(opener)}”</p>}
                 <div className="ft">
@@ -267,7 +263,7 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
         </div></section>
       )}
 
-      <section><div className="wrap">
+      <section className="tight"><div className="wrap">
         <div className="deliv">
           <div className="report" data-rv>
             <div className="rp-head">
@@ -286,13 +282,13 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
         </div>
       </div></section>
 
-      <section className="tinted"><div className="wrap">
+      <section className="tinted tight"><div className="wrap">
         <Head eyebrow="" title={F(SC.revenueTitle)} />
         <div className="cards two">{SC.revenue.map(([h, d], k) => (
           <div className="card glow lift" key={h} data-rv style={i(k)}><div className="num">{k + 1}</div><h3>{F(h)}</h3><p>{F(d)}</p></div>))}</div>
       </div></section>
 
-      <section className="dark"><div className="wrap">
+      <section className="dark tight"><div className="wrap">
         <Head eyebrow="" title={F(PREMIUM[fr ? "fr" : "en"].title)} />
         <div className="prem">{PREMIUM[fr ? "fr" : "en"].items.map(([h, d], k) => (
           <div key={h} data-rv style={i(k)}><h3>{F(h)}</h3><p>{F(d)}</p></div>))}</div>
@@ -312,18 +308,17 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
       )}
 
       {!step && !sp.angefragt && (
-        <section className="offer" id="sample"><div className="wrap">
+        <section className="offer tight" id="sample"><div className="wrap">
           <div><Head eyebrow="" title={F(SC.sampleTitle)} />
             <p className="intro">{known ? L.sendsTo(personal!.gebiet, personal!.email!) : L.sendsToUnknown}</p>
             <div className="cta-row" data-rv><Start label={L.send} /></div>
             <div className="fine"><span>{L.free.replace(/\.$/, "")}</span><span>{L.noObl.replace(/\.$/, "")}</span></div>
           </div>
-          <div data-rv><ol className="olist">{SC.steps.map((st, k) => <li key={k}>{F(st)}</li>)}</ol></div>
         </div></section>
       )}
 
       {faq.length > 0 && (
-        <section><div className="wrap faq"><Head eyebrow={fr ? "Questions" : "Questions"} title={L.faq} />
+        <section className="tight"><div className="wrap faq"><Head eyebrow={fr ? "Questions" : "Questions"} title={L.faq} />
           {faq.map((f, k) => <details key={k} data-rv style={i(k)}><summary>{nd(f.q)}</summary><p>{nd(f.a)}</p></details>)}
         </div></section>
       )}

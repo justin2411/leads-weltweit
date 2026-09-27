@@ -33,8 +33,8 @@ const win = sc.map((s, i) => [s, i ? L[ids[i]].start - 0.45 : 0, i < sc.length -
 // A: Firmen tauchen rund um die Branche auf, zwei leuchten
 const C0 = { x: 960, y: 505 };
 const cos = []; for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2 + rnd() * .3, r = 330 + rnd() * 170;
-  const x = C0.x + Math.cos(a) * r * 1.5, y = C0.y + Math.sin(a) * r * .75;
-  cos.push({ x, y, at: .4 + rnd() * 1.6, hot: i === 3 || i === 11, c: mk("A_svg", "rect", { x: x - 16, y: y - 16, width: 32, height: 32, rx: 8, fill: "#2d4674" }),
+  const x = C0.x + Math.cos(a) * r * 1.5, y = C0.y + Math.sin(a) * r * .55;
+  cos.push({ x, y, at: .4 + rnd() * 1.6, hot: i === 1 || i === 9, c: mk("A_svg", "rect", { x: x - 16, y: y - 16, width: 32, height: 32, rx: 8, fill: "#2d4674" }),
     ring: mk("A_svg", "circle", { cx: x, cy: y, r: 0, fill: "none", stroke: "#d8bd8a", "stroke-width": 3 }), ln: mk("A_svg", "line", { x1: C0.x, y1: C0.y, x2: x, y2: y, stroke: "rgba(216,189,138,.5)", "stroke-width": 2, "stroke-dasharray": "6 8", opacity: 0 }) }); }
 // B: drei Signale der Branche
 const SIGX = [420, 960, 1500];
@@ -100,8 +100,8 @@ function render(t) {
   // D: Lead-Karte baut sich auf
   const d0 = L.lead.start - .3, dd = L.lead.end - L.lead.start;
   const ck = eo(p(t, d0, .7)); $("D_card").style.opacity = ck; $("D_card").style.transform = `translateY(${(1 - ck) * 60}px) scale(${lerp(.94, 1, ck)})`;
-  [0, 1, 2, 3].forEach(i => { const k = p(t, d0 + .8 + i * dd / 6, .4); $("D_f" + i).style.opacity = eo(k); $("D_f" + i).querySelector("b").style.transform = `scale(${back(k)})`; });
-  $("D_op").textContent = type("“" + U.opener + "”", p(t, d0 + .8 + 4 * dd / 6, Math.max(1.5, dd * .45)));
+  [0, 1, 2, 3].forEach(i => { const k = p(t, d0 + .6 + i * dd / 9, .4); $("D_f" + i).style.opacity = eo(k); $("D_f" + i).querySelector("b").style.transform = `scale(${back(k)})`; });
+  $("D_op").textContent = type("“" + U.opener + "”", p(t, d0 + .6 + 4 * dd / 9, Math.max(1.5, dd * .45)));
 
   // E
   const e0 = L.exclusive.start - .3; const ek = back(p(t, e0, .7));
