@@ -16,7 +16,7 @@ import io
 import re
 from pathlib import Path
 
-from lib.playbook import briefing
+from lib.playbook import ask_for, briefing
 
 ROOT = Path(__file__).resolve().parents[2]
 FONTS = ROOT / "video" / "fonts"
@@ -130,7 +130,7 @@ T2 = {
            "inc_h": "In every lead", "inc": ["Company and location", "What happened, with date", "Phone and email", "Priority", "Sales tip", "Opening line"],
            "plans_h": "Plans", "per": "per month", "btn": "Start my weekly leads", "btn1": "See plans and start", "start": "Ready to start?",
            "cta": "Just reply to our email with your towns. Your first delivery arrives next Monday.",
-           "b_co": "Company profile", "b_ev": "Why it's an opportunity", "b_tip": "Sales approach", "b_what": "What happened", "h_sit": "The situation", "h_angle": "Your angle", "h_obj": "If they hesitate", "h_call": "Call guide", "h_mail": "Follow-up email, ready to send",
+           "b_co": "Company profile", "b_ev": "Why it's an opportunity", "b_tip": "Sales approach", "b_what": "What happened", "h_sit": "The situation", "h_angle": "Your angle", "h_obj": "If they hesitate", "h_call": "Call guide", "h_mail": "Follow-up email, ready to send", "i_addr": "Address", "i_ask": "Ask for", "i_co": "Company",
            "f_ind": "Industry", "f_form": "Legal form", "f_reg": "Registered", "f_loc": "Location", "f_web": "Website", "f_noweb": "none found yet",
            "p1": "10 leads selected for you", "p1s": "Company data only · phone and email from the company's own website",
            "plan_txt": {"starter": "Up to 30 new leads per week from 1 area. Every lead exclusive to your firm.",
@@ -146,7 +146,7 @@ T2 = {
            "inc_h": "Dans chaque piste", "inc": ["Entreprise et lieu", "L'événement, avec la date", "Téléphone et e-mail", "Priorité", "Conseil de vente", "Phrase d'accroche"],
            "plans_h": "Formules", "per": "par mois", "btn": "Recevoir mes pistes chaque semaine", "btn1": "Voir les formules", "start": "On commence ?",
            "cta": "Répondez simplement à notre e-mail avec vos villes. Votre première livraison arrive lundi prochain.",
-           "b_co": "Profil de l'entreprise", "b_ev": "Pourquoi c'est une opportunité", "b_tip": "Approche commerciale", "b_what": "Ce qui s'est passé", "h_sit": "La situation", "h_angle": "Votre angle", "h_obj": "S'ils hésitent", "h_call": "Guide d'appel", "h_mail": "E-mail de relance, prêt à envoyer",
+           "b_co": "Profil de l'entreprise", "b_ev": "Pourquoi c'est une opportunité", "b_tip": "Approche commerciale", "b_what": "Ce qui s'est passé", "h_sit": "La situation", "h_angle": "Votre angle", "h_obj": "S'ils hésitent", "h_call": "Guide d'appel", "h_mail": "E-mail de relance, prêt à envoyer", "i_addr": "Adresse", "i_ask": "Demander", "i_co": "Entreprise",
            "f_ind": "Secteur", "f_form": "Forme juridique", "f_reg": "Immatriculée", "f_loc": "Lieu", "f_web": "Site web", "f_noweb": "pas encore trouvé",
            "p1": "10 pistes sélectionnées pour vous", "p1s": "Données d'entreprise uniquement · téléphone et e-mail issus du site de l'entreprise",
            "plan_txt": {"starter": "Jusqu'à 30 nouvelles pistes par semaine dans 1 zone. Chaque piste réservée à votre entreprise.",
@@ -188,32 +188,29 @@ def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str
         web = re.sub(r"^https?://(www\.)?", "", r.get("website") or "").rstrip("/")
         q = (r.get("question_to_ask") or "").strip()
         bf = briefing(sig, segment, g["company"], ev, _day(r.get("event_date", ""), lang), opener, q, tip, lang)
-        facts = " · ".join(x for x in [r.get("industry"), r.get("legal_form"), loc] if x)
+        addr = (r.get("address") or "").strip() or loc
+        co = " · ".join(x for x in [r.get("industry"), r.get("legal_form"),
+                                    (t2["f_reg"] + " " + _day(r.get("event_date", ""), lang)) if sig == "new_incorporation" else ""] if x)
+        info = [(t["phone"], r.get("phone") or "–"), (t["email"], r.get("email") or "–"), (t["web"], web or t2["f_noweb"]),
+                (t2["i_addr"], addr), (t2["i_ask"], ask_for(segment, sig)), (t2["i_co"], co or "–")]
         cards.append(f"""
 <article class="lead">
-  <div class="hd"><div><div class="nm">{e(g['company'])}</div><div class="loc">{e(facts)}</div></div>
+  <div class="hd"><div class="nm">{e(g['company'])}</div>
     <div class="tags">{f'<span class="pr p-{e(urg)}">{e(t["prio"].get(urg, ""))}</span>' if urg else ''}<span class="sg">{e(t['sig'].get(sig, ''))}</span></div></div>
-  <div class="ct"><div><i>{t['phone']}</i>{e(r.get('phone') or '–')}</div><div><i>{t['email']}</i>{e(r.get('email') or '–')}</div>{f'<div><i>{t["web"]}</i>{e(web)}</div>' if web else ''}</div>
+  <dl class="info">{''.join(f'<div><dt>{e(k)}</dt><dd>{e(v)}</dd></div>' for k, v in info)}</dl>
   <div class="body">
-    <div class="left">
-      <h4>{t2['h_sit']}</h4><p>{e(bf['situation'])}</p>
-      <h4>{t2['h_angle']}</h4><p>{e(bf['angle'])}</p>
-      <h4>{t2['h_obj']}</h4><p>{e(bf['objection'])}</p>
-    </div>
-    <div class="right">
-      <div class="rh">{t2['h_call']}</div>
-      <ol>{''.join(f'<li><b>{e(k)}</b>{e(v)}</li>' for k, v in bf['steps'])}</ol>
-      <div class="mail"><div class="rh">{t2['h_mail']}</div><div class="subj">{e(bf['followup'][0])}</div><p>{e(bf['followup'][1]).replace(chr(10) + chr(10), '<br>')}</p></div>
-    </div>
+    <div><h4>{t2['h_sit']}</h4><p>{e(bf['situation'])}</p></div>
+    <div><h4>{t2['h_angle']}</h4><p>{e(bf['angle'])}</p></div>
+    <div><h4>{t2['h_obj']}</h4><p>{e(bf['objection'])}</p></div>
   </div>
 </article>""")
     when = _day((period or dt.date.today()).isoformat(), lang)
     head = (t2['p1'] if len(groups) >= 10 else f"{len(groups)} {t['firms']}") + (f" · {area}" if area else "")
     pages = []
-    for k in range(0, max(len(cards), 1), 2):
+    for k in range(0, max(len(cards), 1), 3):
         ttl = (f'<div class="ttl"><h1>{e(head)}</h1><span>{e(when)}{(" · " + e(firm)) if firm else ""}</span></div>' if k == 0 else "")
         pages.append(f"""<section class="p1"><header class="bar"><div class="logo">NextGen <i>Profit</i></div></header>
-<div class="in">{ttl}<div class="grid">{''.join(cards[k:k + 2])}</div></div>
+<div class="in">{ttl}<div class="grid">{''.join(cards[k:k + 3])}</div></div>
 <div class="ft"><span>{t['conf']}</span><span>{t2['p1s']}</span></div></section>""")
     pages = "\n".join(pages)
     page2 = ""
@@ -246,28 +243,22 @@ section{{width:210mm;height:297mm;position:relative;overflow:hidden;page-break-a
 .p1 .ttl{{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4.5mm}}
 .p1 .ttl h1{{font-size:19px;font-weight:800;letter-spacing:-.3px;color:#0b1428}}.p1 .ttl span{{font-size:10.5px;color:#6b7486}}
 .grid{{display:flex;flex-direction:column;gap:4mm}}
-.lead{{height:124.5mm;border:1px solid #e3e6ee;border-radius:13px;padding:5mm 6mm 4.5mm 7.5mm;position:relative;overflow:hidden;background:#fff;display:flex;flex-direction:column;gap:3mm}}
-.lead:before{{content:"";position:absolute;left:0;top:0;bottom:0;width:1.6mm;background:linear-gradient(180deg,#d8bd8a,#b08d57)}}
-.hd{{display:flex;justify-content:space-between;align-items:flex-start;gap:5mm}}
-.nm{{font-size:18px;font-weight:800;color:#0b1428;letter-spacing:-.3px;line-height:1.2}}.loc{{font-size:10px;color:#6b7486;margin-top:.8mm}}
+.lead{{height:79mm;border:1px solid #e3e6ee;border-radius:12px;padding:4.2mm 5.5mm 3.8mm 7mm;position:relative;overflow:hidden;background:#fff;display:flex;flex-direction:column;gap:2.8mm}}
+.lead:before{{content:"";position:absolute;left:0;top:0;bottom:0;width:1.5mm;background:linear-gradient(180deg,#d8bd8a,#b08d57)}}
+.hd{{display:flex;justify-content:space-between;align-items:center;gap:5mm}}
+.nm{{font-size:16.5px;font-weight:800;color:#0b1428;letter-spacing:-.3px;line-height:1.2}}
 .tags{{display:flex;gap:1.6mm;flex:none}}
-.pr,.sg{{font-size:7.6px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:1mm 2.6mm;border-radius:99px;white-space:nowrap}}
+.pr,.sg{{font-size:7.4px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.9mm 2.4mm;border-radius:99px;white-space:nowrap}}
 .pr{{background:#0b1428;color:#f3e1b9}}.pr.p-medium{{background:#f3ead8;color:#7a5b24}}.pr.p-low{{background:#eef0f4;color:#6b7486}}
 .sg{{background:linear-gradient(135deg,#ecd6a6,#c29d5c);color:#1a1408}}
-.ct{{display:flex;gap:9mm;flex-wrap:wrap;background:#f7f3ea;border:1px solid #efe5d3;border-radius:8px;padding:2.2mm 4mm;font-size:11px;font-weight:700;color:#0b1428}}
-.ct i{{font-style:normal;font-size:7.4px;letter-spacing:.12em;text-transform:uppercase;color:#a07f46;margin-right:2mm}}
-.body{{display:grid;grid-template-columns:1fr 1.05fr;gap:6mm;flex:1;min-height:0}}
-h4{{font-size:7.6px;letter-spacing:.14em;text-transform:uppercase;color:#a07f46;font-weight:700;margin:0 0 1mm}}
-.left p{{font-size:9.6px;line-height:1.48;color:#1f2940;margin:0 0 3mm}}
-.right{{background:#0b1428;color:#e8e2d4;border-radius:10px;padding:3.8mm 4.6mm;display:flex;flex-direction:column;gap:2mm}}
-.rh{{font-size:7.6px;letter-spacing:.16em;text-transform:uppercase;color:#d8bd8a;font-weight:700}}
-.right ol{{margin:0;padding:0;list-style:none;counter-reset:s;display:grid;gap:1.6mm}}
-.right li{{counter-increment:s;font-size:9px;line-height:1.4;color:#eef1f6;padding-left:6mm;position:relative}}
-.right li:before{{content:counter(s);position:absolute;left:0;top:.2mm;width:4mm;height:4mm;border-radius:50%;background:#d8bd8a;color:#0b1428;font-size:7px;font-weight:800;display:grid;place-items:center}}
-.right li b{{color:#f3e1b9;margin-right:1.4mm}}
-.mail{{margin-top:auto;background:rgba(255,255,255,.05);border:1px solid rgba(216,189,138,.25);border-radius:8px;padding:2.6mm 3.2mm}}
-.mail .subj{{font-size:9.2px;font-weight:700;color:#fff;margin:1mm 0 1.2mm}}.mail p{{font-size:8.8px;line-height:1.42;color:#d5dae3;margin:0}}
-.p1 ~ .p1 .lead{{height:128mm}}.p1 .bar{{height:17mm}}.p1 .in{{padding-top:4.5mm}}.p1 .ttl{{margin-bottom:2.5mm}}.p1 .ttl h1{{font-size:17px}}
+.info{{display:grid;grid-template-columns:1fr 1.25fr 1fr;gap:1.6mm 5mm;background:#f7f3ea;border:1px solid #efe5d3;border-radius:8px;padding:2.4mm 4mm;margin:0}}
+.info div{{min-width:0}}.info dt{{font-size:6.8px;letter-spacing:.12em;text-transform:uppercase;color:#a07f46;font-weight:700}}
+.info dd{{margin:.3mm 0 0;font-size:9.6px;font-weight:700;color:#0b1428;line-height:1.3;overflow-wrap:anywhere}}
+.body{{display:grid;grid-template-columns:repeat(3,1fr);gap:5mm;flex:1;min-height:0}}
+.body>div+div{{border-left:1px solid #eef0f4;padding-left:4mm}}
+h4{{font-size:7.2px;letter-spacing:.14em;text-transform:uppercase;color:#a07f46;font-weight:700;margin:0 0 1mm}}
+.body p{{font-size:8.9px;line-height:1.45;color:#1f2940;margin:0}}
+.p1 ~ .p1 .lead{{height:83mm}}.p1 .bar{{height:17mm}}.p1 .in{{padding-top:4.5mm}}.p1 .ttl{{margin-bottom:2.5mm}}.p1 .ttl h1{{font-size:17px}}
 .ft{{position:absolute;left:14mm;right:14mm;bottom:7mm;display:flex;justify-content:space-between;font-size:8.5px;color:#8a92a3;letter-spacing:.06em}}
 .p2 .in{{padding:12mm 16mm 0}}
 .p2 h1{{font-size:24px;font-weight:800;letter-spacing:-.5px;color:#0b1428;margin-bottom:6mm}}

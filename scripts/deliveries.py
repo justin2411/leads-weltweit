@@ -34,7 +34,7 @@ DEFAULT_MAX = 30         # Leads pro Woche, falls im Abo nichts steht
 # Reihenfolge so, wie der Kunde arbeitet: wer, wie erreichbar, worum es geht, was sagen, woher belegt.
 CSV_HEADER = ["company", "phone", "email", "website", "location", "company_profile", "event", "event_date",
               "why_now", "priority", "signal", "sales_tip", "question_to_ask", "opening_line",
-              "source", "checked_on", "legal_form", "industry"]
+              "source", "checked_on", "legal_form", "industry", "address"]
 # Kunde bekommt nur Leads mit zentraler Telefonnummer UND Sammel-E-Mail (Inhaber 27.09.2026: "immer beides").
 REQUIRE_CONTACT = True
 
@@ -157,7 +157,7 @@ def to_csv(leads: list[dict], lang: str = "en", area: str | None = None) -> byte
                     company_profile(l, lang), l["event_summary"], l.get("event_date") or "", l["urgency_reason"],
                     l["urgency"], l.get("signal_type") or "", l.get("_tip", ""), l.get("_question", ""), l["opener"],
                     l["source_name"], l["source_date"], co.get("legal_form") or "",
-                    l.get("_industry", "")])
+                    l.get("_industry", ""), co.get("address") or ""])
     # BOM, damit Excel Umlaute und Akzente richtig anzeigt
     return ("\ufeff" + buf.getvalue()).encode("utf-8")
 

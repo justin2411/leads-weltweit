@@ -34,6 +34,23 @@ JOB_ANGLE = {
 }
 
 
+# Nach wem fragen (Rolle, nie ein Personenname – CLAUDE.md: keine Mitarbeiterdaten)
+ASK_FOR = {
+    "S1": {"_": "Hiring manager or HR", "new_incorporation": "The founder"},
+    "S2": {"_": "Owner or marketing lead"},
+    "S3": {"_": "Owner or office manager", "jobs_3plus": "Operations or office manager"},
+    "S4": {"_": "Owner or managing director"},
+    "S5": {"_": "Owner or finance lead", "new_incorporation": "The founder / owner"},
+    "S6": {"_": "Owner or operations manager"},
+    "S7": {"_": "Facilities or office manager"},
+}
+
+
+def ask_for(segment: str | None, signal: str) -> str:
+    m = ASK_FOR.get(segment or "", {})
+    return m.get(signal) or m.get("_") or ("The founder / owner" if signal == "new_incorporation" else "Owner or managing director")
+
+
 def _role(event: str) -> str:
     m = re.search(r"[“\"]([^”\"]+)[”\"]", event or "")
     return m.group(1) if m else ""
