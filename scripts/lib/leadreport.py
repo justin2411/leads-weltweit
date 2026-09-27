@@ -415,12 +415,14 @@ def clean_csv(data: bytes, lang: str = "en", segment: str | None = None, country
 REQUIRED = ("phone", "email", "website", "address", "contact_name")
 
 
-def complete_only(data: bytes) -> bytes:
-    """Nur Zeilen mit allen Pflichtangaben (Inhaber 27.09.2026). Ältere CSVs ohne diese Spalten bleiben unverändert."""
+def complete_only(data: bytes, segment: str | None = None) -> bytes:
+    """Nur Zeilen mit allen Pflichtangaben (Inhaber 27.09.2026). Ältere CSVs ohne diese Spalten bleiben unverändert.
+    Webagenturen (S2): Website nicht Pflicht, "noch keine Website" ist dort der Verkaufsgrund (Inhaber 27.09.2026)."""
     rows = list(csv.DictReader(io.StringIO(data.decode("utf-8-sig", "replace"))))
     if not rows or not all(k in rows[0] for k in REQUIRED):
         return data
-    keep = [r for r in rows if all((r.get(k) or "").strip() for k in REQUIRED)]
+    need = [k for k in REQUIRED if not (segment == "S2" and k == "website")]
+    keep = [r for r in rows if all((r.get(k) or "").strip() for k in need)]
     buf = io.StringIO()
     w = csv.DictWriter(buf, fieldnames=list(rows[0].keys()))
     w.writeheader()
@@ -434,7 +436,7 @@ def attachments(csv_bytes: bytes, lang: str, area: str | None = None, firm: str 
     """PDF-Report (falls möglich) + bereinigte CSV für CRM/Excel."""
     slug = "-" + re.sub(r"[^A-Za-z0-9]+", "-", area).strip("-") if area else ""
     out = []
-    csv_bytes = complete_only(csv_bytes)
+    csv_bytes = complete_only(csv_bytes, segment)
     if not group_rows(csv_bytes):
         return []
     pdf = render_pdf(csv_bytes, lang, area, firm, period, plans, cta_url, segment, country)

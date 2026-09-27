@@ -99,7 +99,7 @@ def add_industry(db, leads: list[dict]) -> None:
                     l["_tip"], l["_question"] = hint[0], hint[1] if len(hint) > 1 else ""
 
 
-def contact_companies(db) -> dict[str, dict]:
+def contact_companies(db, website_optional: bool = False) -> dict[str, dict]:
     """Firmen mit VOLLSTÄNDIGEN Daten – nur diese gehen an Kunden und in Proben (Inhaber 27.09.2026: „wichtig ist,
     dass man immer alle Daten der Leads hat und die dann erst rausschickt“): Telefon und Sammel-E-Mail
     (watch.py contacts), Website und Adresse (watch_companies) und Ansprechperson (watch.py people)."""
@@ -108,11 +108,17 @@ def contact_companies(db) -> dict[str, dict]:
     found = {r["company_id"]: {**r["details"], "page": r.get("source_url")} for r in rows}
     people = {r["company_id"] for r in db.select_all("observations", {"kind": "eq.other", "key": "eq.person",
                                                                        "details->>name": "not.is.null", "select": "company_id"})}
-    ids = sorted(set(found) & people)
+    # enrich.py: Daten widersprechen sich (Website nicht geprüft, E-Mail-Domain fremd, Vorwahl aus anderem Land)
+    blocked = {r["company_id"] for r in db.select_all("observations", {"kind": "eq.other", "key": "eq.quality",
+                                                                        "details->>blocking": "eq.true", "select": "company_id"})}
+    ids = sorted((set(found) & people) - blocked)
     complete = set()
     for i in range(0, len(ids), 100):
-        for c in db.select("watch_companies", {"id": f"in.({','.join(ids[i:i + 100])})", "website": "not.is.null",
-                                               "address": "not.is.null", "select": "id"}):
+        # Webagenturen (S2): "noch keine Website" ist der Verkaufsgrund, dort keine Website-Pflicht (Inhaber 27.09.2026)
+        q = {"id": f"in.({','.join(ids[i:i + 100])})", "address": "not.is.null", "select": "id"}
+        if not website_optional:
+            q["website"] = "not.is.null"
+        for c in db.select("watch_companies", q):
             complete.add(c["id"])
     return {k: v for k, v in found.items() if k in complete}
 
@@ -281,8 +287,12 @@ def cmd_prepare(args) -> int:
     known = None
     if REQUIRE_CONTACT:
         known = contact_companies(db)
+        # S2-Neugründungen ohne Website zählen trotzdem als vollständig
+        known_s2 = contact_companies(db, website_optional=True)
         before = len(leads)
-        leads = [l for l in leads if l["company_id"] in known]
+        leads = [l for l in leads if l["company_id"] in known
+                 or (l.get("segment_id") == "S2" and l.get("signal_type") == "new_incorporation" and l["company_id"] in known_s2)]
+        known = {**known_s2, **known}
         print(f"{len(leads)} von {before} frischen Leads vollständig (Telefon, E-Mail, Website, Adresse, Ansprechperson)")
     ids = [l["id"] for l in leads]
     tags = {}
