@@ -1,0 +1,60 @@
+{
+ "slug": "home/fr",
+ "lang": "fr",
+ "voice": "ff_siwis",
+ "film": "home.html",
+ "text": {},
+ "script": [
+  {
+   "id": "hook",
+   "text": "Chaque entreprise a besoin de nouveaux clients. Experts-comptables, recruteurs, courtiers, conseillers, agences.",
+   "pause": 0.7
+  },
+  {
+   "id": "tension",
+   "text": "Mais le meilleur moment pour gagner un client est court : quand une entreprise se crée, recrute ou grandit.",
+   "pause": 0.6
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit trouve ce moment pour vous.",
+   "pause": 0.6
+  },
+  {
+   "id": "find",
+   "text": "Chaque jour, nous analysons les registres officiels et les sites des entreprises, et repérons celles qui ont besoin de vos services, maintenant.",
+   "pause": 0.45
+  },
+  {
+   "id": "exclusive",
+   "text": "Chaque piste est exclusive : elle ne va qu'à une seule entreprise de votre secteur, jamais à vos concurrents.",
+   "pause": 0.55
+  },
+  {
+   "id": "weekly",
+   "text": "Chaque lundi, vos nouvelles pistes arrivent par e-mail, avec téléphone, e-mail, un court profil et un conseil de vente. Sans logiciel, sans installation.",
+   "pause": 0.5
+  },
+  {
+   "id": "revenue",
+   "text": "Votre équipe appelle avec une vraie raison. Des échanges plus pertinents, et plus de chances d'en faire des clients.",
+   "pause": 0.5
+  },
+  {
+   "id": "scale",
+   "text": "Envie de plus ? Ajoutez des villes ou des régions, et votre prospection grandit avec vous.",
+   "pause": 0.5
+  },
+  {
+   "id": "cta",
+   "text": "Commencez avec dix pistes gratuites pour votre zone.",
+   "pause": 0.6
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. Les bonnes entreprises, au bon moment.",
+   "pause": 0.4
+  }
+ ],
+ "speed": 1.05
+}
