@@ -1,0 +1,59 @@
+{
+ "slug": "home/de",
+ "lang": "de",
+ "voice": "piper:de_DE-thorsten-high",
+ "film": "home.html",
+ "text": {},
+ "script": [
+  {
+   "id": "hook",
+   "text": "Jedes Unternehmen braucht neue Kunden. Steuerberater, Personalvermittler, Makler, Berater, Agenturen.",
+   "pause": 0.7
+  },
+  {
+   "id": "tension",
+   "text": "Doch der beste Moment, einen Kunden zu gewinnen, ist kurz: wenn eine Firma gegründet wird, einstellt oder wächst.",
+   "pause": 0.6
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit findet diesen Moment für Sie.",
+   "pause": 0.6
+  },
+  {
+   "id": "find",
+   "text": "Jeden Tag prüfen wir amtliche Register und Firmenwebsites und finden die Unternehmen, die genau jetzt brauchen, was Sie anbieten.",
+   "pause": 0.45
+  },
+  {
+   "id": "exclusive",
+   "text": "Jeder Lead ist exklusiv. Er geht nur an ein Unternehmen Ihrer Branche, nie an Ihre Wettbewerber.",
+   "pause": 0.55
+  },
+  {
+   "id": "weekly",
+   "text": "Jeden Montag kommen Ihre neuen Leads per E-Mail, mit Telefon, E-Mail, Kurzprofil und Vertriebstipp. Ohne Software, ohne Einrichtung.",
+   "pause": 0.5
+  },
+  {
+   "id": "revenue",
+   "text": "Ihr Team ruft mit einem echten Anlass an. Das bedeutet bessere Gespräche und mehr Chancen, daraus Kunden zu machen.",
+   "pause": 0.5
+  },
+  {
+   "id": "scale",
+   "text": "Sie wollen mehr? Nehmen Sie weitere Städte oder Regionen dazu, und Ihr Vertrieb wächst mit.",
+   "pause": 0.5
+  },
+  {
+   "id": "cta",
+   "text": "Starten Sie mit zehn kostenlosen Leads für Ihre Region.",
+   "pause": 0.6
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. Die richtigen Unternehmen, im richtigen Moment.",
+   "pause": 0.4
+  }
+ ]
+}

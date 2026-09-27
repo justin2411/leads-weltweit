@@ -1,0 +1,305 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<!-- Startseiten-Film: Geschäftsmodell für alle Branchen (Exklusivität, Umsatz, Montag, Skalieren). Szenen je Satz-ID. -->
+<style>
+@font-face{font-family:Inter;src:url(../fonts/inter-latin-400-normal.woff2);font-weight:400}
+@font-face{font-family:Inter;src:url(../fonts/inter-latin-600-normal.woff2);font-weight:600}
+@font-face{font-family:Inter;src:url(../fonts/inter-latin-700-normal.woff2);font-weight:700}
+@font-face{font-family:Inter;src:url(../fonts/inter-latin-800-normal.woff2);font-weight:800}
+:root{--bg:#081226;--ink:#f2efe8;--soft:#9aa6ba;--gold:#d8bd8a;--gold2:#f3e1b9;--ok:#5fd3a3;--bad:#e88080;--line:#1a2a48;--card:#0f1d38;--card2:#132544}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);font-family:Inter,sans-serif;color:var(--ink)}
+#bg{position:absolute;inset:-200px;background:radial-gradient(1000px 700px at var(--gx,60%) var(--gy,30%),rgba(216,189,138,.13),transparent 70%),radial-gradient(800px 600px at 15% 85%,rgba(80,120,200,.12),transparent 70%)}
+#dots{position:absolute;inset:0;opacity:.5;background-image:radial-gradient(rgba(154,166,186,.22) 1.5px,transparent 1.6px);background-size:48px 48px}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+.scene{position:absolute;inset:0;opacity:0;display:none}
+.abs{position:absolute}
+svg{position:absolute;left:0;top:0;overflow:visible}
+.logo{font-size:120px;font-weight:800;letter-spacing:-4px;display:flex;gap:26px;justify-content:center}
+.mask{overflow:hidden;display:inline-block;padding-bottom:12px}.mask>span{display:inline-block}
+.chip{display:inline-flex;align-items:center;gap:12px;padding:14px 26px;border-radius:99px;font-size:30px;font-weight:600;background:rgba(216,189,138,.1);border:1px solid rgba(216,189,138,.4);color:var(--gold2);white-space:nowrap}
+.chip.ok{background:rgba(95,211,163,.1);border-color:rgba(95,211,163,.45);color:#c9f3e1}
+.ind{position:absolute;padding:16px 28px;border-radius:18px;font-size:30px;font-weight:600;background:var(--card);border:1px solid #28406b;white-space:nowrap;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.lc{position:absolute;width:360px;border-radius:20px;background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid #2c4675;padding:22px 26px;box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.lc .t{height:18px;width:200px;border-radius:9px;background:var(--gold)}.lc .s{height:12px;border-radius:6px;background:#2d4674;margin-top:14px}
+.head{position:absolute;left:0;right:0;text-align:center;font-size:64px;font-weight:800;letter-spacing:-2px}
+.sub{font-size:24px;font-weight:600;letter-spacing:4px;text-transform:uppercase;color:var(--gold)}
+.ill{position:absolute;left:120px;top:1000px;font-size:20px;color:var(--soft)}
+.field{display:flex;align-items:center;gap:14px;font-size:30px;font-weight:600;padding:14px 0;border-bottom:1px solid #22375f}
+.field b{color:var(--ok);font-size:30px}
+</style></head>
+<body>
+<div id="bg"></div><div id="dots"></div>
+
+<!-- A: jede Branche braucht Kunden -->
+<div class="scene" id="A">
+  <svg width="1920" height="1080" id="A_svg"></svg>
+  <div id="A_inds"></div>
+  <div class="abs" id="A_core" style="left:810px;top:390px;width:300px;height:300px;border-radius:50%;display:flex;align-items:center;justify-content:center;text-align:center;font-size:42px;font-weight:800;line-height:1.15;background:radial-gradient(circle,rgba(216,189,138,.22),rgba(216,189,138,.04) 70%);border:2px solid rgba(216,189,138,.55)"><span data-i="clients"></span></div>
+</div>
+
+<!-- B: der Moment ist kurz -->
+<div class="scene" id="B">
+  <svg width="1920" height="1080" id="B_svg"></svg>
+  <div id="B_lbls"></div>
+  <div class="abs" id="B_win" style="left:0;right:0;top:250px;text-align:center"><span class="chip" data-i="moment"></span></div>
+</div>
+
+<!-- C: Marke -->
+<div class="scene" id="C">
+  <svg width="1920" height="1080" id="C_svg"></svg>
+  <div class="abs" style="left:0;right:0;top:470px"><div class="logo"><span class="mask"><span id="C1">NextGen</span></span><span class="mask"><span id="C2" style="color:var(--gold)">Profit</span></span></div></div>
+</div>
+
+<!-- D: finden -->
+<div class="scene" id="D">
+  <svg width="1920" height="1080" id="D_svg"></svg>
+  <div class="abs" id="D_src" style="left:110px;top:200px;display:flex;flex-direction:column;gap:18px"><span class="chip" data-i="registers"></span><span class="chip" data-i="websites"></span><span class="chip" data-i="daily"></span></div>
+  <div id="D_cards"></div>
+</div>
+
+<!-- E: exklusiv -->
+<div class="scene" id="E">
+  <svg width="1920" height="1080" id="E_svg"></svg>
+  <div class="lc" id="E_lead" style="width:380px"><div style="display:flex;justify-content:space-between;align-items:center"><div class="t"></div><span id="E_lock" style="font-size:40px">🔒</span></div><div class="s" style="width:300px"></div><div class="s" style="width:240px"></div></div>
+  <div id="E_firms"></div>
+  <div class="abs" id="E_tag" style="left:0;right:0;top:900px;text-align:center"><span class="chip" data-i="excl"></span></div>
+</div>
+
+<!-- F: jeden Montag -->
+<div class="scene" id="F">
+  <svg width="1920" height="1080" id="F_svg"></svg>
+  <div class="abs" id="F_mon" style="left:0;right:0;top:120px;text-align:center"><span class="chip" data-i="monday"></span></div>
+  <div id="F_cal"></div>
+  <div class="lc" id="F_open" style="left:1110px;top:300px;width:620px;padding:34px 40px">
+    <div class="sub" style="font-size:20px" data-i="newlead"></div>
+    <div style="font-size:40px;font-weight:800;margin:8px 0 14px" data-i="coname"></div>
+    <div class="field" id="F_f0"><b>✓</b><span data-i="phone"></span></div>
+    <div class="field" id="F_f1"><b>✓</b><span data-i="email"></span></div>
+    <div class="field" id="F_f2"><b>✓</b><span data-i="profile"></span></div>
+    <div class="field" id="F_f3" style="border:0"><b>✓</b><span data-i="tip"></span></div>
+  </div>
+  <div class="abs" id="F_easy" style="left:0;right:0;top:930px;text-align:center"><span class="chip ok" data-i="nosoft"></span></div>
+</div>
+
+<!-- R: Umsatz -->
+<div class="scene" id="R">
+  <svg width="1920" height="1080" id="R_svg"></svg>
+  <div id="R_steps"></div>
+  <div class="ill" data-i="illus"></div>
+</div>
+
+<!-- S: skalieren -->
+<div class="scene" id="S">
+  <svg width="1920" height="1080" id="S_svg"></svg>
+  <div class="abs" id="S_ctl" style="left:1180px;top:330px;width:600px">
+    <div class="sub" data-i="regions"></div>
+    <div id="S_n" style="font-size:150px;font-weight:800;letter-spacing:-4px;color:var(--gold2);line-height:1.1">1</div>
+    <div style="height:14px;border-radius:7px;background:#1b2c4d;margin-top:18px;overflow:hidden"><div id="S_bar" style="height:100%;width:10%;background:linear-gradient(90deg,var(--gold),var(--gold2))"></div></div>
+    <div id="S_stack" style="position:relative;height:240px;margin-top:40px"></div>
+  </div>
+</div>
+
+<!-- G: kostenlos starten -->
+<div class="scene" id="G">
+  <div class="abs" style="left:0;right:0;top:300px;text-align:center">
+    <div id="G_big" style="font-size:150px;font-weight:800;letter-spacing:-5px;line-height:1"><span data-i="ten"></span></div>
+    <div id="G_sub" style="font-size:44px;font-weight:600;color:var(--soft);margin-top:18px" data-i="area"></div>
+    <div id="G_btn" style="display:inline-flex;align-items:center;gap:16px;margin-top:56px;padding:30px 60px;border-radius:99px;background:linear-gradient(180deg,var(--gold2),var(--gold));color:#1a1408;font-size:38px;font-weight:800;position:relative"><span data-i="btn"></span>
+      <svg id="G_chk" width="50" height="50" viewBox="0 0 44 44" style="position:relative"><path d="M10 23 L19 32 L35 13" fill="none" stroke="#1a1408" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="40" stroke-dashoffset="40" id="G_path"/></svg>
+    </div>
+  </div>
+  <div id="G_parts"></div>
+</div>
+
+<!-- H: Ende -->
+<div class="scene" id="H">
+  <div class="abs" style="left:0;right:0;top:360px;text-align:center">
+    <div class="logo" style="font-size:112px"><span class="mask"><span id="H1">NextGen</span></span><span class="mask"><span id="H2" style="color:var(--gold)">Profit</span></span></div>
+    <div id="H_tag" style="font-size:40px;font-weight:600;color:#d9dde6;margin-top:16px" data-i="tag"></div>
+    <div id="H_url" style="margin-top:46px"><span class="chip" style="font-size:30px">nextgen-profit.de</span></div>
+  </div>
+</div>
+<div id="flash"></div>
+
+<script>
+const T = window.TIMING, CFG = window.CFG;
+const L = Object.fromEntries(T.lines.map(l => [l.id, l]));
+const UI = ({
+  en: { clients: "New<br>clients", inds: ["Accountants", "Recruiters", "Insurance brokers", "Financial advisers", "Web agencies", "IT services", "Law firms", "Cleaning services", "Marketing agencies", "Office suppliers"],
+    moment: "The right moment is short", ev: ["Founded", "Hiring", "Growing"], registers: "🏛  Official registers", websites: "🌐  Company websites", daily: "🕘  Checked every day",
+    excl: "🔒  One lead · one firm per industry", monday: "📬  Every Monday · 07:00", newlead: "New lead", coname: "Northfield Logistics Ltd", phone: "Phone", email: "Company email", profile: "Short company profile", tip: "Sales tip and opening line",
+    nosoft: "✓  No software · no setup", steps: ["📞  Call with a reason", "🤝  Better conversation", "✓  New client"], illus: "Illustration, no figures", regions: "Regions", ten: "10 free leads", area: "for your area", btn: "Get my sample", tag: "The right companies, at the right moment." },
+  fr: { clients: "Nouveaux<br>clients", inds: ["Experts-comptables", "Recruteurs", "Courtiers", "Conseillers financiers", "Agences web", "Services IT", "Avocats d'affaires", "Nettoyage", "Agences marketing", "Fournitures de bureau"],
+    moment: "Le bon moment est court", ev: ["Création", "Recrutement", "Croissance"], registers: "🏛  Registres officiels", websites: "🌐  Sites des entreprises", daily: "🕘  Vérifié chaque jour",
+    excl: "🔒  Une piste · une entreprise par secteur", monday: "📬  Chaque lundi · 07:00", newlead: "Nouvelle piste", coname: "Northfield Logistics Ltd", phone: "Téléphone", email: "E-mail de l'entreprise", profile: "Court profil de l'entreprise", tip: "Conseil de vente et accroche",
+    nosoft: "✓  Sans logiciel · sans installation", steps: ["📞  Appeler avec une raison", "🤝  Un meilleur échange", "✓  Nouveau client"], illus: "Illustration, sans chiffres", regions: "Régions", ten: "10 pistes gratuites", area: "pour votre zone", btn: "Recevoir mon échantillon", tag: "Les bonnes entreprises, au bon moment." },
+  de: { clients: "Neue<br>Kunden", inds: ["Steuerberater", "Personalvermittler", "Versicherungsmakler", "Finanzberater", "Webagenturen", "IT-Dienstleister", "Kanzleien", "Gebäudereinigung", "Marketingagenturen", "Büroausstatter"],
+    moment: "Der richtige Moment ist kurz", ev: ["Gegründet", "Stellt ein", "Wächst"], registers: "🏛  Amtliche Register", websites: "🌐  Firmenwebsites", daily: "🕘  Täglich geprüft",
+    excl: "🔒  Ein Lead · ein Unternehmen je Branche", monday: "📬  Jeden Montag · 07:00", newlead: "Neuer Lead", coname: "Northfield Logistics Ltd", phone: "Telefon", email: "Firmen-E-Mail", profile: "Kurzprofil des Unternehmens", tip: "Vertriebstipp und Einstiegssatz",
+    nosoft: "✓  Keine Software · keine Einrichtung", steps: ["📞  Anruf mit Anlass", "🤝  Besseres Gespräch", "✓  Neuer Kunde"], illus: "Veranschaulichung, keine Zahlen", regions: "Regionen", ten: "10 kostenlose Leads", area: "für Ihre Region", btn: "Probe anfordern", tag: "Die richtigen Unternehmen, im richtigen Moment." },
+})[CFG.lang || "en"];
+document.querySelectorAll("[data-i]").forEach(e => { e.innerHTML = UI[e.dataset.i]; });
+
+const $ = id => document.getElementById(id);
+const cl = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const p = (t, a, d) => cl((t - a) / d);
+const eio = x => { x = cl(x); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+const eo = x => 1 - Math.pow(1 - cl(x), 3);
+const back = x => { x = cl(x); const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+const lerp = (a, b, k) => a + (b - a) * k;
+let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const NS = "http://www.w3.org/2000/svg";
+const mk = (svg, tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); $(svg).appendChild(e); return e; };
+const div = (parent, cls, html = "") => { const d = document.createElement("div"); d.className = cls; d.innerHTML = html; $(parent).appendChild(d); return d; };
+const scaleAt = (el, x, y, s) => el.setAttribute("transform", `translate(${x} ${y}) scale(${s}) translate(${-x} ${-y})`);
+
+const ids = ["hook", "tension", "brand", "find", "exclusive", "weekly", "revenue", "scale", "cta", "end"], sc = ["A", "B", "C", "D", "E", "F", "R", "S", "G", "H"];
+const win = sc.map((s, i) => [s, i ? L[ids[i]].start - 0.45 : 0, i < sc.length - 1 ? L[ids[i + 1]].start - 0.45 : T.total + 1]);
+
+// A: Branchen kreisen um "Neue Kunden"
+const C0 = { x: 960, y: 540 };
+const inds = UI.inds.map((n, i) => ({ d: div("A_inds", "ind", n), a: i / UI.inds.length * Math.PI * 2 - Math.PI / 2, i }));
+const aLines = inds.map(() => mk("A_svg", "line", { stroke: "rgba(216,189,138,.35)", "stroke-width": 2, "stroke-dasharray": "6 10" }));
+const aPulses = inds.map(() => mk("A_svg", "circle", { r: 7, fill: "#f3e1b9", opacity: 0 }));
+// B: Zeitachse mit kurzem Fenster
+const BY = 620, BX0 = 220, BX1 = 1700;
+mk("B_svg", "line", { x1: BX0, y1: BY, x2: BX1, y2: BY, stroke: "#2a3d63", "stroke-width": 6, "stroke-linecap": "round" });
+const bProg = mk("B_svg", "line", { x1: BX0, y1: BY, x2: BX0, y2: BY, stroke: "#d8bd8a", "stroke-width": 6, "stroke-linecap": "round" });
+const bWin = mk("B_svg", "rect", { y: BY - 140, height: 280, rx: 30, fill: "rgba(216,189,138,.12)", stroke: "rgba(216,189,138,.6)", "stroke-width": 2 });
+const EVX = [560, 960, 1360];
+const bEv = EVX.map((x, i) => ({ x, c: mk("B_svg", "circle", { cx: x, cy: BY, r: 0, fill: "#d8bd8a" }), r: mk("B_svg", "circle", { cx: x, cy: BY, r: 0, fill: "none", stroke: "#f3e1b9", "stroke-width": 3 }),
+  l: div("B_lbls", "abs chip", UI.ev[i]), i }));
+bEv.forEach(e => { e.l.style.left = (e.x - 110) + "px"; e.l.style.top = (BY + 60) + "px"; e.l.style.width = "220px"; e.l.style.justifyContent = "center"; });
+const bDot = mk("B_svg", "circle", { cy: BY, r: 16, fill: "#f2efe8" });
+// C
+const cBurst = [0, 1, 2].map(() => mk("C_svg", "circle", { cx: 960, cy: 520, r: 0, fill: "none", stroke: "#d8bd8a", "stroke-width": 3 }));
+// D: viele Firmen, ein Filter, wenige Leads
+const LENS = { x: 900, y: 560, r: 150 };
+mk("D_svg", "circle", { cx: LENS.x, cy: LENS.y, r: LENS.r + 30, fill: "rgba(216,189,138,.06)" });
+const lensRing = mk("D_svg", "circle", { cx: LENS.x, cy: LENS.y, r: LENS.r, fill: "none", stroke: "#d8bd8a", "stroke-width": 4, "stroke-dasharray": "14 12" });
+const dDots = []; for (let i = 0; i < 90; i++) dDots.push({ el: mk("D_svg", "circle", { r: 6, fill: "#6b7a96" }), y: 380 + rnd() * 360, off: rnd(), hit: i % 13 === 5 });
+const dCards = [0, 1, 2].map(i => { const d = div("D_cards", "lc", `<div class="t"></div><div class="s" style="width:260px"></div><div class="s" style="width:200px"></div>`); return { d, i }; });
+// E: ein Lead, eine Firma
+const EC = { x: 960, y: 470 };
+const FIRMS = [[330, 250], [330, 690], [1590, 250], [1590, 690], [960, 800]];
+const eFirms = FIRMS.map(([x, y], i) => { const d = div("E_firms", "abs", `<div style="font-size:64px;text-align:center">🏢</div>`); d.style.left = (x - 50) + "px"; d.style.top = (y - 50) + "px"; d.style.width = "100px";
+  const ln = mk("E_svg", "line", { x1: EC.x, y1: EC.y, x2: x, y2: y, stroke: "#3a4f78", "stroke-width": 3, "stroke-dasharray": "8 10" });
+  const x2 = mk("E_svg", "text", { x: lerp(EC.x, x, .55), y: lerp(EC.y, y, .55) + 14, "text-anchor": "middle", "font-size": 40, fill: "#e88080", opacity: 0 }); x2.textContent = "✕";
+  return { d, ln, x2, x, y, win: i === 0 }; });
+// F: vier Wochen, jeden Montag ein Umschlag
+const weeks = [0, 1, 2, 3].map(w => { const row = div("F_cal", "abs", ""); row.style.left = "180px"; row.style.top = (300 + w * 140) + "px"; row.style.display = "flex"; row.style.gap = "14px";
+  const cells = [0, 1, 2, 3, 4].map(d => { const c = document.createElement("div"); Object.assign(c.style, { width: "130px", height: "110px", borderRadius: "16px", background: d === 0 ? "rgba(216,189,138,.14)" : "#0f1d38", border: d === 0 ? "2px solid rgba(216,189,138,.6)" : "1px solid #22375f", position: "relative" });
+    row.appendChild(c); return c; });
+  const env = document.createElement("div"); env.textContent = "✉️"; Object.assign(env.style, { position: "absolute", left: "38px", top: "20px", fontSize: "56px" }); cells[0].appendChild(env);
+  return { row, env, w }; });
+// R: Schritte und steigende Linie
+const rPts = [[260, 820], [560, 760], [860, 700], [1160, 560], [1460, 470], [1700, 330]];
+const rPath = mk("R_svg", "path", { d: "M" + rPts.map(q => q.join(" ")).join(" L"), fill: "none", stroke: "#d8bd8a", "stroke-width": 8, "stroke-linecap": "round", "stroke-linejoin": "round" });
+const rLen = rPath.getTotalLength(); rPath.setAttribute("stroke-dasharray", rLen);
+const rArea = mk("R_svg", "path", { d: "M" + rPts.map(q => q.join(" ")).join(" L") + " L1700 900 L260 900 Z", fill: "rgba(216,189,138,.08)" });
+const rHead = mk("R_svg", "circle", { r: 14, fill: "#f3e1b9" });
+const rSteps = UI.steps.map((s, i) => { const d = div("R_steps", "abs chip" + (i === 2 ? " ok" : ""), s); d.style.left = (220 + i * 520) + "px"; d.style.top = "160px"; return d; });
+const rArrows = [0, 1].map(i => mk("R_svg", "path", { d: `M${640 + i * 520} 200 L${720 + i * 520} 200`, stroke: "#d8bd8a", "stroke-width": 4, fill: "none", "stroke-dasharray": 80 }));
+// S: Regionen kommen dazu
+const towns = []; for (let i = 0; i < 26; i++) towns.push({ x: 260 + rnd() * 700, y: 200 + rnd() * 680 });
+towns.sort((a, b) => Math.hypot(a.x - 600, a.y - 540) - Math.hypot(b.x - 600, b.y - 540));
+const sTowns = towns.map(q => ({ ...q, c: mk("S_svg", "circle", { cx: q.x, cy: q.y, r: 10, fill: "#2d4674" }), g: mk("S_svg", "circle", { cx: q.x, cy: q.y, r: 0, fill: "rgba(216,189,138,.18)" }) }));
+const sStack = [0, 1, 2, 3, 4, 5].map(i => { const d = div("S_stack", "lc", `<div class="t" style="width:160px"></div><div class="s" style="width:220px"></div>`); d.style.width = "300px"; d.style.padding = "16px 20px"; return d; });
+// G: Konfetti
+const parts = []; for (let i = 0; i < 34; i++) { const d = div("G_parts", "abs"); const s = 8 + rnd() * 10;
+  Object.assign(d.style, { width: s + "px", height: s + "px", borderRadius: rnd() > .5 ? "50%" : "3px", background: ["#d8bd8a", "#f3e1b9", "#5fd3a3", "#ffffff"][i % 4] }); parts.push({ d, a: rnd() * Math.PI * 2, v: 260 + rnd() * 360, rot: rnd() * 720 }); }
+
+function render(t) {
+  for (const [s, a, b] of win) { const el = $(s); const o = Math.min(p(t, a, .45), 1 - p(t, b - .45, .45)); el.style.opacity = o; el.style.display = o > 0 ? "block" : "none"; }
+  $("bg").style.setProperty("--gx", (55 + 12 * Math.sin(t * .15)) + "%"); $("bg").style.setProperty("--gy", (30 + 10 * Math.cos(t * .12)) + "%");
+  $("dots").style.transform = `translate(${-(t * 10) % 48}px, ${-(t * 5) % 48}px)`;
+
+  // A
+  const a0 = L.hook.start - .3, rot = t * .08;
+  const core = back(p(t, a0, .8)); $("A_core").style.transform = `scale(${core * (1 + .03 * Math.sin(t * 3))})`; $("A_core").style.opacity = cl(core);
+  inds.forEach((o, i) => { const k = back(p(t, a0 + .5 + i * .22, .6)); const a = o.a + rot; const rx = 700, ry = 360;
+    const x = C0.x + Math.cos(a) * rx * lerp(.6, 1, eo(p(t, a0 + .5 + i * .22, .8))), y = C0.y + Math.sin(a) * ry * lerp(.6, 1, eo(p(t, a0 + .5 + i * .22, .8)));
+    const w = o.d.offsetWidth, h = o.d.offsetHeight;
+    Object.assign(o.d.style, { left: (x - w / 2) + "px", top: (y - h / 2) + "px", transform: `scale(${k})`, opacity: cl(k) });
+    aLines[i].setAttribute("x1", C0.x); aLines[i].setAttribute("y1", C0.y); aLines[i].setAttribute("x2", x); aLines[i].setAttribute("y2", y); aLines[i].setAttribute("opacity", cl(k) * .8);
+    const pk = ((t - a0 - 1.5 - i * .37) % 2.2) / 2.2; aPulses[i].setAttribute("cx", lerp(x, C0.x, pk)); aPulses[i].setAttribute("cy", lerp(y, C0.y, pk)); aPulses[i].setAttribute("opacity", t > a0 + 1.5 + i * .37 && k >= 1 ? Math.sin(pk * Math.PI) : 0); });
+
+  // B
+  const b0 = L.tension.start - .3, bk = p(t, b0 + .3, L.tension.end - L.tension.start + .2);
+  const bx = lerp(BX0, BX1, eio(bk)); bProg.setAttribute("x2", bx); bDot.setAttribute("cx", bx);
+  bEv.forEach(e => { const k = p(t, b0 + .3 + (e.x - BX0) / (BX1 - BX0) * (L.tension.end - L.tension.start + .2) - .1, .5); e.c.setAttribute("r", 22 * back(k));
+    const rr = ((t - b0) % 1.4) / 1.4; e.r.setAttribute("r", 22 + rr * 50); e.r.setAttribute("opacity", k > 0 ? 1 - rr : 0);
+    e.l.style.opacity = eo(k); e.l.style.transform = `translateY(${(1 - eo(k)) * 30}px)`; });
+  const near = EVX.reduce((m, x) => Math.abs(x - bx) < Math.abs(m - bx) ? x : m, EVX[0]); const ww = 240 * (1 - .5 * Math.abs(Math.sin(t * 1.3)));
+  bWin.setAttribute("x", near - ww / 2); bWin.setAttribute("width", ww); bWin.setAttribute("opacity", eo(p(t, b0 + 1, .5)));
+  $("B_win").style.opacity = eo(p(t, b0 + .2, .5));
+
+  // Blitz und Marke
+  const fl = p(t, L.brand.start - .5, .5); $("flash").style.opacity = fl > 0 && fl < 1 ? .25 * (1 - fl) : 0;
+  const c0 = L.brand.start - .4;
+  $("C1").style.transform = `translateY(${(1 - eo(p(t, c0 + .2, .7))) * 150}px)`; $("C2").style.transform = `translateY(${(1 - eo(p(t, c0 + .38, .7))) * 150}px)`;
+  cBurst.forEach((c, i) => { const k = p(t, c0 + .3 + i * .25, 1.4); c.setAttribute("r", 80 + k * 600); c.setAttribute("opacity", k > 0 && k < 1 ? (1 - k) * .8 : 0); });
+
+  // D
+  const d0 = L.find.start - .3; $("D_src").style.opacity = eo(p(t, d0, .6)); $("D_src").style.transform = `translateX(${(1 - eo(p(t, d0, .6))) * -60}px)`;
+  lensRing.setAttribute("stroke-dashoffset", -t * 40); scaleAt(lensRing, LENS.x, LENS.y, back(p(t, d0 + .2, .7)));
+  dDots.forEach((o, i) => { const sp = 0.16, ph = ((t - d0) * sp + o.off) % 1; const x = lerp(540, 1400, ph);
+    const inL = Math.abs(x - LENS.x) < LENS.r; const past = x > LENS.x;
+    let y = o.y, op = t > d0 + .6 ? 1 : 0, fill = "#6b7a96", r = 6;
+    if (inL) y = lerp(o.y, LENS.y, 1 - Math.abs(x - LENS.x) / LENS.r);
+    if (past) { if (o.hit) { fill = "#d8bd8a"; r = 9; y = LENS.y + (o.y - LENS.y) * .2; } else op *= cl(1 - (x - LENS.x) / 120); }
+    o.el.setAttribute("cx", x); o.el.setAttribute("cy", y); o.el.setAttribute("fill", fill); o.el.setAttribute("r", r); o.el.setAttribute("opacity", op * (x < 560 ? (x - 540) / 20 : 1)); });
+  dCards.forEach(o => { const k = eo(p(t, d0 + 2.2 + o.i * .7, .8)); Object.assign(o.d.style, { left: lerp(1150, 1420, k) + "px", top: (340 + o.i * 150) + "px", opacity: k, transform: `scale(${lerp(.6, 1, k)})` }); });
+
+  // E
+  const e0 = L.exclusive.start - .3; const ek = back(p(t, e0, .7));
+  Object.assign($("E_lead").style, { left: (EC.x - 190) + "px", top: (EC.y - 80) + "px", transform: `scale(${ek})`, opacity: cl(ek) });
+  const pick = p(t, e0 + 2.2, .8);
+  eFirms.forEach((f, i) => { const k = back(p(t, e0 + .4 + i * .15, .5)); f.d.style.transform = `scale(${k})`; f.d.style.opacity = cl(k);
+    f.ln.setAttribute("opacity", eo(p(t, e0 + .8, .5)));
+    if (f.win) { f.ln.setAttribute("stroke", pick > 0 ? "#d8bd8a" : "#3a4f78"); f.ln.setAttribute("stroke-width", pick > 0 ? 6 : 3); f.ln.setAttribute("stroke-dasharray", pick > 0 ? "none" : "8 10");
+      f.d.style.filter = pick > 0 ? "drop-shadow(0 0 30px rgba(216,189,138,.8))" : "none"; }
+    else { f.x2.setAttribute("opacity", eo(p(t, e0 + 2.4 + i * .12, .4))); f.d.style.opacity = cl(k) * (1 - .6 * eo(p(t, e0 + 2.4, .6))); } });
+  const fly = eio(p(t, e0 + 3.6, 1.0)); if (fly > 0) Object.assign($("E_lead").style, { left: lerp(EC.x - 190, FIRMS[0][0] + 70, fly) + "px", top: lerp(EC.y - 80, FIRMS[0][1] - 90, fly) + "px", transform: `scale(${lerp(1, .6, fly)})` });
+  $("E_lock").style.transform = `scale(${1 + .15 * Math.sin(t * 5)})`;
+  $("E_tag").style.opacity = eo(p(t, e0 + 1.4, .5));
+
+  // F
+  const f0 = L.weekly.start - .3; $("F_mon").style.opacity = eo(p(t, f0, .5));
+  weeks.forEach(w => { const k = eo(p(t, f0 + .2 + w.w * .15, .5)); w.row.style.opacity = k; w.row.style.transform = `translateY(${(1 - k) * 30}px)`;
+    const dk = p(t, f0 + 1.0 + w.w * .55, .5); w.env.style.transform = `translateY(${(1 - eo(dk)) * -120}px) scale(${back(dk)})`; w.env.style.opacity = cl(dk * 2); });
+  const ok = eo(p(t, f0 + 3.0, .6)); $("F_open").style.opacity = ok; $("F_open").style.transform = `translateX(${(1 - ok) * 80}px)`;
+  [0, 1, 2, 3].forEach(i => { const k = p(t, f0 + 3.5 + i * .45, .4); $("F_f" + i).style.opacity = eo(k); $("F_f" + i).querySelector("b").style.transform = `scale(${back(k)})`; });
+  $("F_easy").style.opacity = eo(p(t, f0 + 5.6, .5));
+
+  // R
+  const r0 = L.revenue.start - .3;
+  rSteps.forEach((d, i) => { const k = back(p(t, r0 + i * .8, .6)); d.style.transform = `scale(${k})`; d.style.opacity = cl(k); });
+  rArrows.forEach((a, i) => a.setAttribute("stroke-dashoffset", 80 * (1 - eo(p(t, r0 + .5 + i * .8, .4)))));
+  const rk = eio(p(t, r0 + 1.2, 3.2)); rPath.setAttribute("stroke-dashoffset", rLen * (1 - rk)); rArea.setAttribute("opacity", rk);
+  const hp = rPath.getPointAtLength(rLen * rk); rHead.setAttribute("cx", hp.x); rHead.setAttribute("cy", hp.y); rHead.setAttribute("r", 12 + 3 * Math.sin(t * 6)); rHead.setAttribute("opacity", rk > 0 ? 1 : 0);
+
+  // S
+  const s0 = L.scale.start - .3; const sk = p(t, s0 + .4, (L.scale.end - L.scale.start) + .3);
+  const n = Math.max(1, Math.round(1 + sk * 7)); $("S_n").textContent = n; $("S_bar").style.width = (10 + sk * 90) + "%";
+  $("S_ctl").style.opacity = eo(p(t, s0, .5));
+  sTowns.forEach((q, i) => { const on = i < Math.round(3 + sk * (sTowns.length - 3)); const k = on ? 1 : 0;
+    q.c.setAttribute("fill", on ? "#d8bd8a" : "#2d4674"); q.c.setAttribute("opacity", eo(p(t, s0, .5)));
+    q.g.setAttribute("r", on ? 26 + 6 * Math.sin(t * 3 + i) : 0); q.g.setAttribute("opacity", k); });
+  sStack.forEach((d, i) => { const vis = i < Math.round(1 + sk * 5); d.style.left = (i * 34) + "px"; d.style.top = (i * 20) + "px"; d.style.opacity = vis ? 1 : 0; d.style.transform = vis ? "none" : "translateY(-20px)"; });
+
+  // G
+  const g0 = L.cta.start - .3; const gb = back(p(t, g0, .7)); $("G_big").style.transform = `scale(${gb})`; $("G_big").style.opacity = cl(gb);
+  $("G_sub").style.opacity = eo(p(t, g0 + .5, .5));
+  const btn = eo(p(t, g0 + .9, .5)); $("G_btn").style.opacity = btn; const tap = g0 + 2.4;
+  $("G_btn").style.transform = t > tap && t < tap + .15 ? "scale(.95)" : `scale(${t < tap ? 1 + .03 * Math.sin(t * 7) : 1})`;
+  $("G_path").setAttribute("stroke-dashoffset", 40 * (1 - eio(p(t, tap + .1, .5))));
+  parts.forEach(q => { const k = p(t, tap + .1, 1.3); const d = q.v * eo(k); Object.assign(q.d.style, { left: (960 + Math.cos(q.a) * d) + "px", top: (700 + Math.sin(q.a) * d + 160 * k * k) + "px", opacity: k > 0 ? 1 - k : 0, transform: `rotate(${q.rot * k}deg)` }); });
+
+  // H
+  const h0 = L.end.start - .3; $("H1").style.transform = `translateY(${(1 - eo(p(t, h0, .7))) * 140}px)`; $("H2").style.transform = `translateY(${(1 - eo(p(t, h0 + .18, .7))) * 140}px)`;
+  $("H_tag").style.opacity = eo(p(t, h0 + 1.0, .6)); $("H_url").style.opacity = eo(p(t, h0 + 1.6, .6));
+}
+window.render = render;
+</script></body></html>

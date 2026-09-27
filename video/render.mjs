@@ -9,7 +9,7 @@ const timing = JSON.parse(readFileSync(`out/${name}/timing.json`, "utf8"));
 const browser = await pw.chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
 await page.addInitScript(`window.TIMING = ${JSON.stringify(timing)}; window.CFG = ${JSON.stringify(cfg)};`);
-await page.goto("file://" + process.cwd() + "/film.html");
+await page.goto("file://" + process.cwd() + "/" + (cfg.film || "film.html"));
 await page.evaluate(() => document.fonts.ready);
 const dir = `out/${name}/${mode === "stills" ? "stills" : "frames"}`;
 mkdirSync(dir, { recursive: true });
