@@ -166,6 +166,28 @@ export const BRAND_CSS = `
 .bx .lead .co{font-weight:600}.bx .lead .meta{color:var(--soft);font-size:13px}
 .motion .bx .leads>[data-rv]{transition-delay:calc(var(--i,0) * 90ms)}
 
+/* Montagslieferung + Ablauf */
+.bx .deliv{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
+.bx .report{position:relative;border-radius:22px;padding:28px 30px 26px;color:#e8ecf3;overflow:hidden;border:1px solid transparent;
+  background:linear-gradient(160deg,#101a2c,#0b1320 65%) padding-box,conic-gradient(from var(--a),rgba(216,189,138,.08),rgba(216,189,138,.7),rgba(91,212,154,.4),rgba(216,189,138,.08) 45%,rgba(216,189,138,.08)) border-box;
+  box-shadow:0 50px 100px -50px rgba(11,19,32,.75);animation:spin 9s linear infinite}
+.bx .rp-head{display:flex;align-items:center;gap:12px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.08)}
+.bx .rp-head b{display:block;font-size:15px;color:#fff}.bx .rp-head span{font-size:12.5px;color:var(--night-soft)}
+.bx .rp-title{font-size:22px;font-weight:700;letter-spacing:-.01em;margin:20px 0 14px;color:#fff;line-height:1.25}
+.bx .rp-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.bx .rp-list li{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);font-size:15px;color:#dde3ec}
+.bx .rp-list .ic{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:rgba(216,189,138,.12);color:var(--gold2);font-size:14px}
+.motion .bx .report.in .rp-list li{animation:slide .7s both;animation-delay:calc(var(--i,0) * 140ms + .3s)}
+.bx .flow h3{font-size:24px;font-weight:700;letter-spacing:-.015em;margin:0 0 22px;line-height:1.25}
+.bx .flow ol{list-style:none;margin:0;padding:0;position:relative}
+.bx .flow ol:before{content:"";position:absolute;left:17px;top:18px;bottom:18px;width:1px;background:linear-gradient(var(--gold),var(--line))}
+.bx .flow li{display:grid;grid-template-columns:36px 1fr;gap:16px;align-items:start;padding:0 0 22px}
+.bx .flow .dot{position:relative;z-index:1;width:36px;height:36px;border-radius:50%;background:var(--paper);border:1px solid var(--gold);color:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:600}
+.bx .flow p{margin:6px 0 0;font-size:16px;color:#2a303b}
+.motion .bx .flow li{opacity:0;transform:translateX(-10px);transition:opacity .7s,transform .7s;transition-delay:calc(var(--i,0) * 160ms + .2s)}
+.motion .bx .flow.in li{opacity:1;transform:none}
+@media (max-width:900px){.bx .deliv{grid-template-columns:1fr;gap:40px}}
+
 /* Beispiel-Leads als hochwertige Karten */
 .bx .leadgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px}
 .bx .leadx{position:relative;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px 26px 20px;display:flex;flex-direction:column;gap:12px;box-shadow:0 24px 60px -44px rgba(22,27,36,.45);transition:transform .45s cubic-bezier(.2,.7,.1,1),box-shadow .45s,border-color .45s;overflow:hidden}
@@ -178,10 +200,13 @@ export const BRAND_CSS = `
 .bx .leadx .sig{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .bx .leadx .pill{font-size:12px;font-weight:600;color:#141008;background:linear-gradient(135deg,#e2c894,#b08d57);padding:4px 12px;border-radius:99px}
 .bx .leadx .dt{font-size:13px;color:var(--soft)}
+.bx .leadx .tagw{font-size:12px;font-weight:600;color:#1f6f4a;background:#e8f5ee;border:1px solid #cfe9db;padding:3px 10px;border-radius:99px}
+.bx .leadx .ind{margin:0;font-size:15px;font-weight:500}.bx .leadx .ind span{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--soft);font-weight:600;margin-bottom:2px}
 .bx .leadx .det{margin:0;font-size:15px}
 .bx .leadx .why{margin:0;font-size:14.5px;color:#39404d;background:#faf6ee;border:1px solid #efe5d3;border-radius:12px;padding:10px 12px}
 .bx .leadx .why b{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:3px}
-.bx .leadx .op{margin:0;font-size:14.5px;color:var(--soft);border-left:2px solid var(--gold);padding-left:12px}
+.bx .leadx .op{margin:0;font-size:14.5px;color:var(--soft);border-left:2px solid var(--gold);padding-left:12px}.bx .leadx .op b{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:3px;font-style:normal}
+.bx .leadx .prof .lbl{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--soft);font-weight:600;margin-bottom:3px}.bx .leadx .prof p{margin:0;font-size:14.5px}
 .bx .leadx .ft{margin-top:auto;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--soft);border-top:1px solid var(--line);padding-top:12px}
 .bx .leadx .prio{font-weight:600}.bx .leadx .p-high{color:#b45309}.bx .leadx .p-medium{color:var(--gold)}
 .motion .bx .leadgrid>[data-rv]{transition-delay:calc(var(--i,0) * 90ms)}
@@ -236,7 +261,8 @@ export const BRAND_CSS = `
 .bx .offer{background:var(--ink);color:#eef1f6;overflow:hidden;isolation:isolate}
 .bx .offer:before{content:"";position:absolute;inset:0;z-index:-1;background:radial-gradient(700px 400px at 85% 20%,rgba(176,141,87,.22),transparent 60%)}
 .bx .offer .wrap{display:grid;grid-template-columns:1.2fr .8fr;gap:56px;align-items:center}
-.bx .offer .intro{color:#b9c2d0;margin-bottom:0}
+.bx .offer .intro{color:#b9c2d0;margin-bottom:0}.bx .offer h2{font-size:clamp(28px,3vw,40px);text-wrap:balance}
+.bx h2{text-wrap:balance}
 .bx .olist{list-style:none;counter-reset:o;margin:0;padding:0;display:grid;gap:16px}
 .bx .olist li{counter-increment:o;display:grid;grid-template-columns:36px 1fr;gap:12px;color:#d5dbe5;font-size:16px}
 .bx .olist li:before{content:counter(o);color:var(--gold2);font-size:20px;font-weight:600;line-height:1.3}

@@ -119,6 +119,7 @@ def detect_incorporation_lead(company: dict, obs: dict, today: dt.date, max_age_
                   "Have you already decided who will build your website?",
         "observation_ids": [obs["id"]] if obs.get("id") else [],
         "topic": "general",
+        "sic": (obs.get("details") or {}).get("sic"),
     }
 
 
@@ -173,9 +174,28 @@ OPENERS = {
 }
 
 
+SEGMENT_SLUG = {"S5": "accountants", "S4": "insurance-brokers", "S9": "financial-advisers"}
+
+
+def industry_hint(segment: str, sic: str | None) -> tuple[str, str] | None:
+    """(Verkaufstipp, Frage) je Branche der Firma (SIC) und Zielgruppe; gleiche Quelle wie die Landingpages."""
+    import json
+    from pathlib import Path
+    if not sic or segment not in SEGMENT_SLUG:
+        return None
+    data = json.loads((Path(__file__).resolve().parents[2] / "app" / "content" / "industry-hints.json").read_text())
+    group = data["groups"].get(str(sic)[:2])
+    hint = data["hints"].get(SEGMENT_SLUG[segment], {}).get(group) if group else None
+    return tuple(hint) if hint else None
+
+
 def opener_for(lead: dict, segment: str, company: dict) -> str:
     from lib import catalog
     lang = "fr" if company.get("country") == "FR" else "en"
+    hint = industry_hint(segment, lead.get("sic")) if lang == "en" and lead["signal_type"] == "new_incorporation" else None
+    if hint:
+        d = _d(lead.get("event_date")) or dt.date.today()
+        return f"Congratulations on setting up {company['name']} this {d:%B}. {hint[1]}"
     tpl = OPENERS.get((lead["signal_type"], segment, lang)) or catalog.opener(segment, lang)
     if not tpl:
         return lead["opener"]

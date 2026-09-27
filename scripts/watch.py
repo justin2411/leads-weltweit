@@ -381,7 +381,7 @@ def cmd_detect(db: DB, args) -> None:
                 found += [lead] if lead else []
         for lead in found:
             for seg in segments_for(lead, active_catalog):
-                row = {k: v for k, v in lead.items() if k != "topic"}
+                row = {k: v for k, v in lead.items() if k not in ("topic", "sic")}
                 row["opener"] = opener_for(lead, seg, c)
                 row.update({"company_id": c["id"], "segment_id": seg, "country": c["country"],
                             "source_date": TODAY.isoformat()})

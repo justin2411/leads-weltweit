@@ -11,6 +11,7 @@ import { db } from "@/lib/supabase";
 import { pickVariant } from "@/lib/variants";
 import { Tracker } from "./tracker";
 import { PREMIUM, segmentCopy } from "@/content/segment-words";
+import HINTS from "@/content/industry-hints.json";
 import type { CSSProperties } from "react";
 import { BrandShell, SiteFooter, SiteHeader, Words } from "../../chrome";
 import { HeroNet } from "../../motion";
@@ -40,6 +41,13 @@ const PRIO: Record<"en" | "fr", Record<string, string>> = {
 };
 
 /** "ACME LTD registered on 31 Aug 2026 (London)." -> "" ; sonst Firmenname vorne und Klammern entfernen. */
+/** Verkaufstipp und Frage je Branche der Firma (SIC) und Zielgruppe (content/industry-hints.json, auch für die Lieferung). */
+function industryHint(seg: string, sic: string | undefined): [string, string] | undefined {
+  if (!sic) return undefined;
+  const g = (HINTS.groups as Record<string, string>)[sic.slice(0, 2)];
+  return g ? (HINTS.hints as unknown as Record<string, Record<string, [string, string]>>)[seg]?.[g] : undefined;
+}
+
 function cleanEvent(ev: string, company: string): string {
   let e = ev.split(" (")[0].trim().replace(/\.$/, "");
   if (e.toUpperCase().startsWith(company.toUpperCase())) e = e.slice(company.length).trim();
@@ -47,21 +55,48 @@ function cleanEvent(ev: string, company: string): string {
   return e ? e[0].toUpperCase() + e.slice(1) : "";
 }
 
-type Sample = { company: string; location?: string; event: string; date?: string; source?: string; signal?: string; urgency?: string; opener?: string };
+type Sample = { company: string; location?: string; district?: string; industry?: string; sicCode?: string; noWebsite?: boolean; event: string; date?: string; source?: string; signal?: string; urgency?: string; opener?: string };
 
 /** Echte Probe-Leads aus der Region des Empfängers (Firmendaten, als Beispiel markiert). */
 async function regionalSamples(page: { segment_id: string; country: string }, region: string | undefined): Promise<Sample[]> {
   if (!region) return [];
+  const r = region.replace(/[%,()]/g, "");
   const { data } = await db().from("leads")
-    .select("event_summary, event_date, source_name, signal_type, urgency, opener, company_id, watch_companies!inner(name, city, region)")
+    .select("event_summary, event_date, source_name, signal_type, urgency, opener, company_id, observation_ids, watch_companies!inner(name, city, region, address)")
     .eq("segment_id", page.segment_id).eq("country", page.country).in("status", ["sample", "new"])
-    .or(`region.ilike.%${region.replace(/[%,()]/g, "")}%,city.ilike.%${region.replace(/[%,()]/g, "")}%`, { foreignTable: "watch_companies" })
-    .order("event_date", { ascending: false }).limit(30);
-  const seen = new Set<string>();
-  return (data ?? []).filter((l: any) => !seen.has(l.company_id) && seen.add(l.company_id)).slice(0, 6)
-    .map((l: any) => ({ company: l.watch_companies.name, location: l.watch_companies.city ?? undefined,
+    .or(`region.ilike.%${r}%,city.ilike.%${r}%`, { foreignTable: "watch_companies" })
+    .order("event_date", { ascending: false }).limit(200);
+  const rows = (data ?? []) as any[];
+  // Branche (SIC) aus der Beobachtung holen, damit die Beispiele unterscheidbar sind
+  const obsIds = [...new Set(rows.map((l) => l.observation_ids?.[0]).filter(Boolean))].slice(0, 200);
+  const sic = new Map<string, string>();
+  if (obsIds.length) {
+    const { data: obs } = await db().from("observations").select("id, details").in("id", obsIds);
+    for (const o of (obs ?? []) as any[]) if (o.details?.sic) sic.set(o.id, String(o.details.sic));
+  }
+  // Vielfalt: erst verschiedene Signale, dann verschiedene Branchen und Tage, jede Firma einmal
+  const picked: any[] = [], firms = new Set<string>(), sigs = new Set<string>(), divs = new Set<string>(), days = new Map<string, number>();
+  const take = (l: any) => { picked.push(l); firms.add(l.company_id); sigs.add(l.signal_type); days.set(l.event_date, (days.get(l.event_date) ?? 0) + 1);
+    const d = (sic.get(l.observation_ids?.[0]) ?? "").slice(0, 2); if (d) divs.add(d); };
+  for (const pass of [0, 1, 2]) {
+    for (const l of rows) {
+      if (picked.length >= 6) break;
+      if (firms.has(l.company_id)) continue;
+      const d = (sic.get(l.observation_ids?.[0]) ?? "").slice(0, 2);
+      if (pass === 0 && sigs.has(l.signal_type)) continue;
+      if (pass === 1 && ((d && divs.has(d)) || (days.get(l.event_date) ?? 0) >= 2)) continue;
+      take(l);
+    }
+  }
+  return picked.map((l: any) => {
+    const code = sic.get(l.observation_ids?.[0]);
+    const pc = String(l.watch_companies.address ?? "").match(/\b([A-Z]{1,2}\d[A-Z\d]?)\s*\d[A-Z]{2}\b/i)?.[1];
+    return { company: l.watch_companies.name, location: l.watch_companies.city ?? undefined, district: pc?.toUpperCase(),
+      industry: code ? code.split(" - ").slice(1).join(" - ") || undefined : undefined, sicCode: code?.slice(0, 5),
+      noWebsite: /no website found/i.test(String(l.event_summary)),
       event: String(l.event_summary).slice(0, 160), date: l.event_date ?? undefined, source: l.source_name,
-      signal: l.signal_type ?? undefined, urgency: l.urgency ?? undefined, opener: l.opener ?? undefined }));
+      signal: l.signal_type ?? undefined, urgency: l.urgency ?? undefined, opener: l.opener ?? undefined };
+  });
 }
 
 async function resolve(params: Params, searchParams: Search) {
@@ -200,17 +235,29 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
           <div className="leadgrid">{samples.map((sm, k) => {
             const label = SIGNAL_LABEL[fr ? "fr" : "en"][sm.signal ?? ""] ?? null;
             const detail = cleanEvent(sm.event, sm.company);
-            const why = sm.signal ? SC.why[sm.signal] : undefined;
+            const hint = industryHint(page.slug.split("/")[1] ?? "", sm.sicCode);
+            const why = hint?.[0] ?? (sm.signal ? SC.why[sm.signal] : undefined);
+            const month = sm.date ? new Date(sm.date + "T12:00:00Z").toLocaleDateString("en-GB", { month: "long" }) : "";
+            const opener = hint && sm.signal === "new_incorporation" && !fr
+              ? `Congratulations on setting up ${nice(sm.company)}${month ? ` this ${month}` : ""}. ${hint[1]}`
+              : sm.opener ? sm.opener.split(sm.company).join(nice(sm.company)) : undefined;
+            const age = sm.date ? Math.max(0, Math.round((Date.now() - Date.parse(sm.date + "T12:00:00Z")) / 864e5)) : undefined;
             return (
               <article className="leadx" key={k} data-rv style={i(k)}>
                 <header>
-                  <div><div className="co">{nice(sm.company)}</div>{sm.location && <div className="loc">{nice(sm.location)}</div>}</div>
+                  <div><div className="co">{nice(sm.company)}</div>{sm.location && <div className="loc">{nice(sm.location)}{sm.district ? ` · ${sm.district}` : ""}</div>}</div>
                   <span className="ex">{L.example}</span>
                 </header>
-                <div className="sig">{label && <span className="pill">{label}</span>}<span className="dt">{day(sm.date, lang)}</span></div>
+                <div className="sig">{label && <span className="pill">{label}</span>}<span className="dt">{day(sm.date, lang)}</span>
+                  {sm.noWebsite && <span className="tagw">{fr ? "Pas encore de site web" : "No website yet"}</span>}</div>
+                {(sm.industry || age !== undefined) && (
+                  <div className="prof"><span className="lbl">{fr ? "Profil de l'entreprise" : "Company profile"}</span>
+                    <p>{[sm.industry, sm.district && (fr ? `siège ${sm.district}` : `registered office ${sm.district}`),
+                      age !== undefined && (fr ? `créée il y a ${age} jours` : `incorporated ${age} days ago`),
+                      sm.noWebsite && (fr ? "pas encore de site web" : "no website yet")].filter(Boolean).join(" · ")}</p></div>)}
                 {detail && <p className="det">{nd(detail)}</p>}
-                {why && <p className="why"><b>{fr ? "Pourquoi c'est une opportunité" : F("Why it matters for {beruf}")}</b>{F(why)}</p>}
-                {sm.opener && <p className="op">“{nd(sm.opener.split(sm.company).join(nice(sm.company)))}”</p>}
+                {why && <p className="why"><b>{fr ? "Conseil de vente" : F("Sales tip for {beruf}")}</b>{F(why)}</p>}
+                {opener && <p className="op"><b>{fr ? "Phrase d'accroche" : "Opening line"}</b>“{nd(opener)}”</p>}
                 <div className="ft">
                   {sm.source && <span>{L.source}: {sm.source}</span>}
                   {sm.urgency && <span className={`prio p-${sm.urgency}`}>{PRIO[fr ? "fr" : "en"][sm.urgency] ?? sm.urgency}</span>}
@@ -220,12 +267,22 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
         </div></section>
       )}
 
-      <section><div className="wrap anat">
-        <div><Head eyebrow="" title={F(SC.getsTitle)} />
-          <ul className="gets" data-rv>{SC.gets.map((g, k) => <li key={k} style={i(k)}>{F(g)}</li>)}</ul>
-        </div>
-        <div><Head eyebrow="" title={F(SC.stepsTitle)} />
-          <ol className="olist light" data-rv>{SC.steps.map((st, k) => <li key={k}>{F(st)}</li>)}</ol>
+      <section><div className="wrap">
+        <div className="deliv">
+          <div className="report" data-rv>
+            <div className="rp-head">
+              <span className="pulse" aria-hidden="true" />
+              <div><b>{F(fr ? "Aperçu : votre livraison avec NextGen Profit" : "Preview: your delivery with NextGen Profit")}</b>
+                <span>{fr ? "Chaque lundi · 07:00" : "Every Monday · 07:00"}</span></div>
+            </div>
+            <h3 className="rp-title">{F(SC.getsTitle)}</h3>
+            <ul className="rp-list">{SC.gets.map((g, k) => (
+              <li key={k} style={i(k)}><span className="ic" aria-hidden="true">{["◆", "◇", "◈", "❝"][k % 4]}</span>{F(g)}</li>))}</ul>
+          </div>
+          <div className="flow" data-rv>
+            <h3>{F(SC.stepsTitle)}</h3>
+            <ol>{SC.steps.map((st, k) => <li key={k} style={i(k)}><span className="dot">{k + 1}</span><p>{F(st)}</p></li>)}</ol>
+          </div>
         </div>
       </div></section>
 
