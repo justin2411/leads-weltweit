@@ -14,8 +14,8 @@ export const BRAND_CSS = `
 
 /* Fortschritt und Navigation */
 .bx .progress{position:fixed;top:0;left:0;right:0;height:2px;z-index:40;transform-origin:left;transform:scaleX(var(--p,0));background:linear-gradient(90deg,var(--gold),var(--gold2))}
-.bx .nav{position:sticky;top:0;z-index:30;background:rgba(11,19,32,.55);backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid rgba(255,255,255,.06);transition:background .4s}
-.scrolled .bx .nav{background:rgba(11,19,32,.88)}
+.bx .nav{position:sticky;top:0;z-index:30;background:rgba(11,19,32,.82);backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid rgba(255,255,255,.06);transition:background .4s}
+.scrolled .bx .nav{background:rgba(11,19,32,.9)}
 .bx .nav .wrap{display:flex;align-items:center;justify-content:space-between;height:68px;transition:height .4s}.scrolled .bx .nav .wrap{height:58px}
 .bx .mark{font-size:21px;font-weight:700;color:#f4efe6;text-decoration:none;letter-spacing:-.01em}.bx .mark i{font-style:normal;color:var(--gold2)}
 .bx .nav .links{display:flex;gap:30px;align-items:center}.bx .nav .links a{color:#c9d1de;text-decoration:none;font-size:14px;position:relative}
