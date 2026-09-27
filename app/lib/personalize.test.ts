@@ -10,6 +10,12 @@ test("Platzhalter mit Daten und mit Ersatzwörtern", () => {
   assert.deepEqual(fillDeep([{ title: "{region}", text: "x" }], p, "en"), [{ title: "Greater Manchester", text: "x" }]);
 });
 
+test("Branchen-Wörter ersetzen, Unbekanntes bleibt stehen", () => {
+  const w = { beruf: "accountants", leistung: "payroll" };
+  assert.equal(fill("For {beruf} in {region}: {leistung} {unbekannt}", { region: "Leeds" }, "en", w), "For accountants in Leeds: payroll {unbekannt}");
+  assert.deepEqual(fillDeep(["{beruf}"], {}, "en", w), ["accountants"]);
+});
+
 test("Firmenname und Region aufbereiten", () => {
   assert.equal(cleanFirm("Harper & Co Accountants Ltd"), "Harper & Co Accountants");
   assert.equal(cleanFirm("Weche Media LLC"), "Weche Media");

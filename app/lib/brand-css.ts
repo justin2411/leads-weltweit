@@ -34,7 +34,8 @@ export const BRAND_CSS = `
   radial-gradient(700px 500px at 8% 90%,rgba(62,98,170,.24),transparent 60%);animation:aurora 18s ease-in-out infinite alternate}
 .bx .hero canvas.net{position:absolute;inset:0;width:100%;height:100%;z-index:-2;opacity:.7;pointer-events:none}
 .bx .hero .wrap{display:grid;grid-template-columns:1.15fr .85fr;gap:56px;align-items:center;padding-top:96px;padding-bottom:104px}
-.bx .hero.solo .wrap{grid-template-columns:1fr;max-width:920px;padding-top:88px;padding-bottom:88px}
+.bx .hero.solo .wrap{grid-template-columns:1fr;gap:0;max-width:920px;padding-top:64px;padding-bottom:72px}
+.bx .hero.solo h1{margin:20px 0 18px}.bx .hero.solo .cta-row{margin-top:26px}
 .bx h1{font-weight:700;font-size:clamp(40px,5.6vw,72px);line-height:1.04;letter-spacing:-.03em;margin:18px 0 24px}
 .bx .hero.solo h1{font-size:clamp(34px,4.6vw,58px)}
 .bx .lede{font-size:19px;color:#c3cbd8;max-width:580px;margin:0}
@@ -43,6 +44,17 @@ export const BRAND_CSS = `
 .bx .cta-row{display:flex;gap:14px;flex-wrap:wrap;margin-top:36px}
 .bx .fine{margin-top:18px;font-size:13px;color:var(--night-soft);letter-spacing:.02em}
 .bx .fine span+span:before{content:"";display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--gold);margin:0 12px 3px}
+
+/* Trigger-Begriffe der Branche */
+.bx .chips{list-style:none;margin:22px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.bx .chips li{font-size:13px;font-weight:600;color:#e6e9ef;padding:6px 14px;border-radius:99px;border:1px solid rgba(216,189,138,.35);background:rgba(216,189,138,.08)}
+.bx .chips li:before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--gold2);margin:0 8px 1px 0}
+.bx .gets{list-style:none;margin:0;padding:0;display:grid;gap:14px}
+.bx .gets li{position:relative;padding:16px 18px 16px 48px;background:var(--card);border:1px solid var(--line);border-radius:14px;font-size:16px}
+.bx .gets li:before{content:"";position:absolute;left:20px;top:22px;width:12px;height:7px;border-left:2px solid var(--gold);border-bottom:2px solid var(--gold);transform:rotate(-45deg)}
+.motion .bx .gets li{opacity:0;transform:translateY(12px);transition:opacity .7s,transform .7s;transition-delay:calc(var(--i,0) * 110ms + .2s)}
+.motion .bx .gets.in li{opacity:1;transform:none}
+.bx .olist.light li{color:var(--text)}.bx .olist.light li:before{color:var(--gold)}
 
 /* Wort für Wort (Hero sofort, Abschnitte beim Scrollen) */
 .bx .w{display:inline-block;white-space:pre}
@@ -90,7 +102,7 @@ export const BRAND_CSS = `
 .bx .marquee span:before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--gold);margin:0 16px 3px 0}
 
 /* Abschnitte */
-.bx section{padding:112px 0;position:relative}
+.bx section{padding:96px 0;position:relative}
 .bx h2{font-weight:700;font-size:clamp(30px,3.6vw,46px);line-height:1.12;letter-spacing:-.025em;margin:14px 0 18px}
 .bx .intro{color:var(--soft);font-size:19px;max-width:640px;margin:0 0 56px}
 .bx .rule{width:56px;height:1px;background:var(--gold);margin:0 0 18px;transform-origin:left}

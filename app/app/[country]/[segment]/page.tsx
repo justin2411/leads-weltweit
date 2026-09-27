@@ -10,6 +10,7 @@ import { personalFor } from "@/lib/recipient";
 import { db } from "@/lib/supabase";
 import { pickVariant } from "@/lib/variants";
 import { Tracker } from "./tracker";
+import { segmentCopy } from "@/content/segment-words";
 import type { CSSProperties } from "react";
 import { BrandShell, SiteFooter, SiteHeader, Words } from "../../chrome";
 import { HeroNet } from "../../motion";
@@ -63,8 +64,8 @@ export async function generateMetadata({ params, searchParams }: { params: Param
   const r = await resolve(params, searchParams);
   if (!r) return { robots: { index: false, follow: false } };
   return {
-    title: `${fill(r.variant.headline, {}, r.page.language)} | ${BRAND}`,
-    description: r.variant.subheadline ? fill(r.variant.subheadline, {}, r.page.language) : undefined,
+    title: `${fill(r.variant.headline, {}, r.page.language, segmentCopy(r.slug, r.page.language).words)} | ${BRAND}`,
+    description: r.variant.subheadline ? fill(r.variant.subheadline, {}, r.page.language, segmentCopy(r.slug, r.page.language).words) : undefined,
     alternates: { canonical: `${siteUrl()}/${r.slug}` },
     robots: r.isPublic ? { index: true, follow: true } : { index: false, follow: false },
   };
@@ -86,11 +87,14 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
   const regional = await regionalSamples(page, personal?.region);
   const samples = regional.length >= 3 ? regional : ((v.sample_leads ?? []) as Sample[]);
   const nd = (x: string) => x.replace(/\s+[–—]\s+/g, ", ");
-  const signals = fillDeep((v.signals ?? []) as { title: string; text: string }[], P, lang);
-  const faq = fillDeep((v.faq ?? []) as { q: string; a: string }[], P, lang);
-  const headline = nd(fill(v.headline, P, lang));
-  const subheadline = v.subheadline ? nd(fill(v.subheadline, P, lang)) : null;
-  const cta = fill(v.cta_label, P, lang);
+  const SC = segmentCopy(page.slug, lang);
+  const W = SC.words;
+  const F = (x: string) => nd(fill(x, P, lang, W));
+  const signals = fillDeep((v.signals ?? []) as { title: string; text: string }[], P, lang, W);
+  const faq = fillDeep((v.faq ?? []) as { q: string; a: string }[], P, lang, W);
+  const headline = F(v.headline);
+  const subheadline = v.subheadline ? F(v.subheadline) : null;
+  const cta = fill(v.cta_label, P, lang, W);
   const video = (VIDEOS as Record<string, { src: string; poster: string; seconds: number }>)[page.slug];
   // Kein Formular: Knopf -> zweiter Schritt (Bedingungen) -> ein Klick sendet die Probe. Adresse kommt aus dem Mail-Link.
   const known = Boolean(personal?.email && personal.firma);
@@ -141,6 +145,9 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
           {personal?.firma && <div className="for later" style={{ "--d": ".05s" } as CSSProperties}>{fr ? `Préparé pour ${personal.firma}` : `Prepared for ${personal.firma}`}</div>}
           <h1><Words text={headline} /></h1>
           {subheadline && <p className="lede later" style={{ "--d": ".7s" } as CSSProperties}>{subheadline}</p>}
+          <ul className="chips later" style={{ "--d": ".85s" } as CSSProperties} aria-label={fr ? "Signaux" : "Signals"}>
+            {SC.chips.map((c) => <li key={c}>{F(c)}</li>)}
+          </ul>
           {sp.angefragt ? <p className="ok">{known ? L.thanksTo(personal!.email!) : L.thanks}</p>
             : sp.fehler ? <p className="err">{L.error}</p> : null}
           {step ? <Probe /> : !sp.angefragt && (
@@ -159,13 +166,13 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
       )}
 
       {signals.length > 0 && (
-        <section><div className="wrap"><Head eyebrow={fr ? "Signaux" : "Signals"} title={L.what} />
+        <section><div className="wrap"><Head eyebrow="" title={fr ? L.what : F("What we flag for {beruf}")} />
           <div className="cards">{signals.map((sg, k) => <div className="card glow lift" key={k} data-rv style={i(k)}><h3>{nd(sg.title)}</h3><p>{nd(sg.text)}</p></div>)}</div>
         </div></section>
       )}
 
       {samples.length > 0 && (
-        <section className="tinted"><div className="wrap"><Head eyebrow={fr ? "Exemples" : "Examples"} title={L.examples} />
+        <section className="tinted"><div className="wrap"><Head eyebrow="" title={fr ? L.examples : F(personal?.region ? "Example leads from {region}" : "Example leads")} />
           <p className="intro">{L.examplesNote}</p>
           <div className="leads">{samples.map((sm, k) => (
             <div className="lead" key={k} data-rv style={i(k)}>
@@ -176,8 +183,13 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
         </div></section>
       )}
 
-      <section><div className="wrap"><Head eyebrow={fr ? "Méthode" : "Method"} title={L.how} />
-        <div className="steps three" data-rv>{L.steps.map((st, k) => <div className="step" key={k} style={i(k)}><div className="n">{k + 1}</div><p style={{ marginTop: 22 }}>{st}</p></div>)}</div>
+      <section><div className="wrap anat">
+        <div><Head eyebrow="" title={F(SC.getsTitle)} />
+          <ul className="gets" data-rv>{SC.gets.map((g, k) => <li key={k} style={i(k)}>{F(g)}</li>)}</ul>
+        </div>
+        <div><Head eyebrow="" title={F(SC.stepsTitle)} />
+          <ol className="olist light" data-rv>{SC.steps.map((st, k) => <li key={k}>{F(st)}</li>)}</ol>
+        </div>
       </div></section>
 
       {canBuy && (
@@ -195,12 +207,12 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
 
       {!step && !sp.angefragt && (
         <section className="offer" id="sample"><div className="wrap">
-          <div><Head eyebrow={fr ? "Échantillon gratuit" : "Free sample"} title={L.sampleTitle} />
+          <div><Head eyebrow="" title={F(SC.sampleTitle)} />
             <p className="intro">{known ? L.sendsTo(personal!.gebiet, personal!.email!) : L.sendsToUnknown}</p>
             <div className="cta-row" data-rv><Start label={L.send} /></div>
             <div className="fine"><span>{L.free.replace(/\.$/, "")}</span><span>{L.noObl.replace(/\.$/, "")}</span></div>
           </div>
-          <div data-rv><ol className="olist">{L.steps.map((st, k) => <li key={k}>{st}</li>)}</ol></div>
+          <div data-rv><ol className="olist">{SC.steps.map((st, k) => <li key={k}>{F(st)}</li>)}</ol></div>
         </div></section>
       )}
 
