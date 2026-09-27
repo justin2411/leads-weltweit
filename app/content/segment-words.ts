@@ -33,7 +33,7 @@ export const PREMIUM: Record<"en" | "fr", { title: string; items: [string, strin
       ["Rated", "Each lead is scored for freshness and relevance. Anything below our minimum is never sent."],
       ["Local", "Only the towns {firma} would choose, so every call would be in {team}'s own market."],
       ["Ready to call", "Phone number and company email with every lead, plus an opening line written for {beruf} that refers to the actual event."],
-      ["Delivered once", "No lead would reach {firma} twice."],
+      ["Exclusive", "Each lead goes to one firm in your industry only. No competitor of {firma} would receive it."],
     ],
   },
   fr: {
@@ -44,7 +44,7 @@ export const PREMIUM: Record<"en" | "fr", { title: string; items: [string, strin
       ["Notées", "Chaque piste est notée selon sa fraîcheur et sa pertinence. En dessous de notre seuil, elle n'est jamais envoyée."],
       ["Locales", "Uniquement les villes que {firma} choisirait."],
       ["Prêtes à appeler", "Téléphone et e-mail de l'entreprise pour chaque piste, et une phrase d'accroche qui fait référence à l'événement."],
-      ["Livrées une fois", "Aucune piste n'arriverait deux fois chez {firma}."],
+      ["Exclusives", "Chaque piste ne va qu'à une seule entreprise de votre secteur. Aucun concurrent de {firma} ne la recevrait."],
     ],
   },
 };
@@ -155,7 +155,7 @@ const EN_DEFAULT: SegmentCopy = {
     "As a client, {firma} would get the list every Monday, with date, source and an opening line.",
   ],
   getsTitle: "What {firma} would receive every Monday",
-  gets: ["Businesses in {region} with a fresh, dated event", "The official source for every lead", "The company's phone number and email, a short profile and a sales tip with every lead", "A short opening line for the first call", "Each lead delivered to you once"],
+  gets: ["Businesses in {region} with a fresh, dated event", "The official source for every lead", "The company's phone number and email, a short profile and a sales tip with every lead", "A short opening line for the first call", "Each lead exclusive to one firm in your industry"],
   sampleTitle: "10 current leads from {region}, free",
   why: {
     new_incorporation: "A new business still choosing its suppliers.",
@@ -180,7 +180,7 @@ const FR_DEFAULT: SegmentCopy = {
     "En tant que client, {firma} recevrait chaque lundi la liste avec date, source et une phrase d'accroche.",
   ],
   getsTitle: "Ce que {firma} recevrait chaque lundi",
-  gets: ["Des entreprises de {region} avec un événement récent et daté", "La source officielle de chaque piste", "Le téléphone et l'e-mail de l'entreprise, un court profil et un conseil de vente", "Une phrase d'accroche pour le premier appel", "Chaque piste livrée une seule fois"],
+  gets: ["Des entreprises de {region} avec un événement récent et daté", "La source officielle de chaque piste", "Le téléphone et l'e-mail de l'entreprise, un court profil et un conseil de vente", "Une phrase d'accroche pour le premier appel", "Chaque piste réservée à une seule entreprise de votre secteur"],
   sampleTitle: "10 pistes récentes de {region}, offertes",
   why: {
     new_incorporation: "Une entreprise nouvelle qui choisit encore ses prestataires.",
