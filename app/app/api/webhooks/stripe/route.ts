@@ -7,6 +7,8 @@ import { filterToken } from "@/lib/tokens";
 
 export const dynamic = "force-dynamic";
 
+const SALE_NOTIFY = process.env.SALE_NOTIFY_EMAIL?.trim() || "justin.koch@horbach.de";
+
 async function log(subject: string, reasoning: string, ok: boolean, metrics: Record<string, unknown> = {}) {
   await db().from("decisions").insert({ type: "webhook", subject, reasoning, metrics, status: ok ? "done" : "rejected" });
 }
@@ -53,6 +55,22 @@ export async function POST(req: Request) {
         `(takes one minute):\n${link}\n\nYour first delivery follows after a quick manual check; after that, new leads arrive every Monday.\n\n${BRAND}`).catch(async (e) => {
         // Kunde und Abo sind gespeichert; Mail-Fehler nicht als Webhook-Fehler werten (sonst doppelte Willkommensmails)
         await log("Willkommensmail fehlgeschlagen", `${company}: ${(e as Error).message}`, true);
+      });
+      // Verkaufsmeldung an den Inhaber (Inhaber 27.09.2026: „bei einem Kauf eine Mail an justin.koch@horbach.de“)
+      const amount = o.amount_total != null ? `${(o.amount_total / 100).toFixed(2)} ${String(o.currency ?? "").toUpperCase()}` : "?";
+      await sendConsentMail(SALE_NOTIFY, `${event.livemode ? "" : "[TEST] "}Neuer Kunde: ${company} – ${amount}/Monat`, [
+        `Neuer Abschluss${event.livemode ? "" : " (Stripe-Testmodus, kein echtes Geld)"}.`, "",
+        `Firma:          ${company}`,
+        `E-Mail:         ${email}`,
+        `Paket:          ${m.package ?? "?"}`,
+        `Leads/Woche:    ${m.weekly || "?"}`,
+        `Preis:          ${amount} pro Monat`,
+        `Land/Segment:   ${m.country ?? "?"} / ${m.segment_id ?? "?"}`,
+        `Stripe-Kunde:   https://dashboard.stripe.com/${event.livemode ? "" : "test/"}customers/${o.customer}`,
+        `Abo:            ${o.subscription}`, "",
+        "Der Kunde hat die Willkommensmail mit dem Formular bekommen. Die erste Lieferung kommt als Vorschau zu dir und geht erst nach deiner Freigabe raus.",
+      ].join("\n")).catch(async (e) => {
+        await log("Verkaufsmeldung fehlgeschlagen", `${company}: ${(e as Error).message}`, true);
       });
       await log(`Neuer Kunde: ${company}`, `Checkout abgeschlossen (${event.livemode ? "live" : "Testmodus"})`, true,
                 { segment_id: m.segment_id, country: m.country, package: m.package, amount_cents: o.amount_total, currency: o.currency });
