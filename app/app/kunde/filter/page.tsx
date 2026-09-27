@@ -15,6 +15,13 @@ const SIGNALS = [
 const list = (v: FormDataEntryValue | null) =>
   String(v ?? "").split(/[,\n;]/).map((s) => s.trim()).filter(Boolean).slice(0, 50);
 
+/** Gebuchte Leads pro Woche aus den aktiven Abos (Obergrenze für das Formular). */
+async function booked(customerId: string): Promise<number> {
+  const { data } = await db().from("subscriptions").select("filters, package").eq("customer_id", customerId).in("status", ["active", "past_due"]);
+  const per: Record<string, number> = { starter: 30, pro: 100 };
+  return Math.max(0, ...(data ?? []).map((x: any) => Number(x.filters?.max_per_week) || per[x.package] || 0));
+}
+
 async function save(formData: FormData) {
   "use server";
   const token = String(formData.get("t") ?? "");
@@ -26,7 +33,7 @@ async function save(formData: FormData) {
     signals: formData.getAll("signals").map(String).filter((s) => SIGNALS.some(([k]) => k === s)),
     industries: list(formData.get("industries")),
     exclusions: list(formData.get("exclusions")),
-    max_per_week: Math.min(Math.max(Number(formData.get("max_per_week") || 30), 1), 500),
+    max_per_week: Math.min(Math.max(Number(formData.get("max_per_week") || 30), 1), (await booked(id)) || 500),
     updated_at: new Date().toISOString(),
   }, { onConflict: "customer_id" });
   if (error) throw new Error(error.message);
@@ -38,6 +45,7 @@ export default async function FilterPage({ searchParams }: { searchParams: Promi
   const id = verifyFilterToken(sp.t, process.env.SESSION_SECRET?.trim());
   if (!id) return <main><h1>Link expired</h1><p>Please reply to our welcome email and we will send you a new link.</p></main>;
   const { data: f } = await db().from("customer_filters").select("*").eq("customer_id", id).maybeSingle();
+  const cap = (await booked(id)) || 500;
   return (
     <main style={{ maxWidth: 640 }}>
       <h1>Your lead preferences</h1>
@@ -52,7 +60,7 @@ export default async function FilterPage({ searchParams }: { searchParams: Promi
         </fieldset>
         <label>Industries or job types (optional)<br /><input name="industries" defaultValue={(f?.industries ?? []).join(", ")} style={{ width: "100%" }} /></label>
         <label>Exclude (company names or keywords, optional)<br /><input name="exclusions" defaultValue={(f?.exclusions ?? []).join(", ")} style={{ width: "100%" }} /></label>
-        <label>Maximum leads per week<br /><input name="max_per_week" type="number" min={1} max={500} defaultValue={f?.max_per_week ?? 30} /></label>
+        <label>Maximum leads per week<br /><input name="max_per_week" type="number" min={1} max={cap} defaultValue={Math.min(f?.max_per_week ?? cap, cap)} /></label>
         <button className="primary" type="submit">Save</button>
       </form>
     </main>
