@@ -27,10 +27,21 @@ jobs:
       COMPANIES_HOUSE_API_KEY: ${{ secrets.COMPANIES_HOUSE_API_KEY }}
     steps:
       - uses: actions/checkout@v4
+      - name: Schalter Lead-Suche (config/pipeline.yaml)
+        id: gate
+        run: |
+          if grep -Eq '^lead_suche:\s*true' config/pipeline.yaml || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "suche=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Lead-Suche pausiert (config/pipeline.yaml: lead_suche: false)" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
       - uses: actions/setup-python@v5
+        if: steps.gate.outputs.suche == 'true'
         with: { python-version: "3.11" }
       - run: pip install requests PyYAML dnspython
+        if: steps.gate.outputs.suche == 'true'
       - name: Anreichern
+        if: steps.gate.outputs.suche == 'true'
         run: |
           ALLE=""; NOTE=""
           [ "${{ github.event.inputs.alle_segmente }}" = "true" ] && ALLE="--all-segments"
@@ -39,7 +50,7 @@ jobs:
           python scripts/enrich.py run --limit "${{ github.event.inputs.limit || '250' }}" --workers 6 $NOTE $ALLE \
             | tee enrich.log
       - name: Zusammenfassung
-        if: always()
+        if: always() && steps.gate.outputs.suche == 'true'
         run: |
           {
             echo '### Lead-Anreicherung'

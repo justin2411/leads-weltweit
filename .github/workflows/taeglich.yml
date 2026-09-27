@@ -25,19 +25,30 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
       - run: pip install -r requirements.txt
+      - name: Schalter Lead-Suche (config/pipeline.yaml)
+        id: gate
+        run: |
+          if grep -Eq '^lead_suche:\s*true' config/pipeline.yaml; then
+            echo "suche=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Lead-Suche pausiert (config/pipeline.yaml: lead_suche: false)" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Quellen
+        if: steps.gate.outputs.suche == 'true'
         continue-on-error: true
         run: |
           python scripts/watch.py careers
           python scripts/watch.py ny-incorporations --days 10 --limit 2000
           python scripts/watch.py fr-incorporations --departement 69,75,92,59 --days 10 --limit 200
       - name: Neugründungen UK (Companies House, montags)
+        if: steps.gate.outputs.suche == 'true'
         continue-on-error: true
         run: |
           if [ "$(date -u +%u)" = 1 ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             python scripts/watch.py uk-bulk --days 45 --limit 12000
           fi
       - name: Signale und Website-Prüfung
+        if: steps.gate.outputs.suche == 'true'
         run: |
           python scripts/watch.py detect
           python scripts/watch.py sitecheck --limit 150
