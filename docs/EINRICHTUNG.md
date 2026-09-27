@@ -14,5 +14,6 @@ selbst über GitHub-Workflows, Secrets und Connectoren und fragt nicht erneut. N
 | Resend (nur Einwilligung/Kunden) | GitHub-Secrets `RESEND_API_KEY`, `MAIL_FROM` | Antworten, Lieferungen | erledigt |
 | DNS für Strato-Mail | Vercel → Team → Domains → nextgen-profit.de → DNS Records (MX, SPF, DMARC) | Empfang info@, Versand | erledigt 27.09. (DKIM: Strato zeigt ohne Strato-DNS keinen Schlüssel – später prüfen) |
 | Strato-Postfach SMTP/IMAP | GitHub-Secrets `SMTP_*`, `IMAP_*` | `send.yml`, `antworten.yml`, `postfach-test.yml` | erledigt 27.09., Postfach-Test grün |
+| Anthropic-API (Guthaben 15 $, Inhaber 27.09.) | GitHub-Secret `ANTHROPIC_API_KEY`, optional Variable `CLAUDE_MODEL` (Standard `claude-sonnet-5`) | `antworten.yml` (Einordnung eingehender Antworten, ca. 1 Cent pro Antwort); Test: `ki-test.yml` | erledigt 27.09., Test grün |
 
 Selbst prüfen statt fragen: `postfach-test` (DNS, SMTP, Empfang), `vercel.yml` status, `/api/health`, `scripts/dns_check.py`.
