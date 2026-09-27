@@ -333,39 +333,36 @@ def sample_text(lang: str, region: str | None, has_files: bool, regional: bool =
     if lang == "fr":
         parts = [
             "Bonjour,",
-            "Merci pour votre demande. Voici votre échantillon gratuit" + (f" pour {region}" if region else "")
-            + " : un court rapport de pistes en PDF, et les mêmes pistes en tableau pour votre CRM.",
+            "Voici vos 10 pistes gratuites" + (f" pour {region}" if region else "")
+            + ", en rapport PDF et en tableau pour votre CRM.",
+            "Chaque piste est une entreprise qui a en ce moment un besoin concret de votre service, "
+            "avec téléphone, e-mail et une phrase d'accroche prête à l'emploi.",
         ]
         if not regional:
-            parts.append("Nous n'avions pas encore assez d'événements récents dans votre zone, l'échantillon contient donc "
-                         "aussi des pistes de zones voisines. La livraison régulière ne couvre que vos villes.")
+            parts.append("Votre zone n'avait pas encore assez d'événements récents, l'échantillon contient donc aussi "
+                         "des zones voisines. La livraison régulière ne couvre que vos villes.")
         parts += [
-            "Mon conseil : choisissez les deux ou trois entreprises qui vous correspondent le mieux et appelez-les "
-            "cette semaine, tant que le moment est bon. La phrase d'accroche de chaque piste rend la première phrase facile.",
-            "Si cela vous plaît, vous recevez une liste comme celle-ci chaque lundi, uniquement pour vos villes et "
-            "réservée à votre entreprise. Rien à installer, rien à gérer.",
-            "Il me suffit de deux petites réponses :\n"
-            "1. Quelles villes ou quels départements couvrir ?\n"
-            "2. Combien de nouvelles pistes par semaine votre équipe peut-elle suivre ?",
+            "Mon conseil : appelez cette semaine les deux ou trois qui vous correspondent le mieux, tant que le besoin est frais.",
+            "Si cela vous convient, vous recevez une nouvelle liste comme celle-ci chaque lundi, uniquement pour votre zone "
+            "et réservée à votre entreprise.",
+            "On commence lundi prochain ? Répondez simplement avec les villes à couvrir.",
             "Bien cordialement,\n" + signature(lang),
         ]
     else:
         parts = [
             "Hello,",
-            "Thank you for your request. Here is your free sample" + (f" for {region}" if region else "")
-            + ": a short lead report as a PDF, and the same leads as a spreadsheet for your CRM.",
+            "Here are your 10 free leads" + (f" for {region}" if region else "")
+            + ", as a PDF report and as a spreadsheet for your CRM.",
+            "Each lead is a company with a real need for your service right now, "
+            "with phone, email and an opening line ready to use.",
         ]
         if not regional:
-            parts.append("We did not yet have enough recent events in your area, so the sample also includes nearby "
-                         "areas. The regular delivery only covers your towns.")
+            parts.append("Your area did not yet have enough recent events, so the sample also includes nearby areas. "
+                         "The regular delivery only covers your towns.")
         parts += [
-            "My tip: pick the two or three companies that fit you best and call them this week, while the moment is "
-            "fresh. The opening line in each lead makes the first sentence easy.",
-            "If you like it, you get a list like this every Monday, only for your towns and reserved for your firm. "
-            "Nothing to install, nothing to manage.",
-            "All I need are two quick answers:\n"
-            "1. Which towns or counties should we cover?\n"
-            "2. Roughly how many new leads per week can your team follow up?",
+            "My tip: call the two or three best fits this week, while the need is fresh.",
+            "If the leads work for you, you get a new list like this every Monday, only for your area and reserved for your firm.",
+            "Shall we start next Monday? Just reply with the towns you want covered.",
             "Kind regards,\n" + signature(lang),
         ]
     return "\n\n".join(parts)
@@ -379,8 +376,8 @@ def sample_mail(lang: str, region: str | None, files: list[tuple[str, bytes]], r
 
 def sample_subject(lang: str, region: str | None) -> str:
     if lang == "fr":
-        return f"Votre échantillon : 10 pistes{' pour ' + region if region else ''}"
-    return f"Your sample: 10 leads{' for ' + region if region else ''}"
+        return f"Vos 10 pistes gratuites{' pour ' + region if region else ''}"
+    return f"Your 10 free leads{' for ' + region if region else ''}"
 
 
 def main(argv=None) -> int:

@@ -33,6 +33,8 @@ BOLD = [
     "one practice only", "one advice firm only", "one IT firm only", "one firm only",
     "pistes qui se transforment en chiffre d'affaires", "chaque lundi", "une seule agence de votre secteur",
     "une seule entreprise de votre secteur",
+    "a real need for your service right now", "My tip:", "reserved for your firm",
+    "un besoin concret de votre service", "Mon conseil :", "réservée à votre entreprise",
 ]
 
 
