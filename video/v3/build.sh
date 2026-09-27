@@ -2,7 +2,7 @@
 # Version 3 für eine Zielgruppe bauen: ./build.sh <slug>  ->  app/public/video/<land>-<slug>.mp4 + .jpg
 set -euo pipefail
 cd "$(dirname "$0")"; name="$1"; FFMPEG="${FFMPEG:-ffmpeg}"
-python3 ../vo.py "segments/$name.json" "${VOICE:-bf_emma}"
+python3 ../vo.py "segments/$name.json" ${VOICE:+"$VOICE"}
 rm -rf "out/$name/frames"; node ../render.mjs "$name" video 25
 FFMPEG="$FFMPEG" python3 music.py "$name"
 slug=$(python3 -c "import json;print(json.load(open('segments/$name.json'))['slug'].replace('/','-'))")

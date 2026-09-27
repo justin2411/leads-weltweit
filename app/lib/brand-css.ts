@@ -37,7 +37,7 @@ export const BRAND_CSS = `
 .bx .hero.solo .wrap{grid-template-columns:1fr;gap:0;max-width:920px;padding-top:64px;padding-bottom:72px}
 .bx .hero.solo h1{margin:20px 0 18px}.bx .hero.solo .cta-row{margin-top:26px}
 .bx h1{font-weight:700;font-size:clamp(40px,5.6vw,72px);line-height:1.04;letter-spacing:-.03em;margin:18px 0 24px}
-.bx .hero.solo h1{font-size:clamp(34px,4.6vw,58px)}
+.bx .hero.solo h1{font-size:clamp(34px,4.6vw,58px)}.bx h1.long{font-size:clamp(34px,4.6vw,60px)}
 .bx .lede{font-size:19px;color:#c3cbd8;max-width:580px;margin:0}
 .bx .for{display:inline-flex;width:fit-content;justify-self:start;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--gold2);border:1px solid rgba(216,189,138,.45);border-radius:99px;padding:5px 14px;background:rgba(216,189,138,.08)}
 .bx .for:before{content:"";width:6px;height:6px;border-radius:50%;background:#5bd49a;box-shadow:0 0 0 0 rgba(91,212,154,.6);animation:pulse 2s infinite}
@@ -164,6 +164,32 @@ export const BRAND_CSS = `
 .bx .lead .tag{grid-row:span 3;align-self:start;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold2);background:var(--ink);padding:4px 10px;border-radius:99px}
 .bx .lead .co{font-weight:600}.bx .lead .meta{color:var(--soft);font-size:13px}
 .motion .bx .leads>[data-rv]{transition-delay:calc(var(--i,0) * 90ms)}
+
+/* Beispiel-Leads als hochwertige Karten */
+.bx .leadgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px}
+.bx .leadx{position:relative;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px 26px 20px;display:flex;flex-direction:column;gap:12px;box-shadow:0 24px 60px -44px rgba(22,27,36,.45);transition:transform .45s cubic-bezier(.2,.7,.1,1),box-shadow .45s,border-color .45s;overflow:hidden}
+.bx .leadx:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--gold),transparent)}
+.bx .leadx:hover{transform:translateY(-5px);box-shadow:0 36px 70px -40px rgba(22,27,36,.5);border-color:#d6c7ad}
+.bx .leadx header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.bx .leadx .co{font-size:19px;font-weight:700;letter-spacing:-.01em;line-height:1.25}
+.bx .leadx .loc{font-size:14px;color:var(--soft);margin-top:2px}
+.bx .leadx .ex{flex:none;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold2);background:var(--ink);padding:4px 10px;border-radius:99px}
+.bx .leadx .sig{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.bx .leadx .pill{font-size:12px;font-weight:600;color:#141008;background:linear-gradient(135deg,#e2c894,#b08d57);padding:4px 12px;border-radius:99px}
+.bx .leadx .dt{font-size:13px;color:var(--soft)}
+.bx .leadx .det{margin:0;font-size:15px}
+.bx .leadx .why{margin:0;font-size:14.5px;color:#39404d;background:#faf6ee;border:1px solid #efe5d3;border-radius:12px;padding:10px 12px}
+.bx .leadx .why b{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:3px}
+.bx .leadx .op{margin:0;font-size:14.5px;color:var(--soft);border-left:2px solid var(--gold);padding-left:12px}
+.bx .leadx footer{margin-top:auto;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--soft);border-top:1px solid var(--line);padding-top:12px}
+.bx .leadx .prio{font-weight:600}.bx .leadx .p-high{color:#b45309}.bx .leadx .p-medium{color:var(--gold)}
+.motion .bx .leadgrid>[data-rv]{transition-delay:calc(var(--i,0) * 90ms)}
+.bx .card .num{width:36px;height:36px;border-radius:50%;border:1px solid var(--gold);color:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:600;margin-bottom:14px}
+.bx .prem{display:grid;grid-template-columns:repeat(3,1fr);gap:0}
+.bx .prem>div{padding:26px 26px 26px 0;border-top:1px solid rgba(255,255,255,.1)}
+.bx .prem>div:nth-child(3n+2),.bx .prem>div:nth-child(3n){padding-left:26px;border-left:1px solid rgba(255,255,255,.1)}
+.bx .prem h3{font-size:18px;font-weight:600;margin:0 0 6px;color:var(--gold2)}.bx .prem p{margin:0;color:#b9c2d0;font-size:15.5px}
+@media (max-width:900px){.bx .prem{grid-template-columns:1fr}.bx .prem>div,.bx .prem>div:nth-child(n){padding:20px 0;border-left:0}}
 
 /* Anatomie eines Leads */
 .bx .anat{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}

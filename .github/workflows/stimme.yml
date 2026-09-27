@@ -1,0 +1,43 @@
+# Deutsche Sprecherstimme (Piper, Stimme "Thorsten") für die Erklärvideos erzeugen.
+# Für jede Datei video/v3/segments/de-*.json entstehen video/v3/voice/<name>/<satz>.wav (werden auf diesen Branch gespeichert).
+# Rendern und Musik passieren danach lokal mit video/v3/build.sh. Sendet nichts, kostet nichts.
+name: stimme
+on:
+  workflow_dispatch:
+  push:
+    paths: ["video/v3/segments/de-*.json", ".github/workflows/stimme.yml"]
+permissions:
+  contents: write
+jobs:
+  stimme:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install piper-tts==1.2.0
+      - name: Stimme laden
+        run: |
+          mkdir -p /tmp/piper && cd /tmp/piper
+          for f in de_DE-thorsten-high.onnx de_DE-thorsten-high.onnx.json; do
+            curl -sSL -o "$f" "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/high/$f"
+          done
+      - name: Sätze sprechen
+        working-directory: video/v3
+        run: |
+          python - <<'PY'
+          import glob, json, os, subprocess
+          for path in glob.glob("segments/de-*.json"):
+              name = os.path.splitext(os.path.basename(path))[0]
+              seg = json.load(open(path))
+              os.makedirs(f"voice/{name}", exist_ok=True)
+              for line in seg["script"]:
+                  out = f"voice/{name}/{line['id']}.wav"
+                  subprocess.run(["piper", "--model", "/tmp/piper/de_DE-thorsten-high.onnx", "--length_scale", str(seg.get("length_scale", 1.0)),
+                                  "--sentence_silence", "0.1", "--output_file", out], input=line["text"].encode(), check=True)
+              print(name, "ok")
+          PY
+      - name: Speichern
+        run: |
+          git config user.name "stimme" && git config user.email "actions@users.noreply.github.com"
+          git add video/v3/voice && git diff --cached --quiet || (git commit -m "Deutsche Sprecherstimme für Erklärvideos" && git push)

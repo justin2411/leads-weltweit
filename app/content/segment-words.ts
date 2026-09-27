@@ -17,6 +17,36 @@ export type SegmentCopy = {
   gets: string[];
   sampleTitle: string;
   stepsTitle: string;
+  /** Warum ein Signal für diese Branche zählt (je signal_type) */
+  why: Record<string, string>;
+  revenueTitle: string;
+  revenue: [string, string][];
+};
+
+/** Warum es Premium-Leads sind: gilt für alle Branchen, mit Platzhaltern. */
+export const PREMIUM: Record<"en" | "fr", { title: string; items: [string, string][] }> = {
+  en: {
+    title: "Why these are premium leads",
+    items: [
+      ["Fresh", "Events from the last weeks, not a database that was bought years ago."],
+      ["Verified", "Every lead carries the date and the official source, so {firma} can check it in seconds."],
+      ["Rated", "Each lead is scored for freshness and relevance. Anything below our minimum is never sent."],
+      ["Local", "Only the towns {firma} chooses, so every call is in {team}'s own market."],
+      ["Ready to use", "An opening line written for {beruf}, referring to the actual event."],
+      ["Delivered once", "No lead reaches {firma} twice."],
+    ],
+  },
+  fr: {
+    title: "Pourquoi ce sont des pistes premium",
+    items: [
+      ["Récentes", "Des événements des dernières semaines, pas une base achetée il y a des années."],
+      ["Vérifiées", "Chaque piste indique la date et la source officielle, {firma} peut la vérifier en quelques secondes."],
+      ["Notées", "Chaque piste est notée selon sa fraîcheur et sa pertinence. En dessous de notre seuil, elle n'est jamais envoyée."],
+      ["Locales", "Uniquement les villes choisies par {firma}."],
+      ["Prêtes à l'emploi", "Une phrase d'accroche qui fait référence à l'événement."],
+      ["Livrées une fois", "Aucune piste n'arrive deux fois chez {firma}."],
+    ],
+  },
 };
 
 const EN: Record<string, SegmentCopy> = {
@@ -37,6 +67,18 @@ const EN: Record<string, SegmentCopy> = {
       "A short opening line that refers to {anlass}",
     ],
     sampleTitle: "10 new businesses from {region},\nfree for {firma}",
+    why: {
+      new_incorporation: "No accountant chosen yet. Bookkeeping, VAT, payroll and the first year-end are all still ahead.",
+      job_open_30d: "A finance role that stays open is the natural moment to offer outsourced bookkeeping or payroll.",
+      jobs_3plus: "A growing team means payroll, pensions and more complex books, often more than one person can handle.",
+    },
+    revenueTitle: "How {firma} turns this into revenue",
+    revenue: [
+      ["Be first, not fifth", "New directors choose their accountant in the first weeks. Calling then, with a concrete reason, puts {firma} ahead of practices that only wait for referrals."],
+      ["One call, recurring fees", "A new client brings monthly bookkeeping, VAT returns, payroll and a year-end. Won once, the relationship typically runs for years."],
+      ["Less time prospecting", "{team} calls companies that have a reason to talk, instead of working through cold lists."],
+      ["Growth where you want it", "{firma} picks the towns. Every lead is in the area your team already serves."],
+    ],
   },
   "insurance-brokers": {
     words: { beruf: "brokers", team: "your brokerage", zielkunden: "new and growing businesses", leistung: "liability, property and employer cover", anlass: "first premises, first employees or a growing team" },
@@ -55,6 +97,18 @@ const EN: Record<string, SegmentCopy> = {
       "A short opening line that refers to {anlass}",
     ],
     sampleTitle: "10 businesses from {region} that need cover,\nfree for {firma}",
+    why: {
+      new_incorporation: "Newly trading: public liability now, employers' liability as soon as the first person is hired.",
+      job_open_30d: "Hiring means employers' liability and often a review of existing cover.",
+      jobs_3plus: "Several hires at once change the risk. The cover the business started with rarely fits any more.",
+    },
+    revenueTitle: "How {firma} turns this into premium income",
+    revenue: [
+      ["Before renewal habits form", "A new business has not settled on a broker yet. Reaching it early puts {firma} in the first quote, not the last."],
+      ["More than one policy", "Liability, property, employers' liability and later fleet or cyber. One client relationship can grow into several policies."],
+      ["Reviews that are due", "Growing firms outgrow their cover. A dated hiring or expansion signal gives {team} a genuine reason to offer a review."],
+      ["Your patch only", "{firma} picks the towns. Every lead is in the market your brokerage already covers."],
+    ],
   },
   "financial-advisers": {
     words: { beruf: "advisers", team: "your advice firm", zielkunden: "business owners", leistung: "pensions, protection and employee benefits", anlass: "a new company, first hires or a growing team" },
@@ -73,6 +127,18 @@ const EN: Record<string, SegmentCopy> = {
       "A short opening line that refers to {anlass}",
     ],
     sampleTitle: "10 business owners from {region},\nfree for {firma}",
+    why: {
+      new_incorporation: "A new director: questions about pensions, protection and paying themselves tax efficiently come up now.",
+      job_open_30d: "An employer that is hiring has to offer a workplace pension to eligible staff.",
+      jobs_3plus: "A growing team starts to look at benefits to attract and keep people.",
+    },
+    revenueTitle: "How {firma} turns this into new clients",
+    revenue: [
+      ["The right moment", "Business owners rarely look for an adviser until something changes. The signal tells {firma} when it has."],
+      ["Business and personal", "A director is often a private client too. One relationship can cover the company's pension scheme and the owner's own planning."],
+      ["Long relationships", "Pensions, protection and benefits are reviewed year after year. Won once, a client typically stays."],
+      ["Local and personal", "{firma} picks the towns, so every meeting is within reach."],
+    ],
   },
 };
 
@@ -88,6 +154,17 @@ const EN_DEFAULT: SegmentCopy = {
   getsTitle: "What {firma} receives every Monday",
   gets: ["Businesses in {region} with a fresh, dated event", "The official source for every lead", "A short opening line for the first call", "Each lead delivered to you once"],
   sampleTitle: "10 current leads from {region},\nfree for {firma}",
+  why: {
+    new_incorporation: "A new business still choosing its suppliers.",
+    job_open_30d: "A role open for weeks: a sign of pressure and a reason to talk.",
+    jobs_3plus: "Several hires at once: the business is growing.",
+  },
+  revenueTitle: "How {firma} turns this into revenue",
+  revenue: [
+    ["Be first", "Reach businesses at the moment they choose, not after."],
+    ["Less prospecting", "Call companies with a reason to talk, not cold lists."],
+    ["Your area only", "{firma} picks the towns, every lead is local."],
+  ],
 };
 
 const FR_DEFAULT: SegmentCopy = {
@@ -102,6 +179,17 @@ const FR_DEFAULT: SegmentCopy = {
   getsTitle: "Ce que {firma} reçoit chaque lundi",
   gets: ["Des entreprises de {region} avec un événement récent et daté", "La source officielle de chaque piste", "Une phrase d'accroche pour le premier appel", "Chaque piste livrée une seule fois"],
   sampleTitle: "10 pistes récentes de {region},\noffertes à {firma}",
+  why: {
+    new_incorporation: "Une entreprise nouvelle qui choisit encore ses prestataires.",
+    job_open_30d: "Un poste ouvert depuis des semaines : un signe de tension et une raison d'échanger.",
+    jobs_3plus: "Plusieurs recrutements à la fois : l'entreprise grandit.",
+  },
+  revenueTitle: "Comment {firma} en fait du chiffre d'affaires",
+  revenue: [
+    ["Arriver en premier", "Contactez les entreprises au moment où elles choisissent, pas après."],
+    ["Moins de prospection", "Appelez des entreprises qui ont une raison d'échanger, pas des listes froides."],
+    ["Votre zone uniquement", "{firma} choisit les villes, chaque piste est locale."],
+  ],
 };
 
 /** Wortschatz zur Landingpage (Slug "uk/accountants" → "accountants"). */
