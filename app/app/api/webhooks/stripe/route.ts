@@ -7,7 +7,7 @@ import { filterToken } from "@/lib/tokens";
 
 export const dynamic = "force-dynamic";
 
-const SALE_NOTIFY = process.env.SALE_NOTIFY_EMAIL?.trim() || "justin.koch@horbach.de";
+const SALE_NOTIFY = process.env.SALE_NOTIFY_EMAIL?.trim() || "deinetop5@gmail.com";
 
 async function log(subject: string, reasoning: string, ok: boolean, metrics: Record<string, unknown> = {}) {
   await db().from("decisions").insert({ type: "webhook", subject, reasoning, metrics, status: ok ? "done" : "rejected" });
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
         // Kunde und Abo sind gespeichert; Mail-Fehler nicht als Webhook-Fehler werten (sonst doppelte Willkommensmails)
         await log("Willkommensmail fehlgeschlagen", `${company}: ${(e as Error).message}`, true);
       });
-      // Verkaufsmeldung an den Inhaber (Inhaber 27.09.2026: „bei einem Kauf eine Mail an justin.koch@horbach.de“)
+      // Verkaufsmeldung an den Inhaber (Inhaber 27.09.2026: bei jedem Kauf eine Mail an den Inhaber)
       const amount = o.amount_total != null ? `${(o.amount_total / 100).toFixed(2)} ${String(o.currency ?? "").toUpperCase()}` : "?";
       await sendConsentMail(SALE_NOTIFY, `${event.livemode ? "" : "[TEST] "}Neuer Kunde: ${company} – ${amount}/Monat`, [
         `Neuer Abschluss${event.livemode ? "" : " (Stripe-Testmodus, kein echtes Geld)"}.`, "",
