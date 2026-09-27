@@ -148,14 +148,27 @@ export const BRAND_CSS = `
 
 /* Anatomie eines Leads */
 .bx .anat{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
-.bx .lead-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:30px;box-shadow:0 30px 70px -40px rgba(22,27,36,.35);position:relative;transition:transform .3s ease-out;transform-style:preserve-3d}
-.bx .lead-card .tagx{position:absolute;top:-12px;left:28px;background:var(--ink);color:var(--gold2);font-size:11px;letter-spacing:.16em;text-transform:uppercase;padding:5px 12px;border-radius:99px}
-.bx .lead-card dl{margin:0;display:grid;grid-template-columns:120px 1fr;gap:14px 18px}
-.bx .lead-card dt{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);padding-top:3px}
-.bx .lead-card dd{margin:0;font-size:16px}.bx .lead-card dd.big{font-size:21px;font-weight:600;line-height:1.25}
-.bx .lead-card dd.quote{color:var(--soft)}
-.motion .bx .lead-card dt,.motion .bx .lead-card dd{opacity:0;transform:translateX(-10px);transition:opacity .7s,transform .7s;transition-delay:calc(var(--i,0) * 90ms + .3s)}
-.motion .bx .lead-card.in dt,.motion .bx .lead-card.in dd{opacity:1;transform:none}
+.bx .lead-card{position:relative;border-radius:22px;padding:34px 32px 30px;color:#e8ecf3;overflow:hidden;isolation:isolate;border:1px solid transparent;
+  background:linear-gradient(160deg,#101a2c,#0b1320 60%) padding-box,
+  conic-gradient(from var(--a),rgba(216,189,138,.08),rgba(216,189,138,.8),rgba(91,212,154,.45),rgba(216,189,138,.08) 45%,rgba(216,189,138,.08)) border-box;
+  box-shadow:0 50px 100px -45px rgba(11,19,32,.75),0 0 0 1px rgba(216,189,138,.05);animation:spin 8s linear infinite}
+.bx .lead-card:before{content:"";position:absolute;inset:0;z-index:-1;background:radial-gradient(420px 260px at 85% 0%,rgba(216,189,138,.16),transparent 70%)}
+.bx .lead-card:after{content:"";position:absolute;left:0;right:0;top:-40%;height:40%;z-index:-1;pointer-events:none;background:linear-gradient(180deg,transparent,rgba(216,189,138,.10),transparent);opacity:0}
+.motion .bx .lead-card.in:after{animation:scanonce 2.6s .5s cubic-bezier(.4,0,.2,1) both}
+.bx .lead-card .tagx{display:inline-flex;align-items:center;gap:8px;margin-bottom:22px;color:var(--gold2);font-size:11px;letter-spacing:.18em;text-transform:uppercase;padding:6px 12px;border-radius:99px;border:1px solid rgba(216,189,138,.35);background:rgba(216,189,138,.07)}
+.bx .lead-card .tagx:before{content:"";width:6px;height:6px;border-radius:50%;background:#5bd49a;animation:pulse 2s infinite}
+.bx .lead-card dl{margin:0;display:grid;grid-template-columns:120px 1fr;gap:0 18px}
+.bx .lead-card dt,.bx .lead-card dd{padding:12px 0;border-top:1px solid rgba(255,255,255,.07)}
+.bx .lead-card dt:first-of-type,.bx .lead-card dd:first-of-type{border-top:0}
+.bx .lead-card dt{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold2);padding-top:15px}
+.bx .lead-card dd{margin:0;font-size:16px;color:#e8ecf3}
+.bx .lead-card dd.big{font-size:24px;font-weight:700;line-height:1.2;letter-spacing:-.02em;color:#fff}
+.bx .lead-card dd.prio span{display:inline-flex;align-items:center;gap:8px;padding:3px 12px;border-radius:99px;font-size:13px;font-weight:600;color:#141008;background:linear-gradient(135deg,#e2c894,#b08d57)}
+.bx .lead-card dd.quote{color:#cfd6e2;font-size:16px;padding-left:16px;border-left:2px solid var(--gold);margin-top:12px;padding-top:4px;padding-bottom:4px;border-top:0}
+.motion .bx .lead-card dt,.motion .bx .lead-card dd{opacity:0;transform:translateY(10px);filter:blur(4px);transition:opacity .8s,transform .8s,filter .8s;transition-delay:calc(var(--i,0) * 120ms + .35s)}
+.motion .bx .lead-card.in dt,.motion .bx .lead-card.in dd{opacity:1;transform:none;filter:none}
+.motion .bx .lead-card{transform:translateY(40px) scale(.97);opacity:0;transition:transform 1.1s cubic-bezier(.2,.7,.1,1),opacity 1.1s}
+.motion .bx .lead-card.in{transform:none;opacity:1}
 .bx .points{list-style:none;padding:0;margin:0;display:grid;gap:22px}
 .bx .points li{padding-left:22px;border-left:1px solid var(--gold)}.bx .points li b{display:block;font-weight:600;margin-bottom:2px}
 .bx .points li span{color:var(--soft);font-size:16px}
@@ -218,7 +231,7 @@ export const BRAND_CSS = `
 /* Einblenden beim Scrollen */
 .motion .bx [data-rv]{opacity:0;transform:translateY(28px);transition:opacity 1s cubic-bezier(.2,.7,.1,1),transform 1s cubic-bezier(.2,.7,.1,1)}
 .motion .bx [data-rv].in{opacity:1;transform:none}
-.motion .bx [data-rv].rvw,.motion .bx [data-rv].stats,.motion .bx [data-rv].steps,.motion .bx [data-rv].lead-card{opacity:1;transform:none}
+.motion .bx [data-rv].rvw,.motion .bx [data-rv].stats,.motion .bx [data-rv].steps{opacity:1;transform:none}
 .motion .bx [data-rv].stats{opacity:0}.motion .bx [data-rv].stats.in{opacity:1}
 
 @keyframes word{to{opacity:1;filter:none;transform:none}}
@@ -227,6 +240,7 @@ export const BRAND_CSS = `
 @keyframes slide{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(91,212,154,.55)}70%{box-shadow:0 0 0 10px rgba(91,212,154,0)}100%{box-shadow:0 0 0 0 rgba(91,212,154,0)}}
 @keyframes aurora{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(-4%,3%,0) scale(1.08)}}
+@keyframes scanonce{0%{top:-40%;opacity:1}100%{top:110%;opacity:0}}
 @keyframes marq{to{transform:translateX(-50%)}}
 @keyframes sweep{0%{left:-70%}30%,100%{left:130%}}
 @keyframes spin{to{--a:360deg}}
@@ -249,7 +263,7 @@ export const BRAND_CSS = `
   .bx .band .row{flex-direction:column;align-items:flex-start;gap:12px}.bx .band .marquee{width:100%}
   .bx .stat{padding:26px 16px}.bx .stat:after{left:16px}.bx .steps,.bx .steps.three{grid-template-columns:1fr}.bx .step{padding-right:0}
   .bx .facts{grid-template-columns:1fr}.bx .fact:nth-child(2n){padding-left:0;border-left:0}
-  .bx .lead-card{padding:24px 20px}.bx .lead-card dl{grid-template-columns:1fr;gap:4px}.bx .lead-card dd{margin-bottom:10px}
+  .bx .lead-card{padding:26px 20px}.bx .lead-card dl{grid-template-columns:1fr}.bx .lead-card dd{border-top:0;padding-top:2px}.bx .lead-card dt{padding-bottom:0}
   .bx .lead{grid-template-columns:1fr}.bx .lead .tag{grid-row:auto;justify-self:start}
   .bx section{padding:64px 0}.bx .intro{margin-bottom:36px;font-size:17px}
   .bx .panel{padding:22px 18px}.bx .doc{padding:30px 22px;margin-top:-48px}

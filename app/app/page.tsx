@@ -149,14 +149,14 @@ export default async function Home() {
 
       {example && (
         <section style={{ paddingTop: 0 }}><div className="wrap anat">
-          <div className="lead-card tilt" data-rv>
+          <div className="lead-card" data-rv>
             <span className="tagx">Example from a real sample</span>
             <dl>
               {([["Company", example.company, "big"], ["Location", example.place], ["Event", example.event], ["Date", example.date],
-                ["Source", example.source], ["Priority", example.urgency ? example.urgency[0].toUpperCase() + example.urgency.slice(1) : ""],
+                ["Source", example.source], ["Priority", example.urgency ? example.urgency[0].toUpperCase() + example.urgency.slice(1) : "", "prio"],
                 ["Opening line", example.opener ? `“${example.opener}”` : "", "quote"]] as [string, string, string?][])
                 .filter(([, v]) => v).flatMap(([k, v, cls], n) => [
-                  <dt key={k + "t"} style={i(n)}>{k}</dt>, <dd key={k + "d"} className={cls} style={i(n)}>{v}</dd>])}
+                  <dt key={k + "t"} style={i(n)}>{k}</dt>, <dd key={k + "d"} className={cls} style={i(n)}>{cls === "prio" ? <span>{v}</span> : v}</dd>])}
             </dl>
           </div>
           <div>
