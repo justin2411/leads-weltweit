@@ -12,6 +12,9 @@ on:
       land:
         description: "UK, US oder FR"
         default: UK
+      art:
+        description: "kaltmail oder probe"
+        default: kaltmail
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -26,9 +29,13 @@ jobs:
       AN: ${{ inputs.an }}
       SEGMENT: ${{ inputs.segment }}
       LAND: ${{ inputs.land }}
+      ART: ${{ inputs.art }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      LEGAL_NAME: ${{ secrets.LEGAL_NAME }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
       - run: pip install -r requirements.txt
-      - run: python scripts/outreach.py test --to "$AN" --segment "$SEGMENT" --country "$LAND"
+      - run: python scripts/outreach.py test --to "$AN" --segment "$SEGMENT" --country "$LAND" --art "${ART:-kaltmail}"

@@ -327,6 +327,8 @@ def cmd_test(args) -> int:
                "S9": ("Northbridge Financial Planning Ltd", "workplace pensions and employee benefits",
                       "Altrincham, Greater Manchester")}
     name, spec, region = example[args.segment]
+    if getattr(args, "art", "kaltmail") == "probe":
+        return _test_sample(args, region)
     p = {"segment_id": args.segment, "country": args.country, "company_name": name,
          "specialization": spec, "region": region}
     ex = None
@@ -342,6 +344,24 @@ def cmd_test(args) -> int:
     print(f"Prüfung: {lint.summary()}\n\nBetreff: [TEST] {subject}\n\n{text}\n")
     out = deliver(args.to, f"[TEST] {subject}", text, unsubscribe_target("test"), html_version(body, footer, lang, name, _area(region)))
     print(f"gesendet an {args.to}: {out}")
+    return 0
+
+
+def _test_sample(args, region: str) -> int:
+    """Probe-Mail wie sie ein Interessent bekommt (echte Leads aus der Datenbank, CSV im Anhang), Betreff mit [TEST]."""
+    from lib.db import DB
+    from lib.regions import area_of
+    from responder import regional_sample, sample_mail, sample_subject, send_reply
+    lang = "fr" if args.country == "FR" else "en"
+    files, regional = regional_sample(DB(), args.segment, args.country, region)
+    area = area_of(region) if regional else None
+    body, blocks = sample_mail(lang, area, files, regional)
+    if not body:
+        print("Keine Probe-Datei vorhanden")
+        return 1
+    print(body)
+    out = send_reply(args.to, "[TEST] " + sample_subject(lang, area), body, None, lang, files, blocks=blocks, requested=True)
+    print(f"gesendet an {args.to}: {out} ({'regional' if regional else 'Landes-Probe'}, {len(files)} Datei(en))")
     return 0
 
 
@@ -441,6 +461,8 @@ def main(argv=None) -> int:
     t.add_argument("--to", required=True)
     t.add_argument("--segment", default="S1", choices=["S1", "S2", "S9"])
     t.add_argument("--country", default="UK")
+    t.add_argument("--art", default="kaltmail", choices=["kaltmail", "probe"],
+                   help="kaltmail = Erstkontakt, probe = Mail mit den 10 Probe-Leads (CSV)")
     t.set_defaults(func=cmd_test)
 
     y = sub.add_parser("sync", help="Zustellstatus von Resend holen, Bounces/Beschwerden sperren")

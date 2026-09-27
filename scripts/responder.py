@@ -329,8 +329,9 @@ def sample_text(lang: str, region: str | None, has_files: bool, regional: bool =
         if preview:
             parts.append(preview)
         parts += [
-            "Chaque piste indique l'entreprise et sa localisation, l'événement et sa date, la source officielle pour "
-            "vérification, un niveau de priorité et une phrase d'accroche pour le premier contact.",
+            "Chaque piste indique l'entreprise avec son téléphone et son e-mail, un court profil, l'événement et sa date, "
+            "la source officielle pour vérification, un conseil de vente et une phrase d'accroche pour le premier contact. "
+            "Dans la livraison régulière, chaque piste ne va qu'à une seule entreprise de votre secteur.",
             "Notre conseil : choisissez les deux ou trois pistes qui vous correspondent le mieux et contactez-les "
             "cette semaine, tant que l'événement est récent.",
             "Si l'échantillon vous est utile, je vous prépare volontiers une liste hebdomadaire adaptée à votre "
@@ -352,8 +353,9 @@ def sample_text(lang: str, region: str | None, has_files: bool, regional: bool =
         if preview:
             parts.append(preview)
         parts += [
-            "Every lead shows the company and its location, the event and its date, the official source so you can "
-            "verify it, a priority rating and a suggested opening line for the first contact.",
+            "Every lead shows the company with its phone number and email, a short profile, the event and its date, "
+            "the official source so you can verify it, a sales tip and a suggested opening line for the first call. "
+            "In the regular delivery, each lead goes to only one firm in your field.",
             "Our suggestion: pick the two or three leads that fit your firm best and contact them this week, while "
             "the event is still recent.",
             "If the sample is useful, I would be glad to set up a weekly list tailored to your firm. Two short "

@@ -157,7 +157,6 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
   const known = Boolean(personal?.email && personal.firma);
   const keep = [preview && `vorschau=1&v=${v.variant_key}`, sp.r && /^[A-Za-z0-9_-]{8,80}$/.test(sp.r) && `r=${sp.r}`].filter(Boolean).join("&");
   const stepHref = `?${[keep, "schritt=probe"].filter(Boolean).join("&")}#probe`;
-  const backHref = `?${keep}#top`;
   const step = sp.schritt === "probe" && !sp.angefragt;
   const mailto = `mailto:${CONTACT}?subject=${encodeURIComponent(`${L.mailSubject}: ${page.slug}`)}&body=${encodeURIComponent(L.mailBody)}`;
   const i = (n: number) => ({ "--i": n }) as CSSProperties;
@@ -177,11 +176,11 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
           {preview && <input type="hidden" name="vorschau" value="1" />}
           <input type="hidden" name="r" value={sp.r} />
           <div className="cta-row" style={{ marginTop: 6 }}><button className="btn gold big" type="submit" name="consent" value="yes" data-cta>{L.confirm} <span className="ar">→</span></button>
-            <a className="btn ghost" href={backHref}>{L.back}</a></div>
+</div>
           <p className="small">{consentText(lang)} <a href={fr ? "/confidentialite" : "/privacy"}>{L.legal[1]}</a></p>
         </form>
       ) : (
-        <div className="cta-row" style={{ marginTop: 6 }}><a className="btn gold big" href={mailto} data-cta>{L.byMail} <span className="ar">→</span></a><a className="btn ghost" href={backHref}>{L.back}</a></div>
+        <div className="cta-row" style={{ marginTop: 6 }}><a className="btn gold big" href={mailto} data-cta>{L.byMail} <span className="ar">→</span></a></div>
       )}
     </div>
   );
