@@ -159,6 +159,8 @@ export const BRAND_CSS = `
 .bx .cswitch label{cursor:pointer;display:flex;gap:9px;align-items:center;padding:10px 20px;border-radius:99px;font-size:15px;font-weight:600;color:var(--soft);transition:background .3s,color .3s}
 .bx .cswitch label:hover{color:var(--ink)}
 .bx .cswitch label span{font-size:18px;line-height:1}
+@media (max-width:640px){.bx .cswitch{display:grid;grid-template-columns:repeat(3,1fr);width:100%;box-sizing:border-box;border-radius:18px}.bx .cswitch label{justify-content:center;padding:10px 6px;font-size:13px;gap:6px;border-radius:12px;text-align:center}.bx .cswitch label b{display:none}.bx .cswitch label em{display:inline}}
+.bx .cswitch label em{display:none;font-style:normal}
 .bx #cc-UK:checked ~ .cswitch label[for=cc-UK]{background:linear-gradient(135deg,#e2c894,#b08d57);color:#141008}
 .bx #cc-UK:focus-visible ~ .cswitch label[for=cc-UK]{outline:2px solid var(--gold);outline-offset:2px}
 .bx #cc-UK:checked ~ .cards .card[data-cc]:not([data-cc=UK]){display:none}
