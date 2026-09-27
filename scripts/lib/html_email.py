@@ -70,6 +70,16 @@ def cta_button(company: str, region: str | None, lang: str) -> str:
             f'</td></tr></table>')
 
 
+def page_button(url: str, lang: str) -> str:
+    """Knopf zur persönlichen Seite (dort: Video, Beispiel-Leads, Probe mit einem Klick)."""
+    label = "Voir mes pistes gratuites" if lang == "fr" else "See my free leads"
+    return (f'<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 24px 0;"><tr>'
+            f'<td style="background:{GOLD};border-radius:99px;">'
+            f'<a href="{html.escape(url)}" style="display:inline-block;padding:13px 26px;font-family:{FONT};'
+            f'font-size:15px;font-weight:700;color:{NAVY};text-decoration:none;white-space:nowrap;">{html.escape(label)} &rarr;</a>'
+            f'</td></tr></table>')
+
+
 def render(body_text: str, footer_text: str, lang: str = "en", cta: str = "",
            signer: tuple[str, str] | None = None, blocks: dict[str, str] | None = None) -> str:
     """body_text: Text ohne Signatur-Block (Signatur wird aus Umgebung gebaut), footer_text: Pflichtfußzeile.
