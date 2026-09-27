@@ -34,7 +34,7 @@ const TXT = {
     perLead: "From about {p} per lead", perLeadC: "The more leads, the lower the price per lead",
     subject: "Start", q: "Questions? Just reply to our email or write to",
     custom: "Custom", customP: "Your number", customL: ["Tell us how many leads you need per week", "An offer that fits your team", "Same quality and exclusivity"],
-    customBtn: "Ask for an offer", customSubject: "Custom offer",
+    customBtn: "Ask for an offer",
   },
   fr: {
     eyebrow: "Pistes chaque semaine", title: "Recevez vos pistes chaque semaine",
@@ -55,11 +55,43 @@ const TXT = {
     perLead: "À partir d'environ {p} par piste", perLeadC: "Plus de pistes, prix unitaire plus bas",
     subject: "Démarrer", q: "Des questions ? Répondez simplement à notre e-mail ou écrivez à",
     custom: "Sur mesure", customP: "Votre volume", customL: ["Indiquez combien de pistes il vous faut par semaine", "Une offre adaptée à votre équipe", "Même qualité et même exclusivité"],
-    customBtn: "Demander une offre", customSubject: "Offre sur mesure",
+    customBtn: "Demander une offre",
   },
 };
 
 const PER_WEEK: Record<string, number> = { starter: 30, pro: 100 };
+const LAND: Record<string, [string, string]> = { uk: ["the UK", "Royaume-Uni"], us: ["the US", "États-Unis"], fr: ["France", "France"], ie: ["Ireland", "Irlande"], nl: ["the Netherlands", "Pays-Bas"] };
+
+/** Vorbereitete Anfrage für ein individuelles Angebot: der Kunde füllt nur noch die Lücken aus. */
+function offerMail(lang: "en" | "fr", country: string, segment: string, firma?: string): string {
+  const land = (LAND[country] ?? [country.toUpperCase(), country.toUpperCase()])[lang === "fr" ? 1 : 0];
+  const field = segment.replace(/-/g, " ");
+  const subject = lang === "fr" ? `Demande d'offre sur mesure${firma ? ` – ${firma}` : ""}` : `Custom offer request${firma ? ` – ${firma}` : ""}`;
+  const body = lang === "fr" ? [
+    "Bonjour l'équipe NextGen Profit,", "",
+    "Nous souhaitons recevoir une offre sur mesure pour des pistes hebdomadaires.", "",
+    "— NOTRE ENTREPRISE —",
+    `Entreprise : ${firma ?? ""}`, "Site web : ", "Interlocuteur : ", "Téléphone : ", "",
+    "— NOTRE BESOIN —",
+    "Nombre de pistes par semaine : ", `Pays / régions : ${land}`, `Notre activité : ${field}`,
+    "Signaux les plus utiles (ex. postes ouverts depuis longtemps, nouvelles entreprises, croissance) : ",
+    "Taille d'entreprise visée : ", "Démarrage souhaité : ", "",
+    "Remarques : ", "",
+    "Merci d'avance pour votre proposition.", "", "Cordialement,", "",
+  ] : [
+    "Hello NextGen Profit team,", "",
+    "We would like a custom offer for weekly trigger leads.", "",
+    "— ABOUT US —",
+    `Company: ${firma ?? ""}`, "Website: ", "Contact person: ", "Phone: ", "",
+    "— WHAT WE NEED —",
+    "Leads per week: ", `Countries / regions: ${land}`, `Our field: ${field}`,
+    "Most useful signals (e.g. roles open for weeks, new companies, fast growth): ",
+    "Target company size: ", "Preferred start date: ", "",
+    "Anything else we should know: ", "",
+    "Thank you, we look forward to your offer.", "", "Kind regards,", "",
+  ];
+  return `mailto:${CONTACT}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body.join("\r\n"))}`;
+}
 function perLead(p: Plan): string | null {
   const n = PER_WEEK[p.key];
   if (!n || !p.amount_cents) return null;
@@ -156,7 +188,7 @@ export default async function StartPage({ params, searchParams }: { params: Para
             <div className="price">{T.customP}</div>
             <ul>{T.customL.map((x) => <li key={x}>{x}</li>)}</ul>
             <div className="pl">{T.perLeadC}</div>
-            <div className="go"><a className="btn line big" href={`mailto:${CONTACT}?subject=${encodeURIComponent(`${T.customSubject} – ${slug}${who?.firma ? ` – ${who.firma}` : ""}`)}&body=${encodeURIComponent(lang === "fr" ? "Nombre de pistes par semaine : " : "Leads per week: ")}`}>{T.customBtn} <span className="ar">→</span></a></div>
+            <div className="go"><a className="btn line big" href={offerMail(lang, country.toLowerCase(), segment.toLowerCase(), who?.firma)}>{T.customBtn} <span className="ar">→</span></a></div>
           </section>
         </div>
 
