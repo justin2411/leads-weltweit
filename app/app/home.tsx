@@ -54,7 +54,7 @@ function Head({ title, gold, intro }: { title: string; gold?: string[]; intro?: 
 export async function Home({ lang }: { lang: HomeLang }) {
   const t = HOME[lang];
   const loc = { en: "en-GB", fr: "fr-FR", de: "de-DE" }[lang];
-  const mio = { en: "M+", fr: " M+", de: " Mio.+" }[lang];
+  const mio = { en: "M+", fr: "\u00a0M+", de: "\u00a0Mio.+" }[lang];
   const [pages, stats, feed] = await Promise.all([
     publicPages().catch(() => []),
     homeStats().catch(() => ({ companies: 0, signals: 0 })),

@@ -109,7 +109,8 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
   const nd = (x: string) => x.replace(/\s+[–—]\s+/g, ", ");
   const SC = segmentCopy(page.slug, lang);
   const W = SC.words;
-  const F = (x: string) => nd(fill(x, P, lang, W));
+  // Platzhalter füllen; Satzanfang groß (z. B. "{team} calls" -> "Your practice calls")
+  const F = (x: string) => { const r = nd(fill(x, P, lang, W)); return r ? r[0].toUpperCase() + r.slice(1) : r; };
   const signals = fillDeep((v.signals ?? []) as { title: string; text: string }[], P, lang, W);
   const faq = fillDeep((v.faq ?? []) as { q: string; a: string }[], P, lang, W);
   const headline = F(v.headline);
@@ -209,11 +210,11 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
                 <div className="sig">{label && <span className="pill">{label}</span>}<span className="dt">{day(sm.date, lang)}</span></div>
                 {detail && <p className="det">{nd(detail)}</p>}
                 {why && <p className="why"><b>{fr ? "Pourquoi c'est une opportunité" : F("Why it matters for {beruf}")}</b>{F(why)}</p>}
-                {sm.opener && <p className="op">“{nd(sm.opener)}”</p>}
-                <footer>
+                {sm.opener && <p className="op">“{nd(sm.opener.split(sm.company).join(nice(sm.company)))}”</p>}
+                <div className="ft">
                   {sm.source && <span>{L.source}: {sm.source}</span>}
                   {sm.urgency && <span className={`prio p-${sm.urgency}`}>{PRIO[fr ? "fr" : "en"][sm.urgency] ?? sm.urgency}</span>}
-                </footer>
+                </div>
               </article>);
           })}</div>
         </div></section>
@@ -230,7 +231,7 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
 
       <section className="tinted"><div className="wrap">
         <Head eyebrow="" title={F(SC.revenueTitle)} />
-        <div className="cards">{SC.revenue.map(([h, d], k) => (
+        <div className="cards two">{SC.revenue.map(([h, d], k) => (
           <div className="card glow lift" key={h} data-rv style={i(k)}><div className="num">{k + 1}</div><h3>{F(h)}</h3><p>{F(d)}</p></div>))}</div>
       </div></section>
 
