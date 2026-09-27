@@ -1,4 +1,5 @@
 import { sendConsentMail } from "@/lib/mail";
+import { welcomeMail } from "@/lib/welcome-mail";
 import { recordEvent } from "@/lib/page-events";
 import { BRAND, siteUrl } from "@/lib/site";
 import { STATUS_MAP, stripeKeys, verifyStripeSignature } from "@/lib/stripe";
@@ -50,9 +51,13 @@ export async function POST(req: Request) {
       if (event.livemode) await recordEvent(m.variant_id, "purchase");
       const link = `${siteUrl()}/kunde/filter?t=${filterToken(cust.id, process.env.SESSION_SECRET?.trim() ?? "")}`;
       await db().from("customers").update({ filter_token_issued_at: new Date().toISOString() }).eq("id", cust.id);
-      await sendConsentMail(email, `Welcome to ${BRAND}`,
-        `Hello,\n\nthank you for subscribing${event.livemode ? "" : " (TEST MODE)"}.\n\nPlease tell us which areas, signals and industries you want ` +
-        `(takes one minute):\n${link}\n\nYour first delivery follows after a quick manual check; after that, new leads arrive every Monday.\n\n${BRAND}`).catch(async (e) => {
+      const price = o.amount_total != null
+        ? new Intl.NumberFormat(o.locale === "fr" ? "fr-FR" : "en-GB", { style: "currency", currency: String(o.currency ?? "gbp").toUpperCase(), maximumFractionDigits: o.amount_total % 100 ? 2 : 0 }).format(o.amount_total / 100)
+        : undefined;
+      const planName = m.package === "custom" ? (o.locale === "fr" ? "Sur mesure" : "Custom") : m.package ? m.package[0].toUpperCase() + m.package.slice(1) : "";
+      const weekly = Number(m.weekly) || ({ starter: 30, pro: 100 } as Record<string, number>)[m.package] || undefined;
+      const wm = welcomeMail({ lang: o.locale === "fr" ? "fr" : "en", company, plan: planName, weekly, price, formLink: link, test: !event.livemode });
+      await sendConsentMail(email, wm.subject, wm.text, wm.html).catch(async (e) => {
         // Kunde und Abo sind gespeichert; Mail-Fehler nicht als Webhook-Fehler werten (sonst doppelte Willkommensmails)
         await log("Willkommensmail fehlgeschlagen", `${company}: ${(e as Error).message}`, true);
       });

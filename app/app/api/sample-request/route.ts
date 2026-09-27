@@ -1,6 +1,6 @@
 import { consentText } from "@/lib/consent";
 import { sendConsentMail } from "@/lib/mail";
-import { renderMail, type MailBlock } from "@/lib/mail-html";
+import { mailText, renderMail, type MailBlock } from "@/lib/mail-html";
 import { recordEvent } from "@/lib/page-events";
 import { getSettings, isOwner, pageIsPublic } from "@/lib/pages";
 import { BRAND, LEGAL_NAME, siteUrl } from "@/lib/site";
@@ -85,7 +85,6 @@ function confirmationMail(lang: "en" | "fr", region: string, consent: string) {
   const closing = fr ? "Bien cordialement," : "Kind regards,";
   const signer = `${BRAND}`;
   const footer = `${LEGAL_NAME} · Poststraße 14-16, 20354 Hamburg, Germany\n${siteUrl().replace(/^https?:\/\//, "")}`;
-  const text = blocks.map((b) => ("p" in b ? b.p : "note" in b ? b.note : `${b.title ? b.title + ":\n" : ""}${b.steps.map((s, i) => `${i + 1}. ${s}`).join("\n")}`))
-    .join("\n\n") + `\n\n${closing}\n${signer}\n\n${footer}`;
+  const text = mailText(blocks) + `\n\n${closing}\n${signer}\n\n${footer}`;
   return { subject, text, html: renderMail({ lang, brand: BRAND, blocks, closing, signer, footer }) };
 }

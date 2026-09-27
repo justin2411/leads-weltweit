@@ -7,13 +7,21 @@ const FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-s
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-export type MailBlock = { p: string } | { steps: string[]; title?: string } | { note: string };
+export type MailBlock = { p: string } | { steps: string[]; title?: string } | { note: string } | { button: string; href: string } | { facts: [string, string][]; title?: string };
 
 export function renderMail(o: { lang: string; brand: string; blocks: MailBlock[]; closing: string; signer: string; footer: string }): string {
   const [head, ...rest] = o.brand.split(" ");
   const tail = rest.length ? " " + rest.join(" ") : "";
   const body = o.blocks.map((b) => {
     if ("p" in b) return `<p style="margin:0 0 16px 0;font-family:${FONT};font-size:15px;line-height:24px;color:${INK};">${esc(b.p).replace(/\n/g, "<br>")}</p>`;
+    if ("button" in b) return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 22px 0;"><tr><td style="background:${ORANGE};border-radius:8px;">` +
+      `<a href="${esc(b.href)}" style="display:inline-block;padding:13px 24px;font-family:${FONT};font-size:15px;font-weight:700;color:#FFFFFF;text-decoration:none;">${esc(b.button)} &rarr;</a></td></tr></table>`;
+    if ("facts" in b) {
+      const title = b.title ? `<p style="margin:0 0 10px 0;font-family:${FONT};font-size:11px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;color:${ORANGE};">${esc(b.title)}</p>` : "";
+      const rows = b.facts.map(([k, v]) => `<tr><td style="padding:8px 14px;border-bottom:1px solid ${LINE};font-family:${FONT};font-size:13px;color:${MUTED};width:42%;">${esc(k)}</td>` +
+        `<td style="padding:8px 14px;border-bottom:1px solid ${LINE};font-family:${FONT};font-size:14px;font-weight:700;color:${INK};">${esc(v)}</td></tr>`).join("");
+      return `${title}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px 0;border:1px solid ${LINE};border-radius:8px;background:#FAFBFC;">${rows}</table>`;
+    }
     if ("note" in b) return `<p style="margin:0 0 16px 0;padding:12px 16px;background:#FAFBFC;border:1px solid ${LINE};border-radius:8px;font-family:${FONT};font-size:13px;line-height:20px;color:${MUTED};">${esc(b.note)}</p>`;
     const rows = b.steps.map((s, i) =>
       `<tr><td valign="top" style="width:30px;padding:0 0 12px 0;font-family:${FONT};font-size:15px;line-height:22px;font-weight:700;color:${ORANGE};">${i + 1}</td>` +
@@ -31,8 +39,19 @@ export function renderMail(o: { lang: string; brand: string; blocks: MailBlock[]
 <tr><td style="padding:20px 40px 4px 40px;">
 ${body}
 <p style="margin:8px 0 14px 0;font-family:${FONT};font-size:15px;line-height:24px;color:${INK};">${esc(o.closing)}</p>
-<table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="border-left:3px solid ${ORANGE};padding:2px 0 2px 14px;font-family:${FONT};font-size:15px;line-height:22px;font-weight:700;color:${NAVY};">${esc(o.signer)}</td></tr></table>
+<table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="border-left:3px solid ${ORANGE};padding:2px 0 2px 14px;font-family:${FONT};font-size:15px;line-height:22px;font-weight:700;color:${NAVY};">${o.signer.split("\n").map((l, i) => i ? `<span style="font-weight:400;font-size:13px;color:${MUTED};">${esc(l)}</span>` : esc(l)).join("<br>")}</td></tr></table>
 </td></tr>
 <tr><td style="padding:28px 40px 32px 40px;"><div style="border-top:1px solid ${LINE};padding-top:16px;font-family:${FONT};font-size:11px;line-height:17px;color:${MUTED};">${esc(o.footer).replace(/\n/g, "<br>")}</div></td></tr>
 </table></td></tr></table></body></html>`;
+}
+
+/** Text-Version derselben Blöcke (jede gestaltete Mail hat eine Text-Version). */
+export function mailText(blocks: MailBlock[]): string {
+  return blocks.map((b) => {
+    if ("p" in b) return b.p;
+    if ("note" in b) return b.note;
+    if ("button" in b) return `${b.button}: ${b.href}`;
+    if ("facts" in b) return `${b.title ? b.title + ":\n" : ""}${b.facts.map(([k, v]) => `${k}: ${v}`).join("\n")}`;
+    return `${b.title ? b.title + ":\n" : ""}${b.steps.map((s, i) => `${i + 1}. ${s}`).join("\n")}`;
+  }).join("\n\n");
 }
