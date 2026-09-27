@@ -29,13 +29,8 @@ FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
 
 # Schlüsselstellen fett (nur im HTML, die Textversion bleibt schlicht): zum schnellen Überfliegen
 BOLD = [
-    "every Monday", "company, phone, email and an opening line", "No software, nothing to set up",
-    "one firm in your field only", "reserved for your firm", "free sample of 10 current leads", "free sample",
-    'a quick "yes" is enough', "you'd be the first to call", "the easiest conversation", "gets to quote",
-    "the first sensible conversation", "whoever reaches them first", "call them this week", "phone, email",
-    "chaque lundi", "l'entreprise, le téléphone, l'e-mail et une phrase d'accroche", "Aucun logiciel, rien à installer",
-    "une seule entreprise de votre secteur", "réservée à votre entreprise", "échantillon gratuit de 10 pistes actuelles",
-    "échantillon gratuit", "Un simple « oui » suffit", "vous seriez le premier à appeler", "appelez-les cette semaine",
+    "every Monday", "one firm in your field only", "free sample of 10 current leads",
+    "chaque lundi", "une seule entreprise de votre secteur", "échantillon gratuit de 10 pistes actuelles",
 ]
 
 
@@ -91,7 +86,7 @@ def cta_button(company: str, region: str | None, lang: str) -> str:
     return (f'<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 24px 0;"><tr>'
             f'<td style="background:{GOLD};border-radius:99px;">'
             f'<a href="{html.escape(href)}" style="display:inline-block;padding:13px 26px;font-family:{FONT};'
-            f'font-size:15px;font-weight:700;color:{NAVY};text-decoration:none;white-space:nowrap;">{html.escape(label)}</a>'
+            f'font-size:15px;font-weight:500;color:{NAVY};text-decoration:none;white-space:nowrap;">{html.escape(label)}</a>'
             f'</td></tr></table>')
 
 
@@ -101,7 +96,7 @@ def page_button(url: str, lang: str) -> str:
     return (f'<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 24px 0;"><tr>'
             f'<td style="background:{GOLD};border-radius:99px;">'
             f'<a href="{html.escape(url)}" style="display:inline-block;padding:13px 26px;font-family:{FONT};'
-            f'font-size:15px;font-weight:700;color:{NAVY};text-decoration:none;white-space:nowrap;">{html.escape(label)} &rarr;</a>'
+            f'font-size:15px;font-weight:500;color:{NAVY};text-decoration:none;white-space:nowrap;">{html.escape(label)} &rarr;</a>'
             f'</td></tr></table>')
 
 
