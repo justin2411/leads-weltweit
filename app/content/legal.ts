@@ -2,6 +2,7 @@
  * Rechtstexte. Grundlage: Texte des Inhabers (alte Website nextgen-profit.de), angepasst an das Lead-Abo
  * (Hosting Vercel/Supabase, Zahlung Stripe, Mails Resend/eigenes Postfach, Landingpages ohne Cookies).
  * Vom Inhaber bestätigt am 26.09.2026 (Anschrift Hamburg, alle Prüfpunkte).
+ * 27.09.2026 (Inhaber): Anbieter ist die NextGen Profit GmbH, sonst alles gleich.
  */
 export type LegalDoc = { title: string; placeholder: boolean; body: string };
 
@@ -14,10 +15,9 @@ export const LEGAL: Record<"impressum" | "datenschutz" | "agb", LegalDoc> = {
     placeholder: false,
     body: `Angaben gemäß § 5 DDG
 
-NextGen Profit
-Einzelunternehmen
-Inhaber: Justin Koch
+NextGen Profit GmbH
 ${ANSCHRIFT}
+Vertreten durch den Geschäftsführer: Justin Koch
 
 ${KONTAKT}
 
@@ -34,7 +34,7 @@ Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer 
 Die folgenden Hinweise geben einen Überblick darüber, was mit Ihren personenbezogenen Daten passiert, wenn Sie diese Website besuchen oder unsere Leistungen nutzen. Personenbezogene Daten sind alle Daten, mit denen Sie persönlich identifiziert werden können.
 
 2. Verantwortliche Stelle
-NextGen Profit, Einzelunternehmen, Inhaber Justin Koch
+NextGen Profit GmbH, vertreten durch den Geschäftsführer Justin Koch
 ${ANSCHRIFT}
 ${KONTAKT}
 
@@ -67,7 +67,7 @@ Daten werden gelöscht, sobald der Zweck entfällt, soweit keine gesetzlichen Au
     title: "Allgemeine Geschäftsbedingungen",
     placeholder: false,
     body: `1. Geltungsbereich
-Diese AGB gelten für alle Verträge zwischen Justin Koch, handelnd unter „NextGen Profit“, ${ANSCHRIFT} („Anbieter“), und seinen Kunden über den Bezug von Unternehmens-Leads („Lead-Abo“). Das Angebot richtet sich ausschließlich an Unternehmer im Sinne von § 14 BGB, nicht an Verbraucher. Abweichende Bedingungen des Kunden gelten nur, wenn der Anbieter ihnen ausdrücklich schriftlich zustimmt.
+Diese AGB gelten für alle Verträge zwischen der NextGen Profit GmbH, ${ANSCHRIFT}, vertreten durch den Geschäftsführer Justin Koch („Anbieter“), und seinen Kunden über den Bezug von Unternehmens-Leads („Lead-Abo“). Das Angebot richtet sich ausschließlich an Unternehmer im Sinne von § 14 BGB, nicht an Verbraucher. Abweichende Bedingungen des Kunden gelten nur, wenn der Anbieter ihnen ausdrücklich schriftlich zustimmt.
 
 2. Vertragsschluss
 Die Darstellung auf der Website ist kein bindendes Angebot. Der Vertrag kommt zustande, wenn der Kunde den Bestellvorgang (Stripe Checkout) abschließt und die Zahlung autorisiert, oder durch schriftliche Auftragsbestätigung des Anbieters.

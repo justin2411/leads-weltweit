@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Inter } from "next/font/google";
 import { BRAND_CSS } from "@/lib/brand-css";
-import { BRAND, CONTACT } from "@/lib/site";
+import { CONTACT, LEGAL_NAME } from "@/lib/site";
 import { Motion } from "./motion";
 
 // Schrift wird beim Build selbst gehostet (kein Abruf bei Google durch Besucher, DSGVO).
@@ -64,7 +64,7 @@ export function SiteFooter({ labels = ["Legal notice", "Privacy policy", "Terms"
         <address>Poststraße 14-16 · 20354 Hamburg · Germany<br /><a href={`mailto:${CONTACT}`}>{CONTACT}</a></address>
       </div>
       <nav aria-label="Legal"><a href="/impressum">{labels[0]}</a><a href="/datenschutz">{labels[1]}</a><a href="/agb">{labels[2]}</a></nav>
-      <div style={{ width: "100%", marginTop: 8 }}>© {new Date().getFullYear()} {BRAND}</div>
+      <div style={{ width: "100%", marginTop: 8 }}>© {new Date().getFullYear()} {LEGAL_NAME}</div>
     </div></footer>
   );
 }

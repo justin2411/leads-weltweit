@@ -29,7 +29,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lib.rules import (  # noqa: E402
-    brand, check_prospect, country_rules, lint_draft, load_countries, render_footer,
+    brand, check_prospect, legal_name, country_rules, lint_draft, load_countries, render_footer,
 )
 
 RESEND_URL = "https://api.resend.com/emails"
@@ -277,7 +277,7 @@ def cmd_send(args) -> int:
 
         unsub = unsubscribe_target(m["unsubscribe_token"])
         footer = render_footer(m.get("language") or "en",
-                               sender_name=brand(),
+                               sender_name=legal_name(),
                                postal_address=os.environ.get("SENDER_POSTAL_ADDRESS", "<Postanschrift>"),
                                company=p["company_name"], unsubscribe_url=unsub)
         body = m["body"].rstrip()
@@ -335,7 +335,7 @@ def cmd_test(args) -> int:
               "source": "NY Department of State"}
     subject, body, lang = build(p, example=ex)
     lint = lint_draft(subject, body, lang)
-    footer = render_footer(lang, sender_name=brand(),
+    footer = render_footer(lang, sender_name=legal_name(),
                            postal_address=os.environ.get("SENDER_POSTAL_ADDRESS", ""), company=name,
                            unsubscribe_url=unsubscribe_target("test"))
     text = body.rstrip() + "\n\n" + footer

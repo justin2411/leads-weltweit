@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import VIDEOS from "@/content/videos.json";
-import { BRAND, CONTACT, siteUrl } from "@/lib/site";
+import { BRAND, CONTACT, LEGAL_NAME, siteUrl } from "@/lib/site";
 import { homeFeed, homeStats, publicPages } from "@/lib/site-pages";
 import { BrandShell, SiteFooter, SiteHeader, Words } from "./chrome";
 import { HeroNet, SignalFeed } from "./motion";
@@ -79,7 +79,7 @@ export default async function Home() {
     "Please send the sample to this email address.\n\n" +
     "Kind regards\n")}`;
   const ld = {
-    "@context": "https://schema.org", "@type": "Organization", name: BRAND, url: siteUrl(), email: CONTACT,
+    "@context": "https://schema.org", "@type": "Organization", name: BRAND, legalName: LEGAL_NAME, url: siteUrl(), email: CONTACT,
     description: DESC, address: { "@type": "PostalAddress", streetAddress: "Poststraße 14-16", postalCode: "20354", addressLocality: "Hamburg", addressCountry: "DE" },
   };
 
@@ -192,7 +192,7 @@ export default async function Home() {
             ["shield", "Company data only", "No personal data of employees. Operated from Hamburg, Germany, under the GDPR."],
             ["eye", "No scraping", "We never scrape LinkedIn, job boards or platforms whose terms forbid it."],
             ["gift", "Try before you decide", "Ten free leads from your area. No card, no subscription, no obligation."],
-            ["pin", "A real company", `${BRAND}, Poststraße 14-16, 20354 Hamburg, Germany. Full details in our legal notice.`]]
+            ["pin", "A real company", `${LEGAL_NAME}, Poststraße 14-16, 20354 Hamburg, Germany. Full details in our legal notice.`]]
             .map(([ic, t, d], k) => (
               <div className="fact glow" key={t} data-rv style={i(k)}>
                 <div className="seal"><Icon d={ICONS[ic]} /></div><h3>{t}</h3><p>{d}</p>

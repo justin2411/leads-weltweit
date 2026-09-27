@@ -219,6 +219,12 @@ def lint_draft(subject: str, body: str, language: str = "en", min_words: int = 7
     return CheckResult(ok=not errors, errors=errors, warnings=warnings)
 
 
+def legal_name() -> str:
+    """Rechtsträger für Pflichtangaben in Mails (Inhaber 27.09.2026: NextGen Profit GmbH)."""
+    import os
+    return os.environ.get("SENDER_LEGAL_NAME") or "NextGen Profit GmbH"
+
+
 def brand() -> str:
     """Markenname in Mails (Secret SENDER_COMPANY), Standard NextGen Profit."""
     import os
