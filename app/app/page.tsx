@@ -96,8 +96,8 @@ export default async function Home() {
             <h1><Words text="Reach companies at the moment they need you" gold={["need", "you"]} /></h1>
             <p className="lede later" style={{ "--d": ".75s" } as CSSProperties}>Every week we read official registers and company careers pages, find the businesses in your area with a real reason to buy, and send you a short list. Each lead with its date, its source and an opening line.</p>
             <div className="cta-row later" style={{ "--d": ".95s" } as CSSProperties}>
-              <a className="btn gold mag" href="#sample">Get 10 free sample leads <span className="ar">→</span></a>
-              {video && <a className="btn ghost mag" href="#film">Watch the film</a>}
+              <a className="btn gold" href="#sample">Get 10 free sample leads <span className="ar">→</span></a>
+              {video && <a className="btn ghost" href="#film">Watch the film</a>}
             </div>
             <div className="fine later" style={{ "--d": "1.1s" } as CSSProperties}><span>Free of charge</span><span>No card</span><span>No subscription</span></div>
           </div>
@@ -204,7 +204,7 @@ export default async function Home() {
         <div>
           <Head eyebrow="Free sample" title={"See it for your area,\nten leads free"} gold={["ten", "leads", "free"]}
             intro="Tell us what you offer and which area you cover. You receive ten current leads in the format of the weekly delivery." />
-          <div className="cta-row" data-rv><a className="btn gold big mag" href={mailto}>Request the sample by email <span className="ar">→</span></a></div>
+          <div className="cta-row" data-rv><a className="btn gold big" href={mailto}>Request the sample by email <span className="ar">→</span></a></div>
           <div className="fine"><span>No charge</span><span>No card</span><span>No obligation</span></div>
         </div>
         <div data-rv>
