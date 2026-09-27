@@ -11,6 +11,7 @@ Regeln:
 - Preise legt nur der Inhaber fest (--price ist Pflicht, kommt von ihm).
 - Die erste Lieferung jedes Kunden gibt der Inhaber frei; danach laufen Lieferungen automatisch.
 - Jeder Lead geht an ein Abo höchstens einmal; nur Leads aus den gebuchten Regionen, nur Firmendaten.
+- Exklusiv je Branche: ein Lead geht nur an einen Kunden desselben Segments (der erste, der ihn bekommt).
 """
 from __future__ import annotations
 
@@ -273,9 +274,11 @@ def cmd_prepare(args) -> int:
                                     "select": "id"}):
             print(f"= {s['customers']['company_name']}: Lieferung für {period} existiert schon")
             continue
-        # jeder Lead höchstens einmal pro Kunde (über alle seine Abos)
+        # jeder Lead höchstens einmal pro Kunde (über alle seine Abos) und exklusiv je Branche:
+        # was ein anderer Kunde derselben Branche schon bekommen hat, geht an niemanden sonst (wer zuerst kommt).
         already = set()
-        sub_ids = [x["id"] for x in db.select("subscriptions", {"customer_id": f"eq.{s['customer_id']}", "select": "id"})]
+        sub_ids = [x["id"] for x in db.select("subscriptions", {"select": "id",
+                   "or": f"(customer_id.eq.{s['customer_id']},segment_id.eq.{s['segment_id']})"})]
         for d in db.select_all("deliveries", {"subscription_id": f"in.({','.join(sub_ids)})", "select": "lead_ids"}):
             already.update(d["lead_ids"] or [])
         cf = db.select("customer_filters", {"customer_id": f"eq.{s['customer_id']}"})

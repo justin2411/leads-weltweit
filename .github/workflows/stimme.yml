@@ -1,11 +1,21 @@
-# Deutsche Sprecherstimme (Piper, Stimme "Thorsten") für die Erklärvideos erzeugen.
-# Für jede Datei video/v3/segments/de-*.json entstehen video/v3/voice/<name>/<satz>.wav (werden auf diesen Branch gespeichert).
-# Rendern und Musik passieren danach lokal mit video/v3/build.sh. Sendet nichts, kostet nichts.
+# Deutsche Sprecherstimme (Piper) für die Erklärvideos erzeugen. Kostet nichts, sendet nichts.
+# - Ohne Eingabe: für jede Datei video/v3/segments/de-*.json entstehen video/v3/voice/<name>/<satz>.wav.
+# - probe=true: ein Testsatz mit mehreren Stimmen nach video/v3/voice/_probe/ (zum Anhören und Vergleichen),
+#   dazu die Lizenzangaben der Stimmen (MODEL_CARD).
+# Englische Wörter werden vor dem Sprechen nach video/v3/aussprache-de.json umgeschrieben.
 name: stimme
 on:
   workflow_dispatch:
+    inputs:
+      stimme:
+        description: "Piper-Stimme, z. B. de_DE-thorsten-high"
+        default: ""
+      probe:
+        description: "Testsätze mit mehreren Stimmen erzeugen"
+        type: boolean
+        default: false
   push:
-    paths: ["video/v3/segments/de-*.json", ".github/workflows/stimme.yml"]
+    paths: ["video/v3/segments/de-*.json", "video/v3/aussprache-de.json", ".github/workflows/stimme.yml"]
 permissions:
   contents: write
 jobs:
@@ -16,28 +26,57 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
       - run: pip install piper-tts==1.2.0
-      - name: Stimme laden
-        run: |
-          mkdir -p /tmp/piper && cd /tmp/piper
-          for f in de_DE-thorsten-high.onnx de_DE-thorsten-high.onnx.json; do
-            curl -sSL -o "$f" "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/high/$f"
-          done
-      - name: Sätze sprechen
+      - name: Sprechen
         working-directory: video/v3
+        env:
+          STIMME: ${{ github.event.inputs.stimme }}
+          PROBE: ${{ github.event.inputs.probe || (github.event_name == 'push' && 'true') || 'false' }}
         run: |
           python - <<'PY'
-          import glob, json, os, subprocess
-          for path in glob.glob("segments/de-*.json"):
-              name = os.path.splitext(os.path.basename(path))[0]
-              seg = json.load(open(path))
-              os.makedirs(f"voice/{name}", exist_ok=True)
-              for line in seg["script"]:
-                  out = f"voice/{name}/{line['id']}.wav"
-                  subprocess.run(["piper", "--model", "/tmp/piper/de_DE-thorsten-high.onnx", "--length_scale", str(seg.get("length_scale", 1.0)),
-                                  "--sentence_silence", "0.1", "--output_file", out], input=line["text"].encode(), check=True)
-              print(name, "ok")
+          import glob, json, os, re, subprocess, urllib.request
+          SAY = {k: v for k, v in json.load(open("aussprache-de.json")).items() if not k.startswith("_")}
+          def spoken(t):
+              for k in sorted(SAY, key=len, reverse=True):
+                  t = re.sub(rf"\b{re.escape(k)}\b", SAY[k], t)
+              return t
+          def model(v):
+              lang, rest = v.split("-", 1)
+              spk, q = rest.rsplit("-", 1)
+              d = f"/tmp/piper/{v}"; os.makedirs(d, exist_ok=True)
+              base = f"https://huggingface.co/rhasspy/piper-voices/resolve/main/de/{lang}/{spk}/{q}"
+              for f in (f"{v}.onnx", f"{v}.onnx.json", "MODEL_CARD"):
+                  if not os.path.exists(f"{d}/{f}"):
+                      try: urllib.request.urlretrieve(f"{base}/{f}", f"{d}/{f}")
+                      except Exception as e: print(v, f, e)
+              return d
+          def say(v, text, out, scale=1.0):
+              d = model(v)
+              subprocess.run(["piper", "--model", f"{d}/{v}.onnx", "--length_scale", str(scale), "--sentence_silence", "0.1",
+                              "--output_file", out], input=spoken(text).encode(), check=True)
+          if os.environ.get("PROBE") == "true":
+              os.makedirs("voice/_probe", exist_ok=True)
+              test = "Mit NextGen Profit bekommen Sie jeden Montag neue Leads aus Ihrer Region. Jeder Lead mit Telefon, E-Mail und Website."
+              cards = []
+              for v in ["de_DE-thorsten-high", "de_DE-thorsten_emotional-medium", "de_DE-kerstin-low", "de_DE-ramona-low",
+                        "de_DE-eva_k-x_low", "de_DE-karlsson-low", "de_DE-mls-medium"]:
+                  try:
+                      say(v, test, f"voice/_probe/{v}.wav")
+                      card = open(f"/tmp/piper/{v}/MODEL_CARD").read() if os.path.exists(f"/tmp/piper/{v}/MODEL_CARD") else "?"
+                      cards.append(f"## {v}\n{card}\n")
+                  except Exception as e:
+                      print(v, "fehlgeschlagen", e)
+              open("voice/_probe/LIZENZEN.md", "w").write("\n".join(cards))
+          else:
+              for path in glob.glob("segments/de-*.json"):
+                  name = os.path.splitext(os.path.basename(path))[0]
+                  seg = json.load(open(path))
+                  v = os.environ.get("STIMME") or seg.get("voice", "piper:de_DE-thorsten-high").split(":")[-1]
+                  os.makedirs(f"voice/{name}", exist_ok=True)
+                  for line in seg["script"]:
+                      say(v, line["text"], f"voice/{name}/{line['id']}.wav", seg.get("length_scale", 1.0))
+                  print(name, v, "ok")
           PY
       - name: Speichern
         run: |
           git config user.name "stimme" && git config user.email "actions@users.noreply.github.com"
-          git add video/v3/voice && git diff --cached --quiet || (git commit -m "Deutsche Sprecherstimme für Erklärvideos" && git push)
+          git add video/v3/voice && git diff --cached --quiet || (git commit -m "Deutsche Sprecherstimme für Erklärvideos" && git pull --rebase -q && git push)
