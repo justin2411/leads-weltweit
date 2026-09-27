@@ -1,5 +1,6 @@
 /**
- * Platzhalter für persönliche Landingpages: {firma}, {ort}, {region}, {branche}.
+ * Platzhalter für persönliche Landingpages: {firma}, {ort}, {region}, {branche}
+ * sowie Branchen-Wörter aus content/segment-words.ts ({beruf}, {team}, {zielkunden}, {leistung}, {anlass}).
  * Werte kommen aus dem Mail-Link (?r=<Token der Mail>) – ohne Link greifen neutrale Ersatzwörter.
  * Es wird nichts gespeichert, wer die Seite aufruft (kein Tracking).
  */
@@ -26,17 +27,21 @@ export function splitRegion(region: string | null | undefined): { ort?: string; 
   return { ort: parts[0], region: area === "NY" && parts.length > 1 ? parts[0] : area };
 }
 
-export function fill(text: string, p: Personal, lang: string): string {
+/** Ersetzt {firma}, {ort}, {region}, {branche} und optional Branchen-Wörter ({beruf}, {team} ...). Unbekannte bleiben stehen. */
+export function fill(text: string, p: Personal, lang: string, words: Record<string, string> = {}): string {
   const fb = lang === "fr" ? FALLBACK.fr : FALLBACK.en;
-  return text.replace(/\{(firma|ort|region|branche)\}/g, (_, k: keyof Personal) => (p[k] && p[k]!.trim()) || fb[k]);
+  return text.replace(/\{([a-z_]+)\}/g, (all, k: string) => {
+    if (k in fb) return (p[k as keyof Personal] && p[k as keyof Personal]!.trim()) || fb[k as keyof typeof fb];
+    return words[k] ?? all;
+  });
 }
 
 /** Ersetzt Platzhalter rekursiv in Strings, Arrays und Objekten (Signale, FAQ). */
-export function fillDeep<T>(value: T, p: Personal, lang: string): T {
-  if (typeof value === "string") return fill(value, p, lang) as T;
-  if (Array.isArray(value)) return value.map((x) => fillDeep(x, p, lang)) as T;
+export function fillDeep<T>(value: T, p: Personal, lang: string, words: Record<string, string> = {}): T {
+  if (typeof value === "string") return fill(value, p, lang, words) as T;
+  if (Array.isArray(value)) return value.map((x) => fillDeep(x, p, lang, words)) as T;
   if (value && typeof value === "object") {
-    return Object.fromEntries(Object.entries(value).map(([k, x]) => [k, fillDeep(x, p, lang)])) as T;
+    return Object.fromEntries(Object.entries(value).map(([k, x]) => [k, fillDeep(x, p, lang, words)])) as T;
   }
   return value;
 }
