@@ -167,6 +167,9 @@ T2 = {
            "custom_t": "Dites-nous combien de pistes il vous faut par semaine, nous vous faisons une offre adaptée à votre équipe."},
 }
 CUR = {"gbp": "£", "eur": "€", "usd": "$"}
+# Leads kommen aus dem ganzen Land (Inhaber 27.09.2026) – im Report nur das Land, keine Region
+COUNTRY_NAME = {"en": {"UK": "United Kingdom", "US": "United States", "FR": "France", "IE": "Ireland", "NL": "Netherlands"},
+                "fr": {"UK": "Royaume-Uni", "US": "États-Unis", "FR": "France", "IE": "Irlande", "NL": "Pays-Bas"}}
 
 
 def _money(plan: dict, cents: bool = False) -> str:
@@ -264,7 +267,8 @@ def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str
     foot = lambda i: f"""<footer class="ft"><span>{t['conf']}</span><span>{i} / {total}</span></footer>"""
     pages = []
     for i, (k, chunk) in enumerate(chunks, 1):
-        lead_in = (f'{intro}<div class="sec"><h3>{e(head)}{(" · " + e(area)) if area else ""}</h3></div>' if k == 0 else "")
+        where = COUNTRY_NAME.get(lang, COUNTRY_NAME["en"]).get(country, "")
+        lead_in = (f'{intro}<div class="sec"><h3>{e(head)}{(" · " + e(where)) if where else ""}</h3></div>' if k == 0 else "")
         pages.append(f"""<section class="pg">{top()}<div class="in">{lead_in}<div class="grid">{''.join(chunk)}</div></div>{foot(i)}</section>""")
     page2 = ""
     if plans:
