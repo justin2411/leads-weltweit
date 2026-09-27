@@ -1,0 +1,40 @@
+# Tagescheck (Inhaber 27.09.2026: „jeden Tag checken, ob alles funktioniert“): prüft alle Kontaktpunkte
+# (Versand, Nachfassmails, Antworten, Web-Proben, Website, Kasse, Kunden) und die geplanten Läufe.
+# Mail an OWNER_EMAIL mit dem Ergebnis; bei einem Problem wird der Lauf rot.
+name: tagescheck
+on:
+  schedule: [{ cron: "37 17 * * *" }]   # täglich ca. 19:37 Uhr deutscher Zeit, nach Versand (14:23 UTC) und Automatiklauf
+  workflow_dispatch:
+    inputs:
+      mail:
+        description: "Ergebnis per Mail an den Inhaber"
+        type: boolean
+        default: true
+permissions:
+  actions: read
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      MAIL_FROM: ${{ secrets.MAIL_FROM }}
+      OWNER_EMAIL: ${{ secrets.OWNER_EMAIL }}
+      SITE_URL: ${{ vars.SITE_URL || 'https://www.nextgen-profit.de' }}
+      GITHUB_TOKEN: ${{ github.token }}
+      GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - name: Tagescheck
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.mail }}" != "true" ]; then
+            python scripts/tagescheck.py
+          else
+            python scripts/tagescheck.py --send
+          fi

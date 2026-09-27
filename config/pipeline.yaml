@@ -1,0 +1,5 @@
+# Schalter für die Lead-Suche (Lead-Inhalte: Quellen, Signale, Anreicherung).
+# Inhaber 27.09.2026: „Brauchst erstmal keine neuen Leads suchen, wir machen das morgen komplett neu zusammen.“
+# false = anreichern.yml und die Quellen-Schritte in taeglich.yml pausieren. Versand, Nachfassmails, Antworten,
+# Web-Proben, Käufersuche und Lieferungen laufen weiter.
+lead_suche: false
