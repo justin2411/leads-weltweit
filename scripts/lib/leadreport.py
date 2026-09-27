@@ -140,7 +140,7 @@ T2 = {
            "p1": "10 leads selected for you", "p1s": "Business contact details from public registers and company websites",
            "plan_txt": {"starter": "Up to 30 new leads per week. Every lead exclusive to your firm.",
                         "pro": "Up to 100 new leads per week, all matching signals. Every lead exclusive to your firm."},
-           "tagline": "New clients. At the right moment.", "custom_n": "Custom", "custom_p": "Your number",
+           "tagline": "New clients. At the right moment.", "per_lead": "From about {price} per lead", "per_lead_c": "The more leads, the lower the price per lead", "custom_n": "Custom", "custom_p": "Your number",
            "custom_t": "Tell us how many leads you need per week, and we will make you an offer that fits your team."},
     "fr": {"h": "Pourquoi ces pistes génèrent du chiffre d'affaires",
            "why": [("Une vraie raison d'acheter", "Chaque entreprise vient de faire quelque chose qui crée un besoin : création, recrutement, croissance, déménagement."),
@@ -163,17 +163,29 @@ T2 = {
            "p1": "10 pistes sélectionnées pour vous", "p1s": "Coordonnées professionnelles issues de registres publics et des sites des entreprises",
            "plan_txt": {"starter": "Jusqu'à 30 nouvelles pistes par semaine. Chaque piste réservée à votre entreprise.",
                         "pro": "Jusqu'à 100 nouvelles pistes par semaine, tous les signaux utiles. Chaque piste réservée à votre entreprise."},
-           "tagline": "De nouveaux clients. Au bon moment.", "custom_n": "Sur mesure", "custom_p": "Votre volume",
+           "tagline": "De nouveaux clients. Au bon moment.", "per_lead": "À partir d'environ {price} par piste", "per_lead_c": "Plus de pistes, prix unitaire plus bas", "custom_n": "Sur mesure", "custom_p": "Votre volume",
            "custom_t": "Dites-nous combien de pistes il vous faut par semaine, nous vous faisons une offre adaptée à votre équipe."},
 }
 CUR = {"gbp": "£", "eur": "€", "usd": "$"}
 
 
-def _money(plan: dict) -> str:
+def _money(plan: dict, cents: bool = False) -> str:
     amt = (plan.get("amount_cents") or 0) / 100
     sym = CUR.get((plan.get("currency") or "").lower(), "")
-    txt = f"{amt:,.0f}" if amt == int(amt) else f"{amt:,.2f}"
+    txt = f"{amt:,.2f}" if cents or amt != int(amt) else f"{amt:,.0f}"
     return f"{txt} {sym}".strip() if (plan.get("currency") or "").lower() == "eur" else f"{sym}{txt}"
+
+
+PER_WEEK = {"starter": 30, "pro": 100}  # Höchstmenge je Paket, wie in plan_txt beschrieben
+
+
+def _per_lead(plan: dict, t2: dict) -> str:
+    """"ab ca. X pro Lead" bei voller Wochenmenge (Monatspreis / (Leads pro Woche * 52/12))."""
+    n = PER_WEEK.get(plan.get("key", ""))
+    if not n or not plan.get("amount_cents"):
+        return ""
+    per = plan["amount_cents"] / 100 / (n * 52 / 12)
+    return t2["per_lead"].format(price=_money({**plan, "amount_cents": round(per * 100)}, cents=True))
 
 
 def _clip(s: str, n: int) -> str:
@@ -256,9 +268,9 @@ def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str
     page2 = ""
     if plans:
         pl = "".join(f"""<div class="plan{' hi' if k == len(plans) - 1 else ''}"><div class="pn">{e(p.get('name', ''))}</div>
-<div class="pp">{e(_money(p))}<small> {t2['per']}</small></div><p>{e(t2['plan_txt'].get(p.get('key', ''), ''))}</p></div>"""
+<div class="pp">{e(_money(p))}<small> {t2['per']}</small></div><p>{e(t2['plan_txt'].get(p.get('key', ''), ''))}</p>{f'<div class="pl">{e(_per_lead(p, t2))}</div>' if _per_lead(p, t2) else ''}</div>"""
                      for k, p in enumerate(plans))
-        pl += f"""<div class="plan cu"><div class="pn">{t2['custom_n']}</div><div class="pp">{t2['custom_p']}</div><p>{t2['custom_t']}</p></div>"""
+        pl += f"""<div class="plan cu"><div class="pn">{t2['custom_n']}</div><div class="pp">{t2['custom_p']}</div><p>{t2['custom_t']}</p><div class="pl">{t2['per_lead_c']}</div></div>"""
         page2 = f"""<section class="pg p2">{top()}<div class="in">
 <h1 class="h1">{t2['h']}</h1>
 <div class="why3">{''.join(f'<div><b>{e(h)}</b><p>{e(d)}</p></div>' for h, d in t2['why'])}</div>
@@ -319,6 +331,7 @@ h4{{font-size:6.8px;letter-spacing:.16em;text-transform:uppercase;color:#a07f46;
 .plans{{display:grid;grid-template-columns:repeat(3,1fr);gap:5mm}}.plan{{border:.2mm solid #e3e0d8;border-radius:10px;padding:5mm 6mm}}
 .plan.hi{{border:.4mm solid #c9a86a;background:#fdfbf6}}
 .pn{{font-size:8px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;color:#8a92a3}}
+.plan{{display:flex;flex-direction:column}}.pl{{margin-top:auto;padding-top:3mm;border-top:.2mm solid #eee6d6;font-size:8.8px;font-weight:700;color:#8a6a33;letter-spacing:.02em}}.plan p{{margin-bottom:3mm}}
 .plan.cu{{border-style:dashed}}.plan.cu .pp{{font-size:18px;padding:1.6mm 0 1.2mm}}
 .pp{{font-size:26px;font-weight:800;color:#0b1428;margin:1.5mm 0 2mm}}.pp small{{font-size:10px;font-weight:600;color:#8a92a3}}
 .plan p{{font-size:10px;line-height:1.5;color:#475064}}
