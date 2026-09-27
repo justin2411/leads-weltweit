@@ -39,29 +39,29 @@ def followup_text(p: dict, lang: str) -> tuple[str, str]:
     _, area = _place(p.get("region"))
     en, fr = SIGNAL.get(p["segment_id"], ("local companies with a current reason to buy", "entreprises locales"))
     if lang == "fr":
-        body = (f"Bonjour,\n\nJe me permets de revenir vers vous au sujet de mon message de la semaine dernière sur les "
-                f"{fr} autour de {area}.\n\nSi cela peut vous être utile, je vous envoie volontiers l'échantillon "
-                f"gratuit de 10 pistes actuelles pour {area}, sans engagement. Un simple « oui » suffit.\n\n"
-                f"Est-ce que cela vous intéresse ?\n\nBien cordialement,\n{signature(lang)}")
+        body = (f"Bonjour,\n\nJuste un petit rappel de mon message sur les {fr} autour de {area}.\n\n"
+                f"L'échantillon est prêt : 10 pistes actuelles pour {area}, avec téléphone, e-mail et une phrase "
+                f"d'accroche. Gratuit, sans engagement, et vous voyez tout de suite si cela vous correspond.\n\n"
+                f"Je vous l'envoie ?\n\nBien cordialement,\n{signature(lang)}")
     else:
-        body = (f"Hello {firm} team,\n\nA quick follow-up on my note last week about {en} around {area}.\n\n"
-                f"If it would help, I am happy to send you the free sample of 10 current leads for {area}, "
-                f"with no obligation. A simple \"yes\" is enough.\n\nWould that be useful?\n\n"
-                f"Best regards,\n{signature(lang)}")
+        body = (f"Hello {firm} team,\n\nJust a short nudge on my note about {en} around {area}.\n\n"
+                f"The sample is ready to go: 10 current leads for {area}, each with phone, email and an opening line. "
+                f"It's free, there is no obligation, and you will see within a few minutes whether it fits.\n\n"
+                f"Shall I send it over?\n\nBest regards,\n{signature(lang)}")
     return body, area
 
 
 def sample_followup_text(p: dict, lang: str) -> str:
     _, area = _place(p.get("region"))
     if lang == "fr":
-        return (f"Bonjour,\n\nAvez-vous eu le temps de regarder l'échantillon de 10 pistes pour {area} ?\n\n"
-                f"Si ces pistes vous sont utiles, je peux lancer la livraison hebdomadaire dès lundi prochain, filtrée "
-                f"sur vos villes et votre spécialité. Une réponse rapide suffit, je vous envoie alors les détails.\n\n"
-                f"Souhaitez-vous démarrer ?\n\nBien cordialement,\n{signature(lang)}")
-    return (f"Hello,\n\nDid you get a chance to look at the sample of 10 leads for {area}?\n\n"
-            f"If they are useful, I can start the weekly delivery from next Monday, filtered to your towns and "
-            f"specialism. Just reply and I will send you the details.\n\n"
-            f"Shall we get started?\n\nBest regards,\n{signature(lang)}")
+        return (f"Bonjour,\n\nAvez-vous pu jeter un œil aux pistes pour {area} ?\n\n"
+                f"Si une ou deux entreprises vous ont parlé, imaginez la même liste chaque lundi, uniquement pour vos "
+                f"villes et réservée à votre entreprise. Rien à installer, vous répondez et nous nous occupons du reste.\n\n"
+                f"On démarre lundi prochain ?\n\nBien cordialement,\n{signature(lang)}")
+    return (f"Hello,\n\nDid you get a chance to look at the leads for {area}?\n\n"
+            f"If one or two of them caught your eye, picture the same list every Monday, only for your towns and "
+            f"reserved for your firm. Nothing to set up: you reply, we take care of the rest.\n\n"
+            f"Shall we start next Monday?\n\nBest regards,\n{signature(lang)}")
 
 
 def main(argv=None) -> int:

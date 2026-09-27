@@ -60,25 +60,26 @@ function confirmationMail(lang: "en" | "fr", region: string, consent: string) {
   const fr = lang === "fr";
   const area = region ? (fr ? ` pour ${region}` : ` for ${region}`) : "";
   const subject = fr ? `Votre demande d'échantillon est confirmée${area}` : `Your sample request is confirmed${area}`;
+  // Kurz, leicht, ohne Druck: was jetzt passiert und warum es sich lohnt, kurz hineinzuschauen
   const blocks: MailBlock[] = fr ? [
     { p: "Bonjour," },
-    { p: `Merci pour votre demande. Nous préparons maintenant 10 pistes récentes${area}, issues de sources officielles, et vous les envoyons à cette adresse.` },
-    { title: "La suite", steps: [
-      "Vous recevez 10 pistes au format de notre livraison hebdomadaire, chacune avec sa date et sa source officielle.",
-      "Vous contactez les entreprises qui vous correspondent.",
-      "Ensuite, nous vous demandons brièvement comment cela s'est passé.",
+    { p: `C'est noté, merci ! Nous préparons maintenant vos pistes${area} et vous les envoyons à cette adresse.` },
+    { title: "Ce que vous recevez", steps: [
+      "Un court rapport de pistes : chaque entreprise avec téléphone, e-mail, ce qui vient de se passer et une phrase d'accroche.",
+      "Les mêmes pistes en tableau, prêtes pour votre CRM.",
+      "Un conseil : appelez les deux ou trois qui vous correspondent le mieux cette semaine, tant que le moment est bon.",
     ] },
-    { p: "L'échantillon est gratuit et sans engagement." },
+    { p: "C'est gratuit et sans engagement. Si cela vous plaît, la même liste peut arriver chaque lundi, réservée à votre entreprise." },
     { note: `Pour vos archives, votre accord : « ${consent} » Pour ne plus rien recevoir, répondez simplement « désinscription ».` },
   ] : [
     { p: "Hello," },
-    { p: `Thank you for your request. We are now preparing 10 current leads${area} from official sources and will send them to this address.` },
-    { title: "What happens next", steps: [
-      "You receive 10 leads in the format of our weekly delivery, each with its date and official source.",
-      "You contact the companies that fit your firm.",
-      "Afterwards we briefly ask how it went.",
+    { p: `Got it, thank you! We are now preparing your leads${area} and will send them to this address.` },
+    { title: "What you will receive", steps: [
+      "A short lead report: each company with phone, email, what just happened and an opening line.",
+      "The same leads as a spreadsheet, ready for your CRM.",
+      "A tip: call the two or three that fit you best this week, while the moment is fresh.",
     ] },
-    { p: "The sample is free of charge and there is no obligation." },
+    { p: "It's free and there is no obligation. If you like it, the same list can arrive every Monday, reserved for your firm." },
     { note: `For your records, you agreed as follows: "${consent}" To stop hearing from us, simply reply "unsubscribe".` },
   ];
   const closing = fr ? "Bien cordialement," : "Kind regards,";

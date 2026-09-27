@@ -333,56 +333,39 @@ def sample_text(lang: str, region: str | None, has_files: bool, regional: bool =
     if lang == "fr":
         parts = [
             "Bonjour,",
-            "Merci pour votre demande. Vous trouverez en pièce jointe votre échantillon gratuit"
-            + (f" pour {region}" if region else "") + " : un rapport de pistes en PDF, préparé exactement comme notre "
-            "livraison hebdomadaire, et les mêmes pistes en tableau pour votre CRM.",
+            "Merci pour votre demande. Voici votre échantillon gratuit" + (f" pour {region}" if region else "")
+            + " : un court rapport de pistes en PDF, et les mêmes pistes en tableau pour votre CRM.",
         ]
         if not regional:
-            parts.append("Pour ce premier échantillon, nous n'avions pas encore dix événements récents dans votre zone. "
-                         "Il contient donc aussi des pistes de zones voisines. La livraison régulière ne comprend que "
-                         "les villes que vous choisissez.")
-        if preview:
-            parts.append(preview)
+            parts.append("Nous n'avions pas encore assez d'événements récents dans votre zone, l'échantillon contient donc "
+                         "aussi des pistes de zones voisines. La livraison régulière ne couvre que vos villes.")
         parts += [
-            ("Chaque piste indique l'entreprise avec son téléphone et son e-mail, un court profil, " if contacts else
-             "Chaque piste indique l'entreprise et sa localisation, ")
-            + "l'événement et sa date, le type de source et une phrase d'accroche pour le premier "
-            "contact. Dans la livraison régulière, chaque piste comprend le téléphone et l'e-mail de l'entreprise et ne va "
-            "qu'à une seule entreprise de votre secteur.",
-            "Notre conseil : choisissez les deux ou trois pistes qui vous correspondent le mieux et contactez-les "
-            "cette semaine, tant que l'événement est récent.",
-            "Si l'échantillon vous est utile, je vous prépare volontiers une liste hebdomadaire adaptée à votre "
-            "cabinet. Deux questions m'aideraient :\n"
-            "1. Quelles villes ou quels départements devons-nous couvrir ?\n"
-            "2. Combien de nouvelles pistes par semaine votre équipe peut-elle traiter ?",
-            "Une courte réponse à cet e-mail suffit.",
+            "Mon conseil : choisissez les deux ou trois entreprises qui vous correspondent le mieux et appelez-les "
+            "cette semaine, tant que le moment est bon. La phrase d'accroche de chaque piste rend la première phrase facile.",
+            "Si cela vous plaît, vous recevez une liste comme celle-ci chaque lundi, uniquement pour vos villes et "
+            "réservée à votre entreprise. Rien à installer, rien à gérer.",
+            "Il me suffit de deux petites réponses :\n"
+            "1. Quelles villes ou quels départements couvrir ?\n"
+            "2. Combien de nouvelles pistes par semaine votre équipe peut-elle suivre ?",
             "Bien cordialement,\n" + signature(lang),
         ]
     else:
         parts = [
             "Hello,",
-            "Thank you for your request. Attached is your free sample"
-            + (f" for {region}" if region else "") + ": a lead report as a PDF, prepared exactly like our weekly "
-            "delivery, and the same leads as a spreadsheet for your CRM.",
+            "Thank you for your request. Here is your free sample" + (f" for {region}" if region else "")
+            + ": a short lead report as a PDF, and the same leads as a spreadsheet for your CRM.",
         ]
         if not regional:
-            parts.append("For this first sample we did not yet have ten recent events in your area, so it also "
-                         "includes leads from neighbouring areas. The regular delivery only covers the towns you choose.")
-        if preview:
-            parts.append(preview)
+            parts.append("We did not yet have enough recent events in your area, so the sample also includes nearby "
+                         "areas. The regular delivery only covers your towns.")
         parts += [
-            ("Every lead shows the company with its phone number and email, a short profile, " if contacts else
-             "Every lead shows the company and its location, ")
-            + "the event and its date, the type of source and a suggested opening line for the "
-            "first call. In the regular delivery, every lead includes the company's phone number and email and goes to "
-            "only one firm in your field.",
-            "Our suggestion: pick the two or three leads that fit your firm best and contact them this week, while "
-            "the event is still recent.",
-            "If the sample is useful, I would be glad to set up a weekly list tailored to your firm. Two short "
-            "questions would help me prepare it:\n"
+            "My tip: pick the two or three companies that fit you best and call them this week, while the moment is "
+            "fresh. The opening line in each lead makes the first sentence easy.",
+            "If you like it, you get a list like this every Monday, only for your towns and reserved for your firm. "
+            "Nothing to install, nothing to manage.",
+            "All I need are two quick answers:\n"
             "1. Which towns or counties should we cover?\n"
             "2. Roughly how many new leads per week can your team follow up?",
-            "A short reply to this email is all it takes.",
             "Kind regards,\n" + signature(lang),
         ]
     return "\n\n".join(parts)
@@ -390,10 +373,8 @@ def sample_text(lang: str, region: str | None, has_files: bool, regional: bool =
 
 def sample_mail(lang: str, region: str | None, files: list[tuple[str, bytes]], regional: bool) -> tuple[str | None, dict]:
     """(Text, HTML-Blöcke) für die Probe-Mail: Text mit Vorschau-Absatz, HTML mit Vorschau-Tabelle."""
-    from lib.html_email import preview_rows, sample_preview
-    ptext, phtml = sample_preview(preview_rows(files), lang)
-    body = sample_text(lang, region, bool(files), regional, ptext, contacts=has_contacts(files))
-    return body, ({ptext: phtml} if ptext else {})
+    # Keine Lead-Vorschau in der Mail (Inhaber 27.09.2026): der PDF-Report im Anhang zeigt die Leads
+    return sample_text(lang, region, bool(files), regional, contacts=has_contacts(files)), {}
 
 
 def sample_subject(lang: str, region: str | None) -> str:
