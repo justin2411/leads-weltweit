@@ -180,23 +180,29 @@ def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str
         tip = (r.get("sales_tip") or "").strip()
         why = (r.get("why_now") or "").strip()
         ev = _event(r.get("event", ""), r.get("company", ""))
+        web = re.sub(r"^https?://(www\.)?", "", r.get("website") or "").rstrip("/")
         cards.append(f"""
 <article class="lead">
-  <div class="c1">
-    <div class="nm">{e(g['company'])}</div>
-    <div class="tags">{f'<span class="pr p-{e(urg)}">{e(t["prio"].get(urg, ""))}</span>' if urg else ''}<span class="sg">{e(t['sig'].get(sig, ''))}</span></div>
-    <div class="ct"><div><i>T</i>{e(r.get('phone') or '–')}</div><div><i>E</i>{e(r.get('email') or '–')}</div></div>
+  <div class="hd"><div><div class="nm">{e(g['company'])}</div><div class="loc">{e(loc)}</div></div>
+    <div class="tags">{f'<span class="pr p-{e(urg)}">{e(t["prio"].get(urg, ""))}</span>' if urg else ''}<span class="sg">{e(t['sig'].get(sig, ''))}</span></div></div>
+  <div class="ct"><div><i>{t['phone']}</i>{e(r.get('phone') or '–')}</div><div><i>{t['email']}</i>{e(r.get('email') or '–')}</div>{f'<div><i>{t["web"]}</i>{e(web)}</div>' if web else ''}</div>
+  <div class="cols">
+    <div><h4>{t2['b_co']}</h4><p>{e(profile) or e(loc) or '–'}</p></div>
+    <div><h4>{t2['b_ev']}</h4><p class="ev">{e(ev)}</p>{f'<p>{e(why)}.</p>' if why else ''}</div>
+    <div><h4>{t2['b_tip']}</h4><p>{e(tip) or '–'}</p></div>
   </div>
-  <div class="c2">
-    <h4>{t2['b_co']}</h4><p>{e(profile) or e(loc) or '–'}</p>
-    <h4>{t2['b_ev']}</h4><p class="ev">{e(ev)}{(' ' + e(why) + '.') if why and len(ev) < 60 else ''}</p>
-  </div>
-  <div class="c3">
-    <h4>{t2['b_tip']}</h4><p>{e(tip) or '–'}</p>
-    {f'<p class="op">“{e(opener)}”</p>' if opener else ''}
-  </div>
+  {f'<p class="op"><b>{t["open"]}</b>“{e(opener)}”</p>' if opener else ''}
 </article>""")
     when = _day((period or dt.date.today()).isoformat(), lang)
+    btn1 = f'<a class="btn1" href="{e(cta_url)}">{t2["btn1"]} &rarr;</a>' if cta_url else ''
+    head = (t2['p1'] if len(groups) >= 10 else f"{len(groups)} {t['firms']}") + (f" · {area}" if area else "")
+    pages = []
+    for k in range(0, max(len(cards), 1), 5):
+        ttl = (f'<div class="ttl"><h1>{e(head)}</h1><span>{e(when)}{(" · " + e(firm)) if firm else ""}</span></div>' if k == 0 else "")
+        pages.append(f"""<section class="p1"><header class="bar"><div class="logo">NextGen <i>Profit</i></div></header>
+<div class="in">{ttl}<div class="grid">{''.join(cards[k:k + 5])}</div></div>
+<div class="ft"><span>{t['conf']}</span><span>{t2['p1s']}</span></div>{btn1}</section>""")
+    pages = "\n".join(pages)
     page2 = ""
     if plans:
         pl = "".join(f"""<div class="plan{' hi' if k == len(plans) - 1 else ''}"><div class="pn">{e(p.get('name', ''))}</div>
@@ -226,23 +232,24 @@ section{{width:210mm;height:297mm;position:relative;overflow:hidden;page-break-a
 .in{{padding:7mm 14mm 0}}
 .p1 .ttl{{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4.5mm}}
 .p1 .ttl h1{{font-size:19px;font-weight:800;letter-spacing:-.3px;color:#0b1428}}.p1 .ttl span{{font-size:10.5px;color:#6b7486}}
-.grid{{display:flex;flex-direction:column;gap:1.6mm}}
-.lead{{display:grid;grid-template-columns:58mm 1fr 1.2fr;gap:3.5mm;height:23.6mm;border:1px solid #e3e6ee;border-radius:9px;padding:2mm 4mm 2mm 5mm;position:relative;overflow:hidden;background:#fff}}
-.lead:before{{content:"";position:absolute;left:0;top:0;bottom:0;width:1.2mm;background:linear-gradient(180deg,#d8bd8a,#b08d57)}}
-.c1{{display:flex;flex-direction:column;min-width:0}}
-.nm{{font-size:11.5px;font-weight:800;color:#0b1428;letter-spacing:-.2px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
-.tags{{display:flex;gap:1.2mm;margin-top:.8mm}}
-.pr,.sg{{font-size:6.6px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.5mm 1.8mm;border-radius:99px;white-space:nowrap}}
+.grid{{display:flex;flex-direction:column;gap:3.6mm}}
+.lead{{height:47.5mm;border:1px solid #e3e6ee;border-radius:11px;padding:3.6mm 5mm 3mm 6.2mm;position:relative;overflow:hidden;background:#fff;display:flex;flex-direction:column;gap:2.2mm}}
+.lead:before{{content:"";position:absolute;left:0;top:0;bottom:0;width:1.4mm;background:linear-gradient(180deg,#d8bd8a,#b08d57)}}
+.hd{{display:flex;justify-content:space-between;align-items:flex-start;gap:4mm}}
+.nm{{font-size:14px;font-weight:800;color:#0b1428;letter-spacing:-.2px;line-height:1.2}}.loc{{font-size:9.5px;color:#6b7486;margin-top:.4mm}}
+.tags{{display:flex;gap:1.4mm;flex:none}}
+.pr,.sg{{font-size:7.4px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.8mm 2.2mm;border-radius:99px;white-space:nowrap}}
 .pr{{background:#0b1428;color:#f3e1b9}}.pr.p-medium{{background:#f3ead8;color:#7a5b24}}.pr.p-low{{background:#eef0f4;color:#6b7486}}
 .sg{{background:linear-gradient(135deg,#ecd6a6,#c29d5c);color:#1a1408}}
-.ct{{margin-top:auto;background:#f7f3ea;border:1px solid #efe5d3;border-radius:6px;padding:.8mm 2mm;font-size:8.8px;font-weight:700;color:#0b1428}}
-.ct div{{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4}}.ct i{{font-style:normal;color:#a07f46;margin-right:1.4mm}}
-.c2,.c3{{min-width:0;border-left:1px solid #eef0f4;padding-left:3.5mm;overflow:hidden}}
-h4{{font-size:6.6px;letter-spacing:.14em;text-transform:uppercase;color:#a07f46;font-weight:700;margin:0 0 .3mm}}
-.c2 p,.c3 p{{font-size:8.3px;line-height:1.3;color:#1f2940;margin-bottom:.9mm;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}}
-.c2 p.ev{{font-weight:600}}
-.c3 .op{{font-style:italic;color:#4a5263;border-left:.5mm solid #d8bd8a;padding-left:1.6mm;margin:0}}
-.p1 .bar{{height:17mm}}.p1 .in{{padding-top:4.5mm}}.p1 .ttl{{margin-bottom:3mm}}.p1 .ttl h1{{font-size:17px}}
+.ct{{display:flex;gap:7mm;flex-wrap:wrap;background:#f7f3ea;border:1px solid #efe5d3;border-radius:7px;padding:1.6mm 3mm;font-size:10px;font-weight:700;color:#0b1428}}
+.ct i{{font-style:normal;font-size:7.2px;letter-spacing:.12em;text-transform:uppercase;color:#a07f46;margin-right:1.6mm}}
+.cols{{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:4mm}}
+.cols>div+div{{border-left:1px solid #eef0f4;padding-left:3.5mm}}
+h4{{font-size:7.2px;letter-spacing:.14em;text-transform:uppercase;color:#a07f46;font-weight:700;margin:0 0 .6mm}}
+.cols p{{font-size:9.2px;line-height:1.38;color:#1f2940}}.cols p.ev{{font-weight:600;margin-bottom:.6mm}}
+.lead .op{{font-size:9.2px;line-height:1.38;font-style:italic;color:#39404d;border-left:.6mm solid #d8bd8a;padding-left:2.2mm}}
+.lead .op b{{font-style:normal;font-size:7.2px;letter-spacing:.14em;text-transform:uppercase;color:#a07f46;margin-right:1.6mm}}
+.p1 .bar{{height:17mm}}.p1 .in{{padding-top:5mm}}.p1 .ttl{{margin-bottom:3.5mm}}.p1 .ttl h1{{font-size:17px}}
 .btn1{{top:4.8mm!important}}
 .ft{{position:absolute;left:14mm;right:14mm;bottom:7mm;display:flex;justify-content:space-between;font-size:8.5px;color:#8a92a3;letter-spacing:.06em}}
 .p2 .in{{padding:12mm 16mm 0}}
@@ -267,11 +274,7 @@ h4{{font-size:6.6px;letter-spacing:.14em;text-transform:uppercase;color:#a07f46;
 .btn1{{position:absolute;right:14mm;top:6.5mm;background:linear-gradient(135deg,#ecd6a6,#b08d57);color:#141008;font-weight:700;font-size:11px;padding:2.2mm 5mm;border-radius:99px;text-decoration:none}}
 .cta b{{font-size:17px;color:#fff}}.cta p{{font-size:11.5px;margin-top:1.5mm;max-width:130mm}}.cta span{{position:absolute;right:7mm;bottom:6mm;color:#d8bd8a;font-weight:700;font-size:11px}}
 </style></head><body>
-<section class="p1"><header class="bar"><div class="logo">NextGen <i>Profit</i></div></header>
-<div class="in"><div class="ttl"><h1>{t2['p1'] if len(groups) >= 10 else e(str(len(groups))) + ' ' + t['firms']}{(' · ' + e(area)) if area else ''}</h1><span>{e(when)}{(' · ' + e(firm)) if firm else ''}</span></div>
-<div class="grid">{''.join(cards)}</div></div>
-<div class="ft"><span>{t['conf']}</span><span>{t2['p1s']}</span></div>
-{f'<a class="btn1" href="{e(cta_url)}">{t2["btn1"]} &rarr;</a>' if cta_url else ''}</section>
+{pages}
 {page2}
 </body></html>"""
 
