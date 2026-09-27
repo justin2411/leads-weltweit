@@ -1,0 +1,144 @@
+{
+ "key": "de:home",
+ "file": "v4-home-de",
+ "lang": "de",
+ "tts": "de",
+ "voice": "piper:de_DE-thorsten-high",
+ "speed": 1.0,
+ "film": "film.html",
+ "ui": {
+  "newco": "Neues Unternehmen",
+  "ill": "Beispiel zur Veranschaulichung",
+  "daily": "Täglich geprüft",
+  "newlead": "Neuer Lead",
+  "brief": "Vertriebs-Briefing",
+  "why": "Warum jetzt",
+  "needs": "Wahrscheinlicher Bedarf",
+  "win": "So gewinnen Sie",
+  "opener": "Einstiegssatz",
+  "score": "Qualitätswert · mindestens 60",
+  "ills": "Beispielwerte",
+  "pdf": "PDF-Briefing",
+  "sheet": "Tabelle",
+  "nosoft": "Keine Software nötig",
+  "excl": "Exklusiv · eine Firma pro Branche",
+  "free": "10 kostenlose Leads · urteilen Sie selbst",
+  "btn": "10 Leads gratis",
+  "tag": "Die richtigen Unternehmen, im richtigen Moment.",
+  "prio": "Hohe Priorität",
+  "f": [
+   "Telefon",
+   "E-Mail",
+   "Website",
+   "Ansprechperson",
+   "Adresse",
+   "Branche"
+  ],
+  "phone_hd": "Kostenlose Probe",
+  "where": "In ganz Deutschland",
+  "monday": "Montag · 07:00",
+  "src": [
+   "Handelsregister",
+   "Bekanntmachungen",
+   "Karriereseiten"
+  ],
+  "today": "Heute eingetragen",
+  "for": "Signale für Ihre Branche",
+  "sig": [
+   [
+    "bank",
+    "Neugründung",
+    "Frisch eingetragen"
+   ],
+   [
+    "users",
+    "Neueinstellungen",
+    "Stellen seit Wochen offen"
+   ],
+   [
+    "store",
+    "Neuer Standort",
+    "Firma wächst"
+   ]
+  ],
+  "lead": {
+   "co": "Nordkai Logistik GmbH",
+   "dom": "nordkai-logistik",
+   "event": "Vor 3 Tagen eingetragen",
+   "sector": "Logistik",
+   "why": "Neu gegründet, erste Stellen",
+   "needs": "Dienstleister für den Start",
+   "win": "Zuerst anrufen, mit Anlass",
+   "opener": "Glückwunsch zur Gründung. Wer unterstützt Sie beim Start?",
+   "phone": "040 66969 482",
+   "email": "info@nordkai-logistik.de",
+   "web": "www.nordkai-logistik.de",
+   "contact": "Geschäftsführer · J. Brandt",
+   "addr": "Kaistraße 8, Hamburg",
+   "date": "24.09.2026",
+   "src": "Handelsregister"
+  }
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "Jedes Unternehmen braucht neue Kunden. Und der beste Moment, einen zu gewinnen, ist kurz.",
+   "pause": 0.55
+  },
+  {
+   "id": "tension",
+   "text": "Wer zu spät anruft, kommt nicht mehr zum Zug.",
+   "pause": 0.8
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit bringt Sie früher hin.",
+   "pause": 0.55
+  },
+  {
+   "id": "radar",
+   "text": "Jeden Tag prüfen wir Handelsregister, Bekanntmachungen und Karriereseiten, in ganz Deutschland.",
+   "pause": 0.3
+  },
+  {
+   "id": "signals",
+   "text": "Wir markieren die Momente, die für Ihre Branche zählen: Neugründungen, Neueinstellungen, neue Standorte.",
+   "pause": 0.45
+  },
+  {
+   "id": "lead",
+   "text": "Jeder Lead enthält Telefon, E-Mail, Website, die Geschäftsführung und das Ereignis mit Datum und Quelle.",
+   "pause": 0.3
+  },
+  {
+   "id": "brief",
+   "text": "Dazu ein kurzes Briefing: warum jetzt, was sie wahrscheinlich brauchen, und wie Sie sie gewinnen.",
+   "pause": 1.2
+  },
+  {
+   "id": "quality",
+   "text": "Jeder Lead bekommt einen Qualitätswert. Unter sechzig liefern wir nicht.",
+   "pause": 0.45
+  },
+  {
+   "id": "monday",
+   "text": "Jeden Montag: ein PDF-Briefing und eine Tabelle. Keine Software nötig.",
+   "pause": 0.4
+  },
+  {
+   "id": "exclusive",
+   "text": "Und jeder Lead geht nur an eine Firma pro Branche. Nicht an Ihre Konkurrenz.",
+   "pause": 0.5
+  },
+  {
+   "id": "cta",
+   "text": "Starten Sie mit zehn kostenlosen Leads, und urteilen Sie selbst.",
+   "pause": 0.55
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. Die richtigen Unternehmen, im richtigen Moment.",
+   "pause": 0.3
+  }
+ ]
+}

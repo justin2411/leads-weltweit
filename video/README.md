@@ -15,3 +15,15 @@ Lead-Karte mit Einstiegssatz · Qualitätsprüfung (Mindestwert 60, darunter wir
 Ton: `v3/mix.py <slug>` legt einen leisen Klangteppich, einen Puls in der Spannungsszene und einen Whoosh unter die Stimme (Stimme −16 LUFS, Teppich deutlich leiser).
 Bauen (aus `video/v3`): `python3 ../vo.py segments/<slug>.json` → `node ../render.mjs <slug> video 25` → `python3 mix.py <slug>` → ffmpeg mit `out/<slug>/mix.wav`.
 Aussagen nur belegbar: Qualitätswert und Mindestwert 60 (scripts/match.py), Quelle und Datum je Lead, jeder Lead einmal je Abo. Keine Superlative wie „die besten Leads“.
+
+## Version 4 (`v4/`): landesweit, Marke Dunkelblau + Gold
+Radar-Film wie v3 (neue Firma → Uhr läuft → Marke → Radar über den Quellen), danach: Signale der Branche · Lead-Karte
+(Telefon, E-Mail, Website, Ansprechperson aus dem Register, Adresse, Ereignis mit Datum und Quelle, Priorität) · Vertriebs-Briefing
+(warum jetzt, wahrscheinlicher Bedarf, wie gewinnen, Einstiegssatz) · Qualitätswert mindestens 60 · Montag: PDF-Briefing + Tabelle ·
+exklusiv eine Firma pro Branche · 10 kostenlose Leads · Abschluss. Keine Regionen: Leads aus dem ganzen Land.
+- Inhalte: `v4/segments.py` (Startseite en/fr/de, Branche × UK/US/FR, dazu DE) → `v4/segments/<name>.json`.
+- Stimme: `v4/vo.py` – Kokoro (en-gb `bf_emma`, en-us `af_heart`, fr `ff_siwis`), Deutsch lokal mit Piper (`pip install piper-tts`, `PIPER_MODEL`=de_DE-thorsten-high.onnx).
+- Bauen: `FFMPEG=… KOKORO_MODEL=… KOKORO_VOICES=… PIPER_MODEL=… v4/all.sh [name …]` (3 parallel, 1280×720, crf 26) →
+  `app/public/video/v4-*.mp4/.jpg` und Eintrag in `app/content/videos.json`. Kontrollbilder: `node render.mjs <name> stills` (in `v4/`).
+  Musik: `v3/music.py`. Satzlängen: `v4/lengths.py`.
+- Telefonnummern im Beispiel stammen aus den für Film/Fiktion reservierten Bereichen; Firmen und Personen sind erfunden.

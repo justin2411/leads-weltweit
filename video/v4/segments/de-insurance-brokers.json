@@ -1,0 +1,144 @@
+{
+ "key": "de:ind/insurance-brokers",
+ "file": "v4-de-insurance-brokers",
+ "lang": "de",
+ "tts": "de",
+ "voice": "piper:de_DE-thorsten-high",
+ "speed": 1.0,
+ "film": "film.html",
+ "ui": {
+  "newco": "Neues Unternehmen",
+  "ill": "Beispiel zur Veranschaulichung",
+  "daily": "Täglich geprüft",
+  "newlead": "Neuer Lead",
+  "brief": "Vertriebs-Briefing",
+  "why": "Warum jetzt",
+  "needs": "Wahrscheinlicher Bedarf",
+  "win": "So gewinnen Sie",
+  "opener": "Einstiegssatz",
+  "score": "Qualitätswert · mindestens 60",
+  "ills": "Beispielwerte",
+  "pdf": "PDF-Briefing",
+  "sheet": "Tabelle",
+  "nosoft": "Keine Software nötig",
+  "excl": "Exklusiv · eine Firma pro Branche",
+  "free": "10 kostenlose Leads · urteilen Sie selbst",
+  "btn": "10 Leads gratis",
+  "tag": "Die richtigen Unternehmen, im richtigen Moment.",
+  "prio": "Hohe Priorität",
+  "f": [
+   "Telefon",
+   "E-Mail",
+   "Website",
+   "Ansprechperson",
+   "Adresse",
+   "Branche"
+  ],
+  "phone_hd": "Kostenlose Probe",
+  "where": "In ganz Deutschland",
+  "monday": "Montag · 07:00",
+  "src": [
+   "Handelsregister",
+   "Bekanntmachungen",
+   "Karriereseiten"
+  ],
+  "today": "Heute eingetragen",
+  "for": "Für Versicherungsmakler",
+  "sig": [
+   [
+    "bank",
+    "Neugründung",
+    "Schutz ab Tag eins"
+   ],
+   [
+    "users",
+    "Erste Mitarbeitende",
+    "Betriebliche Vorsorge"
+   ],
+   [
+    "store",
+    "Neue Räume",
+    "Inhalt und Gebäude"
+   ]
+  ],
+  "lead": {
+   "co": "Lichtblick Küchenbau GmbH",
+   "dom": "lichtblick-kuechen",
+   "event": "Vor 9 Tagen eingetragen",
+   "sector": "Küchenbau",
+   "why": "Neue Räume, erste Mitarbeitende",
+   "needs": "Betriebshaftpflicht, Inhalt",
+   "win": "Mit der Haftpflicht einsteigen",
+   "opener": "Glückwunsch zur Gründung. Ist Ihre Betriebshaftpflicht schon geregelt?",
+   "phone": "040 66969 482",
+   "email": "info@lichtblick-kuechen.de",
+   "web": "www.lichtblick-kuechen.de",
+   "contact": "Geschäftsführer · J. Brandt",
+   "addr": "Kaistraße 8, Hamburg",
+   "date": "24.09.2026",
+   "src": "Handelsregister"
+  }
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "Gerade jetzt braucht ein neues Unternehmen in Deutschland Versicherungsschutz, bevor es startet.",
+   "pause": 0.55
+  },
+  {
+   "id": "tension",
+   "text": "Wer zu spät anruft, kommt nicht mehr zum Zug.",
+   "pause": 0.8
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit bringt Sie früher hin.",
+   "pause": 0.55
+  },
+  {
+   "id": "radar",
+   "text": "Jeden Tag prüfen wir Handelsregister, Bekanntmachungen und Karriereseiten, in ganz Deutschland.",
+   "pause": 0.3
+  },
+  {
+   "id": "signals",
+   "text": "Wir markieren, was für Makler zählt: Neugründungen, erste Mitarbeitende, neue Räume.",
+   "pause": 0.45
+  },
+  {
+   "id": "lead",
+   "text": "Jeder Lead enthält Telefon, E-Mail, Website, die Geschäftsführung und das Ereignis mit Datum und Quelle.",
+   "pause": 0.3
+  },
+  {
+   "id": "brief",
+   "text": "Dazu ein kurzes Briefing: warum jetzt, was sie wahrscheinlich brauchen, und wie Sie sie gewinnen.",
+   "pause": 1.2
+  },
+  {
+   "id": "quality",
+   "text": "Jeder Lead bekommt einen Qualitätswert. Unter sechzig liefern wir nicht.",
+   "pause": 0.45
+  },
+  {
+   "id": "monday",
+   "text": "Jeden Montag: ein PDF-Briefing und eine Tabelle. Keine Software nötig.",
+   "pause": 0.4
+  },
+  {
+   "id": "exclusive",
+   "text": "Und jeder Lead geht nur an eine Firma pro Branche. Nicht an Ihre Konkurrenz.",
+   "pause": 0.5
+  },
+  {
+   "id": "cta",
+   "text": "Starten Sie mit zehn kostenlosen Leads, und urteilen Sie selbst.",
+   "pause": 0.55
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. Die richtigen Unternehmen, im richtigen Moment.",
+   "pause": 0.3
+  }
+ ]
+}

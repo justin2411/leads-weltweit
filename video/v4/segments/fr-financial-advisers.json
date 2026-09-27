@@ -1,0 +1,144 @@
+{
+ "key": "fr/conseillers-patrimoine",
+ "file": "v4-fr-financial-advisers",
+ "lang": "fr",
+ "tts": "fr-fr",
+ "voice": "ff_siwis",
+ "speed": 1.16,
+ "film": "film.html",
+ "ui": {
+  "newco": "Nouvelle entreprise",
+  "ill": "Exemple illustratif",
+  "daily": "Vérifié chaque jour",
+  "newlead": "Nouvelle piste",
+  "brief": "Briefing commercial",
+  "why": "Pourquoi maintenant",
+  "needs": "Besoins probables",
+  "win": "Comment gagner",
+  "opener": "Phrase d'accroche",
+  "score": "Score qualité · minimum 60",
+  "ills": "Scores illustratifs",
+  "pdf": "Briefing PDF",
+  "sheet": "Tableur",
+  "nosoft": "Aucun logiciel",
+  "excl": "Exclusif · une entreprise par secteur",
+  "free": "10 pistes gratuites · jugez vous-même",
+  "btn": "Recevoir 10 pistes",
+  "tag": "Les bonnes entreprises, au bon moment.",
+  "prio": "Priorité haute",
+  "f": [
+   "Téléphone",
+   "E-mail",
+   "Site web",
+   "Contact",
+   "Adresse",
+   "Secteur"
+  ],
+  "phone_hd": "Échantillon gratuit",
+  "where": "Partout en France",
+  "monday": "Lundi · 07:00",
+  "src": [
+   "RNE · INPI",
+   "Annonces légales",
+   "Sites carrières"
+  ],
+  "today": "Immatriculée aujourd'hui",
+  "for": "Pour les conseillers en patrimoine",
+  "sig": [
+   [
+    "user",
+    "Nouveau dirigeant",
+    "Société toute neuve"
+   ],
+   [
+    "users",
+    "Premiers salariés",
+    "Épargne salariale"
+   ],
+   [
+    "trend",
+    "Équipe qui grandit",
+    "Avantages sociaux"
+   ]
+  ],
+  "lead": {
+   "co": "Studio Numérique Calanque SAS",
+   "dom": "studio-calanque",
+   "event": "Immatriculée il y a 5 jours",
+   "sector": "Agence digitale",
+   "why": "Deux dirigeants, premières embauches",
+   "needs": "Retraite, prévoyance du dirigeant",
+   "win": "Commencer par la rémunération",
+   "opener": "Félicitations pour la création. Avez-vous pensé à votre retraite et à votre prévoyance de dirigeant ?",
+   "phone": "04 65 71 23 18",
+   "email": "info@studio-calanque.fr",
+   "web": "www.studio-calanque.fr",
+   "contact": "Président · C. Morel",
+   "addr": "12 rue des Tanneurs, Grenoble",
+   "date": "24 sept. 2026",
+   "src": "RNE · INPI"
+  }
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "En ce moment, un nouveau dirigeant en France se pose des questions de retraite et de prévoyance.",
+   "pause": 0.55
+  },
+  {
+   "id": "tension",
+   "text": "Appelez trop tard, et la décision est déjà prise.",
+   "pause": 0.8
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit vous y amène en premier.",
+   "pause": 0.55
+  },
+  {
+   "id": "radar",
+   "text": "Chaque jour, nous analysons le registre national, les annonces légales et les sites carrières, partout en France.",
+   "pause": 0.3
+  },
+  {
+   "id": "signals",
+   "text": "Nous repérons ce qui compte pour un conseiller : nouveaux dirigeants, premiers salariés, équipes qui grandissent.",
+   "pause": 0.45
+  },
+  {
+   "id": "lead",
+   "text": "Chaque piste : téléphone, e-mail, site web, nom du dirigeant, et l'événement daté, avec sa source.",
+   "pause": 0.3
+  },
+  {
+   "id": "brief",
+   "text": "Avec un court briefing : pourquoi maintenant, leurs besoins probables, et comment les convaincre.",
+   "pause": 1.2
+  },
+  {
+   "id": "quality",
+   "text": "Chaque piste a un score. Sous soixante, nous ne la livrons pas.",
+   "pause": 0.45
+  },
+  {
+   "id": "monday",
+   "text": "Chaque lundi : un briefing PDF et un tableur. Aucun logiciel nécessaire.",
+   "pause": 0.4
+  },
+  {
+   "id": "exclusive",
+   "text": "Et chaque piste ne va qu'à une seule entreprise par secteur. Pas à vos concurrents.",
+   "pause": 0.5
+  },
+  {
+   "id": "cta",
+   "text": "Commencez avec dix pistes gratuites, et jugez vous-même.",
+   "pause": 0.55
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. Les bonnes entreprises, au bon moment.",
+   "pause": 0.3
+  }
+ ]
+}

@@ -126,7 +126,10 @@ def compose(T):
     g = np.ones(len(buf), dtype=np.float32)
     for l in T["lines"]:
         a, z = int(max(0, l["start"] - .15) * SR), int(min(D, l["end"] + .2) * SR); g[a:z] = 0.42
-    k = int(0.25 * SR); g = np.convolve(g, np.ones(k) / k, mode="same")
+    # gleitender Mittelwert wie np.convolve(g, ones(k)/k, "same"), aber über Summen statt O(n·k)
+    k = int(0.25 * SR); n = len(g); c = np.concatenate([[0.0], np.cumsum(g, dtype=np.float64)])
+    i = np.arange(n) + (k - 1) // 2
+    g = ((c[np.minimum(i, n - 1) + 1] - c[np.maximum(i - k + 1, 0)]) / k).astype(np.float32)
     return buf * g
 
 

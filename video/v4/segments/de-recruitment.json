@@ -1,0 +1,144 @@
+{
+ "key": "de:ind/recruitment",
+ "file": "v4-de-recruitment",
+ "lang": "de",
+ "tts": "de",
+ "voice": "piper:de_DE-thorsten-high",
+ "speed": 1.0,
+ "film": "film.html",
+ "ui": {
+  "newco": "Neues Unternehmen",
+  "ill": "Beispiel zur Veranschaulichung",
+  "daily": "Täglich geprüft",
+  "newlead": "Neuer Lead",
+  "brief": "Vertriebs-Briefing",
+  "why": "Warum jetzt",
+  "needs": "Wahrscheinlicher Bedarf",
+  "win": "So gewinnen Sie",
+  "opener": "Einstiegssatz",
+  "score": "Qualitätswert · mindestens 60",
+  "ills": "Beispielwerte",
+  "pdf": "PDF-Briefing",
+  "sheet": "Tabelle",
+  "nosoft": "Keine Software nötig",
+  "excl": "Exklusiv · eine Firma pro Branche",
+  "free": "10 kostenlose Leads · urteilen Sie selbst",
+  "btn": "10 Leads gratis",
+  "tag": "Die richtigen Unternehmen, im richtigen Moment.",
+  "prio": "Hohe Priorität",
+  "f": [
+   "Telefon",
+   "E-Mail",
+   "Website",
+   "Ansprechperson",
+   "Adresse",
+   "Branche"
+  ],
+  "phone_hd": "Kostenlose Probe",
+  "where": "In ganz Deutschland",
+  "monday": "Montag · 07:00",
+  "src": [
+   "Handelsregister",
+   "Bekanntmachungen",
+   "Karriereseiten"
+  ],
+  "today": "Heute eingetragen",
+  "for": "Für Personalvermittler",
+  "sig": [
+   [
+    "hourglass",
+    "30+ Tage offen",
+    "Schwer zu besetzen"
+   ],
+   [
+    "repeat",
+    "Neu ausgeschrieben",
+    "Gleiche Stelle, wieder"
+   ],
+   [
+    "users",
+    "3+ Stellen",
+    "Team wächst"
+   ]
+  ],
+  "lead": {
+   "co": "Brandtwerk Präzisionstechnik GmbH",
+   "dom": "brandtwerk",
+   "event": "5 Stellen · älteste 38 Tage",
+   "sector": "Maschinenbau",
+   "why": "Stellen seit Wochen offen",
+   "needs": "Fachkräfte Instandhaltung",
+   "win": "Vorauswahl für die älteste Stelle",
+   "opener": "Ihre Stelle in der Instandhaltung ist seit einigen Wochen offen. Würde Ihnen eine Vorauswahl helfen?",
+   "phone": "040 66969 482",
+   "email": "info@brandtwerk.de",
+   "web": "www.brandtwerk.de",
+   "contact": "Geschäftsführer · J. Brandt",
+   "addr": "Kaistraße 8, Hamburg",
+   "date": "24.09.2026",
+   "src": "Karriereseite"
+  }
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "Gerade jetzt sucht ein Arbeitgeber in Deutschland seit Wochen Personal.",
+   "pause": 0.55
+  },
+  {
+   "id": "tension",
+   "text": "Wer zu spät anruft, kommt nicht mehr zum Zug.",
+   "pause": 0.8
+  },
+  {
+   "id": "brand",
+   "text": "NextGen Profit bringt Sie früher hin.",
+   "pause": 0.55
+  },
+  {
+   "id": "radar",
+   "text": "Jeden Tag prüfen wir Handelsregister, Bekanntmachungen und Karriereseiten, in ganz Deutschland.",
+   "pause": 0.3
+  },
+  {
+   "id": "signals",
+   "text": "Wir markieren, was für Personalvermittler zählt: Stellen seit dreißig Tagen offen, neu ausgeschrieben, mehrere auf einmal.",
+   "pause": 0.45
+  },
+  {
+   "id": "lead",
+   "text": "Jeder Lead enthält Telefon, E-Mail, Website, die Geschäftsführung und das Ereignis mit Datum und Quelle.",
+   "pause": 0.3
+  },
+  {
+   "id": "brief",
+   "text": "Dazu ein kurzes Briefing: warum jetzt, was sie wahrscheinlich brauchen, und wie Sie sie gewinnen.",
+   "pause": 1.2
+  },
+  {
+   "id": "quality",
+   "text": "Jeder Lead bekommt einen Qualitätswert. Unter sechzig liefern wir nicht.",
+   "pause": 0.45
+  },
+  {
+   "id": "monday",
+   "text": "Jeden Montag: ein PDF-Briefing und eine Tabelle. Keine Software nötig.",
+   "pause": 0.4
+  },
+  {
+   "id": "exclusive",
+   "text": "Und jeder Lead geht nur an eine Firma pro Branche. Nicht an Ihre Konkurrenz.",
+   "pause": 0.5
+  },
+  {
+   "id": "cta",
+   "text": "Starten Sie mit zehn kostenlosen Leads, und urteilen Sie selbst.",
+   "pause": 0.55
+  },
+  {
+   "id": "end",
+   "text": "NextGen Profit. Die richtigen Unternehmen, im richtigen Moment.",
+   "pause": 0.3
+  }
+ ]
+}
