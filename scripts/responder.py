@@ -263,10 +263,10 @@ def notify_owner(subject: str, text: str) -> None:
 
 
 def regional_sample(db, seg: str, country: str, region: str | None) -> tuple[list[tuple[str, bytes]], bool]:
-    """10 Leads aus der Region des Käufers als CSV. (Dateien, regional?) – sonst Landes-Probe."""
+    """10 vollständige Leads aus dem ganzen Land (Inhaber 27.09.2026). (Dateien, True) – sonst ([], False)."""
     from deliveries import REQUIRE_CONTACT, _lang, contact_companies, enrich, to_csv
     from lib.regions import area_of, lead_matches
-    area = area_of(region)
+    area = None  # Leads aus dem ganzen Land (Inhaber 27.09.2026), keine Regionsauswahl mehr
     known = contact_companies(db) if REQUIRE_CONTACT else None
     rows = db.select_all("leads", {"segment_id": f"eq.{seg}", "country": f"eq.{country}", "status": "in.(new,sample)",
                                "select": "id,event_summary,event_date,source_name,source_url,source_date,urgency,"
@@ -278,25 +278,50 @@ def regional_sample(db, seg: str, country: str, region: str | None) -> tuple[lis
         co = l["watch_companies"]
         if known is not None and l["company_id"] not in known:
             continue
-        details = None
-        if country == "US" and l.get("observation_ids"):
-            obs = db.select("observations", {"id": f"eq.{l['observation_ids'][0]}", "select": "details"})
-            details = obs[0]["details"] if obs else None
-        if not lead_matches(country, area, co, details) or per.get(l["company_id"], 0) >= 3:
+        if per.get(l["company_id"], 0) >= 1:
             continue
         per[l["company_id"]] = per.get(l["company_id"], 0) + 1
         picked.append(l)
         if len(picked) >= 10:
             break
+    if len(picked) < 10 and area:
+        # nicht genug vollständige Leads aus der Region: vollständige Leads aus dem ganzen Land
+        return _country_sample(db, seg, country, rows, known)
     if len(picked) < 10:
-        return sample_files(seg, country), False
+        return [], False  # nie unvollständige Leads verschicken; Inhaber wird benachrichtigt
     for l in picked:
         l["segment_id"] = seg
     enrich(db, picked, known)
     data = to_csv(picked, _lang(country), area)
     name = re.sub(r"[^A-Za-z0-9]+", "-", area or country).strip("-")
     from lib.leadreport import attachments
-    return attachments(data, _lang(country), area, name="sample-leads"), True
+    return attachments(data, _lang(country), area, name="sample-leads", **sample_extras(db, seg, country)), True
+
+
+def sample_extras(db, seg: str, country: str) -> dict:
+    """Für das Proben-PDF: Pakete (settings.pricing), Link zur Zahlungsseite, Zielgruppe und Land."""
+    base = (os.environ.get("APP_BASE_URL") or os.environ.get("SITE_URL") or "https://www.nextgen-profit.de").rstrip("/")
+    plans = ((db.select("settings", {"select": "pricing"}) or [{}])[0].get("pricing")) or None
+    page = db.select("landing_pages", {"segment_id": f"eq.{seg}", "country": f"eq.{country}", "status": "eq.live", "select": "slug"})
+    return {"plans": plans, "cta_url": f"{base}/{page[0]['slug']}/start" if page else None, "segment": seg, "country": country}
+
+
+def _country_sample(db, seg: str, country: str, rows: list[dict], known) -> tuple[list[tuple[str, bytes]], bool]:
+    from deliveries import _lang, enrich, to_csv
+    picked, per = [], {}
+    for l in rows:
+        if known is not None and l["company_id"] not in known or per.get(l["company_id"], 0) >= 1:
+            continue
+        per[l["company_id"]] = 1
+        picked.append({**l, "segment_id": seg})
+        if len(picked) >= 10:
+            break
+    if len(picked) < 10:
+        return [], False
+    enrich(db, picked, known)
+    from lib.leadreport import attachments
+    return attachments(to_csv(picked, _lang(country)), _lang(country), None, name="sample-leads",
+                       **sample_extras(db, seg, country)), False
 
 
 def sample_files(seg: str, country: str) -> list[tuple[str, bytes]]:
@@ -445,7 +470,7 @@ def main(argv=None) -> int:
         elif action in ("sample", "sample_owner"):
             files, regional = regional_sample(db, p["segment_id"], p["country"], p.get("region"))
             from lib.regions import area_of
-            body, blocks = sample_mail(lang, area_of(p.get("region")), files, regional)
+            body, blocks = sample_mail(lang, None, files, True)  # Leads aus dem ganzen Land, kein Regionshinweis
             if body:
                 send_reply(sender, subject, body, mid, lang, files, blocks, requested=True)
                 if event_type != "sample_requested":

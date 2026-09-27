@@ -14,6 +14,7 @@ jobs:
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      COMPANIES_HOUSE_API_KEY: ${{ secrets.COMPANIES_HOUSE_API_KEY }}
       SENDER_NAME: ${{ secrets.SENDER_NAME }}
       SENDER_COMPANY: ${{ secrets.SENDER_COMPANY }}
       SENDER_TITLE: ${{ secrets.SENDER_TITLE }}
@@ -42,6 +43,7 @@ jobs:
           python scripts/watch.py sitecheck --limit 150
           python scripts/watch.py sitecheck --segment all --limit 400
           python scripts/watch.py contacts --limit 400
+          python scripts/watch.py people --limit 600
       - name: Proben aktualisieren
         run: |
           python scripts/samples.py
