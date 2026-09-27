@@ -27,9 +27,34 @@ LINE = "#E4E7EC"
 FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
 
 
+# Schlüsselstellen fett (nur im HTML, die Textversion bleibt schlicht): zum schnellen Überfliegen
+BOLD = [
+    "every Monday", "company, phone, email and an opening line", "No software, nothing to set up",
+    "one firm in your field only", "reserved for your firm", "free sample of 10 current leads", "free sample",
+    'a quick "yes" is enough', "you'd be the first to call", "the easiest conversation", "gets to quote",
+    "the first sensible conversation", "whoever reaches them first", "call them this week", "phone, email",
+    "chaque lundi", "l'entreprise, le téléphone, l'e-mail et une phrase d'accroche", "Aucun logiciel, rien à installer",
+    "une seule entreprise de votre secteur", "réservée à votre entreprise", "échantillon gratuit de 10 pistes actuelles",
+    "échantillon gratuit", "Un simple « oui » suffit", "vous seriez le premier à appeler", "appelez-les cette semaine",
+]
+
+
+def _bold(escaped: str) -> str:
+    done: list[tuple[int, int]] = []
+    for phrase in sorted(BOLD, key=len, reverse=True):
+        e = html.escape(phrase, quote=False)
+        i = escaped.find(e)
+        if i < 0 or any(a <= i < b or a < i + len(e) <= b for a, b in done):
+            continue
+        done.append((i, i + len(e)))
+    for a, b in sorted(done, reverse=True):
+        escaped = f"{escaped[:a]}<strong style=\"color:{NAVY};\">{escaped[a:b]}</strong>{escaped[b:]}"
+    return escaped
+
+
 def _p(text: str) -> str:
     return (f'<p style="margin:0 0 16px 0;font-family:{FONT};font-size:15px;line-height:24px;color:{INK};">'
-            f"{html.escape(text).replace(chr(10), '<br>')}</p>")
+            f"{_bold(html.escape(text, quote=False)).replace(chr(10), '<br>')}</p>")
 
 
 def cta_button(company: str, region: str | None, lang: str) -> str:
