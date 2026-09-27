@@ -263,25 +263,6 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
         </div></section>
       )}
 
-      <section className="tight"><div className="wrap">
-        <div className="deliv">
-          <div className="report" data-rv>
-            <div className="rp-head">
-              <span className="pulse" aria-hidden="true" />
-              <div><b>{F(fr ? "Aperçu : votre livraison avec NextGen Profit" : "Preview: your delivery with NextGen Profit")}</b>
-                <span>{fr ? "Chaque lundi · 07:00" : "Every Monday · 07:00"}</span></div>
-            </div>
-            <h3 className="rp-title">{F(SC.getsTitle)}</h3>
-            <ul className="rp-list">{SC.gets.map((g, k) => (
-              <li key={k} style={i(k)}><span className="ic" aria-hidden="true">{["◆", "◇", "◈", "❝"][k % 4]}</span>{F(g)}</li>))}</ul>
-          </div>
-          <div className="flow" data-rv>
-            <h3>{F(SC.stepsTitle)}</h3>
-            <ol>{SC.steps.map((st, k) => <li key={k} style={i(k)}><span className="dot">{k + 1}</span><p>{F(st)}</p></li>)}</ol>
-          </div>
-        </div>
-      </div></section>
-
       <section className="tinted tight"><div className="wrap">
         <Head eyebrow="" title={F(SC.revenueTitle)} />
         <div className="cards two">{SC.revenue.map(([h, d], k) => (
