@@ -1,6 +1,6 @@
 """Sprecherstimme je Zielgruppe: python vo.py segments/<name>.json [stimme]  ->  out/<name>/vo.wav + timing.json
 
-Sprache aus "lang" im JSON (en, fr, de). Englisch/Französisch: Kokoro (lokal). Deutsch: Piper (Stimme "Karlsson");
+Sprache aus "lang" im JSON (en, fr, de). Englisch/Französisch: Kokoro (lokal). Deutsch: Piper (Stimme "Thorsten");
 die Einzelsätze erzeugt der Ablauf .github/workflows/stimme.yml nach voice/<name>/<id>.wav, hier werden sie zusammengesetzt.
 """
 import json, os, sys
