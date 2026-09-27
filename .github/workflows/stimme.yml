@@ -30,7 +30,7 @@ jobs:
         working-directory: video/v3
         env:
           STIMME: ${{ github.event.inputs.stimme }}
-          PROBE: ${{ github.event.inputs.probe || (github.event_name == 'push' && 'true') || 'false' }}
+          PROBE: ${{ github.event.inputs.probe || 'false' }}
         run: |
           python - <<'PY'
           import glob, json, os, re, subprocess, urllib.request
