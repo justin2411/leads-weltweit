@@ -84,9 +84,15 @@ def check_workflows(c: Check) -> None:
         r = requests.get(f"https://api.github.com/repos/{repo}/actions/workflows/{wf}/runs",
                          params={"per_page": 5, "branch": "main"}, headers=h, timeout=30)
         r.raise_for_status()
-        runs = [x for x in r.json().get("workflow_runs", []) if x["status"] == "completed"]
+        all_runs = r.json().get("workflow_runs", [])
+        runs = [x for x in all_runs if x["status"] == "completed"]
+        running = [x for x in all_runs if x["status"] != "completed" and ago(x["created_at"]) < 4]
+        if running:
+            c.add("Abläufe", OK, f"{name}", f"läuft gerade (gestartet vor {ago(running[0]['created_at']) * 60:.0f} min)")
+            continue
         if not runs:
-            c.add("Abläufe", FAIL, f"{name}: noch nie gelaufen")
+            # wöchentliche Läufe (Kundenlieferung) sind nach dem Einrichten erst am nächsten Montag dran
+            c.add("Abläufe", WARN if max_h > 48 else FAIL, f"{name}: noch nie gelaufen")
             continue
         last = runs[0]
         age = ago(last["updated_at"])
