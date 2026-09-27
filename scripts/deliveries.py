@@ -56,7 +56,10 @@ def select_leads(leads: list[dict], sub: dict, already: set[str], details: dict[
     country = f.get("country")
     areas = f.get("areas") or []
     types = set(f.get("signal_types") or [])
-    cap = int((cfilter or {}).get("max_per_week") or f.get("max_per_week") or DEFAULT_MAX)
+    # Gebuchte Menge (Abo) ist die Obergrenze; der Kunde darf im Formular weniger wählen
+    booked = int(f.get("max_per_week") or 0)
+    wanted = int((cfilter or {}).get("max_per_week") or 0)
+    cap = min(x for x in (booked, wanted) if x) if (booked or wanted) else DEFAULT_MAX
     picked, per = [], {}
     for l in leads:
         if l["id"] in already or l["segment_id"] != sub["segment_id"] or l["country"] != country:
