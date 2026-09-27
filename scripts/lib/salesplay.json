@@ -1,0 +1,442 @@
+{
+ "_doc": "Verkaufs-Playbook je Käufer-Zielgruppe (S1, S2, S4, S5, S9) und Branche der Lead-Firma. needs = was die Firma jetzt wahrscheinlich braucht, offer = konkretes Einstiegsangebot, ask = Frage fürs erste Gespräch. Allgemeine Branchenkenntnis, keine Fakten über einzelne Firmen.",
+ "S5": {
+  "construction": {
+   "needs": [
+    "CIS returns for subcontractors every month from the first job",
+    "VAT registration and the domestic reverse charge on building work",
+    "Job costing so they know which contracts actually make money"
+   ],
+   "offer": "A CIS and VAT setup package with monthly returns handled, so they can focus on the sites.",
+   "ask": "Who will run your monthly CIS returns once the first subcontractors start?"
+  },
+  "retail": {
+   "needs": [
+    "VAT registration and a clean record of card and cash takings",
+    "Stock valuation and margin tracking from day one",
+    "Payroll for the first shop staff"
+   ],
+   "offer": "Bookkeeping set up on their till system with monthly VAT and a simple margin report.",
+   "ask": "How are you tracking takings and stock at the moment?"
+  },
+  "hospitality": {
+   "needs": [
+    "Payroll for staff with variable hours, tips and tronc",
+    "VAT on food and drink, often with mixed rates",
+    "Weekly cash-up and supplier invoices under control"
+   ],
+   "offer": "Payroll and VAT for hospitality, including tips, ready before the first busy weekend.",
+   "ask": "Who is running payroll and tips for your team?"
+  },
+  "transport": {
+   "needs": [
+    "Vehicle finance, fuel and maintenance costs recorded correctly",
+    "Payroll for drivers with overtime and allowances",
+    "VAT on fuel and cross-border work"
+   ],
+   "offer": "A monthly package covering driver payroll, VAT and a cost-per-vehicle report.",
+   "ask": "How are you keeping track of costs per vehicle?"
+  },
+  "property": {
+   "needs": [
+    "Clean rental accounts per property",
+    "Mortgage interest, corporation tax and director's pay planned together",
+    "Deadlines for the first company accounts"
+   ],
+   "offer": "Property company accounts with a simple per-property report and tax planning.",
+   "ask": "Is the company set up to hold the properties, and who is doing the accounts?"
+  },
+  "tech": {
+   "needs": [
+    "Director's pay planned between salary and dividends",
+    "VAT registration, often early because of B2B clients",
+    "R&D tax relief if they build their own software"
+   ],
+   "offer": "A start-up package: director's pay plan, VAT and a quick R&D relief check.",
+   "ask": "Have you looked at R&D tax relief for the work you are planning?"
+  },
+  "professional": {
+   "needs": [
+    "Director's pay and dividends planned from the first invoice",
+    "VAT registration and clean invoicing",
+    "Self-assessment for the directors alongside the company accounts"
+   ],
+   "offer": "Fixed monthly fee for company accounts, director's pay and personal tax returns in one.",
+   "ask": "Have you planned how you will pay yourself from the company?"
+  },
+  "health": {
+   "needs": [
+    "Payroll and pension auto-enrolment for the first staff",
+    "Clear records for different income streams",
+    "Regulatory costs and insurance tracked"
+   ],
+   "offer": "Payroll and pension setup for their first hires, plus monthly bookkeeping.",
+   "ask": "When are you planning to take on your first staff?"
+  },
+  "services": {
+   "needs": [
+    "Bookkeeping and VAT set up correctly from the start",
+    "Director's pay planned",
+    "First accounts and tax deadlines diarised"
+   ],
+   "offer": "A fixed-fee starter package: bookkeeping, VAT and a deadline calendar.",
+   "ask": "Who is looking after the books and the first tax filing?"
+  },
+  "_roles": {
+   "finance": {
+    "needs": [
+     "Month-end close, payroll and supplier payments are backing up while the seat is empty",
+     "Errors and late filings become a risk when the rest of the team covers",
+     "A reliable outside partner can take the work now and stay as backup later"
+    ],
+    "offer": "Interim or outsourced bookkeeping and payroll from next week, until the role is filled.",
+    "ask": "Who is covering month-end and payroll while the role is open?"
+   }
+  }
+ },
+ "S4": {
+  "construction": {
+   "needs": [
+    "Public and employers' liability before the first site",
+    "Contractors' all risks and tools cover",
+    "Vehicle cover for vans"
+   ],
+   "offer": "A contractor package that is ready before they sign their first job.",
+   "ask": "Do your first contracts already ask for proof of liability cover?"
+  },
+  "retail": {
+   "needs": [
+    "Stock and contents cover",
+    "Public liability for customers on the premises",
+    "Business interruption if the shop has to close"
+   ],
+   "offer": "A shop policy covering stock, premises and liability in one.",
+   "ask": "Is your stock insured from the day it arrives?"
+  },
+  "hospitality": {
+   "needs": [
+    "Public and product liability for food and drink",
+    "Employers' liability for staff",
+    "Equipment breakdown and business interruption"
+   ],
+   "offer": "A hospitality policy that meets licensing and landlord requirements.",
+   "ask": "Does your lease or licence require specific cover before opening?"
+  },
+  "transport": {
+   "needs": [
+    "Fleet and goods-in-transit cover",
+    "Employers' liability for drivers",
+    "Cover for hired-in vehicles"
+   ],
+   "offer": "A fleet and goods-in-transit quote that grows with each vehicle.",
+   "ask": "How many vehicles will you run in the first year?"
+  },
+  "property": {
+   "needs": [
+    "Landlord and buildings cover per property",
+    "Property owners' liability",
+    "Loss of rent cover"
+   ],
+   "offer": "A portfolio landlord policy instead of separate policies per property.",
+   "ask": "How many properties will the company hold at the start?"
+  },
+  "tech": {
+   "needs": [
+    "Professional indemnity for client work",
+    "Cyber cover for data and systems",
+    "Equipment cover for staff laptops"
+   ],
+   "offer": "Professional indemnity and cyber cover sized for their first contracts.",
+   "ask": "Do your client contracts ask for professional indemnity cover?"
+  },
+  "professional": {
+   "needs": [
+    "Professional indemnity",
+    "Public liability for client meetings",
+    "Cyber cover for client data"
+   ],
+   "offer": "A professional indemnity policy matched to their client contracts.",
+   "ask": "What level of indemnity do your clients expect?"
+  },
+  "health": {
+   "needs": [
+    "Medical malpractice or treatment risks cover",
+    "Employers' liability for staff",
+    "Public liability for patients or clients"
+   ],
+   "offer": "A combined policy for treatment risks, staff and premises.",
+   "ask": "Which regulator or body sets your insurance requirements?"
+  },
+  "services": {
+   "needs": [
+    "Public and employers' liability",
+    "Cover for equipment",
+    "Professional indemnity where they advise clients"
+   ],
+   "offer": "A small-business package with the covers they legally need.",
+   "ask": "Have you put employers' and public liability in place yet?"
+  }
+ },
+ "S2": {
+  "construction": {
+   "needs": [
+    "A website with project photos to win tenders and private jobs",
+    "Google Business Profile and local search",
+    "Simple quote-request form"
+   ],
+   "offer": "A project-portfolio website with a quote form, live within weeks.",
+   "ask": "Where do your enquiries come from at the moment?"
+  },
+  "retail": {
+   "needs": [
+    "An online shop or click-and-collect",
+    "Local search so people find the shop",
+    "Opening hours and offers that are easy to update"
+   ],
+   "offer": "A shop website with local search setup and optional online store.",
+   "ask": "Do you want customers to be able to order online?"
+  },
+  "hospitality": {
+   "needs": [
+    "Online booking and menus",
+    "Google Maps and review presence",
+    "Photos that sell the place"
+   ],
+   "offer": "A booking-ready website with menu, photos and Google profile setup.",
+   "ask": "How do guests book a table today?"
+  },
+  "transport": {
+   "needs": [
+    "A professional site for B2B customers",
+    "Quote or booking requests online",
+    "Trust signals: fleet, coverage, accreditations"
+   ],
+   "offer": "A B2B website with an online quote form and coverage map.",
+   "ask": "How do new customers request a quote?"
+  },
+  "property": {
+   "needs": [
+    "Property listings with good photos",
+    "Lead capture for tenants or buyers",
+    "A brand that looks established"
+   ],
+   "offer": "A listings website with enquiry capture and a clean brand.",
+   "ask": "Where are you advertising your properties right now?"
+  },
+  "tech": {
+   "needs": [
+    "A credible site that explains the product",
+    "Landing pages for campaigns",
+    "Fast, modern tech stack"
+   ],
+   "offer": "A product website with landing pages they can run campaigns on.",
+   "ask": "What should visitors do first on your website?"
+  },
+  "professional": {
+   "needs": [
+    "A site that builds trust: team, services, credentials",
+    "Contact and booking for consultations",
+    "Content that ranks for their services"
+   ],
+   "offer": "A professional website with booking and service pages that rank.",
+   "ask": "How do potential clients find you today?"
+  },
+  "health": {
+   "needs": [
+    "Online appointment booking",
+    "Clear services and prices",
+    "Local search and reviews"
+   ],
+   "offer": "A practice website with online booking and local SEO.",
+   "ask": "Can patients book online yet?"
+  },
+  "services": {
+   "needs": [
+    "A professional website from day one",
+    "Google Business Profile",
+    "A simple enquiry form"
+   ],
+   "offer": "A starter website with Google profile setup, live in two weeks.",
+   "ask": "Do you have a website yet, or is it on the list?"
+  },
+  "_roles": {
+   "sales": {
+    "needs": [
+     "New sales people need leads and a website that converts",
+     "Marketing material has to keep up with the growing team",
+     "Online enquiries take pressure off the sales team"
+    ],
+    "offer": "A website refresh with lead capture that supports the new sales hires.",
+    "ask": "How many enquiries does the website bring in each month?"
+   }
+  }
+ },
+ "S9": {
+  "construction": {
+   "needs": [
+    "Workplace pension for site staff",
+    "Key-person and director protection",
+    "Tax-efficient director's pay and pension contributions"
+   ],
+   "offer": "A workplace pension setup plus a director protection review.",
+   "ask": "Have you set up the workplace pension for your first staff?"
+  },
+  "retail": {
+   "needs": [
+    "Auto-enrolment for shop staff",
+    "Business protection if an owner falls ill",
+    "Owner's own pension planning"
+   ],
+   "offer": "Auto-enrolment setup and a short owner protection review.",
+   "ask": "Who is setting up the staff pension?"
+  },
+  "hospitality": {
+   "needs": [
+    "Auto-enrolment for staff with variable hours",
+    "Key-person cover",
+    "Owner's retirement planning"
+   ],
+   "offer": "A pension scheme that handles variable hours without admin headaches.",
+   "ask": "How are you handling pensions for staff on variable hours?"
+  },
+  "transport": {
+   "needs": [
+    "Workplace pension for drivers",
+    "Key-person and loan protection for vehicle finance",
+    "Director's pension contributions"
+   ],
+   "offer": "Workplace pension plus protection for the vehicle finance.",
+   "ask": "Is any of your vehicle finance personally guaranteed?"
+  },
+  "property": {
+   "needs": [
+    "Director's pension contributions as a tax-efficient extraction",
+    "Protection for mortgages",
+    "Long-term wealth planning"
+   ],
+   "offer": "A director's pension and mortgage protection plan.",
+   "ask": "Have you planned how you will take money out of the property company?"
+  },
+  "tech": {
+   "needs": [
+    "Employee benefits to attract talent",
+    "Share schemes and pension for founders",
+    "Key-person cover for founders"
+   ],
+   "offer": "A benefits package that helps them hire, plus founder protection.",
+   "ask": "What benefits are you planning to offer new hires?"
+  },
+  "professional": {
+   "needs": [
+    "Director's pension contributions",
+    "Relevant life and income protection",
+    "Staff pension as they grow"
+   ],
+   "offer": "A tax-efficient pension and protection plan for the directors.",
+   "ask": "Have you looked at paying into a pension through the company?"
+  },
+  "health": {
+   "needs": [
+    "Workplace pension for clinical staff",
+    "Income protection for practitioners",
+    "Practice succession planning"
+   ],
+   "offer": "Practice pension setup and income protection for the owners.",
+   "ask": "What happens to the practice income if you cannot work for a few months?"
+  },
+  "services": {
+   "needs": [
+    "Workplace pension",
+    "Director protection",
+    "Tax-efficient pension contributions"
+   ],
+   "offer": "A short review of pension and protection for the directors.",
+   "ask": "Is a pension for yourself and your staff already set up?"
+  }
+ },
+ "S1": {
+  "_roles": {
+   "finance": {
+    "needs": [
+     "Finance roles stay open because good candidates are already employed",
+     "Month-end and payroll work piles up while the seat is empty",
+     "Interim cover is often needed before a permanent hire"
+    ],
+    "offer": "Two or three pre-screened finance candidates within a week, plus an interim option.",
+    "ask": "How is the finance work being covered while the role is open?"
+   },
+   "tech": {
+    "needs": [
+     "IT candidates get several offers and move fast",
+     "Projects stall without the hire",
+     "A clear salary benchmark helps close faster"
+    ],
+    "offer": "A shortlist with salary benchmark within a week, contingent fee.",
+    "ask": "Which project is waiting on this hire?"
+   },
+   "sales": {
+    "needs": [
+     "Every week without the salesperson is lost revenue",
+     "They need people who can ramp up quickly",
+     "Commission structure affects who applies"
+    ],
+    "offer": "Candidates with proven sales in their sector, interviews within ten days.",
+    "ask": "What revenue target is this role carrying?"
+   },
+   "trades": {
+    "needs": [
+     "Skilled trades are scarce and rarely apply online",
+     "Work gets turned away without the people",
+     "Temporary cover keeps jobs running"
+    ],
+    "offer": "Temporary tradespeople this week and a permanent search in parallel.",
+    "ask": "Are you turning work away because of the open roles?"
+   },
+   "care": {
+    "needs": [
+     "Care and health roles have high turnover",
+     "Rotas depend on filling shifts",
+     "Compliance checks slow down hiring"
+    ],
+    "offer": "Pre-checked candidates and temporary shift cover while they recruit.",
+    "ask": "How many shifts are you covering with overtime right now?"
+   },
+   "hospitality": {
+    "needs": [
+     "Front and kitchen staff are hard to keep",
+     "Busy periods need extra hands fast",
+     "Short notice is normal"
+    ],
+    "offer": "Temporary staff for the next weekends and permanent candidates in parallel.",
+    "ask": "Which shifts are hardest to fill?"
+   },
+   "logistics": {
+    "needs": [
+     "Drivers and warehouse staff are in short supply",
+     "Missed deliveries cost customers",
+     "Seasonal peaks need temporary staff"
+    ],
+    "offer": "Licensed drivers and warehouse staff on short notice.",
+    "ask": "Do you have peaks coming up that need extra staff?"
+   },
+   "general": {
+    "needs": [
+     "The role has been open longer than planned",
+     "The team is covering the gap with overtime",
+     "They need a faster route to candidates"
+    ],
+    "offer": "A shortlist of pre-screened candidates within a week, contingent fee.",
+    "ask": "What has made this role hard to fill so far?"
+   }
+  },
+  "new_incorporation": {
+   "needs": [
+    "First hires decide how fast the company can start trading",
+    "Founders rarely have time to screen candidates",
+    "A good first team member stays for years"
+   ],
+   "offer": "Help with the first two or three hires, fixed fee per placement.",
+   "ask": "Who is the first person you need to hire?"
+  }
+ }
+}

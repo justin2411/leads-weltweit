@@ -363,7 +363,7 @@ def _test_sample(args, region: str) -> int:
     from responder import regional_sample, sample_mail, sample_subject, send_reply
     lang = "fr" if args.country == "FR" else "en"
     files, regional = regional_sample(DB(), args.segment, args.country, region)
-    area = area_of(region) if regional else None
+    area = None  # Leads aus dem ganzen Land
     body, blocks = sample_mail(lang, area, files, regional)
     if not body:
         print("Keine Probe-Datei vorhanden")
