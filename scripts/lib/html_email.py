@@ -175,7 +175,7 @@ def preview_rows(files: list[tuple[str, bytes]]) -> list[dict]:
         if name.isupper():
             name = re.sub(r"\bLlp\b", "LLP", name.title())
         out.append({"company": name, "location": (r.get("location") or "").split(",")[0].strip().title(),
-                    "event": ev[:140], "date": d, "source": re.sub(r"\s*\(.*\)$", "", r.get("source") or "")})
+                    "event": ev[:140], "date": d, "source": re.sub(r"^Karriereseite\b", "Careers page", re.sub(r"\s*\(.*\)$", "", r.get("source") or ""))})
         if len(out) >= 3:
             break
     return out

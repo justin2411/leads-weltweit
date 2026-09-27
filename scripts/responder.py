@@ -308,7 +308,18 @@ def sample_files(seg: str, country: str) -> list[tuple[str, bytes]]:
     return files
 
 
-def sample_text(lang: str, region: str | None, has_files: bool, regional: bool = True, preview: str = "") -> str | None:
+def has_contacts(files: list[tuple[str, bytes]]) -> bool:
+    """True, wenn jede Zeile der Probe Telefon und E-Mail hat (nur dann darf die Mail das behaupten)."""
+    import csv
+    import io
+    if not files:
+        return False
+    rows = list(csv.DictReader(io.StringIO(files[0][1].decode("utf-8-sig", "replace"))))
+    return bool(rows) and all((r.get("phone") or "").strip() and (r.get("email") or "").strip() for r in rows)
+
+
+def sample_text(lang: str, region: str | None, has_files: bool, regional: bool = True, preview: str = "",
+                contacts: bool = False) -> str | None:
     """Mail mit der Probe, im Namen des Inhabers. Ziel: wiederkehrende Lieferung (Abo), keine Preise, keine Zusagen.
     preview: optionaler Absatz mit den ersten Einträgen (in HTML als Tabelle dargestellt)."""
     if not has_files:
@@ -329,9 +340,11 @@ def sample_text(lang: str, region: str | None, has_files: bool, regional: bool =
         if preview:
             parts.append(preview)
         parts += [
-            "Chaque piste indique l'entreprise avec son téléphone et son e-mail, un court profil, l'événement et sa date, "
-            "la source officielle pour vérification, un conseil de vente et une phrase d'accroche pour le premier contact. "
-            "Dans la livraison régulière, chaque piste ne va qu'à une seule entreprise de votre secteur.",
+            ("Chaque piste indique l'entreprise avec son téléphone et son e-mail, un court profil, " if contacts else
+             "Chaque piste indique l'entreprise et sa localisation, ")
+            + "l'événement et sa date, la source officielle pour vérification et une phrase d'accroche pour le premier "
+            "contact. Dans la livraison régulière, chaque piste comprend le téléphone et l'e-mail de l'entreprise et ne va "
+            "qu'à une seule entreprise de votre secteur.",
             "Notre conseil : choisissez les deux ou trois pistes qui vous correspondent le mieux et contactez-les "
             "cette semaine, tant que l'événement est récent.",
             "Si l'échantillon vous est utile, je vous prépare volontiers une liste hebdomadaire adaptée à votre "
@@ -353,9 +366,11 @@ def sample_text(lang: str, region: str | None, has_files: bool, regional: bool =
         if preview:
             parts.append(preview)
         parts += [
-            "Every lead shows the company with its phone number and email, a short profile, the event and its date, "
-            "the official source so you can verify it, a sales tip and a suggested opening line for the first call. "
-            "In the regular delivery, each lead goes to only one firm in your field.",
+            ("Every lead shows the company with its phone number and email, a short profile, " if contacts else
+             "Every lead shows the company and its location, ")
+            + "the event and its date, the official source so you can verify it and a suggested opening line for the "
+            "first call. In the regular delivery, every lead includes the company's phone number and email and goes to "
+            "only one firm in your field.",
             "Our suggestion: pick the two or three leads that fit your firm best and contact them this week, while "
             "the event is still recent.",
             "If the sample is useful, I would be glad to set up a weekly list tailored to your firm. Two short "
@@ -372,7 +387,7 @@ def sample_mail(lang: str, region: str | None, files: list[tuple[str, bytes]], r
     """(Text, HTML-Blöcke) für die Probe-Mail: Text mit Vorschau-Absatz, HTML mit Vorschau-Tabelle."""
     from lib.html_email import preview_rows, sample_preview
     ptext, phtml = sample_preview(preview_rows(files), lang)
-    body = sample_text(lang, region, bool(files), regional, ptext)
+    body = sample_text(lang, region, bool(files), regional, ptext, contacts=has_contacts(files))
     return body, ({ptext: phtml} if ptext else {})
 
 
