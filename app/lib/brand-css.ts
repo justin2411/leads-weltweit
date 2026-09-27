@@ -29,7 +29,6 @@ export const BRAND_CSS = `
 .bx .hero:before{content:"";position:absolute;inset:-10%;z-index:-3;background:
   radial-gradient(900px 520px at 78% 18%,rgba(176,141,87,.20),transparent 60%),
   radial-gradient(700px 500px at 8% 90%,rgba(62,98,170,.24),transparent 60%);animation:aurora 18s ease-in-out infinite alternate}
-.bx .hero .spot{position:absolute;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(520px circle at var(--mx,72%) var(--my,28%),rgba(216,189,138,.12),transparent 60%)}
 .bx .hero canvas.net{position:absolute;inset:0;width:100%;height:100%;z-index:-2;opacity:.7;pointer-events:none}
 .bx .hero .wrap{display:grid;grid-template-columns:1.15fr .85fr;gap:56px;align-items:center;padding-top:96px;padding-bottom:104px}
 .bx .hero.solo .wrap{grid-template-columns:1fr;max-width:920px;padding-top:88px;padding-bottom:88px}

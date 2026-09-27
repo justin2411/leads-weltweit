@@ -90,7 +90,6 @@ export default async function Home() {
 
       <div className="hero" id="top">
         <HeroNet />
-        <div className="spot" aria-hidden="true" />
         <div className="wrap">
           <div>
             <div className="eyebrow later" style={{ "--d": ".05s" } as CSSProperties}>Trigger leads for B2B service firms</div>

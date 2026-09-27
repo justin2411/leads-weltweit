@@ -7,7 +7,7 @@ const calm = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
 /**
  * Alle Effekte der öffentlichen Seiten: Einblenden beim Scrollen, hochzählende Zahlen, Lichtschein unter der Maus
- * (Hero und Karten), leicht magnetische Buttons, Neigen der Lead-Karte, Fortschrittsbalken, kompakte Navigation.
+ * (Karten), leicht magnetische Buttons, Neigen der Lead-Karte, Fortschrittsbalken, kompakte Navigation.
  * Ohne JavaScript und bei "Bewegung reduzieren" bleibt alles sofort sichtbar.
  */
 export function Motion() {
@@ -56,17 +56,11 @@ export function Motion() {
     }, { rootMargin: "0px 0px -8% 0px", threshold: 0.12 });
     els.forEach((el) => io.observe(el));
 
-    // Lichtschein, Magnet-Buttons, Neigen
+    // Lichtschein auf Karten, Magnet-Buttons, Neigen
     const fine = matchMedia("(pointer: fine)").matches;
     if (fine) {
       on("pointermove", (e) => {
         const t = e.target as HTMLElement | null;
-        const hero = t?.closest?.<HTMLElement>(".hero");
-        if (hero) {
-          const r = hero.getBoundingClientRect();
-          hero.style.setProperty("--mx", `${e.clientX - r.left}px`);
-          hero.style.setProperty("--my", `${e.clientY - r.top}px`);
-        }
         const g = t?.closest?.<HTMLElement>(".glow");
         if (g) {
           const r = g.getBoundingClientRect();

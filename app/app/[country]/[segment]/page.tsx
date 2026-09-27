@@ -127,7 +127,6 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
 
       <div className="hero solo" id="top">
         <HeroNet />
-        <div className="spot" aria-hidden="true" />
         <div className="wrap">
           {personal?.firma && <div className="for later" style={{ "--d": ".05s" } as CSSProperties}>{fr ? `Préparé pour ${personal.firma}` : `Prepared for ${personal.firma}`}</div>}
           <h1><Words text={headline} /></h1>
