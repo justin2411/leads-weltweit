@@ -22,11 +22,11 @@
   "de:home": {
     "src": "/video/home-de.mp4",
     "poster": "/video/home-de.jpg",
-    "seconds": 63
+    "seconds": 60
   },
   "en:home": {
     "src": "/video/home-en.mp4",
     "poster": "/video/home-en.jpg",
-    "seconds": 56
+    "seconds": 55
   }
 }
