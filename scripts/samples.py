@@ -7,7 +7,6 @@ die wie Personennamen aussehen (Heuristik: nur zwei Wörter + LLC/Ltd ohne Branc
 """
 from __future__ import annotations
 
-import csv
 import re
 import sys
 from pathlib import Path
@@ -37,7 +36,9 @@ def looks_personal(name: str) -> bool:
 
 def main() -> int:
     db = DB()
+    from deliveries import _lang, contact_companies, enrich, to_csv
     exps = db.select("experiments", {"select": "segment_id,country"})
+    known = contact_companies(db)
     for e in exps:
         seg, c = e["segment_id"], e["country"]
         existing = db.select("leads", {"segment_id": f"eq.{seg}", "country": f"eq.{c}", "status": "eq.sample",
@@ -47,7 +48,8 @@ def main() -> int:
                                     "select": "*,watch_companies(name,legal_form,city,region,address,website)",
                                     "order": "event_date.desc,id"})
         leads = [l for l in leads if not looks_personal(l["watch_companies"]["name"])]
-        leads.sort(key=lambda l: (URG.get(l["urgency"], 3), -(int((l.get("event_date") or "1900-01-01").replace("-", "")))))
+        # Leads mit Telefon und E-Mail zuerst (so sieht der Kunde, was er im Abo bekäme)
+        leads.sort(key=lambda l: (l["company_id"] not in known, URG.get(l["urgency"], 3), -(int((l.get("event_date") or "1900-01-01").replace("-", "")))))
         chosen, per_company = [], {}
         for l in leads:
             if per_company.get(l["company_id"], 0) >= 3:
@@ -64,16 +66,8 @@ def main() -> int:
                 db.update("leads", {"id": l["id"]}, {"status": "sample"})
         out = ROOT / "samples" / seg / c
         out.mkdir(parents=True, exist_ok=True)
-        with open(out / "leads.csv", "w", newline="", encoding="utf-8") as fh:
-            w = csv.writer(fh)
-            w.writerow(["company", "legal_form", "location", "signal", "event", "event_date", "source", "source_url",
-                        "checked_on", "urgency", "urgency_reason", "opener"])
-            for l in chosen:
-                co = l["watch_companies"]
-                loc = ", ".join(x for x in (co.get("city"), co.get("region")) if x)
-                w.writerow([co["name"], co.get("legal_form") or "", loc, l["signal_type"], l["event_summary"],
-                            l.get("event_date") or "", l["source_name"], l.get("source_url") or "", l["source_date"],
-                            l["urgency"], l["urgency_reason"], l["opener"]])
+        enrich(db, chosen, known)
+        (out / "leads.csv").write_bytes(to_csv(chosen, _lang(c)))
         print(f"{seg}/{c}: Probe mit {len(chosen)} Leads -> {out / 'leads.csv'}")
     return 0
 

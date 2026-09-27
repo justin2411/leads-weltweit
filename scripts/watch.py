@@ -334,18 +334,24 @@ def cmd_uk_bulk(db: DB, args) -> None:
 
 
 def cmd_sitecheck(db: DB, args) -> None:
-    """Neugründungen (letzte 30 Tage): gibt es schon eine Website? Ergänzt die Webagentur-Leads (S2)."""
+    """Neugründungen (letzte 30 Tage): gibt es schon eine Website? Ergänzt die Webagentur-Leads (S2) und ist
+    Voraussetzung für Telefon und Sammel-E-Mail (cmd_contacts). --segment all prüft die Neugründungen aller Segmente."""
     from lib.sitecheck import find_website
     session = requests.Session()
     since = (TODAY - dt.timedelta(days=30)).isoformat()
-    leads = db.select("leads", {"segment_id": "eq.S2", "signal_type": "eq.new_incorporation", "event_date": f"gte.{since}",
-                                "select": "id,company_id,event_summary,watch_companies(id,name,country,website_checked_at)",
-                                "limit": str(args.limit)})
+    q = {"signal_type": "eq.new_incorporation", "event_date": f"gte.{since}", "order": "event_date.desc",
+         "select": "id,company_id,segment_id,event_summary,watch_companies!inner(id,name,country,website_checked_at)",
+         "watch_companies.website_checked_at": "is.null", "limit": str(args.limit * 3)}
+    if args.segment != "all":
+        q["segment_id"] = f"eq.{args.segment}"
+    leads = db.select("leads", q)
     n = found = 0
+    seen: set[str] = set()
     for l in leads:
         co = l["watch_companies"]
-        if co.get("website_checked_at"):
+        if co.get("website_checked_at") or co["id"] in seen or n >= args.limit:
             continue
+        seen.add(co["id"])
         site, checked = find_website(co["name"], co["country"], session)
         db.update("watch_companies", {"id": co["id"]}, {"website_checked_at": NOW.isoformat(),
                                                         **({"website": site} if site else {})})
@@ -353,11 +359,42 @@ def cmd_sitecheck(db: DB, args) -> None:
         if site:
             found += 1
             continue
+        if l["segment_id"] != "S2":
+            continue
         fr = co["country"] == "FR"
         extra = (f" Aucun site trouvé ({', '.join(checked[:3])} vérifiés le {TODAY:%d/%m/%Y})." if fr else
                  f" No website found yet (checked {', '.join(checked[:3])} on {TODAY:%-d %b %Y}).")
         db.update("leads", {"id": l["id"]}, {"event_summary": l["event_summary"].rstrip() + extra, "urgency": "high"})
     print(f"{n} Neugründungen geprüft, {found} mit Website, {n - found} ohne gefundene Website")
+
+
+def cmd_contacts(db: DB, args) -> None:
+    """Zentrale Telefonnummer und Sammel-E-Mail (info@ …) von der eigenen Website der Firma, höchstens alle 30 Tage."""
+    from lib.contacts import fetch_contacts
+    session = requests.Session()
+    done = {o["company_id"]: o for o in db.select_all("observations", {"kind": "eq.other", "key": "eq.contact",
+                                                                        "select": "company_id,last_seen"})}
+    cutoff = (TODAY - dt.timedelta(days=30)).isoformat()
+    cos = db.select_all("watch_companies", {"website": "not.is.null", "active": "eq.true",
+                                            "select": "id,name,website,phone_main", "order": "id"})
+    n = hit = 0
+    for c in cos:
+        prev = done.get(c["id"])
+        if prev and (prev.get("last_seen") or "") >= cutoff:
+            continue
+        if n >= getattr(args, "limit", 200):
+            break
+        n += 1
+        found = fetch_contacts(c["website"], session)
+        db.insert("observations", {"company_id": c["id"], "kind": "other", "key": "contact",
+                                   "first_seen": TODAY.isoformat(), "last_seen": TODAY.isoformat(),
+                                   "source_name": "Company website", "source_url": (found["pages"] or [c["website"]])[0],
+                                   "details": {"email": found["email"], "phone": found["phone"]}},
+                  upsert_on="company_id,kind,key")
+        if found["phone"] and not c.get("phone_main"):
+            db.update("watch_companies", {"id": c["id"]}, {"phone_main": found["phone"]})
+        hit += bool(found["email"] or found["phone"])
+    print(f"{n} Websites auf allgemeine Kontakte geprüft, {hit} mit Telefon oder Sammel-E-Mail")
 
 
 def cmd_detect(db: DB, args) -> None:
@@ -394,20 +431,21 @@ def cmd_detect(db: DB, args) -> None:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("cmd", choices=["careers", "websites", "uk-incorporations", "ny-incorporations", "detect", "daily",
-                                    "import-employers", "fr-incorporations", "uk-bulk", "sitecheck"])
+                                    "import-employers", "fr-incorporations", "uk-bulk", "sitecheck", "contacts"])
     ap.add_argument("--departement", default="69")
     ap.add_argument("files", nargs="*")
     ap.add_argument("--country", default="UK")
     ap.add_argument("--days", type=int, default=30)
     ap.add_argument("--limit", type=int, default=100)
+    ap.add_argument("--segment", default="S2", help="sitecheck: Segment oder 'all'")
     ap.add_argument("--location"); ap.add_argument("--sic"); ap.add_argument("--county")
     args = ap.parse_args(argv)
     db = DB()
     steps = {"careers": [cmd_careers], "websites": [cmd_websites], "uk-incorporations": [cmd_uk_incorporations],
              "ny-incorporations": [cmd_ny_incorporations], "detect": [cmd_detect],
              "import-employers": [cmd_import_employers], "fr-incorporations": [cmd_fr_incorporations],
-             "uk-bulk": [cmd_uk_bulk], "sitecheck": [cmd_sitecheck],
-             "daily": [cmd_careers, cmd_websites, cmd_detect]}[args.cmd]
+             "uk-bulk": [cmd_uk_bulk], "sitecheck": [cmd_sitecheck], "contacts": [cmd_contacts],
+             "daily": [cmd_careers, cmd_websites, cmd_contacts, cmd_detect]}[args.cmd]
     for step in steps:
         step(db, args)
     return 0

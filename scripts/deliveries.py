@@ -30,8 +30,12 @@ from lib.rules import brand  # noqa: E402
 
 FRESH_DAYS = 14          # nur Leads, die höchstens so alt sind
 DEFAULT_MAX = 30         # Leads pro Woche, falls im Abo nichts steht
-CSV_HEADER = ["company", "legal_form", "location", "event", "event_date", "source", "source_url", "checked_on",
-              "urgency", "urgency_reason", "opener", "industry", "sales_tip"]
+# Reihenfolge so, wie der Kunde arbeitet: wer, wie erreichbar, worum es geht, was sagen, woher belegt.
+CSV_HEADER = ["company", "phone", "email", "website", "location", "company_profile", "event", "event_date",
+              "why_now", "priority", "sales_tip", "question_to_ask", "opening_line",
+              "source", "source_url", "checked_on", "legal_form", "industry"]
+# Kunde bekommt nur Leads mit zentraler Telefonnummer UND Sammel-E-Mail (Inhaber 27.09.2026: "immer beides").
+REQUIRE_CONTACT = True
 
 
 def week_start(today: dt.date | None = None) -> dt.date:
@@ -89,21 +93,72 @@ def add_industry(db, leads: list[dict]) -> None:
             if sic:
                 l["_industry"] = str(sic).split(" - ", 1)[-1]
                 hint = industry_hint(l.get("segment_id") or "", sic)
-                l["_tip"] = hint[0] if hint else ""
+                if hint:
+                    l["_tip"], l["_question"] = hint[0], hint[1] if len(hint) > 1 else ""
 
 
-def to_csv(leads: list[dict]) -> bytes:
+def contact_companies(db) -> dict[str, dict]:
+    """Firmen mit veröffentlichter zentraler Telefonnummer und Sammel-E-Mail (watch.py contacts)."""
+    rows = db.select_all("observations", {"kind": "eq.other", "key": "eq.contact", "details->>email": "not.is.null",
+                                          "details->>phone": "not.is.null", "select": "company_id,details,source_url"})
+    return {r["company_id"]: {**r["details"], "page": r.get("source_url")} for r in rows}
+
+
+def add_contacts(db, leads: list[dict], known: dict[str, dict] | None = None) -> None:
+    """Telefon, E-Mail und Website je Lead (nur allgemeine Firmenkontakte, keine Personen)."""
+    ids = sorted({l["company_id"] for l in leads if l.get("company_id")})
+    if known is None:
+        known = {}
+        for i in range(0, len(ids), 100):
+            for r in db.select("observations", {"company_id": f"in.({','.join(ids[i:i + 100])})", "kind": "eq.other",
+                                                "key": "eq.contact", "select": "company_id,details"}):
+                known[r["company_id"]] = r.get("details") or {}
+    sites = {}
+    for i in range(0, len(ids), 100):
+        for c in db.select("watch_companies", {"id": f"in.({','.join(ids[i:i + 100])})", "select": "id,website,phone_main"}):
+            sites[c["id"]] = c
+    for l in leads:
+        k, c = known.get(l.get("company_id")) or {}, sites.get(l.get("company_id")) or {}
+        l["_phone"] = k.get("phone") or c.get("phone_main") or ""
+        l["_email"] = k.get("email") or ""
+        l["_website"] = c.get("website") or ""
+
+
+def company_profile(l: dict, lang: str = "en") -> str:
+    """Kurzprofil aus belegten Daten (Register, Website) – nichts erfunden, keine Kosten."""
+    co = l.get("watch_companies") or {}
+    ind, city, form = l.get("_industry"), co.get("city"), co.get("legal_form")
+    new = l.get("signal_type") == "new_incorporation" or "incorporat" in (l.get("event_summary") or "").lower()
+    date = l.get("event_date") or ""
+    if lang == "fr":
+        parts = [f"Activité : {ind}" if ind else "", f"{form}" if form else "", f"basée à {city}" if city else "",
+                 f"immatriculée le {date}" if new and date else "", "site web actif" if l.get("_website") else ""]
+    else:
+        parts = [f"{ind}" if ind else "", f"{form}" if form else "", f"based in {city}" if city else "",
+                 f"registered {date}" if new and date else "", "live website" if l.get("_website") else ""]
+    text = ", ".join(p for p in parts if p)
+    return text[:1].upper() + text[1:]
+
+
+def enrich(db, leads: list[dict], known: dict[str, dict] | None = None) -> None:
+    add_industry(db, leads)
+    add_contacts(db, leads, known)
+
+
+def to_csv(leads: list[dict], lang: str = "en", area: str | None = None) -> bytes:
     buf = io.StringIO()
     w = csv.writer(buf)
     w.writerow(CSV_HEADER)
     for l in leads:
         co = l.get("watch_companies") or {}
-        w.writerow([co.get("name", ""), co.get("legal_form") or "",
-                    ", ".join(x for x in (co.get("city"), co.get("region")) if x),
-                    l["event_summary"], l.get("event_date") or "", l["source_name"], l.get("source_url") or "",
-                    l["source_date"], l["urgency"], l["urgency_reason"], l["opener"],
-                    l.get("_industry", ""), l.get("_tip", "")])
-    return buf.getvalue().encode("utf-8")
+        where = ", ".join(x for x in (co.get("city"), area or co.get("region")) if x)
+        w.writerow([co.get("name", ""), l.get("_phone", ""), l.get("_email", ""), l.get("_website", ""), where,
+                    company_profile(l, lang), l["event_summary"], l.get("event_date") or "", l["urgency_reason"],
+                    l["urgency"], l.get("_tip", ""), l.get("_question", ""), l["opener"],
+                    l["source_name"], l.get("source_url") or "", l["source_date"], co.get("legal_form") or "",
+                    l.get("_industry", "")])
+    # BOM, damit Excel Umlaute und Akzente richtig anzeigt
+    return ("\ufeff" + buf.getvalue()).encode("utf-8")
 
 
 def delivery_text(lang: str, n: int, period: dt.date, areas: list[str]) -> tuple[str, str]:
@@ -113,7 +168,8 @@ def delivery_text(lang: str, n: int, period: dt.date, areas: list[str]) -> tuple
         subject = f"Vos nouvelles pistes – semaine du {period:%d/%m/%Y}"
         body = (f"Bonjour,\n\nVous trouverez ci-joint vos {n} nouvelles pistes de la semaine"
                 + (f" pour {where}" if where else "") + ".\n\n"
-                "Chaque ligne indique l'événement, sa date, la source officielle et une phrase d'accroche. "
+                "Chaque ligne indique le téléphone et l'e-mail de l'entreprise, un court profil, l'événement avec sa date "
+                "et sa source officielle, un conseil de vente, une question pour ouvrir l'échange et une phrase d'accroche. "
                 "Si vous souhaitez ajuster les villes ou les types de signaux, répondez simplement à ce message.\n\n"
                 "Bien cordialement,\n" + signature(lang))
         if n == 0:
@@ -125,7 +181,8 @@ def delivery_text(lang: str, n: int, period: dt.date, areas: list[str]) -> tuple
     subject = f"Your new leads – week of {period:%d %B %Y}"
     body = (f"Hello,\n\nPlease find attached your {n} new leads for this week"
             + (f" in {where}" if where else "") + ".\n\n"
-            "Each row shows the event, its date, the official source and a suggested opening line. "
+            "Each row gives the company's phone number and email, a short profile, the event with its date and "
+            "official source, a sales tip, a question to open the call and a suggested opening line. "
             "If you would like to adjust the towns or signal types, simply reply to this email.\n\n"
             "Best regards,\n" + signature(lang))
     if n == 0:
@@ -199,6 +256,12 @@ def cmd_prepare(args) -> int:
         print("Keine aktiven Abos – nichts zu liefern.")
         return 0
     leads, details = _load_leads(db, dt.date.today() - dt.timedelta(days=FRESH_DAYS))
+    known = None
+    if REQUIRE_CONTACT:
+        known = contact_companies(db)
+        before = len(leads)
+        leads = [l for l in leads if l["company_id"] in known]
+        print(f"{len(leads)} von {before} frischen Leads mit Telefon und E-Mail")
     ids = [l["id"] for l in leads]
     tags = {}
     for i in range(0, len(ids), 150):
@@ -217,6 +280,7 @@ def cmd_prepare(args) -> int:
             already.update(d["lead_ids"] or [])
         cf = db.select("customer_filters", {"customer_id": f"eq.{s['customer_id']}"})
         picked = select_leads(leads, s, already, details, tags=tags, cfilter=cf[0] if cf else None)
+        enrich(db, picked, known)
         if len(picked) < 5:
             db.insert("decisions", {"type": "delivery", "subject": f"Wenig Leads für {s['customers']['company_name']}",
                                     "reasoning": f"Nur {len(picked)} passende Leads (Qualität ab 60) für {period} – "
@@ -248,7 +312,8 @@ def _notify_first(previews: list[tuple[dict, list[dict]]]) -> None:
         lines.append(f"- {c['company_name']} ({c['country']}, {s['segment_id']}, {', '.join(s['filters'].get('areas') or [])}): "
                      f"{len(picked)} Leads an {c['billing_email']}")
         lines.append(f"  Freigabe: GitHub → Actions → kundenlieferung → Run workflow, Befehl 'approve', Abo {s['id']}")
-        files.append((re.sub(r"[^A-Za-z0-9]+", "-", c["company_name"]).strip("-") + ".csv", to_csv(picked)))
+        files.append((re.sub(r"[^A-Za-z0-9]+", "-", c["company_name"]).strip("-") + ".csv",
+                      to_csv(picked, _lang(c["country"]))))
     lines.append("\nOder im Chat mit Claude: „Lieferung für <Firma> freigeben“.")
     _resend([owner], f"Freigabe: erste Lieferung für {len(previews)} Kunden", "\n".join(lines), attachments=files)
     print(f"Vorschau an {owner} geschickt")
@@ -283,13 +348,14 @@ def cmd_send(args) -> int:
             leads += db.select("leads", {"id": f"in.({','.join(ids[i:i + 100])})",
                                          "select": "id,event_summary,event_date,source_name,source_url,source_date,"
                                                    "urgency,urgency_reason,opener,segment_id,observation_ids,"
+                                                   "signal_type,company_id,"
                                                    "watch_companies(name,legal_form,city,region)"})
-        add_industry(db, leads)
+        enrich(db, leads)
         lang = _lang(c["country"])
         period = dt.date.fromisoformat(d["period_start"])
         subject, body = delivery_text(lang, len(leads), period, s["filters"].get("areas") or [])
         footer = f"{brand()} · {os.environ.get('SENDER_POSTAL_ADDRESS', '')}".strip(" ·")
-        files = [(f"leads-{period.isoformat()}.csv", to_csv(leads))] if leads else None
+        files = [(f"leads-{period.isoformat()}.csv", to_csv(leads, lang))] if leads else None
         if not args.live:
             print(f"[Probelauf] {c['company_name']} <{c['billing_email']}>: {len(leads)} Leads, Betreff „{subject}“")
             continue

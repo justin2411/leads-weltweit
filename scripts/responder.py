@@ -264,10 +264,10 @@ def notify_owner(subject: str, text: str) -> None:
 
 def regional_sample(db, seg: str, country: str, region: str | None) -> tuple[list[tuple[str, bytes]], bool]:
     """10 Leads aus der Region des Käufers als CSV. (Dateien, regional?) – sonst Landes-Probe."""
-    import csv
-    import io
+    from deliveries import REQUIRE_CONTACT, _lang, contact_companies, enrich, to_csv
     from lib.regions import area_of, lead_matches
     area = area_of(region)
+    known = contact_companies(db) if REQUIRE_CONTACT else None
     rows = db.select_all("leads", {"segment_id": f"eq.{seg}", "country": f"eq.{country}", "status": "in.(new,sample)",
                                "select": "id,event_summary,event_date,source_name,source_url,source_date,urgency,"
                                          "urgency_reason,opener,signal_type,company_id,observation_ids,"
@@ -276,6 +276,8 @@ def regional_sample(db, seg: str, country: str, region: str | None) -> tuple[lis
     picked, per = [], {}
     for l in rows:
         co = l["watch_companies"]
+        if known is not None and l["company_id"] not in known:
+            continue
         details = None
         if country == "US" and l.get("observation_ids"):
             obs = db.select("observations", {"id": f"eq.{l['observation_ids'][0]}", "select": "details"})
@@ -288,22 +290,12 @@ def regional_sample(db, seg: str, country: str, region: str | None) -> tuple[lis
             break
     if len(picked) < 10:
         return sample_files(seg, country), False
-    buf = io.StringIO()
-    w = csv.writer(buf)
-    w.writerow(["company", "legal_form", "location", "event", "event_date", "source", "source_url", "checked_on",
-                "urgency", "urgency_reason", "opener", "industry", "sales_tip"])
     for l in picked:
         l["segment_id"] = seg
-    from deliveries import add_industry
-    add_industry(db, picked)
-    for l in picked:
-        co = l["watch_companies"]
-        w.writerow([co["name"], co.get("legal_form") or "", ", ".join(x for x in (co.get("city"), area) if x),
-                    l["event_summary"], l.get("event_date") or "", l["source_name"], l.get("source_url") or "",
-                    l["source_date"], l["urgency"], l["urgency_reason"], l["opener"],
-                    l.get("_industry", ""), l.get("_tip", "")])
+    enrich(db, picked, known)
+    data = to_csv(picked, _lang(country), area)
     name = re.sub(r"[^A-Za-z0-9]+", "-", area or country).strip("-")
-    return [(f"sample-10-leads-{name}.csv", buf.getvalue().encode("utf-8"))], True
+    return [(f"sample-10-leads-{name}.csv", data)], True
 
 
 def sample_files(seg: str, country: str) -> list[tuple[str, bytes]]:
