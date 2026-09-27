@@ -57,6 +57,27 @@ function eventText(signal: string, raw: string, dateIso: string | null, lang: "e
   return raw;
 }
 
+/** Einstiegssatz in der Sprache der Seite. Die gespeicherten Sätze sind englisch; FR/DE aus festen Vorlagen je Signal. */
+function openerText(signal: string, raw: string, name: string, n: string | undefined, lang: "en" | "fr" | "de"): string {
+  if (lang === "en") return raw;
+  const T = {
+    fr: {
+      reg: `Félicitations pour la création de ${name}. Avez-vous déjà choisi vos partenaires pour les premiers mois ?`,
+      many: `J'ai vu que ${name} recrute ${n ? `${n} personnes` : "plusieurs personnes"} en ce moment. Cette croissance est-elle aussi l'occasion de revoir certains sujets en interne ?`,
+      open: `J'ai vu qu'un poste est ouvert depuis quelques semaines chez ${name}. Un soutien externe en attendant vous serait-il utile ?`,
+    },
+    de: {
+      reg: `Herzlichen Glückwunsch zur Gründung von ${name}. Haben Sie für die ersten Monate schon die passenden Partner gefunden?`,
+      many: `Ich habe gesehen, dass ${name} gerade ${n ? `${n} Stellen` : "mehrere Stellen"} gleichzeitig ausgeschrieben hat. Steht mit dem Wachstum auch das eine oder andere Thema intern auf der Agenda?`,
+      open: `Ich habe gesehen, dass bei ${name} eine Stelle seit einigen Wochen offen ist. Wäre Unterstützung von außen bis dahin eine Hilfe?`,
+    },
+  }[lang];
+  if (signal === "new_incorporation") return T.reg;
+  if (signal === "jobs_3plus") return T.many;
+  if (signal === "job_open_30d") return T.open;
+  return "";
+}
+
 function day(iso: string, lang: "en" | "fr" | "de"): string {
   return new Date(iso + "T12:00:00Z").toLocaleDateString({ en: "en-GB", fr: "fr-FR", de: "de-DE" }[lang], { day: "numeric", month: "short", year: "numeric" });
 }
@@ -79,6 +100,7 @@ export async function homeFeed(lang: "en" | "fr" | "de" = "en"): Promise<HomeFee
     if (seen.has(l.company_id) || out.length >= 8) continue;
     seen.add(l.company_id);
     const name = String(l.watch_companies.name);
+    const roles = String(l.event_summary).match(/(\d+)\s+open roles/i)?.[1];
     let ev = String(l.event_summary).split(/(?<=\.)\s/)[0].split(" (")[0].replace(/\.$/, "");
     if (ev.toUpperCase().startsWith(name.toUpperCase())) ev = ev.slice(name.length).trim();
     ev = ev.replace(/\s*[–—]\s*/g, ", ");
@@ -89,7 +111,8 @@ export async function homeFeed(lang: "en" | "fr" | "de" = "en"): Promise<HomeFee
       event: ev.charAt(0).toUpperCase() + ev.slice(1),
       date: l.event_date ? day(l.event_date, lang) : "",
       source: sourceText(String(l.source_name), lang),
-      opener: String(l.opener ?? "").replace(/\s*[–—]\s*/g, ", ").split(name).join(nice(name)),
+      opener: openerText(String(l.signal_type ?? ""), String(l.opener ?? "").replace(/\s*[–—]\s*/g, ", ").split(name).join(nice(name)),
+        nice(name), roles, lang),
       urgency: String(l.urgency ?? ""),
     });
   }
