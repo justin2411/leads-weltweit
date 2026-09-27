@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       const { error: e2 } = await db().from("subscriptions").upsert({
         stripe_subscription_id: o.subscription, customer_id: cust.id, segment_id: m.segment_id, package: m.package,
         page_variant_id: m.variant_id || null, amount_cents: o.amount_total, currency: o.currency, status: "active",
-        filters: { country: m.country }, updated_at: new Date().toISOString(),
+        filters: { country: m.country, ...(Number(m.weekly) > 0 ? { max_per_week: Number(m.weekly) } : {}) }, updated_at: new Date().toISOString(),
       }, { onConflict: "stripe_subscription_id" });
       if (e2) throw new Error(e2.message);
       await db().from("customer_filters").upsert({ customer_id: cust.id, segment_id: m.segment_id }, { onConflict: "customer_id", ignoreDuplicates: true });

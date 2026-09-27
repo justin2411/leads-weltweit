@@ -6,6 +6,8 @@ import { checkoutMode, lineItemFor, priceLabel, stripeEnabled, type Plan } from 
 import { personalFor } from "@/lib/recipient";
 import { pickVariant } from "@/lib/variants";
 import { BrandShell, SiteFooter, SiteHeader } from "../../../chrome";
+import { basePlan, PER_WEEK } from "@/lib/custom-price";
+import { CustomPlan } from "./custom";
 
 export const dynamic = "force-dynamic";
 // Verkaufsseite aus dem PDF-Report: nicht in Suchmaschinen, nicht in der Navigation
@@ -35,6 +37,8 @@ const TXT = {
     subject: "Start", q: "Questions? Just reply to our email or write to",
     custom: "Custom", customP: "Your number", customL: ["Tell us how many leads you need per week", "An offer that fits your team", "Same quality and exclusivity"],
     customBtn: "Ask for an offer",
+    cu: { title: "Your volume", perWeek: "leads per week", perMonthL: "About {n} leads per month", perLeadL: "About {p} per lead",
+          per: "per month", pay: "Start with {n}/week", mail: "Start by email", more: "Something special in mind? Ask for an offer" },
   },
   fr: {
     eyebrow: "Pistes chaque semaine", title: "Recevez vos pistes chaque semaine",
@@ -56,10 +60,11 @@ const TXT = {
     subject: "Démarrer", q: "Des questions ? Répondez simplement à notre e-mail ou écrivez à",
     custom: "Sur mesure", customP: "Votre volume", customL: ["Indiquez combien de pistes il vous faut par semaine", "Une offre adaptée à votre équipe", "Même qualité et même exclusivité"],
     customBtn: "Demander une offre",
+    cu: { title: "Votre volume", perWeek: "pistes par semaine", perMonthL: "Environ {n} pistes par mois", perLeadL: "Environ {p} par piste",
+          per: "par mois", pay: "Démarrer · {n}/sem.", mail: "Démarrer par e-mail", more: "Un besoin particulier ? Demandez une offre" },
   },
 };
 
-const PER_WEEK: Record<string, number> = { starter: 30, pro: 100 };
 const LAND: Record<string, [string, string]> = { uk: ["the UK", "Royaume-Uni"], us: ["the US", "États-Unis"], fr: ["France", "France"], ie: ["Ireland", "Irlande"], nl: ["the Netherlands", "Pays-Bas"] };
 
 /** Vorbereitete Anfrage für ein individuelles Angebot: der Kunde füllt nur noch die Lücken aus. */
@@ -107,7 +112,16 @@ const CSS = `
 .bx .start .lede{max-width:640px;color:var(--soft);font-size:18px;margin:0}
 .bx .start .for{display:inline-block;margin-top:18px;font-size:13px;color:var(--gold);border:1px solid rgba(176,141,87,.45);padding:6px 14px;border-radius:99px}
 .bx .plans2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:22px;margin-top:44px;max-width:1080px}
-.bx .plan2.cu{border-style:dashed}.bx .plan2.cu .price{font-size:30px;padding:8px 0}
+.bx .plan2.cu{border-style:dashed}
+.bx .plan2 .qty{display:grid;gap:10px}
+.bx .plan2 .qn{display:flex;align-items:baseline;gap:10px;font-size:14.5px;color:var(--soft)}
+.bx .plan2 .qn input{width:110px;font:inherit;font-size:20px;font-weight:800;color:var(--ink,inherit);padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:transparent}
+.bx .plan2 .qn input:focus{outline:none;border-color:var(--gold)}
+.bx .plan2 .rg{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:99px;margin:6px 0 0;cursor:pointer}
+.bx .plan2 .rg::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;border:2px solid #b08d57;box-shadow:0 4px 12px -4px rgba(0,0,0,.35)}
+.bx .plan2 .rg::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#fff;border:2px solid #b08d57}
+.bx .plan2 .rgl{display:flex;justify-content:space-between;font-size:12px;color:var(--soft)}
+.bx .plan2 .more{font-size:13px;color:var(--soft);text-align:center;text-decoration:underline;text-underline-offset:3px}
 .bx .plan2{position:relative;border:1px solid var(--line);border-radius:22px;padding:30px 30px 26px;background:var(--card);display:flex;flex-direction:column;gap:14px}
 .bx .plan2.hi{border:1.5px solid var(--gold);box-shadow:0 30px 70px -44px rgba(176,141,87,.7)}
 .bx .plan2 .tag{position:absolute;top:-12px;right:24px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;background:linear-gradient(135deg,#e2c894,#b08d57);color:#141008;padding:5px 12px;border-radius:99px}
@@ -183,13 +197,17 @@ export default async function StartPage({ params, searchParams }: { params: Para
               )}
             </section>);
         })}
+          {basePlan(plans) ? (
+            <CustomPlan base={basePlan(plans)!} variantId={v.id} preview={preview} r={who ? sp.r : undefined} online={online}
+              offerHref={offerMail(lang, country.toLowerCase(), segment.toLowerCase(), who?.firma)} T={T.cu} lang={lang} />
+          ) : (
           <section className="plan2 cu">
             <h2>{T.custom}</h2>
             <div className="price">{T.customP}</div>
             <ul>{T.customL.map((x) => <li key={x}>{x}</li>)}</ul>
             <div className="pl">{T.perLeadC}</div>
             <div className="go"><a className="btn line big" href={offerMail(lang, country.toLowerCase(), segment.toLowerCase(), who?.firma)}>{T.customBtn} <span className="ar">→</span></a></div>
-          </section>
+          </section>)}
         </div>
 
         {!online && <p className="note">{T.mailNote}</p>}
