@@ -1,5 +1,5 @@
 # Seiten für Bildschirmfotos (eine pro Zeile, "/" = Startseite). Änderung dieser Datei startet den Workflow "ansicht".
-/
 /uk/accountants
+/uk/insurance-brokers
+/uk/financial-advisers
 /impressum
-# Einheitliches Design
