@@ -127,6 +127,8 @@ export async function generateMetadata({ params, searchParams }: { params: Param
 }
 
 
+const SHOW_PRICES = false;
+
 export default async function LandingPage({ params, searchParams }: { params: Params; searchParams: Search }) {
   const r = await resolve(params, searchParams);
   if (!r) notFound();
@@ -135,7 +137,8 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
   const plans = (v.pricing ?? settings.pricing ?? []) as Plan[];
   const mode = checkoutMode({ vercelEnv: process.env.VERCEL_ENV, ownerPreview: preview });
   const buyable = plans.filter((p) => lineItemFor(p, mode, BRAND));
-  const canBuy = stripeEnabled(mode) && buyable.length > 0;
+  // Preise öffentlich noch nicht zeigen (Inhaber 27.09.2026); nur in der Vorschau des Inhabers sichtbar
+  const canBuy = (preview || SHOW_PRICES) && stripeEnabled(mode) && buyable.length > 0;
   const personal = preview && !sp.r ? null : await personalFor(sp.r, page);
   const P: Personal = personal ?? {};
   const lang = page.language;
