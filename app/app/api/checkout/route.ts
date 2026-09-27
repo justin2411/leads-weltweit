@@ -3,6 +3,7 @@ import { getSettings, isOwner, pageIsPublic } from "@/lib/pages";
 import { BRAND, CONTACT, siteUrl } from "@/lib/site";
 import { checkoutMode, lineItemFor, stripe, stripeEnabled, type Plan } from "@/lib/stripe";
 import { db } from "@/lib/supabase";
+import { basePlan, customCents, PER_WEEK, validWeekly } from "@/lib/custom-price";
 
 export const dynamic = "force-dynamic";
 
@@ -11,14 +12,13 @@ export const dynamic = "force-dynamic";
  * Öffentliche Seite in Produktion: Live-Schlüssel. Vorschau-Deployments und Inhaber-Vorschau: Test-Schlüssel.
  * Ohne passende Schlüssel deaktiviert.
  */
-const PER_WEEK: Record<string, number> = { starter: 30, pro: 100 };
 const CHECKOUT_TXT = {
   en: {
-    desc: (w: number, m: number) => `Up to ${w} new trigger leads per week (about ${m} per month), each exclusive to your firm. Every Monday a PDF briefing and spreadsheet with phone, email, contact person and a short sales briefing per company.`,
+    desc: (w: number, m: number) => `Up to ${w.toLocaleString("en-GB")} new trigger leads per week (about ${m.toLocaleString("en-GB")} per month), each exclusive to your firm. Every Monday a PDF briefing and spreadsheet with phone, email, contact person and a short sales briefing per company.`,
     welcome: `Welcome to ${BRAND}. We look forward to working with you. Right after payment you get a short form to set your focus, and your first leads arrive the following Monday.`,
   },
   fr: {
-    desc: (w: number, m: number) => `Jusqu'à ${w} nouvelles pistes par semaine (environ ${m} par mois), chacune réservée à votre entreprise. Chaque lundi un briefing PDF et un tableau avec téléphone, e-mail, interlocuteur et un court briefing commercial par entreprise.`,
+    desc: (w: number, m: number) => `Jusqu'à ${w.toLocaleString("fr-FR")} nouvelles pistes par semaine (environ ${m.toLocaleString("fr-FR")} par mois), chacune réservée à votre entreprise. Chaque lundi un briefing PDF et un tableau avec téléphone, e-mail, interlocuteur et un court briefing commercial par entreprise.`,
     welcome: `Bienvenue chez ${BRAND}. Nous nous réjouissons de travailler avec vous. Juste après le paiement, vous recevez un court formulaire pour définir votre cible, et vos premières pistes arrivent le lundi suivant.`,
   },
 };
@@ -42,17 +42,27 @@ export async function POST(req: Request) {
   const mode = checkoutMode({ vercelEnv: process.env.VERCEL_ENV, ownerPreview });
   if (!stripeEnabled(mode)) return new Response("Bezahlung ist noch nicht eingerichtet.", { status: 503 });
   // Nur Preise, die der Inhaber hinterlegt hat
-  const plan = ((v.pricing ?? settings.pricing ?? []) as Plan[]).find((p) => p.key === pkg);
+  const plans = (v.pricing ?? settings.pricing ?? []) as Plan[];
+  let plan = plans.find((p) => p.key === pkg);
+  let weeklyN = PER_WEEK[pkg];
+  if (pkg === "custom") {
+    // Eigenes Volumen: Preis immer hier neu berechnen, nie aus dem Formular übernehmen
+    const n = validWeekly(f.get("weekly"));
+    const base = basePlan(plans);
+    if (!n || !base) return new Response("Ungültige Menge", { status: 400 });
+    weeklyN = n;
+    plan = { key: "custom", name: `Custom – ${n.toLocaleString("en-GB")} leads/week`, amount_cents: customCents(base, n), currency: base.currency, interval: "month" };
+  }
   const item: any = lineItemFor(plan, mode, BRAND);
   if (!item) return new Response("Unbekanntes Paket", { status: 400 });
   const lang = page.language === "fr" ? "fr" : "en";
   const T = CHECKOUT_TXT[lang];
-  const week = PER_WEEK[pkg];
+  const week = weeklyN;
   // Kontingent auf der Stripe-Seite unter dem Paketnamen (nur bei Preis aus der Datenbank möglich)
   if (week && item.price_data) item.price_data.product_data.description = T.desc(week, Math.round(week * 52 / 12));
 
   const meta = { segment_id: page.segment_id, country: page.country, variant_id: v.id, package: pkg, mode,
-                 amount_cents: String(plan?.amount_cents ?? ""), currency: plan?.currency ?? "" };
+                 amount_cents: String(plan?.amount_cents ?? ""), currency: plan?.currency ?? "", weekly: String(week ?? "") };
   // Zurück aus Stripe: auf die Pläne-Seite (/start), nicht auf die Landingpage
   const q = new URLSearchParams();
   if (ownerPreview) { q.set("vorschau", "1"); q.set("v", v.variant_key); }
