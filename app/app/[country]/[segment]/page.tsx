@@ -254,7 +254,7 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
           <div className="report" data-rv>
             <div className="rp-head">
               <span className="pulse" aria-hidden="true" />
-              <div><b>{F(fr ? "Livraison hebdomadaire pour {firma}" : "Weekly delivery for {firma}")}</b>
+              <div><b>{F(fr ? "Aperçu : votre livraison avec NextGen Profit" : "Preview: your delivery with NextGen Profit")}</b>
                 <span>{fr ? "Chaque lundi · 07:00" : "Every Monday · 07:00"}</span></div>
             </div>
             <h3 className="rp-title">{F(SC.getsTitle)}</h3>
