@@ -40,6 +40,8 @@ jobs:
         run: |
           python scripts/watch.py detect
           python scripts/watch.py sitecheck --limit 150
+          python scripts/watch.py sitecheck --segment all --limit 400
+          python scripts/watch.py contacts --limit 400
       - name: Proben aktualisieren
         run: |
           python scripts/samples.py
