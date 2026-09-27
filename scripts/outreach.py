@@ -354,6 +354,10 @@ def cmd_sync(args) -> int:
     import requests
     from lib.db import DB
 
+    if not os.environ.get("RESEND_API_KEY"):
+        # Versand läuft über das eigene Postfach (SMTP); Bounces kommen dann per inbox.py, Resend-Altfälle per Webhook.
+        print("Kein RESEND_API_KEY – Abgleich mit Resend übersprungen")
+        return 0
     db = DB()
     since = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=args.days)).isoformat()
     rows = db.select("messages", {"status": "eq.sent", "resend_id": "not.is.null", "sent_at": f"gte.{since}",

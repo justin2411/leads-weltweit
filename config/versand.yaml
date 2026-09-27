@@ -1,10 +1,12 @@
 # Täglicher automatischer Versand (jeden Tag 14:23 UTC) über .github/workflows/send.yml.
 # Gesendet werden nur freigegebene Entwürfe, mit Aufwärmphase (Ziel 100/Tag: 90 Kaltmails + 10 Reserve für Antworten), Notbremse
 # (Bounces > 3 % oder 1 Spam-Beschwerde) und Tagesgrenzen aus countries.yaml.
-aktiv: false   # 26.09.2026: Resend verbietet Kaltakquise – Kaltmails erst wieder über eigenes SMTP-Postfach auf Zweitdomain
+aktiv: true   # 27.09.2026: Kaltmails über eigenes Strato-Postfach info@nextgen-profit.de (Postfach-Test grün, MX/SPF/DMARC gesetzt)
 # Inhaber 26.09.2026: „sende jeden Tag, auch heute 100“ -> keine Aufwärmphase, Tagesziel 100
 # (tatsächlich höchstens anbieter_tageslimit - 10 = 90 Kaltmails, Rest für Antworten/Berichte)
-aufwaermphase: false
+# 27.09.2026: neues Postfach auf der Hauptdomain -> wieder mit Aufwärmphase (25 -> 50 -> 75 -> 100 pro Tag),
+# damit die Domain (auch info@ und Kundenmails) keinen schlechten Ruf bekommt. Das Gehirn darf danach anpassen.
+aufwaermphase: true
 tagesziel: 100
 freigabe: "Justin Koch, Chat 26.09.2026: 'du kannst dann einfach starten wenn du alles hast' / 'dann mach 100 pro tag'"
 gesamtgrenze: 1000
