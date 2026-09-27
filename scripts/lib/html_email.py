@@ -29,8 +29,10 @@ FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
 
 # Schlüsselstellen fett (nur im HTML, die Textversion bleibt schlicht): zum schnellen Überfliegen
 BOLD = [
-    "every Monday", "one firm in your field only", "free sample of 10 current leads",
-    "chaque lundi", "une seule entreprise de votre secteur", "échantillon gratuit de 10 pistes actuelles",
+    "leads you can turn into revenue", "every Monday", "one agency only", "one web agency only", "one broker only",
+    "one practice only", "one advice firm only", "one IT firm only", "one firm only",
+    "pistes qui se transforment en chiffre d'affaires", "chaque lundi", "une seule agence de votre secteur",
+    "une seule entreprise de votre secteur",
 ]
 
 
