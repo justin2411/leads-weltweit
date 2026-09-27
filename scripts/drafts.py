@@ -170,7 +170,7 @@ def refresh(db, dry_run: bool = False) -> int:
     """Offene Entwürfe neu schreiben (gleicher Käufer, aktueller Text). Verstößt der neue Text gegen eine Regel,
     geht ein freigegebener Entwurf zurück auf draft – nie umgekehrt."""
     n = back = 0
-    for m in db.select_all("messages", {"status": "in.(draft,approved)", "sent_at": "is.null", "order": "id",
+    for m in db.select_all("messages", {"status": "in.(draft,approved)", "sent_at": "is.null", "kind": "eq.initial", "order": "id",
                                          "select": "id,status,subject,body,prospects(*)"}):
         p = m.get("prospects")
         if not p:

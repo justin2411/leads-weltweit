@@ -346,10 +346,17 @@ def select_companies(db, limit: int, all_segments: bool = False) -> list[dict]:
         seen.add(l["company_id"])
         order.append(l["company_id"])
     cos: dict[str, dict] = {}
+    cols = "id,name,country,region,city,address,website,phone_main,registry_source,registry_id"
+    # Firmen mit bekannter Website zuerst – auch wenn ihre Leads älter sind (sonst kämen Arbeitgeber mit
+    # Karriereseite nie dran, weil tausende Neugründungen neuer sind).
+    wanted = set(order)
+    for c in db.select_all("watch_companies", {"website": "not.is.null", "active": "eq.true", "select": cols,
+                                               "order": "id"}):
+        if c["id"] in wanted:
+            cos[c["id"]] = c
     for i in range(0, min(len(order), limit * 4), 100):
         for c in db.select("watch_companies", {"id": f"in.({','.join(order[i:i + 100])})", "active": "eq.true",
-                                               "select": "id,name,country,region,city,address,website,phone_main,"
-                                                         "registry_source,registry_id"}):
+                                               "select": cols}):
             cos[c["id"]] = c
     ranked = [cos[i] for i in order if i in cos]
     ranked.sort(key=lambda c: 0 if c.get("website") else 1)  # stabil: innerhalb der Gruppe neueste zuerst
