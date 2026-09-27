@@ -47,7 +47,8 @@ export const BRAND_CSS = `
 .motion .bx .hero .w{opacity:0;filter:blur(10px);transform:translateY(.45em);animation:word 1s cubic-bezier(.2,.7,.1,1) forwards;animation-delay:calc(var(--i) * 75ms + 150ms)}
 .motion .bx .rvw .w{opacity:0;filter:blur(8px);transform:translateY(.5em);transition:opacity .9s cubic-bezier(.2,.7,.1,1),transform .9s cubic-bezier(.2,.7,.1,1),filter .9s;transition-delay:calc(var(--i) * 55ms)}
 .motion .bx .rvw.in .w{opacity:1;filter:none;transform:none}
-.bx .gold-t{background:linear-gradient(100deg,#c9a66b 15%,#f6e6c2 35%,#c9a66b 55%,#b08d57 80%);background-size:220% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 7s linear infinite}
+/* Hervorhebung zurückhaltend: nur im Hero, einfarbig, ohne Schimmer */
+.bx .gold-t{color:inherit}.bx .hero .gold-t{color:var(--gold2)}
 .bx .hero .later{animation:fade 1.1s both;animation-delay:var(--d,.8s)}
 
 /* Buttons */
@@ -89,7 +90,6 @@ export const BRAND_CSS = `
 /* Abschnitte */
 .bx section{padding:112px 0;position:relative}
 .bx h2{font-weight:700;font-size:clamp(30px,3.6vw,46px);line-height:1.12;letter-spacing:-.025em;margin:14px 0 18px}
-.bx h2 .gold-t{animation-duration:9s}
 .bx .intro{color:var(--soft);font-size:19px;max-width:640px;margin:0 0 56px}
 .bx .rule{width:56px;height:1px;background:var(--gold);margin:0 0 18px;transform-origin:left}
 .motion .bx [data-rv] .rule,.motion .bx .rule[data-rv]{transform:scaleX(0);transition:transform 1s .1s cubic-bezier(.2,.7,.1,1)}
@@ -229,7 +229,6 @@ export const BRAND_CSS = `
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(91,212,154,.55)}70%{box-shadow:0 0 0 10px rgba(91,212,154,0)}100%{box-shadow:0 0 0 0 rgba(91,212,154,0)}}
 @keyframes aurora{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(-4%,3%,0) scale(1.08)}}
 @keyframes marq{to{transform:translateX(-50%)}}
-@keyframes shine{to{background-position:-220% center}}
 @keyframes sweep{0%{left:-70%}30%,100%{left:130%}}
 @keyframes spin{to{--a:360deg}}
 @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
