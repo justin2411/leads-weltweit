@@ -16,6 +16,8 @@ import io
 import re
 from pathlib import Path
 
+from lib.playbook import playbook
+
 ROOT = Path(__file__).resolve().parents[2]
 FONTS = ROOT / "video" / "fonts"
 URG = {"high": 0, "medium": 1, "low": 2}
@@ -128,7 +130,8 @@ T2 = {
            "inc_h": "In every lead", "inc": ["Company and location", "What happened, with date", "Phone and email", "Priority", "Sales tip", "Opening line"],
            "plans_h": "Plans", "per": "per month", "btn": "Start my weekly leads", "btn1": "See plans and start", "start": "Ready to start?",
            "cta": "Just reply to our email with your towns. Your first delivery arrives next Monday.",
-           "b_co": "Company", "b_ev": "Why now", "b_tip": "How to approach",
+           "b_co": "Company profile", "b_ev": "Why it's an opportunity", "b_tip": "Sales approach", "b_what": "What happened",
+           "f_ind": "Industry", "f_form": "Legal form", "f_reg": "Registered", "f_loc": "Location", "f_web": "Website", "f_noweb": "none found yet",
            "p1": "10 leads selected for you", "p1s": "Company data only · phone and email from the company's own website",
            "plan_txt": {"starter": "Up to 30 new leads per week from 1 area. Every lead exclusive to your firm.",
                         "pro": "Up to 100 new leads per week from up to 3 areas, all matching signals. Every lead exclusive to your firm."}},
@@ -143,7 +146,8 @@ T2 = {
            "inc_h": "Dans chaque piste", "inc": ["Entreprise et lieu", "L'événement, avec la date", "Téléphone et e-mail", "Priorité", "Conseil de vente", "Phrase d'accroche"],
            "plans_h": "Formules", "per": "par mois", "btn": "Recevoir mes pistes chaque semaine", "btn1": "Voir les formules", "start": "On commence ?",
            "cta": "Répondez simplement à notre e-mail avec vos villes. Votre première livraison arrive lundi prochain.",
-           "b_co": "Entreprise", "b_ev": "Pourquoi maintenant", "b_tip": "Comment l'aborder",
+           "b_co": "Profil de l'entreprise", "b_ev": "Pourquoi c'est une opportunité", "b_tip": "Approche commerciale", "b_what": "Ce qui s'est passé",
+           "f_ind": "Secteur", "f_form": "Forme juridique", "f_reg": "Immatriculée", "f_loc": "Lieu", "f_web": "Site web", "f_noweb": "pas encore trouvé",
            "p1": "10 pistes sélectionnées pour vous", "p1s": "Données d'entreprise uniquement · téléphone et e-mail issus du site de l'entreprise",
            "plan_txt": {"starter": "Jusqu'à 30 nouvelles pistes par semaine dans 1 zone. Chaque piste réservée à votre entreprise.",
                         "pro": "Jusqu'à 100 nouvelles pistes par semaine dans 3 zones maximum, tous les signaux utiles. Chaque piste réservée à votre entreprise."}},
@@ -164,7 +168,8 @@ def _clip(s: str, n: int) -> str:
 
 
 def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str | None = None,
-               period: dt.date | None = None, plans: list[dict] | None = None, cta_url: str | None = None) -> str:
+               period: dt.date | None = None, plans: list[dict] | None = None, cta_url: str | None = None,
+               segment: str | None = None) -> str:
     """Seite 1: Logo und bis zu 10 Leads. Seite 2 (nur wenn plans übergeben, also bei Proben): Wert, Ablauf, Pakete."""
     t, t2 = T.get(lang, T["en"]), T2.get(lang, T2["en"])
     groups = group_rows(data)[:10]
@@ -181,25 +186,43 @@ def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str
         why = (r.get("why_now") or "").strip()
         ev = _event(r.get("event", ""), r.get("company", ""))
         web = re.sub(r"^https?://(www\.)?", "", r.get("website") or "").rstrip("/")
+        pb = playbook(sig, segment, lang)
+        lb = pb["labels"]
+        q = (r.get("question_to_ask") or "").strip()
+        facts = [(t2["f_ind"], r.get("industry")), (t2["f_form"], r.get("legal_form")),
+                 (t2["f_reg"], _day(r.get("event_date", ""), lang) if sig == "new_incorporation" else ""),
+                 (t2["f_loc"], loc), (t2["f_web"], web or t2["f_noweb"])]
+        facts = [(k, v) for k, v in facts if v]
         cards.append(f"""
 <article class="lead">
-  <div class="hd"><div><div class="nm">{e(g['company'])}</div><div class="loc">{e(loc)}</div></div>
+  <div class="hd"><div><div class="nm">{e(g['company'])}</div><div class="loc">{e(profile or loc)}</div></div>
     <div class="tags">{f'<span class="pr p-{e(urg)}">{e(t["prio"].get(urg, ""))}</span>' if urg else ''}<span class="sg">{e(t['sig'].get(sig, ''))}</span></div></div>
   <div class="ct"><div><i>{t['phone']}</i>{e(r.get('phone') or '–')}</div><div><i>{t['email']}</i>{e(r.get('email') or '–')}</div>{f'<div><i>{t["web"]}</i>{e(web)}</div>' if web else ''}</div>
-  <div class="cols">
-    <div><h4>{t2['b_co']}</h4><p>{e(profile) or e(loc) or '–'}</p></div>
-    <div><h4>{t2['b_ev']}</h4><p class="ev">{e(ev)}</p>{f'<p>{e(why)}.</p>' if why else ''}</div>
-    <div><h4>{t2['b_tip']}</h4><p>{e(tip) or '–'}</p></div>
+  <div class="body">
+    <div class="left">
+      <h4>{t2['b_co']}</h4><dl>{''.join(f'<dt>{e(k)}</dt><dd>{e(v)}</dd>' for k, v in facts)}</dl>
+      <h4>{t2['b_what']}</h4><p class="ev">{e(ev)}</p><p class="dt">{t['detected']} {e(_day(r.get('event_date', ''), lang))}</p>
+      {f'<h4>{t2["b_ev"]}</h4><p>{e(why)}.</p>' if why else ''}
+      {f'<h4>{lb["open"]}</h4><p class="op">“{e(opener)}”</p>' if opener else ''}
+    </div>
+    <div class="right">
+      <div class="rh">{t2['b_tip']}</div>
+      <div class="row"><b>{lb['when']}</b><p>{e(pb['when'])}</p></div>
+      <div class="row"><b>{lb['offer']}</b><p>{e(tip or pb['offer'])}</p></div>
+      <div class="row"><b>{lb['points']}</b><ul>{''.join(f'<li>{e(x)}</li>' for x in pb['points'])}</ul></div>
+      {f'<div class="row"><b>{lb["q"]}</b><p>{e(q)}</p></div>' if q else ''}
+      <div class="row"><b>{lb['obj']}</b><p><em>{e(pb['obj'][0])}</em> → {e(pb['obj'][1])}</p></div>
+      <div class="row"><b>{lb['follow']}</b><p>{e(pb['follow'])}</p></div>
+    </div>
   </div>
-  {f'<p class="op"><b>{t["open"]}</b>“{e(opener)}”</p>' if opener else ''}
 </article>""")
     when = _day((period or dt.date.today()).isoformat(), lang)
     head = (t2['p1'] if len(groups) >= 10 else f"{len(groups)} {t['firms']}") + (f" · {area}" if area else "")
     pages = []
-    for k in range(0, max(len(cards), 1), 5):
+    for k in range(0, max(len(cards), 1), 2):
         ttl = (f'<div class="ttl"><h1>{e(head)}</h1><span>{e(when)}{(" · " + e(firm)) if firm else ""}</span></div>' if k == 0 else "")
         pages.append(f"""<section class="p1"><header class="bar"><div class="logo">NextGen <i>Profit</i></div></header>
-<div class="in">{ttl}<div class="grid">{''.join(cards[k:k + 5])}</div></div>
+<div class="in">{ttl}<div class="grid">{''.join(cards[k:k + 2])}</div></div>
 <div class="ft"><span>{t['conf']}</span><span>{t2['p1s']}</span></div></section>""")
     pages = "\n".join(pages)
     page2 = ""
@@ -231,25 +254,29 @@ section{{width:210mm;height:297mm;position:relative;overflow:hidden;page-break-a
 .in{{padding:7mm 14mm 0}}
 .p1 .ttl{{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4.5mm}}
 .p1 .ttl h1{{font-size:19px;font-weight:800;letter-spacing:-.3px;color:#0b1428}}.p1 .ttl span{{font-size:10.5px;color:#6b7486}}
-.grid{{display:flex;flex-direction:column;gap:3.6mm}}
-.lead{{height:47.5mm;border:1px solid #e3e6ee;border-radius:11px;padding:3.6mm 5mm 3mm 6.2mm;position:relative;overflow:hidden;background:#fff;display:flex;flex-direction:column;gap:2.2mm}}
-.lead:before{{content:"";position:absolute;left:0;top:0;bottom:0;width:1.4mm;background:linear-gradient(180deg,#d8bd8a,#b08d57)}}
-.hd{{display:flex;justify-content:space-between;align-items:flex-start;gap:4mm}}
-.nm{{font-size:14px;font-weight:800;color:#0b1428;letter-spacing:-.2px;line-height:1.2}}.loc{{font-size:9.5px;color:#6b7486;margin-top:.4mm}}
-.tags{{display:flex;gap:1.4mm;flex:none}}
-.pr,.sg{{font-size:7.4px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.8mm 2.2mm;border-radius:99px;white-space:nowrap}}
+.grid{{display:flex;flex-direction:column;gap:5mm}}
+.lead{{height:121mm;border:1px solid #e3e6ee;border-radius:13px;padding:5mm 6mm 4.5mm 7.5mm;position:relative;overflow:hidden;background:#fff;display:flex;flex-direction:column;gap:3mm}}
+.lead:before{{content:"";position:absolute;left:0;top:0;bottom:0;width:1.6mm;background:linear-gradient(180deg,#d8bd8a,#b08d57)}}
+.hd{{display:flex;justify-content:space-between;align-items:flex-start;gap:5mm}}
+.nm{{font-size:18px;font-weight:800;color:#0b1428;letter-spacing:-.3px;line-height:1.2}}.loc{{font-size:10px;color:#6b7486;margin-top:.8mm}}
+.tags{{display:flex;gap:1.6mm;flex:none}}
+.pr,.sg{{font-size:7.6px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:1mm 2.6mm;border-radius:99px;white-space:nowrap}}
 .pr{{background:#0b1428;color:#f3e1b9}}.pr.p-medium{{background:#f3ead8;color:#7a5b24}}.pr.p-low{{background:#eef0f4;color:#6b7486}}
 .sg{{background:linear-gradient(135deg,#ecd6a6,#c29d5c);color:#1a1408}}
-.ct{{display:flex;gap:7mm;flex-wrap:wrap;background:#f7f3ea;border:1px solid #efe5d3;border-radius:7px;padding:1.6mm 3mm;font-size:10px;font-weight:700;color:#0b1428}}
-.ct i{{font-style:normal;font-size:7.2px;letter-spacing:.12em;text-transform:uppercase;color:#a07f46;margin-right:1.6mm}}
-.cols{{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:4mm}}
-.cols>div+div{{border-left:1px solid #eef0f4;padding-left:3.5mm}}
-h4{{font-size:7.2px;letter-spacing:.14em;text-transform:uppercase;color:#a07f46;font-weight:700;margin:0 0 .6mm}}
-.cols p{{font-size:9.2px;line-height:1.38;color:#1f2940}}.cols p.ev{{font-weight:600;margin-bottom:.6mm}}
-.lead .op{{font-size:9.2px;line-height:1.38;font-style:italic;color:#39404d;border-left:.6mm solid #d8bd8a;padding-left:2.2mm}}
-.lead .op b{{font-style:normal;font-size:7.2px;letter-spacing:.14em;text-transform:uppercase;color:#a07f46;margin-right:1.6mm}}
-.p1 .bar{{height:17mm}}.p1 .in{{padding-top:5mm}}.p1 .ttl{{margin-bottom:3.5mm}}.p1 .ttl h1{{font-size:17px}}
-.btn1{{top:4.8mm!important}}
+.ct{{display:flex;gap:9mm;flex-wrap:wrap;background:#f7f3ea;border:1px solid #efe5d3;border-radius:8px;padding:2.2mm 4mm;font-size:11px;font-weight:700;color:#0b1428}}
+.ct i{{font-style:normal;font-size:7.4px;letter-spacing:.12em;text-transform:uppercase;color:#a07f46;margin-right:2mm}}
+.body{{display:grid;grid-template-columns:.9fr 1.35fr;gap:6mm;flex:1;min-height:0}}
+h4{{font-size:7.6px;letter-spacing:.14em;text-transform:uppercase;color:#a07f46;font-weight:700;margin:0 0 1.2mm}}
+.left h4+dl,.left h4+p{{margin-bottom:3mm}}
+dl{{display:grid;grid-template-columns:auto 1fr;gap:.8mm 3mm;font-size:9.4px}}dt{{color:#6b7486}}dd{{margin:0;color:#1f2940;font-weight:600}}
+.left p{{font-size:9.6px;line-height:1.42;color:#1f2940}}.left p.ev{{font-weight:700;margin-bottom:.6mm}}.left p.dt{{font-size:8.6px;color:#6b7486;margin-bottom:3mm}}
+.right{{background:#0b1428;color:#e8e2d4;border-radius:10px;padding:3.6mm 4.4mm;display:flex;flex-direction:column;gap:1.9mm}}
+.rh{{font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:#d8bd8a;font-weight:700;margin-bottom:.4mm}}
+.row{{display:grid;grid-template-columns:27mm 1fr;gap:3mm}}.row b{{font-size:7.4px;letter-spacing:.1em;text-transform:uppercase;color:#d8bd8a;font-weight:700;line-height:1.5}}
+.row p,.row ul{{font-size:9.2px;line-height:1.4;color:#eef1f6;margin:0}}.row ul{{padding-left:3.4mm}}.row li{{margin:0 0 .3mm}}
+.row em{{color:#f3e1b9}}
+.left p.op{{font-style:italic;color:#39404d;border-left:.7mm solid #d8bd8a;padding-left:2.6mm;font-size:10px}}
+.p1 .bar{{height:17mm}}.p1 .in{{padding-top:6mm}}.p1 .ttl{{margin-bottom:4mm}}.p1 .ttl h1{{font-size:17px}}
 .ft{{position:absolute;left:14mm;right:14mm;bottom:7mm;display:flex;justify-content:space-between;font-size:8.5px;color:#8a92a3;letter-spacing:.06em}}
 .p2 .in{{padding:12mm 16mm 0}}
 .p2 h1{{font-size:24px;font-weight:800;letter-spacing:-.5px;color:#0b1428;margin-bottom:6mm}}
@@ -279,12 +306,13 @@ h4{{font-size:7.2px;letter-spacing:.14em;text-transform:uppercase;color:#a07f46;
 
 
 def render_pdf(data: bytes, lang: str = "en", area: str | None = None, firm: str | None = None,
-               period: dt.date | None = None, plans: list[dict] | None = None, cta_url: str | None = None) -> bytes | None:
+               period: dt.date | None = None, plans: list[dict] | None = None, cta_url: str | None = None,
+               segment: str | None = None) -> bytes | None:
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
         return None
-    doc = build_html(data, lang, area, firm, period, plans, cta_url)
+    doc = build_html(data, lang, area, firm, period, plans, cta_url, segment)
     try:
         with sync_playwright() as p:
             import os
@@ -319,11 +347,11 @@ def clean_csv(data: bytes, lang: str = "en") -> bytes:
 
 def attachments(csv_bytes: bytes, lang: str, area: str | None = None, firm: str | None = None,
                 period: dt.date | None = None, name: str = "leads", plans: list[dict] | None = None,
-                cta_url: str | None = None) -> list[tuple[str, bytes]]:
+                cta_url: str | None = None, segment: str | None = None) -> list[tuple[str, bytes]]:
     """PDF-Report (falls möglich) + bereinigte CSV für CRM/Excel."""
     slug = "-" + re.sub(r"[^A-Za-z0-9]+", "-", area).strip("-") if area else ""
     out = []
-    pdf = render_pdf(csv_bytes, lang, area, firm, period, plans, cta_url)
+    pdf = render_pdf(csv_bytes, lang, area, firm, period, plans, cta_url, segment)
     if pdf:
         out.append((f"NextGen-Profit-Lead-Report{slug}.pdf", pdf))
     out.append((f"{name}{slug}.csv", clean_csv(csv_bytes, lang)))
