@@ -160,19 +160,46 @@ def load_examples(db) -> dict:
     return out
 
 
+def refresh(db, dry_run: bool = False) -> int:
+    """Offene Entwürfe neu schreiben (gleicher Käufer, aktueller Text). Verstößt der neue Text gegen eine Regel,
+    geht ein freigegebener Entwurf zurück auf draft – nie umgekehrt."""
+    n = back = 0
+    for m in db.select_all("messages", {"status": "in.(draft,approved)", "sent_at": "is.null", "order": "id",
+                                         "select": "id,status,subject,body,prospects(*)"}):
+        p = m.get("prospects")
+        if not p:
+            continue
+        subject, body, lang = build(p)
+        if subject == m["subject"] and body == m["body"]:
+            continue
+        lint = lint_draft(subject, body, lang)
+        upd = {"subject": subject, "body": body, "language": lang, "check_errors": lint.errors}
+        if m["status"] == "approved" and not lint.ok:
+            upd["status"] = "draft"
+            back += 1
+        n += 1
+        if not dry_run:
+            db.update("messages", {"id": f"eq.{m['id']}"}, upd)
+    print(f"{n} Entwürfe neu geschrieben, {back} wegen Regelverstoß zurück auf draft")
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--variant", default="v1")
     ap.add_argument("--approve", help="Freigabe des Inhabers (Wortlaut/Datum): Entwürfe ohne Regelverstoß freigeben")
+    ap.add_argument("--refresh", action="store_true",
+                    help="offene Entwürfe (draft/approved, nicht gesendet) auf den aktuellen Text bringen")
     args = ap.parse_args(argv)
     from lib.db import DB
     db = DB()
+    if args.refresh:
+        return refresh(db, dry_run=args.dry_run)
     # nur laufende Experimente (gestoppte und abgeschlossene bekommen keine neuen Entwürfe)
     exps = {(e["segment_id"], e["country"]): e for e in db.select("experiments", {"variant": f"eq.{args.variant}"})
             if e.get("decision") != "killed" and e.get("status") != "done"}
     prospects = db.select_all("prospects", {"check_status": "eq.ok", "order": "created_at"})
-    examples = load_examples(db)
     # CLAUDE.md 5.1: ohne mindestens 10 echte Probe-Leads kein Entwurf und kein Versand
     samples = {}
     for l in db.select("leads", {"status": "eq.sample", "select": "segment_id,country"}):
@@ -202,7 +229,7 @@ def main(argv=None) -> int:
             continue
         if db.rpc("is_suppressed", {"p_email": p["email"]}):
             continue
-        subject, body, lang = build(p, example=examples.get((p['segment_id'], p['country'])))
+        subject, body, lang = build(p)
         lint = lint_draft(subject, body, lang)
         n += 1
         bad += 0 if lint.ok else 1
