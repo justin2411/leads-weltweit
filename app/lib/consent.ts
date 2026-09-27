@@ -12,7 +12,7 @@ export function consentText(lang: string): string {
 
 export const T = {
   en: {
-    examples: "Example leads", examplesNote: "Taken from a real sample. Company data only, each with its official source. Shown as examples.",
+    examples: "Example leads", examplesNote: "Real signals from a recent sample. Company name, phone and email are unlocked in your free sample.",
     what: "What we flag", how: "How it works",
     steps: ["We check official registers and company careers pages every day.", "Each signal is dated, sourced and rated for urgency.", "Every Monday you receive the new leads for your area as a spreadsheet."],
     pricing: "Plans", perMonth: "per month", subscribe: "Start subscription",
@@ -32,7 +32,7 @@ export const T = {
     error: "We could not match this link to your company. Please request the sample by email below.",
   },
   fr: {
-    examples: "Exemples de pistes", examplesNote: "Issus d'un échantillon réel. Uniquement des données d'entreprise, chacune avec sa source officielle. Présentés à titre d'exemple.",
+    examples: "Exemples de pistes", examplesNote: "Signaux réels issus d'un échantillon récent. Nom, téléphone et e-mail figurent dans votre échantillon gratuit.",
     what: "Ce que nous repérons", how: "Comment ça marche",
     steps: ["Nous consultons chaque jour les registres officiels et les pages carrières des entreprises.", "Chaque signal est daté, sourcé et évalué selon son urgence.", "Chaque lundi, vous recevez les nouvelles pistes de votre zone sous forme de tableau."],
     pricing: "Offres", perMonth: "par mois", subscribe: "Démarrer l'abonnement",

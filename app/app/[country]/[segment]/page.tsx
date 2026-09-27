@@ -35,6 +35,7 @@ const SIGNAL_LABEL: Record<"en" | "fr", Record<string, string>> = {
   en: { new_incorporation: "Newly registered", job_open_30d: "Role open 30+ days", jobs_3plus: "Several roles open", new_location: "New location", website_outdated: "Outdated website" },
   fr: { new_incorporation: "Création récente", job_open_30d: "Poste ouvert depuis 30 jours", jobs_3plus: "Plusieurs postes ouverts", new_location: "Nouveau site", website_outdated: "Site web vieillissant" },
 };
+const PHONE: Record<string, string> = { UK: "+44", US: "+1", FR: "+33", IE: "+353", NL: "+31" };
 const PRIO: Record<"en" | "fr", Record<string, string>> = {
   en: { high: "High priority", medium: "Medium priority", low: "Low priority" },
   fr: { high: "Priorité haute", medium: "Priorité moyenne", low: "Priorité basse" },
@@ -49,7 +50,8 @@ function industryHint(seg: string, sic: string | undefined): [string, string] | 
 }
 
 function cleanEvent(ev: string, company: string): string {
-  let e = ev.split(" (")[0].trim().replace(/\.$/, "");
+  // nur die Klammer am Ende entfernen (Details), nicht Klammern im Stellentitel
+  let e = ev.trim().replace(/\.$/, "").replace(/\s*\([^()]*(\([^()]*\)[^()]*)*\)$/, "").trim().replace(/\.$/, "");
   if (e.toUpperCase().startsWith(company.toUpperCase())) e = e.slice(company.length).trim();
   if (/^registered on /i.test(e)) return "";
   return e ? e[0].toUpperCase() + e.slice(1) : "";
@@ -58,13 +60,13 @@ function cleanEvent(ev: string, company: string): string {
 type Sample = { company: string; location?: string; district?: string; industry?: string; sicCode?: string; noWebsite?: boolean; event: string; date?: string; source?: string; signal?: string; urgency?: string; opener?: string };
 
 /** Echte Probe-Leads aus der Region des Empfängers (Firmendaten, als Beispiel markiert). */
-async function regionalSamples(page: { segment_id: string; country: string }, region: string | undefined): Promise<Sample[]> {
-  if (!region) return [];
-  const r = region.replace(/[%,()]/g, "");
+async function regionalSamples(page: { segment_id: string; country: string }, places: (string | undefined)[]): Promise<Sample[]> {
+  const terms = [...new Set(places.map((x) => x?.replace(/[%,()]/g, "").trim()).filter((x): x is string => !!x && x.length > 2))];
+  if (!terms.length) return [];
   const { data } = await db().from("leads")
     .select("event_summary, event_date, source_name, signal_type, urgency, opener, company_id, observation_ids, watch_companies!inner(name, city, region, address)")
     .eq("segment_id", page.segment_id).eq("country", page.country).in("status", ["sample", "new"])
-    .or(`region.ilike.%${r}%,city.ilike.%${r}%`, { foreignTable: "watch_companies" })
+    .or(terms.flatMap((r) => [`region.ilike.%${r}%`, `city.ilike.%${r}%`]).join(","), { foreignTable: "watch_companies" })
     .order("event_date", { ascending: false }).limit(200);
   const rows = (data ?? []) as any[];
   // Branche (SIC) aus der Beobachtung holen, damit die Beispiele unterscheidbar sind
@@ -76,12 +78,15 @@ async function regionalSamples(page: { segment_id: string; country: string }, re
   }
   // Vielfalt: erst verschiedene Signale, dann verschiedene Branchen und Tage, jede Firma einmal
   const picked: any[] = [], firms = new Set<string>(), sigs = new Set<string>(), divs = new Set<string>(), days = new Map<string, number>();
-  const take = (l: any) => { picked.push(l); firms.add(l.company_id); sigs.add(l.signal_type); days.set(l.event_date, (days.get(l.event_date) ?? 0) + 1);
+  // gleiche Firma unter zwei Einträgen (z. B. "Manchester" und "Greater Manchester") nicht doppelt zeigen
+  const evs = new Set<string>();
+  const evKey = (l: any) => `${l.signal_type}|${cleanEvent(String(l.event_summary), String(l.watch_companies.name)).match(/\d+/)?.[0] ?? ""}|${l.event_date}`;
+  const take = (l: any) => { picked.push(l); firms.add(l.company_id); firms.add(String(l.watch_companies.name).toLowerCase()); evs.add(evKey(l)); sigs.add(l.signal_type); days.set(l.event_date, (days.get(l.event_date) ?? 0) + 1);
     const d = (sic.get(l.observation_ids?.[0]) ?? "").slice(0, 2); if (d) divs.add(d); };
   for (const pass of [0, 1, 2]) {
     for (const l of rows) {
       if (picked.length >= 6) break;
-      if (firms.has(l.company_id)) continue;
+      if (firms.has(l.company_id) || firms.has(String(l.watch_companies.name).toLowerCase()) || evs.has(evKey(l))) continue;
       const d = (sic.get(l.observation_ids?.[0]) ?? "").slice(0, 2);
       if (pass === 0 && sigs.has(l.signal_type)) continue;
       if (pass === 1 && ((d && divs.has(d)) || (days.get(l.event_date) ?? 0) >= 2)) continue;
@@ -94,7 +99,7 @@ async function regionalSamples(page: { segment_id: string; country: string }, re
     return { company: l.watch_companies.name, location: l.watch_companies.city ?? undefined, district: pc?.toUpperCase(),
       industry: code ? code.split(" - ").slice(1).join(" - ") || undefined : undefined, sicCode: code?.slice(0, 5),
       noWebsite: /no website found/i.test(String(l.event_summary)),
-      event: String(l.event_summary).slice(0, 160), date: l.event_date ?? undefined, source: l.source_name,
+      event: String(l.event_summary), date: l.event_date ?? undefined, source: l.source_name,
       signal: l.signal_type ?? undefined, urgency: l.urgency ?? undefined, opener: l.opener ?? undefined };
   });
 }
@@ -142,8 +147,8 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
   const personal = preview && !sp.r ? null : await personalFor(sp.r, page);
   const P: Personal = personal ?? {};
   const lang = page.language;
-  const regional = await regionalSamples(page, personal?.region);
-  const samples = regional.length >= 3 ? regional : ((v.sample_leads ?? []) as Sample[]);
+  const regional = await regionalSamples(page, [personal?.ort, personal?.region]);
+  const samples = (regional.length >= 3 ? regional : ((v.sample_leads ?? []) as Sample[])).slice(0, 3);
   const nd = (x: string) => x.replace(/\s+[–—]\s+/g, ", ");
   const SC = segmentCopy(page.slug, lang);
   const W = SC.words;
@@ -187,6 +192,7 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
       )}
     </div>
   );
+  const Fine = () => <div className="fine"><span>{L.free.replace(/\.$/, "")}</span><span>{L.noObl.replace(/\.$/, "")}</span></div>;
   const Start = ({ label }: { label: string }) => <a className="btn gold big" href={stepHref} data-cta>{label} <span className="ar">→</span></a>;
   const Head = ({ eyebrow, title }: { eyebrow: string; title: string }) => (
     <div data-rv><div className="rule" /><h2 className="rvw" data-rv><Words text={title} /></h2></div>
@@ -210,9 +216,10 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
           {sp.angefragt ? <p className="ok">{known ? L.thanksTo(personal!.email!) : L.thanks}</p>
             : sp.fehler ? <p className="err">{L.error}</p> : null}
           {step ? <Probe /> : !sp.angefragt && (
-            <div className="cta-row later" style={{ "--d": ".9s" } as CSSProperties}><Start label={known ? L.send : cta} />{canBuy && <a className="btn ghost" href="#plans" data-cta>{L.subscribe}</a>}</div>
+            <div className="cta-row later" style={{ "--d": ".9s", alignItems: "flex-start" } as CSSProperties}>
+              <div className="cta-stack"><Start label={known ? L.send : cta} /><Fine /></div>
+              {canBuy && <a className="btn ghost" href="#plans" data-cta>{L.subscribe}</a>}</div>
           )}
-          {!step && !sp.angefragt && <div className="fine later" style={{ "--d": "1.05s" } as CSSProperties}><span>{L.free.replace(/\.$/, "")}</span><span>{L.noObl.replace(/\.$/, "")}</span></div>}
         </div>
       </div>
 
@@ -227,7 +234,9 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
       {samples.length > 0 && (
         <section className="tinted tight"><div className="wrap"><Head eyebrow="" title={fr ? L.examples : F(personal?.region ? "Example leads from {region}" : "Example leads")} />
           <p className="intro">{L.examplesNote}</p>
-          <div className="leadgrid">{samples.map((sm, k) => {
+          <div className="leadgrid p3">{samples.map((s0, k) => {
+            // ältere Beispiele (sample_leads) haben kein Signal: Neugründung am Text erkennen
+            const sm = { ...s0, signal: s0.signal ?? (/registered on/i.test(s0.event) ? "new_incorporation" : undefined) };
             const label = SIGNAL_LABEL[fr ? "fr" : "en"][sm.signal ?? ""] ?? null;
             const detail = cleanEvent(sm.event, sm.company);
             const hint = industryHint(page.slug.split("/")[1] ?? "", sm.sicCode);
@@ -237,30 +246,26 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
               ? `Congratulations on setting up ${nice(sm.company)}${month ? ` this ${month}` : ""}. ${hint[1]}`
               : sm.opener ? sm.opener.split(sm.company).join(nice(sm.company)) : undefined;
             const age = sm.date ? Math.max(0, Math.round((Date.now() - Date.parse(sm.date + "T12:00:00Z")) / 864e5)) : undefined;
+            const title = (detail.length > 110 ? detail.slice(0, 107).replace(/[\s,]+\S*$/, "") + "…" : detail) || (sm.signal === "new_incorporation" && age !== undefined
+              ? (fr ? `Créée il y a ${age} jours` : `Registered ${age} days ago`) : label ?? "");
+            const meta = [sm.industry && sm.industry.split(/[,;]/)[0], sm.location && nice(sm.location.split(" (")[0]), day(sm.date, lang)].filter(Boolean).join(" · ");
+            const masked = (x: string) => x.split(sm.company).join("\u0000").split(nice(sm.company)).join("\u0000").split("\u0000")
+              .flatMap((part, j) => j ? [<span className="mask" key={j} aria-label={fr ? "masqué" : "hidden"}>{"x".repeat(Math.min(14, sm.company.length))}</span>, part] : [part]);
             return (
-              <article className="leadx lux" key={k} data-rv style={i(k)}>
-                <header>
-                  <div><div className="co">{nice(sm.company)}</div>{sm.location && <div className="loc">{nice(sm.location)}{sm.district ? ` · ${sm.district}` : ""}</div>}</div>
-                  <span className="ex">{L.example}</span>
-                </header>
-                <div className="sig">{label && <span className="pill">{label}</span>}<span className="dt">{day(sm.date, lang)}</span>
-                  {sm.noWebsite && <span className="tagw">{fr ? "Pas encore de site web" : "No website yet"}</span>}</div>
-                {(sm.industry || age !== undefined) && (
-                  <div className="prof"><span className="lbl">{fr ? "Profil de l'entreprise" : "Company profile"}</span>
-                    <p>{[sm.industry, sm.district && (fr ? `siège ${sm.district}` : `registered office ${sm.district}`),
-                      age !== undefined && (fr ? `créée il y a ${age} jours` : `incorporated ${age} days ago`),
-                      sm.noWebsite && (fr ? "pas encore de site web" : "no website yet")].filter(Boolean).join(" · ")}</p></div>)}
-                {detail && <p className="det">{nd(detail)}</p>}
-                <ul className="incl" aria-label={fr ? "Inclus dans la livraison" : "Included in the delivery"}>
-                  <li>{fr ? "Téléphone" : "Phone"}</li><li>{fr ? "E-mail" : "Email"}</li><li>{fr ? "Profil" : "Profile"}</li><li>{fr ? "Conseil de vente" : "Sales tip"}</li>
-                </ul>
-                {why && <p className="why"><b>{fr ? "Conseil de vente" : F("Sales tip for {beruf}")}</b>{F(why)}</p>}
-                {opener && <p className="op"><b>{fr ? "Phrase d'accroche" : "Opening line"}</b>“{nd(opener)}”</p>}
-                <div className="ft">
-                  {sm.source && <span>{L.source}: {/career|karriere|carri/i.test(sm.source) || sm.signal?.startsWith("job")
-                    ? (fr ? "Page carrières de l'employeur" : "Employer's careers page") : (fr ? "Registre officiel" : "Official company register")}</span>}
-                  {sm.urgency && <span className={`prio p-${sm.urgency}`}>{PRIO[fr ? "fr" : "en"][sm.urgency] ?? sm.urgency}</span>}
-                </div>
+              <article className="leadp" key={k} data-rv style={i(k)}>
+                <div className="top">{label && <span className="pill">{label}</span>}
+                  {sm.urgency && <span className={`prio p-${sm.urgency}`}>{PRIO[fr ? "fr" : "en"][sm.urgency] ?? sm.urgency}</span>}</div>
+                <h3 className="ev">{nd(title)}</h3>
+                {meta && <div className="meta">{meta}</div>}
+                <dl className="lock">
+                  <div><dt>{fr ? "Entreprise" : "Company"}</dt><dd><span className="mask">{"x".repeat(Math.min(18, Math.max(8, sm.company.length)))}</span></dd></div>
+                  <div><dt>{fr ? "Téléphone" : "Phone"}</dt><dd><span className="mask">{PHONE[page.country] ?? "+00"} 0000 000000</span></dd></div>
+                  <div><dt>E-mail</dt><dd><span className="mask">info@xxxxxxxxxx.{page.country === "UK" ? "co.uk" : page.country === "FR" ? "fr" : "com"}</span></dd></div>
+                  <p className="unlock"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>{fr ? "Visible dans votre échantillon gratuit" : "Unlocked in your free sample"}</p>
+                </dl>
+                {why && <p className="why"><b>{fr ? "Conseil de vente" : "Sales tip"}</b>{F(why)}</p>}
+                {opener && <p className="op"><b>{fr ? "Phrase d'accroche" : "Opening line"}</b>“{masked(nd(opener))}”</p>}
+                <div className="ft"><span className="vf">✓ {fr ? "Vérifié" : "Verified"}</span><span>{L.example}</span></div>
               </article>);
           })}</div>
         </div></section>
@@ -295,8 +300,7 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
         <section className="offer tight" id="sample"><div className="wrap">
           <div><Head eyebrow="" title={F(SC.sampleTitle)} />
             <p className="intro">{known ? L.sendsTo(personal!.gebiet, personal!.email!) : L.sendsToUnknown}</p>
-            <div className="cta-row" data-rv><Start label={L.send} /></div>
-            <div className="fine"><span>{L.free.replace(/\.$/, "")}</span><span>{L.noObl.replace(/\.$/, "")}</span></div>
+            <div className="cta-stack solo" data-rv><Start label={L.send} /><Fine /></div>
           </div>
         </div></section>
       )}
