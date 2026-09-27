@@ -1,0 +1,222 @@
+{
+ "groups": {
+  "01": "farming",
+  "02": "farming",
+  "03": "farming",
+  "10": "manufacturing",
+  "11": "manufacturing",
+  "12": "manufacturing",
+  "13": "manufacturing",
+  "14": "manufacturing",
+  "15": "manufacturing",
+  "16": "manufacturing",
+  "17": "manufacturing",
+  "18": "manufacturing",
+  "19": "manufacturing",
+  "20": "manufacturing",
+  "21": "manufacturing",
+  "22": "manufacturing",
+  "23": "manufacturing",
+  "24": "manufacturing",
+  "25": "manufacturing",
+  "26": "manufacturing",
+  "27": "manufacturing",
+  "28": "manufacturing",
+  "29": "manufacturing",
+  "30": "manufacturing",
+  "31": "manufacturing",
+  "32": "manufacturing",
+  "33": "manufacturing",
+  "41": "construction",
+  "42": "construction",
+  "43": "construction",
+  "45": "retail",
+  "46": "retail",
+  "47": "retail",
+  "49": "transport",
+  "50": "transport",
+  "51": "transport",
+  "52": "transport",
+  "53": "transport",
+  "55": "hospitality",
+  "56": "hospitality",
+  "58": "tech",
+  "59": "tech",
+  "60": "tech",
+  "61": "tech",
+  "62": "tech",
+  "63": "tech",
+  "64": "finance",
+  "65": "finance",
+  "66": "finance",
+  "68": "property",
+  "69": "professional",
+  "70": "professional",
+  "71": "professional",
+  "72": "professional",
+  "73": "professional",
+  "74": "professional",
+  "75": "professional",
+  "77": "services",
+  "78": "services",
+  "79": "services",
+  "80": "services",
+  "81": "services",
+  "82": "services",
+  "85": "education",
+  "86": "health",
+  "87": "health",
+  "88": "health",
+  "90": "leisure",
+  "91": "leisure",
+  "92": "leisure",
+  "93": "leisure",
+  "94": "personal",
+  "95": "personal",
+  "96": "personal"
+ },
+ "hints": {
+  "accountants": {
+   "construction": [
+    "Construction firms fall under CIS: subcontractor payments and monthly returns need to be right from the first job.",
+    "Have you set up CIS returns and bookkeeping for the new company yet?"
+   ],
+   "retail": [
+    "Trading means stock, card takings and VAT on sales from the first day.",
+    "Is anyone looking after your VAT and stock records yet?"
+   ],
+   "hospitality": [
+    "Hospitality brings staff payroll, tips and VAT on food and drink early on.",
+    "Have you sorted payroll and VAT for the new business yet?"
+   ],
+   "transport": [
+    "Vehicles, fuel and drivers' pay make the books complex from the start.",
+    "Who is looking after vehicle costs, payroll and VAT for the new company?"
+   ],
+   "property": [
+    "Property companies need clean records for rent, mortgage interest and corporation tax.",
+    "Have you chosen an accountant for the property company yet?"
+   ],
+   "tech": [
+    "IT and digital firms often need director's pay, VAT and possibly R&D tax relief planned early.",
+    "Have you planned director's pay and VAT for the new company yet?"
+   ],
+   "professional": [
+    "Consultancies usually need director's pay, VAT registration and invoicing set up in the first months.",
+    "Have you planned director's pay and VAT for the new company yet?"
+   ],
+   "health": [
+    "Care and health businesses tend to hire early, so payroll and pension enrolment start soon.",
+    "Is payroll for your first staff set up yet?"
+   ],
+   "education": [
+    "Training businesses often mix staff and freelance tutors, so payroll and invoicing need structure.",
+    "Have you chosen someone to handle payroll and bookkeeping yet?"
+   ],
+   "leisure": [
+    "Events and creative work mean irregular income and project costs to track.",
+    "Is someone keeping your project costs and VAT in order yet?"
+   ],
+   "personal": [
+    "Salons and personal services often rent chairs or hire staff, so payroll and VAT thresholds need watching.",
+    "Have you chosen an accountant for the new business yet?"
+   ],
+   "manufacturing": [
+    "Production means stock valuation, equipment costs and possibly R&D tax relief.",
+    "Have you chosen an accountant to set up stock and equipment records?"
+   ],
+   "services": [
+    "Service businesses scale with staff, so payroll and VAT come up quickly.",
+    "Is payroll and bookkeeping for the new company set up yet?"
+   ]
+  },
+  "insurance-brokers": {
+   "construction": [
+    "Contractors need public liability and tools cover before the first job, and employers' liability once they hire.",
+    "Have you arranged public liability and tools cover yet?"
+   ],
+   "retail": [
+    "Stock, shop contents and public liability for customers on the premises.",
+    "Have you arranged stock and public liability cover yet?"
+   ],
+   "hospitality": [
+    "Premises, food liability and employers' liability as soon as staff start.",
+    "Have you arranged premises and liability cover for the new business yet?"
+   ],
+   "transport": [
+    "Fleet, goods in transit and driver cover are needed before the first delivery.",
+    "Have you arranged fleet and goods in transit cover yet?"
+   ],
+   "property": [
+    "Landlord, buildings and rent guarantee cover protect the new portfolio.",
+    "Have you arranged landlord and buildings cover yet?"
+   ],
+   "tech": [
+    "Professional indemnity and cyber cover protect advice, code and client data.",
+    "Have you arranged professional indemnity and cyber cover yet?"
+   ],
+   "professional": [
+    "Professional indemnity is often required by clients before the first contract.",
+    "Have you arranged professional indemnity for the new company yet?"
+   ],
+   "health": [
+    "Treatment and care work need professional indemnity and public liability.",
+    "Have you arranged professional indemnity for the new business yet?"
+   ],
+   "education": [
+    "Teaching and training need public liability and professional indemnity.",
+    "Have you arranged liability cover for your courses yet?"
+   ],
+   "leisure": [
+    "Events and venues need event liability and equipment cover.",
+    "Have you arranged event liability and equipment cover yet?"
+   ],
+   "personal": [
+    "Salons need treatment liability and contents cover.",
+    "Have you arranged treatment liability cover yet?"
+   ],
+   "manufacturing": [
+    "Product liability, machinery and stock cover protect production from day one.",
+    "Have you arranged product liability and machinery cover yet?"
+   ],
+   "services": [
+    "Public liability and employers' liability come up as soon as work starts on client sites.",
+    "Have you arranged liability cover for the new company yet?"
+   ]
+  },
+  "financial-advisers": {
+   "construction": [
+    "Income in the trades depends on being able to work, so protection and a first pension are natural topics.",
+    "Have you had a chance to think about income protection and a pension for yourself?"
+   ],
+   "retail": [
+    "First staff bring workplace pension duties and a good moment to review the owner's own planning.",
+    "Have you set up a workplace pension for your first staff yet?"
+   ],
+   "hospitality": [
+    "First staff bring workplace pension duties and a good moment to review the owner's own planning.",
+    "Have you set up a workplace pension for your first staff yet?"
+   ],
+   "property": [
+    "Property owners often think about structuring, inheritance and long-term planning.",
+    "Have you had a chance to think about long-term planning for the property company?"
+   ],
+   "tech": [
+    "Director-owners can pay into a pension through the company, a common first planning step.",
+    "Have you looked at paying into a pension through the company yet?"
+   ],
+   "professional": [
+    "Director-owners can pay into a pension through the company, a common first planning step.",
+    "Have you looked at paying into a pension through the company yet?"
+   ],
+   "health": [
+    "Growing care teams mean pension enrolment and a reason to look at staff benefits.",
+    "Is a workplace pension for your team on the agenda yet?"
+   ],
+   "finance": [
+    "Advisory and finance firms often want key person and shareholder protection from the start.",
+    "Have you looked at key person or shareholder protection yet?"
+   ]
+  }
+ }
+}

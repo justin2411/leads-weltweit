@@ -205,7 +205,8 @@ export const BRAND_CSS = `
 .bx .leadx .det{margin:0;font-size:15px}
 .bx .leadx .why{margin:0;font-size:14.5px;color:#39404d;background:#faf6ee;border:1px solid #efe5d3;border-radius:12px;padding:10px 12px}
 .bx .leadx .why b{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:3px}
-.bx .leadx .op{margin:0;font-size:14.5px;color:var(--soft);border-left:2px solid var(--gold);padding-left:12px}
+.bx .leadx .op{margin:0;font-size:14.5px;color:var(--soft);border-left:2px solid var(--gold);padding-left:12px}.bx .leadx .op b{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:3px;font-style:normal}
+.bx .leadx .prof .lbl{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--soft);font-weight:600;margin-bottom:3px}.bx .leadx .prof p{margin:0;font-size:14.5px}
 .bx .leadx .ft{margin-top:auto;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--soft);border-top:1px solid var(--line);padding-top:12px}
 .bx .leadx .prio{font-weight:600}.bx .leadx .p-high{color:#b45309}.bx .leadx .p-medium{color:var(--gold)}
 .motion .bx .leadgrid>[data-rv]{transition-delay:calc(var(--i,0) * 90ms)}
@@ -260,7 +261,8 @@ export const BRAND_CSS = `
 .bx .offer{background:var(--ink);color:#eef1f6;overflow:hidden;isolation:isolate}
 .bx .offer:before{content:"";position:absolute;inset:0;z-index:-1;background:radial-gradient(700px 400px at 85% 20%,rgba(176,141,87,.22),transparent 60%)}
 .bx .offer .wrap{display:grid;grid-template-columns:1.2fr .8fr;gap:56px;align-items:center}
-.bx .offer .intro{color:#b9c2d0;margin-bottom:0}
+.bx .offer .intro{color:#b9c2d0;margin-bottom:0}.bx .offer h2{font-size:clamp(28px,3vw,40px);text-wrap:balance}
+.bx h2{text-wrap:balance}
 .bx .olist{list-style:none;counter-reset:o;margin:0;padding:0;display:grid;gap:16px}
 .bx .olist li{counter-increment:o;display:grid;grid-template-columns:36px 1fr;gap:12px;color:#d5dbe5;font-size:16px}
 .bx .olist li:before{content:counter(o);color:var(--gold2);font-size:20px;font-weight:600;line-height:1.3}

@@ -31,7 +31,7 @@ from lib.rules import brand  # noqa: E402
 FRESH_DAYS = 14          # nur Leads, die höchstens so alt sind
 DEFAULT_MAX = 30         # Leads pro Woche, falls im Abo nichts steht
 CSV_HEADER = ["company", "legal_form", "location", "event", "event_date", "source", "source_url", "checked_on",
-              "urgency", "urgency_reason", "opener"]
+              "urgency", "urgency_reason", "opener", "industry", "sales_tip"]
 
 
 def week_start(today: dt.date | None = None) -> dt.date:
@@ -77,6 +77,21 @@ def select_leads(leads: list[dict], sub: dict, already: set[str], details: dict[
     return picked
 
 
+def add_industry(db, leads: list[dict]) -> None:
+    """Branche (SIC) und Verkaufstipp je Lead ergänzen (Firmenprofil + Tipp in der Lieferung)."""
+    from lib.signals import industry_hint
+    obs = {l["observation_ids"][0]: l for l in leads if l.get("observation_ids")}
+    ids = list(obs)
+    for i in range(0, len(ids), 100):
+        for o in db.select("observations", {"id": f"in.({','.join(ids[i:i + 100])})", "select": "id,details"}):
+            sic = (o.get("details") or {}).get("sic")
+            l = obs[o["id"]]
+            if sic:
+                l["_industry"] = str(sic).split(" - ", 1)[-1]
+                hint = industry_hint(l.get("segment_id") or "", sic)
+                l["_tip"] = hint[0] if hint else ""
+
+
 def to_csv(leads: list[dict]) -> bytes:
     buf = io.StringIO()
     w = csv.writer(buf)
@@ -86,7 +101,8 @@ def to_csv(leads: list[dict]) -> bytes:
         w.writerow([co.get("name", ""), co.get("legal_form") or "",
                     ", ".join(x for x in (co.get("city"), co.get("region")) if x),
                     l["event_summary"], l.get("event_date") or "", l["source_name"], l.get("source_url") or "",
-                    l["source_date"], l["urgency"], l["urgency_reason"], l["opener"]])
+                    l["source_date"], l["urgency"], l["urgency_reason"], l["opener"],
+                    l.get("_industry", ""), l.get("_tip", "")])
     return buf.getvalue().encode("utf-8")
 
 
@@ -266,7 +282,9 @@ def cmd_send(args) -> int:
         for i in range(0, len(ids), 100):
             leads += db.select("leads", {"id": f"in.({','.join(ids[i:i + 100])})",
                                          "select": "id,event_summary,event_date,source_name,source_url,source_date,"
-                                                   "urgency,urgency_reason,opener,watch_companies(name,legal_form,city,region)"})
+                                                   "urgency,urgency_reason,opener,segment_id,observation_ids,"
+                                                   "watch_companies(name,legal_form,city,region)"})
+        add_industry(db, leads)
         lang = _lang(c["country"])
         period = dt.date.fromisoformat(d["period_start"])
         subject, body = delivery_text(lang, len(leads), period, s["filters"].get("areas") or [])

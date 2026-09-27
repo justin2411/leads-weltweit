@@ -11,6 +11,7 @@ import { db } from "@/lib/supabase";
 import { pickVariant } from "@/lib/variants";
 import { Tracker } from "./tracker";
 import { PREMIUM, segmentCopy } from "@/content/segment-words";
+import HINTS from "@/content/industry-hints.json";
 import type { CSSProperties } from "react";
 import { BrandShell, SiteFooter, SiteHeader, Words } from "../../chrome";
 import { HeroNet } from "../../motion";
@@ -40,6 +41,13 @@ const PRIO: Record<"en" | "fr", Record<string, string>> = {
 };
 
 /** "ACME LTD registered on 31 Aug 2026 (London)." -> "" ; sonst Firmenname vorne und Klammern entfernen. */
+/** Verkaufstipp und Frage je Branche der Firma (SIC) und Zielgruppe (content/industry-hints.json, auch für die Lieferung). */
+function industryHint(seg: string, sic: string | undefined): [string, string] | undefined {
+  if (!sic) return undefined;
+  const g = (HINTS.groups as Record<string, string>)[sic.slice(0, 2)];
+  return g ? (HINTS.hints as unknown as Record<string, Record<string, [string, string]>>)[seg]?.[g] : undefined;
+}
+
 function cleanEvent(ev: string, company: string): string {
   let e = ev.split(" (")[0].trim().replace(/\.$/, "");
   if (e.toUpperCase().startsWith(company.toUpperCase())) e = e.slice(company.length).trim();
@@ -47,7 +55,7 @@ function cleanEvent(ev: string, company: string): string {
   return e ? e[0].toUpperCase() + e.slice(1) : "";
 }
 
-type Sample = { company: string; location?: string; district?: string; industry?: string; noWebsite?: boolean; event: string; date?: string; source?: string; signal?: string; urgency?: string; opener?: string };
+type Sample = { company: string; location?: string; district?: string; industry?: string; sicCode?: string; noWebsite?: boolean; event: string; date?: string; source?: string; signal?: string; urgency?: string; opener?: string };
 
 /** Echte Probe-Leads aus der Region des Empfängers (Firmendaten, als Beispiel markiert). */
 async function regionalSamples(page: { segment_id: string; country: string }, region: string | undefined): Promise<Sample[]> {
@@ -84,7 +92,7 @@ async function regionalSamples(page: { segment_id: string; country: string }, re
     const code = sic.get(l.observation_ids?.[0]);
     const pc = String(l.watch_companies.address ?? "").match(/\b([A-Z]{1,2}\d[A-Z\d]?)\s*\d[A-Z]{2}\b/i)?.[1];
     return { company: l.watch_companies.name, location: l.watch_companies.city ?? undefined, district: pc?.toUpperCase(),
-      industry: code ? code.split(" - ").slice(1).join(" - ") || undefined : undefined,
+      industry: code ? code.split(" - ").slice(1).join(" - ") || undefined : undefined, sicCode: code?.slice(0, 5),
       noWebsite: /no website found/i.test(String(l.event_summary)),
       event: String(l.event_summary).slice(0, 160), date: l.event_date ?? undefined, source: l.source_name,
       signal: l.signal_type ?? undefined, urgency: l.urgency ?? undefined, opener: l.opener ?? undefined };
@@ -227,7 +235,13 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
           <div className="leadgrid">{samples.map((sm, k) => {
             const label = SIGNAL_LABEL[fr ? "fr" : "en"][sm.signal ?? ""] ?? null;
             const detail = cleanEvent(sm.event, sm.company);
-            const why = sm.signal ? SC.why[sm.signal] : undefined;
+            const hint = industryHint(page.slug.split("/")[1] ?? "", sm.sicCode);
+            const why = hint?.[0] ?? (sm.signal ? SC.why[sm.signal] : undefined);
+            const month = sm.date ? new Date(sm.date + "T12:00:00Z").toLocaleDateString("en-GB", { month: "long" }) : "";
+            const opener = hint && sm.signal === "new_incorporation" && !fr
+              ? `Congratulations on setting up ${nice(sm.company)}${month ? ` this ${month}` : ""}. ${hint[1]}`
+              : sm.opener ? sm.opener.split(sm.company).join(nice(sm.company)) : undefined;
+            const age = sm.date ? Math.max(0, Math.round((Date.now() - Date.parse(sm.date + "T12:00:00Z")) / 864e5)) : undefined;
             return (
               <article className="leadx" key={k} data-rv style={i(k)}>
                 <header>
@@ -236,10 +250,14 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
                 </header>
                 <div className="sig">{label && <span className="pill">{label}</span>}<span className="dt">{day(sm.date, lang)}</span>
                   {sm.noWebsite && <span className="tagw">{fr ? "Pas encore de site web" : "No website yet"}</span>}</div>
-                {sm.industry && <p className="ind"><span>{fr ? "Activité" : "Industry"}</span>{sm.industry}</p>}
+                {(sm.industry || age !== undefined) && (
+                  <div className="prof"><span className="lbl">{fr ? "Profil de l'entreprise" : "Company profile"}</span>
+                    <p>{[sm.industry, sm.district && (fr ? `siège ${sm.district}` : `registered office ${sm.district}`),
+                      age !== undefined && (fr ? `créée il y a ${age} jours` : `incorporated ${age} days ago`),
+                      sm.noWebsite && (fr ? "pas encore de site web" : "no website yet")].filter(Boolean).join(" · ")}</p></div>)}
                 {detail && <p className="det">{nd(detail)}</p>}
-                {why && <p className="why"><b>{fr ? "Pourquoi c'est une opportunité" : F("Why it matters for {beruf}")}</b>{F(why)}</p>}
-                {sm.opener && <p className="op">“{nd(sm.opener.split(sm.company).join(nice(sm.company)))}”</p>}
+                {why && <p className="why"><b>{fr ? "Conseil de vente" : F("Sales tip for {beruf}")}</b>{F(why)}</p>}
+                {opener && <p className="op"><b>{fr ? "Phrase d'accroche" : "Opening line"}</b>“{nd(opener)}”</p>}
                 <div className="ft">
                   {sm.source && <span>{L.source}: {sm.source}</span>}
                   {sm.urgency && <span className={`prio p-${sm.urgency}`}>{PRIO[fr ? "fr" : "en"][sm.urgency] ?? sm.urgency}</span>}
