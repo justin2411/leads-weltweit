@@ -162,7 +162,7 @@ def preview_rows(files: list[tuple[str, bytes]]) -> list[dict]:
     out = []
     for r in csv.DictReader(io.StringIO(files[0][1].decode("utf-8", "replace"))):
         ev = re.sub(r"\s*[–—]\s*", ", ", (r.get("event") or "").split(". ")[0].rstrip("."))
-        ev = re.sub(r"\s*\([^)]*\)?", "", ev)
+        ev = ev.split(" (")[0]
         name = r.get("company") or ""
         if ev.upper().startswith(name.upper()):
             ev = ev[len(name):].strip()

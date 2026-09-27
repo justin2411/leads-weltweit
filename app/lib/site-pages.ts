@@ -4,9 +4,9 @@ import { db } from "./supabase";
 
 /** Anzeigenamen der Zielgruppen für Startseite und Sitemap (Fallback: aus dem Slug). */
 const NAMES: Record<string, { name: string; blurb: string }> = {
-  accountants: { name: "Accountants & bookkeepers", blurb: "Newly registered companies and local firms hiring for finance roles – before they pick an accountant." },
+  accountants: { name: "Accountants & bookkeepers", blurb: "Newly registered companies and local firms hiring for finance roles, before they pick an accountant." },
   "insurance-brokers": { name: "Commercial insurance brokers", blurb: "New and growing businesses at the moment liability, property and employer cover is arranged." },
-  "financial-advisers": { name: "Financial advisers", blurb: "New directors and growing employers – when pensions, protection and benefits come up." },
+  "financial-advisers": { name: "Financial advisers", blurb: "New directors and growing employers, at the point when pensions, protection and benefits come up." },
   recruitment: { name: "Recruitment agencies", blurb: "Employers with roles open for weeks, repeated postings or several hires at once." },
   "web-agencies": { name: "Web agencies", blurb: "New companies and businesses with outdated or missing websites." },
   "it-services": { name: "IT & managed service providers", blurb: "New sites, fast-growing teams and open IT roles." },
@@ -52,7 +52,7 @@ export async function homeFeed(): Promise<HomeFeedItem[]> {
     if (seen.has(l.company_id) || out.length >= 8) continue;
     seen.add(l.company_id);
     const name = String(l.watch_companies.name);
-    let ev = String(l.event_summary).split(/(?<=\.)\s/)[0].replace(/\s*\([^)]*\)?/g, "").replace(/\.$/, "");
+    let ev = String(l.event_summary).split(/(?<=\.)\s/)[0].split(" (")[0].replace(/\.$/, "");
     if (ev.toUpperCase().startsWith(name.toUpperCase())) ev = ev.slice(name.length).trim();
     ev = ev.replace(/^registered/i, "Newly registered").replace(/\s*[–—]\s*/g, ", ");
     out.push({

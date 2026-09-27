@@ -49,7 +49,7 @@ const css = `
 .hp .hero .wrap{display:grid;grid-template-columns:1.15fr .85fr;gap:56px;align-items:center;padding-top:96px;padding-bottom:104px}
 .hp h1{font-family:var(--serif),Georgia,serif;font-weight:400;font-size:clamp(40px,5.6vw,72px);line-height:1.04;letter-spacing:-.025em;margin:18px 0 24px}
 .hp h1 em{font-style:italic;color:var(--gold2)}
-.hp h1 .ln{display:block;overflow:hidden}.hp h1 .ln span{display:inline-block;animation:rise 1.1s cubic-bezier(.2,.7,.1,1) both}
+.hp h1 .ln{display:block;overflow:hidden;padding-bottom:.1em;margin-bottom:-.1em}.hp h1 .ln span{display:inline-block;animation:rise 1.1s cubic-bezier(.2,.7,.1,1) both}
 .hp h1 .ln:nth-child(2) span{animation-delay:.12s}.hp h1 .ln:nth-child(3) span{animation-delay:.24s}
 .hp .lede{font-size:19px;color:#c3cbd8;max-width:560px;margin:0;animation:fade 1.2s .45s both}
 .hp .cta-row{display:flex;gap:14px;flex-wrap:wrap;margin-top:36px;animation:fade 1.2s .6s both}
