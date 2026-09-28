@@ -4,6 +4,7 @@ import { BRAND, CONTACT, siteUrl } from "@/lib/site";
 import { checkoutMode, lineItemFor, stripe, stripeEnabled, type Plan } from "@/lib/stripe";
 import { db } from "@/lib/supabase";
 import { basePlan, customCents, PER_WEEK, validWeekly } from "@/lib/custom-price";
+import { prospectIdFor } from "@/lib/recipient";
 
 export const dynamic = "force-dynamic";
 
@@ -61,12 +62,15 @@ export async function POST(req: Request) {
   // Kontingent auf der Stripe-Seite unter dem Paketnamen (nur bei Preis aus der Datenbank möglich)
   if (week && item.price_data) item.price_data.product_data.description = T.desc(week, Math.round(week * 52 / 12));
 
+  const r = String(f.get("r") ?? "");
+  // Kauf der Kaltmail zuordnen (?r=<Token der Mail>): der Webhook speichert customers.prospect_id
+  const prospectId = await prospectIdFor(r, page).catch(() => null);
   const meta = { segment_id: page.segment_id, country: page.country, variant_id: v.id, package: pkg, mode,
-                 amount_cents: String(plan?.amount_cents ?? ""), currency: plan?.currency ?? "", weekly: String(week ?? "") };
+                 amount_cents: String(plan?.amount_cents ?? ""), currency: plan?.currency ?? "", weekly: String(week ?? ""),
+                 ...(prospectId ? { prospect_id: prospectId } : {}) };
   // Zurück aus Stripe: auf die Pläne-Seite (/start), nicht auf die Landingpage
   const q = new URLSearchParams();
   if (ownerPreview) { q.set("vorschau", "1"); q.set("v", v.variant_key); }
-  const r = String(f.get("r") ?? "");
   if (/^[A-Za-z0-9_-]{8,80}$/.test(r)) q.set("r", r);
   const back = `${siteUrl()}/${page.slug}/start${q.size ? `?${q}` : ""}`;
   let session: any;

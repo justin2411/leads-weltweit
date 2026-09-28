@@ -7,6 +7,7 @@ import { BRAND, LEGAL_NAME, siteUrl } from "@/lib/site";
 import { db } from "@/lib/supabase";
 import { isBusinessEmail } from "@/lib/variants";
 import { personalFor } from "@/lib/recipient";
+import { COUNTRIES, type CountryCode } from "@/lib/country";
 
 export const dynamic = "force-dynamic";
 
@@ -37,29 +38,47 @@ export async function POST(req: Request) {
   const region = (who?.gebiet ?? "").slice(0, 200);
   if (!company || !isBusinessEmail(email) || f.get("consent") !== "yes") return back(page.slug, "fehler=1", pv);
 
+  // Doppelklick oder zweiter Besuch: dieselbe Anfrage (Adresse, Zielgruppe, Land) in 30 Tagen nur einmal
+  // speichern und bestätigen; die Seite zeigt trotzdem die Erfolgsmeldung.
+  if (!test) {
+    const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+    const { data: dup } = await db().from("sample_requests").select("id")
+      .eq("email", email).eq("segment_id", page.segment_id).eq("country", page.country)
+      .in("status", ["new", "sent"]).gte("created_at", since).limit(1);
+    if (dup?.length) return back(page.slug, "angefragt=1", pv);
+  }
+
   const { data: suppressed } = await db().rpc("is_suppressed", { p_email: email });
   const consent = consentText(page.language);
+  // Inhaber-Vorschau (TEST): nie als offene Anfrage speichern (web_samples.py würde sonst dem echten Empfänger
+  // aus dem Mail-Link eine Probe schicken) und nie den echten Empfänger anschreiben.
   const { error } = await db().from("sample_requests").insert({
     variant_id: v.id, company_name: company, email, segment_id: page.segment_id, country: page.country,
     region: region || null, consent_text: consent, consent_at: new Date().toISOString(),
-    status: suppressed ? "rejected" : "new",
+    status: suppressed || test ? "rejected" : "new",
     note: [suppressed ? "Adresse/Domain gesperrt – keine Mail" : "", test ? "TEST (Inhaber-Vorschau)" : ""].filter(Boolean).join("; ") || null,
   });
   if (error) return new Response("Fehler", { status: 500 });
   if (!test) await recordEvent(v.id, "sample_request");
 
-  if (!suppressed) {
-    const m = confirmationMail(page.language === "fr" ? "fr" : "en", region, consent);
+  const m = confirmationMail(page.language === "fr" ? "fr" : "en", page.country, consent);
+  if (test) {
+    // Vorschau: Bestätigung nur an den Inhaber (falls hinterlegt), nie an die Adresse aus dem Mail-Link
+    const owner = process.env.SALE_NOTIFY_EMAIL?.trim() || process.env.OWNER_EMAIL?.trim();
+    if (owner) await sendConsentMail(owner, `[TEST] ${m.subject}`, m.text, m.html).catch(() => null);
+  } else if (!suppressed) {
     await sendConsentMail(email, m.subject, m.text, m.html).catch(() => null); // Anfrage ist gespeichert; Bestätigung ist optional
   }
   return back(page.slug, "angefragt=1", pv);
 }
 
-/** Bestätigung der Probe-Anfrage: Text- und HTML-Version, ohne Preise und ohne Zeitversprechen. */
-function confirmationMail(lang: "en" | "fr", region: string, consent: string) {
+/** Bestätigung der Probe-Anfrage: Text- und HTML-Version, ohne Preise und ohne Zeitversprechen.
+ *  Landesweit formuliert (Inhaber 27.09.2026): keine Städte oder Regionen, nur das Land. */
+function confirmationMail(lang: "en" | "fr", country: string, consent: string) {
   const fr = lang === "fr";
-  const area = region ? (fr ? ` pour ${region}` : ` for ${region}`) : "";
-  const subject = fr ? `Votre demande d'échantillon est confirmée${area}` : `Your sample request is confirmed${area}`;
+  const c = COUNTRIES[country as CountryCode];
+  const area = c ? (fr ? ` ${c.landDe ?? `pour ${c.name.fr}`}` : ` from across ${c.land}`) : "";
+  const subject = fr ? "Votre demande d'échantillon est confirmée" : "Your sample request is confirmed";
   // Kurz, leicht, ohne Druck: was jetzt passiert und warum es sich lohnt, kurz hineinzuschauen
   const blocks: MailBlock[] = fr ? [
     { p: "Bonjour," },
