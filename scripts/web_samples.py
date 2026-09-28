@@ -40,7 +40,9 @@ def mark(db, msg: dict | None, event_type: str, note: str) -> None:
 
 def skip_reason(db, r: dict, msg: dict | None) -> str | None:
     """Anfrage nicht beantworten: Inhaber-Vorschau (TEST) oder diese Adresse hat schon eine Probe bekommen."""
-    if "TEST" in (r.get("note") or ""):
+    from lib.wishes import split_note
+    # nur den Hinweis prüfen, nicht den Freitext des Kunden ("wunsch:…;text=TEST …" ist keine Inhaber-Vorschau)
+    if "TEST" in split_note(r.get("note"))[0]:
         return "TEST (Inhaber-Vorschau) – keine Probe an echte Empfänger"
     email = (r.get("email") or "").strip().lower()
     if db.select("sample_requests", {"email": f"eq.{email}", "status": "eq.sent", "id": f"neq.{r['id']}", "select": "id"}):
@@ -56,6 +58,7 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     from lib.db import DB
     from responder import notify_owner, regional_sample, sample_mail, sample_subject, send_reply
+    from lib.wishes import parse, split_note, with_note
     db = DB()
     can_send = bool(os.environ.get("RESEND_API_KEY") and os.environ.get("MAIL_FROM"))
     n = {"sent": 0, "waiting": 0, "rejected": 0}
@@ -66,41 +69,53 @@ def main(argv=None) -> int:
             print(f"GESPERRT  {r['company_name']}")
             n["rejected"] += 1
             if args.apply:
-                db.update("sample_requests", {"id": r["id"]}, {"status": "rejected", "note": "gesperrt"})
+                db.update("sample_requests", {"id": r["id"]}, {"status": "rejected", "note": with_note(r.get("note"), "gesperrt")})
             continue
         why_skip = skip_reason(db, r, msg)
         if why_skip:
             print(f"ÜBERSPRUNGEN {r['company_name']}: {why_skip}")
             n["rejected"] += 1
             if args.apply:
-                db.update("sample_requests", {"id": r["id"]}, {"status": "rejected", "note": why_skip})
+                db.update("sample_requests", {"id": r["id"]}, {"status": "rejected", "note": with_note(r.get("note"), why_skip)})
             continue
         lang = "fr" if r.get("country") == "FR" else "en"
-        files, _ = regional_sample(db, r["segment_id"], r["country"], None)
+        # Wunsch aus dem Formular ("Welche Leads?"): passende vollständige Leads zuerst, sonst auffüllen
+        wish, wish_text = parse(r.get("note"))
+        files, _ = regional_sample(db, r["segment_id"], r["country"], None, wish=wish)
         body, blocks = sample_mail(lang, None, files, True)
         if body and can_send:
-            print(f"PROBE     {r['company_name']} ({r['segment_id']}/{r['country']})")
+            print(f"PROBE     {r['company_name']} ({r['segment_id']}/{r['country']})"
+                  + (f" Wunsch: {','.join(wish)}" if wish else ""))
             n["sent"] += 1
             if args.apply:
                 send_reply(email, sample_subject(lang, None), body, None, lang, files, blocks, requested=True)
                 db.update("sample_requests", {"id": r["id"]},
                           {"status": "sent", "sent_at": dt.datetime.now(dt.timezone.utc).isoformat()})
                 mark(db, msg, "sample_requested", "Probe über Landingpage angefordert und gesendet")
+                if wish_text:
+                    # Freitext (z. B. Branche, Größe) wird nicht automatisch ausgewertet: Inhaber kurz informieren
+                    notify_owner(f"[Leads] Probe gesendet, Hinweis des Kunden: {r['company_name']}",
+                                 f"{r['company_name']} ({email}, {r['segment_id']}/{r['country']}) hat die Probe "
+                                 f"bekommen. Gewünschte Signale: {', '.join(wish) or '-'}.\n"
+                                 f"Hinweis im Formular (nicht automatisch berücksichtigt): {wish_text}")
             continue
         n["waiting"] += 1
         why = "noch keine 10 vollständigen Leads" if not body else "Resend nicht eingerichtet"
         print(f"WARTET    {r['company_name']} ({r['segment_id']}/{r['country']}): {why}")
-        if args.apply and r.get("note") != NOTIFIED:
+        if args.apply and NOTIFIED not in split_note(r.get("note"))[0]:
             # Ja zur Probe: keine Nachfassmail "Soll ich sie schicken?" mehr
             mark(db, msg, "reply_positive", "Probe über Landingpage angefordert (noch nicht lieferbar)")
             notify_owner(f"[Leads] Probe angefordert, noch nicht lieferbar: {r['company_name']}",
                          f"{r['company_name']} ({r['segment_id']}/{r['country']}) hat am "
                          f"{r['created_at'][:16].replace('T', ' ')} UTC über die Landingpage eine Probe angefordert "
-                         f"({email}).\n\nGrund, warum sie noch nicht raus ist: {why}.\n"
+                         f"({email}).\n"
+                         + (f"Gewünschte Leads: {', '.join(wish) or '-'}" + (f"; Hinweis: {wish_text}" if wish_text else "")
+                            + "\n" if wish or wish_text else "")
+                         + f"\nGrund, warum sie noch nicht raus ist: {why}.\n"
                          f"Die Seite hat bestätigt, dass die Leads unterwegs sind. Bitte persönlich melden oder "
                          f"warten, bis die Anreicherung genug vollständige Leads hat – dann geht die Probe "
                          f"automatisch raus.")
-            db.update("sample_requests", {"id": r["id"]}, {"note": NOTIFIED})
+            db.update("sample_requests", {"id": r["id"]}, {"note": with_note(r.get("note"), NOTIFIED)})
     print(f"\n{n}" + ("" if args.apply else "\nProbelauf – mit --apply handeln."))
     return 0
 

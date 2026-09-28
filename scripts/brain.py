@@ -262,11 +262,13 @@ def main(argv=None) -> int:
 def _send_sample(db, r: dict) -> None:
     """10 Leads aus dem ganzen Land als CSV an den Anfragenden (eigener Betreff, kein gefälschtes 'Re:')."""
     from responder import regional_sample, sample_mail, sample_subject, send_reply
+    from lib.wishes import parse, with_note
     if db.rpc("is_suppressed", {"p_email": r["email"]}):
-        db.update("sample_requests", {"id": r["id"]}, {"status": "rejected", "note": "gesperrt"})
+        db.update("sample_requests", {"id": r["id"]}, {"status": "rejected", "note": with_note(r.get("note"), "gesperrt")})
         return
     lang = "fr" if r.get("country") == "FR" else "en"
-    files, regional = regional_sample(db, r["segment_id"], r["country"], r.get("region"))
+    # Wunsch aus dem Probe-Formular ("Welche Leads?") bevorzugen
+    files, regional = regional_sample(db, r["segment_id"], r["country"], r.get("region"), wish=parse(r.get("note"))[0])
     area = None  # landesweit statt regional (Inhaber 27.09.2026)
     body, blocks = sample_mail(lang, area, files, regional)
     if not body or not (os.environ.get("RESEND_API_KEY") and os.environ.get("MAIL_FROM")):
