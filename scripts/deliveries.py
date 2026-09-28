@@ -37,6 +37,33 @@ CSV_HEADER = ["company", "phone", "email", "website", "location", "company_profi
               "source", "checked_on", "legal_form", "industry", "address", "contact_name", "contact_role"]
 # Kunde bekommt nur vollständige Leads: Telefon, Sammel-E-Mail, Website, Adresse, Ansprechperson (Inhaber 27.09.2026).
 REQUIRE_CONTACT = True
+# Gleiche Felder beim Vorbereiten und beim Senden: ohne watch_companies.address verwirft
+# leadreport.complete_only jede Zeile und der Kunde bekäme eine Mail ohne Anhang.
+LEAD_SELECT = ("id,segment_id,country,signal_type,event_summary,event_date,source_name,source_url,source_date,"
+               "urgency,urgency_reason,opener,company_id,observation_ids,"
+               "watch_companies(name,legal_form,city,region,address)")
+DELIVERED_STATUSES = ("approved", "sent")
+
+
+def is_test_customer(c: dict) -> bool:
+    """Kauf im Stripe-Testmodus (Webhook legt den Kunden mit Status 'trial' an): bekommt nie echte Leads."""
+    return (c.get("status") == "trial"
+            and (bool(c.get("stripe_customer_id")) or "Stripe-Testmodus" in (c.get("notes") or "")))
+
+
+def deliverable_customer(c: dict) -> bool:
+    return c.get("status") in ("trial", "active") and not is_test_customer(c)
+
+
+def already_delivered(deliveries: list[dict], period: dt.date) -> set[str]:
+    """Schon vergebene Leads: freigegebene/gesendete Lieferungen und offene Vorschauen dieser Woche.
+    Nie freigegebene Vorschauen früherer Wochen blockieren keine Leads mehr."""
+    out: set[str] = set()
+    for d in deliveries:
+        if d.get("status") in DELIVERED_STATUSES or (d.get("status") == "prepared"
+                                                     and str(d.get("period_start") or "")[:10] == period.isoformat()):
+            out.update(d.get("lead_ids") or [])
+    return out
 
 
 def week_start(today: dt.date | None = None) -> dt.date:
@@ -187,36 +214,40 @@ def to_csv(leads: list[dict], lang: str = "en", area: str | None = None) -> byte
     return ("\ufeff" + buf.getvalue()).encode("utf-8")
 
 
-def delivery_text(lang: str, n: int, period: dt.date, areas: list[str]) -> tuple[str, str]:
+def delivery_text(lang: str, n: int, period: dt.date, areas: list[str], country: str | None = None) -> tuple[str, str]:
+    """Landesweit formuliert (Inhaber 27.09.2026); Gebiete nur, wenn der Kunde selbst welche gewählt hat."""
     from drafts import signature
+    from followups import _land
     where = ", ".join(areas)
+    land = _land({"country": country or ""}, lang)
     if lang == "fr":
         subject = f"Vos nouvelles pistes – semaine du {period:%d/%m/%Y}"
         body = (f"Bonjour,\n\nVoici vos {n} nouvelles pistes de la semaine"
-                + (f" pour {where}" if where else "") + ", réservées à votre entreprise.\n\n"
+                + (f" pour vos zones choisies ({where})" if where else f", {land}") + ", réservées à votre entreprise.\n\n"
                 "Le rapport en PDF présente chaque entreprise avec son téléphone et son e-mail, un court profil, "
                 "l'événement et sa date, un conseil de vente et une phrase d'accroche. Le tableau joint contient les mêmes "
                 "pistes pour votre CRM. Commencez par les priorités hautes : le moment y est le meilleur. "
-                "Si vous souhaitez ajuster les villes ou les types de signaux, répondez simplement à ce message.\n\n"
+                "Si vous souhaitez ajuster les types de signaux ou d'entreprises, répondez simplement à ce message.\n\n"
                 "Bien cordialement,\n" + signature(lang))
         if n == 0:
             body = ("Bonjour,\n\nCette semaine, nous n'avons trouvé aucune nouvelle piste correspondant à vos critères"
-                    + (f" pour {where}" if where else "") + ". Nous préférons ne rien envoyer plutôt que des pistes "
-                    "hors de votre zone. Les prochaines arriveront avec la livraison de la semaine prochaine.\n\n"
+                    + (f" pour vos zones choisies ({where})" if where else "") + ". Nous préférons ne rien envoyer "
+                    "plutôt que des pistes qui ne vous correspondent pas. Les prochaines arriveront avec la livraison "
+                    "de la semaine prochaine.\n\n"
                     "Bien cordialement,\n" + signature(lang))
         return subject, body
     subject = f"Your new leads – week of {period:%d %B %Y}"
     body = (f"Hello,\n\nHere are your {n} new leads for this week"
-            + (f" in {where}" if where else "") + ", reserved for your firm.\n\n"
+            + (f" in your chosen areas ({where})" if where else f" from {land}") + ", reserved for your firm.\n\n"
             "The PDF report shows each company with its phone number and email, a short profile, the event and its "
             "date, a sales tip and a suggested opening line. The attached spreadsheet has the same leads for your CRM. "
             "Start with the high-priority ones: that is where the timing is best. "
-            "If you would like to adjust the towns or signal types, simply reply to this email.\n\n"
+            "If you would like to adjust the signal types or the kind of companies, simply reply to this email.\n\n"
             "Best regards,\n" + signature(lang))
     if n == 0:
         body = ("Hello,\n\nThis week we found no new leads matching your criteria"
-                + (f" in {where}" if where else "") + ". We would rather send nothing than leads outside your area; "
-                "new ones will follow with next week's delivery.\n\nBest regards,\n" + signature(lang))
+                + (f" in your chosen areas ({where})" if where else "") + ". We would rather send nothing than leads "
+                "that do not fit; new ones will follow with next week's delivery.\n\nBest regards,\n" + signature(lang))
     return subject, body
 
 
@@ -241,12 +272,39 @@ def _lang(country: str) -> str:
     return "fr" if country == "FR" else "en"
 
 
+def _notify_owner(subject: str, text: str) -> None:
+    """Meldung an den Inhaber (Resend an die eigene Adresse wie report.py); Fehler nur protokollieren."""
+    from responder import alert_address
+    owner = os.environ.get("OWNER_EMAIL") or alert_address()
+    if not owner:
+        print(f"WARNUNG: OWNER_EMAIL fehlt – Meldung nur im Protokoll: {subject}")
+        return
+    try:
+        _resend([owner], subject, text)
+    except Exception as exc:  # noqa: BLE001 - Meldung darf den Lauf nicht abbrechen
+        print(f"WARNUNG: Meldung an den Inhaber fehlgeschlagen ({exc}): {subject}")
+
+
+def load_leads_by_id(db, ids: list[str]) -> list[dict]:
+    leads = []
+    for i in range(0, len(ids), 100):
+        leads += db.select("leads", {"id": f"in.({','.join(ids[i:i + 100])})", "select": LEAD_SELECT})
+    return leads
+
+
+def tag_fresh_leads(db) -> None:
+    """lead_tags schreiben, bevor ausgewählt wird (sonst taggt nur match.py über das Gehirn, und select_leads
+    findet für neue Leads keinen Qualitätswert). Ein Fehler hier darf die Lieferung nicht verhindern."""
+    try:
+        from match import tag_leads
+        tag_leads(db, apply=True)
+    except Exception as exc:  # noqa: BLE001
+        print(f"WARNUNG: Leads taggen fehlgeschlagen ({exc.__class__.__name__}: {str(exc)[:200]}), nutze vorhandene Tags")
+
+
 def _load_leads(db, since: dt.date) -> tuple[list[dict], dict[str, dict]]:
     leads = db.select_all("leads", {"created_at": f"gte.{since.isoformat()}", "status": "neq.expired",
-                                    "select": "id,segment_id,country,signal_type,event_summary,event_date,source_name,"
-                                              "source_url,source_date,urgency,urgency_reason,opener,company_id,"
-                                              "observation_ids,watch_companies(name,legal_form,city,region,address)",
-                                    "order": "event_date.desc,id"})
+                                    "select": LEAD_SELECT, "order": "event_date.desc,id"})
     details = {}
     us_obs = {l["observation_ids"][0]: l["id"] for l in leads if l["country"] == "US" and l.get("observation_ids")}
     ids = list(us_obs)
@@ -278,11 +336,16 @@ def cmd_prepare(args) -> int:
     db = DB()
     period = week_start()
     subs = db.select("subscriptions", {"status": "eq.active",
-                                       "select": "*,customers(company_name,country,billing_email,status)"})
-    subs = [s for s in subs if s["customers"]["status"] in ("trial", "active")]
+                                       "select": "*,customers(company_name,country,billing_email,status,"
+                                                 "stripe_customer_id,notes)"})
+    for s in subs:
+        if is_test_customer(s["customers"]):
+            print(f"- {s['customers']['company_name']}: Kauf im Stripe-Testmodus – keine Lieferung")
+    subs = [s for s in subs if deliverable_customer(s["customers"])]
     if not subs:
         print("Keine aktiven Abos – nichts zu liefern.")
         return 0
+    tag_fresh_leads(db)
     leads, details = _load_leads(db, dt.date.today() - dt.timedelta(days=FRESH_DAYS))
     known = None
     if REQUIRE_CONTACT:
@@ -307,11 +370,12 @@ def cmd_prepare(args) -> int:
             continue
         # jeder Lead höchstens einmal pro Kunde (über alle seine Abos) und exklusiv je Branche:
         # was ein anderer Kunde derselben Branche schon bekommen hat, geht an niemanden sonst (wer zuerst kommt).
-        already = set()
+        # Es zählen freigegebene/gesendete Lieferungen und offene Vorschauen dieser Woche (sonst bekämen zwei neue
+        # Kunden derselben Branche dieselben Leads), nicht aber nie freigegebene Vorschauen früherer Wochen.
         sub_ids = [x["id"] for x in db.select("subscriptions", {"select": "id",
                    "or": f"(customer_id.eq.{s['customer_id']},segment_id.eq.{s['segment_id']})"})]
-        for d in db.select_all("deliveries", {"subscription_id": f"in.({','.join(sub_ids)})", "select": "lead_ids"}):
-            already.update(d["lead_ids"] or [])
+        already = already_delivered(db.select_all("deliveries", {"subscription_id": f"in.({','.join(sub_ids)})",
+                                                                 "select": "lead_ids,status,period_start"}), period)
         cf = db.select("customer_filters", {"customer_id": f"eq.{s['customer_id']}"})
         picked = select_leads(leads, s, already, details, tags=tags, cfilter=cf[0] if cf else None)
         enrich(db, picked, known)
@@ -369,42 +433,65 @@ def cmd_approve(args) -> int:
 
 def cmd_send(args) -> int:
     from lib.db import DB
-    from lib.html_email import render
     db = DB()
     todo = db.select("deliveries", {"status": "eq.approved", "select": "*,subscriptions(segment_id,filters,status,"
-                                                                       "customers(company_name,country,billing_email,status))"})
+                                                                       "customers(company_name,country,billing_email,"
+                                                                       "status,stripe_customer_id,notes))"})
     for d in todo:
-        s = d["subscriptions"]
-        c = s["customers"]
-        if s["status"] != "active" or c["status"] not in ("trial", "active"):
-            print(f"- {c['company_name']}: Abo nicht aktiv, übersprungen")
-            continue
-        ids = d["lead_ids"] or []
-        leads = []
-        for i in range(0, len(ids), 100):
-            leads += db.select("leads", {"id": f"in.({','.join(ids[i:i + 100])})",
-                                         "select": "id,event_summary,event_date,source_name,source_url,source_date,"
-                                                   "urgency,urgency_reason,opener,segment_id,observation_ids,"
-                                                   "signal_type,company_id,"
-                                                   "watch_companies(name,legal_form,city,region)"})
-        enrich(db, leads)
-        lang = _lang(c["country"])
-        period = dt.date.fromisoformat(d["period_start"])
-        subject, body = delivery_text(lang, len(leads), period, s["filters"].get("areas") or [])
-        footer = f"{brand()} · {os.environ.get('SENDER_POSTAL_ADDRESS', '')}".strip(" ·")
-        from lib.leadreport import attachments
-        files = attachments(to_csv(leads, lang), lang, ", ".join(s["filters"].get("areas") or []) or None,
-                            c["company_name"], period, name=f"leads-{period.isoformat()}",
-                            segment=s.get("segment_id"), country=c["country"]) if leads else None
-        if not args.live:
-            print(f"[Probelauf] {c['company_name']} <{c['billing_email']}>: {len(leads)} Leads, Betreff „{subject}“")
-            continue
-        _resend([c["billing_email"]], subject, body + "\n\n" + footer, render(body, footer, lang), files)
-        db.update("deliveries", {"id": d["id"]}, {"status": "sent", "sent_at": dt.datetime.now(dt.timezone.utc).isoformat()})
-        print(f"✓ {c['company_name']}: {len(leads)} Leads gesendet")
+        c = ((d.get("subscriptions") or {}).get("customers")) or {}
+        try:
+            send_delivery(db, d, args.live)
+        except Exception as exc:  # noqa: BLE001 - eine kaputte Lieferung darf die übrigen nicht aufhalten
+            print(f"FEHLER {c.get('company_name', d['id'])}: {exc.__class__.__name__}: {str(exc)[:300]}")
+            if args.live:
+                _notify_owner(f"[Leads] Lieferung fehlgeschlagen: {c.get('company_name', '?')}",
+                              f"Die Lieferung {d['id']} (Woche {d.get('period_start')}) an {c.get('company_name', '?')} "
+                              f"<{c.get('billing_email', '?')}> ist fehlgeschlagen und bleibt freigegeben; der nächste "
+                              f"Lauf versucht es erneut.\n\nFehler: {exc.__class__.__name__}: {str(exc)[:1000]}")
     if not todo:
         print("Keine freigegebenen Lieferungen.")
     return 0
+
+
+def send_delivery(db, d: dict, live: bool) -> str:
+    """Eine freigegebene Lieferung senden. Rückgabe: 'sent', 'skipped', 'dry' oder 'no_files'."""
+    from lib.html_email import render
+    from lib.leadreport import attachments
+    s = d["subscriptions"]
+    c = s["customers"]
+    if s["status"] != "active" or not deliverable_customer(c):
+        print(f"- {c['company_name']}: Abo nicht aktiv oder Stripe-Testkauf, übersprungen")
+        return "skipped"
+    ids = d["lead_ids"] or []
+    leads = load_leads_by_id(db, ids)
+    enrich(db, leads)
+    lang = _lang(c["country"])
+    period = dt.date.fromisoformat(d["period_start"])
+    areas = s["filters"].get("areas") or []
+    subject, body = delivery_text(lang, len(leads), period, areas, c["country"])
+    footer = f"{brand()} · {os.environ.get('SENDER_POSTAL_ADDRESS', '')}".strip(" ·")
+    files = attachments(to_csv(leads, lang), lang, ", ".join(areas) or None,
+                        c["company_name"], period, name=f"leads-{period.isoformat()}",
+                        segment=s.get("segment_id"), country=c["country"]) if leads else None
+    if leads and not files:
+        # Leads vorhanden, aber keine vollständige Zeile im Anhang: nie eine Lieferung ohne Leads verschicken
+        print(f"! {c['company_name']}: {len(leads)} Leads, aber kein Anhang (Daten unvollständig) – nicht gesendet")
+        if live:
+            _notify_owner(f"[Leads] Lieferung ohne Anhang gestoppt: {c['company_name']}",
+                          f"Die Lieferung {d['id']} (Woche {period}) an {c['company_name']} <{c['billing_email']}> "
+                          f"enthält {len(ids)} Leads, aber nach der Vollständigkeitsprüfung blieb keine Zeile übrig. "
+                          "Nichts wurde gesendet, die Lieferung bleibt freigegeben. Bitte Kontaktdaten der Leads prüfen.")
+        return "no_files"
+    if not live:
+        print(f"[Probelauf] {c['company_name']} <{c['billing_email']}>: {len(leads)} Leads, Betreff „{subject}“")
+        return "dry"
+    _resend([c["billing_email"]], subject, body + "\n\n" + footer, render(body, footer, lang), files)
+    db.update("deliveries", {"id": d["id"]}, {"status": "sent", "sent_at": dt.datetime.now(dt.timezone.utc).isoformat()})
+    # Exklusiv: gelieferte Leads erscheinen nicht mehr in Proben, Landingpages oder Kaltmail-Beispielen
+    for l in leads:
+        db.update("leads", {"id": l["id"]}, {"status": "delivered"})
+    print(f"✓ {c['company_name']}: {len(leads)} Leads gesendet")
+    return "sent"
 
 
 def main(argv=None) -> int:
