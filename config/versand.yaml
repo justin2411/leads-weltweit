@@ -1,7 +1,7 @@
 # Täglicher automatischer Versand (jeden Tag 14:23 UTC) über .github/workflows/send.yml.
 # Gesendet werden nur freigegebene Entwürfe, mit Aufwärmphase (Ziel 100/Tag: 90 Kaltmails + 10 Reserve für Antworten), Notbremse
 # (Bounces > 3 % oder 1 Spam-Beschwerde) und Tagesgrenzen aus countries.yaml.
-aktiv: true   # 27.09.2026: Kaltmails über eigenes Strato-Postfach info@nextgen-profit.de (Postfach-Test grün, MX/SPF/DMARC gesetzt)
+aktiv: false   # 28.09.2026: Inhaber im Chat: „bitte schick noch keine Mails raus, stoppe das noch“ – kein Kalt- und Nachfassversand bis zur Freigabe
 # Inhaber 26.09.2026: „sende jeden Tag, auch heute 100“ -> keine Aufwärmphase, Tagesziel 100
 # (tatsächlich höchstens anbieter_tageslimit - 10 = 90 Kaltmails, Rest für Antworten/Berichte)
 # Inhaber 27.09.2026 (Chat): „lass mit 150 pro tag über strato starten“ -> keine Aufwärmphase, Tagesziel 150
