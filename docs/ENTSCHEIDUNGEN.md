@@ -18,6 +18,7 @@ Laufende Entscheidungen des Gehirns (Preise, Seitenvarianten) stehen zusätzlich
 | Versand wieder starten | wann und mit welcher Tagesmenge | nach dem Neuaufbau der Lead-Suche, wenn Proben lieferbar sind |
 | Nach-dem-Kauf-Mails | Zahlung fehlgeschlagen, Kündigung, Formular-Erinnerung, Feedback nach 4 Wochen | bauen |
 | Erste Lieferung | Freigabe im Dashboard statt GitHub, oder automatisch, wenn bis Montag 12 Uhr nichts kommt | Dashboard-Knopf |
+| Migration Freemail-Sperre | `20260928090000_signalwerk_suppress_freemail.sql` anwenden (Abmeldung einer Gmail-Adresse sperrt nicht mehr ganz Gmail) | anwenden |
 | Meldungen bündeln | Kaufinteresse an horbach.de, Verkäufe an gmail, Berichte an OWNER_EMAIL | eine Adresse |
 
 ## 28.09.2026
