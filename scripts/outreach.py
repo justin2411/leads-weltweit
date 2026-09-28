@@ -30,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lib.rules import (  # noqa: E402
-    brand, check_prospect, legal_name, country_rules, lint_draft, load_countries, render_footer,
+    brand, check_prospect, legal_name, country_rules, lint_draft, load_countries, render_footer, suppress,
 )
 
 RESEND_URL = "https://api.resend.com/emails"
@@ -97,6 +97,44 @@ def _auto_send_allowed(db, experiment: dict) -> tuple[bool, str]:
     return True, "Dauerfreigabe"
 
 
+def total_limit() -> int | None:
+    """Gesamtgrenze der ersten Welle (config/versand.yaml gesamtgrenze, Inhaber 26.09.2026: 1000 Mails)."""
+    from lib.deliverability import _cfg
+    raw = _cfg("gesamtgrenze")
+    return int(raw) if raw and raw.isdigit() else None
+
+
+def followup_block_reason(db, m: dict) -> str | None:
+    """Nachfassmails beim Versand erneut prüfen: seit dem Anlegen kann eine Antwort, Probe-Anfrage oder ein Bounce
+    eingegangen sein. Grund zum Blockieren oder None."""
+    from followups import NEGATIVE
+    kind = m.get("kind") or "initial"
+    if kind == "initial":
+        return None
+    parent_id = m.get("parent_id")
+    if not parent_id:
+        rows = db.select("messages", {"prospect_id": f"eq.{m['prospect_id']}", "experiment_id": f"eq.{m['experiment_id']}",
+                                      "kind": "eq.initial", "select": "id"})
+        parent_id = rows[0]["id"] if rows else None
+    evs = db.select("email_events", {"message_id": f"eq.{parent_id}", "select": "type,created_at"}) if parent_id else []
+    if kind == "followup":
+        hit = sorted({e["type"] for e in evs if e["type"] in NEGATIVE})
+        if hit:
+            return f"Nachfassmail überholt: Ereignis {', '.join(hit)} zur Erstmail"
+        if db.select("sample_requests", {"email": f"eq.{m['to_email'].lower()}", "status": "in.(new,sent)",
+                                         "select": "id"}):
+            return "Nachfassmail überholt: Probe über die Landingpage angefordert"
+        return None
+    # sample_followup: nur, solange nach der Probe nichts mehr kam (gleiche Regel wie followups.py)
+    sample_at = min((e["created_at"] for e in evs if e["type"] == "sample_requested"), default=None)
+    later = sorted({e["type"] for e in evs if sample_at and e["created_at"] > sample_at
+                    and e["type"] in ("reply", "reply_positive", "reply_negative", "unsubscribed", "complained",
+                                      "bounced")})
+    if later:
+        return f"Nachfrage zur Probe überholt: Ereignis {', '.join(later)} nach der Probe"
+    return None
+
+
 def unsubscribe_target(token: str) -> str | None:
     """Link zur Abmeldung, oder None = Abmeldung per Antwort (UNSUBSCRIBE_MODE=reply, Standard)."""
     if os.environ.get("UNSUBSCRIBE_MODE", "reply") == "link":
@@ -129,9 +167,12 @@ def unsubscribe_headers(unsub_url: str | None) -> dict:
     return {"List-Unsubscribe": f"<mailto:{addr}?subject=unsubscribe>"}
 
 
-def _area(region: str | None) -> str | None:
-    from drafts import _place
-    return _place(region)[1] if region else None
+def _country_area(country: str) -> str | None:
+    """Landesweit statt regional (Inhaber 27.09.2026): 'the UK', 'toute la France' für den Probe-Knopf."""
+    from drafts import LAND
+    if (country or "").upper() == "FR":
+        return "toute la France"
+    return LAND.get((country or "").upper())
 
 
 def html_version(body: str, footer: str, lang: str, company: str | None = None,
@@ -246,6 +287,10 @@ def cmd_send(args) -> int:
                                                      "select": sel}))
     already = sum(sent_today.values())
     print(f"Aufwärmphase: heute max. {cap} Mails insgesamt, bereits gesendet: {already}")
+    limit_total = total_limit()
+    initial_total = len(db.select_all("messages", {"status": "eq.sent", "kind": "eq.initial", "select": "id"}))
+    if limit_total is not None:
+        print(f"Gesamtgrenze Erstmails: {initial_total} von {limit_total} gesendet")
     n_sent = 0
     for m in rows:
         p, e = m["prospects"], m["experiments"]
@@ -260,6 +305,9 @@ def cmd_send(args) -> int:
         lint = lint_draft(m["subject"], m["body"], m.get("language") or "en",
                           **({} if kind == "initial" else {"min_words": 30, "max_words": 120, "require_sample": False}))
         problems += lint.errors
+        stale = followup_block_reason(db, m)
+        if stale:
+            problems.append(stale)
         if problems:
             print(f"BLOCKIERT {m['to_email']}: {'; '.join(problems)}")
             if live:
@@ -269,6 +317,10 @@ def cmd_send(args) -> int:
         if sum(sent_today.values()) >= cap:
             print(f"Tagesgrenze der Aufwärmphase ({cap}) erreicht, Rest folgt an den nächsten Tagen")
             break
+        if kind == "initial" and limit_total is not None and initial_total >= limit_total:
+            # Nachfassmails zählen nicht gegen die Grenze und laufen weiter
+            print(f"Gesamtgrenze erreicht ({initial_total}/{limit_total} Erstmails): keine weiteren Erstmails")
+            continue
         if not domain_accepts_mail(m["to_email"].split("@")[-1]):
             print(f"BLOCKIERT {m['to_email']}: Domain nimmt keine Mails an")
             if live:
@@ -299,6 +351,7 @@ def cmd_send(args) -> int:
         if not live:
             print(f"PROBELAUF würde senden an {m['to_email']} ({country}, Experiment {e['segment_id']}/{e['variant']}): {m['subject']}")
             sent_today[country] = sent_today.get(country, 0) + 1
+            initial_total += kind == "initial"
             n_sent += 1
             continue
 
@@ -306,7 +359,7 @@ def cmd_send(args) -> int:
             provider_fields = deliver(m["to_email"], m["subject"], text, unsub,
                                       html_version(body, footer, m.get("language") or "en",
                                                    p["company_name"] if kind != "sample_followup" else None,
-                                                   _area(p.get("region")), link))
+                                                   _country_area(country), link))
         except Exception as exc:  # noqa: BLE001 - Versandfehler melden, nicht abbrechen
             print(f"FEHLER Versand {m['to_email']}: {exc}")
             continue
@@ -319,6 +372,7 @@ def cmd_send(args) -> int:
             db.update("experiments", {"id": e["id"]}, {"started_on": today, "status": "running"})
         db.update("experiments", {"id": e["id"]}, {"last_sent_on": today})
         sent_today[country] = sent_today.get(country, 0) + 1
+        initial_total += kind == "initial"
         n_sent += 1
         print(f"GESENDET {m['to_email']}")
         if args.pause:
@@ -357,7 +411,7 @@ def cmd_test(args) -> int:
     text = body.rstrip() + "\n\n" + footer
     print(f"Prüfung: {lint.summary()}\n\nBetreff: [TEST] {subject}\n\n{text}\n")
     out = deliver(args.to, f"[TEST] {subject}", text, unsubscribe_target("test"),
-                  html_version(body, footer, lang, name, _area(region), link))
+                  html_version(body, footer, lang, name, _country_area(args.country), link))
     print(f"gesendet an {args.to}: {out}")
     return 0
 
@@ -413,8 +467,7 @@ def cmd_sync(args) -> int:
                                    "dedupe_key": f"resend:{m['resend_id']}:{typ}", "note": "Resend-Status (sync)"},
                   upsert_on="dedupe_key", ignore_duplicates=True)
         if typ in ("bounced", "complained"):
-            db.rpc("suppress_email", {"p_email": m["to_email"], "p_reason": "bounce" if typ == "bounced" else "complaint",
-                                      "p_source": "resend-sync"})
+            suppress(db, m["to_email"], "bounce" if typ == "bounced" else "complaint", "resend-sync")
             print(f"GESPERRT {m['to_email']} ({typ})")
     print(f"{len(rows)} Mails geprüft: {counts or 'keine neuen Ereignisse'}")
     return 0
@@ -442,7 +495,7 @@ def cmd_reply(args) -> int:
                                    "note": "Antwort (automatisch mit erfasst)"})
     if args.kind == "optout":
         for addr in {email, *(m["to_email"] for m in msgs)}:
-            db.rpc("suppress_email", {"p_email": addr, "p_reason": "reply_optout", "p_source": "reply"})
+            suppress(db, addr, "reply_optout", "reply")
         print(f"GESPERRT {email} und Domain")
     print("erfasst")
     return 0

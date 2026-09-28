@@ -26,6 +26,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from lib.rules import suppress  # noqa: E402
+
 OPTOUT = re.compile(
     r"\b(unsubscribe|remove (me|us)|take (me|us) off|stop (emailing|contacting|sending)|do not (contact|email)|"
     r"don'?t (contact|email)|opt[- ]?out|désinscri\w*|ne plus (me|nous) (contacter|écrire)|retirez)\b",
@@ -69,6 +71,48 @@ def referenced_ids(msg: EmailMessage) -> list[str]:
     return MSGID.findall(" ".join(filter(None, [msg.get("In-Reply-To"), msg.get("References")])))
 
 
+def subject_is_optout(subject: str | None) -> bool:
+    """Abmeldung im Betreff, z. B. List-Unsubscribe per mailto (Betreff „unsubscribe“, meist ohne In-Reply-To)."""
+    subj = re.sub(r"^((re|aw|fwd?|wg|tr)\s*:\s*)+", "", (subject or "").strip(), flags=re.I).strip()
+    return subj.lower() == "unsubscribe" or bool(OPTOUT.search(subj))
+
+
+def handle_reply(db, msg: EmailMessage, dedupe: str, apply: bool) -> str | None:
+    """Antwort auf unsere Mail als Ereignis 'reply' erfassen; Abmeldewunsch sperrt. Abmeldung per Betreff sperrt den
+    Absender auch ohne Bezug auf eine unserer Mails. Rückgabe: 'reply', 'optout' oder None (nicht unsere Mail)."""
+    refs = referenced_ids(msg)
+    ours = []
+    for ref in refs:
+        ours = db.select("messages", {"smtp_message_id": f"eq.{ref}", "select": "id,to_email"})
+        if ours:
+            break
+    sender = email.utils.parseaddr(msg.get("From") or "")[1].lower()
+    subject = msg.get("Subject") or ""
+    if not ours:
+        if "@" not in sender or not subject_is_optout(subject):
+            return None
+        # z. B. Klick auf „Abmelden“ im Mailprogramm: mailto an REPLY_TO mit Betreff „unsubscribe“
+        last = db.select("messages", {"to_email": f"eq.{sender}", "status": "eq.sent", "select": "id",
+                                      "order": "sent_at.desc", "limit": "1"})
+        print(f"ABMELDUNG per Betreff von {sender}: {subject}")
+        if apply:
+            suppress(db, sender, "reply_optout", "imap-subject")
+            db.insert("email_events", {"message_id": last[0]["id"] if last else None, "type": "unsubscribed",
+                                       "dedupe_key": dedupe, "note": f"Abmeldung per Betreff: {subject[:150]}"},
+                      upsert_on="dedupe_key", ignore_duplicates=True)
+        return "optout"
+    body = _text(msg)
+    optout = bool(OPTOUT.search(body.split("\n>")[0][:2000]) or subject_is_optout(subject))
+    print(f"ANTWORT von {sender} auf {ours[0]['to_email']}{' (Abmeldewunsch)' if optout else ''}: {subject}")
+    if apply:
+        db.insert("email_events", {"message_id": ours[0]["id"], "type": "reply", "dedupe_key": dedupe,
+                                   "note": ("Abmeldewunsch. " if optout else "") + subject})
+        if optout:
+            for addr in {sender, ours[0]["to_email"]} - {""}:
+                suppress(db, addr, "reply_optout", "imap-reply")
+    return "optout" if optout else "reply"
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--days", type=int, default=7)
@@ -102,29 +146,12 @@ def main(argv=None) -> int:
                                                "dedupe_key": f"{dedupe}:{rcpt}", "note": "DSN aus Postfach",
                                                "payload": {"refs": refs[:5]}},
                               upsert_on="dedupe_key", ignore_duplicates=True)  # Meldung liegt 14 Tage im Postfach
-                    db.rpc("suppress_email", {"p_email": rcpt, "p_reason": "bounce", "p_source": "imap-dsn"})
+                    suppress(db, rcpt, "bounce", "imap-dsn")
             if not recipients:
                 print(f"Unklare Unzustellbar-Meldung, bitte ansehen: {msg.get('Subject')}")
             continue
 
-        refs = referenced_ids(msg)
-        ours = []
-        for ref in refs:
-            ours = db.select("messages", {"smtp_message_id": f"eq.{ref}", "select": "id,to_email"})
-            if ours:
-                break
-        if not ours:
-            continue
-        sender = email.utils.parseaddr(msg.get("From") or "")[1].lower()
-        body = _text(msg)
-        optout = bool(OPTOUT.search(body.split("\n>")[0][:2000]) or OPTOUT.search(msg.get("Subject") or ""))
-        print(f"ANTWORT von {sender} auf {ours[0]['to_email']}{' (Abmeldewunsch)' if optout else ''}: {msg.get('Subject')}")
-        if args.apply:
-            db.insert("email_events", {"message_id": ours[0]["id"], "type": "reply", "dedupe_key": dedupe,
-                                       "note": ("Abmeldewunsch. " if optout else "") + (msg.get("Subject") or "")})
-            if optout:
-                for addr in {sender, ours[0]["to_email"]}:
-                    db.rpc("suppress_email", {"p_email": addr, "p_reason": "reply_optout", "p_source": "imap-reply"})
+        handle_reply(db, msg, dedupe, args.apply)
     imap.logout()
     if not args.apply:
         print("\nProbelauf. Mit --apply speichern und sperren.")

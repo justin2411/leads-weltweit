@@ -71,14 +71,11 @@ def matches_filter(lead: dict, tag: dict, company: dict, f: dict) -> bool:
     return True
 
 
-def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--apply", action="store_true")
-    ap.add_argument("--days", type=int, default=120, help="nur Leads der letzten N Tage")
-    args = ap.parse_args(argv)
-    from lib.db import DB
-    db = DB()
-    since = (dt.date.today() - dt.timedelta(days=args.days)).isoformat()
+def tag_leads(db, days: int = 120, apply: bool = False) -> list[dict]:
+    """lead_tags für alle Leads der letzten `days` Tage berechnen und (mit apply) schreiben.
+
+    Wird auch von deliveries.py prepare vor der Auswahl aufgerufen, damit frische Leads getaggt sind."""
+    since = (dt.date.today() - dt.timedelta(days=days)).isoformat()
     leads = db.select_all("leads", {"created_at": f"gte.{since}", "status": "neq.expired", "order": "id",
                                     "select": "id,company_id,segment_id,country,signal_type,event_date,source_url,"
                                               "observation_ids,watch_companies(name,address,city,region,website,industry)"})
@@ -100,9 +97,19 @@ def main(argv=None) -> int:
                      "region": area_for(l["country"], co, det), "industry": det.get("sic") or co.get("industry"),
                      "quality": q, "reasons": why, "tagged_at": dt.datetime.now(dt.timezone.utc).isoformat()})
     print(f"{len(rows)} Leads getaggt – Qualität: {dist} (unter {MIN_QUALITY} wird nicht geliefert)")
-    if args.apply:
+    if apply:
         for i in range(0, len(rows), 500):
             db.insert("lead_tags", rows[i:i + 500], upsert_on="lead_id")
+    return rows
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--days", type=int, default=120, help="nur Leads der letzten N Tage")
+    args = ap.parse_args(argv)
+    from lib.db import DB
+    tag_leads(DB(), args.days, args.apply)
     return 0
 
 

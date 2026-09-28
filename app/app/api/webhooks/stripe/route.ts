@@ -33,10 +33,15 @@ export async function POST(req: Request) {
       const m = o.metadata ?? {};
       const email = String(o.customer_details?.email ?? "").toLowerCase();
       const company = o.custom_fields?.find((c: any) => c.key === "company")?.text?.value || o.customer_details?.name || email;
+      // Stripe stellt Ereignisse mitunter mehrfach zu: gibt es das Abo schon, keine zweite Willkommensmail/Verkaufsmeldung
+      const { data: existing } = await db().from("subscriptions").select("id")
+        .eq("stripe_subscription_id", o.subscription).maybeSingle();
+      const prospectId = /^[0-9a-f-]{36}$/i.test(String(m.prospect_id ?? "")) ? String(m.prospect_id) : null;
       const { data: cust, error: e1 } = await db()
         .from("customers")
         .upsert({ stripe_customer_id: o.customer, company_name: company, country: m.country ?? "UK", billing_email: email,
                   status: event.livemode ? "active" : "trial", notes: event.livemode ? null : "Stripe-Testmodus (kein echter Kunde)",
+                  ...(prospectId ? { prospect_id: prospectId } : {}),
                   updated_at: new Date().toISOString() }, { onConflict: "stripe_customer_id" })
         .select("id")
         .single();
@@ -48,6 +53,10 @@ export async function POST(req: Request) {
       }, { onConflict: "stripe_subscription_id" });
       if (e2) throw new Error(e2.message);
       await db().from("customer_filters").upsert({ customer_id: cust.id, segment_id: m.segment_id }, { onConflict: "customer_id", ignoreDuplicates: true });
+      if (existing) {
+        await log(`Checkout erneut zugestellt: ${company}`, `Abo ${o.subscription} existiert schon – keine zweite Willkommensmail`, true);
+        return new Response("ok", { status: 200 });
+      }
       if (event.livemode) await recordEvent(m.variant_id, "purchase");
       const link = `${siteUrl()}/kunde/filter?t=${filterToken(cust.id, process.env.SESSION_SECRET?.trim() ?? "")}`;
       await db().from("customers").update({ filter_token_issued_at: new Date().toISOString() }).eq("id", cust.id);

@@ -175,14 +175,15 @@ def check_followups(c: Check, db) -> None:
 
 def check_replies(c: Check, db) -> None:
     since = (NOW - dt.timedelta(hours=26)).isoformat()
+    from lib.stats import count_by_type, distinct_replies
     ev = db.select("email_events", {"created_at": f"gte.{since}",
-                                    "type": "in.(reply,reply_positive,reply_negative,sample_requested,auto_reply)",
-                                    "select": "type"})
-    counts = {}
-    for e in ev:
-        counts[e["type"]] = counts.get(e["type"], 0) + 1
+                                    "type": "in.(reply,reply_positive,reply_negative,sample_requested,auto_reply,"
+                                            "unsubscribed)",
+                                    "select": "id,type,message_id,dedupe_key"})
+    # je eingehender Mail nur einmal (inbox.py 'reply' + responder.py genauer Typ zur selben Mail)
+    counts = count_by_type(distinct_replies(ev))
     names = {"reply_positive": "Kaufinteresse", "sample_requested": "Probe gesendet", "reply_negative": "Absage",
-             "reply": "sonstige", "auto_reply": "Abwesenheit"}
+             "reply": "sonstige", "auto_reply": "Abwesenheit", "unsubscribed": "Abmeldung"}
     detail = ", ".join(f"{v} {names.get(k, k)}" for k, v in counts.items()) or "keine"
     status = WARN if counts.get("reply_positive") else OK
     c.add("Antworten", status, f"Antworten in 26 h: {sum(counts.values())}",
@@ -267,7 +268,11 @@ def check_website(c: Check, db) -> None:
 
 
 def check_customers(c: Check, db) -> None:
-    subs = db.select("subscriptions", {"select": "id,customer_id,status,first_delivery_approved,created_at,customers(company_name,status)"})
+    from deliveries import is_test_customer
+    subs = db.select("subscriptions", {"select": "id,customer_id,status,first_delivery_approved,created_at,"
+                                                 "customers(company_name,status,stripe_customer_id,notes)"})
+    tests = [s for s in subs if is_test_customer(s.get("customers") or {})]
+    subs = [s for s in subs if s not in tests]  # Käufe im Stripe-Testmodus zählen nicht als Kunden
     active = [s for s in subs if s["status"] == "active"]
     past_due = [s for s in subs if s["status"] == "past_due"]
     if past_due:
@@ -277,6 +282,23 @@ def check_customers(c: Check, db) -> None:
     if waiting:
         c.add("Kunden", WARN, f"{len(waiting)} erste Lieferung(en) warten auf deine Freigabe",
               "GitHub → Actions → kundenlieferung → approve")
+    # freigegeben, aber seit über einem Tag nicht gesendet (Versandfehler, fehlender Anhang, Lauf ausgefallen)
+    stuck = db.select("deliveries", {"status": "eq.approved", "approved_at": f"lte.{(NOW - dt.timedelta(days=1)).isoformat()}",
+                                     "select": "id,subscription_id,approved_at"})
+    if stuck:
+        c.add("Kunden", FAIL, f"{len(stuck)} freigegebene Lieferung(en) seit über einem Tag nicht gesendet",
+              "kundenlieferung-Lauf und Meldungen prüfen")
+    # letzte Lieferung eines laufenden Abos ohne Leads
+    empty = []
+    for s in active:
+        if not s.get("first_delivery_approved"):
+            continue
+        last = db.select("deliveries", {"subscription_id": f"eq.{s['id']}", "order": "period_start.desc", "limit": "1",
+                                        "select": "lead_ids,period_start"})
+        if last and not (last[0].get("lead_ids") or []):
+            empty.append((s.get("customers") or {}).get("company_name") or "?")
+    if empty:
+        c.add("Kunden", WARN, f"{len(empty)} Kunde(n) bekamen zuletzt 0 Leads", ", ".join(empty))
     # Montag nach der Lieferung: jedes freigegebene aktive Abo muss diese Woche eine Lieferung haben
     monday = (NOW - dt.timedelta(days=NOW.weekday())).date()
     if NOW.weekday() == 0 and NOW.hour >= 9:
@@ -291,7 +313,8 @@ def check_customers(c: Check, db) -> None:
                                            "select": "signals,industries,regions,exclusions"})
         if not f or not any(f[0].get(k) for k in ("signals", "industries", "regions", "exclusions")):
             no_filter.append((s.get("customers") or {}).get("company_name") or "?")
-    detail = f"{len(active)} aktiv" + (f"; ohne Wunsch-Formular: {', '.join(no_filter)}" if no_filter else "")
+    detail = f"{len(active)} aktiv" + (f"; ohne Wunsch-Formular: {', '.join(no_filter)}" if no_filter else "") \
+        + (f"; {len(tests)} Stripe-Testkauf/-käufe nicht mitgezählt" if tests else "")
     c.add("Kunden", OK if not past_due else WARN, "Abos", detail)
 
 

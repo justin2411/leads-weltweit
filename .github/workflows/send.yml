@@ -33,6 +33,10 @@ jobs:
       MAIL_FROM: ${{ secrets.SMTP_FROM || secrets.MAIL_FROM }}
       REPLY_TO: ${{ secrets.SMTP_FROM || secrets.REPLY_TO }}
       SENDER_NAME: ${{ secrets.SENDER_NAME }}
+      SENDER_COMPANY: ${{ secrets.SENDER_COMPANY }}
+      SENDER_TITLE: ${{ secrets.SENDER_TITLE }}
+      SENDER_WEBSITE: ${{ secrets.SENDER_WEBSITE }}
+      SENDER_PHONE: ${{ secrets.SENDER_PHONE }}
       SENDER_POSTAL_ADDRESS: ${{ secrets.SENDER_POSTAL_ADDRESS }}
       UNSUBSCRIBE_MODE: reply
       APP_BASE_URL: ${{ vars.SITE_URL || 'https://www.nextgen-profit.de' }}   # persönlicher Seitenlink in der Erstmail

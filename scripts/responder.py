@@ -36,7 +36,7 @@ import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from lib.rules import brand, legal_name, normalize_domain  # noqa: E402
+from lib.rules import FREEMAIL_DOMAINS, brand, legal_name, normalize_domain, suppress  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 INTENTS = ["buy", "sample", "question", "not_interested", "unsubscribe", "out_of_office", "other"]
@@ -129,6 +129,58 @@ AUTO_SUBJECT = re.compile(r"^(automatic reply|auto(matic)?[- ]?(reply|response)|
                           r"réponse automatique|absence|away:|auto:)", re.I)
 
 
+def subject_optout(subject: str | None) -> bool:
+    """Abmeldung über den Betreff, z. B. List-Unsubscribe per mailto (Betreff „unsubscribe“, oft ohne Text und
+    ohne In-Reply-To)."""
+    from inbox import subject_is_optout
+    return subject_is_optout(subject)
+
+
+SYSTEM_LOCAL = re.compile(r"^(mailer-daemon|postmaster|no[-_.]?reply|do[-_.]?not[-_.]?reply|bounces?|"
+                          r"dmarc\S*|abuse|notifications?)(\+.*)?$", re.I)
+DMARC_SUBJECT = re.compile(r"^(report domain:|dmarc|\[?dmarc|aggregate report)", re.I)
+
+
+def own_addresses() -> set[str]:
+    """Eigene Adressen und Domains (Absender, Antwort-Postfach, Inhaber) – deren Mails sind keine Anfragen."""
+    out = set()
+    for var in ("MAIL_FROM", "REPLY_TO", "IMAP_USER", "SMTP_USER", "OWNER_EMAIL"):
+        addr = parseaddr(os.environ.get(var) or "")[1].lower()
+        if "@" in addr:
+            out.add(addr)
+            dom = addr.split("@")[-1]
+            if var in ("MAIL_FROM", "REPLY_TO") and dom not in FREEMAIL_DOMAINS:
+                out.add("@" + dom)  # eigene Domain; nie eine Freemail-Domain (sonst fiele jeder Gmail-Absender weg)
+    alert = alert_address()
+    if alert:
+        out.add(alert.lower())
+    return out
+
+
+def is_system_mail(sender: str, msg) -> bool:
+    """Mailer-Daemon, noreply, DMARC-Berichte, Newsletter/Listen – keine Meldung an den Inhaber."""
+    local = sender.split("@")[0]
+    if SYSTEM_LOCAL.match(local) or "dmarc" in sender:
+        return True
+    if msg.get_content_type() == "multipart/report" or DMARC_SUBJECT.match((msg.get("Subject") or "").strip()):
+        return True
+    return bool(msg.get("List-Id") or msg.get("List-Unsubscribe"))
+
+
+def is_recent(msg, hours: int = 48, now: dt.datetime | None = None) -> bool:
+    """Nur frische Mails unbekannter Absender melden (kein Schwall alter Mails beim ersten Lauf)."""
+    from email.utils import parsedate_to_datetime
+    try:
+        when = parsedate_to_datetime(msg.get("Date"))
+    except (TypeError, ValueError, IndexError):
+        return True
+    if when is None:
+        return True
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=dt.timezone.utc)
+    return (now or dt.datetime.now(dt.timezone.utc)) - when <= dt.timedelta(hours=hours)
+
+
 def is_auto_reply(msg) -> bool:
     """Abwesenheitsnotizen und andere Autoresponder an den Kopfzeilen erkennen (RFC 3834 u. a.)."""
     auto = (msg.get("Auto-Submitted") or "").strip().lower()
@@ -141,9 +193,10 @@ def is_auto_reply(msg) -> bool:
     return bool(AUTO_SUBJECT.match((msg.get("Subject") or "").strip()))
 
 
-def classify(text: str) -> dict:
+def classify(text: str, subject: str = "") -> dict:
     body = text.strip()[:4000]
     if os.environ.get("ANTHROPIC_API_KEY"):
+        prompt_text = (f"Subject: {subject.strip()}\n\n{body}" if subject.strip() else body)
         try:
             import anthropic
             client = anthropic.Anthropic()
@@ -151,7 +204,7 @@ def classify(text: str) -> dict:
                 model=os.environ.get("CLAUDE_MODEL") or "claude-sonnet-5",
                 max_tokens=1024,
                 output_config={"effort": "low", "format": {"type": "json_schema", "schema": CLASSIFY_SCHEMA}},
-                messages=[{"role": "user", "content": CLASSIFY_PROMPT.format(text=body)}],
+                messages=[{"role": "user", "content": CLASSIFY_PROMPT.format(text=prompt_text)}],
             )
             if resp.stop_reason != "refusal":
                 out = next((b.text for b in resp.content if b.type == "text"), "")
@@ -160,6 +213,9 @@ def classify(text: str) -> dict:
                 return data
         except Exception as exc:  # noqa: BLE001 - Fallback auf Regeln
             print(f"  Hinweis: Claude-Einordnung fehlgeschlagen ({exc.__class__.__name__}: {str(exc)[:200]}), nutze Regeln")
+    if subject_optout(subject):
+        return {"intent": "unsubscribe", "faq": ["none"], "needs_owner": False,
+                "summary_de": "Abmeldung (Betreff)", "by": "rules"}
     low = body.lower()
     for intent, pat in KEYWORDS:
         if re.search(pat, low):
@@ -419,6 +475,172 @@ def sample_subject(lang: str, region: str | None) -> str:
     return f"Your 10 free leads{' for ' + region if region else ''}"
 
 
+def hold_text(lang: str) -> str:
+    """Kurze Eingangsbestätigung bei Kaufinteresse/Fragen – ohne Zeitversprechen, ohne Zusagen."""
+    if lang == "fr":
+        return ("Bonjour,\n\nMerci pour votre message. Je reviens vers vous personnellement avec les détails.\n\n"
+                f"Bien cordialement,\n{signature(lang)}")
+    return ("Hello,\n\nThank you for your message. I will get back to you personally with the details.\n\n"
+            f"Best regards,\n{signature(lang)}")
+
+
+def handle_unknown(db, msg, mid: str, sender: str, text: str, apply: bool, own: set[str]) -> str:
+    """Mail von jemandem, den wir nicht angeschrieben haben: Abmeldung sperren, sonst einmal den Inhaber informieren."""
+    from inbox import is_bounce
+    subject = msg.get("Subject") or ""
+    if sender in own or "@" + sender.split("@")[-1] in own or is_system_mail(sender, msg) or is_bounce(msg):
+        return "ignore"
+    key = f"unknown:{mid}"
+    if db.select("email_events", {"dedupe_key": f"eq.{key}", "select": "id"}):
+        return "done"
+    if subject_optout(subject):
+        print(f"{sender:<35} Abmeldung per Betreff (unbekannter Absender) -> suppress")
+        if apply:
+            try:
+                suppress(db, sender, "reply_optout", "responder-subject")
+                db.insert("email_events", {"message_id": None, "type": "unsubscribed", "dedupe_key": key,
+                                           "note": f"Abmeldung per Betreff von {sender}: {subject[:150]}"})
+            except Exception as exc:  # noqa: BLE001 - nächster Lauf versucht es erneut
+                print(f"  FEHLER Sperre {sender}: {exc}")
+                return "error"
+        return "suppress"
+    if is_auto_reply(msg) or not is_recent(msg):
+        return "ignore"
+    print(f"{sender:<35} unbekannter Absender -> owner ({subject[:60]})")
+    if apply:
+        try:
+            notify_owner(f"[Leads] Mail von unbekanntem Absender: {subject[:80] or sender}",
+                         f"Im Antwort-Postfach liegt eine Mail von {sender}, der nicht zu einem angeschriebenen Käufer "
+                         f"gehört. Ich habe nicht geantwortet.\n\nBetreff: {subject}\n\n{text[:3000]}")
+            db.insert("email_events", {"message_id": None, "type": "reply", "dedupe_key": key,
+                                       "note": f"Unbekannter Absender {sender}: {subject[:150]}",
+                                       "payload": {"unknown_sender": sender}})
+        except Exception as exc:  # noqa: BLE001
+            print(f"  FEHLER Meldung an den Inhaber ({sender}): {exc}")
+            return "error"
+    return "owner"
+
+
+def handle_message(db, msg: EmailMessage, mid: str, apply: bool, own: set[str] | None = None) -> str:
+    """Eine Mail aus dem Postfach einordnen und (mit apply) handeln. Rückgabe: Aktion bzw. done/ignore/error.
+
+    Das Ereignis mit dedupe_key wird erst nach den Aktionen gespeichert: scheitert der Versand, bleibt die Mail
+    offen und der nächste Lauf versucht es erneut. Ging die Antwort an den Absender schon raus, wird das Ereignis
+    trotzdem gespeichert (keine doppelte Antwort)."""
+    own = own_addresses() if own is None else own
+    dedupe = f"reply:{mid}"
+    if db.select("email_events", {"dedupe_key": f"eq.{dedupe}", "select": "id"}):
+        return "done"
+    sender = parseaddr(msg.get("From") or "")[1].lower()
+    if "@" not in sender:
+        return "ignore"
+    dom = sender.split("@")[-1]
+    text = _text(msg)
+    # Nur Antworten von Firmen, die wir angeschrieben haben
+    pros = db.select("prospects", {"domain": f"eq.{normalize_domain(dom)}", "select": "id,company_name,segment_id,country,region"})
+    sent = []
+    if pros:
+        p = pros[0]
+        sent = db.select("messages", {"prospect_id": f"eq.{p['id']}", "status": "eq.sent", "order": "sent_at.desc",
+                                      "limit": "1", "select": "id,subject,language,experiment_id"})
+    if not sent:
+        return handle_unknown(db, msg, mid, sender, text, apply, own)
+    m = sent[0]
+    lang = m.get("language") or "en"
+    if subject_optout(msg.get("Subject")):
+        c = {"intent": "unsubscribe", "faq": ["none"], "needs_owner": False,
+             "summary_de": "Abmeldung (Betreff)", "by": "subject"}
+    elif is_auto_reply(msg):
+        c = {"intent": "out_of_office", "faq": ["none"], "needs_owner": False,
+             "summary_de": "Automatische Antwort (Kopfzeilen)", "by": "headers"}
+    else:
+        c = classify(text, msg.get("Subject") or "")
+    action = decide(c)
+    # Probe schon verschickt? Dann ist ein weiteres "Ja" Kaufinteresse (wöchentliche Lieferung), keine zweite Probe.
+    if action in ("sample", "sample_owner"):
+        ids = [x["id"] for x in db.select("messages", {"prospect_id": f"eq.{p['id']}", "select": "id"})]
+        if ids and db.select("email_events", {"message_id": f"in.({','.join(ids)})", "type": "eq.sample_requested",
+                                              "select": "id"}):
+            action = "owner"
+            c["intent"] = "buy"
+            c["summary_de"] = "Will nach der Probe weitermachen (wöchentliche Lieferung): " + c.get("summary_de", "")
+    print(f"{p['company_name']:<35} {c['intent']:<14} -> {action:<12} ({c['by']}) {c['summary_de']}")
+    if not apply:
+        return action
+
+    event_type = {"buy": "reply_positive", "sample": "sample_requested", "not_interested": "reply_negative",
+                  "unsubscribe": "reply_negative", "out_of_office": "auto_reply"}.get(c["intent"], "reply")
+    files = body = blocks = None
+    if action in ("sample", "sample_owner"):
+        files, _ = regional_sample(db, p["segment_id"], p["country"], p.get("region"))
+        body, blocks = sample_mail(lang, None, files, True)  # Leads aus dem ganzen Land, kein Regionshinweis
+        if not body and event_type == "sample_requested":
+            # Probe nicht lieferbar: nicht als "Probe gesendet" zählen, sonst fragt followups.py nach einer
+            # Probe, die nie ankam.
+            event_type = "reply_positive"
+    state = {"replied": False}
+
+    def perform() -> None:
+        subject = msg.get("Subject") or m["subject"]
+
+        def reply(*a, **kw):
+            send_reply(*a, **kw)
+            state["replied"] = True
+
+        if action == "suppress":
+            for addr in {sender}:
+                suppress(db, addr, "reply_optout", "responder")
+        elif action in ("sample", "sample_owner"):
+            if body:
+                reply(sender, subject, body, mid, lang, files, blocks, requested=True)
+                if event_type != "sample_requested":
+                    db.insert("email_events", {"message_id": m["id"], "type": "sample_requested",
+                                               "note": "Probe automatisch gesendet"})
+            else:
+                reply(sender, subject, sample_delay_text(lang), mid, lang)
+            if action == "sample_owner" or not body:
+                notify_owner(f"[Leads] Bitte ansehen: {p['company_name']}",
+                             f"{p['company_name']} ({p['segment_id']}/{p['country']}) hat geantwortet.\n\n"
+                             f"Einordnung: {c['summary_de']}\nProbe gesendet: {'ja' if body else 'nein (keine Datei)'}\n\n"
+                             f"Antwort von {sender}:\n\n{text[:3000]}")
+        elif action == "faq":
+            keys = [k for k in c["faq"] if k in FAQ[lang if lang in FAQ else 'en']]
+            answers = "\n\n".join(FAQ[lang if lang in FAQ else "en"][k] for k in keys)
+            if lang == "fr":
+                faq_body = (f"Bonjour,\n\nMerci pour votre "
+                            f"question.\n\n{answers}\n\nSouhaitez-vous recevoir l'échantillon gratuit de 10 pistes "
+                            f"actuelles ? Il suffit de répondre « oui ».\n\nBien cordialement,\n{signature(lang)}")
+            else:
+                faq_body = (f"Hello,\n\nThank you for your question."
+                            f"\n\n{answers}\n\nWould you like me to send you the free sample of 10 current leads? "
+                            f"A simple \"yes\" is enough.\n\nBest regards,\n{signature(lang)}")
+            reply(sender, subject, faq_body, mid, lang)
+        elif action == "owner":
+            notify_owner(f"[Leads] Interessent: {p['company_name']} – {c['summary_de'][:80]}",
+                         f"{p['company_name']} ({p['segment_id']}/{p['country']}, {p.get('region') or ''}) "
+                         f"hat geantwortet.\n\nEinordnung: {c['intent']} – {c['summary_de']}\n\n"
+                         f"Antwort von {sender}:\n\n{text[:3000]}\n\n"
+                         f"Bitte selbst antworten (Antworten in deinem Postfach)."
+                         + (" Ich habe nur eine kurze Eingangsbestätigung geschickt." if c["intent"] in ("buy", "question")
+                            else " Ich habe nicht geantwortet."))
+            if c["intent"] not in ("buy", "question"):
+                return  # unklar: nur den Inhaber informieren, keine Zusage an den Absender
+            hold = hold_text(lang)
+            reply(sender, subject, hold, mid, lang)
+
+    note = f"{c['summary_de']} | Aktion: {action}"
+    try:
+        perform()
+    except Exception as exc:  # noqa: BLE001 - nicht abbrechen, nächste Mail bearbeiten
+        print(f"  FEHLER bei {p['company_name']} ({action}): {exc.__class__.__name__}: {str(exc)[:300]}")
+        if not state["replied"]:
+            return "error"  # nichts beim Absender angekommen: kein Ereignis, nächster Lauf versucht es erneut
+        note += f" | Fehler nach der Antwort: {exc.__class__.__name__}"
+    db.insert("email_events", {"message_id": m["id"], "type": event_type, "dedupe_key": dedupe, "note": note,
+                               "payload": {"intent": c["intent"], "faq": c.get("faq"), "by": c["by"]}})
+    return action
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--days", type=int, default=14)
@@ -432,106 +654,21 @@ def main(argv=None) -> int:
     imap.select("INBOX", readonly=True)
     since = (dt.date.today() - dt.timedelta(days=args.days)).strftime("%d-%b-%Y")
     _, data = imap.search(None, "SINCE", since)
-    handled = {"owner": 0, "sample": 0, "faq": 0, "suppress": 0, "ignore": 0}
+    handled = {"owner": 0, "sample": 0, "faq": 0, "suppress": 0, "ignore": 0, "error": 0}
+    own = own_addresses()
     for num in data[0].split():
         _, fetched = imap.fetch(num, "(BODY.PEEK[])")
         msg: EmailMessage = email.message_from_bytes(fetched[0][1], policy=policy.default)
         mid = (msg.get("Message-ID") or f"imap-{num.decode()}").strip()
-        dedupe = f"reply:{mid}"
-        if db.select("email_events", {"dedupe_key": f"eq.{dedupe}", "select": "id"}):
+        try:
+            action = handle_message(db, msg, mid, args.apply, own)
+        except Exception as exc:  # noqa: BLE001 - eine kaputte Mail darf den Lauf nicht beenden
+            print(f"FEHLER {mid}: {exc.__class__.__name__}: {str(exc)[:300]}")
+            action = "error"
+        if action in ("done",):
             continue
-        sender = parseaddr(msg.get("From") or "")[1].lower()
-        dom = sender.split("@")[-1]
-        # Nur Antworten von Firmen, die wir angeschrieben haben
-        pros = db.select("prospects", {"domain": f"eq.{normalize_domain(dom)}", "select": "id,company_name,segment_id,country,region"})
-        if not pros:
-            continue
-        p = pros[0]
-        sent = db.select("messages", {"prospect_id": f"eq.{p['id']}", "status": "eq.sent", "order": "sent_at.desc",
-                                      "limit": "1", "select": "id,subject,language,experiment_id"})
-        if not sent:
-            continue
-        m = sent[0]
-        lang = m.get("language") or "en"
-        text = _text(msg)
-        if is_auto_reply(msg):
-            c = {"intent": "out_of_office", "faq": ["none"], "needs_owner": False,
-                 "summary_de": "Automatische Antwort (Kopfzeilen)", "by": "headers"}
-        else:
-            c = classify(text)
-        action = decide(c)
-        # Probe schon verschickt? Dann ist ein weiteres "Ja" Kaufinteresse (wöchentliche Lieferung), keine zweite Probe.
-        if action in ("sample", "sample_owner"):
-            ids = [x["id"] for x in db.select("messages", {"prospect_id": f"eq.{p['id']}", "select": "id"})]
-            if ids and db.select("email_events", {"message_id": f"in.({','.join(ids)})", "type": "eq.sample_requested",
-                                                  "select": "id"}):
-                action = "owner"
-                c["intent"] = "buy"
-                c["summary_de"] = "Will nach der Probe weitermachen (wöchentliche Lieferung): " + c.get("summary_de", "")
-        print(f"{p['company_name']:<35} {c['intent']:<14} -> {action:<12} ({c['by']}) {c['summary_de']}")
-        if not args.apply:
-            continue
-
-        event_type = {"buy": "reply_positive", "sample": "sample_requested", "not_interested": "reply_negative",
-                      "unsubscribe": "reply_negative", "out_of_office": "auto_reply"}.get(c["intent"], "reply")
-        files = body = blocks = None
-        if action in ("sample", "sample_owner"):
-            files, _ = regional_sample(db, p["segment_id"], p["country"], p.get("region"))
-            body, blocks = sample_mail(lang, None, files, True)  # Leads aus dem ganzen Land, kein Regionshinweis
-            if not body and event_type == "sample_requested":
-                # Probe nicht lieferbar: nicht als "Probe gesendet" zählen, sonst fragt followups.py nach einer
-                # Probe, die nie ankam.
-                event_type = "reply_positive"
-        db.insert("email_events", {"message_id": m["id"], "type": event_type, "dedupe_key": dedupe,
-                                   "note": f"{c['summary_de']} | Aktion: {action}",
-                                   "payload": {"intent": c["intent"], "faq": c.get("faq"), "by": c["by"]}})
-        subject = msg.get("Subject") or m["subject"]
-        if action == "suppress":
-            for addr in {sender}:
-                db.rpc("suppress_email", {"p_email": addr, "p_reason": "reply_optout", "p_source": "responder"})
-        elif action in ("sample", "sample_owner"):
-            if body:
-                send_reply(sender, subject, body, mid, lang, files, blocks, requested=True)
-                if event_type != "sample_requested":
-                    db.insert("email_events", {"message_id": m["id"], "type": "sample_requested",
-                                               "note": "Probe automatisch gesendet"})
-            else:
-                send_reply(sender, subject, sample_delay_text(lang), mid, lang)
-            if action == "sample_owner" or not body:
-                notify_owner(f"[Leads] Bitte ansehen: {p['company_name']}",
-                             f"{p['company_name']} ({p['segment_id']}/{p['country']}) hat geantwortet.\n\n"
-                             f"Einordnung: {c['summary_de']}\nProbe gesendet: {'ja' if body else 'nein (keine Datei)'}\n\n"
-                             f"Antwort von {sender}:\n\n{text[:3000]}")
-        elif action == "faq":
-            keys = [k for k in c["faq"] if k in FAQ[lang if lang in FAQ else 'en']]
-            answers = "\n\n".join(FAQ[lang if lang in FAQ else "en"][k] for k in keys)
-            if lang == "fr":
-                body = (f"Bonjour,\n\nMerci pour votre "
-                        f"question.\n\n{answers}\n\nSouhaitez-vous recevoir l'échantillon gratuit de 10 pistes "
-                        f"actuelles ? Il suffit de répondre « oui ».\n\nBien cordialement,\n{signature(lang)}")
-            else:
-                body = (f"Hello,\n\nThank you for your question."
-                        f"\n\n{answers}\n\nWould you like me to send you the free sample of 10 current leads? "
-                        f"A simple \"yes\" is enough.\n\nBest regards,\n{signature(lang)}")
-            send_reply(sender, subject, body, mid, lang)
-        elif action == "owner":
-            notify_owner(f"[Leads] Interessent: {p['company_name']} – {c['summary_de'][:80]}",
-                         f"{p['company_name']} ({p['segment_id']}/{p['country']}, {p.get('region') or ''}) "
-                         f"hat geantwortet.\n\nEinordnung: {c['intent']} – {c['summary_de']}\n\n"
-                         f"Antwort von {sender}:\n\n{text[:3000]}\n\n"
-                         f"Bitte selbst antworten (Antworten in deinem Postfach)."
-                         + (" Ich habe nur eine kurze Eingangsbestätigung geschickt." if c["intent"] in ("buy", "question")
-                            else " Ich habe nicht geantwortet."))
-            if c["intent"] not in ("buy", "question"):
-                handled["owner"] += 1
-                continue  # unklar: nur den Inhaber informieren, keine Zusage an den Absender
-            hold = ("Bonjour,\n\nMerci pour votre message. Je reviens vers vous personnellement dans la journée "
-                    "avec les détails.\n\n"
-                    f"Bien cordialement,\n{signature(lang)}") if lang == "fr" else (
-                    "Hello,\n\nThank you for your message. I will get back to you personally today with the details.\n\n"
-                    f"Best regards,\n{signature(lang)}")
-            send_reply(sender, subject, hold, mid, lang)
-        handled[action if action in handled else "owner"] += 1
+        key = "sample" if action == "sample_owner" else action
+        handled[key if key in handled else "owner"] += 1
     imap.logout()
     print(f"\n{handled}" + ("" if args.apply else "\nProbelauf – mit --apply handeln."))
     return 0
