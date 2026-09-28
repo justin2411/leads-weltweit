@@ -73,7 +73,7 @@
  "script": [
   {
    "id": "hook",
-   "text": "Ce poste a été publié sur la page carrières d'un employeur.",
+   "text": "Un employeur vient de publier ce poste, pour la première fois.",
    "pause": 0.35
   },
   {
@@ -103,7 +103,7 @@
   },
   {
    "id": "watch",
-   "text": "Nous vérifions les pages carrières chaque jour, et notons quand chaque poste est apparu, quand il a été republié, et combien sont ouverts, avec le lien source.",
+   "text": "Nous repérons ces postes pour vous, et notons quand chacun est apparu, quand il a été republié, et combien sont ouverts, avec le lien source.",
    "pause": 0.45
   },
   {

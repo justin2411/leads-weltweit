@@ -102,7 +102,7 @@
  "script": [
   {
    "id": "reg",
-   "text": "Behind every new business filing, there's a person.",
+   "text": "Behind every new business in the US, there's a person.",
    "pause": 0.45
   },
   {
@@ -133,7 +133,7 @@
   },
   {
    "id": "leads",
-   "text": "Public filings show who they are and when they started. We find new owners for you, with their names where public, and business contact details.",
+   "text": "We see who they are, and when they started. We find new owners for you, with their names where public, and business contact details.",
    "pause": 0.45
   },
   {

@@ -102,7 +102,7 @@
  "script": [
   {
    "id": "reg",
-   "text": "Derrière chaque nouvelle société du registre, il y a une personne.",
+   "text": "Derrière chaque nouvelle société en France, il y a une personne.",
    "pause": 0.45
   },
   {
@@ -133,7 +133,7 @@
   },
   {
    "id": "leads",
-   "text": "Le registre montre qui ils sont et quand ils ont commencé. Nous trouvons pour vous les nouveaux dirigeants, avec les coordonnées de leur entreprise.",
+   "text": "Nous voyons qui ils sont, et quand ils ont commencé. Nous trouvons pour vous les nouveaux dirigeants, avec les coordonnées de leur entreprise.",
    "pause": 0.45
   },
   {

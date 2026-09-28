@@ -73,7 +73,7 @@
  "script": [
   {
    "id": "hook",
-   "text": "This job went live on an employer's careers page.",
+   "text": "This job has just been posted by an employer.",
    "pause": 0.35
   },
   {
@@ -103,7 +103,7 @@
   },
   {
    "id": "watch",
-   "text": "We check careers pages every day, and log when each job first appeared, when it was reposted, and how many are open, with the source link.",
+   "text": "We find these jobs for you, and log when each one first appeared, when it was reposted, and how many are open, with the source link.",
    "pause": 0.45
   },
   {

@@ -12,17 +12,17 @@
   "fr:home": {
     "src": "/video/v4-home-fr.mp4",
     "poster": "/video/v4-home-fr.jpg",
-    "seconds": 54
+    "seconds": 53
   },
   "fr/agences-web": {
     "src": "/video/v5-fr-web-agencies.mp4",
     "poster": "/video/v5-fr-web-agencies.jpg",
-    "seconds": 43
+    "seconds": 42
   },
   "fr/conseillers-patrimoine": {
     "src": "/video/v5-fr-financial-advisers.mp4",
     "poster": "/video/v5-fr-financial-advisers.jpg",
-    "seconds": 41
+    "seconds": 40
   },
   "fr/courtiers-assurance": {
     "src": "/video/v5-fr-insurance-brokers.mp4",
@@ -37,7 +37,7 @@
   "fr/recrutement": {
     "src": "/video/v5-fr-recruitment.mp4",
     "poster": "/video/v5-fr-recruitment.jpg",
-    "seconds": 44
+    "seconds": 43
   },
   "uk/accountants": {
     "src": "/video/v5-uk-accountants.mp4",
@@ -47,12 +47,12 @@
   "uk/financial-advisers": {
     "src": "/video/v5-uk-financial-advisers.mp4",
     "poster": "/video/v5-uk-financial-advisers.jpg",
-    "seconds": 40
+    "seconds": 39
   },
   "uk/insurance-brokers": {
     "src": "/video/v5-uk-insurance-brokers.mp4",
     "poster": "/video/v5-uk-insurance-brokers.jpg",
-    "seconds": 46
+    "seconds": 45
   },
   "uk/recruitment": {
     "src": "/video/v5-uk-recruitment.mp4",
@@ -72,27 +72,27 @@
   "us/financial-advisers": {
     "src": "/video/v5-us-financial-advisers.mp4",
     "poster": "/video/v5-us-financial-advisers.jpg",
-    "seconds": 44
+    "seconds": 43
   },
   "us/insurance-brokers": {
     "src": "/video/v5-us-insurance-brokers.mp4",
     "poster": "/video/v5-us-insurance-brokers.jpg",
-    "seconds": 47
+    "seconds": 46
   },
   "us/recruitment": {
     "src": "/video/v5-us-recruitment.mp4",
     "poster": "/video/v5-us-recruitment.jpg",
-    "seconds": 45
+    "seconds": 44
   },
   "us/web-agencies": {
     "src": "/video/v5-us-web-agencies.mp4",
     "poster": "/video/v5-us-web-agencies.jpg",
-    "seconds": 42
+    "seconds": 43
   },
   "de:ind/accountants": {
     "src": "/video/v5-de-accountants.mp4",
     "poster": "/video/v5-de-accountants.jpg",
-    "seconds": 41
+    "seconds": 40
   },
   "de:ind/financial-advisers": {
     "src": "/video/v5-de-financial-advisers.mp4",
@@ -107,7 +107,7 @@
   "de:ind/recruitment": {
     "src": "/video/v5-de-recruitment.mp4",
     "poster": "/video/v5-de-recruitment.jpg",
-    "seconds": 46
+    "seconds": 45
   },
   "de:ind/web-agencies": {
     "src": "/video/v5-de-web-agencies.mp4",
