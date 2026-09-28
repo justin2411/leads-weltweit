@@ -41,7 +41,8 @@ jobs:
         if: ${{ steps.gate.outputs.ok == 'true' }}
         run: python scripts/inbox.py --days 14 --apply
       - name: Antworten bearbeiten
-        if: ${{ steps.gate.outputs.ok == 'true' }}
+        # läuft auch, wenn die Bounce-Auswertung scheitert (27.09.: doppelte Bounce-Meldung blockierte alles)
+        if: ${{ !cancelled() && steps.gate.outputs.ok == 'true' }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.probelauf }}" = "true" ]; then
             python scripts/responder.py
@@ -49,6 +50,7 @@ jobs:
             python scripts/responder.py --apply
           fi
       - name: Probe-Anfragen von Landingpages beantworten
+        if: ${{ !cancelled() }}
         # unabhängig vom Postfach: Anfragen kommen über die Website (Einwilligung -> Resend erlaubt)
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.probelauf }}" = "true" ]; then
