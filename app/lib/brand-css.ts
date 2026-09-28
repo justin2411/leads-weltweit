@@ -417,4 +417,42 @@ export const BRAND_CSS = `
 .bx .mask{filter:blur(5px);user-select:none;font-style:normal}
 .bx .cta-row>.cta-stack .btn{width:auto}
 @media (max-width:640px){.bx .cta-stack,.bx .cta-row>.cta-stack{display:flex;width:100%}.bx .cta-row>.cta-stack .btn{width:100%}}
+/* Probe-Formular (app/sample-form.tsx), eigenes Präfix pf- */
+.bx .pf{display:grid;gap:16px;max-width:680px;margin-top:8px;text-align:left;color:#eef1f6}
+.bx .pf-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.bx .pf-field{display:grid;gap:6px;font-size:13px;font-weight:600;letter-spacing:.02em;color:#c9d0db}
+.bx .pf-field small,.bx .pf-set small{font-weight:500;color:#8d98ab;letter-spacing:0}
+.bx .pf input:not([type=checkbox]),.bx .pf select{width:100%;font:inherit;font-size:16px;font-weight:500;color:#fff;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:12px 14px;outline:none;transition:border-color .2s,background .2s}
+.bx .pf select option{color:#161b24}
+.bx .pf input::placeholder{color:#7f8aa0;font-weight:400}
+.bx .pf input:not([type=checkbox]):focus,.bx .pf select:focus{border-color:var(--gold2);background:rgba(255,255,255,.09)}
+.bx .pf-set{border:0;margin:0;padding:0;min-width:0}
+.bx .pf-set legend{padding:0;margin-bottom:10px;font-size:13px;font-weight:600;letter-spacing:.02em;color:#c9d0db}
+.bx .pf-chips{display:flex;flex-wrap:wrap;gap:8px}
+.bx .pf-chip{position:relative;display:inline-flex;align-items:center;gap:8px;cursor:pointer;padding:9px 15px;border-radius:99px;border:1px solid rgba(216,189,138,.45);color:#eef1f6;font-size:14.5px;font-weight:550;line-height:1.2;transition:background .2s,border-color .2s,color .2s,opacity .2s;user-select:none}
+.bx .pf-chip input{position:absolute;opacity:0;width:1px;height:1px}
+.bx .pf-chip span:before{content:"+";display:inline-block;width:12px;margin-right:6px;color:var(--gold2);font-weight:700}
+.bx .pf-chip:hover{border-color:var(--gold2);background:rgba(216,189,138,.1)}
+.bx .pf-chip.pf-on{background:linear-gradient(135deg,#ecd6a6,#b08d57);border-color:transparent;color:#141008}
+.bx .pf-chip.pf-on span:before{content:"✓";color:#141008}
+.bx .pf-chip:has(input:focus-visible){outline:2px solid var(--gold2);outline-offset:2px}
+.bx .pf-chip:has(input:checked){background:linear-gradient(135deg,#ecd6a6,#b08d57);border-color:transparent;color:#141008}
+.bx .pf-chip.pf-off{opacity:.45;cursor:not-allowed}
+.bx .pf-hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.bx .pf-consent{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;line-height:1.5;color:#a9b3c3;cursor:pointer}
+.bx .pf-consent input{flex:none;width:18px;height:18px;margin:1px 0 0;accent-color:#b08d57}
+.bx .pf-consent a{color:var(--gold2)}
+.bx .pf-err{margin:0;color:#ff9a90;font-weight:600;font-size:14px}
+.bx .pf-go{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.bx .pf-go .btn[disabled]{opacity:.7;cursor:wait}
+.bx .pf-fine{font-size:13px;color:#8d98ab}
+.bx .pf-done{display:flex;gap:14px;align-items:flex-start;padding:20px 22px;border-radius:16px;border:1px solid rgba(91,212,154,.4);background:rgba(91,212,154,.08)}
+.bx .pf-done svg{flex:none;width:28px;height:28px;fill:none;stroke:#5bd49a;stroke-width:2}
+.bx .pf-done p{margin:0;font-size:17px;font-weight:600;color:#e9fff3}
+.bx .pf-done b{color:#fff;overflow-wrap:anywhere}
+.bx .leadp .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.bx .leadp .nw{white-space:nowrap}
+.bx .leadp .lock dt{white-space:nowrap;flex:none}
+.bx .leadp .lock dd.gold{color:var(--gold2);font-weight:600}
+@media (max-width:640px){.bx .pf-chip{font-size:13.5px;padding:8px 12px;gap:6px}.bx .pf-chip span:before{width:10px;margin-right:4px}.bx .pf-row{grid-template-columns:1fr}.bx .pf-go{flex-direction:column;align-items:stretch;text-align:center}.bx .pf-go .btn{width:100%;justify-content:center}}
 `;

@@ -6,6 +6,10 @@ export function consentText(lang: string): string {
     return `En cliquant sur le bouton, j'accepte que ${BRAND} m'envoie par e-mail, à l'adresse indiquée, un échantillon gratuit de 10 pistes ` +
       `et un message de suivi à ce sujet. Je peux retirer mon accord à tout moment en répondant « désinscription ».`;
   }
+  if (lang === "de") {
+    return `Mit Klick auf den Button bin ich einverstanden, dass ${BRAND} mir an die angegebene Adresse eine kostenlose Probe ` +
+      `mit 10 Leads und eine Nachfrage dazu per E-Mail schickt. Ich kann jederzeit widersprechen, indem ich „abmelden“ antworte.`;
+  }
   return `By clicking the button I agree that ${BRAND} may email me a free sample of 10 leads and one follow-up ` +
     `message about it at this address. I can withdraw at any time by replying "unsubscribe".`;
 }
@@ -29,7 +33,7 @@ export const T = {
     send: "Send me 10 free leads", video: (s: number) => `How it works in ${s} seconds`,
     thanks: "Thank you. We will email your sample shortly.", faq: "Questions",
     legal: ["Legal notice", "Privacy policy", "Terms"], example: "Example", source: "Source",
-    error: "We could not match this link to your company. Please request the sample by email below.",
+    error: "Please check your company name, email address and the consent box.",
   },
   fr: {
     examples: "Exemples de pistes", examplesNote: "Signaux réels issus d'un échantillon récent. Nom, téléphone et e-mail figurent dans votre échantillon gratuit.",
@@ -49,7 +53,7 @@ export const T = {
     send: "Recevoir 10 pistes gratuites", video: (s: number) => `Comment ça marche, en ${s} secondes`,
     thanks: "Merci. Nous vous envoyons votre échantillon très prochainement.", faq: "Questions",
     legal: ["Mentions légales", "Confidentialité", "CGV"], example: "Exemple", source: "Source",
-    error: "Nous n'avons pas pu associer ce lien à votre entreprise. Merci de demander l'échantillon par e-mail ci-dessous.",
+    error: "Merci de vérifier le nom de l'entreprise, l'adresse e-mail et la case de consentement.",
   },
 } as const;
 

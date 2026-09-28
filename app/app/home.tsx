@@ -2,6 +2,9 @@ import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import VIDEOS from "@/content/videos.json";
 import { BRAND, CONTACT, LEGAL_NAME, siteUrl } from "@/lib/site";
+import { consentText } from "@/lib/consent";
+import { wishesFor } from "@/content/sample-wishes";
+import { SampleForm, type FormOption } from "./sample-form";
 import { homeFeed, homeStats, MASK, publicPages, type PublicPage } from "@/lib/site-pages";
 import { BrandShell, SiteFooter, SiteHeader, Words } from "./chrome";
 import { HOME, HOME_LANGS, HOME_PATH, type HomeLang } from "./home-i18n";
@@ -78,7 +81,15 @@ export async function Home({ lang }: { lang: HomeLang }) {
   const countries = (["UK", "US", "FR"] as CountryCode[]).filter((c) => pages.some((p) => p.country === c));
   const pref: CountryCode = lang === "fr" ? "FR" : "UK";
   const defCountry = countries.includes(pref) ? pref : countries[0];
-  const mailto = `mailto:${CONTACT}?subject=${encodeURIComponent(t.mailSubject)}&body=${encodeURIComponent(t.mailBody)}`;
+  // Probe-Formular statt Mail-Knopf (Inhaber 28.09.2026): Branche und Land wählen, dann wie auf der Landingpage
+  const formLang: "en" | "fr" | "de" = lang;
+  const formOptions: FormOption[] = [...pages]
+    .sort((a, b) => Number(b.country === defCountry) - Number(a.country === defCountry) || a.country.localeCompare(b.country))
+    .map((p) => ({
+      value: p.slug,
+      label: `${ind(p)[0]} · ${COUNTRIES[p.country as CountryCode]?.name[lang] ?? p.country}`,
+      wishes: wishesFor(segKey(p.slug)).map((w) => ({ key: w.key, label: w[formLang] })),
+    }));
   const ld = {
     "@context": "https://schema.org", "@type": "Organization", name: BRAND, legalName: LEGAL_NAME, url: siteUrl(), email: CONTACT,
     description: t.desc, address: { "@type": "PostalAddress", streetAddress: "Poststraße 14-16", postalCode: "20354", addressLocality: "Hamburg", addressCountry: "DE" },
@@ -199,9 +210,11 @@ export async function Home({ lang }: { lang: HomeLang }) {
       <section className="offer" id="sample"><div className="wrap">
         <div>
           <Head title={t.offerH} gold={t.offerGold} intro={t.offerIntro} />
-          <div className="cta-stack solo" data-rv>
-            <a className="btn gold big" href={mailto}>{t.offerBtn} <span className="ar">→</span></a>
-            <div className="fine">{t.offerFine.map((f) => <span key={f}>{f}</span>)}</div>
+          <div data-rv>
+            {formOptions.length > 0 && (
+              <SampleForm lang={formLang} field="slug" options={formOptions} consent={consentText(lang)}
+                privacyHref={{ en: "/privacy", fr: "/confidentialite", de: "/datenschutz" }[lang]} id="probe" />
+            )}
           </div>
         </div>
         <div data-rv>
