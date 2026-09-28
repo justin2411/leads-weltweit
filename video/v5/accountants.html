@@ -12,11 +12,11 @@
 #A_doc .t{font-size:24px;font-weight:800;letter-spacing:5px;text-transform:uppercase}
 #A_doc .s{font-size:20px;font-weight:600;color:#6b6a63}
 .rf{display:flex;padding:20px 0;border-bottom:1px solid #d5c9b1}
-.rf .kk{width:220px;font-size:18px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#8a7c60;padding-top:6px}
+.rf .kk{width:290px;flex:none;font-size:17px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#8a7c60;padding-top:6px}
 .rf .vv{font-size:32px;font-weight:700;white-space:nowrap}
-#A_stamp{position:absolute;left:1110px;top:590px;width:230px;height:230px;border-radius:50%;border:8px solid #B8914F;color:#B8914F;display:flex;align-items:center;justify-content:center;opacity:0}
+#A_stamp{position:absolute;left:1085px;top:565px;width:270px;height:270px;border-radius:50%;border:8px solid #B8914F;color:#B8914F;display:flex;align-items:center;justify-content:center;opacity:0}
 #A_stamp::before{content:"";position:absolute;inset:14px;border-radius:50%;border:3px solid #B8914F}
-#A_stamp span{font-size:28px;font-weight:800;letter-spacing:4px;text-transform:uppercase;text-align:center;line-height:1.1;padding:0 30px}
+#A_stamp span{font-size:28px;font-weight:800;letter-spacing:2px;text-transform:uppercase;text-align:center;line-height:1.1;padding:0 12px;white-space:nowrap}
 /* B: Jahresleiste */
 #B_stage{position:absolute;inset:0;perspective:1600px}
 #B_strip{position:absolute;left:0;top:560px;height:150px;transform-origin:0 50%;display:flex;gap:14px}
@@ -88,6 +88,7 @@
 <script>
 window.SCENES = [["A", "reg", { ill: true }], ["B", U.dlat[0][0], { ill: true }], ["C", "turn"], ["D", "leads", { ill: true }], ["E", "weekly"]];
 // A
+document.querySelector("#A_stamp span").style.fontSize = Math.min(30, 240 / U.stamp.length) + "px";
 const AF = U.regf.map(([k, v]) => div("A_rows", "rf", `<div class="kk">${esc(k)}</div><div class="vv">${esc(v)}</div>`));
 // B: zwölf Monate ab Eintragungsmonat
 const MW = 142, X0 = 118;

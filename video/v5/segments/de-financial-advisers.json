@@ -108,8 +108,8 @@
   },
   {
    "id": "person",
-   "text": "Wer eine Firma gründet, ist auch Privatkunde, mit neuen Entscheidungen.",
-   "pause": 0.5
+   "text": "Wer eine Firma gründet, ist auch Privatkunde, und steht vor ganz neuen privaten Entscheidungen.",
+   "pause": 0.6
   },
   {
    "id": "pay",
@@ -129,12 +129,12 @@
   {
    "id": "exit",
    "text": "Und irgendwann die Nachfolge.",
-   "pause": 0.6
+   "pause": 1.0
   },
   {
    "id": "leads",
    "text": "Das Handelsregister zeigt, wer sie sind und wann sie gestartet sind. Wir finden neue Geschäftsführer für Sie, mit den Kontaktdaten ihrer Firma.",
-   "pause": 0.45
+   "pause": 0.7
   },
   {
    "id": "weekly",
