@@ -1,0 +1,114 @@
+{
+ "key": "de:ind/insurance-brokers",
+ "file": "v5-de-insurance-brokers",
+ "lang": "de",
+ "tts": "de",
+ "voice": "piper:de_DE-thorsten-high",
+ "speed": 1.0,
+ "length_scale": 0.92,
+ "film": "insurance.html",
+ "industry": "insurance-brokers",
+ "ui": {
+  "locale": "de-DE",
+  "ill": "Beispiel",
+  "endfree": "10 kostenlose Leads · in ganz Deutschland",
+  "week": [
+   "M",
+   "D",
+   "M",
+   "D",
+   "F",
+   "S",
+   "S"
+  ],
+  "monday": "Jeden Montag · PDF + Tabelle",
+  "newco": "Neues Unternehmen",
+  "co": "Lichtblick Küchenbau GmbH",
+  "cover": [
+   [
+    "building",
+    "Inhalt & Gebäude"
+   ],
+   [
+    "truck",
+    "Flotte"
+   ],
+   [
+    "users",
+    "Betriebliche Vorsorge"
+   ],
+   [
+    "store",
+    "Betriebshaftpflicht"
+   ]
+  ],
+  "turnchip": "Jede Anschaffung, eine neue Police",
+  "leadhd": "Lead",
+  "sig": [
+   "Neugründung",
+   "Neue Räume",
+   "Stellen offen"
+  ],
+  "f": [
+   "Geschäftsführer",
+   "Telefon",
+   "E-Mail",
+   "Website",
+   "Quelle"
+  ],
+  "director": "Markus Albers",
+  "phone": "069 90009 845",
+  "email": "info@lichtblick-kuechenbau.de",
+  "web": "lichtblick-kuechenbau.de",
+  "srcdate": "Handelsregister · 24.09.2026",
+  "excl": "Jeder Lead geht an einen Makler"
+ },
+ "script": [
+  {
+   "id": "plot",
+   "text": "Ein neues Unternehmen ist gerade eingetragen worden. Noch ist es ein leeres Grundstück.",
+   "pause": 0.45
+  },
+  {
+   "id": "build",
+   "text": "Es bezieht eigene Räume: Inhalts- und Gebäudeversicherung.",
+   "pause": 0.3
+  },
+  {
+   "id": "fleet",
+   "text": "Transporter für die Auslieferung: Flottenversicherung.",
+   "pause": 0.3
+  },
+  {
+   "id": "staff",
+   "text": "Die ersten Mitarbeitenden: betriebliche Vorsorge.",
+   "pause": 0.3
+  },
+  {
+   "id": "open",
+   "text": "Und wenn es für Kunden öffnet: Betriebshaftpflicht.",
+   "pause": 0.6
+  },
+  {
+   "id": "turn",
+   "text": "Jede neue Anschaffung ist eine neue Police. Neue und wachsende Firmen brauchen diesen Schutz, bevor sie starten.",
+   "pause": 0.6
+  },
+  {
+   "id": "leads",
+   "text": "Wir finden Neugründungen und wachsende Firmen in öffentlichen Registern und auf ihren Websites, mit Geschäftsführung und Kontaktdaten.",
+   "pause": 0.45
+  },
+  {
+   "id": "weekly",
+   "text": "Jeden Montag, als PDF und als Tabelle. Jeder Lead geht nur an einen Makler.",
+   "pause": 0.6
+  },
+  {
+   "id": "end",
+   "text": "Starten Sie mit zehn kostenlosen Leads aus ganz Deutschland, auf nextgen-profit punkt de.",
+   "pause": 0.3,
+   "say": "Starten Sie mit zehn kostenlosen Leads aus ganz Deutschland, auf Nekst-Dschenn Proffit, Punkt D E."
+  }
+ ]
+}

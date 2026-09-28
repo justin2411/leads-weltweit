@@ -1,0 +1,151 @@
+{
+ "key": "de:ind/financial-advisers",
+ "file": "v5-de-financial-advisers",
+ "lang": "de",
+ "tts": "de",
+ "voice": "piper:de_DE-thorsten-high",
+ "speed": 1.0,
+ "length_scale": 0.92,
+ "film": "advisers.html",
+ "industry": "financial-advisers",
+ "ui": {
+  "locale": "de-DE",
+  "ill": "Beispiel",
+  "endfree": "10 kostenlose Leads · in ganz Deutschland",
+  "week": [
+   "M",
+   "D",
+   "M",
+   "D",
+   "F",
+   "S",
+   "S"
+  ],
+  "monday": "Jeden Montag · PDF + Tabelle",
+  "regtitle": "Geschäftsführung · diese Woche bestellt",
+  "src": "Handelsregister",
+  "reg": [
+   [
+    "Nordkai Logistik GmbH",
+    "Geschäftsführerin",
+    "Julia Brandt",
+    "24.09.2026"
+   ],
+   [
+    "Bäckerei Falke GmbH",
+    "Geschäftsführer",
+    "Tobias Arndt",
+    "24.09.2026"
+   ],
+   [
+    "Hafenlicht Digital GmbH",
+    "Geschäftsführerin",
+    "Anna Seidel",
+    "23.09.2026"
+   ],
+   [
+    "Zahnwerk Linde GmbH",
+    "Geschäftsführerin",
+    "Priya Nair",
+    "23.09.2026"
+   ],
+   [
+    "Tischlerei Hafen GmbH",
+    "Geschäftsführer",
+    "Olaf Peters",
+    "22.09.2026"
+   ],
+   [
+    "Studio Hellweg GmbH",
+    "Geschäftsführerin",
+    "Emma Lorenz",
+    "22.09.2026"
+   ]
+  ],
+  "hi": 2,
+  "name": "Anna Seidel",
+  "role": "Geschäftsführerin · Hafenlicht Digital GmbH",
+  "topics": [
+   [
+    "scale",
+    "Gehalt oder Ausschüttung"
+   ],
+   [
+    "sprout",
+    "Altersvorsorge"
+   ],
+   [
+    "umbrella",
+    "Absicherung"
+   ],
+   [
+    "exit",
+    "Nachfolge"
+   ]
+  ],
+  "profhd": "Neue Geschäftsführung",
+  "f": [
+   "Firma",
+   "Bestellt am",
+   "Telefon",
+   "E-Mail",
+   "Quelle"
+  ],
+  "pf": [
+   "Hafenlicht Digital GmbH",
+   "23.09.2026",
+   "0221 4710 391",
+   "info@hafenlicht-digital.de",
+   "Handelsregister"
+  ],
+  "excl": "Jeder Lead geht an eine Beratung"
+ },
+ "script": [
+  {
+   "id": "reg",
+   "text": "Hinter jeder neuen Firma im Handelsregister steht ein Mensch.",
+   "pause": 0.45
+  },
+  {
+   "id": "person",
+   "text": "Wer eine Firma gründet, ist auch Privatkunde, und steht vor ganz neuen privaten Entscheidungen.",
+   "pause": 0.6
+  },
+  {
+   "id": "pay",
+   "text": "Wie zahle ich mich aus: Gehalt oder Ausschüttung?",
+   "pause": 0.3
+  },
+  {
+   "id": "pension",
+   "text": "Die eigene Altersvorsorge, vielleicht über die Firma.",
+   "pause": 0.3
+  },
+  {
+   "id": "protect",
+   "text": "Die Absicherung für Familie und Unternehmen.",
+   "pause": 0.3
+  },
+  {
+   "id": "exit",
+   "text": "Und irgendwann die Nachfolge.",
+   "pause": 1.0
+  },
+  {
+   "id": "leads",
+   "text": "Das Handelsregister zeigt, wer sie sind und wann sie gestartet sind. Wir finden neue Geschäftsführer für Sie, mit den Kontaktdaten ihrer Firma.",
+   "pause": 0.7
+  },
+  {
+   "id": "weekly",
+   "text": "Jeden Montag, als PDF und als Tabelle. Jeder Lead geht nur an eine Beratung.",
+   "pause": 0.6
+  },
+  {
+   "id": "end",
+   "text": "Starten Sie mit zehn kostenlosen Leads aus ganz Deutschland, auf nextgen-profit punkt de.",
+   "pause": 0.3,
+   "say": "Starten Sie mit zehn kostenlosen Leads aus ganz Deutschland, auf Nekst-Dschenn Proffit, Punkt D E."
+  }
+ ]
+}

@@ -1,0 +1,133 @@
+{
+ "key": "de:ind/web-agencies",
+ "file": "v5-de-web-agencies",
+ "lang": "de",
+ "tts": "de",
+ "voice": "piper:de_DE-thorsten-high",
+ "speed": 1.0,
+ "length_scale": 0.92,
+ "film": "web.html",
+ "industry": "web-agencies",
+ "ui": {
+  "locale": "de-DE",
+  "ill": "Beispiel",
+  "endfree": "10 kostenlose Leads · in ganz Deutschland",
+  "week": [
+   "M",
+   "D",
+   "M",
+   "D",
+   "F",
+   "S",
+   "S"
+  ],
+  "monday": "Jeden Montag",
+  "url1": "eichgrund-haustechnik.de",
+  "nosite": "Keine Website gefunden",
+  "nosub": "Die Domain führt zu keiner Seite.",
+  "url2": "werkzeug-brunnert.de",
+  "retro": {
+   "title": "WERKZEUG BRUNNERT",
+   "welcome": "Willkommen auf unserer Homepage!",
+   "nav": [
+    "Start",
+    "Produkte",
+    "Über uns",
+    "Kontakt"
+   ],
+   "body": "Familienbetrieb. Preise bitte telefonisch erfragen.",
+   "best": "Optimiert für 800×600",
+   "visitors": "Besucher"
+  },
+  "modern": {
+   "name": "Werkzeug Brunnert",
+   "h": "Werkzeug fürs Handwerk, gemacht für Jahre",
+   "cta": "Angebot anfragen",
+   "nav": [
+    "Produkte",
+    "Handwerk",
+    "Kontakt"
+   ]
+  },
+  "checkhd": "Website-Prüfung",
+  "checks": [
+   [
+    "Eichgrund Haustechnik GmbH",
+    "Keine Website gefunden",
+    "noweb"
+   ],
+   [
+    "Werkzeug Brunnert GmbH",
+    "Nicht mobilfähig",
+    "mobile"
+   ],
+   [
+    "Falke Sanitär GmbH",
+    "Keine Website gefunden",
+    "noweb"
+   ],
+   [
+    "Tierpflege Linde GmbH",
+    "Veraltete Website",
+    "monitor"
+   ]
+  ],
+  "checked": "Geprüft am 26.09.2026",
+  "f": [
+   "Telefon",
+   "E-Mail",
+   "Geschäftsführung"
+  ],
+  "contact": [
+   "030 23125 704",
+   "info@eichgrund-haustechnik.de",
+   "Christian Eichler"
+  ],
+  "before": "Vorher",
+  "after": "Nachher",
+  "excl": "Jeder Lead geht an eine Webagentur"
+ },
+ "script": [
+  {
+   "id": "type",
+   "text": "Suchen wir eine Firma, die letzte Woche eingetragen wurde, und schauen, was online zu finden ist.",
+   "pause": 0.3
+  },
+  {
+   "id": "nothing",
+   "text": "Wir tippen ihren Namen ein. Nichts. Keine Website.",
+   "pause": 0.6
+  },
+  {
+   "id": "old",
+   "text": "Eine andere Firma hat eine Seite, aber sie sieht aus wie aus dem Jahr zweitausendacht.",
+   "pause": 0.35
+  },
+  {
+   "id": "mobile",
+   "text": "Und auf dem Handy funktioniert sie einfach nicht.",
+   "pause": 0.6
+  },
+  {
+   "id": "fix",
+   "text": "Für eine Webagentur ist das ein leichter Gesprächseinstieg: Die Firma sieht das Problem selbst.",
+   "pause": 0.6
+  },
+  {
+   "id": "check",
+   "text": "Wir prüfen für Sie die Websites neuer Firmen und markieren, wer keine hat, oder eine, die auf dem Handy nicht funktioniert.",
+   "pause": 0.45
+  },
+  {
+   "id": "weekly",
+   "text": "Jeden Montag, mit Telefon, E-Mail und Geschäftsführung. Jeder Lead geht nur an eine Webagentur.",
+   "pause": 0.6
+  },
+  {
+   "id": "end",
+   "text": "Starten Sie mit zehn kostenlosen Leads aus ganz Deutschland, auf nextgen-profit punkt de.",
+   "pause": 0.3,
+   "say": "Starten Sie mit zehn kostenlosen Leads aus ganz Deutschland, auf Nekst-Dschenn Proffit, Punkt D E."
+  }
+ ]
+}

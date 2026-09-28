@@ -1,0 +1,151 @@
+{
+ "key": "fr/conseillers-patrimoine",
+ "file": "v5-fr-financial-advisers",
+ "lang": "fr",
+ "tts": "fr-fr",
+ "voice": "ff_siwis",
+ "speed": 1.04,
+ "film": "advisers.html",
+ "industry": "financial-advisers",
+ "ui": {
+  "locale": "fr-FR",
+  "ill": "Exemple illustratif",
+  "endfree": "10 pistes gratuites, partout en France",
+  "week": [
+   "L",
+   "M",
+   "M",
+   "J",
+   "V",
+   "S",
+   "D"
+  ],
+  "monday": "Chaque lundi · PDF + tableur",
+  "regtitle": "Dirigeants · nommés cette semaine",
+  "src": "RNE · INPI",
+  "reg": [
+   [
+    "Transports Lumen SAS",
+    "Présidente",
+    "Claire Morel",
+    "24 sept. 2026"
+   ],
+   [
+    "Boulangerie Kestrel SARL",
+    "Gérant",
+    "Thomas Aubry",
+    "24 sept. 2026"
+   ],
+   [
+    "Studio Numérique Calanque SAS",
+    "Présidente",
+    "Amélie Garnier",
+    "23 sept. 2026"
+   ],
+   [
+    "Cabinet Dentaire Tilleul",
+    "Gérante",
+    "Priya Nair",
+    "23 sept. 2026"
+   ],
+   [
+    "Menuiserie Portal SAS",
+    "Président",
+    "Olivier Prat",
+    "22 sept. 2026"
+   ],
+   [
+    "Studio Clairval SAS",
+    "Présidente",
+    "Emma Lopez",
+    "22 sept. 2026"
+   ]
+  ],
+  "hi": 2,
+  "name": "Amélie Garnier",
+  "role": "Présidente · Studio Numérique Calanque",
+  "topics": [
+   [
+    "scale",
+    "Salaire ou dividendes"
+   ],
+   [
+    "sprout",
+    "Retraite · PER"
+   ],
+   [
+    "umbrella",
+    "Prévoyance"
+   ],
+   [
+    "exit",
+    "Transmission"
+   ]
+  ],
+  "profhd": "Nouvelle dirigeante",
+  "f": [
+   "Société",
+   "Nommée le",
+   "Téléphone",
+   "E-mail",
+   "Source"
+  ],
+  "pf": [
+   "Studio Numérique Calanque SAS",
+   "23 sept. 2026",
+   "01 99 00 51 26",
+   "contact@studio-calanque.fr",
+   "RNE · INPI"
+  ],
+  "excl": "Chaque piste va à un seul cabinet"
+ },
+ "script": [
+  {
+   "id": "reg",
+   "text": "Derrière chaque nouvelle société du registre, il y a une personne.",
+   "pause": 0.45
+  },
+  {
+   "id": "person",
+   "text": "Un nouveau dirigeant est aussi un client privé, avec de nouvelles décisions à prendre.",
+   "pause": 0.5
+  },
+  {
+   "id": "pay",
+   "text": "Comment se rémunérer : salaire ou dividendes.",
+   "pause": 0.3
+  },
+  {
+   "id": "pension",
+   "text": "Préparer sa retraite, par exemple avec un PER.",
+   "pause": 0.3,
+   "say": "Préparer sa retraite, par exemple avec un P E R."
+  },
+  {
+   "id": "protect",
+   "text": "Protéger sa famille et l'entreprise, avec la prévoyance.",
+   "pause": 0.3
+  },
+  {
+   "id": "exit",
+   "text": "Et un jour, la transmission.",
+   "pause": 0.6
+  },
+  {
+   "id": "leads",
+   "text": "Le registre montre qui ils sont et quand ils ont commencé. Nous trouvons pour vous les nouveaux dirigeants, avec les coordonnées de leur entreprise.",
+   "pause": 0.45
+  },
+  {
+   "id": "weekly",
+   "text": "Chaque lundi, en PDF et en tableur. Chaque piste ne va qu'à un seul cabinet.",
+   "pause": 0.6
+  },
+  {
+   "id": "end",
+   "text": "Commencez avec dix pistes gratuites, partout en France, sur nextgen-profit point d e.",
+   "pause": 0.3,
+   "say": "Commencez avec dix pistes gratuites, partout en France, sur nekst djène profit, point dé e."
+  }
+ ]
+}

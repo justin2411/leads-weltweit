@@ -1,0 +1,196 @@
+{
+ "key": "uk/accountants",
+ "file": "v5-uk-accountants",
+ "lang": "en",
+ "tts": "en-gb",
+ "voice": "bf_emma",
+ "speed": 1.0,
+ "film": "accountants.html",
+ "industry": "accountants",
+ "ui": {
+  "locale": "en-GB",
+  "ill": "Illustrative example",
+  "endfree": "10 free leads from across the UK",
+  "week": [
+   "M",
+   "T",
+   "W",
+   "T",
+   "F",
+   "S",
+   "S"
+  ],
+  "monday": "Every Monday",
+  "regtitle": "Register entry",
+  "src": "Companies House",
+  "stamp": "Registered",
+  "regf": [
+   [
+    "Company",
+    "Northfield Freight Ltd"
+   ],
+   [
+    "Type",
+    "Private limited company"
+   ],
+   [
+    "Incorporated",
+    "24 Sep 2026"
+   ],
+   [
+    "Director",
+    "Sarah Hartley"
+   ]
+  ],
+  "yearone": "Year one",
+  "dl": [
+   [
+    "receipt",
+    "VAT registration",
+    "HMRC",
+    1.4
+   ],
+   [
+    "coins",
+    "First payroll",
+    "PAYE",
+    3.2
+   ],
+   [
+    "file",
+    "Confirmation statement",
+    "Companies House",
+    10.6
+   ],
+   [
+    "calc",
+    "Year-end accounts",
+    "Corporation Tax",
+    11.4
+   ]
+  ],
+  "dlat": [
+   [
+    "vat",
+    0.05
+   ],
+   [
+    "payroll",
+    0.05
+   ],
+   [
+    "filing",
+    0.05
+   ],
+   [
+    "yearend",
+    0.1
+   ]
+  ],
+  "hub": "Your firm, from the first deadline",
+  "yearw": "Year",
+  "ledger": "New registrations",
+  "detail": "Lead",
+  "cols": [
+   "Company",
+   "Incorporated",
+   "Director"
+  ],
+  "rows": [
+   [
+    "Northfield Freight Ltd",
+    "24 Sep",
+    "Sarah Hartley"
+   ],
+   [
+    "Kestrel Bakery Ltd",
+    "24 Sep",
+    "Tom Ashby"
+   ],
+   [
+    "Linden Dental Care Ltd",
+    "23 Sep",
+    "Priya Nair"
+   ],
+   [
+    "Harbour Joinery Ltd",
+    "23 Sep",
+    "Owen Price"
+   ],
+   [
+    "Brightwell Studio Ltd",
+    "22 Sep",
+    "Emma Lowe"
+   ],
+   [
+    "Ashgrove Cleaning Ltd",
+    "22 Sep",
+    "Daniel Reed"
+   ]
+  ],
+  "co": "Northfield Freight Ltd",
+  "f": [
+   "Director",
+   "Phone",
+   "Email",
+   "Website",
+   "Source"
+  ],
+  "director": "Sarah Hartley",
+  "phone": "0113 496 0418",
+  "email": "info@northfieldfreight.co.uk",
+  "web": "northfieldfreight.co.uk",
+  "srcdate": "Companies House · 24 Sep 2026",
+  "excl": "Each lead goes to one accounting firm"
+ },
+ "script": [
+  {
+   "id": "reg",
+   "text": "Today, a new company is registered at Companies House. Its first year starts now.",
+   "pause": 0.5
+  },
+  {
+   "id": "vat",
+   "text": "Soon, it may need to register for VAT with HMRC.",
+   "pause": 0.35,
+   "say": "Soon, it may need to register for VAT with H M R C."
+  },
+  {
+   "id": "payroll",
+   "text": "When it hires, its first payroll runs through PAYE.",
+   "pause": 0.35,
+   "say": "When it hires, its first payroll runs through P A Y E."
+  },
+  {
+   "id": "filing",
+   "text": "Then comes its first confirmation statement,",
+   "pause": 0.2
+  },
+  {
+   "id": "yearend",
+   "text": "and its first year-end accounts and tax return.",
+   "pause": 0.6
+  },
+  {
+   "id": "turn",
+   "text": "Each of these dates needs an accountant. The firm that's there before the first deadline often keeps the client for years.",
+   "pause": 0.6
+  },
+  {
+   "id": "leads",
+   "text": "We find these companies as they're registered, with the director's name and the company's contact details.",
+   "pause": 0.45
+  },
+  {
+   "id": "weekly",
+   "text": "Every Monday, as a PDF and a spreadsheet. Each lead goes to one accounting firm only.",
+   "pause": 0.6
+  },
+  {
+   "id": "end",
+   "text": "Start with ten free leads from across the UK, at nextgen-profit dot de.",
+   "pause": 0.3,
+   "say": "Start with ten free leads from across the UK, at next gen profit, dot D E."
+  }
+ ]
+}

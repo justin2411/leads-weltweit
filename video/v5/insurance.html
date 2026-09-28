@@ -1,0 +1,164 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<!-- v5 Versicherungsmakler / Insurance brokers: "Neue Risiken" – isometrischer Aufbau: leeres Grundstück → Gebäude →
+     Fahrzeuge → Mitarbeitende → Eröffnung; zu jedem Schritt leuchtet ein Schutzschild mit der Versicherungsart auf.
+     Dann Kamera zurück: viele neue Firmen, jede mit neuen Policen. Zum Schluss Lead-Karte und Montag. -->
+<link rel="stylesheet" href="lib/base.css">
+<style>
+#pat{background-image:linear-gradient(30deg,rgba(120,150,200,.05) 1px,transparent 1px),linear-gradient(150deg,rgba(120,150,200,.05) 1px,transparent 1px);background-size:120px 70px}
+#W{position:absolute;inset:0;transform-origin:760px 640px}
+#panel{position:absolute;left:1370px;top:250px;width:480px;border-radius:26px;padding:28px 30px;background:linear-gradient(180deg,rgba(21,42,76,.92),rgba(15,29,56,.92));border:1px solid rgba(216,189,138,.4);box-shadow:0 40px 120px rgba(0,0,0,.5)}
+.cv{display:flex;align-items:center;gap:18px;padding:16px 0;border-top:1px solid #243a62}
+.cv .ic{width:62px;height:62px;flex:none;display:flex;align-items:center;justify-content:center;position:relative}
+.cv .t{font-size:27px;font-weight:700;white-space:nowrap}
+#sign{position:absolute;padding:12px 20px;border-radius:12px;background:#f6f1e7;color:#13203b;box-shadow:0 20px 50px rgba(0,0,0,.45);white-space:nowrap}
+#sign .k{color:#8a6a33;font-size:15px}
+#sign b{display:block;font-size:24px;font-weight:800;margin-top:2px}
+#turnchip{top:120px}
+/* Lead-Karte */
+#D_card{position:absolute;left:250px;top:190px;width:1420px;height:540px;border-radius:30px;padding:46px 56px;background:linear-gradient(180deg,#152a4c,#0f1d38);border:1px solid rgba(216,189,138,.45);box-shadow:0 40px 120px rgba(0,0,0,.5);overflow:hidden}
+#D_wm{position:absolute;right:-60px;top:-40px;opacity:.07}
+.sg{display:inline-flex;align-items:center;gap:12px;padding:10px 20px;border-radius:99px;font-size:24px;font-weight:700;background:rgba(216,189,138,.12);border:1px solid rgba(216,189,138,.45);color:#f3e6c8;white-space:nowrap;margin-right:14px}
+.fg{display:grid;grid-template-columns:1fr 1fr;column-gap:50px;row-gap:24px;margin-top:36px;padding-top:30px;border-top:1px solid #243a62}
+.fd{display:flex;align-items:center;gap:18px;min-width:0}
+.fd .ic{width:60px;height:60px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:rgba(216,189,138,.1);border:1px solid rgba(216,189,138,.35);flex:none}
+.fd .v{font-size:27px}
+</style></head>
+<body>
+<!-- A: Grundstück wird zur Firma (plot … turn) -->
+<div class="scene" id="A">
+  <div id="W"><svg width="1920" height="1080" id="S"></svg><div id="sign"><div class="k" data-u="newco"></div><b data-u="co"></b></div></div>
+  <div id="panel"><div class="lbl" style="display:flex;align-items:center;gap:12px;font-size:18px;letter-spacing:2px;overflow:hidden;text-overflow:ellipsis"><span data-ic="shield" data-s="28"></span><span data-u="co"></span></div><div id="rows" style="margin-top:16px"></div></div>
+  <div id="turnchip" class="abs ctr"><span class="chip" style="font-size:34px"><span data-ic="shieldc" data-s="36"></span><span data-u="turnchip"></span></span></div>
+</div>
+<!-- D: Lead-Karte, dann Montag -->
+<div class="scene" id="D">
+  <div id="D_card"><div id="D_wm"></div>
+    <div class="lbl" data-u="leadhd"></div>
+    <div style="font-size:58px;font-weight:800;letter-spacing:-1.5px;margin-top:8px;white-space:nowrap" data-u="co"></div>
+    <div id="D_sig" style="margin-top:20px"></div>
+    <div class="fg" id="D_f"></div>
+  </div>
+  <div id="D_bottom" class="abs ctr" style="top:830px;display:flex;justify-content:center;gap:24px">
+    <span class="chip" id="D_mon"><span data-ic="cal" data-s="30"></span><span data-u="monday"></span></span>
+    <span class="chip" id="D_ex"><span data-ic="lock" data-s="30"></span><span data-u="excl"></span></span></div>
+</div>
+<script src="lib/lib.js"></script>
+<script>
+window.SCENES = [["A", "plot", { ill: true }], ["D", "leads", { ill: true }]];
+const S = $("S");
+mk(S, "defs").innerHTML = `<linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E2C894"/><stop offset="1" stop-color="#B8914F"/></linearGradient>
+<radialGradient id="sglow"><stop offset="0" stop-color="rgba(226,200,148,.55)"/><stop offset="1" stop-color="rgba(226,200,148,0)"/></radialGradient>`;
+// isometrische Projektion
+const O = { x: 760, y: 330 }, SU = 46;
+const iso = (x, y, z = 0, o = O) => [o.x + (x - y) * SU * .866, o.y + (x + y) * SU * .5 - z * SU];
+const pts = a => a.map(q => q.join(",")).join(" ");
+const layer = () => mk(S, "g");
+// Quader mit drei sichtbaren Flächen
+function box(par, x0, y0, x1, y1, fill = ["#1b3462", "#142848", "#0f1f3b"], stroke = "#D8BD8A", o = O) {
+  const g = mk(par, "g"); const top = mk(g, "polygon", { fill: fill[0], stroke, "stroke-width": 2, "stroke-linejoin": "round" });
+  const left = mk(g, "polygon", { fill: fill[1], stroke, "stroke-width": 2, "stroke-linejoin": "round" });
+  const right = mk(g, "polygon", { fill: fill[2], stroke, "stroke-width": 2, "stroke-linejoin": "round" });
+  return { g, set(h, dz = 0) { const z0 = dz, z1 = dz + h;
+    top.setAttribute("points", pts([iso(x0, y0, z1, o), iso(x1, y0, z1, o), iso(x1, y1, z1, o), iso(x0, y1, z1, o)]));
+    left.setAttribute("points", pts([iso(x0, y1, z0, o), iso(x1, y1, z0, o), iso(x1, y1, z1, o), iso(x0, y1, z1, o)]));
+    right.setAttribute("points", pts([iso(x1, y0, z0, o), iso(x1, y1, z0, o), iso(x1, y1, z1, o), iso(x1, y0, z1, o)])); } };
+}
+// Boden: Grundstück 12 x 12 mit Rasterlinien, Straße vorne
+const ground = layer();
+const plot = mk(ground, "polygon", { points: pts([iso(0, 0), iso(12, 0), iso(12, 12), iso(0, 12)]), fill: "rgba(20,40,72,.55)", stroke: "#D8BD8A", "stroke-width": 3, "stroke-dasharray": "14 10" });
+const gl = []; for (let i = 1; i < 12; i++) { gl.push(mk(ground, "line", { x1: iso(i, 0)[0], y1: iso(i, 0)[1], x2: iso(i, 12)[0], y2: iso(i, 12)[1], stroke: "#1f3560", "stroke-width": 1.5 }));
+  gl.push(mk(ground, "line", { x1: iso(0, i)[0], y1: iso(0, i)[1], x2: iso(12, i)[0], y2: iso(12, i)[1], stroke: "#1f3560", "stroke-width": 1.5 })); }
+const road = mk(ground, "polygon", { points: pts([iso(-6, 12.6), iso(22, 12.6), iso(22, 15), iso(-6, 15)]), fill: "#0d1a33", stroke: "#27406b", "stroke-width": 2 });
+const rdash = mk(ground, "line", { x1: iso(-6, 13.8)[0], y1: iso(-6, 13.8)[1], x2: iso(22, 13.8)[0], y2: iso(22, 13.8)[1], stroke: "#3a5078", "stroke-width": 3, "stroke-dasharray": "20 18" });
+// Nachbar-Grundstücke (erscheinen beim Zurückfahren)
+const NB = [[-15, 0], [15, -2], [0, -15], [14, 14], [-14, 14]].map(([dx, dy], i) => { const o = { x: O.x + (dx - dy) * SU * .866, y: O.y + (dx + dy) * SU * .5 };
+  const g = mk(S, "g", { opacity: 0 }); mk(g, "polygon", { points: pts([iso(0, 0, 0, o), iso(10, 0, 0, o), iso(10, 10, 0, o), iso(0, 10, 0, o)]), fill: "rgba(20,40,72,.5)", stroke: "#3a5078", "stroke-width": 2 });
+  const b = box(g, 2, 2, 6 + (i % 2) * 2, 6, undefined, "#6d7fa3", o); const bh = 2 + (i % 3);
+  const sc = iso(4 + (i % 2), 4, bh + 2.2, o); const sh = mk(g, "g"); mk(sh, "circle", { cx: sc[0], cy: sc[1], r: 60, fill: "url(#sglow)" });
+  const shp = mk(sh, "path", { d: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z", fill: "url(#sg)", transform: `translate(${sc[0] - 30} ${sc[1] - 30}) scale(2.5)` });
+  return { g, b, bh, sh, sc, i }; });
+// Gebäude (hinten links), Lager daneben
+const B1 = box(S, 1, 1, 7, 5.5), ROOF = mk(S, "polygon", { fill: "#23406f", stroke: "#D8BD8A", "stroke-width": 2 });
+const win = layer(); const door = mk(S, "polygon", { fill: "#0b1428", stroke: "#D8BD8A", "stroke-width": 2 });
+const doorGlow = mk(S, "polygon", { fill: "url(#sg)", opacity: 0 });
+const awning = mk(S, "polygon", { fill: "url(#sg)", opacity: 0 });
+// Fahrzeuge
+function van(par) { const g = mk(par, "g"); const body = box(g, 0, 0, 2.4, 1.1, ["#e9e1cf", "#cfc5b0", "#b5ab96"], "#0b1428"); const cab = box(g, 2.4, 0, 3.1, 1.1, ["#E2C894", "#D8BD8A", "#B8914F"], "#0b1428");
+  const w1 = mk(g, "ellipse", { rx: 9, ry: 6, fill: "#0b1428" }), w2 = mk(g, "ellipse", { rx: 9, ry: 6, fill: "#0b1428" }); return { g, body, cab, w1, w2 }; }
+const V = [van(S), van(S)];
+// Mitarbeitende
+const PPL = [[8.2, 3], [9.4, 4.2], [10.2, 2.6], [8.8, 5.6], [10.6, 5]].map(([x, y]) => { const g = mk(S, "g", { opacity: 0 });
+  const [sx, sy] = iso(x, y, 0); mk(g, "ellipse", { cx: sx, cy: sy, rx: 14, ry: 7, fill: "rgba(0,0,0,.35)" });
+  mk(g, "path", { d: `M${sx - 13} ${sy} Q${sx - 13} ${sy - 44} ${sx} ${sy - 44} Q${sx + 13} ${sy - 44} ${sx + 13} ${sy} Z`, fill: "#D8BD8A" });
+  mk(g, "circle", { cx: sx, cy: sy - 56, r: 11, fill: "#f4efe6" }); return { g, sx, sy }; });
+// Kundschaft (Punkte, die zur Tür gehen)
+const CUS = [0, 1, 2, 3].map(i => mk(S, "circle", { r: 9, fill: "#f4efe6", opacity: 0 }));
+// Schilde über den Objekten
+const SH = [[4, 3.2, 5.2], [5.6, 9.5, 2.4], [9.4, 4.2, 2.8], [6.4, 7.4, 2.6]].map(([x, y, z], i) => { const [sx, sy] = iso(x, y, z); const g = mk(S, "g", { opacity: 0 });
+  const glow = mk(g, "circle", { cx: sx, cy: sy, r: 90, fill: "url(#sglow)" });
+  const ring = mk(g, "circle", { cx: sx, cy: sy, r: 50, fill: "none", stroke: "#E2C894", "stroke-width": 3 });
+  mk(g, "path", { d: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z", fill: "url(#sg)", stroke: "#0b1428", "stroke-width": .6, transform: `translate(${sx - 40} ${sy - 40}) scale(3.33)` });
+  icoG(g, U.cover[i][0], sx, sy - 3, 34, "#0b1428", 2.2); return { g, glow, ring, sx, sy, i }; });
+const ROWS = U.cover.map(([ic, t]) => div("rows", "cv", `<div class="ic"><svg class="i" width="62" height="62" viewBox="0 0 24 24"><path d="${P.shield}" fill="rgba(216,189,138,.12)" stroke="#D8BD8A" stroke-width="1.2"/></svg><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">${ico(ic, 26)}</div></div><div class="t">${esc(t)}</div>`));
+const ANCH = ["build", "fleet", "staff", "open"];
+// D
+$("D_wm").innerHTML = ico("shield", 620, "#D8BD8A", 1);
+[["flag", 0], ["store", 1], ["users", 2]].forEach(([ic, i]) => { const s = div("D_sig", "", ""); s.outerHTML = `<span class="sg" id="sg${i}">${ico(ic, 26)}<span>${esc(U.sig[i])}</span></span>`; });
+const FD = [["user", U.f[0], U.director], ["phone", U.f[1], U.phone], ["mail", U.f[2], U.email], ["globe", U.f[3], U.web], ["link", U.f[4], U.srcdate]];
+const fds = FD.map(([ic, k, v]) => div("D_f", "fd", `<div class="ic">${ico(ic, 30)}</div><div style="min-width:0"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`));
+
+window.film = t => {
+  $("pat").style.transform = `translate(${-(t * 10) % 120}px, ${-(t * 6) % 70}px)`;
+  const a0 = L.plot.start - .3, T0 = L.turn.start - .3, Tend = L.turn.end;
+  // Kamera: leichte Drift, zum Wendepunkt zurückfahren
+  const pull = eio(p(t, T0, 1.6));
+  const camS = lerp(lerp(1.08, 1, eio(p(t, a0, 6))), .56, pull), camX = lerp(-20, 200, pull) + Math.sin(t * .2) * 12, camY = lerp(0, 40, pull);
+  st("W", { transform: `translate(${camX}px, ${camY}px) scale(${camS})` });
+  st("panel", { opacity: eo(p(t, L.build.start - .4, .6)) * (1 - eio(p(t, T0, .8))), transform: `translateX(${(1 - eo(p(t, L.build.start - .4, .7))) * 80 + eio(p(t, T0, .8)) * 120}px)` });
+  // Boden
+  const pk = eo(p(t, a0, 1.2)); plot.setAttribute("opacity", pk); plot.setAttribute("stroke-dashoffset", -t * 20);
+  gl.forEach((l, i) => l.setAttribute("opacity", .9 * eo(p(t, a0 + .2 + i * .02, .6))));
+  road.setAttribute("opacity", pk); rdash.setAttribute("opacity", pk); rdash.setAttribute("stroke-dashoffset", -t * 30);
+  const sgk = back(p(t, a0 + .8, .6)); const [sx, sy] = iso(11.2, 11.4, 0);
+  st("sign", { left: (sx - 90) + "px", top: (sy - 150 + (1 - sgk) * 30) + "px", opacity: cl(sgk), transform: `scale(${.6 + .4 * sgk})`, transformOrigin: "50% 100%" });
+  // Gebäude wächst
+  const bp = p(t, L.build.start + .1, 1.0), bk = bp > 0 ? back(bp) : 0, H = 3.4 * cl(bk, 0, 1.2);
+  B1.g.setAttribute("opacity", bk > 0 ? 1 : 0); B1.set(Math.max(.01, H));
+  ROOF.setAttribute("points", pts([iso(1, 1, H), iso(7, 1, H), iso(7, 5.5, H), iso(1, 5.5, H)])); ROOF.setAttribute("opacity", bk > 0 ? 1 : 0);
+  ROOF.setAttribute("points", pts([iso(.8, .8, H + .15), iso(7.2, .8, H + .15), iso(7.2, 5.7, H + .15), iso(.8, 5.7, H + .15)]));
+  win.innerHTML = ""; if (bk > .6) for (let i = 0; i < 4; i++) { const x = 1.6 + i * 1.3; mk(win, "polygon", { points: pts([iso(x, 5.5, 1.9), iso(x + .8, 5.5, 1.9), iso(x + .8, 5.5, 2.7), iso(x, 5.5, 2.7)]), fill: t > L.open.start ? "rgba(226,200,148,.7)" : "#23406f", stroke: "#D8BD8A", "stroke-width": 1.5, opacity: eo(p(t, L.build.start + .6 + i * .1, .4)) }); }
+  const dpts = pts([iso(5.4, 5.5, 0), iso(6.5, 5.5, 0), iso(6.5, 5.5, 1.5), iso(5.4, 5.5, 1.5)]);
+  door.setAttribute("points", dpts); door.setAttribute("opacity", bk > .6 ? 1 : 0); doorGlow.setAttribute("points", dpts);
+  const op = eo(p(t, L.open.start, .6)); doorGlow.setAttribute("opacity", op * (.75 + .25 * Math.sin(t * 5)));
+  awning.setAttribute("points", pts([iso(5.1, 5.5, 1.8), iso(6.8, 5.5, 1.8), iso(6.8, 6.3, 1.5), iso(5.1, 6.3, 1.5)])); awning.setAttribute("opacity", op);
+  // Fahrzeuge fahren über die Straße und parken
+  V.forEach((v, i) => { const k = eio(p(t, L.fleet.start - .2 + i * .35, 1.4)); const park = [[1.2, 8.2], [1.2, 9.9]][i];
+    const x = lerp(20, park[0], cl(k * 1.6)), y = k < .62 ? 13.3 : lerp(13.3, park[1], eio((k - .62) / .38));
+    const o = { x: O.x + (x - y) * SU * .866, y: O.y + (x + y) * SU * .5 };
+    v.body.set(1.1); v.cab.set(.9); v.g.setAttribute("transform", `translate(${o.x - O.x} ${o.y - O.y})`); v.g.setAttribute("opacity", k > 0 ? 1 : 0);
+    const w1 = iso(.5, 1.1, 0), w2 = iso(2.6, 1.1, 0); v.w1.setAttribute("cx", w1[0]); v.w1.setAttribute("cy", w1[1]); v.w2.setAttribute("cx", w2[0]); v.w2.setAttribute("cy", w2[1]); });
+  // Mitarbeitende erscheinen
+  PPL.forEach((q, i) => { const k = back(p(t, L.staff.start + .1 + i * .16, .5)); q.g.setAttribute("opacity", cl(k * 2)); q.g.setAttribute("transform", `translate(0 ${(1 - cl(k)) * -40})`); });
+  // Kundschaft geht zur Tür
+  CUS.forEach((c, i) => { const k = p(t, L.open.start + .3 + i * .45, 2.2); const a = iso(lerp(14 - i, 6, eio(k)), lerp(13.5, 6, eio(k)), 0);
+    c.setAttribute("cx", a[0]); c.setAttribute("cy", a[1] - 12); c.setAttribute("opacity", k > 0 && k < 1 ? Math.min(1, (1 - k) * 4) : 0); });
+  // Schilde + Liste
+  SH.forEach(s => { const t0 = L[ANCH[s.i]].start + .5, k = back(p(t, t0, .6));
+    s.g.setAttribute("opacity", cl(k * 2) * (1 - .35 * pull)); scaleAt(s.g, s.sx, s.sy, .4 + .6 * cl(k) + .04 * Math.sin(t * 3 + s.i));
+    const r = (((t - t0) % 1.6) + 1.6) % 1.6 / 1.6; s.ring.setAttribute("r", 50 + r * 60); s.ring.setAttribute("opacity", k > 0 ? (1 - r) * .7 : 0); });
+  ROWS.forEach((r, i) => { const k = p(t, L[ANCH[i]].start + .5, .5); reveal(r, k, 0, 30); r.style.opacity = .15 + .85 * eo(k); });
+  // Zurückfahren: Nachbarn mit eigenen Schilden
+  NB.forEach(n => { const k = eo(p(t, T0 + .6 + n.i * .22, .7)); n.g.setAttribute("opacity", k); n.b.set(Math.max(.01, n.bh * eio(p(t, T0 + .7 + n.i * .22, .8))));
+    const sk = back(p(t, T0 + 1.3 + n.i * .25, .6)); n.sh.setAttribute("opacity", cl(sk)); scaleAt(n.sh, n.sc[0], n.sc[1], cl(sk) * (1 + .05 * Math.sin(t * 3 + n.i))); });
+  reveal("turnchip", p(t, T0 + 1.2, .6), -30);
+  // D: Karte, Signale, Felder; dann Montag + exklusiv
+  const d0 = L.leads.start - .4, dd = L.leads.end - d0;
+  const ck = eo5(p(t, d0, 1)); st("D_card", { opacity: cl(ck * 1.4), transform: `perspective(2000px) rotateY(${(1 - ck) * -18}deg) translateX(${(1 - ck) * 140}px)` });
+  $("D_wm").style.transform = `rotate(${Math.sin(t * .4) * 3}deg) translateY(${Math.sin(t * .6) * 10}px)`;
+  [0, 1, 2].forEach(i => { const k = back(p(t, d0 + .6 + i * .2, .5)); st("sg" + i, { transform: `scale(${k})`, opacity: cl(k) }); });
+  fds.forEach((f, i) => reveal(f, p(t, d0 + 1.1 + i * Math.min(.4, dd * .09), .45), 24));
+  const w0 = L.weekly.start - .3;
+  reveal("D_mon", p(t, w0, .6), 30); reveal("D_ex", p(t, w0 + .5, .6), 30);
+};
+</script></body></html>

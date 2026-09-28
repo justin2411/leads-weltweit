@@ -1,0 +1,132 @@
+{
+ "key": "us/web-agencies",
+ "file": "v5-us-web-agencies",
+ "lang": "en",
+ "tts": "en-us",
+ "voice": "af_heart",
+ "speed": 1.02,
+ "film": "web.html",
+ "industry": "web-agencies",
+ "ui": {
+  "locale": "en-US",
+  "ill": "Illustrative example",
+  "endfree": "10 free leads from across the US",
+  "week": [
+   "M",
+   "T",
+   "W",
+   "T",
+   "F",
+   "S",
+   "S"
+  ],
+  "monday": "Every Monday",
+  "url1": "oakridgehomeservices.com",
+  "nosite": "No website found",
+  "nosub": "The domain doesn't point to a site.",
+  "url2": "brightforgetools.com",
+  "retro": {
+   "title": "BRIGHTFORGE TOOLS",
+   "welcome": "Welcome to our homepage!",
+   "nav": [
+    "Home",
+    "Products",
+    "About us",
+    "Contact"
+   ],
+   "body": "We are a family business. Please call us for prices.",
+   "best": "Best viewed in 800×600",
+   "visitors": "Visitors"
+  },
+  "modern": {
+   "name": "Brightforge Tools",
+   "h": "Tools for the trade, built to last",
+   "cta": "Request a quote",
+   "nav": [
+    "Products",
+    "Trade",
+    "Contact"
+   ]
+  },
+  "checkhd": "Website check",
+  "checks": [
+   [
+    "Oakridge Home Services LLC",
+    "No website found",
+    "noweb"
+   ],
+   [
+    "Brightforge Tools LLC",
+    "Not mobile-friendly",
+    "mobile"
+   ],
+   [
+    "Kestrel Plumbing LLC",
+    "No website found",
+    "noweb"
+   ],
+   [
+    "Linden Pet Care LLC",
+    "Outdated website",
+    "monitor"
+   ]
+  ],
+  "checked": "Checked Sep 26, 2026",
+  "f": [
+   "Phone",
+   "Email",
+   "Owner"
+  ],
+  "contact": [
+   "(303) 555-0129",
+   "info@oakridgehomeservices.com",
+   "Chris Oakley"
+  ],
+  "before": "Before",
+  "after": "After",
+  "excl": "Each lead goes to one web agency"
+ },
+ "script": [
+  {
+   "id": "type",
+   "text": "Let's look up a business that was filed last week, and see what's online.",
+   "pause": 0.3
+  },
+  {
+   "id": "nothing",
+   "text": "We type its name. Nothing. No website.",
+   "pause": 0.6
+  },
+  {
+   "id": "old",
+   "text": "Another business has a site, but it looks like it was built in two thousand and eight.",
+   "pause": 0.35
+  },
+  {
+   "id": "mobile",
+   "text": "And on a phone, it simply breaks.",
+   "pause": 0.6
+  },
+  {
+   "id": "fix",
+   "text": "For a web agency, that's an easy conversation to start: the business can see the problem for itself.",
+   "pause": 0.6
+  },
+  {
+   "id": "check",
+   "text": "We check the websites of new businesses for you, and flag who has none, or one that doesn't work on a phone.",
+   "pause": 0.45
+  },
+  {
+   "id": "weekly",
+   "text": "Every Monday, with phone, email and the owner's name where it's public. Each lead goes to one web agency only.",
+   "pause": 0.6
+  },
+  {
+   "id": "end",
+   "text": "Start with ten free leads from across the US, at nextgen-profit dot de.",
+   "pause": 0.3,
+   "say": "Start with ten free leads from across the U.S., at next gen profit, dot D E."
+  }
+ ]
+}

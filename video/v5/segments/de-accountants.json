@@ -1,0 +1,190 @@
+{
+ "key": "de:ind/accountants",
+ "file": "v5-de-accountants",
+ "lang": "de",
+ "tts": "de",
+ "voice": "piper:de_DE-thorsten-high",
+ "speed": 1.0,
+ "length_scale": 0.92,
+ "film": "accountants.html",
+ "industry": "accountants",
+ "ui": {
+  "locale": "de-DE",
+  "ill": "Beispiel",
+  "endfree": "10 kostenlose Leads · in ganz Deutschland",
+  "week": [
+   "M",
+   "D",
+   "M",
+   "D",
+   "F",
+   "S",
+   "S"
+  ],
+  "monday": "Jeden Montag",
+  "regtitle": "Handelsregister",
+  "src": "Neueintragung",
+  "stamp": "Eingetragen",
+  "regf": [
+   [
+    "Firma",
+    "Nordkai Logistik GmbH"
+   ],
+   [
+    "Rechtsform",
+    "GmbH"
+   ],
+   [
+    "Eingetragen",
+    "24.09.2026"
+   ],
+   [
+    "Geschäftsführerin",
+    "Julia Brandt"
+   ]
+  ],
+  "yearone": "Das erste Jahr",
+  "dl": [
+   [
+    "file",
+    "Steuerliche Erfassung",
+    "Finanzamt",
+    0.2
+   ],
+   [
+    "receipt",
+    "Umsatzsteuer",
+    "Voranmeldung",
+    1.8
+   ],
+   [
+    "coins",
+    "Erste Lohnabrechnung",
+    "Lohn",
+    4.3
+   ],
+   [
+    "calc",
+    "Jahresabschluss",
+    "Steuererklärung",
+    11.3
+   ]
+  ],
+  "dlat": [
+   [
+    "vat",
+    0.02
+   ],
+   [
+    "vat",
+    0.5
+   ],
+   [
+    "payroll",
+    0.05
+   ],
+   [
+    "filing",
+    0.1
+   ]
+  ],
+  "hub": "Ihre Kanzlei, ab der ersten Frist",
+  "yearw": "Jahr",
+  "ledger": "Neueintragungen",
+  "detail": "Lead",
+  "cols": [
+   "Firma",
+   "Eingetragen",
+   "Geschäftsführung"
+  ],
+  "rows": [
+   [
+    "Nordkai Logistik GmbH",
+    "24.09.",
+    "Julia Brandt"
+   ],
+   [
+    "Bäckerei Falke GmbH",
+    "24.09.",
+    "Tobias Arndt"
+   ],
+   [
+    "Zahnwerk Linde GmbH",
+    "23.09.",
+    "Priya Nair"
+   ],
+   [
+    "Tischlerei Hafen GmbH",
+    "23.09.",
+    "Olaf Peters"
+   ],
+   [
+    "Studio Hellweg GmbH",
+    "22.09.",
+    "Emma Lorenz"
+   ],
+   [
+    "Eschen Reinigung GmbH",
+    "22.09.",
+    "Daniel Roth"
+   ]
+  ],
+  "co": "Nordkai Logistik GmbH",
+  "f": [
+   "Geschäftsführerin",
+   "Telefon",
+   "E-Mail",
+   "Website",
+   "Quelle"
+  ],
+  "director": "Julia Brandt",
+  "phone": "040 66969 482",
+  "email": "info@nordkai-logistik.de",
+  "web": "nordkai-logistik.de",
+  "srcdate": "Handelsregister · 24.09.2026",
+  "excl": "Jeder Lead geht an eine Kanzlei"
+ },
+ "script": [
+  {
+   "id": "reg",
+   "text": "Heute wird ein neues Unternehmen ins Handelsregister eingetragen. Sein erstes Jahr beginnt.",
+   "pause": 0.5
+  },
+  {
+   "id": "vat",
+   "text": "Zuerst die steuerliche Erfassung, dann die Umsatzsteuer-Voranmeldung.",
+   "pause": 0.35
+  },
+  {
+   "id": "payroll",
+   "text": "Mit der ersten Einstellung kommt die erste Lohnabrechnung.",
+   "pause": 0.35
+  },
+  {
+   "id": "filing",
+   "text": "Und dann der erste Jahresabschluss.",
+   "pause": 0.6
+  },
+  {
+   "id": "turn",
+   "text": "Für jeden dieser Termine braucht es einen Steuerberater. Die Kanzlei, die vor der ersten Frist da ist, betreut die Firma oft über Jahre.",
+   "pause": 0.6
+  },
+  {
+   "id": "leads",
+   "text": "Wir finden diese Firmen direkt nach der Eintragung, mit dem Namen der Geschäftsführung und den Kontaktdaten der Firma.",
+   "pause": 0.45
+  },
+  {
+   "id": "weekly",
+   "text": "Jeden Montag, als PDF und als Tabelle. Jeder Lead geht nur an eine Kanzlei.",
+   "pause": 0.6
+  },
+  {
+   "id": "end",
+   "text": "Starten Sie mit zehn kostenlosen Leads aus ganz Deutschland, auf nextgen-profit punkt de.",
+   "pause": 0.3,
+   "say": "Starten Sie mit zehn kostenlosen Leads aus ganz Deutschland, auf Nekst-Dschenn Proffit, Punkt D E."
+  }
+ ]
+}

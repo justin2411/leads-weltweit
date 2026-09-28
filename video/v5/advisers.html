@@ -1,0 +1,115 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<!-- v5 Vermögensberater / Financial advisers: "Der Mensch hinter der Firma" – Registerzeile löst sich in ein
+     gesichtsloses Linienporträt auf, private Themen kreisen um die Person (Gehalt/Dividende, Vorsorge, Absicherung, Nachfolge),
+     danach Profilkarte der neuen Geschäftsführung und Montag. -->
+<link rel="stylesheet" href="lib/base.css">
+<style>
+.star{position:absolute;border-radius:50%;background:#dfe5ef}
+/* A: Registerliste */
+#A_reg{position:absolute;left:260px;top:180px;width:1400px;height:720px;border-radius:26px;background:linear-gradient(180deg,#132a4d,#0e1c37);border:1px solid #2a4675;box-shadow:0 50px 140px rgba(0,0,0,.5);overflow:hidden}
+#A_reg .hd{display:flex;justify-content:space-between;align-items:center;padding:30px 44px;border-bottom:1px solid #27406b}
+.rr{display:grid;grid-template-columns:1.5fr 1fr 1.1fr .9fr;gap:20px;padding:24px 44px;border-bottom:1px solid #1d335c;font-size:26px;font-weight:600;color:#c7cfdc;white-space:nowrap;position:relative}
+.rr span{overflow:hidden;text-overflow:ellipsis}
+.rr.h{font-size:16px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;color:var(--soft);padding-top:22px;padding-bottom:16px}
+.rr .hlb{position:absolute;inset:6px 20px;border-radius:14px;border:2px solid #E2C894;background:rgba(216,189,138,.1);opacity:0}
+/* B: Porträt + Orbit */
+#B_name{position:absolute;left:0;right:0;top:735px;text-align:center}
+#B_name .n{font-size:52px;font-weight:800;letter-spacing:-1px}
+#B_name .r{font-size:26px;color:var(--soft);margin-top:8px;white-space:nowrap}
+.node{position:absolute;width:420px;margin-left:-210px;display:flex;flex-direction:column;align-items:center}
+.node .c{width:120px;height:120px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle,#1a3360,#101f3c);border:3px solid rgba(216,189,138,.55);box-shadow:0 20px 60px rgba(0,0,0,.45)}
+.node .t{margin-top:16px;font-size:30px;font-weight:800;white-space:nowrap;padding:10px 22px;border-radius:99px;background:rgba(11,20,40,.8);border:1px solid rgba(216,189,138,.35)}
+/* C: Profilkarte */
+#C_card{position:absolute;left:220px;top:170px;width:1480px;height:580px;border-radius:30px;background:linear-gradient(180deg,#152a4c,#0f1d38);border:1px solid rgba(216,189,138,.45);box-shadow:0 40px 120px rgba(0,0,0,.5);overflow:hidden}
+#C_left{position:absolute;left:0;top:-20px;bottom:0;width:520px;background:radial-gradient(circle at 50% 40%,rgba(216,189,138,.16),transparent 70%);border-right:1px solid #243a62}
+#C_right{position:absolute;left:580px;top:50px;right:50px}
+.pr{display:flex;align-items:center;gap:20px;padding:15px 0;border-bottom:1px solid #243a62}
+.pr .ic{width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:rgba(216,189,138,.1);border:1px solid rgba(216,189,138,.35);flex:none}
+.pr .v{font-size:27px}
+</style></head>
+<body>
+<!-- A: Registerliste -->
+<div class="scene" id="A">
+  <div id="A_reg"><div class="hd"><span class="lbl" data-u="regtitle"></span><span class="chip" style="font-size:22px;padding:8px 18px"><span data-ic="bank" data-s="24"></span><span data-u="src"></span></span></div><div id="A_rows"></div></div>
+</div>
+<!-- B: der Mensch, Themen im Orbit -->
+<div class="scene" id="B"><div id="B_cam" class="abs" style="inset:0"><svg width="1920" height="1080" id="B_svg"></svg><div id="B_nodes"></div>
+  <div id="B_name"><div class="n" data-u="name"></div><div class="r" data-u="role"></div></div></div></div>
+<!-- C: Profilkarte + Montag -->
+<div class="scene" id="C">
+  <div id="C_card"><div id="C_left"><svg width="520" height="620" id="C_svg"></svg></div>
+    <div id="C_right"><div class="lbl" data-u="profhd"></div><div style="font-size:54px;font-weight:800;letter-spacing:-1.2px;margin-top:6px;white-space:nowrap" data-u="name"></div><div id="C_rows" style="margin-top:12px"></div></div></div>
+  <div id="C_bottom" class="abs ctr" style="top:850px;display:flex;justify-content:center;gap:24px">
+    <span class="chip" id="C_mon"><span data-ic="cal" data-s="30"></span><span data-u="monday"></span></span>
+    <span class="chip" id="C_ex"><span data-ic="lock" data-s="30"></span><span data-u="excl"></span></span></div>
+</div>
+<script src="lib/lib.js"></script>
+<script>
+window.SCENES = [["A", "reg", { ill: true }], ["B", "person", { ill: true }], ["C", "leads", { ill: true }]];
+// Sternenfeld in drei Tiefen
+const STARS = []; for (let i = 0; i < 140; i++) { const z = rnd(); const d = div("pat", "star", "", { width: (1 + z * 2.6) + "px", height: (1 + z * 2.6) + "px" }); STARS.push({ d, x: rnd() * 1920, y: rnd() * 1080, z, ph: rnd() * 6 }); }
+// A
+const hdr = div("A_rows", "rr h", ["", "", "", ""].map(() => "<span></span>").join(""));
+const HR = U.reg.map((r, i) => div("A_rows", "rr", (i === U.hi ? `<i class="hlb"></i>` : "") + r.map((c, j) => `<span${j === 2 ? ' class="nm"' : ""}>${esc(c)}</span>`).join("")));
+hdr.style.display = "none";
+// B: Porträt (Linien, ohne Gesicht) + Orbit
+const B = $("B_svg"), PC = { x: 960, y: 440 };
+mk(B, "defs").innerHTML = `<radialGradient id="pglow"><stop offset="0" stop-color="rgba(226,200,148,.32)"/><stop offset="1" stop-color="rgba(226,200,148,0)"/></radialGradient>
+<linearGradient id="pg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E2C894"/><stop offset="1" stop-color="#B8914F"/></linearGradient>`;
+const RX = 640, RY = 250;
+const orbitBack = mk(B, "ellipse", { cx: PC.x, cy: PC.y + 40, rx: RX, ry: RY, fill: "none", stroke: "#27406b", "stroke-width": 2.5, "stroke-dasharray": "4 12" });
+const glow = mk(B, "circle", { cx: PC.x, cy: PC.y, r: 260, fill: "url(#pglow)" });
+function portrait(par, cx, cy, s) { const g = mk(par, "g");
+  const ring = mk(g, "circle", { cx, cy, r: 150 * s, fill: "#0f1d38", stroke: "url(#pg)", "stroke-width": 6 * s });
+  const head = mk(g, "circle", { cx, cy: cy - 42 * s, r: 50 * s, fill: "none", stroke: "#E2C894", "stroke-width": 6 * s, "stroke-linecap": "round" });
+  const body = mk(g, "path", { d: `M${cx - 92 * s} ${cy + 104 * s} Q${cx - 88 * s} ${cy + 22 * s} ${cx} ${cy + 22 * s} Q${cx + 88 * s} ${cy + 22 * s} ${cx + 92 * s} ${cy + 104 * s}`, fill: "none", stroke: "#E2C894", "stroke-width": 6 * s, "stroke-linecap": "round" });
+  [ring, head, body].forEach(e => { e.setAttribute("pathLength", 1000); e.setAttribute("stroke-dasharray", 1000); e.dataset.len = 1000; });
+  return { g, parts: [ring, head, body] }; }
+const lnG = mk(B, "g");
+const PT = portrait(B, PC.x, PC.y, 1);
+const draw = (pt, k) => pt.parts.forEach((e, i) => e.setAttribute("stroke-dashoffset", e.dataset.len * (1 - eio(cl(k * 1.4 - i * .2)))));
+const ANCH = ["pay", "pension", "protect", "exit"], ANG = [215, 325, 35, 145];
+const NODES = U.topics.map(([ic, t], i) => { const n = div("B_nodes", "node", `<div class="c">${ico(ic, 58, "#E2C894", 1.6)}</div><div class="t">${esc(t)}</div>`);
+  const ln = mk(lnG, "line", { stroke: "#B8914F", "stroke-width": 2.5, "stroke-dasharray": "6 10", opacity: 0 }); return { n, ln, i }; });
+// C
+const C = $("C_svg"); mk(C, "defs").innerHTML = $("B_svg").querySelector("defs").innerHTML;
+const PT2 = portrait(C, 260, 300, 1.05);
+const PF = [["building", 0], ["cal", 1], ["phone", 2], ["mail", 3], ["link", 4]].map(([ic, i]) => div("C_rows", "pr", `<div class="ic">${ico(ic, 28)}</div><div style="min-width:0"><div class="k">${esc(U.f[i])}</div><div class="v">${esc(U.pf[i])}</div></div>`));
+
+window.film = t => {
+  STARS.forEach(s => st(s.d, { left: ((s.x - t * 14 * (.2 + s.z)) % 1920 + 1920) % 1920 + "px", top: s.y + "px", opacity: (.15 + .5 * s.z) * (.7 + .3 * Math.sin(t * 2 + s.ph)) }));
+  // A: Liste gleitet herein, eine Zeile wird markiert, Kamera fährt auf den Namen
+  const a0 = L.reg.start - .3, ad = L.reg.end - a0;
+  const ak = eo5(p(t, a0, 1.1)); st("A_reg", { opacity: cl(ak * 1.5), transform: `perspective(2000px) rotateX(${(1 - ak) * 30}deg) translateY(${(1 - ak) * 100}px)` });
+  HR.forEach((r, i) => reveal(r, p(t, a0 + .3 + i * .12, .5), 0, -30));
+  const hk = eo(p(t, a0 + ad * .45, .5)); const hl = $("A_rows").querySelector(".hlb"); hl.style.opacity = hk;
+  HR.forEach((r, i) => { if (i !== U.hi) r.style.opacity = parseFloat(r.style.opacity) * (1 - .6 * hk); });
+  const nm = HR[U.hi].querySelector(".nm"); nm.style.color = hk > .5 ? "#fff" : ""; nm.style.fontWeight = hk > .5 ? 800 : 600;
+  const zk = eio(p(t, a0 + ad * .7, 1.2));
+  st("A_rows", { transform: `translate(${-zk * 260}px, ${-zk * (U.hi * 90 - 120)}px) scale(${1 + zk * .9})`, transformOrigin: "50% 0" });
+  // B: Porträt zeichnet sich, Name, dann kreisen die Themen
+  const b0 = L.person.start - .4;
+  draw(PT, p(t, b0, 1.8)); glow.setAttribute("r", 230 + 20 * Math.sin(t * 2));
+  const nk = p(t, b0 + 1.1, .7), nOut = eio(p(t, L.pay.start - .3, .6));
+  st("B_name", { opacity: eo(nk) * (1 - nOut), transform: `translateY(${(1 - eo(nk)) * 30 + nOut * 40}px)` });
+  const ob = eo(p(t, L.pay.start - .5, .8)); orbitBack.setAttribute("opacity", ob); orbitBack.setAttribute("stroke-dashoffset", -t * 16);
+  const rot = (t - L.pay.start) * 1.2;
+  const lastLit = ANCH.reduce((a, id, i) => t >= L[id].start ? i : a, -1);
+  NODES.forEach(nd => { const k = p(t, L[ANCH[nd.i]].start - .1, .7), a = (ANG[nd.i] + rot) * Math.PI / 180;
+    const x = PC.x + Math.cos(a) * RX, y = PC.y + 40 + Math.sin(a) * RY, depth = .88 + .12 * Math.sin(a);
+    const lit = nd.i === lastLit ? 1 : 0;
+    st(nd.n, { left: x + "px", top: (y - 60) + "px", opacity: cl(k * 2) * (lit || lastLit === 3 ? 1 : .55), transform: `scale(${(.5 + .5 * back(k)) * depth * (1 + .08 * lit)})` });
+    nd.n.querySelector(".c").style.boxShadow = lit ? "0 0 60px rgba(216,189,138,.45), 0 20px 60px rgba(0,0,0,.45)" : "";
+    nd.n.querySelector(".c").style.borderColor = lit ? "#E2C894" : "";
+    nd.ln.setAttribute("x1", PC.x); nd.ln.setAttribute("y1", PC.y); nd.ln.setAttribute("x2", x); nd.ln.setAttribute("y2", y);
+    nd.ln.setAttribute("opacity", .6 * eo(k) * (lit ? 1 : .5)); nd.ln.setAttribute("stroke-dashoffset", -t * 30); });
+  st("B_cam", { transform: `scale(${lerp(1.06, 1, eio(p(t, b0, 3)))})` });
+  // C: Profilkarte
+  const c0 = L.leads.start - .4, cd = L.leads.end - c0;
+  const ck = eo5(p(t, c0, 1)); st("C_card", { opacity: cl(ck * 1.4), transform: `scale(${lerp(.9, 1, ck)}) translateY(${(1 - ck) * 60}px)` });
+  draw(PT2, p(t, c0 + .2, 1.4));
+  PF.forEach((r, i) => reveal(r, p(t, c0 + cd * .35 + i * Math.min(.4, cd * .08), .45), 0, 30));
+  const w0 = L.weekly.start - .3; reveal("C_mon", p(t, w0, .6), 30); reveal("C_ex", p(t, w0 + .5, .6), 30);
+};
+</script></body></html>

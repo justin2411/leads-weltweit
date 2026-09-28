@@ -27,3 +27,27 @@ exklusiv eine Firma pro Branche · 10 kostenlose Leads · Abschluss. Keine Regio
   `app/public/video/v4-*.mp4/.jpg` und Eintrag in `app/content/videos.json`. Kontrollbilder: `node render.mjs <name> stills` (in `v4/`).
   Musik: `v3/music.py`. Satzlängen: `v4/lengths.py`.
 - Telefonnummern im Beispiel stammen aus den für Film/Fiktion reservierten Bereichen; Firmen und Personen sind erfunden.
+- Seit v5 nur noch für die Startseiten-Filme (`en:home`, `fr:home`, `de:home`) im Einsatz.
+
+## Version 5 (`v5/`): fünf eigenständige Branchenfilme
+Jede Branche hat ein eigenes Konzept, eine eigene Vorlage und eigene Musik. Marke (Dunkelblau + Gold, Inter, Linien-Icons),
+Wortmarke oben links, Hinweis „Beispiel“ und die Schlusskarte („10 kostenlose Leads …“ + nextgen-profit.de) kommen aus `v5/lib/`.
+- `accountants.html` – „Das erste Jahr einer Firma“: Registerauszug mit Stempel → Jahresleiste, auf der die Fristen des Landes
+  aufleuchten (UK VAT/PAYE/Confirmation statement/Accounts; US EIN+Sales tax/Payroll/Annual report/Tax return+1099s;
+  FR TVA/DSN/Bilan+liasse/Dépôt des comptes; DE steuerliche Erfassung/USt-Voranmeldung/Lohn/Jahresabschluss) → Kanzlei im
+  Mittelpunkt über Jahre → Kassenbuch der Neueintragungen → Montag (PDF + Tabelle).
+- `recruitment.html` – „Die Stelle, die nicht verschwindet“: Karriereseite mit Tageszähler 1 → 30 → 45 → neu ausgeschrieben +
+  zwei weitere Stellen → leere Stühle, das Telefon klingelt → Beleg-Zeitleiste (zuerst gesehen, neu ausgeschrieben, noch offen,
+  Quellenlink, täglich geprüft) → Montagsliste.
+- `insurance.html` – „Neue Risiken“: isometrisches Grundstück → Gebäude, Fahrzeuge, Personal, Eröffnung, je mit Schutzschild
+  der passenden Versicherung → Kamera zurück: viele neue Firmen → Lead-Karte.
+- `advisers.html` – „Der Mensch hinter der Firma“: Registerzeile → Linienporträt (ohne Gesicht) → private Themen im Orbit
+  (Gehalt/Dividende, Vorsorge, Absicherung, Nachfolge) → Profilkarte der neuen Geschäftsführung.
+- `web.html` – „Der Browser-Test“: Adresszeile → keine Website → Seite wie von 2008 → bricht auf dem Handy → goldener Wisch
+  vorher/nachher → Website-Prüfliste mit Kontaktzeile.
+
+Bauen (Umgebung wie v4): `python3 v5/segments.py` → `v5/all.sh [name …]` (Stimme `v4/vo.py`, Bilder `v4/render.mjs`,
+Musik `v5/music.py`, Kodierung wie v4: 1280×720, 25 fps, crf 26, faststart, AAC 128k) → `app/public/video/v5-<markt>-<branche>.mp4/.jpg`
+und Eintrag in `app/content/videos.json`. Kontrollbilder (in `v5/`): `node ../v4/render.mjs <name> stills 25 0.5`.
+Beispiel-Firmen, -Personen, Telefonnummern (Fiktionsbereiche) und Domains sind erfunden und im Bild als Beispiel markiert;
+keine Regionen, keine Zahlen über Ergebnisse, keine Garantien.

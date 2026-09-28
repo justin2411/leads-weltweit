@@ -1,0 +1,121 @@
+{
+ "key": "us/recruitment",
+ "file": "v5-us-recruitment",
+ "lang": "en",
+ "tts": "en-us",
+ "voice": "af_heart",
+ "speed": 1.02,
+ "film": "recruitment.html",
+ "industry": "recruitment",
+ "ui": {
+  "locale": "en-US",
+  "ill": "Illustrative example",
+  "endfree": "10 free leads from across the US",
+  "week": [
+   "M",
+   "T",
+   "W",
+   "T",
+   "F",
+   "S",
+   "S"
+  ],
+  "monday": "Every Monday",
+  "careers": "Careers",
+  "co": "Bluestem Precision Machining Inc.",
+  "jobs": [
+   "Maintenance Technician",
+   "CNC Machinist",
+   "Production Planner"
+  ],
+  "meta": "Full-time · On-site",
+  "apply": "Apply",
+  "day": "Day",
+  "repost": "Reposted",
+  "three": "3 open jobs",
+  "tl": [
+   [
+    "First seen",
+    "Aug 12, 2026"
+   ],
+   [
+    "Reposted",
+    "Sep 9, 2026"
+   ],
+   [
+    "Still open",
+    "Sep 26, 2026"
+   ]
+  ],
+  "srcurl": "bluestemmachining.com/careers",
+  "daily": "Checked daily",
+  "openfor": "Open 45 days",
+  "list": [
+   [
+    "Bluestem Precision Machining Inc.",
+    "3 jobs · longest 45 days",
+    "(614) 555-0147"
+   ],
+   [
+    "Ashcombe Logistics LLC",
+    "Reposted twice",
+    "(312) 555-0152"
+   ],
+   [
+    "Westbrook Senior Living LLC",
+    "4 jobs open",
+    "(206) 555-0163"
+   ]
+  ],
+  "listhd": "Employers with long-open jobs",
+  "excl": "Each lead goes to one staffing firm"
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "This job went live on an employer's careers page.",
+   "pause": 0.35
+  },
+  {
+   "id": "d1",
+   "text": "Day one.",
+   "pause": 0.3
+  },
+  {
+   "id": "d30",
+   "text": "Day thirty.",
+   "pause": 0.3
+  },
+  {
+   "id": "d45",
+   "text": "Day forty-five.",
+   "pause": 0.45
+  },
+  {
+   "id": "repost",
+   "text": "It's still there. Then it's reposted, and two more openings appear next to it.",
+   "pause": 0.6
+  },
+  {
+   "id": "chairs",
+   "text": "The employer has already tried on their own. A job open for thirty days or more is the moment they take a recruiter's call.",
+   "pause": 0.6
+  },
+  {
+   "id": "watch",
+   "text": "We check careers pages every day, and log when each job first appeared, when it was reposted, and how many are open, with the source link.",
+   "pause": 0.45
+  },
+  {
+   "id": "weekly",
+   "text": "Every Monday, you get these employers with the company's phone, email and the owner's name where it's public. Each lead goes to one staffing firm only.",
+   "pause": 0.6
+  },
+  {
+   "id": "end",
+   "text": "Start with ten free leads from across the US, at nextgen-profit dot de.",
+   "pause": 0.3,
+   "say": "Start with ten free leads from across the U.S., at next gen profit, dot D E."
+  }
+ ]
+}

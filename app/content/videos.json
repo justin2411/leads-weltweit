@@ -15,103 +15,103 @@
     "seconds": 54
   },
   "fr/agences-web": {
-    "src": "/video/v4-fr-web-agencies.mp4",
-    "poster": "/video/v4-fr-web-agencies.jpg",
-    "seconds": 55
+    "src": "/video/v5-fr-web-agencies.mp4",
+    "poster": "/video/v5-fr-web-agencies.jpg",
+    "seconds": 43
   },
   "fr/conseillers-patrimoine": {
-    "src": "/video/v4-fr-financial-advisers.mp4",
-    "poster": "/video/v4-fr-financial-advisers.jpg",
-    "seconds": 55
+    "src": "/video/v5-fr-financial-advisers.mp4",
+    "poster": "/video/v5-fr-financial-advisers.jpg",
+    "seconds": 41
   },
   "fr/courtiers-assurance": {
-    "src": "/video/v4-fr-insurance-brokers.mp4",
-    "poster": "/video/v4-fr-insurance-brokers.jpg",
-    "seconds": 53
+    "src": "/video/v5-fr-insurance-brokers.mp4",
+    "poster": "/video/v5-fr-insurance-brokers.jpg",
+    "seconds": 46
   },
   "fr/experts-comptables": {
-    "src": "/video/v4-fr-accountants.mp4",
-    "poster": "/video/v4-fr-accountants.jpg",
-    "seconds": 55
+    "src": "/video/v5-fr-accountants.mp4",
+    "poster": "/video/v5-fr-accountants.jpg",
+    "seconds": 43
   },
   "fr/recrutement": {
-    "src": "/video/v4-fr-recruitment.mp4",
-    "poster": "/video/v4-fr-recruitment.jpg",
-    "seconds": 55
+    "src": "/video/v5-fr-recruitment.mp4",
+    "poster": "/video/v5-fr-recruitment.jpg",
+    "seconds": 44
   },
   "uk/accountants": {
-    "src": "/video/v4-uk-accountants.mp4",
-    "poster": "/video/v4-uk-accountants.jpg",
-    "seconds": 53
+    "src": "/video/v5-uk-accountants.mp4",
+    "poster": "/video/v5-uk-accountants.jpg",
+    "seconds": 44
   },
   "uk/financial-advisers": {
-    "src": "/video/v4-uk-financial-advisers.mp4",
-    "poster": "/video/v4-uk-financial-advisers.jpg",
-    "seconds": 56
+    "src": "/video/v5-uk-financial-advisers.mp4",
+    "poster": "/video/v5-uk-financial-advisers.jpg",
+    "seconds": 40
   },
   "uk/insurance-brokers": {
-    "src": "/video/v4-uk-insurance-brokers.mp4",
-    "poster": "/video/v4-uk-insurance-brokers.jpg",
-    "seconds": 53
+    "src": "/video/v5-uk-insurance-brokers.mp4",
+    "poster": "/video/v5-uk-insurance-brokers.jpg",
+    "seconds": 46
   },
   "uk/recruitment": {
-    "src": "/video/v4-uk-recruitment.mp4",
-    "poster": "/video/v4-uk-recruitment.jpg",
-    "seconds": 54
+    "src": "/video/v5-uk-recruitment.mp4",
+    "poster": "/video/v5-uk-recruitment.jpg",
+    "seconds": 42
   },
   "uk/web-agencies": {
-    "src": "/video/v4-uk-web-agencies.mp4",
-    "poster": "/video/v4-uk-web-agencies.jpg",
-    "seconds": 54
+    "src": "/video/v5-uk-web-agencies.mp4",
+    "poster": "/video/v5-uk-web-agencies.jpg",
+    "seconds": 40
   },
   "us/accountants": {
-    "src": "/video/v4-us-accountants.mp4",
-    "poster": "/video/v4-us-accountants.jpg",
-    "seconds": 56
+    "src": "/video/v5-us-accountants.mp4",
+    "poster": "/video/v5-us-accountants.jpg",
+    "seconds": 47
   },
   "us/financial-advisers": {
-    "src": "/video/v4-us-financial-advisers.mp4",
-    "poster": "/video/v4-us-financial-advisers.jpg",
-    "seconds": 57
+    "src": "/video/v5-us-financial-advisers.mp4",
+    "poster": "/video/v5-us-financial-advisers.jpg",
+    "seconds": 44
   },
   "us/insurance-brokers": {
-    "src": "/video/v4-us-insurance-brokers.mp4",
-    "poster": "/video/v4-us-insurance-brokers.jpg",
-    "seconds": 55
+    "src": "/video/v5-us-insurance-brokers.mp4",
+    "poster": "/video/v5-us-insurance-brokers.jpg",
+    "seconds": 47
   },
   "us/recruitment": {
-    "src": "/video/v4-us-recruitment.mp4",
-    "poster": "/video/v4-us-recruitment.jpg",
-    "seconds": 56
+    "src": "/video/v5-us-recruitment.mp4",
+    "poster": "/video/v5-us-recruitment.jpg",
+    "seconds": 45
   },
   "us/web-agencies": {
-    "src": "/video/v4-us-web-agencies.mp4",
-    "poster": "/video/v4-us-web-agencies.jpg",
-    "seconds": 56
+    "src": "/video/v5-us-web-agencies.mp4",
+    "poster": "/video/v5-us-web-agencies.jpg",
+    "seconds": 42
   },
   "de:ind/accountants": {
-    "src": "/video/v4-de-accountants.mp4",
-    "poster": "/video/v4-de-accountants.jpg",
-    "seconds": 55
+    "src": "/video/v5-de-accountants.mp4",
+    "poster": "/video/v5-de-accountants.jpg",
+    "seconds": 41
   },
   "de:ind/financial-advisers": {
-    "src": "/video/v4-de-financial-advisers.mp4",
-    "poster": "/video/v4-de-financial-advisers.jpg",
-    "seconds": 56
+    "src": "/video/v5-de-financial-advisers.mp4",
+    "poster": "/video/v5-de-financial-advisers.jpg",
+    "seconds": 40
   },
   "de:ind/insurance-brokers": {
-    "src": "/video/v4-de-insurance-brokers.mp4",
-    "poster": "/video/v4-de-insurance-brokers.jpg",
-    "seconds": 55
+    "src": "/video/v5-de-insurance-brokers.mp4",
+    "poster": "/video/v5-de-insurance-brokers.jpg",
+    "seconds": 44
   },
   "de:ind/recruitment": {
-    "src": "/video/v4-de-recruitment.mp4",
-    "poster": "/video/v4-de-recruitment.jpg",
-    "seconds": 56
+    "src": "/video/v5-de-recruitment.mp4",
+    "poster": "/video/v5-de-recruitment.jpg",
+    "seconds": 46
   },
   "de:ind/web-agencies": {
-    "src": "/video/v4-de-web-agencies.mp4",
-    "poster": "/video/v4-de-web-agencies.jpg",
-    "seconds": 56
+    "src": "/video/v5-de-web-agencies.mp4",
+    "poster": "/video/v5-de-web-agencies.jpg",
+    "seconds": 42
   }
 }

@@ -1,0 +1,113 @@
+{
+ "key": "uk/insurance-brokers",
+ "file": "v5-uk-insurance-brokers",
+ "lang": "en",
+ "tts": "en-gb",
+ "voice": "bf_emma",
+ "speed": 1.0,
+ "film": "insurance.html",
+ "industry": "insurance-brokers",
+ "ui": {
+  "locale": "en-GB",
+  "ill": "Illustrative example",
+  "endfree": "10 free leads from across the UK",
+  "week": [
+   "M",
+   "T",
+   "W",
+   "T",
+   "F",
+   "S",
+   "S"
+  ],
+  "monday": "Every Monday · PDF + spreadsheet",
+  "newco": "New company",
+  "co": "Brightline Kitchens Ltd",
+  "cover": [
+   [
+    "building",
+    "Property & contents"
+   ],
+   [
+    "truck",
+    "Fleet"
+   ],
+   [
+    "users",
+    "Employers' liability"
+   ],
+   [
+    "store",
+    "Public liability"
+   ]
+  ],
+  "turnchip": "Every new asset, a new policy",
+  "leadhd": "Lead",
+  "sig": [
+   "New company",
+   "New premises",
+   "Hiring"
+  ],
+  "f": [
+   "Director",
+   "Phone",
+   "Email",
+   "Website",
+   "Source"
+  ],
+  "director": "James Whitfield",
+  "phone": "0113 496 0724",
+  "email": "info@brightlinekitchens.co.uk",
+  "web": "brightlinekitchens.co.uk",
+  "srcdate": "Companies House · 24 Sep 2026",
+  "excl": "Each lead goes to one broker"
+ },
+ "script": [
+  {
+   "id": "plot",
+   "text": "A new company has just been registered. For now, it's an empty plot.",
+   "pause": 0.45
+  },
+  {
+   "id": "build",
+   "text": "It takes on premises: that's property and contents cover.",
+   "pause": 0.3
+  },
+  {
+   "id": "fleet",
+   "text": "Vans for deliveries: fleet insurance.",
+   "pause": 0.3
+  },
+  {
+   "id": "staff",
+   "text": "Its first employees: employers' liability, which is required by law.",
+   "pause": 0.3
+  },
+  {
+   "id": "open",
+   "text": "And when it opens to customers: public liability.",
+   "pause": 0.6
+  },
+  {
+   "id": "turn",
+   "text": "Every new asset is a new policy. And new and growing companies need that cover before they start trading.",
+   "pause": 0.6
+  },
+  {
+   "id": "leads",
+   "text": "We find new and expanding companies in public registers and on their own websites, with the director's name and contact details.",
+   "pause": 0.45
+  },
+  {
+   "id": "weekly",
+   "text": "Every Monday, as a PDF and a spreadsheet. Each lead goes to one broker only.",
+   "pause": 0.6
+  },
+  {
+   "id": "end",
+   "text": "Start with ten free leads from across the UK, at nextgen-profit dot de.",
+   "pause": 0.3,
+   "say": "Start with ten free leads from across the UK, at next gen profit, dot D E."
+  }
+ ]
+}
