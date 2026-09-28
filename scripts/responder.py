@@ -332,17 +332,37 @@ def sample_delay_text(lang: str) -> str:
             f"Best regards,\n{signature(lang)}")
 
 
-def regional_sample(db, seg: str, country: str, region: str | None) -> tuple[list[tuple[str, bytes]], bool]:
-    """10 vollständige Leads aus dem ganzen Land (Inhaber 27.09.2026). (Dateien, True) – sonst ([], False)."""
+def _sic_lookup(db, rows: list[dict]):
+    """SIC-Code je Lead (erste Beobachtung), nur bei Bedarf geladen (Wunsch „Fuhrpark oder Lager“)."""
+    ids = sorted({(l.get("observation_ids") or [None])[0] for l in rows} - {None})
+    sic = {}
+    for i in range(0, len(ids), 100):
+        for o in db.select("observations", {"id": f"in.({','.join(ids[i:i + 100])})", "select": "id,details"}):
+            if (o.get("details") or {}).get("sic"):
+                sic[o["id"]] = str(o["details"]["sic"])
+    return lambda l: sic.get((l.get("observation_ids") or [None])[0])
+
+
+def regional_sample(db, seg: str, country: str, region: str | None,
+                    wish: list[str] | None = None) -> tuple[list[tuple[str, bytes]], bool]:
+    """10 vollständige Leads aus dem ganzen Land (Inhaber 27.09.2026). (Dateien, True) – sonst ([], False).
+
+    wish: Signal-Schlüssel aus dem Probe-Formular (lib/wishes.py). Passende vollständige Leads kommen zuerst,
+    aufgefüllt mit anderen vollständigen Leads der Branche; nie unvollständige."""
     from deliveries import REQUIRE_CONTACT, _lang, contact_companies, enrich, to_csv
     from lib.regions import area_of, lead_matches
+    from lib.wishes import prefer
     area = None  # Leads aus dem ganzen Land (Inhaber 27.09.2026), keine Regionsauswahl mehr
     known = contact_companies(db, website_optional=(seg == "S2")) if REQUIRE_CONTACT else None
     rows = db.select_all("leads", {"segment_id": f"eq.{seg}", "country": f"eq.{country}", "status": "in.(new,sample)",
                                "select": "id,event_summary,event_date,source_name,source_url,source_date,urgency,"
                                          "urgency_reason,opener,signal_type,company_id,observation_ids,"
-                                         "watch_companies(name,legal_form,city,region,address)",
+                                         "watch_companies(name,legal_form,city,region,address,website,website_checked_at)",
                                "order": "event_date.desc,id"})
+    if wish:
+        if known is not None:
+            rows = [l for l in rows if l["company_id"] in known]
+        rows = prefer(rows, wish, _sic_lookup(db, rows) if "fleet_warehouse" in wish else None)
     picked, per = [], {}
     for l in rows:
         co = l["watch_companies"]

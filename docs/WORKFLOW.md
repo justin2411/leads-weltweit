@@ -10,7 +10,7 @@ Alle Zeiten in **UTC** (deutsche Sommerzeit = UTC + 2).
 | 1 | Entwürfe schreiben und freigeben | täglich 12:17 | intern | `scripts/drafts.py`, `taeglich.yml` |
 | 2 | **Erstmail** mit persönlichem Seitenlink (`?r=`) | täglich 14:23 | Strato-SMTP info@ | `scripts/outreach.py send`, `send.yml` |
 | 3 | **Persönliche Landingpage** („Vorbereitet für {Firma}“), Branchenfilm, Beispiele, FAQ | Klick | Web | `app/app/[country]/[segment]/page.tsx` |
-| 4 | **Probe anfordern** (1 Klick mit Einwilligung) + Bestätigung | sofort | Resend | `app/api/sample-request/route.ts` |
+| 4 | **Probe anfordern**: kurzes Formular auf jeder Landingpage und der Startseite (Firma, E-Mail, „Welche Leads?“ bis 3 Signale, optional ein Satz, Einwilligung; über `?r=` vorbelegt). Wunsch landet als `wunsch:signals=…;text=…` in `sample_requests.note`, `web_samples.py` liefert passende vollständige Leads zuerst + Bestätigung | sofort | Resend | `app/app/sample-form.tsx`, `app/api/sample-request/route.ts`, `app/content/sample-wishes.ts`, `scripts/lib/wishes.py` |
 | 5 | **Probe-Mail** (10 Leads, PDF + CSV) | stündlich | Resend | `scripts/web_samples.py`, `antworten.yml` |
 | 6 | **Nachfassmail** „Soll ich die Probe schicken?“ | 4 Tage nach der Erstmail ohne Antwort | Strato | `scripts/followups.py` |
 | 7 | **Antwort-Assistent**: Ja → Probe, Frage → FAQ, Kauf → Inhaber, Abmeldung → Sperre | stündlich 06–21 | Antwort im Verlauf | `scripts/inbox.py`, `scripts/responder.py` |

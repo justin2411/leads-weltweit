@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { consentText, t } from "@/lib/consent";
 import VIDEOS from "@/content/videos.json";
 import { getSettings, isOwner, loadPage, pageIsPublic } from "@/lib/pages";
-import { BRAND, CONTACT, siteUrl } from "@/lib/site";
+import { BRAND, siteUrl } from "@/lib/site";
 import { checkoutMode, lineItemFor, priceLabel, stripeEnabled, type Plan } from "@/lib/stripe";
 import { fill, fillDeep, type Personal } from "@/lib/personalize";
 import { personalFor } from "@/lib/recipient";
@@ -16,6 +16,9 @@ import HINTS from "@/content/industry-hints.json";
 import type { CSSProperties } from "react";
 import { BrandShell, SiteFooter, SiteHeader, Words } from "../../chrome";
 import { HeroNet } from "../../motion";
+import { SampleForm } from "../../sample-form";
+import { wishesFor } from "@/content/sample-wishes";
+import { localizeJob, maskCompany, maskEmail, maskPhone, pickDiverse, roleFor, seedOf, shortForm, type Part } from "@/lib/examples";
 
 export const dynamic = "force-dynamic";
 
@@ -34,9 +37,8 @@ function day(d: string | undefined, lang: string): string | undefined {
 
 const SIGNAL_LABEL: Record<"en" | "fr", Record<string, string>> = {
   en: { new_incorporation: "Newly registered", job_open_30d: "Role open 30+ days", jobs_3plus: "Several roles open", new_location: "New location", website_outdated: "Outdated website" },
-  fr: { new_incorporation: "Création récente", job_open_30d: "Poste ouvert depuis 30 jours", jobs_3plus: "Plusieurs postes ouverts", new_location: "Nouveau site", website_outdated: "Site web vieillissant" },
+  fr: { new_incorporation: "Création récente", job_open_30d: "Poste ouvert 30+ jours", jobs_3plus: "Plusieurs postes ouverts", new_location: "Nouveau site", website_outdated: "Site web vieillissant" },
 };
-const PHONE: Record<string, string> = { UK: "+44", US: "+1", FR: "+33", IE: "+353", NL: "+31" };
 const PRIO: Record<"en" | "fr", Record<string, string>> = {
   en: { high: "High priority", medium: "Medium priority", low: "Low priority" },
   fr: { high: "Priorité haute", medium: "Priorité moyenne", low: "Priorité basse" },
@@ -50,60 +52,121 @@ function industryHint(seg: string, sic: string | undefined): [string, string] | 
   return g ? (HINTS.hints as unknown as Record<string, Record<string, [string, string]>>)[seg]?.[g] : undefined;
 }
 
+/** Lange Branchenbezeichnungen (SIC) am Wortende kürzen. */
+function short(s: string, n: number): string {
+  return s.length <= n ? s : s.slice(0, n).replace(/\s+\S*$/, "") + "…";
+}
+
+/** Firmenname mit und ohne Rechtsform, in jeder Schreibweise (zum Verdecken in Titel und Einstiegssatz). */
+function nameRe(company: string): RegExp {
+  const esc = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const core = company.replace(/(,?\s+(ltd\.?|limited|llp|plc|llc|l\.l\.c\.?|inc\.?|corp\.?|corporation|sas|sasu|sarl|eurl|sa|sci))+$/i, "").trim();
+  const alts = [...new Set([company, core].filter((x) => x.length >= 3))].sort((a, b) => b.length - a.length).map(esc);
+  return new RegExp(`(?:${alts.join("|")})`, "i");
+}
+
 function cleanEvent(ev: string, company: string): string {
   // nur die Klammer am Ende entfernen (Details), nicht Klammern im Stellentitel
   let e = ev.trim().replace(/\.$/, "").replace(/\s*\([^()]*(\([^()]*\)[^()]*)*\)$/, "").trim().replace(/\.$/, "");
   if (e.toUpperCase().startsWith(company.toUpperCase())) e = e.slice(company.length).trim();
-  if (/^registered on /i.test(e)) return "";
+  if (/^(registered on|immatricul)/i.test(e)) return "";
   return e ? e[0].toUpperCase() + e.slice(1) : "";
 }
 
-type Sample = { company: string; location?: string; district?: string; industry?: string; sicCode?: string; noWebsite?: boolean; event: string; date?: string; source?: string; signal?: string; urgency?: string; opener?: string };
+type Sample = {
+  company: string; companyId?: string; location?: string; district?: string; industry?: string; sicCode?: string; noWebsite?: boolean;
+  web?: "none" | "found"; legalForm?: string; role?: string; personKnown?: boolean; phone?: string; email?: string;
+  event: string; date?: string; source?: string; signal?: string; urgency?: string; opener?: string;
+};
 
-/** Echte Probe-Leads aus dem ganzen Land (Firmendaten, als Beispiel markiert). */
+/** Ab dieser Zahl offener Stellen ist es ein Konzern – als Beispiel für kleine und mittlere Käufer ungeeignet. */
+const MAX_ROLES_EXAMPLE = 40;
+const NON_LATIN = /[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af\u0400-\u04ff\u0600-\u06ff]/;
+const cache = new Map<string, { at: number; rows: Sample[] }>();
+
+/**
+ * Echte Leads aus dem ganzen Land als Beispiele (Firmendaten, maskiert). Vielfalt (Inhaber 28.09.2026: „alle
+ * Leads sehen gleich aus“): Kandidaten aus mehreren Abfragen (neueste, andere Signale, ältere Tage), dann
+ * pickDiverse – verschiedene Signale, Branchen, Prioritäten, Tage und Website-Befunde. 10 Minuten zwischengespeichert.
+ */
 async function countrySamples(page: { segment_id: string; country: string }): Promise<Sample[]> {
-  const { data } = await db().from("leads")
-    .select("event_summary, event_date, source_name, signal_type, urgency, opener, company_id, observation_ids, watch_companies!inner(name, city, region, address)")
-    .eq("segment_id", page.segment_id).eq("country", page.country).in("status", ["sample", "new"])
-    .order("event_date", { ascending: false }).limit(200);
-  const rows = (data ?? []) as any[];
-  // Branche (SIC) aus der Beobachtung holen, damit die Beispiele unterscheidbar sind
-  const obsIds = [...new Set(rows.map((l) => l.observation_ids?.[0]).filter(Boolean))].slice(0, 200);
+  const ck = `${page.segment_id}|${page.country}`;
+  const hit = cache.get(ck);
+  if (hit && process.env.NODE_ENV === "production" && Date.now() - hit.at < 10 * 60 * 1000) return hit.rows;
+  const sel = "event_summary, event_date, source_name, signal_type, urgency, opener, company_id, observation_ids, watch_companies!inner(name, legal_form, website, website_checked_at)";
+  const base = () => db().from("leads").select(sel).eq("segment_id", page.segment_id).eq("country", page.country)
+    .in("status", ["sample", "new"]).order("event_date", { ascending: false });
+  const ago = (d: number) => new Date(Date.now() - d * 864e5).toISOString().slice(0, 10);
+  // Tage relativ zum neuesten Lead (Register liefern teils mit Verzug), damit auch ältere Tage zur Auswahl stehen
+  const first = await base().limit(120);
+  const newest = ((first.data ?? []) as any[])[0]?.event_date as string | undefined;
+  const before = (d: number) => newest
+    ? new Date(Date.parse(newest + "T12:00:00Z") - d * 864e5).toISOString().slice(0, 10) : ago(d);
+  const res = [first, ...await Promise.all([
+    base().neq("signal_type", "new_incorporation").limit(80),
+    base().lte("event_date", before(1)).limit(40),
+    base().lte("event_date", before(3)).limit(40),
+    base().lte("event_date", before(8)).limit(40),
+    base().lte("event_date", ago(20)).limit(30),
+    base().eq("urgency", "medium").limit(30),
+  ])];
+  const seen = new Set<string>();
+  const rows = res.flatMap((r) => (r.data ?? []) as any[]).filter((l) => {
+    const k = `${l.company_id}|${l.signal_type}|${l.event_date}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    const n = Number(cleanEvent(String(l.event_summary), String(l.watch_companies.name)).match(/^(\d+) open roles/)?.[1] ?? 0);
+    return !NON_LATIN.test(String(l.event_summary)) && n <= MAX_ROLES_EXAMPLE;
+  });
+  // Branche (SIC) aus der Beobachtung, damit die Beispiele aus verschiedenen Bereichen kommen
   const sic = new Map<string, string>();
-  if (obsIds.length) {
-    const { data: obs } = await db().from("observations").select("id, details").in("id", obsIds.slice(0, 120));
+  const obsIds = [...new Set(rows.map((l) => l.observation_ids?.[0]).filter(Boolean))] as string[];
+  for (let i = 0; i < obsIds.length; i += 100) {
+    const { data: obs } = await db().from("observations").select("id, details").in("id", obsIds.slice(i, i + 100));
     for (const o of (obs ?? []) as any[]) if (o.details?.sic) sic.set(o.id, String(o.details.sic));
   }
-  // Vielfalt: erst verschiedene Signale, dann verschiedene Branchen und Tage, jede Firma einmal
-  const picked: any[] = [], firms = new Set<string>(), sigs = new Set<string>(), divs = new Set<string>(), days = new Map<string, number>();
-  // gleiche Firma unter zwei Einträgen (z. B. "Manchester" und "Greater Manchester") nicht doppelt zeigen
-  const evs = new Set<string>();
-  // nur Stellen-Signale zusammenfassen (gleiche Anzahl Stellen am selben Tag = gleiche Firma); Neugründungen je Firma
-  const evKey = (l: any) => l.signal_type === "new_incorporation" ? `inc|${l.company_id}`
-    : `${l.signal_type}|${cleanEvent(String(l.event_summary), String(l.watch_companies.name)).match(/\d+/)?.[0] ?? ""}|${l.event_date}`;
-  const take = (l: any) => { picked.push(l); firms.add(l.company_id); firms.add(String(l.watch_companies.name).toLowerCase()); evs.add(evKey(l)); sigs.add(l.signal_type); days.set(l.event_date, (days.get(l.event_date) ?? 0) + 1);
-    const d = (sic.get(l.observation_ids?.[0]) ?? "").slice(0, 2); if (d) divs.add(d); };
-  for (const pass of [0, 1, 2]) {
-    for (const l of rows) {
-      if (picked.length >= 6) break;
-      if (firms.has(l.company_id) || firms.has(String(l.watch_companies.name).toLowerCase()) || evs.has(evKey(l))) continue;
-      // nur lateinische Schrift (z. B. japanische Stellentitel eines Konzerns wirken auf der Seite fremd)
-      if (/[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af\u0400-\u04ff\u0600-\u06ff]/.test(String(l.event_summary))) continue;
-      const d = (sic.get(l.observation_ids?.[0]) ?? "").slice(0, 2);
-      if (pass === 0 && sigs.has(l.signal_type)) continue;
-      if (pass === 1 && ((d && divs.has(d)) || (days.get(l.event_date) ?? 0) >= 2)) continue;
-      take(l);
-    }
-  }
-  return picked.map((l: any) => {
+  const noWeb = (l: any) => /no website found/i.test(String(l.event_summary))
+    || (!l.watch_companies.website && Boolean(l.watch_companies.website_checked_at));
+  const cands = rows.map((l) => {
     const code = sic.get(l.observation_ids?.[0]);
-    const pc = String(l.watch_companies.address ?? "").match(/\b([A-Z]{1,2}\d[A-Z\d]?)\s*\d[A-Z]{2}\b/i)?.[1];
-    return { company: l.watch_companies.name, location: l.watch_companies.city ?? undefined, district: pc?.toUpperCase(),
-      industry: code ? code.split(" - ").slice(1).join(" - ") || undefined : undefined, sicCode: code?.slice(0, 5),
-      noWebsite: /no website found/i.test(String(l.event_summary)),
-      event: String(l.event_summary), date: l.event_date ?? undefined, source: l.source_name,
-      signal: l.signal_type ?? undefined, urgency: l.urgency ?? undefined, opener: l.opener ?? undefined };
+    const n = cleanEvent(String(l.event_summary), String(l.watch_companies.name)).match(/\d+/)?.[0] ?? "";
+    return {
+      l, id: String(l.company_id), name: String(l.watch_companies.name), signal: l.signal_type ?? undefined,
+      urgency: l.urgency ?? undefined, date: l.event_date ?? undefined,
+      group: code ? `sic${code.slice(0, 2)}` : shortForm(l.watch_companies.legal_form, l.watch_companies.name),
+      web: noWeb(l) ? "none" as const : l.watch_companies.website ? "found" as const : undefined,
+      opener: Boolean(l.opener),
+      // Stellen-Signale: gleiche Anzahl Stellen am selben Tag = dieselbe Firma unter zwei Einträgen
+      evKey: l.signal_type === "new_incorporation" ? undefined : `${l.signal_type}|${n}|${l.event_date}`,
+    };
   });
+  // Salz je Zielgruppe: Seiten mit denselben Neugründungen (Buchhaltung, Makler, Web) zeigen verschiedene Firmen
+  const picked = pickDiverse(cands, 3, page.segment_id);
+  // Ansprechperson (Rolle aus Register/Impressum) und Kontaktdaten nur für die gezeigten Firmen
+  const ids = picked.map((c) => c.id);
+  const [people, contacts] = ids.length ? await Promise.all([
+    db().from("observations").select("company_id, details").eq("kind", "other").eq("key", "person").in("company_id", ids),
+    db().from("observations").select("company_id, details").eq("kind", "other").eq("key", "contact").in("company_id", ids),
+  ]) : [{ data: [] }, { data: [] }];
+  const person = new Map(((people.data ?? []) as any[]).filter((p) => p.details?.name).map((p) => [p.company_id, p.details]));
+  const contact = new Map(((contacts.data ?? []) as any[]).map((p) => [p.company_id, p.details ?? {}]));
+  const out = picked.map(({ l }) => {
+    const code = sic.get(l.observation_ids?.[0]);
+    const pp: any = person.get(l.company_id);
+    const cc: any = contact.get(l.company_id) ?? {};
+    return {
+      company: l.watch_companies.name, companyId: String(l.company_id),
+      industry: code ? code.split(" - ").slice(1).join(" - ") || undefined : undefined, sicCode: code?.slice(0, 5),
+      noWebsite: noWeb(l), web: noWeb(l) ? "none" as const : l.watch_companies.website ? "found" as const : undefined,
+      legalForm: shortForm(l.watch_companies.legal_form, l.watch_companies.name),
+      role: pp?.role ?? undefined, personKnown: Boolean(pp?.name),
+      phone: cc.phone ?? undefined, email: cc.email ?? undefined,
+      event: String(l.event_summary), date: l.event_date ?? undefined, source: l.source_name,
+      signal: l.signal_type ?? undefined, urgency: l.urgency ?? undefined, opener: l.opener ?? undefined,
+    };
+  });
+  cache.set(ck, { at: Date.now(), rows: out });
+  return out;
 }
 
 async function resolve(params: Params, searchParams: Search) {
@@ -171,32 +234,24 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
   // Kein Formular: Knopf -> zweiter Schritt (Bedingungen) -> ein Klick sendet die Probe. Adresse kommt aus dem Mail-Link.
   const known = Boolean(personal?.email && personal.firma);
   const keep = [preview && `vorschau=1&v=${v.variant_key}`, sp.r && /^[A-Za-z0-9_-]{8,80}$/.test(sp.r) && `r=${sp.r}`].filter(Boolean).join("&");
-  const stepHref = `?${[keep, "schritt=probe"].filter(Boolean).join("&")}#probe`;
+  // Formular statt Mail-Knopf (Inhaber 28.09.2026): alle Knöpfe springen zum Formular (#probe) auf derselben Seite.
+  // Alte Links mit ?schritt=probe zeigen das Formular oben im Kopf; über ?r= sind Firma und Adresse vorbelegt.
+  const stepHref = "#probe";
   const step = sp.schritt === "probe" && !sp.angefragt;
-  const mailto = `mailto:${CONTACT}?subject=${encodeURIComponent(`${L.mailSubject}: ${page.slug}`)}&body=${encodeURIComponent(L.mailBody)}`;
   const i = (n: number) => ({ "--i": n }) as CSSProperties;
   const fr = lang === "fr";
+  const wl: "en" | "fr" = fr ? "fr" : "en";
+  const form = (
+    <SampleForm lang={wl} field="variant_id" consent={consentText(lang)} privacyHref={fr ? "/confidentialite" : "/privacy"}
+      options={[{ value: v.id, label: "", wishes: wishesFor(segKey(page.slug)).map((w) => ({ key: w.key, label: w[wl] })) }]}
+      hidden={{ ...(keep.includes("r=") ? { r: String(sp.r) } : {}), ...(preview ? { vorschau: "1" } : {}) }}
+      company={personal?.firma ?? ""} email={personal?.email ?? ""} />
+  );
   const Probe = () => (
     <div className="panel" id="probe">
       <h2>{L.stepTitle}</h2>
-      <ul className="ticks">
-        <li><b>{L.free}</b> {L.freeText}</li>
-        <li><b>{L.noObl}</b> {L.noOblText}</li>
-        <li>{known ? L.sendsTo(CW.land, personal!.email!) : L.sendsToUnknown}</li>
-        <li>{L.followUp}</li>
-      </ul>
-      {known ? (
-        <form method="post" action="/api/sample-request">
-          <input type="hidden" name="variant_id" value={v.id} />
-          {preview && <input type="hidden" name="vorschau" value="1" />}
-          <input type="hidden" name="r" value={sp.r} />
-          <div className="cta-row" style={{ marginTop: 6 }}><button className="btn gold big" type="submit" name="consent" value="yes" data-cta>{L.confirm} <span className="ar">→</span></button>
-</div>
-          <p className="small">{consentText(lang)} <a href={fr ? "/confidentialite" : "/privacy"}>{L.legal[1]}</a></p>
-        </form>
-      ) : (
-        <div className="cta-row" style={{ marginTop: 6 }}><a className="btn gold big" href={mailto} data-cta>{L.byMail} <span className="ar">→</span></a></div>
-      )}
+      <p className="small" style={{ marginTop: 0 }}>{known ? L.sendsTo(CW.land, personal!.email!) : L.sendsToUnknown}</p>
+      {form}
     </div>
   );
   const Fine = () => <div className="fine"><span>{L.free.replace(/\.$/, "")}</span><span>{L.noObl.replace(/\.$/, "")}</span></div>;
@@ -243,34 +298,48 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
           <p className="intro">{L.examplesNote}</p>
           <div className="leadgrid p3">{samples.map((s0, k) => {
             // ältere Beispiele (sample_leads) haben kein Signal: Neugründung am Text erkennen
-            const sm = { ...s0, signal: s0.signal ?? (/registered on/i.test(s0.event) ? "new_incorporation" : undefined) };
+            const sm = { ...s0, signal: s0.signal ?? (/registered on|immatricul/i.test(s0.event) ? "new_incorporation" : undefined) };
             const label = SIGNAL_LABEL[fr ? "fr" : "en"][sm.signal ?? ""] ?? null;
-            const detail = cleanEvent(sm.event, sm.company);
+            const detail = localizeJob(cleanEvent(sm.event, sm.company), lang);
             const hint = industryHint(segKey(page.slug), sm.sicCode);
             const why = hint?.[0] ?? (sm.signal ? SC.why[sm.signal] : undefined);
             const month = sm.date ? new Date(sm.date + "T12:00:00Z").toLocaleDateString("en-GB", { month: "long" }) : "";
             const opener = hint && sm.signal === "new_incorporation" && !fr
               ? `Congratulations on setting up ${nice(sm.company)}${month ? ` this ${month}` : ""}. ${hint[1]}`
-              : sm.opener ? sm.opener.split(sm.company).join(nice(sm.company)) : undefined;
+              : sm.opener ? localizeJob(sm.opener.split(sm.company).join(nice(sm.company)), lang) : undefined;
             const age = sm.date ? Math.max(0, Math.round((Date.now() - Date.parse(sm.date + "T12:00:00Z")) / 864e5)) : undefined;
-            const title = (detail.length > 110 ? detail.slice(0, 107).replace(/[\s,]+\S*$/, "") + "…" : detail) || (sm.signal === "new_incorporation" && age !== undefined
-              ? (fr ? `Créée il y a ${age} jours` : `Registered ${age} days ago`) : label ?? "");
-            const meta = [sm.industry && sm.industry.split(/[,;]/)[0], sm.location && nice(sm.location.split(" (")[0]), day(sm.date, lang)].filter(Boolean).join(" · ");
-            const masked = (x: string) => x.split(sm.company).join("\u0000").split(nice(sm.company)).join("\u0000").split("\u0000")
-              .flatMap((part, j) => j ? [<span className="mask" key={j} aria-label={fr ? "masqué" : "hidden"}>{"x".repeat(Math.min(14, sm.company.length))}</span>, part] : [part]);
+            const inc = sm.signal === "new_incorporation" && age !== undefined
+              ? (fr ? `Créée il y a ${age} jour${age === 1 ? "" : "s"}` : `Registered ${age} day${age === 1 ? "" : "s"} ago`) : "";
+            const noSite = sm.web === "none" ? (fr ? ", sans site web" : ", no website found") : "";
+            const title = (detail.length > 110 ? detail.slice(0, 107).replace(/[\s,]+\S*$/, "") + "…" : detail) || (inc ? inc + noSite : label ?? "");
+            // keine Städte/Regionen (landesweit): Branche, Rechtsform, Datum
+            const meta = [sm.industry && short(sm.industry.split(/[,;]/)[0], 48), sm.legalForm, day(sm.date, lang)].filter(Boolean).join(" · ");
+            const seed = seedOf(sm.companyId ?? sm.company);
+            const co = maskCompany(sm.company, seed);
+            const role = roleFor(page.country, sm.legalForm, sm.role, lang);
+            const show = (parts: Part[]) => parts.map((q, j) => q.m
+              ? <span className="mask" key={j} aria-hidden="true">{q.t}</span> : <span key={j}>{q.t}</span>);
+            const hidden = <span className="sr">{fr ? " (masqué)" : " (hidden)"}</span>;
+            // Firmenname überall verdecken (auch ohne Rechtsform, z. B. im Stellentitel "…, Withings Health Solutions")
+            const masked = (x: string) => x.split(nameRe(sm.company))
+              .flatMap((part, j) => j ? [<span key={j} className="nw">{show(co)}</span>, part] : [part]);
             return (
               <article className="leadp" key={k} data-rv style={i(k)}>
                 <div className="top">{label && <span className="pill">{label}</span>}
                   {sm.urgency && <span className={`prio p-${sm.urgency}`}>{PRIO[fr ? "fr" : "en"][sm.urgency] ?? sm.urgency}</span>}</div>
-                <h3 className="ev">{nd(title)}</h3>
+                <h3 className="ev">{masked(nd(title))}</h3>
                 {meta && <div className="meta">{meta}</div>}
                 <dl className="lock">
-                  <div><dt>{fr ? "Entreprise" : "Company"}</dt><dd><span className="mask">{"x".repeat(Math.min(18, Math.max(8, sm.company.length)))}</span></dd></div>
-                  <div><dt>{fr ? "Téléphone" : "Phone"}</dt><dd><span className="mask">{PHONE[page.country] ?? "+00"} 0000 000000</span></dd></div>
-                  <div><dt>E-mail</dt><dd><span className="mask">info@xxxxxxxxxx.{page.country === "UK" ? "co.uk" : page.country === "FR" ? "fr" : "com"}</span></dd></div>
+                  <div><dt>{fr ? "Entreprise" : "Company"}</dt><dd>{show(co)}{hidden}</dd></div>
+                  {sm.personKnown
+                    ? <div><dt>{fr ? "Interlocuteur" : "Contact"}</dt><dd><span className="mask" aria-hidden="true">{maskCompany("Name Surname", seed ^ 7)[1].t}</span>, {role}</dd></div>
+                    : <div><dt>{fr ? "Demander" : "Ask for"}</dt><dd>{role}</dd></div>}
+                  <div><dt>{fr ? "Téléphone" : "Phone"}</dt><dd className="nw">{show(maskPhone(page.country, seed, sm.phone))}{hidden}</dd></div>
+                  <div><dt>E-mail</dt><dd className="nw">{show(maskEmail(sm.company, page.country, seed, sm.email))}{hidden}</dd></div>
+                  {sm.web === "none" && <div><dt>{fr ? "Site web" : "Website"}</dt><dd className="gold">{fr ? "aucun trouvé" : "none found"}</dd></div>}
                   <p className="unlock"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>{fr ? "Visible dans votre échantillon gratuit" : "Unlocked in your free sample"}</p>
                 </dl>
-                {why && <p className="why"><b>{fr ? "Conseil de vente" : "Sales tip"}</b>{F(why)}</p>}
+                {why && <p className="why"><b>{fr ? "Pourquoi maintenant" : "Why now"}</b>{F(why)}</p>}
                 {opener && <p className="op"><b>{fr ? "Phrase d'accroche" : "Opening line"}</b>“{masked(nd(opener))}”</p>}
                 <div className="ft"><span className="vf">✓ {fr ? "Vérifié" : "Verified"}</span><span>{L.example}</span></div>
               </article>);
@@ -305,10 +374,15 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
 
       {!step && !sp.angefragt && (
         <section className="offer tight" id="sample"><div className="wrap">
-          <div><Head eyebrow="" title={F(SC.sampleTitle)} />
+          <div id="probe"><Head eyebrow="" title={F(SC.sampleTitle)} />
             <p className="intro">{known ? L.sendsTo(CW.land, personal!.email!) : L.sendsToUnknown}</p>
-            <div className="cta-stack solo" data-rv><Start label={L.send} /><Fine /></div>
+            {form}
           </div>
+          <ul className="ticks" data-rv>
+            <li><b>{L.free}</b> {L.freeText}</li>
+            <li><b>{L.noObl}</b> {L.noOblText}</li>
+            <li>{L.followUp}</li>
+          </ul>
         </div></section>
       )}
 
