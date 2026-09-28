@@ -1,6 +1,8 @@
 # Signalwerk
 
-B2B-Leads mit Anlass. Arbeitsanweisung für Claude: [`CLAUDE.md`](CLAUDE.md).
+B2B-Leads mit Anlass (Marke **NextGen Profit**, www.nextgen-profit.de). Arbeitsanweisung für Claude: [`CLAUDE.md`](CLAUDE.md).
+
+**Wissensspeicher:** [`docs/README.md`](docs/README.md) – Strategie, Entscheidungen, Workflow, Design, Technik-Wissen.
 
 ## Aufbau
 
