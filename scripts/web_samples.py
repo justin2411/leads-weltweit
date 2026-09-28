@@ -38,6 +38,18 @@ def mark(db, msg: dict | None, event_type: str, note: str) -> None:
     db.insert("email_events", {"message_id": msg["id"], "type": event_type, "note": note})
 
 
+def skip_reason(db, r: dict, msg: dict | None) -> str | None:
+    """Anfrage nicht beantworten: Inhaber-Vorschau (TEST) oder diese Adresse hat schon eine Probe bekommen."""
+    if "TEST" in (r.get("note") or ""):
+        return "TEST (Inhaber-Vorschau) – keine Probe an echte Empfänger"
+    email = (r.get("email") or "").strip().lower()
+    if db.select("sample_requests", {"email": f"eq.{email}", "status": "eq.sent", "id": f"neq.{r['id']}", "select": "id"}):
+        return "doppelt: Probe schon über die Landingpage gesendet"
+    if msg and db.select("email_events", {"message_id": f"eq.{msg['id']}", "type": "eq.sample_requested", "select": "id"}):
+        return "doppelt: Probe schon per Antwort-Mail gesendet"
+    return None
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--apply", action="store_true")
@@ -55,6 +67,13 @@ def main(argv=None) -> int:
             n["rejected"] += 1
             if args.apply:
                 db.update("sample_requests", {"id": r["id"]}, {"status": "rejected", "note": "gesperrt"})
+            continue
+        why_skip = skip_reason(db, r, msg)
+        if why_skip:
+            print(f"ÜBERSPRUNGEN {r['company_name']}: {why_skip}")
+            n["rejected"] += 1
+            if args.apply:
+                db.update("sample_requests", {"id": r["id"]}, {"status": "rejected", "note": why_skip})
             continue
         lang = "fr" if r.get("country") == "FR" else "en"
         files, _ = regional_sample(db, r["segment_id"], r["country"], None)

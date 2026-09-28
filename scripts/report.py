@@ -22,7 +22,8 @@ import requests
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lib.db import DB  # noqa: E402
-from lib.deliverability import warmup_cap  # noqa: E402
+from lib.deliverability import BOUNCE_STOP, MIN_SAMPLE, warmup_cap  # noqa: E402
+from lib.stats import delivered, distinct_replies  # noqa: E402
 
 SEG = {"S1": "Personalvermittler", "S2": "Webagenturen", "S3": "IT-Dienstleister", "S4": "Versicherungsmakler",
        "S5": "Buchhaltung", "S9": "Finanzberater"}
@@ -37,7 +38,8 @@ def collect(db: DB) -> dict:
     since = (now - dt.timedelta(hours=24)).isoformat()
     stats = db.select("experiment_stats", {"select": "*"})
     msgs_24 = db.select("messages", {"status": "eq.sent", "sent_at": f"gte.{since}", "select": "id"})
-    ev_24 = db.select("email_events", {"created_at": f"gte.{since}", "select": "type,note,message_id,messages(to_email)"})
+    ev_24 = db.select("email_events", {"created_at": f"gte.{since}",
+                                       "select": "id,type,note,message_id,dedupe_key,messages(to_email)"})
     first = db.select("messages", {"status": "eq.sent", "select": "sent_at", "order": "sent_at.asc", "limit": "1"})
     first_day = dt.date.fromisoformat(first[0]["sent_at"][:10]) if first else None
     approved = db.select("messages", {"status": "eq.approved", "select": "id"})
@@ -50,12 +52,15 @@ def collect(db: DB) -> dict:
 
 
 def build(d: dict) -> tuple[str, str]:
-    st = d["stats"]
+    # SMTP-Versand kennt kein 'delivered'-Ereignis: zugestellt = gesendet - Bounces (lib.stats.delivered)
+    st = [{**s, "delivered": delivered(s)} for s in d["stats"]]
     tot = {k: sum(int(s.get(k) or 0) for s in st) for k in
            ("sent", "delivered", "bounced", "complained", "replies", "positive", "samples", "customers")}
-    ev = d["ev_24"]
+    # je eingehender Mail nur ein Ereignis (inbox.py 'reply' + responder.py genauer Typ zur selben Mail)
+    ev = distinct_replies(d["ev_24"])
     count = lambda t: sum(1 for e in ev if e["type"] == t)  # noqa: E731
-    replies_24 = sum(1 for e in ev if e["type"] in ("reply", "reply_positive", "reply_negative", "sample_requested"))
+    replies_24 = sum(1 for e in ev if e["type"] in ("reply", "reply_positive", "reply_negative", "sample_requested",
+                                                     "unsubscribed"))
     buy_24 = [e for e in ev if e["type"] == "reply_positive"]
     samples_24 = count("sample_requested")
     active_customers = sum(1 for c in d["customers"] if c["status"] == "active")
@@ -68,7 +73,9 @@ def build(d: dict) -> tuple[str, str]:
     lines.append(f"- Antworten (24 h): {replies_24}  |  Proben angefordert (24 h): {samples_24}  |  "
                  f"Kaufinteresse (24 h): {len(buy_24)}")
     lines.append(f"- Aufträge / zahlende Kunden: {active_customers}")
-    lines.append(f"- Gesamt: {tot['sent']} gesendet, {tot['delivered']} zugestellt ({pct(tot['delivered'], tot['sent'])}), "
+    estimated = any(int(s.get("sent") or 0) and not int(s.get("delivered") or 0) for s in d["stats"])
+    lines.append(f"- Gesamt: {tot['sent']} gesendet, {tot['delivered']} zugestellt ({pct(tot['delivered'], tot['sent'])}"
+                 + ("; über das Postfach gesendet: gesendet minus Bounces" if estimated else "") + "), "
                  f"{tot['bounced']} Bounces ({pct(tot['bounced'], tot['sent'])}), {tot['complained']} Spam-Beschwerden")
     lines.append(f"- Antwortrate gesamt: {pct(tot['replies'], tot['delivered'])}  |  positiv: {pct(tot['positive'] + tot['samples'], tot['delivered'])}")
     lines.append("- Öffnungsrate: wird bewusst nicht gemessen (kein Tracking-Pixel – schützt Zustellbarkeit und ist "
@@ -103,7 +110,8 @@ def build(d: dict) -> tuple[str, str]:
         elif dlv >= 50 and not int(s.get("samples") or 0):
             tips.append(f"{name}: Antworten, aber keine Proben – Empfehlung: Betreff und Einstieg ändern.")
     if tot["sent"] >= 20 and tot["bounced"] / max(tot["sent"], 1) > 0.02:
-        tips.append("Bounce-Quote über 2 %: Adressprüfung verschärfen, sonst greift bei 3 % die Notbremse.")
+        tips.append(f"Bounce-Quote über 2 %: Adressprüfung verschärfen, sonst greift die Notbremse "
+                    f"(über {BOUNCE_STOP * 100:.0f} %, bewertet ab {MIN_SAMPLE} gesendeten Mails).")
     if tot["complained"]:
         tips.append("Es gibt eine Spam-Beschwerde: Versand ist gestoppt, bis du entscheidest.")
     if days_left < 3:

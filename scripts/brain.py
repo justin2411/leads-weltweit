@@ -27,6 +27,9 @@ MIN_VIEWS = 300
 LANG = {"UK": "en", "US": "en", "IE": "en", "FR": "fr"}
 
 
+from lib.stats import delivered  # noqa: E402
+
+
 def content_for(segment: str) -> tuple[str, dict] | None:
     for f in sorted(CONTENT.glob("*.json")):
         data = json.loads(f.read_text(encoding="utf-8"))
@@ -218,7 +221,7 @@ def main(argv=None) -> int:
         for s in stats:
             if n >= MAX_DECISIONS:
                 break
-            dlv = int(s.get("delivered") or 0)
+            dlv = delivered(s)  # SMTP: gesendet - Bounces (keine 'delivered'-Ereignisse)
             pos = int(s.get("positive") or 0) + int(s.get("samples") or 0) + page_pos.get((s["segment_id"], s["country"]), 0)
             if dlv < 50 or s.get("decision"):
                 continue
@@ -257,20 +260,19 @@ def main(argv=None) -> int:
 
 
 def _send_sample(db, r: dict) -> None:
-    """10 Leads aus der Region als CSV an den Anfragenden (eigener Betreff, kein gefälschtes 'Re:')."""
-    from lib.regions import area_of
+    """10 Leads aus dem ganzen Land als CSV an den Anfragenden (eigener Betreff, kein gefälschtes 'Re:')."""
     from responder import regional_sample, sample_mail, sample_subject, send_reply
     if db.rpc("is_suppressed", {"p_email": r["email"]}):
         db.update("sample_requests", {"id": r["id"]}, {"status": "rejected", "note": "gesperrt"})
         return
     lang = "fr" if r.get("country") == "FR" else "en"
     files, regional = regional_sample(db, r["segment_id"], r["country"], r.get("region"))
-    area = area_of(r.get("region"))
+    area = None  # landesweit statt regional (Inhaber 27.09.2026)
     body, blocks = sample_mail(lang, area, files, regional)
     if not body or not (os.environ.get("RESEND_API_KEY") and os.environ.get("MAIL_FROM")):
         return
     # gleiche gestaltete Mail wie der Antwort-Assistent (Text + HTML, Pflichtfußzeile), eigener Betreff ohne "Re:"
-    send_reply(r["email"], sample_subject(lang, area if regional else None), body, None, lang, files, blocks, requested=True)
+    send_reply(r["email"], sample_subject(lang, None), body, None, lang, files, blocks, requested=True)
     db.update("sample_requests", {"id": r["id"]}, {"status": "sent", "sent_at": dt.datetime.now(dt.timezone.utc).isoformat()})
 
 
