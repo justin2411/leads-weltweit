@@ -1,0 +1,150 @@
+{
+ "key": "uk/financial-advisers",
+ "file": "v5-uk-financial-advisers",
+ "lang": "en",
+ "tts": "en-gb",
+ "voice": "bf_emma",
+ "speed": 1.0,
+ "film": "advisers.html",
+ "industry": "financial-advisers",
+ "ui": {
+  "locale": "en-GB",
+  "ill": "Illustrative example",
+  "endfree": "10 free leads from across the UK",
+  "week": [
+   "M",
+   "T",
+   "W",
+   "T",
+   "F",
+   "S",
+   "S"
+  ],
+  "monday": "Every Monday · PDF + spreadsheet",
+  "regtitle": "Officers · appointed this week",
+  "src": "Companies House",
+  "reg": [
+   [
+    "Northfield Freight Ltd",
+    "Director",
+    "Sarah Hartley",
+    "24 Sep 2026"
+   ],
+   [
+    "Kestrel Bakery Ltd",
+    "Director",
+    "Tom Ashby",
+    "24 Sep 2026"
+   ],
+   [
+    "Harbour Digital Studio Ltd",
+    "Director",
+    "Amelia Stone",
+    "23 Sep 2026"
+   ],
+   [
+    "Linden Dental Care Ltd",
+    "Director",
+    "Priya Nair",
+    "23 Sep 2026"
+   ],
+   [
+    "Harbour Joinery Ltd",
+    "Director",
+    "Owen Price",
+    "22 Sep 2026"
+   ],
+   [
+    "Brightwell Studio Ltd",
+    "Director",
+    "Emma Lowe",
+    "22 Sep 2026"
+   ]
+  ],
+  "hi": 2,
+  "name": "Amelia Stone",
+  "role": "Director · Harbour Digital Studio Ltd",
+  "topics": [
+   [
+    "scale",
+    "Salary or dividends"
+   ],
+   [
+    "sprout",
+    "Pension"
+   ],
+   [
+    "umbrella",
+    "Protection"
+   ],
+   [
+    "exit",
+    "Succession & exit"
+   ]
+  ],
+  "profhd": "New director",
+  "f": [
+   "Company",
+   "Appointed",
+   "Phone",
+   "Email",
+   "Source"
+  ],
+  "pf": [
+   "Harbour Digital Studio Ltd",
+   "23 Sep 2026",
+   "0131 496 0582",
+   "hello@harbourdigital.co.uk",
+   "Companies House"
+  ],
+  "excl": "Each lead goes to one advisory firm"
+ },
+ "script": [
+  {
+   "id": "reg",
+   "text": "Behind every new company in the register, there's a person.",
+   "pause": 0.45
+  },
+  {
+   "id": "person",
+   "text": "A new director is also a private client, with fresh decisions to make.",
+   "pause": 0.5
+  },
+  {
+   "id": "pay",
+   "text": "How to pay themselves: salary or dividends.",
+   "pause": 0.3
+  },
+  {
+   "id": "pension",
+   "text": "A pension, perhaps paid in through the company.",
+   "pause": 0.3
+  },
+  {
+   "id": "protect",
+   "text": "Protection for their family and the business.",
+   "pause": 0.3
+  },
+  {
+   "id": "exit",
+   "text": "And one day, succession, or an exit.",
+   "pause": 0.6
+  },
+  {
+   "id": "leads",
+   "text": "The public register shows who they are and when they started. We find new directors for you, with their company's contact details.",
+   "pause": 0.45
+  },
+  {
+   "id": "weekly",
+   "text": "Every Monday, as a PDF and a spreadsheet. Each lead goes to one advisory firm only.",
+   "pause": 0.6
+  },
+  {
+   "id": "end",
+   "text": "Start with ten free leads from across the UK, at nextgen-profit dot de.",
+   "pause": 0.3,
+   "say": "Start with ten free leads from across the UK, at next gen profit, dot D E."
+  }
+ ]
+}

@@ -1,0 +1,121 @@
+{
+ "key": "fr/recrutement",
+ "file": "v5-fr-recruitment",
+ "lang": "fr",
+ "tts": "fr-fr",
+ "voice": "ff_siwis",
+ "speed": 1.04,
+ "film": "recruitment.html",
+ "industry": "recruitment",
+ "ui": {
+  "locale": "fr-FR",
+  "ill": "Exemple illustratif",
+  "endfree": "10 pistes gratuites, partout en France",
+  "week": [
+   "L",
+   "M",
+   "M",
+   "J",
+   "V",
+   "S",
+   "D"
+  ],
+  "monday": "Chaque lundi",
+  "careers": "Carrières",
+  "co": "Mécanique Précise Arnaud SAS",
+  "jobs": [
+   "Technicien de maintenance",
+   "Usineur CN",
+   "Planificateur de production"
+  ],
+  "meta": "CDI · Temps plein",
+  "apply": "Postuler",
+  "day": "Jour",
+  "repost": "Republiée",
+  "three": "3 postes ouverts",
+  "tl": [
+   [
+    "Vu pour la 1re fois",
+    "12 août 2026"
+   ],
+   [
+    "Republiée",
+    "9 sept. 2026"
+   ],
+   [
+    "Toujours ouverte",
+    "26 sept. 2026"
+   ]
+  ],
+  "srcurl": "mecanique-arnaud.fr/carrieres",
+  "daily": "Vérifié chaque jour",
+  "openfor": "Ouvert depuis 45 jours",
+  "list": [
+   [
+    "Mécanique Précise Arnaud SAS",
+    "3 postes · le plus ancien 45 j",
+    "04 65 71 23 18"
+   ],
+   [
+    "Logistique Ascombe SAS",
+    "Republiée deux fois",
+    "01 99 00 42 17"
+   ],
+   [
+    "Résidences Saules SAS",
+    "4 postes ouverts",
+    "04 65 71 58 62"
+   ]
+  ],
+  "listhd": "Employeurs aux postes ouverts depuis longtemps",
+  "excl": "Chaque piste va à un seul cabinet"
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "Ce poste a été publié sur la page carrières d'un employeur.",
+   "pause": 0.35
+  },
+  {
+   "id": "d1",
+   "text": "Jour un.",
+   "pause": 0.3
+  },
+  {
+   "id": "d30",
+   "text": "Jour trente.",
+   "pause": 0.3
+  },
+  {
+   "id": "d45",
+   "text": "Jour quarante-cinq.",
+   "pause": 0.45
+  },
+  {
+   "id": "repost",
+   "text": "Il est toujours là. Puis l'offre est republiée, et deux autres postes apparaissent à côté.",
+   "pause": 0.6
+  },
+  {
+   "id": "chairs",
+   "text": "L'employeur a déjà essayé seul. Un poste ouvert depuis trente jours ou plus, c'est le moment où il accepte l'appel d'un cabinet.",
+   "pause": 0.6
+  },
+  {
+   "id": "watch",
+   "text": "Nous vérifions les pages carrières chaque jour, et notons quand chaque poste est apparu, quand il a été republié, et combien sont ouverts, avec le lien source.",
+   "pause": 0.45
+  },
+  {
+   "id": "weekly",
+   "text": "Chaque lundi, vous recevez ces employeurs, avec téléphone, e-mail et nom du dirigeant. Chaque piste ne va qu'à un seul cabinet.",
+   "pause": 0.6
+  },
+  {
+   "id": "end",
+   "text": "Commencez avec dix pistes gratuites, partout en France, sur nextgen-profit point d e.",
+   "pause": 0.3,
+   "say": "Commencez avec dix pistes gratuites, partout en France, sur nekst djène profit, point dé e."
+  }
+ ]
+}

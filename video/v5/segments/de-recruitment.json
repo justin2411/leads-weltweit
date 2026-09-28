@@ -1,0 +1,122 @@
+{
+ "key": "de:ind/recruitment",
+ "file": "v5-de-recruitment",
+ "lang": "de",
+ "tts": "de",
+ "voice": "piper:de_DE-thorsten-high",
+ "speed": 1.0,
+ "length_scale": 0.92,
+ "film": "recruitment.html",
+ "industry": "recruitment",
+ "ui": {
+  "locale": "de-DE",
+  "ill": "Beispiel",
+  "endfree": "10 kostenlose Leads · in ganz Deutschland",
+  "week": [
+   "M",
+   "D",
+   "M",
+   "D",
+   "F",
+   "S",
+   "S"
+  ],
+  "monday": "Jeden Montag",
+  "careers": "Karriere",
+  "co": "Brandtwerk Präzisionstechnik GmbH",
+  "jobs": [
+   "Instandhalter (m/w/d)",
+   "CNC-Fräser (m/w/d)",
+   "Produktionsplaner (m/w/d)"
+  ],
+  "meta": "Vollzeit · unbefristet",
+  "apply": "Bewerben",
+  "day": "Tag",
+  "repost": "Neu ausgeschrieben",
+  "three": "3 offene Stellen",
+  "tl": [
+   [
+    "Zuerst gesehen",
+    "12.08.2026"
+   ],
+   [
+    "Neu ausgeschrieben",
+    "09.09.2026"
+   ],
+   [
+    "Noch offen",
+    "26.09.2026"
+   ]
+  ],
+  "srcurl": "brandtwerk.de/karriere",
+  "daily": "Täglich geprüft",
+  "openfor": "Seit 45 Tagen offen",
+  "list": [
+   [
+    "Brandtwerk Präzisionstechnik GmbH",
+    "3 Stellen · älteste 45 Tage",
+    "040 66969 482"
+   ],
+   [
+    "Aschberg Logistik GmbH",
+    "Zweimal neu ausgeschrieben",
+    "030 23125 617"
+   ],
+   [
+    "Weidenhof Pflege GmbH",
+    "4 Stellen offen",
+    "089 99998 233"
+   ]
+  ],
+  "listhd": "Arbeitgeber mit lange offenen Stellen",
+  "excl": "Jeder Lead geht an einen Personalvermittler"
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "Diese Stelle erscheint auf der Karriereseite eines Arbeitgebers.",
+   "pause": 0.35
+  },
+  {
+   "id": "d1",
+   "text": "Tag eins.",
+   "pause": 0.3
+  },
+  {
+   "id": "d30",
+   "text": "Tag dreißig.",
+   "pause": 0.3
+  },
+  {
+   "id": "d45",
+   "text": "Tag fünfundvierzig.",
+   "pause": 0.45
+  },
+  {
+   "id": "repost",
+   "text": "Sie ist immer noch da. Dann wird sie neu ausgeschrieben, und daneben erscheinen zwei weitere Stellen.",
+   "pause": 0.6
+  },
+  {
+   "id": "chairs",
+   "text": "Der Arbeitgeber hat es schon allein versucht. Ist eine Stelle dreißig Tage oder länger offen, nimmt er den Anruf eines Personalvermittlers eher an.",
+   "pause": 0.6
+  },
+  {
+   "id": "watch",
+   "text": "Wir prüfen Karriereseiten jeden Tag, und halten fest, wann jede Stelle zuerst erschien, wann sie neu ausgeschrieben wurde und wie viele offen sind, mit Quellenlink.",
+   "pause": 0.45
+  },
+  {
+   "id": "weekly",
+   "text": "Jeden Montag erhalten Sie diese Arbeitgeber, mit Telefon, E-Mail und Geschäftsführung. Jeder Lead geht nur an einen Personalvermittler.",
+   "pause": 0.6
+  },
+  {
+   "id": "end",
+   "text": "Starten Sie mit zehn kostenlosen Leads aus ganz Deutschland, auf nextgen-profit punkt de.",
+   "pause": 0.3,
+   "say": "Starten Sie mit zehn kostenlosen Leads aus ganz Deutschland, auf Nekst-Dschenn Proffit, Punkt D E."
+  }
+ ]
+}

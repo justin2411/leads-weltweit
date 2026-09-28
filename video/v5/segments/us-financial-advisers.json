@@ -1,0 +1,151 @@
+{
+ "key": "us/financial-advisers",
+ "file": "v5-us-financial-advisers",
+ "lang": "en",
+ "tts": "en-us",
+ "voice": "af_heart",
+ "speed": 1.02,
+ "film": "advisers.html",
+ "industry": "financial-advisers",
+ "ui": {
+  "locale": "en-US",
+  "ill": "Illustrative example",
+  "endfree": "10 free leads from across the US",
+  "week": [
+   "M",
+   "T",
+   "W",
+   "T",
+   "F",
+   "S",
+   "S"
+  ],
+  "monday": "Every Monday · PDF + spreadsheet",
+  "regtitle": "New filings · this week",
+  "src": "Secretary of State",
+  "reg": [
+   [
+    "Ridgeway Freight LLC",
+    "Owner",
+    "Maria Alvarez",
+    "Sep 24, 2026"
+   ],
+   [
+    "Kestrel Bakery LLC",
+    "Owner",
+    "Tom Becker",
+    "Sep 24, 2026"
+   ],
+   [
+    "Harbor Pixel Studio LLC",
+    "Owner",
+    "Amelia Stone",
+    "Sep 23, 2026"
+   ],
+   [
+    "Linden Dental Care PLLC",
+    "Owner",
+    "Priya Nair",
+    "Sep 23, 2026"
+   ],
+   [
+    "Harbor Woodworks LLC",
+    "Owner",
+    "Owen Price",
+    "Sep 22, 2026"
+   ],
+   [
+    "Brightwell Studio LLC",
+    "Owner",
+    "Emma Lowe",
+    "Sep 22, 2026"
+   ]
+  ],
+  "hi": 2,
+  "name": "Amelia Stone",
+  "role": "Owner · Harbor Pixel Studio LLC",
+  "topics": [
+   [
+    "scale",
+    "Salary or distributions"
+   ],
+   [
+    "sprout",
+    "401(k) · SEP IRA"
+   ],
+   [
+    "umbrella",
+    "Life & disability"
+   ],
+   [
+    "exit",
+    "Succession & sale"
+   ]
+  ],
+  "profhd": "New business owner",
+  "f": [
+   "Business",
+   "Filed",
+   "Phone",
+   "Email",
+   "Source"
+  ],
+  "pf": [
+   "Harbor Pixel Studio LLC",
+   "Sep 23, 2026",
+   "(512) 555-0174",
+   "hello@harborpixel.com",
+   "State filing"
+  ],
+  "excl": "Each lead goes to one advisory firm"
+ },
+ "script": [
+  {
+   "id": "reg",
+   "text": "Behind every new business filing, there's a person.",
+   "pause": 0.45
+  },
+  {
+   "id": "person",
+   "text": "A new owner is also a private client, with fresh decisions to make.",
+   "pause": 0.5
+  },
+  {
+   "id": "pay",
+   "text": "How to pay themselves: salary or distributions.",
+   "pause": 0.3
+  },
+  {
+   "id": "pension",
+   "text": "A retirement plan, like a solo 401(k) or a SEP IRA.",
+   "pause": 0.3,
+   "say": "A retirement plan, like a solo four-oh-one-k or a sep I R A."
+  },
+  {
+   "id": "protect",
+   "text": "Life and disability cover, for family and business.",
+   "pause": 0.3
+  },
+  {
+   "id": "exit",
+   "text": "And one day, succession, or a sale.",
+   "pause": 0.6
+  },
+  {
+   "id": "leads",
+   "text": "Public filings show who they are and when they started. We find new owners for you, with their names where public, and business contact details.",
+   "pause": 0.45
+  },
+  {
+   "id": "weekly",
+   "text": "Every Monday, as a PDF and a spreadsheet. Each lead goes to one advisory firm only.",
+   "pause": 0.6
+  },
+  {
+   "id": "end",
+   "text": "Start with ten free leads from across the US, at nextgen-profit dot de.",
+   "pause": 0.3,
+   "say": "Start with ten free leads from across the U.S., at next gen profit, dot D E."
+  }
+ ]
+}

@@ -1,0 +1,197 @@
+{
+ "key": "us/accountants",
+ "file": "v5-us-accountants",
+ "lang": "en",
+ "tts": "en-us",
+ "voice": "af_heart",
+ "speed": 1.02,
+ "film": "accountants.html",
+ "industry": "accountants",
+ "ui": {
+  "locale": "en-US",
+  "ill": "Illustrative example",
+  "endfree": "10 free leads from across the US",
+  "week": [
+   "M",
+   "T",
+   "W",
+   "T",
+   "F",
+   "S",
+   "S"
+  ],
+  "monday": "Every Monday",
+  "regtitle": "State filing",
+  "src": "Secretary of State",
+  "stamp": "Filed",
+  "regf": [
+   [
+    "Business",
+    "Ridgeway Freight LLC"
+   ],
+   [
+    "Type",
+    "Limited liability co."
+   ],
+   [
+    "Filed",
+    "Sep 24, 2026"
+   ],
+   [
+    "Owner",
+    "Maria Alvarez"
+   ]
+  ],
+  "yearone": "Year one",
+  "dl": [
+   [
+    "receipt",
+    "EIN & sales tax",
+    "IRS · State",
+    0.6
+   ],
+   [
+    "coins",
+    "First payroll",
+    "Federal & state",
+    2.6
+   ],
+   [
+    "file",
+    "Annual report",
+    "Secretary of State",
+    9.8
+   ],
+   [
+    "calc",
+    "Business tax return",
+    "IRS · 1099s",
+    11.3
+   ]
+  ],
+  "dlat": [
+   [
+    "tax",
+    0.05
+   ],
+   [
+    "payroll",
+    0.05
+   ],
+   [
+    "filing",
+    0.05
+   ],
+   [
+    "yearend",
+    0.1
+   ]
+  ],
+  "hub": "Your firm, from the first deadline",
+  "yearw": "Year",
+  "ledger": "New filings",
+  "detail": "Lead",
+  "cols": [
+   "Business",
+   "Filed",
+   "Owner"
+  ],
+  "rows": [
+   [
+    "Ridgeway Freight LLC",
+    "Sep 24",
+    "Maria Alvarez"
+   ],
+   [
+    "Kestrel Bakery LLC",
+    "Sep 24",
+    "Tom Becker"
+   ],
+   [
+    "Linden Dental Care PLLC",
+    "Sep 23",
+    "Priya Nair"
+   ],
+   [
+    "Harbor Woodworks LLC",
+    "Sep 23",
+    "Owen Price"
+   ],
+   [
+    "Brightwell Studio LLC",
+    "Sep 22",
+    "Emma Lowe"
+   ],
+   [
+    "Ashgrove Cleaning LLC",
+    "Sep 22",
+    "Daniel Reed"
+   ]
+  ],
+  "co": "Ridgeway Freight LLC",
+  "f": [
+   "Owner",
+   "Phone",
+   "Email",
+   "Website",
+   "Source"
+  ],
+  "director": "Maria Alvarez",
+  "phone": "(614) 555-0147",
+  "email": "info@ridgewayfreight.com",
+  "web": "ridgewayfreight.com",
+  "srcdate": "State filing · Sep 24, 2026",
+  "excl": "Each lead goes to one accounting firm"
+ },
+ "script": [
+  {
+   "id": "reg",
+   "text": "Today, a new LLC is filed with the state. Its first year starts now.",
+   "pause": 0.5,
+   "say": "Today, a new L L C is filed with the state. Its first year starts now."
+  },
+  {
+   "id": "tax",
+   "text": "It needs an EIN from the IRS, and often a sales tax permit.",
+   "pause": 0.35,
+   "say": "It needs an E I N from the I R S, and often a sales tax permit."
+  },
+  {
+   "id": "payroll",
+   "text": "When it hires, its first payroll begins.",
+   "pause": 0.35
+  },
+  {
+   "id": "filing",
+   "text": "Then comes the state's annual report,",
+   "pause": 0.2
+  },
+  {
+   "id": "yearend",
+   "text": "and its first business tax return, with 1099s for contractors.",
+   "pause": 0.6,
+   "say": "and its first business tax return, with ten ninety-nines for contractors."
+  },
+  {
+   "id": "turn",
+   "text": "Each of these dates needs an accountant. The firm that's there before the first deadline often keeps the client for years.",
+   "pause": 0.6
+  },
+  {
+   "id": "leads",
+   "text": "We find these businesses as they're filed, with the owner's name where it's public, and the business contact details.",
+   "pause": 0.45
+  },
+  {
+   "id": "weekly",
+   "text": "Every Monday, as a PDF and a spreadsheet. Each lead goes to one accounting firm only.",
+   "pause": 0.6
+  },
+  {
+   "id": "end",
+   "text": "Start with ten free leads from across the US, at nextgen-profit dot de.",
+   "pause": 0.3,
+   "say": "Start with ten free leads from across the U.S., at next gen profit, dot D E."
+  }
+ ]
+}

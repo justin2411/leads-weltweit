@@ -1,0 +1,33 @@
+/* Version 5: gemeinsame Marke (Dunkelblau + Gold) für alle Branchenfilme. Layout 1920x1080. */
+@font-face{font-family:Inter;src:url(../../fonts/inter-latin-400-normal.woff2);font-weight:400}
+@font-face{font-family:Inter;src:url(../../fonts/inter-latin-600-normal.woff2);font-weight:600}
+@font-face{font-family:Inter;src:url(../../fonts/inter-latin-700-normal.woff2);font-weight:700}
+@font-face{font-family:Inter;src:url(../../fonts/inter-latin-800-normal.woff2);font-weight:800}
+:root{--bg:#0B1428;--bg2:#0f1d38;--card:#101f3c;--card2:#142848;--ink:#f4efe6;--soft:#9aa6ba;--gold:#D8BD8A;--goldd:#B8914F;--goldl:#E2C894;--line:#17294c;--edge:#27406b;--paper:#f6f1e7;--paper2:#e9dfcc;--navy:#0b1428}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);font-family:Inter,sans-serif;color:var(--ink)}
+#bg{position:absolute;inset:-200px;background:
+  radial-gradient(1000px 700px at var(--gx,62%) var(--gy,30%),rgba(216,189,138,.13),transparent 70%),
+  radial-gradient(900px 640px at 14% 90%,rgba(62,98,170,.22),transparent 70%)}
+#pat{position:absolute;inset:0;overflow:hidden}
+#vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 55%,rgba(3,7,16,.55) 100%)}
+.scene{position:absolute;inset:0;opacity:0;display:none;transform-origin:50% 50%}
+.abs{position:absolute}
+svg{position:absolute;left:0;top:0;overflow:visible}
+svg.i{position:static;display:inline-block;flex:none;vertical-align:middle}
+.logo{font-size:128px;font-weight:800;letter-spacing:-4px;display:flex;gap:28px;justify-content:center}
+.gold{background:linear-gradient(100deg,var(--goldl),var(--goldd));-webkit-background-clip:text;background-clip:text;color:transparent}
+.mask{overflow:hidden;display:inline-block;padding-bottom:14px}.mask>span{display:inline-block}
+.chip{display:inline-flex;align-items:center;gap:14px;padding:14px 28px;border-radius:99px;font-size:30px;font-weight:600;background:rgba(216,189,138,.1);border:1px solid rgba(216,189,138,.42);color:#f3e6c8;white-space:nowrap}
+.card{position:absolute;background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--edge);box-shadow:0 40px 120px rgba(0,0,0,.5);overflow:hidden;border-radius:26px}
+.lbl{font-size:22px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--gold);white-space:nowrap}
+.k{font-size:17px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--soft);white-space:nowrap}
+.v{font-size:28px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nw{white-space:nowrap}
+.ctr{left:0;right:0;text-align:center}
+#mark{position:absolute;left:70px;top:52px;font-size:30px;font-weight:800;letter-spacing:-.8px;display:flex;gap:8px}
+#illtag{position:absolute;left:70px;bottom:46px;font-size:21px;color:var(--soft);letter-spacing:.5px;display:flex;align-items:center;gap:10px;opacity:0}
+#illtag i{width:9px;height:9px;border-radius:50%;background:var(--gold);opacity:.8}
+/* Schlusskarte */
+#END .logo{font-size:122px}
+#END_url{font-size:40px;font-weight:700;letter-spacing:.5px;color:#fff}

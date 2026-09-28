@@ -1,0 +1,196 @@
+{
+ "key": "fr/experts-comptables",
+ "file": "v5-fr-accountants",
+ "lang": "fr",
+ "tts": "fr-fr",
+ "voice": "ff_siwis",
+ "speed": 1.04,
+ "film": "accountants.html",
+ "industry": "accountants",
+ "ui": {
+  "locale": "fr-FR",
+  "ill": "Exemple illustratif",
+  "endfree": "10 pistes gratuites, partout en France",
+  "week": [
+   "L",
+   "M",
+   "M",
+   "J",
+   "V",
+   "S",
+   "D"
+  ],
+  "monday": "Chaque lundi",
+  "regtitle": "Immatriculation",
+  "src": "RNE · INPI",
+  "stamp": "Immatriculée",
+  "regf": [
+   [
+    "Société",
+    "Transports Lumen SAS"
+   ],
+   [
+    "Forme",
+    "SAS"
+   ],
+   [
+    "Immatriculée",
+    "24 sept. 2026"
+   ],
+   [
+    "Présidente",
+    "Claire Morel"
+   ]
+  ],
+  "yearone": "Première année",
+  "dl": [
+   [
+    "receipt",
+    "Déclaration de TVA",
+    "Impôts",
+    1.4
+   ],
+   [
+    "coins",
+    "Première paie",
+    "DSN",
+    3.2
+   ],
+   [
+    "calc",
+    "Premier bilan",
+    "Liasse fiscale",
+    10.4
+   ],
+   [
+    "file",
+    "Dépôt des comptes",
+    "Greffe",
+    11.4
+   ]
+  ],
+  "dlat": [
+   [
+    "vat",
+    0.05
+   ],
+   [
+    "payroll",
+    0.05
+   ],
+   [
+    "filing",
+    0.05
+   ],
+   [
+    "yearend",
+    0.1
+   ]
+  ],
+  "hub": "Votre cabinet, dès la première échéance",
+  "yearw": "Année",
+  "ledger": "Nouvelles immatriculations",
+  "detail": "Piste",
+  "cols": [
+   "Société",
+   "Date",
+   "Dirigeant"
+  ],
+  "rows": [
+   [
+    "Transports Lumen SAS",
+    "24 sept.",
+    "Claire Morel"
+   ],
+   [
+    "Boulangerie Kestrel SARL",
+    "24 sept.",
+    "Thomas Aubry"
+   ],
+   [
+    "Cabinet Dentaire Tilleul",
+    "23 sept.",
+    "Priya Nair"
+   ],
+   [
+    "Menuiserie Portal SAS",
+    "23 sept.",
+    "Olivier Prat"
+   ],
+   [
+    "Studio Clairval SAS",
+    "22 sept.",
+    "Emma Lopez"
+   ],
+   [
+    "Nettoyage Frêne SARL",
+    "22 sept.",
+    "Daniel Roux"
+   ]
+  ],
+  "co": "Transports Lumen SAS",
+  "f": [
+   "Présidente",
+   "Téléphone",
+   "E-mail",
+   "Site web",
+   "Source"
+  ],
+  "director": "Claire Morel",
+  "phone": "04 65 71 23 18",
+  "email": "contact@transports-lumen.fr",
+  "web": "transports-lumen.fr",
+  "srcdate": "RNE · 24 sept. 2026",
+  "excl": "Chaque piste va à un seul cabinet"
+ },
+ "script": [
+  {
+   "id": "reg",
+   "text": "Aujourd'hui, une nouvelle société est immatriculée au registre national des entreprises. Sa première année commence.",
+   "pause": 0.5
+  },
+  {
+   "id": "vat",
+   "text": "Il faudra bientôt déclarer la TVA.",
+   "pause": 0.35,
+   "say": "Il faudra bientôt déclarer la T V A."
+  },
+  {
+   "id": "payroll",
+   "text": "À la première embauche, viennent la paie et la DSN.",
+   "pause": 0.35,
+   "say": "À la première embauche, viennent la paie et la D S N."
+  },
+  {
+   "id": "filing",
+   "text": "Puis le premier bilan et la liasse fiscale,",
+   "pause": 0.2
+  },
+  {
+   "id": "yearend",
+   "text": "et le dépôt des comptes.",
+   "pause": 0.6
+  },
+  {
+   "id": "turn",
+   "text": "Chacune de ces échéances demande un expert-comptable. Le cabinet présent avant la première garde souvent le client pendant des années.",
+   "pause": 0.6
+  },
+  {
+   "id": "leads",
+   "text": "Nous repérons ces sociétés dès leur immatriculation, avec le nom du dirigeant et les coordonnées de l'entreprise.",
+   "pause": 0.45
+  },
+  {
+   "id": "weekly",
+   "text": "Chaque lundi, en PDF et en tableur. Chaque piste ne va qu'à un seul cabinet.",
+   "pause": 0.6
+  },
+  {
+   "id": "end",
+   "text": "Commencez avec dix pistes gratuites, partout en France, sur nextgen-profit point d e.",
+   "pause": 0.3,
+   "say": "Commencez avec dix pistes gratuites, partout en France, sur nekst djène profit, point dé e."
+  }
+ ]
+}

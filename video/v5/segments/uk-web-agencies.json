@@ -1,0 +1,132 @@
+{
+ "key": "uk/web-agencies",
+ "file": "v5-uk-web-agencies",
+ "lang": "en",
+ "tts": "en-gb",
+ "voice": "bf_emma",
+ "speed": 1.0,
+ "film": "web.html",
+ "industry": "web-agencies",
+ "ui": {
+  "locale": "en-GB",
+  "ill": "Illustrative example",
+  "endfree": "10 free leads from across the UK",
+  "week": [
+   "M",
+   "T",
+   "W",
+   "T",
+   "F",
+   "S",
+   "S"
+  ],
+  "monday": "Every Monday",
+  "url1": "oakridgehomeservices.co.uk",
+  "nosite": "No website found",
+  "nosub": "The domain doesn't point to a site.",
+  "url2": "brightforge-tools.co.uk",
+  "retro": {
+   "title": "BRIGHTFORGE TOOLS",
+   "welcome": "Welcome to our homepage!",
+   "nav": [
+    "Home",
+    "Products",
+    "About us",
+    "Contact"
+   ],
+   "body": "We are a family business. Please call us for prices.",
+   "best": "Best viewed in 800×600",
+   "visitors": "Visitors"
+  },
+  "modern": {
+   "name": "Brightforge Tools",
+   "h": "Tools for trade, made to last",
+   "cta": "Request a quote",
+   "nav": [
+    "Products",
+    "Trade",
+    "Contact"
+   ]
+  },
+  "checkhd": "Website check",
+  "checks": [
+   [
+    "Oakridge Home Services Ltd",
+    "No website found",
+    "noweb"
+   ],
+   [
+    "Brightforge Tools Ltd",
+    "Not mobile-friendly",
+    "mobile"
+   ],
+   [
+    "Kestrel Plumbing Ltd",
+    "No website found",
+    "noweb"
+   ],
+   [
+    "Linden Pet Care Ltd",
+    "Outdated website",
+    "monitor"
+   ]
+  ],
+  "checked": "Checked 26 Sep 2026",
+  "f": [
+   "Phone",
+   "Email",
+   "Director"
+  ],
+  "contact": [
+   "0113 496 0935",
+   "info@oakridgehomeservices.co.uk",
+   "Chris Oakley"
+  ],
+  "before": "Before",
+  "after": "After",
+  "excl": "Each lead goes to one web agency"
+ },
+ "script": [
+  {
+   "id": "type",
+   "text": "Let's look up a company that was registered last week, and see what's online.",
+   "pause": 0.3
+  },
+  {
+   "id": "nothing",
+   "text": "We type its name. Nothing. No website.",
+   "pause": 0.6
+  },
+  {
+   "id": "old",
+   "text": "Another company has a site, but it looks like it was built in two thousand and eight.",
+   "pause": 0.35
+  },
+  {
+   "id": "mobile",
+   "text": "And on a phone, it simply breaks.",
+   "pause": 0.6
+  },
+  {
+   "id": "fix",
+   "text": "For a web agency, that's an easy conversation to start: the company can see the problem for itself.",
+   "pause": 0.6
+  },
+  {
+   "id": "check",
+   "text": "We check the websites of new companies for you, and flag who has none, or one that doesn't work on a phone.",
+   "pause": 0.45
+  },
+  {
+   "id": "weekly",
+   "text": "Every Monday, with phone, email and the director's name. Each lead goes to one web agency only.",
+   "pause": 0.6
+  },
+  {
+   "id": "end",
+   "text": "Start with ten free leads from across the UK, at nextgen-profit dot de.",
+   "pause": 0.3,
+   "say": "Start with ten free leads from across the UK, at next gen profit, dot D E."
+  }
+ ]
+}

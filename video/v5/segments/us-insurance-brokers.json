@@ -1,0 +1,113 @@
+{
+ "key": "us/insurance-brokers",
+ "file": "v5-us-insurance-brokers",
+ "lang": "en",
+ "tts": "en-us",
+ "voice": "af_heart",
+ "speed": 1.02,
+ "film": "insurance.html",
+ "industry": "insurance-brokers",
+ "ui": {
+  "locale": "en-US",
+  "ill": "Illustrative example",
+  "endfree": "10 free leads from across the US",
+  "week": [
+   "M",
+   "T",
+   "W",
+   "T",
+   "F",
+   "S",
+   "S"
+  ],
+  "monday": "Every Monday · PDF + spreadsheet",
+  "newco": "New business",
+  "co": "Brightline Cabinets LLC",
+  "cover": [
+   [
+    "building",
+    "Commercial property"
+   ],
+   [
+    "truck",
+    "Commercial auto"
+   ],
+   [
+    "users",
+    "Workers' comp"
+   ],
+   [
+    "store",
+    "General liability"
+   ]
+  ],
+  "turnchip": "Every new asset, a new policy",
+  "leadhd": "Lead",
+  "sig": [
+   "New business",
+   "New location",
+   "Hiring"
+  ],
+  "f": [
+   "Owner",
+   "Phone",
+   "Email",
+   "Website",
+   "Source"
+  ],
+  "director": "Daniel Ortiz",
+  "phone": "(919) 555-0138",
+  "email": "info@brightlinecabinets.com",
+  "web": "brightlinecabinets.com",
+  "srcdate": "State filing · Sep 24, 2026",
+  "excl": "Each lead goes to one agency"
+ },
+ "script": [
+  {
+   "id": "plot",
+   "text": "A new business has just been filed. For now, it's an empty lot.",
+   "pause": 0.45
+  },
+  {
+   "id": "build",
+   "text": "It leases a building: commercial property coverage.",
+   "pause": 0.3
+  },
+  {
+   "id": "fleet",
+   "text": "Trucks for deliveries: commercial auto.",
+   "pause": 0.3
+  },
+  {
+   "id": "staff",
+   "text": "Its first employees: workers' comp, required in most states.",
+   "pause": 0.3
+  },
+  {
+   "id": "open",
+   "text": "And when it opens to customers: general liability.",
+   "pause": 0.6
+  },
+  {
+   "id": "turn",
+   "text": "Every new asset is a new policy. And new and growing businesses need that coverage before they open.",
+   "pause": 0.6
+  },
+  {
+   "id": "leads",
+   "text": "We find new and expanding businesses in public filings and on their own websites, with the owner's name where it's public, and contact details.",
+   "pause": 0.45
+  },
+  {
+   "id": "weekly",
+   "text": "Every Monday, as a PDF and a spreadsheet. Each lead goes to one agency only.",
+   "pause": 0.6
+  },
+  {
+   "id": "end",
+   "text": "Start with ten free leads from across the US, at nextgen-profit dot de.",
+   "pause": 0.3,
+   "say": "Start with ten free leads from across the U.S., at next gen profit, dot D E."
+  }
+ ]
+}

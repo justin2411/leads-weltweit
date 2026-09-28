@@ -1,0 +1,152 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<!-- v5 Webagenturen / Web agencies: "Der Browser-Test" – Firmenname in die Adresszeile: keine Website; zweite Firma:
+     Seite wie von 2008; auf dem Handy bricht sie; goldener Wisch: vorher/nachher; danach Website-Prüfliste und Montag. -->
+<link rel="stylesheet" href="lib/base.css">
+<style>
+#pat{background-image:radial-gradient(rgba(140,170,220,.10) 1.5px,transparent 1.6px);background-size:36px 36px}
+.glyph{position:absolute;font-size:34px;font-weight:700;color:rgba(216,189,138,.10);font-family:monospace}
+/* Browser */
+#br{position:absolute;left:250px;top:150px;width:1420px;height:800px;border-radius:22px;background:#0e1b33;border:1px solid #2c4470;box-shadow:0 60px 160px rgba(0,0,0,.6);overflow:hidden;transform-origin:50% 50%}
+.bar{height:86px;background:#152a4c;display:flex;align-items:center;gap:22px;padding:0 26px;border-bottom:1px solid #27406b}
+.dots{display:flex;gap:10px}.dots i{width:16px;height:16px;border-radius:50%;background:#3a5078}
+#addr{flex:1;height:52px;border-radius:26px;background:#0b1428;border:1px solid #2c4470;display:flex;align-items:center;gap:14px;padding:0 22px;font-size:26px;font-weight:600;color:#e9e1cf;white-space:nowrap;overflow:hidden}
+#load{position:absolute;left:0;top:85px;height:4px;background:linear-gradient(90deg,#B8914F,#E2C894);box-shadow:0 0 14px rgba(216,189,138,.8)}
+.view{position:absolute;left:0;right:0;top:87px;bottom:0;overflow:hidden}
+#v_none{display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0e1b33}
+#v_none .t{font-size:50px;font-weight:800;margin-top:26px;color:#dfe5ef}
+#v_none .s{font-size:28px;color:var(--soft);margin-top:12px}
+/* 2008 */
+.retro{background:#d4d0c8;font-family:"Times New Roman",Times,serif;color:#000}
+.retro .top{background:linear-gradient(180deg,#1b3aa8,#000080);color:#ffff66;padding:18px 30px;font-size:52px;font-weight:bold;letter-spacing:2px;text-shadow:3px 3px 0 #000}
+.retro .mq{background:#000;color:#39ff14;font-family:"Courier New",monospace;font-size:28px;padding:8px 0;white-space:nowrap;overflow:hidden}
+.retro .nav{padding:14px 30px;font-size:28px}.retro .nav a{color:#0000ee;text-decoration:underline;margin-right:10px}
+.retro .uc{height:34px;background:repeating-linear-gradient(45deg,#ffd200 0 26px,#111 26px 52px);margin:10px 30px}
+.retro .bd{display:flex;gap:24px;padding:10px 30px}
+.retro .bx{background:#fff;border:3px outset #eee;padding:18px;font-size:26px}
+.retro .bt{display:inline-block;margin-top:14px;padding:8px 20px;background:#e0e0e0;border:3px outset #fff;font-size:24px}
+.retro .ctr{display:inline-block;background:#000;color:#ff3b3b;font-family:"Courier New",monospace;font-size:28px;padding:4px 10px;letter-spacing:4px}
+.retro .ft{padding:12px 30px;font-size:22px;color:#333;font-style:italic}
+/* modern */
+.modern{background:linear-gradient(180deg,#f6f1e7,#efe6d4);color:#13203b}
+.modern .mn{display:flex;justify-content:space-between;align-items:center;padding:26px 50px}
+.modern .lg{font-size:30px;font-weight:800;letter-spacing:-.5px;display:flex;align-items:center;gap:12px}
+.modern .lg i{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#E2C894,#B8914F)}
+.modern .nv{display:flex;gap:34px;font-size:22px;font-weight:600;color:#44506a}
+.modern .hero{display:flex;gap:50px;padding:36px 50px}
+.modern h1{font-size:62px;line-height:1.08;letter-spacing:-2px;font-weight:800;width:640px}
+.modern .cta{display:inline-block;margin-top:34px;padding:20px 36px;border-radius:14px;background:#0f1d38;color:#E2C894;font-size:26px;font-weight:800}
+.modern .img{flex:1;height:380px;border-radius:26px;background:linear-gradient(135deg,#1a3360,#0f1d38);position:relative;overflow:hidden}
+.modern .img b{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(226,200,148,.55),rgba(226,200,148,0) 70%)}
+/* Telefon */
+#ph{position:absolute;left:1330px;top:150px;width:380px;height:780px;border-radius:56px;background:#03060c;border:10px solid #22324f;box-shadow:0 50px 140px rgba(0,0,0,.6);opacity:0}
+#ph .scr{position:absolute;inset:14px;border-radius:42px;overflow:hidden;background:#fff}
+#ph .notch{position:absolute;left:50%;top:14px;width:120px;height:26px;margin-left:-60px;border-radius:0 0 16px 16px;background:#03060c;z-index:3}
+.pv{position:absolute;inset:0}
+.tagc{position:absolute;z-index:5}
+/* E: Prüfliste */
+#E_card{position:absolute;left:230px;top:160px;width:1460px;border-radius:28px;padding:36px 46px;background:linear-gradient(180deg,#152a4c,#0f1d38);border:1px solid rgba(216,189,138,.45);box-shadow:0 40px 120px rgba(0,0,0,.5)}
+.ck{display:grid;grid-template-columns:70px 1fr 470px;align-items:center;gap:22px;padding:22px 4px;border-top:1px solid #243a62;position:relative}
+.ck .fav{width:58px;height:58px;border-radius:14px;background:#0b1428;border:1px solid #2c4470;display:flex;align-items:center;justify-content:center}
+.ck .c{font-size:32px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ck .s{justify-self:start;display:inline-flex;align-items:center;gap:12px;font-size:25px;font-weight:700;color:#f3e6c8;padding:10px 20px;border-radius:99px;background:rgba(216,189,138,.12);border:1px solid rgba(216,189,138,.5);white-space:nowrap}
+.ck .scan{position:absolute;top:10px;bottom:10px;width:120px;background:linear-gradient(90deg,transparent,rgba(216,189,138,.25),transparent);opacity:0}
+#E_ct{display:flex;gap:40px;padding:18px 0 4px 96px;overflow:hidden}
+#E_ct .f{display:flex;align-items:center;gap:12px;font-size:25px;font-weight:600;white-space:nowrap;color:#dfe5ef}
+</style></head>
+<body>
+<!-- A: Browser-Test (type … fix) -->
+<div class="scene" id="A">
+  <div id="br">
+    <div class="bar"><div class="dots"><i></i><i></i><i></i></div><div id="addr"><span data-ic="search" data-s="26" data-c="#9aa6ba"></span><span id="url"></span></div></div>
+    <div id="load"></div>
+    <div class="view" id="v_none"><span data-ic="noweb" data-s="130" data-c="#6d7fa3"></span><div class="t" data-u="nosite"></div><div class="s" data-u="nosub"></div></div>
+    <div class="view retro" id="v_old"><div class="top" data-u="retro.title"></div><div class="mq"><span id="mq" style="display:inline-block"></span></div>
+      <div class="nav" id="nav"></div><div class="uc"></div>
+      <div class="bd"><div class="bx" style="width:560px"><b data-u="retro.welcome"></b><br><br><span data-u="retro.body"></span><br><span class="bt" data-u="retro.nav.3"></span></div>
+        <div class="bx" style="flex:1;text-align:center"><span data-u="retro.visitors"></span>:<br><br><span class="ctr">004213</span></div></div>
+      <div class="ft" data-u="retro.best"></div></div>
+    <div class="view modern" id="v_new"><div class="mn"><div class="lg"><i></i><span data-u="modern.name"></span></div><div class="nv" id="mnv"></div></div>
+      <div class="hero"><div><h1 data-u="modern.h"></h1><span class="cta" data-u="modern.cta"></span></div><div class="img"><b style="left:-80px;top:-60px;width:360px;height:360px"></b><b style="right:-60px;bottom:-90px;width:300px;height:300px"></b></div></div></div>
+  </div>
+  <div id="ph"><div class="notch"></div><div class="scr">
+    <div class="pv retro" id="p_old"><div style="width:1100px;transform:scale(.8);transform-origin:0 0" id="p_oldin"></div></div>
+    <div class="pv modern" id="p_new"><div style="padding:60px 26px 0"><div class="lg" style="font-size:24px"><i style="width:26px;height:26px"></i><span data-u="modern.name"></span></div>
+      <h1 style="font-size:40px;width:auto;margin-top:40px" data-u="modern.h"></h1><span class="cta" style="font-size:22px;padding:16px 26px" data-u="modern.cta"></span>
+      <div class="img" style="height:190px;margin-top:34px;flex:none"><b style="left:-60px;top:-40px;width:240px;height:240px"></b></div></div></div>
+  </div></div>
+  <div id="tag_old" class="tagc"><span class="chip" style="font-size:26px;padding:10px 22px" data-u="before"></span></div>
+  <div id="tag_new" class="tagc"><span class="chip" style="font-size:26px;padding:10px 22px"><span data-ic="sparkle" data-s="26"></span><span data-u="after"></span></span></div>
+  <div id="tag_mob" class="tagc"><span class="chip" style="font-size:26px;padding:10px 22px;background:rgba(201,119,46,.16);border-color:rgba(226,160,90,.6)"><span data-ic="mobile" data-s="26" data-c="#E2A05A"></span><span data-u="checks.1.1"></span></span></div>
+</div>
+<!-- E: Website-Prüfung, Montag -->
+<div class="scene" id="E">
+  <div id="E_card"><div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:20px"><div class="lbl" style="display:flex;align-items:center;gap:12px"><span data-ic="search" data-s="28"></span><span data-u="checkhd"></span></div>
+    <span class="chip" style="font-size:22px;padding:8px 18px"><span data-ic="check" data-s="24"></span><span data-u="checked"></span></span></div><div id="E_rows"></div></div>
+  <div id="E_bottom" class="abs ctr" style="top:880px;display:flex;justify-content:center;gap:24px">
+    <span class="chip" id="E_mon"><span data-ic="cal" data-s="30"></span><span data-u="monday"></span></span>
+    <span class="chip" id="E_ex"><span data-ic="lock" data-s="30"></span><span data-u="excl"></span></span></div>
+</div>
+<script src="lib/lib.js"></script>
+<script>
+window.SCENES = [["A", "type", { ill: true }], ["E", "check", { ill: true }]];
+const GL = ["</>", "{ }", "www", "</>", "://", "#", "{ }", "</>"].map((g, i) => ({ d: div("pat", "glyph", esc(g)), x: 120 + i * 240 + rnd() * 80, y: rnd() * 1000, z: .4 + rnd() * .8 }));
+$("nav").innerHTML = U.retro.nav.map(n => `<a>${esc(n)}</a>`).join(" | ");
+$("mnv").innerHTML = U.modern.nav.map(n => `<span>${esc(n)}</span>`).join("");
+$("mq").textContent = ("*** " + U.retro.welcome + " ***     ").repeat(4);
+$("p_oldin").innerHTML = $("v_old").innerHTML;
+const ER = U.checks.map(([c, s, ic], i) => { const r = div("E_rows", "ck", `<div class="fav">${ico("globe", 30, "#6d7fa3")}</div><div class="c">${esc(c)}</div><div class="s">${ico(ic, 26)}<span>${esc(s)}</span></div><div class="scan"></div>`); return r; });
+const ct = div("E_rows", "", "", {}); ct.id = "E_ct";
+ct.innerHTML = [["phone", U.contact[0]], ["mail", U.contact[1]], ["user", U.contact[2]]].map(([ic, v]) => `<div class="f">${ico(ic, 26)}<span>${esc(v)}</span></div>`).join("");
+ER[0].after(ct);
+
+window.film = t => {
+  GL.forEach(g => st(g.d, { left: g.x + "px", top: (((g.y - t * 20 * g.z) % 1100) + 1100) % 1100 - 60 + "px", fontSize: (22 + g.z * 26) + "px" }));
+  const a0 = L.type.start - .3;
+  // Browser kommt aus der Tiefe
+  const bk = eo5(p(t, a0, 1.2));
+  const m0 = L.mobile.start - .35, mk_ = eio(p(t, m0, .9));
+  const f0 = L.fix.start - .2;
+  st("br", { opacity: cl(bk * 1.5), transform: `perspective(2200px) rotateX(${(1 - bk) * 22}deg) rotateY(${lerp(0, 8, mk_)}deg) translate(${lerp(0, -170, mk_)}px, ${(1 - bk) * 120}px) scale(${lerp(.92, 1, bk) * lerp(1, .84, mk_)})` });
+  // Adresszeile: erst Firma 1, dann Firma 2
+  const o0 = L.old.start - .3;
+  let url = "";
+  if (t < o0) url = type(U.url1, p(t, a0 + .9, Math.max(1.2, L.type.end - a0 - .6)));
+  else url = type(U.url2, p(t, o0 + .15, 1.1));
+  if (t < a0 + .9) url = "";
+  $("url").textContent = url;
+  // Laden
+  const l1 = p(t, L.nothing.start + .1, .8), l2 = p(t, o0 + 1.3, .8);
+  const lk = t < o0 ? l1 : l2; $("load").style.width = (lk > 0 && lk < 1 ? eo(lk) * 1420 : 0) + "px";
+  const none = t >= L.nothing.start + .9 && t < o0 + .1 ? eo(p(t, L.nothing.start + .9, .5)) : 0;
+  st("v_none", { opacity: none, transform: `scale(${lerp(.96, 1, none)})` });
+  const oldOn = t >= o0 + 2.1 ? eo(p(t, o0 + 2.1, .4)) : 0;
+  $("v_old").style.opacity = oldOn;
+  $("mq").style.transform = `translateX(${-((t * 140) % 900)}px)`;
+  // Telefon: kommt von rechts, Seite bricht (zu breit, zittert)
+  const pk = eo5(p(t, m0 + .2, 1));
+  st("ph", { opacity: cl(pk * 1.5), transform: `translateX(${(1 - pk) * 500}px) rotate(${(1 - pk) * 8 - 3 + 3 * eio(p(t, f0, 1))}deg)` });
+  const brk = p(t, L.mobile.start + .9, .5), glitch = brk > 0 && t < f0 ? (Math.sin(t * 47) > .6 ? 1 : 0) : 0;
+  st("p_oldin", { transform: `scale(.8) translate(${glitch * 18 - brk * 30}px, ${glitch * -8}px) skewX(${glitch * 4}deg)` });
+  // Wisch: vorher -> nachher, in Browser und Telefon
+  const wk = eio(p(t, f0 + .3, 1.3));
+  $("v_new").style.clipPath = `inset(0 ${100 - wk * 100}% 0 0)`; $("p_new").style.clipPath = `inset(0 ${100 - wk * 100}% 0 0)`;
+  $("v_new").style.opacity = wk > 0 ? 1 : 0; $("p_new").style.opacity = wk > 0 ? 1 : 0;
+  $("v_new").style.boxShadow = wk > 0 && wk < 1 ? "inset -4px 0 0 #E2C894" : "none";
+  // Hinweise
+  const R = $("br").getBoundingClientRect(), Q = $("ph").getBoundingClientRect();
+  st("tag_old", { left: (R.left + 30) + "px", top: (R.top - 70) + "px", opacity: eo(p(t, o0 + 2.3, .5)) * (1 - eo(p(t, f0 + .6, .4))) });
+  st("tag_new", { left: (R.left + 30) + "px", top: (R.top - 70) + "px", opacity: eo(p(t, f0 + 1.2, .5)) });
+  st("tag_mob", { left: (Q.left + Q.width / 2 - 170) + "px", top: (Q.bottom + 18) + "px", opacity: eo(p(t, L.mobile.start + 1.0, .4)) * (1 - eo(p(t, f0 + .6, .4))) });
+  // E: Liste, Prüf-Scan je Zeile, Kontaktzeile klappt auf
+  const e0 = L.check.start - .4, ed = L.check.end - e0;
+  const ck = eo5(p(t, e0, 1)); st("E_card", { opacity: cl(ck * 1.4), transform: `perspective(2000px) rotateX(${(1 - ck) * 24}deg) translateY(${(1 - ck) * 80}px)` });
+  ER.forEach((r, i) => { const t0 = e0 + .5 + i * Math.min(.8, ed * .17); reveal(r, p(t, t0, .4), 0, -30);
+    const sc = r.querySelector(".scan"), sk = p(t, t0 + .2, .7); sc.style.opacity = sk > 0 && sk < 1 ? 1 : 0; sc.style.left = lerp(0, 1300, sk) + "px";
+    const s = r.querySelector(".s"), k = back(p(t, t0 + .8, .45)); s.style.transform = `scale(${k})`; s.style.opacity = cl(k); });
+  const w0 = L.weekly.start - .3, ok = eio(p(t, w0 + .2, .7));
+  st(ct, { maxHeight: (ok * 80) + "px", opacity: ok, padding: `${18 * ok}px 0 ${4 * ok}px 96px` });
+  ER[0].style.background = ok > 0 ? `rgba(216,189,138,${.08 * ok})` : "";
+  reveal("E_mon", p(t, w0 + .3, .6), 30); reveal("E_ex", p(t, w0 + .8, .6), 30);
+};
+</script></body></html>

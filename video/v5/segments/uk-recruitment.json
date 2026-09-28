@@ -1,0 +1,121 @@
+{
+ "key": "uk/recruitment",
+ "file": "v5-uk-recruitment",
+ "lang": "en",
+ "tts": "en-gb",
+ "voice": "bf_emma",
+ "speed": 1.0,
+ "film": "recruitment.html",
+ "industry": "recruitment",
+ "ui": {
+  "locale": "en-GB",
+  "ill": "Illustrative example",
+  "endfree": "10 free leads from across the UK",
+  "week": [
+   "M",
+   "T",
+   "W",
+   "T",
+   "F",
+   "S",
+   "S"
+  ],
+  "monday": "Every Monday",
+  "careers": "Careers",
+  "co": "Calder Precision Engineering Ltd",
+  "jobs": [
+   "Maintenance Engineer",
+   "CNC Machinist",
+   "Production Planner"
+  ],
+  "meta": "Full-time · Permanent",
+  "apply": "Apply",
+  "day": "Day",
+  "repost": "Re-posted",
+  "three": "3 open roles",
+  "tl": [
+   [
+    "First seen",
+    "12 Aug 2026"
+   ],
+   [
+    "Re-posted",
+    "9 Sep 2026"
+   ],
+   [
+    "Still open",
+    "26 Sep 2026"
+   ]
+  ],
+  "srcurl": "calderprecision.co.uk/careers",
+  "daily": "Checked daily",
+  "openfor": "Open 45 days",
+  "list": [
+   [
+    "Calder Precision Engineering Ltd",
+    "3 roles · longest 45 days",
+    "0113 496 0418"
+   ],
+   [
+    "Ashcombe Logistics Ltd",
+    "Re-posted twice",
+    "0121 496 0527"
+   ],
+   [
+    "Wexley Care Homes Ltd",
+    "4 roles open",
+    "020 7946 0639"
+   ]
+  ],
+  "listhd": "Employers with long-open roles",
+  "excl": "Each lead goes to one recruitment firm"
+ },
+ "script": [
+  {
+   "id": "hook",
+   "text": "This role went live on an employer's careers page.",
+   "pause": 0.35
+  },
+  {
+   "id": "d1",
+   "text": "Day one.",
+   "pause": 0.3
+  },
+  {
+   "id": "d30",
+   "text": "Day thirty.",
+   "pause": 0.3
+  },
+  {
+   "id": "d45",
+   "text": "Day forty-five.",
+   "pause": 0.45
+  },
+  {
+   "id": "repost",
+   "text": "It's still there. Then it's posted again, and two more roles appear next to it.",
+   "pause": 0.6
+  },
+  {
+   "id": "chairs",
+   "text": "The employer has already tried on their own. A role open for thirty days or more is the moment they take a recruiter's call.",
+   "pause": 0.6
+  },
+  {
+   "id": "watch",
+   "text": "We check careers pages every day, and log when each role first appeared, when it was re-posted, and how many are open, with the source link.",
+   "pause": 0.45
+  },
+  {
+   "id": "weekly",
+   "text": "Every Monday, you get these employers with the company's phone, email and the director's name. Each lead goes to one recruitment firm only.",
+   "pause": 0.6
+  },
+  {
+   "id": "end",
+   "text": "Start with ten free leads from across the UK, at nextgen-profit dot de.",
+   "pause": 0.3,
+   "say": "Start with ten free leads from across the UK, at next gen profit, dot D E."
+  }
+ ]
+}

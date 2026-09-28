@@ -1,0 +1,113 @@
+{
+ "key": "fr/courtiers-assurance",
+ "file": "v5-fr-insurance-brokers",
+ "lang": "fr",
+ "tts": "fr-fr",
+ "voice": "ff_siwis",
+ "speed": 1.04,
+ "film": "insurance.html",
+ "industry": "insurance-brokers",
+ "ui": {
+  "locale": "fr-FR",
+  "ill": "Exemple illustratif",
+  "endfree": "10 pistes gratuites, partout en France",
+  "week": [
+   "L",
+   "M",
+   "M",
+   "J",
+   "V",
+   "S",
+   "D"
+  ],
+  "monday": "Chaque lundi · PDF + tableur",
+  "newco": "Nouvelle société",
+  "co": "Cuisines Lumière SAS",
+  "cover": [
+   [
+    "building",
+    "Multirisque pro"
+   ],
+   [
+    "truck",
+    "Flotte"
+   ],
+   [
+    "users",
+    "Prévoyance · mutuelle"
+   ],
+   [
+    "store",
+    "RC Pro"
+   ]
+  ],
+  "turnchip": "Chaque nouvel actif, un nouveau contrat",
+  "leadhd": "Piste",
+  "sig": [
+   "Création",
+   "Nouveaux locaux",
+   "Recrute"
+  ],
+  "f": [
+   "Président",
+   "Téléphone",
+   "E-mail",
+   "Site web",
+   "Source"
+  ],
+  "director": "Julien Mercier",
+  "phone": "01 99 00 37 42",
+  "email": "contact@cuisines-lumiere.fr",
+  "web": "cuisines-lumiere.fr",
+  "srcdate": "RNE · 24 sept. 2026",
+  "excl": "Chaque piste va à un seul courtier"
+ },
+ "script": [
+  {
+   "id": "plot",
+   "text": "Une nouvelle société vient d'être immatriculée. Pour l'instant, c'est un terrain vide.",
+   "pause": 0.45
+  },
+  {
+   "id": "build",
+   "text": "Elle prend des locaux : multirisque professionnelle.",
+   "pause": 0.3
+  },
+  {
+   "id": "fleet",
+   "text": "Des véhicules pour livrer : assurance flotte.",
+   "pause": 0.3
+  },
+  {
+   "id": "staff",
+   "text": "Ses premiers salariés : prévoyance et mutuelle collective.",
+   "pause": 0.3
+  },
+  {
+   "id": "open",
+   "text": "Et quand elle accueille ses clients : responsabilité civile professionnelle.",
+   "pause": 0.6
+  },
+  {
+   "id": "turn",
+   "text": "Chaque nouvel actif, c'est un nouveau contrat. Et une entreprise nouvelle ou en croissance doit être assurée avant de démarrer.",
+   "pause": 0.6
+  },
+  {
+   "id": "leads",
+   "text": "Nous repérons les créations et les entreprises qui s'agrandissent, dans les registres publics et sur leurs sites, avec le nom du dirigeant et les coordonnées.",
+   "pause": 0.45
+  },
+  {
+   "id": "weekly",
+   "text": "Chaque lundi, en PDF et en tableur. Chaque piste ne va qu'à un seul courtier.",
+   "pause": 0.6
+  },
+  {
+   "id": "end",
+   "text": "Commencez avec dix pistes gratuites, partout en France, sur nextgen-profit point d e.",
+   "pause": 0.3,
+   "say": "Commencez avec dix pistes gratuites, partout en France, sur nekst djène profit, point dé e."
+  }
+ ]
+}

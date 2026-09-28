@@ -1,0 +1,132 @@
+{
+ "key": "fr/agences-web",
+ "file": "v5-fr-web-agencies",
+ "lang": "fr",
+ "tts": "fr-fr",
+ "voice": "ff_siwis",
+ "speed": 1.04,
+ "film": "web.html",
+ "industry": "web-agencies",
+ "ui": {
+  "locale": "fr-FR",
+  "ill": "Exemple illustratif",
+  "endfree": "10 pistes gratuites, partout en France",
+  "week": [
+   "L",
+   "M",
+   "M",
+   "J",
+   "V",
+   "S",
+   "D"
+  ],
+  "monday": "Chaque lundi",
+  "url1": "chenaie-services-habitat.fr",
+  "nosite": "Aucun site trouvé",
+  "nosub": "Le domaine ne mène à aucun site.",
+  "url2": "outillage-brunel.fr",
+  "retro": {
+   "title": "OUTILLAGE BRUNEL",
+   "welcome": "Bienvenue sur notre site !",
+   "nav": [
+    "Accueil",
+    "Produits",
+    "Qui sommes-nous",
+    "Contact"
+   ],
+   "body": "Entreprise familiale. Appelez-nous pour les tarifs.",
+   "best": "Affichage optimal en 800×600",
+   "visitors": "Visiteurs"
+  },
+  "modern": {
+   "name": "Outillage Brunel",
+   "h": "L'outillage des pros, fait pour durer",
+   "cta": "Demander un devis",
+   "nav": [
+    "Produits",
+    "Pros",
+    "Contact"
+   ]
+  },
+  "checkhd": "Vérification du site",
+  "checks": [
+   [
+    "Chênaie Services Habitat SAS",
+    "Aucun site trouvé",
+    "noweb"
+   ],
+   [
+    "Outillage Brunel SARL",
+    "Non adapté au mobile",
+    "mobile"
+   ],
+   [
+    "Plomberie Kestrel SAS",
+    "Aucun site trouvé",
+    "noweb"
+   ],
+   [
+    "Soins Animaux Tilleul",
+    "Site vieillissant",
+    "monitor"
+   ]
+  ],
+  "checked": "Vérifié le 26 sept. 2026",
+  "f": [
+   "Téléphone",
+   "E-mail",
+   "Dirigeant"
+  ],
+  "contact": [
+   "04 65 71 84 09",
+   "contact@chenaie-services-habitat.fr",
+   "Christophe Chenu"
+  ],
+  "before": "Avant",
+  "after": "Après",
+  "excl": "Chaque piste va à une seule agence"
+ },
+ "script": [
+  {
+   "id": "type",
+   "text": "Cherchons une entreprise immatriculée la semaine dernière, et voyons ce qu'on trouve en ligne.",
+   "pause": 0.3
+  },
+  {
+   "id": "nothing",
+   "text": "Nous tapons son nom. Rien. Aucun site.",
+   "pause": 0.6
+  },
+  {
+   "id": "old",
+   "text": "Une autre entreprise a un site, mais il semble dater de deux mille huit.",
+   "pause": 0.35
+  },
+  {
+   "id": "mobile",
+   "text": "Et sur un téléphone, il ne s'affiche tout simplement pas.",
+   "pause": 0.6
+  },
+  {
+   "id": "fix",
+   "text": "Pour une agence web, la conversation est facile à ouvrir : l'entreprise voit le problème elle-même.",
+   "pause": 0.6
+  },
+  {
+   "id": "check",
+   "text": "Nous vérifions pour vous le site des nouvelles entreprises, et signalons celles qui n'en ont pas, ou dont le site ne marche pas sur mobile.",
+   "pause": 0.45
+  },
+  {
+   "id": "weekly",
+   "text": "Chaque lundi, avec téléphone, e-mail et nom du dirigeant. Chaque piste ne va qu'à une seule agence.",
+   "pause": 0.6
+  },
+  {
+   "id": "end",
+   "text": "Commencez avec dix pistes gratuites, partout en France, sur nextgen-profit point d e.",
+   "pause": 0.3,
+   "say": "Commencez avec dix pistes gratuites, partout en France, sur nekst djène profit, point dé e."
+  }
+ ]
+}

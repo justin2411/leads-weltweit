@@ -1,0 +1,182 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<!-- v5 Personalvermittlung / Recruitment: "Die Stelle, die nicht verschwindet" – Karriereseite mit Tageszähler 1 → 30 → 45,
+     neu ausgeschrieben + zwei weitere Stellen, leere Stühle, Beleg-Zeitleiste mit Quelle, Montagsliste. -->
+<link rel="stylesheet" href="lib/base.css">
+<style>
+.bgn{position:absolute;font-size:220px;font-weight:800;color:rgba(160,185,230,.022);letter-spacing:-8px}
+/* A: Karriereseite + Zähler */
+#A_page{position:absolute;left:130px;top:190px;width:860px;height:700px;border-radius:26px;background:linear-gradient(180deg,#132a4d,#0f1f3b);border:1px solid #2a4675;box-shadow:0 50px 140px rgba(0,0,0,.5);overflow:hidden}
+.ph{display:flex;align-items:center;gap:20px;padding:30px 40px;border-bottom:1px solid #27406b}
+.lg{width:58px;height:58px;border-radius:16px;background:linear-gradient(135deg,#E2C894,#B8914F);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#0b1428;flex:none}
+.job{position:absolute;border-radius:22px;background:#f6f1e7;color:#13203b;padding:34px 38px;box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.job .jt{font-size:40px;font-weight:800;letter-spacing:-.8px;white-space:nowrap}
+.job .jm{font-size:22px;font-weight:600;color:#6b6a63;margin-top:10px;white-space:nowrap}
+.job .ap{display:inline-block;margin-top:28px;padding:14px 30px;border-radius:12px;background:#0f1d38;color:#E2C894;font-size:22px;font-weight:800}
+.job .age{position:absolute;right:26px;top:26px;font-size:18px;font-weight:800;letter-spacing:1px;padding:8px 14px;border-radius:99px;background:#fbe9d0;color:#9a5b16;opacity:0;white-space:nowrap}
+.gl{height:14px;border-radius:7px;background:#223a63;margin:18px 40px 0}
+#A_cnt{position:absolute;left:1120px;top:200px;width:640px;height:640px}
+#A_day{position:absolute;left:0;right:0;top:170px;text-align:center;font-size:30px;font-weight:800;letter-spacing:10px;text-transform:uppercase;color:var(--gold)}
+.odo{position:absolute;left:50%;top:230px;height:220px;display:flex;transform:translateX(-50%)}
+.col{height:220px;width:150px;overflow:hidden;position:relative}
+.col div{position:absolute;left:0;top:0;width:150px}
+.col span{display:block;height:220px;line-height:220px;text-align:center;font-size:230px;font-weight:800;letter-spacing:-8px;color:#fff}
+.leaf{position:absolute;width:120px;height:140px;border-radius:12px;background:#f6f1e7;box-shadow:0 20px 50px rgba(0,0,0,.4);opacity:0}
+.leaf b{display:block;height:34px;border-radius:12px 12px 0 0;background:#B8914F}
+/* B */
+#B_stamp{position:absolute;padding:14px 30px;border:6px solid #c9772e;color:#c9772e;border-radius:14px;font-size:40px;font-weight:800;letter-spacing:3px;text-transform:uppercase;white-space:nowrap;background:rgba(246,241,231,.85);opacity:0}
+/* D: Zeitleiste */
+.nd{position:absolute;width:420px;text-align:center}
+.nd .k{font-size:20px}
+.nd .dv{font-size:36px;font-weight:800;margin-top:8px;white-space:nowrap}
+/* E: Liste */
+#E_list{position:absolute;left:260px;top:210px;width:1400px;border-radius:28px;padding:34px 44px;background:linear-gradient(180deg,#152a4c,#0f1d38);border:1px solid rgba(216,189,138,.45);box-shadow:0 40px 120px rgba(0,0,0,.5)}
+.er{display:grid;grid-template-columns:1fr 390px 260px;align-items:center;gap:26px;padding:26px 6px;border-top:1px solid #243a62}
+.er .c{font-size:30px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.er .s{justify-self:start;font-size:23px;font-weight:700;color:#f3e6c8;padding:9px 18px;border-radius:99px;background:rgba(216,189,138,.12);border:1px solid rgba(216,189,138,.45);white-space:nowrap}
+.er .ph2{display:flex;align-items:center;gap:12px;font-size:26px;font-weight:600;white-space:nowrap;color:#dfe5ef}
+</style></head>
+<body>
+<!-- A: Stelle auf der Karriereseite, Tage zählen -->
+<div class="scene" id="A">
+  <div id="A_page">
+    <div class="ph"><div class="lg"></div><div><div style="font-size:26px;font-weight:800;white-space:nowrap" data-u="co"></div><div class="k" style="margin-top:4px" data-u="careers"></div></div></div>
+    <div class="gl" style="width:60%;margin-top:34px"></div><div class="gl" style="width:45%"></div>
+    <div class="job" id="A_job" style="left:40px;top:250px;width:780px"><div class="jt" data-u="jobs.0"></div><div class="jm" data-u="meta"></div><span class="ap" data-u="apply"></span><span class="age" id="A_age"></span></div>
+    <div class="gl" style="width:70%;margin-top:330px"></div><div class="gl" style="width:52%"></div>
+  </div>
+  <div id="A_cnt"><div id="A_leaves"></div><svg width="640" height="640" id="A_svg"></svg><div id="A_day" data-u="day"></div>
+    <div class="odo"><div class="col" id="A_c1"></div><div class="col" id="A_c0"></div></div></div>
+</div>
+<!-- B: neu ausgeschrieben, zwei weitere Stellen -->
+<div class="scene" id="B">
+  <div id="B_three" class="abs ctr" style="top:180px"><span class="chip" style="font-size:34px"><span data-ic="users" data-s="36"></span><span data-u="three"></span></span></div>
+  <div id="B_jobs"></div><div id="B_stamp" data-u="repost"></div>
+</div>
+<!-- C: leere Stühle -->
+<div class="scene" id="C"><div id="C_cam" class="abs" style="inset:0"><svg width="1920" height="1080" id="C_svg"></svg></div></div>
+<!-- D: Beleg: wann zuerst gesehen, neu ausgeschrieben, noch offen -->
+<div class="scene" id="D">
+  <div id="D_top" class="abs ctr" style="top:170px;display:flex;justify-content:center;gap:24px">
+    <span class="chip" id="D_src"><span data-ic="link" data-s="30"></span><span data-u="srcurl"></span></span>
+    <span class="chip" id="D_daily"><span data-ic="clock" data-s="30"></span><span data-u="daily"></span></span></div>
+  <svg width="1920" height="1080" id="D_svg"></svg><div id="D_nodes"></div>
+  <div id="D_open" class="abs ctr" style="top:790px"><span class="chip" style="font-size:34px;background:rgba(201,119,46,.14);border-color:rgba(226,160,90,.6)"><span data-ic="hourglass" data-s="34" data-c="#E2A05A"></span><span data-u="openfor"></span></span></div>
+</div>
+<!-- E: Montagsliste -->
+<div class="scene" id="E">
+  <div id="E_list"><div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:22px"><div class="lbl" data-u="listhd"></div><span class="chip" style="font-size:24px;padding:10px 20px"><span data-ic="cal" data-s="26"></span><span data-u="monday"></span></span></div><div id="E_rows"></div></div>
+  <div id="E_excl" class="abs ctr" style="top:860px"><span class="chip" style="font-size:32px"><span data-ic="lock" data-s="32"></span><span data-u="excl"></span></span></div>
+</div>
+<script src="lib/lib.js"></script>
+<script>
+window.SCENES = [["A", "hook", { ill: true }], ["B", "repost", { ill: true }], ["C", "chairs"], ["D", "watch", { ill: true }], ["E", "weekly", { ill: true }]];
+document.querySelector("#A_page .lg").textContent = U.co[0];
+// Hintergrund: Tageszahlen in drei Tiefen
+const BGN = []; for (let i = 0; i < 16; i++) { const d = div("pat", "bgn", String(1 + Math.floor(rnd() * 60))); const z = .3 + rnd() * .9;
+  BGN.push({ d, x: rnd() * 2100 - 100, y: rnd() * 1300, z }); d.style.fontSize = (120 + z * 160) + "px"; }
+// A: Zähler (Rollen-Ziffern) + Ring
+const colHTML = () => `<div>${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(n => `<span>${n}</span>`).join("")}</div>`;
+$("A_c1").innerHTML = colHTML(); $("A_c0").innerHTML = colHTML();
+const RC = { x: 320, y: 340 }, RR = 290;
+mk("A_svg", "circle", { cx: RC.x, cy: RC.y, r: RR, fill: "none", stroke: "#1a2c50", "stroke-width": 16 });
+const ring = mk("A_svg", "circle", { cx: RC.x, cy: RC.y, r: RR, fill: "none", stroke: "#D8BD8A", "stroke-width": 16, "stroke-linecap": "round", "stroke-dasharray": 2 * Math.PI * RR, "stroke-dashoffset": 2 * Math.PI * RR, transform: `rotate(-90 ${RC.x} ${RC.y})` });
+const tick30 = mk("A_svg", "line", { x1: RC.x + Math.cos(-Math.PI / 2 + 30 / 45 * 2 * Math.PI) * (RR - 30), y1: RC.y + Math.sin(-Math.PI / 2 + 30 / 45 * 2 * Math.PI) * (RR - 30), x2: RC.x + Math.cos(-Math.PI / 2 + 30 / 45 * 2 * Math.PI) * (RR + 30), y2: RC.y + Math.sin(-Math.PI / 2 + 30 / 45 * 2 * Math.PI) * (RR + 30), stroke: "#E2A05A", "stroke-width": 5, "stroke-linecap": "round", opacity: 0 });
+const leaves = []; for (let i = 0; i < 12; i++) leaves.push({ d: div("A_leaves", "leaf", "<b></b>"), a: rnd() * 2 - 1, r: rnd() * 60 - 30 });
+function dayAt(t) {
+  if (t < L.d1.start - .1) return 0;
+  if (t < L.d30.start - .15) return 1;
+  if (t < L.d45.start - .15) return lerp(1, 30, eio(p(t, L.d30.start - .15, .8)));
+  return lerp(30, 45, eio(p(t, L.d45.start - .15, .8)));
+}
+// B: drei Stellenkarten
+const BJ = U.jobs.map((j, i) => div("B_jobs", "job", `<div class="jt">${esc(j)}</div><div class="jm">${esc(U.meta)}</div><span class="ap">${esc(U.apply)}</span>${i === 0 ? `<div><span class="age" style="position:static;display:inline-block;margin-top:16px;opacity:1">${esc(U.openfor)}</span></div>` : ""}`, { width: "540px", top: "380px" }));
+BJ.forEach(b => { b.querySelector(".jt").style.fontSize = "32px"; b.querySelector(".jt").style.whiteSpace = "normal"; b.style.minHeight = "300px"; });
+// C: drei leere Bürostühle unter Lichtkegeln
+const C = $("C_svg");
+mk(C, "defs").innerHTML = `<radialGradient id="spot" cx="50%" cy="0%" r="100%"><stop offset="0" stop-color="rgba(226,200,148,.32)"/><stop offset="1" stop-color="rgba(226,200,148,0)"/></radialGradient>
+<linearGradient id="floor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0f1d38" stop-opacity="0"/><stop offset="1" stop-color="#132a4d"/></linearGradient>`;
+mk(C, "rect", { x: 0, y: 700, width: 1920, height: 380, fill: "url(#floor)" });
+for (let i = -8; i <= 8; i++) mk(C, "line", { x1: 960 + i * 60, y1: 700, x2: 960 + i * 260, y2: 1080, stroke: "#1a2f55", "stroke-width": 2 });
+for (let j = 0; j < 5; j++) mk(C, "line", { x1: 0, y1: 720 + j * j * 16 + j * 20, x2: 1920, y2: 720 + j * j * 16 + j * 20, stroke: "#1a2f55", "stroke-width": 2 });
+const CH = [520, 960, 1400].map((x, i) => {
+  const cone = mk(C, "path", { d: `M${x - 30} 0 L${x + 30} 0 L${x + 250} 900 L${x - 250} 900 Z`, fill: "url(#spot)", opacity: 0 });
+  const pool = mk(C, "ellipse", { cx: x, cy: 880, rx: 230, ry: 46, fill: "rgba(226,200,148,.12)", opacity: 0 });
+  const g = mk(C, "g", { opacity: 0 });
+  // Schreibtisch
+  g.innerHTML = `<path d="M${x - 200} 600 L${x + 200} 600 M${x - 180} 600 L${x - 180} 760 M${x + 180} 600 L${x + 180} 760" stroke="#3a5480" stroke-width="8" stroke-linecap="round" fill="none"/>
+   <rect x="${x - 70}" y="500" width="140" height="90" rx="8" fill="none" stroke="#3a5480" stroke-width="6"/><path d="M${x} 590 L${x} 600" stroke="#3a5480" stroke-width="6"/>
+   <g class="chair"><path d="M${x - 70} 560 Q${x - 74} 660 ${x - 60} 705 L${x + 60} 705 Q${x + 74} 660 ${x + 70} 560 Q${x} 540 ${x - 70} 560 Z" fill="#101f3c" stroke="#D8BD8A" stroke-width="5"/>
+   <path d="M${x - 80} 720 L${x + 80} 720" stroke="#D8BD8A" stroke-width="10" stroke-linecap="round"/>
+   <path d="M${x} 720 L${x} 800 M${x - 70} 850 L${x} 800 L${x + 70} 850 M${x} 800 L${x} 860" stroke="#D8BD8A" stroke-width="6" stroke-linecap="round" fill="none"/>
+   <circle cx="${x - 70}" cy="855" r="9" fill="#D8BD8A"/><circle cx="${x + 70}" cy="855" r="9" fill="#D8BD8A"/><circle cx="${x}" cy="866" r="9" fill="#D8BD8A"/></g>`;
+  return { cone, pool, g, x, i };
+});
+const phoneG = mk(C, "g", { opacity: 0 }); const PH = { x: 960, y: 250 };
+const phoneRings = [0, 1, 2].map(() => mk(phoneG, "circle", { cx: PH.x, cy: PH.y, r: 60, fill: "none", stroke: "#E2C894", "stroke-width": 3 }));
+mk(phoneG, "circle", { cx: PH.x, cy: PH.y, r: 62, fill: "url(#pg)" }); mk(C, "defs").innerHTML = `<linearGradient id="pg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E2C894"/><stop offset="1" stop-color="#B8914F"/></linearGradient>`;
+const phoneIc = icoG(phoneG, "phone", PH.x, PH.y, 60, "#0b1428", 2);
+// D: Zeitleiste mit täglichen Prüfpunkten
+const TX = [300, 960, 1620], TY = 560;
+mk("D_svg", "line", { x1: TX[0], y1: TY, x2: TX[2], y2: TY, stroke: "#1f3560", "stroke-width": 8, "stroke-linecap": "round" });
+const tline = mk("D_svg", "line", { x1: TX[0], y1: TY, x2: TX[0], y2: TY, stroke: "#D8BD8A", "stroke-width": 8, "stroke-linecap": "round" });
+const dticks = []; for (let i = 0; i <= 45; i++) { const x = lerp(TX[0], TX[2], i / 45); dticks.push({ x, e: mk("D_svg", "line", { x1: x, y1: TY + 26, x2: x, y2: TY + (i % 5 === 0 ? 46 : 38), stroke: "#6d7fa3", "stroke-width": 2.5, opacity: 0 }) }); }
+const tn = TX.map((x, i) => { const c = mk("D_svg", "circle", { cx: x, cy: TY, r: 24, fill: "#0b1428", stroke: i === 1 ? "#E2A05A" : "#D8BD8A", "stroke-width": 6 });
+  const n = div("D_nodes", "nd", `<div class="k">${esc(U.tl[i][0])}</div><div class="dv">${esc(U.tl[i][1])}</div>`, { left: (x - 210) + "px", top: (i === 1 ? TY + 80 : TY - 150) + "px" }); return { c, n, x, i }; });
+// E: Zeilen
+const ER = U.list.map(([c, s, ph]) => div("E_rows", "er", `<div class="c">${esc(c)}</div><div class="s">${esc(s)}</div><div class="ph2">${ico("phone", 26)}<span>${esc(ph)}</span></div>`));
+
+window.film = t => {
+  BGN.forEach(b => st(b.d, { left: b.x + "px", top: ((b.y - t * 18 * b.z) % 1300 + 1300) % 1300 - 150 + "px", opacity: .35 + .4 * b.z }));
+  // A
+  const a0 = L.hook.start - .3;
+  const pk = eo5(p(t, a0, 1.1)); st("A_page", { opacity: cl(pk * 1.5), transform: `perspective(1800px) rotateY(${(1 - pk) * 25 + 4}deg) translateX(${(1 - pk) * -120}px)` });
+  reveal("A_job", p(t, a0 + .5, .7), 40);
+  const ck = eo5(p(t, L.hook.start + .6, 1)); st("A_cnt", { opacity: ck, transform: `scale(${lerp(.8, 1, ck)})` });
+  const day = dayAt(t), shown = Math.max(day, 0);
+  const ones = shown % 10, tens = Math.floor(shown / 10) + Math.max(0, ones - 9);
+  $("A_c0").firstChild.style.transform = `translateY(${-ones * 220}px)`;
+  $("A_c1").firstChild.style.transform = `translateY(${-(tens % 10) * 220}px)`;
+  $("A_c1").style.opacity = shown >= 9 ? cl(shown - 9) : 0; $("A_c1").style.width = lerp(0, 150, cl(shown - 9)) + "px";
+  $("A_c0").style.opacity = day > 0 ? eo(p(t, L.d1.start - .1, .3)) : 0;
+  ring.setAttribute("stroke-dashoffset", 2 * Math.PI * RR * (1 - cl(shown / 45)));
+  const hot = cl((shown - 22) / 10); ring.setAttribute("stroke", hot > .5 ? "#E2A05A" : "#D8BD8A");
+  tick30.setAttribute("opacity", eo(p(t, L.d30.start, .4)));
+  $("A_age").textContent = `${U.day} ${Math.round(shown)}`; $("A_age").style.opacity = shown >= 1 ? 1 : 0;
+  leaves.forEach((l, i) => { const t0 = L.d30.start - .15 + i * .12, k = p(t, t0, 1.0);
+    st(l.d, { left: (260 + Math.sign(l.a) * 300 + l.a * 40) + "px", top: (240 + l.a * 60) + "px", opacity: k > 0 && k < 1 ? (1 - k) * .7 : 0, transform: `translate(${l.a * 380 * eo(k)}px, ${-260 * eo(k) + 420 * k * k}px) rotate(${l.r * 4 * k}deg)` }); });
+  // B
+  const b0 = L.repost.start - .4, bd = L.repost.end - b0;
+  const tOut = b0 + bd * .28, tIn = tOut + .7, tFan = b0 + bd * .6;
+  const out = eio(p(t, tOut, .45)), back_ = eo5(p(t, tIn, .6)), fan = eo5(p(t, tFan, 1.0));
+  BJ.forEach((b, i) => {
+    const target = 150 + i * 580;
+    if (i === 0) { const cx = lerp(690, target, fan); const x = cx - 2400 * out * (1 - (back_ > 0 ? 1 : 0)) + (back_ > 0 ? lerp(2200, 0, back_) : 0);
+      st(b, { left: x + "px", opacity: eo(p(t, b0, .5)), transform: `scale(${lerp(1.15, 1, fan)}) rotate(${back_ > 0 && back_ < 1 ? (1 - back_) * 4 : 0}deg)` }); }
+    else { const k = p(t, tFan + (i - 1) * .25, .8); st(b, { left: target + "px", opacity: cl(k * 2), transform: `translateY(${(1 - eo5(k)) * 160}px) scale(${.8 + .2 * back(k)})` }); }
+  });
+  const sk = p(t, tIn + .45, .3); const j0 = BJ[0];
+  st("B_stamp", { left: (parseFloat(j0.style.left) + 150) + "px", top: "560px", opacity: sk > 0 ? 1 : 0, transform: `scale(${lerp(2.3, 1, eio(sk))}) rotate(${lerp(-25, -8, eio(sk))}deg)` });
+  reveal("B_three", p(t, tFan + .6, .6), -30);
+  // C: Kamera fährt langsam heran, Lichter gehen an, am Ende klingelt das Telefon
+  const c0 = L.chairs.start - .4, cd = L.chairs.end - c0;
+  st("C_cam", { transform: `scale(${lerp(1, 1.1, eio(p(t, c0, cd + .5)))}) translateY(${lerp(10, -20, p(t, c0, cd))}px)` });
+  CH.forEach(c => { const k = eo(p(t, c0 + .2 + c.i * .35, .7)); c.cone.setAttribute("opacity", k); c.pool.setAttribute("opacity", k); c.g.setAttribute("opacity", k);
+    const ch = c.g.querySelector(".chair"); const sw = Math.sin(t * .9 + c.i * 1.7) * 3; ch.setAttribute("transform", `translate(${c.x} 700) rotate(${sw}) translate(${-c.x} -700)`); });
+  const ph = p(t, c0 + cd * .62, .5); phoneG.setAttribute("opacity", eo(ph)); const vib = ph > 0 ? Math.sin(t * 60) * 5 * (Math.sin(t * 3) > 0 ? 1 : .2) : 0;
+  phoneIc.setAttribute("transform", `rotate(${vib} ${PH.x} ${PH.y})`);
+  phoneRings.forEach((r, i) => { const q = (((t - c0 - cd * .62 - i * .35) % 1.1) + 1.1) % 1.1 / 1.1; r.setAttribute("r", 62 + q * 110); r.setAttribute("opacity", ph > 0 ? (1 - q) * .8 : 0); });
+  // D
+  const d0 = L.watch.start - .4, dd = L.watch.end - d0;
+  reveal("D_top", p(t, d0, .6), -30);
+  const prog = eio(p(t, d0 + .4, dd * .7)); tline.setAttribute("x2", lerp(TX[0], TX[2], prog));
+  dticks.forEach((d, i) => d.e.setAttribute("opacity", i / 45 <= prog ? .9 : .15));
+  tn.forEach(n => { const k = p(t, d0 + .4 + dd * .7 * (n.i / 2), .5); scaleAt(n.c, n.x, TY, back(k)); reveal(n.n, k, n.i === 1 ? -20 : 20); });
+  reveal("D_open", p(t, d0 + dd * .78, .6), 30);
+  // E
+  const e0 = L.weekly.start - .4, ed = L.weekly.end - e0;
+  st("E_list", { opacity: eo(p(t, e0, .6)), transform: `perspective(1800px) rotateX(${(1 - eo5(p(t, e0, 1))) * 30}deg) translateY(${(1 - eo5(p(t, e0, 1))) * 80}px)` });
+  ER.forEach((r, i) => reveal(r, p(t, e0 + .6 + i * .35, .5), 0, -40));
+  reveal("E_excl", p(t, e0 + ed * .6, .6), 30);
+};
+</script></body></html>
