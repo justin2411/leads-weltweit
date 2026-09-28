@@ -1,5 +1,8 @@
 # Großer Plan: NextGen Profit groß machen (Stand 26.09.2026, wird vom Gehirn fortgeschrieben)
 
+> Aktueller Stand, Zahlen und Prioritäten: [`STRATEGIE.md`](STRATEGIE.md) (28.09.2026). Einige Punkte unten sind
+> überholt (Kaltmails laufen seit 27.09. über Strato, Rechtstexte sind live, Angebot ist landesweit statt regional).
+
 ## Nordstern
 Wiederkehrender Umsatz aus Lead-Abos. Kennzahl: **neuer Monatsumsatz (MRR) pro Woche**. Kosten nahe null.
 
