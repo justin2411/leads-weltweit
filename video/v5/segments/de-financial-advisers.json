@@ -103,7 +103,7 @@
  "script": [
   {
    "id": "reg",
-   "text": "Hinter jeder neuen Firma im Handelsregister steht ein Mensch.",
+   "text": "Hinter jeder neuen Firma in Deutschland steht ein Mensch.",
    "pause": 0.45
   },
   {
@@ -133,7 +133,7 @@
   },
   {
    "id": "leads",
-   "text": "Das Handelsregister zeigt, wer sie sind und wann sie gestartet sind. Wir finden neue Geschäftsführer für Sie, mit den Kontaktdaten ihrer Firma.",
+   "text": "Wir sehen, wer sie sind und wann sie gestartet sind. Wir finden neue Geschäftsführer für Sie, mit den Kontaktdaten ihrer Firma.",
    "pause": 0.7
   },
   {

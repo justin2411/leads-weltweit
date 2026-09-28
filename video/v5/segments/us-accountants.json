@@ -146,9 +146,9 @@
  "script": [
   {
    "id": "reg",
-   "text": "Today, a new LLC is filed with the state. Its first year starts now.",
+   "text": "Today, a new LLC is formed in the US. Its first year starts now.",
    "pause": 0.5,
-   "say": "Today, a new L L C is filed with the state. Its first year starts now."
+   "say": "Today, a new L L C is formed in the US. Its first year starts now."
   },
   {
    "id": "tax",

@@ -73,7 +73,7 @@
  "script": [
   {
    "id": "hook",
-   "text": "This role went live on an employer's careers page.",
+   "text": "This role has just been advertised by an employer.",
    "pause": 0.35
   },
   {
@@ -103,7 +103,7 @@
   },
   {
    "id": "watch",
-   "text": "We check careers pages every day, and log when each role first appeared, when it was re-posted, and how many are open, with the source link.",
+   "text": "We find these roles for you, and log when each one first appeared, when it was re-posted, and how many are open, with the source link.",
    "pause": 0.45
   },
   {

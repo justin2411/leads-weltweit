@@ -90,12 +90,12 @@
  "script": [
   {
    "id": "type",
-   "text": "Suchen wir eine Firma, die letzte Woche eingetragen wurde, und schauen, was online zu finden ist.",
+   "text": "Nehmen wir eine Firma, die letzte Woche eingetragen wurde. Was finden ihre Kunden online?",
    "pause": 0.3
   },
   {
    "id": "nothing",
-   "text": "Wir tippen ihren Namen ein. Nichts. Keine Website.",
+   "text": "Die Kunden tippen den Namen ein. Nichts. Keine Website.",
    "pause": 0.6
   },
   {
@@ -115,7 +115,7 @@
   },
   {
    "id": "check",
-   "text": "Wir prüfen für Sie die Websites neuer Firmen und markieren, wer keine hat, oder eine, die auf dem Handy nicht funktioniert.",
+   "text": "Wir finden für Sie genau diese neuen Firmen: ohne Website, oder mit einer, die auf dem Handy nicht funktioniert.",
    "pause": 0.45
   },
   {

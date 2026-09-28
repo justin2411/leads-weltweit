@@ -102,7 +102,7 @@
  "script": [
   {
    "id": "reg",
-   "text": "Behind every new company in the register, there's a person.",
+   "text": "Behind every new company in the UK, there's a person.",
    "pause": 0.45
   },
   {
@@ -132,7 +132,7 @@
   },
   {
    "id": "leads",
-   "text": "The public register shows who they are and when they started. We find new directors for you, with their company's contact details.",
+   "text": "We see who they are, and exactly when they started. We find these new directors for you, with their company's contact details.",
    "pause": 0.45
   },
   {

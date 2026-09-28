@@ -74,7 +74,7 @@
  "script": [
   {
    "id": "hook",
-   "text": "Diese Stelle erscheint auf der Karriereseite eines Arbeitgebers.",
+   "text": "Ein Arbeitgeber schreibt diese Stelle zum ersten Mal aus.",
    "pause": 0.35
   },
   {
@@ -104,7 +104,7 @@
   },
   {
    "id": "watch",
-   "text": "Wir prüfen Karriereseiten jeden Tag, und halten fest, wann jede Stelle zuerst erschien, wann sie neu ausgeschrieben wurde und wie viele offen sind, mit Quellenlink.",
+   "text": "Wir finden diese Stellen für Sie, und halten fest, wann jede zuerst erschien, wann sie neu ausgeschrieben wurde und wie viele offen sind, mit Quellenlink.",
    "pause": 0.45
   },
   {

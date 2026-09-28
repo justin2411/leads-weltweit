@@ -89,12 +89,12 @@
  "script": [
   {
    "id": "type",
-   "text": "Cherchons une entreprise immatriculée la semaine dernière, et voyons ce qu'on trouve en ligne.",
+   "text": "Prenons une entreprise immatriculée la semaine dernière. Que trouvent ses clients en ligne ?",
    "pause": 0.3
   },
   {
    "id": "nothing",
-   "text": "Nous tapons son nom. Rien. Aucun site.",
+   "text": "Ils tapent son nom. Rien. Aucun site.",
    "pause": 0.6
   },
   {
@@ -114,7 +114,7 @@
   },
   {
    "id": "check",
-   "text": "Nous vérifions pour vous le site des nouvelles entreprises, et signalons celles qui n'en ont pas, ou dont le site ne marche pas sur mobile.",
+   "text": "Nous repérons pour vous ces nouvelles entreprises : celles qui n'ont pas encore de site, ou dont le site ne marche pas sur mobile.",
    "pause": 0.45
   },
   {
