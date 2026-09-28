@@ -78,6 +78,29 @@ def normalize_domain(value: str | None) -> str:
     return v[4:] if v.startswith("www.") else v
 
 
+# Freemail-Anbieter, deren Domain nie gesperrt wird (sonst sperrt eine Gmail-Abmeldung ganz Gmail).
+FREEMAIL_EXTRA = {"t-online.de", "gmx.de", "gmx.at", "gmx.ch", "gmx.fr", "live.co.uk", "outlook.fr", "hotmail.fr"}
+FREEMAIL_PREFIX = ("yahoo.", "gmx.", "ymail.")
+
+
+def is_freemail(domain: str | None) -> bool:
+    d = (domain or "").strip().lower()
+    return d in FREEMAIL_DOMAINS or d in FREEMAIL_EXTRA or d.startswith(FREEMAIL_PREFIX)
+
+
+def suppress(db, email: str, reason: str, source: str) -> None:
+    """Dauerhafte Sperre. Firmenadresse: Adresse und Domain (DB-Funktion suppress_email). Freemail-Adresse: nur
+    die Adresse – die DB-Funktion sperrt bis zur Migration 20260928090000 immer auch die Domain."""
+    email = (email or "").strip().lower()
+    if "@" not in email:
+        return
+    if is_freemail(email.split("@")[-1]):
+        db.insert("suppression", {"kind": "email", "value": email, "reason": reason, "source": source},
+                  upsert_on="kind,value", ignore_duplicates=True)
+        return
+    db.rpc("suppress_email", {"p_email": email, "p_reason": reason, "p_source": source})
+
+
 def email_domain(email: str) -> str:
     return email.rsplit("@", 1)[-1].lower().strip()
 
