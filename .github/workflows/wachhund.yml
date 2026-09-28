@@ -1,0 +1,23 @@
+# Wachhund: GitHub lässt geplante Läufe unter Last ausfallen (27./28.09.2026). Alle 30 Minuten prüfen, ob ein
+# Pflichtlauf überfällig ist, und ihn nachstarten (scripts/wachhund.py). Mehrere Zeitpläne, damit der Wachhund
+# selbst nicht ausfällt.
+name: wachhund
+on:
+  schedule:
+    - cron: "11,41 * * * *"
+    - cron: "26,56 * * * *"
+  workflow_dispatch:
+concurrency: { group: wachhund, cancel-in-progress: true }
+permissions:
+  actions: write
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install requests
+      - run: python scripts/wachhund.py --apply
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

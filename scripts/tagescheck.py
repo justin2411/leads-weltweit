@@ -34,6 +34,7 @@ WORKFLOWS = {
     "sync.yml": ("Bounces/Ereignisse", 27),
     "kaeufer.yml": ("Käufersuche", 27),
     "kundenlieferung.yml": ("Kundenlieferung (montags)", 24 * 7 + 3),
+    "wachhund.yml": ("Wachhund (startet ausgefallene Läufe nach)", 3),
 }
 
 

@@ -100,7 +100,8 @@ def main(argv=None) -> int:
                 if args.apply:
                     db.insert("email_events", {"message_id": sent[0]["id"] if sent else None, "type": "bounced",
                                                "dedupe_key": f"{dedupe}:{rcpt}", "note": "DSN aus Postfach",
-                                               "payload": {"refs": refs[:5]}})
+                                               "payload": {"refs": refs[:5]}},
+                              upsert_on="dedupe_key", ignore_duplicates=True)  # Meldung liegt 14 Tage im Postfach
                     db.rpc("suppress_email", {"p_email": rcpt, "p_reason": "bounce", "p_source": "imap-dsn"})
             if not recipients:
                 print(f"Unklare Unzustellbar-Meldung, bitte ansehen: {msg.get('Subject')}")
