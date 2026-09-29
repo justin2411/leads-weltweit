@@ -51,10 +51,11 @@ Landingpages sind live für S1, S2, S4, S5, S9 in **UK, US, FR** (15 Seiten, jew
 
 | Paket | UK | US | FR | Umfang |
 |---|---|---|---|---|
-| Starter | £129 / Monat | $159 / Monat | 149 € / Monat | bis 30 Leads pro Woche |
-| Pro | £249 / Monat | $299 / Monat | 289 € / Monat | bis 100 Leads pro Woche, alle Signale |
+| Starter | £129 / Monat | $129 / Monat | 129 € / Monat | bis 30 Leads pro Woche |
+| Pro | £249 / Monat | $249 / Monat | 249 € / Monat | bis 100 Leads pro Woche, alle Signale |
 | Individuell | per Regler | per Regler | per Regler | 150–10.000 Leads pro Woche |
 
+- Gleiche Zahlen in allen Ländern (Inhaber 29.09.2026: „lass alle gleich auf den Preisen von UK“).
 - Individueller Preis = Pro-Preis × (Wochenmenge / 100)^0,75, auf ganze Einheiten gerundet (`app/lib/custom-price.ts`).
   Je mehr Leads, desto günstiger pro Lead. Der Server rechnet selbst und vertraut keinem Preis aus dem Browser.
 - Zahlung per Stripe-Abo (live), monatlich. Preise darf das Gehirn testen (Entscheidung 26.09.); bestehende Abos

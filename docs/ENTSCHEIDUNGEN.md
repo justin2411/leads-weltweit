@@ -20,6 +20,7 @@ Laufende Entscheidungen des Gehirns (Preise, Seitenvarianten) stehen zusätzlich
 
 ## 29.09.2026
 
+- **Preise überall wie UK:** „warum kosten die leads bei us mehr als uk? lass alle gleich auf den preisen von uk“ → Starter 129, Pro 249 in £, $ und € (vorher US $159/$299, FR 149 €/289 €).
 - **Probe immer genau 10:** „warum sind bei uk nur 7 leads es müssen immer genau 10 sein, merk dir das“ / „ja das soll immer so sein!“ → jede Probe genau 10 verschiedene Firmen; sonst keine Probe.
 - **Lead-PDF:** jeder Lead als Karte mit Schatten; 10 Leads auf 3 Seiten (3 + 4 + 3), nie ein einzelner Lead allein auf einer Seite.
 - **Einwilligungstext im Formular:** „6 ja“ → „I agree that … / J'accepte que … / Ich bin einverstanden, dass …“
