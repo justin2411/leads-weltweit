@@ -514,12 +514,22 @@ def hold_text(lang: str) -> str:
             f"Best regards,\n{signature(lang)}")
 
 
+def skipped(sender: str, subject: str, why: str) -> str:
+    """Übersprungene Mail im Protokoll sichtbar machen (Absender, Betreff, Grund)."""
+    print(f"{sender:<35} übersprungen: {why} ({subject[:60]})")
+    return "ignore"
+
+
 def handle_unknown(db, msg, mid: str, sender: str, text: str, apply: bool, own: set[str]) -> str:
     """Mail von jemandem, den wir nicht angeschrieben haben: Abmeldung sperren, sonst einmal den Inhaber informieren."""
     from inbox import is_bounce
     subject = msg.get("Subject") or ""
-    if sender in own or "@" + sender.split("@")[-1] in own or is_system_mail(sender, msg) or is_bounce(msg):
-        return "ignore"
+    if sender in own or "@" + sender.split("@")[-1] in own:
+        return skipped(sender, subject, "eigene Adresse")
+    if is_bounce(msg):
+        return skipped(sender, subject, "Unzustellbar-Meldung (inbox.py)")
+    if is_system_mail(sender, msg):
+        return skipped(sender, subject, "Systemmail/Newsletter/DMARC")
     key = f"unknown:{mid}"
     if db.select("email_events", {"dedupe_key": f"eq.{key}", "select": "id"}):
         return "done"
@@ -534,8 +544,10 @@ def handle_unknown(db, msg, mid: str, sender: str, text: str, apply: bool, own: 
                 print(f"  FEHLER Sperre {sender}: {exc}")
                 return "error"
         return "suppress"
-    if is_auto_reply(msg) or not is_recent(msg):
-        return "ignore"
+    if is_auto_reply(msg):
+        return skipped(sender, subject, "automatische Antwort")
+    if not is_recent(msg):
+        return skipped(sender, subject, "älter als 48 h, NICHT gemeldet")
     print(f"{sender:<35} unbekannter Absender -> owner ({subject[:60]})")
     if apply:
         try:
