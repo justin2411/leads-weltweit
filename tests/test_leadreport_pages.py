@@ -29,5 +29,28 @@ class PagesTest(unittest.TestCase):
             self.assertGreater(counts[-1], 1, (layout, counts))
 
 
+class SampleSizeTest(unittest.TestCase):
+    def test_sample_needs_exactly_ten_companies(self):
+        import csv
+        import io
+        from lib import leadreport
+        raw = (ROOT / "samples/S5/US/leads.csv").read_bytes()
+        rows = list(csv.DictReader(io.StringIO(raw.decode("utf-8-sig"))))
+        rows[1]["company"] = rows[0]["company"]  # 10 Zeilen, aber nur 9 Firmen
+        buf = io.StringIO()
+        w = csv.DictWriter(buf, fieldnames=list(rows[0].keys()))
+        w.writeheader()
+        w.writerows(rows)
+        nine = buf.getvalue().encode()
+        orig = leadreport.complete_only
+        leadreport.complete_only = lambda data, segment=None: data
+        try:
+            self.assertEqual(len(leadreport.group_rows(nine)), 9)
+            self.assertEqual(leadreport.attachments(nine, "en", sample=True, segment="S5", country="US"), [])
+        finally:
+            leadreport.complete_only = orig
+        self.assertEqual(leadreport.SAMPLE_SIZE, 10)
+
+
 if __name__ == "__main__":
     unittest.main()

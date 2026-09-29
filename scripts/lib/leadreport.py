@@ -92,6 +92,9 @@ def _day(iso: str, lang: str) -> str:
     return f"{d.day} {months.get(lang, months['en']).split()[d.month - 1]} {d.year}"
 
 
+SAMPLE_SIZE = 10  # Leads je Probe: immer genau 10 verschiedene Firmen (Inhaber 29.09.2026)
+
+
 def group_rows(data: bytes) -> list[dict]:
     """CSV -> eine Einheit je Firma, sortiert nach Priorität und Aktualität."""
     rows = list(csv.DictReader(io.StringIO(data.decode("utf-8-sig", "replace"))))
@@ -439,12 +442,18 @@ def complete_only(data: bytes, segment: str | None = None) -> bytes:
 
 def attachments(csv_bytes: bytes, lang: str, area: str | None = None, firm: str | None = None,
                 period: dt.date | None = None, name: str = "leads", plans: list[dict] | None = None,
-                cta_url: str | None = None, segment: str | None = None, country: str = "UK") -> list[tuple[str, bytes]]:
-    """PDF-Report (falls möglich) + bereinigte CSV für CRM/Excel."""
+                cta_url: str | None = None, segment: str | None = None, country: str = "UK",
+                sample: bool = False) -> list[tuple[str, bytes]]:
+    """PDF-Report (falls möglich) + bereinigte CSV für CRM/Excel. sample=True: Probe, genau 10 Firmen."""
     slug = "-" + re.sub(r"[^A-Za-z0-9]+", "-", area).strip("-") if area else ""
     out = []
     csv_bytes = complete_only(csv_bytes, segment)
-    if not group_rows(csv_bytes):
+    groups = group_rows(csv_bytes)
+    if not groups:
+        return []
+    if (sample or plans is not None) and len(groups) != SAMPLE_SIZE:
+        # Probe immer mit genau 10 verschiedenen Firmen (Inhaber 29.09.2026) – sonst lieber gar nicht senden
+        print(f"Probe nicht erstellt: {len(groups)} statt {SAMPLE_SIZE} Firmen")
         return []
     pdf = render_pdf(csv_bytes, lang, area, firm, period, plans, cta_url, segment, country)
     if pdf:

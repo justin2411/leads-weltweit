@@ -52,14 +52,20 @@ def main() -> int:
         leads.sort(key=lambda l: (l["company_id"] not in known, URG.get(l["urgency"], 3), -(int((l.get("event_date") or "1900-01-01").replace("-", "")))))
         chosen, per_company = [], {}
         for l in leads:
-            if per_company.get(l["company_id"], 0) >= 3:
+            # genau 10 verschiedene Firmen je Probe (Inhaber 29.09.2026: „es müssen immer genau 10 sein“)
+            key = re.sub(r"[^a-z0-9]", "", (l["watch_companies"]["name"] or "").lower())
+            if per_company.get(l["company_id"], 0) >= 1 or ("name:" + key) in per_company:
                 continue
             per_company[l["company_id"]] = per_company.get(l["company_id"], 0) + 1
+            per_company["name:" + key] = 1
             chosen.append(l)
             if len(chosen) >= 10:
                 break
         if len(chosen) < 10:
             print(f"{seg}/{c}: nur {len(chosen)} geeignete Leads – keine Probe, kein Versand")
+            stale = ROOT / "samples" / seg / c / "leads.csv"
+            if stale.exists():  # nie eine Probe mit weniger als 10 Firmen liegen lassen
+                stale.unlink()
             continue
         if len(existing) < 10:
             for l in chosen:

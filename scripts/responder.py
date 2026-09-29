@@ -343,6 +343,12 @@ def _sic_lookup(db, rows: list[dict]):
     return lambda l: sic.get((l.get("observation_ids") or [None])[0])
 
 
+def _firm_key(co: dict | None) -> str:
+    """Normalisierter Firmenname: dieselbe Firma zählt nur einmal, auch wenn sie doppelt gespeichert ist."""
+    import re as _re
+    return "name:" + _re.sub(r"[^a-z0-9]", "", ((co or {}).get("name") or "").lower())
+
+
 def regional_sample(db, seg: str, country: str, region: str | None,
                     wish: list[str] | None = None) -> tuple[list[tuple[str, bytes]], bool]:
     """10 vollständige Leads aus dem ganzen Land (Inhaber 27.09.2026). (Dateien, True) – sonst ([], False).
@@ -368,9 +374,11 @@ def regional_sample(db, seg: str, country: str, region: str | None,
         co = l["watch_companies"]
         if known is not None and l["company_id"] not in known:
             continue
-        if per.get(l["company_id"], 0) >= 1:
+        name = _firm_key(co)
+        if per.get(l["company_id"], 0) >= 1 or name in per:
             continue
         per[l["company_id"]] = per.get(l["company_id"], 0) + 1
+        per[name] = 1  # gleiche Firma unter zwei Datensätzen nur einmal (genau 10 verschiedene Firmen)
         picked.append(l)
         if len(picked) >= 10:
             break
@@ -385,7 +393,7 @@ def regional_sample(db, seg: str, country: str, region: str | None,
     data = to_csv(picked, _lang(country), area)
     name = re.sub(r"[^A-Za-z0-9]+", "-", area or country).strip("-")
     from lib.leadreport import attachments
-    return attachments(data, _lang(country), area, name="sample-leads", **sample_extras(db, seg, country)), True
+    return attachments(data, _lang(country), area, name="sample-leads", sample=True, **sample_extras(db, seg, country)), True
 
 
 def sample_extras(db, seg: str, country: str) -> dict:
@@ -400,9 +408,11 @@ def _country_sample(db, seg: str, country: str, rows: list[dict], known) -> tupl
     from deliveries import _lang, enrich, to_csv
     picked, per = [], {}
     for l in rows:
-        if known is not None and l["company_id"] not in known or per.get(l["company_id"], 0) >= 1:
+        name = _firm_key(l.get("watch_companies"))
+        if known is not None and l["company_id"] not in known or per.get(l["company_id"], 0) >= 1 or name in per:
             continue
         per[l["company_id"]] = 1
+        per[name] = 1
         picked.append({**l, "segment_id": seg})
         if len(picked) >= 10:
             break
@@ -410,7 +420,7 @@ def _country_sample(db, seg: str, country: str, rows: list[dict], known) -> tupl
         return [], False
     enrich(db, picked, known)
     from lib.leadreport import attachments
-    return attachments(to_csv(picked, _lang(country)), _lang(country), None, name="sample-leads",
+    return attachments(to_csv(picked, _lang(country)), _lang(country), None, name="sample-leads", sample=True,
                        **sample_extras(db, seg, country)), False
 
 
@@ -421,7 +431,7 @@ def sample_files(seg: str, country: str) -> list[tuple[str, bytes]]:
         p = d / name
         if p.exists():
             from lib.leadreport import attachments
-            files += attachments(p.read_bytes(), "fr" if country == "FR" else "en", name=f"sample-{seg}-{country}")
+            files += attachments(p.read_bytes(), "fr" if country == "FR" else "en", name=f"sample-{seg}-{country}", sample=True)
     return files
 
 
