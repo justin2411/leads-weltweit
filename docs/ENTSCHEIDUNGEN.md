@@ -10,16 +10,24 @@ Laufende Entscheidungen des Gehirns (Preise, Seitenvarianten) stehen zusätzlich
 
 | Thema | Frage | Vorschlag |
 |---|---|---|
-| Vollständigkeit der Leads | Dürfen Proben/Lieferungen Leads ohne E-Mail und ohne Namen enthalten, wenn Website, Adresse und Telefon geprüft sind? | Ja; fehlt der Name, steht „Ask for the owner / managing director“ |
 | Companies House | kostenlosen API-Schlüssel als GitHub-Secret `COMPANIES_HOUSE_API_KEY` eintragen | eintragen (UK-Geschäftsführer aus dem Register) |
 | Rechtsfrage DSGVO Art. 14 | Informationspflicht, wenn Geschäftsführer-Namen an Kunden gehen (EU/UK) | Inhaber klärt |
 | UK PECR | reicht bei Ltd-Firmen eine allgemeine Adresse, oder Interessenabwägung dokumentieren? | Inhaber klärt |
-| Antwort-Assistent | läuft weiter (beantwortet nur Leute, die selbst geschrieben haben, und Web-Probe-Anfragen) – auch stoppen? | läuft, bis der Inhaber anders entscheidet |
 | Versand wieder starten | wann und mit welcher Tagesmenge | nach dem Neuaufbau der Lead-Suche, wenn Proben lieferbar sind |
 | Nach-dem-Kauf-Mails | Zahlung fehlgeschlagen, Kündigung, Formular-Erinnerung, Feedback nach 4 Wochen | bauen |
 | Erste Lieferung | Freigabe im Dashboard statt GitHub, oder automatisch, wenn bis Montag 12 Uhr nichts kommt | Dashboard-Knopf |
-| Migration Freemail-Sperre | `20260928090000_signalwerk_suppress_freemail.sql` anwenden (Abmeldung einer Gmail-Adresse sperrt nicht mehr ganz Gmail) | anwenden |
 | Meldungen bündeln | Kaufinteresse an horbach.de, Verkäufe an gmail, Berichte an OWNER_EMAIL | eine Adresse |
+
+## 29.09.2026
+
+- **Einwilligungstext im Formular:** „6 ja“ → „I agree that … / J'accepte que … / Ich bin einverstanden, dass …“
+  statt „By clicking the button …“ (passt zur Checkbox).
+- **Antwort-Assistent:** „5 weiterlaufen“ – beantwortet weiter Leute, die selbst geschrieben haben, und Web-Probe-Anfragen.
+- **Freemail-Sperre:** „4 ja nur diese“ – Abmeldung/Bounce einer Gmail-, Outlook-, GMX-Adresse usw. sperrt nur diese
+  Adresse, nicht die ganze Domain. Migration `20260928090000_signalwerk_suppress_freemail.sql` am 29.09. angewendet.
+- **Vollständigkeit bleibt streng:** „2 nein“ – Proben und Lieferungen nur mit vollständigen Leads (Telefon, E-Mail,
+  Ansprechperson, Website, Adresse); keine Leads ohne E-Mail oder Namen.
+- Rest (Lead-Suche neu, Companies-House-Schlüssel, Versand wieder starten) später.
 
 ## 28.09.2026
 

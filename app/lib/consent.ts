@@ -3,14 +3,14 @@ import { BRAND } from "./site.ts";
 /** Einwilligungstext des Probe-Formulars. Wird serverseitig im Wortlaut gespeichert (nie aus dem Formular übernommen). */
 export function consentText(lang: string): string {
   if (lang === "fr") {
-    return `En cliquant sur le bouton, j'accepte que ${BRAND} m'envoie par e-mail, à l'adresse indiquée, un échantillon gratuit de 10 pistes ` +
+    return `J'accepte que ${BRAND} m'envoie par e-mail, à l'adresse indiquée, un échantillon gratuit de 10 pistes ` +
       `et un message de suivi à ce sujet. Je peux retirer mon accord à tout moment en répondant « désinscription ».`;
   }
   if (lang === "de") {
-    return `Mit Klick auf den Button bin ich einverstanden, dass ${BRAND} mir an die angegebene Adresse eine kostenlose Probe ` +
+    return `Ich bin einverstanden, dass ${BRAND} mir an die angegebene Adresse eine kostenlose Probe ` +
       `mit 10 Leads und eine Nachfrage dazu per E-Mail schickt. Ich kann jederzeit widersprechen, indem ich „abmelden“ antworte.`;
   }
-  return `By clicking the button I agree that ${BRAND} may email me a free sample of 10 leads and one follow-up ` +
+  return `I agree that ${BRAND} may email me a free sample of 10 leads and one follow-up ` +
     `message about it at this address. I can withdraw at any time by replying "unsubscribe".`;
 }
 
