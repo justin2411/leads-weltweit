@@ -256,12 +256,18 @@ def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str
     head = t2["p1"] if len(groups) >= 10 else f"{len(groups)} {t['firms']}"
     intro = f"""<div class="intro"><h1>{t2['intro_h_s'] if sample else t2['intro_h']}{(', ' + e(firm)) if firm else ''}.</h1>
 <p>{t2['intro_s'].replace('<b>10 ', f'<b>{len(groups)} ') if sample else t2['intro']}</p></div>"""
-    chunks, k = [], 0
-    while k < max(len(cards), 1):
-        first, rest = layout
-        size = first if k == 0 else (rest if len(cards) - k > rest - 1 else len(cards) - k)
-        chunks.append((k, cards[k:k + size]))
-        k += size
+    # Seite 1 (mit Einleitung) bis `first`, danach gleichmäßig verteilt, höchstens `rest` je Seite –
+    # nie ein einzelner Lead allein auf der letzten Seite (Inhaber 29.09.2026: 10 Leads auf 3 Seiten)
+    first, rest = layout
+    chunks, k = [(0, cards[:first])], min(first, len(cards))
+    left = len(cards) - k
+    if left:
+        n = -(-left // rest)
+        base, extra = divmod(left, n)
+        for j in range(n):
+            size = base + (1 if j < extra else 0)
+            chunks.append((k, cards[k:k + size]))
+            k += size
     total = len(chunks) + (1 if plans else 0)
     top = lambda: f"""<header class="top"><div class="logo">NextGen <i>Profit</i></div><div class="doc">{t2['doc']} · {e(when)}</div></header>"""
     foot = lambda i: f"""<footer class="ft"><span>{t['conf']}</span><span>{i} / {total}</span></footer>"""
@@ -303,24 +309,24 @@ body{{font-family:Inter,Helvetica,Arial,sans-serif;color:#1c2536;-webkit-print-c
 .intro p{{font-size:13.2px;line-height:1.6;color:#39404d;max-width:172mm}}.intro p b{{color:#0b1428;font-weight:700}}
 .sig{{margin-top:3.5mm;font-size:11.5px;font-weight:800;letter-spacing:-.2px;color:#0b1428}}.sig i{{font-style:normal;color:#b08d57}}
 .sec{{margin:0 0 4mm}}.sec h3{{font-size:8.2px;letter-spacing:.18em;text-transform:uppercase;color:#a07f46;font-weight:700}}
-.grid{{display:flex;flex-direction:column;gap:3.4mm;padding:0 .6mm 1.6mm}}
-.lead{{display:grid;grid-template-columns:11mm 1fr;gap:3mm;padding:3.8mm 4.2mm 4mm 3.6mm;background:#fff;
+.grid{{display:flex;flex-direction:column;gap:2.6mm;padding:0 .6mm 1.4mm}}
+.lead{{display:grid;grid-template-columns:11mm 1fr;gap:2.6mm;padding:2.9mm 3.8mm 3mm 3.2mm;background:#fff;
   border:.2mm solid #ebe6db;border-radius:3mm;box-shadow:0 .5mm 1.2mm rgba(11,20,40,.06),0 1.6mm 4.5mm rgba(11,20,40,.07);
   overflow:hidden;break-inside:avoid}}
 .no{{font-size:20px;font-weight:800;color:#d9c49a;letter-spacing:-.5px;line-height:1}}
-.main{{min-width:0;display:flex;flex-direction:column;gap:2.6mm}}
+.main{{min-width:0;display:flex;flex-direction:column;gap:2mm}}
 .hd{{display:flex;justify-content:space-between;gap:5mm;align-items:flex-start}}
 h2{{font-size:16px;font-weight:800;color:#0b1428;letter-spacing:-.35px;line-height:1.15}}
 .meta{{font-size:9px;color:#7b8394;margin-top:.8mm}}
 .tags{{display:flex;gap:1.5mm;flex:none;margin-top:.5mm}}
 .pr,.sg{{font-size:6.9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:.8mm 2.2mm;border-radius:99px;white-space:nowrap;border:.2mm solid #e3d6b8;color:#8a6a33;background:#fbf7ee}}
 .pr.p-high{{background:#0b1428;border-color:#0b1428;color:#f3e1b9}}
-.facts{{display:grid;grid-template-columns:repeat(3,1fr);gap:1.8mm 5mm}}
+.facts{{display:grid;grid-template-columns:repeat(3,1fr);gap:1.4mm 5mm}}
 .f{{display:flex;gap:2mm;align-items:flex-start;min-width:0}}
 .f svg{{flex:none;width:3.6mm;height:3.6mm;margin-top:.6mm;fill:none;stroke:#b08d57;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}}
 .f div{{min-width:0}}.f span{{display:block;font-size:6.4px;letter-spacing:.14em;text-transform:uppercase;color:#9aa1ae;font-weight:700}}
 .f b{{display:block;font-size:9.4px;font-weight:700;color:#0b1428;overflow-wrap:anywhere;line-height:1.3}}
-.brief{{display:grid;grid-template-columns:1.05fr 1fr 1.1fr;gap:5mm;padding-top:2.6mm;border-top:.2mm dashed #e6e1d6}}
+.brief{{display:grid;grid-template-columns:1.05fr 1fr 1.1fr;gap:5mm;padding-top:2mm;border-top:.2mm dashed #e6e1d6}}
 h4{{font-size:6.8px;letter-spacing:.16em;text-transform:uppercase;color:#a07f46;font-weight:700;margin-bottom:1.2mm}}
 .brief p,.brief li{{font-size:8.8px;line-height:1.48;color:#2b3446}}
 .brief p+p{{margin-top:1.2mm}}.brief b{{color:#0b1428}}.brief i{{color:#475064}}
