@@ -303,9 +303,10 @@ body{{font-family:Inter,Helvetica,Arial,sans-serif;color:#1c2536;-webkit-print-c
 .intro p{{font-size:13.2px;line-height:1.6;color:#39404d;max-width:172mm}}.intro p b{{color:#0b1428;font-weight:700}}
 .sig{{margin-top:3.5mm;font-size:11.5px;font-weight:800;letter-spacing:-.2px;color:#0b1428}}.sig i{{font-style:normal;color:#b08d57}}
 .sec{{margin:0 0 4mm}}.sec h3{{font-size:8.2px;letter-spacing:.18em;text-transform:uppercase;color:#a07f46;font-weight:700}}
-.grid{{display:flex;flex-direction:column}}
-.lead{{display:grid;grid-template-columns:11mm 1fr;gap:3mm;padding:3.6mm 0 3.8mm;border-bottom:.2mm solid #eceae4;overflow:hidden}}
-.lead:last-child{{border-bottom:0}}
+.grid{{display:flex;flex-direction:column;gap:3.4mm;padding:0 .6mm 1.6mm}}
+.lead{{display:grid;grid-template-columns:11mm 1fr;gap:3mm;padding:3.8mm 4.2mm 4mm 3.6mm;background:#fff;
+  border:.2mm solid #ebe6db;border-radius:3mm;box-shadow:0 .5mm 1.2mm rgba(11,20,40,.06),0 1.6mm 4.5mm rgba(11,20,40,.07);
+  overflow:hidden;break-inside:avoid}}
 .no{{font-size:20px;font-weight:800;color:#d9c49a;letter-spacing:-.5px;line-height:1}}
 .main{{min-width:0;display:flex;flex-direction:column;gap:2.6mm}}
 .hd{{display:flex;justify-content:space-between;gap:5mm;align-items:flex-start}}
