@@ -70,6 +70,8 @@ def incorporations(since: dt.date, log=print) -> list[dict]:
         head = [h.strip() for h in next(reader)]
         ix = {h: i for i, h in enumerate(head)}
         for row in reader:
+            if len(row) < len(head):  # vereinzelt kaputte Zeilen in den Massendaten
+                continue
             inc = _date(row[ix["IncorporationDate"]])
             if not inc or inc < since or row[ix["CompanyStatus"]] != "Active":
                 continue
