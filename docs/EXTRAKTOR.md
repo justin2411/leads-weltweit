@@ -88,3 +88,26 @@ der Do-Not-Call-Liste abgleichen (TCPA). Gehört in die Lieferbedingungen.
 - SSA-Vornamen + Census-Nachnamen statt gender-guesser (bessere Namensprüfung für US-Namen).
 - Overture Maps Places (Websites/Telefon, offene Lizenz) für mehr Website-Treffer in UK/FR.
 - S1/S2 für UK/FR: eigene Quellen nötig (Einstellungs-Signal bzw. Kontakt ohne Website).
+
+## Testlauf 01.10.2026 (ehrliche Zahlen)
+
+Grün = beide Kontrollen bestanden, lieferbar. Gelb = Pflichtangabe fehlt (meist E-Mail/Website) → Reserve zum
+Anreichern. Rot = falsch/widersprüchlich, nie liefern.
+
+| Branche | USA grün | UK grün | FR grün | Quelle(n) |
+|---|---|---|---|---|
+| S1 Personalvermittlung | 46 (von 335) | – | – | SEC Form D (30 Tage) |
+| S2 Webagenturen | 100 (129 möglich) | – | – | FMCSA (Firmen ohne Website) |
+| S4 Versicherungsmakler | 100 | 10 (von 1.000) | 27 (von 1.000) | FMCSA / Companies House / BODACC |
+| S5 Buchhaltung | 100 | 14 (von 1.500) | 27 (von 1.500) | Form D + FMCSA / Companies House / BODACC |
+| S9 Finanzberater | 59 (von 441) | 7 (von 1.000) | 24 (von 1.000) | Form D / Companies House / BODACC |
+
+Insgesamt 514 grüne Leads (USA 405, FR 78, UK 31), 8.692 bearbeitet. Gegenprobe: keine fehlenden Pflichtfelder,
+Signale höchstens 28 Tage alt. Kosten: 0 €.
+
+Lehren:
+- USA liefert, weil FMCSA/SEC Telefon, E-Mail und Namen mitbringen.
+- UK/FR-Neugründungen haben selten schon eine Website mit Kontakt: 1–3 % grün. Für Menge in UK/FR braucht es
+  Quellen mit Kontaktdaten oder etablierte Firmen mit Ereignis (nächste Ausbaustufe), nicht nur Neugründungen.
+- S1 braucht ein Einstellungs-Signal; Form D allein reicht für 100 nicht.
+- Läufe parallel je Branche (GitHub/Container-Zeitlimit), danach `merge.py`.
