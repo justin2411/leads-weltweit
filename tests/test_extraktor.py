@@ -393,6 +393,45 @@ class WerkeTests(unittest.TestCase):
         self.assertEqual(store_raw(db, rows), 1)
         self.assertEqual(sorted(c["domain"] for c in db.tables["watch_companies"]), ["jsbarbershop.com", "new-shop.co.uk"])
 
+    def test_store_many_splits_block_on_statement_timeout(self):
+        """Lauf 01.10.2026: 500/57014 auf observations bei großen Blöcken – ~8.100 grüne S2-Leads gingen verloren."""
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from fakedb import FakeDB
+        from extraktor import store as S
+
+        class SlowDB(FakeDB):
+            base = "x"
+
+            def __init__(self):
+                super().__init__()
+                outer = self
+
+                class Sess:
+                    def delete(self, url, params, timeout):
+                        table = url.rsplit("/", 1)[1]
+                        (col, cond), = params.items()
+                        ids = set(cond[4:-1].split(","))
+                        outer.tables[table] = [r for r in outer.tables.get(table, []) if r.get(col) not in ids]
+                self.s, self.timeout = Sess(), 1
+
+            def insert(self, table, rows, **kw):
+                if table == "observations" and len(rows) > 5 * 6:  # mehr als 6 Firmen je Block: Zeitüberschreitung
+                    raise RuntimeError('Supabase POST observations: 500 {"code":"57014"}')
+                return super().insert(table, rows, **kw)
+
+        base = {"segment": "S2", "source": "overture", "street": "1 High St", "city": "Leeds", "state": "",
+                "zip": "LS1 1AA", "country": "UK", "phone": "+441132000000", "email": "info@x.co.uk",
+                "phone_type": "landline", "email_type": "generic", "contact_name": "", "contact_role": "Owner",
+                "qc": "green", "sc": "ok", "qc_notes": "", "company_info": "", "signal": "no website",
+                "source_url": "", "signal_date": "2026-10-01", "opener": "Hi", "urgency": "medium",
+                "urgency_reason": "", "phone_note": ""}
+        rows = [dict(base, source_id=str(i), company=f"Shop {i}", website=f"https://shop{i}.co.uk") for i in range(40)]
+        db = SlowDB()
+        self.assertEqual(S.store_many(db, rows, today="2026-10-01", chunk=20), 40)
+        self.assertEqual(len(db.tables["leads"]), 40)
+        self.assertEqual(len(db.tables["watch_companies"]), 40)  # keine Firma doppelt oder ohne Lead
+        self.assertEqual(len(db.tables["observations"]), 200)
+
     def test_kundenwerk_categories_map_to_real_segments(self):
         import kundenwerk as K
         self.assertTrue(set(K.CATEGORIES.values()) <= {"S1", "S2", "S3", "S4", "S5", "S6", "S7", "S9", "S10", "S12"})
@@ -609,3 +648,32 @@ class GithubProTests(unittest.TestCase):
         for jobs, name in ((lead, "lead-werk.yml"), (kunden, "kunden-werk.yml")):
             self.assertIn(f"gh workflow run {name}", jobs["weiter"]["steps"][-1]["run"])
             self.assertEqual(jobs["weiter"]["permissions"]["actions"], "write")
+
+
+class IrelandRegisterTests(unittest.TestCase):
+    """Scout-Sprint 01.10.2026: Rechtsform irischer Käufer aus dem CRO-Register."""
+
+    def test_unique_active_company_gives_form(self):
+        from extraktor.sources import ie_cro
+        rows = [{"company_num": "1", "company_name": "MURPHY PLUMBING SERVICES LIMITED", "company_status": "Normal ",
+                 "company_type": "LTD - Private Company Limited by Shares"},
+                {"company_num": "2", "company_name": "BEARA DISTILLERY LTD", "company_status": "Dissolved",
+                 "company_type": "LTD - Private Company Limited by Shares"},
+                {"company_num": "3", "company_name": "GREEN GARDENS LIMITED", "company_status": "Normal",
+                 "company_type": "LTD - Private Company Limited by Shares"},
+                {"company_num": "4", "company_name": "GREEN GARDENS DAC", "company_status": "Normal",
+                 "company_type": "DAC - Designated Activity Company"},
+                {"company_num": "5", "company_name": "ACME WIDGETS INTERNATIONAL", "company_status": "Normal",
+                 "company_type": "External company"}]
+        idx = ie_cro.index(rows)
+        got = ie_cro.match({"a.ie": "Murphy Plumbing Services", "b.ie": "Beara Distillery Ltd",
+                            "c.ie": "Green Gardens", "d.ie": "Acme Widgets International", "e.ie": "Bob"}, idx)
+        self.assertEqual(got, {"a.ie": {"number": "1", "form": "Ltd"}})  # aufgelöst, doppelt, ausländisch, zu kurz: nein
+
+    def test_forms_are_company_forms(self):
+        from extraktor.sources import ie_cro
+        from lib.rules import is_company_form
+        for t in ("LTD - Private Company Limited by Shares", "DAC - Designated Activity Company",
+                  "CLG - Company Limited by Guarantee", "PLC - Public Limited Company"):
+            self.assertTrue(is_company_form("IE", ie_cro.form_of(t)), t)
+        self.assertIsNone(ie_cro.form_of("External company"))

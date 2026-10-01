@@ -173,6 +173,9 @@ def check_one(d: dict, fetcher, cfg: dict, generic: set[str], blocked: set[str])
     if (d.get("fr_reg") or {}).get("form") and not legal:
         # FR: eindeutiger Treffer im Firmenregister (Annuaire des entreprises / SIRENE)
         legal, size_note = d["fr_reg"]["form"], f"SIREN {d['fr_reg']['siren']} (Annuaire des entreprises, Name + PLZ)"
+    if (d.get("ie_reg") or {}).get("form") and not legal:
+        # IE: eindeutiger Name im Firmenregister (CRO Open Data) -> Kapitalgesellschaft
+        legal, size_note = d["ie_reg"]["form"], f"Company No. {d['ie_reg']['number']} (CRO, Name)"
     suppressed = d["domain"] in blocked or bool(email and email.lower() in blocked)
     chk = check_prospect(email=email, country=d["country"], website=d["website"], legal_form=legal,
                          source_url=src, size_note=size_note,
@@ -241,6 +244,12 @@ def cmd_run(args) -> int:
         nums = uk_ch.match_by_name(uk, log=log)
         for d in pool:
             d["ch_number"] = nums.get(d["domain"])
+    ie = {d["domain"]: d["name"] for d in pool if d["country"] == "IE"}
+    if ie:
+        from extraktor.sources import ie_cro
+        ie_hits = ie_cro.match_by_name(ie, log=log)
+        for d in pool:
+            d["ie_reg"] = ie_hits.get(d["domain"])
     fr = {d["domain"]: (d["name"], d.get("postcode")) for d in pool if d["country"] == "FR"}
     if fr:
         # FR: Rechtsform aus dem offenen Firmenregister (SIRENE), sonst blieben fast alle „nur Anruf/Brief“
