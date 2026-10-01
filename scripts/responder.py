@@ -359,7 +359,6 @@ def regional_sample(db, seg: str, country: str, region: str | None,
     from lib.regions import area_of, lead_matches
     from lib.wishes import prefer
     area = None  # Leads aus dem ganzen Land (Inhaber 27.09.2026), keine Regionsauswahl mehr
-    known = contact_companies(db, website_optional=(seg == "S2")) if REQUIRE_CONTACT else None
     # Exklusiv (Inhaber 01.10.2026: „jeder lead geht nur an einen käufer“): jede Probe bekommt frische Leads (status new),
     # die danach als sample markiert und nie wieder ausgegeben werden – weder in einer anderen Probe noch in einer Lieferung.
     rows = db.select_all("leads", {"segment_id": f"eq.{seg}", "country": f"eq.{country}", "status": "eq.new",
@@ -368,12 +367,18 @@ def regional_sample(db, seg: str, country: str, region: str | None,
                                          "watch_companies(name,legal_form,city,region,address,website,website_checked_at)",
                                "order": "event_date.desc,id"})
     if wish:
-        if known is not None:
-            rows = [l for l in rows if l["company_id"] in known]
         rows = prefer(rows, wish, _sic_lookup(db, rows) if "fleet_warehouse" in wish else None)
+    # Vollständigkeit nur blockweise für die nächsten Kandidaten prüfen (bei 90.000+ Leads war die Prüfung aller
+    # Firmen zu langsam; Test 01.10.2026)
+    known = {} if REQUIRE_CONTACT else None
+    checked = 0
     picked, per = [], {}
-    for l in rows:
+    for n, l in enumerate(rows):
         co = l["watch_companies"]
+        if known is not None and n >= checked:
+            block = sorted({r["company_id"] for r in rows[n:n + 300]})
+            known.update(contact_companies(db, website_optional=(seg == "S2"), only=block))
+            checked = n + 300
         if known is not None and l["company_id"] not in known:
             continue
         name = _firm_key(co)

@@ -126,20 +126,28 @@ def add_industry(db, leads: list[dict]) -> None:
                     l["_tip"], l["_question"] = hint[0], hint[1] if len(hint) > 1 else ""
 
 
-def contact_companies(db, website_optional: bool = False) -> dict[str, dict]:
+def contact_companies(db, website_optional: bool = False, only: list[str] | None = None) -> dict[str, dict]:
     """Firmen mit VOLLSTÄNDIGEN Daten – nur diese gehen an Kunden und in Proben (Inhaber 27.09.2026: „wichtig ist,
     dass man immer alle Daten der Leads hat und die dann erst rausschickt“): Telefon und Sammel-E-Mail
-    (watch.py contacts), Website und Adresse (watch_companies) und Ansprechperson (watch.py people)."""
-    rows = db.select_all("observations", {"kind": "eq.other", "key": "eq.contact", "details->>email": "not.is.null",
-                                          "details->>phone": "not.is.null", "select": "company_id,details,source_url"})
+    (watch.py contacts), Website und Adresse (watch_companies) und Ansprechperson (watch.py people).
+    only: nur diese Firmen prüfen (Proben: schnell statt aller Firmen im Bestand)."""
+    def obs(params: dict) -> list[dict]:
+        if only is None:
+            return db.select_all("observations", params)
+        out = []
+        for i in range(0, len(only), 150):
+            out += db.select("observations", {**params, "company_id": f"in.({','.join(only[i:i + 150])})"})
+        return out
+    rows = obs({"kind": "eq.other", "key": "eq.contact", "details->>email": "not.is.null",
+                "details->>phone": "not.is.null", "select": "company_id,details,source_url"})
     found = {r["company_id"]: {**r["details"], "page": r.get("source_url")} for r in rows}
     # Ansprechperson: Name, sonst Rolle („Fehlt ein Name, steht die Rolle“, CLAUDE.md §9; S1/S2-Rolle 01.10.2026)
-    people = {r["company_id"] for r in db.select_all("observations", {"kind": "eq.other", "key": "eq.person",
-                                                                       "or": "(details->>name.not.is.null,details->>role.not.is.null)",
-                                                                       "select": "company_id"})}
+    people = {r["company_id"] for r in obs({"kind": "eq.other", "key": "eq.person",
+                                            "or": "(details->>name.not.is.null,details->>role.not.is.null)",
+                                            "select": "company_id"})}
     # enrich.py: Daten widersprechen sich (Website nicht geprüft, E-Mail-Domain fremd, Vorwahl aus anderem Land)
-    blocked = {r["company_id"] for r in db.select_all("observations", {"kind": "eq.other", "key": "eq.quality",
-                                                                        "details->>blocking": "eq.true", "select": "company_id"})}
+    blocked = {r["company_id"] for r in obs({"kind": "eq.other", "key": "eq.quality",
+                                             "details->>blocking": "eq.true", "select": "company_id"})}
     ids = sorted((set(found) & people) - blocked)
     complete = set()
     for i in range(0, len(ids), 100):
