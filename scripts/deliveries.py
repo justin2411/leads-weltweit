@@ -124,6 +124,29 @@ def add_industry(db, leads: list[dict]) -> None:
                 hint = industry_hint(l.get("segment_id") or "", sic)
                 if hint:
                     l["_tip"], l["_question"] = hint[0], hint[1] if len(hint) > 1 else ""
+    # Werke-Leads ohne SIC: Branche aus der Firma (z. B. FMCSA „Motor carrier“)
+    rest = sorted({l["company_id"] for l in leads if not l.get("_industry") and l.get("company_id")})
+    ind = {}
+    for i in range(0, len(rest), 100):
+        for c in db.select("watch_companies", {"id": f"in.({','.join(rest[i:i + 100])})", "select": "id,industry"}):
+            if c.get("industry"):
+                ind[c["id"]] = c["industry"]
+    for l in leads:
+        if not l.get("_industry") and l.get("company_id") in ind:
+            l["_industry"] = ind[l["company_id"]]
+
+
+LEGAL_FORMS = re.compile(r"\b(LLC|L\.L\.C\.|Inc\.?|Corp\.?|Corporation|Co\.|LLP|LP|PLLC|PC|Ltd\.?|Limited|PLC|"
+                         r"SAS|SASU|SARL|EURL|SA|SCI)\s*$", re.I)
+
+
+def legal_form_of(name: str) -> str:
+    """Rechtsform aus dem Firmennamen (Werke speichern sie nicht getrennt)."""
+    m = LEGAL_FORMS.search((name or "").strip().rstrip(","))
+    if not m:
+        return ""
+    f = m.group(1).rstrip(".")
+    return "LLC" if f.upper() in ("LLC", "L.L.C") else f
 
 
 def contact_companies(db, website_optional: bool = False, only: list[str] | None = None) -> dict[str, dict]:
@@ -218,7 +241,7 @@ def to_csv(leads: list[dict], lang: str = "en", area: str | None = None) -> byte
         w.writerow([co.get("name", ""), l.get("_phone", ""), l.get("_email", ""), l.get("_website", ""), where,
                     company_profile(l, lang), l["event_summary"], l.get("event_date") or "", l["urgency_reason"],
                     l["urgency"], l.get("signal_type") or "", l.get("_tip", ""), l.get("_question", ""), l["opener"],
-                    l["source_name"], l["source_date"], co.get("legal_form") or "",
+                    l["source_name"], l["source_date"], co.get("legal_form") or legal_form_of(co.get("name", "")),
                     l.get("_industry", ""), co.get("address") or "", l.get("_person", ""), l.get("_person_role", "")])
     # BOM, damit Excel Umlaute und Akzente richtig anzeigt
     return ("\ufeff" + buf.getvalue()).encode("utf-8")

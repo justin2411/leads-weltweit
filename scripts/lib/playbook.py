@@ -24,7 +24,7 @@ GROUP_WORDS = [
     ("hospitality", r"restaurant|caf[eé]|coffee|food|beverage|\bbar\b|\bpub\b|hotel|catering|bakery|takeaway"),
     ("construction", r"construct|build|roof|plumb|electric|joiner|carpent|civil eng|install|renovat"),
     ("retail", r"retail|shop|store|e-?commerce|wholesale|boutique"),
-    ("transport", r"transport|freight|logistic|haulage|courier|delivery|taxi|removal"),
+    ("transport", r"transport|freight|logistic|haulage|hauling|courier|delivery|taxi|removal|carrier|trucking"),
     ("property", r"real estate|property|letting|landlord|estate agent|housing"),
     ("tech", r"software|computer|\bit\b|digital|\bdata\b|tech|\bweb\b|\bapp\b|cyber"),
     ("health", r"health|dental|medical|clinic|\bcare\b|pharma|therap|wellness|fitness|nursing"),
@@ -39,7 +39,16 @@ ROLE_WORDS = [
     ("logistics", r"driver|warehouse|courier|forklift|logistic|delivery|picker"),
     ("trades", r"technician|electrician|plumber|joiner|mechanic|welder|fitter|engineer|operative|builder"),
 ]
-US_TERMS = [("VAT registration and the domestic reverse charge on building work", "Sales tax on materials and equipment where it applies"),
+US_TERMS = [("Public and employers' liability", "General liability and workers' comp"),
+            ("employers' and public liability", "general liability and workers' comp"),
+            ("Employers' liability", "Workers' comp"), ("employers' liability", "workers' comp"),
+            ("Public liability", "General liability"), ("public liability", "general liability"),
+            ("Fleet and goods-in-transit cover", "Commercial auto and motor truck cargo cover"),
+            ("fleet and goods-in-transit", "commercial auto and cargo"), ("goods-in-transit", "cargo"),
+            ("Cover for hired-in vehicles", "Hired and non-owned auto cover"),
+            ("Professional indemnity", "Professional liability (E&O)"),
+            ("professional indemnity", "professional liability (E&O)"),
+            ("VAT registration and the domestic reverse charge on building work", "Sales tax on materials and equipment where it applies"),
             ("CIS returns for subcontractors every month from the first job", "1099 reporting and payments for subcontractors from the first job"),
             ("A CIS and VAT setup package", "A 1099 and sales tax setup package"), ("monthly CIS returns", "1099 reporting"),
             ("CIS returns", "1099 reporting"), ("CIS", "1099 reporting"),
@@ -87,7 +96,7 @@ def briefing(signal: str, segment: str | None, event: str, date_iso: str, opener
              industry: str = "", city: str = "", country: str = "UK", sic: str = "") -> dict:
     """why (konkret), needs (3 Punkte), offer, ask, opener."""
     seg = segment if segment in PLAY else "S5"
-    grp = group_of(industry, sic)
+    grp = group_of(industry, sic) if (industry or sic) else group_of(event)  # Werke-Leads: Branche steht im Ereignis
     m = re.search(r"[“\"]([^”\"]+)[”\"]", event or "")
     role = m.group(1) if m else ""
     days = (re.search(r"open for (\d+) days", event or "") or [None, ""])[1]

@@ -52,5 +52,18 @@ class SampleSizeTest(unittest.TestCase):
         self.assertEqual(leadreport.SAMPLE_SIZE, 10)
 
 
+
+class LocalCurrencyTest(unittest.TestCase):
+    """Echter Probe-Test 01.10.2026: US-Probe zeigte £129 statt $129."""
+
+    def test_plans_use_currency_of_lead_country(self):
+        from lib.leadreport import _money, local_plans
+        plans = [{"key": "starter", "amount_cents": 12900, "currency": "gbp"}]
+        self.assertEqual(_money(local_plans(plans, "US")[0]), "$129")
+        self.assertEqual(_money(local_plans(plans, "FR")[0]), "129 €")
+        self.assertEqual(_money(local_plans(plans, "UK")[0]), "£129")
+        self.assertEqual(plans[0]["currency"], "gbp")  # Original unverändert
+
+
 if __name__ == "__main__":
     unittest.main()

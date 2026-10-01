@@ -30,7 +30,10 @@ T = {
            "prio": {"high": "High priority", "medium": "Medium priority", "low": "Low priority"},
            "src": {"register": "Official company register", "careers": "Employer's own careers page", "other": "Public company information"},
            "sig": {"new_incorporation": "New company", "job_open_30d": "Role open 30+ days", "jobs_3plus": "Several hires",
-                   "website_outdated": "Outdated website", "new_location": "New site"},
+                   "website_outdated": "Outdated website", "new_location": "New site",
+                   "new_company": "New company", "incorporation": "New company", "funding_new_company": "New company, capital raised",
+                   "funding_growth": "Capital raised", "funding_executive": "Capital raised", "new_fleet": "New carrier registration",
+                   "no_website": "No website yet", "jobs_open": "Open roles"},
            "how": "How to use this report", "how1": "Start with the high-priority companies. The event is recent, the timing is right.",
            "how2": "Use the opening line as a first sentence and adapt it to your style.",
            "how3": "Each company is reserved for your firm. No other firm in your field receives it.",
@@ -42,7 +45,11 @@ T = {
            "prio": {"high": "Priorité haute", "medium": "Priorité moyenne", "low": "Priorité basse"},
            "src": {"register": "Registre officiel des entreprises", "careers": "Page carrières de l'employeur", "other": "Informations publiques de l'entreprise"},
            "sig": {"new_incorporation": "Nouvelle entreprise", "job_open_30d": "Poste ouvert 30+ jours", "jobs_3plus": "Plusieurs recrutements",
-                   "website_outdated": "Site web ancien", "new_location": "Nouveau site"},
+                   "website_outdated": "Site web ancien", "new_location": "Nouveau site",
+                   "new_company": "Nouvelle entreprise", "incorporation": "Nouvelle entreprise",
+                   "funding_new_company": "Nouvelle entreprise, levée de fonds", "funding_growth": "Levée de fonds",
+                   "funding_executive": "Levée de fonds", "new_fleet": "Nouveau transporteur enregistré",
+                   "no_website": "Pas encore de site web", "jobs_open": "Postes ouverts"},
            "how": "Comment utiliser ce rapport", "how1": "Commencez par les entreprises en priorité haute. L'événement est récent, le moment est bon.",
            "how2": "Utilisez la phrase d'accroche comme première phrase et adaptez-la à votre style.",
            "how3": "Chaque entreprise est réservée à votre entreprise. Aucune autre entreprise de votre secteur ne la reçoit.",
@@ -170,6 +177,14 @@ T2 = {
            "custom_t": "Dites-nous combien de pistes il vous faut par semaine, nous vous faisons une offre adaptée à votre équipe."},
 }
 CUR = {"gbp": "£", "eur": "€", "usd": "$"}
+# Preise in allen Ländern gleich, in der Landeswährung (Inhaber 29.09.2026: Starter 129, Pro 249 in £, $, €)
+LOCAL_CUR = {"UK": "gbp", "US": "usd", "FR": "eur", "IE": "eur", "NL": "eur", "BE": "eur"}
+
+
+def local_plans(plans: list[dict] | None, country: str) -> list[dict] | None:
+    if not plans or country not in LOCAL_CUR:
+        return plans
+    return [dict(p, currency=LOCAL_CUR[country]) for p in plans]
 # Leads kommen aus dem ganzen Land (Inhaber 27.09.2026) – im Report nur das Land, keine Region
 COUNTRY_NAME = {"en": {"UK": "United Kingdom", "US": "United States", "FR": "France", "IE": "Ireland", "NL": "Netherlands"},
                 "fr": {"UK": "Royaume-Uni", "US": "États-Unis", "FR": "France", "IE": "Irlande", "NL": "Pays-Bas"}}
@@ -455,7 +470,7 @@ def attachments(csv_bytes: bytes, lang: str, area: str | None = None, firm: str 
         # Probe immer mit genau 10 verschiedenen Firmen (Inhaber 29.09.2026) – sonst lieber gar nicht senden
         print(f"Probe nicht erstellt: {len(groups)} statt {SAMPLE_SIZE} Firmen")
         return []
-    pdf = render_pdf(csv_bytes, lang, area, firm, period, plans, cta_url, segment, country)
+    pdf = render_pdf(csv_bytes, lang, area, firm, period, local_plans(plans, country), cta_url, segment, country)
     if pdf:
         out.append((f"NextGen-Profit-Lead-Report{slug}.pdf", pdf))
     out.append((f"{name}{slug}.csv", clean_csv(csv_bytes, lang, segment, country)))
