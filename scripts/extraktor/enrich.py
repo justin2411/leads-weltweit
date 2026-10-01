@@ -73,6 +73,13 @@ def check_site(url: str, c: dict, fetcher, from_email: bool) -> dict | None:
     site["score"] = score
     if from_email:
         site["verified"] = not site["conflicts"] and score >= 20
+    elif c["country"] in ("UK", "FR") and not site["conflicts"]:
+        # UK/FR: Firmennamen sind im Register einmalig. Starke Belege: Registernummer, Postleitzahl des Sitzes,
+        # exakter Name mit Rechtsform + Domain = Name, Telefon. Domain = Name allein reicht nie.
+        e = set(site["evidence"])
+        site["verified"] = (score >= W.THRESHOLD or "registry_id" in e or "phone_on_site" in e
+                            or ("postcode" in e and score >= 35)
+                            or {"name_full_legal", "domain_equals_name"} <= e)
     else:
         site["verified"] = not site["conflicts"] and score >= W.THRESHOLD
     site["_phones"], _ = W.phones_on_page("\n".join(pages), c["country"])
