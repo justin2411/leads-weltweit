@@ -5,7 +5,7 @@
 # Lädt KEINE Lead-Dateien hoch (öffentliches Repo) – nur den Zählbericht. Sendet nichts.
 # Schalter: config/pipeline.yaml lead_suche. robots.txt, höchstens 1 Abruf/s je Domain, keine gesperrten Plattformen.
 # GitHub Pro voll nutzen (Inhaber 01.10.2026: „maximale Effizienz für GitHub Pro“): 40 Jobs gleichzeitig = 30 Lead-Werk
-# + 8 Kunden-Werk + 2 frei für Tagesablauf/Tagescheck/Wachhund. Jeder Teil hört nach 150 Minuten auf, neue Firmen
+# + 8 Kunden-Werk + 2 frei für Tagesablauf/Tagescheck/Wachhund. Jeder Teil hört nach 75 Minuten auf, neue Firmen
 # anzufangen, und speichert (--deadline-min), damit kein Nachzügler die übrigen Plätze blockiert; danach startet sich
 # das Werk selbst neu (Job „weiter“). Cron und Wachhund bleiben als Rückfall.
 name: lead-werk
@@ -19,7 +19,7 @@ permissions:
 jobs:
   holen:
     runs-on: ubuntu-latest
-    timeout-minutes: 200
+    timeout-minutes: 130
     strategy:
       fail-fast: false
       # 30 Teile, alle gleichzeitig (Inhaber 01.10.2026: „Erhöhe die lead läufe auf 30“, GitHub Pro: 40 Jobs
@@ -94,7 +94,7 @@ jobs:
             lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-
       - name: Leads holen, prüfen, speichern
         if: steps.gate.outputs.an == 'true'
-        run: python scripts/extraktor/run.py ${{ matrix.args }} --workers 16 --db --store --out out/lead-werk --deadline-min 150
+        run: python scripts/extraktor/run.py ${{ matrix.args }} --workers 16 --db --store --out out/lead-werk --deadline-min 75
       - name: Zwischenspeicher sichern
         if: always() && steps.gate.outputs.an == 'true'
         uses: actions/cache/save@v4

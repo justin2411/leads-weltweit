@@ -48,7 +48,7 @@ länger als eine Stunde dauern, hier mit Stand eintragen und in der nächsten Ru
 
 **GitHub-Pro-Aufteilung (01.10. 21 Uhr, Inhaber: „maximale Effizienz für GitHub Pro“):** 40 Jobs gleichzeitig =
 30 Lead-Werk (eine Welle, `max-parallel` = Zahl der Teile) + 8 Kunden-Werk + 2 frei für Tagesablauf/Tagescheck.
-Zeitfenster `--deadline-min` (Lead 150, Kunden 90): danach keine neuen Firmen, Ergebnisse speichern; Job `weiter`
+Zeitfenster `--deadline-min` (Lead 75, Kunden 90; Lead von 150 auf 75 gesenkt: S2-Teile sind nach ~60 min fertig, die Register-Teile hielten sonst 27 Plätze 1,5 h leer): danach keine neuen Firmen, Ergebnisse speichern; Job `weiter`
 startet das Werk sofort neu (nur bei Schalter an und Laufzeit ≥ 10 min; GitHub lässt geplante Wachhund-Läufe unter Last ausfallen). Neue Quellen als Teil einbauen heißt:
 einen bestehenden Teil derselben Quelle abgeben oder die Summe ≤ 38 halten (Test `GithubProTests`).
 
@@ -102,3 +102,5 @@ einen bestehenden Teil derselben Quelle abgeben oder die Summe ≤ 38 halten (Te
 | 01.10.2026 (Sprint R2) | Betrieb | Werke | us-ct-1 scheiterte an FMCSA-Zeitüberschreitung trotz `--fmcsa-days 0` -> abgeschaltete Quellen werden nicht mehr geladen, FMCSA-Abrufe wiederholt; GitHub startet geplante Wachhund-Läufe seit 20:29 nicht -> Selbst-Neustart der Werke ab 10 min (PR #94). Käufer ok gesamt 36.412 (+16.811 in 1 h), Leads 114.652 (+5.018 in 1 h), DB 417 MB |
 | 01.10.2026 (Sprint R3) | **CRO Open Data** (opendata.cro.ie, Massendownload aller irischen Firmen, ohne Schlüssel) | Käufer IE (Rechtsform) | **eingebaut** (`sources/ie_cro.py`, Kunden-Werk): eindeutiger aktiver Name -> Ltd/DAC/CLG/PLC; Test 97.337 irische Overture-Firmen mit Website: 12.842 (13 %) eindeutig, 96 % LTD. Vorher IE nur 6 Käufer ok, Hauptgrund „Rechtsform ?“ |
 | 01.10.2026 (Sprint R3) | Betrieb | Lead-Werk | 6 Teile verloren je eine Branche durch 57014 (statement timeout) beim Schreiben in observations, ~8.100 grüne S2-Leads UK/FR -> Blöcke 100, bei Zeitüberschreitung halbieren (PR #95). Stand: Leads 156.726 (+42.074 in 1 h), Käufer ok US 52.599, UK 4.368, FR 1.015, SE 34, BE 23, NL 21, IE 6; DB 655 MB |
+| 02.10.2026 (Sprint R4) | Bolagsverket „Värdefulla datamängder“ (SE, Rechtsform) | Käufer SE | nicht nutzbar: Seite hinter Bot-Schutz (F5/TSPD), kein direkter Download erreichbar – später erneut prüfen |
+| 02.10.2026 (Sprint R4) | Betrieb | Lead-Werk | Lauf 21:15 endete erst 23:48: 27 Teile nach ~1 h fertig, uk-register hielt 150 min -> Zeitfenster Lead auf 75 min. Käufer ok: US 64.812, UK 5.697, FR 1.360, NL 82, BE 73, SE 77, IE 42 |
