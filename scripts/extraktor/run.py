@@ -299,7 +299,7 @@ def ampel(l: dict) -> str:
 
 
 def run_segment(seg: str, pool: list[dict], per: int, fetcher, shared: Counter, guard: filters.Guard,
-                workers: int, max_tries: int) -> list[dict]:
+                workers: int, max_tries: int, progress=None) -> list[dict]:
     """Kandidaten in Wellen parallel bearbeiten, bis `per` grüne Leads da sind oder der Vorrat leer ist."""
     done, i, started = [], 0, time.monotonic()
     queue = pool[:max_tries]
@@ -312,6 +312,8 @@ def run_segment(seg: str, pool: list[dict], per: int, fetcher, shared: Counter, 
                 l["ampel"] = ampel(l)
                 done.append(l)
             log(f"  {seg}: {len(done)} bearbeitet, {sum(l['ampel'] == 'green' for l in done)} grün")
+            if progress and len(done) % 500 < len(batch):
+                progress(done)  # Zwischenstand sichern (große Läufe)
     log(f"{seg}: {len(done)} bearbeitet, {sum(l['ampel'] == 'green' for l in done)} grün "
         f"({time.monotonic() - started:.0f} s)")
     return done
@@ -390,6 +392,7 @@ def main(argv=None) -> int:
     ap.add_argument("--eu-pool", type=int, default=15000, help="UK: höchstens so viele Neugründungen vorab auswählen")
     ap.add_argument("--s1-probe", type=int, default=3000, help="S1 UK/US: so viele Karriereseiten prüfen")
     ap.add_argument("--s2-limit", type=int, default=3000, help="S2 UK/FR: so viele Overture-Firmen ohne Website laden")
+    ap.add_argument("--shard", default="", help="i/n: nur jeden n-ten Kandidaten ab i (parallele Teilläufe)")
     ap.add_argument("--out", default="out/extraktor")
     args = ap.parse_args(argv)
     countries = [x.strip().upper() for x in args.countries.split(",") if x.strip()]
@@ -417,6 +420,9 @@ def main(argv=None) -> int:
     for co in ("UK", "FR"):
         if co in countries and "S2" in segs:
             p[f"S2/{co}"] = [c for c in load_overture_s2(co, args.s2_limit, stats) if segments.fits("S2", c)[0]]
+    if args.shard:
+        i, n = (int(x) for x in args.shard.split("/"))
+        p = {k: v[i::n] for k, v in p.items()}
     keys = [k for k in p if p[k]]
     log("Kandidaten je Branche: " + ", ".join(f"{k} {len(p[k])}" for k in keys))
 
@@ -429,7 +435,8 @@ def main(argv=None) -> int:
     leads = []
     for key in keys:
         seg = key.split("/")[0]
-        leads += run_segment(seg, p.get(key, []), args.per, fetcher, shared, guard, args.workers, args.max_tries)
+        leads += run_segment(seg, p.get(key, []), args.per, fetcher, shared, guard, args.workers, args.max_tries,
+                             progress=lambda part: write(out, leads + part, args.per))
         write(out, leads, args.per)  # nach jeder Branche sichern (Abbruch kostet nur die laufende Branche)
     sc.batch_unique([l for l in leads if l["ampel"] in ("green", "yellow")])
     for l in leads:
