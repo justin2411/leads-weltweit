@@ -52,7 +52,7 @@ def _allowed_numbers(c: dict, t: dict) -> set[str]:
 
 def _numbers(text: str) -> list[str]:
     # Zahlen ohne angehängte Buchstaben; Telefon/E-Mail kommen in Texten nicht vor
-    return [n.strip(",") for n in re.findall(r"(?<![A-Za-z])\d[\d,]*(?:\.\d+)?", text or "")]
+    return [n.strip(",") for n in re.findall(r"(?<![A-Za-z0-9])\d[\d,]*(?:\.\d+)?(?![A-Za-z])", text or "")]
 
 
 def run(c: dict, seg: str, t: dict, today: dt.date | None = None) -> dict:

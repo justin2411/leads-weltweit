@@ -177,6 +177,26 @@ class SignalTests(unittest.TestCase):
         self.assertEqual(a["sc"]["status"], "fail")
 
 
+class FixTests(unittest.TestCase):
+    def test_number_inside_company_name_is_not_invented(self):
+        c = fd_candidate()
+        c["name"] = c["legal_name"] = "F42 Corp"
+        t = segments.texts("S1", c)
+        self.assertFalse([p for p in sc.run(c, "S1", t)["problems"] if "number_not_in_facts" in p])
+
+    def test_implausible_fleet_is_red(self):
+        c = fm_candidate(total_drivers="800")
+        c["evidence"] = {"mx": True}
+        self.assertTrue(any(b.startswith("implausible_fleet") for b in qc.run(c, "S4")["blocking"]))
+
+    def test_s5_from_fmcsa_and_name_in_signal(self):
+        c = fm_candidate()
+        self.assertTrue(segments.fits("S5", c)[0])
+        t = segments.texts("S5", c)
+        self.assertIn(c["name"], t["signal"])
+        self.assertEqual(sc.run(c, "S5", t)["status"], "pass")
+
+
 class FilterTests(unittest.TestCase):
     def test_public_and_shared(self):
         self.assertEqual(filters.pre_filter(fm_candidate(legal_name="COUNTY OF LANCASTER")), "public_or_nonprofit")

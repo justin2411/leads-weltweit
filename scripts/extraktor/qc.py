@@ -134,6 +134,11 @@ def run(c: dict, seg: str, shared: dict | None = None) -> dict:
     if len(re.sub(r"[^A-Za-z]", "", c.get("name") or "")) < 2 or re.search(r"\b(test|sample|dummy)\b", c["name"], re.I):
         blocking.append("company_name_invalid")
 
+    # Fakten der Quelle plausibel? (FMCSA: z. B. 800 Fahrer bei 2 Fahrzeugen = Tippfehler in der Meldung)
+    f = c.get("facts") or {}
+    if c.get("source") == "fmcsa" and f.get("drivers", 0) > max(10, 5 * max(1, f.get("power_units", 0))):
+        blocking.append(f"implausible_fleet ({f.get('drivers')} drivers, {f.get('power_units')} power units)")
+
     # Telefon
     ph = check_phone(c.get("phone"), c.get("state"))
     if not ph["ok"] and c.get("phone_alt"):

@@ -55,6 +55,10 @@ def fits(seg: str, c: dict) -> tuple[bool, str]:
             if not (f["for_hire"] or f["private_fleet"]):
                 return False, "neither for-hire nor private fleet"
             return True, "new motor carrier with own vehicles needs commercial auto/cargo cover"
+        if seg == "S5":
+            if f["power_units"] < 1 or f["drivers"] < 1:
+                return False, "no drivers on payroll yet"
+            return True, "new transport business with drivers – payroll, bookkeeping and tax registrations start now"
         if seg == "S2":
             if c.get("website"):
                 return False, "already has a verified website"
@@ -106,7 +110,7 @@ def texts(seg: str, c: dict) -> dict:
         info = (f"{name} is a {_kind(f)} based in {place(c)}, registered with the US DOT on {reg} "
                 f"(USDOT {f['dot_number']}). Fleet: {_fleet(f)}{cargo}.")
         if seg == "S4":
-            signal = f"New USDOT registration on {reg}: {_kind(f)} with {_fleet(f)}{cargo}."
+            signal = f"{name} (USDOT {f['dot_number']}) registered on {reg} as a {_kind(f)} with {_fleet(f)}{cargo}."
             opener = (f"Congratulations on getting {name} registered with the DOT – with "
                       f"{plural(f['power_units'], 'vehicle')} on the road, is your commercial auto and cargo cover sorted?")
             if f["for_hire"] and f["interstate"]:
@@ -114,10 +118,16 @@ def texts(seg: str, c: dict) -> dict:
                                     "FMCSA before operating under their authority.")
             else:
                 urg, why = "medium", "Newly registered fleet: vehicles, drivers and cargo need commercial cover from day one."
+        elif seg == "S5":
+            signal = (f"{name} (USDOT {f['dot_number']}) registered on {reg} as a {_kind(f)} with "
+                      f"{_fleet(f)} – a new transport business with drivers on the road.")
+            opener = (f"Congratulations on launching {name} – with {plural(f['drivers'], 'driver')} starting out, "
+                      f"who is setting up your payroll and bookkeeping?")
+            urg, why = "medium", "New transport businesses set up payroll, bookkeeping and fuel/tax registrations in the first months."
         else:  # S2
             dom = email_domain(c.get("email") or "")
             mail = f"its contact email is a {dom} address" if dom else "it lists no email address"
-            signal = (f"Newly registered business (US DOT, {reg}) with no company website: {mail}, "
+            signal = (f"{name} (USDOT {f['dot_number']}), registered on {reg}, has no company website: {mail}, "
                       f"and no website under its name could be found.")
             opener = (f"Congratulations on registering {name} – I couldn't find a website for you yet; "
                       f"would a simple site that helps customers find you be useful?")
@@ -135,7 +145,7 @@ def texts(seg: str, c: dict) -> dict:
     industry = (f.get("industry") or "").replace("Other ", "").lower() or "private"
     info = (f"{name} is a {industry} company based in {place(c)}{inc}. In an SEC Form D filed on {filed} it reported "
             f"raising {money(sold)}{offer_txt}{inv_txt}.{rev}")
-    signal = f"SEC Form D filed {filed}: raised {money(sold)}{offer_txt}{inv_txt}."
+    signal = f"{name} filed an SEC Form D on {filed}: raised {money(sold)}{offer_txt}{inv_txt}."
     if seg == "S1":
         opener = (f"Congratulations on the {money(sold)} raise at {name} – are you planning to grow the team "
                   f"in {c['city'] or c['state']} over the next months?")

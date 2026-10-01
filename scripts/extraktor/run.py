@@ -30,7 +30,7 @@ from extraktor.model import CSV_COLUMNS  # noqa: E402
 from extraktor.sources import fmcsa, formd  # noqa: E402
 
 FORM_D_SEGMENTS = ("S1", "S5", "S9")
-FMCSA_SEGMENTS = ("S4", "S2")
+FMCSA_SEGMENTS = ("S4", "S2", "S5")
 
 
 def log(msg: str) -> None:
@@ -76,24 +76,30 @@ def pools(segs: list[str], fm: list[dict], fd: list[dict], distinct: bool) -> di
     """Kandidaten je Branche, vor der Anreicherung. FMCSA: eigene Domain -> S4, Freemail -> S2.
     Form D: S1 (ab $1M) vor S5 (junge kleine Firmen) vor S9 (Geschäftsführung) – mit distinct jede Firma nur einmal."""
     p: dict[str, list[dict]] = defaultdict(list)
-    for c in fm:
+    for i, c in enumerate(fm):
         own = c.get("email") and not E.is_freemail(c["email"])
-        if "S4" in segs and own and segments.fits("S4", c)[0]:
-            p["S4"].append(c)
-        elif "S2" in segs and c.get("email") and not own and segments.fits("S2", c)[0]:
+        if own:
+            # eigene Domain: abwechselnd S4 und S5 (jede Firma nur einmal), S4 zuerst wenn nur eine passt
+            order = ("S4", "S5") if i % 2 == 0 else ("S5", "S4")
+            for seg in order:
+                if seg in segs and segments.fits(seg, c)[0]:
+                    p[seg].append(c)
+                    break
+        elif "S2" in segs and c.get("email") and segments.fits("S2", c)[0]:
             p["S2"].append(c)
     used = set()
     for seg in [s for s in FORM_D_SEGMENTS if s in segs]:
         for c in fd:
-            if distinct and c["source_id"] in used:
+            # S9 ist ein Personen-Lead (Geschäftsführer) – darf dieselbe Firma wie S1/S5 nutzen
+            if distinct and seg != "S9" and c["source_id"] in used:
                 continue
             if segments.fits(seg, c)[0]:
                 p[seg].append(c)
                 if distinct:
                     used.add(c["source_id"])
-    # Form D: Firmen mit Telefon und Person zuerst (höhere Chance auf vollständige Leads)
+    # Form D vor FMCSA in S5 (Kapital = stärkeres Signal); Telefon und Person zuerst
     for seg in FORM_D_SEGMENTS:
-        p[seg].sort(key=lambda c: (not c.get("phone"), not c.get("person_name")))
+        p[seg].sort(key=lambda c: (c["source"] != "sec_form_d", not c.get("phone"), not c.get("person_name")))
     return p
 
 

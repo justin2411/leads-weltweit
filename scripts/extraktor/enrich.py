@@ -63,7 +63,8 @@ def check_site(url: str, c: dict, fetcher, from_email: bool) -> dict | None:
     site = examine(url, _company(c), fetcher, force_deep=True)
     if not site:
         return None
-    pages = [fetcher.cache.get(u, (None, ""))[1] or "" for u in site["pages"]]
+    wanted = set(site["pages"])
+    pages = [v[1] for v in list(fetcher.cache.values()) if v and v[0] in wanted]
     ev = extra_evidence(c, pages)
     site["evidence"] = site["evidence"] + ev
     score = site["score"] + (40 if "phone_on_site" in ev else 0) + (15 if "zip_on_site" in ev else 0)
@@ -89,7 +90,10 @@ def find_site(c: dict, fetcher, max_examined: int = 3) -> dict:
             if site:
                 return {"site": site, "method": "email_domain", "checked": checked}
     best, examined = None, 0
-    for dom in W.domain_candidates(c["name"], "US")[:8]:
+    doms = W.domain_candidates(c["name"], "US")[:8]
+    if c.get("source") == "sec_form_d":
+        doms += [d for d in startup_candidates(c["name"]) if d not in doms]
+    for dom in doms:
         checked.append(dom)
         if not resolves(dom):
             continue
@@ -102,6 +106,17 @@ def find_site(c: dict, fetcher, max_examined: int = 3) -> dict:
         if site["verified"] or examined >= max_examined:
             break
     return {"site": best, "method": "name_candidates", "checked": checked}
+
+
+def startup_candidates(name: str) -> list[str]:
+    """Häufige Start-up-Domains (Form D): name.io/.ai/.co, getname.com, tryname.com, namehq.com, nameinc.com."""
+    core = "".join(W.core_words(name))
+    full = "".join(W.name_words(name))
+    out = []
+    for s in dict.fromkeys(x for x in (full, core) if len(x) >= 4):
+        out += [f"{s}.io", f"{s}.ai", f"{s}.co", f"get{s}.com", f"try{s}.com", f"{s}hq.com", f"{s}inc.com",
+                f"{s}.app", f"{s}.tech", f"{s}.health", f"{s}.bio"]
+    return list(dict.fromkeys(out))
 
 
 def pick_email(emails: list[str], domain: str) -> str | None:
