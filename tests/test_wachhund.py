@@ -36,6 +36,16 @@ class WachhundTest(unittest.TestCase):
         self.assertFalse(w.overdue(job, [], dt.datetime(2026, 9, 29, 7, 0, tzinfo=UTC))[0])  # Dienstag
         self.assertFalse(w.overdue(job, [], dt.datetime(2026, 9, 28, 13, 0, tzinfo=UTC))[0])  # zu spät
 
+    def test_werke_restarted_when_schedule_skipped(self):
+        """01.10.2026: GitHub ließ die ersten geplanten Kunden-Werk-Läufe aus."""
+        job = next(j for j in w.JOBS if j["wf"] == "kunden-werk.yml")
+        now = dt.datetime(2026, 10, 1, 19, 50, tzinfo=UTC)
+        self.assertTrue(w.overdue(job, [run("2026-10-01T17:31:00Z")], now)[0])
+        self.assertFalse(w.overdue(job, [run("2026-10-01T18:41:00Z")], now)[0])
+        lead = next(j for j in w.JOBS if j["wf"] == "lead-werk.yml")
+        self.assertFalse(w.overdue(lead, [run("2026-10-01T17:31:00Z", "in_progress")], now)[0])  # läuft noch
+        self.assertTrue(w.overdue(lead, [run("2026-10-01T15:00:00Z")], now)[0])
+
     def test_send_respects_switch(self):
         job = next(j for j in w.JOBS if j["wf"] == "send.yml")
         ok, _ = w.allowed(job)

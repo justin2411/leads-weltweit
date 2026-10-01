@@ -42,6 +42,9 @@ JOBS = [
     {"wf": "tagescheck.yml", "kind": "daily", "at": "17:37", "grace": 40, "inputs": {"mail": "true"}},
     {"wf": "kundenlieferung.yml", "kind": "daily", "at": "04:53", "grace": 60, "weekdays": [0], "until": "12:00"},
     {"wf": "anreichern.yml", "kind": "daily", "at": "08:41", "grace": 60, "cond": "lead_suche"},
+    # Werke (24/7): GitHub ließ am 01.10.2026 die ersten geplanten Kunden-Werk-Läufe aus
+    {"wf": "lead-werk.yml", "kind": "hourly", "window": (0, 23), "max_min": 210, "cond": "lead_suche"},
+    {"wf": "kunden-werk.yml", "kind": "hourly", "window": (0, 23), "max_min": 150, "cond": "kunden_suche"},
 ]
 
 
@@ -58,6 +61,8 @@ def allowed(job: dict) -> tuple[bool, str]:
         return False, "Versand ausgeschaltet (config/versand.yaml)"
     if job.get("cond") == "lead_suche" and cfg("pipeline.yaml", "lead_suche") != "true":
         return False, "Lead-Suche pausiert (config/pipeline.yaml)"
+    if job.get("cond") == "kunden_suche" and cfg("pipeline.yaml", "kunden_suche") != "true":
+        return False, "Käufersuche pausiert (config/pipeline.yaml)"
     return True, ""
 
 
