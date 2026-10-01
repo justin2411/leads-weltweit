@@ -95,7 +95,7 @@ der Do-Not-Call-Liste abgleichen (TCPA). Gehört in die Lieferbedingungen.
 
 ## Lead-Werk (`.github/workflows/lead-werk.yml`)
 
-Alle 3 Stunden, 7 parallele Teile: S2 UK, S2 FR (Overture), US FMCSA (S2/S4/S5), US Form D (S1/S5/S9),
+Alle 3 Stunden, 13 parallele Teile (fest nach Quell-ID verteilt): S2 UK, S2 FR (Overture), US FMCSA (S2/S4/S5), US Form D (S1/S5/S9),
 UK-Register und FR-Register (S4/S5/S9), S1 Karriereseiten (UK/US). Jeder Teil: `run.py … --db --store`.
 Schon gespeicherte Firmen (Quelle + ID in `watch_companies`) werden vorab aussortiert; bei Overture holt jeder Lauf
 die nächsten noch unbekannten Firmen. Grüne Leads schreibt `store.store_new` blockweise (Firma, Kontakt, Person,
@@ -109,7 +109,7 @@ und `active = false`. Finden: `watch_companies.notes like 'Extraktor Rohbestand%
 
 ## Kunden-Werk (`scripts/kundenwerk.py`, `.github/workflows/kunden-werk.yml`)
 
-Alle 2 Stunden, 4 parallele Teile. Käufer-Liste einmal im Monat aus Overture (Kategorien → Zielgruppe, US/UK/FR, mit
+Alle 2 Stunden, 7 parallele Teile (fest nach Domain verteilt), gleichzeitig mit dem Lead-Werk. Käufer-Liste einmal im Monat aus Overture (Kategorien → Zielgruppe, US/UK/FR, mit
 Website, ohne Ketten). Je Firma: Startseite + Kontakt-/Impressumsseiten → Firmen-E-Mail (eigene Domain; sonst die
 E-Mail aus dem Overture-Eintrag der Firma), Rechtsform; UK ohne Rechtsform auf der Website: eindeutiger Name in
 Companies House → Ltd. Dann `lib.rules.check_prospect`. Jede Domain wird gespeichert (ok oder rejected mit Grund),

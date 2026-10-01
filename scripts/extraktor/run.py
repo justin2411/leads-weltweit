@@ -432,7 +432,10 @@ def main(argv=None) -> int:
         p = {k: [c for c in v if (c["source"], c["source_id"]) not in guard.known] for k, v in p.items()}
     if args.shard:
         i, n = (int(x) for x in args.shard.split("/"))
-        p = {k: v[i::n] for k, v in p.items()}
+        # fest nach Quell-ID verteilt: parallele Teile bekommen nie dieselbe Firma, auch wenn ihre Listen abweichen
+        import hashlib
+        part = lambda c: int(hashlib.md5(f"{c['source']}:{c['source_id']}".encode()).hexdigest(), 16) % n == i
+        p = {k: [c for c in v if part(c)] for k, v in p.items()}
     keys = [k for k in p if p[k]]
     log("Kandidaten je Branche: " + ", ".join(f"{k} {len(p[k])}" for k in keys))
 

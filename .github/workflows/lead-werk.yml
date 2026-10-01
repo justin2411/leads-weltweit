@@ -1,5 +1,5 @@
 # Lead-Werk (Inhaber 01.10.2026: „eigener Bereich der 24/7 die leads holt und anreichert“).
-# Alle 3 Stunden: kostenlose Quellen -> Sicherheitsfilter -> kostenlose Anreicherung -> Qualitäts- und
+# Alle 3 Stunden, 13 Teile gleichzeitig: kostenlose Quellen -> Sicherheitsfilter -> kostenlose Anreicherung -> Qualitäts- und
 # Signalkontrolle -> grüne Leads direkt in Supabase (watch_companies, observations, leads). Schon gespeicherte
 # Firmen werden übersprungen, so arbeitet sich jeder Lauf weiter durch den Bestand.
 # Lädt KEINE Lead-Dateien hoch (öffentliches Repo) – nur den Zählbericht. Sendet nichts.
@@ -20,11 +20,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: s2-uk, args: "--segments S2 --countries UK --s2-limit 5000 --per 4000 --max-tries 4500" }
-          - { name: s2-fr, args: "--segments S2 --countries FR --s2-limit 5000 --per 4000 --max-tries 4500" }
-          - { name: us-fmcsa, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 4500" }
+          # 13 Teile gleichzeitig (Inhaber 01.10.2026: „das die gleichzeitig laufen damit wir … schneller die leads haben“);
+          # --shard verteilt fest nach Quell-ID, parallele Teile bekommen nie dieselbe Firma.
+          - { name: s2-uk-0, args: "--segments S2 --countries UK --s2-limit 15000 --per 4000 --max-tries 4500 --shard 0/3" }
+          - { name: s2-uk-1, args: "--segments S2 --countries UK --s2-limit 15000 --per 4000 --max-tries 4500 --shard 1/3" }
+          - { name: s2-uk-2, args: "--segments S2 --countries UK --s2-limit 15000 --per 4000 --max-tries 4500 --shard 2/3" }
+          - { name: s2-fr-0, args: "--segments S2 --countries FR --s2-limit 15000 --per 4000 --max-tries 4500 --shard 0/3" }
+          - { name: s2-fr-1, args: "--segments S2 --countries FR --s2-limit 15000 --per 4000 --max-tries 4500 --shard 1/3" }
+          - { name: s2-fr-2, args: "--segments S2 --countries FR --s2-limit 15000 --per 4000 --max-tries 4500 --shard 2/3" }
+          - { name: us-fmcsa-0, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 4500 --shard 0/2" }
+          - { name: us-fmcsa-1, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 4500 --shard 1/2" }
           - { name: us-formd, args: "--segments S1,S5,S9 --countries US --fmcsa-days 0 --formd-days 44 --formd-max-docs 20000 --per 4000 --max-tries 6000" }
-          - { name: uk-register, args: "--segments S4,S5,S9 --countries UK --uk-days 44 --eu-pool 200000 --per 4000 --max-tries 6000" }
+          - { name: uk-register-0, args: "--segments S4,S5,S9 --countries UK --uk-days 44 --eu-pool 200000 --per 4000 --max-tries 6000 --shard 0/2" }
+          - { name: uk-register-1, args: "--segments S4,S5,S9 --countries UK --uk-days 44 --eu-pool 200000 --per 4000 --max-tries 6000 --shard 1/2" }
           - { name: fr-register, args: "--segments S4,S5,S9 --countries FR --fr-days 44 --per 4000 --max-tries 6000" }
           - { name: s1-karriere, args: "--segments S1 --countries UK,US --s1-probe 4000 --formd-days 0 --per 4000 --max-tries 4000" }
     env:

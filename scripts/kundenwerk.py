@@ -223,7 +223,8 @@ def cmd_run(args) -> int:
     pool = [d for d in candidates(segs) if d["domain"] not in known]
     if args.shard:
         i, n = (int(x) for x in args.shard.split("/"))
-        pool = pool[i::n]
+        # fest nach Domain verteilt: parallele Teile prüfen nie dieselbe Firma
+        pool = [d for d in pool if int(hashlib.md5(d["domain"].encode()).hexdigest(), 16) % n == i]
     pool = pool[:args.max]
     uk = {d["domain"]: d["name"] for d in pool if d["country"] == "UK"}
     if uk:
