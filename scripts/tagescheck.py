@@ -364,10 +364,12 @@ def check_werke(c: Check, db) -> None:
         c.add("Lead-Werk", OK if per else WARN, f"{total} lieferbare Leads im Bestand",
               ("neu in 24 h: " + ", ".join(per)) if per else "in 24 h keine neuen Leads")
     ok = _count(db, "prospects", {"check_status": "eq.ok"})
-    new_ok = _count(db, "prospects", {"check_status": "eq.ok", "checked_at": f"gte.{since}"})
+    call = _count(db, "prospects", {"check_status": "eq.call_only"})
+    new = _count(db, "prospects", {"check_status": "in.(ok,call_only)", "checked_at": f"gte.{since}"})
     if cfg("pipeline.yaml", "kunden_suche") == "true":
-        c.add("Kunden-Werk", OK if new_ok or ok >= 1_000_000 else WARN, f"{ok} geprüfte Käufer (Ziel 1.000.000)",
-              f"neu in 24 h: {new_ok}")
+        c.add("Kunden-Werk", OK if new or ok + call >= 1_000_000 else WARN,
+              f"{ok + call} Käufer im Bestand (Ziel 1.000.000)",
+              f"E-Mail erlaubt {ok}, nur Anruf/Brief {call}; neu in 24 h: {new}")
 
 
 def main(argv=None) -> int:

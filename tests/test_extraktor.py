@@ -383,6 +383,12 @@ class WerkeTests(unittest.TestCase):
         self.assertTrue(K.NOT_OWN_SITE.search("https://www.facebook.com/joescafe"))
         self.assertFalse(K.NOT_OWN_SITE.search("https://flexrecruitment.co.uk"))
 
+    def test_kundenwerk_phone_from_listing(self):
+        import kundenwerk as K
+        d = {"country": "UK", "phones": ["01902 123456"]}
+        self.assertEqual(K.company_phone(d, {"html": ""}), "+441902123456")
+        self.assertIsNone(K.company_phone({"country": "UK", "phones": ["+33 1 23 45 67 89"]}, {"html": ""}))
+
 
 if __name__ == "__main__":
     unittest.main()

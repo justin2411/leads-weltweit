@@ -113,7 +113,9 @@ Alle 2 Stunden, 4 parallele Teile. Käufer-Liste einmal im Monat aus Overture (K
 Website, ohne Ketten). Je Firma: Startseite + Kontakt-/Impressumsseiten → Firmen-E-Mail (eigene Domain; sonst die
 E-Mail aus dem Overture-Eintrag der Firma), Rechtsform; UK ohne Rechtsform auf der Website: eindeutiger Name in
 Companies House → Ltd. Dann `lib.rules.check_prospect`. Jede Domain wird gespeichert (ok oder rejected mit Grund),
-damit sie nicht erneut abgerufen wird. Ziel: 1.000.000 Käufer mit `check_status = ok`. Kein Versand. Schalter
+damit sie nicht erneut abgerufen wird. Darf eine Firma nicht gemailt werden (UK ohne Kapitalgesellschaft, PECR) oder hat sie keine Firmen-E-Mail, aber
+Telefon oder Adresse: `check_status = call_only` (nur Anruf/Brief; UK vor Anrufen gegen TPS/CTPS prüfen).
+Ziel: 1.000.000 Käufer mit `ok` oder `call_only`. Kein Versand; Entwürfe entstehen nur für `ok`. Schalter
 `kunden_suche`.
 
 ## S1 aus Karriereseiten (`sources/careers.py`, Teil des Lead-Werks)

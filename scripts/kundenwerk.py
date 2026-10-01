@@ -11,7 +11,7 @@ angeschrieben wird, entscheidet weiter config/versand.yaml (zurzeit aus).
 Weg je Firma (wie scripts/prospects.py): eigene Website -> veröffentlichte Firmen-E-Mail (nur eigene Domain,
 allgemeine Adressen bevorzugt), Rechtsform/Registernummer -> Prüfregeln (lib.rules.check_prospect: Land erlaubt,
 keine Freemail, UK nur Kapitalgesellschaften, Sperrliste …). Jede geprüfte Domain wird gespeichert (auch ohne
-Treffer, check_status = rejected), damit sie nicht erneut abgerufen wird. Ziel: TARGET geprüfte Käufer (ok).
+Treffer, check_status = rejected), damit sie nicht erneut abgerufen wird. Ziel: TARGET Käufer im Bestand (ok = E-Mail erlaubt, call_only = nur Anruf/Brief).
 Keine Kontaktformulare, keine Personennamen, robots.txt, gesperrte Plattformen ausgeschlossen.
 """
 from __future__ import annotations
@@ -99,9 +99,9 @@ def candidates(segments: dict[str, set[str]]) -> list[dict]:
                       WHERE coalesce(operating_status, 'open') = 'open' AND coalesce(confidence, 0) >= 0.5
                         AND name IS NOT NULL),
              chains AS (SELECT country, lower(name) n FROM base GROUP BY 1, 2 HAVING count(*) > 3)
-        SELECT id, name, websites, emails, street, city, postcode, region, country, category FROM base
+        SELECT id, name, websites, emails, phones, street, city, postcode, region, country, category FROM base
         WHERE (country, lower(name)) NOT IN (SELECT country, n FROM chains)""").fetchall()
-    cols = ["id", "name", "websites", "emails", "street", "city", "postcode", "region", "country", "category"]
+    cols = ["id", "name", "websites", "emails", "phones", "street", "city", "postcode", "region", "country", "category"]
     out = []
     for r in rows:
         d = dict(zip(cols, r))
@@ -132,7 +132,7 @@ def site_scan(website: str, fetcher) -> dict:
     base = website if website.startswith("http") else "https://" + website
     home = fetcher.get(base) or fetcher.get(base.replace("http://", "https://", 1))
     if not home:
-        return {"emails": {}, "text": "", "pages": [], "final_domain": ""}
+        return {"emails": {}, "text": "", "pages": [], "final_domain": "", "html": ""}
     pages = {home[0]: home[1]}
     for sub in W.subpage_links(home[1], home[0], limit=4):
         got = fetcher.get(sub)
@@ -143,7 +143,8 @@ def site_scan(website: str, fetcher) -> dict:
         for e in W.emails_on_page(html):
             emails.setdefault(e.lower().strip("."), url)
     text = "\n".join(h[-20000:] + "\n" + h[:5000] for h in pages.values())
-    return {"emails": emails, "text": text, "pages": list(pages), "final_domain": W.site_domain(home[0])}
+    return {"emails": emails, "text": text, "pages": list(pages), "final_domain": W.site_domain(home[0]),
+            "html": "\n".join(pages.values())}
 
 
 def check_one(d: dict, fetcher, cfg: dict, generic: set[str], blocked: set[str]) -> dict:
@@ -169,19 +170,40 @@ def check_one(d: dict, fetcher, cfg: dict, generic: set[str], blocked: set[str])
                          source_url=src, size_note=size_note,
                          suppressed=suppressed, cfg=cfg)
     addr = ", ".join(x for x in (d.get("street"), d.get("city"), d.get("postcode")) if x)
+    phone = company_phone(d, res)
+    if chk.ok:
+        status, reason = "ok", chk.summary()
+    elif phone or addr:
+        # Inhaber 01.10.2026: „so viele leads besorgen … wie es geht“ – nicht per Mail erlaubt/erreichbar,
+        # aber per Anruf oder Brief (UK: vor Anrufen gegen TPS/CTPS prüfen)
+        status, reason = "call_only", "nur Anruf/Brief – " + chk.summary()
+    else:
+        status, reason = "rejected", chk.summary()
     return {
         "segment_id": d["segment"], "company_name": d["name"][:200], "legal_form": legal, "country": d["country"],
         "region": d.get("region") or None, "website": d["website"], "domain": d["domain"], "email": email,
         "email_is_generic": is_gen if email else None, "published_address": addr or None,
         "specialization": d["category"].replace("_", " "), "size_note": size_note,
         "source_url": src or d["website"],
-        "check_status": "ok" if chk.ok else "rejected", "check_reason": chk.summary()[:500],
+        "phone": phone, "check_status": status, "check_reason": reason[:500],
         "checked_at": dt.datetime.now(dt.timezone.utc).isoformat(),
     }
 
 
+def company_phone(d: dict, res: dict) -> str | None:
+    """Firmennummer: von der eigenen Website, sonst aus dem Firmeneintrag (Overture); im Landesformat geprüft."""
+    from lib import websites as W
+    found, _ = W.phones_on_page(res.get("html") or "", d["country"])
+    for raw in list(found) + list(d.get("phones") or []):
+        e164, _kind = W.normalize_phone(raw, d["country"])
+        if e164:
+            return e164
+    return None
+
+
 def count_ok(db) -> int:
-    r = db.s.get(f"{db.base}/prospects", params={"select": "id", "check_status": "eq.ok", "limit": "1"},
+    """Käufer im Bestand: per E-Mail (ok) oder per Anruf/Brief (call_only)."""
+    r = db.s.get(f"{db.base}/prospects", params={"select": "id", "check_status": "in.(ok,call_only)", "limit": "1"},
                  headers={"Prefer": "count=exact"}, timeout=db.timeout)
     return int((r.headers.get("content-range") or "*/0").split("/")[-1] or 0)
 
@@ -238,7 +260,8 @@ def cmd_run(args) -> int:
         list(ex.map(work, pool))
     with lock:
         flush()
-    log(f"fertig: {stats['ok']} neue Käufer ok, {stats['rejected']} abgelehnt, {stats['fehler']} Fehler")
+    log(f"fertig: {stats['ok']} neue Käufer per E-Mail, {stats['call_only']} nur Anruf/Brief, "
+        f"{stats['rejected']} ohne Kontaktweg, {stats['fehler']} Fehler")
     for k, v in sorted(stats.items()):
         if "/" in k:
             log(f"  {k} {v}")
@@ -250,7 +273,8 @@ def cmd_stand(args) -> int:
     db = DB()
     rows = db.select_all("prospects", {"select": "segment_id,country,check_status"})
     c = Counter((r["segment_id"], r["country"], r["check_status"]) for r in rows)
-    print(f"Käufer geprüft (ok): {sum(v for k, v in c.items() if k[2] == 'ok')} von Ziel {TARGET}")
+    print(f"Käufer im Bestand: {sum(v for k, v in c.items() if k[2] in ('ok', 'call_only'))} von Ziel {TARGET} "
+          f"(E-Mail {sum(v for k, v in c.items() if k[2] == 'ok')})")
     for (seg, co, st), v in sorted(c.items()):
         print(f"  {seg}/{co} {st}: {v}")
     return 0

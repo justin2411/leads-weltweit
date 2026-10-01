@@ -39,6 +39,9 @@ Laufende Entscheidungen des Gehirns (Preise, Seitenvarianten) stehen zusätzlich
   nochmal anreichern kann“ → gelbe/rote Kandidaten als Firma mit allen Daten in `watch_companies`/`observations`
   (quality.complete = false, missing/problems), ohne Lead – also nie geliefert, aber auffindbar und nachanreicherbar.
   Rot (widersprüchlich) zusätzlich blocking = true, active = false. Käufer ohne Treffer stehen mit Grund in `prospects`.
+- **Käufer „nur Anruf/Brief“:** „Ja wir sollten so viele leads besorgen können wie es geht“ → Käufer, die wir nicht
+  mailen dürfen (UK-Einzelunternehmer, PECR) oder ohne Firmen-E-Mail, stehen mit Telefon/Adresse als
+  `check_status = call_only` in `prospects` und zählen zum Ziel. Nie Kaltmail; UK-Anrufe vorher gegen TPS/CTPS prüfen.
 - **Rolle statt Name zählt als Ansprechperson** (CLAUDE.md §9, S1/S2 01.10.2026): `deliveries.contact_companies`
   akzeptiert Name oder Rolle.
 - **Datenbank:** „brauchst du nicht kannst du alles selber machen“ → Datenbank-Änderungen für die Werke ohne
