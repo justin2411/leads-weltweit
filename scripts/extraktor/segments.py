@@ -83,7 +83,7 @@ def fits(seg: str, c: dict) -> tuple[bool, str]:
         if seg == "S9":
             ok = bool(c.get("person_name")) and sold >= 250_000
             return ok, "named executive of a company that just raised capital" if ok else "no named executive or raise < $250k"
-    if c["source"] == "ats_jobs":
+    if c["source"] in ("ats_jobs", "careers"):
         if seg != "S1":
             return False, "source only carries the hiring signal"
         n, oldest = f.get("open_roles", 0), f.get("oldest_posted")
@@ -299,7 +299,7 @@ def texts_jobs(c: dict) -> dict:
 
 def texts(seg: str, c: dict) -> dict:
     """{'signal', 'signal_date', 'company_info', 'opener', 'urgency', 'urgency_reason'}"""
-    if c["source"] == "ats_jobs":
+    if c["source"] in ("ats_jobs", "careers"):
         return texts_jobs(c)
     if c["source"] == "overture":
         return texts_overture(c)

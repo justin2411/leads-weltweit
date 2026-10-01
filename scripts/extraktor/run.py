@@ -184,6 +184,46 @@ def load_jobs(country: str, probe_limit: int, workers: int, stats: Counter) -> l
     return cands
 
 
+def load_careers(country: str, probe_limit: int, workers: int, fetcher, stats: Counter) -> list[dict]:
+    """S1: Firmen mit offenen Stellen auf der eigenen Karriereseite (Firmenliste: Web Data Commons).
+    UK: Registernummer von der eigenen Website (sonst eindeutiger Name) -> Sitz und Eigentümer aus Companies House."""
+    from extraktor.sources import careers
+    seen, today = careers.load_seen(), dt.date.today()
+    doms = careers.today_slice(careers.domains(country, log=log), seen, probe_limit, today)
+    log(f"S1/{country}: prüfe {len(doms)} Karriereseiten")
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        res = list(ex.map(lambda d: (d, careers.scan(d, country, fetcher)), doms))
+    why = Counter(r["why"] for _, r in res if not r["ok"])
+    cands = []
+    for d, r in res:
+        if r["ok"]:
+            cands.append(careers.to_candidate(d, r, country, seen, today))
+            careers.remember(seen, d, r["jobs"], today)
+    careers.save_seen(seen)
+    log(f"S1/{country}: {len(cands)} Firmen mit Stellen im Land; ausgeschlossen: {dict(why.most_common(8))}")
+    stats[f"careers_{country}"] = len(cands)
+    stats[f"careers_{country}_excluded"] = dict(why)
+    if country == "UK" and cands:
+        import os
+        os.environ.setdefault("EXTRAKTOR_KEEP_PSC", "1")
+        nums = {c["source_id"]: c["facts"]["registry_numbers"][0] for c in cands if c["facts"]["registry_numbers"]}
+        nums.update({k: v for k, v in uk_ch.match_by_name(
+            {c["source_id"]: c["name"] for c in cands if c["source_id"] not in nums}, log=log).items()})
+        info = uk_ch.details(set(nums.values()), log=log)
+        owners = uk_ch.owners(set(info), log=log)
+        for c in cands:
+            num = nums.get(c["source_id"])
+            if not num or num not in info:
+                continue
+            c["facts"]["company_number"] = num
+            c["legal_name"] = info[num]["legal_name"]
+            if not (c.get("street") and c.get("zip")):
+                c.update(street=info[num]["street"], city=info[num]["city"], zip=info[num]["zip"])
+            if owners.get(num):
+                c["person_name"], c["person_role"] = owners[num]["name"], owners[num]["role"]
+    return cands
+
+
 def eu_pools(segs: list[str], cands: list[dict], country: str) -> dict[str, list[dict]]:
     """UK/FR-Neugründungen abwechselnd auf S4/S5/S9 verteilen (jede Firma nur einmal), nur mit Ansprechperson."""
     p: dict[str, list[dict]] = defaultdict(list)
@@ -348,7 +388,7 @@ def main(argv=None) -> int:
     ap.add_argument("--uk-days", type=int, default=30)
     ap.add_argument("--fr-days", type=int, default=30)
     ap.add_argument("--eu-pool", type=int, default=15000, help="UK: höchstens so viele Neugründungen vorab auswählen")
-    ap.add_argument("--s1-probe", type=int, default=3000, help="S1 UK/FR: so viele Firmen auf offene Stellen prüfen")
+    ap.add_argument("--s1-probe", type=int, default=3000, help="S1 UK/US: so viele Karriereseiten prüfen")
     ap.add_argument("--s2-limit", type=int, default=3000, help="S2 UK/FR: so viele Overture-Firmen ohne Website laden")
     ap.add_argument("--out", default="out/extraktor")
     args = ap.parse_args(argv)
@@ -361,13 +401,20 @@ def main(argv=None) -> int:
                   else ([], Counter()))
     fd = load_formd(args.formd_days, args.formd_max_docs, stats) if us and any(s in segs for s in FORM_D_SEGMENTS) else []
     p = pools(segs, fm, fd, distinct=not args.no_distinct) if us else {}
+    from enrich import Fetcher
+    fetcher = Fetcher()
     if "UK" in countries and any(s in segs for s in EU_SEGMENTS):
         p.update(eu_pools(segs, load_uk(args.uk_days, stats, args.eu_pool), "UK"))
     if "FR" in countries and any(s in segs for s in EU_SEGMENTS):
         p.update(eu_pools(segs, load_fr(args.fr_days, stats), "FR"))
-    for co in ("UK", "FR"):
+    for co in ("UK", "US"):
+        # S1 aus Karriereseiten; FR nicht (Code du travail L5331-1, Inhaber 01.10.2026)
         if co in countries and "S1" in segs:
-            p[f"S1/{co}"] = [c for c in load_jobs(co, args.s1_probe, args.workers, stats) if segments.fits("S1", c)[0]]
+            got = [c for c in load_careers(co, args.s1_probe, args.workers * 2, fetcher, stats)
+                   if segments.fits("S1", c)[0]]
+            key = "S1" if co == "US" else "S1/UK"  # US-Pools haben keinen Länder-Zusatz
+            p[key] = got + p.get(key, [])
+    for co in ("UK", "FR"):
         if co in countries and "S2" in segs:
             p[f"S2/{co}"] = [c for c in load_overture_s2(co, args.s2_limit, stats) if segments.fits("S2", c)[0]]
     keys = [k for k in p if p[k]]
@@ -377,8 +424,6 @@ def main(argv=None) -> int:
     if args.db:
         from lib.db import DB
         guard = filters.Guard(DB())
-    from enrich import Fetcher
-    fetcher = Fetcher()
 
     out = Path(args.out)
     leads = []

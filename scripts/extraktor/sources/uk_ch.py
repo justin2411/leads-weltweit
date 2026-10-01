@@ -193,3 +193,27 @@ def match_by_name(names: dict[str, str], log=print) -> dict[str, str]:
     out = {sid: next(iter(nums)) for k, nums in found.items() if len(nums) == 1 for sid in want[k]}
     log(f"UK: {len(out)} von {len(names)} Firmen über den Namen eindeutig im Register")
     return out
+
+
+def details(numbers: set[str], log=print) -> dict[str, dict]:
+    """Registrierter Name und Sitz je Firmennummer (aktive Firmen) aus den Massendaten."""
+    from extraktor.model import title_case
+    out: dict[str, dict] = {}
+    if not numbers:
+        return out
+    name = _latest("en_output.html", r'BasicCompanyDataAsOneFile-\d{4}-\d{2}-\d{2}\.zip')
+    with zipfile.ZipFile(_download(name)) as z, z.open(z.namelist()[0]) as f:
+        reader = csv.reader(io.TextIOWrapper(f, encoding="utf-8"))
+        head = [h.strip() for h in next(reader)]
+        ix = {h: i for i, h in enumerate(head)}
+        for row in reader:
+            if len(row) < len(head) or row[ix["CompanyNumber"]] not in numbers:
+                continue
+            if row[ix["CompanyStatus"]] != "Active":
+                continue
+            street = ", ".join(x for x in (row[ix["RegAddress.AddressLine1"]], row[ix["RegAddress.AddressLine2"]]) if x)
+            out[row[ix["CompanyNumber"]]] = {
+                "legal_name": title_case(row[ix["CompanyName"]]), "street": title_case(street),
+                "city": title_case(row[ix["RegAddress.PostTown"]]), "zip": row[ix["RegAddress.PostCode"]].upper()}
+    log(f"UK: {len(out)} von {len(numbers)} Firmennummern aktiv im Register")
+    return out

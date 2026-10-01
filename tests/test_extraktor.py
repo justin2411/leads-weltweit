@@ -9,7 +9,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from extraktor import filters, qc, sc, segments  # noqa: E402
 from extraktor.model import title_case  # noqa: E402
-from extraktor.sources import fmcsa, formd, jobs, overture  # noqa: E402
+from extraktor.sources import careers, fmcsa, formd, jobs, overture  # noqa: E402
 
 TODAY = dt.date.today()
 REG = (TODAY - dt.timedelta(days=3)).strftime("%Y%m%d")
@@ -274,6 +274,69 @@ class FilterTests(unittest.TestCase):
         cs = [fm_candidate(dot_number=str(i), email_address="FILINGS@AGENT.COM") for i in range(4)]
         self.assertEqual(filters.shared_contacts(cs)[("email", "filings@agent.com")], 4)
         self.assertEqual(len(filters.dedupe(cs)), 1)
+
+
+class CareersTests(unittest.TestCase):
+    """S1 aus der eigenen Karriereseite (Inhaber 01.10.2026)."""
+    PAGE = ('<script type="application/ld+json">{"@type":"JobPosting","title":"Warehouse Supervisor",'
+            '"datePosted":"%s","hiringOrganization":{"@type":"Organization","name":"Acme Widgets Ltd"},'
+            '"jobLocation":{"@type":"Place","address":{"addressLocality":"Leeds","postalCode":"LS1 4AP",'
+            '"streetAddress":"1 Park Row","addressCountry":"GB"}}}</script>')
+
+    def test_postings_country_and_org(self):
+        js = careers.postings(self.PAGE % TODAY.isoformat(), "https://acme.co.uk/careers/warehouse-supervisor")
+        self.assertEqual(js[0]["org"], "Acme Widgets Ltd")
+        self.assertTrue(careers.in_country(js[0], "UK"))
+        self.assertFalse(careers.in_country(js[0], "US"))
+
+    def test_us_state_suffix_counts_as_us(self):
+        self.assertTrue(careers.in_country({"countries": [], "locality": "Austin, TX"}, "US"))
+
+    def test_agencies_and_boards_excluded(self):
+        self.assertTrue(careers.looks_like_agency("x.co.uk", "<title>Finance Recruitment - Core3</title>"))
+        self.assertTrue(careers.looks_like_agency("x.co.uk", "<title>Home</title><p>We recruit on behalf of our client.</p>"))
+        self.assertFalse(careers.looks_like_agency("x.co.uk", "<title>Heathcoat Fabrics</title>"))
+        self.assertIn("job", careers.BOARD_DOMAIN.pattern)
+        self.assertTrue(careers.PUBLIC_DOMAIN.search("leeds.gov.uk"))
+
+    def test_job_titles_from_links(self):
+        self.assertEqual(careers._job_title("Internal sales advisor", "https://a.co.uk/careers/x"), "Internal sales advisor")
+        self.assertEqual(careers._job_title("Learn more", "https://a.co.uk/careers/accounts-administrator-ayr"),
+                         "Accounts administrator ayr")
+        for bad in ("Graduates", "Our Partners", "Fast Track", "Conveyancing Assistant (CLOSED)"):
+            self.assertIsNone(careers._job_title(bad, "https://a.co.uk/careers/" + bad.lower().replace(" ", "-")))
+
+    def test_stale_postings_dropped(self):
+        old = (TODAY - dt.timedelta(days=500)).isoformat()
+        self.assertTrue(careers._stale({"date_posted": old}, TODAY.isoformat()))
+        self.assertTrue(careers._stale({"valid_through": (TODAY - dt.timedelta(days=1)).isoformat()}, TODAY.isoformat()))
+        self.assertFalse(careers._stale({"date_posted": TODAY.isoformat()}, TODAY.isoformat()))
+
+    def test_candidate_fits_s1_and_texts_use_facts(self):
+        posted = (TODAY - dt.timedelta(days=40)).isoformat()
+        jobs_ = careers.postings(self.PAGE % posted, "https://acme.co.uk/careers/warehouse-supervisor")
+        res = careers._finish(jobs_, "website", "https://acme.co.uk/careers", "UK",
+                              {"home": "https://acme.co.uk", "home_html": "<title>Acme</title>"})
+        c = careers.to_candidate("acme.co.uk", res, "UK", {}, TODAY)
+        self.assertEqual((c["name"], c["zip"], c["website"]), ("Acme Widgets Ltd", "LS1 4AP", "https://acme.co.uk"))
+        self.assertEqual(c["facts"]["oldest_posted"], posted)
+        self.assertTrue(segments.fits("S1", c)[0])  # eine Stelle, aber seit über 30 Tagen
+        self.assertFalse(segments.fits("S2", c)[0])
+        t = segments.texts("S1", c)
+        self.assertIn("Warehouse Supervisor", t["signal"])
+        self.assertEqual(t["urgency"], "high")
+
+    def test_first_seen_is_kept_between_runs(self):
+        seen = {}
+        j = [{"url": "https://a.co.uk/jobs/1", "title": "Driver"}]
+        careers.remember(seen, "a.co.uk", j, TODAY - dt.timedelta(days=35))
+        careers.remember(seen, "a.co.uk", j, TODAY)
+        self.assertEqual(seen["a.co.uk"]["https://a.co.uk/jobs/1"], (TODAY - dt.timedelta(days=35)).isoformat())
+
+    def test_several_employers_means_board(self):
+        js = [{"title": "Driver", "url": f"https://b.co.uk/jobs/{i}", "org": f"Firm {i}", "countries": ["gb"]}
+              for i in range(4)]
+        self.assertFalse(careers._finish(js, "website", "u", "UK", {})["ok"])
 
 
 if __name__ == "__main__":

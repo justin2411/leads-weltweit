@@ -1,0 +1,63 @@
+# S1 (Personalvermittlung) aus Karriereseiten (Inhaber 01.10.2026: „ja mach das“): täglich die eigenen Karriereseiten
+# der Firmen aus der Web-Data-Commons-Liste prüfen (UK + US; FR nicht wegen Code du travail L5331-1).
+# Merkt sich je Stelle das erste Sehen (Cache), damit „seit über 30 Tagen offen“ belegt ist.
+# Schreibt nichts in die Datenbank, sendet nichts. robots.txt, höchstens 1 Abruf/s je Domain, je Seite 1x täglich.
+name: extraktor-s1
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+    inputs:
+      laender:
+        description: "UK,US"
+        default: "UK,US"
+      firmen:
+        description: "so viele Karriereseiten je Land prüfen"
+        default: "2500"
+concurrency: { group: extraktor-s1, cancel-in-progress: false }
+permissions:
+  contents: read
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - name: Beobachtung und Listen aus dem Cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            out/cache/careers_seen.json
+            out/cache/wdc_job_domains.csv
+          key: extraktor-s1-${{ github.run_id }}
+          restore-keys: extraktor-s1-
+      - name: S1 aus Karriereseiten
+        run: |
+          python scripts/extraktor/run.py --segments S1 --countries "${{ inputs.laender || 'UK,US' }}" \
+            --per 2000 --s1-probe "${{ inputs.firmen || '2500' }}" --max-tries 2500 --workers 12 \
+            --formd-days 1 --formd-max-docs 1 --out out/extraktor-s1
+      - name: Beobachtung sichern
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            out/cache/careers_seen.json
+            out/cache/wdc_job_domains.csv
+          key: extraktor-s1-${{ github.run_id }}
+      - name: Zusammenfassung
+        if: always()
+        run: |
+          [ -f out/extraktor-s1/bericht.json ] && python -c "
+          import json; r=json.load(open('out/extraktor-s1/bericht.json'))
+          print('| Branche | Vorrat | bearbeitet | grün | gelb | rot |'); print('|---|---|---|---|---|---|')
+          for s,v in r['segments'].items(): print(f\"| {s} | {v['pool']} | {v['processed']} | {v.get('green',0)} | {v.get('yellow',0)} | {v.get('red',0)} |\")
+          " >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: extraktor-s1-leads
+          path: out/extraktor-s1/
+          retention-days: 14

@@ -23,6 +23,11 @@ Laufende Entscheidungen des Gehirns (Preise, Seitenvarianten) stehen zusätzlich
 - **Alle Kontaktdaten sammeln:** „nimm diese regel wieder raus und lass uns alle daten sammeln die wir finden“ → Leads dürfen
   auch Handynummern und Freemail-Adressen von Inhabern/Officers enthalten, wenn eine erlaubte Quelle sie veröffentlicht
   (Anlass: FMCSA-Daten mit Handy und Gmail von Einzelfahrern). Quellen-Regeln und Kaltmail-Regeln unverändert.
+- **S2 ohne Namen:** „ja“ → S2-Leads ohne Registernamen tragen die Rolle („Owner (ask for the owner)“).
+- **S1 nicht in Frankreich:** Frage „Sollen wir für FR bei S1 bleiben lassen?“ → „bleiben“. Code du travail L5331-1
+  verbietet den Verkauf von Stellenangeboten; keine France-Travail-/La-Bonne-Boîte-Daten, keine S1-Leads für FR.
+- **S1 aus Karriereseiten:** „ja mach das“ → täglicher Lauf `extraktor-s1.yml` (UK + US): eigene Karriereseiten der
+  Firmen aus der Web-Data-Commons-Liste, keine Jobbörsen; Personalvermittler, Behörden und Konzerne ausgeschlossen.
 
 ## 29.09.2026
 

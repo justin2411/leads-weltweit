@@ -37,6 +37,8 @@ Rot = falsch oder widersprüchlich → nie liefern.
 | S9 Finanzberater | SEC Form D | namentlich genannte Geschäftsführung, mind. $250k | Geschäftsführer einer frisch finanzierten Firma |
 
 | S4/S5/S9 UK | Companies House Massendaten + PSC-Eigentümer | Neugründung (≤ 45 Tage), keine Holding/Immobilien/ruhend; S4 nur Branchen mit Versicherungsbedarf (Bau, Transport, Gastro, Handel, Produktion, Pflege, Reinigung) | Gründung mit Firmennummer und Branche (SIC) |
+| S1 UK/US | Eigene Karriereseiten (Firmenliste: Web Data Commons, JobPosting-Domains) | mind. 3 offene Stellen im Land oder eine seit über 30 Tagen; keine Personalvermittler/Jobbörsen, Behörden, Schulen, Kliniken des Staates, Konzerne (> 60 Stellen); abgelaufene oder über ein Jahr alte Anzeigen zählen nicht | Zahl der Stellen, älteste Stelle (Datum aus der Anzeige oder erstes Sehen), Beispiel-Titel |
+| S2 UK/FR | Overture Maps Places (offene Lizenz) | eingesessenes Geschäft mit Telefon, ohne Website und ohne eigene E-Mail-Domain; keine Ketten | keine Website |
 | S4/S5/S9 FR | BODACC-Gründungen (Gesellschaften) | keine SCI/sociétés civiles/Holdings; S4 nur Tätigkeiten mit Versicherungsbedarf | Gründung mit SIREN, Tätigkeit, Gérant/Président |
 
 UK/FR: Die Register haben kein Telefon und keine E-Mail – beides kommt nur von der eigenen Website. Die gilt als
@@ -87,7 +89,19 @@ der Do-Not-Call-Liste abgleichen (TCPA). Gehört in die Lieferbedingungen.
 - Connecticut-Firmenregister (`n7gp-d28j`, mit E-Mail) und Florida Sunbiz für US-Neugründungen.
 - SSA-Vornamen + Census-Nachnamen statt gender-guesser (bessere Namensprüfung für US-Namen).
 - Overture Maps Places (Websites/Telefon, offene Lizenz) für mehr Website-Treffer in UK/FR.
-- S1/S2 für UK/FR: eigene Quellen nötig (Einstellungs-Signal bzw. Kontakt ohne Website).
+- S1 FR: bewusst nicht (Code du travail L5331-1, Inhaber 01.10.2026).
+- S1 Zusatzquellen (getestet 01.10.2026 auf GitHub): Workable-Boards aus Common Crawl (1.725 Boards, ~7 % mit
+  3+ Stellen in UK, ~6 % in US); DOL-LCA/PERM-Dateien (US-Arbeitgeber mit Visa-Anträgen) sind abrufbar.
+
+## S1 aus Karriereseiten (`sources/careers.py`, `extraktor-s1.yml`)
+
+Täglich 05:17 UTC. Je Firma: Startseite → Karriere-Link (ggf. Unterseite „Vacancies“) → Stellen aus dem offiziellen
+Bewerbungssystem (Lever, Greenhouse, Workable, Recruitee, Breezy, Pinpoint) oder aus JSON-LD der eigenen Seite.
+Ohne strukturierte Daten zählen nur Links, deren Text oder Adresse eine Stellenbezeichnung ist, und nur wenn die
+Firma selbst im Land sitzt. Das erste Sehen je Stelle steht im Cache (`out/cache/careers_seen.json`), damit
+„seit über 30 Tagen offen“ belegt ist; Firmen mit gesehenen Stellen werden täglich geprüft, die übrige Liste reihum.
+UK: Registernummer von der eigenen Website (sonst eindeutiger Name) → Sitz und Eigentümer aus Companies House.
+Ohne Namen steht die Rolle „Hiring manager (ask for the person responsible for recruiting)“ (CLAUDE.md §9).
 
 ## Testlauf 01.10.2026 (ehrliche Zahlen)
 
