@@ -20,7 +20,15 @@ Der Scout ist eine tägliche Claude-Sitzung (Routine „Quellen-Scout“). Je Si
    selbst, sobald Tests und GitHub-Prüfungen grün sind – nur für neue Quellen/Kategorien und deren Einbindung in die
    Werke. Versand, Sperrliste, Prüfregeln (QC/SC, check_prospect), Länderregeln und Kosten fasst er nie an; solche
    Änderungen gehen weiter über den Inhaber. Jeder selbst gemergte PR wird dem Inhaber im Chat gemeldet.
-6. Ergebnis hier eintragen – auch Fehlschläge – und dem Inhaber eine kurze Zusammenfassung schicken.
+6. **Neue Länder und Branchen (Inhaber 01.10.2026):** Nach Recherche darf der Scout bis zu **3 neue Länder** und
+   **3 neue Branchen** vorschlagen, in denen wir extrem viele Leads kostenlos bekommen – nur wenn er belastbare
+   Zusammenhänge sieht, an denen wir viel verdienen können (große kostenlose Quelle + zahlungskräftige Käufer im
+   selben Markt). Findet er keine, ist das in Ordnung. Er darf sie aufnehmen: neue Branche als `segments`-Eintrag
+   mit Status `idea` und Begründung, Lead-Quellen dafür ins Lead-Werk, Käufer-Kategorien ins Kunden-Werk.
+   Grenzen: Versand in einem neuen Land/einer neuen Branche nur mit Freigabe des Inhabers (CLAUDE.md §6);
+   Kaltmails nur in Länder mit `allowed: true` in `countries.yaml` (DE/AT/CH/IT/ES/PL/DK nie); ein Käufer braucht
+   Leads aus seinem eigenen Markt. Vorschläge stehen unten in „Vorschläge Länder/Branchen“.
+7. Ergebnis hier eintragen – auch Fehlschläge – und dem Inhaber eine kurze Zusammenfassung schicken.
 
 ## Bedarf (Stand 01.10.2026)
 
@@ -34,6 +42,11 @@ Der Scout ist eine tägliche Claude-Sitzung (Routine „Quellen-Scout“). Je Si
 | Kunden-Werk | Overture US/UK/FR, ~20 Kategorien | weitere Käufer-Branchen, Kontaktwege |
 | US Neugründungen | FMCSA, Form D, Connecticut-Register | weitere Bundesstaaten-Register mit E-Mail/Telefon |
 | Rohbestand ohne Telefon | CT-S2 (Freemail-Gründer) | kostenlose Quelle für Telefonnummern |
+
+## Vorschläge Länder/Branchen
+
+| Datum | Vorschlag | Quelle(n) | Käufer/Verdienst | Status |
+|---|---|---|---|---|
 
 ## Bereits geprüft
 

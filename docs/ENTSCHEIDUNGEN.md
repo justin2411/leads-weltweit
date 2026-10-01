@@ -48,6 +48,9 @@ Laufende Entscheidungen des Gehirns (Preise, Seitenvarianten) stehen zusätzlich
   („mach den aller 4 stunden … gib mir dann auch hier die ergebnisse“), Logbuch `docs/QUELLEN-SCOUT.md`.
   „nein ohne merge … das ziel ist so schnell und so viele leads wie möglich einsammeln“ → der Scout mergt eigene
   Quellen-PRs selbst (Tests + CI grün), meldet jeden Merge; Versand/Sperrliste/Prüfregeln/Kosten nie.
+- **Scout: neue Länder/Branchen:** „darf auch nach recherche 3 neue länder und 3 neue branchen vorschlagen wo wir extrem
+  viele leads herbekommen … wenn es bestimmte zusammenhänge sieht an denen wir viel verdienen können darf es die auch
+  mit aufnehmen“ → Branche als `idea`, Quellen in die Werke; Versand dort nur nach Freigabe, Länderregeln bleiben.
 - **Lead-Werk 30 gleichzeitig:** „Erhöhe die lead läufe auf 30 und kunden auf 7 gleichzeitig“, „Hab bereits pro“
   (GitHub Pro, 40 Jobs gleichzeitig).
 - **Datenbank:** „brauchst du nicht kannst du alles selber machen“ → Datenbank-Änderungen für die Werke ohne
