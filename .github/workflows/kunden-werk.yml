@@ -67,8 +67,9 @@ jobs:
           path: out/cache/kunden_pool.parquet
           key: kunden-pool-v2-${{ needs.pool.outputs.monat }}
           fail-on-cache-miss: true
+      # ca. 150 Firmen/min je Teil: --max reicht für das ganze Zeitfenster, das Zeitfenster beendet den Teil
       - name: Käufer prüfen und speichern
-        run: python scripts/kundenwerk.py run --shard ${{ matrix.shard }}/8 --max 4000 --workers 16 --deadline-min 90 | tee -a "$GITHUB_STEP_SUMMARY"
+        run: python scripts/kundenwerk.py run --shard ${{ matrix.shard }}/8 --max 15000 --workers 16 --deadline-min 90 | tee -a "$GITHUB_STEP_SUMMARY"
 
   weiter:
     # sofort den nächsten Lauf starten (nur bei Schalter an und echter Laufzeit, sonst Cron/Wachhund)
