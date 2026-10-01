@@ -126,7 +126,8 @@ def texts(seg: str, c: dict) -> dict:
             urg, why = "medium", "New transport businesses set up payroll, bookkeeping and fuel/tax registrations in the first months."
         else:  # S2
             dom = email_domain(c.get("email") or "")
-            mail = f"its contact email is a {dom} address" if dom else "it lists no email address"
+            art = "an" if dom[:1] in "aeiou" else "a"
+            mail = f"its contact email is {art} {dom} address" if dom else "it lists no email address"
             signal = (f"{name} (USDOT {f['dot_number']}), registered on {reg}, has no company website: {mail}, "
                       f"and no website under its name could be found.")
             opener = (f"Congratulations on registering {name} – I couldn't find a website for you yet; "

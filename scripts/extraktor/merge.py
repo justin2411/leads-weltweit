@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import re
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -29,6 +30,8 @@ def main(argv=None) -> int:
             if key not in seen:
                 seen.add(key)
                 rows.append(r)
+    for r in rows:  # Grammatik aus älteren Läufen: "a outlook.com" -> "an outlook.com"
+        r["signal"] = re.sub(r"\ba ([aeiou][\w.-]*\.[a-z]{2,} address)", r"an \1", r["signal"])
     for k in ("signal", "company_info", "opener"):
         groups = defaultdict(list)
         for r in rows:
