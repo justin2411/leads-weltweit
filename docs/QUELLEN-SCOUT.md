@@ -3,7 +3,14 @@
 Inhaber 01.10.2026: „einen anderen Lauf … der die ganze Zeit nach kostenfreien Möglichkeiten sucht, weitere Leads für
 unsere Bereiche zu besorgen, das dann selber prüft und bei Ergebnissen automatisch an die Werke weitergibt“.
 
-Der Scout ist eine tägliche Claude-Sitzung (Routine „Quellen-Scout“). Je Sitzung:
+**Ziel (Inhaber 01.10.2026):** „die Basis maximieren, mit der wir später über E-Mail-Marketing mit den Kunden-Leads
+Umsatz machen“. Hauptkennzahl: **mail-fähige Käufer** (`prospects.check_status = ok`) in Ländern, in die wir mailen
+dürfen UND für die wir Leads liefern können; dazu genug lieferbare Leads je Branche/Land, um sie zu beliefern.
+Reihenfolge der Arbeit: (1) mehr mail-fähige Käufer (neue Käufer-Kategorien, bessere E-Mail-Fundquote auf
+Firmenwebsites, neue erlaubte Länder samt Lead-Quelle), (2) Lead-Quellen für Branche/Land-Paare mit vielen Käufern,
+(3) alles andere. `call_only` und Rohbestand zählen mit, sind aber zweitrangig.
+
+Der Scout ist eine Claude-Sitzung (Routine „Quellen-Scout“). Je Sitzung:
 
 1. Dieses Logbuch lesen. Keine Quelle erneut testen, die unten schon steht (außer „später erneut prüfen“).
 2. Die größten Lücken wählen (Tabelle „Bedarf“). Je Sitzung höchstens zwei neue Quellen.

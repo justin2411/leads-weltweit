@@ -48,6 +48,9 @@ Laufende Entscheidungen des Gehirns (Preise, Seitenvarianten) stehen zusätzlich
   („mach den aller 4 stunden … gib mir dann auch hier die ergebnisse“), Logbuch `docs/QUELLEN-SCOUT.md`.
   „nein ohne merge … das ziel ist so schnell und so viele leads wie möglich einsammeln“ → der Scout mergt eigene
   Quellen-PRs selbst (Tests + CI grün), meldet jeden Merge; Versand/Sperrliste/Prüfregeln/Kosten nie.
+- **Oberziel Basis für E-Mail-Marketing:** „ziel ist es das es die basis maximiert mit der wir später über email
+  marketing mit den kunden leads umsatz machen können“ → Hauptkennzahl mail-fähige Käufer; Scout und Kunden-Werk
+  priorisieren E-Mail-Fundquote und mail-erlaubte Länder mit Lead-Quelle.
 - **Scout: neue Länder/Branchen:** „darf auch nach recherche 3 neue länder und 3 neue branchen vorschlagen wo wir extrem
   viele leads herbekommen … wenn es bestimmte zusammenhänge sieht an denen wir viel verdienen können darf es die auch
   mit aufnehmen“ → Branche als `idea`, Quellen in die Werke; Versand dort nur nach Freigabe, Länderregeln bleiben.
