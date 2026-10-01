@@ -284,7 +284,7 @@ def texts_jobs(c: dict) -> dict:
                else "Plusieurs recrutements en parallèle : besoin de candidats rapidement.")
     else:
         country = "the UK" if c["country"] == "UK" else "the US"
-        since = f", the oldest posted on {uk_day(dt.date.fromisoformat(oldest))}" if oldest else ""
+        since = f", the oldest advertised since {uk_day(dt.date.fromisoformat(oldest))}" if oldest else ""
         signal = f"{name}: {plural(n, 'open role')} in {country} as of {uk_day(today)}{since} – {'; '.join(titles)}."
         place = c["city"] + (f", {c['state']}" if c["country"] == "US" and c.get("state") else "")
         info = (f"{name}" + (f", based in {place}," if c.get("city") else "")

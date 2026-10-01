@@ -209,7 +209,9 @@ NOT_A_ROLE = re.compile(r"\b(programmes?|programs?|schemes?|graduates|apprentice
 def _is_person(text: str) -> bool:
     """„George Beverley Head of Major Accounts“: Team-Seite einer Person, keine Stelle."""
     import gender_guesser.detector as gd
-    words = text.split()
+    words = re.sub(r"^(dr|mr|mrs|ms|miss|prof)\.?\s+", "", text.strip(), flags=re.I).split()
+    if re.match(r"^(dr|prof)\.?\s", text.strip(), re.I) or re.search(r",\s*(phd|mba|aca|acca|cfa)\b", text, re.I):
+        return True
     if len(words) < 3 or not all(w[:1].isupper() for w in words[:2]):
         return False
     global _GD
@@ -453,7 +455,7 @@ def to_candidate(domain: str, res: dict, country: str, seen: dict, today: dt.dat
         d = [x for x in (j.get("date_posted"), first.get(_key(j))) if x and re.fullmatch(r"\d{4}-\d{2}-\d{2}", x)]
         if d:
             since.append(min(d))
-    since = [s for s in since if s <= today.isoformat()]
+    since = [s for s in since if s < today.isoformat()]  # heute erstmals gesehen ist kein Datum
     oldest = min(since) if since else None
     titles = [j["title"] for j in jobs if j.get("title")][:3]
     name = title_case(company_name(res, domain))
