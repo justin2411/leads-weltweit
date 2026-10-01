@@ -6,6 +6,7 @@ stündlich nur 3-mal am Tag, Morgenbericht, Sync und Käufersuche am 28.09. gar 
 
 Regeln:
   - stündliche Läufe: überfällig, wenn im erlaubten Stundenfenster seit N Minuten kein Lauf gestartet wurde
+  - Dauerbetrieb (Lead-/Kunden-Werk): sobald kein Lauf aktiv ist, nächster Lauf (frühestens min_gap nach dem letzten Start)
   - tägliche Läufe: überfällig, wenn die geplante Zeit + Karenz vorbei ist und seit der geplanten Zeit kein Lauf
     gestartet wurde
   - der Versand wird nur nachgestartet, wenn config/versand.yaml aktiv: true sagt (ein Handstart würde den
@@ -42,9 +43,11 @@ JOBS = [
     {"wf": "tagescheck.yml", "kind": "daily", "at": "17:37", "grace": 40, "inputs": {"mail": "true"}},
     {"wf": "kundenlieferung.yml", "kind": "daily", "at": "04:53", "grace": 60, "weekdays": [0], "until": "12:00"},
     {"wf": "anreichern.yml", "kind": "daily", "at": "08:41", "grace": 60, "cond": "lead_suche"},
-    # Werke (24/7): GitHub ließ am 01.10.2026 die ersten geplanten Kunden-Werk-Läufe aus
-    {"wf": "lead-werk.yml", "kind": "hourly", "window": (0, 23), "max_min": 210, "cond": "lead_suche"},
-    {"wf": "kunden-werk.yml", "kind": "hourly", "window": (0, 23), "max_min": 150, "cond": "kunden_suche"},
+    # Werke (24/7): GitHub ließ am 01.10.2026 die ersten geplanten Kunden-Werk-Läufe aus. Inhaber 01.10.2026: „Er soll
+    # schon eher wieder starten damit es immer zuverlässig durchläuft“ -> Dauerbetrieb: ist kein Lauf aktiv, startet
+    # der nächste sofort (Wachhund prüft alle 15 min); min_gap verhindert Dauerschleifen bei sofortigem Absturz.
+    {"wf": "lead-werk.yml", "kind": "continuous", "min_gap": 20, "cond": "lead_suche"},
+    {"wf": "kunden-werk.yml", "kind": "continuous", "min_gap": 20, "cond": "kunden_suche"},
 ]
 
 
@@ -76,6 +79,11 @@ def overdue(job: dict, runs: list[dict], now: dt.datetime) -> tuple[bool, str]:
     starts = [dt.datetime.fromisoformat(r["created_at"].replace("Z", "+00:00")) for r in runs]
     if any(r["status"] in ("queued", "in_progress", "waiting", "requested", "pending") for r in runs[:3]):
         return False, "läuft gerade"
+    if job["kind"] == "continuous":
+        last = starts[0] if starts else None
+        if last and (now - last).total_seconds() / 60 < job["min_gap"]:
+            return False, f"zuletzt vor {(now - last).total_seconds() / 60:.0f} min gestartet"
+        return True, "kein Lauf aktiv (Dauerbetrieb)"
     if job["kind"] == "hourly":
         a, b = job["window"]
         if not (a <= now.hour <= b):
