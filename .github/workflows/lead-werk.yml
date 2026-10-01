@@ -1,5 +1,5 @@
 # Lead-Werk (Inhaber 01.10.2026: „eigener Bereich der 24/7 die leads holt und anreichert“).
-# Alle 3 Stunden, 30 Teile (13 gleichzeitig): kostenlose Quellen -> Sicherheitsfilter -> kostenlose Anreicherung -> Qualitäts- und
+# Alle 3 Stunden, 30 Teile gleichzeitig: kostenlose Quellen -> Sicherheitsfilter -> kostenlose Anreicherung -> Qualitäts- und
 # Signalkontrolle -> grüne Leads direkt in Supabase (watch_companies, observations, leads). Schon gespeicherte
 # Firmen werden übersprungen, so arbeitet sich jeder Lauf weiter durch den Bestand.
 # Lädt KEINE Lead-Dateien hoch (öffentliches Repo) – nur den Zählbericht. Sendet nichts.
@@ -18,9 +18,9 @@ jobs:
     timeout-minutes: 330
     strategy:
       fail-fast: false
-      # 30 Teile (Inhaber 01.10.2026: „Erhöhe die lead läufe auf 30“), davon 13 gleichzeitig: GitHub Free erlaubt
-      # 20 Jobs gleichzeitig, 7 Plätze bleiben dem Kunden-Werk. --shard verteilt fest nach Quell-ID.
-      max-parallel: 13
+      # 30 Teile gleichzeitig (Inhaber 01.10.2026: „Erhöhe die lead läufe auf 30“, GitHub Pro: 40 Jobs gleichzeitig;
+      # 7 für das Kunden-Werk, 3 frei für die übrigen Abläufe). --shard verteilt fest nach Quell-ID.
+      max-parallel: 30
       matrix:
         include:
           - { name: s2-uk-0, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 0/8" }

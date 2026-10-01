@@ -95,7 +95,7 @@ der Do-Not-Call-Liste abgleichen (TCPA). Gehört in die Lieferbedingungen.
 
 ## Lead-Werk (`.github/workflows/lead-werk.yml`)
 
-Alle 3 Stunden, 30 Teile, davon 13 gleichzeitig (GitHub Free: 20 Jobs gleichzeitig, 7 für das Kunden-Werk; fest nach Quell-ID verteilt): S2 UK, S2 FR (Overture), US FMCSA (S2/S4/S5), US Form D (S1/S5/S9),
+Alle 3 Stunden, 30 Teile gleichzeitig (GitHub Pro: 40 Jobs gleichzeitig, 7 für das Kunden-Werk, 3 frei; fest nach Quell-ID verteilt): S2 UK, S2 FR (Overture), US FMCSA (S2/S4/S5), US Form D (S1/S5/S9),
 UK-Register und FR-Register (S4/S5/S9), S1 Karriereseiten (UK/US). Jeder Teil: `run.py … --db --store`.
 Schon gespeicherte Firmen (Quelle + ID in `watch_companies`) werden vorab aussortiert; bei Overture holt jeder Lauf
 die nächsten noch unbekannten Firmen. Grüne Leads schreibt `store.store_new` blockweise (Firma, Kontakt, Person,
