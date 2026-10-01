@@ -3,3 +3,5 @@ PyYAML>=6.0
 dnspython>=2.6
 anthropic>=0.60
 playwright>=1.47
+phonenumbers>=8.13
+gender-guesser>=0.4

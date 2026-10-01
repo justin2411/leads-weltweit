@@ -1,0 +1,249 @@
+#!/usr/bin/env python3
+"""Extraktor: Leads aus kostenlosen amtlichen Quellen holen, kostenlos anreichern, doppelt prüfen, ausgeben.
+
+  python scripts/extraktor/run.py --segments S1,S2,S4,S5,S9 --per 100 --out out/extraktor
+  python scripts/extraktor/run.py --segments S4 --per 20 --fmcsa-days 14 --out /tmp/x      # klein testen
+  python scripts/extraktor/run.py ... --db        # Sperrliste/Dubletten aus Supabase prüfen (SUPABASE_URL/KEY)
+
+Ausgabe in --out:
+  leads_gruen.csv   lieferbar: Qualitätskontrolle grün UND Signalkontrolle bestanden
+  leads_alle.csv    jeder bearbeitete Kandidat mit Ampel und Gründen (gelb = noch anreichern, rot = nie liefern)
+  bericht.json      Trichter je Branche (Kandidaten -> angereichert -> grün/gelb/rot)
+"""
+from __future__ import annotations
+
+import argparse
+import csv
+import datetime as dt
+import json
+import sys
+import time
+from collections import Counter, defaultdict
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from extraktor import enrich as E  # noqa: E402
+from extraktor import filters, qc, sc, segments  # noqa: E402
+from extraktor.model import CSV_COLUMNS  # noqa: E402
+from extraktor.sources import fmcsa, formd  # noqa: E402
+
+FORM_D_SEGMENTS = ("S1", "S5", "S9")
+FMCSA_SEGMENTS = ("S4", "S2")
+
+
+def log(msg: str) -> None:
+    print(f"[{dt.datetime.now():%H:%M:%S}] {msg}", flush=True)
+
+
+# ---------------------------------------------------------------------------
+# Kandidaten je Branche
+# ---------------------------------------------------------------------------
+def load_fmcsa(days: int, stats: Counter) -> tuple[list[dict], Counter]:
+    since = dt.date.today() - dt.timedelta(days=days)
+    rows = fmcsa.fetch(since)
+    log(f"FMCSA: {len(rows)} aktive Neuzugänge seit {since}")
+    cands = [fmcsa.to_candidate(r) for r in rows]
+    shared = filters.shared_contacts(cands)
+    out = []
+    for c in cands:
+        why = filters.pre_filter(c)
+        if why:
+            stats[f"fmcsa_filtered:{why}"] += 1
+            continue
+        out.append(c)
+    out = filters.dedupe(out)
+    stats["fmcsa_candidates"] = len(out)
+    return out, shared
+
+
+def load_formd(days: int, max_docs: int, stats: Counter) -> list[dict]:
+    cands = formd.fetch(days=days, max_docs=max_docs, log=log)
+    out = []
+    for c in cands:
+        why = filters.pre_filter(c)
+        if why:
+            stats[f"formd_filtered:{why}"] += 1
+            continue
+        out.append(c)
+    out = filters.dedupe(out)
+    stats["formd_candidates"] = len(out)
+    return out
+
+
+def pools(segs: list[str], fm: list[dict], fd: list[dict], distinct: bool) -> dict[str, list[dict]]:
+    """Kandidaten je Branche, vor der Anreicherung. FMCSA: eigene Domain -> S4, Freemail -> S2.
+    Form D: S1 (ab $1M) vor S5 (junge kleine Firmen) vor S9 (Geschäftsführung) – mit distinct jede Firma nur einmal."""
+    p: dict[str, list[dict]] = defaultdict(list)
+    for c in fm:
+        own = c.get("email") and not E.is_freemail(c["email"])
+        if "S4" in segs and own and segments.fits("S4", c)[0]:
+            p["S4"].append(c)
+        elif "S2" in segs and c.get("email") and not own and segments.fits("S2", c)[0]:
+            p["S2"].append(c)
+    used = set()
+    for seg in [s for s in FORM_D_SEGMENTS if s in segs]:
+        for c in fd:
+            if distinct and c["source_id"] in used:
+                continue
+            if segments.fits(seg, c)[0]:
+                p[seg].append(c)
+                if distinct:
+                    used.add(c["source_id"])
+    # Form D: Firmen mit Telefon und Person zuerst (höhere Chance auf vollständige Leads)
+    for seg in FORM_D_SEGMENTS:
+        p[seg].sort(key=lambda c: (not c.get("phone"), not c.get("person_name")))
+    return p
+
+
+# ---------------------------------------------------------------------------
+# Einen Kandidaten bearbeiten
+# ---------------------------------------------------------------------------
+def process(c: dict, seg: str, fetcher, shared: Counter, guard: filters.Guard) -> dict:
+    c = {**c, "evidence": {}, "facts": dict(c["facts"])}
+    why = guard.problem(c)
+    if why:
+        return {**c, "segment": seg, "ampel": "skip", "qc": {"status": "skip", "blocking": [why], "missing": [],
+                                                              "warnings": [], "evidence": []},
+                "sc": {"status": "skip", "problems": []}}
+    try:
+        E.enrich(c, fetcher, need_website=True)
+    except Exception as exc:  # noqa: BLE001 - ein Fehler bei einer Firma darf den Lauf nicht beenden
+        c["evidence"]["enrich_error"] = f"{type(exc).__name__}: {exc}"[:200]
+    t = segments.texts(seg, c)
+    q = qc.run(c, seg, shared)
+    s = sc.run(c, seg, t)
+    return {**c, **t, "segment": seg, "qc": q, "sc": s}
+
+
+def ampel(l: dict) -> str:
+    if l["qc"]["status"] == "skip":
+        return "skip"
+    if l["qc"]["status"] == "red" or l["sc"]["status"] == "fail":
+        return "red"
+    return "green" if l["qc"]["status"] == "green" else "yellow"
+
+
+def run_segment(seg: str, pool: list[dict], per: int, fetcher, shared: Counter, guard: filters.Guard,
+                workers: int, max_tries: int) -> list[dict]:
+    """Kandidaten in Wellen parallel bearbeiten, bis `per` grüne Leads da sind oder der Vorrat leer ist."""
+    done, i, started = [], 0, time.monotonic()
+    queue = pool[:max_tries]
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        while i < len(queue) and sum(l["ampel"] == "green" for l in done) < per:
+            need = per - sum(l["ampel"] == "green" for l in done)
+            batch = queue[i:i + max(workers, min(workers * 3, need * 3))]
+            i += len(batch)
+            for l in ex.map(lambda c: process(c, seg, fetcher, shared, guard), batch):
+                l["ampel"] = ampel(l)
+                done.append(l)
+            log(f"  {seg}: {len(done)} bearbeitet, {sum(l['ampel'] == 'green' for l in done)} grün")
+    log(f"{seg}: {len(done)} bearbeitet, {sum(l['ampel'] == 'green' for l in done)} grün "
+        f"({time.monotonic() - started:.0f} s)")
+    return done
+
+
+# ---------------------------------------------------------------------------
+# Ausgabe
+# ---------------------------------------------------------------------------
+def row(l: dict) -> dict:
+    q, s = l["qc"], l["sc"]
+    return {
+        "ampel": l["ampel"], "segment": l["segment"], "country": l["country"], "company": l["name"],
+        "legal_name": l["legal_name"], "contact_name": l.get("person_name"), "contact_role": l.get("person_role"),
+        "phone": l.get("phone"), "phone_type": l.get("phone_type", ""), "email": l.get("email"),
+        "email_type": l.get("email_type", ""), "website": l.get("website"), "street": l.get("street"),
+        "city": l.get("city"), "state": l.get("state"), "zip": l.get("zip"), "signal": l.get("signal"),
+        "signal_date": l.get("signal_date"), "company_info": l.get("company_info"), "opener": l.get("opener"),
+        "urgency": l.get("urgency"), "urgency_reason": l.get("urgency_reason"), "source": l["source"],
+        "source_id": l["source_id"], "source_url": l["source_url"], "qc": q["status"],
+        "qc_notes": "; ".join(q["blocking"] + [f"missing:{m}" for m in q["missing"]] + q["warnings"]
+                              + [f"+{e}" for e in q["evidence"]]),
+        "sc": s["status"], "sc_notes": "; ".join(s["problems"]),
+    }
+
+
+def write(out: Path, leads: list[dict], per: int) -> dict:
+    out.mkdir(parents=True, exist_ok=True)
+    rows = [row(l) for l in leads if l["ampel"] != "skip"]
+    with open(out / "leads_alle.csv", "w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=CSV_COLUMNS)
+        w.writeheader()
+        w.writerows(rows)
+    greens, per_seg = [], Counter()
+    for r in rows:
+        if r["ampel"] == "green" and per_seg[r["segment"]] < per:
+            per_seg[r["segment"]] += 1
+            greens.append(r)
+    with open(out / "leads_gruen.csv", "w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=CSV_COLUMNS)
+        w.writeheader()
+        w.writerows(greens)
+    return dict(per_seg)
+
+
+def funnel(leads: list[dict], pools_: dict[str, list[dict]]) -> dict:
+    rep = {}
+    for seg in sorted({l["segment"] for l in leads} | set(pools_)):
+        ls = [l for l in leads if l["segment"] == seg]
+        reasons = Counter()
+        for l in ls:
+            if l["ampel"] == "red":
+                reasons.update(x.split(" (")[0].split(":")[0] for x in l["qc"]["blocking"] + l["sc"]["problems"])
+            if l["ampel"] == "yellow":
+                reasons.update(f"missing:{m}" for m in l["qc"]["missing"])
+        rep[seg] = {"pool": len(pools_.get(seg, [])), "processed": len(ls),
+                    **Counter(l["ampel"] for l in ls), "top_reasons": reasons.most_common(8)}
+    return rep
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--segments", default="S1,S2,S4,S5,S9")
+    ap.add_argument("--per", type=int, default=100, help="grüne Leads je Branche")
+    ap.add_argument("--fmcsa-days", type=int, default=30)
+    ap.add_argument("--formd-days", type=int, default=21)
+    ap.add_argument("--formd-max-docs", type=int, default=5000)
+    ap.add_argument("--max-tries", type=int, default=1500, help="höchstens so viele Kandidaten je Branche anreichern")
+    ap.add_argument("--workers", type=int, default=12)
+    ap.add_argument("--no-distinct", action="store_true", help="eine Form-D-Firma darf in mehreren Branchen stehen")
+    ap.add_argument("--db", action="store_true", help="Sperrliste und vorhandene Leads aus Supabase prüfen")
+    ap.add_argument("--out", default="out/extraktor")
+    args = ap.parse_args(argv)
+    segs = [s.strip().upper() for s in args.segments.split(",") if s.strip()]
+    stats = Counter()
+
+    fm, shared = (load_fmcsa(args.fmcsa_days, stats) if any(s in segs for s in FMCSA_SEGMENTS) else ([], Counter()))
+    fd = load_formd(args.formd_days, args.formd_max_docs, stats) if any(s in segs for s in FORM_D_SEGMENTS) else []
+    p = pools(segs, fm, fd, distinct=not args.no_distinct)
+    log("Kandidaten je Branche: " + ", ".join(f"{s} {len(p.get(s, []))}" for s in segs))
+
+    guard = filters.Guard(None)
+    if args.db:
+        from lib.db import DB
+        guard = filters.Guard(DB())
+    from enrich import Fetcher
+    fetcher = Fetcher()
+
+    leads = []
+    for seg in segs:
+        leads += run_segment(seg, p.get(seg, []), args.per, fetcher, shared, guard, args.workers, args.max_tries)
+    sc.batch_unique([l for l in leads if l["ampel"] in ("green", "yellow")])
+    for l in leads:
+        l["ampel"] = ampel(l)
+
+    out = Path(args.out)
+    per_seg = write(out, leads, args.per)
+    rep = {"date": dt.date.today().isoformat(), "stats": stats, "green_written": per_seg,
+           "segments": funnel(leads, p), "web_requests": fetcher.requests}
+    (out / "bericht.json").write_text(json.dumps(rep, indent=2, default=str, ensure_ascii=False), encoding="utf-8")
+    log(f"fertig: {per_seg} grüne Leads -> {out}/leads_gruen.csv")
+    for seg, r in rep["segments"].items():
+        log(f"  {seg}: Vorrat {r['pool']}, bearbeitet {r['processed']}, grün {r.get('green', 0)}, "
+            f"gelb {r.get('yellow', 0)}, rot {r.get('red', 0)} – {r['top_reasons'][:4]}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
