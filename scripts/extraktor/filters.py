@@ -20,10 +20,19 @@ PUBLIC = re.compile(r"\b(county of|city of|town of|village of|state of|departmen
 JUNK = re.compile(r"\b(test|testing|sample|dummy|n/?a|unknown|none)\b", re.I)
 
 
-def shared_contacts(candidates: list[dict]) -> Counter:
-    """Wie viele verschiedene Firmen nutzen dieselbe E-Mail/Telefonnummer? (Schlüssel ('email'|'phone', Wert))"""
+def shared_contacts(candidates: list[dict], extra: list[dict] | None = None) -> Counter:
+    """Wie viele verschiedene Firmen nutzen dieselbe E-Mail/Telefonnummer? (Schlüssel ('email'|'phone', Wert))
+    extra: zusätzliche FMCSA-Rohzeilen (dot_number, phone, cell_phone, email_address) eines längeren Zeitraums."""
     from extraktor.qc import check_phone
     seen: dict[tuple, set] = {}
+    for r in extra or []:
+        sid = str(r.get("dot_number") or "")
+        if r.get("email_address"):
+            seen.setdefault(("email", r["email_address"].strip().lower()), set()).add(sid)
+        for raw in (r.get("phone"), r.get("cell_phone")):
+            e164 = check_phone(raw, r.get("phy_state") or "")["e164"] if raw else None
+            if e164:
+                seen.setdefault(("phone", e164), set()).add(sid)
     for c in candidates:
         if c.get("email"):
             seen.setdefault(("email", c["email"].lower()), set()).add(c["source_id"])

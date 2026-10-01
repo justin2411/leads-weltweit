@@ -6,6 +6,7 @@ import re
 # Reihenfolge der CSV-Spalten (Inhaber-Ansicht und Import)
 CSV_COLUMNS = [
     "ampel", "segment", "country", "company", "legal_name", "contact_name", "contact_role", "phone", "phone_type",
+    "phone_note",
     "email", "email_type", "website", "street", "city", "state", "zip",
     "signal", "signal_date", "company_info", "opener", "urgency", "urgency_reason",
     "source", "source_id", "source_url", "qc", "qc_notes", "sc", "sc_notes",

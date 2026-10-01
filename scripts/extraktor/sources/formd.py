@@ -7,7 +7,9 @@ SEC-Regeln: Absenderkennung im User-Agent, höchstens 10 Abrufe pro Sekunde (wir
 from __future__ import annotations
 
 import datetime as dt
+import os
 import re
+from pathlib import Path
 import time
 import xml.etree.ElementTree as ET
 
@@ -20,6 +22,7 @@ INDEX = "https://www.sec.gov/Archives/edgar/daily-index/{y}/QTR{q}/form.{d:%Y%m%
 DOC = "https://www.sec.gov/Archives/edgar/data/{cik}/{acc}/primary_doc.xml"
 FILING = "https://www.sec.gov/Archives/edgar/data/{cik}/{acc}-index.htm"
 PAUSE = 0.2
+CACHE = Path(os.environ.get("EXTRAKTOR_CACHE", "out/cache/formd"))
 
 # Fonds, Immobilien-Zweckgesellschaften und Finanzvehikel sind keine Leads (kein Personal, keine Buchhaltung …)
 NAME_SKIP = re.compile(r"\b(fund|funds|l\.?p\.?|partners|investors|investment|investments|capital|reit|properties|realty|"
@@ -171,13 +174,20 @@ def fetch(days: int = 30, until: dt.date | None = None, session: requests.Sessio
             if fetched >= max_docs:
                 return out
             url = DOC.format(cik=int(e["cik"]), acc=e["acc"].replace("-", ""))
+            cached = CACHE / f"{e['acc']}.xml"
             try:
-                r = s.get(url, timeout=30)
-                fetched += 1
-                time.sleep(PAUSE)
-                if r.status_code != 200:
-                    continue
-                c = to_candidate(e, parse(r.text))
+                if cached.exists():
+                    xml = cached.read_text(encoding="utf-8")
+                else:
+                    r = s.get(url, timeout=30)
+                    fetched += 1
+                    time.sleep(PAUSE)
+                    if r.status_code != 200:
+                        continue
+                    xml = r.text
+                    CACHE.mkdir(parents=True, exist_ok=True)
+                    cached.write_text(xml, encoding="utf-8")
+                c = to_candidate(e, parse(xml))
             except (requests.RequestException, ET.ParseError):
                 continue
             if c:

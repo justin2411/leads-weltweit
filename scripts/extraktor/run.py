@@ -45,7 +45,14 @@ def load_fmcsa(days: int, stats: Counter) -> tuple[list[dict], Counter]:
     rows = fmcsa.fetch(since)
     log(f"FMCSA: {len(rows)} aktive Neuzugänge seit {since}")
     cands = [fmcsa.to_candidate(r) for r in rows]
-    shared = filters.shared_contacts(cands)
+    long_since = dt.date.today() - dt.timedelta(days=120)
+    extra = fmcsa.contact_rows(long_since)
+    shared = filters.shared_contacts(cands, extra)
+    oos = fmcsa.out_of_service(dt.date.today() - dt.timedelta(days=540))
+    log(f"FMCSA: Sammel-Kontakte über {len(extra)} Neuzugänge seit {long_since} gezählt, {len(oos)} offene Stilllegungen")
+    for c in cands:
+        if c["source_id"] in oos:
+            c["facts"]["out_of_service"] = oos[c["source_id"]]
     out = []
     for c in cands:
         why = filters.pre_filter(c)
@@ -158,7 +165,8 @@ def row(l: dict) -> dict:
     return {
         "ampel": l["ampel"], "segment": l["segment"], "country": l["country"], "company": l["name"],
         "legal_name": l["legal_name"], "contact_name": l.get("person_name"), "contact_role": l.get("person_role"),
-        "phone": l.get("phone"), "phone_type": l.get("phone_type", ""), "email": l.get("email"),
+        "phone": l.get("phone"), "phone_type": l.get("phone_type", ""),
+        "phone_note": l.get("phone_note", ""), "email": l.get("email"),
         "email_type": l.get("email_type", ""), "website": l.get("website"), "street": l.get("street"),
         "city": l.get("city"), "state": l.get("state"), "zip": l.get("zip"), "signal": l.get("signal"),
         "signal_date": l.get("signal_date"), "company_info": l.get("company_info"), "opener": l.get("opener"),

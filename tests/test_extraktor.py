@@ -197,6 +197,29 @@ class FixTests(unittest.TestCase):
         self.assertEqual(sc.run(c, "S5", t)["status"], "pass")
 
 
+class SafetyTests(unittest.TestCase):
+    def test_out_of_service_and_undeliverable_are_red(self):
+        c = fm_candidate()
+        c["facts"]["out_of_service"] = "New Entrant Revoked"
+        c["evidence"] = {"mx": True}
+        self.assertTrue(any(b.startswith("out_of_service_order") for b in qc.run(c, "S4")["blocking"]))
+        c = fm_candidate(undeliv_phy="Y")
+        c["evidence"] = {"mx": True}
+        self.assertIn("fmcsa_mail_undeliverable", qc.run(c, "S4")["blocking"])
+
+    def test_shared_over_long_period(self):
+        extra = [{"dot_number": str(i), "phone": "2029182132", "email_address": "x@filer.com"} for i in range(5)]
+        counts = filters.shared_contacts([fm_candidate()], extra)
+        self.assertEqual(counts[("phone", "+12029182132")], 5)
+
+    def test_mobile_note(self):
+        c = fm_candidate(cell_phone="4023808581")
+        c["evidence"] = {"mx": True}
+        qc.run(c, "S4")
+        self.assertEqual(c["phone_type"], "mobile")
+        self.assertIn("dial manually", c["phone_note"])
+
+
 class FilterTests(unittest.TestCase):
     def test_public_and_shared(self):
         self.assertEqual(filters.pre_filter(fm_candidate(legal_name="COUNTY OF LANCASTER")), "public_or_nonprofit")

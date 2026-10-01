@@ -33,8 +33,10 @@ SELECT = ",".join([
     "dot_number", "add_date", "status_code", "legal_name", "dba_name", "company_officer_1", "company_officer_2",
     "phone", "cell_phone", "email_address", "phy_street", "phy_city", "phy_state", "phy_zip", "phy_country",
     "power_units", "truck_units", "total_drivers", "total_cdl", "classdef", "carrier_operation", "hm_ind",
-    "business_org_desc", "fleetsize", "docket1prefix", "docket1", "crgo_cargoothr_desc", *CARGO,
+    "business_org_desc", "fleetsize", "docket1prefix", "docket1", "crgo_cargoothr_desc", "undeliv_phy",
+    "carrier_mailing_und_date", *CARGO,
 ])
+OOS_URL = "https://data.transportation.gov/resource/p2mt-9ige.json"
 
 
 def fetch(since: dt.date, until: dt.date | None = None, session: requests.Session | None = None,
@@ -54,6 +56,38 @@ def fetch(since: dt.date, until: dt.date | None = None, session: requests.Sessio
         rows += page
         offset += len(page)
         if len(page) < n or (limit and len(rows) >= limit):
+            return rows
+
+
+def out_of_service(since: dt.date, session: requests.Session | None = None) -> dict[str, str]:
+    """DOT-Nummern mit nicht aufgehobener Stilllegung (Out-of-Service-Order) seit `since` -> Grund.
+    Viele neue Carrier werden in den ersten Wochen stillgelegt (z. B. 'New Entrant Revoked')."""
+    s = session or requests.Session()
+    out, offset = {}, 0
+    while True:
+        r = s.get(OOS_URL, params={"$select": "dot_number,oos_reason", "$where": f"oos_date>='{since}' AND rescind_date IS NULL",
+                                   "$limit": PAGE, "$offset": offset}, timeout=120)
+        r.raise_for_status()
+        page = r.json()
+        out.update({str(x.get("dot_number")): x.get("oos_reason") or "out of service" for x in page})
+        offset += len(page)
+        if len(page) < PAGE:
+            return out
+
+
+def contact_rows(since: dt.date, session: requests.Session | None = None) -> list[dict]:
+    """Nur DOT, Telefon, Handy, E-Mail aller Neuzugänge seit `since` (auch inaktive) – um Sammel-Kontakte von
+    Anmelde-Dienstleistern über einen langen Zeitraum zu zählen."""
+    s = session or requests.Session()
+    rows, offset = [], 0
+    while True:
+        r = s.get(URL, params={"$select": "dot_number,phone,cell_phone,email_address,phy_state",
+                               "$where": f"add_date>='{since:%Y%m%d}'", "$limit": PAGE, "$offset": offset}, timeout=120)
+        r.raise_for_status()
+        page = r.json()
+        rows += page
+        offset += len(page)
+        if len(page) < PAGE:
             return rows
 
 
@@ -100,6 +134,8 @@ def to_candidate(r: dict) -> dict:
         "cargo": cargo[:4],
         "org": (r.get("business_org_desc") or "").title(),
         "mc_docket": f"{r.get('docket1prefix') or ''}{r.get('docket1') or ''}" or None,
+        "undeliverable": (r.get("undeliv_phy") or "").upper() == "Y" or bool(r.get("carrier_mailing_und_date")),
+        "cell_phone": r.get("cell_phone") or "",
     }
     return candidate(
         source="fmcsa", source_id=str(r.get("dot_number") or ""),

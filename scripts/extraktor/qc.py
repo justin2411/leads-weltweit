@@ -139,6 +139,11 @@ def run(c: dict, seg: str, shared: dict | None = None) -> dict:
     if c.get("source") == "fmcsa" and f.get("drivers", 0) > max(10, 5 * max(1, f.get("power_units", 0))):
         blocking.append(f"implausible_fleet ({f.get('drivers')} drivers, {f.get('power_units')} power units)")
 
+    if f.get("out_of_service"):
+        blocking.append(f"out_of_service_order ({f['out_of_service']})")
+    if f.get("undeliverable"):
+        blocking.append("fmcsa_mail_undeliverable")
+
     # Telefon
     ph = check_phone(c.get("phone"), c.get("state"))
     if not ph["ok"] and c.get("phone_alt"):
@@ -149,6 +154,13 @@ def run(c: dict, seg: str, shared: dict | None = None) -> dict:
     if ph["ok"]:
         c["phone"] = ph["e164"]
         c["phone_type"] = ph["type"]
+        cell = check_phone(f.get("cell_phone") or c.get("phone_alt") or "", c.get("state"))["e164"]
+        if ph["type"] == "mobile" or (cell and cell == ph["e164"]):
+            c["phone_type"] = "mobile"
+        if c["phone_type"] in ("mobile", "landline_or_mobile") and c.get("country") == "US":
+            # TCPA: Handynummern nur von Hand wählen, keine SMS/Wählautomaten, Do-Not-Call abgleichen
+            c["phone_note"] = ("mobile: dial manually only, no texts/autodialer, check DNC"
+                               if c["phone_type"] == "mobile" else "US: dial manually; check DNC if it is a mobile")
         if ph["note"]:
             warnings.append(ph["note"])
         if shared.get(("phone", ph["e164"]), 0) >= 3:
