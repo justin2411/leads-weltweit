@@ -188,10 +188,12 @@ def html_version(body: str, footer: str, lang: str, company: str | None = None,
     return render(body, footer, lang, cta)
 
 
-def deliver(to: str, subject: str, text: str, unsub_url: str | None, html: str | None = None) -> dict:
-    """Sendet eine reine Textmail. MAIL_TRANSPORT=smtp (z. B. Zoho) oder resend.
+def deliver(to: str, subject: str, text: str, unsub_url: str | None, html: str | None = None,
+            mailbox: dict | None = None) -> dict:
+    """Sendet eine reine Textmail. MAIL_TRANSPORT=smtp (z. B. Strato) oder resend.
+    mailbox: eines der Postfächer aus lib.mailboxes (Standard: Postfach 1 aus SMTP_*/MAIL_FROM).
 
-    Rückgabe: Felder für messages (resend_id bzw. smtp_message_id).
+    Rückgabe: Felder für messages (resend_id bzw. smtp_message_id, sent_from).
     """
     headers = unsubscribe_headers(unsub_url)
     reply_to = os.environ.get("REPLY_TO")
@@ -210,7 +212,7 @@ def deliver(to: str, subject: str, text: str, unsub_url: str | None, html: str |
     from email.message import EmailMessage
     from email.utils import formatdate, make_msgid
 
-    sender = os.environ["MAIL_FROM"]
+    sender = mailbox["from"] if mailbox else os.environ["MAIL_FROM"]
     msg = EmailMessage()
     msg["From"] = sender
     msg["To"] = to
@@ -224,14 +226,18 @@ def deliver(to: str, subject: str, text: str, unsub_url: str | None, html: str |
     msg.set_content(text)  # Text-Version immer dabei; HTML ohne Bilder, kein Öffnungs-Tracking
     if html:
         msg.add_alternative(html, subtype="html")
-    port = int(os.environ.get("SMTP_PORT") or "465")
+    if mailbox:
+        host, port, user, password = mailbox["host"], mailbox["port"], mailbox["user"], mailbox["password"]
+    else:
+        host, port = os.environ["SMTP_HOST"], int(os.environ.get("SMTP_PORT") or "465")
+        user, password = os.environ["SMTP_USER"], os.environ["SMTP_PASSWORD"]
     cls = smtplib.SMTP_SSL if port == 465 else smtplib.SMTP
-    with cls(os.environ["SMTP_HOST"], port, timeout=30) as smtp:
+    with cls(host, port, timeout=30) as smtp:
         if port != 465:
             smtp.starttls()
-        smtp.login(os.environ["SMTP_USER"], os.environ["SMTP_PASSWORD"])
+        smtp.login(user, password)
         smtp.send_message(msg)
-    return {"smtp_message_id": msg["Message-ID"]}
+    return {"smtp_message_id": msg["Message-ID"], **({"sent_from": mailbox["from"]} if mailbox else {})}
 
 
 def cmd_send(args) -> int:
@@ -252,7 +258,7 @@ def cmd_send(args) -> int:
             if not os.environ.get(var):
                 raise SystemExit(f"{var} fehlt")
 
-    from lib.deliverability import domain_accepts_mail, emergency_stop, interleave, warmup_cap
+    from lib.deliverability import domain_accepts_mail, emergency_stop, interleave
 
     # Notbremse über die letzten 30 Tage, über alle Experimente
     since = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=30)).isoformat()
@@ -265,17 +271,25 @@ def cmd_send(args) -> int:
         print(f"NOTBREMSE: {stop}")
         return 2
 
-    first = db.select("messages", {"status": "eq.sent", "select": "sent_at", "order": "sent_at.asc", "limit": "1"})
-    first_day = dt.date.fromisoformat(first[0]["sent_at"][:10]) if first else None
-    cap = warmup_cap(first_day, dt.date.today())
+    # Postfächer (lib/mailboxes.py): jedes mit eigener Tagesmenge, zusammen die Tagesgrenze
+    from lib.mailboxes import box_cap, box_of, mailboxes, pick
+    boxes = mailboxes() or [{"n": 1, "from": os.environ.get("MAIL_FROM", "")}]
+    firsts: dict[int, dt.date] = {}
+    for row in db.select_all("messages", {"status": "eq.sent", "select": "sent_at,sent_from", "order": "sent_at.asc"}):
+        firsts.setdefault(box_of(row.get("sent_from"), boxes), dt.date.fromisoformat(row["sent_at"][:10]))
+    caps = {b["n"]: box_cap(b, firsts.get(b["n"]), dt.date.today()) for b in boxes}
+    cap = sum(caps.values())
 
     today = dt.date.today().isoformat()
     sent_today: dict[str, int] = {}
+    sent_box: dict[int, int] = {}
     pages: dict = {}  # (segment, land) -> slug der Live-Seite
     for row in db.select("messages", {"status": "eq.sent", "sent_at": f"gte.{today}",
-                                      "select": "id,prospects(country)"}):
+                                      "select": "id,sent_from,prospects(country)"}):
         c = row["prospects"]["country"]
         sent_today[c] = sent_today.get(c, 0) + 1
+        k = box_of(row.get("sent_from"), boxes)
+        sent_box[k] = sent_box.get(k, 0) + 1
 
     sel = "*,prospects(*),experiments(*)"
     # Nachfassmails zuerst: ihr Zeitpunkt (4 Tage nach der Erstmail, 3 Tage nach der Probe) zählt, sonst warten sie
@@ -291,6 +305,8 @@ def cmd_send(args) -> int:
     rows = later + interleave([m for m in initial if in_focus(m)]) + interleave([m for m in initial if not in_focus(m)])
     already = sum(sent_today.values())
     print(f"Aufwärmphase: heute max. {cap} Mails insgesamt, bereits gesendet: {already}")
+    if len(boxes) > 1:
+        print("Postfächer: " + ", ".join(f"{b['n']}: {sent_box.get(b['n'], 0)}/{caps[b['n']]}" for b in boxes))
     limit_total = total_limit()
     initial_total = len(db.select_all("messages", {"status": "eq.sent", "kind": "eq.initial", "select": "id"}))
     if limit_total is not None:
@@ -352,8 +368,14 @@ def cmd_send(args) -> int:
             lang = m.get("language") if m.get("language") in LANDING_LINE else "en"
             body += "\n\n" + LANDING_LINE[lang].format(url=link)
         text = body + "\n\n" + footer
+        box = pick(boxes, caps, sent_box)
+        if box is None:
+            print(f"Alle Postfächer haben ihre Tagesmenge erreicht ({cap}), Rest folgt an den nächsten Tagen")
+            break
         if not live:
-            print(f"PROBELAUF würde senden an {m['to_email']} ({country}, Experiment {e['segment_id']}/{e['variant']}): {m['subject']}")
+            print(f"PROBELAUF würde senden an {m['to_email']} ({country}, Experiment {e['segment_id']}/{e['variant']}, "
+                  f"Postfach {box['n']}): {m['subject']}")
+            sent_box[box["n"]] = sent_box.get(box["n"], 0) + 1
             sent_today[country] = sent_today.get(country, 0) + 1
             initial_total += kind == "initial"
             n_sent += 1
@@ -363,7 +385,8 @@ def cmd_send(args) -> int:
             provider_fields = deliver(m["to_email"], m["subject"], text, unsub,
                                       html_version(body, footer, m.get("language") or "en",
                                                    p["company_name"] if kind != "sample_followup" else None,
-                                                   _country_area(country), link))
+                                                   _country_area(country), link),
+                                      mailbox=box if box.get("user") else None)
         except Exception as exc:  # noqa: BLE001 - Versandfehler melden, nicht abbrechen
             print(f"FEHLER Versand {m['to_email']}: {exc}")
             continue
@@ -376,9 +399,10 @@ def cmd_send(args) -> int:
             db.update("experiments", {"id": e["id"]}, {"started_on": today, "status": "running"})
         db.update("experiments", {"id": e["id"]}, {"last_sent_on": today})
         sent_today[country] = sent_today.get(country, 0) + 1
+        sent_box[box["n"]] = sent_box.get(box["n"], 0) + 1
         initial_total += kind == "initial"
         n_sent += 1
-        print(f"GESENDET {m['to_email']}")
+        print(f"GESENDET {m['to_email']}" + (f" (Postfach {box['n']})" if len(boxes) > 1 else ""))
         if args.pause:
             import random
             import time

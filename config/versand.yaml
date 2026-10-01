@@ -13,4 +13,8 @@ freigabe: "Justin Koch, Chat 27.09.2026: 'ja gebe ich frei' / 'lass mit 150 pro 
 gesamtgrenze: 1000
 # Tagesgrenze des Mail-Postfachs für Kaltmails (SMTP, Strato). 10 Reserve für Antworten.
 anbieter_tageslimit: 160
+# Weitere Postfächer (SMTP_USER_2 … in GitHub-Secrets, scripts/lib/mailboxes.py) fahren je mit eigener Aufwärmphase
+# hoch (20 → 40 → 70 → 100 → 150 pro Tag über drei Wochen) bis höchstens zu dieser Tagesmenge je Postfach.
+# Inhaber 01.10.2026: „wir sollten die Möglichkeit haben auch hochzuskalieren, Hauptdomain passt“.
+postfach_tageslimit: 150
 kaufinteresse_an: justin.koch@horbach.de   # Meldungen bei Kaufinteresse/Rückfragen (Morgenbericht geht an OWNER_EMAIL)
