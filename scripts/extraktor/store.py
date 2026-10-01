@@ -98,54 +98,74 @@ def _insert_companies(db, part: list[dict], make) -> tuple[list[dict], list[str]
     return rows, ids
 
 
-def store_many(db, rows: list[dict], today: str | None = None, chunk: int = 200) -> int:
-    """Grüne Zeilen (CSV-Format) blockweise schreiben; gibt die Zahl neuer Leads zurück."""
+TIMEOUT = "57014"  # Postgres: canceling statement due to statement timeout
+MIN_CHUNK = 5
+
+
+def store_many(db, rows: list[dict], today: str | None = None, chunk: int = 100) -> int:
+    """Grüne Zeilen (CSV-Format) blockweise schreiben; gibt die Zahl neuer Leads zurück.
+    Bricht die Datenbank einen Block wegen Zeitüberschreitung ab (viele parallele Teilläufe), wird er wieder
+    entfernt und in halben Blöcken neu geschrieben (01.10.2026: so gingen ~8.100 grüne S2-Leads verloren)."""
     today = today or dt.date.today().isoformat()
     n = 0
     for i in range(0, len(rows), chunk):
-        part, ids = _insert_companies(db, rows[i:i + chunk], company_row)
-        if not ids:
-            continue
-        try:
-            obs = []
-            for cid, r in zip(ids, part):
-                src = SOURCE_NAME.get(r["source"], r["source"])
-                obs += [
-                    _obs(cid, today, kind="other", key="contact", source_url=r["website"] or None,
-                         details={"phone": r["phone"], "email": r["email"], "phone_type": r["phone_type"],
-                                  "email_type": r["email_type"], "phone_note": r.get("phone_note"), "source": r["source"]}),
-                    _obs(cid, today, kind="other", key="person",
-                         details={"name": r["contact_name"] or None, "role": r["contact_role"] or None, "source": src}),
-                    _obs(cid, today, kind="other", key="quality",
-                         details={"complete": True, "blocking": False, "qc": r["qc"], "sc": r["sc"],
-                                  "notes": r["qc_notes"], "checked_on": today, "by": "extraktor"}),
-                    _obs(cid, today, kind="other", key="profile", details={"company_info": r["company_info"]}),
-                    _obs(cid, today, kind="filing", key=EVENT_KEY.get(r["source"], r["source"]), title=r["signal"],
-                         source_name=src, source_url=r["source_url"], posted_on=r["signal_date"],
-                         details={"source_id": r["source_id"]}),
-                ]
-            written = db.insert("observations", obs)
-            ev = {o["company_id"]: o["id"] for o in written if o["kind"] == "filing"}
-            leads = [{"company_id": cid, "segment_id": r["segment"], "country": r["country"],
-                      "signal_type": signal_type(r["segment"], r["source"]), "event_summary": r["signal"],
-                      "event_date": r["signal_date"], "source_name": SOURCE_NAME.get(r["source"], r["source"]),
-                      "source_url": r["source_url"], "source_date": r["signal_date"], "urgency": r["urgency"],
-                      "urgency_reason": r["urgency_reason"], "opener": r["opener"],
-                      "observation_ids": [ev[cid]] if cid in ev else [], "status": "new"}
-                     for cid, r in zip(ids, part)]
-            db.insert("leads", leads)
-        except Exception:
-            # Block unvollständig: angelegte Firmen wieder entfernen, damit keine Firma ohne Lead stehen bleibt
-            ids_in = ",".join(ids)
-            db.s.delete(f"{db.base}/leads", params={"company_id": f"in.({ids_in})"}, timeout=db.timeout)
-            db.s.delete(f"{db.base}/observations", params={"company_id": f"in.({ids_in})"}, timeout=db.timeout)
-            db.s.delete(f"{db.base}/watch_companies", params={"id": f"in.({ids_in})"}, timeout=db.timeout)
-            raise
-        n += len(leads)
+        n += _store_block(db, rows[i:i + chunk], today)
     return n
 
 
-def store_raw(db, rows: list[dict], today: str | None = None, chunk: int = 200) -> int:
+def _store_block(db, block: list[dict], today: str) -> int:
+    try:
+        return _store_block_once(db, block, today)
+    except RuntimeError as e:
+        if TIMEOUT not in str(e) or len(block) <= MIN_CHUNK:
+            raise
+    half = len(block) // 2
+    return _store_block(db, block[:half], today) + _store_block(db, block[half:], today)
+
+
+def _store_block_once(db, block: list[dict], today: str) -> int:
+    part, ids = _insert_companies(db, block, company_row)
+    if not ids:
+        return 0
+    try:
+        obs = []
+        for cid, r in zip(ids, part):
+            src = SOURCE_NAME.get(r["source"], r["source"])
+            obs += [
+                _obs(cid, today, kind="other", key="contact", source_url=r["website"] or None,
+                     details={"phone": r["phone"], "email": r["email"], "phone_type": r["phone_type"],
+                              "email_type": r["email_type"], "phone_note": r.get("phone_note"), "source": r["source"]}),
+                _obs(cid, today, kind="other", key="person",
+                     details={"name": r["contact_name"] or None, "role": r["contact_role"] or None, "source": src}),
+                _obs(cid, today, kind="other", key="quality",
+                     details={"complete": True, "blocking": False, "qc": r["qc"], "sc": r["sc"],
+                              "notes": r["qc_notes"], "checked_on": today, "by": "extraktor"}),
+                _obs(cid, today, kind="other", key="profile", details={"company_info": r["company_info"]}),
+                _obs(cid, today, kind="filing", key=EVENT_KEY.get(r["source"], r["source"]), title=r["signal"],
+                     source_name=src, source_url=r["source_url"], posted_on=r["signal_date"],
+                     details={"source_id": r["source_id"]}),
+            ]
+        written = db.insert("observations", obs)
+        ev = {o["company_id"]: o["id"] for o in written if o["kind"] == "filing"}
+        leads = [{"company_id": cid, "segment_id": r["segment"], "country": r["country"],
+                  "signal_type": signal_type(r["segment"], r["source"]), "event_summary": r["signal"],
+                  "event_date": r["signal_date"], "source_name": SOURCE_NAME.get(r["source"], r["source"]),
+                  "source_url": r["source_url"], "source_date": r["signal_date"], "urgency": r["urgency"],
+                  "urgency_reason": r["urgency_reason"], "opener": r["opener"],
+                  "observation_ids": [ev[cid]] if cid in ev else [], "status": "new"}
+                 for cid, r in zip(ids, part)]
+        db.insert("leads", leads)
+    except Exception:
+        # Block unvollständig: angelegte Firmen wieder entfernen, damit keine Firma ohne Lead stehen bleibt
+        ids_in = ",".join(ids)
+        db.s.delete(f"{db.base}/leads", params={"company_id": f"in.({ids_in})"}, timeout=db.timeout)
+        db.s.delete(f"{db.base}/observations", params={"company_id": f"in.({ids_in})"}, timeout=db.timeout)
+        db.s.delete(f"{db.base}/watch_companies", params={"id": f"in.({ids_in})"}, timeout=db.timeout)
+        raise
+    return len(leads)
+
+
+def store_raw(db, rows: list[dict], today: str | None = None, chunk: int = 100) -> int:
     """Rohbestand (Inhaber 01.10.2026: „wenn da etwas fehlt sollen die Leads trotzdem noch irgendwo abgelegt werden“):
     gelbe (unvollständige) und rote (widersprüchliche) Kandidaten als Firma mit allen gefundenen Daten, OHNE Lead.
     Ohne Lead wird nichts geliefert; quality.complete = false nennt, was fehlt, damit spätere Anreicherung ansetzen
