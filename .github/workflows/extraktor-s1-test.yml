@@ -3,6 +3,8 @@
 name: extraktor-s1-test
 on:
   workflow_dispatch:
+  push:
+    paths: ["scripts/extraktor/s1_test.py"]
 permissions:
   contents: read
 jobs:

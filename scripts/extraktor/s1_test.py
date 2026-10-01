@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Kurztest der S1-Quellen, die nur von GitHub aus erreichbar sind (Common Crawl, US-Arbeitsministerium).
+"""Kurztest (01.10.2026) der S1-Quellen, die nur von GitHub aus erreichbar sind (Common Crawl, US-Arbeitsministerium).
 
   python scripts/extraktor/s1_test.py      # druckt eine Zusammenfassung, schreibt out/s1_test/*.json
 """
