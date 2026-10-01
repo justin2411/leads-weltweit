@@ -37,6 +37,15 @@ Der Scout ist eine Claude-Sitzung (Routine „Quellen-Scout“). Je Sitzung:
    Leads aus seinem eigenen Markt. Vorschläge stehen unten in „Vorschläge Länder/Branchen“.
 7. Ergebnis hier eintragen – auch Fehlschläge – und dem Inhaber eine kurze Zusammenfassung schicken.
 
+## Sprint 01.10. 21 Uhr – 02.10. 21 Uhr UTC (stündlich)
+
+Inhaber: „bis morgen verschiedene Länder und Branchen und kunden … mit maximal vielen Leads wie es unser system hergibt“.
+Reihenfolge: (1) schon erlaubte Länder ohne Abdeckung – IE, NL, BE, SE: kostenlose Lead-Quellen (Register,
+amtliche Bekanntmachungen, Overture) und Käufer im Kunden-Werk (`COUNTRIES`, Kategorien, Rechtsform-Regeln aus
+`countries.yaml`); (2) Lücken UK/FR (Kontakt für Neugründungen); (3) neue Branchen (`segments` idea); (4) neue Länder
+nur als vorbereiteter Vorschlag mit Rechtsgrundlage (Freischaltung in `countries.yaml` = Inhaber). Arbeitspakete, die
+länger als eine Stunde dauern, hier mit Stand eintragen und in der nächsten Runde fortsetzen.
+
 ## Bedarf (Stand 01.10.2026)
 
 | Bereich | Stand | Lücke |
