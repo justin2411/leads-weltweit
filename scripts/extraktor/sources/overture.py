@@ -22,6 +22,13 @@ BUCKET = "https://overturemaps-us-west-2.s3.us-west-2.amazonaws.com/"
 CACHE = Path(os.environ.get("EXTRAKTOR_OVERTURE", "out/cache/overture_gb_fr.parquet"))
 COUNTRY = {"GB": "UK", "FR": "FR"}
 # keine Käuferziele: Behörden, Schulen, Kirchen, Vereine, Parks …
+# Filialen von Ketten/Franchise-Marken: die Marke hat längst eine Website (kein S2-Anlass)
+BRANDS = re.compile(r"\b(euro ?spar|spar|premier|costcutter|londis|budgens|nisa|one stop|co-?op|tesco|sainsbury'?s|"
+                    r"asda|morrisons|iceland|lidl|aldi|carrefour|intermarch[ée]|franprix|monoprix|leclerc|"
+                    r"super u|casino|auchan|subway|domino'?s|greggs|starbucks|costa|mcdonald'?s|kfc|burger king|"
+                    r"papa john'?s|pizza hut|shell|esso|texaco|bp|total(energies)?|post office|boots|"
+                    r"lloyds pharmacy|superdrug|specsavers|william hill|ladbrokes|coral|paddy power|"
+                    r"premier inn|travelodge|ibis|best western)\b", re.I)
 SKIP_CAT = re.compile(r"place_of_worship|government|school|place_of_learning|park|community|sport_league|"
                       r"social_or_community|hospital|public_|military|embassy|cemetery|library|post_office|"
                       r"atm|bank|charity|non_profit|political|police|fire_station", re.I)
@@ -55,7 +62,7 @@ def build_cache(log=print) -> Path:
     return CACHE
 
 
-def no_website(country: str, limit: int, log=print) -> list[dict]:
+def no_website(country: str, limit: int, log=print, exclude: set[str] | None = None) -> list[dict]:
     """Firmen ohne Website (Telefon vorhanden), E-Mail und Social-Media-Seite zuerst, Ketten/Behörden ausgenommen."""
     import duckdb
     if not CACHE.exists():
@@ -72,13 +79,15 @@ def no_website(country: str, limit: int, log=print) -> list[dict]:
           AND name IS NOT NULL AND lower(name) NOT IN (SELECT n FROM chains)
           AND coalesce(confidence, 0) >= 0.6
         ORDER BY (len(emails) > 0) DESC, (len(socials) > 0) DESC, confidence DESC
-        LIMIT ?""", [cc, limit * 3]).fetchall()
+        LIMIT ?""", [cc, limit * 3 + len(exclude or ())]).fetchall()
     cols = ["id", "name", "phones", "emails", "socials", "street", "city", "postcode", "category", "datasets",
             "updated", "confidence"]
     out = []
     for r in rows:
         d = dict(zip(cols, r))
-        if SKIP_CAT.search(d["category"] or "none") or not (d["street"] and d["postcode"]):
+        if (exclude and d["id"] in exclude) or SKIP_CAT.search(d["category"] or "none") or not (d["street"] and d["postcode"]):
+            continue
+        if BRANDS.search(d["name"] or ""):
             continue
         out.append(d)
         if len(out) >= limit:

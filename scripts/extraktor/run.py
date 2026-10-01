@@ -118,9 +118,10 @@ def load_fr(days: int, stats: Counter) -> list[dict]:
     return cands
 
 
-def load_overture_s2(country: str, limit: int, stats: Counter) -> list[dict]:
-    """S2 UK/FR: Firmen ohne Website aus Overture; UK: Inhaber über Firmenregister + PSC, wo eindeutig."""
-    rows = overture.no_website(country, limit, log=log)
+def load_overture_s2(country: str, limit: int, stats: Counter, exclude: set[str] | None = None) -> list[dict]:
+    """S2 UK/FR: Firmen ohne Website aus Overture; UK: Inhaber über Firmenregister + PSC, wo eindeutig.
+    exclude: schon gespeicherte Overture-IDs (das Lead-Werk arbeitet sich so durch den ganzen Bestand)."""
+    rows = overture.no_website(country, limit, log=log, exclude=exclude)
     cands = [overture.to_candidate(d, country) for d in rows]
     cands = filters.dedupe([c for c in cands if not filters.pre_filter(c)])
     if country == "UK":
@@ -392,6 +393,7 @@ def main(argv=None) -> int:
     ap.add_argument("--eu-pool", type=int, default=15000, help="UK: höchstens so viele Neugründungen vorab auswählen")
     ap.add_argument("--s1-probe", type=int, default=3000, help="S1 UK/US: so viele Karriereseiten prüfen")
     ap.add_argument("--s2-limit", type=int, default=3000, help="S2 UK/FR: so viele Overture-Firmen ohne Website laden")
+    ap.add_argument("--store", action="store_true", help="grüne Leads direkt in die Datenbank schreiben (mit --db)")
     ap.add_argument("--shard", default="", help="i/n: nur jeden n-ten Kandidaten ab i (parallele Teilläufe)")
     ap.add_argument("--out", default="out/extraktor")
     args = ap.parse_args(argv)
@@ -399,6 +401,11 @@ def main(argv=None) -> int:
     segs = [s.strip().upper() for s in args.segments.split(",") if s.strip()]
     stats = Counter()
 
+    guard = filters.Guard(None)
+    if args.db:
+        from lib.db import DB
+        guard = filters.Guard(DB())
+        log(f"Datenbank: {len(guard.known)} Firmen schon bekannt")
     us = "US" in countries
     fm, shared = (load_fmcsa(args.fmcsa_days, stats) if us and any(s in segs for s in FMCSA_SEGMENTS)
                   else ([], Counter()))
@@ -419,24 +426,26 @@ def main(argv=None) -> int:
             p[key] = got + p.get(key, [])
     for co in ("UK", "FR"):
         if co in countries and "S2" in segs:
-            p[f"S2/{co}"] = [c for c in load_overture_s2(co, args.s2_limit, stats) if segments.fits("S2", c)[0]]
+            known = {i for s_, i in guard.known if s_ == "overture"}
+            p[f"S2/{co}"] = [c for c in load_overture_s2(co, args.s2_limit, stats, known) if segments.fits("S2", c)[0]]
+    if guard.known:
+        p = {k: [c for c in v if (c["source"], c["source_id"]) not in guard.known] for k, v in p.items()}
     if args.shard:
         i, n = (int(x) for x in args.shard.split("/"))
         p = {k: v[i::n] for k, v in p.items()}
     keys = [k for k in p if p[k]]
     log("Kandidaten je Branche: " + ", ".join(f"{k} {len(p[k])}" for k in keys))
 
-    guard = filters.Guard(None)
-    if args.db:
-        from lib.db import DB
-        guard = filters.Guard(DB())
-
     out = Path(args.out)
     leads = []
     for key in keys:
         seg = key.split("/")[0]
-        leads += run_segment(seg, p.get(key, []), args.per, fetcher, shared, guard, args.workers, args.max_tries,
-                             progress=lambda part: write(out, leads + part, args.per))
+        part = run_segment(seg, p.get(key, []), args.per, fetcher, shared, guard, args.workers, args.max_tries,
+                           progress=lambda part: write(out, leads + part, args.per))
+        leads += part
+        if args.store and guard.db is not None:
+            from extraktor.store import store_new
+            log(f"{key}: Datenbank {store_new(guard.db, guard, [row(l) for l in part if l['ampel'] != 'skip'])}")
         write(out, leads, args.per)  # nach jeder Branche sichern (Abbruch kostet nur die laufende Branche)
     sc.batch_unique([l for l in leads if l["ampel"] in ("green", "yellow")])
     for l in leads:

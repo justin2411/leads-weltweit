@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Extraktor-Ergebnis (leads_alle.csv) in die Datenbank übernehmen – nur grüne Leads, nur mit --apply.
+"""Extraktor-Ergebnis in die Datenbank übernehmen – nur grüne Leads, nur mit --apply (Lead-Werk schreibt direkt).
 
   python scripts/extraktor/store.py out/extraktor/leads_alle.csv            # Probelauf: zeigt, was passieren würde
   python scripts/extraktor/store.py out/extraktor/leads_alle.csv --apply
 
 Schreibt in die bestehenden Tabellen (keine Migration nötig), so dass Proben und Lieferungen die Leads als
 vollständig erkennen (deliveries.contact_companies):
-  watch_companies           Firma (registry_source = fmcsa | sec_form_d, registry_id = Quell-ID)
+  watch_companies           Firma (registry_source = Quelle, registry_id = Quell-ID)
   observations other/contact   Telefon + E-Mail     other/person  Ansprechperson     other/quality  Prüfergebnis
-  observations other/profile   Firmeninfo           filing/<quelle>  das Ereignis mit Quelle und Datum
+  observations other/profile   Firmeninfo           filing/<ereignis>  das Ereignis mit Quelle und Datum
   leads                     Signal, Dringlichkeit, Einstiegssatz, Branche
-Firmen, die schon da sind (gleiche Quelle + ID), werden übersprungen.
+Firmen, die schon da sind (gleiche Quelle + ID), werden übersprungen. Geschrieben wird in Blöcken.
 """
 from __future__ import annotations
 
@@ -22,69 +22,126 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-SOURCE_NAME = {"fmcsa": "FMCSA Company Census (US DOT)", "sec_form_d": "SEC EDGAR Form D"}
-SIGNAL_TYPE = {"S4": "new_fleet", "S2": "no_website", "S1": "funding_growth", "S5": "funding_new_company",
-               "S9": "funding_executive"}
-EVENT_KEY = {"fmcsa": "fmcsa_registration", "sec_form_d": "form_d"}
+from extraktor.sources.overture import BRANDS  # noqa: E402
+
+SOURCE_NAME = {
+    "fmcsa": "FMCSA Company Census (US DOT)", "sec_form_d": "SEC EDGAR Form D",
+    "companies_house": "Companies House", "bodacc": "BODACC (Bulletin officiel)",
+    "overture": "Overture Maps (business listing)", "careers": "Careers page (company website)",
+    "ats_jobs": "Careers page (applicant tracking system)",
+}
+EVENT_KEY = {"fmcsa": "fmcsa_registration", "sec_form_d": "form_d", "companies_house": "incorporation",
+             "bodacc": "immatriculation", "overture": "no_website", "careers": "open_roles", "ats_jobs": "open_roles"}
+INDUSTRY = {"fmcsa": "Motor carrier"}
+
+
+def signal_type(seg: str, source: str) -> str:
+    if source in ("careers", "ats_jobs"):
+        return "jobs_open"
+    if source in ("companies_house", "bodacc"):
+        return "incorporation"
+    if seg == "S2":
+        return "no_website"
+    return {"S4": "new_fleet", "S1": "funding_growth", "S5": "funding_new_company" if source == "sec_form_d"
+            else "new_company", "S9": "funding_executive"}.get(seg, "signal")
 
 
 def company_row(r: dict) -> dict:
     from lib.websites import site_domain
     addr = ", ".join(x for x in (r["street"], r["city"], f"{r['state']} {r['zip']}".strip()) if x)
-    return {"name": r["company"], "legal_form": None, "country": r["country"], "region": r["state"], "city": r["city"],
-            "address": addr, "website": r["website"] or None, "domain": site_domain(r["website"]) if r["website"] else None,
-            "phone_main": r["phone"], "registry_source": r["source"], "registry_id": r["source_id"],
-            "industry": "Motor carrier" if r["source"] == "fmcsa" else None, "active": True,
-            "notes": f"Extraktor {dt.date.today()}"}
+    return {"name": r["company"], "legal_form": None, "country": r["country"], "region": r["state"] or None,
+            "city": r["city"], "address": addr, "website": r["website"] or None,
+            "domain": site_domain(r["website"]) if r["website"] else None, "phone_main": r["phone"] or None,
+            "registry_source": r["source"], "registry_id": r["source_id"], "industry": INDUSTRY.get(r["source"]),
+            "active": True, "notes": f"Extraktor {dt.date.today()}"}
 
 
-def store(db, r: dict, today: str) -> str:
-    co = db.insert("watch_companies", company_row(r))[0]
-    cid = co["id"]
-    common = {"company_id": cid, "first_seen": today, "last_seen": today, "source_name": "Extraktor"}
-    db.insert("observations", {**common, "kind": "other", "key": "contact", "source_url": r["website"] or None,
-                               "details": {"phone": r["phone"], "email": r["email"], "phone_type": r["phone_type"],
-                                           "email_type": r["email_type"], "source": r["source"]}})
-    db.insert("observations", {**common, "kind": "other", "key": "person",
-                               "details": {"name": r["contact_name"], "role": r["contact_role"],
-                                           "source": SOURCE_NAME[r["source"]]}})
-    db.insert("observations", {**common, "kind": "other", "key": "quality",
-                               "details": {"complete": True, "blocking": False, "qc": r["qc"], "sc": r["sc"],
-                                           "notes": r["qc_notes"], "checked_on": today, "by": "extraktor"}})
-    db.insert("observations", {**common, "kind": "other", "key": "profile", "details": {"company_info": r["company_info"]}})
-    ev = db.insert("observations", {**common, "kind": "filing", "key": EVENT_KEY[r["source"]], "title": r["signal"],
-                                    "source_name": SOURCE_NAME[r["source"]], "source_url": r["source_url"],
-                                    "posted_on": r["signal_date"], "details": {"source_id": r["source_id"]}})[0]
-    db.insert("leads", {"company_id": cid, "segment_id": r["segment"], "country": r["country"],
-                        "signal_type": SIGNAL_TYPE[r["segment"]], "event_summary": r["signal"],
-                        "event_date": r["signal_date"], "source_name": SOURCE_NAME[r["source"]],
-                        "source_url": r["source_url"], "source_date": r["signal_date"], "urgency": r["urgency"],
-                        "urgency_reason": r["urgency_reason"], "opener": r["opener"], "observation_ids": [ev["id"]],
-                        "status": "new"})
-    return cid
+def _obs(cid: str, today: str, **kw) -> dict:
+    # Blockweise Inserts brauchen in jeder Zeile dieselben Spalten
+    base = {"company_id": cid, "first_seen": today, "last_seen": today, "source_name": "Extraktor",
+            "title": None, "source_url": None, "posted_on": None}
+    return {**base, **kw}
+
+
+def store_many(db, rows: list[dict], today: str | None = None, chunk: int = 200) -> int:
+    """Grüne Zeilen (CSV-Format) blockweise schreiben; gibt die Zahl neuer Leads zurück."""
+    today = today or dt.date.today().isoformat()
+    n = 0
+    for i in range(0, len(rows), chunk):
+        part = rows[i:i + chunk]
+        cos = db.insert("watch_companies", [company_row(r) for r in part])
+        ids = [c["id"] for c in cos]
+        try:
+            obs = []
+            for cid, r in zip(ids, part):
+                src = SOURCE_NAME.get(r["source"], r["source"])
+                obs += [
+                    _obs(cid, today, kind="other", key="contact", source_url=r["website"] or None,
+                         details={"phone": r["phone"], "email": r["email"], "phone_type": r["phone_type"],
+                                  "email_type": r["email_type"], "phone_note": r.get("phone_note"), "source": r["source"]}),
+                    _obs(cid, today, kind="other", key="person",
+                         details={"name": r["contact_name"] or None, "role": r["contact_role"] or None, "source": src}),
+                    _obs(cid, today, kind="other", key="quality",
+                         details={"complete": True, "blocking": False, "qc": r["qc"], "sc": r["sc"],
+                                  "notes": r["qc_notes"], "checked_on": today, "by": "extraktor"}),
+                    _obs(cid, today, kind="other", key="profile", details={"company_info": r["company_info"]}),
+                    _obs(cid, today, kind="filing", key=EVENT_KEY.get(r["source"], r["source"]), title=r["signal"],
+                         source_name=src, source_url=r["source_url"], posted_on=r["signal_date"],
+                         details={"source_id": r["source_id"]}),
+                ]
+            written = db.insert("observations", obs)
+            ev = {o["company_id"]: o["id"] for o in written if o["kind"] == "filing"}
+            leads = [{"company_id": cid, "segment_id": r["segment"], "country": r["country"],
+                      "signal_type": signal_type(r["segment"], r["source"]), "event_summary": r["signal"],
+                      "event_date": r["signal_date"], "source_name": SOURCE_NAME.get(r["source"], r["source"]),
+                      "source_url": r["source_url"], "source_date": r["signal_date"], "urgency": r["urgency"],
+                      "urgency_reason": r["urgency_reason"], "opener": r["opener"],
+                      "observation_ids": [ev[cid]] if cid in ev else [], "status": "new"}
+                     for cid, r in zip(ids, part)]
+            db.insert("leads", leads)
+        except Exception:
+            # Block unvollständig: angelegte Firmen wieder entfernen, damit keine Firma ohne Lead stehen bleibt
+            ids_in = ",".join(ids)
+            db.s.delete(f"{db.base}/leads", params={"company_id": f"in.({ids_in})"}, timeout=db.timeout)
+            db.s.delete(f"{db.base}/observations", params={"company_id": f"in.({ids_in})"}, timeout=db.timeout)
+            db.s.delete(f"{db.base}/watch_companies", params={"id": f"in.({ids_in})"}, timeout=db.timeout)
+            raise
+        n += len(leads)
+    return n
+
+
+def store_new(db, guard, rows: list[dict]) -> dict:
+    """Nur grüne, noch unbekannte Firmen (Quelle + ID) schreiben; je Firma ein Lead (erste Branche gewinnt)."""
+    new, seen = [], set()
+    rows = [{k: (v.isoformat() if isinstance(v, (dt.date, dt.datetime)) else v) for k, v in r.items()} for r in rows]
+    for r in rows:
+        k = (r["source"], r["source_id"])
+        if r["ampel"] != "green" or k in guard.known or k in seen:
+            continue
+        if r["source"] == "overture" and BRANDS.search(r["company"] or ""):
+            continue  # Filiale einer Kette (ältere Läufe ohne Markenfilter)
+        seen.add(k)
+        new.append(r)
+    n = store_many(db, new) if new else 0
+    guard.known.update(seen)
+    return {"neu": n, "schon_da": sum(r["ampel"] == "green" for r in rows) - n}
 
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("csv")
+    ap.add_argument("csv", nargs="+")
     ap.add_argument("--apply", action="store_true")
     args = ap.parse_args(argv)
-    rows = [r for r in csv.DictReader(open(args.csv, encoding="utf-8")) if r["ampel"] == "green"]
+    rows = [r for p in args.csv for r in csv.DictReader(open(p, encoding="utf-8"))]
     from extraktor.filters import Guard
     from lib.db import DB
     db = DB()
     guard = Guard(db)
-    today = dt.date.today().isoformat()
-    n = {"neu": 0, "schon_da": 0}
-    for r in rows:
-        if (r["source"], r["source_id"]) in guard.known:
-            n["schon_da"] += 1
-            continue
-        n["neu"] += 1
-        if args.apply:
-            store(db, r, today)
-            guard.known.add((r["source"], r["source_id"]))
-    print(n, "" if args.apply else "(Probelauf – mit --apply schreiben)")
+    if not args.apply:
+        green = {(r["source"], r["source_id"]) for r in rows if r["ampel"] == "green"}
+        print({"neu": len(green - guard.known), "schon_da": len(green & guard.known)}, "(Probelauf – mit --apply schreiben)")
+        return 0
+    print(store_new(db, guard, rows))
     return 0
 
 

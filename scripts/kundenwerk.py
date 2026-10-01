@@ -99,9 +99,9 @@ def candidates(segments: dict[str, set[str]]) -> list[dict]:
                       WHERE coalesce(operating_status, 'open') = 'open' AND coalesce(confidence, 0) >= 0.5
                         AND name IS NOT NULL),
              chains AS (SELECT country, lower(name) n FROM base GROUP BY 1, 2 HAVING count(*) > 3)
-        SELECT id, name, websites, street, city, postcode, region, country, category FROM base
+        SELECT id, name, websites, emails, street, city, postcode, region, country, category FROM base
         WHERE (country, lower(name)) NOT IN (SELECT country, n FROM chains)""").fetchall()
-    cols = ["id", "name", "websites", "street", "city", "postcode", "region", "country", "category"]
+    cols = ["id", "name", "websites", "emails", "street", "city", "postcode", "region", "country", "category"]
     out = []
     for r in rows:
         d = dict(zip(cols, r))
@@ -126,15 +126,47 @@ def candidates(segments: dict[str, set[str]]) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Prüfen und speichern
 # ---------------------------------------------------------------------------
-def check_one(d: dict, session: requests.Session, cfg: dict, generic: set[str], blocked: set[str]) -> dict:
+def site_scan(website: str, fetcher) -> dict:
+    """Startseite + Kontakt-/Impressums-/Über-uns-Seiten (lib.websites), E-Mails auch verschleiert („[at]“)."""
+    from lib import websites as W
+    base = website if website.startswith("http") else "https://" + website
+    home = fetcher.get(base) or fetcher.get(base.replace("http://", "https://", 1))
+    if not home:
+        return {"emails": {}, "text": "", "pages": [], "final_domain": ""}
+    pages = {home[0]: home[1]}
+    for sub in W.subpage_links(home[1], home[0], limit=4):
+        got = fetcher.get(sub)
+        if got:
+            pages[got[0]] = got[1]
+    emails: dict[str, str] = {}
+    for url, html in pages.items():
+        for e in W.emails_on_page(html):
+            emails.setdefault(e.lower().strip("."), url)
+    text = "\n".join(h[-20000:] + "\n" + h[:5000] for h in pages.values())
+    return {"emails": emails, "text": text, "pages": list(pages), "final_domain": W.site_domain(home[0])}
+
+
+def check_one(d: dict, fetcher, cfg: dict, generic: set[str], blocked: set[str]) -> dict:
     import prospects as P
-    res = P.scan(d["website"], session, generic)
+    res = site_scan(d["website"], fetcher)
     email, is_gen = P.pick_email(set(res["emails"]), d["domain"], generic)
+    if not email and res.get("final_domain") and res["final_domain"] != d["domain"]:
+        # Website leitet auf die heutige Domain der Firma um: deren Adresse zählt
+        email, is_gen = P.pick_email(set(res["emails"]), res["final_domain"], generic)
+    src = res["emails"].get(email) if email else None
+    if not email:
+        # Firmen-E-Mail aus dem eigenen Eintrag der Firma (Overture), nur auf der eigenen Domain
+        listed = {e.lower().strip() for e in d.get("emails") or [] if e}
+        email, is_gen = P.pick_email(listed, d["domain"], generic)
+        src = f"https://overturemaps.org (Firmeneintrag {d['id']})" if email else None
     legal, reg_no = P.detect_legal_form(d["country"], d["name"], res["text"])
     size_note = f"Company No. {reg_no} (Website)" if reg_no else None
+    if d.get("ch_number") and not legal:
+        # UK: eindeutiger Name im Firmenregister -> Kapitalgesellschaft (PECR: nur „corporate subscribers“)
+        legal, size_note = "Ltd", f"Company No. {d['ch_number']} (Companies House, Name)"
     suppressed = d["domain"] in blocked or bool(email and email.lower() in blocked)
     chk = check_prospect(email=email, country=d["country"], website=d["website"], legal_form=legal,
-                         source_url=res["emails"].get(email) if email else None, size_note=size_note,
+                         source_url=src, size_note=size_note,
                          suppressed=suppressed, cfg=cfg)
     addr = ", ".join(x for x in (d.get("street"), d.get("city"), d.get("postcode")) if x)
     return {
@@ -142,7 +174,7 @@ def check_one(d: dict, session: requests.Session, cfg: dict, generic: set[str], 
         "region": d.get("region") or None, "website": d["website"], "domain": d["domain"], "email": email,
         "email_is_generic": is_gen if email else None, "published_address": addr or None,
         "specialization": d["category"].replace("_", " "), "size_note": size_note,
-        "source_url": (res["emails"].get(email) if email else None) or d["website"],
+        "source_url": src or d["website"],
         "check_status": "ok" if chk.ok else "rejected", "check_reason": chk.summary()[:500],
         "checked_at": dt.datetime.now(dt.timezone.utc).isoformat(),
     }
@@ -171,13 +203,20 @@ def cmd_run(args) -> int:
         i, n = (int(x) for x in args.shard.split("/"))
         pool = pool[i::n]
     pool = pool[:args.max]
+    uk = {d["domain"]: d["name"] for d in pool if d["country"] == "UK"}
+    if uk:
+        from extraktor.sources import uk_ch
+        nums = uk_ch.match_by_name(uk, log=log)
+        for d in pool:
+            d["ch_number"] = nums.get(d["domain"])
     log(f"Käufer: {have} geprüft (Ziel {args.target}), {len(known)} Domains schon bekannt, {len(pool)} neue in diesem Lauf")
-    session = requests.Session()
+    from enrich import Fetcher
+    fetcher = Fetcher()  # robots.txt, gesperrte Plattformen, 1 Anfrage/s je Domain
     stats, lock, batch = Counter(), threading.Lock(), []
 
     def work(d):
         try:
-            row = check_one(d, session, cfg, generic, blocked)
+            row = check_one(d, fetcher, cfg, generic, blocked)
         except Exception as exc:  # noqa: BLE001 - eine Firma darf den Lauf nicht beenden
             stats["fehler"] += 1
             log(f"Fehler {d['domain']}: {type(exc).__name__}")

@@ -74,7 +74,7 @@ class Guard:
         self.db = db
         self.known: set[tuple[str, str]] = set()
         if db is not None:
-            for r in db.select_all("watch_companies", {"registry_source": "in.(fmcsa,sec_form_d)",
+            for r in db.select_all("watch_companies", {"registry_source": "not.is.null",
                                                        "select": "registry_source,registry_id"}):
                 self.known.add((r["registry_source"], r["registry_id"]))
 
