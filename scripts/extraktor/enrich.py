@@ -91,6 +91,12 @@ def find_site(c: dict, fetcher, max_examined: int = 3) -> dict:
     """{'site', 'method', 'checked'} – zuerst die Domain der eigenen E-Mail, sonst Domains aus dem Firmennamen."""
     from enrich import resolves
     checked = []
+    if c.get("source") == "careers" and c.get("website"):
+        # Die Domain ist die Seite, auf der die Firma ihre Stellen selbst veröffentlicht: wie eine eigene E-Mail-Domain
+        dom = W.site_domain(c["website"])
+        checked.append(dom)
+        site = check_site(c["website"], c, fetcher, from_email=True)
+        return {"site": site, "method": "own_careers_site", "checked": checked}
     if c.get("email") and not is_freemail(c["email"]):
         dom = email_domain(c["email"])
         checked.append(dom)

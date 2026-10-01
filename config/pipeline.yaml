@@ -2,4 +2,8 @@
 # Inhaber 27.09.2026: „Brauchst erstmal keine neuen Leads suchen, wir machen das morgen komplett neu zusammen.“
 # false = anreichern.yml und die Quellen-Schritte in taeglich.yml pausieren. Versand, Nachfassmails, Antworten,
 # Web-Proben, Käufersuche und Lieferungen laufen weiter.
-lead_suche: false
+# Inhaber 01.10.2026: „war nur die Pause für kunden gedacht, weil erstmal keine kaltmails raussollen“ -> Lead-Suche
+# wieder an (Lead-Werk, .github/workflows/lead-werk.yml). Kaltmails bleiben über config/versand.yaml aus.
+lead_suche: true
+# Kunden-Werk (.github/workflows/kunden-werk.yml): Käufer suchen und prüfen bis 100.000, ohne Versand.
+kunden_suche: true

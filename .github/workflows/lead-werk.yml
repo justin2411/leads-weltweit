@@ -1,0 +1,115 @@
+# Lead-Werk (Inhaber 01.10.2026: „eigener Bereich der 24/7 die leads holt und anreichert“).
+# Alle 3 Stunden, 30 Teile (13 gleichzeitig): kostenlose Quellen -> Sicherheitsfilter -> kostenlose Anreicherung -> Qualitäts- und
+# Signalkontrolle -> grüne Leads direkt in Supabase (watch_companies, observations, leads). Schon gespeicherte
+# Firmen werden übersprungen, so arbeitet sich jeder Lauf weiter durch den Bestand.
+# Lädt KEINE Lead-Dateien hoch (öffentliches Repo) – nur den Zählbericht. Sendet nichts.
+# Schalter: config/pipeline.yaml lead_suche. robots.txt, höchstens 1 Abruf/s je Domain, keine gesperrten Plattformen.
+name: lead-werk
+on:
+  schedule:
+    - cron: "23 */3 * * *"
+  workflow_dispatch:
+concurrency: { group: lead-werk, cancel-in-progress: false }
+permissions:
+  contents: read
+jobs:
+  holen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      # 30 Teile (Inhaber 01.10.2026: „Erhöhe die lead läufe auf 30“), davon 13 gleichzeitig: GitHub Free erlaubt
+      # 20 Jobs gleichzeitig, 7 Plätze bleiben dem Kunden-Werk. --shard verteilt fest nach Quell-ID.
+      max-parallel: 13
+      matrix:
+        include:
+          - { name: s2-uk-0, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 0/8" }
+          - { name: s2-uk-1, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 1/8" }
+          - { name: s2-uk-2, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 2/8" }
+          - { name: s2-uk-3, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 3/8" }
+          - { name: s2-uk-4, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 4/8" }
+          - { name: s2-uk-5, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 5/8" }
+          - { name: s2-uk-6, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 6/8" }
+          - { name: s2-uk-7, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 7/8" }
+          - { name: s2-fr-0, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 0/8" }
+          - { name: s2-fr-1, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 1/8" }
+          - { name: s2-fr-2, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 2/8" }
+          - { name: s2-fr-3, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 3/8" }
+          - { name: s2-fr-4, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 4/8" }
+          - { name: s2-fr-5, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 5/8" }
+          - { name: s2-fr-6, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 6/8" }
+          - { name: s2-fr-7, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 7/8" }
+          - { name: us-fmcsa-0, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 0/5" }
+          - { name: us-fmcsa-1, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 1/5" }
+          - { name: us-fmcsa-2, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 2/5" }
+          - { name: us-fmcsa-3, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 3/5" }
+          - { name: us-fmcsa-4, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 4/5" }
+          - { name: us-formd-0, args: "--segments S1,S5,S9 --countries US --fmcsa-days 0 --formd-days 44 --formd-max-docs 20000 --per 4000 --max-tries 4000 --shard 0/2" }
+          - { name: us-formd-1, args: "--segments S1,S5,S9 --countries US --fmcsa-days 0 --formd-days 44 --formd-max-docs 20000 --per 4000 --max-tries 4000 --shard 1/2" }
+          - { name: uk-register-0, args: "--segments S4,S5,S9 --countries UK --uk-days 44 --eu-pool 200000 --per 4000 --max-tries 4000 --shard 0/3" }
+          - { name: uk-register-1, args: "--segments S4,S5,S9 --countries UK --uk-days 44 --eu-pool 200000 --per 4000 --max-tries 4000 --shard 1/3" }
+          - { name: uk-register-2, args: "--segments S4,S5,S9 --countries UK --uk-days 44 --eu-pool 200000 --per 4000 --max-tries 4000 --shard 2/3" }
+          - { name: fr-register-0, args: "--segments S4,S5,S9 --countries FR --fr-days 44 --per 4000 --max-tries 4000 --shard 0/2" }
+          - { name: fr-register-1, args: "--segments S4,S5,S9 --countries FR --fr-days 44 --per 4000 --max-tries 4000 --shard 1/2" }
+          - { name: s1-karriere-uk, args: "--segments S1 --countries UK --s1-probe 4000 --formd-days 0 --per 4000 --max-tries 4000" }
+          - { name: s1-karriere-us, args: "--segments S1 --countries US --s1-probe 6000 --formd-days 0 --per 4000 --max-tries 4000" }
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Schalter Lead-Suche (config/pipeline.yaml)
+        id: gate
+        run: |
+          if grep -Eq '^lead_suche:\s*true' config/pipeline.yaml || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "an=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Lead-Suche pausiert (config/pipeline.yaml: lead_suche: false)" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.an == 'true'
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+        if: steps.gate.outputs.an == 'true'
+      - name: Monat (für Cache-Schlüssel)
+        id: m
+        run: echo "monat=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+      - name: Zwischenspeicher laden (Overture-Auszug, Form-D-Meldungen, Karriereseiten-Beobachtung)
+        if: steps.gate.outputs.an == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            out/cache/overture_gb_fr.parquet
+            out/cache/formd
+            out/cache/careers_seen.json
+            out/cache/wdc_job_domains.csv
+          key: lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-${{ github.run_id }}
+          restore-keys: |
+            lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-
+      - name: Leads holen, prüfen, speichern
+        if: steps.gate.outputs.an == 'true'
+        run: python scripts/extraktor/run.py ${{ matrix.args }} --workers 16 --db --store --out out/lead-werk
+      - name: Zwischenspeicher sichern
+        if: always() && steps.gate.outputs.an == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            out/cache/overture_gb_fr.parquet
+            out/cache/formd
+            out/cache/careers_seen.json
+            out/cache/wdc_job_domains.csv
+          key: lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-${{ github.run_id }}
+      - name: Zusammenfassung (nur Zahlen)
+        if: always() && steps.gate.outputs.an == 'true'
+        run: |
+          [ -f out/lead-werk/bericht.json ] && python -c "
+          import json; r=json.load(open('out/lead-werk/bericht.json'))
+          print('| ${{ matrix.name }} | Vorrat | bearbeitet | grün | gelb | rot |'); print('|---|---|---|---|---|---|')
+          for s,v in r['segments'].items(): print(f\"| {s} | {v['pool']} | {v['processed']} | {v.get('green',0)} | {v.get('yellow',0)} | {v.get('red',0)} |\")
+          " >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.gate.outputs.an == 'true'
+        with:
+          name: lead-werk-bericht-${{ matrix.name }}
+          path: out/lead-werk/bericht.json
+          retention-days: 7

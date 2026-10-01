@@ -23,6 +23,29 @@ Laufende Entscheidungen des Gehirns (Preise, Seitenvarianten) stehen zusätzlich
 - **Alle Kontaktdaten sammeln:** „nimm diese regel wieder raus und lass uns alle daten sammeln die wir finden“ → Leads dürfen
   auch Handynummern und Freemail-Adressen von Inhabern/Officers enthalten, wenn eine erlaubte Quelle sie veröffentlicht
   (Anlass: FMCSA-Daten mit Handy und Gmail von Einzelfahrern). Quellen-Regeln und Kaltmail-Regeln unverändert.
+- **S2 ohne Namen:** „ja“ → S2-Leads ohne Registernamen tragen die Rolle („Owner (ask for the owner)“).
+- **S1 nicht in Frankreich:** Frage „Sollen wir für FR bei S1 bleiben lassen?“ → „bleiben“. Code du travail L5331-1
+  verbietet den Verkauf von Stellenangeboten; keine France-Travail-/La-Bonne-Boîte-Daten, keine S1-Leads für FR.
+- **S1 aus Karriereseiten:** „ja mach das“ → eigene Karriereseiten der Firmen aus der Web-Data-Commons-Liste
+  (UK + US), keine Jobbörsen; Personalvermittler, Behörden und Konzerne ausgeschlossen. Läuft im Lead-Werk.
+- **Lead-Werk:** „Können wir das ab sofort an einen eigenen Bereich … der 24/7 die leads holt und anreichert“ → „ja“.
+  `lead-werk.yml` alle 3 Stunden, grüne Leads direkt in Supabase, keine Lead-Dateien als Artefakt (Repo öffentlich).
+- **Lead-Suche wieder an:** „war nur die Pause für kunden gedacht, weil erstmal keine kaltmails raussollen“ →
+  `config/pipeline.yaml` `lead_suche: true`; der Versand bleibt aus (`config/versand.yaml`).
+- **Kunden-Werk:** „ein Kunden-Werk … was 24/7 läuft bis 100.000 voll ist“ → `kunden-werk.yml` alle 2 Stunden,
+  Käufer aus Overture (US/UK/FR, mit Website) geprüft in `prospects`, Ziel 100.000 geprüfte Käufer, kein Versand.
+- **Kunden-Werk-Ziel 1 Mio.:** „Kundenwerk soll erst bei 1mio Kunden aufhören“ → `kundenwerk.TARGET = 1_000_000`.
+- **Rohbestand:** „Wenn da etwas fehlt sollen die Leads trotzdem noch irgendwo abgelegt werden das man die später
+  nochmal anreichern kann“ → gelbe/rote Kandidaten als Firma mit allen Daten in `watch_companies`/`observations`
+  (quality.complete = false, missing/problems), ohne Lead – also nie geliefert, aber auffindbar und nachanreicherbar.
+  Rot (widersprüchlich) zusätzlich blocking = true, active = false. Käufer ohne Treffer stehen mit Grund in `prospects`.
+- **Käufer „nur Anruf/Brief“:** „Ja wir sollten so viele leads besorgen können wie es geht“ → Käufer, die wir nicht
+  mailen dürfen (UK-Einzelunternehmer, PECR) oder ohne Firmen-E-Mail, stehen mit Telefon/Adresse als
+  `check_status = call_only` in `prospects` und zählen zum Ziel. Nie Kaltmail; UK-Anrufe vorher gegen TPS/CTPS prüfen.
+- **Rolle statt Name zählt als Ansprechperson** (CLAUDE.md §9, S1/S2 01.10.2026): `deliveries.contact_companies`
+  akzeptiert Name oder Rolle.
+- **Datenbank:** „brauchst du nicht kannst du alles selber machen“ → Datenbank-Änderungen für die Werke ohne
+  Rückfrage (weiterhin nicht destruktiv).
 
 ## 29.09.2026
 

@@ -41,6 +41,7 @@ def _allowed_numbers(c: dict, t: dict) -> set[str]:
                 add(x)
             return
         vals.update(re.findall(r"\d[\d,]*", str(v)))
+        vals.update(_numbers(str(v)))  # auch Dezimalzahlen wie „3.5 tonne“ aus Stellentiteln
 
     for v in f.values():
         add(v)

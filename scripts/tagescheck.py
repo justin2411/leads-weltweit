@@ -80,6 +80,9 @@ def check_workflows(c: Check) -> None:
     wanted = dict(WORKFLOWS)
     if cfg("pipeline.yaml", "lead_suche") == "true":
         wanted["anreichern.yml"] = ("Anreicherung", 12)
+        wanted["lead-werk.yml"] = ("Lead-Werk", 9)
+    if cfg("pipeline.yaml", "kunden_suche") == "true":
+        wanted["kunden-werk.yml"] = ("Kunden-Werk", 6)
     h = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
     for wf, (name, max_h) in wanted.items():
         r = requests.get(f"https://api.github.com/repos/{repo}/actions/workflows/{wf}/runs",
@@ -340,6 +343,35 @@ def mail(c: Check) -> tuple[str, str]:
     return subject, "\n".join(lines)
 
 
+def _count(db, table: str, params: dict) -> int:
+    r = db.s.get(f"{db.base}/{table}", params={**params, "select": "id", "limit": "1"},
+                 headers={"Prefer": "count=exact"}, timeout=db.timeout)
+    r.raise_for_status()
+    return int((r.headers.get("content-range") or "*/0").split("/")[-1] or 0)
+
+
+def check_werke(c: Check, db) -> None:
+    """Lead-Werk und Kunden-Werk: was in 24 h dazukam (Zahlen für die Tagesmail)."""
+    since = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=24)).isoformat()
+    per = []
+    for seg in ("S1", "S2", "S4", "S5", "S9"):
+        for co in ("US", "UK", "FR"):
+            n = _count(db, "leads", {"segment_id": f"eq.{seg}", "country": f"eq.{co}", "created_at": f"gte.{since}"})
+            if n:
+                per.append(f"{seg}/{co} {n}")
+    total = _count(db, "leads", {"status": "eq.new"})
+    if cfg("pipeline.yaml", "lead_suche") == "true":
+        c.add("Lead-Werk", OK if per else WARN, f"{total} lieferbare Leads im Bestand",
+              ("neu in 24 h: " + ", ".join(per)) if per else "in 24 h keine neuen Leads")
+    ok = _count(db, "prospects", {"check_status": "eq.ok"})
+    call = _count(db, "prospects", {"check_status": "eq.call_only"})
+    new = _count(db, "prospects", {"check_status": "in.(ok,call_only)", "checked_at": f"gte.{since}"})
+    if cfg("pipeline.yaml", "kunden_suche") == "true":
+        c.add("Kunden-Werk", OK if new or ok + call >= 1_000_000 else WARN,
+              f"{ok + call} Käufer im Bestand (Ziel 1.000.000)",
+              f"E-Mail erlaubt {ok}, nur Anruf/Brief {call}; neu in 24 h: {new}")
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--send", action="store_true")
@@ -355,6 +387,7 @@ def main(argv=None) -> int:
     c.guard("Proben", lambda: check_sample_supply(c, db))
     c.guard("Website", lambda: check_website(c, db))
     c.guard("Kunden", lambda: check_customers(c, db))
+    c.guard("Werke", lambda: check_werke(c, db))
     subject, body = mail(c)
     print("\n" + subject)
     summary = os.environ.get("GITHUB_STEP_SUMMARY")

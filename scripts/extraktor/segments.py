@@ -83,7 +83,7 @@ def fits(seg: str, c: dict) -> tuple[bool, str]:
         if seg == "S9":
             ok = bool(c.get("person_name")) and sold >= 250_000
             return ok, "named executive of a company that just raised capital" if ok else "no named executive or raise < $250k"
-    if c["source"] == "ats_jobs":
+    if c["source"] in ("ats_jobs", "careers"):
         if seg != "S1":
             return False, "source only carries the hiring signal"
         n, oldest = f.get("open_roles", 0), f.get("oldest_posted")
@@ -284,9 +284,10 @@ def texts_jobs(c: dict) -> dict:
                else "Plusieurs recrutements en parallèle : besoin de candidats rapidement.")
     else:
         country = "the UK" if c["country"] == "UK" else "the US"
-        since = f", the oldest posted on {uk_day(dt.date.fromisoformat(oldest))}" if oldest else ""
+        since = f", the oldest advertised since {uk_day(dt.date.fromisoformat(oldest))}" if oldest else ""
         signal = f"{name}: {plural(n, 'open role')} in {country} as of {uk_day(today)}{since} – {'; '.join(titles)}."
-        info = (f"{name}" + (f", based in {c['city']}," if c.get("city") else "")
+        place = c["city"] + (f", {c['state']}" if c["country"] == "US" and c.get("state") else "")
+        info = (f"{name}" + (f", based in {place}," if c.get("city") else "")
                 + f" is hiring in {country}: {plural(n, 'open role')} on its careers page"
                 + (", and it is a licensed visa sponsor." if f.get("sponsor") else "."))
         opener = (f"I saw {name} is hiring ({titles[0] if titles else 'several roles'}) – would pre-screened candidates "
@@ -299,7 +300,7 @@ def texts_jobs(c: dict) -> dict:
 
 def texts(seg: str, c: dict) -> dict:
     """{'signal', 'signal_date', 'company_info', 'opener', 'urgency', 'urgency_reason'}"""
-    if c["source"] == "ats_jobs":
+    if c["source"] in ("ats_jobs", "careers"):
         return texts_jobs(c)
     if c["source"] == "overture":
         return texts_overture(c)

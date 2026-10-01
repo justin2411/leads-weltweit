@@ -59,6 +59,7 @@ DISPOSABLE = {"mailinator.com", "guerrillamail.com", "10minutemail.com", "tempma
               "trashmail.com", "sharklasers.com", "getnada.com", "dispostable.com", "maildrop.cc"}
 REQUIRED = ("phone", "email", "contact_name", "address", "website")
 ROLE_FALLBACK_S2 = True  # S2: Rolle statt Name erlaubt, wenn kein Register einen Namen liefert
+ROLE_FALLBACK_S1 = True  # S1: Ansprechpartner für Stellen ist die einstellende Stelle, Rolle statt Name erlaubt
 
 
 def zip_matches_state(zip5: str, state: str) -> bool | None:
@@ -247,6 +248,10 @@ def run(c: dict, seg: str, shared: dict | None = None) -> dict:
         # Inhaber 01.10.2026 („ja“): S2 ohne Registernamen -> Rolle statt Name, klar gekennzeichnet
         c["person_role"] = c.get("person_role") or ("Owner (ask for the owner)" if c.get("country") != "FR"
                                                    else "Gérant / propriétaire (demander le responsable)")
+        warnings.append("contact_role_only")
+    elif prob == "contact_missing" and seg == "S1" and ROLE_FALLBACK_S1:
+        # CLAUDE.md §9 (27.09.2026): „Fehlt ein Name, steht die Rolle (‚Ask for …‘)“
+        c["person_role"] = c.get("person_role") or "Hiring manager (ask for the person responsible for recruiting)"
         warnings.append("contact_role_only")
     elif prob == "contact_missing":
         missing.append("contact_name")

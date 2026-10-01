@@ -52,6 +52,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: extraktor-leads
-          path: out/extraktor/
+          name: extraktor-bericht
+          path: out/extraktor/bericht.json   # keine Lead-Dateien: das Repo ist öffentlich
           retention-days: 14
