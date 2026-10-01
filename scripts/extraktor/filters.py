@@ -50,7 +50,7 @@ def pre_filter(c: dict) -> str | None:
         return "public_or_nonprofit"
     if JUNK.search(c["name"]):
         return "placeholder_name"
-    if c.get("country") not in ("US", "UK", "FR") or (c.get("country") == "US" and not c.get("state")):
+    if c.get("country") not in ("US", "UK", "FR", "IE", "NL", "BE", "SE") or (c.get("country") == "US" and not c.get("state")):
         return "outside_target_country"
     return None
 

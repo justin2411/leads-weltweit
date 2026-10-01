@@ -36,7 +36,8 @@ from lib.rules import check_prospect, load_countries, normalize_domain  # noqa: 
 
 TARGET = 1_000_000  # Inhaber 01.10.2026: „Kundenwerk soll erst bei 1mio Kunden aufhören“
 POOL = Path(os.environ.get("KUNDENWERK_POOL", "out/cache/kunden_pool.parquet"))
-COUNTRIES = {"US": "US", "GB": "UK", "FR": "FR"}  # Länder, aus denen wir Leads liefern können
+# Länder, aus denen wir Leads liefern können (Overture-Code -> unser Code); IE/NL/BE/SE: Scout-Sprint 01.10.2026
+COUNTRIES = {"US": "US", "GB": "UK", "FR": "FR", "IE": "IE", "NL": "NL", "BE": "BE", "SE": "SE"}
 # Overture-Kategorie (taxonomy.primary) -> Zielgruppe
 CATEGORIES = {
     "employment_agency": "S1",
@@ -65,7 +66,7 @@ def log(msg: str) -> None:
 # Firmenliste
 # ---------------------------------------------------------------------------
 def build_pool() -> Path:
-    """Overture Places (offene Lizenz): Firmen der Käufer-Branchen mit Website in US, GB, FR."""
+    """Overture Places (offene Lizenz): Firmen der Käufer-Branchen mit Website in den Ländern aus COUNTRIES."""
     import duckdb
     from extraktor.sources import overture
     rel = overture.latest_release()
@@ -73,6 +74,7 @@ def build_pool() -> Path:
     files = [overture.BUCKET + k for k in re.findall(r"<Key>([^<]+parquet)</Key>", xml)]
     POOL.parent.mkdir(parents=True, exist_ok=True)
     cats = ", ".join(f"'{c}'" for c in CATEGORIES)
+    listed = ", ".join(f"'{c}'" for c in COUNTRIES)
     con = duckdb.connect()
     con.execute("INSTALL httpfs; LOAD httpfs; SET threads=16;")
     con.execute(f"""COPY (SELECT id, names.primary AS name, websites, emails, phones,
@@ -80,7 +82,7 @@ def build_pool() -> Path:
         addresses[1].region AS region, addresses[1].country AS country, taxonomy.primary AS category,
         confidence, operating_status
       FROM read_parquet({files})
-      WHERE taxonomy.primary IN ({cats}) AND addresses[1].country IN ('US','GB','FR') AND len(websites) > 0
+      WHERE taxonomy.primary IN ({cats}) AND addresses[1].country IN ({listed}) AND len(websites) > 0
       ) TO '{POOL}' (FORMAT parquet)""")
     n = con.execute(f"SELECT count(*) FROM '{POOL}'").fetchone()[0]
     log(f"Kunden-Pool {rel}: {n} Firmen mit Website -> {POOL}")

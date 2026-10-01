@@ -35,7 +35,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: out/cache/kunden_pool.parquet
-          key: kunden-pool-${{ steps.m.outputs.monat }}
+          key: kunden-pool-v2-${{ steps.m.outputs.monat }}  # v2: mit IE/NL/BE/SE (Scout-Sprint 01.10.2026)
       - uses: actions/setup-python@v5
         if: steps.gate.outputs.an == 'true' && steps.cache.outputs.cache-hit != 'true'
         with: { python-version: "3.11" }
@@ -64,7 +64,7 @@ jobs:
       - uses: actions/cache/restore@v4
         with:
           path: out/cache/kunden_pool.parquet
-          key: kunden-pool-${{ needs.pool.outputs.monat }}
+          key: kunden-pool-v2-${{ needs.pool.outputs.monat }}
           fail-on-cache-miss: true
       - name: Käufer prüfen und speichern
         run: python scripts/kundenwerk.py run --shard ${{ matrix.shard }}/7 --max 2500 --workers 16 | tee -a "$GITHUB_STEP_SUMMARY"

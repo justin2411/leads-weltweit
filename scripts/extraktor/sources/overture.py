@@ -5,7 +5,7 @@ Ob es wirklich keine Website gibt, prüft danach enrich.py (Domains aus dem Name
 „keine Website gefunden“ im Lead.
 
 Abruf: DuckDB liest die Parquet-Dateien direkt per HTTPS (nur benötigte Spalten/Zeilengruppen) und legt einen
-Auszug für GB/FR lokal ab (`out/cache/overture_gb_fr.parquet`, ~600 MB). Namensnennung: „© Overture Maps Foundation“.
+Auszüge lokal ab (`out/cache/overture_gb_fr.parquet`, ~600 MB; `overture_ie_nl_be_se.parquet` für IE/NL/BE/SE). Namensnennung: „© Overture Maps Foundation“.
 """
 from __future__ import annotations
 
@@ -20,7 +20,22 @@ from extraktor.model import candidate
 
 BUCKET = "https://overturemaps-us-west-2.s3.us-west-2.amazonaws.com/"
 CACHE = Path(os.environ.get("EXTRAKTOR_OVERTURE", "out/cache/overture_gb_fr.parquet"))
-COUNTRY = {"GB": "UK", "FR": "FR"}
+# Scout-Sprint 01.10.2026: weitere Mail-Länder aus countries.yaml (allowed) mit eigenem, kleinerem Auszug
+CACHE_NORTH = Path(os.environ.get("EXTRAKTOR_OVERTURE_NORTH", "out/cache/overture_ie_nl_be_se.parquet"))
+COUNTRY = {"GB": "UK", "FR": "FR", "IE": "IE", "NL": "NL", "BE": "BE", "SE": "SE"}
+# Auszug -> (Overture-Ländercodes, Bounding-Box xmin, xmax, ymin, ymax)
+GROUPS = {CACHE: (("GB", "FR"), (-8.7, 9.6, 41.3, 60.9)),
+          CACHE_NORTH: (("IE", "NL", "BE", "SE"), (-10.7, 24.2, 49.4, 69.1))}
+
+
+def code(country: str) -> str:
+    """Unser Ländercode -> Overture (ISO): UK -> GB."""
+    return "GB" if country == "UK" else country
+
+
+def cache_for(country: str) -> Path:
+    cc = code(country)
+    return next(p for p, (codes, _) in GROUPS.items() if cc in codes)
 # keine Käuferziele: Behörden, Schulen, Kirchen, Vereine, Parks …
 # Filialen von Ketten/Franchise-Marken: die Marke hat längst eine Website (kein S2-Anlass)
 BRANDS = re.compile(r"\b(euro ?spar|spar|premier|costcutter|londis|budgens|nisa|one stop|co-?op|tesco|sainsbury'?s|"
@@ -28,7 +43,12 @@ BRANDS = re.compile(r"\b(euro ?spar|spar|premier|costcutter|londis|budgens|nisa|
                     r"super u|casino|auchan|subway|domino'?s|greggs|starbucks|costa|mcdonald'?s|kfc|burger king|"
                     r"papa john'?s|pizza hut|shell|esso|texaco|bp|total(energies)?|post office|boots|"
                     r"lloyds pharmacy|superdrug|specsavers|william hill|ladbrokes|coral|paddy power|"
-                    r"premier inn|travelodge|ibis|best western)\b", re.I)
+                    r"premier inn|travelodge|ibis|best western|"
+                    # IE/NL/BE/SE (Scout-Sprint 01.10.2026)
+                    # (nur eindeutige Kettennamen; Allerweltswörter wie „Action“ oder „Plus“ würden echte Firmen treffen)
+                    r"dunnes stores|supervalu|applegreen|circle k|albert heijn|jumbo supermarkt|kruidvat|etos|"
+                    r"blokker|delhaize|colruyt|carrefour express|ica (?:kvantum|supermarket|maxi|nära)|hemk[öo]p|"
+                    r"willys|pressbyr[åa]n|7-eleven|systembolaget|apoteket|max hamburgare)\b", re.I)
 SKIP_CAT = re.compile(r"place_of_worship|government|school|place_of_learning|park|community|sport_league|"
                       r"social_or_community|hospital|public_|military|embassy|cemetery|library|post_office|"
                       r"atm|bank|charity|non_profit|political|police|fire_station", re.I)
@@ -41,13 +61,15 @@ def latest_release() -> str:
     return sorted(re.findall(r"<Prefix>(release/[^<]+/)</Prefix>", xml))[-1]
 
 
-def build_cache(log=print) -> Path:
-    """GB/FR-Auszug (alle Firmen mit Telefon) aus der neuesten Overture-Veröffentlichung."""
+def build_cache(log=print, path: Path = CACHE) -> Path:
+    """Länder-Auszug (alle Firmen mit Telefon) aus der neuesten Overture-Veröffentlichung."""
     import duckdb
+    codes, (x0, x1, y0, y1) = GROUPS[path]
     rel = latest_release()
     xml = requests.get(BUCKET + f"?list-type=2&prefix={rel}theme=places/type=place/", timeout=60).text
     files = [BUCKET + k for k in re.findall(r"<Key>([^<]+parquet)</Key>", xml)]
-    CACHE.parent.mkdir(parents=True, exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    listed = ",".join(f"'{c}'" for c in codes)
     con = duckdb.connect()
     con.execute("INSTALL httpfs; LOAD httpfs; SET threads=16;")
     con.execute(f"""COPY (SELECT id, names.primary AS name, phones, emails, socials, websites,
@@ -56,21 +78,22 @@ def build_cache(log=print) -> Path:
         taxonomy.primary AS cat2, confidence, operating_status, [s.dataset FOR s IN sources] AS datasets,
         [s.update_time FOR s IN sources] AS updated
       FROM read_parquet({files})
-      WHERE bbox.xmin BETWEEN -8.7 AND 9.6 AND bbox.ymin BETWEEN 41.3 AND 60.9
-        AND addresses[1].country IN ('GB','FR') AND len(phones) > 0) TO '{CACHE}' (FORMAT parquet)""")
-    log(f"Overture: Auszug {rel} -> {CACHE}")
-    return CACHE
+      WHERE bbox.xmin BETWEEN {x0} AND {x1} AND bbox.ymin BETWEEN {y0} AND {y1}
+        AND addresses[1].country IN ({listed}) AND len(phones) > 0) TO '{path}' (FORMAT parquet)""")
+    log(f"Overture: Auszug {rel} ({'/'.join(codes)}) -> {path}")
+    return path
 
 
 def no_website(country: str, limit: int, log=print, exclude: set[str] | None = None) -> list[dict]:
     """Firmen ohne Website (Telefon vorhanden), E-Mail und Social-Media-Seite zuerst, Ketten/Behörden ausgenommen."""
     import duckdb
-    if not CACHE.exists():
-        build_cache(log)
+    path = cache_for(country)
+    if not path.exists():
+        build_cache(log, path)
     con = duckdb.connect()
-    cc = {"UK": "GB", "FR": "FR"}[country]
+    cc = code(country)
     rows = con.execute(f"""
-        WITH base AS (SELECT * FROM '{CACHE}' WHERE country = ?),
+        WITH base AS (SELECT * FROM '{path}' WHERE country = ?),
              chains AS (SELECT lower(name) n FROM base GROUP BY 1 HAVING count(*) > 3)
         SELECT id, name, phones, emails, socials, street, city, postcode, category, datasets, updated, confidence
         FROM base

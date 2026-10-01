@@ -35,6 +35,8 @@ from lib import websites as W  # noqa: E402
 
 FORM_D_SEGMENTS = ("S1", "S5", "S9")
 FMCSA_SEGMENTS = ("S4", "S2", "S5")
+# Scout-Sprint 01.10.2026: S2 (Firmen ohne Website, Overture) auch in den übrigen Mail-Ländern aus countries.yaml
+S2_EXTRA = ("IE", "NL", "BE", "SE")
 
 
 def log(msg: str) -> None:
@@ -457,7 +459,7 @@ def main(argv=None) -> int:
                 got = []
             key = "S1" if co == "US" else "S1/UK"  # US-Pools haben keinen Länder-Zusatz
             p[key] = got + p.get(key, [])
-    for co in ("UK", "FR"):
+    for co in ("UK", "FR") + S2_EXTRA:
         if co in countries and "S2" in segs:
             known = {i for s_, i in guard.known if s_ == "overture"}
             p[f"S2/{co}"] = [c for c in load_overture_s2(co, args.s2_limit, stats, known) if segments.fits("S2", c)[0]]
