@@ -32,6 +32,8 @@ def main(argv=None) -> int:
                 rows.append(r)
     for r in rows:  # Grammatik aus älteren Läufen: "a outlook.com" -> "an outlook.com"
         r["signal"] = re.sub(r"\ba ([aeiou][\w.-]*\.[a-z]{2,} address)", r"an \1", r["signal"])
+        for k in ("signal", "company_info"):
+            r[k] = r[k].replace("..", ".")
     # Einmaligkeit neu bewerten: alte "_not_unique"-Treffer entfernen und Ampel neu setzen
     for r in rows:
         probs = [x for x in r["sc_notes"].split("; ") if x and not x.endswith("_not_unique")]

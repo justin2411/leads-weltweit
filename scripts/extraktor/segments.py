@@ -154,8 +154,8 @@ def texts_uk(seg: str, c: dict) -> dict:
     inc = uk_day(f["incorporated_on"])
     sic = f["sic"][0] if f["sic"] else "trading"
     info = (f"{name} is a new private limited company (company number {f['company_number']}) incorporated at "
-            f"Companies House on {inc}, registered in {c['city']} {c['zip']}. Business activity: {'; '.join(f['sic'][:2])}.")
-    signal = f"{name} (company no. {f['company_number']}) was incorporated on {inc} – {sic.lower()}."
+            f"Companies House on {inc}, registered in {c['city']} {c['zip']}. Business activity: {'; '.join(f['sic'][:2]).rstrip('.')}.")
+    signal = f"{name} (company no. {f['company_number']}) was incorporated on {inc} – {sic.lower().rstrip('.')}."
     if seg == "S4":
         opener = (f"Congratulations on setting up {name} – as a new {sic.lower()} business, have you already arranged "
                   f"your liability and business insurance?")
