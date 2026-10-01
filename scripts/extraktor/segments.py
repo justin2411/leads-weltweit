@@ -151,7 +151,7 @@ MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août
 def jour(d) -> str:
     if isinstance(d, str):
         d = dt.date.fromisoformat(d[:10])
-    return f"{d.day} {MOIS[d.month - 1]} {d.year}" if d else ""
+    return f"{'1er' if d.day == 1 else d.day} {MOIS[d.month - 1]} {d.year}" if d else ""
 
 
 def uk_day(d) -> str:

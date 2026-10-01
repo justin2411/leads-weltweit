@@ -34,6 +34,8 @@ def main(argv=None) -> int:
         r["signal"] = re.sub(r"\ba ([aeiou][\w.-]*\.[a-z]{2,} address)", r"an \1", r["signal"])
         for k in ("signal", "company_info"):
             r[k] = r[k].replace("..", ".")
+            r[k] = re.sub(r"\b1 (janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)",
+                          r"1er \1", r[k])
     # Einmaligkeit neu bewerten: alte "_not_unique"-Treffer entfernen und Ampel neu setzen
     for r in rows:
         probs = [x for x in r["sc_notes"].split("; ") if x and not x.endswith("_not_unique")]
