@@ -44,7 +44,7 @@ def _allowed_numbers(c: dict, t: dict) -> set[str]:
 
     for v in f.values():
         add(v)
-    for k in ("name", "street", "zip", "person_role", "email"):
+    for k in ("name", "street", "zip", "person_role", "email", "city"):
         add(c.get(k))
     add(t.get("signal_date"))
     return {v.strip(",") for v in vals}
@@ -81,7 +81,7 @@ def run(c: dict, seg: str, t: dict, today: dt.date | None = None) -> dict:
         for n in _numbers(text):
             if n not in allowed and n.replace(",", "") not in allowed:
                 problems.append(f"{k}_number_not_in_facts:{n}")
-        for pat in FORBIDDEN_PATTERNS.get("en", []):
+        for pat in FORBIDDEN_PATTERNS.get("fr" if c.get("country") == "FR" else "en", []):
             if re.search(pat, text, re.I):
                 problems.append(f"{k}_forbidden_word:{pat}")
         if len(text) > 400:
@@ -90,7 +90,7 @@ def run(c: dict, seg: str, t: dict, today: dt.date | None = None) -> dict:
         if c["name"] not in (t.get(k) or "") and k != "signal":
             problems.append(f"{k}_without_company_name")
     info = t.get("company_info") or ""
-    if c.get("state") and f", {c['state']}" not in info:
+    if c.get("country") == "US" and c.get("state") and f", {c['state']}" not in info:
         problems.append("company_info_place_differs_from_address")
     if c.get("city") and c["city"] not in info:
         problems.append("company_info_city_differs_from_address")

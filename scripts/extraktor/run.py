@@ -27,7 +27,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from extraktor import enrich as E  # noqa: E402
 from extraktor import filters, qc, sc, segments  # noqa: E402
 from extraktor.model import CSV_COLUMNS  # noqa: E402
-from extraktor.sources import fmcsa, formd  # noqa: E402
+from extraktor.sources import fmcsa, formd, fr_bodacc, uk_ch  # noqa: E402
+from lib import websites as W  # noqa: E402
 
 FORM_D_SEGMENTS = ("S1", "S5", "S9")
 FMCSA_SEGMENTS = ("S4", "S2", "S5")
@@ -77,6 +78,56 @@ def load_formd(days: int, max_docs: int, stats: Counter) -> list[dict]:
     out = filters.dedupe(out)
     stats["formd_candidates"] = len(out)
     return out
+
+
+EU_SEGMENTS = ("S4", "S5", "S9")
+
+
+def _worth(c: dict) -> bool:
+    """Neugründung mit Chance auf eine eigene Website: unterscheidbarer Name (sonst findet die Domain-Suche nichts
+    Eindeutiges)."""
+    return W.name_is_distinctive(c["name"]) and len(W.core_words(c["name"])) <= 4
+
+
+def load_uk(days: int, stats: Counter, max_pool: int) -> list[dict]:
+    rows = uk_ch.incorporations(dt.date.today() - dt.timedelta(days=days), log=log)
+    cands = [c for c in (uk_ch.to_candidate(r) for r in rows) if not filters.pre_filter(c) and _worth(c)]
+    cands = filters.dedupe(cands)
+    # neueste zuerst, ohne Formations-Agent-Adresse (c/o) zuerst
+    cands.sort(key=lambda c: (c["facts"]["care_of"], -c["facts"]["incorporated_on"].toordinal()))
+    cands = cands[:max_pool]
+    owners = uk_ch.owners({c["source_id"] for c in cands}, log=log)
+    for c in cands:
+        o = owners.get(c["source_id"])
+        if o:
+            c["person_name"], c["person_role"] = o["name"], o["role"]
+    stats["uk_candidates"] = len(cands)
+    return cands
+
+
+def load_fr(days: int, stats: Counter) -> list[dict]:
+    rows = fr_bodacc.fetch(dt.date.today() - dt.timedelta(days=days), log=log)
+    cands = [c for c in (fr_bodacc.to_candidate(r) for r in rows) if c]
+    cands = [c for c in cands if not filters.pre_filter(c) and _worth(c)]
+    cands = filters.dedupe(cands)
+    cands.sort(key=lambda c: (not c.get("person_name"), -c["facts"]["published_on"].toordinal()))
+    stats["fr_candidates"] = len(cands)
+    return cands
+
+
+def eu_pools(segs: list[str], cands: list[dict], country: str) -> dict[str, list[dict]]:
+    """UK/FR-Neugründungen abwechselnd auf S4/S5/S9 verteilen (jede Firma nur einmal), nur mit Ansprechperson."""
+    p: dict[str, list[dict]] = defaultdict(list)
+    wanted = [s for s in EU_SEGMENTS if s in segs]
+    for i, c in enumerate(cands):
+        if not c.get("person_name"):
+            continue
+        order = wanted[i % len(wanted):] + wanted[:i % len(wanted)] if wanted else []
+        for seg in order:
+            if segments.fits(seg, c)[0]:
+                p[f"{seg}/{country}"].append(c)
+                break
+    return p
 
 
 def pools(segs: list[str], fm: list[dict], fd: list[dict], distinct: bool) -> dict[str, list[dict]]:
@@ -187,8 +238,9 @@ def write(out: Path, leads: list[dict], per: int) -> dict:
         w.writerows(rows)
     greens, per_seg = [], Counter()
     for r in rows:
-        if r["ampel"] == "green" and per_seg[r["segment"]] < per:
-            per_seg[r["segment"]] += 1
+        k = f"{r['segment']}/{r['country']}"
+        if r["ampel"] == "green" and per_seg[k] < per:
+            per_seg[k] += 1
             greens.append(r)
     with open(out / "leads_gruen.csv", "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=CSV_COLUMNS)
@@ -199,15 +251,15 @@ def write(out: Path, leads: list[dict], per: int) -> dict:
 
 def funnel(leads: list[dict], pools_: dict[str, list[dict]]) -> dict:
     rep = {}
-    for seg in sorted({l["segment"] for l in leads} | set(pools_)):
-        ls = [l for l in leads if l["segment"] == seg]
+    for seg in sorted({f"{l['segment']}/{l['country']}" for l in leads} | {k if "/" in k else f"{k}/US" for k in pools_}):
+        ls = [l for l in leads if f"{l['segment']}/{l['country']}" == seg]
         reasons = Counter()
         for l in ls:
             if l["ampel"] == "red":
                 reasons.update(x.split(" (")[0].split(":")[0] for x in l["qc"]["blocking"] + l["sc"]["problems"])
             if l["ampel"] == "yellow":
                 reasons.update(f"missing:{m}" for m in l["qc"]["missing"])
-        rep[seg] = {"pool": len(pools_.get(seg, [])), "processed": len(ls),
+        rep[seg] = {"pool": len(pools_.get(seg, pools_.get(seg.replace("/US", ""), []))), "processed": len(ls),
                     **Counter(l["ampel"] for l in ls), "top_reasons": reasons.most_common(8)}
     return rep
 
@@ -223,15 +275,27 @@ def main(argv=None) -> int:
     ap.add_argument("--workers", type=int, default=12)
     ap.add_argument("--no-distinct", action="store_true", help="eine Form-D-Firma darf in mehreren Branchen stehen")
     ap.add_argument("--db", action="store_true", help="Sperrliste und vorhandene Leads aus Supabase prüfen")
+    ap.add_argument("--countries", default="US", help="US,UK,FR")
+    ap.add_argument("--uk-days", type=int, default=30)
+    ap.add_argument("--fr-days", type=int, default=30)
+    ap.add_argument("--eu-pool", type=int, default=15000, help="UK: höchstens so viele Neugründungen vorab auswählen")
     ap.add_argument("--out", default="out/extraktor")
     args = ap.parse_args(argv)
+    countries = [x.strip().upper() for x in args.countries.split(",") if x.strip()]
     segs = [s.strip().upper() for s in args.segments.split(",") if s.strip()]
     stats = Counter()
 
-    fm, shared = (load_fmcsa(args.fmcsa_days, stats) if any(s in segs for s in FMCSA_SEGMENTS) else ([], Counter()))
-    fd = load_formd(args.formd_days, args.formd_max_docs, stats) if any(s in segs for s in FORM_D_SEGMENTS) else []
-    p = pools(segs, fm, fd, distinct=not args.no_distinct)
-    log("Kandidaten je Branche: " + ", ".join(f"{s} {len(p.get(s, []))}" for s in segs))
+    us = "US" in countries
+    fm, shared = (load_fmcsa(args.fmcsa_days, stats) if us and any(s in segs for s in FMCSA_SEGMENTS)
+                  else ([], Counter()))
+    fd = load_formd(args.formd_days, args.formd_max_docs, stats) if us and any(s in segs for s in FORM_D_SEGMENTS) else []
+    p = pools(segs, fm, fd, distinct=not args.no_distinct) if us else {}
+    if "UK" in countries and any(s in segs for s in EU_SEGMENTS):
+        p.update(eu_pools(segs, load_uk(args.uk_days, stats, args.eu_pool), "UK"))
+    if "FR" in countries and any(s in segs for s in EU_SEGMENTS):
+        p.update(eu_pools(segs, load_fr(args.fr_days, stats), "FR"))
+    keys = [k for k in p if p[k]]
+    log("Kandidaten je Branche: " + ", ".join(f"{k} {len(p[k])}" for k in keys))
 
     guard = filters.Guard(None)
     if args.db:
@@ -242,8 +306,9 @@ def main(argv=None) -> int:
 
     out = Path(args.out)
     leads = []
-    for seg in segs:
-        leads += run_segment(seg, p.get(seg, []), args.per, fetcher, shared, guard, args.workers, args.max_tries)
+    for key in keys:
+        seg = key.split("/")[0]
+        leads += run_segment(seg, p.get(key, []), args.per, fetcher, shared, guard, args.workers, args.max_tries)
         write(out, leads, args.per)  # nach jeder Branche sichern (Abbruch kostet nur die laufende Branche)
     sc.batch_unique([l for l in leads if l["ampel"] in ("green", "yellow")])
     for l in leads:

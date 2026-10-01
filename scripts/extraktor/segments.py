@@ -6,6 +6,7 @@ Signalkontrolle (sc.py) prüft danach, dass jede Zahl und jeder Ort im Text wirk
 from __future__ import annotations
 
 import datetime as dt
+import re
 
 from extraktor.enrich import email_domain, is_freemail
 
@@ -82,7 +83,34 @@ def fits(seg: str, c: dict) -> tuple[bool, str]:
         if seg == "S9":
             ok = bool(c.get("person_name")) and sold >= 250_000
             return ok, "named executive of a company that just raised capital" if ok else "no named executive or raise < $250k"
+    if c["source"] in ("companies_house", "bodacc"):
+        if seg == "S4":
+            ok = insured_sector(c)
+            return ok, ("new company in a sector that needs commercial insurance from day one" if ok
+                        else "sector without obvious commercial insurance need")
+        if seg == "S5":
+            return True, "new company: first accounts, tax registration, payroll and bookkeeping start now"
+        if seg == "S9":
+            ok = bool(c.get("person_name"))
+            return ok, "named owner/director of a newly founded company" if ok else "no named owner"
+        return False, "source does not carry this signal"
     return False, "unknown source"
+
+
+# Branchen mit klarem Versicherungsbedarf ab Tag 1 (Bau, Transport, Gastronomie, Handel, Produktion, Pflege, Reinigung)
+UK_INSURED_SIC = re.compile(r"^(1\d|2\d|3[0-3]|41|42|43|45|46|47|49|52|53|55|56|77|80|81|86|87|88|96)")
+FR_INSURED_ACT = re.compile(r"b[aâ]timent|construction|ma[cç]onnerie|plomberie|[ée]lectricit[ée]|menuiserie|couverture|"
+                            r"peinture|r[ée]novation|travaux|transport|livraison|d[ée]m[ée]nagement|logistique|"
+                            r"restaura|traiteur|bar\b|caf[ée]|h[oô]tel|boulangerie|commerce de d[ée]tail|magasin|"
+                            r"boutique|fabrication|atelier|garage|m[ée]canique|nettoyage|entretien|paysag|"
+                            r"aide [àa] domicile|soins|location de v[ée]hicules|taxi|vtc", re.I)
+
+
+def insured_sector(c: dict) -> bool:
+    f = c["facts"]
+    if c["source"] == "companies_house":
+        return any(UK_INSURED_SIC.match(code) for code in f.get("sic_codes", []))
+    return bool(FR_INSURED_ACT.search(f.get("activity") or ""))
 
 
 # ---------------------------------------------------------------------------
@@ -101,8 +129,87 @@ def _kind(f: dict) -> str:
     return f"private-fleet operator ({f['operation']})" if f["operation"] else "private-fleet operator"
 
 
+MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre",
+        "décembre"]
+
+
+def jour(d) -> str:
+    if isinstance(d, str):
+        d = dt.date.fromisoformat(d[:10])
+    return f"{d.day} {MOIS[d.month - 1]} {d.year}" if d else ""
+
+
+def uk_day(d) -> str:
+    return f"{d.day} {d:%B} {d.year}" if d else ""
+
+
+def short_activity(a: str, n: int = 110) -> str:
+    a = re.sub(r"\s+", " ", (a or "").strip().rstrip("."))
+    a = re.sub(r"^(la soci[ée]t[ée] a pour objet( principal)?\s*:?\s*(en france et [àa] l'[ée]tranger)?\s*:?\s*)", "", a, flags=re.I)
+    return (a[:n].rsplit(" ", 1)[0] + "…") if len(a) > n else a
+
+
+def texts_uk(seg: str, c: dict) -> dict:
+    f, name, first = c["facts"], c["name"], (c.get("person_name") or "").split(" ")[0]
+    inc = uk_day(f["incorporated_on"])
+    sic = f["sic"][0] if f["sic"] else "trading"
+    info = (f"{name} is a new private limited company (company number {f['company_number']}) incorporated at "
+            f"Companies House on {inc}, registered in {c['city']} {c['zip']}. Business activity: {'; '.join(f['sic'][:2])}.")
+    signal = f"{name} (company no. {f['company_number']}) was incorporated on {inc} – {sic.lower()}."
+    if seg == "S4":
+        opener = (f"Congratulations on setting up {name} – as a new {sic.lower()} business, have you already arranged "
+                  f"your liability and business insurance?")
+        urg, why = "high", "New trading companies in this sector need liability cover before taking on work or staff."
+    elif seg == "S5":
+        opener = (f"Congratulations on incorporating {name} – who is looking after your bookkeeping, VAT and first "
+                  f"year-end accounts?")
+        urg, why = "medium", "A new limited company must keep records from day one and file its first accounts and confirmation statement."
+    else:
+        signal = f"{c['person_name']} – owner of {name}, incorporated on {inc} (company no. {f['company_number']})."
+        opener = (f"Congratulations on founding {name}{', ' + first if first else ''} – have you had a chance to set up "
+                  f"your own pension and financial plan alongside the new business?")
+        urg, why = "medium", "New company owners decide early how to pay themselves, pensions and protection."
+    return {"signal": signal, "signal_date": f["incorporated_on"], "company_info": info, "opener": opener,
+            "urgency": urg, "urgency_reason": why}
+
+
+def de(name: str) -> str:
+    """Französische Elision: 'de IMVEXO' -> 'd'IMVEXO'."""
+    return f"d'{name}" if name[:1].lower() in "aeiouyhéèêàâîôû" else f"de {name}"
+
+
+def texts_fr(seg: str, c: dict) -> dict:
+    f, name, first = c["facts"], c["name"], (c.get("person_name") or "").split(" ")[0]
+    pub = jour(f["published_on"])
+    act = short_activity(f.get("activity") or "")
+    form = (f.get("form") or "société").lower()
+    cap = f" au capital de {f['capital']} €" if f.get("capital") else ""
+    info = (f"{name} est une {form}{cap} nouvellement immatriculée (SIREN {f['siren']}), siège à {c['city']} "
+            f"({c['zip']}). Création publiée au BODACC le {pub}. Activité : {act}")
+    signal = f"{name} (SIREN {f['siren']}) : création publiée au BODACC le {pub} – {act}"
+    if seg == "S4":
+        opener = (f"Félicitations pour la création {de(name)} – avez-vous déjà mis en place votre responsabilité civile "
+                  f"professionnelle et vos assurances d'entreprise ?")
+        urg, why = "high", "Une entreprise nouvelle dans ce secteur doit être assurée avant de démarrer son activité."
+    elif seg == "S5":
+        opener = (f"Félicitations pour la création {de(name)} – qui s'occupe de votre comptabilité, de la TVA et de vos "
+                  f"premières déclarations ?")
+        urg, why = "medium", "Une société nouvelle doit tenir sa comptabilité dès le premier jour et préparer son premier exercice."
+    else:
+        signal = f"{c['person_name']} ({(c.get('person_role') or 'dirigeant').split(' (')[0]}) – {name} (SIREN {f['siren']}), création publiée au BODACC le {pub}."
+        opener = (f"Félicitations pour la création {de(name)}{', ' + first if first else ''} – avez-vous pensé à votre "
+                  f"protection sociale et à votre épargne de dirigeant ?")
+        urg, why = "medium", "Les nouveaux dirigeants choisissent tôt leur rémunération, leur retraite et leur prévoyance."
+    return {"signal": signal, "signal_date": f["published_on"], "company_info": info, "opener": opener,
+            "urgency": urg, "urgency_reason": why}
+
+
 def texts(seg: str, c: dict) -> dict:
     """{'signal', 'signal_date', 'company_info', 'opener', 'urgency', 'urgency_reason'}"""
+    if c["source"] == "companies_house":
+        return texts_uk(seg, c)
+    if c["source"] == "bodacc":
+        return texts_fr(seg, c)
     f, name, first = c["facts"], c["name"], (c.get("person_name") or "").split(" ")[0].title()
     if c["source"] == "fmcsa":
         reg = day(f["registered_on"])

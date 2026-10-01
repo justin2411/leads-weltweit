@@ -67,24 +67,28 @@ def zip_matches_state(zip5: str, state: str) -> bool | None:
     return any(a <= z <= b for a, b in ZIP3[state])
 
 
-def check_phone(raw: str, state: str) -> dict:
+REGION = {"US": "US", "UK": "GB", "FR": "FR", "IE": "IE"}
+UK_POSTCODE = re.compile(r"^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$")
+
+
+def check_phone(raw: str, state: str, country: str = "US") -> dict:
     """{'e164', 'type', 'ok', 'problem', 'note'}"""
-    e164, why = W.normalize_phone(raw or "", "US")
+    e164, why = W.normalize_phone(raw or "", country)
     if not e164:
         return {"e164": None, "type": "", "ok": False, "problem": f"phone_{why}" if raw else "phone_missing", "note": ""}
-    d = e164[2:]
-    if len(set(d[3:])) <= 2 or d[3:] in ("1234567", "0000000", "9999999"):
+    d = e164[2:] if country == "US" else e164[-9:]
+    if len(set(d[3:])) <= 2 or d[3:] in ("1234567", "0000000", "9999999", "456789"):
         return {"e164": e164, "type": "", "ok": False, "problem": "phone_fake_pattern", "note": ""}
     kind, note = "", ""
     if phonenumbers:
-        n = phonenumbers.parse(e164, "US")
+        n = phonenumbers.parse(e164, REGION.get(country, "US"))
         if not phonenumbers.is_valid_number(n):
             return {"e164": e164, "type": "", "ok": False, "problem": "phone_invalid", "note": ""}
         t = phonenumbers.number_type(n)
         kind = {PhoneNumberType.TOLL_FREE: "toll_free", PhoneNumberType.MOBILE: "mobile",
                 PhoneNumberType.FIXED_LINE: "landline"}.get(t, "landline_or_mobile")
         region = geocoder.description_for_number(n, "en")
-        if region and state in STATE_NAMES and STATE_NAMES[state] not in region and f", {state}" not in region \
+        if country == "US" and region and state in STATE_NAMES and STATE_NAMES[state] not in region and f", {state}" not in region \
                 and kind != "toll_free":
             note = f"area code is {region}, address in {state} (mobile numbers often keep their old area code)"
     return {"e164": e164, "type": kind, "ok": True, "problem": "", "note": note}
@@ -124,6 +128,24 @@ def name_check(name: str, company: str) -> tuple[bool, str, str]:
     return True, "", hint
 
 
+def postcode_ok(c: dict) -> bool | None:
+    """US: ZIP passt zum Bundesstaat; UK: Postcode-Format; FR: 5 Ziffern und passt zum Département."""
+    z, country = (c.get("zip") or "").strip().upper(), c.get("country")
+    if country == "US":
+        return zip_matches_state(z, c.get("state"))
+    if country == "UK":
+        return bool(UK_POSTCODE.match(z))
+    if country == "FR":
+        if not re.fullmatch(r"\d{5}", z):
+            return False
+        dep = str((c.get("facts") or {}).get("department") or "")
+        if not dep:
+            return None
+        dep = "20" if dep.upper() in ("2A", "2B") else dep
+        return z.startswith(dep) if len(dep) == 2 else z.startswith(dep[:3])
+    return None
+
+
 def run(c: dict, seg: str, shared: dict | None = None) -> dict:
     """Qualitätskontrolle eines angereicherten Kandidaten."""
     shared = shared or {}
@@ -145,16 +167,17 @@ def run(c: dict, seg: str, shared: dict | None = None) -> dict:
         blocking.append("fmcsa_mail_undeliverable")
 
     # Telefon
-    ph = check_phone(c.get("phone"), c.get("state"))
+    country = c.get("country") or "US"
+    ph = check_phone(c.get("phone"), c.get("state"), country)
     if not ph["ok"] and c.get("phone_alt"):
-        alt = check_phone(c["phone_alt"], c.get("state"))
+        alt = check_phone(c["phone_alt"], c.get("state"), country)
         if alt["ok"]:
             ph = alt
             warnings.append("main_phone_invalid_used_cell")
     if ph["ok"]:
         c["phone"] = ph["e164"]
         c["phone_type"] = ph["type"]
-        cell = check_phone(f.get("cell_phone") or c.get("phone_alt") or "", c.get("state"))["e164"]
+        cell = check_phone(f.get("cell_phone") or c.get("phone_alt") or "", c.get("state"), country)["e164"]
         if ph["type"] == "mobile" or (cell and cell == ph["e164"]):
             c["phone_type"] = "mobile"
         if c["phone_type"] in ("mobile", "landline_or_mobile") and c.get("country") == "US":
@@ -223,12 +246,12 @@ def run(c: dict, seg: str, shared: dict | None = None) -> dict:
         blocking.append(prob)
 
     # Adresse
-    if not (c.get("street") and c.get("city") and c.get("state") and c.get("zip")):
+    if not (c.get("street") and c.get("city") and c.get("zip") and (c.get("state") or country != "US")):
         missing.append("address")
     else:
-        zm = zip_matches_state(c["zip"], c["state"])
+        zm = postcode_ok(c)
         if zm is False:
-            blocking.append(f"zip_{c['zip']}_not_in_{c['state']}")
+            blocking.append(f"zip_{c['zip']}_not_in_{c['state'] or (c.get('facts') or {}).get('department') or country}")
         elif zm is None:
             warnings.append("zip_or_state_unchecked")
         if re.search(r"\b(p\.?\s?o\.?\s?box|pmb)\b", c["street"], re.I):

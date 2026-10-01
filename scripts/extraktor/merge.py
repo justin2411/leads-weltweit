@@ -50,15 +50,16 @@ def main(argv=None) -> int:
         w.writerows(rows)
     per, greens = Counter(), []
     for r in rows:
-        if r["ampel"] == "green" and per[r["segment"]] < args.per:
-            per[r["segment"]] += 1
+        k = f"{r['segment']}/{r['country']}"
+        if r["ampel"] == "green" and per[k] < args.per:
+            per[k] += 1
             greens.append(r)
     with open(out / "leads_gruen.csv", "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=CSV_COLUMNS)
         w.writeheader()
         w.writerows(greens)
-    stats = Counter((r["segment"], r["ampel"]) for r in rows)
-    for seg in sorted({r["segment"] for r in rows}):
+    stats = Counter((f"{r['segment']}/{r['country']}", r["ampel"]) for r in rows)
+    for seg in sorted({f"{r['segment']}/{r['country']}" for r in rows}):
         print(seg, {a: stats[(seg, a)] for a in ("green", "yellow", "red")}, "geschrieben grün:", per[seg])
     return 0
 

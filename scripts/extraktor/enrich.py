@@ -33,25 +33,27 @@ def is_freemail(email: str) -> bool:
 
 def _company(c: dict) -> dict:
     """Format für lib.websites.score_match."""
+    rid = c["facts"].get("company_number") or c["facts"].get("siren") or ""
     return {"name": c["name"], "country": c["country"], "city": c["city"], "region": c["state"],
             "address": " ".join(x for x in (c["street"], c["city"], c["state"], c["zip"]) if x),
+            "postcode": c["zip"] if c["country"] != "US" else "", "registry_id": rid,
             "_person_name": c.get("person_name") or ""}
 
 
 def _digits(p: str) -> str:
     d = re.sub(r"\D", "", p or "")
-    return d[1:] if len(d) == 11 and d.startswith("1") else d
+    return d[1:] if len(d) == 11 and d.startswith("1") else d[-9:] if len(d) > 9 else d
 
 
 def extra_evidence(c: dict, html_pages: list[str]) -> list[str]:
     """Zusätzliche Belege, die score_match für US nicht kennt: Telefon aus der Quelle, Postleitzahl."""
     text = "\n".join(html_pages)
     ev = []
-    phones, _ = W.phones_on_page(text, "US")
+    phones, _ = W.phones_on_page(text, c["country"])
     src = {_digits(c.get("phone")), _digits(c.get("phone_alt"))} - {""}
     if src & {_digits(p) for p in phones}:
         ev.append("phone_on_site")
-    if c.get("zip") and re.search(rf"\b{re.escape(c['zip'])}\b", W.page_text(text)):
+    if c.get("zip") and c["country"] == "US" and re.search(rf"\b{re.escape(c['zip'])}\b", W.page_text(text)):
         ev.append("zip_on_site")
     return ev
 
@@ -73,7 +75,7 @@ def check_site(url: str, c: dict, fetcher, from_email: bool) -> dict | None:
         site["verified"] = not site["conflicts"] and score >= 20
     else:
         site["verified"] = not site["conflicts"] and score >= W.THRESHOLD
-    site["_phones"], _ = W.phones_on_page("\n".join(pages), "US")
+    site["_phones"], _ = W.phones_on_page("\n".join(pages), c["country"])
     site["_emails"] = [e for p in pages for e in W.emails_on_page(p)]
     return site
 
@@ -90,7 +92,7 @@ def find_site(c: dict, fetcher, max_examined: int = 3) -> dict:
             if site:
                 return {"site": site, "method": "email_domain", "checked": checked}
     best, examined = None, 0
-    doms = W.domain_candidates(c["name"], "US")[:8]
+    doms = W.domain_candidates(c["name"], c["country"])[:8]
     if c.get("source") == "sec_form_d":
         doms += [d for d in startup_candidates(c["name"]) if d not in doms]
     for dom in doms:

@@ -38,7 +38,7 @@ def shared_contacts(candidates: list[dict], extra: list[dict] | None = None) -> 
             seen.setdefault(("email", c["email"].lower()), set()).add(c["source_id"])
         for raw in (c.get("phone"), c.get("phone_alt")):
             if raw:
-                e164 = check_phone(raw, c.get("state"))["e164"]
+                e164 = check_phone(raw, c.get("state"), c.get("country") or "US")["e164"]
                 if e164:
                     seen.setdefault(("phone", e164), set()).add(c["source_id"])
     return Counter({k: len(v) for k, v in seen.items()})
@@ -50,7 +50,7 @@ def pre_filter(c: dict) -> str | None:
         return "public_or_nonprofit"
     if JUNK.search(c["name"]):
         return "placeholder_name"
-    if not c.get("state") or c.get("country") != "US":
+    if c.get("country") not in ("US", "UK", "FR") or (c.get("country") == "US" and not c.get("state")):
         return "outside_target_country"
     return None
 
