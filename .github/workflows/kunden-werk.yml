@@ -50,6 +50,7 @@ jobs:
     timeout-minutes: 110
     strategy:
       fail-fast: false
+      max-parallel: 7   # Inhaber 01.10.2026: „kunden auf 7 gleichzeitig“
       matrix:
         shard: [0, 1, 2, 3, 4, 5, 6]
     env:
