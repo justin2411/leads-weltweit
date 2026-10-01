@@ -359,17 +359,20 @@ class WerkeTests(unittest.TestCase):
             written = []
 
         import extraktor.store as S
-        calls = []
-        orig = S.store_many
+        calls, raw = [], []
+        orig, orig_raw = S.store_many, S.store_raw
         S.store_many = lambda db, rows: calls.append(rows) or len(rows)
+        S.store_raw = lambda db, rows: raw.append(rows) or len(rows)
         try:
             base = {"ampel": "green", "source": "overture", "company": "Joe's Cafe", "signal_date": TODAY}
             rows = [dict(base, source_id="a"), dict(base, source_id="a"), dict(base, source_id="known"),
                     dict(base, source_id="b", company="EUROSPAR Ballywalter"), dict(base, source_id="c", ampel="yellow")]
             res = store_new(FakeDB(), FakeGuard(), rows)
         finally:
-            S.store_many = orig
+            S.store_many, S.store_raw = orig, orig_raw
         self.assertEqual(res["neu"], 1)
+        self.assertEqual(res["rohbestand"], 1)  # gelb: ohne Lead, aber gespeichert
+        self.assertEqual([r["source_id"] for r in raw[0]], ["c"])
         self.assertEqual([r["source_id"] for r in calls[0]], ["a"])
         self.assertEqual(calls[0][0]["signal_date"], TODAY.isoformat())
 

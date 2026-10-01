@@ -110,21 +110,70 @@ def store_many(db, rows: list[dict], today: str | None = None, chunk: int = 200)
     return n
 
 
+def store_raw(db, rows: list[dict], today: str | None = None, chunk: int = 200) -> int:
+    """Rohbestand (Inhaber 01.10.2026: „wenn da etwas fehlt sollen die Leads trotzdem noch irgendwo abgelegt werden“):
+    gelbe (unvollständige) und rote (widersprüchliche) Kandidaten als Firma mit allen gefundenen Daten, OHNE Lead.
+    Ohne Lead wird nichts geliefert; quality.complete = false nennt, was fehlt, damit spätere Anreicherung ansetzen
+    kann. Rot: quality.blocking = true und active = false (nie liefern, nicht erneut anreichern)."""
+    today = today or dt.date.today().isoformat()
+    n = 0
+    for i in range(0, len(rows), chunk):
+        part = rows[i:i + chunk]
+        cos = db.insert("watch_companies", [dict(company_row(r), active=r["ampel"] != "red",
+                                                 notes=f"Extraktor Rohbestand ({r['ampel']}) {today}") for r in part])
+        ids = [c["id"] for c in cos]
+        try:
+            obs = []
+            for cid, r in zip(ids, part):
+                src = SOURCE_NAME.get(r["source"], r["source"])
+                notes = r["qc_notes"].split("; ") if r["qc_notes"] else []
+                obs += [
+                    _obs(cid, today, kind="other", key="contact", source_url=r["website"] or None,
+                         details={"phone": r["phone"] or None, "email": r["email"] or None,
+                                  "phone_type": r["phone_type"], "email_type": r["email_type"], "source": r["source"]}),
+                    _obs(cid, today, kind="other", key="person",
+                         details={"name": r["contact_name"] or None, "role": r["contact_role"] or None, "source": src}),
+                    _obs(cid, today, kind="other", key="quality",
+                         details={"complete": False, "blocking": r["ampel"] == "red", "qc": r["qc"], "sc": r["sc"],
+                                  "missing": [x[8:] for x in notes if x.startswith("missing:")],
+                                  "problems": [x for x in notes if not x.startswith(("missing:", "+"))]
+                                  + ([r["sc_notes"]] if r.get("sc_notes") else []),
+                                  "checked_on": today, "by": "extraktor"}),
+                    _obs(cid, today, kind="other", key="profile", details={"company_info": r["company_info"]}),
+                    _obs(cid, today, kind="filing", key=EVENT_KEY.get(r["source"], r["source"]), title=r["signal"],
+                         source_name=src, source_url=r["source_url"], posted_on=r["signal_date"] or None,
+                         details={"source_id": r["source_id"], "segment": r["segment"], "ampel": r["ampel"],
+                                  "opener": r["opener"], "urgency": r["urgency"], "urgency_reason": r["urgency_reason"]}),
+                ]
+            db.insert("observations", obs)
+        except Exception:
+            ids_in = ",".join(ids)
+            db.s.delete(f"{db.base}/observations", params={"company_id": f"in.({ids_in})"}, timeout=db.timeout)
+            db.s.delete(f"{db.base}/watch_companies", params={"id": f"in.({ids_in})"}, timeout=db.timeout)
+            raise
+        n += len(part)
+    return n
+
+
 def store_new(db, guard, rows: list[dict]) -> dict:
-    """Nur grüne, noch unbekannte Firmen (Quelle + ID) schreiben; je Firma ein Lead (erste Branche gewinnt)."""
-    new, seen = [], set()
+    """Noch unbekannte Firmen (Quelle + ID) schreiben: grüne als Lead, gelbe/rote in den Rohbestand.
+    Je Firma ein Eintrag; grün geht vor (erste Branche gewinnt)."""
     rows = [{k: (v.isoformat() if isinstance(v, (dt.date, dt.datetime)) else v) for k, v in r.items()} for r in rows]
+    order = {"green": 0, "yellow": 1, "red": 2}
+    rows = sorted((r for r in rows if r.get("ampel") in order), key=lambda r: order[r["ampel"]])
+    new, raw, seen = [], [], set()
     for r in rows:
         k = (r["source"], r["source_id"])
-        if r["ampel"] != "green" or k in guard.known or k in seen:
+        if k in guard.known or k in seen:
             continue
         if r["source"] == "overture" and BRANDS.search(r["company"] or ""):
             continue  # Filiale einer Kette (ältere Läufe ohne Markenfilter)
         seen.add(k)
-        new.append(r)
+        (new if r["ampel"] == "green" else raw).append(r)
     n = store_many(db, new) if new else 0
+    m = store_raw(db, raw) if raw else 0
     guard.known.update(seen)
-    return {"neu": n, "schon_da": sum(r["ampel"] == "green" for r in rows) - n}
+    return {"neu": n, "rohbestand": m, "schon_da": len({(r["source"], r["source_id"]) for r in rows}) - n - m}
 
 
 def main(argv=None) -> int:

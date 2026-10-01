@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Kunden-Werk (Inhaber 01.10.2026: „ein Kunden-Werk … was 24/7 läuft bis 100.000 voll ist“).
+"""Kunden-Werk (Inhaber 01.10.2026: „ein Kunden-Werk … was 24/7 läuft“, Ziel 1 Mio.).
 
 Sucht Käufer (unsere Zielgruppen) und legt sie geprüft in `prospects` ab. Sendet nie Mails – ob und wann
 angeschrieben wird, entscheidet weiter config/versand.yaml (zurzeit aus).
@@ -34,7 +34,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lib.fetch import host_blocked  # noqa: E402
 from lib.rules import check_prospect, load_countries, normalize_domain  # noqa: E402
 
-TARGET = 100_000
+TARGET = 1_000_000  # Inhaber 01.10.2026: „Kundenwerk soll erst bei 1mio Kunden aufhören“
 POOL = Path(os.environ.get("KUNDENWERK_POOL", "out/cache/kunden_pool.parquet"))
 COUNTRIES = {"US": "US", "GB": "UK", "FR": "FR"}  # Länder, aus denen wir Leads liefern können
 # Overture-Kategorie (taxonomy.primary) -> Zielgruppe

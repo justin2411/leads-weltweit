@@ -366,7 +366,7 @@ def check_werke(c: Check, db) -> None:
     ok = _count(db, "prospects", {"check_status": "eq.ok"})
     new_ok = _count(db, "prospects", {"check_status": "eq.ok", "checked_at": f"gte.{since}"})
     if cfg("pipeline.yaml", "kunden_suche") == "true":
-        c.add("Kunden-Werk", OK if new_ok or ok >= 100_000 else WARN, f"{ok} geprüfte Käufer (Ziel 100.000)",
+        c.add("Kunden-Werk", OK if new_ok or ok >= 1_000_000 else WARN, f"{ok} geprüfte Käufer (Ziel 1.000.000)",
               f"neu in 24 h: {new_ok}")
 
 

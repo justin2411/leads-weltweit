@@ -133,8 +133,10 @@ def contact_companies(db, website_optional: bool = False) -> dict[str, dict]:
     rows = db.select_all("observations", {"kind": "eq.other", "key": "eq.contact", "details->>email": "not.is.null",
                                           "details->>phone": "not.is.null", "select": "company_id,details,source_url"})
     found = {r["company_id"]: {**r["details"], "page": r.get("source_url")} for r in rows}
+    # Ansprechperson: Name, sonst Rolle („Fehlt ein Name, steht die Rolle“, CLAUDE.md §9; S1/S2-Rolle 01.10.2026)
     people = {r["company_id"] for r in db.select_all("observations", {"kind": "eq.other", "key": "eq.person",
-                                                                       "details->>name": "not.is.null", "select": "company_id"})}
+                                                                       "or": "(details->>name.not.is.null,details->>role.not.is.null)",
+                                                                       "select": "company_id"})}
     # enrich.py: Daten widersprechen sich (Website nicht geprüft, E-Mail-Domain fremd, Vorwahl aus anderem Land)
     blocked = {r["company_id"] for r in db.select_all("observations", {"kind": "eq.other", "key": "eq.quality",
                                                                         "details->>blocking": "eq.true", "select": "company_id"})}

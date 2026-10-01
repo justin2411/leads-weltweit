@@ -102,13 +102,18 @@ die nächsten noch unbekannten Firmen. Grüne Leads schreibt `store.store_new` b
 Prüfung, Profil, Ereignis, Lead); bricht ein Block ab, werden dessen Firmen wieder entfernt. Filialen bekannter Ketten
 (`overture.BRANDS`) sind keine S2-Leads. Artefakt nur `bericht.json` (Zahlen). Schalter `lead_suche`.
 
+**Rohbestand:** Gelbe (unvollständige) und rote (widersprüchliche) Kandidaten speichert `store.store_raw` als Firma
+mit allen gefundenen Daten (Kontakt, Person, Profil, Ereignis mit Branche/Einstiegssatz), aber ohne Lead.
+`quality.details`: `complete = false`, `missing` (z. B. email, address), `problems`; rot zusätzlich `blocking = true`
+und `active = false`. Finden: `watch_companies.notes like 'Extraktor Rohbestand%'`.
+
 ## Kunden-Werk (`scripts/kundenwerk.py`, `.github/workflows/kunden-werk.yml`)
 
 Alle 2 Stunden, 4 parallele Teile. Käufer-Liste einmal im Monat aus Overture (Kategorien → Zielgruppe, US/UK/FR, mit
 Website, ohne Ketten). Je Firma: Startseite + Kontakt-/Impressumsseiten → Firmen-E-Mail (eigene Domain; sonst die
 E-Mail aus dem Overture-Eintrag der Firma), Rechtsform; UK ohne Rechtsform auf der Website: eindeutiger Name in
 Companies House → Ltd. Dann `lib.rules.check_prospect`. Jede Domain wird gespeichert (ok oder rejected mit Grund),
-damit sie nicht erneut abgerufen wird. Ziel: 100.000 Käufer mit `check_status = ok`. Kein Versand. Schalter
+damit sie nicht erneut abgerufen wird. Ziel: 1.000.000 Käufer mit `check_status = ok`. Kein Versand. Schalter
 `kunden_suche`.
 
 ## S1 aus Karriereseiten (`sources/careers.py`, Teil des Lead-Werks)

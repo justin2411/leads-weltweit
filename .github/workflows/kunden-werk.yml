@@ -1,6 +1,6 @@
-# Kunden-Werk (Inhaber 01.10.2026: „ein Kunden-Werk … was 24/7 läuft bis 100.000 voll ist“).
+# Kunden-Werk (Inhaber 01.10.2026: „ein Kunden-Werk … was 24/7 läuft bis 100.000 voll ist“, erhöht: „Kundenwerk soll erst bei 1mio Kunden aufhören“).
 # Alle 2 Stunden: Käufer der Zielgruppen (Overture-Firmen mit Website, US/UK/FR) auf ihrer Website prüfen
-# (Firmen-E-Mail, Rechtsform, Prüfregeln) und in `prospects` speichern. Hört bei 100.000 geprüften Käufern auf.
+# (Firmen-E-Mail, Rechtsform, Prüfregeln) und in `prospects` speichern. Hört bei 1.000.000 geprüften Käufern auf.
 # Sendet NIE Mails (Versand steuert allein config/versand.yaml). Lädt keine Dateien hoch.
 # Schalter: config/pipeline.yaml kunden_suche.
 name: kunden-werk

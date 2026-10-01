@@ -34,6 +34,13 @@ Laufende Entscheidungen des Gehirns (Preise, Seitenvarianten) stehen zusätzlich
   `config/pipeline.yaml` `lead_suche: true`; der Versand bleibt aus (`config/versand.yaml`).
 - **Kunden-Werk:** „ein Kunden-Werk … was 24/7 läuft bis 100.000 voll ist“ → `kunden-werk.yml` alle 2 Stunden,
   Käufer aus Overture (US/UK/FR, mit Website) geprüft in `prospects`, Ziel 100.000 geprüfte Käufer, kein Versand.
+- **Kunden-Werk-Ziel 1 Mio.:** „Kundenwerk soll erst bei 1mio Kunden aufhören“ → `kundenwerk.TARGET = 1_000_000`.
+- **Rohbestand:** „Wenn da etwas fehlt sollen die Leads trotzdem noch irgendwo abgelegt werden das man die später
+  nochmal anreichern kann“ → gelbe/rote Kandidaten als Firma mit allen Daten in `watch_companies`/`observations`
+  (quality.complete = false, missing/problems), ohne Lead – also nie geliefert, aber auffindbar und nachanreicherbar.
+  Rot (widersprüchlich) zusätzlich blocking = true, active = false. Käufer ohne Treffer stehen mit Grund in `prospects`.
+- **Rolle statt Name zählt als Ansprechperson** (CLAUDE.md §9, S1/S2 01.10.2026): `deliveries.contact_companies`
+  akzeptiert Name oder Rolle.
 - **Datenbank:** „brauchst du nicht kannst du alles selber machen“ → Datenbank-Änderungen für die Werke ohne
   Rückfrage (weiterhin nicht destruktiv).
 
