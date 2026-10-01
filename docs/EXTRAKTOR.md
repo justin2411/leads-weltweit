@@ -13,8 +13,8 @@ Quelle (amtlich, kostenlos) ─► Sicherheitsfilter ─► Branche zuordnen ─
 
 | Schritt | Datei | Was passiert |
 |---|---|---|
-| Quellen | `sources/fmcsa.py`, `sources/formd.py` | FMCSA-Neuzugänge (Transport/Fuhrpark) und SEC-Form-D-Kapitalmeldungen der letzten Tage |
-| Sicherheitsfilter | `filters.py` | Behörden/Vereine raus, Platzhalter raus, Dubletten raus, Sammel-Kontakte von Anmelde-Dienstleistern erkennen, Sperrliste und vorhandene Leads (mit `--db`) |
+| Quellen | `sources/fmcsa.py`, `sources/formd.py`, `sources/uk_ch.py`, `sources/fr_bodacc.py` | US: FMCSA-Neuzugänge (Transport/Fuhrpark), SEC-Form-D-Kapitalmeldungen; UK: Companies-House-Neugründungen + PSC-Eigentümer; FR: BODACC-Gründungen |
+| Sicherheitsfilter | `filters.py`, `qc.py` | Behörden/Vereine raus, Platzhalter raus, Dubletten raus, Sammel-Kontakte (dieselbe Nummer/E-Mail bei ≥ 3 Firmen in 120 Tagen = Anmelde-Dienstleister), FMCSA-Stilllegungen (Out-of-Service) und unzustellbare Adressen, unplausible Flottenzahlen, Sperrliste und vorhandene Leads (mit `--db`) |
 | Branche | `segments.fits` | feste Regel je Branche (siehe unten), mit Begründung |
 | Anreicherung | `enrich.py` | Website aus der eigenen E-Mail-Domain oder aus dem Firmennamen, nur wenn die Seite die Firma belegt (Name, Ort, Telefon aus der Quelle, PLZ, Ansprechperson); E-Mail/Telefon von der eigenen Website; MX-Prüfung |
 | Texte | `segments.texts` | Signal, Firmeninfo, Einstiegssatz, Dringlichkeit – nur aus den Fakten dieses Leads |
@@ -36,6 +36,14 @@ Rot = falsch oder widersprüchlich → nie liefern.
 | S5 Buchhaltung/Lohn | SEC Form D | junge Firma (≤ 3 Jahre), kleiner Umsatz, < $5M | erste Kapitalaufnahme |
 | S9 Finanzberater | SEC Form D | namentlich genannte Geschäftsführung, mind. $250k | Geschäftsführer einer frisch finanzierten Firma |
 
+| S4/S5/S9 UK | Companies House Massendaten + PSC-Eigentümer | Neugründung (≤ 45 Tage), keine Holding/Immobilien/ruhend; S4 nur Branchen mit Versicherungsbedarf (Bau, Transport, Gastro, Handel, Produktion, Pflege, Reinigung) | Gründung mit Firmennummer und Branche (SIC) |
+| S4/S5/S9 FR | BODACC-Gründungen (Gesellschaften) | keine SCI/sociétés civiles/Holdings; S4 nur Tätigkeiten mit Versicherungsbedarf | Gründung mit SIREN, Tätigkeit, Gérant/Président |
+
+UK/FR: Die Register haben kein Telefon und keine E-Mail – beides kommt nur von der eigenen Website. Die gilt als
+belegt durch Registernummer, Postleitzahl des Sitzes, Telefon oder exakten Namen mit Rechtsform + Domain = Name
+(Firmennamen sind im Register einmalig). Brandneue Firmen haben selten schon eine Website: die grüne Quote liegt dort
+bei ~1–3 % (USA 20–90 %), die Menge gleicht das aus. Texte für FR auf Französisch.
+
 Form D: Fonds, Immobilien-Zweckgesellschaften, Banken und Änderungsmeldungen fallen raus. Mit `distinct` (Standard)
 steht jede Form-D-Firma nur in einer Branche (S1 vor S5 vor S9).
 
@@ -50,6 +58,9 @@ des Inhabers.
 ```bash
 python scripts/extraktor/run.py --segments S1,S2,S4,S5,S9 --per 100 --out out/extraktor
 python scripts/extraktor/run.py --segments S4 --per 20 --fmcsa-days 14 --out /tmp/x     # klein
+python scripts/extraktor/run.py --countries UK --segments S5 --per 50 --out out/uk          # UK
+python scripts/extraktor/run.py --countries FR --segments S4,S5,S9 --per 50 --out out/fr    # Frankreich
+python scripts/extraktor/merge.py out/x1 out/x2 out/uk out/fr --out out/extraktor           # Läufe zusammenführen
 python scripts/extraktor/store.py out/extraktor/leads_alle.csv            # Probelauf Datenbank
 python scripts/extraktor/store.py out/extraktor/leads_alle.csv --apply    # grüne Leads speichern
 ```
@@ -64,3 +75,16 @@ GitHub: Actions → `extraktor` → Run workflow (Branchen, Menge, Tage). Ergebn
   (Inhaber 01.10.2026).
 - Widersprüchliche Daten (PLZ ↔ Bundesstaat, E-Mail-Domain ↔ Website, Sammel-Kontakt) → rot, nie liefern.
 - Texte nennen nur Zahlen, die in den Fakten stehen; keine Garantien, kein Druck.
+
+## Hinweise für Kunden (USA)
+
+Handynummern sind markiert (`phone_note`): nur von Hand wählen, keine SMS/Wählautomaten ohne Einwilligung, vorher mit
+der Do-Not-Call-Liste abgleichen (TCPA). Gehört in die Lieferbedingungen.
+
+## Nächste Ausbaustufen (Recherche 01.10.2026)
+
+- FMCSA „Motus“-Datensätze (seit Mai 2026): Versicherung fehlt/gekündigt als starkes S4-Signal.
+- Connecticut-Firmenregister (`n7gp-d28j`, mit E-Mail) und Florida Sunbiz für US-Neugründungen.
+- SSA-Vornamen + Census-Nachnamen statt gender-guesser (bessere Namensprüfung für US-Namen).
+- Overture Maps Places (Websites/Telefon, offene Lizenz) für mehr Website-Treffer in UK/FR.
+- S1/S2 für UK/FR: eigene Quellen nötig (Einstellungs-Signal bzw. Kontakt ohne Website).

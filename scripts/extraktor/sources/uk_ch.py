@@ -110,7 +110,8 @@ def owners(numbers: set[str], log=print) -> dict[str, dict]:
                     found[cn.group(1)] = {"name": f"{first.title()} {last.title()}",
                                           "role": "Owner (person with significant control, Companies House)",
                                           "since": d.get("notified_on")}
-        path.unlink(missing_ok=True)  # Platz sparen: jeder Teil ~70 MB
+        if os.environ.get("EXTRAKTOR_KEEP_PSC") != "1":
+            path.unlink(missing_ok=True)  # Platz sparen: jeder Teil ~70 MB
     log(f"UK: Eigentümer für {len(found)} von {len(numbers)} Firmen im PSC-Register")
     return found
 
