@@ -534,3 +534,78 @@ class MoreCountriesTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GithubProTests(unittest.TestCase):
+    """Inhaber 01.10.2026: „maximale Effizienz für GitHub Pro“ – Zeitfenster, Wiederholung, Selbst-Neustart."""
+
+    def test_run_segment_stops_at_deadline(self):
+        import time
+        from extraktor import run
+        calls = []
+
+        def fake(c, seg, fetcher, shared, guard):
+            calls.append(c)
+            return {**c, "ampel": "red"}
+        orig_process, orig_ampel = run.process, run.ampel
+        run.process, run.ampel = fake, lambda l: l["ampel"]
+        try:
+            done = run.run_segment("S2", [{"i": i} for i in range(50)], 10, None, None, None, 4, 50,
+                                   deadline=time.monotonic() - 1)
+        finally:
+            run.process, run.ampel = orig_process, orig_ampel
+        self.assertEqual(done, [])
+        self.assertEqual(calls, [])
+
+    def test_db_retries_reads_but_not_timed_out_writes(self):
+        import requests
+        from lib import db as dbmod
+        d = dbmod.DB(url="https://x.supabase.co", key="k")
+        tries = []
+
+        class Resp:
+            status_code, text = 200, "[]"
+
+            def json(self):
+                return []
+
+        def flaky(method, url, **kw):
+            tries.append(method)
+            if len(tries) == 1:
+                raise requests.ConnectionError("Remote end closed connection")
+            return Resp()
+        d.s.request = flaky
+        orig = dbmod.RETRY_WAIT
+        dbmod.RETRY_WAIT = (0, 0, 0)
+        try:
+            self.assertEqual(d.select("leads"), [])
+            self.assertEqual(tries, ["GET", "GET"])
+            tries.clear()
+            with self.assertRaises(requests.ConnectionError):
+                d.insert("leads", [{"a": 1}])  # könnte schon gespeichert sein: nie doppelt schreiben
+            self.assertEqual(tries, ["POST"])
+            tries.clear()
+            self.assertFalse(d.is_suppressed("a@b.c"))  # nur lesend: wird wiederholt
+            self.assertEqual(tries, ["POST", "POST"])
+        finally:
+            dbmod.RETRY_WAIT = orig
+
+    def test_werke_fill_github_pro_slots(self):
+        import yaml
+        wf = ROOT / ".github" / "workflows"
+        lead = yaml.safe_load((wf / "lead-werk.yml").read_text())["jobs"]
+        kunden = yaml.safe_load((wf / "kunden-werk.yml").read_text())["jobs"]
+        n_lead = len(lead["holen"]["strategy"]["matrix"]["include"])
+        n_kunden = len(kunden["pruefen"]["strategy"]["matrix"]["shard"])
+        self.assertEqual(lead["holen"]["strategy"]["max-parallel"], n_lead)  # eine Welle, kein Nachzügler-Stau
+        self.assertEqual(kunden["pruefen"]["strategy"]["max-parallel"], n_kunden)
+        self.assertLessEqual(n_lead + n_kunden, 38)  # GitHub Pro: 40 gleichzeitig, 2 frei für die übrigen Abläufe
+        for e in lead["holen"]["strategy"]["matrix"]["include"]:
+            if "--shard" in e["args"]:
+                i, n = e["args"].split("--shard ")[1].split()[0].split("/")
+                same = [x for x in lead["holen"]["strategy"]["matrix"]["include"]
+                        if x["name"].rsplit("-", 1)[0] == e["name"].rsplit("-", 1)[0]]
+                self.assertEqual(int(n), len(same), e["name"])  # jeder Teil einer Quelle genau einmal
+        for jobs, name in ((lead, "lead-werk.yml"), (kunden, "kunden-werk.yml")):
+            self.assertIn(f"gh workflow run {name}", jobs["weiter"]["steps"][-1]["run"])
+            self.assertEqual(jobs["weiter"]["permissions"]["actions"], "write")

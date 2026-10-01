@@ -1,9 +1,13 @@
 # Lead-Werk (Inhaber 01.10.2026: „eigener Bereich der 24/7 die leads holt und anreichert“).
-# Alle 3 Stunden, 30 Teile gleichzeitig: kostenlose Quellen -> Sicherheitsfilter -> kostenlose Anreicherung -> Qualitäts- und
+# Dauerbetrieb, 30 Teile gleichzeitig in einer Welle: kostenlose Quellen -> Sicherheitsfilter -> kostenlose Anreicherung -> Qualitäts- und
 # Signalkontrolle -> grüne Leads direkt in Supabase (watch_companies, observations, leads). Schon gespeicherte
 # Firmen werden übersprungen, so arbeitet sich jeder Lauf weiter durch den Bestand.
 # Lädt KEINE Lead-Dateien hoch (öffentliches Repo) – nur den Zählbericht. Sendet nichts.
 # Schalter: config/pipeline.yaml lead_suche. robots.txt, höchstens 1 Abruf/s je Domain, keine gesperrten Plattformen.
+# GitHub Pro voll nutzen (Inhaber 01.10.2026: „maximale Effizienz für GitHub Pro“): 40 Jobs gleichzeitig = 30 Lead-Werk
+# + 8 Kunden-Werk + 2 frei für Tagesablauf/Tagescheck/Wachhund. Jeder Teil hört nach 150 Minuten auf, neue Firmen
+# anzufangen, und speichert (--deadline-min), damit kein Nachzügler die übrigen Plätze blockiert; danach startet sich
+# das Werk selbst neu (Job „weiter“). Cron und Wachhund bleiben als Rückfall.
 name: lead-werk
 on:
   schedule:
@@ -15,41 +19,34 @@ permissions:
 jobs:
   holen:
     runs-on: ubuntu-latest
-    timeout-minutes: 330
+    timeout-minutes: 200
     strategy:
       fail-fast: false
-      # 30 Teile gleichzeitig (Inhaber 01.10.2026: „Erhöhe die lead läufe auf 30“, GitHub Pro: 40 Jobs gleichzeitig;
-      # 7 für das Kunden-Werk, 3 frei für die übrigen Abläufe). --shard verteilt fest nach Quell-ID.
+      # 30 Teile, alle gleichzeitig (Inhaber 01.10.2026: „Erhöhe die lead läufe auf 30“, GitHub Pro: 40 Jobs
+      # gleichzeitig; 8 für das Kunden-Werk, 2 frei). --shard verteilt fest nach Quell-ID.
       max-parallel: 30
       matrix:
         include:
-          - { name: s2-uk-0, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 0/8" }
-          - { name: s2-uk-1, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 1/8" }
-          - { name: s2-uk-2, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 2/8" }
-          - { name: s2-uk-3, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 3/8" }
-          - { name: s2-uk-4, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 4/8" }
-          - { name: s2-uk-5, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 5/8" }
-          - { name: s2-uk-6, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 6/8" }
-          - { name: s2-uk-7, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 7/8" }
-          - { name: s2-fr-0, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 0/8" }
-          - { name: s2-fr-1, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 1/8" }
-          - { name: s2-fr-2, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 2/8" }
-          - { name: s2-fr-3, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 3/8" }
-          - { name: s2-fr-4, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 4/8" }
-          - { name: s2-fr-5, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 5/8" }
-          - { name: s2-fr-6, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 6/8" }
-          - { name: s2-fr-7, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 7/8" }
+          - { name: s2-uk-0, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 0/6" }
+          - { name: s2-uk-1, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 1/6" }
+          - { name: s2-uk-2, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 2/6" }
+          - { name: s2-uk-3, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 3/6" }
+          - { name: s2-uk-4, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 4/6" }
+          - { name: s2-uk-5, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 5/6" }
+          - { name: s2-fr-0, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 0/6" }
+          - { name: s2-fr-1, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 1/6" }
+          - { name: s2-fr-2, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 2/6" }
+          - { name: s2-fr-3, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 3/6" }
+          - { name: s2-fr-4, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 4/6" }
+          - { name: s2-fr-5, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 5/6" }
           # Scout-Sprint 01.10.2026: S2 auch in den übrigen Mail-Ländern (countries.yaml allowed)
           - { name: s2-ie-0, args: "--segments S2 --countries IE --s2-limit 20000 --per 4000 --max-tries 4000" }
-          - { name: s2-nl-0, args: "--segments S2 --countries NL --s2-limit 32000 --per 4000 --max-tries 4000 --shard 0/2" }
-          - { name: s2-nl-1, args: "--segments S2 --countries NL --s2-limit 32000 --per 4000 --max-tries 4000 --shard 1/2" }
+          - { name: s2-nl-0, args: "--segments S2 --countries NL --s2-limit 32000 --per 4000 --max-tries 4000" }
           - { name: s2-be-0, args: "--segments S2 --countries BE --s2-limit 20000 --per 4000 --max-tries 4000" }
-          - { name: s2-se-0, args: "--segments S2 --countries SE --s2-limit 32000 --per 4000 --max-tries 4000 --shard 0/2" }
-          - { name: s2-se-1, args: "--segments S2 --countries SE --s2-limit 32000 --per 4000 --max-tries 4000 --shard 1/2" }
-          - { name: us-fmcsa-0, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 0/4" }
-          - { name: us-fmcsa-1, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 1/4" }
-          - { name: us-fmcsa-2, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 2/4" }
-          - { name: us-fmcsa-3, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 3/4" }
+          - { name: s2-se-0, args: "--segments S2 --countries SE --s2-limit 32000 --per 4000 --max-tries 4000" }
+          - { name: us-fmcsa-0, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 0/3" }
+          - { name: us-fmcsa-1, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 1/3" }
+          - { name: us-fmcsa-2, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 2/3" }
           - { name: us-formd-0, args: "--segments S1,S5,S9 --countries US --fmcsa-days 0 --formd-days 44 --formd-max-docs 20000 --per 4000 --max-tries 4000 --shard 0/2" }
           - { name: us-formd-1, args: "--segments S1,S5,S9 --countries US --fmcsa-days 0 --formd-days 44 --formd-max-docs 20000 --per 4000 --max-tries 4000 --shard 1/2" }
           - { name: uk-register-0, args: "--segments S4,S5,S9 --countries UK --uk-days 44 --eu-pool 200000 --per 4000 --max-tries 4000 --shard 0/3" }
@@ -97,7 +94,7 @@ jobs:
             lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-
       - name: Leads holen, prüfen, speichern
         if: steps.gate.outputs.an == 'true'
-        run: python scripts/extraktor/run.py ${{ matrix.args }} --workers 16 --db --store --out out/lead-werk
+        run: python scripts/extraktor/run.py ${{ matrix.args }} --workers 16 --db --store --out out/lead-werk --deadline-min 150
       - name: Zwischenspeicher sichern
         if: always() && steps.gate.outputs.an == 'true'
         uses: actions/cache/save@v4
@@ -123,3 +120,26 @@ jobs:
           name: lead-werk-bericht-${{ matrix.name }}
           path: out/lead-werk/bericht.json
           retention-days: 7
+
+  weiter:
+    # sofort den nächsten Lauf starten (nur wenn der Schalter an ist und dieser Lauf echte Arbeit gemacht hat,
+    # sonst übernehmen Cron und Wachhund – so entsteht keine Schleife aus Fehlstarts)
+    needs: holen
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Nächsten Lauf starten
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          grep -Eq '^lead_suche:\s*true' config/pipeline.yaml || { echo "Schalter aus – kein Neustart"; exit 0; }
+          start=$(gh run view ${{ github.run_id }} --json createdAt -q .createdAt)
+          mins=$(( ( $(date -u +%s) - $(date -u -d "$start" +%s) ) / 60 ))
+          if [ "$mins" -lt 30 ]; then echo "Lauf nur $mins Minuten – kein Sofort-Neustart"; exit 0; fi
+          gh workflow run lead-werk.yml --ref "${{ github.ref_name }}"
+          echo "Nächster Lauf gestartet (dieser lief $mins Minuten)" | tee -a "$GITHUB_STEP_SUMMARY"

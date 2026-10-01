@@ -1,8 +1,9 @@
 # Kunden-Werk (Inhaber 01.10.2026: „ein Kunden-Werk … was 24/7 läuft bis 100.000 voll ist“, erhöht: „Kundenwerk soll erst bei 1mio Kunden aufhören“).
-# Alle 2 Stunden, 7 Teile gleichzeitig (läuft parallel zum Lead-Werk): Käufer der Zielgruppen (Overture-Firmen mit Website, US/UK/FR) auf ihrer Website prüfen
+# Dauerbetrieb, 8 Teile gleichzeitig (läuft parallel zum Lead-Werk; GitHub Pro: 40 Jobs = 30 Lead + 8 Kunden + 2 frei): Käufer der Zielgruppen (Overture-Firmen mit Website, US/UK/FR) auf ihrer Website prüfen
 # (Firmen-E-Mail, Rechtsform, Prüfregeln) und in `prospects` speichern. Hört bei 1.000.000 geprüften Käufern auf.
 # Sendet NIE Mails (Versand steuert allein config/versand.yaml). Lädt keine Dateien hoch.
-# Schalter: config/pipeline.yaml kunden_suche.
+# Schalter: config/pipeline.yaml kunden_suche. Jeder Teil hört nach 90 Minuten auf, neue Firmen anzufangen
+# (--deadline-min), danach startet sich das Werk selbst neu (Job „weiter“); Cron und Wachhund bleiben als Rückfall.
 name: kunden-werk
 on:
   schedule:
@@ -47,12 +48,12 @@ jobs:
     needs: pool
     if: needs.pool.outputs.an == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 110
+    timeout-minutes: 120
     strategy:
       fail-fast: false
-      max-parallel: 7   # Inhaber 01.10.2026: „kunden auf 7 gleichzeitig“
+      max-parallel: 8   # Inhaber 01.10.2026: „kunden auf 7 gleichzeitig“, dann „maximale Effizienz für GitHub Pro“
       matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -67,4 +68,26 @@ jobs:
           key: kunden-pool-v2-${{ needs.pool.outputs.monat }}
           fail-on-cache-miss: true
       - name: Käufer prüfen und speichern
-        run: python scripts/kundenwerk.py run --shard ${{ matrix.shard }}/7 --max 2500 --workers 16 | tee -a "$GITHUB_STEP_SUMMARY"
+        run: python scripts/kundenwerk.py run --shard ${{ matrix.shard }}/8 --max 4000 --workers 16 --deadline-min 90 | tee -a "$GITHUB_STEP_SUMMARY"
+
+  weiter:
+    # sofort den nächsten Lauf starten (nur bei Schalter an und echter Laufzeit, sonst Cron/Wachhund)
+    needs: [pool, pruefen]
+    if: always() && needs.pool.outputs.an == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Nächsten Lauf starten
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          grep -Eq '^kunden_suche:\s*true' config/pipeline.yaml || { echo "Schalter aus – kein Neustart"; exit 0; }
+          start=$(gh run view ${{ github.run_id }} --json createdAt -q .createdAt)
+          mins=$(( ( $(date -u +%s) - $(date -u -d "$start" +%s) ) / 60 ))
+          if [ "$mins" -lt 30 ]; then echo "Lauf nur $mins Minuten – kein Sofort-Neustart"; exit 0; fi
+          gh workflow run kunden-werk.yml --ref "${{ github.ref_name }}"
+          echo "Nächster Lauf gestartet (dieser lief $mins Minuten)" | tee -a "$GITHUB_STEP_SUMMARY"
