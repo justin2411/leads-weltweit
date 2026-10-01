@@ -1,12 +1,20 @@
-# Fokus beim Start (Inhaber 01.10.2026: „ok lass fokus aufbauen“). Reihenfolge = Priorität.
-# Gewählt nach echten Zahlen vom 01.10.2026: viele mail-fähige Käufer UND viele lieferbare Leads im selben Markt.
-#   S4/US  Gewerbliche Versicherungsmakler  1.535 mail-fähige Käufer, neue Speditionen mit Fahrzeugen (FMCSA) + CT
-#   S5/US  Buchhaltung/Lohn                   894 mail-fähige Käufer, Neugründungen (FMCSA, Form D, CT)
-#   S2/US  Webagenturen                       295 mail-fähige Käufer, ~10.000 Firmen ohne Website
-# UK S2 bewusst nicht im Fokus: 10.000 Leads, aber nur 37 mail-fähige Käufer (PECR: Einzelunternehmer nicht anmailen).
+# Fokus beim Start (Inhaber 01.10.2026: „ok lass fokus aufbauen“; ergänzt: „Ich will aber nicht nur usa also mach die
+# anderen beiden länder auch das ist wichtig zum testen wo was klappt“).
+# Test-Matrix: dieselben drei Branchen in allen drei Ländern, damit sich je Test nur eine Sache unterscheidet
+# (CLAUDE.md §5: Segment, Land oder Botschaft). Alle Fokus-Tests sind gleichrangig und werden gemischt bearbeitet.
+#   S4  Gewerbliche Versicherungsmakler   S5  Buchhaltung/Lohn   S2  Webagenturen
+# Stand 01.10.2026, mail-fähige Käufer: US 1.535 / 894 / 295, UK 26 / 174 / 37 (PECR: nur Kapitalgesellschaften),
+# FR: kaum, weil die Rechtsform (SAS/SARL …) bisher selten erkannt wurde – Kunden-Werk liest sie jetzt aus den
+# Mentions légales und dem offenen Firmenregister (recherche-entreprises.api.gouv.fr).
 # Wirkung: Entwürfe, Käufersuche (Kunden-Werk) und später der Versand bearbeiten diese Tests zuerst; alles andere läuft
 # nachrangig weiter. Versand bleibt über config/versand.yaml aus („wir produzieren vor wie im Restaurant“).
 fokus:
   - S4/US
   - S5/US
   - S2/US
+  - S4/UK
+  - S5/UK
+  - S2/UK
+  - S4/FR
+  - S5/FR
+  - S2/FR

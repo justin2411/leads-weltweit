@@ -434,14 +434,47 @@ class ConnecticutTests(unittest.TestCase):
 
 
 class FokusTests(unittest.TestCase):
-    """Fokus beim Start (Inhaber 01.10.2026): S4/US, S5/US, S2/US zuerst."""
+    """Fokus (Inhaber 01.10.2026): S4, S5, S2 in US, UK und FR – gleichrangig."""
 
     def test_focus_file_and_rank(self):
         from lib import fokus
         pairs = fokus.focus_pairs()
-        self.assertEqual(pairs[:3], [("S4", "US"), ("S5", "US"), ("S2", "US")])
-        self.assertEqual(fokus.rank("S4", "US", pairs), 0)
-        self.assertEqual(fokus.rank("S2", "UK", pairs), len(pairs))
+        for co in ("US", "UK", "FR"):
+            for seg in ("S4", "S5", "S2"):
+                self.assertIn((seg, co), pairs)
+                self.assertEqual(fokus.rank(seg, co, pairs), 0)
+        self.assertEqual(fokus.rank("S9", "UK", pairs), 1)
+
+
+
+class FranceBuyersTests(unittest.TestCase):
+    """Fokus-Matrix US/UK/FR (Inhaber 01.10.2026): französische Käufer brauchen eine erkannte Kapitalgesellschaft."""
+
+    def test_register_codes_map_to_company_forms(self):
+        from extraktor.sources.fr_sirene import _key, form_of
+        self.assertEqual([form_of(c) for c in ("5710", "5720", "5499", "5498", "5599", "1000", None)],
+                         ["SAS", "SASU", "SARL", "EURL", "SA", None, None])
+        self.assertEqual(_key("Agence Lumière SAS"), _key("AGENCE LUMIERE"))
+
+    def test_lookup_needs_unique_exact_name(self):
+        from unittest import mock
+        from extraktor.sources import fr_sirene
+        res = lambda results: mock.Mock(status_code=200, json=lambda: {"results": results})  # noqa: E731
+        one = [{"nom_complet": "AIC CONSEIL", "siren": "949540207", "nature_juridique": "5710"},
+               {"nom_complet": "AIC CONSEIL ET FORMATION", "siren": "1", "nature_juridique": "5499"}]
+        s = mock.Mock(get=mock.Mock(return_value=res(one)))
+        self.assertEqual(fr_sirene.lookup("AIC Conseil", "75011", s)["form"], "SAS")
+        two = [{"nom_complet": "BIRD", "siren": "1", "nature_juridique": "5710"},
+               {"nom_complet": "BIRD", "siren": "2", "nature_juridique": "5499"}]
+        s = mock.Mock(get=mock.Mock(return_value=res(two)))
+        self.assertIsNone(fr_sirene.lookup("Bird", None, s))
+
+    def test_mentions_legales_give_company_form(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+        from prospects import detect_legal_form
+        self.assertEqual(detect_legal_form("FR", "Lumière Web", "Lumière Web, SAS au capital de 1 000 €")[0], "SAS")
+        self.assertEqual(detect_legal_form("FR", "Lumière Web", "Forme juridique : SARL")[0], "SARL")
+        self.assertIsNone(detect_legal_form("FR", "Lumière Web", "Contactez-nous")[0])
 
 
 if __name__ == "__main__":

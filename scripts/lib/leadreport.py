@@ -251,7 +251,7 @@ def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str
         meta = " · ".join(x for x in [ind, r.get("legal_form"), loc] if x)
         dated = _day(r.get("event_date", ""), lang)
         facts = [("phone", t["phone"], r.get("phone")), ("mail", t["email"], r.get("email")), ("web", t["web"], web),
-                 ("user", t2["i_contact"], f"{person}{(' · ' + prole) if prole else ''}" if person else ""),
+                 ("user", t2["i_contact"], f"{person}{(' · ' + prole) if prole else ''}" if person else prole),
                  ("pin", t2["i_addr"], addr),
                  ("cal", t2["f_reg"] if sig == "new_incorporation" else t["detected"], dated)]
         facts = [(k, lbl, v or "–") for k, lbl, v in facts]
@@ -447,7 +447,9 @@ def complete_only(data: bytes, segment: str | None = None) -> bytes:
     if not rows or not all(k in rows[0] for k in REQUIRED):
         return data
     need = [k for k in REQUIRED if not (segment == "S2" and k == "website")]
-    keep = [r for r in rows if all((r.get(k) or "").strip() for k in need)]
+    # Ansprechperson: Name, sonst Rolle („Fehlt ein Name, steht die Rolle“, CLAUDE.md §9) – wie contact_companies
+    has = lambda r, k: (r.get(k) or "").strip() or (k == "contact_name" and (r.get("contact_role") or "").strip())  # noqa: E731
+    keep = [r for r in rows if all(has(r, k) for k in need)]
     buf = io.StringIO()
     w = csv.DictWriter(buf, fieldnames=list(rows[0].keys()))
     w.writeheader()

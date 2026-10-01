@@ -134,6 +134,21 @@ def add_industry(db, leads: list[dict]) -> None:
     for l in leads:
         if not l.get("_industry") and l.get("company_id") in ind:
             l["_industry"] = ind[l["company_id"]]
+    # sonst aus dem Firmenprofil: „X is a clothing shop in …“ / „X : bar à …“ (Overture-Kategorie)
+    rest = sorted({l["company_id"] for l in leads if not l.get("_industry") and l.get("company_id")})
+    prof = {}
+    for i in range(0, len(rest), 100):
+        for o in db.select("observations", {"company_id": f"in.({','.join(rest[i:i + 100])})", "kind": "eq.other",
+                                            "key": "eq.profile", "select": "company_id,details"}):
+            m = PROFILE_INDUSTRY.search((o.get("details") or {}).get("company_info") or "")
+            if m:
+                prof[o["company_id"]] = (m.group(1) or m.group(2)).strip()
+    for l in leads:
+        if not l.get("_industry") and l.get("company_id") in prof:
+            l["_industry"] = prof[l["company_id"]][:1].upper() + prof[l["company_id"]][1:]
+
+
+PROFILE_INDUSTRY = re.compile(r"\bis an? ([a-z][a-z &'/-]{2,40}?) (?:in|at|based) |^[^:]{2,120} : ([^,.]{3,40}?) (?:à|au|aux|en) ")
 
 
 LEGAL_FORMS = re.compile(r"\b(LLC|L\.L\.C\.|Inc\.?|Corp\.?|Corporation|Co\.|LLP|LP|PLLC|PC|Ltd\.?|Limited|PLC|"

@@ -167,6 +167,9 @@ def check_one(d: dict, fetcher, cfg: dict, generic: set[str], blocked: set[str])
     if d.get("ch_number") and not legal:
         # UK: eindeutiger Name im Firmenregister -> Kapitalgesellschaft (PECR: nur „corporate subscribers“)
         legal, size_note = "Ltd", f"Company No. {d['ch_number']} (Companies House, Name)"
+    if (d.get("fr_reg") or {}).get("form") and not legal:
+        # FR: eindeutiger Treffer im Firmenregister (Annuaire des entreprises / SIRENE)
+        legal, size_note = d["fr_reg"]["form"], f"SIREN {d['fr_reg']['siren']} (Annuaire des entreprises, Name + PLZ)"
     suppressed = d["domain"] in blocked or bool(email and email.lower() in blocked)
     chk = check_prospect(email=email, country=d["country"], website=d["website"], legal_form=legal,
                          source_url=src, size_note=size_note,
@@ -234,6 +237,13 @@ def cmd_run(args) -> int:
         nums = uk_ch.match_by_name(uk, log=log)
         for d in pool:
             d["ch_number"] = nums.get(d["domain"])
+    fr = {d["domain"]: (d["name"], d.get("postcode")) for d in pool if d["country"] == "FR"}
+    if fr:
+        # FR: Rechtsform aus dem offenen Firmenregister (SIRENE), sonst blieben fast alle „nur Anruf/Brief“
+        from extraktor.sources import fr_sirene
+        hits = fr_sirene.match_by_name(fr, log=log)
+        for d in pool:
+            d["fr_reg"] = hits.get(d["domain"])
     log(f"Käufer: {have} geprüft (Ziel {args.target}), {len(known)} Domains schon bekannt, {len(pool)} neue in diesem Lauf")
     from enrich import Fetcher
     fetcher = Fetcher()  # robots.txt, gesperrte Plattformen, 1 Anfrage/s je Domain
