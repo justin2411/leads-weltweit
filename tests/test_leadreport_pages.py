@@ -65,5 +65,15 @@ class LocalCurrencyTest(unittest.TestCase):
         self.assertEqual(plans[0]["currency"], "gbp")  # Original unverändert
 
 
+class NoShadowTest(unittest.TestCase):
+    """Inhaber 01.10.2026: graue Schatten ab Lead 2 auf dem iPhone (Chrome rastert box-shadow im PDF) -> nie Schatten."""
+
+    def test_pdf_template_has_no_blurred_shadows(self):
+        import re
+        from lib import leadreport
+        src = open(leadreport.__file__, encoding="utf-8").read()
+        self.assertFalse(re.search(r"box-shadow:[^;}]*rgba", src))
+
+
 if __name__ == "__main__":
     unittest.main()

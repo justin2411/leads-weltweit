@@ -329,7 +329,7 @@ body{{font-family:Inter,Helvetica,Arial,sans-serif;color:#1c2536;-webkit-print-c
 .sec{{margin:0 0 4mm}}.sec h3{{font-size:8.2px;letter-spacing:.18em;text-transform:uppercase;color:#a07f46;font-weight:700}}
 .grid{{display:flex;flex-direction:column;gap:2.6mm;padding:0 .6mm 1.4mm}}
 .lead{{display:grid;grid-template-columns:11mm 1fr;gap:2.6mm;padding:2.9mm 3.8mm 3mm 3.2mm;background:#fff;
-  border:.2mm solid #ebe6db;border-radius:3mm;box-shadow:0 .5mm 1.2mm rgba(11,20,40,.06),0 1.6mm 4.5mm rgba(11,20,40,.07);
+  border:.25mm solid #e2dccf;border-radius:3mm;box-shadow:none;
   overflow:hidden;break-inside:avoid}}
 .no{{font-size:20px;font-weight:800;color:#d9c49a;letter-spacing:-.5px;line-height:1}}
 .main{{min-width:0;display:flex;flex-direction:column;gap:2mm}}
