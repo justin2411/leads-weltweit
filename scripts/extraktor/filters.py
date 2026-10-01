@@ -1,0 +1,88 @@
+"""Sicherheitsfilter vor der (teureren) Anreicherung – billig, früh, streng.
+
+  - Behörden, Schulen, Kirchen, Vereine: keine Käuferziele (keine kleinen Unternehmen)
+  - Testeinträge, Platzhalter
+  - Sammel-Kontakte: dieselbe E-Mail/Telefonnummer bei vielen Firmen = Anmelde-Dienstleister, nicht die Firma
+  - Dubletten im Lauf (gleiche Quelle-ID, gleicher Name+Bundesstaat)
+  - Sperrliste (signalwerk.is_suppressed) und schon vorhandene Leads, wenn eine Datenbank angebunden ist
+"""
+from __future__ import annotations
+
+import re
+from collections import Counter
+
+from lib import websites as W
+
+PUBLIC = re.compile(r"\b(county of|city of|town of|village of|state of|department|dept\.? of|school district|"
+                    r"public schools?|university|college|church|ministr(y|ies)|parish|diocese|fire (district|"
+                    r"department)|police|sheriff|municipal|authority|board of|u\.?s\.? government|federal|"
+                    r"association|foundation|non-?profit)\b", re.I)
+JUNK = re.compile(r"\b(test|testing|sample|dummy|n/?a|unknown|none)\b", re.I)
+
+
+def shared_contacts(candidates: list[dict], extra: list[dict] | None = None) -> Counter:
+    """Wie viele verschiedene Firmen nutzen dieselbe E-Mail/Telefonnummer? (Schlüssel ('email'|'phone', Wert))
+    extra: zusätzliche FMCSA-Rohzeilen (dot_number, phone, cell_phone, email_address) eines längeren Zeitraums."""
+    from extraktor.qc import check_phone
+    seen: dict[tuple, set] = {}
+    for r in extra or []:
+        sid = str(r.get("dot_number") or "")
+        if r.get("email_address"):
+            seen.setdefault(("email", r["email_address"].strip().lower()), set()).add(sid)
+        for raw in (r.get("phone"), r.get("cell_phone")):
+            e164 = check_phone(raw, r.get("phy_state") or "")["e164"] if raw else None
+            if e164:
+                seen.setdefault(("phone", e164), set()).add(sid)
+    for c in candidates:
+        if c.get("email"):
+            seen.setdefault(("email", c["email"].lower()), set()).add(c["source_id"])
+        for raw in (c.get("phone"), c.get("phone_alt")):
+            if raw:
+                e164 = check_phone(raw, c.get("state"), c.get("country") or "US")["e164"]
+                if e164:
+                    seen.setdefault(("phone", e164), set()).add(c["source_id"])
+    return Counter({k: len(v) for k, v in seen.items()})
+
+
+def pre_filter(c: dict) -> str | None:
+    """Grund zum Aussortieren oder None."""
+    if PUBLIC.search(c["name"]) or PUBLIC.search(c.get("legal_name") or ""):
+        return "public_or_nonprofit"
+    if JUNK.search(c["name"]):
+        return "placeholder_name"
+    if c.get("country") not in ("US", "UK", "FR") or (c.get("country") == "US" and not c.get("state")):
+        return "outside_target_country"
+    return None
+
+
+def dedupe(candidates: list[dict]) -> list[dict]:
+    out, ids, names = [], set(), set()
+    for c in candidates:
+        key = (W.norm(c["name"]), c.get("state"))
+        if c["source_id"] in ids or key in names:
+            continue
+        ids.add(c["source_id"])
+        names.add(key)
+        out.append(c)
+    return out
+
+
+class Guard:
+    """Sperrliste und vorhandene Leads aus der Datenbank (optional: ohne DB nur Hinweis im Ergebnis)."""
+
+    def __init__(self, db=None):
+        self.db = db
+        self.known: set[tuple[str, str]] = set()
+        if db is not None:
+            for r in db.select_all("watch_companies", {"registry_source": "in.(fmcsa,sec_form_d)",
+                                                       "select": "registry_source,registry_id"}):
+                self.known.add((r["registry_source"], r["registry_id"]))
+
+    def problem(self, c: dict) -> str | None:
+        if self.db is None:
+            return None
+        if (c["source"], c["source_id"]) in self.known:
+            return "already_in_database"
+        if c.get("email") and self.db.rpc("is_suppressed", {"p_email": c["email"]}):
+            return "suppressed"
+        return None

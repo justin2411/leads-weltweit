@@ -1,0 +1,22 @@
+# Kurztest der S1-Quellen, die nur von GitHub aus erreichbar sind (Common Crawl, US-Arbeitsministerium).
+# Nur von Hand. Liest nur öffentliche Daten, schreibt nichts in die Datenbank, sendet nichts.
+name: extraktor-s1-test
+on:
+  workflow_dispatch:
+  push:
+    paths: ["scripts/extraktor/s1_test.py"]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - run: python scripts/extraktor/s1_test.py | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: s1-test, path: out/s1_test/ }
