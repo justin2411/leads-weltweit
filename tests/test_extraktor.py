@@ -648,3 +648,32 @@ class GithubProTests(unittest.TestCase):
         for jobs, name in ((lead, "lead-werk.yml"), (kunden, "kunden-werk.yml")):
             self.assertIn(f"gh workflow run {name}", jobs["weiter"]["steps"][-1]["run"])
             self.assertEqual(jobs["weiter"]["permissions"]["actions"], "write")
+
+
+class IrelandRegisterTests(unittest.TestCase):
+    """Scout-Sprint 01.10.2026: Rechtsform irischer Käufer aus dem CRO-Register."""
+
+    def test_unique_active_company_gives_form(self):
+        from extraktor.sources import ie_cro
+        rows = [{"company_num": "1", "company_name": "MURPHY PLUMBING SERVICES LIMITED", "company_status": "Normal ",
+                 "company_type": "LTD - Private Company Limited by Shares"},
+                {"company_num": "2", "company_name": "BEARA DISTILLERY LTD", "company_status": "Dissolved",
+                 "company_type": "LTD - Private Company Limited by Shares"},
+                {"company_num": "3", "company_name": "GREEN GARDENS LIMITED", "company_status": "Normal",
+                 "company_type": "LTD - Private Company Limited by Shares"},
+                {"company_num": "4", "company_name": "GREEN GARDENS DAC", "company_status": "Normal",
+                 "company_type": "DAC - Designated Activity Company"},
+                {"company_num": "5", "company_name": "ACME WIDGETS INTERNATIONAL", "company_status": "Normal",
+                 "company_type": "External company"}]
+        idx = ie_cro.index(rows)
+        got = ie_cro.match({"a.ie": "Murphy Plumbing Services", "b.ie": "Beara Distillery Ltd",
+                            "c.ie": "Green Gardens", "d.ie": "Acme Widgets International", "e.ie": "Bob"}, idx)
+        self.assertEqual(got, {"a.ie": {"number": "1", "form": "Ltd"}})  # aufgelöst, doppelt, ausländisch, zu kurz: nein
+
+    def test_forms_are_company_forms(self):
+        from extraktor.sources import ie_cro
+        from lib.rules import is_company_form
+        for t in ("LTD - Private Company Limited by Shares", "DAC - Designated Activity Company",
+                  "CLG - Company Limited by Guarantee", "PLC - Public Limited Company"):
+            self.assertTrue(is_company_form("IE", ie_cro.form_of(t)), t)
+        self.assertIsNone(ie_cro.form_of("External company"))
