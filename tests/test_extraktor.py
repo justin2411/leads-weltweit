@@ -9,7 +9,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from extraktor import filters, qc, sc, segments  # noqa: E402
 from extraktor.model import title_case  # noqa: E402
-from extraktor.sources import careers, fmcsa, formd, jobs, overture  # noqa: E402
+from extraktor.sources import careers, ct_sos, fmcsa, formd, jobs, overture  # noqa: E402
 
 TODAY = dt.date.today()
 REG = (TODAY - dt.timedelta(days=3)).strftime("%Y%m%d")
@@ -199,6 +199,44 @@ class FixTests(unittest.TestCase):
         t = segments.texts("S5", c)
         self.assertIn(c["name"], t["signal"])
         self.assertEqual(sc.run(c, "S5", t)["status"], "pass")
+
+
+CT_ROW = {
+    "id": "001eq00001cSmZaAAK", "name": "BLUE HERON PLUMBING, LLC", "business_type": "LLC", "status": "Active",
+    "accountnumber": "3526546", "billingstreet": "85 Viscount Dr", "billing_unit": "A22", "billingcity": "MILFORD",
+    "billingpostalcode": "06460-1234", "billingstate": "CT", "business_email_address": "Info@BlueHeronPlumbing.com",
+    "date_registration": f"{TODAY - dt.timedelta(days=2)}T00:00:00.000",
+    "naics_code": "Plumbing, Heating, and Air-Conditioning Contractors (238220)",
+}
+
+
+class ConnecticutTests(unittest.TestCase):
+    def test_candidate(self):
+        c = ct_sos.to_candidate(CT_ROW)
+        self.assertEqual((c["source"], c["state"], c["zip"], c["email"]), ("ct_sos", "CT", "06460", "info@blueheronplumbing.com"))
+        self.assertEqual(c["facts"]["naics_code"], "238220")
+        self.assertEqual(c["street"], "85 Viscount Dr A22")
+
+    def test_segment_rules(self):
+        c = ct_sos.to_candidate(CT_ROW)
+        self.assertTrue(segments.fits("S4", c)[0])
+        self.assertTrue(segments.fits("S5", c)[0])
+        self.assertFalse(segments.fits("S2", c)[0])  # eigene E-Mail-Domain
+        free = ct_sos.to_candidate({**CT_ROW, "business_email_address": "bob@gmail.com"})
+        self.assertTrue(segments.fits("S2", free)[0])
+        shop = ct_sos.to_candidate({**CT_ROW, "naics_code": "Software Publishers (513210)"})
+        self.assertFalse(segments.fits("S4", shop)[0])
+        landlord = ct_sos.to_candidate({**CT_ROW, "naics_code": "Lessors of Residential Buildings (531110)"})
+        self.assertFalse(segments.fits("S5", landlord)[0])
+        holding = ct_sos.to_candidate({**CT_ROW, "name": "ACME PROPERTIES LLC"})
+        self.assertFalse(segments.fits("S5", holding)[0])
+
+    def test_texts_pass_signal_check(self):
+        for seg, email in (("S4", None), ("S5", None), ("S2", "bob@gmail.com")):
+            c = ct_sos.to_candidate({**CT_ROW, **({"business_email_address": email} if email else {})})
+            t = segments.texts(seg, c)
+            self.assertEqual(sc.run(c, seg, t), {"status": "pass", "problems": []}, (seg, t))
+            self.assertIn("Connecticut", t["signal"])
 
 
 class SafetyTests(unittest.TestCase):

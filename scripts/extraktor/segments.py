@@ -98,6 +98,8 @@ def fits(seg: str, c: dict) -> tuple[bool, str]:
         if c.get("email") and not is_freemail(c["email"]):
             return False, "uses an own email domain (likely has a site)"
         return True, "established local business without a website"
+    if c["source"] == "ct_sos":
+        return fits_ct(seg, c)
     if c["source"] in ("companies_house", "bodacc"):
         if seg == "S4":
             ok = insured_sector(c)
@@ -110,6 +112,35 @@ def fits(seg: str, c: dict) -> tuple[bool, str]:
             return ok, "named owner/director of a newly founded company" if ok else "no named owner"
         return False, "source does not carry this signal"
     return False, "unknown source"
+
+
+# Connecticut-Neueintragungen: Besitz-/Beteiligungsgesellschaften und reine Vermieter haben keinen der Anlässe
+CT_HOLDING = re.compile(r"\b(holdings?|properties|property|realty|real estate|investments?|capital|trust|rentals?|"
+                        r"estates?|land|acquisitions?|equity|assets?|ventures?)\b", re.I)
+CT_NO_SIGNAL_NAICS = ("531", "551", "525", "523", "813", "814")
+# Branchen mit Versicherungsbedarf ab Tag 1: Bau, Produktion, Großhandel, Einzelhandel, Transport, Reinigung/Service,
+# Pflege/Praxen, Gastronomie, Werkstätten und Handwerk
+CT_INSURED_NAICS = ("23", "31", "32", "33", "42", "44", "45", "48", "49", "5617", "5616", "62", "72", "8111", "8112",
+                    "8113", "8121", "8129")
+
+
+def fits_ct(seg: str, c: dict) -> tuple[bool, str]:
+    f, code = c["facts"], c["facts"].get("naics_code") or ""
+    if CT_HOLDING.search(c["name"]) or code.startswith(CT_NO_SIGNAL_NAICS):
+        return False, "holding, landlord or investment vehicle – no operating-business signal"
+    if seg == "S4":
+        ok = code.startswith(CT_INSURED_NAICS)
+        return ok, ("new Connecticut company in a sector that needs commercial insurance from day one" if ok
+                    else "sector without obvious commercial insurance need")
+    if seg == "S5":
+        return True, "new company: first accounts, tax registration, payroll and bookkeeping start now"
+    if seg == "S2":
+        if c.get("website"):
+            return False, "already has a verified website"
+        if c.get("email") and not is_freemail(c["email"]):
+            return False, "uses an own email domain (likely has a site)"
+        return True, "new business without a website"
+    return False, "source does not carry this signal"
 
 
 # Branchen mit klarem Versicherungsbedarf ab Tag 1 (Bau, Transport, Gastronomie, Handel, Produktion, Pflege, Reinigung)
@@ -298,12 +329,43 @@ def texts_jobs(c: dict) -> dict:
             "urgency": "high" if age >= 30 else "medium", "urgency_reason": why}
 
 
+def texts_ct(seg: str, c: dict) -> dict:
+    f, name = c["facts"], c["name"]
+    reg = day(f["registered_on"])
+    what = (f" Registered business activity: {f['naics_label']} (NAICS {f['naics_code']})."
+            if f.get("naics_label") else "")
+    info = f"{name} is a new Connecticut {f['org']} based in {place(c)}, registered with the Secretary of the State on {reg}.{what}"
+    signal = f"{name} was registered in Connecticut on {reg} as a {f['org']}" + (
+        f" – {f['naics_label'].lower()}." if f.get("naics_label") else ".")
+    if seg == "S4":
+        opener = (f"Congratulations on setting up {name} – as a new business, have you already arranged your "
+                  f"liability and business insurance?")
+        urg, why = "high", "New companies in this sector need liability cover before taking on work, staff or premises."
+    elif seg == "S5":
+        opener = (f"Congratulations on registering {name} – who is looking after your bookkeeping, payroll and "
+                  f"first tax filings?")
+        urg, why = "medium", "A new Connecticut company must keep records from day one and file its first returns."
+    else:
+        dom = email_domain(c.get("email") or "")
+        art = "an" if dom[:1] in "aeiou" else "a"
+        signal = (f"{name}, registered in Connecticut on {reg}, has no company website: its contact email is {art} "
+                  f"{dom} address, and no website under its name could be found." if dom else
+                  f"{name}, registered in Connecticut on {reg}, has no company website.")
+        opener = (f"Congratulations on registering {name} – I couldn't find a website for you yet; would a simple "
+                  f"site that helps customers find you be useful?")
+        urg, why = "medium", "New businesses decide on their web presence in the first months."
+    return {"signal": signal, "signal_date": f["registered_on"], "company_info": info, "opener": opener,
+            "urgency": urg, "urgency_reason": why}
+
+
 def texts(seg: str, c: dict) -> dict:
     """{'signal', 'signal_date', 'company_info', 'opener', 'urgency', 'urgency_reason'}"""
     if c["source"] in ("ats_jobs", "careers"):
         return texts_jobs(c)
     if c["source"] == "overture":
         return texts_overture(c)
+    if c["source"] == "ct_sos":
+        return texts_ct(seg, c)
     if c["source"] == "companies_house":
         return texts_uk(seg, c)
     if c["source"] == "bodacc":

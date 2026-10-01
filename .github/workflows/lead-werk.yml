@@ -44,6 +44,9 @@ jobs:
           - { name: us-fmcsa-2, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 2/5" }
           - { name: us-fmcsa-3, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 3/5" }
           - { name: us-fmcsa-4, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 4/5" }
+          - { name: us-ct-0, args: "--segments S2,S4,S5 --countries US --fmcsa-days 0 --formd-days 0 --ct-days 44 --per 4000 --max-tries 3000 --shard 0/3" }
+          - { name: us-ct-1, args: "--segments S2,S4,S5 --countries US --fmcsa-days 0 --formd-days 0 --ct-days 44 --per 4000 --max-tries 3000 --shard 1/3" }
+          - { name: us-ct-2, args: "--segments S2,S4,S5 --countries US --fmcsa-days 0 --formd-days 0 --ct-days 44 --per 4000 --max-tries 3000 --shard 2/3" }
           - { name: us-formd-0, args: "--segments S1,S5,S9 --countries US --fmcsa-days 0 --formd-days 44 --formd-max-docs 20000 --per 4000 --max-tries 4000 --shard 0/2" }
           - { name: us-formd-1, args: "--segments S1,S5,S9 --countries US --fmcsa-days 0 --formd-days 44 --formd-max-docs 20000 --per 4000 --max-tries 4000 --shard 1/2" }
           - { name: uk-register-0, args: "--segments S4,S5,S9 --countries UK --uk-days 44 --eu-pool 200000 --per 4000 --max-tries 4000 --shard 0/3" }

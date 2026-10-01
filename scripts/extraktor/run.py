@@ -30,7 +30,7 @@ import requests  # noqa: E402
 from extraktor import enrich as E  # noqa: E402
 from extraktor import filters, qc, sc, segments  # noqa: E402
 from extraktor.model import CSV_COLUMNS  # noqa: E402
-from extraktor.sources import fmcsa, formd, fr_bodacc, overture, uk_ch  # noqa: E402
+from extraktor.sources import ct_sos, fmcsa, formd, fr_bodacc, overture, uk_ch  # noqa: E402
 from lib import websites as W  # noqa: E402
 
 FORM_D_SEGMENTS = ("S1", "S5", "S9")
@@ -67,6 +67,25 @@ def load_fmcsa(days: int, stats: Counter) -> tuple[list[dict], Counter]:
     out = filters.dedupe(out)
     stats["fmcsa_candidates"] = len(out)
     return out, shared
+
+
+def load_ct(days: int, stats: Counter) -> list[dict]:
+    """Connecticut: Neueintragungen mit E-Mail (Open Data des Secretary of the State)."""
+    rows = ct_sos.fetch(dt.date.today() - dt.timedelta(days=days))
+    log(f"Connecticut: {len(rows)} aktive Neueintragungen seit {days} Tagen")
+    out = []
+    for c in (ct_sos.to_candidate(r) for r in rows):
+        if not c["email"] or not c["name"]:
+            stats["ct_filtered:no_email"] += 1
+            continue
+        why = filters.pre_filter(c)
+        if why:
+            stats[f"ct_filtered:{why}"] += 1
+            continue
+        out.append(c)
+    out = filters.dedupe(out)
+    stats["ct_candidates"] = len(out)
+    return out
 
 
 def load_formd(days: int, max_docs: int, stats: Counter) -> list[dict]:
@@ -240,7 +259,7 @@ def eu_pools(segs: list[str], cands: list[dict], country: str) -> dict[str, list
     return p
 
 
-def pools(segs: list[str], fm: list[dict], fd: list[dict], distinct: bool) -> dict[str, list[dict]]:
+def pools(segs: list[str], fm: list[dict], fd: list[dict], distinct: bool, ct: list[dict] | None = None) -> dict[str, list[dict]]:
     """Kandidaten je Branche, vor der Anreicherung. FMCSA: eigene Domain -> S4, Freemail -> S2.
     Form D: S1 (ab $1M) vor S5 (junge kleine Firmen) vor S9 (Geschäftsführung) – mit distinct jede Firma nur einmal."""
     p: dict[str, list[dict]] = defaultdict(list)
@@ -255,6 +274,13 @@ def pools(segs: list[str], fm: list[dict], fd: list[dict], distinct: bool) -> di
                     break
         elif "S2" in segs and c.get("email") and segments.fits("S2", c)[0]:
             p["S2"].append(c)
+    for i, c in enumerate(ct or []):
+        own = not E.is_freemail(c["email"])
+        order = (("S4", "S5") if i % 2 == 0 else ("S5", "S4")) if own else ("S2",)
+        for seg in order:
+            if seg in segs and segments.fits(seg, c)[0]:
+                p[seg].append(c)
+                break
     used = set()
     for seg in [s for s in FORM_D_SEGMENTS if s in segs]:
         for c in fd:
@@ -381,6 +407,7 @@ def main(argv=None) -> int:
     ap.add_argument("--segments", default="S1,S2,S4,S5,S9")
     ap.add_argument("--per", type=int, default=100, help="grüne Leads je Branche")
     ap.add_argument("--fmcsa-days", type=int, default=30)
+    ap.add_argument("--ct-days", type=int, default=0, help="Connecticut-Neueintragungen der letzten n Tage (0 = aus)")
     ap.add_argument("--formd-days", type=int, default=21)
     ap.add_argument("--formd-max-docs", type=int, default=5000)
     ap.add_argument("--max-tries", type=int, default=1500, help="höchstens so viele Kandidaten je Branche anreichern")
@@ -410,7 +437,10 @@ def main(argv=None) -> int:
     fm, shared = (load_fmcsa(args.fmcsa_days, stats) if us and any(s in segs for s in FMCSA_SEGMENTS)
                   else ([], Counter()))
     fd = load_formd(args.formd_days, args.formd_max_docs, stats) if us and any(s in segs for s in FORM_D_SEGMENTS) else []
-    p = pools(segs, fm, fd, distinct=not args.no_distinct) if us else {}
+    ct = load_ct(args.ct_days, stats) if us and args.ct_days and any(s in segs for s in FMCSA_SEGMENTS) else []
+    if ct:
+        shared = shared + filters.shared_contacts(ct)  # Anmelde-Dienstleister: dieselbe E-Mail bei mehreren Firmen
+    p = pools(segs, fm, fd, distinct=not args.no_distinct, ct=ct) if us else {}
     from enrich import Fetcher
     fetcher = Fetcher()
     if "UK" in countries and any(s in segs for s in EU_SEGMENTS):

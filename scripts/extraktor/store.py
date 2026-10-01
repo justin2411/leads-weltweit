@@ -29,16 +29,18 @@ SOURCE_NAME = {
     "companies_house": "Companies House", "bodacc": "BODACC (Bulletin officiel)",
     "overture": "Overture Maps (business listing)", "careers": "Careers page (company website)",
     "ats_jobs": "Careers page (applicant tracking system)",
+    "ct_sos": "Connecticut Business Registry (Secretary of the State)",
 }
 EVENT_KEY = {"fmcsa": "fmcsa_registration", "sec_form_d": "form_d", "companies_house": "incorporation",
-             "bodacc": "immatriculation", "overture": "no_website", "careers": "open_roles", "ats_jobs": "open_roles"}
+             "bodacc": "immatriculation", "overture": "no_website", "careers": "open_roles", "ats_jobs": "open_roles",
+             "ct_sos": "ct_registration"}
 INDUSTRY = {"fmcsa": "Motor carrier"}
 
 
 def signal_type(seg: str, source: str) -> str:
     if source in ("careers", "ats_jobs"):
         return "jobs_open"
-    if source in ("companies_house", "bodacc"):
+    if source in ("companies_house", "bodacc", "ct_sos") and seg != "S2":
         return "incorporation"
     if seg == "S2":
         return "no_website"
