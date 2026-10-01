@@ -50,7 +50,7 @@ CAREER_HREF = re.compile(r'href=["\']([^"\'#]*(?:career|jobs|vacanc|join-us|join
 JOB_PATH = re.compile(r"/(?:careers?|jobs?|job-vacancy|vacanc(?:y|ies)|positions?|openings?|job-openings|"
                       r"opportunit(?:y|ies)(?:-details)?|join-us|roles?|current-vacancies|work-for-us)/[\w%.-]{3,}", re.I)
 AGENCY_TITLE = re.compile(r"\b(recruit\w*|staffing|(?:employment|teaching|nursing|supply|locum|care|temp) agency|locums?|"
-                          r"appointments|selection|talent|personnel|resourcing|headhunt\w*|job ?boards?|jobs? in|"
+                          r"appointments|placements?|selection|talent|personnel|resourcing|headhunt\w*|job ?boards?|jobs? in|"
                           r"\w+ jobs|vacancies in|careers in|outsourcing)\b", re.I)
 OTHER_ATS = re.compile(r"(teamtailor\.com|personio\.(?:de|com)|bamboohr\.com|smartrecruiters\.com|jobvite\.com|"
                        r"applytojob\.com|hibob\.com|occupop\.com|eploy\.net|tal\.net|jobtrain\.co\.uk|"
@@ -69,6 +69,23 @@ WORDS = {"UK": re.compile(r"\b(uk|u\.k\.|united kingdom|england|scotland|wales|n
          "US": re.compile(r"\b(usa|united states|u\.s\.|new york|san francisco|chicago|austin|boston|seattle|"
                           r"los angeles|denver|atlanta|miami|dallas|houston|remote - us|remote, us)\b|,\s*(?:"
                           + "|".join(sorted(US_STATES)) + r")\b")}
+
+
+STATE_NAMES = {"alabama": "AL", "alaska": "AK", "arizona": "AZ", "arkansas": "AR", "california": "CA", "colorado": "CO",
+               "connecticut": "CT", "delaware": "DE", "florida": "FL", "georgia": "GA", "hawaii": "HI", "idaho": "ID",
+               "illinois": "IL", "indiana": "IN", "iowa": "IA", "kansas": "KS", "kentucky": "KY", "louisiana": "LA",
+               "maine": "ME", "maryland": "MD", "massachusetts": "MA", "michigan": "MI", "minnesota": "MN",
+               "mississippi": "MS", "missouri": "MO", "montana": "MT", "nebraska": "NE", "nevada": "NV",
+               "new hampshire": "NH", "new jersey": "NJ", "new mexico": "NM", "new york": "NY",
+               "north carolina": "NC", "north dakota": "ND", "ohio": "OH", "oklahoma": "OK", "oregon": "OR",
+               "pennsylvania": "PA", "rhode island": "RI", "south carolina": "SC", "south dakota": "SD",
+               "tennessee": "TN", "texas": "TX", "utah": "UT", "vermont": "VT", "virginia": "VA", "washington": "WA",
+               "west virginia": "WV", "wisconsin": "WI", "wyoming": "WY", "district of columbia": "DC"}
+
+
+def us_state(v: str) -> str:
+    v = (v or "").strip()
+    return v.upper() if v.upper() in US_STATES else STATE_NAMES.get(v.lower(), "")
 
 
 # ---------------------------------------------------------------------------
@@ -185,17 +202,34 @@ ROLE_WORD = re.compile(r"\b(manager|engineer|assistant|worker|officer|executive|
 
 NOT_A_ROLE = re.compile(r"\b(programmes?|programs?|schemes?|graduates|apprenticeships|opportunities|partners|"
                         r"head office|support for|training|academy|fast track|team members|types of|our |"
-                        r"closed|filled|expired|no longer|jobs? in|editlink|\{\{)", re.I)
+                        r"closed|filled|expired|no longer|jobs|roles|view|qualify as|vacancies|careers|"
+                        r"meet the|editlink|\{\{)", re.I)
+
+
+def _is_person(text: str) -> bool:
+    """„George Beverley Head of Major Accounts“: Team-Seite einer Person, keine Stelle."""
+    import gender_guesser.detector as gd
+    words = text.split()
+    if len(words) < 3 or not all(w[:1].isupper() for w in words[:2]):
+        return False
+    global _GD
+    try:
+        _GD
+    except NameError:
+        _GD = gd.Detector(case_sensitive=False)
+    return _GD.get_gender(words[0]) not in ("unknown", "andy") and not ROLE_WORD.match(words[1])
 
 
 def _job_title(text: str, url: str) -> str | None:
     """Stellenbezeichnung aus dem Linktext oder, wenn der nur „Mehr erfahren“ sagt, aus der Adresse."""
-    if NOT_A_ROLE.search(text) or NOT_A_ROLE.search(urlparse(url).path.replace("-", " ")):
+    if NOT_A_ROLE.search(text) or NOT_A_ROLE.search(urlparse(url).path.rsplit("/", 1)[-1].replace("-", " ")):
+        return None
+    if _is_person(text):
         return None
     if ROLE_WORD.search(text):
-        return text
+        return re.sub(r"\s+\d{1,3}$", "", text)
     slug = urlparse(url).path.rstrip("/").rsplit("/", 1)[-1]
-    slug = re.sub(r"[-_]+", " ", re.sub(r"\.\w{2,4}$|[-_]?\d{3,}.*$", "", slug)).strip()
+    slug = re.sub(r"[-_]+", " ", re.sub(r"\.\w{2,4}$|[-_]?\d{3,}.*$|[-_]\d{1,2}$", "", slug)).strip()
     if 2 <= len(slug.split()) <= 8 and ROLE_WORD.search(slug):
         return slug[:1].upper() + slug[1:]
     return None
@@ -320,12 +354,12 @@ def scan(domain: str, country: str, fetcher) -> dict:
 
 
 def _stale(j: dict, today: str) -> bool:
-    """Abgelaufen (validThrough vorbei) oder über ein Jahr alt ohne gültiges Ablaufdatum: alte Seite, keine Stelle."""
+    """Abgelaufen (validThrough vorbei) oder über ein Jahr alt: Dauer-Anzeige oder alte Seite, kein Anlass."""
     vt, dp = j.get("valid_through") or "", j.get("date_posted") or ""
     if re.fullmatch(r"\d{4}-\d{2}-\d{2}", vt) and vt < today:
         return True
     year_ago = (dt.date.fromisoformat(today) - dt.timedelta(days=365)).isoformat()
-    return bool(re.fullmatch(r"\d{4}-\d{2}-\d{2}", dp)) and dp < year_ago and not vt
+    return bool(re.fullmatch(r"\d{4}-\d{2}-\d{2}", dp)) and dp < year_ago
 
 
 def _finish(jobs: list[dict], kind: str, careers_url: str, country: str, found: dict) -> dict:
@@ -392,6 +426,10 @@ def _key(j: dict) -> str:
 # Kandidat
 # ---------------------------------------------------------------------------
 def company_name(res: dict, domain: str) -> str:
+    return re.sub(r"\s+(in|near)\s+[A-Z][\w ]+$", "", _company_name(res, domain)).strip()
+
+
+def _company_name(res: dict, domain: str) -> str:
     if res.get("org") and W.name_is_distinctive(res["org"]):
         return res["org"]
     m = re.search(r'<meta[^>]+property=["\']og:site_name["\'][^>]+content=["\']([^"\']{2,80})["\']', res["home_html"], re.I)
@@ -428,8 +466,9 @@ def to_candidate(domain: str, res: dict, country: str, seen: dict, today: dt.dat
     return candidate(
         source="careers", source_id=domain, country=country, source_url=res["careers_url"],
         source_date=today, event_date=today, name=name, legal_name=name,
-        street=title_case(street) if street.isupper() else street, city=str(addr.get("addressLocality") or ""),
-        state=str(addr.get("addressRegion") or "") if country == "US" else "", zip=zip_,
+        street=title_case(street) if street.isupper() else street,
+        city=title_case(str(addr.get("addressLocality") or "").strip()),
+        state=us_state(str(addr.get("addressRegion") or "")) if country == "US" else "", zip=zip_,
         website="https://" + domain,
         facts={"open_roles": len(jobs), "oldest_posted": oldest, "titles": titles, "checked_on": today,
                "careers_url": res["careers_url"], "ats": res["kind"],

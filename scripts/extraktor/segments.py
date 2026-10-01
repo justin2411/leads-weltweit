@@ -286,7 +286,8 @@ def texts_jobs(c: dict) -> dict:
         country = "the UK" if c["country"] == "UK" else "the US"
         since = f", the oldest posted on {uk_day(dt.date.fromisoformat(oldest))}" if oldest else ""
         signal = f"{name}: {plural(n, 'open role')} in {country} as of {uk_day(today)}{since} – {'; '.join(titles)}."
-        info = (f"{name}" + (f", based in {c['city']}," if c.get("city") else "")
+        place = c["city"] + (f", {c['state']}" if c["country"] == "US" and c.get("state") else "")
+        info = (f"{name}" + (f", based in {place}," if c.get("city") else "")
                 + f" is hiring in {country}: {plural(n, 'open role')} on its careers page"
                 + (", and it is a licensed visa sponsor." if f.get("sponsor") else "."))
         opener = (f"I saw {name} is hiring ({titles[0] if titles else 'several roles'}) – would pre-screened candidates "
