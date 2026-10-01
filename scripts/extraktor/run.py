@@ -441,9 +441,12 @@ def main(argv=None) -> int:
         guard = filters.Guard(DB())
         log(f"Datenbank: {len(guard.known)} Firmen schon bekannt")
     us = "US" in countries
-    fm, shared = (load_fmcsa(args.fmcsa_days, stats) if us and any(s in segs for s in FMCSA_SEGMENTS)
-                  else ([], Counter()))
-    fd = load_formd(args.formd_days, args.formd_max_docs, stats) if us and any(s in segs for s in FORM_D_SEGMENTS) else []
+    # --fmcsa-days 0 / --formd-days 0 = Quelle aus (Teile anderer Quellen laden sie nicht mit: spart Zeit und
+    # nimmt ihnen das Risiko, an einer langsamen fremden Schnittstelle zu scheitern)
+    fm, shared = (load_fmcsa(args.fmcsa_days, stats)
+                  if us and args.fmcsa_days > 0 and any(s in segs for s in FMCSA_SEGMENTS) else ([], Counter()))
+    fd = (load_formd(args.formd_days, args.formd_max_docs, stats)
+          if us and args.formd_days > 0 and any(s in segs for s in FORM_D_SEGMENTS) else [])
     p = pools(segs, fm, fd, distinct=not args.no_distinct) if us else {}
     if us and args.ct_days:
         for k, v in ct_pools(segs, load_ct(args.ct_days, stats)).items():
