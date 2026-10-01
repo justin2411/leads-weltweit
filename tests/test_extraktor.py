@@ -477,5 +477,21 @@ class FranceBuyersTests(unittest.TestCase):
         self.assertIsNone(detect_legal_form("FR", "Lumière Web", "Contactez-nous")[0])
 
 
+
+class CappedFetchTests(unittest.TestCase):
+    """Kunden-Werk 01.10.2026: Teil 2 stürzte zweimal ab (Riesen-Antwort einer Website) -> Abruf begrenzt."""
+
+    def test_body_is_capped(self):
+        from unittest import mock
+        from lib import fetch
+        big = mock.Mock(headers={"content-type": "text/html"}, iter_content=lambda n: iter([b"x" * 65536] * 100),
+                        encoding="utf-8", status_code=200)
+        s = mock.Mock(get=mock.Mock(return_value=big))
+        with mock.patch.object(fetch, "MAX_BYTES", 200_000):
+            r = fetch.capped_get(s, "https://example.com")
+        self.assertLessEqual(len(r._content), 200_000)
+        self.assertTrue(s.get.call_args.kwargs["stream"])
+
+
 if __name__ == "__main__":
     unittest.main()
