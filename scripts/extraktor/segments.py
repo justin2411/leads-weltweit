@@ -98,6 +98,21 @@ def fits(seg: str, c: dict) -> tuple[bool, str]:
         if c.get("email") and not is_freemail(c["email"]):
             return False, "uses an own email domain (likely has a site)"
         return True, "established local business without a website"
+    if c["source"] == "ct_registry":
+        if seg == "S2":
+            ok = bool(c.get("email")) and is_freemail(c["email"]) and not c.get("website")
+            return ok, ("new business registered with a personal email address – no own website or domain yet" if ok
+                        else "uses an own email domain (likely has a site)")
+        if seg == "S4":
+            ok = insured_sector(c)
+            return ok, ("new business in a sector that needs commercial insurance from day one" if ok
+                        else "sector without obvious commercial insurance need")
+        if seg == "S5":
+            return True, "new business: bookkeeping, sales tax registration and payroll start now"
+        if seg == "S9":
+            ok = bool(c.get("person_name"))
+            return ok, "named owner of a newly registered business" if ok else "no named owner"
+        return False, "source does not carry this signal"
     if c["source"] in ("companies_house", "bodacc"):
         if seg == "S4":
             ok = insured_sector(c)
@@ -121,8 +136,13 @@ FR_INSURED_ACT = re.compile(r"b[aâ]timent|construction|ma[cç]onnerie|plomberie
                             r"aide [àa] domicile|soins|location de v[ée]hicules|taxi|vtc", re.I)
 
 
+US_INSURED_NAICS = re.compile(r"^(23|3[1-3]|42|44|45|48|49|532|56|62|72|811|812)")
+
+
 def insured_sector(c: dict) -> bool:
     f = c["facts"]
+    if c["source"] == "ct_registry":
+        return bool(US_INSURED_NAICS.match(f.get("naics") or ""))
     if c["source"] == "companies_house":
         return any(UK_INSURED_SIC.match(code) for code in f.get("sic_codes", []))
     return bool(FR_INSURED_ACT.search(f.get("activity") or ""))
@@ -185,6 +205,35 @@ def texts_uk(seg: str, c: dict) -> dict:
                   f"your own pension and financial plan alongside the new business?")
         urg, why = "medium", "New company owners decide early how to pay themselves, pensions and protection."
     return {"signal": signal, "signal_date": f["incorporated_on"], "company_info": info, "opener": opener,
+            "urgency": urg, "urgency_reason": why}
+
+
+def texts_ct(seg: str, c: dict) -> dict:
+    f, name, first = c["facts"], c["name"], (c.get("person_name") or "").split(" ")[0]
+    reg = uk_day(f["registered_on"])
+    act = (f.get("activity") or "").strip()
+    act_l = act.lower() if act else "new"
+    info = (f"{name} is a new {f.get('business_type') or 'business'} registered with the Connecticut Secretary of the "
+            f"State on {reg}, based in {c['city']}, {c['state']}." + (f" Industry: {act}." if act else ""))
+    signal = f"{name} was registered in Connecticut on {reg}" + (f" – {act_l}." if act else ".")
+    if seg == "S2":
+        opener = (f"Congratulations on starting {name} – I couldn't find a website for the business yet. "
+                  f"Is getting found online something you're planning?")
+        urg, why = "medium", "Registered with a personal email address and no own domain – customers can't find it online yet."
+    elif seg == "S4":
+        opener = (f"Congratulations on registering {name} – as a new {act_l} business, have you already arranged "
+                  f"your general liability and business insurance?")
+        urg, why = "high", "New businesses in this sector need liability cover before taking on jobs, staff or vehicles."
+    elif seg == "S5":
+        opener = (f"Congratulations on registering {name} – who is looking after your bookkeeping, sales tax and "
+                  f"payroll setup?")
+        urg, why = "medium", "A new business sets up its books, tax registrations and payroll in the first weeks."
+    else:
+        signal = f"{c['person_name']} – owner of {name}, registered in Connecticut on {reg}."
+        opener = (f"Congratulations on founding {name}{', ' + first if first else ''} – have you had a chance to set up "
+                  f"your own retirement and financial plan alongside the new business?")
+        urg, why = "medium", "New business owners decide early how to pay themselves, retirement plans and protection."
+    return {"signal": signal, "signal_date": f["registered_on"], "company_info": info, "opener": opener,
             "urgency": urg, "urgency_reason": why}
 
 
@@ -302,6 +351,8 @@ def texts(seg: str, c: dict) -> dict:
     """{'signal', 'signal_date', 'company_info', 'opener', 'urgency', 'urgency_reason'}"""
     if c["source"] in ("ats_jobs", "careers"):
         return texts_jobs(c)
+    if c["source"] == "ct_registry":
+        return texts_ct(seg, c)
     if c["source"] == "overture":
         return texts_overture(c)
     if c["source"] == "companies_house":

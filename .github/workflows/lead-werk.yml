@@ -1,5 +1,5 @@
 # Lead-Werk (Inhaber 01.10.2026: „eigener Bereich der 24/7 die leads holt und anreichert“).
-# Alle 3 Stunden, 30 Teile (13 gleichzeitig): kostenlose Quellen -> Sicherheitsfilter -> kostenlose Anreicherung -> Qualitäts- und
+# Alle 3 Stunden, 30 Teile gleichzeitig: kostenlose Quellen -> Sicherheitsfilter -> kostenlose Anreicherung -> Qualitäts- und
 # Signalkontrolle -> grüne Leads direkt in Supabase (watch_companies, observations, leads). Schon gespeicherte
 # Firmen werden übersprungen, so arbeitet sich jeder Lauf weiter durch den Bestand.
 # Lädt KEINE Lead-Dateien hoch (öffentliches Repo) – nur den Zählbericht. Sendet nichts.
@@ -18,9 +18,9 @@ jobs:
     timeout-minutes: 330
     strategy:
       fail-fast: false
-      # 30 Teile (Inhaber 01.10.2026: „Erhöhe die lead läufe auf 30“), davon 13 gleichzeitig: GitHub Free erlaubt
-      # 20 Jobs gleichzeitig, 7 Plätze bleiben dem Kunden-Werk. --shard verteilt fest nach Quell-ID.
-      max-parallel: 13
+      # 30 Teile gleichzeitig (Inhaber 01.10.2026: „Erhöhe die lead läufe auf 30“, GitHub Pro: 40 Jobs gleichzeitig;
+      # 7 für das Kunden-Werk, 3 frei für die übrigen Abläufe). --shard verteilt fest nach Quell-ID.
+      max-parallel: 30
       matrix:
         include:
           - { name: s2-uk-0, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 0/8" }
@@ -39,11 +39,10 @@ jobs:
           - { name: s2-fr-5, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 5/8" }
           - { name: s2-fr-6, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 6/8" }
           - { name: s2-fr-7, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 7/8" }
-          - { name: us-fmcsa-0, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 0/5" }
-          - { name: us-fmcsa-1, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 1/5" }
-          - { name: us-fmcsa-2, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 2/5" }
-          - { name: us-fmcsa-3, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 3/5" }
-          - { name: us-fmcsa-4, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 4/5" }
+          - { name: us-fmcsa-0, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 0/4" }
+          - { name: us-fmcsa-1, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 1/4" }
+          - { name: us-fmcsa-2, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 2/4" }
+          - { name: us-fmcsa-3, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 3/4" }
           - { name: us-formd-0, args: "--segments S1,S5,S9 --countries US --fmcsa-days 0 --formd-days 44 --formd-max-docs 20000 --per 4000 --max-tries 4000 --shard 0/2" }
           - { name: us-formd-1, args: "--segments S1,S5,S9 --countries US --fmcsa-days 0 --formd-days 44 --formd-max-docs 20000 --per 4000 --max-tries 4000 --shard 1/2" }
           - { name: uk-register-0, args: "--segments S4,S5,S9 --countries UK --uk-days 44 --eu-pool 200000 --per 4000 --max-tries 4000 --shard 0/3" }
@@ -51,6 +50,8 @@ jobs:
           - { name: uk-register-2, args: "--segments S4,S5,S9 --countries UK --uk-days 44 --eu-pool 200000 --per 4000 --max-tries 4000 --shard 2/3" }
           - { name: fr-register-0, args: "--segments S4,S5,S9 --countries FR --fr-days 44 --per 4000 --max-tries 4000 --shard 0/2" }
           - { name: fr-register-1, args: "--segments S4,S5,S9 --countries FR --fr-days 44 --per 4000 --max-tries 4000 --shard 1/2" }
+          - { name: us-ct-0, args: "--segments S2,S4,S5,S9 --countries US --fmcsa-days 0 --formd-days 0 --ct-days 44 --per 4000 --max-tries 4000 --shard 0/2" }
+          - { name: us-ct-1, args: "--segments S2,S4,S5,S9 --countries US --fmcsa-days 0 --formd-days 0 --ct-days 44 --per 4000 --max-tries 4000 --shard 1/2" }
           - { name: s1-karriere-uk, args: "--segments S1 --countries UK --s1-probe 4000 --formd-days 0 --per 4000 --max-tries 4000" }
           - { name: s1-karriere-us, args: "--segments S1 --countries US --s1-probe 6000 --formd-days 0 --per 4000 --max-tries 4000" }
     env:

@@ -44,6 +44,12 @@ Laufende Entscheidungen des Gehirns (Preise, Seitenvarianten) stehen zusätzlich
   `check_status = call_only` in `prospects` und zählen zum Ziel. Nie Kaltmail; UK-Anrufe vorher gegen TPS/CTPS prüfen.
 - **Rolle statt Name zählt als Ansprechperson** (CLAUDE.md §9, S1/S2 01.10.2026): `deliveries.contact_companies`
   akzeptiert Name oder Rolle.
+- **Quellen-Scout:** „einen anderen lauf … der die ganze zeit nach kostenfreien Möglichkeiten sucht“ → alle 4 Stunden
+  („mach den aller 4 stunden … gib mir dann auch hier die ergebnisse“), Logbuch `docs/QUELLEN-SCOUT.md`.
+  „nein ohne merge … das ziel ist so schnell und so viele leads wie möglich einsammeln“ → der Scout mergt eigene
+  Quellen-PRs selbst (Tests + CI grün), meldet jeden Merge; Versand/Sperrliste/Prüfregeln/Kosten nie.
+- **Lead-Werk 30 gleichzeitig:** „Erhöhe die lead läufe auf 30 und kunden auf 7 gleichzeitig“, „Hab bereits pro“
+  (GitHub Pro, 40 Jobs gleichzeitig).
 - **Datenbank:** „brauchst du nicht kannst du alles selber machen“ → Datenbank-Änderungen für die Werke ohne
   Rückfrage (weiterhin nicht destruktiv).
 
