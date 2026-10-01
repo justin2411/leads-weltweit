@@ -39,7 +39,7 @@ class WachhundTest(unittest.TestCase):
     def test_werke_restarted_when_schedule_skipped(self):
         """01.10.2026: GitHub ließ die ersten geplanten Kunden-Werk-Läufe aus."""
         job = next(j for j in w.JOBS if j["wf"] == "kunden-werk.yml")
-        now = dt.datetime(2026, 10, 1, 19, 50, tzinfo=UTC)
+        now = dt.datetime(2026, 10, 1, 20, 10, tzinfo=UTC)  # 159 min nach dem letzten Start
         self.assertTrue(w.overdue(job, [run("2026-10-01T17:31:00Z")], now)[0])
         self.assertFalse(w.overdue(job, [run("2026-10-01T18:41:00Z")], now)[0])
         lead = next(j for j in w.JOBS if j["wf"] == "lead-werk.yml")
