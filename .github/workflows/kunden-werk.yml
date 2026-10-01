@@ -89,6 +89,6 @@ jobs:
           grep -Eq '^kunden_suche:\s*true' config/pipeline.yaml || { echo "Schalter aus – kein Neustart"; exit 0; }
           start=$(gh run view ${{ github.run_id }} --json createdAt -q .createdAt)
           mins=$(( ( $(date -u +%s) - $(date -u -d "$start" +%s) ) / 60 ))
-          if [ "$mins" -lt 30 ]; then echo "Lauf nur $mins Minuten – kein Sofort-Neustart"; exit 0; fi
+          if [ "$mins" -lt 10 ]; then echo "Lauf nur $mins Minuten – kein Sofort-Neustart"; exit 0; fi
           gh workflow run kunden-werk.yml --ref "${{ github.ref_name }}"
           echo "Nächster Lauf gestartet (dieser lief $mins Minuten)" | tee -a "$GITHUB_STEP_SUMMARY"

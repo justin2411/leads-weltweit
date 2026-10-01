@@ -49,7 +49,7 @@ länger als eine Stunde dauern, hier mit Stand eintragen und in der nächsten Ru
 **GitHub-Pro-Aufteilung (01.10. 21 Uhr, Inhaber: „maximale Effizienz für GitHub Pro“):** 40 Jobs gleichzeitig =
 30 Lead-Werk (eine Welle, `max-parallel` = Zahl der Teile) + 8 Kunden-Werk + 2 frei für Tagesablauf/Tagescheck.
 Zeitfenster `--deadline-min` (Lead 150, Kunden 90): danach keine neuen Firmen, Ergebnisse speichern; Job `weiter`
-startet das Werk sofort neu (nur bei Schalter an und Laufzeit ≥ 30 min). Neue Quellen als Teil einbauen heißt:
+startet das Werk sofort neu (nur bei Schalter an und Laufzeit ≥ 10 min; GitHub lässt geplante Wachhund-Läufe unter Last ausfallen). Neue Quellen als Teil einbauen heißt:
 einen bestehenden Teil derselben Quelle abgeben oder die Summe ≤ 38 halten (Test `GithubProTests`).
 
 ## Bedarf (Stand 01.10.2026)

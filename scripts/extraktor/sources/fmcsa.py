@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import datetime as dt
 
+import time
+
 import requests
 
 from extraktor.model import candidate, title_case
@@ -39,6 +41,19 @@ SELECT = ",".join([
 OOS_URL = "https://data.transportation.gov/resource/p2mt-9ige.json"
 
 
+def _get(s: requests.Session, params: dict, tries: int = 3, url: str = URL) -> requests.Response:
+    """Socrata (data.transportation.gov) antwortet zeitweise sehr langsam: zweimal wiederholen statt den Lauf zu
+    beenden (Lesezugriff, Wiederholung unbedenklich)."""
+    for attempt in range(tries):
+        try:
+            return s.get(url, params=params, timeout=180)
+        except (requests.ConnectionError, requests.Timeout):
+            if attempt == tries - 1:
+                raise
+            time.sleep(10 * (attempt + 1))
+    raise AssertionError("unreachable")
+
+
 def fetch(since: dt.date, until: dt.date | None = None, session: requests.Session | None = None,
           limit: int | None = None) -> list[dict]:
     """Alle aktiven Neuzugänge ab `since` (add_date), neueste zuerst."""
@@ -49,8 +64,8 @@ def fetch(since: dt.date, until: dt.date | None = None, session: requests.Sessio
     rows, offset = [], 0
     while True:
         n = min(PAGE, (limit - len(rows)) if limit else PAGE)
-        r = s.get(URL, params={"$select": SELECT, "$where": where, "$order": "add_date DESC, dot_number",
-                               "$limit": n, "$offset": offset}, timeout=120)
+        r = _get(s, {"$select": SELECT, "$where": where, "$order": "add_date DESC, dot_number",
+                               "$limit": n, "$offset": offset})
         r.raise_for_status()
         page = r.json()
         rows += page
@@ -65,8 +80,8 @@ def out_of_service(since: dt.date, session: requests.Session | None = None) -> d
     s = session or requests.Session()
     out, offset = {}, 0
     while True:
-        r = s.get(OOS_URL, params={"$select": "dot_number,oos_reason", "$where": f"oos_date>='{since}' AND rescind_date IS NULL",
-                                   "$limit": PAGE, "$offset": offset}, timeout=120)
+        r = _get(s, {"$select": "dot_number,oos_reason", "$where": f"oos_date>='{since}' AND rescind_date IS NULL",
+                                   "$limit": PAGE, "$offset": offset}, url=OOS_URL)
         r.raise_for_status()
         page = r.json()
         out.update({str(x.get("dot_number")): x.get("oos_reason") or "out of service" for x in page})
@@ -81,8 +96,8 @@ def contact_rows(since: dt.date, session: requests.Session | None = None) -> lis
     s = session or requests.Session()
     rows, offset = [], 0
     while True:
-        r = s.get(URL, params={"$select": "dot_number,phone,cell_phone,email_address,phy_state",
-                               "$where": f"add_date>='{since:%Y%m%d}'", "$limit": PAGE, "$offset": offset}, timeout=120)
+        r = _get(s, {"$select": "dot_number,phone,cell_phone,email_address,phy_state",
+                               "$where": f"add_date>='{since:%Y%m%d}'", "$limit": PAGE, "$offset": offset})
         r.raise_for_status()
         page = r.json()
         rows += page
