@@ -240,14 +240,15 @@ def main(argv=None) -> int:
     from enrich import Fetcher
     fetcher = Fetcher()
 
+    out = Path(args.out)
     leads = []
     for seg in segs:
         leads += run_segment(seg, p.get(seg, []), args.per, fetcher, shared, guard, args.workers, args.max_tries)
+        write(out, leads, args.per)  # nach jeder Branche sichern (Abbruch kostet nur die laufende Branche)
     sc.batch_unique([l for l in leads if l["ampel"] in ("green", "yellow")])
     for l in leads:
         l["ampel"] = ampel(l)
 
-    out = Path(args.out)
     per_seg = write(out, leads, args.per)
     rep = {"date": dt.date.today().isoformat(), "stats": stats, "green_written": per_seg,
            "segments": funnel(leads, p), "web_requests": fetcher.requests}
