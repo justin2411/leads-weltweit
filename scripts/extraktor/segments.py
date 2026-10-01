@@ -83,6 +83,21 @@ def fits(seg: str, c: dict) -> tuple[bool, str]:
         if seg == "S9":
             ok = bool(c.get("person_name")) and sold >= 250_000
             return ok, "named executive of a company that just raised capital" if ok else "no named executive or raise < $250k"
+    if c["source"] == "ats_jobs":
+        if seg != "S1":
+            return False, "source only carries the hiring signal"
+        n, oldest = f.get("open_roles", 0), f.get("oldest_posted")
+        age = (dt.date.today() - dt.date.fromisoformat(oldest)).days if oldest else 0
+        ok = n >= 3 or age >= 30
+        return ok, (f"{n} open roles, oldest {age} days" if ok else "fewer than 3 roles and none open 30+ days")
+    if c["source"] == "overture":
+        if seg != "S2":
+            return False, "source only carries the no-website signal"
+        if c.get("website"):
+            return False, "a verified website exists"
+        if c.get("email") and not is_freemail(c["email"]):
+            return False, "uses an own email domain (likely has a site)"
+        return True, "established local business without a website"
     if c["source"] in ("companies_house", "bodacc"):
         if seg == "S4":
             ok = insured_sector(c)
@@ -204,8 +219,79 @@ def texts_fr(seg: str, c: dict) -> dict:
             "urgency": urg, "urgency_reason": why}
 
 
+CAT_FR = {"restaurant": "restaurant", "cafe": "café", "bar": "bar", "personal or beauty service": "institut de beauté",
+          "home service": "artisan du bâtiment", "food and beverage store": "commerce alimentaire",
+          "automotive service": "garage automobile", "casual eatery": "restauration rapide",
+          "fashion and apparel store": "boutique de mode", "animal or pet service": "service pour animaux",
+          "wellness service": "centre de bien-être", "hardware home and garden store": "magasin de bricolage",
+          "professional service": "prestataire de services", "farm": "exploitation agricole",
+          "flowers and gifts store": "fleuriste", "event or party service": "prestataire événementiel",
+          "hotel": "hôtel", "lodging": "hébergement", "private lodging": "location saisonnière", "gym": "salle de sport",
+          "real estate service": "agence immobilière", "b2b service": "prestataire B2B", "bakery": "boulangerie"}
+
+
+def texts_overture(c: dict) -> dict:
+    f, name = c["facts"], c["name"]
+    cat = f.get("category") or "local business"
+    social = f.get("social")
+    today = f["checked_on"]
+    if c["country"] == "FR":
+        cat_fr = CAT_FR.get(cat, "entreprise locale")
+        extra = (", une adresse e-mail" if c.get("email") else "") + (f" et une page {social}" if social else "")
+        signal = (f"{name} n'a pas de site web : l'entreprise est référencée avec un numéro de téléphone{extra}, "
+                  f"mais aucun site propre n'a été trouvé (vérifié le {jour(today)}).")
+        info = f"{name} : {cat_fr} à {c['city']} ({c['zip']})" + (f", présent sur {social}." if social else ".")
+        opener = (f"Bonjour, je n'ai pas trouvé de site web pour {name} – un site simple pour être trouvé par de "
+                  f"nouveaux clients vous intéresserait-il ?")
+        why = "Sans site web, l'entreprise est peu visible pour les clients qui la cherchent en ligne."
+    else:
+        extra = (", an email address" if c.get("email") else "") + (f" and a {social} page" if social else "")
+        signal = (f"{name} has no website: it is listed with a phone number{extra}, but no own website could be "
+                  f"found (checked {uk_day(today)}).")
+        info = f"{name} is a {cat} in {c['city']} {c['zip']}" + (f", active on {social}." if social else ".")
+        opener = (f"Hi – I couldn't find a website for {name}; would a simple site that helps new customers find "
+                  f"you be useful?")
+        why = "Without a website the business is hard to find for customers searching online."
+    return {"signal": signal, "signal_date": today, "company_info": info, "opener": opener, "urgency": "medium",
+            "urgency_reason": why}
+
+
+def texts_jobs(c: dict) -> dict:
+    f, name = c["facts"], c["name"]
+    n, oldest, titles = f["open_roles"], f.get("oldest_posted"), f.get("titles") or []
+    today = f["checked_on"]
+    age = (today - dt.date.fromisoformat(oldest)).days if oldest else 0
+    if c["country"] == "FR":
+        since = f", la plus ancienne publiée le {jour(oldest)}" if oldest else ""
+        signal = (f"{name} : {plural(n, 'offre ouverte', 'offres ouvertes')} en France au {jour(today)}{since} – "
+                  f"{'; '.join(titles)}.")
+        info = (f"{name}" + (f" ({c['city']})" if c.get("city") else "")
+                + f" recrute en France : {plural(n, 'poste ouvert', 'postes ouverts')} sur sa page carrières.")
+        opener = (f"Bonjour, j'ai vu que {name} recrute ({titles[0] if titles else 'plusieurs postes'}) – "
+                  f"des candidats présélectionnés par un cabinet spécialisé vous aideraient-ils ?")
+        why = ("Postes ouverts depuis plus d'un mois : le recrutement en direct ne suffit pas." if age >= 30
+               else "Plusieurs recrutements en parallèle : besoin de candidats rapidement.")
+    else:
+        country = "the UK" if c["country"] == "UK" else "the US"
+        since = f", the oldest posted on {uk_day(dt.date.fromisoformat(oldest))}" if oldest else ""
+        signal = f"{name}: {plural(n, 'open role')} in {country} as of {uk_day(today)}{since} – {'; '.join(titles)}."
+        info = (f"{name}" + (f", based in {c['city']}," if c.get("city") else "")
+                + f" is hiring in {country}: {plural(n, 'open role')} on its careers page"
+                + (", and it is a licensed visa sponsor." if f.get("sponsor") else "."))
+        opener = (f"I saw {name} is hiring ({titles[0] if titles else 'several roles'}) – would pre-screened candidates "
+                  f"from a specialist recruiter help?")
+        why = ("Roles open for more than a month suggest direct hiring is not filling them." if age >= 30
+               else "Several roles open at once: the team needs candidates quickly.")
+    return {"signal": signal, "signal_date": today, "company_info": info, "opener": opener,
+            "urgency": "high" if age >= 30 else "medium", "urgency_reason": why}
+
+
 def texts(seg: str, c: dict) -> dict:
     """{'signal', 'signal_date', 'company_info', 'opener', 'urgency', 'urgency_reason'}"""
+    if c["source"] == "ats_jobs":
+        return texts_jobs(c)
+    if c["source"] == "overture":
+        return texts_overture(c)
     if c["source"] == "companies_house":
         return texts_uk(seg, c)
     if c["source"] == "bodacc":

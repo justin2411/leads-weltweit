@@ -9,7 +9,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from extraktor import filters, qc, sc, segments  # noqa: E402
 from extraktor.model import title_case  # noqa: E402
-from extraktor.sources import fmcsa, formd  # noqa: E402
+from extraktor.sources import fmcsa, formd, jobs, overture  # noqa: E402
 
 TODAY = dt.date.today()
 REG = (TODAY - dt.timedelta(days=3)).strftime("%Y%m%d")
@@ -222,6 +222,50 @@ class SafetyTests(unittest.TestCase):
         qc.run(c, "S4")
         self.assertEqual(c["phone_type"], "mobile")
         self.assertIn("dial manually", c["phone_note"])
+
+
+class S1S2Tests(unittest.TestCase):
+    def ov(self, country="UK", **kw):
+        d = {"id": "ov1", "name": "Little Arthur Café", "phones": ["+441720422779"],
+             "emails": ["littlearthurcafe@gmail.com"], "socials": ["https://www.facebook.com/1520"], "street": "Higher Town",
+             "city": "St Martin's", "postcode": "TR25 0QL", "category": "cafe", "datasets": ["meta"], "updated": []}
+        d.update(kw)
+        return overture.to_candidate(d, country)
+
+    def test_s2_overture_without_name_uses_role(self):
+        c = self.ov()
+        self.assertTrue(segments.fits("S2", c)[0])
+        c["evidence"] = {"mx": True}
+        q = qc.run(c, "S2")
+        self.assertEqual(q["status"], "green", q)
+        self.assertIn("contact_role_only", q["warnings"])
+        self.assertIn("ask for the owner", c["person_role"])
+        t = segments.texts("S2", c)
+        self.assertEqual(sc.run(c, "S2", t)["status"], "pass", t)
+        self.assertIn("Facebook", t["signal"])
+
+    def test_s2_overture_fr_texts_french(self):
+        c = self.ov("FR", postcode="75011", city="Paris", category="restaurant", phones=["+33142000000"])
+        t = segments.texts("S2", c)
+        self.assertIn("n'a pas de site web", t["signal"])
+        self.assertEqual(sc.run(c, "S2", t)["status"], "pass", t)
+
+    def test_s2_rejects_found_website(self):
+        c = self.ov()
+        c["website"] = "https://littlearthurcafe.co.uk"
+        self.assertFalse(segments.fits("S2", c)[0])
+
+    def test_s1_jobs(self):
+        old = (TODAY - dt.timedelta(days=40)).isoformat()
+        hit = {"kind": "ashby", "slug": "carwow", "url": "u", "all_jobs": 3,
+               "jobs": [{"title": "Senior Engineer", "url": "https://x", "date_posted": old, "locality": "London"},
+                        {"title": "Sales Lead", "url": "https://y", "date_posted": None, "locality": "UK"}]}
+        c = jobs.to_candidate({"name": "carwow Ltd.", "city": "London"}, hit, "UK")
+        ok, why = segments.fits("S1", c)
+        self.assertTrue(ok, why)  # nur 2 Stellen, aber eine seit 40 Tagen offen
+        t = segments.texts("S1", c)
+        self.assertEqual(sc.run(c, "S1", t)["status"], "pass", t)
+        self.assertEqual(t["urgency"], "high")
 
 
 class FilterTests(unittest.TestCase):

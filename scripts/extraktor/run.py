@@ -13,6 +13,7 @@ Ausgabe in --out:
 from __future__ import annotations
 
 import argparse
+import re
 import csv
 import datetime as dt
 import json
@@ -24,10 +25,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import requests  # noqa: E402
+
 from extraktor import enrich as E  # noqa: E402
 from extraktor import filters, qc, sc, segments  # noqa: E402
 from extraktor.model import CSV_COLUMNS  # noqa: E402
-from extraktor.sources import fmcsa, formd, fr_bodacc, uk_ch  # noqa: E402
+from extraktor.sources import fmcsa, formd, fr_bodacc, overture, uk_ch  # noqa: E402
 from lib import websites as W  # noqa: E402
 
 FORM_D_SEGMENTS = ("S1", "S5", "S9")
@@ -112,6 +115,72 @@ def load_fr(days: int, stats: Counter) -> list[dict]:
     cands = filters.dedupe(cands)
     cands.sort(key=lambda c: (not c.get("person_name"), -c["facts"]["published_on"].toordinal()))
     stats["fr_candidates"] = len(cands)
+    return cands
+
+
+def load_overture_s2(country: str, limit: int, stats: Counter) -> list[dict]:
+    """S2 UK/FR: Firmen ohne Website aus Overture; UK: Inhaber über Firmenregister + PSC, wo eindeutig."""
+    rows = overture.no_website(country, limit, log=log)
+    cands = [overture.to_candidate(d, country) for d in rows]
+    cands = filters.dedupe([c for c in cands if not filters.pre_filter(c)])
+    if country == "UK":
+        import os
+        os.environ.setdefault("EXTRAKTOR_KEEP_PSC", "1")
+        numbers = uk_ch.match_companies(cands, log=log)
+        owners = uk_ch.owners(set(numbers.values()), log=log)
+        for c in cands:
+            num = numbers.get(c["source_id"])
+            if num:
+                c["facts"]["company_number"] = num
+                o = owners.get(num)
+                if o:
+                    c["person_name"], c["person_role"] = o["name"], o["role"]
+    stats[f"overture_{country}"] = len(cands)
+    return cands
+
+
+SKIP_SPONSOR = re.compile(r"\b(care|nursing|home|homes|healthcare|domiciliary|church|school|academy|trust|nhs|council|"
+                          r"university|college|restaurant|takeaway|cafe|kebab|curry|pizza|grill)\b", re.I)
+FR_HIRING_CATS = ("professional_service", "b2b_service", "software", "it_service", "engineering", "consultant",
+                  "marketing", "financial_service", "logistics", "manufacturing", "technology")
+
+
+def load_jobs(country: str, probe_limit: int, workers: int, stats: Counter) -> list[dict]:
+    """S1: Firmen mit offenen Stellen über die öffentlichen Job-Schnittstellen der Bewerber-Systeme."""
+    from extraktor.sources import jobs
+    try:
+        names = [{"name": n, "city": ""} for n in jobs.cc_slugs(log=log)]
+    except Exception as exc:  # noqa: BLE001 - Common Crawl ist nicht überall erreichbar
+        log(f"Common Crawl nicht erreichbar ({type(exc).__name__}) – Ersatzliste")
+        names = []
+    if not names and country == "UK":
+        names = [dict(r, sponsor=True) for r in jobs.sponsors_uk(log=log) if not SKIP_SPONSOR.search(r["name"])]
+    if not names and country == "FR":
+        import duckdb
+        cats = " OR ".join("category LIKE '%" + c + "%'" for c in FR_HIRING_CATS)
+        rows = duckdb.connect().execute(
+            f"SELECT DISTINCT name, city FROM '{overture.CACHE}' WHERE country='FR' AND len(websites)>0 AND ({cats}) "
+            "LIMIT ?", [probe_limit * 2]).fetchall()
+        names = [{"name": n, "city": c or ""} for n, c in rows if n]
+    names = [n for n in names if W.name_is_distinctive(n["name"])][:probe_limit]
+    log(f"S1/{country}: prüfe {len(names)} Firmen auf offene Stellen")
+    session = requests.Session()
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        hits = [(n, h) for n, h in ex.map(lambda n: (n, jobs.probe(n["name"], country, session)), names) if h]
+    cands = filters.dedupe([jobs.to_candidate(n, h, country) for n, h in hits])
+    if country == "UK" and cands:
+        import os
+        os.environ.setdefault("EXTRAKTOR_KEEP_PSC", "1")
+        nums = uk_ch.match_by_name({c["source_id"]: c["name"] for c in cands}, log=log)
+        owners = uk_ch.owners(set(nums.values()), log=log)
+        for c in cands:
+            num = nums.get(c["source_id"])
+            if num:
+                c["facts"]["company_number"] = num
+                if owners.get(num):
+                    c["person_name"], c["person_role"] = owners[num]["name"], owners[num]["role"]
+    stats[f"jobs_{country}"] = len(cands)
+    log(f"S1/{country}: {len(cands)} Firmen mit Stellen im Land")
     return cands
 
 
@@ -279,6 +348,8 @@ def main(argv=None) -> int:
     ap.add_argument("--uk-days", type=int, default=30)
     ap.add_argument("--fr-days", type=int, default=30)
     ap.add_argument("--eu-pool", type=int, default=15000, help="UK: höchstens so viele Neugründungen vorab auswählen")
+    ap.add_argument("--s1-probe", type=int, default=3000, help="S1 UK/FR: so viele Firmen auf offene Stellen prüfen")
+    ap.add_argument("--s2-limit", type=int, default=3000, help="S2 UK/FR: so viele Overture-Firmen ohne Website laden")
     ap.add_argument("--out", default="out/extraktor")
     args = ap.parse_args(argv)
     countries = [x.strip().upper() for x in args.countries.split(",") if x.strip()]
@@ -294,6 +365,11 @@ def main(argv=None) -> int:
         p.update(eu_pools(segs, load_uk(args.uk_days, stats, args.eu_pool), "UK"))
     if "FR" in countries and any(s in segs for s in EU_SEGMENTS):
         p.update(eu_pools(segs, load_fr(args.fr_days, stats), "FR"))
+    for co in ("UK", "FR"):
+        if co in countries and "S1" in segs:
+            p[f"S1/{co}"] = [c for c in load_jobs(co, args.s1_probe, args.workers, stats) if segments.fits("S1", c)[0]]
+        if co in countries and "S2" in segs:
+            p[f"S2/{co}"] = [c for c in load_overture_s2(co, args.s2_limit, stats) if segments.fits("S2", c)[0]]
     keys = [k for k in p if p[k]]
     log("Kandidaten je Branche: " + ", ".join(f"{k} {len(p[k])}" for k in keys))
 

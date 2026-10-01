@@ -130,3 +130,66 @@ def to_candidate(r: dict) -> dict:
         facts={"company_number": r["CompanyNumber"], "incorporated_on": r["inc"], "sic_codes": sic_codes,
                "sic": sic_txt, "care_of": bool(r.get("RegAddress.CareOf"))},
     )
+
+
+def _key(name: str) -> str:
+    from lib.websites import core_words
+    return " ".join(core_words(name))
+
+
+def match_companies(cands: list[dict], log=print) -> dict[str, str]:
+    """Overture-Firma -> Companies-House-Nummer über Name (ohne Rechtsform) + Postleitzahl des Sitzes.
+    Nur eindeutige Treffer; Firmen ohne Eintrag (Einzelunternehmer) bleiben ohne Nummer."""
+    want = {}
+    for c in cands:
+        pc = (c.get("zip") or "").replace(" ", "").upper()
+        if pc:
+            want.setdefault((_key(c["name"]), pc), []).append(c["source_id"])
+    pcs = {k[1] for k in want}
+    name = _latest("en_output.html", r'BasicCompanyDataAsOneFile-\d{4}-\d{2}-\d{2}\.zip')
+    hits: dict[tuple, set] = {}
+    with zipfile.ZipFile(_download(name)) as z, z.open(z.namelist()[0]) as f:
+        reader = csv.reader(io.TextIOWrapper(f, encoding="utf-8"))
+        head = [h.strip() for h in next(reader)]
+        ix = {h: i for i, h in enumerate(head)}
+        for row in reader:
+            if len(row) < len(head) or row[ix["CompanyStatus"]] != "Active":
+                continue
+            pc = row[ix["RegAddress.PostCode"]].replace(" ", "").upper()
+            if pc not in pcs:
+                continue
+            k = (_key(row[ix["CompanyName"]]), pc)
+            if k in want:
+                hits.setdefault(k, set()).add(row[ix["CompanyNumber"]])
+    out = {}
+    for k, nums in hits.items():
+        if len(nums) == 1:
+            for sid in want[k]:
+                out[sid] = next(iter(nums))
+    log(f"UK: {len(out)} von {len(cands)} Firmen eindeutig im Firmenregister gefunden")
+    return out
+
+
+def match_by_name(names: dict[str, str], log=print) -> dict[str, str]:
+    """{Kandidaten-ID: Firmenname} -> {Kandidaten-ID: Firmennummer}, nur wenn der Name (ohne Rechtsform) unter den
+    aktiven Firmen genau einmal vorkommt und mindestens zwei Wörter oder 8 Zeichen hat (eindeutig genug)."""
+    want: dict[str, list[str]] = {}
+    for sid, n in names.items():
+        k = _key(n)
+        if len(k.split()) >= 2 or len(k) >= 8:
+            want.setdefault(k, []).append(sid)
+    found: dict[str, set] = {}
+    name = _latest("en_output.html", r'BasicCompanyDataAsOneFile-\d{4}-\d{2}-\d{2}\.zip')
+    with zipfile.ZipFile(_download(name)) as z, z.open(z.namelist()[0]) as f:
+        reader = csv.reader(io.TextIOWrapper(f, encoding="utf-8"))
+        head = [h.strip() for h in next(reader)]
+        ix = {h: i for i, h in enumerate(head)}
+        for row in reader:
+            if len(row) < len(head) or row[ix["CompanyStatus"]] != "Active":
+                continue
+            k = _key(row[ix["CompanyName"]])
+            if k in want:
+                found.setdefault(k, set()).add(row[ix["CompanyNumber"]])
+    out = {sid: next(iter(nums)) for k, nums in found.items() if len(nums) == 1 for sid in want[k]}
+    log(f"UK: {len(out)} von {len(names)} Firmen über den Namen eindeutig im Register")
+    return out

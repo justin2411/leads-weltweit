@@ -164,6 +164,11 @@ def enrich(c: dict, fetcher, need_website: bool = True) -> dict:
                 c["phone"] = site["_phones"][0]
                 ev["phone_from"] = "website"
             ev["site_phones"] = site["_phones"][:5]
+            person = (site.get("contacts") or {}).get("person")
+            if not c.get("person_name") and person and person.get("name"):
+                c["person_name"] = person["name"]
+                c["person_role"] = (person.get("role") or "Managing director") + " (legal notice on website)"
+                ev["person_from"] = "website_legal_notice"
         elif site:
             ev["website_rejected"] = {"url": site["url"], "score": site["score"], "conflicts": site["conflicts"],
                                       "evidence": site["evidence"]}
