@@ -206,6 +206,9 @@ def main(argv=None) -> int:
     exps = {(e["segment_id"], e["country"]): e for e in db.select("experiments", {"variant": f"eq.{args.variant}"})
             if e.get("decision") != "killed" and e.get("status") != "done"}
     prospects = db.select_all("prospects", {"check_status": "eq.ok", "order": "created_at"})
+    # Fokus-Tests zuerst (config/fokus.yaml, Inhaber 01.10.2026: „lass fokus aufbauen“)
+    from lib.fokus import rank
+    prospects.sort(key=lambda p: rank(p["segment_id"], p["country"]))
     # CLAUDE.md 5.1: ohne mindestens 10 echte Probe-Leads kein Entwurf und kein Versand
     samples = {}
     for l in db.select("leads", {"status": "eq.sample", "select": "segment_id,country"}):

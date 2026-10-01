@@ -416,5 +416,16 @@ class ConnecticutTests(unittest.TestCase):
             self.assertEqual(sc.run(c, seg, t)["status"], "pass", (seg, sc.run(c, seg, t)))
 
 
+class FokusTests(unittest.TestCase):
+    """Fokus beim Start (Inhaber 01.10.2026): S4/US, S5/US, S2/US zuerst."""
+
+    def test_focus_file_and_rank(self):
+        from lib import fokus
+        pairs = fokus.focus_pairs()
+        self.assertEqual(pairs[:3], [("S4", "US"), ("S5", "US"), ("S2", "US")])
+        self.assertEqual(fokus.rank("S4", "US", pairs), 0)
+        self.assertEqual(fokus.rank("S2", "UK", pairs), len(pairs))
+
+
 if __name__ == "__main__":
     unittest.main()

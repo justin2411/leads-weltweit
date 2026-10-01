@@ -114,7 +114,9 @@ def candidates(segments: dict[str, set[str]]) -> list[dict]:
             continue
         out.append({**d, "segment": seg, "country": co, "website": site, "domain": dom})
     # gleichmäßig über Branchen und Länder mischen (fester Schlüssel: jeder Teillauf sieht dieselbe Reihenfolge)
-    out.sort(key=lambda d: hashlib.md5(d["domain"].encode()).hexdigest())
+    # Fokus-Tests zuerst (config/fokus.yaml), innerhalb gleichmäßig gemischt
+    from lib.fokus import rank
+    out.sort(key=lambda d: (rank(d["segment"], d["country"]), hashlib.md5(d["domain"].encode()).hexdigest()))
     seen, uniq = set(), []
     for d in out:
         if d["domain"] not in seen:

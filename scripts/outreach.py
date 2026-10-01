@@ -282,9 +282,13 @@ def cmd_send(args) -> int:
     # hinter dem Rückstau neuer Erstmails.
     later = db.select("messages", {"status": "eq.approved", "kind": "neq.initial", "order": "approved_at.asc",
                                    "limit": str(args.limit), "select": sel})
-    rows = later + interleave(db.select("messages", {"status": "eq.approved", "kind": "eq.initial",
-                                                     "order": "approved_at.asc", "limit": str(args.limit),
-                                                     "select": sel}))
+    initial = db.select("messages", {"status": "eq.approved", "kind": "eq.initial",
+                                     "order": "approved_at.asc", "limit": str(args.limit), "select": sel})
+    # Fokus-Tests zuerst (config/fokus.yaml), innerhalb Fokus und Rest jeweils abwechselnd je Experiment
+    from lib.fokus import focus_pairs
+    pairs = set(focus_pairs())
+    in_focus = lambda m: ((m.get("experiments") or {}).get("segment_id"), (m.get("prospects") or {}).get("country")) in pairs
+    rows = later + interleave([m for m in initial if in_focus(m)]) + interleave([m for m in initial if not in_focus(m)])
     already = sum(sent_today.values())
     print(f"Aufwärmphase: heute max. {cap} Mails insgesamt, bereits gesendet: {already}")
     limit_total = total_limit()
