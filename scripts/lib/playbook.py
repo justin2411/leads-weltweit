@@ -13,6 +13,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 PLAY = json.loads((HERE / "salesplay.json").read_text(encoding="utf-8"))
+PLAY_FR = json.loads((HERE / "salesplay_fr.json").read_text(encoding="utf-8"))  # französischer Markt
 try:
     HINTS = json.loads((HERE.parents[1] / "app" / "content" / "industry-hints.json").read_text(encoding="utf-8"))
 except OSError:
@@ -21,14 +22,20 @@ SLUG = {"S5": "accountants", "S4": "insurance-brokers", "S2": "web-agencies", "S
 
 # Branche der Lead-Firma aus SIC-Code oder Branchentext
 GROUP_WORDS = [
-    ("hospitality", r"restaurant|caf[eé]|coffee|food|beverage|\bbar\b|\bpub\b|hotel|catering|bakery|takeaway"),
-    ("construction", r"construct|build|roof|plumb|electric|joiner|carpent|civil eng|install|renovat"),
-    ("retail", r"retail|shop|store|e-?commerce|wholesale|boutique"),
-    ("transport", r"transport|freight|logistic|haulage|hauling|courier|delivery|taxi|removal|carrier|trucking"),
-    ("property", r"real estate|property|letting|landlord|estate agent|housing"),
+    ("hospitality", r"restaurant|caf[eé]|coffee|food|beverage|\bbar\b|\bpub\b|hotel|catering|bakery|takeaway|"
+                    r"restauration|brasserie|traiteur|boulanger|p[âa]tisser|h[ôo]tel|snack|cr[êe]perie|pizzeria"),
+    ("construction", r"construct|build|roof|plumb|electric|joiner|carpent|civil eng|install|renovat|b[âa]timent|\bbtp\b|"
+                     r"ma[çc]on|plomb|[ée]lectricien|menuis|couvreur|charpent|peintre|r[ée]novation|travaux"),
+    ("retail", r"retail|shop|store|e-?commerce|wholesale|boutique|commerce|magasin|[ée]picerie|boucherie|fleuriste|"
+               r"caviste|librairie|opticien"),
+    ("transport", r"transport|freight|logistic|haulage|hauling|courier|delivery|taxi|removal|carrier|trucking|"
+                  r"livraison|d[ée]m[ée]nag|ambulance"),
+    ("property", r"real estate|property|letting|landlord|estate agent|housing|immobili"),
     ("tech", r"software|computer|\bit\b|digital|\bdata\b|tech|\bweb\b|\bapp\b|cyber"),
-    ("health", r"health|dental|medical|clinic|\bcare\b|pharma|therap|wellness|fitness|nursing"),
-    ("professional", r"consult|legal|\blaw\b|accountan|management|marketing|advis|architect|design|recruit"),
+    ("health", r"health|dental|medical|clinic|\bcare\b|pharma|therap|nursing|sant[ée]|m[ée]dical|"
+               r"dentaire|kin[ée]|infirmi|cabinet|ost[ée]opa"),
+    ("professional", r"consult|legal|\blaw\b|accountan|management|marketing|advis|architect|design|recruit|conseil|"
+                     r"avocat|comptab|architecte|agence"),
 ]
 ROLE_WORDS = [
     ("finance", r"account|finance|payroll|bookkeep|controller|audit|\btax\b|payable|receivable|credit"),
@@ -95,6 +102,8 @@ def _age(date_iso: str) -> int | None:
 def briefing(signal: str, segment: str | None, event: str, date_iso: str, opener: str, question: str = "",
              industry: str = "", city: str = "", country: str = "UK", sic: str = "") -> dict:
     """why (konkret), needs (3 Punkte), offer, ask, opener."""
+    if country == "FR":
+        return _briefing_fr(signal, segment, event, date_iso, opener, industry, city, sic)
     seg = segment if segment in PLAY else "S5"
     grp = group_of(industry, sic) if (industry or sic) else group_of(event)  # Werke-Leads: Branche steht im Ereignis
     m = re.search(r"[“\"]([^”\"]+)[”\"]", event or "")
@@ -130,3 +139,23 @@ def briefing(signal: str, segment: str | None, event: str, date_iso: str, opener
     cap = lambda x: x[:1].upper() + x[1:]
     return {"why": _us(why, country), "needs": [cap(_us(x, country)) for x in p["needs"][:3]],
             "offer": _us(p["offer"], country), "ask": _us(ask, country), "opener": opener, "group": grp}
+
+
+def _briefing_fr(signal: str, segment: str | None, event: str, date_iso: str, opener: str, industry: str,
+                 city: str, sic: str) -> dict:
+    """Briefing für französische Leads: französisches Playbook, französische Sätze (keine englischen Reste im PDF)."""
+    seg = segment if segment in PLAY_FR else "S5"
+    grp = group_of(industry, sic) if (industry or sic) else group_of(event)
+    p = PLAY_FR[seg].get(grp) or PLAY_FR[seg]["services"]
+    age = _age(date_iso)
+    ind = (industry or "").strip().rstrip(".")
+    where = f" à {city}" if city else ""
+    if signal in ("new_incorporation", "incorporation", "new_company", "funding_new_company"):
+        when = f"il y a {age} jours" if age is not None and 0 <= age <= 60 else "récemment"
+        why = (f"Immatriculée {when}{(' (' + ind.lower() + ')') if ind else ''}{where}. Les nouveaux dirigeants "
+               "choisissent la plupart de leurs prestataires dans les premières semaines, et le premier reste souvent des années.")
+    else:
+        why = (f"{(event or '').rstrip('.')}. C'est maintenant que l'entreprise a ce besoin et choisit ses prestataires.")
+    cap = lambda x: x[:1].upper() + x[1:]  # noqa: E731
+    return {"why": why, "needs": [cap(x) for x in p["needs"][:3]], "offer": p["offer"], "ask": p["ask"],
+            "opener": opener, "group": grp}

@@ -17,9 +17,7 @@ def focus_pairs(path: Path = FILE) -> list[tuple[str, str]]:
 
 
 def rank(segment: str | None, country: str | None, pairs: list[tuple[str, str]] | None = None) -> int:
-    """0, 1, 2 … für Fokus-Tests (nach Priorität), sonst eine Zahl dahinter."""
+    """0 für jeden Fokus-Test, 1 für alles andere. Fokus-Tests sind gleichrangig (Test-Matrix über drei Länder,
+    Inhaber 01.10.2026), damit kein Land die anderen verdrängt; die Aufrufer mischen innerhalb des Fokus."""
     pairs = focus_pairs() if pairs is None else pairs
-    try:
-        return pairs.index((segment, country))
-    except ValueError:
-        return len(pairs)
+    return 0 if (segment, country) in pairs else 1

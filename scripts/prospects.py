@@ -39,6 +39,14 @@ LEGAL_PATTERNS = {
            (r"\bS\.A\.\b|\bSA\b(?= au capital)", "SA")],
     "US": [(r"\bL\.?L\.?C\.?\b", "LLC"), (r"\b(Inc\.?|Incorporated)\b", "Inc"), (r"\bCorp(oration)?\b", "Corp")],
 }
+FR_LEGAL_TEXT = [
+    (r"soci[ée]t[ée] par actions simplifi[ée]e unipersonnelle", "SASU"),
+    (r"soci[ée]t[ée] par actions simplifi[ée]e", "SAS"),
+    (r"entreprise unipersonnelle [àa] responsabilit[ée] limit[ée]e", "EURL"),
+    (r"soci[ée]t[ée] [àa] responsabilit[ée] limit[ée]e", "SARL"),
+    (r"\b(SASU|SAS|SARL|EURL|SA)\b[^<\n]{0,20}au capital", None),
+    (r"forme juridique\s*:?\s*(SASU|SAS|SARL|EURL|SA)\b", None),
+]
 UK_REGISTERED = re.compile(r"(company (registration )?(no\.?|number)|registered in (england|scotland|wales))[^0-9]{0,30}(\d{6,8}|SC\d{6})", re.I)
 
 
@@ -64,6 +72,12 @@ def detect_legal_form(country: str, name: str, text: str) -> tuple[str | None, s
         m = re.search(r"(©|&copy;|copyright|registered|company)[^<\n]{0,120}" + pat, text, re.I)
         if m:
             return form, reg_no
+    if country == "FR":
+        # Mentions légales (Pflichtangaben): „SAS au capital de …“, „Forme juridique : SARL“, ausgeschriebene Formen
+        for pat, form in FR_LEGAL_TEXT:
+            m = re.search(pat, text, re.I)
+            if m:
+                return form or m.group(1).upper(), None
     return (("Ltd" if reg_no else None), reg_no) if country == "UK" else (None, None)
 
 

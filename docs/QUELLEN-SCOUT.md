@@ -49,6 +49,8 @@ Der Scout ist eine Claude-Sitzung (Routine „Quellen-Scout“). Je Sitzung:
 | Kunden-Werk | Overture US/UK/FR, ~20 Kategorien | weitere Käufer-Branchen, Kontaktwege |
 | US Neugründungen | FMCSA, Form D, Connecticut-Register | weitere Bundesstaaten-Register mit E-Mail/Telefon |
 | Rohbestand ohne Telefon | CT-S2 (Freemail-Gründer) | kostenlose Quelle für Telefonnummern |
+| **UK/FR Neugründungen ohne Kontakt (Stand 01.10. abends)** | ~38.000 UK-Leads S4/S5/S9 (Companies House) ohne Telefon/E-Mail, S4/S5 FR je 1 vollständig | **größte Lücke für die Test-Matrix US/UK/FR**: Website + Kontakt für Neugründungen finden |
+| Käufer FR | Rechtsform fehlte fast immer -> „nur Anruf/Brief“; FR war für S2/S4/S5 kein Mail-Land | behoben in PR #89 (Register-Abgleich), wirkt nach Merge |
 
 ## Vorschläge Länder/Branchen
 
@@ -76,3 +78,5 @@ Der Scout ist eine Claude-Sitzung (Routine „Quellen-Scout“). Je Sitzung:
 | 01.10.2026 | **Connecticut Business Registry** (data.ct.gov n7gp-d28j + Principals ka36-64k6) | S2/S4/S5/S9 US | **eingebaut** (`sources/ct_registry.py`, Lead-Werk `us-ct-0/1`): ~7.700 Neugründungen/44 Tage, alle mit E-Mail (63 % Freemail), Inhaber bei 96 %; Test 480: S4 12 %, S5 11 %, S9 14 % grün, S2 0 % (kein Telefon → Rohbestand). ≈ 230 grüne Leads + 3.500 Rohbestand/Monat |
 | 01.10.2026 | **UK Food Hygiene Rating Scheme API** (FSA, „AwaitingInspection“) | S4/S7/S2 UK (neue Betriebe) | **Kandidat**: 35.608 Betriebe warten auf Erstprüfung, kein Telefon, 52 % volle Adresse, kein Datum → braucht Tages-Beobachtung (neue FHRSIDs) + Kontaktabgleich mit Overture (Name + PLZ) |
 | 01.10.2026 | Colorado Business Entities (data.colorado.gov 4ykn-tg5h) | US Neugründungen | verworfen: keine Kontaktdaten (geprüft von der Routine-Sitzung, PR #85 als doppelt geschlossen) |
+| 01.10.2026 | **Annuaire des entreprises** (recherche-entreprises.api.gouv.fr, SIRENE, ohne Schlüssel) | Käufer FR (Rechtsform) | **eingebaut** (`sources/fr_sirene.py`, Kunden-Werk): Name + PLZ, nur eindeutige aktive Treffer; Test 8 abgelehnte FR-Käufer ohne PLZ: 3 eindeutig, alle Kapitalgesellschaften (SAS/SARL). Zusätzlich Mentions légales („SAS au capital“). PR #89 (Inhaber-Merge nötig: FR neu als Mail-Land) |
+| 01.10.2026 | Kunden-Werk Teil 2/7 | Betrieb | 2× hintereinander nach ~2,5 min abgebrochen („runner shutdown“, gleiche Domains je Teil) – vermutlich Riesen-Antwort einer Website; Abruf jetzt auf 2 MB begrenzt (`lib/fetch.capped_get`). Nach dem nächsten Lauf prüfen |

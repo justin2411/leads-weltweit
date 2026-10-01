@@ -44,7 +44,7 @@ def robots_allows(url: str, session: requests.Session) -> bool:
     if rp is None:
         rp = urllib.robotparser.RobotFileParser()
         try:
-            r = session.get(root + "/robots.txt", timeout=15, headers={"User-Agent": USER_AGENT})
+            r = capped_get(session, root + "/robots.txt", timeout=15)
             if r.status_code in (401, 403):
                 rp.disallow_all = True
             elif r.status_code >= 400:
@@ -67,7 +67,29 @@ def polite_get(url: str, *, last_fetched: dt.datetime | None, session: requests.
     session = session or requests.Session()
     if not robots_allows(url, session):
         raise FetchRefused(f"robots.txt verbietet: {url}")
-    return session.get(url, timeout=20, headers={"User-Agent": USER_AGENT}, allow_redirects=True)
+    return capped_get(session, url, timeout=20)
+
+
+MAX_BYTES = 2_000_000  # Kunden-Werk 01.10.2026: eine Riesen-Datei brachte den GitHub-Rechner zum Absturz
+
+
+def capped_get(session: requests.Session, url: str, timeout: int = 20) -> requests.Response:
+    """GET mit Obergrenze: höchstens MAX_BYTES werden gelesen, der Rest der Antwort wird verworfen."""
+    r = session.get(url, timeout=timeout, headers={"User-Agent": USER_AGENT}, allow_redirects=True, stream=True)
+    try:
+        size = int(r.headers.get("content-length") or 0)
+    except ValueError:
+        size = 0
+    body = b""
+    if size <= MAX_BYTES * 5:  # angekündigte Riesen-Dateien gar nicht erst lesen
+        for chunk in r.iter_content(65536):
+            body += chunk
+            if len(body) >= MAX_BYTES:
+                break
+    r.close()
+    r._content = body[:MAX_BYTES]
+    r._content_consumed = True
+    return r
 
 
 _JSONLD = re.compile(r"<script[^>]+type=[\"']application/ld\+json[\"'][^>]*>(.*?)</script>", re.S | re.I)
