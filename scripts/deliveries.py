@@ -305,7 +305,8 @@ def tag_fresh_leads(db) -> None:
 
 
 def _load_leads(db, since: dt.date) -> tuple[list[dict], dict[str, dict]]:
-    leads = db.select_all("leads", {"created_at": f"gte.{since.isoformat()}", "status": "neq.expired",
+    # nur unvergebene Leads: Probe-Leads (sample) und gelieferte gehen an keinen weiteren Käufer (exklusiv, 01.10.2026)
+    leads = db.select_all("leads", {"created_at": f"gte.{since.isoformat()}", "status": "eq.new",
                                     "select": LEAD_SELECT, "order": "event_date.desc,id"})
     details = {}
     us_obs = {l["observation_ids"][0]: l["id"] for l in leads if l["country"] == "US" and l.get("observation_ids")}

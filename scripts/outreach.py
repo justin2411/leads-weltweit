@@ -422,7 +422,7 @@ def _test_sample(args, region: str) -> int:
     from lib.regions import area_of
     from responder import regional_sample, sample_mail, sample_subject, send_reply
     lang = "fr" if args.country == "FR" else "en"
-    files, regional = regional_sample(DB(), args.segment, args.country, region)
+    files, regional = regional_sample(DB(), args.segment, args.country, region, mark=False)  # Test: Leads nicht verbrauchen
     area = None  # Leads aus dem ganzen Land
     body, blocks = sample_mail(lang, area, files, regional)
     if not body:
