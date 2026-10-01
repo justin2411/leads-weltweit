@@ -372,6 +372,43 @@ def check_werke(c: Check, db) -> None:
               f"E-Mail erlaubt {ok}, nur Anruf/Brief {call}; neu in 24 h: {new}")
 
 
+def kpi_line(db, seg: str, country: str) -> dict:
+    """Trichter eines Tests: Erstmails → Antworten (positiv) → Proben → Kunden → Umsatz pro Monat."""
+    from deliveries import is_test_customer
+    from lib.stats import distinct_replies
+    exps = [e["id"] for e in db.select("experiments", {"segment_id": f"eq.{seg}", "country": f"eq.{country}",
+                                                        "select": "id"})]
+    msgs = set()
+    if exps:
+        msgs = {m["id"] for m in db.select_all("messages", {"experiment_id": f"in.({','.join(exps)})",
+                                                            "status": "eq.sent", "select": "id,kind"})}
+    sent = len(msgs)
+    events = db.select_all("email_events", {"type": "in.(reply,reply_positive,sample_requested,reply_negative,"
+                                                    "unsubscribed,auto_reply)",
+                                            "select": "id,type,dedupe_key,message_id"})
+    replies = [e for e in distinct_replies(events) if e.get("message_id") in msgs and e["type"] != "auto_reply"]
+    positive = sum(e["type"] in ("reply_positive", "sample_requested") for e in replies)
+    samples = len(db.select("sample_requests", {"segment_id": f"eq.{seg}", "country": f"eq.{country}", "select": "id"}))
+    subs = [s for s in db.select("subscriptions", {"segment_id": f"eq.{seg}", "status": "eq.active",
+                                                   "select": "id,amount_cents,price_eur_month,currency,"
+                                                             "customers(country,status,stripe_customer_id,notes)"})
+            if (s.get("customers") or {}).get("country") == country and not is_test_customer(s.get("customers") or {})]
+    revenue = sum((s.get("amount_cents") or 0) / 100 or float(s.get("price_eur_month") or 0) for s in subs)
+    cur = {"gbp": "£", "usd": "$"}.get(((subs[0].get("currency") or "") if subs else "").lower(),
+                                       {"UK": "£", "US": "$"}.get(country, "€"))
+    return {"sent": sent, "replies": len(replies), "positive": positive, "samples": samples,
+            "customers": len(subs), "revenue": revenue, "currency": cur}
+
+
+def check_kpi(c: Check, db) -> None:
+    """Kennzahl-Zeile je Fokus-Test (config/fokus.yaml), damit sofort sichtbar ist, wo Umsatz entsteht."""
+    from lib.fokus import focus_pairs
+    for seg, country in focus_pairs():
+        k = kpi_line(db, seg, country)
+        c.add("Kennzahl", OK, f"{seg}/{country}: {k['sent']} Mails → {k['replies']} Antworten ({k['positive']} positiv)"
+              f" → {k['samples']} Proben → {k['customers']} Kunden → {k['revenue']:.0f} {k['currency']}/Monat")
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--send", action="store_true")
@@ -388,6 +425,7 @@ def main(argv=None) -> int:
     c.guard("Website", lambda: check_website(c, db))
     c.guard("Kunden", lambda: check_customers(c, db))
     c.guard("Werke", lambda: check_werke(c, db))
+    c.guard("Kennzahl", lambda: check_kpi(c, db))
     subject, body = mail(c)
     print("\n" + subject)
     summary = os.environ.get("GITHUB_STEP_SUMMARY")

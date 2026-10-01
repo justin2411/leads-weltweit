@@ -31,6 +31,22 @@ jobs:
       SMTP_USER: ${{ secrets.SMTP_USER }}
       SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
       MAIL_FROM: ${{ secrets.SMTP_FROM || secrets.MAIL_FROM }}
+      # weiteres Postfach 2 (scripts/lib/mailboxes.py): leer = nicht benutzt
+      SMTP_USER_2: ${{ secrets.SMTP_USER_2 }}
+      SMTP_PASSWORD_2: ${{ secrets.SMTP_PASSWORD_2 }}
+      SMTP_FROM_2: ${{ secrets.SMTP_FROM_2 }}
+      # weiteres Postfach 3 (scripts/lib/mailboxes.py): leer = nicht benutzt
+      SMTP_USER_3: ${{ secrets.SMTP_USER_3 }}
+      SMTP_PASSWORD_3: ${{ secrets.SMTP_PASSWORD_3 }}
+      SMTP_FROM_3: ${{ secrets.SMTP_FROM_3 }}
+      # weiteres Postfach 4 (scripts/lib/mailboxes.py): leer = nicht benutzt
+      SMTP_USER_4: ${{ secrets.SMTP_USER_4 }}
+      SMTP_PASSWORD_4: ${{ secrets.SMTP_PASSWORD_4 }}
+      SMTP_FROM_4: ${{ secrets.SMTP_FROM_4 }}
+      # weiteres Postfach 5 (scripts/lib/mailboxes.py): leer = nicht benutzt
+      SMTP_USER_5: ${{ secrets.SMTP_USER_5 }}
+      SMTP_PASSWORD_5: ${{ secrets.SMTP_PASSWORD_5 }}
+      SMTP_FROM_5: ${{ secrets.SMTP_FROM_5 }}
       REPLY_TO: ${{ secrets.SMTP_FROM || secrets.REPLY_TO }}
       SENDER_NAME: ${{ secrets.SENDER_NAME }}
       SENDER_COMPANY: ${{ secrets.SENDER_COMPANY }}

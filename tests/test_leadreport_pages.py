@@ -52,5 +52,28 @@ class SampleSizeTest(unittest.TestCase):
         self.assertEqual(leadreport.SAMPLE_SIZE, 10)
 
 
+
+class LocalCurrencyTest(unittest.TestCase):
+    """Echter Probe-Test 01.10.2026: US-Probe zeigte £129 statt $129."""
+
+    def test_plans_use_currency_of_lead_country(self):
+        from lib.leadreport import _money, local_plans
+        plans = [{"key": "starter", "amount_cents": 12900, "currency": "gbp"}]
+        self.assertEqual(_money(local_plans(plans, "US")[0]), "$129")
+        self.assertEqual(_money(local_plans(plans, "FR")[0]), "129 €")
+        self.assertEqual(_money(local_plans(plans, "UK")[0]), "£129")
+        self.assertEqual(plans[0]["currency"], "gbp")  # Original unverändert
+
+
+class NoShadowTest(unittest.TestCase):
+    """Inhaber 01.10.2026: graue Schatten ab Lead 2 auf dem iPhone (Chrome rastert box-shadow im PDF) -> nie Schatten."""
+
+    def test_pdf_template_has_no_blurred_shadows(self):
+        import re
+        from lib import leadreport
+        src = open(leadreport.__file__, encoding="utf-8").read()
+        self.assertFalse(re.search(r"box-shadow:[^;}]*rgba", src))
+
+
 if __name__ == "__main__":
     unittest.main()

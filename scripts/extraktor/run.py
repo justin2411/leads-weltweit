@@ -449,8 +449,12 @@ def main(argv=None) -> int:
     for co in ("UK", "US"):
         # S1 aus Karriereseiten; FR nicht (Code du travail L5331-1, Inhaber 01.10.2026)
         if co in countries and "S1" in segs:
-            got = [c for c in load_careers(co, args.s1_probe, args.workers * 2, fetcher, stats)
-                   if segments.fits("S1", c)[0]]
+            try:
+                got = [c for c in load_careers(co, args.s1_probe, args.workers * 2, fetcher, stats)
+                       if segments.fits("S1", c)[0]]
+            except Exception as e:  # noqa: BLE001 - eine ausgefallene Quelle darf die anderen nicht stoppen
+                log(f"S1/{co}: Karriereseiten übersprungen ({type(e).__name__}: {str(e)[:200]})")
+                got = []
             key = "S1" if co == "US" else "S1/UK"  # US-Pools haben keinen Länder-Zusatz
             p[key] = got + p.get(key, [])
     for co in ("UK", "FR"):

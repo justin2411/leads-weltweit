@@ -350,7 +350,7 @@ def _firm_key(co: dict | None) -> str:
 
 
 def regional_sample(db, seg: str, country: str, region: str | None,
-                    wish: list[str] | None = None) -> tuple[list[tuple[str, bytes]], bool]:
+                    wish: list[str] | None = None, mark: bool = True) -> tuple[list[tuple[str, bytes]], bool]:
     """10 vollständige Leads aus dem ganzen Land (Inhaber 27.09.2026). (Dateien, True) – sonst ([], False).
 
     wish: Signal-Schlüssel aus dem Probe-Formular (lib/wishes.py). Passende vollständige Leads kommen zuerst,
@@ -359,19 +359,26 @@ def regional_sample(db, seg: str, country: str, region: str | None,
     from lib.regions import area_of, lead_matches
     from lib.wishes import prefer
     area = None  # Leads aus dem ganzen Land (Inhaber 27.09.2026), keine Regionsauswahl mehr
-    known = contact_companies(db, website_optional=(seg == "S2")) if REQUIRE_CONTACT else None
-    rows = db.select_all("leads", {"segment_id": f"eq.{seg}", "country": f"eq.{country}", "status": "in.(new,sample)",
+    # Exklusiv (Inhaber 01.10.2026: „jeder lead geht nur an einen käufer“): jede Probe bekommt frische Leads (status new),
+    # die danach als sample markiert und nie wieder ausgegeben werden – weder in einer anderen Probe noch in einer Lieferung.
+    rows = db.select_all("leads", {"segment_id": f"eq.{seg}", "country": f"eq.{country}", "status": "eq.new",
                                "select": "id,event_summary,event_date,source_name,source_url,source_date,urgency,"
                                          "urgency_reason,opener,signal_type,company_id,observation_ids,"
                                          "watch_companies(name,legal_form,city,region,address,website,website_checked_at)",
                                "order": "event_date.desc,id"})
     if wish:
-        if known is not None:
-            rows = [l for l in rows if l["company_id"] in known]
         rows = prefer(rows, wish, _sic_lookup(db, rows) if "fleet_warehouse" in wish else None)
+    # Vollständigkeit nur blockweise für die nächsten Kandidaten prüfen (bei 90.000+ Leads war die Prüfung aller
+    # Firmen zu langsam; Test 01.10.2026)
+    known = {} if REQUIRE_CONTACT else None
+    checked = 0
     picked, per = [], {}
-    for l in rows:
+    for n, l in enumerate(rows):
         co = l["watch_companies"]
+        if known is not None and n >= checked:
+            block = sorted({r["company_id"] for r in rows[n:n + 300]})
+            known.update(contact_companies(db, website_optional=(seg == "S2"), only=block))
+            checked = n + 300
         if known is not None and l["company_id"] not in known:
             continue
         name = _firm_key(co)
@@ -384,16 +391,25 @@ def regional_sample(db, seg: str, country: str, region: str | None,
             break
     if len(picked) < 10 and area:
         # nicht genug vollständige Leads aus der Region: vollständige Leads aus dem ganzen Land
-        return _country_sample(db, seg, country, rows, known)
+        return _country_sample(db, seg, country, rows, known, mark)
     if len(picked) < 10:
         return [], False  # nie unvollständige Leads verschicken; Inhaber wird benachrichtigt
     for l in picked:
         l["segment_id"] = seg
     enrich(db, picked, known)
+    if mark:
+        mark_sampled(db, picked)
     data = to_csv(picked, _lang(country), area)
     name = re.sub(r"[^A-Za-z0-9]+", "-", area or country).strip("-")
     from lib.leadreport import attachments
     return attachments(data, _lang(country), area, name="sample-leads", sample=True, **sample_extras(db, seg, country)), True
+
+
+def mark_sampled(db, picked: list[dict]) -> None:
+    """Probe-Leads sind vergeben: status sample, damit sie an keinen anderen Käufer gehen."""
+    for l in picked:
+        if l.get("id"):
+            db.update("leads", {"id": l["id"]}, {"status": "sample"})
 
 
 def sample_extras(db, seg: str, country: str) -> dict:
@@ -404,7 +420,8 @@ def sample_extras(db, seg: str, country: str) -> dict:
     return {"plans": plans, "cta_url": f"{base}/{page[0]['slug']}/start" if page else None, "segment": seg, "country": country}
 
 
-def _country_sample(db, seg: str, country: str, rows: list[dict], known) -> tuple[list[tuple[str, bytes]], bool]:
+def _country_sample(db, seg: str, country: str, rows: list[dict], known,
+                    mark: bool = True) -> tuple[list[tuple[str, bytes]], bool]:
     from deliveries import _lang, enrich, to_csv
     picked, per = [], {}
     for l in rows:
@@ -419,6 +436,8 @@ def _country_sample(db, seg: str, country: str, rows: list[dict], known) -> tupl
     if len(picked) < 10:
         return [], False
     enrich(db, picked, known)
+    if mark:
+        mark_sampled(db, picked)
     from lib.leadreport import attachments
     return attachments(to_csv(picked, _lang(country)), _lang(country), None, name="sample-leads", sample=True,
                        **sample_extras(db, seg, country)), False

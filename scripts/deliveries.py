@@ -124,22 +124,53 @@ def add_industry(db, leads: list[dict]) -> None:
                 hint = industry_hint(l.get("segment_id") or "", sic)
                 if hint:
                     l["_tip"], l["_question"] = hint[0], hint[1] if len(hint) > 1 else ""
+    # Werke-Leads ohne SIC: Branche aus der Firma (z. B. FMCSA „Motor carrier“)
+    rest = sorted({l["company_id"] for l in leads if not l.get("_industry") and l.get("company_id")})
+    ind = {}
+    for i in range(0, len(rest), 100):
+        for c in db.select("watch_companies", {"id": f"in.({','.join(rest[i:i + 100])})", "select": "id,industry"}):
+            if c.get("industry"):
+                ind[c["id"]] = c["industry"]
+    for l in leads:
+        if not l.get("_industry") and l.get("company_id") in ind:
+            l["_industry"] = ind[l["company_id"]]
 
 
-def contact_companies(db, website_optional: bool = False) -> dict[str, dict]:
+LEGAL_FORMS = re.compile(r"\b(LLC|L\.L\.C\.|Inc\.?|Corp\.?|Corporation|Co\.|LLP|LP|PLLC|PC|Ltd\.?|Limited|PLC|"
+                         r"SAS|SASU|SARL|EURL|SA|SCI)\s*$", re.I)
+
+
+def legal_form_of(name: str) -> str:
+    """Rechtsform aus dem Firmennamen (Werke speichern sie nicht getrennt)."""
+    m = LEGAL_FORMS.search((name or "").strip().rstrip(","))
+    if not m:
+        return ""
+    f = m.group(1).rstrip(".")
+    return "LLC" if f.upper() in ("LLC", "L.L.C") else f
+
+
+def contact_companies(db, website_optional: bool = False, only: list[str] | None = None) -> dict[str, dict]:
     """Firmen mit VOLLSTÄNDIGEN Daten – nur diese gehen an Kunden und in Proben (Inhaber 27.09.2026: „wichtig ist,
     dass man immer alle Daten der Leads hat und die dann erst rausschickt“): Telefon und Sammel-E-Mail
-    (watch.py contacts), Website und Adresse (watch_companies) und Ansprechperson (watch.py people)."""
-    rows = db.select_all("observations", {"kind": "eq.other", "key": "eq.contact", "details->>email": "not.is.null",
-                                          "details->>phone": "not.is.null", "select": "company_id,details,source_url"})
+    (watch.py contacts), Website und Adresse (watch_companies) und Ansprechperson (watch.py people).
+    only: nur diese Firmen prüfen (Proben: schnell statt aller Firmen im Bestand)."""
+    def obs(params: dict) -> list[dict]:
+        if only is None:
+            return db.select_all("observations", params)
+        out = []
+        for i in range(0, len(only), 150):
+            out += db.select("observations", {**params, "company_id": f"in.({','.join(only[i:i + 150])})"})
+        return out
+    rows = obs({"kind": "eq.other", "key": "eq.contact", "details->>email": "not.is.null",
+                "details->>phone": "not.is.null", "select": "company_id,details,source_url"})
     found = {r["company_id"]: {**r["details"], "page": r.get("source_url")} for r in rows}
     # Ansprechperson: Name, sonst Rolle („Fehlt ein Name, steht die Rolle“, CLAUDE.md §9; S1/S2-Rolle 01.10.2026)
-    people = {r["company_id"] for r in db.select_all("observations", {"kind": "eq.other", "key": "eq.person",
-                                                                       "or": "(details->>name.not.is.null,details->>role.not.is.null)",
-                                                                       "select": "company_id"})}
+    people = {r["company_id"] for r in obs({"kind": "eq.other", "key": "eq.person",
+                                            "or": "(details->>name.not.is.null,details->>role.not.is.null)",
+                                            "select": "company_id"})}
     # enrich.py: Daten widersprechen sich (Website nicht geprüft, E-Mail-Domain fremd, Vorwahl aus anderem Land)
-    blocked = {r["company_id"] for r in db.select_all("observations", {"kind": "eq.other", "key": "eq.quality",
-                                                                        "details->>blocking": "eq.true", "select": "company_id"})}
+    blocked = {r["company_id"] for r in obs({"kind": "eq.other", "key": "eq.quality",
+                                             "details->>blocking": "eq.true", "select": "company_id"})}
     ids = sorted((set(found) & people) - blocked)
     complete = set()
     for i in range(0, len(ids), 100):
@@ -210,7 +241,7 @@ def to_csv(leads: list[dict], lang: str = "en", area: str | None = None) -> byte
         w.writerow([co.get("name", ""), l.get("_phone", ""), l.get("_email", ""), l.get("_website", ""), where,
                     company_profile(l, lang), l["event_summary"], l.get("event_date") or "", l["urgency_reason"],
                     l["urgency"], l.get("signal_type") or "", l.get("_tip", ""), l.get("_question", ""), l["opener"],
-                    l["source_name"], l["source_date"], co.get("legal_form") or "",
+                    l["source_name"], l["source_date"], co.get("legal_form") or legal_form_of(co.get("name", "")),
                     l.get("_industry", ""), co.get("address") or "", l.get("_person", ""), l.get("_person_role", "")])
     # BOM, damit Excel Umlaute und Akzente richtig anzeigt
     return ("\ufeff" + buf.getvalue()).encode("utf-8")
@@ -305,7 +336,8 @@ def tag_fresh_leads(db) -> None:
 
 
 def _load_leads(db, since: dt.date) -> tuple[list[dict], dict[str, dict]]:
-    leads = db.select_all("leads", {"created_at": f"gte.{since.isoformat()}", "status": "neq.expired",
+    # nur unvergebene Leads: Probe-Leads (sample) und gelieferte gehen an keinen weiteren Käufer (exklusiv, 01.10.2026)
+    leads = db.select_all("leads", {"created_at": f"gte.{since.isoformat()}", "status": "eq.new",
                                     "select": LEAD_SELECT, "order": "event_date.desc,id"})
     details = {}
     us_obs = {l["observation_ids"][0]: l["id"] for l in leads if l["country"] == "US" and l.get("observation_ids")}

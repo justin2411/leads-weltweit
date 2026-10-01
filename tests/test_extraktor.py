@@ -376,6 +376,23 @@ class WerkeTests(unittest.TestCase):
         self.assertEqual([r["source_id"] for r in calls[0]], ["a"])
         self.assertEqual(calls[0][0]["signal_date"], TODAY.isoformat())
 
+    def test_store_raw_skips_domains_already_in_database(self):
+        """Lauf 01.10.2026: 409 auf watch_companies_domain_uq brach den ganzen Teillauf ab."""
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from fakedb import FakeDB
+        from extraktor.store import store_raw
+        db = FakeDB({"watch_companies": [{"id": "old", "domain": "jsbarbershop.com"}]})
+        base = {"ampel": "yellow", "segment": "S2", "source": "overture", "company": "JS Barbers", "street": "", "city": "Leeds",
+                "state": "", "zip": "", "country": "UK", "phone": "", "email": "", "phone_type": "",
+                "email_type": "", "contact_name": "", "contact_role": "", "qc": "", "sc": "", "qc_notes": "",
+                "company_info": "", "signal": "no website", "source_url": "", "signal_date": "", "opener": "",
+                "urgency": "", "urgency_reason": ""}
+        rows = [dict(base, source_id="1", website="https://jsbarbershop.com"),
+                dict(base, source_id="2", website="https://new-shop.co.uk"),
+                dict(base, source_id="3", website="https://www.new-shop.co.uk/")]
+        self.assertEqual(store_raw(db, rows), 1)
+        self.assertEqual(sorted(c["domain"] for c in db.tables["watch_companies"]), ["jsbarbershop.com", "new-shop.co.uk"])
+
     def test_kundenwerk_categories_map_to_real_segments(self):
         import kundenwerk as K
         self.assertTrue(set(K.CATEGORIES.values()) <= {"S1", "S2", "S3", "S4", "S5", "S6", "S7", "S9", "S10", "S12"})
@@ -414,6 +431,17 @@ class ConnecticutTests(unittest.TestCase):
             t = segments.texts(seg, c)
             self.assertIn(", CT", t["company_info"])
             self.assertEqual(sc.run(c, seg, t)["status"], "pass", (seg, sc.run(c, seg, t)))
+
+
+class FokusTests(unittest.TestCase):
+    """Fokus beim Start (Inhaber 01.10.2026): S4/US, S5/US, S2/US zuerst."""
+
+    def test_focus_file_and_rank(self):
+        from lib import fokus
+        pairs = fokus.focus_pairs()
+        self.assertEqual(pairs[:3], [("S4", "US"), ("S5", "US"), ("S2", "US")])
+        self.assertEqual(fokus.rank("S4", "US", pairs), 0)
+        self.assertEqual(fokus.rank("S2", "UK", pairs), len(pairs))
 
 
 if __name__ == "__main__":

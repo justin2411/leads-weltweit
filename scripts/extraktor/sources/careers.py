@@ -17,6 +17,7 @@ import datetime as dt
 import json
 import os
 import re
+import time
 from collections import Counter
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
@@ -95,7 +96,11 @@ def domains(country: str, limit: int | None = None, log=print) -> list[str]:
     """Domains mit eigenen Stellenanzeigen (Web Data Commons), ohne Jobbörsen, Behörden und Konzerne."""
     if not WDC_CACHE.exists():
         WDC_CACHE.parent.mkdir(parents=True, exist_ok=True)
-        r = requests.get(WDC_URL, timeout=300)
+        for attempt in range(3):  # viele parallele Läufe: der Server antwortet zeitweise mit 403/429
+            r = requests.get(WDC_URL, timeout=300)
+            if r.ok or attempt == 2:
+                break
+            time.sleep(30 * (attempt + 1))
         r.raise_for_status()
         WDC_CACHE.write_bytes(r.content)
     out = []

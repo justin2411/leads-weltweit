@@ -1,0 +1,12 @@
+# Fokus beim Start (Inhaber 01.10.2026: „ok lass fokus aufbauen“). Reihenfolge = Priorität.
+# Gewählt nach echten Zahlen vom 01.10.2026: viele mail-fähige Käufer UND viele lieferbare Leads im selben Markt.
+#   S4/US  Gewerbliche Versicherungsmakler  1.535 mail-fähige Käufer, neue Speditionen mit Fahrzeugen (FMCSA) + CT
+#   S5/US  Buchhaltung/Lohn                   894 mail-fähige Käufer, Neugründungen (FMCSA, Form D, CT)
+#   S2/US  Webagenturen                       295 mail-fähige Käufer, ~10.000 Firmen ohne Website
+# UK S2 bewusst nicht im Fokus: 10.000 Leads, aber nur 37 mail-fähige Käufer (PECR: Einzelunternehmer nicht anmailen).
+# Wirkung: Entwürfe, Käufersuche (Kunden-Werk) und später der Versand bearbeiten diese Tests zuerst; alles andere läuft
+# nachrangig weiter. Versand bleibt über config/versand.yaml aus („wir produzieren vor wie im Restaurant“).
+fokus:
+  - S4/US
+  - S5/US
+  - S2/US

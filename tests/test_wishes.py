@@ -85,6 +85,7 @@ class RegionalSampleWishTest(unittest.TestCase):
                 mock.patch("lib.leadreport.attachments", return_value=[("sample-leads.csv", b"csv")]), \
                 mock.patch.object(responder, "sample_extras", return_value={}):
             files, ok = responder.regional_sample(db, "S5", "UK", None, wish=wish)
+        self.db = db
         return files, ok, captured.get("ids")
 
     def test_prefers_wished_and_fills_up(self):
@@ -98,6 +99,13 @@ class RegionalSampleWishTest(unittest.TestCase):
         self.assertEqual(ids[:3], ["l11", "l12", "l13"])  # Wunsch zuerst
         self.assertNotIn("l14", ids)  # nie unvollständig
         self.assertEqual(len(set(ids)), 10)
+
+    def test_sample_leads_are_marked_exclusive(self):
+        """Inhaber 01.10.2026: „jeder lead geht nur an einen käufer“ – Probe-Leads werden vergeben (status sample)."""
+        rows = [lead(i, "new_incorporation") for i in range(1, 13)]
+        files, ok, ids = self.run_sample(rows, [f"c{i}" for i in range(1, 13)], [])
+        marked = [m["id"] for t, m, v in self.db.updates if t == "leads" and v == {"status": "sample"}]
+        self.assertEqual(sorted(marked), sorted(ids))
 
     def test_not_enough_complete_leads(self):
         rows = [lead(i, "job_open_30d", "Role “Payroll” open") for i in range(1, 12)]

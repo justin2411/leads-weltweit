@@ -14,6 +14,7 @@ selbst über GitHub-Workflows, Secrets und Connectoren und fragt nicht erneut. N
 | Resend (nur Einwilligung/Kunden) | GitHub-Secrets `RESEND_API_KEY`, `MAIL_FROM` | Antworten, Lieferungen | erledigt |
 | DNS für Strato-Mail | Vercel → Team → Domains → nextgen-profit.de → DNS Records (MX, SPF, DMARC) | Empfang info@, Versand | erledigt 27.09. (DKIM: Strato zeigt ohne Strato-DNS keinen Schlüssel – später prüfen) |
 | Strato-Postfach SMTP/IMAP | GitHub-Secrets `SMTP_*`, `IMAP_*` | `send.yml`, `antworten.yml`, `postfach-test.yml` | erledigt 27.09., Postfach-Test grün |
+| Weitere Versand-Postfächer (optional, zum Hochskalieren) | GitHub-Secrets `SMTP_USER_2`, `SMTP_PASSWORD_2`, `SMTP_FROM_2` (bis `_5`; Host/Port wie Postfach 1) | `send.yml`, `scripts/lib/mailboxes.py` | offen – nur wenn mehr als ~150 Mails/Tag nötig; jedes neue Postfach fährt drei Wochen hoch. Antworten gehen per Reply-To ans Hauptpostfach |
 | Anthropic-API (Guthaben 15 $, Inhaber 27.09.) | GitHub-Secret `ANTHROPIC_API_KEY`, optional Variable `CLAUDE_MODEL` (Standard `claude-sonnet-5`) | `antworten.yml` (Einordnung eingehender Antworten, ca. 1 Cent pro Antwort); Test: `ki-test.yml` | erledigt 27.09., Test grün |
 | Companies House API (kostenlos) | GitHub-Secret `COMPANIES_HOUSE_API_KEY` (developer.company-information.service.gov.uk → Application → REST API key) | `anreichern.yml` (UK: Geschäftsführer, Adresse, Status aus dem Register) | **offen** – beim ersten Anreichern-Lauf 27.09. leer |
 
