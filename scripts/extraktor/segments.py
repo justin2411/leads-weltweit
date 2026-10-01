@@ -230,6 +230,15 @@ CAT_FR = {"restaurant": "restaurant", "cafe": "café", "bar": "bar", "personal o
           "real estate service": "agence immobilière", "b2b service": "prestataire B2B", "bakery": "boulangerie"}
 
 
+CAT_EN = {"non alcoholic beverage venue": "café / tea room", "automotive service": "car repair and service business",
+          "home service": "home services business", "personal or beauty service": "beauty and personal care business",
+          "food and beverage store": "food shop", "casual eatery": "casual eatery", "shipping or delivery service":
+          "shop and delivery service", "animal or pet service": "pet services business", "professional service":
+          "professional services firm", "event or party service": "events business", "wellness service":
+          "wellness business", "fashion and apparel store": "clothing shop", "hardware home and garden store":
+          "hardware and garden shop", "b2b service": "B2B services firm"}
+
+
 def texts_overture(c: dict) -> dict:
     f, name = c["facts"], c["name"]
     cat = f.get("category") or "local business"
@@ -248,7 +257,9 @@ def texts_overture(c: dict) -> dict:
         extra = (", an email address" if c.get("email") else "") + (f" and a {social} page" if social else "")
         signal = (f"{name} has no website: it is listed with a phone number{extra}, but no own website could be "
                   f"found (checked {uk_day(today)}).")
-        info = f"{name} is a {cat} in {c['city']} {c['zip']}" + (f", active on {social}." if social else ".")
+        label = CAT_EN.get(cat, cat)
+        art = "an" if label[:1].lower() in "aeiou" else "a"
+        info = f"{name} is {art} {label} in {c['city']} {c['zip']}" + (f", active on {social}." if social else ".")
         opener = (f"Hi – I couldn't find a website for {name}; would a simple site that helps new customers find "
                   f"you be useful?")
         why = "Without a website the business is hard to find for customers searching online."
