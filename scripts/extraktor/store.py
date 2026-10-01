@@ -63,14 +63,49 @@ def _obs(cid: str, today: str, **kw) -> dict:
     return {**base, **kw}
 
 
+def _insert_companies(db, part: list[dict], make) -> tuple[list[dict], list[str]]:
+    """Firmen anlegen; Firmen, deren Website-Domain schon in der Datenbank steht (oder doppelt im Block), werden
+    übersprungen (eindeutiger Index watch_companies_domain_uq). Gibt (geschriebene Zeilen, ihre IDs) zurück."""
+    dom = lambda r: company_row(r)["domain"]  # noqa: E731
+    seen, keep = set(), []
+    for r in part:
+        d = dom(r)
+        if d and d in seen:
+            continue
+        if d:
+            seen.add(d)
+        keep.append(r)
+    if seen:
+        listed = ",".join(f'"{d}"' for d in sorted(seen))
+        have = {c["domain"] for c in db.select("watch_companies", {"domain": f"in.({listed})", "select": "domain"})}
+        keep = [r for r in keep if dom(r) not in have]
+    if not keep:
+        return [], []
+    try:
+        return keep, [c["id"] for c in db.insert("watch_companies", [make(r) for r in keep])]
+    except RuntimeError as e:
+        if "23505" not in str(e):
+            raise
+    # ein paralleler Teillauf war schneller: einzeln schreiben, Doppelte auslassen
+    rows, ids = [], []
+    for r in keep:
+        try:
+            ids.append(db.insert("watch_companies", [make(r)])[0]["id"])
+            rows.append(r)
+        except RuntimeError as e:
+            if "23505" not in str(e):
+                raise
+    return rows, ids
+
+
 def store_many(db, rows: list[dict], today: str | None = None, chunk: int = 200) -> int:
     """Grüne Zeilen (CSV-Format) blockweise schreiben; gibt die Zahl neuer Leads zurück."""
     today = today or dt.date.today().isoformat()
     n = 0
     for i in range(0, len(rows), chunk):
-        part = rows[i:i + chunk]
-        cos = db.insert("watch_companies", [company_row(r) for r in part])
-        ids = [c["id"] for c in cos]
+        part, ids = _insert_companies(db, rows[i:i + chunk], company_row)
+        if not ids:
+            continue
         try:
             obs = []
             for cid, r in zip(ids, part):
@@ -118,10 +153,10 @@ def store_raw(db, rows: list[dict], today: str | None = None, chunk: int = 200) 
     today = today or dt.date.today().isoformat()
     n = 0
     for i in range(0, len(rows), chunk):
-        part = rows[i:i + chunk]
-        cos = db.insert("watch_companies", [dict(company_row(r), active=r["ampel"] != "red",
-                                                 notes=f"Extraktor Rohbestand ({r['ampel']}) {today}") for r in part])
-        ids = [c["id"] for c in cos]
+        part, ids = _insert_companies(db, rows[i:i + chunk], lambda r: dict(
+            company_row(r), active=r["ampel"] != "red", notes=f"Extraktor Rohbestand ({r['ampel']}) {today}"))
+        if not ids:
+            continue
         try:
             obs = []
             for cid, r in zip(ids, part):
