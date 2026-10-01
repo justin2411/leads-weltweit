@@ -39,6 +39,13 @@ jobs:
           - { name: s2-fr-5, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 5/8" }
           - { name: s2-fr-6, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 6/8" }
           - { name: s2-fr-7, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 7/8" }
+          # Scout-Sprint 01.10.2026: S2 auch in den übrigen Mail-Ländern (countries.yaml allowed)
+          - { name: s2-ie-0, args: "--segments S2 --countries IE --s2-limit 20000 --per 4000 --max-tries 4000" }
+          - { name: s2-nl-0, args: "--segments S2 --countries NL --s2-limit 32000 --per 4000 --max-tries 4000 --shard 0/2" }
+          - { name: s2-nl-1, args: "--segments S2 --countries NL --s2-limit 32000 --per 4000 --max-tries 4000 --shard 1/2" }
+          - { name: s2-be-0, args: "--segments S2 --countries BE --s2-limit 20000 --per 4000 --max-tries 4000" }
+          - { name: s2-se-0, args: "--segments S2 --countries SE --s2-limit 32000 --per 4000 --max-tries 4000 --shard 0/2" }
+          - { name: s2-se-1, args: "--segments S2 --countries SE --s2-limit 32000 --per 4000 --max-tries 4000 --shard 1/2" }
           - { name: us-fmcsa-0, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 0/4" }
           - { name: us-fmcsa-1, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 1/4" }
           - { name: us-fmcsa-2, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 2/4" }
@@ -81,6 +88,7 @@ jobs:
         with:
           path: |
             out/cache/overture_gb_fr.parquet
+            out/cache/overture_ie_nl_be_se.parquet
             out/cache/formd
             out/cache/careers_seen.json
             out/cache/wdc_job_domains.csv
@@ -96,6 +104,7 @@ jobs:
         with:
           path: |
             out/cache/overture_gb_fr.parquet
+            out/cache/overture_ie_nl_be_se.parquet
             out/cache/formd
             out/cache/careers_seen.json
             out/cache/wdc_job_domains.csv

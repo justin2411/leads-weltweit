@@ -178,7 +178,7 @@ T2 = {
 }
 CUR = {"gbp": "£", "eur": "€", "usd": "$"}
 # Preise in allen Ländern gleich, in der Landeswährung (Inhaber 29.09.2026: Starter 129, Pro 249 in £, $, €)
-LOCAL_CUR = {"UK": "gbp", "US": "usd", "FR": "eur", "IE": "eur", "NL": "eur", "BE": "eur"}
+LOCAL_CUR = {"UK": "gbp", "US": "usd", "FR": "eur", "IE": "eur", "NL": "eur", "BE": "eur", "SE": "eur"}
 
 
 def local_plans(plans: list[dict] | None, country: str) -> list[dict] | None:
@@ -186,8 +186,10 @@ def local_plans(plans: list[dict] | None, country: str) -> list[dict] | None:
         return plans
     return [dict(p, currency=LOCAL_CUR[country]) for p in plans]
 # Leads kommen aus dem ganzen Land (Inhaber 27.09.2026) – im Report nur das Land, keine Region
-COUNTRY_NAME = {"en": {"UK": "United Kingdom", "US": "United States", "FR": "France", "IE": "Ireland", "NL": "Netherlands"},
-                "fr": {"UK": "Royaume-Uni", "US": "États-Unis", "FR": "France", "IE": "Irlande", "NL": "Pays-Bas"}}
+COUNTRY_NAME = {"en": {"UK": "United Kingdom", "US": "United States", "FR": "France", "IE": "Ireland", "NL": "Netherlands",
+                       "BE": "Belgium", "SE": "Sweden"},
+                "fr": {"UK": "Royaume-Uni", "US": "États-Unis", "FR": "France", "IE": "Irlande", "NL": "Pays-Bas",
+                       "BE": "Belgique", "SE": "Suède"}}
 
 
 def _money(plan: dict, cents: bool = False) -> str:

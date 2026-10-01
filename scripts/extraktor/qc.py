@@ -69,7 +69,7 @@ def zip_matches_state(zip5: str, state: str) -> bool | None:
     return any(a <= z <= b for a, b in ZIP3[state])
 
 
-REGION = {"US": "US", "UK": "GB", "FR": "FR", "IE": "IE"}
+REGION = {"US": "US", "UK": "GB", "FR": "FR", "IE": "IE", "NL": "NL", "BE": "BE", "SE": "SE"}
 UK_POSTCODE = re.compile(r"^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$")
 
 
@@ -145,7 +145,13 @@ def postcode_ok(c: dict) -> bool | None:
             return None
         dep = "20" if dep.upper() in ("2A", "2B") else dep
         return z.startswith(dep) if len(dep) == 2 else z.startswith(dep[:3])
+    if country in POSTCODE_FORMAT:
+        return bool(re.fullmatch(POSTCODE_FORMAT[country], z))
     return None
+
+
+# NL: 1234 AB, BE: 4 Ziffern, SE: 123 45 (IE: Eircode fehlt oft oder steht als Grafschaft -> nicht prüfen)
+POSTCODE_FORMAT = {"NL": r"\d{4}\s?[A-Z]{2}", "BE": r"\d{4}", "SE": r"\d{3}\s?\d{2}"}
 
 
 def run(c: dict, seg: str, shared: dict | None = None) -> dict:

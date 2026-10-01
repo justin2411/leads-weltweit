@@ -37,6 +37,15 @@ Der Scout ist eine Claude-Sitzung (Routine „Quellen-Scout“). Je Sitzung:
    Leads aus seinem eigenen Markt. Vorschläge stehen unten in „Vorschläge Länder/Branchen“.
 7. Ergebnis hier eintragen – auch Fehlschläge – und dem Inhaber eine kurze Zusammenfassung schicken.
 
+## Sprint 01.10. 21 Uhr – 02.10. 21 Uhr UTC (stündlich)
+
+Inhaber: „bis morgen verschiedene Länder und Branchen und kunden … mit maximal vielen Leads wie es unser system hergibt“.
+Reihenfolge: (1) schon erlaubte Länder ohne Abdeckung – IE, NL, BE, SE: kostenlose Lead-Quellen (Register,
+amtliche Bekanntmachungen, Overture) und Käufer im Kunden-Werk (`COUNTRIES`, Kategorien, Rechtsform-Regeln aus
+`countries.yaml`); (2) Lücken UK/FR (Kontakt für Neugründungen); (3) neue Branchen (`segments` idea); (4) neue Länder
+nur als vorbereiteter Vorschlag mit Rechtsgrundlage (Freischaltung in `countries.yaml` = Inhaber). Arbeitspakete, die
+länger als eine Stunde dauern, hier mit Stand eintragen und in der nächsten Runde fortsetzen.
+
 ## Bedarf (Stand 01.10.2026)
 
 | Bereich | Stand | Lücke |
@@ -80,3 +89,6 @@ Der Scout ist eine Claude-Sitzung (Routine „Quellen-Scout“). Je Sitzung:
 | 01.10.2026 | Colorado Business Entities (data.colorado.gov 4ykn-tg5h) | US Neugründungen | verworfen: keine Kontaktdaten (geprüft von der Routine-Sitzung, PR #85 als doppelt geschlossen) |
 | 01.10.2026 | **Annuaire des entreprises** (recherche-entreprises.api.gouv.fr, SIRENE, ohne Schlüssel) | Käufer FR (Rechtsform) | **eingebaut** (`sources/fr_sirene.py`, Kunden-Werk): Name + PLZ, nur eindeutige aktive Treffer; Test 8 abgelehnte FR-Käufer ohne PLZ: 3 eindeutig, alle Kapitalgesellschaften (SAS/SARL). Zusätzlich Mentions légales („SAS au capital“). PR #89 (Inhaber-Merge nötig: FR neu als Mail-Land) |
 | 01.10.2026 | Kunden-Werk Teil 2/7 | Betrieb | 2× hintereinander nach ~2,5 min abgebrochen („runner shutdown“, gleiche Domains je Teil) – vermutlich Riesen-Antwort einer Website; Abruf jetzt auf 2 MB begrenzt (`lib/fetch.capped_get`). Nach dem nächsten Lauf prüfen |
+| 01.10.2026 (Sprint R1) | **Overture Places IE/NL/BE/SE** (eigener Auszug `overture_ie_nl_be_se.parquet`, 52 s) | S2 IE/NL/BE/SE | **eingebaut** (Lead-Werk `s2-ie/nl/be/se`): ohne Website + Telefon + E-Mail: IE 13.019, BE 39.191, NL 25.412, SE 24.051 (≈100.000). Test je 60: NL 59, IE 56, SE 57 grün |
+| 01.10.2026 (Sprint R1) | Kunden-Werk IE/NL/BE/SE (Overture-Kategorien) | Käufer | **eingebaut** (COUNTRIES, Pool v2, Rechtsform NL B.V./N.V., BE BV/SRL/NV/SA, SE AB + Org.nr 5xxxxx = AB, Kontext KvK/BTW/TVA). Käufer mit Website+Telefon im Auszug z. B. S2: NL 2.790, BE 1.011, SE 568, IE 290; S12 Marketing: NL 8.121. Test 58 Firmen: 10 ok (17 %), Hauptgrund Rechtsform nicht belegt (viele NL/BE-Kleinfirmen sind eenmanszaak/VOF = zu Recht nur Anruf/Brief) |
+| 01.10.2026 (Sprint R1) | BE: KBO/BCE Open Data (Rechtsform je Unternehmensnummer) | Käufer BE | **Kandidat**: kostenlos, aber Download nur nach (kostenloser) Registrierung -> Inhaber fragen |

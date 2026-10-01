@@ -38,7 +38,13 @@ LEGAL_PATTERNS = {
     "FR": [(r"\bSASU\b", "SASU"), (r"\bSAS\b", "SAS"), (r"\bSARL\b", "SARL"), (r"\bEURL\b", "EURL"),
            (r"\bS\.A\.\b|\bSA\b(?= au capital)", "SA")],
     "US": [(r"\bL\.?L\.?C\.?\b", "LLC"), (r"\b(Inc\.?|Incorporated)\b", "Inc"), (r"\bCorp(oration)?\b", "Corp")],
+    # Scout-Sprint 01.10.2026: Kapitalgesellschaften wie in lib/rules.COMPANY_FORMS
+    "NL": [(r"\bB\.\s?V\.?(?=\W|$)", "BV"), (r"\bN\.\s?V\.?(?=\W|$)", "NV")],
+    "BE": [(r"\bB\.?V\.?(?=\W|$)", "BV"), (r"\bS\.?R\.?L\.?(?=\W|$)", "SRL"), (r"\bN\.?V\.?(?=\W|$)", "NV"),
+           (r"\bS\.?A\.?(?=\W|$)", "SA"), (r"\bBVBA\b", "BVBA"), (r"\bSPRL\b", "SPRL")],
+    "SE": [(r"\bAB\b", "AB"), (r"\bAktiebolag(et)?\b", "AB")],
 }
+SE_ORGNR_AB = re.compile(r"(org\.?\s*nr\.?|organisationsnummer|org\.?\s*nummer)\s*:?\s*5\d{5}-?\d{4}\b", re.I)
 FR_LEGAL_TEXT = [
     (r"soci[ée]t[ée] par actions simplifi[ée]e unipersonnelle", "SASU"),
     (r"soci[ée]t[ée] par actions simplifi[ée]e", "SAS"),
@@ -72,6 +78,16 @@ def detect_legal_form(country: str, name: str, text: str) -> tuple[str | None, s
         m = re.search(r"(©|&copy;|copyright|registered|company)[^<\n]{0,120}" + pat, text, re.I)
         if m:
             return form, reg_no
+    if country in ("NL", "BE", "SE"):
+        # Impressum/Fußzeile: Rechtsform neben KvK-, BTW-/TVA- oder Organisationsnummer (Scout-Sprint 01.10.2026)
+        ctx = (r"(kvk|kamer van koophandel|btw|tva|ondernemingsnummer|num[ée]ro d'entreprise|org\.?\s*nr|"
+               r"organisationsnummer|bedrijfsgegevens|handelsregister)")
+        for pat, form in LEGAL_PATTERNS.get(country, []):
+            if re.search(ctx + r"[^<\n]{0,120}" + pat, text, re.I) or re.search(pat + r"[^<\n]{0,120}" + ctx, text, re.I):
+                return form, None
+        # SE: Organisationsnummer 5xxxxx-xxxx = Aktiebolag (Bolagsverket-Nummernkreis)
+        if country == "SE" and SE_ORGNR_AB.search(text):
+            return "AB", None
     if country == "FR":
         # Mentions légales (Pflichtangaben): „SAS au capital de …“, „Forme juridique : SARL“, ausgeschriebene Formen
         for pat, form in FR_LEGAL_TEXT:

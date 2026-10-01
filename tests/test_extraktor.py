@@ -493,5 +493,44 @@ class CappedFetchTests(unittest.TestCase):
         self.assertTrue(s.get.call_args.kwargs["stream"])
 
 
+
+class MoreCountriesTests(unittest.TestCase):
+    """Scout-Sprint 01.10.2026: S2-Leads und Käufer auch in IE, NL, BE, SE (countries.yaml allowed)."""
+
+    def test_overture_extract_per_country(self):
+        from extraktor.sources import overture
+        self.assertEqual(overture.code("UK"), "GB")
+        self.assertEqual(overture.cache_for("UK"), overture.CACHE)
+        for co in ("IE", "NL", "BE", "SE"):
+            self.assertEqual(overture.cache_for(co), overture.CACHE_NORTH)
+        self.assertTrue(overture.BRANDS.search("Albert Heijn Utrecht"))
+        self.assertFalse(overture.BRANDS.search("Action Plumbing Dublin"))
+
+    def test_postcodes_and_company_forms(self):
+        from extraktor.qc import postcode_ok
+        self.assertTrue(postcode_ok({"country": "NL", "zip": "1012 AB"}))
+        self.assertFalse(postcode_ok({"country": "NL", "zip": "Amsterdam"}))
+        self.assertTrue(postcode_ok({"country": "SE", "zip": "114 55"}))
+        self.assertIsNone(postcode_ok({"country": "IE", "zip": "Co. Cork"}))
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+        from prospects import detect_legal_form
+        from lib.rules import is_company_form
+        for co, name in (("NL", "Webbureau Zon B.V."), ("SE", "Webbyrå Norr AB"), ("BE", "Studio X BV")):
+            form = detect_legal_form(co, name, "")[0]
+            self.assertTrue(form and is_company_form(co, form), (co, name, form))
+        self.assertIsNone(detect_legal_form("NL", "Bakkerij Jansen", "")[0])
+        self.assertEqual(detect_legal_form("NL", "Niessink", "KvK 12345678 | Niessink Media B.V.")[0], "BV")
+        self.assertEqual(detect_legal_form("BE", "Maslo", "Maslo BV – BTW BE0123.456.789")[0], "BV")
+        self.assertEqual(detect_legal_form("SE", "Kopa", "Org.nr: 556677-8899")[0], "AB")
+        self.assertIsNone(detect_legal_form("SE", "Kopa", "Org.nr: 860101-1234")[0])  # Einzelfirma (Personennummer)
+
+    def test_new_countries_in_werke(self):
+        import kundenwerk as K
+        from extraktor import filters
+        for co in ("IE", "NL", "BE", "SE"):
+            self.assertIn(co, K.COUNTRIES.values())
+            self.assertIsNone(filters.pre_filter({"name": "Joe's Bakery", "country": co}))
+
+
 if __name__ == "__main__":
     unittest.main()
