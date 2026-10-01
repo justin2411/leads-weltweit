@@ -23,6 +23,7 @@ import os
 import re
 import sys
 import threading
+import time
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -233,6 +234,7 @@ def cmd_run(args) -> int:
         # fest nach Domain verteilt: parallele Teile prüfen nie dieselbe Firma
         pool = [d for d in pool if int(hashlib.md5(d["domain"].encode()).hexdigest(), 16) % n == i]
     pool = pool[:args.max]
+    deadline = time.monotonic() + args.deadline_min * 60 if args.deadline_min else 0
     uk = {d["domain"]: d["name"] for d in pool if d["country"] == "UK"}
     if uk:
         from extraktor.sources import uk_ch
@@ -243,7 +245,9 @@ def cmd_run(args) -> int:
     if fr:
         # FR: Rechtsform aus dem offenen Firmenregister (SIRENE), sonst blieben fast alle „nur Anruf/Brief“
         from extraktor.sources import fr_sirene
-        hits = fr_sirene.match_by_name(fr, log=log)
+        # Abstand wächst mit der Zahl paralleler Teile: alle zusammen bleiben unter 7 Abfragen/s
+        n = int(args.shard.split("/")[1]) if args.shard else 1
+        hits = fr_sirene.match_by_name(fr, log=log, pause=max(1.0, n / 6))
         for d in pool:
             d["fr_reg"] = hits.get(d["domain"])
     log(f"Käufer: {have} geprüft (Ziel {args.target}), {len(known)} Domains schon bekannt, {len(pool)} neue in diesem Lauf")
@@ -252,6 +256,9 @@ def cmd_run(args) -> int:
     stats, lock, batch = Counter(), threading.Lock(), []
 
     def work(d):
+        if deadline and time.monotonic() >= deadline:
+            stats["später"] += 1  # Zeitfenster vorbei: kommt im nächsten Lauf wieder dran
+            return
         try:
             row = check_one(d, fetcher, cfg, generic, blocked)
         except Exception as exc:  # noqa: BLE001 - eine Firma darf den Lauf nicht beenden
@@ -276,7 +283,7 @@ def cmd_run(args) -> int:
     with lock:
         flush()
     log(f"fertig: {stats['ok']} neue Käufer per E-Mail, {stats['call_only']} nur Anruf/Brief, "
-        f"{stats['rejected']} ohne Kontaktweg, {stats['fehler']} Fehler")
+        f"{stats['rejected']} ohne Kontaktweg, {stats['fehler']} Fehler, {stats['später']} auf den nächsten Lauf verschoben")
     for k, v in sorted(stats.items()):
         if "/" in k:
             log(f"  {k} {v}")
@@ -304,6 +311,8 @@ def main(argv=None) -> int:
     r.add_argument("--max", type=int, default=3000)
     r.add_argument("--workers", type=int, default=16)
     r.add_argument("--target", type=int, default=TARGET)
+    r.add_argument("--deadline-min", type=float, default=0,
+                   help="nach N Minuten keine neuen Firmen mehr anfangen, Ergebnisse speichern (0 = aus)")
     sub.add_parser("stand")
     args = ap.parse_args(argv)
     if args.cmd == "pool":

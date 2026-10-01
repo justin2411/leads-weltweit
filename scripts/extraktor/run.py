@@ -326,12 +326,16 @@ def ampel(l: dict) -> str:
 
 
 def run_segment(seg: str, pool: list[dict], per: int, fetcher, shared: Counter, guard: filters.Guard,
-                workers: int, max_tries: int, progress=None) -> list[dict]:
-    """Kandidaten in Wellen parallel bearbeiten, bis `per` grüne Leads da sind oder der Vorrat leer ist."""
+                workers: int, max_tries: int, progress=None, deadline: float = 0) -> list[dict]:
+    """Kandidaten in Wellen parallel bearbeiten, bis `per` grüne Leads da sind, der Vorrat leer ist oder die
+    Frist (`deadline`, time.monotonic(); 0 = keine) abgelaufen ist."""
     done, i, started = [], 0, time.monotonic()
     queue = pool[:max_tries]
     with ThreadPoolExecutor(max_workers=workers) as ex:
         while i < len(queue) and sum(l["ampel"] == "green" for l in done) < per:
+            if deadline and time.monotonic() >= deadline:
+                log(f"  {seg}: Zeitfenster vorbei, Rest im nächsten Lauf")
+                break
             need = per - sum(l["ampel"] == "green" for l in done)
             batch = queue[i:i + max(workers, min(workers * 3, need * 3))]
             i += len(batch)
@@ -423,7 +427,10 @@ def main(argv=None) -> int:
     ap.add_argument("--store", action="store_true", help="grüne Leads direkt in die Datenbank schreiben (mit --db)")
     ap.add_argument("--shard", default="", help="i/n: nur jeden n-ten Kandidaten ab i (parallele Teilläufe)")
     ap.add_argument("--out", default="out/extraktor")
+    ap.add_argument("--deadline-min", type=float, default=0,
+                    help="nach N Minuten keine neuen Kandidaten mehr anfangen, Ergebnisse speichern (0 = aus)")
     args = ap.parse_args(argv)
+    deadline = time.monotonic() + args.deadline_min * 60 if args.deadline_min else 0
     countries = [x.strip().upper() for x in args.countries.split(",") if x.strip()]
     segs = [s.strip().upper() for s in args.segments.split(",") if s.strip()]
     stats = Counter()
@@ -475,15 +482,22 @@ def main(argv=None) -> int:
     log("Kandidaten je Branche: " + ", ".join(f"{k} {len(p[k])}" for k in keys))
 
     out = Path(args.out)
-    leads = []
+    leads, failed = [], []
     for key in keys:
+        if deadline and time.monotonic() >= deadline:
+            log(f"{key}: Zeitfenster vorbei, Branche im nächsten Lauf")
+            continue
         seg = key.split("/")[0]
         part = run_segment(seg, p.get(key, []), args.per, fetcher, shared, guard, args.workers, args.max_tries,
-                           progress=lambda part: write(out, leads + part, args.per))
+                           progress=lambda part: write(out, leads + part, args.per), deadline=deadline)
         leads += part
         if args.store and guard.db is not None:
             from extraktor.store import store_new
-            log(f"{key}: Datenbank {store_new(guard.db, guard, [row(l) for l in part if l['ampel'] != 'skip'])}")
+            try:
+                log(f"{key}: Datenbank {store_new(guard.db, guard, [row(l) for l in part if l['ampel'] != 'skip'])}")
+            except Exception as exc:  # noqa: BLE001 - eine Branche darf die übrigen nicht mitreißen
+                failed.append(key)
+                log(f"{key}: Speichern fehlgeschlagen ({type(exc).__name__}: {str(exc)[:200]}), weiter mit der nächsten")
         write(out, leads, args.per)  # nach jeder Branche sichern (Abbruch kostet nur die laufende Branche)
     sc.batch_unique([l for l in leads if l["ampel"] in ("green", "yellow")])
     for l in leads:
@@ -497,7 +511,7 @@ def main(argv=None) -> int:
     for seg, r in rep["segments"].items():
         log(f"  {seg}: Vorrat {r['pool']}, bearbeitet {r['processed']}, grün {r.get('green', 0)}, "
             f"gelb {r.get('yellow', 0)}, rot {r.get('red', 0)} – {r['top_reasons'][:4]}")
-    return 0
+    return 1 if failed else 0  # rot im Actions-Lauf, aber erst nachdem alle übrigen Branchen gespeichert sind
 
 
 if __name__ == "__main__":
