@@ -15,8 +15,11 @@ Der Scout ist eine tägliche Claude-Sitzung (Routine „Quellen-Scout“). Je Si
    Welches Signal, wie frisch? Hochrechnung pro Monat.
 5. Brauchbar (Signal passt zur Branche, ≥ 20 % lieferbar nach Anreicherung oder großer Rohbestand): als Quellenmodul
    in `scripts/extraktor/sources/` bzw. als Kategorie im Kunden-Werk einbauen, Tests schreiben, im Lead-Werk
-   (`.github/workflows/lead-werk.yml`) bzw. Kunden-Werk eintragen, Pull Request öffnen. Gemergt wird nach den
-   Regeln in CLAUDE.md (Inhaber sagt „merge“).
+   (`.github/workflows/lead-werk.yml`) bzw. Kunden-Werk eintragen, Pull Request öffnen. **Dauerfreigabe
+   (Inhaber 01.10.2026: „nein ohne merge … so schnell und so viele leads wie möglich“):** Der Scout mergt solche PRs
+   selbst, sobald Tests und GitHub-Prüfungen grün sind – nur für neue Quellen/Kategorien und deren Einbindung in die
+   Werke. Versand, Sperrliste, Prüfregeln (QC/SC, check_prospect), Länderregeln und Kosten fasst er nie an; solche
+   Änderungen gehen weiter über den Inhaber. Jeder selbst gemergte PR wird dem Inhaber im Chat gemeldet.
 6. Ergebnis hier eintragen – auch Fehlschläge – und dem Inhaber eine kurze Zusammenfassung schicken.
 
 ## Bedarf (Stand 01.10.2026)
@@ -29,6 +32,8 @@ Der Scout ist eine tägliche Claude-Sitzung (Routine „Quellen-Scout“). Je Si
 | S4/S5/S9 UK, FR | Neugründungen, nur 1–3 % lieferbar | Neugründungen mit Website/Telefon, Wachstumssignale |
 | S6 Büro/Coworking, S7 Reinigung (Leads) | keine Quelle | neue Standorte, Umzüge, neue Hallen/Filialen |
 | Kunden-Werk | Overture US/UK/FR, ~20 Kategorien | weitere Käufer-Branchen, Kontaktwege |
+| US Neugründungen | FMCSA, Form D, Connecticut-Register | weitere Bundesstaaten-Register mit E-Mail/Telefon |
+| Rohbestand ohne Telefon | CT-S2 (Freemail-Gründer) | kostenlose Quelle für Telefonnummern |
 
 ## Bereits geprüft
 
@@ -48,3 +53,5 @@ Der Scout ist eine tägliche Claude-Sitzung (Routine „Quellen-Scout“). Je Si
 | 01.10.2026 | France Travail / La Bonne Boîte | S1 FR | rechtlich ausgeschlossen (L5331-1) |
 | 01.10.2026 | Apprenticeships API (UK) | S1 UK | Schlüssel nötig – nicht genutzt |
 | 01.10.2026 | Brave Search API | Websites finden | kostenpflichtig – nicht genutzt |
+| 01.10.2026 | **Connecticut Business Registry** (data.ct.gov n7gp-d28j + Principals ka36-64k6) | S2/S4/S5/S9 US | **eingebaut** (`sources/ct_registry.py`, Lead-Werk `us-ct-0/1`): ~7.700 Neugründungen/44 Tage, alle mit E-Mail (63 % Freemail), Inhaber bei 96 %; Test 480: S4 12 %, S5 11 %, S9 14 % grün, S2 0 % (kein Telefon → Rohbestand). ≈ 230 grüne Leads + 3.500 Rohbestand/Monat |
+| 01.10.2026 | **UK Food Hygiene Rating Scheme API** (FSA, „AwaitingInspection“) | S4/S7/S2 UK (neue Betriebe) | **Kandidat**: 35.608 Betriebe warten auf Erstprüfung, kein Telefon, 52 % volle Adresse, kein Datum → braucht Tages-Beobachtung (neue FHRSIDs) + Kontaktabgleich mit Overture (Name + PLZ) |

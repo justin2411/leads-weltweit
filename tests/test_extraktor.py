@@ -9,7 +9,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from extraktor import filters, qc, sc, segments  # noqa: E402
 from extraktor.model import title_case  # noqa: E402
-from extraktor.sources import careers, fmcsa, formd, jobs, overture  # noqa: E402
+from extraktor.sources import careers, ct_registry, fmcsa, formd, jobs, overture  # noqa: E402
 
 TODAY = dt.date.today()
 REG = (TODAY - dt.timedelta(days=3)).strftime("%Y%m%d")
@@ -388,6 +388,32 @@ class WerkeTests(unittest.TestCase):
         d = {"country": "UK", "phones": ["01902 123456"]}
         self.assertEqual(K.company_phone(d, {"html": ""}), "+441902123456")
         self.assertIsNone(K.company_phone({"country": "UK", "phones": ["+33 1 23 45 67 89"]}, {"html": ""}))
+
+
+class ConnecticutTests(unittest.TestCase):
+    """Quellen-Scout 01.10.2026: Connecticut-Firmenregister (Neugründungen mit E-Mail und Inhaber)."""
+    ROW = {"id": "001x", "accountnumber": "3526546", "name": "Bird Ride, LLC", "business_type": "LLC",
+           "status": "Active", "billingstreet": "85 Viscount Dr", "billing_unit": "A22", "billingcity": "Milford",
+           "billingstate": "CT", "billingpostalcode": "06460", "billingcountry": "United States",
+           "business_email_address": "jmarro487@icloud.com", "date_registration": TODAY.isoformat() + "T00:00:00.000",
+           "naics_code": "Passenger Car Rental (532111)"}
+
+    def test_candidate_and_segments(self):
+        c = ct_registry.to_candidate(self.ROW, "John Marro")
+        self.assertEqual((c["state"], c["zip"], c["facts"]["naics"]), ("CT", "06460", "532111"))
+        self.assertTrue(segments.fits("S2", c)[0])          # Freemail, keine eigene Domain
+        self.assertTrue(segments.fits("S4", c)[0])          # Autovermietung: Versicherungsbedarf
+        self.assertTrue(segments.fits("S9", c)[0])          # Inhaber bekannt
+        c2 = ct_registry.to_candidate(dict(self.ROW, business_email_address="info@birdride.com"))
+        self.assertFalse(segments.fits("S2", c2)[0])
+        self.assertFalse(segments.fits("S9", c2)[0])
+
+    def test_texts_pass_signal_control(self):
+        c = ct_registry.to_candidate(self.ROW, "John Marro")
+        for seg in ("S2", "S4", "S5", "S9"):
+            t = segments.texts(seg, c)
+            self.assertIn(", CT", t["company_info"])
+            self.assertEqual(sc.run(c, seg, t)["status"], "pass", (seg, sc.run(c, seg, t)))
 
 
 if __name__ == "__main__":

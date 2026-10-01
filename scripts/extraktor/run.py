@@ -225,6 +225,30 @@ def load_careers(country: str, probe_limit: int, workers: int, fetcher, stats: C
     return cands
 
 
+def load_ct(days: int, stats: Counter) -> list[dict]:
+    """US/Connecticut: Neugründungen mit E-Mail aus dem offenen Firmenregister, Inhaber aus der Principals-Tabelle."""
+    from extraktor.sources import ct_registry
+    rows = ct_registry.fetch(dt.date.today() - dt.timedelta(days=days), log=log)
+    people = ct_registry.principals([r["id"] for r in rows], log=log)
+    cands = [ct_registry.to_candidate(r, people.get(r["id"])) for r in rows]
+    cands = filters.dedupe([c for c in cands if not filters.pre_filter(c)])
+    stats["ct_candidates"] = len(cands)
+    return cands
+
+
+def ct_pools(segs: list[str], cands: list[dict]) -> dict[str, list[dict]]:
+    """Jede CT-Firma in genau eine Branche: Freemail ohne eigene Domain -> S2, sonst abwechselnd S4/S5/S9."""
+    p: dict[str, list[dict]] = defaultdict(list)
+    rest = [s for s in ("S4", "S5", "S9") if s in segs]
+    for i, c in enumerate(cands):
+        order = (["S2"] if "S2" in segs else []) + (rest[i % len(rest):] + rest[:i % len(rest)] if rest else [])
+        for seg in order:
+            if segments.fits(seg, c)[0]:
+                p[seg].append(c)
+                break
+    return p
+
+
 def eu_pools(segs: list[str], cands: list[dict], country: str) -> dict[str, list[dict]]:
     """UK/FR-Neugründungen abwechselnd auf S4/S5/S9 verteilen (jede Firma nur einmal), nur mit Ansprechperson."""
     p: dict[str, list[dict]] = defaultdict(list)
@@ -389,6 +413,7 @@ def main(argv=None) -> int:
     ap.add_argument("--db", action="store_true", help="Sperrliste und vorhandene Leads aus Supabase prüfen")
     ap.add_argument("--countries", default="US", help="US,UK,FR")
     ap.add_argument("--uk-days", type=int, default=30)
+    ap.add_argument("--ct-days", type=int, default=0, help="US/Connecticut-Register: Neugründungen der letzten N Tage (0 = aus)")
     ap.add_argument("--fr-days", type=int, default=30)
     ap.add_argument("--eu-pool", type=int, default=15000, help="UK: höchstens so viele Neugründungen vorab auswählen")
     ap.add_argument("--s1-probe", type=int, default=3000, help="S1 UK/US: so viele Karriereseiten prüfen")
@@ -411,6 +436,10 @@ def main(argv=None) -> int:
                   else ([], Counter()))
     fd = load_formd(args.formd_days, args.formd_max_docs, stats) if us and any(s in segs for s in FORM_D_SEGMENTS) else []
     p = pools(segs, fm, fd, distinct=not args.no_distinct) if us else {}
+    if us and args.ct_days:
+        for k, v in ct_pools(segs, load_ct(args.ct_days, stats)).items():
+            p.setdefault(k, [])
+            p[k] = v + p[k]
     from enrich import Fetcher
     fetcher = Fetcher()
     if "UK" in countries and any(s in segs for s in EU_SEGMENTS):
