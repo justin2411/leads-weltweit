@@ -18,6 +18,12 @@ Laufende Entscheidungen des Gehirns (Preise, Seitenvarianten) stehen zusätzlich
 | Erste Lieferung | Freigabe im Dashboard statt GitHub, oder automatisch, wenn bis Montag 12 Uhr nichts kommt | Dashboard-Knopf |
 | Meldungen bündeln | Kaufinteresse an horbach.de, Verkäufe an gmail, Berichte an OWNER_EMAIL | eine Adresse |
 
+## 01.10.2026
+
+- **Alle Kontaktdaten sammeln:** „nimm diese regel wieder raus und lass uns alle daten sammeln die wir finden“ → Leads dürfen
+  auch Handynummern und Freemail-Adressen von Inhabern/Officers enthalten, wenn eine erlaubte Quelle sie veröffentlicht
+  (Anlass: FMCSA-Daten mit Handy und Gmail von Einzelfahrern). Quellen-Regeln und Kaltmail-Regeln unverändert.
+
 ## 29.09.2026
 
 - **Preise überall wie UK:** „warum kosten die leads bei us mehr als uk? lass alle gleich auf den preisen von uk“ → Starter 129, Pro 249 in £, $ und € (vorher US $159/$299, FR 149 €/289 €).
