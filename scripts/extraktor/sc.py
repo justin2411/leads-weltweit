@@ -106,7 +106,8 @@ def batch_unique(leads: list[dict]) -> None:
         for l in leads:
             seen.setdefault((l.get(k) or "").strip().lower(), []).append(l)
         for text, group in seen.items():
-            if text and len(group) > 1:
+            # derselbe Text bei derselben Firma (z. B. S1 und S9) ist kein Fehler – nur bei verschiedenen Firmen
+            if text and len({(l.get("source"), l.get("source_id")) for l in group}) > 1:
                 for l in group:
                     l["sc"]["problems"].append(f"{k}_not_unique")
                     l["sc"]["status"] = "fail"

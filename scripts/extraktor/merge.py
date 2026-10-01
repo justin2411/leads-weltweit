@@ -32,13 +32,19 @@ def main(argv=None) -> int:
                 rows.append(r)
     for r in rows:  # Grammatik aus älteren Läufen: "a outlook.com" -> "an outlook.com"
         r["signal"] = re.sub(r"\ba ([aeiou][\w.-]*\.[a-z]{2,} address)", r"an \1", r["signal"])
+    # Einmaligkeit neu bewerten: alte "_not_unique"-Treffer entfernen und Ampel neu setzen
+    for r in rows:
+        probs = [x for x in r["sc_notes"].split("; ") if x and not x.endswith("_not_unique")]
+        r["sc_notes"] = "; ".join(probs)
+        r["sc"] = "fail" if probs else "pass"
+        r["ampel"] = ("red" if r["qc"] == "red" or probs else "green" if r["qc"] == "green" else "yellow")
     for k in ("signal", "company_info", "opener"):
         groups = defaultdict(list)
         for r in rows:
             if r["ampel"] in ("green", "yellow") and r[k].strip():
                 groups[r[k].strip().lower()].append(r)
         for g in groups.values():
-            if len(g) > 1:
+            if len({(r["source"], r["source_id"]) for r in g}) > 1:
                 for r in g:
                     r["ampel"], r["sc"] = "red", "fail"
                     r["sc_notes"] = "; ".join(x for x in (r["sc_notes"], f"{k}_not_unique") if x)

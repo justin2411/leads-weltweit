@@ -171,10 +171,14 @@ class SignalTests(unittest.TestCase):
         t = segments.texts("S4", c)
         t["opener"] += " Guaranteed savings!"
         self.assertEqual(sc.run(c, "S4", t)["status"], "fail")
-        a = {**segments.texts("S4", c), "sc": {"status": "pass", "problems": []}}
-        b = {**segments.texts("S4", c), "sc": {"status": "pass", "problems": []}}
+        a = {**segments.texts("S4", c), "source": "fmcsa", "source_id": "1", "sc": {"status": "pass", "problems": []}}
+        b = {**segments.texts("S4", c), "source": "fmcsa", "source_id": "2", "sc": {"status": "pass", "problems": []}}
         sc.batch_unique([a, b])
-        self.assertEqual(a["sc"]["status"], "fail")
+        self.assertEqual(a["sc"]["status"], "fail")  # gleicher Text bei zwei Firmen
+        x = {**segments.texts("S4", c), "source": "fmcsa", "source_id": "1", "sc": {"status": "pass", "problems": []}}
+        y = {**segments.texts("S4", c), "source": "fmcsa", "source_id": "1", "sc": {"status": "pass", "problems": []}}
+        sc.batch_unique([x, y])
+        self.assertEqual(x["sc"]["status"], "pass")  # dieselbe Firma in zwei Branchen
 
 
 class FixTests(unittest.TestCase):
