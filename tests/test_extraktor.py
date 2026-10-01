@@ -339,5 +339,47 @@ class CareersTests(unittest.TestCase):
         self.assertFalse(careers._finish(js, "website", "u", "UK", {})["ok"])
 
 
+class WerkeTests(unittest.TestCase):
+    """Lead-Werk (Speicherung) und Kunden-Werk (Käuferauswahl) ohne Netz."""
+
+    def test_signal_types_per_source(self):
+        from extraktor.store import signal_type
+        self.assertEqual(signal_type("S2", "overture"), "no_website")
+        self.assertEqual(signal_type("S1", "careers"), "jobs_open")
+        self.assertEqual(signal_type("S4", "companies_house"), "incorporation")
+        self.assertEqual(signal_type("S4", "fmcsa"), "new_fleet")
+
+    def test_store_skips_known_brands_and_duplicates(self):
+        from extraktor.store import store_new
+
+        class FakeGuard:
+            known = {("overture", "known")}
+
+        class FakeDB:
+            written = []
+
+        import extraktor.store as S
+        calls = []
+        orig = S.store_many
+        S.store_many = lambda db, rows: calls.append(rows) or len(rows)
+        try:
+            base = {"ampel": "green", "source": "overture", "company": "Joe's Cafe", "signal_date": TODAY}
+            rows = [dict(base, source_id="a"), dict(base, source_id="a"), dict(base, source_id="known"),
+                    dict(base, source_id="b", company="EUROSPAR Ballywalter"), dict(base, source_id="c", ampel="yellow")]
+            res = store_new(FakeDB(), FakeGuard(), rows)
+        finally:
+            S.store_many = orig
+        self.assertEqual(res["neu"], 1)
+        self.assertEqual([r["source_id"] for r in calls[0]], ["a"])
+        self.assertEqual(calls[0][0]["signal_date"], TODAY.isoformat())
+
+    def test_kundenwerk_categories_map_to_real_segments(self):
+        import kundenwerk as K
+        self.assertTrue(set(K.CATEGORIES.values()) <= {"S1", "S2", "S3", "S4", "S5", "S6", "S7", "S9", "S10", "S12"})
+        self.assertEqual(K.CATEGORIES["employment_agency"], "S1")
+        self.assertTrue(K.NOT_OWN_SITE.search("https://www.facebook.com/joescafe"))
+        self.assertFalse(K.NOT_OWN_SITE.search("https://flexrecruitment.co.uk"))
+
+
 if __name__ == "__main__":
     unittest.main()

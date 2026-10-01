@@ -26,8 +26,16 @@ Laufende Entscheidungen des Gehirns (Preise, Seitenvarianten) stehen zusätzlich
 - **S2 ohne Namen:** „ja“ → S2-Leads ohne Registernamen tragen die Rolle („Owner (ask for the owner)“).
 - **S1 nicht in Frankreich:** Frage „Sollen wir für FR bei S1 bleiben lassen?“ → „bleiben“. Code du travail L5331-1
   verbietet den Verkauf von Stellenangeboten; keine France-Travail-/La-Bonne-Boîte-Daten, keine S1-Leads für FR.
-- **S1 aus Karriereseiten:** „ja mach das“ → täglicher Lauf `extraktor-s1.yml` (UK + US): eigene Karriereseiten der
-  Firmen aus der Web-Data-Commons-Liste, keine Jobbörsen; Personalvermittler, Behörden und Konzerne ausgeschlossen.
+- **S1 aus Karriereseiten:** „ja mach das“ → eigene Karriereseiten der Firmen aus der Web-Data-Commons-Liste
+  (UK + US), keine Jobbörsen; Personalvermittler, Behörden und Konzerne ausgeschlossen. Läuft im Lead-Werk.
+- **Lead-Werk:** „Können wir das ab sofort an einen eigenen Bereich … der 24/7 die leads holt und anreichert“ → „ja“.
+  `lead-werk.yml` alle 3 Stunden, grüne Leads direkt in Supabase, keine Lead-Dateien als Artefakt (Repo öffentlich).
+- **Lead-Suche wieder an:** „war nur die Pause für kunden gedacht, weil erstmal keine kaltmails raussollen“ →
+  `config/pipeline.yaml` `lead_suche: true`; der Versand bleibt aus (`config/versand.yaml`).
+- **Kunden-Werk:** „ein Kunden-Werk … was 24/7 läuft bis 100.000 voll ist“ → `kunden-werk.yml` alle 2 Stunden,
+  Käufer aus Overture (US/UK/FR, mit Website) geprüft in `prospects`, Ziel 100.000 geprüfte Käufer, kein Versand.
+- **Datenbank:** „brauchst du nicht kannst du alles selber machen“ → Datenbank-Änderungen für die Werke ohne
+  Rückfrage (weiterhin nicht destruktiv).
 
 ## 29.09.2026
 

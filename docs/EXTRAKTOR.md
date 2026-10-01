@@ -93,9 +93,27 @@ der Do-Not-Call-Liste abgleichen (TCPA). Gehört in die Lieferbedingungen.
 - S1 Zusatzquellen (getestet 01.10.2026 auf GitHub): Workable-Boards aus Common Crawl (1.725 Boards, ~7 % mit
   3+ Stellen in UK, ~6 % in US); DOL-LCA/PERM-Dateien (US-Arbeitgeber mit Visa-Anträgen) sind abrufbar.
 
-## S1 aus Karriereseiten (`sources/careers.py`, `extraktor-s1.yml`)
+## Lead-Werk (`.github/workflows/lead-werk.yml`)
 
-Täglich 05:17 UTC. Je Firma: Startseite → Karriere-Link (ggf. Unterseite „Vacancies“) → Stellen aus dem offiziellen
+Alle 3 Stunden, 7 parallele Teile: S2 UK, S2 FR (Overture), US FMCSA (S2/S4/S5), US Form D (S1/S5/S9),
+UK-Register und FR-Register (S4/S5/S9), S1 Karriereseiten (UK/US). Jeder Teil: `run.py … --db --store`.
+Schon gespeicherte Firmen (Quelle + ID in `watch_companies`) werden vorab aussortiert; bei Overture holt jeder Lauf
+die nächsten noch unbekannten Firmen. Grüne Leads schreibt `store.store_new` blockweise (Firma, Kontakt, Person,
+Prüfung, Profil, Ereignis, Lead); bricht ein Block ab, werden dessen Firmen wieder entfernt. Filialen bekannter Ketten
+(`overture.BRANDS`) sind keine S2-Leads. Artefakt nur `bericht.json` (Zahlen). Schalter `lead_suche`.
+
+## Kunden-Werk (`scripts/kundenwerk.py`, `.github/workflows/kunden-werk.yml`)
+
+Alle 2 Stunden, 4 parallele Teile. Käufer-Liste einmal im Monat aus Overture (Kategorien → Zielgruppe, US/UK/FR, mit
+Website, ohne Ketten). Je Firma: Startseite + Kontakt-/Impressumsseiten → Firmen-E-Mail (eigene Domain; sonst die
+E-Mail aus dem Overture-Eintrag der Firma), Rechtsform; UK ohne Rechtsform auf der Website: eindeutiger Name in
+Companies House → Ltd. Dann `lib.rules.check_prospect`. Jede Domain wird gespeichert (ok oder rejected mit Grund),
+damit sie nicht erneut abgerufen wird. Ziel: 100.000 Käufer mit `check_status = ok`. Kein Versand. Schalter
+`kunden_suche`.
+
+## S1 aus Karriereseiten (`sources/careers.py`, Teil des Lead-Werks)
+
+Je Firma: Startseite → Karriere-Link (ggf. Unterseite „Vacancies“) → Stellen aus dem offiziellen
 Bewerbungssystem (Lever, Greenhouse, Workable, Recruitee, Breezy, Pinpoint) oder aus JSON-LD der eigenen Seite.
 Ohne strukturierte Daten zählen nur Links, deren Text oder Adresse eine Stellenbezeichnung ist, und nur wenn die
 Firma selbst im Land sitzt. Das erste Sehen je Stelle steht im Cache (`out/cache/careers_seen.json`), damit

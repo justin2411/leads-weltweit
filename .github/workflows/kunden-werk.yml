@@ -1,0 +1,69 @@
+# Kunden-Werk (Inhaber 01.10.2026: „ein Kunden-Werk … was 24/7 läuft bis 100.000 voll ist“).
+# Alle 2 Stunden: Käufer der Zielgruppen (Overture-Firmen mit Website, US/UK/FR) auf ihrer Website prüfen
+# (Firmen-E-Mail, Rechtsform, Prüfregeln) und in `prospects` speichern. Hört bei 100.000 geprüften Käufern auf.
+# Sendet NIE Mails (Versand steuert allein config/versand.yaml). Lädt keine Dateien hoch.
+# Schalter: config/pipeline.yaml kunden_suche.
+name: kunden-werk
+on:
+  schedule:
+    - cron: "41 */2 * * *"
+  workflow_dispatch:
+concurrency: { group: kunden-werk, cancel-in-progress: false }
+permissions:
+  contents: read
+jobs:
+  pool:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    outputs:
+      an: ${{ steps.gate.outputs.an }}
+      monat: ${{ steps.m.outputs.monat }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Schalter Kunden-Suche (config/pipeline.yaml)
+        id: gate
+        run: |
+          if grep -Eq '^kunden_suche:\s*true' config/pipeline.yaml || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "an=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Kunden-Suche pausiert (config/pipeline.yaml: kunden_suche: false)" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+      - id: m
+        run: echo "monat=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+      - id: cache
+        if: steps.gate.outputs.an == 'true'
+        uses: actions/cache@v4
+        with:
+          path: out/cache/kunden_pool.parquet
+          key: kunden-pool-${{ steps.m.outputs.monat }}
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.an == 'true' && steps.cache.outputs.cache-hit != 'true'
+        with: { python-version: "3.11" }
+      - name: Käufer-Liste aus Overture (einmal im Monat)
+        if: steps.gate.outputs.an == 'true' && steps.cache.outputs.cache-hit != 'true'
+        run: pip install -r requirements.txt && python scripts/kundenwerk.py pool
+
+  pruefen:
+    needs: pool
+    if: needs.pool.outputs.an == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - uses: actions/cache/restore@v4
+        with:
+          path: out/cache/kunden_pool.parquet
+          key: kunden-pool-${{ needs.pool.outputs.monat }}
+          fail-on-cache-miss: true
+      - name: Käufer prüfen und speichern
+        run: python scripts/kundenwerk.py run --shard ${{ matrix.shard }}/4 --max 2500 --workers 16 | tee -a "$GITHUB_STEP_SUMMARY"
