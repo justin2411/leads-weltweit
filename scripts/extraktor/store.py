@@ -115,9 +115,10 @@ def store_many(db, rows: list[dict], today: str | None = None, chunk: int = 100)
     return n
 
 
-def _store_block(db, block: list[dict], today: str) -> int:
+def _store_block(db, block: list[dict], today: str, once=None) -> int:
+    once = once or _store_block_once
     try:
-        return _store_block_once(db, block, today)
+        return once(db, block, today)
     except RuntimeError as e:
         if TIMEOUT not in str(e) or len(block) <= MIN_CHUNK:
             raise
@@ -127,7 +128,7 @@ def _store_block(db, block: list[dict], today: str) -> int:
         if len(block) <= MIN_CHUNK:
             raise
     half = len(block) // 2
-    return _store_block(db, block[:half], today) + _store_block(db, block[half:], today)
+    return _store_block(db, block[:half], today, once) + _store_block(db, block[half:], today, once)
 
 
 def _store_block_once(db, block: list[dict], today: str) -> int:
@@ -180,41 +181,45 @@ def store_raw(db, rows: list[dict], today: str | None = None, chunk: int = 100) 
     today = today or dt.date.today().isoformat()
     n = 0
     for i in range(0, len(rows), chunk):
-        part, ids = _insert_companies(db, rows[i:i + chunk], lambda r: dict(
-            company_row(r), active=r["ampel"] != "red", notes=f"Extraktor Rohbestand ({r['ampel']}) {today}"))
-        if not ids:
-            continue
-        try:
-            obs = []
-            for cid, r in zip(ids, part):
-                src = SOURCE_NAME.get(r["source"], r["source"])
-                notes = r["qc_notes"].split("; ") if r["qc_notes"] else []
-                obs += [
-                    _obs(cid, today, kind="other", key="contact", source_url=r["website"] or None,
-                         details={"phone": r["phone"] or None, "email": r["email"] or None,
-                                  "phone_type": r["phone_type"], "email_type": r["email_type"], "source": r["source"]}),
-                    _obs(cid, today, kind="other", key="person",
-                         details={"name": r["contact_name"] or None, "role": r["contact_role"] or None, "source": src}),
-                    _obs(cid, today, kind="other", key="quality",
-                         details={"complete": False, "blocking": r["ampel"] == "red", "qc": r["qc"], "sc": r["sc"],
-                                  "missing": [x[8:] for x in notes if x.startswith("missing:")],
-                                  "problems": [x for x in notes if not x.startswith(("missing:", "+"))]
-                                  + ([r["sc_notes"]] if r.get("sc_notes") else []),
-                                  "checked_on": today, "by": "extraktor"}),
-                    _obs(cid, today, kind="other", key="profile", details={"company_info": r["company_info"]}),
-                    _obs(cid, today, kind="filing", key=EVENT_KEY.get(r["source"], r["source"]), title=r["signal"],
-                         source_name=src, source_url=r["source_url"], posted_on=r["signal_date"] or None,
-                         details={"source_id": r["source_id"], "segment": r["segment"], "ampel": r["ampel"],
-                                  "opener": r["opener"], "urgency": r["urgency"], "urgency_reason": r["urgency_reason"]}),
-                ]
-            db.insert("observations", obs)
-        except Exception:
-            ids_in = ",".join(ids)
-            db.s.delete(f"{db.base}/observations", params={"company_id": f"in.({ids_in})"}, timeout=db.timeout)
-            db.s.delete(f"{db.base}/watch_companies", params={"id": f"in.({ids_in})"}, timeout=db.timeout)
-            raise
-        n += len(part)
+        n += _store_block(db, rows[i:i + chunk], today, _store_raw_once)
     return n
+
+
+def _store_raw_once(db, block: list[dict], today: str) -> int:
+    part, ids = _insert_companies(db, block, lambda r: dict(
+        company_row(r), active=r["ampel"] != "red", notes=f"Extraktor Rohbestand ({r['ampel']}) {today}"))
+    if not ids:
+        return 0
+    try:
+        obs = []
+        for cid, r in zip(ids, part):
+            src = SOURCE_NAME.get(r["source"], r["source"])
+            notes = r["qc_notes"].split("; ") if r["qc_notes"] else []
+            obs += [
+                _obs(cid, today, kind="other", key="contact", source_url=r["website"] or None,
+                     details={"phone": r["phone"] or None, "email": r["email"] or None,
+                              "phone_type": r["phone_type"], "email_type": r["email_type"], "source": r["source"]}),
+                _obs(cid, today, kind="other", key="person",
+                     details={"name": r["contact_name"] or None, "role": r["contact_role"] or None, "source": src}),
+                _obs(cid, today, kind="other", key="quality",
+                     details={"complete": False, "blocking": r["ampel"] == "red", "qc": r["qc"], "sc": r["sc"],
+                              "missing": [x[8:] for x in notes if x.startswith("missing:")],
+                              "problems": [x for x in notes if not x.startswith(("missing:", "+"))]
+                              + ([r["sc_notes"]] if r.get("sc_notes") else []),
+                              "checked_on": today, "by": "extraktor"}),
+                _obs(cid, today, kind="other", key="profile", details={"company_info": r["company_info"]}),
+                _obs(cid, today, kind="filing", key=EVENT_KEY.get(r["source"], r["source"]), title=r["signal"],
+                     source_name=src, source_url=r["source_url"], posted_on=r["signal_date"] or None,
+                     details={"source_id": r["source_id"], "segment": r["segment"], "ampel": r["ampel"],
+                              "opener": r["opener"], "urgency": r["urgency"], "urgency_reason": r["urgency_reason"]}),
+            ]
+        db.insert("observations", obs)
+    except Exception:
+        ids_in = ",".join(ids)
+        db.s.delete(f"{db.base}/observations", params={"company_id": f"in.({ids_in})"}, timeout=db.timeout)
+        db.s.delete(f"{db.base}/watch_companies", params={"id": f"in.({ids_in})"}, timeout=db.timeout)
+        raise
+    return len(part)
 
 
 def store_new(db, guard, rows: list[dict]) -> dict:
