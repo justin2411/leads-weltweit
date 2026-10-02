@@ -157,7 +157,7 @@ const CSS = `
 .bx .sx-steps b{display:block;font-size:17px;margin-bottom:6px;letter-spacing:-.01em}.bx .sx-steps p{margin:0;color:var(--soft);font-size:14.5px;line-height:1.55}
 .bx .sx-vid{position:relative;border-radius:22px;overflow:hidden;background:#0b1430;border:1.5px solid rgba(176,141,87,.55);box-shadow:0 40px 90px -50px rgba(11,20,48,.75),0 30px 70px -48px rgba(176,141,87,.6);aspect-ratio:16/9}
 .bx .sx-vid video{display:block;width:100%;height:100%;object-fit:cover;background:#0b1430}
-.bx .sx-steps.short{margin-top:16px}.bx .sx-steps.short li{padding:18px 20px;display:flex;align-items:center;gap:14px}
+.bx .sx-steps.short{margin-top:28px}.bx .sx-steps.short li{padding:18px 20px;display:flex;align-items:center;gap:14px}
 .bx .sx-steps.short .n{margin:0}.bx .sx-steps.short .n i{display:none}.bx .sx-steps.short .n span{font-size:26px}
 .bx .sx-steps.short b{margin:0;font-size:16px}
 @media (max-width:1100px){.bx .sx-steps{grid-template-columns:repeat(2,1fr)}}
