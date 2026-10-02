@@ -773,3 +773,17 @@ class DolLcaTests(unittest.TestCase):
         self.assertIn("signal_too_old", " ".join(sc.run(c, "S1", t, today=dt.date(2027, 3, 1))["problems"]))
         other = {**c, "source": "careers"}
         self.assertEqual(sc.MAX_AGE_BY_SOURCE.get(other["source"], sc.MAX_AGE_DAYS), 45)
+
+
+class KundenWerkNieStillTests(unittest.TestCase):
+    """Inhaber 02.10.2026: „es soll nie still stehen“ – Fokus durchgeprüft -> übrige Zielgruppen."""
+
+    def test_fill_up_adds_other_segments_only_when_focus_is_exhausted(self):
+        import kundenwerk as K
+        few = [{"segment": "S2", "domain": "a.com"}]
+        rest = [{"segment": "S2", "domain": "a.com"}, {"segment": "S5", "domain": "b.com"}]
+        out = K.fill_up(few, {"S2"}, lambda: rest)
+        self.assertEqual([d["domain"] for d in out], ["a.com", "b.com"])  # Fokus vorn, keine Doppelten
+        many = [{"segment": "S2", "domain": f"{i}.com"} for i in range(K.FALLBACK_MIN)]
+        self.assertIs(K.fill_up(many, {"S2"}, lambda: rest), many)
+        self.assertIs(K.fill_up(few, set(), lambda: rest), few)
