@@ -15,7 +15,7 @@ const TXT = {
   en: {
     eyebrow: "Subscription confirmed", hello: "Welcome to {b}", helloFirm: "Welcome to {b}, {f}.",
     lede: "Your subscription is active. Thank you for your trust, we look forward to working with you and to bringing you new clients at the right moment.",
-    plan: "Your plan", leads: "Leads per week", month: "About {n} per month", price: "Price", per: "per month", email: "Receipts and deliveries to", first: "First delivery",
+    plan: "Your plan", leads: "Leads per week", month: "About {n} per month", price: "Price", per: "per month", email: "Deliveries to", first: "First delivery",
     next: "What happens next",
     s1: ["Payment confirmed", "Your receipt is on its way to your inbox."],
     s2: ["Set your focus", "Choose the signals and the kind of companies you want. It takes two minutes."],
@@ -27,7 +27,7 @@ const TXT = {
   fr: {
     eyebrow: "Abonnement confirmé", hello: "Bienvenue chez {b}", helloFirm: "Bienvenue chez {b}, {f}.",
     lede: "Votre abonnement est actif. Merci de votre confiance, nous nous réjouissons de travailler avec vous et de vous apporter de nouveaux clients au bon moment.",
-    plan: "Votre formule", leads: "Pistes par semaine", month: "Environ {n} par mois", price: "Prix", per: "par mois", email: "Reçus et livraisons à", first: "Première livraison",
+    plan: "Votre formule", leads: "Pistes par semaine", month: "Environ {n} par mois", price: "Prix", per: "par mois", email: "Livraisons à", first: "Première livraison",
     next: "La suite",
     s1: ["Paiement confirmé", "Votre reçu arrive dans votre boîte e-mail."],
     s2: ["Définissez votre cible", "Choisissez les signaux et le type d'entreprises souhaités, en deux minutes."],
@@ -46,7 +46,7 @@ const CSS = `
 .bx .wl .lede{max-width:660px;color:var(--soft);font-size:18px;margin:0}
 .bx .wl-sum{margin-top:40px;max-width:1080px;border:1.5px solid var(--gold);border-radius:22px;background:var(--card);display:grid;grid-template-columns:repeat(4,1fr);box-shadow:0 30px 70px -48px rgba(176,141,87,.7)}
 .bx .wl-sum div{padding:22px 24px;border-left:1px solid var(--line)}.bx .wl-sum div:first-child{border-left:0}
-.bx .wl-sum small{display:block;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--soft);font-weight:700;margin-bottom:8px}
+.bx .wl-sum small{display:block;white-space:nowrap;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--soft);font-weight:700;margin-bottom:8px}
 .bx .wl-sum b{display:block;font-size:22px;letter-spacing:-.02em}.bx .wl-sum span{display:block;margin-top:4px;color:var(--soft);font-size:13.5px;overflow-wrap:anywhere}
 .bx .wl-next{margin-top:52px;max-width:1080px}
 .bx .wl-next .hd{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);font-weight:700;margin:0 0 16px}
