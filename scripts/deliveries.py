@@ -427,6 +427,14 @@ def cmd_prepare(args) -> int:
                                                                  "select": "lead_ids,status,period_start"}), period)
         cf = db.select("customer_filters", {"customer_id": f"eq.{s['customer_id']}"})
         picked = select_leads(leads, s, already, details, tags=tags, cfilter=cf[0] if cf else None)
+        # „ohne Website“ vor der Lieferung nachprüfen (Inhaber 02.10.2026); Treffer raus, Lücke neu auffüllen
+        from lib.site_recheck import drop_with_site
+        for _ in range(3):
+            bad = drop_with_site(db, picked)
+            if not bad:
+                break
+            leads = [l for l in leads if l["id"] not in bad]
+            picked = select_leads(leads, s, already, details, tags=tags, cfilter=cf[0] if cf else None)
         enrich(db, picked, known)
         if len(picked) < 5:
             db.insert("decisions", {"type": "delivery", "subject": f"Wenig Leads für {s['customers']['company_name']}",
