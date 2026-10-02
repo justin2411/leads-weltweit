@@ -176,18 +176,26 @@ def _country_area(country: str) -> str | None:
 
 
 def html_version(body: str, footer: str, lang: str, company: str | None = None,
-                 region: str | None = None, url: str | None = None, segment: str | None = None) -> str | None:
+                 region: str | None = None, url: str | None = None, segment: str | None = None,
+                 plan: bool = False) -> str | None:
     """Gestaltete HTML-Alternative (ohne Bilder/Tracking). EMAIL_HTML=0 schaltet sie ab.
-    segment S2: kleine Ablauf-Grafik unter der Signatur (Inhaber 02.10.2026)."""
+    segment S2: kleine Ablauf-Grafik unter der Signatur (Inhaber 02.10.2026).
+    plan: url ist die Buchungsseite (Nachfrage nach der Probe) -> Knopf „Choose your plan“."""
     if os.environ.get("EMAIL_HTML", "1") == "0":
         return None
-    from lib.html_email import cta_button, page_button, process_strip, render
+    from lib.html_email import cta_button, page_button, plan_button, process_strip, render
     extra = process_strip(lang) if segment == "S2" else ""
     if url:  # Knopf zur persönlichen Landingpage; die Textzeile mit dem nackten Link entfällt im HTML
         body = "\n\n".join(p for p in re.split(r"\n\s*\n", body) if url not in p)
-        return render(body, footer, lang, page_button(url, lang), extra=extra)
+        return render(body, footer, lang, plan_button(url, lang) if plan else page_button(url, lang), extra=extra)
     cta = cta_button(company, region, lang) if company else ""
     return render(body, footer, lang, cta, extra=extra)
+
+
+def _plan_url(body: str) -> str | None:
+    """Link zur Buchungsseite aus der Textfassung der Nachfrage nach der Probe."""
+    m = re.search(r"https?://\S+/start\b", body)
+    return m.group(0) if m else None
 
 
 def deliver(to: str, subject: str, text: str, unsub_url: str | None, html: str | None = None,
@@ -365,7 +373,10 @@ def cmd_send(args) -> int:
                                postal_address=os.environ.get("SENDER_POSTAL_ADDRESS", "<Postanschrift>"),
                                company=p["company_name"], unsubscribe_url=unsub)
         body = m["body"].rstrip()
-        link = landing_link(db, pages, e["segment_id"], country, m["unsubscribe_token"]) if kind == "initial" else None
+        # Nachfassmail: derselbe Knopf zur Landingpage wie die Erstmail (Inhaber 02.10.2026, Schritt 3)
+        link = (landing_link(db, pages, e["segment_id"], country, m["unsubscribe_token"])
+                if kind in ("initial", "followup") else None)
+        plan_url = _plan_url(body) if kind == "sample_followup" else None
         if link:
             lang = m.get("language") if m.get("language") in LANDING_LINE else "en"
             body += "\n\n" + LANDING_LINE[lang].format(url=link)
@@ -387,8 +398,9 @@ def cmd_send(args) -> int:
             provider_fields = deliver(m["to_email"], m["subject"], text, unsub,
                                       html_version(body, footer, m.get("language") or "en",
                                                    p["company_name"] if kind != "sample_followup" else None,
-                                                   _country_area(country), link,
-                                                   segment=e["segment_id"] if kind == "initial" else None),
+                                                   _country_area(country), link or plan_url,
+                                                   segment=e["segment_id"] if kind == "initial" else None,
+                                                   plan=bool(plan_url)),
                                       mailbox=box if box.get("user") else None)
         except Exception as exc:  # noqa: BLE001 - Versandfehler melden, nicht abbrechen
             print(f"FEHLER Versand {m['to_email']}: {exc}")
@@ -424,6 +436,8 @@ def cmd_test(args) -> int:
     name, spec, region = example[args.segment]
     if getattr(args, "art", "kaltmail") == "probe":
         return _test_sample(args, region)
+    if getattr(args, "art", "") in ("nachfass", "probe-nachfass"):
+        return _test_followup(args, name)
     p = {"segment_id": args.segment, "country": args.country, "company_name": name,
          "specialization": spec, "region": region}
     ex = None
@@ -443,6 +457,36 @@ def cmd_test(args) -> int:
     print(f"Prüfung: {lint.summary()}\n\nBetreff: [TEST] {subject}\n\n{text}\n")
     out = deliver(args.to, f"[TEST] {subject}", text, unsubscribe_target("test"),
                   html_version(body, footer, lang, name, _country_area(args.country), link, segment=args.segment))
+    print(f"gesendet an {args.to}: {out}")
+    return 0
+
+
+def _test_followup(args, name: str) -> int:
+    """Nachfassmail (4 Tage ohne Antwort) bzw. Nachfrage 3 Tage nach der Probe, wie Käufer sie bekommen."""
+    from drafts import build
+    from followups import followup_text, sample_followup_text
+    from responder import booking_url
+    p = {"segment_id": args.segment, "country": args.country, "company_name": name}
+    subject, _, lang = build({**p, "specialization": "", "region": ""})
+    link = plan_url = None
+    if args.art == "nachfass":
+        body, _ = followup_text(p, lang)
+        from lib.db import DB
+        link = landing_link(DB(), {}, args.segment, args.country, "test")
+        if link:
+            body = body.rstrip() + "\n\n" + LANDING_LINE[lang if lang in LANDING_LINE else "en"].format(url=link)
+    else:
+        plan_url = booking_url(args.segment, args.country)
+        body = sample_followup_text(p, lang, plan_url)
+    lint = lint_draft(subject, body, lang, min_words=30, max_words=120, require_sample=False)
+    footer = render_footer(lang, sender_name=legal_name(),
+                           postal_address=os.environ.get("SENDER_POSTAL_ADDRESS", ""), company=name,
+                           unsubscribe_url=unsubscribe_target("test"))
+    text = body.rstrip() + "\n\n" + footer
+    print(f"Prüfung: {lint.summary()}\n\nBetreff: [TEST] {subject}\n\n{text}\n")
+    out = deliver(args.to, f"[TEST] {subject}", text, unsubscribe_target("test"),
+                  html_version(body, footer, lang, name if args.art == "nachfass" else None,
+                               _country_area(args.country), link or plan_url, plan=bool(plan_url)))
     print(f"gesendet an {args.to}: {out}")
     return 0
 
@@ -560,8 +604,9 @@ def main(argv=None) -> int:
     t.add_argument("--to", required=True)
     t.add_argument("--segment", default="S1", choices=["S1", "S2", "S9"])
     t.add_argument("--country", default="UK")
-    t.add_argument("--art", default="kaltmail", choices=["kaltmail", "probe"],
-                   help="kaltmail = Erstkontakt, probe = Mail mit den 10 Probe-Leads (CSV)")
+    t.add_argument("--art", default="kaltmail", choices=["kaltmail", "probe", "nachfass", "probe-nachfass"],
+                   help="kaltmail = Erstkontakt, probe = Mail mit den 10 Probe-Leads, nachfass = 4 Tage ohne Antwort, "
+                        "probe-nachfass = 3 Tage nach der Probe")
     t.set_defaults(func=cmd_test)
 
     y = sub.add_parser("sync", help="Zustellstatus von Resend holen, Bounces/Beschwerden sperren")
