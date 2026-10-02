@@ -20,10 +20,11 @@ class PagesTest(unittest.TestCase):
         self.raw = (ROOT / "samples/S5/US/leads.csv").read_bytes()
 
     def test_ten_leads_on_three_pages(self):
-        self.assertEqual(per_page(build_html(self.raw, "en", layout=(3, 4), segment="S5", country="US")), [3, 4, 3])
+        # Deckblatt mit Übersicht, dann 4/3/3 Karten (Inhaber 02.10.2026: Freiräume nutzen)
+        self.assertEqual(per_page(build_html(self.raw, "en", layout=(0, 4), segment="S5", country="US")), [4, 3, 3])
 
     def test_never_single_lead_on_last_page(self):
-        for layout in ((3, 3), (2, 3), (2, 2), (3, 4)):
+        for layout in ((0, 4), (0, 3), (0, 2)):
             counts = per_page(build_html(self.raw, "en", layout=layout, segment="S5", country="US"))
             self.assertEqual(sum(counts), 10)
             self.assertGreater(counts[-1], 1, (layout, counts))
