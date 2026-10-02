@@ -1,3 +1,4 @@
+import { billingOptions } from "@/lib/billing";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getSettings, isOwner, loadPage, pageIsPublic } from "@/lib/pages";
@@ -20,7 +21,7 @@ const TXT = {
   en: {
     eyebrow: "Weekly trigger leads", title: "Start your weekly leads",
     lede: "Every Monday a fresh briefing: companies with a real reason to buy your service right now, each with phone, email, contact person and a short sales briefing.",
-    for: "For", per: "per month", pick: "Start with", popular: "Recommended",
+    for: "For", per: "per month", pick: "Start with", popular: "Recommended", billing: "Billing country",
     plan: {
       starter: ["Up to 15 new leads per week", "Weekly PDF briefing and spreadsheet", "Phone, email and contact person", "Every lead exclusive to your firm"],
       pro: ["Up to 50 new leads per week", "All signals that fit your business", "Weekly PDF briefing and spreadsheet", "Every lead exclusive to your firm"],
@@ -45,7 +46,7 @@ const TXT = {
   fr: {
     eyebrow: "Pistes chaque semaine", title: "Recevez vos pistes chaque semaine",
     lede: "Chaque lundi un nouveau briefing : des entreprises qui ont en ce moment une vraie raison d'acheter votre service, avec téléphone, e-mail, interlocuteur et un court briefing commercial.",
-    for: "Pour", per: "par mois", pick: "Choisir", popular: "Recommandé",
+    for: "Pour", per: "par mois", pick: "Choisir", popular: "Recommandé", billing: "Pays de facturation",
     plan: {
       starter: ["Jusqu'à 15 nouvelles pistes par semaine", "Briefing PDF et tableau chaque semaine", "Téléphone, e-mail et interlocuteur", "Chaque piste réservée à votre entreprise"],
       pro: ["Jusqu'à 50 nouvelles pistes par semaine", "Tous les signaux utiles", "Briefing PDF et tableau chaque semaine", "Chaque piste réservée à votre entreprise"],
@@ -151,6 +152,8 @@ const CSS = `
 .bx .sx-steps b{display:block;font-size:17px;margin-bottom:6px;letter-spacing:-.01em}.bx .sx-steps p{margin:0;color:var(--soft);font-size:14.5px;line-height:1.55}
 @media (max-width:1100px){.bx .sx-steps{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:820px){.bx .sx-steps{grid-template-columns:1fr}}
+.bx .start .billing{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 22px;font-size:14.5px;font-weight:600;color:var(--soft)}
+.bx .start .billing select{font:inherit;font-weight:600;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 34px 9px 12px}
 .bx .start .note{margin-top:28px;max-width:920px;color:var(--soft);font-size:14.5px}
 `;
 
@@ -186,6 +189,14 @@ export default async function StartPage({ params, searchParams }: { params: Para
         <p className="lede">{T.lede}</p>
         {who?.firma && <div className="for">{T.for} {who.firma}</div>}
 
+        {online && (
+          <label className="billing">{T.billing}
+            <select id="billing" defaultValue={page.country.toUpperCase()}>
+              {billingOptions(page.country, lang).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </label>)}
+        {/* Rechnungsland in jedes Bezahl-Formular übernehmen (ohne JavaScript gilt das Land der Seite) */}
+        {online && <script dangerouslySetInnerHTML={{ __html: `document.addEventListener("submit",function(e){var f=e.target,s=document.getElementById("billing");if(!s||!f||!/\\/api\\/checkout$/.test(f.getAttribute("action")||""))return;var i=f.querySelector('input[name="billing"]');if(!i){i=document.createElement("input");i.type="hidden";i.name="billing";f.appendChild(i)}i.value=s.value},true);` }} />}
         <div className="plans2">{plans.map((p, k) => {
           const hi = k === plans.length - 1 && plans.length > 1;
           const mail = `mailto:${CONTACT}?subject=${encodeURIComponent(`${T.subject} ${p.name} – ${slug}${who?.firma ? ` – ${who.firma}` : ""}`)}`;
@@ -200,6 +211,7 @@ export default async function StartPage({ params, searchParams }: { params: Para
                 <form method="post" action="/api/checkout">
                   <input type="hidden" name="variant_id" value={v.id} />
                   <input type="hidden" name="package" value={p.key} />
+                  <input type="hidden" name="billing" value={page.country.toUpperCase()} />
                   {preview && <input type="hidden" name="vorschau" value="1" />}
                   {sp.r && <input type="hidden" name="r" value={sp.r} />}
                   <button className={`btn ${hi ? "gold" : "line"} big`} type="submit">{T.pick} {p.name} <span className="ar">→</span></button>

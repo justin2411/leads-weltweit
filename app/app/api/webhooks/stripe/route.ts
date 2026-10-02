@@ -5,6 +5,7 @@ import { BRAND, siteUrl } from "@/lib/site";
 import { STATUS_MAP, stripeKeys, verifyStripeSignature } from "@/lib/stripe";
 import { db } from "@/lib/supabase";
 import { filterToken } from "@/lib/tokens";
+import { vatMismatch } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,12 @@ export async function POST(req: Request) {
         return new Response("ok", { status: 200 });
       }
       if (event.livemode) await recordEvent(m.variant_id, "purchase");
+      // Steuer-Abgleich (lib/billing.ts): gewähltes Rechnungsland vs. echte Rechnungsadresse
+      const actualCountry = o.customer_details?.address?.country ?? null;
+      const vatNote = m.billing && vatMismatch(m.billing, actualCountry)
+        ? `ACHTUNG Umsatzsteuer: gewählt „${m.billing}“, Rechnungsadresse in ${actualCountry}. Rechnung prüfen und ggf. korrigieren.`
+        : "";
+      if (vatNote) await log(`Umsatzsteuer prüfen: ${company}`, vatNote, false, { billing: m.billing, address_country: actualCountry });
       const link = `${siteUrl()}/kunde/filter?t=${filterToken(cust.id, process.env.SESSION_SECRET?.trim() ?? "")}`;
       await db().from("customers").update({ filter_token_issued_at: new Date().toISOString() }).eq("id", cust.id);
       const price = o.amount_total != null
@@ -81,7 +88,9 @@ export async function POST(req: Request) {
         `Preis:          ${amount} pro Monat`,
         `Land/Segment:   ${m.country ?? "?"} / ${m.segment_id ?? "?"}`,
         `Stripe-Kunde:   https://dashboard.stripe.com/${event.livemode ? "" : "test/"}customers/${o.customer}`,
-        `Abo:            ${o.subscription}`, "",
+        `Abo:            ${o.subscription}`,
+        `Rechnungsland:  gewählt ${m.billing ?? "?"}, Adresse ${actualCountry ?? "?"}`, "",
+        ...(vatNote ? [vatNote, ""] : []),
         "Der Kunde hat die Willkommensmail mit dem Formular bekommen. Die erste Lieferung kommt als Vorschau zu dir und geht erst nach deiner Freigabe raus.",
       ].join("\n")).catch(async (e) => {
         await log("Verkaufsmeldung fehlgeschlagen", `${company}: ${(e as Error).message}`, true);
