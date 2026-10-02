@@ -1,32 +1,17 @@
 import { saveFilters } from "./actions";
+import { filterQuestions } from "@/content/filter-questions";
 
 const TXT = {
   en: {
     title: "Tell us which leads you want", sub: "Two minutes now, better leads every Monday. You can change this at any time.",
-    signals: "Which signals matter to you?", signalsHint: "Leave all ticked if you want everything that fits your business.",
-    sig: {
-      job_open_30d: ["Roles open 30+ days", "The internal search has stalled – the classic moment for a recruiter."],
-      jobs_3plus: ["3+ roles at once", "Growing teams that need help hiring fast."],
-      new_incorporation: ["Newly registered companies", "New owners choosing their first providers."],
-      outdated_website: ["Outdated or missing website", "Companies that need to modernise."],
-    } as Record<string, [string, string]>,
-    industries: "Industries or job types to focus on", industriesPh: "e.g. construction, logistics, finance roles",
     regions: "Specific regions", regionsPh: "Empty = whole country, or e.g. London",
-    exclusions: "Companies or keywords to leave out", exclusionsPh: "e.g. your existing clients",
+    exclusions: "Companies or keywords to leave out",
     optional: "optional", save: "Save my preferences", saved: "Saved. Your next delivery will follow these preferences.",
   },
   fr: {
     title: "Dites-nous quelles pistes vous voulez", sub: "Deux minutes maintenant, de meilleures pistes chaque lundi. Modifiable à tout moment.",
-    signals: "Quels signaux vous intéressent ?", signalsHint: "Laissez tout coché si vous voulez tout ce qui correspond à votre activité.",
-    sig: {
-      job_open_30d: ["Postes ouverts depuis 30+ jours", "La recherche interne piétine – le bon moment pour un cabinet."],
-      jobs_3plus: ["3+ postes en même temps", "Des équipes en croissance qui doivent recruter vite."],
-      new_incorporation: ["Entreprises nouvellement créées", "De nouveaux dirigeants qui choisissent leurs prestataires."],
-      outdated_website: ["Site web ancien ou absent", "Des entreprises qui doivent se moderniser."],
-    } as Record<string, [string, string]>,
-    industries: "Secteurs ou métiers à privilégier", industriesPh: "ex. BTP, logistique, finance",
     regions: "Régions précises", regionsPh: "Vide = tout le pays, ou ex. Paris",
-    exclusions: "Entreprises ou mots-clés à exclure", exclusionsPh: "ex. vos clients actuels",
+    exclusions: "Entreprises ou mots-clés à exclure",
     optional: "facultatif", save: "Enregistrer mes préférences", saved: "Enregistré. Votre prochaine livraison suivra ces préférences.",
   },
 };
@@ -54,9 +39,13 @@ export const FORM_CSS = `
 type F = { regions?: string[]; signals?: string[]; industries?: string[]; exclusions?: string[] } | null;
 
 /** Wunschprofil als Formular (eingebettet auf der Danke-Seite und unter /kunde/filter). */
-export function FilterForm({ token, f, back, lang, saved, demo }: { token: string; f: F; back: string; lang: "en" | "fr"; saved?: boolean; demo?: boolean }) {
+export function FilterForm({ token, f, back, lang, saved, demo, segment }: { token: string; f: F; back: string; lang: "en" | "fr"; saved?: boolean; demo?: boolean; segment?: string }) {
   const T = TXT[lang];
-  const chosen = f?.signals?.length ? f.signals : Object.keys(T.sig);
+  const Q = filterQuestions(segment);
+  const keys = Q.options.map((o) => o.key);
+  // Gespeicherte Auswahl dieser Branche, sonst alles angehakt
+  const mine = (f?.signals ?? []).filter((k) => keys.includes(k));
+  const chosen = mine.length ? mine : keys;
   return (
     <section className="ff" id="focus">
       <h2>{T.title}</h2>
@@ -66,20 +55,20 @@ export function FilterForm({ token, f, back, lang, saved, demo }: { token: strin
         <input type="hidden" name="t" value={token} />
         <input type="hidden" name="back" value={back} />
         <div>
-          <span className="lb">{T.signals}</span>
-          <p className="hint">{T.signalsHint}</p>
-          <div className="sg">{Object.entries(T.sig).map(([k, [h, d]]) => (
-            <label key={k}><input type="checkbox" name="signals" value={k} defaultChecked={chosen.includes(k)} /><div><b>{h}</b><span>{d}</span></div></label>
+          <span className="lb">{Q.signals[lang]}</span>
+          <p className="hint">{Q.signalsHint[lang]}</p>
+          <div className="sg">{Q.options.map((o) => (
+            <label key={o.key}><input type="checkbox" name="signals" value={o.key} defaultChecked={chosen.includes(o.key)} /><div><b>{o.label[lang]}</b>{o.desc && <span>{o.desc[lang]}</span>}</div></label>
           ))}</div>
         </div>
         <div className="row">
-          <label><span className="lb">{T.industries}<em>{T.optional}</em></span>
-            <input type="text" name="industries" placeholder={T.industriesPh} defaultValue={(f?.industries ?? []).join(", ")} /></label>
+          <label><span className="lb">{Q.industries[lang]}<em>{T.optional}</em></span>
+            <input type="text" name="industries" placeholder={Q.industriesPh[lang]} defaultValue={(f?.industries ?? []).join(", ")} /></label>
           <label><span className="lb">{T.regions}<em>{T.optional}</em></span>
             <input type="text" name="regions" placeholder={T.regionsPh} defaultValue={(f?.regions ?? []).join(", ")} /></label>
         </div>
         <label><span className="lb">{T.exclusions}<em>{T.optional}</em></span>
-          <input type="text" name="exclusions" placeholder={T.exclusionsPh} defaultValue={(f?.exclusions ?? []).join(", ")} /></label>
+          <input type="text" name="exclusions" placeholder={Q.exclusionsPh[lang]} defaultValue={(f?.exclusions ?? []).join(", ")} /></label>
         <button className="btn gold big" type={demo ? "button" : "submit"}>{T.save} <span className="ar">→</span></button>
         {demo && <p className="hint">Preview only – nothing is saved.</p>}
       </form>

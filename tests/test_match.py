@@ -26,6 +26,14 @@ class MatchTest(unittest.TestCase):
         self.assertFalse(matches_filter(lead, tag, CO, {"exclusions": ["acme"]}))
         self.assertFalse(matches_filter(lead, {**tag, "quality": 50}, CO, {}))
         self.assertFalse(matches_filter(lead, tag, CO, {"signals": ["job_open_30d"]}))
+        # Formular-Schlüssel je Branche (02.10.2026): Wunsch-Schlüssel und alte Schlüssel greifen
+        web = {"signal_type": "website_broken", "segment_id": "S2"}
+        self.assertTrue(matches_filter(web, tag, CO, {"signals": ["broken"]}))
+        self.assertTrue(matches_filter(web, tag, CO, {"signals": ["website_outdated"]}))
+        self.assertTrue(matches_filter(web, tag, CO, {"signals": ["outdated_website"]}))
+        self.assertFalse(matches_filter(web, tag, CO, {"signals": ["security", "no_website"]}))
+        self.assertTrue(matches_filter(lead, {**tag, "industry": "Restaurant"}, CO, {"industries": ["Restaurants"]}))
+        self.assertTrue(matches_filter({"signal_type": "no_https"}, tag, CO, {"signals": ["security"]}))
 
 
 if __name__ == "__main__":

@@ -19,7 +19,8 @@ export default async function FilterPage({ searchParams }: { searchParams: Promi
   } else {
     const { data: f } = await db().from("customer_filters").select("*").eq("customer_id", id).maybeSingle();
     const { data: c } = await db().from("customers").select("country").eq("id", id).maybeSingle();
-    body = <FilterForm token={sp.t!} f={f} back={`/kunde/filter?t=${sp.t}`} lang={c?.country === "FR" ? "fr" : "en"} saved={!!sp.ok} />;
+    const { data: sub } = await db().from("subscriptions").select("segment_id").eq("customer_id", id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    body = <FilterForm token={sp.t!} f={f} back={`/kunde/filter?t=${sp.t}`} lang={c?.country === "FR" ? "fr" : "en"} saved={!!sp.ok} segment={sub?.segment_id} />;
   }
   return (
     <BrandShell lang="en" extraCss={FORM_CSS + CSS}>

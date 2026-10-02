@@ -78,15 +78,16 @@ async function loadSession(id: string | undefined) {
   }
 }
 
-export default async function Danke({ searchParams }: { searchParams: Promise<{ session_id?: string; ok?: string; w?: string; demo?: string }> }) {
-  const { session_id, ok, w, demo: demoParam } = await searchParams;
+export default async function Danke({ searchParams }: { searchParams: Promise<{ session_id?: string; ok?: string; w?: string; demo?: string; seg?: string }> }) {
+  const { session_id, ok, w, demo: demoParam, seg } = await searchParams;
   // Vorschau mit Musterkauf, Formular speichert nichts. Ohne Login-Prüfung: das Login-Cookie ist SameSite=strict
   // und fehlt, wenn der Link aus einer anderen App geöffnet wird; die Vorschau enthält keine echten Daten.
   const demo = demoParam === "1";
+  const demoSeg = /^S\d{1,2}$/.test(seg ?? "") ? seg! : "S2";
   const found = demo
     ? { mode: "test" as StripeMode, s: { locale: "en", currency: "gbp", amount_total: 160500, customer: null,
-        metadata: { package: "custom", weekly: "1200" }, customer_details: { email: "hello@example-recruitment.co.uk" },
-        custom_fields: [{ key: "company", text: { value: "Example Recruitment Ltd" } }] } }
+        metadata: { package: "custom", weekly: "1200", segment_id: demoSeg }, customer_details: { email: "hello@example.co.uk" },
+        custom_fields: [{ key: "company", text: { value: demoSeg === "S1" ? "Example Recruitment Ltd" : "Example Studio Ltd" } }] } }
     : await loadSession(session_id);
   const lang = found?.s.locale === "fr" ? "fr" : "en";
   const T = TXT[lang];
@@ -143,7 +144,7 @@ export default async function Danke({ searchParams }: { searchParams: Promise<{ 
             <li><div className="n"><span>03</span><i /></div><b>{T.s3[0]}</b><p>{T.s3[1].replace("{d}", first)}</p></li>
           </ol>
         </div>
-        {token && <FilterForm token={token} f={filters} back={`/danke?session_id=${session_id}`} lang={lang} saved={!!ok} demo={demo} />}
+        {token && <FilterForm token={token} f={filters} back={`/danke?session_id=${session_id}`} lang={lang} saved={!!ok} demo={demo} segment={m.segment_id} />}
         <p className="note">{T.q} <a href={`mailto:${CONTACT}`}>{CONTACT}</a>.</p>
       </div></main>
       <SiteFooter lang={lang} />
