@@ -10,6 +10,10 @@ export const LANDING_CSS = `
 .bx .lp2 .cap{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
 .bx .lp2 .cap.gold{color:var(--gtext)}
 .bx .lp2 .sec{padding:72px 0}
+/* Ein Takt für alle Abstände (Inhaber 02.10.2026): 72 px Desktop, 52 px Handy; zwei helle Abschnitte hintereinander
+   teilen sich einen Abstand statt zwei */
+.bx .lp2 .sec:not(.dark){background:var(--cream)}
+.bx .lp2 .sec:not(.dark)+.sec:not(.dark){padding-top:0}
 .bx .lp2 .sec h2{font-size:clamp(26px,3.2vw,38px);line-height:1.12;letter-spacing:-.02em;margin:0 0 8px;color:var(--pink)}
 .bx .lp2 .lede2{color:var(--muted);margin:0 0 28px;font-size:16px}
 .bx .lp2 .kick{display:flex;align-items:center;gap:14px;margin:0 0 18px}
@@ -21,7 +25,7 @@ export const LANDING_CSS = `
 .bx .lp2 .h2o{position:relative;overflow:hidden;color:#fff;background:
   radial-gradient(900px 420px at 0% 0%,rgba(74,91,140,.35),transparent 60%),
   radial-gradient(800px 500px at 100% 35%,rgba(30,56,120,.5),transparent 65%),linear-gradient(180deg,#0d1834,#0B1530)}
-.bx .lp2 section.h2o{padding-top:40px;padding-bottom:24px}
+.bx .lp2 section.h2o{padding-top:40px;padding-bottom:36px}
 .bx .lp2 .h2o:before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.07) 1px,transparent 1px);background-size:22px 22px;mask-image:linear-gradient(180deg,#000,transparent 85%);pointer-events:none}
 .bx .lp2 .h2o .wrap{position:relative;display:grid;grid-template-columns:1.08fr .92fr;gap:48px;align-items:center;padding-top:16px;padding-bottom:28px}
 .bx .lp2 .pill{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#EBD7AE,#C9A465);color:#1b1404;font-size:11.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;padding:7px 14px;border-radius:99px}
@@ -42,7 +46,7 @@ export const LANDING_CSS = `
 .bx .lp2 .kpi{border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:18px 20px;background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.015))}
 .bx .lp2 .kpi b{display:block;font-size:clamp(30px,3.4vw,44px);font-weight:800;color:var(--gink);letter-spacing:-.02em;line-height:1}
 .bx .lp2 .kpi span{display:block;margin-top:10px;font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#aab4ca}
-.bx .lp2 .kpinote{position:relative;font-size:12.5px;color:#8f9ab3;padding-bottom:40px;margin:6px 0 0}
+.bx .lp2 .kpinote{position:relative;font-size:12.5px;color:#8f9ab3;padding-bottom:0;margin:6px 0 0}
 
 /* Karte */
 .bx .lp2 .mapcard{background:#fff;border:1px solid var(--pline);border-radius:22px;padding:18px;box-shadow:0 30px 70px -40px rgba(11,21,48,.45)}
@@ -174,6 +178,9 @@ export const LANDING_CSS = `
   .bx .lp2 .free2{gap:10px;font-size:clamp(11px,3.2vw,13px);white-space:nowrap}
   .bx .lp2 .btn{white-space:nowrap;font-size:clamp(13px,3.9vw,16px);padding:15px clamp(16px,5vw,24px);gap:8px;max-width:100%}
   .bx .lp2 .sec{padding:52px 0}
+  .bx .lp2 .sec:not(.dark)+.sec:not(.dark){padding-top:0}
+  .bx .lp2 section.h2o{padding-bottom:24px}
+  .bx .lp2 .vid{padding:0 0 52px}
   .bx .lp2 .tile .cgrid{grid-template-columns:1fr}
   .bx .lp2 .prow{grid-template-columns:1fr auto;gap:6px}.bx .lp2 .prow .dots{grid-column:1/-1;order:3}
   .bx .lp2 .tile .main{padding:22px 18px}
