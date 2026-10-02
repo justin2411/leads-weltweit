@@ -103,6 +103,22 @@ Dateinamen nach Inhalt: `Your-10-Free-Leads-US.pdf`, `How-It-Works-US.pdf`, `sam
 PDFs insgesamt (Inhaber 02.10.2026): Probe-Mail = Lead-PDF + How-It-Works-PDF + CSV; Nachfrage nach der Probe = How-It-Works-PDF; alle anderen Mails ohne Anhang.
 Testmails: `testmail.yml` mit `art=nachfass` bzw. `art=probe-nachfass`.
 
+### 5.3 Landingpage (abgenommen 02.10.2026: „die website ist fertig und passt“)
+
+`app/app/[country]/[segment]/page.tsx` mit `app/content/landing-v2.ts` (Texte EN/FR), `app/lib/landing-css.ts` (Design wie die Lead-PDF: Navy/Gold/Creme), `app/app/[country]/[segment]/v2.tsx` (Karte, Punktgrafik, Symbole), Karten je Land in `app/content/maps/s2-{land}.json`.
+
+| Abschnitt | Inhalt |
+|---|---|
+| Hero (dunkel) | Etikett „Free sample · {Land}“; Überschrift mit Goldteil ab „(“; ein Satz Unterzeile; „In every lead“ zweizeilig: Phone · Email · Address / How to win them · Sales tips; goldener Button einzeilig (auch auf dem Handy), darunter mittig ✓ Free of charge · ✓ No obligation · ✓ Sent by email; Landkarte mit den 10 Pins (Nummern 1–10) einer echten Probe; 4 Kennzahlen (Leads, Gebiete, Branchen, 1 Firma pro Lead) + „From a recent free sample · Datum“ |
+| Video | direkt unter dem Hero, gleiches Blau |
+| What they have in common (hell) | Punktgrafik Telefon/E-Mail/Facebook/eigene Website aus derselben Probe + die Website-Befunde (keine Website, veraltet/nicht mobil, Sicherheitslücken) |
+| Two leads from that sample | 2 echte Leads im Kachelstil der PDF, Name/Telefon/E-Mail maskiert, kein Hinweistext darunter |
+| Why these leads turn into revenue (dunkel) | 3 Karten (real reason to buy · You call first: „New leads every week, found while the need is still open.“ · Only for your firm) + How it works 01–03 |
+| Probe-Formular (hell) | Titel „Your 10 free leads“ + Gold „from across {Land}“; Wünsche (Webagenturen 6: no website, outdated, not mobile, security, broken, newly registered – nur lieferbare Signale); rechts 3 Häkchen + „What you receive“ (PDF, CSV, Karte), beide Spalten unten bündig; danach extra Abstand |
+| FAQ | aus der Datenbank (`page_variants.faq`) |
+
+Regeln: Abstände 72 px Desktop / 52 px Handy, zwei helle Abschnitte teilen sich einen Abstand; Kennzahlen und Pins nur aus einer echten Probe; keine Aussagen, die wir nicht belegen können (z. B. „before the company has found a provider“); Preise öffentlich aus. Neues Land: Karte `maps/s2-{land}.json` aus einer echten 10er-Probe erzeugen, `AREA_LABEL`/`COUNTRY_NAME` ergänzen.
+
 ## 6. Vorgehen je Schritt (so stimmen wir jeden Kontaktpunkt ab)
 
 1. Bestehenden Stand zeigen: Testmail an den Inhaber (`testmail.yml`: `art=kaltmail`, `probe`, `nachfass`,
