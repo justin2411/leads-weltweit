@@ -75,8 +75,10 @@ export async function POST(req: Request) {
   const back = `${siteUrl()}/${page.slug}/start${q.size ? `?${q}` : ""}`;
   let session: any;
   try {
-    // 19 % USt. nur bei Rechnungsadresse in Deutschland (Stripe wählt den Satz nach Land), sonst netto
-    item.dynamic_tax_rates = { 0: await germanVatRate(mode) };
+    // 19 % USt. nur für Kunden in Deutschland, sonst netto. Stripe hat `dynamic_tax_rates` (Satz nach Rechnungsland)
+    // abgeschafft (Fehler 02.10.2026: „unknown parameter … deprecated“); ohne kostenpflichtiges Stripe Tax gilt der
+    // Satz deshalb fest nach dem Land der Seite: nur deutsche Seiten bekommen 19 %.
+    if (page.country === "DE") item.tax_rates = { 0: await germanVatRate(mode) };
     session = await stripe("checkout/sessions", {
     mode: "subscription",
     line_items: { 0: item },
