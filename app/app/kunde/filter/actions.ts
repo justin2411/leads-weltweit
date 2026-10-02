@@ -20,7 +20,7 @@ export async function saveFilters(formData: FormData) {
     industries: list(formData.get("industries")),
     exclusions: list(formData.get("exclusions")),
     // Menge = gebuchtes Paket (1–10.000, wie der Regler auf der Zahlungsseite)
-    max_per_week: Math.min(Math.max((await booked(id)) || 30, 1), 10_000),
+    max_per_week: Math.min(Math.max((await booked(id)) || 15, 1), 10_000),
     updated_at: new Date().toISOString(),
   }, { onConflict: "customer_id" });
   if (error) throw new Error(error.message);

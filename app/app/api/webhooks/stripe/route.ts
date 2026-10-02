@@ -64,7 +64,7 @@ export async function POST(req: Request) {
         ? new Intl.NumberFormat(o.locale === "fr" ? "fr-FR" : "en-GB", { style: "currency", currency: String(o.currency ?? "gbp").toUpperCase(), maximumFractionDigits: o.amount_total % 100 ? 2 : 0 }).format(o.amount_total / 100)
         : undefined;
       const planName = m.package === "custom" ? (o.locale === "fr" ? "Sur mesure" : "Custom") : m.package ? m.package[0].toUpperCase() + m.package.slice(1) : "";
-      const weekly = Number(m.weekly) || ({ starter: 30, pro: 100 } as Record<string, number>)[m.package] || undefined;
+      const weekly = Number(m.weekly) || ({ starter: 15, pro: 50 } as Record<string, number>)[m.package] || undefined;
       const wm = welcomeMail({ lang: o.locale === "fr" ? "fr" : "en", company, plan: planName, weekly, price, formLink: link, test: !event.livemode });
       await sendConsentMail(email, wm.subject, wm.text, wm.html).catch(async (e) => {
         // Kunde und Abo sind gespeichert; Mail-Fehler nicht als Webhook-Fehler werten (sonst doppelte Willkommensmails)

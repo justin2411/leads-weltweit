@@ -4,7 +4,7 @@
  * (Exponent < 1). Wird im Browser (Anzeige) und auf dem Server (Checkout) identisch gerechnet – der Server
  * vertraut nie einem Preis aus dem Formular.
  */
-export const PER_WEEK: Record<string, number> = { starter: 30, pro: 100 };
+export const PER_WEEK: Record<string, number> = { starter: 15, pro: 50 };
 export const CUSTOM_MIN = 150;
 export const CUSTOM_MAX = 10_000;
 const EXPONENT = 0.75;
