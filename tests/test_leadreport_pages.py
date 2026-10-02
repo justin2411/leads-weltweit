@@ -148,3 +148,28 @@ class IntroPromiseTests(unittest.TestCase):
 
     def test_named_contact_keeps_promise(self):
         self.assertIn("who to ask for", self._html("Jane Doe"))
+
+
+class UsTemplateDataTests(unittest.TestCase):
+    """US-Vorlage des Inhabers (02.10.2026): Daten ohne Platzhalter, mit allen Leads."""
+
+    def test_report_data(self):
+        import csv, io
+        from lib.leadreport_us import report_data
+        buf = io.StringIO()
+        w = csv.DictWriter(buf, fieldnames=["company", "phone", "email", "location", "event", "event_date", "signal",
+                                            "industry", "address", "contact_name", "contact_role"])
+        w.writeheader()
+        w.writerow({"company": "A Cafe", "phone": "+15550000000", "email": "a@a.com", "location": "Austin, TX",
+                    "event": "A Cafe has no website: it is listed with a phone number and a Facebook page.",
+                    "event_date": "2026-10-02", "signal": "no_website", "industry": "Cafe", "address": "1 Main St",
+                    "contact_role": "Owner (ask for the owner)"})
+        d = report_data(buf.getvalue().encode(), plans=[{"key": "starter", "name": "Starter", "amount_cents": 12900,
+                                                         "currency": "usd"}], segment="S2")
+        self.assertEqual(len(d["leads"]), 1)
+        lead = d["leads"][0]
+        self.assertEqual(lead["contact"], "")
+        self.assertEqual((lead["state"], lead["reasonType"]), ("TX", "nosite"))
+        self.assertTrue(lead["online"]["facebook"])
+        self.assertNotIn("Who to ask for", [x["text"] for x in d["cover"]["inEveryLead"]])
+        self.assertEqual(d["closing"]["plans"][0]["price"], "$129")

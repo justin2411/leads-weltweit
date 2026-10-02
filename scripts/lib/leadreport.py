@@ -466,6 +466,12 @@ h4{{font-size:6.6px;letter-spacing:.16em;text-transform:uppercase;color:#a07f46;
 def render_pdf(data: bytes, lang: str = "en", area: str | None = None, firm: str | None = None,
                period: dt.date | None = None, plans: list[dict] | None = None, cta_url: str | None = None,
                segment: str | None = None, country: str = "UK") -> bytes | None:
+    if country == "US" and lang == "en":
+        # US: Vorlage des Inhabers (02.10.2026); andere Länder folgen mit eigenen Vorlagen
+        from lib.leadreport_us import render_pdf_us
+        pdf = render_pdf_us(data, plans, cta_url, segment, period)
+        if pdf:
+            return pdf
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
