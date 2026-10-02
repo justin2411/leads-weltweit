@@ -119,6 +119,33 @@ Testmails: `testmail.yml` mit `art=nachfass` bzw. `art=probe-nachfass`.
 
 Regeln: Abstände 72 px Desktop / 52 px Handy, zwei helle Abschnitte teilen sich einen Abstand; Kennzahlen und Pins nur aus einer echten Probe; keine Aussagen, die wir nicht belegen können (z. B. „before the company has found a provider“); Preise öffentlich aus. Neues Land: Karte `maps/s2-{land}.json` aus einer echten 10er-Probe erzeugen, `AREA_LABEL`/`COUNTRY_NAME` ergänzen.
 
+### 5.4 Buchungsseite (abgenommen 02.10.2026: „tarif seite und verkaufsseite passt“)
+
+`app/app/[country]/[segment]/start/page.tsx` (Texte EN/FR in `TXT`), Regler „Your volume“ in `custom.tsx`, Rechnungsland in `app/lib/billing.ts`.
+
+| Abschnitt | Inhalt |
+|---|---|
+| Kopf | Etikett „Weekly trigger leads“, Titel „Start your weekly leads“, ein Satz Unterzeile |
+| Rechnungsland | volle Länderliste (Intl, sortiert), vorausgewählt = Land der Seite, goldener Pfeil; 19 % USt. nur bei Deutschland, sonst netto, keine Steuerhinweise auf der Seite |
+| Pakete | Starter 129 (bis 15 Leads/Woche), Pro 249 (bis 50, „Recommended“), „Your volume“ mit Regler 150–10.000 Leads/Woche; je Paket 4 Häkchen und „From about … per lead“; Button → Stripe-Checkout (live; Inhaber-Vorschau `?vorschau=1` im Testmodus) |
+| How it works | Erklärvideo des Landes (`HOW_VIDEO`, mit Untertiteln, Poster, Rahmen Navy/Gold), darunter nur die 4 Überschriften einzeilig: Choose your plan · Set your focus · Personal contact · Leads every Monday (Handy 2×2). Ohne Video für das Land: 4 Karten mit Text |
+| Fuß | „Questions? …“ mit Kontaktadresse |
+
+Neues Land: Video mit Preisen in der Landeswährung als `public/video/howitworks-{land}.mp4` (faststart) + `.jpg` (Poster) + `.vtt` (Untertitel) und Eintrag in `HOW_VIDEO`.
+
+### 5.5 Danke-Seite und Filterformular (abgenommen 02.10.2026: „dankeseite passt auch“)
+
+`app/app/danke/page.tsx`, Formular `app/app/kunde/filter/form.tsx`, Fragen je Branche in `app/content/filter-questions.ts`; derselbe Formular-Link kommt per Willkommensmail (`/kunde/filter?t=…`). Vorschau: `/danke?demo=1&seg=S2`.
+
+| Abschnitt | Inhalt |
+|---|---|
+| Kopf | „Subscription confirmed“, „Welcome to NextGen Profit, {Firma}.“, ein Satz Dank |
+| Übersicht | 4 Felder einzeilig: Your plan (+ Preis) · Leads per week (+ pro Monat) · First delivery (nächster Montag) · Deliveries to (E-Mail) |
+| What happens next | 01 Payment confirmed ✓ · 02 Set your focus · 03 Leads every Monday |
+| Formular je Branche | Signale als Kacheln mit kurzer Erklärung (nur lieferbare Signale, Schlüssel wie im Probe-Formular, Lieferung wertet sie über `scripts/match.py` aus); Freitext „beste Kundenbranchen“ / „Berufe, die Sie vermitteln“; Regionen (leer = ganzes Land); Ausschlüsse |
+
+Neue Branche: `SEG_KEY`, Signale in `sample-wishes.ts`, Erklärungen in `DESC`, eigene Fragen in `BY_SEG`; jeder neue Schlüssel braucht eine Zuordnung in `scripts/lib/wishes.py`, sonst bekommt der Kunde keine Leads.
+
 ## 6. Vorgehen je Schritt (so stimmen wir jeden Kontaktpunkt ab)
 
 1. Bestehenden Stand zeigen: Testmail an den Inhaber (`testmail.yml`: `art=kaltmail`, `probe`, `nachfass`,
