@@ -97,13 +97,15 @@ der Do-Not-Call-Liste abgleichen (TCPA). Gehört in die Lieferbedingungen.
 ## Lead-Werk (`.github/workflows/lead-werk.yml`)
 
 **Website-Prüfung (Inhaber 02.10.2026: „nicht nur Leads ohne Website …, sondern auch sehr alte Websites oder fehlende
-Sicherheit“):** Teile `web-us-0`, `web-uk-0`, `web-fr-0` (`run.py --web-check`). Je Firma nur die eigene Startseite:
+Sicherheit“, ausgebaut „im ganz großen stil“):** 8 Teile `web-us-0..3`, `web-uk-0..1`, `web-fr-0..1`
+(`run.py --web-check --shard i/n`, je 40 gleichzeitige Abrufe auf verschiedene Domains), vorne in der Liste.
+Bei einem Befund ohne E-Mail wird zusätzlich die Kontakt-/Impressumsseite der eigenen Website gelesen. Je Firma nur die eigene Startseite:
 robots.txt über https (zeigt gleich, ob das Zertifikat gültig ist), sonst über http, dann die Startseite. Zertifikatsfehler
 zählen nur, wenn Chrome sie genauso zeigt (abgelaufen, falscher Name, selbst signiert; fehlende Zwischenzertifikate
 nicht). Fehlercodes zählen nur mit Fehlertext und ohne Bot-Sperre (Seiten, die Bots 404/403 geben, Browsern aber die Seite,
 sind kein Befund). Ohne Befund: nichts in die Datenbank, nur ins Gedächtnis des Teils (`out/cache/webcheck_seen.json`,
 120 Tage) – so wird keine Seite zweimal am Tag abgerufen und die Datenbank nicht je Firma abgefragt. US-Auszug mit Website:
-`overture_us_web.parquet` (jede vierte Firma, Job `us-auszug`).
+`overture_us_web.parquet` (je Monat die andere Hälfte der US-Firmen mit Website, Job `us-auszug`).
 
 Alle 3 Stunden, 30 Teile gleichzeitig (GitHub Pro: 40 Jobs gleichzeitig, 7 für das Kunden-Werk, 3 frei; fest nach Quell-ID verteilt): S2 UK, S2 FR (Overture), US FMCSA (S2/S4/S5), US Form D (S1/S5/S9),
 UK-Register und FR-Register (S4/S5/S9), S1 Karriereseiten (UK/US). Jeder Teil: `run.py … --db --store`.
