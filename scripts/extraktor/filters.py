@@ -78,6 +78,33 @@ class Guard:
                                                        "select": "registry_source,registry_id"}):
                 self.known.add((r["registry_source"], r["registry_id"]))
 
+    def drop_known(self, cands: list[dict], batch: int = 150) -> list[dict]:
+        """Schon gespeicherte Firmen gezielt nachschlagen (Index registry_source, registry_id), in kleinen Paketen.
+        Die Gesamtliste in __init__ ist bei großen Tabellen unvollständig (02.10.2026: 180.286 von 290.043 geladen),
+        das Lead-Werk bearbeitete deshalb gespeicherte Firmen erneut (FR: 2.298 bearbeitet, 0 neu)."""
+        import time
+        if self.db is None:
+            return cands
+        todo: dict[str, list[str]] = {}
+        for c in cands:
+            if (c["source"], c["source_id"]) not in self.known:
+                todo.setdefault(c["source"], []).append(str(c["source_id"]))
+        for src, ids in todo.items():
+            for i in range(0, len(ids), batch):
+                part = [x.replace('"', "") for x in ids[i:i + batch]]
+                q = {"select": "registry_id", "registry_source": f"eq.{src}",
+                     "registry_id": "in.(" + ",".join(f'"{x}"' for x in part) + ")"}
+                for attempt in range(5):
+                    try:
+                        rows = self.db.select("watch_companies", q)
+                        break
+                    except RuntimeError as exc:  # Zeitüberschreitung unter Last: kurz warten, nochmal
+                        if "57014" not in str(exc) or attempt == 4:
+                            raise
+                        time.sleep(3 * (attempt + 1))
+                self.known.update((src, r["registry_id"]) for r in rows)
+        return [c for c in cands if (c["source"], c["source_id"]) not in self.known]
+
     def problem(self, c: dict) -> str | None:
         if self.db is None:
             return None
