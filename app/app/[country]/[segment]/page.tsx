@@ -10,7 +10,16 @@ import { personalFor } from "@/lib/recipient";
 import { db } from "@/lib/supabase";
 import { pickVariant } from "@/lib/variants";
 import { Tracker } from "./tracker";
-import { PREMIUM, segmentCopy } from "@/content/segment-words";
+import { segmentCopy } from "@/content/segment-words";
+import { AREA_LABEL, COUNTRY_NAME, LANDING } from "@/content/landing-v2";
+import { LANDING_CSS } from "@/lib/landing-css";
+import { Field, Icon, MapCard, Presence, type MapData } from "./v2";
+import S2_US from "@/content/maps/s2-us.json";
+import S2_UK from "@/content/maps/s2-uk.json";
+import S2_FR from "@/content/maps/s2-fr.json";
+
+/** Karte und Kennzahlen einer echten Probe je Zielgruppe und Land (scripts: Lead-PDF-Vorlage, 02.10.2026). */
+const MAPS: Record<string, MapData> = { "S2:US": S2_US as unknown as MapData, "S2:UK": S2_UK as unknown as MapData, "S2:FR": S2_FR as unknown as MapData };
 import { countryWords, localize, segKey } from "@/lib/country";
 import HINTS from "@/content/industry-hints.json";
 import type { CSSProperties } from "react";
@@ -119,12 +128,15 @@ async function countrySamples(page: { segment_id: string; country: string }): Pr
     base().lte("event_date", before(8)).limit(40),
     base().lte("event_date", ago(20)).limit(30),
     base().eq("urgency", "medium").limit(30),
-    ...(page.segment_id === "S2" ? [base().in("signal_type", WEB_SIGNALS.slice(1)).limit(60)] : []),
+    ...(page.segment_id === "S2" ? [base().in("signal_type", WEB_SIGNALS.slice(1)).limit(60),
+      base().eq("signal_type", "no_website").ilike("source_name", "Overture%").limit(60)] : []),
   ])];
   const seen = new Set<string>();
   const all = res.flatMap((r) => (r.data ?? []) as any[]);
   // Webagenturen: Beispiele wie in der Probe (Website-Befunde), nicht Neugründungen aus Verkehrs- oder Firmenregistern
-  const webOnly = page.segment_id === "S2" ? all.filter((l) => WEB_SIGNALS.includes(l.signal_type)) : [];
+  // (ohne Verkehrsregister FMCSA: dort liefern wir für Webagenturen keine Proben)
+  const webOnly = page.segment_id === "S2"
+    ? all.filter((l) => WEB_SIGNALS.includes(l.signal_type) && !/FMCSA/i.test(String(l.source_name))) : [];
   const rows = (webOnly.length >= 3 ? webOnly : all).filter((l) => {
     const k = `${l.company_id}|${l.signal_type}|${l.event_date}`;
     if (seen.has(k)) return false;
@@ -151,7 +163,9 @@ async function countrySamples(page: { segment_id: string; country: string }): Pr
       web: noWeb(l) ? "none" as const : l.watch_companies.website ? "found" as const : undefined,
       opener: Boolean(l.opener),
       // Stellen-Signale: gleiche Anzahl Stellen am selben Tag = dieselbe Firma unter zwei Einträgen
-      evKey: l.signal_type === "new_incorporation" ? undefined : `${l.signal_type}|${n}|${l.event_date}`,
+      // (Website-Befunde ohne Zahl im Text sind verschiedene Firmen, nicht ein Eintrag)
+      evKey: l.signal_type === "new_incorporation" || WEB_SIGNALS.includes(l.signal_type) || !n
+        ? undefined : `${l.signal_type}|${n}|${l.event_date}`,
     };
   });
   // Salz je Zielgruppe: Seiten mit denselben Neugründungen (Buchhaltung, Makler, Web) zeigen verschiedene Firmen
@@ -275,141 +289,188 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
     <div data-rv><div className="rule" /><h2 className="rvw" data-rv><Words text={title} /></h2></div>
   );
 
+  // ---- Landingpage im Design der Lead-PDF (Inhaber 02.10.2026) ----
+  const T2 = LANDING[wl];
+  const MAP = MAPS[`${page.segment_id}:${page.country}`];
+  const cname = COUNTRY_NAME[page.country]?.[wl] ?? CW.land;
+  const goldFrom = headline.search(/\(/);
+  const goldWords = goldFrom >= 0 ? headline.slice(goldFrom).split(/\s+/).map((w) => w.toLowerCase().replace(/[.,!?]/g, "")) : [];
+  const KIND: Record<string, string> = { no_website: "nosite", no_https: "insecure", website_outdated: "outdated", website_not_mobile: "outdated", website_broken: "outdated" };
+  const S2 = page.segment_id === "S2";
+  const sigIcons = S2 ? ["nosite", "outdated", "insecure"] : ["target", "bolt", "lock"];
+  const signals = ((v.signals ?? []) as { title: string; text: string }[]).slice(0, 3);
+  const st = MAP?.stats;
+  const presenceRows = st ? ([
+    ["phone", "phone"], ["email", "mail"], ["facebook", "social"], ["website", "globe"],
+  ] as const).filter(([k]) => k !== "facebook" || st.presence.facebook > 0)
+    .map(([k, icon]) => ({ key: k, icon, label: T2.presence[k], n: st.presence[k] ?? 0, gap: k === "website" && st.kinds.nosite > 0 })) : [];
+
+  const tile = (s0: Sample, k: number) => {
+    const sm = { ...s0, signal: s0.signal ?? (/registered on|immatricul/i.test(s0.event) ? "new_incorporation" : undefined) };
+    const label = SIGNAL_LABEL[wl][sm.signal ?? ""] ?? null;
+    const kind = KIND[sm.signal ?? ""] ?? "outdated";
+    const hint = industryHint(segKey(page.slug), sm.sicCode);
+    const why = hint?.[0] ?? (sm.signal ? SC.why[sm.signal] : undefined);
+    const webT = WEB_TITLE[wl][sm.signal ?? ""];
+    const kindTxt = sm.industry ? short(sm.industry.split(/[,;]/)[0], 40) : (fr ? "Entreprise locale" : "Local business");
+    const detail = localizeJob(cleanEvent(sm.event, sm.company), lang);
+    const title = webT ? webT.replace("{x}", kindTxt.charAt(0).toUpperCase() + kindTxt.slice(1)) : (detail || label || "");
+    const opener = sm.opener ? localizeJob(sm.opener.split(sm.company).join(nice(sm.company)), lang) : undefined;
+    const seed = seedOf(sm.companyId ?? sm.company);
+    const co = maskCompany(sm.company, seed);
+    const role = roleFor(page.country, sm.legalForm, sm.role, lang);
+    const show = (parts: Part[]) => parts.map((q, j) => q.m ? <span className="mask" key={j} aria-hidden="true">{q.t}</span> : <span key={j}>{q.t}</span>);
+    const masked = (x: string) => x.split(nameRe(sm.company)).flatMap((part, j) => j ? [<span key={j} className="nw">{show(co)}</span>, part] : [part]);
+    const hidden = <span className="sr">{` ${T2.hidden}`}</span>;
+    const prio = sm.urgency ?? "medium";
+    const bars = prio === "high" ? 3 : prio === "low" ? 1 : 2;
+    return (
+      <article className="tile" key={k} data-rv style={i(k)}>
+        <div className="main">
+          <div className="th"><div className="num">{String(k + 1).padStart(2, "0")}</div>
+            <div><h3>{show(co)}{hidden}</h3><div className="sub"><Icon name="shop" />{masked(nd(title))}</div></div></div>
+          <div className="cgrid">
+            <Field icon="phone" label={T2.phone}><span className="nw">{show(maskPhone(page.country, seed, sm.phone))}</span>{hidden}</Field>
+            {sm.personKnown
+              ? <Field icon="user" label={T2.contact}><span className="mask" aria-hidden="true">{maskCompany("Name Surname", seed ^ 7)[1].t}</span>, {role}</Field>
+              : <Field icon="cal" label={T2.detected}>{day(sm.date, lang)}</Field>}
+            <Field icon="mail" label={T2.email}><span className="nw">{show(maskEmail(sm.company, page.country, seed, sm.email))}</span>{hidden}</Field>
+            {sm.web === "none" && <Field icon="globe" label={T2.website}><span className="gold">{T2.noneFound}</span></Field>}
+          </div>
+          <div className="low">
+            {why && <div className="why"><span className="cap gold">{T2.whyNow}</span><p>{F(why)}</p></div>}
+            <div className="pres"><span className="cap" style={{ marginRight: 6 }}>{T2.online}</span>
+              <span className="pc"><Icon name="phone" />{T2.phone}<Icon name="check" /></span>
+              <span className="pc"><Icon name="mail" />{T2.email}<Icon name="check" /></span>
+              {sm.web && <span className={`pc${sm.web === "none" ? " no" : ""}`}><Icon name="globe" />{T2.website}<Icon name={sm.web === "none" ? "x" : "check"} /></span>}
+            </div>
+          </div>
+        </div>
+        <aside className="act">
+          {label && <span className={`badge ${kind}`}><Icon name={kind} />{label}</span>}
+          <span className="badge prio"><span className="meter">{[1, 2, 3].map((b) => <i key={b} className={b <= bars ? "on" : ""} />)}</span>{PRIO[wl][prio] ?? prio}</span>
+          <span className="cap"><Icon name="target" />{T2.howWin}</span>
+          {opener && <div className="askb"><small>{fr ? "Phrase d'accroche" : "Opening line"}</small>“{masked(nd(opener))}”</div>}
+          <div className="callb"><span className="ci"><Icon name="phone" /></span><span><em>{T2.call}</em><b className="nw">{show(maskPhone(page.country, seed, sm.phone))}</b></span></div>
+        </aside>
+      </article>);
+  };
+
   return (
-    <BrandShell lang={page.language}>
+    <BrandShell lang={page.language} extraCss={LANDING_CSS}>
       {preview && <div className="banner">VORSCHAU (nicht öffentlich) · Seite {page.status} · Variante {v.variant_key} ({v.status}) · keine Ereignisse gezählt</div>}
       <Tracker variantId={v.id} enabled={!preview} />
       <SiteHeader links={video ? [["#video", fr ? "Vidéo" : "Film"]] : []} cta={[stepHref, fr ? "Échantillon gratuit" : "Free sample"]} />
+      <div className="lp2">
 
-      <div className="hero solo" id="top">
-        <HeroNet />
-        <div className="wrap">
-          {personal?.firma && <div className="for later" style={{ "--d": ".05s" } as CSSProperties}>{fr ? `Préparé pour ${personal.firma}` : `Prepared for ${personal.firma}`}</div>}
-          <h1><Words text={headline} /></h1>
-          {subheadline && <p className="lede later" style={{ "--d": ".7s" } as CSSProperties}>{subheadline}</p>}
-          <ul className="chips later" style={{ "--d": ".85s" } as CSSProperties} aria-label={fr ? "Signaux" : "Signals"}>
-            {SC.chips.map((c) => <li key={c}>{F(c)}</li>)}
-          </ul>
-          {sp.angefragt ? <p className="ok">{known ? L.thanksTo(personal!.email!) : L.thanks}</p>
-            : sp.fehler ? <p className="err">{L.error}</p> : null}
-          {step ? <Probe /> : !sp.angefragt && (
-            <div className="cta-row later" style={{ "--d": ".9s", alignItems: "flex-start" } as CSSProperties}>
-              <div className="cta-stack"><Start label={known ? L.send : cta} /><Fine /></div>
-              {canBuy && <a className="btn ghost" href="#plans" data-cta>{L.subscribe}</a>}</div>
-          )}
-        </div>
-      </div>
-
-      {video && (
-        <section className="dark tight" id="video"><div className="wrap narrow">
-          <Head eyebrow={fr ? "Le film" : "The film"} title={L.video(video.seconds)} />
-          {/* Eigenes Video, keine Drittanbieter, lädt erst beim Abspielen */}
-          <div className="frame" data-rv><video controls playsInline preload="none" poster={video.poster} src={video.src} /></div>
-        </div></section>
-      )}
-
-      {samples.length > 0 && (
-        <section className="tinted tight"><div className="wrap"><Head eyebrow="" title={fr ? L.examples : F("Example leads from across {land}")} />
-          <p className="intro">{L.examplesNote}</p>
-          <div className="leadgrid p3">{samples.map((s0, k) => {
-            // ältere Beispiele (sample_leads) haben kein Signal: Neugründung am Text erkennen
-            const sm = { ...s0, signal: s0.signal ?? (/registered on|immatricul/i.test(s0.event) ? "new_incorporation" : undefined) };
-            const label = SIGNAL_LABEL[fr ? "fr" : "en"][sm.signal ?? ""] ?? null;
-            const detail = localizeJob(cleanEvent(sm.event, sm.company), lang);
-            const hint = industryHint(segKey(page.slug), sm.sicCode);
-            const why = hint?.[0] ?? (sm.signal ? SC.why[sm.signal] : undefined);
-            const month = sm.date ? new Date(sm.date + "T12:00:00Z").toLocaleDateString("en-GB", { month: "long" }) : "";
-            const opener = hint && sm.signal === "new_incorporation" && !fr
-              ? `Congratulations on setting up ${nice(sm.company)}${month ? ` this ${month}` : ""}. ${hint[1]}`
-              : sm.opener ? localizeJob(sm.opener.split(sm.company).join(nice(sm.company)), lang) : undefined;
-            const age = sm.date ? Math.max(0, Math.round((Date.now() - Date.parse(sm.date + "T12:00:00Z")) / 864e5)) : undefined;
-            const inc = sm.signal === "new_incorporation" && age !== undefined
-              ? (fr ? `Créée il y a ${age} jour${age === 1 ? "" : "s"}` : `Registered ${age} day${age === 1 ? "" : "s"} ago`) : "";
-            const noSite = sm.web === "none" ? (fr ? ", sans site web" : ", no website found") : "";
-            const webT = WEB_TITLE[fr ? "fr" : "en"][sm.signal ?? ""];
-            const kind = sm.industry ? short(sm.industry.split(/[,;]/)[0], 40) : (fr ? "Une entreprise locale" : "A local business");
-            const title = webT ? webT.replace("{x}", kind.charAt(0).toUpperCase() + kind.slice(1))
-              : (detail.length > 110 ? detail.slice(0, 107).replace(/[\s,]+\S*$/, "") + "…" : detail) || (inc ? inc + noSite : label ?? "");
-            // keine Städte/Regionen (landesweit): Branche, Rechtsform, Datum
-            const meta = [!webT && sm.industry && short(sm.industry.split(/[,;]/)[0], 48), sm.legalForm, day(sm.date, lang)].filter(Boolean).join(" · ");
-            const seed = seedOf(sm.companyId ?? sm.company);
-            const co = maskCompany(sm.company, seed);
-            const role = roleFor(page.country, sm.legalForm, sm.role, lang);
-            const show = (parts: Part[]) => parts.map((q, j) => q.m
-              ? <span className="mask" key={j} aria-hidden="true">{q.t}</span> : <span key={j}>{q.t}</span>);
-            const hidden = <span className="sr">{fr ? " (masqué)" : " (hidden)"}</span>;
-            // Firmenname überall verdecken (auch ohne Rechtsform, z. B. im Stellentitel "…, Withings Health Solutions")
-            const masked = (x: string) => x.split(nameRe(sm.company))
-              .flatMap((part, j) => j ? [<span key={j} className="nw">{show(co)}</span>, part] : [part]);
-            return (
-              <article className="leadp" key={k} data-rv style={i(k)}>
-                <div className="top">{label && <span className="pill">{label}</span>}
-                  {sm.urgency && <span className={`prio p-${sm.urgency}`}>{PRIO[fr ? "fr" : "en"][sm.urgency] ?? sm.urgency}</span>}</div>
-                <h3 className="ev">{masked(nd(title))}</h3>
-                {meta && <div className="meta">{meta}</div>}
-                <dl className="lock">
-                  <div><dt>{fr ? "Entreprise" : "Company"}</dt><dd>{show(co)}{hidden}</dd></div>
-                  {sm.personKnown
-                    ? <div><dt>{fr ? "Interlocuteur" : "Contact"}</dt><dd><span className="mask" aria-hidden="true">{maskCompany("Name Surname", seed ^ 7)[1].t}</span>, {role}</dd></div>
-                    : <div><dt>{fr ? "Demander" : "Ask for"}</dt><dd>{role}</dd></div>}
-                  <div><dt>{fr ? "Téléphone" : "Phone"}</dt><dd className="nw">{show(maskPhone(page.country, seed, sm.phone))}{hidden}</dd></div>
-                  <div><dt>E-mail</dt><dd className="nw">{show(maskEmail(sm.company, page.country, seed, sm.email))}{hidden}</dd></div>
-                  {sm.web === "none" && <div><dt>{fr ? "Site web" : "Website"}</dt><dd className="gold">{fr ? "aucun trouvé" : "none found"}</dd></div>}
-                  <p className="unlock"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>{fr ? "Visible dans votre échantillon gratuit" : "Unlocked in your free sample"}</p>
-                </dl>
-                {why && <p className="why"><b>{fr ? "Pourquoi maintenant" : "Why now"}</b>{F(why)}</p>}
-                {opener && <p className="op"><b>{fr ? "Phrase d'accroche" : "Opening line"}</b>“{masked(nd(opener))}”</p>}
-                <div className="ft"><span className="vf">✓ {fr ? "Vérifié" : "Verified"}</span><span>{L.example}</span></div>
-              </article>);
-          })}</div>
-        </div></section>
-      )}
-
-      <section className="tinted tight"><div className="wrap">
-        <Head eyebrow="" title={F(SC.revenueTitle)} />
-        <div className="cards two">{SC.revenue.map(([h, d], k) => (
-          <div className="card glow lift" key={h} data-rv style={i(k)}><div className="num">{k + 1}</div><h3>{F(h)}</h3><p>{F(d)}</p></div>))}</div>
-      </div></section>
-
-      <section className="dark tight"><div className="wrap">
-        <Head eyebrow="" title={F(PREMIUM[fr ? "fr" : "en"].title)} />
-        <div className="prem">{PREMIUM[fr ? "fr" : "en"].items.map(([h, d], k) => (
-          <div key={h} data-rv style={i(k)}><h3>{F(h)}</h3><p>{F(d)}</p></div>))}</div>
-      </div></section>
-
-      {canBuy && (
-        <section id="plans" className="tinted"><div className="wrap"><Head eyebrow={fr ? "Offres" : "Plans"} title={L.pricing} />
-          {mode === "test" && <p className="note">Stripe-Testmodus: keine echte Zahlung (Testkarte 4242 4242 4242 4242).</p>}
-          <div className="cards">{buyable.map((pl, k) => (
-            <form className="card glow lift" key={pl.key} method="post" action="/api/checkout" data-rv style={i(k)}>
-              <h3>{pl.name}</h3><div className="price">{priceLabel(pl)} <small>{L.perMonth}</small></div>{pl.description && <p className="note">{pl.description}</p>}
-              <input type="hidden" name="variant_id" value={v.id} /><input type="hidden" name="package" value={pl.key} />
-              {preview && <input type="hidden" name="vorschau" value="1" />}
-              <button className="btn gold" style={{ marginTop: 18 }} type="submit" data-cta>{L.subscribe}</button>
-            </form>))}</div>
-        </div></section>
-      )}
-
-      {!step && !sp.angefragt && (
-        <section className="offer tight" id="sample"><div className="wrap">
-          <div id="probe"><Head eyebrow="" title={F(SC.sampleTitle)} />
-            <p className="intro">{known ? L.sendsTo(CW.land, personal!.email!) : L.sendsToUnknown}</p>
-            {form}
+        <section className="h2o" id="top">
+          <div className="wrap" style={MAP ? undefined : { gridTemplateColumns: "1fr", maxWidth: 920 }}>
+            <div>
+              <span className="pill"><Icon name="star" className="ic" />{T2.pill.replace("{country}", cname)}</span>
+              {personal?.firma && <span className="for">{fr ? `Préparé pour ${personal.firma}` : `Prepared for ${personal.firma}`}</span>}
+              <h1><Words text={headline} gold={goldWords} /></h1>
+              {subheadline && <p className="sub">{subheadline}</p>}
+              <div className="every"><span className="cap">{T2.every}</span>
+                {T2.chips.map(([ic, txt]) => <span className="chip" key={txt}><Icon name={ic} />{txt}</span>)}</div>
+              {sp.angefragt ? <p className="ok">{known ? L.thanksTo(personal!.email!) : L.thanks}</p>
+                : sp.fehler ? <p className="err">{L.error}</p> : null}
+              {step ? <Probe /> : !sp.angefragt && (
+                <div className="ctaline"><Start label={known ? L.send : cta} />
+                  <span className="free2"><span>{L.free.replace(/\.$/, "")}</span><span>{L.noObl.replace(/\.$/, "")}</span></span>
+                  {canBuy && <a className="btn ghost" href="#plans" data-cta>{L.subscribe}</a>}</div>
+              )}
+            </div>
+            {MAP && <MapCard map={MAP} note={T2.whereNote.replace("{land}", CW.land)} />}
           </div>
-          <ul className="ticks" data-rv>
-            <li><b>{L.free}</b> {L.freeText}</li>
-            <li><b>{L.noObl}</b> {L.noOblText}</li>
-            <li>{L.followUp}</li>
-          </ul>
-        </div></section>
-      )}
+          {st && (
+            <div className="wrap" style={{ display: "block", paddingTop: 0 }}>
+              <div className="kpis">
+                <div className="kpi" data-rv style={i(0)}><b>{st.leads}</b><span>{T2.kpi.leads}</span></div>
+                <div className="kpi" data-rv style={i(1)}><b>{st.areas}</b><span>{AREA_LABEL[page.country]?.[wl] ?? ""}</span></div>
+                <div className="kpi" data-rv style={i(2)}><b>{st.industries}</b><span>{T2.kpi.industries}</span></div>
+                <div className="kpi" data-rv style={i(3)}><b>{T2.kpi.firm[0]}</b><span>{T2.kpi.firm[1]}</span></div>
+              </div>
+              <p className="kpinote">{T2.kpiNote.replace("{date}", st.date)}</p>
+            </div>
+          )}
+        </section>
 
-      {faq.length > 0 && (
-        <section className="tight"><div className="wrap faq"><Head eyebrow={fr ? "Questions" : "Questions"} title={L.faq} />
-          {faq.map((f, k) => <details key={k} data-rv style={i(k)}><summary>{nd(f.q)}</summary><p>{nd(f.a)}</p></details>)}
-        </div></section>
-      )}
+        {video && (
+          <section className="vid" id="video"><div className="wrap" style={{ maxWidth: 980 }}>
+            <div className="kick"><span className="cap">{L.video(video.seconds)}</span></div>
+            <div className="frame" data-rv><video controls playsInline preload="none" poster={video.poster} src={video.src} /></div>
+          </div></section>
+        )}
 
+        {(st || signals.length > 0) && (
+          <section className="sec cream"><div className="wrap">
+            <div className="kick"><span className="cap gold">{T2.common}</span></div>
+            <div className="two" style={st ? undefined : { gridTemplateColumns: "1fr" }}>
+              {st && <Presence title={st.kinds.nosite > 0 ? T2.presenceTitle : T2.common} note={T2.presenceNote.replace("{date}", st.date)}
+                rows={presenceRows} total={st.leads} opening={T2.opening} />}
+              <div className="box">
+                {signals.map((sg, k) => (
+                  <div className="prow" key={sg.title} style={{ gridTemplateColumns: "auto 1fr", alignItems: "start", borderTop: k ? undefined : 0 }}>
+                    <span className="gi" style={{ width: 38, height: 38, margin: 0 }}><Icon name={sigIcons[k] ?? "check"} /></span>
+                    <span><b style={{ display: "block", fontSize: 16 }}>{F(sg.title)}</b><span style={{ color: "var(--muted)", fontSize: 14.5 }}>{F(sg.text)}</span></span>
+                  </div>))}
+              </div>
+            </div>
+          </div></section>
+        )}
+
+        {samples.length > 0 && (
+          <section className="sec"><div className="wrap">
+            <div className="kick"><span className="cap gold">{st ? T2.examples : (fr ? L.examples : F("Example leads from across {land}"))}</span></div>
+            <div className="tiles">{samples.slice(0, 2).map(tile)}</div>
+            <p className="unlock"><Icon name="lock" />{T2.examplesNote}</p>
+          </div></section>
+        )}
+
+        <section className="sec dark"><div className="wrap">
+          <h2>{T2.revenue.replace(/(revenue|chiffre d'affaires)$/, "")}<i>{(T2.revenue.match(/(revenue|chiffre d'affaires)$/) ?? [""])[0]}</i></h2>
+          <div className="rs">{T2.reasons.map(([ic, h, d], k) => (
+            <div className="rcard" key={h} data-rv style={i(k)}><span className="gi"><Icon name={ic} /></span><h3>{h}</h3><p>{d}</p></div>))}</div>
+          <div className="kick"><span className="cap" style={{ color: "var(--gink)" }}>{T2.howTitle}</span></div>
+          <div className="steps">{T2.steps.map(([ic, h, d], k) => (
+            <div className="step" key={h} data-rv style={i(k)}><div className="no"><b>{String(k + 1).padStart(2, "0")}</b><span className="ring"><Icon name={ic} /></span></div><h3>{h}</h3><p>{d}</p></div>))}</div>
+        </div></section>
+
+        {canBuy && (
+          <section id="plans" className="sec cream"><div className="wrap"><h2>{L.pricing}</h2>
+            {mode === "test" && <p className="lede2">Stripe-Testmodus: keine echte Zahlung (Testkarte 4242 4242 4242 4242).</p>}
+            <div className="rs" style={{ margin: "20px 0 0" }}>{buyable.map((pl, k) => (
+              <form className="box" key={pl.key} method="post" action="/api/checkout" data-rv style={i(k)}>
+                <h3>{pl.name}</h3><p className="small">{priceLabel(pl)} {L.perMonth}</p>{pl.description && <p className="lede2">{pl.description}</p>}
+                <input type="hidden" name="variant_id" value={v.id} /><input type="hidden" name="package" value={pl.key} />
+                {preview && <input type="hidden" name="vorschau" value="1" />}
+                <button className="btn gold" type="submit" data-cta>{L.subscribe}</button>
+              </form>))}</div>
+          </div></section>
+        )}
+
+        {!step && !sp.angefragt && (
+          <section className="sec cream" id="sample"><div className="wrap formwrap">
+            <div className="formcard" id="probe">
+              <h2>{F(T2.sampleTitle)}</h2>
+              <p className="lede2" style={{ color: "#aab4ca" }}>{known ? L.sendsTo(CW.land, personal!.email!) : L.sendsToUnknown}</p>
+              {form}
+            </div>
+            <ul className="ticks2">
+              <li><Icon name="check" /><span><b>{L.free}</b> {L.freeText}</span></li>
+              <li><Icon name="check" /><span><b>{L.noObl}</b> {L.noOblText}</span></li>
+              <li><Icon name="check" /><span>{L.followUp}</span></li>
+            </ul>
+          </div></section>
+        )}
+
+        {faq.length > 0 && (
+          <section className="sec"><div className="wrap faq2" style={{ maxWidth: 820 }}>
+            <h2>{T2.questions}</h2>
+            {faq.map((f, k) => <details key={k}><summary>{nd(f.q)}</summary><p>{nd(f.a)}</p></details>)}
+          </div></section>
+        )}
+      </div>
       <SiteFooter lang={lang} />
     </BrandShell>
   );
