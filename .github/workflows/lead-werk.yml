@@ -174,6 +174,7 @@ jobs:
         with:
           path: out/cache/dol_lca.json
           key: dol-lca-${{ needs.us-auszug.outputs.monat }}
+          fail-on-cache-miss: true  # fehlt der Auszug, ist der Teil rot statt still leer (Scout 02.10.2026)
       - name: Leads holen, prüfen, speichern
         if: steps.gate.outputs.an == 'true'
         run: python scripts/extraktor/run.py ${{ matrix.args }} --workers 16 --db --store --out out/lead-werk --deadline-min 75

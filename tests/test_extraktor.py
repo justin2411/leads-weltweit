@@ -828,3 +828,14 @@ class SiteRecheckTests(unittest.TestCase):
             bad = site_recheck.drop_with_site(db, leads, fetcher=object(), log=lambda *a: None)
         self.assertEqual(bad, {"l1"})
         self.assertIn(("leads", {"id": "l1"}, {"status": "expired"}), db.updates)
+
+
+class LcaCellTests(unittest.TestCase):
+    """calamine liefert Zahlenzellen als float; select() braucht Text (Scout 02.10.2026)."""
+
+    def test_numeric_cells_become_text(self):
+        from extraktor.sources.us_dol_lca import _cell
+        self.assertEqual(_cell(2134.0, "EMPLOYER_POSTAL_CODE"), "02134")
+        self.assertEqual(_cell(5551234567.0, "EMPLOYER_PHONE"), "5551234567")
+        self.assertEqual(_cell("Acme", "EMPLOYER_NAME"), "Acme")
+        self.assertEqual(_cell(3, "NEW_EMPLOYMENT"), "3")

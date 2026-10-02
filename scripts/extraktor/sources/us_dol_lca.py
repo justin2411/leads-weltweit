@@ -32,7 +32,8 @@ from extraktor.model import candidate, title_case
 
 PAGE = "https://www.dol.gov/agencies/eta/foreign-labor/performance"
 CACHE = Path("out/cache/dol_lca.json")
-UA = {"User-Agent": "Mozilla/5.0 (compatible; signalwerk-research/1.0)"}
+# Ehrlicher Bot-Name ohne „Mozilla“: dol.gov (Akamai) sperrt den Browser-ähnlichen Namen mit 403 (Scout 02.10.2026)
+UA = {"User-Agent": "NextGenProfitBot/0.1 (+company-signal research)"}
 SOURCE_NAME = "US Department of Labor, LCA disclosure data"
 WINDOW_DAYS = 90
 MIN_NEW_HIRES = 3
@@ -185,7 +186,15 @@ def read_xlsx(path: Path):
     head = [str(h).strip() for h in next(rows)]
     idx = {c: head.index(c) for c in COLS if c in head}
     for row in rows:
-        yield {c: (row[i] if i < len(row) else "") for c, i in idx.items()}
+        yield {c: _cell(row[i] if i < len(row) else "", c) for c, i in idx.items()}
+
+
+def _cell(v, col: str):
+    """Zahlenzellen (PLZ, Telefon, FEIN) als Text: calamine liefert float, select() erwartet str."""
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return v
+    s = str(int(v)) if float(v).is_integer() else str(v)
+    return s.zfill(5) if col == "EMPLOYER_POSTAL_CODE" and len(s) < 5 else s
 
 
 def build(path: Path = CACHE, log=print) -> Path:
