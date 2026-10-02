@@ -65,7 +65,7 @@ def cta_button(company: str, region: str | None, lang: str) -> str:
     first = (os.environ.get("SENDER_NAME") or "").split(" ")[0]
     area = region or ""
     if lang == "fr":
-        label = "Oui, envoyez-moi l'échantillon"
+        label = "Envoyez-moi mes 10 pistes gratuites"
         subj = f"Demande d'échantillon : 10 pistes{' pour ' + area if area else ''}"
         body = (f"Bonjour{' ' + first if first else ''},\n\n"
                 f"Merci pour votre message. Nous serions heureux de recevoir l'échantillon gratuit de 10 pistes"
@@ -76,7 +76,7 @@ def cta_button(company: str, region: str | None, lang: str) -> str:
                 f"Vous pouvez envoyer l'échantillon à cette adresse.\n\n"
                 f"Bien cordialement\n")
     else:
-        label = "Yes, send my free sample"
+        label = "Send me my 10 free leads"
         subj = f"Sample request: 10 leads{' for ' + area if area else ''}"
         body = (f"Dear {first or 'team'},\n\n"
                 f"Thank you for your email. We would be glad to receive the free sample of 10 leads"
