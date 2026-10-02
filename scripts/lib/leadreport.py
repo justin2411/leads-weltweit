@@ -415,6 +415,7 @@ CSV_COLS = {
     "fr": ["N°", "Entreprise", "Priorité", "Signal", "Secteur", "Forme juridique", "Téléphone", "E-mail", "Site web",
            "Interlocuteur", "Fonction", "Adresse", "Date", "Pourquoi maintenant", "Besoins probables", "Proposez", "Demandez"],
 }
+CONTACT_COLS = (9, 10)  # „Contact person“, „Contact role“
 
 
 def clean_csv(data: bytes, lang: str = "en", segment: str | None = None, country: str = "UK") -> bytes:
@@ -422,7 +423,8 @@ def clean_csv(data: bytes, lang: str = "en", segment: str | None = None, country
     t = T.get(lang, T["en"])
     buf = io.StringIO()
     w = csv.writer(buf)
-    w.writerow(CSV_COLS.get(lang, CSV_COLS["en"]))
+    head = CSV_COLS.get(lang, CSV_COLS["en"])
+    rows = []
     for num, g in enumerate(group_rows(data)[:10], 1):
         r = g["rows"][0]
         sig = r.get("signal") or ("new_incorporation" if "regist" in (r.get("event") or "").lower() else "")
@@ -432,10 +434,14 @@ def clean_csv(data: bytes, lang: str = "en", segment: str | None = None, country
         sic = (r.get("industry") or "")[:5] if (r.get("industry") or "")[:2].isdigit() else ""
         bf = briefing(sig, segment, r.get("event", ""), r.get("event_date", ""), "", (r.get("question_to_ask") or "").strip(),
                       ind, loc.split(",")[0], country, sic)
-        w.writerow([num, g["company"], t["prio"].get(urg, ""), t["sig"].get(sig, ""), ind, r.get("legal_form") or "",
+        rows.append([num, g["company"], t["prio"].get(urg, ""), t["sig"].get(sig, ""), ind, r.get("legal_form") or "",
                     r.get("phone") or "", r.get("email") or "", re.sub(r"^https?://(www\.)?", "", r.get("website") or "").rstrip("/"),
                     r.get("contact_name") or "", r.get("contact_role") or "", (r.get("address") or "").strip() or loc,
                     (r.get("event_date") or "")[:10], bf["why"], " | ".join(bf["needs"]), bf["offer"], bf["ask"]])
+    # Ansprechperson/Funktion nur, wenn mindestens eine Firma sie hat (Inhaber 02.10.2026: leere Spalte raus)
+    drop = {i for i in CONTACT_COLS if not any(str(row[i]).strip() for row in rows)}
+    w.writerow([c for i, c in enumerate(head) if i not in drop])
+    w.writerows([[v for i, v in enumerate(row) if i not in drop] for row in rows])
     return ("\ufeff" + buf.getvalue()).encode("utf-8")
 
 

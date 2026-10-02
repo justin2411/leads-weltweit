@@ -77,3 +77,31 @@ class NoShadowTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CleanCsvContactTests(unittest.TestCase):
+    """Inhaber 02.10.2026: Ansprechperson-Spalten nur, wenn eine Firma sie hat."""
+
+    def _csv(self, name="", role=""):
+        import csv, io
+        buf = io.StringIO()
+        w = csv.DictWriter(buf, fieldnames=["company", "phone", "email", "contact_name", "contact_role", "address"])
+        w.writeheader()
+        w.writerow({"company": "A Cafe", "phone": "1", "email": "a@a.com", "contact_name": name, "contact_role": role,
+                    "address": "1 Main St"})
+        return buf.getvalue().encode()
+
+    def _head(self, data):
+        from lib.leadreport import clean_csv
+        return clean_csv(data).decode("utf-8-sig").splitlines()[0].split(",")
+
+    def test_empty_contact_columns_dropped(self):
+        head = self._head(self._csv())
+        self.assertNotIn("Contact person", head)
+        self.assertNotIn("Contact role", head)
+        self.assertIn("Address", head)
+
+    def test_contact_kept_when_present(self):
+        head = self._head(self._csv("Jane Doe", "Owner"))
+        self.assertIn("Contact person", head)
+        self.assertIn("Contact role", head)
