@@ -476,6 +476,11 @@ def attachments(csv_bytes: bytes, lang: str, area: str | None = None, firm: str 
         return []
     pdf = render_pdf(csv_bytes, lang, area, firm, period, local_plans(plans, country), cta_url, segment, country)
     if pdf:
-        out.append((f"NextGen-Profit-Lead-Report{slug}.pdf", pdf))
+        # Dateiname nach Inhalt, nicht nach Firma (Inhaber 02.10.2026: in Gmail sonst nicht unterscheidbar)
+        if sample:
+            title = "10-pistes-gratuites" if lang == "fr" else "Your-10-Free-Leads"
+        else:
+            title = "Vos-pistes" if lang == "fr" else "Your-Leads"
+        out.append((f"{title}{slug or '-' + (country or '').upper()}.pdf", pdf))
     out.append((f"{name}{slug}.csv", clean_csv(csv_bytes, lang, segment, country)))
     return out

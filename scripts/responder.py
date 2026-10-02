@@ -497,8 +497,9 @@ def brochure(segment: str | None, country: str | None) -> tuple[str, bytes] | No
     f = BROCHURES / f"{segment}-{(country or '').upper()}.pdf"
     if not segment or not f.exists():
         return None
-    name = {"S2": "Web-Agencies"}.get(segment, segment)
-    return f"NextGen-Profit-{name}-{(country or '').upper()}.pdf", f.read_bytes()
+    cc = (country or "").upper()
+    title = "Comment-ca-marche" if cc == "FR" else "How-It-Works"
+    return f"{title}-{cc}.pdf", f.read_bytes()
 
 
 def sample_text(lang: str, region: str | None, has_files: bool, regional: bool = True, preview: str = "",
