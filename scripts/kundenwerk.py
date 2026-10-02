@@ -43,6 +43,9 @@ COUNTRIES = {"US": "US", "GB": "UK", "FR": "FR", "IE": "IE", "NL": "NL", "BE": "
 CATEGORIES = {
     "employment_agency": "S1",
     "web_designer": "S2",
+    # Fokus Webagenturen (Inhaber 02.10.2026): auch Grafik-/Social-Media-/Hosting-/Online-Marketing-Agenturen bauen
+    # Websites für kleine Firmen und kaufen „Firmen ohne Website“
+    "graphic_designer": "S2", "social_media_agency": "S2", "web_hosting_service": "S2",
     "it_service_and_computer_repair": "S3", "information_technology_company": "S3", "it_consultant": "S3",
     "insurance_agency": "S4",
     "accountant": "S5", "bookkeeper": "S5", "tax_service": "S5", "payroll_service": "S5",
@@ -52,7 +55,7 @@ CATEGORIES = {
     "financial_advising": "S9",
     "sign_making": "S10", "b2b_signage_service": "S10",
     "marketing_agency": "S12", "advertising_agency": "S12", "b2b_marketing_consultant": "S12",
-    "internet_marketing_service": "S12",
+    "internet_marketing_service": "S2",
 }
 NOT_OWN_SITE = re.compile(r"(facebook|instagram|linkedin|twitter|x\.com|yelp|google|wix(site)?\.com|godaddysites|"
                           r"business\.site|yell\.com|pagesjaunes|bark\.com|checkatrade|houzz|tripadvisor|"
@@ -225,6 +228,10 @@ def cmd_run(args) -> int:
     cfg = load_countries()
     generic = {g.lower() for g in cfg.get("generic_local_parts") or []}
     segs = {s["id"]: set(s.get("email_countries") or []) for s in db.select_all("segments", {"select": "id,email_countries"})}
+    if args.segments:
+        # Fokus (02.10.2026: nur Webagenturen): andere Zielgruppen in diesem Lauf auslassen
+        keep = {x.strip().upper() for x in args.segments.split(",") if x.strip()}
+        segs = {k: v for k, v in segs.items() if k in keep}
     have = count_ok(db)
     if have >= args.target:
         log(f"Ziel erreicht: {have} geprüfte Käufer (Ziel {args.target}) – nichts zu tun")
@@ -320,6 +327,7 @@ def main(argv=None) -> int:
     r.add_argument("--max", type=int, default=3000)
     r.add_argument("--workers", type=int, default=16)
     r.add_argument("--target", type=int, default=TARGET)
+    r.add_argument("--segments", default="", help="nur diese Zielgruppen prüfen, z. B. S2 (leer = alle)")
     r.add_argument("--deadline-min", type=float, default=0,
                    help="nach N Minuten keine neuen Firmen mehr anfangen, Ergebnisse speichern (0 = aus)")
     sub.add_parser("stand")

@@ -427,6 +427,8 @@ def main(argv=None) -> int:
     ap.add_argument("--store", action="store_true", help="grüne Leads direkt in die Datenbank schreiben (mit --db)")
     ap.add_argument("--shard", default="", help="i/n: nur jeden n-ten Kandidaten ab i (parallele Teilläufe)")
     ap.add_argument("--out", default="out/extraktor")
+    ap.add_argument("--us-overture", action="store_true",
+                    help="S2 US: Firmen ohne Website aus Overture (Fokus Webagenturen, 02.10.2026)")
     ap.add_argument("--deadline-min", type=float, default=0,
                     help="nach N Minuten keine neuen Kandidaten mehr anfangen, Ergebnisse speichern (0 = aus)")
     args = ap.parse_args(argv)
@@ -469,7 +471,7 @@ def main(argv=None) -> int:
                 got = []
             key = "S1" if co == "US" else "S1/UK"  # US-Pools haben keinen Länder-Zusatz
             p[key] = got + p.get(key, [])
-    for co in ("UK", "FR") + S2_EXTRA:
+    for co in ("UK", "FR") + S2_EXTRA + (("US",) if args.us_overture else ()):
         if co in countries and "S2" in segs:
             known = {i for s_, i in guard.known if s_ == "overture"}
             p[f"S2/{co}"] = [c for c in load_overture_s2(co, args.s2_limit, stats, known) if segments.fits("S2", c)[0]]

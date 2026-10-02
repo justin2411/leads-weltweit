@@ -687,3 +687,34 @@ class IrelandRegisterTests(unittest.TestCase):
                   "CLG - Company Limited by Guarantee", "PLC - Public Limited Company"):
             self.assertTrue(is_company_form("IE", ie_cro.form_of(t)), t)
         self.assertIsNone(ie_cro.form_of("External company"))
+
+
+class WebAgencyFocusTests(unittest.TestCase):
+    """Inhaber 02.10.2026: Fokus Webagenturen – US-Firmen ohne Website aus Overture."""
+
+    def test_us_company_info_names_state_like_the_address(self):
+        import datetime as _dt
+        from extraktor import sc, segments as S
+        from extraktor.sources import overture
+        d = {"id": "x1", "name": "Culpepper Insurance Agency Inc", "phones": ["+18506233601"],
+             "emails": ["culpepperins@gmail.com"], "socials": ["https://facebook.com/x"], "street": "6630 Caroline Street",
+             "city": "Milton", "postcode": "32570", "region": "FL", "category": "insurance_agency",
+             "datasets": ["meta"], "updated": ["2026-09-01"], "confidence": 0.9}
+        c = overture.to_candidate(d, "US")
+        self.assertEqual(c["state"], "FL")
+        t = S.texts("S2", c)
+        self.assertIn("Milton, FL 32570", t["company_info"])
+        self.assertNotIn("company_info_place_differs_from_address", sc.run(c, "S2", t)["problems"])
+        self.assertEqual(overture.to_candidate(d, "UK")["state"], "")  # UK unverändert
+
+    def test_kundenwerk_web_agency_categories(self):
+        import kundenwerk as K
+        for cat in ("web_designer", "graphic_designer", "social_media_agency", "web_hosting_service",
+                    "internet_marketing_service"):
+            self.assertEqual(K.CATEGORIES[cat], "S2", cat)
+
+    def test_lead_werk_is_all_web_agencies(self):
+        import yaml
+        jobs = yaml.safe_load((ROOT / ".github" / "workflows" / "lead-werk.yml").read_text())["jobs"]
+        for e in jobs["holen"]["strategy"]["matrix"]["include"]:
+            self.assertIn("--segments S2 ", e["args"] + " ", e["name"])
