@@ -36,8 +36,18 @@ function day(d: string | undefined, lang: string): string | undefined {
 }
 
 const SIGNAL_LABEL: Record<"en" | "fr", Record<string, string>> = {
-  en: { new_incorporation: "Newly registered", job_open_30d: "Role open 30+ days", jobs_3plus: "Several roles open", new_location: "New location", website_outdated: "Outdated website" },
-  fr: { new_incorporation: "Création récente", job_open_30d: "Poste ouvert 30+ jours", jobs_3plus: "Plusieurs postes ouverts", new_location: "Nouveau site", website_outdated: "Site web vieillissant" },
+  en: { new_incorporation: "Newly registered", job_open_30d: "Role open 30+ days", jobs_3plus: "Several roles open", new_location: "New location", website_outdated: "Outdated website",
+    no_website: "No website found", website_not_mobile: "Not mobile-friendly", no_https: "Security gap", website_broken: "Website down" },
+  fr: { new_incorporation: "Création récente", job_open_30d: "Poste ouvert 30+ jours", jobs_3plus: "Plusieurs postes ouverts", new_location: "Nouveau site", website_outdated: "Site web vieillissant",
+    no_website: "Aucun site trouvé", website_not_mobile: "Pas adapté au mobile", no_https: "Faille de sécurité", website_broken: "Site hors service" },
+};
+/** Website-Befunde (Webagenturen): Beispiel-Titel aus Branche + Befund statt Rohtext der Quelle (Inhaber 02.10.2026). */
+const WEB_SIGNALS = ["no_website", "website_outdated", "website_not_mobile", "no_https", "website_broken"];
+const WEB_TITLE: Record<"en" | "fr", Record<string, string>> = {
+  en: { no_website: "{x} with no website", website_outdated: "{x} with an outdated website", website_not_mobile: "{x} whose website fails on phones",
+    no_https: "{x} whose website is not secure", website_broken: "{x} whose website is down" },
+  fr: { no_website: "{x} sans site web", website_outdated: "{x} au site vieillissant", website_not_mobile: "{x} au site non adapté au mobile",
+    no_https: "{x} au site non sécurisé", website_broken: "{x} au site hors service" },
 };
 const PRIO: Record<"en" | "fr", Record<string, string>> = {
   en: { high: "High priority", medium: "Medium priority", low: "Low priority" },
@@ -93,7 +103,7 @@ async function countrySamples(page: { segment_id: string; country: string }): Pr
   const ck = `${page.segment_id}|${page.country}`;
   const hit = cache.get(ck);
   if (hit && process.env.NODE_ENV === "production" && Date.now() - hit.at < 10 * 60 * 1000) return hit.rows;
-  const sel = "event_summary, event_date, source_name, signal_type, urgency, opener, company_id, observation_ids, watch_companies!inner(name, legal_form, website, website_checked_at)";
+  const sel = "event_summary, event_date, source_name, signal_type, urgency, opener, company_id, observation_ids, watch_companies!inner(name, legal_form, website, website_checked_at, industry)";
   const base = () => db().from("leads").select(sel).eq("segment_id", page.segment_id).eq("country", page.country)
     .in("status", ["sample", "new"]).order("event_date", { ascending: false });
   const ago = (d: number) => new Date(Date.now() - d * 864e5).toISOString().slice(0, 10);
@@ -109,9 +119,13 @@ async function countrySamples(page: { segment_id: string; country: string }): Pr
     base().lte("event_date", before(8)).limit(40),
     base().lte("event_date", ago(20)).limit(30),
     base().eq("urgency", "medium").limit(30),
+    ...(page.segment_id === "S2" ? [base().in("signal_type", WEB_SIGNALS.slice(1)).limit(60)] : []),
   ])];
   const seen = new Set<string>();
-  const rows = res.flatMap((r) => (r.data ?? []) as any[]).filter((l) => {
+  const all = res.flatMap((r) => (r.data ?? []) as any[]);
+  // Webagenturen: Beispiele wie in der Probe (Website-Befunde), nicht Neugründungen aus Verkehrs- oder Firmenregistern
+  const webOnly = page.segment_id === "S2" ? all.filter((l) => WEB_SIGNALS.includes(l.signal_type)) : [];
+  const rows = (webOnly.length >= 3 ? webOnly : all).filter((l) => {
     const k = `${l.company_id}|${l.signal_type}|${l.event_date}`;
     if (seen.has(k)) return false;
     seen.add(k);
@@ -156,7 +170,8 @@ async function countrySamples(page: { segment_id: string; country: string }): Pr
     const cc: any = contact.get(l.company_id) ?? {};
     return {
       company: l.watch_companies.name, companyId: String(l.company_id),
-      industry: code ? code.split(" - ").slice(1).join(" - ") || undefined : undefined, sicCode: code?.slice(0, 5),
+      industry: (code ? code.split(" - ").slice(1).join(" - ") || undefined : undefined) ?? (l.watch_companies.industry || undefined),
+      sicCode: code?.slice(0, 5),
       noWebsite: noWeb(l), web: noWeb(l) ? "none" as const : l.watch_companies.website ? "found" as const : undefined,
       legalForm: shortForm(l.watch_companies.legal_form, l.watch_companies.name),
       role: pp?.role ?? undefined, personKnown: Boolean(pp?.name),
@@ -311,9 +326,12 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
             const inc = sm.signal === "new_incorporation" && age !== undefined
               ? (fr ? `Créée il y a ${age} jour${age === 1 ? "" : "s"}` : `Registered ${age} day${age === 1 ? "" : "s"} ago`) : "";
             const noSite = sm.web === "none" ? (fr ? ", sans site web" : ", no website found") : "";
-            const title = (detail.length > 110 ? detail.slice(0, 107).replace(/[\s,]+\S*$/, "") + "…" : detail) || (inc ? inc + noSite : label ?? "");
+            const webT = WEB_TITLE[fr ? "fr" : "en"][sm.signal ?? ""];
+            const kind = sm.industry ? short(sm.industry.split(/[,;]/)[0], 40) : (fr ? "Une entreprise locale" : "A local business");
+            const title = webT ? webT.replace("{x}", kind.charAt(0).toUpperCase() + kind.slice(1))
+              : (detail.length > 110 ? detail.slice(0, 107).replace(/[\s,]+\S*$/, "") + "…" : detail) || (inc ? inc + noSite : label ?? "");
             // keine Städte/Regionen (landesweit): Branche, Rechtsform, Datum
-            const meta = [sm.industry && short(sm.industry.split(/[,;]/)[0], 48), sm.legalForm, day(sm.date, lang)].filter(Boolean).join(" · ");
+            const meta = [!webT && sm.industry && short(sm.industry.split(/[,;]/)[0], 48), sm.legalForm, day(sm.date, lang)].filter(Boolean).join(" · ");
             const seed = seedOf(sm.companyId ?? sm.company);
             const co = maskCompany(sm.company, seed);
             const role = roleFor(page.country, sm.legalForm, sm.role, lang);

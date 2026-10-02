@@ -158,3 +158,13 @@ class WebSamplesWishTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class WebWishTests(unittest.TestCase):
+    """Webagenturen (02.10.2026): Wünsche passen zu den Website-Befunden."""
+
+    def test_web_wishes(self):
+        self.assertTrue(wishes.matches("no_website", {"signal_type": "no_website"}))
+        self.assertTrue(wishes.matches("security", {"signal_type": "no_https"}))
+        self.assertFalse(wishes.matches("website_outdated", {"signal_type": "no_https"}))
+        self.assertTrue(wishes.matches("not_mobile", {"signal_type": "website_not_mobile"}))

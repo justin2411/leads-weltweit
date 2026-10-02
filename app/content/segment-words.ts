@@ -30,22 +30,22 @@ export const PREMIUM: Record<"en" | "fr", { title: string; items: [string, strin
   en: {
     title: "Why these are premium leads",
     items: [
-      ["Fresh", "Events from the last weeks, not a database that was bought years ago."],
+      ["Fresh", "Checked every week, not a database that was bought years ago."],
       ["Verified", "Every lead is checked against official registers or the company's own website, with the date we found it."],
       ["Rated", "Each lead is scored for freshness and relevance. Anything below our minimum is never sent."],
       ["Nationwide", "Leads from across {land}, so {firma} is not tied to one town: every lead can be called from anywhere."],
-      ["Ready to call", "Phone number, company email and the owner or director named in the public register, plus an opening line written for {beruf} that refers to the actual event."],
+      ["Ready to call", "Phone number and company email, the owner's name where public sources list it, plus an opening line written for {beruf}."],
       ["Exclusive", "Each lead goes to one firm in your industry only. No competitor of {firma} would receive it."],
     ],
   },
   fr: {
     title: "Pourquoi ce sont des pistes premium",
     items: [
-      ["Récentes", "Des événements des dernières semaines, pas une base achetée il y a des années."],
+      ["Récentes", "Vérifiées chaque semaine, pas une base achetée il y a des années."],
       ["Vérifiées", "Chaque piste est vérifiée dans les registres officiels ou sur le site de l'entreprise, avec la date."],
       ["Notées", "Chaque piste est notée selon sa fraîcheur et sa pertinence. En dessous de notre seuil, elle n'est jamais envoyée."],
       ["Nationales", "Des pistes {land_de} : {firma} n'est pas limitée à une ville, chaque piste peut être appelée de partout."],
-      ["Prêtes à appeler", "Téléphone, e-mail de l'entreprise et dirigeant indiqué au registre public, avec une phrase d'accroche qui fait référence à l'événement."],
+      ["Prêtes à appeler", "Téléphone et e-mail de l'entreprise, le nom du dirigeant quand une source publique l'indique, et une phrase d'accroche."],
       ["Exclusives", "Chaque piste ne va qu'à une seule entreprise de votre secteur. Aucun concurrent de {firma} ne la recevrait."],
     ],
   },
@@ -177,34 +177,39 @@ const EN: Record<string, SegmentCopy> = {
     ],
   },
   "web-agencies": {
-    words: { beruf: "web agencies", team: "your studio", zielkunden: "new and growing businesses", leistung: "websites, online shops and SEO", anlass: "a new company without a website yet" },
-    chips: ["New companies", "No website yet", "Outdated sites", "Growing teams"],
-    stepsTitle: "How {firma} could win the first website",
+    words: { beruf: "web agencies", team: "your studio", zielkunden: "local businesses", leistung: "websites, online shops and SEO", anlass: "a missing, outdated or insecure website" },
+    chips: ["No website", "Outdated website", "Not mobile-friendly", "Security gaps"],
+    stepsTitle: "How {firma} could win the next website",
     steps: [
-      "We check new company registrations across {land} every day and look for a live website under the company's name.",
-      "We keep businesses without a website or with an outdated one, the moment {leistung} are needed.",
-      "As a client, {firma} would get the list every Monday, with date, source and an opening line written for {beruf}.",
+      "We check local businesses across {land} every week: is there a website, and does it still hold up?",
+      "We keep businesses with no website, an outdated or non-mobile site or security gaps, the moment {leistung} are needed.",
+      "As a client, {firma} would get the list every Monday, with phone, email and an opening line written for {beruf}.",
     ],
     getsTitle: "What {firma} would receive every Monday",
     gets: [
-      "Companies registered across {land} in recent weeks, with registered address and date",
-      "Whether a website was found, and which domains we checked",
-      "The official {register} record for every lead",
-      "The company's phone number and email, a short profile and a sales tip for {beruf} with every lead",
+      "Local businesses across {land} with no website, an outdated site or security gaps",
+      "What we found when we checked their website, and when",
+      "The company's phone number and email, the owner's name where public sources list it",
+      "A short profile and a sales tip for {beruf} with every lead",
       "A short opening line that refers to {anlass}",
     ],
-    sampleTitle: "10 new businesses from across {land} without a website, free",
+    sampleTitle: "10 free leads from across {land}",
     why: {
       new_incorporation: "A company that is just starting: its first website, domain and email are usually still ahead.",
+      no_website: "Customers search online first. Without a website, this business is hard to find.",
+      website_outdated: "An old site that hurts trust and rarely brings in enquiries.",
+      website_not_mobile: "Most visitors arrive on a phone, and this site does not work there.",
+      no_https: "Browsers warn visitors that this site is not secure, and many leave.",
+      website_broken: "The website is down or parked, so customers find nothing.",
       job_open_30d: "A business hiring for weeks: a better careers page or website could help it find people.",
       jobs_3plus: "A growing business often outgrows the site it started with.",
     },
     revenueTitle: "How {firma} could turn this into projects",
     revenue: [
-      ["The first website", "A new company needs a site, a domain and email. Reaching it early would put {firma} in the first conversation."],
-      ["Checked, not guessed", "Each lead notes which domains we checked, so {team} would know there is no site yet before calling."],
-      ["From build to retainer", "A first site often leads to hosting, updates and SEO, work that continues after launch."],
-      ["Clients anywhere", "Websites are built remotely, so {firma} can win new businesses across {land}."],
+      ["The next website", "A business without a website, or with one that lets it down, needs {leistung}. Reaching it first would put {firma} in the conversation."],
+      ["Checked, not guessed", "We check each company's own website, so {team} would know the gap before calling."],
+      ["From build to retainer", "A new site often leads to hosting, updates and SEO, work that continues after launch."],
+      ["Clients anywhere", "Websites are built remotely, so {firma} can win businesses across {land}."],
     ],
   },
 };
@@ -259,9 +264,38 @@ const FR_DEFAULT: SegmentCopy = {
   ],
 };
 
+/** Agences web auf Französisch (Inhaber 02.10.2026: wie die englische Seite, ohne „créations récentes“). */
+const FR_WEB: SegmentCopy = {
+  ...FR_DEFAULT,
+  words: { beruf: "agences web", team: "votre agence", zielkunden: "entreprises locales", leistung: "sites web, boutiques en ligne et référencement", anlass: "un site absent, ancien ou non sécurisé" },
+  chips: ["Sans site web", "Site ancien", "Pas adapté au mobile", "Failles de sécurité"],
+  stepsTitle: "Comment {firma} pourrait décrocher le prochain site",
+  steps: [
+    "Chaque semaine, nous vérifions les entreprises locales {land_de} : ont-elles un site, et tient-il encore la route ?",
+    "Nous gardons celles sans site, avec un site ancien ou non adapté au mobile, ou avec des failles de sécurité.",
+    "En tant que client, {firma} recevrait la liste chaque lundi, avec téléphone, e-mail et une phrase d'accroche.",
+  ],
+  gets: ["Des entreprises locales {land_de} sans site, avec un site ancien ou des failles de sécurité", "Ce que nous avons constaté sur leur site, et quand", "Le téléphone et l'e-mail de l'entreprise, le nom du dirigeant quand une source publique l'indique", "Un court profil et un conseil de vente pour chaque piste", "Une phrase d'accroche pour le premier appel"],
+  sampleTitle: "10 pistes gratuites {land_de}",
+  why: {
+    ...FR_DEFAULT.why,
+    no_website: "Les clients cherchent d'abord en ligne. Sans site, cette entreprise est difficile à trouver.",
+    website_outdated: "Un site ancien qui inspire peu confiance et apporte peu de demandes.",
+    website_not_mobile: "La plupart des visiteurs arrivent sur mobile, et ce site n'y fonctionne pas.",
+    no_https: "Les navigateurs signalent ce site comme non sécurisé, et beaucoup de visiteurs repartent.",
+    website_broken: "Le site est hors service ou parqué : les clients ne trouvent rien.",
+  },
+  revenueTitle: "Comment {firma} pourrait en faire des projets",
+  revenue: [
+    ["Le prochain site", "Une entreprise sans site, ou avec un site qui la dessert, a besoin de {leistung}. La contacter la première place {firma} dans la discussion."],
+    ["Vérifié, pas deviné", "Nous vérifions le site de chaque entreprise : {team} connaît le manque avant d'appeler."],
+    ["Toute la France", "Les sites se font à distance : {firma} peut gagner des clients partout en France."],
+  ],
+};
+
 /** Wortschatz zur Landingpage (Slug "uk/accountants" → "accountants"). */
 export function segmentCopy(slug: string, lang: string): SegmentCopy {
   const seg = segKey(slug);
-  if (lang === "fr") return FR_DEFAULT;
+  if (lang === "fr") return seg === "web-agencies" ? FR_WEB : FR_DEFAULT;
   return EN[seg] ?? EN_DEFAULT;
 }

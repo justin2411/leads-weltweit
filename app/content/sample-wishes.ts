@@ -18,10 +18,10 @@ export const WISHES: Record<string, Wish[]> = {
     { key: "finance_roles", en: "Finance roles open", fr: "Postes en finance ouverts", de: "Finanzstellen offen" },
   ],
   "web-agencies": [
-    { key: "no_website", en: "New company, no website", fr: "Nouvelle entreprise sans site", de: "Neu gegründet, ohne Website" },
+    { key: "no_website", en: "No website", fr: "Sans site web", de: "Ohne Website" },
     { key: "website_outdated", en: "Outdated website", fr: "Site vieillissant", de: "Veraltete Website" },
     { key: "not_mobile", en: "Not mobile-friendly", fr: "Site non adapté au mobile", de: "Nicht mobilfähig" },
-    { key: "new_incorporation", en: "Newly registered", fr: "Création récente", de: "Neu gegründet" },
+    { key: "security", en: "Security gaps", fr: "Failles de sécurité", de: "Sicherheitslücken" },
   ],
   "insurance-brokers": [
     { key: "new_incorporation", en: "Newly registered", fr: "Création récente", de: "Neu gegründet" },
