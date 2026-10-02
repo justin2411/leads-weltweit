@@ -41,7 +41,7 @@ REQUIRE_CONTACT = True
 # leadreport.complete_only jede Zeile und der Kunde bekäme eine Mail ohne Anhang.
 LEAD_SELECT = ("id,segment_id,country,signal_type,event_summary,event_date,source_name,source_url,source_date,"
                "urgency,urgency_reason,opener,company_id,observation_ids,"
-               "watch_companies(name,legal_form,city,region,address)")
+               "watch_companies(name,legal_form,city,region,address,website,website_checked_at)")
 DELIVERED_STATUSES = ("approved", "sent")
 
 

@@ -47,6 +47,17 @@ def area_for(country: str, company: dict, details: dict | None) -> str | None:
     return None
 
 
+# Alte Formular-Schlüssel (vor 02.10.2026) auf die Wunsch-Schlüssel aus lib/wishes.py
+_OLD_KEYS = {"outdated_website": "website_outdated"}
+
+
+def signal_wanted(key: str, lead: dict) -> bool:
+    """Formular-Schlüssel (dieselben wie im Probe-Formular, lib/wishes.py) oder roher Signaltyp."""
+    from lib.wishes import matches
+    key = _OLD_KEYS.get(key, key)
+    return lead.get("signal_type") == key or matches(key, lead)
+
+
 def matches_filter(lead: dict, tag: dict, company: dict, f: dict) -> bool:
     """Abgleich mit customer_filters (Regionen, Signale, Branchen, Ausschlüsse, Qualität)."""
     from lib.regions import area_of
@@ -54,7 +65,7 @@ def matches_filter(lead: dict, tag: dict, company: dict, f: dict) -> bool:
         return False
     if f.get("segment_id") and f["segment_id"] not in tag["segments"] and lead.get("segment_id") != f["segment_id"]:
         return False
-    if f.get("signals") and lead.get("signal_type") not in f["signals"]:
+    if f.get("signals") and not any(signal_wanted(k, lead) for k in f["signals"]):
         return False
     regions = f.get("regions") or []
     if regions:
@@ -62,7 +73,8 @@ def matches_filter(lead: dict, tag: dict, company: dict, f: dict) -> bool:
         ok = any((area_of(r) == tag.get("region") and tag.get("region")) or r.lower() in place for r in regions)
         if not ok:
             return False
-    inds = [i.lower() for i in f.get("industries") or []]
+    # Freitext aus dem Formular: Plural-s ignorieren („restaurants“ trifft „Restaurant“)
+    inds = [i.lower().strip().removesuffix("s") for i in f.get("industries") or [] if i.strip()]
     if inds and not any(i in (tag.get("industry") or "").lower() for i in inds):
         return False
     name = (company.get("name") or "").lower()

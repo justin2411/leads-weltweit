@@ -4,6 +4,10 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/supabase";
 import { verifyFilterToken } from "@/lib/tokens";
 import { SIGNAL_KEYS, booked } from "./shared";
+import { allFilterKeys } from "@/content/filter-questions";
+
+// Schlüssel je Branche (filter-questions.ts) plus alte Schlüssel aus gespeicherten Profilen
+const ALLOWED = new Set([...allFilterKeys(), ...SIGNAL_KEYS]);
 
 const list = (v: FormDataEntryValue | null) =>
   String(v ?? "").split(/[,\n;]/).map((s) => s.trim()).filter(Boolean).slice(0, 50);
@@ -16,7 +20,7 @@ export async function saveFilters(formData: FormData) {
   const { error } = await db().from("customer_filters").upsert({
     customer_id: id,
     regions: list(formData.get("regions")),
-    signals: formData.getAll("signals").map(String).filter((s) => SIGNAL_KEYS.includes(s)),
+    signals: formData.getAll("signals").map(String).filter((s) => ALLOWED.has(s)),
     industries: list(formData.get("industries")),
     exclusions: list(formData.get("exclusions")),
     // Menge = gebuchtes Paket (1–10.000, wie der Regler auf der Zahlungsseite)
