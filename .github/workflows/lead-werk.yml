@@ -1,7 +1,7 @@
 # Lead-Werk (Inhaber 01.10.2026: „eigener Bereich der 24/7 die leads holt und anreichert“).
 # Fokus Webagenturen (Inhaber 02.10.2026: „erstmal auf Webagenturen fokussieren … massenweise“): 8 Teile S2
-# Website-Prüfung (US 4, UK 2, FR 2: unsichere, nicht handytaugliche, veraltete oder kaputte Websites), 21 Teile S2
-# ohne Website (US 18, FR, UK, IE/NL/BE/SE je 1), 1 Teil S1 US (DOL LCA, Quellen-Scout). Dauerbetrieb, eine Welle: kostenlose Quellen -> Sicherheitsfilter -> kostenlose Anreicherung -> Qualitäts- und
+# Website-Prüfung (US 5, UK 2, FR 2: unsichere, nicht handytaugliche, veraltete oder kaputte Websites), 21 Teile S2
+# ohne Website (US 18, FR und IE/NL/BE/SE je 1), 1 Teil S1 US (DOL LCA, Quellen-Scout). Dauerbetrieb, eine Welle: kostenlose Quellen -> Sicherheitsfilter -> kostenlose Anreicherung -> Qualitäts- und
 # Signalkontrolle -> grüne Leads direkt in Supabase (watch_companies, observations, leads). Schon gespeicherte
 # Firmen werden übersprungen, so arbeitet sich jeder Lauf weiter durch den Bestand.
 # Lädt KEINE Lead-Dateien hoch (öffentliches Repo) – nur den Zählbericht. Sendet nichts.
@@ -78,13 +78,14 @@ jobs:
       matrix:
         include:
           # Website-Prüfung S2 im großen Stil (Inhaber 02.10.2026: „mach das jetzt bitte im ganz großen stil und hol viele
-          # leads rein“): 8 Teile mit je 40 gleichzeitigen Abrufen (verschiedene Domains, je Domain weiter 1/s, robots.txt).
+          # leads rein“): 9 Teile mit je 40 gleichzeitigen Abrufen (verschiedene Domains, je Domain weiter 1/s, robots.txt).
           # Zuerst in der Liste, damit sie bei max-parallel 25 sofort starten. Plätze von S2 ohne Website in FR (3 -> 1),
-          # UK und IE/NL/BE/SE (4 -> 1 gemeinsamer Teil): dort liegen schon ~130.000 Leads bei wenigen Käufern.
-          - { name: web-us-0, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 0/4" }
-          - { name: web-us-1, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 1/4" }
-          - { name: web-us-2, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 2/4" }
-          - { name: web-us-3, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 3/4" }
+          # UK (1 -> 0) und IE/NL/BE/SE (4 -> 1 gemeinsamer Teil): dort liegen schon ~130.000 Leads bei wenigen Käufern.
+          - { name: web-us-0, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 0/5" }
+          - { name: web-us-1, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 1/5" }
+          - { name: web-us-2, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 2/5" }
+          - { name: web-us-3, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 3/5" }
+          - { name: web-us-4, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 4/5" }
           - { name: web-uk-0, workers: 40, args: "--segments S2 --countries UK --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 0/2" }
           - { name: web-uk-1, workers: 40, args: "--segments S2 --countries UK --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 1/2" }
           - { name: web-fr-0, workers: 40, args: "--segments S2 --countries FR --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 0/2" }
@@ -92,9 +93,9 @@ jobs:
           # Quellen-Scout S1 (Inhaber 02.10.2026: „recruiting kunden und leads … darauf fokussieren“): US-Arbeitgeber mit
           # Fachkräfte-Bedarf aus den DOL-LCA-Daten, Test 50 -> 26 grün
           - { name: s1-us-lca, args: "--segments S1 --countries US --fmcsa-days 0 --formd-days 0 --s1-probe 0 --lca --per 4000 --max-tries 4000" }
-          # S2 ohne Website: FR, UK und IE/NL/BE/SE je ein Teil (laufen weiter, nur mit weniger Plätzen)
+          # S2 ohne Website: FR und IE/NL/BE/SE je ein Teil. UK ohne Website ruht (Lauf 19: 5 grüne aus 3.792, Vorrat
+          # erschöpft, nur noch Rohbestand, Speichern lief in Zeitüberschreitung); der Platz ging an web-us-4
           - { name: s2-fr-0, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000" }
-          - { name: s2-uk-0, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000" }
           - { name: s2-north-0, args: "--segments S2 --countries IE,NL,BE,SE --s2-limit 20000 --per 4000 --max-tries 4000" }
           # Fokus Webagenturen (Inhaber 02.10.2026): US-Firmen ohne Website aus Overture, ~390.000 mit E-Mail, Test 95 % grün
           - { name: s2-us-0, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 0/18" }
@@ -150,14 +151,79 @@ jobs:
           restore-keys: |
             lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-
             lead-werk-${{ startsWith(matrix.name, 'web-uk') && 's2-uk-0' || startsWith(matrix.name, 'web-fr') && 's2-fr-0' || matrix.name == 's2-north-0' && 's2-ie-0' || matrix.name }}-${{ steps.m.outputs.monat }}-
-      - name: Gedächtnis der Website-Prüfung laden (geprüfte Firmen, 120 Tage)
+      # Gedächtnis der Website-Prüfung (geprüfte Firmen, 120 Tage): das ALLER Teile desselben Landes laden, damit eine
+      # geänderte Aufteilung keine Seite am selben Tag erneut abruft (je Teil gesichert, hier nacheinander geholt)
+      - name: Gedächtnis der Website-Prüfung – Land bestimmen
+        id: wc
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        run: echo "land=${MATRIX_NAME%-*}" >> "$GITHUB_OUTPUT"
+        env: { MATRIX_NAME: "${{ matrix.name }}" }
+      - name: Gedächtnis der Website-Prüfung laden (Teil 0)
         if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
         uses: actions/cache/restore@v4
         with:
           path: out/cache/webcheck_seen.json
-          key: webcheck-${{ matrix.name }}-${{ github.run_id }}
+          key: webcheck-${{ steps.wc.outputs.land }}-0-none
           restore-keys: |
-            webcheck-${{ matrix.name }}-
+            webcheck-${{ steps.wc.outputs.land }}-0-
+      - name: Gedächtnis Teil 0 ablegen
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        run: '[ -f out/cache/webcheck_seen.json ] && mv out/cache/webcheck_seen.json out/cache/webcheck_seen_0.json || true'
+      - name: Gedächtnis der Website-Prüfung laden (Teil 1)
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/webcheck_seen.json
+          key: webcheck-${{ steps.wc.outputs.land }}-1-none
+          restore-keys: |
+            webcheck-${{ steps.wc.outputs.land }}-1-
+      - name: Gedächtnis Teil 1 ablegen
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        run: '[ -f out/cache/webcheck_seen.json ] && mv out/cache/webcheck_seen.json out/cache/webcheck_seen_1.json || true'
+      - name: Gedächtnis der Website-Prüfung laden (Teil 2)
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/webcheck_seen.json
+          key: webcheck-${{ steps.wc.outputs.land }}-2-none
+          restore-keys: |
+            webcheck-${{ steps.wc.outputs.land }}-2-
+      - name: Gedächtnis Teil 2 ablegen
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        run: '[ -f out/cache/webcheck_seen.json ] && mv out/cache/webcheck_seen.json out/cache/webcheck_seen_2.json || true'
+      - name: Gedächtnis der Website-Prüfung laden (Teil 3)
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/webcheck_seen.json
+          key: webcheck-${{ steps.wc.outputs.land }}-3-none
+          restore-keys: |
+            webcheck-${{ steps.wc.outputs.land }}-3-
+      - name: Gedächtnis Teil 3 ablegen
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        run: '[ -f out/cache/webcheck_seen.json ] && mv out/cache/webcheck_seen.json out/cache/webcheck_seen_3.json || true'
+      - name: Gedächtnis der Website-Prüfung laden (Teil 4)
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/webcheck_seen.json
+          key: webcheck-${{ steps.wc.outputs.land }}-4-none
+          restore-keys: |
+            webcheck-${{ steps.wc.outputs.land }}-4-
+      - name: Gedächtnis Teil 4 ablegen
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        run: '[ -f out/cache/webcheck_seen.json ] && mv out/cache/webcheck_seen.json out/cache/webcheck_seen_4.json || true'
+      - name: Gedächtnis der Website-Prüfung laden (Teil 5)
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/webcheck_seen.json
+          key: webcheck-${{ steps.wc.outputs.land }}-5-none
+          restore-keys: |
+            webcheck-${{ steps.wc.outputs.land }}-5-
+      - name: Gedächtnis Teil 5 ablegen
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        run: '[ -f out/cache/webcheck_seen.json ] && mv out/cache/webcheck_seen.json out/cache/webcheck_seen_5.json || true'
       - name: US-Auszug laden
         if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 's2-us-')
         uses: actions/cache/restore@v4
