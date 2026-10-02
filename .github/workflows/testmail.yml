@@ -13,7 +13,7 @@ on:
         description: "UK, US oder FR"
         default: UK
       art:
-        description: "kaltmail, probe, nachfass oder probe-nachfass"
+        description: "kaltmail, probe, nachfass, probe-nachfass, willkommen oder lieferung"
         default: kaltmail
 jobs:
   test:
@@ -36,6 +36,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
+        if: inputs.art != 'willkommen'
         with: { python-version: "3.11" }
-      - run: pip install -r requirements.txt && python -m playwright install --with-deps chromium
-      - run: python scripts/outreach.py test --to "$AN" --segment "$SEGMENT" --country "$LAND" --art "${ART:-kaltmail}"
+      - if: inputs.art != 'willkommen'
+        run: pip install -r requirements.txt && python -m playwright install --with-deps chromium
+      - if: inputs.art != 'willkommen' && inputs.art != 'lieferung'
+        run: python scripts/outreach.py test --to "$AN" --segment "$SEGMENT" --country "$LAND" --art "${ART:-kaltmail}"
+      # Montagslieferung (PDF + Tabelle) mit echten Leads, ändert nichts in der Datenbank
+      - if: inputs.art == 'lieferung'
+        run: python scripts/deliveries.py test-mail --to "$AN" --segment "$SEGMENT" --country "$LAND"
+      # Willkommensmail nach dem Kauf (app/lib/welcome-mail.ts)
+      - if: inputs.art == 'willkommen'
+        uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - if: inputs.art == 'willkommen'
+        working-directory: app
+        run: npx --yes tsx scripts/testmail-welcome.ts "$AN" "$LAND"

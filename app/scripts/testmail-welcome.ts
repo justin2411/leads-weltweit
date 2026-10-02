@@ -1,0 +1,22 @@
+/**
+ * Testmail: Willkommensmail nach dem Kauf an den Inhaber (Betreff mit [TEST]). Geht nie an Käufer.
+ * Aufruf (testmail.yml, art=willkommen): npx tsx scripts/testmail-welcome.ts <an> <US|UK|FR>
+ */
+import { welcomeMail } from "../lib/welcome-mail";
+import { siteUrl } from "../lib/site";
+
+const [to, land = "US"] = process.argv.slice(2);
+const fr = land === "FR";
+const cur = land === "UK" ? "£" : fr ? "" : "$";
+const price = fr ? "249 €" : `${cur}249`;
+const m = welcomeMail({ lang: fr ? "fr" : "en", company: "Example Studio", plan: "Pro", weekly: 50, price,
+  formLink: `${siteUrl()}/danke?demo=1&seg=S2#focus` });
+
+const r = await fetch("https://api.resend.com/emails", {
+  method: "POST",
+  headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+  body: JSON.stringify({ from: process.env.MAIL_FROM, to: [to], subject: `[TEST] ${m.subject}`, text: m.text, html: m.html,
+    ...(process.env.REPLY_TO ? { reply_to: process.env.REPLY_TO } : {}) }),
+});
+if (!r.ok) throw new Error(`Resend ${r.status} ${await r.text()}`);
+console.log(`Willkommensmail (Test) an ${to} gesendet`);
