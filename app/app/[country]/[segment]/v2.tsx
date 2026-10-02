@@ -23,6 +23,8 @@ const PATHS: Record<string, string> = {
   insecure: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM12 9v4M12 16v.5",
   outdated: "M3 5h18v12H3zM8 21h8M12 17v4",
   spark: "M13 2L4 14h7l-1 8 9-12h-7z",
+  doc: "M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7",
+  table: "M3 5h18v14H3zM3 10h18M3 15h18M9 5v14",
   star: "M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.5 6.7 19.4l1.2-6L3.4 9.3l6-.7z",
 };
 
