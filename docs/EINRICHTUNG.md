@@ -12,7 +12,7 @@ selbst über GitHub-Workflows, Secrets und Connectoren und fragt nicht erneut. N
 | Vercel-Umgebungsvariablen | Vercel → Settings → Environment Variables | App | erledigt |
 | Stripe Test + Live | Vercel-Variablen | App | erledigt |
 | Resend (nur Einwilligung/Kunden) | GitHub-Secrets `RESEND_API_KEY`, `MAIL_FROM` | Antworten, Lieferungen | erledigt |
-| DNS für Strato-Mail | Vercel → Team → Domains → nextgen-profit.de → DNS Records (MX, SPF, DMARC) | Empfang info@, Versand | erledigt 27.09. (DKIM: Strato zeigt ohne Strato-DNS keinen Schlüssel – später prüfen) |
+| DNS für Strato-Mail | Vercel → Team → Domains → nextgen-profit.de → DNS Records (MX, SPF, DMARC) | Empfang info@, Versand | erledigt 27.09.; DKIM erledigt 02.10.: CNAME `strato-dkim-0002._domainkey` und `strato-dkim-0003._domainkey` → `…._domainkey.strato.de` in Vercel DNS; Gmail-Test 02.10.: SPF, DKIM (strato-dkim-0002, d=nextgen-profit.de) und DMARC PASS. Prüfung automatisch im `postfach-test` (Schritt 4) |
 | Strato-Postfach SMTP/IMAP | GitHub-Secrets `SMTP_*`, `IMAP_*` | `send.yml`, `antworten.yml`, `postfach-test.yml` | erledigt 27.09., Postfach-Test grün |
 | Weitere Versand-Postfächer (optional, zum Hochskalieren) | GitHub-Secrets `SMTP_USER_2`, `SMTP_PASSWORD_2`, `SMTP_FROM_2` (bis `_5`; Host/Port wie Postfach 1) | `send.yml`, `scripts/lib/mailboxes.py` | offen – nur wenn mehr als ~150 Mails/Tag nötig; jedes neue Postfach fährt drei Wochen hoch. Antworten gehen per Reply-To ans Hauptpostfach |
 | Anthropic-API (Guthaben 15 $, Inhaber 27.09.) | GitHub-Secret `ANTHROPIC_API_KEY`, optional Variable `CLAUDE_MODEL` (Standard `claude-sonnet-5`) | `antworten.yml` (Einordnung eingehender Antworten, ca. 1 Cent pro Antwort); Test: `ki-test.yml` | erledigt 27.09., Test grün |
