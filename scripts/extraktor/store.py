@@ -31,13 +31,17 @@ SOURCE_NAME = {
     "companies_house": "Companies House", "bodacc": "BODACC (Bulletin officiel)",
     "overture": "Overture Maps (business listing)", "careers": "Careers page (company website)",
     "ats_jobs": "Careers page (applicant tracking system)",
+    "overture_web": "Website check (company homepage)",
 }
 EVENT_KEY = {"fmcsa": "fmcsa_registration", "sec_form_d": "form_d", "companies_house": "incorporation",
-             "bodacc": "immatriculation", "overture": "no_website", "careers": "open_roles", "ats_jobs": "open_roles"}
+             "bodacc": "immatriculation", "overture": "no_website", "careers": "open_roles", "ats_jobs": "open_roles",
+             "overture_web": "website_check"}
 INDUSTRY = {"fmcsa": "Motor carrier"}
 
 
-def signal_type(seg: str, source: str) -> str:
+def signal_type(seg: str, source: str, given: str = "") -> str:
+    if given:  # Website-Prüfung: no_https / website_not_mobile / website_outdated / website_broken
+        return given
     if source in ("careers", "ats_jobs"):
         return "jobs_open"
     if source in ("companies_house", "bodacc"):
@@ -56,6 +60,13 @@ def company_row(r: dict) -> dict:
             "domain": site_domain(r["website"]) if r["website"] else None, "phone_main": r["phone"] or None,
             "registry_source": r["source"], "registry_id": r["source_id"], "industry": INDUSTRY.get(r["source"]),
             "active": True, "notes": f"Extraktor {dt.date.today()}"}
+
+
+def _evidence(r: dict) -> dict:
+    """Belege der Website-Prüfung (Befunde mit Prüfdatum) für das Ereignis; leer bei anderen Quellen."""
+    import json
+    raw = r.get("signal_evidence") or ""
+    return json.loads(raw) if raw else {}
 
 
 def _obs(cid: str, today: str, **kw) -> dict:
@@ -151,12 +162,12 @@ def _store_block_once(db, block: list[dict], today: str) -> int:
                 _obs(cid, today, kind="other", key="profile", details={"company_info": r["company_info"]}),
                 _obs(cid, today, kind="filing", key=EVENT_KEY.get(r["source"], r["source"]), title=r["signal"],
                      source_name=src, source_url=r["source_url"], posted_on=r["signal_date"],
-                     details={"source_id": r["source_id"]}),
+                     details={"source_id": r["source_id"], **_evidence(r)}),
             ]
         written = db.insert("observations", obs)
         ev = {o["company_id"]: o["id"] for o in written if o["kind"] == "filing"}
         leads = [{"company_id": cid, "segment_id": r["segment"], "country": r["country"],
-                  "signal_type": signal_type(r["segment"], r["source"]), "event_summary": r["signal"],
+                  "signal_type": signal_type(r["segment"], r["source"], r.get("signal_type") or ""), "event_summary": r["signal"],
                   "event_date": r["signal_date"], "source_name": SOURCE_NAME.get(r["source"], r["source"]),
                   "source_url": r["source_url"], "source_date": r["signal_date"], "urgency": r["urgency"],
                   "urgency_reason": r["urgency_reason"], "opener": r["opener"],
@@ -210,7 +221,7 @@ def _store_raw_once(db, block: list[dict], today: str) -> int:
                 _obs(cid, today, kind="other", key="profile", details={"company_info": r["company_info"]}),
                 _obs(cid, today, kind="filing", key=EVENT_KEY.get(r["source"], r["source"]), title=r["signal"],
                      source_name=src, source_url=r["source_url"], posted_on=r["signal_date"] or None,
-                     details={"source_id": r["source_id"], "segment": r["segment"], "ampel": r["ampel"],
+                     details={"source_id": r["source_id"], **_evidence(r), "segment": r["segment"], "ampel": r["ampel"],
                               "opener": r["opener"], "urgency": r["urgency"], "urgency_reason": r["urgency_reason"]}),
             ]
         db.insert("observations", obs)
@@ -233,7 +244,7 @@ def store_new(db, guard, rows: list[dict]) -> dict:
         k = (r["source"], r["source_id"])
         if k in guard.known or k in seen:
             continue
-        if r["source"] == "overture" and BRANDS.search(r["company"] or ""):
+        if r["source"] in ("overture", "overture_web") and BRANDS.search(r["company"] or ""):
             continue  # Filiale einer Kette (ältere Läufe ohne Markenfilter)
         seen.add(k)
         (new if r["ampel"] == "green" else raw).append(r)

@@ -39,6 +39,7 @@ Rot = falsch oder widersprüchlich → nie liefern.
 | S4/S5/S9 UK | Companies House Massendaten + PSC-Eigentümer | Neugründung (≤ 45 Tage), keine Holding/Immobilien/ruhend; S4 nur Branchen mit Versicherungsbedarf (Bau, Transport, Gastro, Handel, Produktion, Pflege, Reinigung) | Gründung mit Firmennummer und Branche (SIC) |
 | S1 UK/US | Eigene Karriereseiten (Firmenliste: Web Data Commons, JobPosting-Domains) | mind. 3 offene Stellen im Land oder eine seit über 30 Tagen; keine Personalvermittler/Jobbörsen, Behörden, Schulen, Kliniken des Staates, Konzerne (> 60 Stellen); abgelaufene oder über ein Jahr alte Anzeigen zählen nicht | Zahl der Stellen, älteste Stelle (Datum aus der Anzeige oder erstes Sehen), Beispiel-Titel |
 | S2 UK/FR | Overture Maps Places (offene Lizenz) | eingesessenes Geschäft mit Telefon, ohne Website und ohne eigene E-Mail-Domain; keine Ketten | keine Website |
+| S2 US/UK/FR Website-Prüfung | Overture Maps Places MIT Website + eigene Startseite (`sources/website_check.py`) | Telefon + Adresse, keine Ketten (Name > 3× oder Domain mehrfach), keine Plattform-/Anbieter-Unterseiten; Befund nur, wenn die Seite die Firma belegt (Telefon, Name auf der Seite oder in der Domain) | `no_https` (kein HTTPS / Zertifikat abgelaufen, falscher Name, selbst signiert), `website_not_mobile` (kein Viewport), `website_outdated` (Copyright ≤ 2018 ohne neuere Jahre im Quelltext, WordPress < 5, Joomla < 3, Flash, jQuery 1.x), `website_broken` (Fehlerseite 404/410/500 mit Fehlertext, geparkt, Standard-/Sperrseite); Beleg + Prüfdatum in `observations.details.findings` |
 | S4/S5/S9 FR | BODACC-Gründungen (Gesellschaften) | keine SCI/sociétés civiles/Holdings; S4 nur Tätigkeiten mit Versicherungsbedarf | Gründung mit SIREN, Tätigkeit, Gérant/Président |
 
 UK/FR: Die Register haben kein Telefon und keine E-Mail – beides kommt nur von der eigenen Website. Die gilt als
@@ -94,6 +95,15 @@ der Do-Not-Call-Liste abgleichen (TCPA). Gehört in die Lieferbedingungen.
   3+ Stellen in UK, ~6 % in US); DOL-LCA/PERM-Dateien (US-Arbeitgeber mit Visa-Anträgen) sind abrufbar.
 
 ## Lead-Werk (`.github/workflows/lead-werk.yml`)
+
+**Website-Prüfung (Inhaber 02.10.2026: „nicht nur Leads ohne Website …, sondern auch sehr alte Websites oder fehlende
+Sicherheit“):** Teile `web-us-0`, `web-uk-0`, `web-fr-0` (`run.py --web-check`). Je Firma nur die eigene Startseite:
+robots.txt über https (zeigt gleich, ob das Zertifikat gültig ist), sonst über http, dann die Startseite. Zertifikatsfehler
+zählen nur, wenn Chrome sie genauso zeigt (abgelaufen, falscher Name, selbst signiert; fehlende Zwischenzertifikate
+nicht). Fehlercodes zählen nur mit Fehlertext und ohne Bot-Sperre (Seiten, die Bots 404/403 geben, Browsern aber die Seite,
+sind kein Befund). Ohne Befund: nichts in die Datenbank, nur ins Gedächtnis des Teils (`out/cache/webcheck_seen.json`,
+120 Tage) – so wird keine Seite zweimal am Tag abgerufen und die Datenbank nicht je Firma abgefragt. US-Auszug mit Website:
+`overture_us_web.parquet` (jede vierte Firma, Job `us-auszug`).
 
 Alle 3 Stunden, 30 Teile gleichzeitig (GitHub Pro: 40 Jobs gleichzeitig, 7 für das Kunden-Werk, 3 frei; fest nach Quell-ID verteilt): S2 UK, S2 FR (Overture), US FMCSA (S2/S4/S5), US Form D (S1/S5/S9),
 UK-Register und FR-Register (S4/S5/S9), S1 Karriereseiten (UK/US). Jeder Teil: `run.py … --db --store`.

@@ -10,6 +10,7 @@ CSV_COLUMNS = [
     "email", "email_type", "website", "street", "city", "state", "zip",
     "signal", "signal_date", "company_info", "opener", "urgency", "urgency_reason",
     "source", "source_id", "source_url", "qc", "qc_notes", "sc", "sc_notes",
+    "signal_type", "signal_evidence",  # Website-Prüfung S2 (02.10.2026): Art des Befunds, Belege mit Prüfdatum
 ]
 
 

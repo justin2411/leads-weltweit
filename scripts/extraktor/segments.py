@@ -104,6 +104,12 @@ def fits(seg: str, c: dict) -> tuple[bool, str]:
         if c.get("email") and not is_freemail(c["email"]):
             return False, "uses an own email domain (likely has a site)"
         return True, "established local business without a website"
+    if c["source"] == "overture_web":
+        if seg != "S2":
+            return False, "source only carries the website quality signal"
+        if not (c.get("website") and f.get("findings")):
+            return False, "no verified website problem"
+        return True, "local business whose own website is not secure, not built for phones, outdated or broken"
     if c["source"] == "ct_registry":
         if seg == "S2":
             ok = bool(c.get("email")) and is_freemail(c["email"]) and not c.get("website")
@@ -324,6 +330,93 @@ def texts_overture(c: dict) -> dict:
             "urgency_reason": why}
 
 
+WEB_EN = {
+    "no_https": "Chrome shows \u2018Not secure\u2019 on its website {domain}, because the site has no HTTPS encryption",
+    "redirects_to_http": "Chrome shows \u2018Not secure\u2019 on its website {domain}, because the site has no HTTPS encryption",
+    "certificate_expired": "the security certificate of its website {domain} has expired, so browsers warn visitors before opening it",
+    "certificate_wrong_name": "the security certificate of its website {domain} does not match the domain, so browsers warn visitors before opening it",
+    "certificate_self_signed": "its website {domain} uses a self signed security certificate, so browsers warn visitors before opening it",
+    "no_viewport": "the homepage is not built for phones (no mobile viewport setting)",
+    "copyright": "the copyright notice on the homepage dates from {value}",
+    "wordpress": "the site runs on WordPress {value}, an old version",
+    "joomla": "the site runs on Joomla {value}, an old version",
+    "flash": "the homepage still embeds Adobe Flash, which browsers no longer play",
+    "jquery1": "the homepage loads an old version of the jQuery library ({value})",
+    "http_404": "its website {domain} shows an error page (HTTP {value}) instead of a homepage",
+    "http_410": "its website {domain} shows an error page (HTTP {value}) instead of a homepage",
+    "http_500": "its website {domain} shows a server error (HTTP {value}) instead of a homepage",
+    "parked": "its listed website {domain} only shows a parked domain page, no own content",
+    "default_page": "its listed website {domain} only shows a default server page, no own content",
+}
+WEB_FR = {
+    "no_https": "Chrome affiche \u00ab\u00a0Non s\u00e9curis\u00e9\u00a0\u00bb sur son site {domain}, car le site n'est pas chiffr\u00e9 en HTTPS",
+    "redirects_to_http": "Chrome affiche \u00ab\u00a0Non s\u00e9curis\u00e9\u00a0\u00bb sur son site {domain}, car le site n'est pas chiffr\u00e9 en HTTPS",
+    "certificate_expired": "le certificat de s\u00e9curit\u00e9 de son site {domain} a expir\u00e9 : les navigateurs affichent un avertissement avant de l'ouvrir",
+    "certificate_wrong_name": "le certificat de s\u00e9curit\u00e9 de son site {domain} ne correspond pas au domaine : les navigateurs affichent un avertissement avant de l'ouvrir",
+    "certificate_self_signed": "son site {domain} utilise un certificat autosign\u00e9 : les navigateurs affichent un avertissement avant de l'ouvrir",
+    "no_viewport": "la page d'accueil n'est pas adapt\u00e9e aux mobiles (pas de r\u00e9glage viewport)",
+    "copyright": "la mention de copyright de la page d'accueil date de {value}",
+    "wordpress": "le site tourne sous une ancienne version de WordPress ({value})",
+    "joomla": "le site tourne sous une ancienne version de Joomla ({value})",
+    "flash": "la page d'accueil int\u00e8gre encore Adobe Flash, que les navigateurs ne lisent plus",
+    "jquery1": "la page d'accueil charge une ancienne version de la biblioth\u00e8que jQuery ({value})",
+    "http_404": "son site {domain} affiche une page d'erreur (HTTP {value}) au lieu d'une page d'accueil",
+    "http_410": "son site {domain} affiche une page d'erreur (HTTP {value}) au lieu d'une page d'accueil",
+    "http_500": "son site {domain} affiche une erreur serveur (HTTP {value}) au lieu d'une page d'accueil",
+    "parked": "le site indiqu\u00e9 {domain} n'affiche qu'une page de domaine parqu\u00e9, sans contenu propre",
+    "default_page": "le site indiqu\u00e9 {domain} n'affiche qu'une page serveur par d\u00e9faut, sans contenu propre",
+}
+WEB_OPENER = {
+    "en": {"no_https": "Hi, I noticed Chrome shows \u2018Not secure\u2019 when visiting the {name} website. Would help with a secure, modern site be useful?",
+           "website_broken": "Hi, the website listed for {name} does not show your business at the moment. Would a working site that helps new customers find you be useful?",
+           "website_not_mobile": "Hi, I noticed the {name} website is not built for phones. Would a site that works well on mobile be useful?",
+           "website_outdated": "Hi, I had a look at the {name} website and it runs on older web technology. Would a modern refresh be useful?"},
+    "fr": {"no_https": "Bonjour, j'ai remarqu\u00e9 que Chrome affiche \u00ab\u00a0Non s\u00e9curis\u00e9\u00a0\u00bb sur le site de {name}. Un site moderne et s\u00e9curis\u00e9 vous int\u00e9resserait-il ?",
+           "website_broken": "Bonjour, le site indiqu\u00e9 pour {name} ne pr\u00e9sente pas votre entreprise en ce moment. Un site qui fonctionne pour \u00eatre trouv\u00e9 par de nouveaux clients vous int\u00e9resserait-il ?",
+           "website_not_mobile": "Bonjour, j'ai remarqu\u00e9 que le site de {name} n'est pas adapt\u00e9 aux mobiles. Un site agr\u00e9able sur t\u00e9l\u00e9phone vous int\u00e9resserait-il ?",
+           "website_outdated": "Bonjour, j'ai regard\u00e9 le site de {name} : il repose sur une technique web ancienne. Une modernisation vous int\u00e9resserait-elle ?"},
+}
+WEB_WHY = {
+    "en": {"no_https": "Browsers warn visitors that the site is not secure, which puts off customers and enquiries.",
+           "website_broken": "Customers who look the business up online find no working website.",
+           "website_not_mobile": "Most local searches happen on phones; a site not built for phones loses those visitors.",
+           "website_outdated": "An outdated site looks neglected to new customers and is harder to keep secure."},
+    "fr": {"no_https": "Les navigateurs pr\u00e9viennent les visiteurs que le site n'est pas s\u00e9curis\u00e9, ce qui fait fuir des clients.",
+           "website_broken": "Les clients qui cherchent l'entreprise en ligne ne trouvent pas de site qui fonctionne.",
+           "website_not_mobile": "La plupart des recherches locales se font sur t\u00e9l\u00e9phone ; un site non adapt\u00e9 perd ces visiteurs.",
+           "website_outdated": "Un site ancien para\u00eet n\u00e9glig\u00e9 aux nouveaux clients et se s\u00e9curise plus difficilement."},
+}
+WEB_URGENCY = {"no_https": "high", "website_broken": "high", "website_not_mobile": "medium", "website_outdated": "medium"}
+
+
+def texts_website(c: dict) -> dict:
+    """S2 Website-Prüfung: jeder Befund als belegter Halbsatz, Prüfdatum im Signal; keine Gedankenstriche."""
+    f, name = c["facts"], c["name"]
+    today, dom, kind = f["checked_on"], f["domain"], f["signal_type"]
+    fr = c["country"] == "FR"
+    table = WEB_FR if fr else WEB_EN
+    parts = []
+    order = ("website_broken", "no_https", "website_not_mobile", "website_outdated")
+    for x in sorted(f["findings"], key=lambda x: order.index(x["type"]))[:3]:
+        p = table[x["detail"]].format(domain=dom, value=x.get("value") or "")
+        if p not in parts:
+            parts.append(p)
+    lang = "fr" if fr else "en"
+    if fr:
+        signal = f"{name} : " + " ; ".join(parts) + f" (vérifié le {jour(today)})."
+        cat_fr = CAT_FR.get(f.get("category") or "", "entreprise locale")
+        info = f"{name} : {cat_fr} à {c['city']} ({c['zip']}), site web {dom}."
+    else:
+        signal = f"{name}: " + "; ".join(parts) + f" (checked {uk_day(today)})."
+        label = CAT_EN.get(f.get("category") or "", f.get("category") or "local business")
+        art = "an" if label[:1].lower() in "aeiou" else "a"
+        place = f"{c['city']}, {c['state']} {c['zip']}" if c["country"] == "US" and c.get("state") else f"{c['city']} {c['zip']}"
+        info = f"{name} is {art} {label} in {place}, website {dom}."
+    return {"signal": signal, "signal_date": today, "company_info": info,
+            "opener": WEB_OPENER[lang][kind].format(name=name), "urgency": WEB_URGENCY[kind],
+            "urgency_reason": WEB_WHY[lang][kind]}
+
+
 def texts_jobs(c: dict) -> dict:
     f, name = c["facts"], c["name"]
     n, oldest, titles = f["open_roles"], f.get("oldest_posted"), f.get("titles") or []
@@ -384,6 +477,8 @@ def texts(seg: str, c: dict) -> dict:
         return texts_ct(seg, c)
     if c["source"] == "overture":
         return texts_overture(c)
+    if c["source"] == "overture_web":
+        return texts_website(c)
     if c["source"] == "companies_house":
         return texts_uk(seg, c)
     if c["source"] == "bodacc":
