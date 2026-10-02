@@ -117,3 +117,25 @@ export const STATUS_MAP: Record<string, string> = {
   active: "active", trialing: "active", past_due: "past_due", unpaid: "past_due", canceled: "cancelled",
   incomplete: "incomplete", incomplete_expired: "cancelled", paused: "paused",
 };
+
+/**
+ * Umsatzsteuer, feste Regel (Inhaber 02.10.2026): Preise überall netto, ohne Steuerhinweis. Erst im Stripe-Checkout
+ * kommen 19 % deutsche USt. dazu, und nur bei Rechnungsadresse in Deutschland. Kunden im Ausland (US, UK, EU mit
+ * USt-IdNr.) zahlen netto: Leistungsort beim Kunden (§ 3a Abs. 2 UStG), in der EU Reverse Charge.
+ * Ein Steuersatz-Objekt in Stripe (kostenlos, nicht „Stripe Tax“), wird einmal angelegt und danach wiederverwendet.
+ */
+export const DE_VAT = { percentage: 19, country: "DE", tag: "de-vat-19" } as const;
+const vatCache: Partial<Record<StripeMode, string>> = {};
+
+export async function germanVatRate(mode: StripeMode): Promise<string> {
+  if (vatCache[mode]) return vatCache[mode]!;
+  const list = await stripe("tax_rates?active=true&limit=100", undefined, mode, "GET");
+  const hit = (list?.data ?? []).find((t: any) => t?.metadata?.nextgen === DE_VAT.tag && !t.inclusive
+    && Number(t.percentage) === DE_VAT.percentage && t.country === DE_VAT.country);
+  const id = hit?.id ?? (await stripe("tax_rates", {
+    display_name: "USt.", description: "Umsatzsteuer Deutschland 19 %", percentage: DE_VAT.percentage,
+    inclusive: false, country: DE_VAT.country, jurisdiction: "DE", tax_type: "vat", metadata: { nextgen: DE_VAT.tag },
+  }, mode)).id;
+  vatCache[mode] = id;
+  return id;
+}

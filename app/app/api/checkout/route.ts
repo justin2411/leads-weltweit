@@ -1,7 +1,7 @@
 import { recordEvent } from "@/lib/page-events";
 import { getSettings, isOwner, pageIsPublic } from "@/lib/pages";
 import { BRAND, CONTACT, siteUrl } from "@/lib/site";
-import { checkoutMode, lineItemFor, stripe, stripeEnabled, type Plan } from "@/lib/stripe";
+import { checkoutMode, germanVatRate, lineItemFor, stripe, stripeEnabled, type Plan } from "@/lib/stripe";
 import { db } from "@/lib/supabase";
 import { basePlan, customCents, PER_WEEK, validWeekly } from "@/lib/custom-price";
 import { prospectIdFor } from "@/lib/recipient";
@@ -75,12 +75,15 @@ export async function POST(req: Request) {
   const back = `${siteUrl()}/${page.slug}/start${q.size ? `?${q}` : ""}`;
   let session: any;
   try {
+    // 19 % USt. nur bei Rechnungsadresse in Deutschland (Stripe wählt den Satz nach Land), sonst netto
+    item.dynamic_tax_rates = { 0: await germanVatRate(mode) };
     session = await stripe("checkout/sessions", {
     mode: "subscription",
     line_items: { 0: item },
     success_url: `${siteUrl()}/danke?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: back,
     billing_address_collection: "required",
+    tax_id_collection: { enabled: true },  // USt-IdNr. für Firmen in der EU (Reverse Charge)
     custom_fields: { 0: { key: "company", label: { type: "custom", custom: page.language === "fr" ? "Entreprise" : "Company name" }, type: "text" } },
     metadata: meta,
     subscription_data: { metadata: meta },
