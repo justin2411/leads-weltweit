@@ -318,6 +318,10 @@ def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str
             f"<td class='rp'>{e(ph if same else lb)}</td></tr>" for n, co, i, lo, lb, ph in rows]
     h1 = (t3["h_s"].replace("10", str(len(groups))) if sample else t3["h"]) + (f", {e(firm)}" if firm else "")
     lead_txt = t2["intro_s"].replace("<b>10 ", f"<b>{len(groups)} ") if sample else t2["intro"]
+    if not n_named:
+        # Nur versprechen, was drinsteht (Inhaber 02.10.2026): ohne Ansprechperson kein „who to ask for“
+        lead_txt = lead_txt.replace("phone, email and who to ask for", "phone and email").replace(
+            "téléphone, e-mail et la personne à demander", "téléphone et e-mail")
     # Karten-Seiten: gleichmäßig verteilt, höchstens layout[1] je Seite (10 Leads -> 4/3/3)
     per = max(1, layout[1])
     n = -(-len(cards) // per) if cards else 0

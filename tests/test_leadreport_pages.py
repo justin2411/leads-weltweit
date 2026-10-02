@@ -129,3 +129,22 @@ class PlaceholderRoleTests(unittest.TestCase):
         out = clean_csv(buf.getvalue().encode()).decode("utf-8-sig")
         self.assertNotIn("ask for", out.lower())
         self.assertNotIn("Contact role", out)
+
+
+class IntroPromiseTests(unittest.TestCase):
+    """Inhaber 02.10.2026: „who to ask for“ nur, wenn eine Ansprechperson im Report steht."""
+
+    def _html(self, name):
+        import csv, io
+        buf = io.StringIO()
+        w = csv.DictWriter(buf, fieldnames=["company", "phone", "email", "contact_name", "contact_role", "address"])
+        w.writeheader()
+        w.writerow({"company": "A Cafe", "phone": "1", "email": "a@a.com", "contact_name": name,
+                    "contact_role": "Owner (ask for the owner)", "address": "1 Main St"})
+        return build_html(buf.getvalue().encode(), "en", plans=[{"key": "starter", "amount_cents": 12900}], country="US")
+
+    def test_no_contact_no_promise(self):
+        self.assertNotIn("who to ask for", self._html(""))
+
+    def test_named_contact_keeps_promise(self):
+        self.assertIn("who to ask for", self._html("Jane Doe"))
