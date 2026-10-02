@@ -20,6 +20,7 @@ Versand-Regeln (CLAUDE.md Abschnitt 2 und 6):
 from __future__ import annotations
 
 import argparse
+import base64
 import datetime as dt
 import os
 import re
@@ -199,7 +200,7 @@ def _plan_url(body: str) -> str | None:
 
 
 def deliver(to: str, subject: str, text: str, unsub_url: str | None, html: str | None = None,
-            mailbox: dict | None = None) -> dict:
+            mailbox: dict | None = None, attachments: list[tuple[str, bytes]] | None = None) -> dict:
     """Sendet eine reine Textmail. MAIL_TRANSPORT=smtp (z. B. Strato) oder resend.
     mailbox: eines der Postfächer aus lib.mailboxes (Standard: Postfach 1 aus SMTP_*/MAIL_FROM).
 
@@ -213,6 +214,8 @@ def deliver(to: str, subject: str, text: str, unsub_url: str | None, html: str |
             "Authorization": f"Bearer {os.environ['RESEND_API_KEY']}",
         }, json={"from": os.environ["MAIL_FROM"], "to": [to], "subject": subject, "text": text, "headers": headers,
                  **({"html": html} if html else {}),
+                 **({"attachments": [{"filename": n, "content": base64.b64encode(b).decode()}
+                                     for n, b in attachments]} if attachments else {}),
                  **({"reply_to": reply_to} if reply_to else {})})
         if r.status_code >= 400:
             raise RuntimeError(f"Resend {r.status_code} {r.text}")
@@ -236,6 +239,9 @@ def deliver(to: str, subject: str, text: str, unsub_url: str | None, html: str |
     msg.set_content(text)  # Text-Version immer dabei; HTML ohne Bilder, kein Öffnungs-Tracking
     if html:
         msg.add_alternative(html, subtype="html")
+    for name, data in attachments or []:
+        msg.add_attachment(data, maintype="application", subtype="pdf" if name.endswith(".pdf") else "octet-stream",
+                           filename=name)
     if mailbox:
         host, port, user, password = mailbox["host"], mailbox["port"], mailbox["user"], mailbox["password"]
     else:
@@ -248,6 +254,11 @@ def deliver(to: str, subject: str, text: str, unsub_url: str | None, html: str |
         smtp.login(user, password)
         smtp.send_message(msg)
     return {"smtp_message_id": msg["Message-ID"], **({"sent_from": mailbox["from"]} if mailbox else {})}
+
+
+def brochure(segment, country):
+    from responder import brochure as _b
+    return _b(segment, country)
 
 
 def cmd_send(args) -> int:
@@ -377,6 +388,8 @@ def cmd_send(args) -> int:
         link = (landing_link(db, pages, e["segment_id"], country, m["unsubscribe_token"])
                 if kind in ("initial", "followup") else None)
         plan_url = _plan_url(body) if kind == "sample_followup" else None
+        # Nachfassmail: Erklär-PDF „How it works“ im Anhang (Inhaber 02.10.2026)
+        files = [b] if kind == "followup" and (b := brochure(e["segment_id"], country)) else None
         if link:
             lang = m.get("language") if m.get("language") in LANDING_LINE else "en"
             body += "\n\n" + LANDING_LINE[lang].format(url=link)
@@ -401,7 +414,7 @@ def cmd_send(args) -> int:
                                                    _country_area(country), link or plan_url,
                                                    segment=e["segment_id"] if kind == "initial" else None,
                                                    plan=bool(plan_url)),
-                                      mailbox=box if box.get("user") else None)
+                                      mailbox=box if box.get("user") else None, attachments=files)
         except Exception as exc:  # noqa: BLE001 - Versandfehler melden, nicht abbrechen
             print(f"FEHLER Versand {m['to_email']}: {exc}")
             continue
@@ -484,9 +497,11 @@ def _test_followup(args, name: str) -> int:
                            unsubscribe_url=unsubscribe_target("test"))
     text = body.rstrip() + "\n\n" + footer
     print(f"Prüfung: {lint.summary()}\n\nBetreff: [TEST] {subject}\n\n{text}\n")
+    files = [b] if args.art == "nachfass" and (b := brochure(args.segment, args.country)) else None
     out = deliver(args.to, f"[TEST] {subject}", text, unsubscribe_target("test"),
                   html_version(body, footer, lang, name if args.art == "nachfass" else None,
-                               _country_area(args.country), link or plan_url, plan=bool(plan_url)))
+                               _country_area(args.country), link or plan_url, plan=bool(plan_url)),
+                  attachments=files)
     print(f"gesendet an {args.to}: {out}")
     return 0
 
