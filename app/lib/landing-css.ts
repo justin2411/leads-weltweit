@@ -32,7 +32,8 @@ export const LANDING_CSS = `
 .bx .lp2 .chip{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;font-weight:600;color:#e9edf6;border:1px solid rgba(255,255,255,.18);border-radius:99px;padding:6px 12px;background:rgba(255,255,255,.03)}
 .bx .lp2 .chip .ic{width:15px;height:15px;color:var(--gink)}
 .bx .lp2 .ctaline{display:flex;flex-wrap:wrap;align-items:center;gap:16px}
-.bx .lp2 .free2{display:flex;gap:14px;font-size:13px;color:#9aa6ba}
+.bx .lp2 .ctabox{display:inline-flex;flex-direction:column;align-items:center;gap:12px}
+.bx .lp2 .free2{display:flex;flex-wrap:wrap;justify-content:center;gap:14px;font-size:13px;color:#9aa6ba}
 .bx .lp2 .free2 span:before{content:"✓ ";color:var(--gink)}
 .bx .lp2 .for{display:inline-block;margin-left:12px;font-size:13px;color:#cfd6e4}
 .bx .lp2 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding-bottom:12px;position:relative}
