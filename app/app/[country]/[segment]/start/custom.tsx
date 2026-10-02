@@ -34,7 +34,7 @@ export function CustomPlan({ base, variantId, preview, r, online, offerHref, T, 
   return (
     <section className="plan2 cu">
       <h2>{T.title}</h2>
-      <div className="price">{money(cents / 100)}<small>{T.per}</small></div>
+      <div className="price"><span className="amt">{money(cents / 100)}</span><small>{T.per}</small></div>
       <div className="qty">
         <label className="qn"><input type="number" inputMode="numeric" min={CUSTOM_MIN} max={CUSTOM_MAX} value={typed}
           onChange={(e) => setTyped(e.target.value)} onBlur={commit} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), commit())}

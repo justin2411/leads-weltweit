@@ -136,7 +136,8 @@ const CSS = `
 .bx .plan2 .tag{position:absolute;top:-12px;right:24px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;background:linear-gradient(135deg,#e2c894,#b08d57);color:#141008;padding:5px 12px;border-radius:99px}
 .bx .plan2 h2{margin:0;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--soft)}
 .bx .plan2 .price{font-size:44px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;font-variant-numeric:tabular-nums}
-.bx .plan2.cu .price{font-size:clamp(30px,2.9vw,40px)}.bx .plan2 .price small{font-size:15px;font-weight:600;color:var(--soft);margin-left:6px}
+.bx .plan2.cu .price{font-size:clamp(30px,2.9vw,40px)}
+.bx .plan2.cu .price .amt{display:inline-block;min-width:7.6ch}.bx .plan2 .price small{font-size:15px;font-weight:600;color:var(--soft);margin-left:6px}
 .bx .plan2 ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}.bx .plan2 li{font-size:15.5px;display:flex;gap:10px}.bx .plan2 li:before{content:"✓";color:var(--gold);font-weight:800;flex:none}
 .bx .plan2 .pl{font-size:13.5px;font-weight:700;color:#8a6a33;padding-top:12px;border-top:1px solid var(--line)}
 .bx .plan2 form,.bx .plan2 .go{margin-top:auto}.bx .plan2 .btn{width:100%;justify-content:center}
