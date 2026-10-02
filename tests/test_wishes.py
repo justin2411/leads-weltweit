@@ -168,3 +168,9 @@ class WebWishTests(unittest.TestCase):
         self.assertTrue(wishes.matches("security", {"signal_type": "no_https"}))
         self.assertFalse(wishes.matches("website_outdated", {"signal_type": "no_https"}))
         self.assertTrue(wishes.matches("not_mobile", {"signal_type": "website_not_mobile"}))
+
+
+def test_broken_website():
+    assert wishes.matches("broken", {"signal_type": "website_broken"})
+    assert not wishes.matches("broken", {"signal_type": "website_outdated"})
+    assert wishes.matches("website_outdated", {"signal_type": "website_broken"})

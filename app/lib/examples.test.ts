@@ -82,7 +82,7 @@ test("Probe-Formular: Wunsch maschinenlesbar, nur erlaubte Signale, Freitext ein
   assert.equal(wishNote("accountants", [], "x".repeat(300)).length, "wunsch:signals=;text=".length + 200);
   for (const seg of ["recruitment", "accountants", "web-agencies", "insurance-brokers", "financial-advisers"]) {
     const w = wishesFor(seg);
-    assert.ok(w.length >= 2 && w.length <= 5, seg);
+    assert.ok(w.length >= 2 && w.length <= 6, seg); // Webagenturen 6 (Inhaber 02.10.2026)
     assert.ok(w.every((x) => x.en && x.fr && x.de));
   }
   assert.ok(validEmail("info@acme.co.uk"));
