@@ -88,6 +88,19 @@ class RegionalSampleWishTest(unittest.TestCase):
         self.db = db
         return files, ok, captured.get("ids")
 
+    def test_rare_wish_found_outside_newest_pool(self):
+        # Probe-Anfragen laden nur die neuesten Leads (Timeout bei 200.000 S2/US-Leads, Audit 02.10.2026);
+        # ein seltenes Wunsch-Signal wird gezielt nachgeladen, auch wenn es nicht unter den neuesten steht
+        import responder
+        rows = [lead(i, "new_incorporation") for i in range(1, 13)]
+        rows += [lead(13, "job_open_30d", "Role “Payroll Clerk” open for 50 days")]
+        known = [f"c{i}" for i in range(1, 14)]
+        with mock.patch.object(responder, "SAMPLE_POOL", 10):
+            files, ok, ids = self.run_sample(rows, known, ["finance_roles"])
+        self.assertTrue(ok)
+        self.assertEqual(len(ids), 10)
+        self.assertEqual(ids[0], "l13")
+
     def test_prefers_wished_and_fills_up(self):
         rows = [lead(i, "new_incorporation") for i in range(1, 11)]
         rows += [lead(i, "job_open_30d", "Role “Accounts Assistant” open for 45 days") for i in range(11, 14)]

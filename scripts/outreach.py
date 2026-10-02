@@ -105,6 +105,9 @@ def total_limit() -> int | None:
     return int(raw) if raw and raw.isdigit() else None
 
 
+FOLLOWUP_MAX_DAYS = 11  # Nachfassmail spätestens 11 Tage nach der Erstmail (geplant: nach 4 Tagen)
+
+
 def followup_block_reason(db, m: dict) -> str | None:
     """Nachfassmails beim Versand erneut prüfen: seit dem Anlegen kann eine Antwort, Probe-Anfrage oder ein Bounce
     eingegangen sein. Grund zum Blockieren oder None."""
@@ -125,6 +128,11 @@ def followup_block_reason(db, m: dict) -> str | None:
         if db.select("sample_requests", {"email": f"eq.{m['to_email'].lower()}", "status": "in.(new,sent)",
                                          "select": "id"}):
             return "Nachfassmail überholt: Probe über die Landingpage angefordert"
+        # Nachfassen nur zeitnah: eine Woche nach dem geplanten Tag (4 Tage nach der Erstmail) wirkt sie wie Spam
+        sent = db.select("messages", {"id": f"eq.{parent_id}", "select": "sent_at"}) if parent_id else []
+        sent_at = (sent[0].get("sent_at") if sent else None) or ""
+        if sent_at and sent_at[:10] < (dt.date.today() - dt.timedelta(days=FOLLOWUP_MAX_DAYS)).isoformat():
+            return f"Nachfassmail zu spät: Erstmail vom {sent_at[:10]} (mehr als {FOLLOWUP_MAX_DAYS} Tage)"
         return None
     # sample_followup: nur, solange nach der Probe nichts mehr kam (gleiche Regel wie followups.py)
     sample_at = min((e["created_at"] for e in evs if e["type"] == "sample_requested"), default=None)
@@ -320,9 +328,15 @@ def cmd_send(args) -> int:
     initial = db.select("messages", {"status": "eq.approved", "kind": "eq.initial",
                                      "order": "approved_at.asc", "limit": str(args.limit), "select": sel})
     # Fokus-Tests zuerst (config/fokus.yaml), innerhalb Fokus und Rest jeweils abwechselnd je Experiment
-    from lib.fokus import focus_pairs
+    from lib.fokus import focus_only, focus_pairs
     pairs = set(focus_pairs())
     in_focus = lambda m: ((m.get("experiments") or {}).get("segment_id"), (m.get("prospects") or {}).get("country")) in pairs
+    if focus_only():
+        # Andere Branchen ruhen (Inhaber 02.10.2026): ihre Entwürfe bleiben freigegeben liegen, nichts wird gesendet
+        skipped = len([m for m in later + initial if not in_focus(m)])
+        later, initial = [m for m in later if in_focus(m)], [m for m in initial if in_focus(m)]
+        if skipped:
+            print(f"Nur Fokus-Tests ({', '.join(f'{a}/{b}' for a, b in sorted(pairs))}): {skipped} andere Entwürfe ruhen")
     rows = later + interleave([m for m in initial if in_focus(m)]) + interleave([m for m in initial if not in_focus(m)])
     already = sum(sent_today.values())
     print(f"Aufwärmphase: heute max. {cap} Mails insgesamt, bereits gesendet: {already}")

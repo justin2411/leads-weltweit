@@ -350,10 +350,22 @@ def tag_fresh_leads(db) -> None:
         print(f"WARNUNG: Leads taggen fehlgeschlagen ({exc.__class__.__name__}: {str(exc)[:200]}), nutze vorhandene Tags")
 
 
-def _load_leads(db, since: dt.date) -> tuple[list[dict], dict[str, dict]]:
+POOL_PER_MARKET = 5000  # neueste unvergebene Leads je Branche und Land (reicht für viele Kunden je Woche)
+
+
+def _load_leads(db, since: dt.date, markets: set[tuple[str, str]] | None = None) -> tuple[list[dict], dict[str, dict]]:
     # nur unvergebene Leads: Probe-Leads (sample) und gelieferte gehen an keinen weiteren Käufer (exklusiv, 01.10.2026)
-    leads = db.select_all("leads", {"created_at": f"gte.{since.isoformat()}", "status": "eq.new",
-                                    "select": LEAD_SELECT, "order": "event_date.desc,id"})
+    params = {"created_at": f"gte.{since.isoformat()}", "status": "eq.new", "select": LEAD_SELECT,
+              "order": "event_date.desc,id"}
+    if markets is None:
+        leads = db.select_all("leads", params)
+    else:
+        # Nur Märkte mit aktiven Abos und je Markt die neuesten: alle frischen Leads (200.000+ allein S2/US)
+        # seitenweise zu laden lief in einen Statement-Timeout (Audit 02.10.2026)
+        from responder import _newest
+        leads = []
+        for seg, country in sorted(markets):
+            leads += _newest(db, {**params, "segment_id": f"eq.{seg}", "country": f"eq.{country}"}, POOL_PER_MARKET)
     details = {}
     us_obs = {l["observation_ids"][0]: l["id"] for l in leads if l["country"] == "US" and l.get("observation_ids")}
     ids = list(us_obs)
@@ -395,7 +407,8 @@ def cmd_prepare(args) -> int:
         print("Keine aktiven Abos – nichts zu liefern.")
         return 0
     tag_fresh_leads(db)
-    leads, details = _load_leads(db, dt.date.today() - dt.timedelta(days=FRESH_DAYS))
+    markets = {(s["segment_id"], (s.get("filters") or {}).get("country") or s["customers"]["country"]) for s in subs}
+    leads, details = _load_leads(db, dt.date.today() - dt.timedelta(days=FRESH_DAYS), markets)
     known = None
     if REQUIRE_CONTACT:
         known = contact_companies(db)

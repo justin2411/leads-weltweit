@@ -349,6 +349,21 @@ def _firm_key(co: dict | None) -> str:
     return "name:" + _re.sub(r"[^a-z0-9]", "", ((co or {}).get("name") or "").lower())
 
 
+SAMPLE_POOL = 3000  # Kandidaten je Probe (vollständige Leads sind darunter reichlich)
+
+
+def _newest(db, params: dict, n: int, page: int = 1000) -> list[dict]:
+    """Höchstens n Zeilen in der Reihenfolge von params["order"], seitenweise."""
+    out: list[dict] = []
+    while len(out) < n:
+        want = min(page, n - len(out))
+        rows = db.select("leads", {**params, "limit": str(want), "offset": str(len(out))})
+        out += rows
+        if len(rows) < want:
+            break
+    return out
+
+
 def regional_sample(db, seg: str, country: str, region: str | None,
                     wish: list[str] | None = None, mark: bool = True) -> tuple[list[tuple[str, bytes]], bool]:
     """10 vollständige Leads aus dem ganzen Land (Inhaber 27.09.2026). (Dateien, True) – sonst ([], False).
@@ -361,12 +376,21 @@ def regional_sample(db, seg: str, country: str, region: str | None,
     area = None  # Leads aus dem ganzen Land (Inhaber 27.09.2026), keine Regionsauswahl mehr
     # Exklusiv (Inhaber 01.10.2026: „jeder lead geht nur an einen käufer“): jede Probe bekommt frische Leads (status new),
     # die danach als sample markiert und nie wieder ausgegeben werden – weder in einer anderen Probe noch in einer Lieferung.
-    rows = db.select_all("leads", {"segment_id": f"eq.{seg}", "country": f"eq.{country}", "status": "eq.new",
-                               "select": "id,event_summary,event_date,source_name,source_url,source_date,urgency,"
-                                         "urgency_reason,opener,signal_type,company_id,observation_ids,"
-                                         "watch_companies(name,legal_form,city,region,address,website,website_checked_at)",
-                               "order": "event_date.desc,id"})
+    # Nur die neuesten Kandidaten laden (Index segment_id, country, status, event_date): alle 200.000 S2/US-Leads
+    # seitenweise zu lesen lief in einen Statement-Timeout, Probe-Anfragen blieben unbeantwortet (Audit 02.10.2026)
+    params = {"segment_id": f"eq.{seg}", "country": f"eq.{country}", "status": "eq.new",
+              "select": "id,event_summary,event_date,source_name,source_url,source_date,urgency,"
+                        "urgency_reason,opener,signal_type,company_id,observation_ids,"
+                        "watch_companies(name,legal_form,city,region,address,website,website_checked_at)",
+              "order": "event_date.desc,id"}
+    rows = _newest(db, params, SAMPLE_POOL)
     if wish:
+        from lib.wishes import signal_types
+        types = signal_types(wish)
+        if types:  # seltene Wunsch-Signale stehen evtl. nicht unter den neuesten Leads: gezielt nachladen
+            have = {r["id"] for r in rows}
+            extra = _newest(db, {**params, "signal_type": f"in.({','.join(types)})"}, SAMPLE_POOL // 2)
+            rows = [r for r in extra if r["id"] not in have] + rows
         rows = prefer(rows, wish, _sic_lookup(db, rows) if "fleet_warehouse" in wish else None)
     # Vollständigkeit nur blockweise für die nächsten Kandidaten prüfen (bei 90.000+ Leads war die Prüfung aller
     # Firmen zu langsam; Test 01.10.2026)
