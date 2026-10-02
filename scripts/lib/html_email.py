@@ -128,10 +128,12 @@ def render(body_text: str, footer_text: str, lang: str = "en", cta: str = "",
     head, tail = (parts[0], " " + parts[1]) if len(parts) == 2 else (company, "")
     wordmark = (f'<span style="font-family:{FONT};font-size:22px;font-weight:800;letter-spacing:-0.4px;color:#FFFFFF;">'
                 f'{html.escape(head)}<span style="color:{GOLD};">{html.escape(tail)}</span></span>')
+    # Vertrauens-Etikett im Kopf (Inhaber 02.10.2026: „nimm certified“, „doch das haben wir“ – „echtes Prüfsiegel“)
+    trust = "Certifié" if lang == "fr" else "Certified"
     footer_html = html.escape(footer_text.lstrip("—-").strip()).replace("\n", "<br>")
     link = lambda text, size=13, color=ORANGE: (f'<a href="{html.escape(url)}" style="font-family:{FONT};font-size:{size}px;'
                                                 f'color:{color};text-decoration:none;font-weight:600;">{html.escape(text)}</a>')
-    script = (f'<div style="font-family:{SIGN};font-size:30px;line-height:36px;color:{NAVY};margin:0 0 4px 0;">'
+    script = (f'<div style="font-family:{SIGN};font-size:30px;line-height:36px;color:{NAVY};margin:0 0 12px 0;">'
               f'{html.escape(name)}</div>') if has_person else ""
 
     return f"""<!doctype html>
@@ -144,6 +146,7 @@ def render(body_text: str, footer_text: str, lang: str = "en", cta: str = "",
 <tr><td style="background:{NAVY};padding:22px 36px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
 <td>{wordmark}</td>
+<td align="right" style="white-space:nowrap;"><span style="display:inline-block;border:1px solid {GOLD};border-radius:99px;padding:5px 12px;font-family:{FONT};font-size:12px;font-weight:600;letter-spacing:0.3px;color:{GOLD};">&#10003; {html.escape(trust)}</span></td>
 </tr></table></td></tr>
 <tr><td style="height:3px;background:{GOLD};font-size:0;line-height:0;">&nbsp;</td></tr>
 <tr><td style="padding:32px 40px 8px 40px;">
