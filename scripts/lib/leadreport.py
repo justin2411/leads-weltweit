@@ -248,7 +248,7 @@ def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str
         bf = briefing(sig, segment, r.get("event", ""), r.get("event_date", ""), opener, (r.get("question_to_ask") or "").strip(),
                       ind, loc.split(",")[0], country, sic)
         person = (r.get("contact_name") or "").strip()
-        prole = (r.get("contact_role") or "").strip()
+        prole = real_role(r.get("contact_role"))
         addr = (r.get("address") or "").strip() or loc
         meta = " · ".join(x for x in [ind, r.get("legal_form"), loc] if x)
         dated = _day(r.get("event_date", ""), lang)
@@ -256,7 +256,7 @@ def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str
                  ("user", t2["i_contact"], f"{person}{(' · ' + prole) if prole else ''}" if person else prole),
                  ("pin", t2["i_addr"], addr),
                  ("cal", t2["f_reg"] if sig == "new_incorporation" else t["detected"], dated)]
-        facts = [(k, lbl, v or "–") for k, lbl, v in facts]
+        facts = [(k, lbl, v or "–") for k, lbl, v in facts if v or k != "user"]
         cards.append(f"""
 <article class="lead">
   <div class="no">{num:02d}</div>
@@ -418,6 +418,13 @@ CSV_COLS = {
 CONTACT_COLS = (9, 10)  # „Contact person“, „Contact role“
 
 
+def real_role(role: str | None) -> str:
+    """Rolle nur, wenn sie aus einer Quelle stammt. Platzhalter aus extraktor/qc („Owner (ask for the owner)“) werden
+    nie gezeigt (Inhaber 02.10.2026: „ask for the owner ist wirklich blöd“)."""
+    role = (role or "").strip()
+    return "" if re.search(r"\((ask for|demander)\b", role, re.I) else role
+
+
 def clean_csv(data: bytes, lang: str = "en", segment: str | None = None, country: str = "UK") -> bytes:
     """Tabelle zum PDF: dieselben Firmen in derselben Reihenfolge mit denselben Angaben – keine Quellen, keine Links."""
     t = T.get(lang, T["en"])
@@ -436,7 +443,7 @@ def clean_csv(data: bytes, lang: str = "en", segment: str | None = None, country
                       ind, loc.split(",")[0], country, sic)
         rows.append([num, g["company"], t["prio"].get(urg, ""), t["sig"].get(sig, ""), ind, r.get("legal_form") or "",
                     r.get("phone") or "", r.get("email") or "", re.sub(r"^https?://(www\.)?", "", r.get("website") or "").rstrip("/"),
-                    r.get("contact_name") or "", r.get("contact_role") or "", (r.get("address") or "").strip() or loc,
+                    r.get("contact_name") or "", real_role(r.get("contact_role")), (r.get("address") or "").strip() or loc,
                     (r.get("event_date") or "")[:10], bf["why"], " | ".join(bf["needs"]), bf["offer"], bf["ask"]])
     # Ansprechperson/Funktion nur, wenn mindestens eine Firma sie hat (Inhaber 02.10.2026: leere Spalte raus)
     drop = {i for i in CONTACT_COLS if not any(str(row[i]).strip() for row in rows)}

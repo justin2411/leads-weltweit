@@ -105,3 +105,26 @@ class CleanCsvContactTests(unittest.TestCase):
         head = self._head(self._csv("Jane Doe", "Owner"))
         self.assertIn("Contact person", head)
         self.assertIn("Contact role", head)
+
+
+class PlaceholderRoleTests(unittest.TestCase):
+    """Inhaber 02.10.2026: „ask for the owner“ nie zeigen."""
+
+    def test_placeholder_hidden(self):
+        from lib.leadreport import real_role
+        self.assertEqual(real_role("Owner (ask for the owner)"), "")
+        self.assertEqual(real_role("Gérant / propriétaire (demander le responsable)"), "")
+        self.assertEqual(real_role("Hiring manager (ask for the person responsible for recruiting)"), "")
+        self.assertEqual(real_role("Director"), "Director")
+
+    def test_csv_drops_placeholder_column(self):
+        import csv, io
+        from lib.leadreport import clean_csv
+        buf = io.StringIO()
+        w = csv.DictWriter(buf, fieldnames=["company", "phone", "email", "contact_name", "contact_role"])
+        w.writeheader()
+        w.writerow({"company": "A Cafe", "phone": "1", "email": "a@a.com", "contact_name": "",
+                    "contact_role": "Owner (ask for the owner)"})
+        out = clean_csv(buf.getvalue().encode()).decode("utf-8-sig")
+        self.assertNotIn("ask for", out.lower())
+        self.assertNotIn("Contact role", out)
