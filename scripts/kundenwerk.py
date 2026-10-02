@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import hashlib
+import json
 import os
 import re
 import sys
@@ -222,6 +223,73 @@ def count_ok(db) -> int:
     return int((r.headers.get("content-range") or "*/0").split("/")[-1] or 0)
 
 
+def known_domains(db, domains: list[str], batch: int = 150) -> set[str]:
+    """Welche dieser Domains stehen schon in prospects? Paketweise über den eindeutigen Index auf domain."""
+    out: set[str] = set()
+    for k in range(0, len(domains), batch):
+        part = [x.replace('"', "") for x in domains[k:k + batch]]
+        q = {"select": "domain", "domain": "in.(" + ",".join(f'"{x}"' for x in part) + ")"}
+        for attempt in range(5):
+            try:
+                rows = db.select("prospects", q)
+                break
+            except RuntimeError as exc:  # Zeitüberschreitung unter Last: kurz warten, nochmal
+                if "57014" not in str(exc) or attempt == 4:
+                    raise
+                time.sleep(3 * (attempt + 1))
+        out.update(r["domain"] for r in rows if r.get("domain"))
+    return out
+
+
+KNOWN = Path(os.environ.get("KUNDENWERK_KNOWN", "out/cache/kunden_known.json"))
+
+
+def _pages(db, q: dict, key: str, start: str = "") -> list[dict]:
+    """Seitenweise nach `key` (Index) blättern; Zeitüberschreitungen unter Last mit Pause wiederholen."""
+    out, last = [], start
+    while True:
+        qq = {**q, "order": f"{key}.asc", "limit": "1000", **({key: f"gt.{last}"} if last else {})}
+        for attempt in range(6):
+            try:
+                rows = db.select("prospects", qq)
+                break
+            except RuntimeError as exc:
+                if "57014" not in str(exc) or attempt == 5:
+                    raise
+                time.sleep(5 * (attempt + 1))
+        out += rows
+        if len(rows) < 1000:
+            return out
+        last = rows[-1][key]
+
+
+def refresh_known(db, path: Path = KNOWN) -> set[str]:
+    """Bekannte Käufer-Domains im Zwischenspeicher halten: einmal alle (nach domain), danach nur neue
+    (nach created_at, Index prospects_created_at_idx). Alle ~190.000 bei jedem Start zu laden dauerte unter
+    Last ~20 min und brach ab (02.10.2026)."""
+    import datetime as dt
+    data = json.loads(path.read_text()) if path.exists() else None
+    now = dt.datetime.now(dt.timezone.utc)
+    if data:
+        domains = set(data["domains"])
+        since = (dt.datetime.fromisoformat(data["since"]) - dt.timedelta(hours=1)).isoformat()
+        new = _pages(db, {"select": "domain,created_at"}, "created_at", since)
+        domains.update(r["domain"] for r in new if r.get("domain"))
+        log(f"Bekannte Käufer: {len(domains)} (+{len(new)} seit {since[:16]})")
+    else:
+        domains = {r["domain"] for r in _pages(db, {"select": "domain"}, "domain") if r.get("domain")}
+        log(f"Bekannte Käufer: {len(domains)} (komplett geladen)")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"since": now.isoformat(), "domains": sorted(domains)}))
+    return domains
+
+
+def cmd_known(args) -> int:
+    from lib.db import DB
+    refresh_known(DB())
+    return 0
+
+
 FALLBACK_MIN = 500  # weniger neue Fokus-Käufer als das: Werk nimmt die übrigen Zielgruppen dazu
 
 
@@ -250,14 +318,23 @@ def cmd_run(args) -> int:
     if have >= args.target:
         log(f"Ziel erreicht: {have} geprüfte Käufer (Ziel {args.target}) – nichts zu tun")
         return 0
-    known = {r["domain"] for r in db.select_all("prospects", {"select": "domain"}) if r.get("domain")}
     blocked = {r["value"].lower() for r in db.select_all("suppression", {"select": "value"}) if r.get("value")}
-    pool = [d for d in candidates(segs) if d["domain"] not in known]
-    pool = fill_up(pool, keep, lambda: [d for d in candidates(all_segs) if d["domain"] not in known])
-    if args.shard:
-        i, n = (int(x) for x in args.shard.split("/"))
-        # fest nach Domain verteilt: parallele Teile prüfen nie dieselbe Firma
-        pool = [d for d in pool if int(hashlib.md5(d["domain"].encode()).hexdigest(), 16) % n == i]
+    cached = KNOWN.exists()
+    known: set[str] = set(json.loads(KNOWN.read_text())["domains"]) if cached else set()
+
+    def mine(rows: list[dict]) -> list[dict]:
+        """Nur dieser Teil (fest nach Domain verteilt) und nur Domains, die noch nicht in prospects stehen.
+        Gezielt nachschlagen statt alle Domains zu laden: das Laden aller ~190.000 Domains brach unter Last ab
+        (02.10.2026, 57014 bei offset 189000) und das Werk stand still."""
+        if args.shard:
+            i, n = (int(x) for x in args.shard.split("/"))
+            rows = [d for d in rows if int(hashlib.md5(d["domain"].encode()).hexdigest(), 16) % n == i]
+        if not cached:  # ohne Zwischenspeicher: gezielt nachschlagen (langsam unter Last)
+            known.update(known_domains(db, [d["domain"] for d in rows if d["domain"] not in known]))
+        return [d for d in rows if d["domain"] not in known]
+
+    pool = mine(candidates(segs))
+    pool = fill_up(pool, keep, lambda: mine(candidates(all_segs)))
     pool = pool[:args.max]
     deadline = time.monotonic() + args.deadline_min * 60 if args.deadline_min else 0
     uk = {d["domain"]: d["name"] for d in pool if d["country"] == "UK"}
@@ -346,10 +423,13 @@ def main(argv=None) -> int:
     r.add_argument("--deadline-min", type=float, default=0,
                    help="nach N Minuten keine neuen Firmen mehr anfangen, Ergebnisse speichern (0 = aus)")
     sub.add_parser("stand")
+    sub.add_parser("known")
     args = ap.parse_args(argv)
     if args.cmd == "pool":
         build_pool()
         return 0
+    if args.cmd == "known":
+        return cmd_known(args)
     return cmd_run(args) if args.cmd == "run" else cmd_stand(args)
 
 
