@@ -1,7 +1,7 @@
 # Lead-Werk (Inhaber 01.10.2026: „eigener Bereich der 24/7 die leads holt und anreichert“).
-# Fokus Webagenturen (Inhaber 02.10.2026: „erstmal auf Webagenturen fokussieren … massenweise“): 26 Teile S2
-# (Firmen ohne Website) in US/UK/FR/IE/NL/BE/SE, 3 Teile S2 Website-Prüfung (US/UK/FR: unsichere, nicht
-# handytaugliche, veraltete oder kaputte Websites), 1 Teil S1 US (DOL LCA, Quellen-Scout). Dauerbetrieb, eine Welle: kostenlose Quellen -> Sicherheitsfilter -> kostenlose Anreicherung -> Qualitäts- und
+# Fokus Webagenturen (Inhaber 02.10.2026: „erstmal auf Webagenturen fokussieren … massenweise“): 8 Teile S2
+# Website-Prüfung (US 4, UK 2, FR 2: unsichere, nicht handytaugliche, veraltete oder kaputte Websites), 21 Teile S2
+# ohne Website (US 18, FR, UK, IE/NL/BE/SE je 1), 1 Teil S1 US (DOL LCA, Quellen-Scout). Dauerbetrieb, eine Welle: kostenlose Quellen -> Sicherheitsfilter -> kostenlose Anreicherung -> Qualitäts- und
 # Signalkontrolle -> grüne Leads direkt in Supabase (watch_companies, observations, leads). Schon gespeicherte
 # Firmen werden übersprungen, so arbeitet sich jeder Lauf weiter durch den Bestand.
 # Lädt KEINE Lead-Dateien hoch (öffentliches Repo) – nur den Zählbericht. Sendet nichts.
@@ -45,10 +45,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: out/cache/overture_us_web.parquet
-          key: overture-us-web-${{ steps.m.outputs.monat }}
-      - name: US-Auszug mit Website bauen (Website-Prüfung S2, jede vierte Firma)
+          key: overture-us-web2-${{ steps.m.outputs.monat }}
+      - name: US-Auszug mit Website bauen (Website-Prüfung S2, je Monat die andere Hälfte)
         if: steps.web.outputs.cache-hit != 'true'
-        continue-on-error: true  # fehlt er, baut der Teil web-us-0 ihn selbst
+        continue-on-error: true  # fehlt er, baut ihn jeder Teil web-us-* selbst
         run: |
           pip install -r requirements.txt
           python -c "import sys; sys.path.insert(0, 'scripts'); from extraktor.sources import overture as o; o.build_cache(path=o.CACHE_US_WEB)"
@@ -77,23 +77,25 @@ jobs:
       max-parallel: 25
       matrix:
         include:
-          - { name: s2-fr-0, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 0/3" }
-          - { name: s2-fr-1, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 1/3" }
-          - { name: s2-fr-2, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 2/3" }
+          # Website-Prüfung S2 im großen Stil (Inhaber 02.10.2026: „mach das jetzt bitte im ganz großen stil und hol viele
+          # leads rein“): 8 Teile mit je 40 gleichzeitigen Abrufen (verschiedene Domains, je Domain weiter 1/s, robots.txt).
+          # Zuerst in der Liste, damit sie bei max-parallel 25 sofort starten. Plätze von S2 ohne Website in FR (3 -> 1),
+          # UK und IE/NL/BE/SE (4 -> 1 gemeinsamer Teil): dort liegen schon ~130.000 Leads bei wenigen Käufern.
+          - { name: web-us-0, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 0/4" }
+          - { name: web-us-1, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 1/4" }
+          - { name: web-us-2, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 2/4" }
+          - { name: web-us-3, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 3/4" }
+          - { name: web-uk-0, workers: 40, args: "--segments S2 --countries UK --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 0/2" }
+          - { name: web-uk-1, workers: 40, args: "--segments S2 --countries UK --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 1/2" }
+          - { name: web-fr-0, workers: 40, args: "--segments S2 --countries FR --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 0/2" }
+          - { name: web-fr-1, workers: 40, args: "--segments S2 --countries FR --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 1/2" }
           # Quellen-Scout S1 (Inhaber 02.10.2026: „recruiting kunden und leads … darauf fokussieren“): US-Arbeitgeber mit
-          # Fachkräfte-Bedarf aus den DOL-LCA-Daten, Test 50 -> 26 grün; Platz von FR-S2 (6 -> 5 Teile)
+          # Fachkräfte-Bedarf aus den DOL-LCA-Daten, Test 50 -> 26 grün
           - { name: s1-us-lca, args: "--segments S1 --countries US --fmcsa-days 0 --formd-days 0 --s1-probe 0 --lca --per 4000 --max-tries 4000" }
+          # S2 ohne Website: FR, UK und IE/NL/BE/SE je ein Teil (laufen weiter, nur mit weniger Plätzen)
+          - { name: s2-fr-0, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000" }
           - { name: s2-uk-0, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000" }
-          # Website-Prüfung S2 (Inhaber 02.10.2026: „sehr alte Websites oder fehlende Sicherheit“): Firmen MIT Website,
-          # deren Startseite unsicher, nicht handytauglich, veraltet oder kaputt ist (Quellen-Scout: Test je ~330 Websites
-          # US/UK/FR). Plätze von S2 FR (5 -> 3) und S2 UK (2 -> 1); US-S2 ohne Website bleibt bei 18.
-          - { name: web-us-0, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 40000 --per 40000 --max-tries 40000" }
-          - { name: web-uk-0, args: "--segments S2 --countries UK --web-check --s2-limit 40000 --per 40000 --max-tries 40000" }
-          - { name: web-fr-0, args: "--segments S2 --countries FR --web-check --s2-limit 40000 --per 40000 --max-tries 40000" }
-          - { name: s2-ie-0, args: "--segments S2 --countries IE --s2-limit 20000 --per 4000 --max-tries 4000" }
-          - { name: s2-nl-0, args: "--segments S2 --countries NL --s2-limit 32000 --per 4000 --max-tries 4000" }
-          - { name: s2-be-0, args: "--segments S2 --countries BE --s2-limit 20000 --per 4000 --max-tries 4000" }
-          - { name: s2-se-0, args: "--segments S2 --countries SE --s2-limit 32000 --per 4000 --max-tries 4000" }
+          - { name: s2-north-0, args: "--segments S2 --countries IE,NL,BE,SE --s2-limit 20000 --per 4000 --max-tries 4000" }
           # Fokus Webagenturen (Inhaber 02.10.2026): US-Firmen ohne Website aus Overture, ~390.000 mit E-Mail, Test 95 % grün
           - { name: s2-us-0, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 0/18" }
           - { name: s2-us-1, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 1/18" }
@@ -147,7 +149,7 @@ jobs:
           key: lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-${{ github.run_id }}
           restore-keys: |
             lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-
-            lead-werk-${{ matrix.name == 'web-uk-0' && 's2-uk-0' || matrix.name == 'web-fr-0' && 's2-fr-0' || matrix.name }}-${{ steps.m.outputs.monat }}-
+            lead-werk-${{ startsWith(matrix.name, 'web-uk') && 's2-uk-0' || startsWith(matrix.name, 'web-fr') && 's2-fr-0' || matrix.name == 's2-north-0' && 's2-ie-0' || matrix.name }}-${{ steps.m.outputs.monat }}-
       - name: Gedächtnis der Website-Prüfung laden (geprüfte Firmen, 120 Tage)
         if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
         uses: actions/cache/restore@v4
@@ -163,11 +165,11 @@ jobs:
           path: out/cache/overture_us_s2.parquet
           key: overture-us-s2-${{ needs.us-auszug.outputs.monat }}
       - name: US-Auszug mit Website laden (Website-Prüfung)
-        if: steps.gate.outputs.an == 'true' && matrix.name == 'web-us-0'
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-us-')
         uses: actions/cache/restore@v4
         with:
           path: out/cache/overture_us_web.parquet
-          key: overture-us-web-${{ needs.us-auszug.outputs.monat }}
+          key: overture-us-web2-${{ needs.us-auszug.outputs.monat }}
       - name: DOL-LCA-Auszug laden
         if: steps.gate.outputs.an == 'true' && matrix.name == 's1-us-lca'
         uses: actions/cache/restore@v4
@@ -176,7 +178,7 @@ jobs:
           key: dol-lca-${{ needs.us-auszug.outputs.monat }}
       - name: Leads holen, prüfen, speichern
         if: steps.gate.outputs.an == 'true'
-        run: python scripts/extraktor/run.py ${{ matrix.args }} --workers 16 --db --store --out out/lead-werk --deadline-min 75
+        run: python scripts/extraktor/run.py ${{ matrix.args }} --workers ${{ matrix.workers || 16 }} --db --store --out out/lead-werk --deadline-min 75
       - name: Zwischenspeicher sichern
         if: always() && steps.gate.outputs.an == 'true'
         uses: actions/cache/save@v4

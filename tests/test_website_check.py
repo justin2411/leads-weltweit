@@ -265,15 +265,60 @@ class LeadTests(unittest.TestCase):
                 import enrich
                 enrich.mx_ok = orig_mx
 
+    def test_hit_without_email_reads_contact_page(self):
+        from collections import Counter
+        from extraktor import filters, run
+        import enrich
+        home = MOBILE_HTML.replace("</footer>", '</footer><a href="/contact-us">Contact us</a>')
+
+        class F:
+            asked = []
+
+            def get(self, url):
+                self.asked.append(url)
+                return (url, "<p>Write to bookings@suzyspizza.com</p>") if "contact" in url else None
+        orig_inspect, orig_mx = wc.inspect, enrich.mx_ok
+        try:
+            wc.inspect = lambda c, f, today=None: {
+                "findings": [{"type": "website_not_mobile", "detail": "no_viewport", "value": "", "evidence": "x"}],
+                "note": "", "final_url": "https://suzyspizza.com/", "html": home, "belongs": ["phone_on_site"],
+                "checked_on": TODAY.isoformat()}
+            enrich.mx_ok = lambda d: True
+            f = F()
+            l = run.process(cand(), "S2", f, Counter(), filters.Guard(None))
+            self.assertEqual(l["email"], "bookings@suzyspizza.com")
+            self.assertEqual(f.asked, ["https://suzyspizza.com/contact-us"])
+        finally:
+            wc.inspect, enrich.mx_ok = orig_inspect, orig_mx
+
     def test_lead_werk_runs_website_check_parts(self):
         import yaml
         jobs = yaml.safe_load((ROOT / ".github" / "workflows" / "lead-werk.yml").read_text())["jobs"]
-        parts = {e["name"]: e["args"] for e in jobs["holen"]["strategy"]["matrix"]["include"]}
-        for name, co in (("web-us-0", "US"), ("web-uk-0", "UK"), ("web-fr-0", "FR")):
-            self.assertIn("--web-check", parts[name])
-            self.assertIn(f"--countries {co}", parts[name])
-        self.assertIn("--fmcsa-days 0", parts["web-us-0"])  # US-Teil lädt keine fremden Quellen
-        self.assertEqual(sum(n.startswith("s2-us-") for n in parts), 18)  # US ohne Website nicht gekürzt
+        include = jobs["holen"]["strategy"]["matrix"]["include"]
+        web = [e for e in include if e["name"].startswith("web-")]
+        self.assertEqual({e["name"].rsplit("-", 1)[0]: 0 for e in web}.keys(), {"web-us", "web-uk", "web-fr"})
+        self.assertGreaterEqual(len(web), 8)  # Inhaber 02.10.2026: „im ganz großen stil“
+        for e in web:
+            co = e["name"].split("-")[1].upper()
+            self.assertIn("--web-check", e["args"])
+            self.assertIn(f"--countries {co} ", e["args"] + " ")
+            self.assertGreaterEqual(e.get("workers", 16), 32)
+            if co == "US":
+                self.assertIn("--fmcsa-days 0", e["args"])  # US-Teil lädt keine fremden Quellen
+        # Website-Teile zuerst (starten bei max-parallel sofort), US ohne Website nicht gekürzt
+        self.assertTrue(all(e["name"].startswith("web-") for e in include[:len(web)]))
+        self.assertEqual(sum(e["name"].startswith("s2-us-") for e in include), 18)
+        run = next(s["run"] for s in jobs["holen"]["steps"] if s.get("name") == "Leads holen, prüfen, speichern")
+        self.assertIn("--workers ${{ matrix.workers || 16 }}", run)
+
+    def test_parts_never_share_a_company(self):
+        ids = [f"id-{i}" for i in range(400)]
+        parts = [[x for x in ids if wc.in_part(x, (i, 4))] for i in range(4)]
+        self.assertEqual(sorted(sum(parts, [])), sorted(ids))
+        self.assertTrue(all(len(p) > 50 for p in parts))
+        import hashlib
+        run_part = lambda x, i, n: int(hashlib.md5(f"overture_web:{x}".encode()).hexdigest(), 16) % n == i  # noqa: E731
+        self.assertTrue(all(run_part(x, 2, 4) for x in parts[2]))  # gleiche Aufteilung wie run.py --shard
 
     def test_seen_memory(self):
         import tempfile
