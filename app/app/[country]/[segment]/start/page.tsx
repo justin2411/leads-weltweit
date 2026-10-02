@@ -28,9 +28,11 @@ const TXT = {
     how: "How it works",
     steps: [["Choose your plan", "Pick the number of leads that fits your team and pay securely by card via Stripe."],
             ["Set your focus", "Right after payment you get a short form. Choose the signals and the kind of companies you want, it takes two minutes."],
+            ["Your personal contact", "You get your own contact person to talk through your leads at any time. Together you fine tune them so they keep working for you in the long run."],
             ["Leads every Monday", "From the following Monday a fresh PDF briefing and spreadsheet land in your inbox. Each lead goes to one firm in your field only."]],
     stepsMail: [["Choose your plan", "Pick the number of leads that fits your team and send us a short email. We reply with your invoice."],
             ["Set your focus", "With the invoice you get a short form. Choose the signals and the kind of companies you want, it takes two minutes."],
+            ["Your personal contact", "You get your own contact person to talk through your leads at any time. Together you fine tune them so they keep working for you in the long run."],
             ["Leads every Monday", "From the following Monday a fresh PDF briefing and spreadsheet land in your inbox. Each lead goes to one firm in your field only."]],
     mail: "Start by email", mailNote: "Online payment opens shortly. Until then we start your subscription by email and send an invoice.",
     perLead: "From about {p} per lead", perLeadC: "The more leads, the lower the price per lead",
@@ -51,9 +53,11 @@ const TXT = {
     how: "Comment ça marche",
     steps: [["Choisissez votre formule", "Choisissez le nombre de pistes adapté à votre équipe et payez par carte en toute sécurité via Stripe."],
             ["Définissez votre cible", "Juste après le paiement, vous recevez un court formulaire. Choisissez les signaux et le type d'entreprises souhaités, en deux minutes."],
+            ["Votre interlocuteur dédié", "Vous avez votre propre interlocuteur pour parler de vos pistes à tout moment. Ensemble, vous les ajustez pour qu'elles fonctionnent pour vous sur la durée."],
             ["Des pistes chaque lundi", "Dès le lundi suivant, un nouveau briefing PDF et un tableau arrivent dans votre boîte. Chaque piste va à une seule entreprise de votre secteur."]],
     stepsMail: [["Choisissez votre formule", "Choisissez le nombre de pistes adapté à votre équipe et envoyez-nous un court e-mail. Nous répondons avec votre facture."],
             ["Définissez votre cible", "Avec la facture, vous recevez un court formulaire. Choisissez les signaux et le type d'entreprises souhaités, en deux minutes."],
+            ["Votre interlocuteur dédié", "Vous avez votre propre interlocuteur pour parler de vos pistes à tout moment. Ensemble, vous les ajustez pour qu'elles fonctionnent pour vous sur la durée."],
             ["Des pistes chaque lundi", "Dès le lundi suivant, un nouveau briefing PDF et un tableau arrivent dans votre boîte. Chaque piste va à une seule entreprise de votre secteur."]],
     mail: "Démarrer par e-mail", mailNote: "Le paiement en ligne ouvre bientôt. D'ici là, nous démarrons votre abonnement par e-mail et envoyons une facture.",
     perLead: "À partir d'environ {p} par piste", perLeadC: "Plus de pistes, prix unitaire plus bas",
@@ -132,12 +136,13 @@ const CSS = `
 .bx .plan2 form,.bx .plan2 .go{margin-top:auto}.bx .plan2 .btn{width:100%;justify-content:center}
 .bx .sx-how{margin-top:56px;max-width:1080px}
 .bx .sx-how .hd{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);font-weight:700;margin:0 0 16px}
-.bx .sx-steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.bx .sx-steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 .bx .sx-steps li{position:relative;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px 24px 24px}
 .bx .sx-steps .n{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 .bx .sx-steps .n span{font-size:30px;font-weight:800;letter-spacing:-.03em;line-height:1;background:linear-gradient(135deg,#d4b075,#8a6a33);-webkit-background-clip:text;background-clip:text;color:transparent}
 .bx .sx-steps .n i{flex:1;height:1px;background:linear-gradient(90deg,rgba(176,141,87,.55),rgba(176,141,87,0))}
 .bx .sx-steps b{display:block;font-size:17px;margin-bottom:6px;letter-spacing:-.01em}.bx .sx-steps p{margin:0;color:var(--soft);font-size:14.5px;line-height:1.55}
+@media (max-width:1100px){.bx .sx-steps{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:820px){.bx .sx-steps{grid-template-columns:1fr}}
 .bx .start .note{margin-top:28px;max-width:920px;color:var(--soft);font-size:14.5px}
 `;
