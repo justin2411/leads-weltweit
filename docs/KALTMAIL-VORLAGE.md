@@ -102,3 +102,12 @@ Dateinamen nach Inhalt: `Your-10-Free-Leads-US.pdf`, `How-It-Works-US.pdf`, `sam
 
 PDFs insgesamt (Inhaber 02.10.2026): Probe-Mail = Lead-PDF + How-It-Works-PDF + CSV; Nachfrage nach der Probe = How-It-Works-PDF; alle anderen Mails ohne Anhang.
 Testmails: `testmail.yml` mit `art=nachfass` bzw. `art=probe-nachfass`.
+
+## 6. Vorgehen je Schritt (so stimmen wir jeden Kontaktpunkt ab)
+
+1. Bestehenden Stand zeigen: Testmail an den Inhaber (`testmail.yml`: `art=kaltmail`, `probe`, `nachfass`,
+   `probe-nachfass`), Seiten als Screenshot oder Link.
+2. Rückmeldung des Inhabers umsetzen, nur wahre Aussagen, keine leeren Felder oder Platzhalter, landesweit.
+3. Neue Testmail an den Inhaber, bis er „passt“ sagt.
+4. Erst dann als abgenommen hier im Bauplan eintragen (Inhalt, Zeitpunkt, Anhänge) und nach `main` mergen.
+5. Neue Branchen und Länder bauen jeden abgenommenen Schritt 1:1 nach diesem Bauplan nach.
