@@ -247,7 +247,7 @@ class S1S2Tests(unittest.TestCase):
     def test_s2_overture_fr_texts_french(self):
         c = self.ov("FR", postcode="75011", city="Paris", category="restaurant", phones=["+33142000000"])
         t = segments.texts("S2", c)
-        self.assertIn("n'a pas de site web", t["signal"])
+        self.assertIn("Aucun site web trouvé", t["signal"])
         self.assertEqual(sc.run(c, "S2", t)["status"], "pass", t)
 
     def test_s2_rejects_found_website(self):
@@ -788,3 +788,14 @@ class KundenWerkNieStillTests(unittest.TestCase):
         many = [{"segment": "S2", "domain": f"{i}.com"} for i in range(K.FALLBACK_MIN)]
         self.assertIs(K.fill_up(many, {"S2"}, lambda: rest), many)
         self.assertIs(K.fill_up(few, set(), lambda: rest), few)
+
+
+class CategoryTldTests(unittest.TestCase):
+    """Inhaber 02.10.2026: „202 Main Coffee“ hatte 202main.coffee, wir lieferten sie als „ohne Website“."""
+
+    def test_category_tld_candidates(self):
+        from lib import websites as W
+        doms = W.domain_candidates("202 Main Coffee", "US", "coffee shop")
+        self.assertIn("202main.coffee", doms)
+        self.assertLess(doms.index("202main.coffee"), 12)  # innerhalb der Kandidaten, die das Lead-Werk prüft
+        self.assertIn("bellasalon.hair", W.domain_candidates("Bella Hair Salon", "UK", "beauty salon"))

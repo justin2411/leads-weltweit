@@ -166,7 +166,7 @@ def find_website(company: dict, fetcher: Fetcher) -> dict:
             site["evidence"] = site["evidence"] + ["imported_with_careers_page"]
         return {"method": method, "site": site, "checked": [W.site_domain(url)]}
     checked, best, examined = [], None, 0
-    for dom in W.domain_candidates(company.get("name") or "", company.get("country") or ""):
+    for dom in W.domain_candidates(company.get("name") or "", company.get("country") or "", company.get("industry")):
         checked.append(dom)
         if not resolves(dom):
             continue
