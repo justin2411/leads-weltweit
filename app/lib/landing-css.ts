@@ -50,6 +50,7 @@ export const LANDING_CSS = `
 .bx .lp2 .mapcard .borders{fill:none;stroke:#fff;stroke-width:1.3}
 .bx .lp2 .mapcard .halo{fill:rgba(201,164,101,.25)}
 .bx .lp2 .mapcard .dot{fill:var(--navy);stroke:var(--pgold);stroke-width:2.5}
+.bx .lp2 .mapcard .num{fill:#EBD7AE;font-size:20px;font-weight:800;font-family:inherit}
 .bx .lp2 .mapcard .pin{transform-box:fill-box;transform-origin:center}
 .motion .bx .lp2 .mapcard .pin{animation:lp2pop .6s cubic-bezier(.2,.8,.2,1.4) both;animation-delay:calc(.6s + var(--k) * .09s)}
 @keyframes lp2pop{from{opacity:0;transform:scale(.2)}to{opacity:1;transform:scale(1)}}

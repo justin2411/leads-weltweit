@@ -45,8 +45,12 @@ export function MapCard({ map, note }: { map: MapData; note: string }) {
         {map.neighbors && <path className="nb" d={map.neighbors} />}
         <path className="land" d={map.land} /><path className="borders" d={map.borders} />
         {map.pins.map(([x, y], k) => (
-          <g className="pin" key={k} style={{ "--k": k } as CSSProperties} transform={`translate(${x},${y})`}>
-            <circle r="24" className="halo" /><circle r="12" className="dot" />
+          // Position außen, Animation innen: sonst überschreibt die CSS-Animation das translate (alle Pins oben links)
+          <g key={k} transform={`translate(${x},${y})`}>
+            <g className="pin" style={{ "--k": k } as CSSProperties}>
+              <circle r="30" className="halo" /><circle r="19" className="dot" />
+              <text className="num" textAnchor="middle" dominantBaseline="central">{k + 1}</text>
+            </g>
           </g>))}
       </svg>
       <figcaption className="note"><Icon name="pin" />{note}</figcaption>
