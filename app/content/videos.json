@@ -60,8 +60,8 @@
     "seconds": 42
   },
   "uk/web-agencies": {
-    "src": "/video/v7-uk-web-agencies.mp4",
-    "poster": "/video/v7-uk-web-agencies.jpg",
+    "src": "/video/v8-uk-web-agencies.mp4",
+    "poster": "/video/v8-uk-web-agencies.jpg",
     "seconds": 46
   },
   "us/accountants": {
@@ -85,8 +85,8 @@
     "seconds": 44
   },
   "us/web-agencies": {
-    "src": "/video/v7-us-web-agencies.mp4",
-    "poster": "/video/v7-us-web-agencies.jpg",
+    "src": "/video/v8-us-web-agencies.mp4",
+    "poster": "/video/v8-us-web-agencies.jpg",
     "seconds": 47
   },
   "de:ind/accountants": {

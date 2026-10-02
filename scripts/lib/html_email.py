@@ -96,7 +96,7 @@ def cta_button(company: str, region: str | None, lang: str) -> str:
 
 def page_button(url: str, lang: str) -> str:
     """Knopf zur persönlichen Seite (dort: Video, Beispiel-Leads, Probe mit einem Klick)."""
-    label = "Voir mes pistes gratuites" if lang == "fr" else "See my free leads"
+    label = "Voir mes 10 pistes gratuites" if lang == "fr" else "See my 10 free leads"
     return (f'<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 24px 0;"><tr>'
             f'<td style="background:{GOLD};border-radius:99px;">'
             f'<a href="{html.escape(url)}" style="display:inline-block;padding:13px 26px;font-family:{FONT};'
