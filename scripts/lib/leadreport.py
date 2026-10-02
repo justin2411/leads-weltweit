@@ -333,7 +333,7 @@ def build_html(data: bytes, lang: str = "en", area: str | None = None, firm: str
     foot = lambda i: f"""<footer class="ft"><span>{t['conf']}</span><span>{i} / {total}</span></footer>"""  # noqa: E731
     cover = f"""<section class="pg cv"><header class="top"><div class="logo">NextGen <i>Profit</i></div><div class="doc">{t2['doc']} · {e(when)}</div></header>
 <div class="in">
-<div class="seal"><span>PREMIUM</span><span>VERIFIED</span></div>
+<svg class="seal" viewBox="-60 -60 120 120"><defs><linearGradient id="gs" x1="0" x2="1"><stop offset="0" stop-color="#B8914F"/><stop offset="1" stop-color="#E2C894"/></linearGradient></defs><circle r="56" fill="url(#gs)"/><circle r="47" fill="none" stroke="#0B1428" stroke-width="2" stroke-dasharray="3 4"/><text y="-4" text-anchor="middle" font-family="Inter, sans-serif" font-size="15" font-weight="800" fill="#0B1428" letter-spacing="2">PREMIUM</text><text y="15" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" font-weight="700" fill="#0B1428" letter-spacing="1.5">VERIFIED</text></svg>
 <div class="pill">★ {t3['pill_s'] if sample else t3['pill']}</div>
 <h1>{h1}</h1>
 <div class="sub">{e(main_sig)}{(' · ' + e(where)) if where else ''}</div>
@@ -378,9 +378,8 @@ body{{font-family:Inter,Helvetica,Arial,sans-serif;color:#1c2536;-webkit-print-c
 .cv .top{{border-bottom-color:rgba(201,168,105,.35)}}.cv .logo{{color:#fff}}.cv .logo i{{color:#d8bd8a}}.cv .doc{{color:#9aa6bf}}
 .cv .ft{{border-top-color:rgba(255,255,255,.1);color:#6f7c97}}
 .cv .in{{padding-top:9mm;position:relative}}
-.seal{{position:absolute;right:14mm;top:7mm;width:30mm;height:30mm;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ecd6a6,#b8914f);display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:inset 0 0 0 1.6mm #c9a869,inset 0 0 0 1.9mm #0b1428}}
-.seal:before{{content:"";position:absolute;inset:2.6mm;border-radius:50%;border:.35mm dashed rgba(11,20,40,.7)}}
-.seal span{{font-size:8.6px;font-weight:800;letter-spacing:.14em;color:#0b1428;line-height:1.35}}.seal span+span{{font-size:6.6px;letter-spacing:.2em}}
+/* Siegel wie in der Erklär-PDF (Inhaber 02.10.2026: gleich machen) */
+.seal{{position:absolute;right:14mm;top:6mm;width:32mm;height:32mm}}
 .pill{{align-self:flex-start;font-size:7.6px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:#0b1428;background:linear-gradient(135deg,#e7cf9f,#c9a869);padding:1.4mm 3.6mm;border-radius:99px}}
 .cv h1{{font-size:38px;font-weight:800;letter-spacing:-1.1px;line-height:1.08;color:#fff;margin-top:5mm}}
 .sub{{font-size:15px;font-weight:700;color:#d8bd8a;margin-top:2mm;letter-spacing:-.2px}}
