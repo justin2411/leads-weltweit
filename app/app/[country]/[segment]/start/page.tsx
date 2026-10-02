@@ -153,7 +153,8 @@ const CSS = `
 @media (max-width:1100px){.bx .sx-steps{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:820px){.bx .sx-steps{grid-template-columns:1fr}}
 .bx .start .billing{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 22px;font-size:14.5px;font-weight:600;color:var(--soft)}
-.bx .start .billing select{font:inherit;font-weight:600;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 34px 9px 12px}
+.bx .start .billing select{font:inherit;font-weight:600;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 44px 10px 14px;-webkit-appearance:none;appearance:none;cursor:pointer;background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23b08d57' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 16px center}
+.bx .start .billing select:focus{outline:2px solid rgba(176,141,87,.45);outline-offset:1px}
 .bx .start .note{margin-top:28px;max-width:920px;color:var(--soft);font-size:14.5px}
 `;
 
