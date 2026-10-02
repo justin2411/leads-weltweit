@@ -1,6 +1,6 @@
 /** Öffentliche Basis-URL. Später nur SITE_URL auf https://nextgen-profit.de umstellen. */
 export function siteUrl(): string {
-  const raw = process.env.SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+  const raw = process.env.SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : process.env.NODE_ENV === "development" ? "http://localhost:3000" : "https://www.nextgen-profit.de");
   return raw.replace(/\/+$/, "");
 }
 

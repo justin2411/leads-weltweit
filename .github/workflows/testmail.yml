@@ -51,4 +51,6 @@ jobs:
         with: { node-version: "22" }
       - if: inputs.art == 'willkommen'
         working-directory: app
+        env:
+          SITE_URL: https://www.nextgen-profit.de
         run: npx --yes tsx scripts/testmail-welcome.ts "$AN" "$LAND"
