@@ -35,7 +35,7 @@ export const LANDING: Record<"en" | "fr", LandingText> = {
     revenue: "Why these leads turn into revenue",
     reasons: [
       ["target", "A real reason to buy", "Every company has a concrete reason that creates demand for your service."],
-      ["bolt", "You call first", "Fresh every Monday, often before the company has found a provider."],
+      ["bolt", "You call first", "New leads every week, found while the need is still open."],
       ["lock", "Only for your firm", "Each lead goes to one firm in your field only."],
     ],
     howTitle: "How it works",
@@ -71,7 +71,7 @@ export const LANDING: Record<"en" | "fr", LandingText> = {
     revenue: "Pourquoi ces prospects génèrent du chiffre d'affaires",
     reasons: [
       ["target", "Une vraie raison d'acheter", "Chaque entreprise a une raison concrète d'avoir besoin de votre service."],
-      ["bolt", "Vous appelez en premier", "Chaque lundi, souvent avant qu'elle ait trouvé un prestataire."],
+      ["bolt", "Vous appelez en premier", "De nouveaux prospects chaque semaine, repérés tant que le besoin est encore ouvert."],
       ["lock", "Réservé à votre agence", "Chaque prospect ne va qu'à une seule entreprise de votre secteur."],
     ],
     howTitle: "Comment ça marche",

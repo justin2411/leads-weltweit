@@ -425,7 +425,6 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
           <section className="sec"><div className="wrap">
             <div className="kick"><span className="cap gold">{st ? T2.examples : (fr ? L.examples : F("Example leads from across {land}"))}</span></div>
             <div className="tiles">{samples.slice(0, 2).map(tile)}</div>
-            <p className="unlock"><Icon name="lock" />{T2.examplesNote}</p>
           </div></section>
         )}
 
