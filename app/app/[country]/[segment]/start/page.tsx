@@ -1,4 +1,4 @@
-import { billingOptions } from "@/lib/billing";
+import { billingOptions, isoOf } from "@/lib/billing";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getSettings, isOwner, loadPage, pageIsPublic } from "@/lib/pages";
@@ -191,8 +191,8 @@ export default async function StartPage({ params, searchParams }: { params: Para
 
         {online && (
           <label className="billing">{T.billing}
-            <select id="billing" defaultValue={page.country.toUpperCase()}>
-              {billingOptions(page.country, lang).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            <select id="billing" defaultValue={isoOf(page.country)} autoComplete="country">
+              {billingOptions(lang).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </label>)}
         {/* Rechnungsland in jedes Bezahl-Formular übernehmen (ohne JavaScript gilt das Land der Seite) */}
@@ -211,7 +211,7 @@ export default async function StartPage({ params, searchParams }: { params: Para
                 <form method="post" action="/api/checkout">
                   <input type="hidden" name="variant_id" value={v.id} />
                   <input type="hidden" name="package" value={p.key} />
-                  <input type="hidden" name="billing" value={page.country.toUpperCase()} />
+                  <input type="hidden" name="billing" value={isoOf(page.country)} />
                   {preview && <input type="hidden" name="vorschau" value="1" />}
                   {sp.r && <input type="hidden" name="r" value={sp.r} />}
                   <button className={`btn ${hi ? "gold" : "line"} big`} type="submit">{T.pick} {p.name} <span className="ar">→</span></button>
