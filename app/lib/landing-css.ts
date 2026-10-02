@@ -14,6 +14,9 @@ export const LANDING_CSS = `
    teilen sich einen Abstand statt zwei */
 .bx .lp2 .sec:not(.dark){background:var(--cream)}
 .bx .lp2 .sec:not(.dark)+.sec:not(.dark){padding-top:0}
+/* Probe-Formular steht für sich (Inhaber 02.10.2026): eigener Abstand nach unten, Schatten nicht vom nächsten Abschnitt verdeckt */
+.bx .lp2 #sample{position:relative;z-index:1}
+.bx .lp2 #sample+.sec{padding-top:64px}
 .bx .lp2 .sec h2{font-size:clamp(26px,3.2vw,38px);line-height:1.12;letter-spacing:-.02em;margin:0 0 8px;color:var(--pink)}
 .bx .lp2 .lede2{color:var(--muted);margin:0 0 28px;font-size:16px}
 .bx .lp2 .kick{display:flex;align-items:center;gap:14px;margin:0 0 18px}
@@ -179,6 +182,7 @@ export const LANDING_CSS = `
   .bx .lp2 .btn{white-space:nowrap;font-size:clamp(13px,3.9vw,16px);padding:15px clamp(16px,5vw,24px);gap:8px;max-width:100%}
   .bx .lp2 .sec{padding:52px 0}
   .bx .lp2 .sec:not(.dark)+.sec:not(.dark){padding-top:0}
+  .bx .lp2 #sample+.sec{padding-top:44px}
   .bx .lp2 section.h2o{padding-bottom:24px}
   .bx .lp2 .vid{padding:0 0 52px}
   .bx .lp2 .tile .cgrid{grid-template-columns:1fr}
