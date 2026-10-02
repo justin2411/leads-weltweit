@@ -43,6 +43,22 @@ def _clean_name(name: str) -> str:
     return re.sub(r"\s+(Ltd\.?|Limited|LLP|LLC|Inc\.?|SAS|SARL|SASU|EURL)$", "", name.strip(), flags=re.I)
 
 
+_GENERIC_WORDS = {"website", "websites", "web", "and", "&", "marketing", "solutions", "design", "designs", "agency",
+                  "services", "digital", "media", "group", "studio", "studios", "development", "seo", "creative"}
+
+
+def short_name(name: str) -> str:
+    """Firmenname für die Anrede: lange Namen bis vor das erste Allerweltswort kürzen
+    („Vertical Insite Website And Marketing Solutions“ -> „Vertical Insite“). Leer = zu lang für eine Anrede."""
+    words = _clean_name(name).split()
+    if len(words) > 3:
+        for i, w in enumerate(words[1:], 1):
+            if w.lower().strip(",.") in _GENERIC_WORDS:
+                words = words[:i]
+                break
+    return " ".join(words) if len(words) <= 4 else ""
+
+
 def signature(lang: str) -> str:
     """Signatur aus Umgebungsvariablen (GitHub-Secrets/Variablen). Nur Angaben, die es wirklich gibt."""
     name = os.environ.get("SENDER_NAME") or brand()
@@ -97,6 +113,16 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
                 f"phrase d'accroche. Chaque piste ne va qu'à "
                 f"une seule {'agence' if kind == 'agence' else 'entreprise'} de votre secteur.")
         ask = f"J'ai préparé pour vous un échantillon gratuit de 10 pistes actuelles de toute la France. Je vous l'envoie ?"
+        if seg == "S2":
+            # Webagenturen (Inhaber 02.10.2026): Leads sind Firmen ohne Website (Overture), nicht unbedingt neu gegründet;
+            # Ansprechperson nicht immer mit Namen; keine Exklusivitätszusage in der Kaltmail
+            subject = "Entreprises en France sans site web"
+            first = (f"{intro} Nous trouvons des entreprises locales de toute la France qui n'ont toujours pas de site web, "
+                     "une bonne raison pour elles de parler à une agence web.")
+            core = ("Chaque lundi, vous recevez un court briefing PDF et un tableau : entreprise, téléphone, e-mail, "
+                    "la personne à demander et une phrase d'accroche.")
+            ask = "J'ai préparé pour vous un échantillon gratuit de 10 pistes actuelles de toute la France. Je vous l'envoie ?"
+            ex = ""
         greet, bye = "Bonjour,", "Bien cordialement,"
     else:
         need, kind, subject = {
@@ -120,6 +146,18 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
                 f"and an opening line. Each lead goes to one {kind} only.")
         ask = f"I've put together a free sample of 10 current leads from across {area} for you. Shall I send it over?"
         greet, bye = f"Hi {firm} team,", "Best regards,"
+        if seg == "S2":
+            # Webagenturen (Inhaber 02.10.2026): Leads sind Firmen ohne Website (Overture), nicht unbedingt neu gegründet;
+            # Ansprechperson nicht immer mit Namen; keine Exklusivitätszusage in der Kaltmail; kurze Anrede
+            subject = f"Local businesses across {area} without a website"
+            first = (f"{intro} We find local businesses across {area} that still have no website, a clear reason for "
+                     "them to talk to a web agency.")
+            core = ("Every Monday you get a short PDF briefing and a spreadsheet: company, phone, email, who to ask for "
+                    "and an opening line.")
+            ask = f"I've put together a free sample of 10 current leads from across {area}. Shall I send it over?"
+            short = short_name(p["company_name"])
+            greet = f"Hi {short} team," if short else "Hi there,"
+            ex = ""
     parts = [greet, first] + ([ex] if ex else []) + [core, ask, f"{bye}\n{sender or signature(lang)}"]
     body = "\n\n".join(parts)
     if len(subject) > 60:
