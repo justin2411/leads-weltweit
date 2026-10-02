@@ -34,6 +34,8 @@ export function Icon({ name, className = "ic" }: { name: string; className?: str
 
 export type MapData = {
   viewBox: string; land: string; borders: string; neighbors: string; pins: [number, number][];
+  /** Kartenumriss als statische SVG-Datei (statt land/borders/neighbors im HTML) */
+  src?: string;
   stats: { leads: number; areas: number; industries: number; date: string; presence: Record<string, number>; kinds: Record<string, number> };
 };
 
@@ -42,8 +44,13 @@ export function MapCard({ map, note }: { map: MapData; note: string }) {
   return (
     <figure className="mapcard" style={{ margin: 0 }}>
       <svg viewBox={map.viewBox} role="img" aria-label={note}>
-        {map.neighbors && <path className="nb" d={map.neighbors} />}
-        <path className="land" d={map.land} /><path className="borders" d={map.borders} />
+        {map.src ? (() => {
+          const [x, y, w, h] = map.viewBox.split(/\s+/).map(Number);
+          return <image href={map.src} x={x} y={y} width={w} height={h} />;
+        })() : <>
+          {map.neighbors && <path className="nb" d={map.neighbors} />}
+          <path className="land" d={map.land} /><path className="borders" d={map.borders} />
+        </>}
         {map.pins.map(([x, y], k) => (
           // Position außen, Animation innen: sonst überschreibt die CSS-Animation das translate (alle Pins oben links)
           <g key={k} transform={`translate(${x},${y})`}>
