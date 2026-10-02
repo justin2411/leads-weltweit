@@ -45,6 +45,32 @@ jobs:
       - name: Käufer-Liste aus Overture (einmal im Monat)
         if: steps.gate.outputs.an == 'true' && steps.cache.outputs.cache-hit != 'true'
         run: pip install -r requirements.txt && python scripts/kundenwerk.py pool
+      # Bekannte Käufer-Domains einmal je Lauf aktualisieren (nur neue seit dem letzten Lauf) und allen Teilen geben:
+      # alle ~190.000 in jedem Teil zu laden brach unter Last ab (02.10.2026)
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.an == 'true' && steps.cache.outputs.cache-hit == 'true'
+        with: { python-version: "3.11" }
+      - name: Bekannte Käufer laden
+        if: steps.gate.outputs.an == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/kunden_known.json
+          key: kunden-known-${{ github.run_id }}
+          restore-keys: kunden-known-
+      - name: Bekannte Käufer aktualisieren
+        if: steps.gate.outputs.an == 'true'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          pip install -q -r requirements.txt
+          python scripts/kundenwerk.py known
+      - name: Bekannte Käufer sichern
+        if: steps.gate.outputs.an == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: out/cache/kunden_known.json
+          key: kunden-known-${{ github.run_id }}
 
   pruefen:
     needs: pool
@@ -69,6 +95,10 @@ jobs:
           path: out/cache/kunden_pool.parquet
           key: kunden-pool-v3-${{ needs.pool.outputs.monat }}
           fail-on-cache-miss: true
+      - uses: actions/cache/restore@v4
+        with:
+          path: out/cache/kunden_known.json
+          key: kunden-known-${{ github.run_id }}
       # ca. 150 Firmen/min je Teil: --max reicht für das ganze Zeitfenster, das Zeitfenster beendet den Teil
       - name: Käufer prüfen und speichern
         run: python scripts/kundenwerk.py run --shard ${{ matrix.shard }}/8 --max 15000 --workers 16 --deadline-min 90 --segments S2,S1 | tee -a "$GITHUB_STEP_SUMMARY"
