@@ -1,0 +1,190 @@
+{
+ "brand": {
+  "name": "NextGen",
+  "accent": "Profit"
+ },
+ "report": {
+  "lang": "en",
+  "date": "2 Oct 2026",
+  "country": "United States",
+  "map": "us",
+  "documentTitle": "NextGen Profit – Lead Briefing {date}",
+  "kicker": "Lead briefing · {date}",
+  "eyebrow": "{count} leads selected for you · {country}",
+  "title": "Your free sample.",
+  "subtitle": "{count} companies with a concrete reason to talk to you **now**.",
+  "footer": "Confidential · for your firm only"
+ },
+ "cover": {
+  "inEveryLead": [
+   {
+    "icon": "phone",
+    "text": "Phone"
+   },
+   {
+    "icon": "mail",
+    "text": "Email"
+   },
+   {
+    "icon": "pin",
+    "text": "Address"
+   },
+   {
+    "icon": "user",
+    "text": "Who to ask for"
+   },
+   {
+    "icon": "bulb",
+    "text": "How to win them"
+   }
+  ],
+  "presenceTitle": "Reachable – but no website",
+  "presenceNote": "Checked {date} · one dot = one lead",
+  "presenceRows": [
+   {
+    "key": "phone",
+    "icon": "phone",
+    "label": "Phone number"
+   },
+   {
+    "key": "email",
+    "icon": "mail",
+    "label": "Email address"
+   },
+   {
+    "key": "facebook",
+    "icon": "social",
+    "label": "Facebook page"
+   },
+   {
+    "key": "website",
+    "icon": "globe",
+    "label": "Own website",
+    "highlight": true
+   }
+  ],
+  "opening": "That gap is your opening.",
+  "industriesNote": "From farms to event venues"
+ },
+ "closing": {
+  "title": "Why these leads turn into",
+  "titleAccent": "revenue",
+  "reasons": [
+   {
+    "icon": "target",
+    "title": "A real reason to buy",
+    "text": "Every company has a concrete reason that creates demand for your service."
+   },
+   {
+    "icon": "bolt",
+    "title": "You call first",
+    "text": "Leads arrive days after the event, often before the company has found a provider."
+   },
+   {
+    "icon": "lock",
+    "title": "Only for your firm",
+    "text": "Each lead goes to one firm in your field only. No competitor calls the same company."
+   }
+  ],
+  "steps": [
+   {
+    "icon": "focus",
+    "title": "You choose your focus",
+    "text": "The industries and signals that fit your business, or simply the whole country."
+   },
+   {
+    "icon": "cal",
+    "title": "Every Monday",
+    "text": "A fresh report like this one, as PDF and spreadsheet for your CRM."
+   },
+   {
+    "icon": "phone",
+    "title": "You call and win clients",
+    "text": "Phone, email, contact person and a short sales briefing in every lead."
+   }
+  ],
+  "plans": [
+   {
+    "name": "Starter",
+    "price": "$129",
+    "per": "per month",
+    "text": "Up to **15** new leads per week. Every lead exclusive to your firm.",
+    "perLead": 1.98,
+    "perLeadLabel": "From about $1.98"
+   },
+   {
+    "name": "Pro",
+    "price": "$249",
+    "per": "per month",
+    "text": "Up to **50** new leads per week, all matching signals. Every lead exclusive to your firm.",
+    "perLead": 1.15,
+    "perLeadLabel": "From about $1.15",
+    "highlight": true
+   },
+   {
+    "name": "Custom",
+    "price": "Your number",
+    "text": "Tell us how many leads you need per week, and we will make you an offer that fits your team.",
+    "note": "The more leads, the lower the price per lead",
+    "dashed": true
+   }
+  ],
+  "cta": {
+   "title": "Ready to start?",
+   "text": "Pick a plan or tell us your number of leads. Your first delivery arrives next Monday.",
+   "button": "Start my weekly leads",
+   "url": "https://www.nextgen-profit.de/us/web-agencies/start"
+  },
+  "tagline": "New clients. At the right moment.",
+  "filler": {
+   "eyebrow": "Your next step",
+   "title": "Liked these leads? Get them every week.",
+   "text": "Fresh leads every Monday, only for your firm.",
+   "button": "Start my weekly leads"
+  }
+ },
+ "labels": {
+  "phone": "Phone",
+  "email": "Email",
+  "address": "Address",
+  "contact": "Contact person",
+  "website": "Website",
+  "detected": "Detected",
+  "whyNow": "Why now",
+  "needs": "What they likely need",
+  "howToWin": "How to win them",
+  "offer": "Offer:",
+  "ask": "Ask:",
+  "callPrompt": "Pick up the phone",
+  "onlineCheck": "Online check",
+  "online": {
+   "phone": "Phone",
+   "email": "Email",
+   "facebook": "Facebook",
+   "website": "Website"
+  },
+  "priority": {
+   "high": "High priority",
+   "medium": "Medium priority",
+   "low": "Low priority"
+  },
+  "leadsRange": "Leads {from}–{to}",
+  "ofTotal": "of {total}",
+  "pageShort": "p. ",
+  "kpiLeads": "Leads",
+  "kpiStates": "States",
+  "kpiIndustries": "Industries",
+  "kpiDetected": "Detected",
+  "whereTitle": "Where your leads are",
+  "commonTitle": "What they have in common",
+  "industriesTitle": "{industries} industries",
+  "inEveryLead": "In every lead",
+  "moreLeads": "+ {n} more leads",
+  "moreIndustries": "+ {n} more",
+  "noValue": "–",
+  "howItWorks": "How it works",
+  "plansTitle": "Plans",
+  "perLead": "Price per lead"
+ },
+ "leads": []
+}

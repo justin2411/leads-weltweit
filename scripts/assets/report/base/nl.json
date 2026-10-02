@@ -1,0 +1,191 @@
+{
+ "brand": {
+  "name": "NextGen",
+  "accent": "Profit"
+ },
+ "report": {
+  "lang": "nl",
+  "date": "2 okt. 2026",
+  "documentTitle": "NextGen Profit – Leadbriefing {date}",
+  "kicker": "Leadbriefing · {date}",
+  "eyebrow": "{count} leads voor u geselecteerd · {country}",
+  "title": "Uw gratis proefselectie.",
+  "subtitle": "{count} bedrijven met een concrete reden om **nu** met u te praten.",
+  "footer": "Vertrouwelijk · alleen voor uw bedrijf",
+  "country": "Nederland",
+  "map": "nl"
+ },
+ "cover": {
+  "inEveryLead": [
+   {
+    "icon": "phone",
+    "text": "Telefoon"
+   },
+   {
+    "icon": "mail",
+    "text": "E-mail"
+   },
+   {
+    "icon": "pin",
+    "text": "Adres"
+   },
+   {
+    "icon": "user",
+    "text": "Contactpersoon"
+   },
+   {
+    "icon": "bulb",
+    "text": "Zo wint u ze"
+   }
+  ],
+  "presenceTitle": "Bereikbaar – maar geen website",
+  "presenceNote": "Gecontroleerd op {date} · één stip = één lead",
+  "presenceRows": [
+   {
+    "key": "phone",
+    "icon": "phone",
+    "label": "Telefoonnummer"
+   },
+   {
+    "key": "email",
+    "icon": "mail",
+    "label": "E-mailadres"
+   },
+   {
+    "key": "facebook",
+    "icon": "social",
+    "label": "Facebookpagina"
+   },
+   {
+    "key": "website",
+    "icon": "globe",
+    "label": "Eigen website",
+    "highlight": true
+   }
+  ],
+  "opening": "Dat gat is uw kans.",
+  "industriesNote": "Van vakmensen tot horeca"
+ },
+ "closing": {
+  "title": "Waarom deze leads",
+  "titleAccent": "omzet opleveren",
+  "reasons": [
+   {
+    "icon": "target",
+    "title": "Een echte reden om te kopen",
+    "text": "Elk bedrijf heeft een concrete reden om uw diensten nodig te hebben."
+   },
+   {
+    "icon": "bolt",
+    "title": "U belt als eerste",
+    "text": "U ontvangt de leads binnen enkele dagen na de gebeurtenis, vaak voordat het bedrijf een leverancier heeft gevonden."
+   },
+   {
+    "icon": "lock",
+    "title": "Alleen voor uw bedrijf",
+    "text": "Elke lead gaat naar slechts één bedrijf in uw branche. Geen concurrent belt hetzelfde bedrijf."
+   }
+  ],
+  "steps": [
+   {
+    "icon": "focus",
+    "title": "U kiest uw focus",
+    "text": "De branches en signalen die bij uw bedrijf passen, of gewoon het hele land."
+   },
+   {
+    "icon": "cal",
+    "title": "Elke maandag",
+    "text": "Een nieuw rapport zoals dit, als pdf en spreadsheet voor uw CRM."
+   },
+   {
+    "icon": "phone",
+    "title": "U belt en wint klanten",
+    "text": "Telefoon, e-mail, contactpersoon en een korte salesbriefing bij elke lead."
+   }
+  ],
+  "plans": [
+   {
+    "name": "Starter",
+    "price": "€ 129",
+    "per": "per maand",
+    "text": "Tot **15** nieuwe leads per week. Elke lead exclusief voor uw bedrijf.",
+    "perLead": 1.98,
+    "perLeadLabel": "Vanaf ca. € 1,98"
+   },
+   {
+    "name": "Pro",
+    "price": "€ 249",
+    "per": "per maand",
+    "text": "Tot **50** nieuwe leads per week, alle passende signalen. Elke lead exclusief voor uw bedrijf.",
+    "perLead": 1.15,
+    "perLeadLabel": "Vanaf ca. € 1,15",
+    "highlight": true
+   },
+   {
+    "name": "Op maat",
+    "price": "Uw aantal",
+    "text": "Vertel ons hoeveel leads u per week nodig heeft, dan doen wij een aanbod dat bij uw team past.",
+    "note": "Hoe meer leads, hoe lager de prijs per lead",
+    "dashed": true
+   }
+  ],
+  "cta": {
+   "title": "Klaar om te starten?",
+   "text": "Kies een pakket of geef uw aantal leads door. Uw eerste levering komt aanstaande maandag.",
+   "button": "Start mijn wekelijkse leads",
+   "url": "https://www.nextgen-profit.de/nl/web-agencies/start"
+  },
+  "tagline": "Nieuwe klanten. Op het juiste moment.",
+  "filler": {
+   "eyebrow": "Uw volgende stap",
+   "title": "Smaakt dit naar meer? Ontvang elke week nieuwe leads.",
+   "text": "Elke maandag verse leads, alleen voor uw bedrijf.",
+   "button": "Start mijn wekelijkse leads"
+  }
+ },
+ "labels": {
+  "phone": "Telefoon",
+  "email": "E-mail",
+  "address": "Adres",
+  "contact": "Contactpersoon",
+  "website": "Website",
+  "detected": "Gevonden",
+  "whyNow": "Waarom nu",
+  "needs": "Wat ze waarschijnlijk nodig hebben",
+  "howToWin": "Zo wint u ze",
+  "offer": "Aanbod:",
+  "ask": "Vraag:",
+  "callPrompt": "Pak de telefoon",
+  "onlineCheck": "Online aanwezigheid",
+  "online": {
+   "phone": "Telefoon",
+   "email": "E-mail",
+   "facebook": "Facebook",
+   "website": "Website"
+  },
+  "priority": {
+   "high": "Hoge prioriteit",
+   "medium": "Gemiddelde prioriteit",
+   "low": "Lage prioriteit"
+  },
+  "leadsRange": "Leads {from}–{to}",
+  "ofTotal": "van {total}",
+  "pageShort": "p. ",
+  "kpiLeads": "Leads",
+  "kpiStates": "Provincies",
+  "kpiIndustries": "Branches",
+  "kpiDetected": "Gevonden",
+  "whereTitle": "Waar uw leads zitten",
+  "commonTitle": "Wat ze gemeen hebben",
+  "industriesTitle": "{industries} branches",
+  "inEveryLead": "Bij elke lead",
+  "moreLeads": "+ {n} andere leads",
+  "moreIndustries": "+ {n} meer",
+  "noValue": "–",
+  "howItWorks": "Zo werkt het",
+  "plansTitle": "Pakketten",
+  "perLead": "Prijs per lead",
+  "demo": "Demogegevens"
+ },
+ "leads": []
+}
