@@ -20,7 +20,8 @@ export const LANDING_CSS = `
 /* Hero wie das Deckblatt der PDF */
 .bx .lp2 .h2o{position:relative;overflow:hidden;color:#fff;background:
   radial-gradient(900px 420px at 0% 0%,rgba(74,91,140,.35),transparent 60%),
-  radial-gradient(800px 500px at 100% 100%,rgba(30,56,120,.55),transparent 60%),linear-gradient(160deg,#0d1834,#0B1530 55%,#13265a)}
+  radial-gradient(800px 500px at 100% 35%,rgba(30,56,120,.5),transparent 65%),linear-gradient(180deg,#0d1834,#0B1530)}
+.bx .lp2 section.h2o{padding-bottom:24px}
 .bx .lp2 .h2o:before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.07) 1px,transparent 1px);background-size:22px 22px;mask-image:linear-gradient(180deg,#000,transparent 85%);pointer-events:none}
 .bx .lp2 .h2o .wrap{position:relative;display:grid;grid-template-columns:1.08fr .92fr;gap:48px;align-items:center;padding-top:44px;padding-bottom:28px}
 .bx .lp2 .pill{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#EBD7AE,#C9A465);color:#1b1404;font-size:11.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;padding:7px 14px;border-radius:99px}
@@ -56,7 +57,7 @@ export const LANDING_CSS = `
 .bx .lp2 .mapcard .note .ic{width:15px;height:15px;color:var(--pgold-d)}
 
 /* Video gleich unter dem Hero */
-.bx .lp2 .vid{background:var(--navy);padding:8px 0 72px}
+.bx .lp2 .vid{background:#0B1530;padding:8px 0 72px}
 .bx .lp2 .vid .frame{border-radius:20px;overflow:hidden;border:1px solid rgba(201,164,101,.35);box-shadow:0 40px 90px -40px rgba(0,0,0,.8);background:#000}
 .bx .lp2 .vid video{display:block;width:100%;height:auto;aspect-ratio:16/9}
 .bx .lp2 .vid .kick .cap{color:var(--gink)}
@@ -127,6 +128,8 @@ export const LANDING_CSS = `
 .bx .lp2 .gi .ic{width:20px;height:20px}
 .bx .lp2 .rcard h3{margin:0 0 6px;font-size:18px;color:#fff}.bx .lp2 .rcard p{margin:0;font-size:14.5px;color:#aab4ca;line-height:1.55}
 .bx .lp2 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:22px}
+.bx .lp2 .steps:before,.bx .lp2 .steps:after{display:none}
+.bx .lp2 .step{padding-right:0}
 .bx .lp2 .step .no{display:flex;align-items:center;gap:12px;margin-bottom:10px}
 .bx .lp2 .step .no b{font-size:28px;font-weight:800;color:var(--gink)}
 .bx .lp2 .step .no .ring{width:36px;height:36px;border-radius:50%;border:1px solid rgba(201,164,101,.6);display:flex;align-items:center;justify-content:center;color:var(--gink)}
@@ -137,6 +140,15 @@ export const LANDING_CSS = `
 .bx .lp2 .formwrap{display:grid;grid-template-columns:1.1fr .9fr;gap:30px;align-items:start}
 .bx .lp2 .formcard{background:linear-gradient(170deg,#13265a,#0B1530);color:#fff;border-radius:24px;padding:30px;box-shadow:0 40px 80px -45px rgba(11,21,48,.8)}
 .bx .lp2 .formcard h2{color:#fff}
+.bx .lp2 .formcard .gold-h{color:var(--gold,#E2C58C);background:linear-gradient(90deg,#E9D3A2,#C9A363);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.bx .lp2 .side2{display:flex;flex-direction:column;gap:14px}
+.bx .lp2 .getcard{background:#fff;border:1px solid var(--pline);border-radius:20px;padding:20px 20px 16px;display:grid;gap:14px}
+.bx .lp2 .getcard .gf{display:flex;gap:12px;align-items:flex-start}
+.bx .lp2 .getcard .gf b{display:block;color:var(--pink);font-size:15px}
+.bx .lp2 .getcard .gf em{display:block;font-style:normal;color:#5b6478;font-size:14px;line-height:1.45}
+.bx .lp2 .getcard .ci{flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(140deg,#EAD3A2,#C9A363);color:#0B1530}
+.bx .lp2 .getcard .ci .ic{width:18px;height:18px}
+.bx .lp2 .getcard .mapcard{box-shadow:none;border:1px solid var(--pline);padding:12px}
 .bx .lp2 .ticks2{list-style:none;padding:0;margin:0;display:grid;gap:14px}
 .bx .lp2 .ticks2 li{display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid var(--pline);border-radius:16px;padding:16px 18px;font-size:15px;color:var(--pink)}
 .bx .lp2 .ticks2 li .ic{color:var(--green);width:20px;height:20px;margin-top:2px}

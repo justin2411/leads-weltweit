@@ -10,7 +10,7 @@ export type LandingText = {
   phone: string; email: string; contact: string; askFor: string; website: string; noneFound: string; detected: string;
   whyNow: string; online: string; howWin: string; ask: string; call: string; hidden: string; unlock: string;
   revenue: string; reasons: [string, string, string][]; howTitle: string; steps: [string, string, string][];
-  sampleTitle: string; questions: string; video: string;
+  sampleTitle: [string, string]; get: { title: string; pdf: [string, string]; csv: [string, string]; map: string }; questions: string; video: string;
 };
 
 export const LANDING: Record<"en" | "fr", LandingText> = {
@@ -44,7 +44,8 @@ export const LANDING: Record<"en" | "fr", LandingText> = {
       ["cal", "Every Monday", "A fresh report like the sample, as PDF and spreadsheet."],
       ["phone", "You call and win clients", "Phone, email and a short sales briefing in every lead."],
     ],
-    sampleTitle: "Your 10 free leads from across {land}",
+    sampleTitle: ["Your 10 free leads", "from across {land}"],
+    get: { title: "What you receive", pdf: ["Lead report (PDF)", "Map, overview and a short sales briefing for every lead."], csv: ["Spreadsheet (CSV)", "All contact data, ready for your CRM."], map: "10 companies from across {land}" },
     questions: "Questions",
     video: "The film",
   },
@@ -78,7 +79,8 @@ export const LANDING: Record<"en" | "fr", LandingText> = {
       ["cal", "Chaque lundi", "Un nouveau rapport comme l'échantillon, en PDF et en tableur."],
       ["phone", "Vous appelez et gagnez des clients", "Téléphone, e-mail et un court briefing commercial pour chaque prospect."],
     ],
-    sampleTitle: "Vos 10 prospects gratuits de toute la France",
+    sampleTitle: ["Vos 10 prospects gratuits", "de toute la France"],
+    get: { title: "Ce que vous recevez", pdf: ["Rapport (PDF)", "Carte, vue d’ensemble et un court briefing commercial par prospect."], csv: ["Tableur (CSV)", "Toutes les coordonnées, prêtes pour votre CRM."], map: "10 entreprises de toute la France" },
     questions: "Questions",
     video: "Le film",
   },

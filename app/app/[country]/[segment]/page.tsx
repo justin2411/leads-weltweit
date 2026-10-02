@@ -452,15 +452,23 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
         {!step && !sp.angefragt && (
           <section className="sec cream" id="sample"><div className="wrap formwrap">
             <div className="formcard" id="probe">
-              <h2>{F(T2.sampleTitle)}</h2>
+              <h2>{F(T2.sampleTitle[0])} <span className="gold-h">{localize(nd(fill(T2.sampleTitle[1], P, lang, W)), page.country)}</span></h2>
               <p className="lede2" style={{ color: "#aab4ca" }}>{known ? L.sendsTo(CW.land, personal!.email!) : L.sendsToUnknown}</p>
               {form}
             </div>
-            <ul className="ticks2">
-              <li><Icon name="check" /><span><b>{L.free}</b> {L.freeText}</span></li>
-              <li><Icon name="check" /><span><b>{L.noObl}</b> {L.noOblText}</span></li>
-              <li><Icon name="check" /><span>{L.followUp}</span></li>
-            </ul>
+            <div className="side2">
+              <ul className="ticks2">
+                <li><Icon name="check" /><span><b>{L.free}</b> {L.freeText}</span></li>
+                <li><Icon name="check" /><span><b>{L.noObl}</b> {L.noOblText}</span></li>
+                <li><Icon name="check" /><span>{L.followUp}</span></li>
+              </ul>
+              <div className="getcard">
+                <span className="cap gold">{T2.get.title}</span>
+                <div className="gf"><span className="ci"><Icon name="doc" /></span><span><b>{T2.get.pdf[0]}</b><em>{T2.get.pdf[1]}</em></span></div>
+                <div className="gf"><span className="ci"><Icon name="table" /></span><span><b>{T2.get.csv[0]}</b><em>{T2.get.csv[1]}</em></span></div>
+                {MAP && <MapCard map={MAP as MapData} note={localize(nd(fill(T2.get.map, P, lang, W)), page.country)} />}
+              </div>
+            </div>
           </div></section>
         )}
 
