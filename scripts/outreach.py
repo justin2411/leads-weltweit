@@ -105,6 +105,17 @@ def total_limit() -> int | None:
     return int(raw) if raw and raw.isdigit() else None
 
 
+# Funktionsadressen, die nicht für Geschäftsanfragen da sind (Audit 02.10.2026: privacy@, support@ in US-Entwürfen)
+ROLE_BLOCK = {"privacy", "gdpr", "dpo", "dataprotection", "legal", "compliance", "abuse", "security", "postmaster",
+              "hostmaster", "noreply", "no-reply", "donotreply", "do-not-reply", "support", "help", "helpdesk",
+              "billing", "invoices", "invoice", "accounts", "payments", "careers", "jobs", "hr", "recruiting",
+              "press", "media", "unsubscribe", "bounce", "bounces", "mailer-daemon"}
+
+
+def role_address(email: str) -> bool:
+    return (email or "").split("@")[0].lower() in ROLE_BLOCK
+
+
 FOLLOWUP_MAX_DAYS = 11  # Nachfassmail spätestens 11 Tage nach der Erstmail (geplant: nach 4 Tagen)
 
 
@@ -356,6 +367,8 @@ def cmd_send(args) -> int:
             problems.append(f"Land {country} nicht erlaubt")
         if db.is_suppressed(m["to_email"]):
             problems.append("gesperrt")
+        if role_address(m["to_email"]):
+            problems.append("Funktionsadresse ohne Vertriebsbezug (z. B. privacy@, support@)")
         kind = m.get("kind") or "initial"
         lint = lint_draft(m["subject"], m["body"], m.get("language") or "en",
                           **({} if kind == "initial" else {"min_words": 30, "max_words": 120, "require_sample": False}))
