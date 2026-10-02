@@ -12,6 +12,9 @@ export function db(): SupabaseClient<any, "signalwerk"> {
   client = createClient<any, "signalwerk">(url, key, {
     db: { schema: "signalwerk" },
     auth: { persistSession: false, autoRefreshToken: false },
+    // Nie endlos warten: hängt die Datenbank (02.10.2026 Disk-IO-Budget aufgebraucht, Seiten luden ewig),
+    // bricht jede Abfrage nach 8 s ab und die Seiten greifen auf ihren letzten Stand zurück.
+    global: { fetch: (input, init) => fetch(input, { ...init, signal: init?.signal ?? AbortSignal.timeout(8000) }) },
   });
   return client;
 }
