@@ -115,11 +115,11 @@ def page_button(url: str, lang: str) -> str:
 
 def process_strip(lang: str = "en") -> str:
     """Kleine Ablauf-Grafik für Webagenturen (wie im PDF), nur HTML-Tabelle: keine Bilder, keine externen
-    Ressourcen (Inhaber 02.10.2026). „Leads every Monday“ statt „Exclusive leads“: keine Exklusivitätszusage in Kaltmails."""
-    steps = ([("ON TROUVE", "Une raison d'appeler"), ("ON VÉRIFIE", "Chaque contact"),
-              ("VOUS RECEVEZ", "Chaque lundi"), ("VOUS GAGNEZ", "Nouveaux clients")] if lang == "fr" else
-             [("WE FIND", "A reason to call"), ("WE CHECK", "Every contact"),
-              ("YOU GET", "Leads every Monday"), ("YOU WIN", "New clients")])
+    Ressourcen (Inhaber 02.10.2026). „A reason to call“ statt „Exclusive leads“: keine Exklusivitätszusage in Kaltmails."""
+    steps = ([("ON TROUVE", "Le bon moment"), ("ON VÉRIFIE", "Chaque contact"),
+              ("VOUS RECEVEZ", "Une raison d'appeler"), ("VOUS GAGNEZ", "Nouveaux clients")] if lang == "fr" else
+             [("WE FIND", "The right moment"), ("WE CHECK", "Every contact"),
+              ("YOU GET", "A reason to call"), ("YOU WIN", "New clients")])
     cells = []
     for i, (k, v) in enumerate(steps):
         if i:
