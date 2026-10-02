@@ -222,16 +222,30 @@ def count_ok(db) -> int:
     return int((r.headers.get("content-range") or "*/0").split("/")[-1] or 0)
 
 
+FALLBACK_MIN = 500  # weniger neue Fokus-Käufer als das: Werk nimmt die übrigen Zielgruppen dazu
+
+
+def fill_up(pool: list[dict], keep: set[str], more) -> list[dict]:
+    """Das Werk steht nie still (Inhaber 02.10.2026: „es soll nie still stehen“): ist die Fokus-Liste durchgeprüft,
+    kommen die übrigen Zielgruppen hinten dran. Fokus bleibt vorn; es wird nur geprüft und gespeichert, nie gesendet."""
+    if not keep or len(pool) >= FALLBACK_MIN:
+        return pool
+    extra = [d for d in more() if d["segment"] not in keep]
+    log(f"Fokus {','.join(sorted(keep))}: nur {len(pool)} neue Käufer, weiter mit den übrigen Zielgruppen ({len(extra)})")
+    return pool + extra
+
+
 def cmd_run(args) -> int:
     from lib.db import DB
     db = DB()
     cfg = load_countries()
     generic = {g.lower() for g in cfg.get("generic_local_parts") or []}
-    segs = {s["id"]: set(s.get("email_countries") or []) for s in db.select_all("segments", {"select": "id,email_countries"})}
+    all_segs = {s["id"]: set(s.get("email_countries") or []) for s in db.select_all("segments", {"select": "id,email_countries"})}
+    segs, keep = all_segs, set()
     if args.segments:
-        # Fokus (02.10.2026: nur Webagenturen): andere Zielgruppen in diesem Lauf auslassen
+        # Fokus (02.10.2026: nur Webagenturen): andere Zielgruppen zuerst auslassen
         keep = {x.strip().upper() for x in args.segments.split(",") if x.strip()}
-        segs = {k: v for k, v in segs.items() if k in keep}
+        segs = {k: v for k, v in all_segs.items() if k in keep}
     have = count_ok(db)
     if have >= args.target:
         log(f"Ziel erreicht: {have} geprüfte Käufer (Ziel {args.target}) – nichts zu tun")
@@ -239,6 +253,7 @@ def cmd_run(args) -> int:
     known = {r["domain"] for r in db.select_all("prospects", {"select": "domain"}) if r.get("domain")}
     blocked = {r["value"].lower() for r in db.select_all("suppression", {"select": "value"}) if r.get("value")}
     pool = [d for d in candidates(segs) if d["domain"] not in known]
+    pool = fill_up(pool, keep, lambda: [d for d in candidates(all_segs) if d["domain"] not in known])
     if args.shard:
         i, n = (int(x) for x in args.shard.split("/"))
         # fest nach Domain verteilt: parallele Teile prüfen nie dieselbe Firma

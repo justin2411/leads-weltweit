@@ -2,7 +2,8 @@
 # Dauerbetrieb, 8 Teile gleichzeitig (läuft parallel zum Lead-Werk; GitHub Pro: 40 Jobs = 30 Lead + 8 Kunden + 2 frei): Käufer der Zielgruppen (Overture-Firmen mit Website, US/UK/FR) auf ihrer Website prüfen
 # (Firmen-E-Mail, Rechtsform, Prüfregeln) und in `prospects` speichern. Hört bei 1.000.000 geprüften Käufern auf.
 # Sendet NIE Mails (Versand steuert allein config/versand.yaml). Lädt keine Dateien hoch.
-# Fokus Webagenturen (Inhaber 02.10.2026): nur S2-Käufer (--segments S2).
+# Fokus Webagenturen (Inhaber 02.10.2026): S2-Käufer; dazu S1 (Recruiting, Quellen-Scout 02.10.2026), seit die
+# S2-Liste durchgeprüft ist (Lauf 06:17: 1 neue Firma).
 # Schalter: config/pipeline.yaml kunden_suche. Jeder Teil hört nach 90 Minuten auf, neue Firmen anzufangen
 # (--deadline-min), danach startet sich das Werk selbst neu (Job „weiter“); Cron und Wachhund bleiben als Rückfall.
 name: kunden-werk
@@ -70,7 +71,7 @@ jobs:
           fail-on-cache-miss: true
       # ca. 150 Firmen/min je Teil: --max reicht für das ganze Zeitfenster, das Zeitfenster beendet den Teil
       - name: Käufer prüfen und speichern
-        run: python scripts/kundenwerk.py run --shard ${{ matrix.shard }}/8 --max 15000 --workers 16 --deadline-min 90 --segments S2 | tee -a "$GITHUB_STEP_SUMMARY"
+        run: python scripts/kundenwerk.py run --shard ${{ matrix.shard }}/8 --max 15000 --workers 16 --deadline-min 90 --segments S2,S1 | tee -a "$GITHUB_STEP_SUMMARY"
 
   weiter:
     # sofort den nächsten Lauf starten (nur bei Schalter an und echter Laufzeit, sonst Cron/Wachhund)
