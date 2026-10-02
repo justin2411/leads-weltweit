@@ -116,7 +116,7 @@ function perLead(p: Plan): string | null {
 /** Erklärvideo „How it works“ je Land (zeigt Preise in der Landeswährung, darum nicht länderübergreifend). */
 const HOW_VIDEO: Record<string, { src: string; poster: string; vtt?: string; srclang: string }> = {
   us: { src: "/video/howitworks-us.mp4", poster: "/video/howitworks-us.jpg", vtt: "/video/howitworks-us.vtt", srclang: "en" },
-  uk: { src: "/video/howitworks-uk.mp4", poster: "/video/howitworks-uk.jpg", srclang: "en" },
+  uk: { src: "/video/howitworks-uk-v2.mp4", poster: "/video/howitworks-uk-v2.jpg", srclang: "en" },
   fr: { src: "/video/howitworks-fr.mp4", poster: "/video/howitworks-fr.jpg", srclang: "fr" },
 };
 
