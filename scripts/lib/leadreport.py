@@ -148,8 +148,8 @@ T2 = {
            "role": "Founder, NextGen Profit",
            "f_ind": "Industry", "f_form": "Legal form", "f_reg": "Registered", "f_loc": "Location", "f_web": "Website", "f_noweb": "none found yet",
            "p1": "10 leads selected for you", "p1s": "Business contact details from public registers and company websites",
-           "plan_txt": {"starter": "Up to 30 new leads per week. Every lead exclusive to your firm.",
-                        "pro": "Up to 100 new leads per week, all matching signals. Every lead exclusive to your firm."},
+           "plan_txt": {"starter": "Up to 15 new leads per week. Every lead exclusive to your firm.",
+                        "pro": "Up to 50 new leads per week, all matching signals. Every lead exclusive to your firm."},
            "tagline": "New clients. At the right moment.", "per_lead": "From about {price} per lead", "per_lead_c": "The more leads, the lower the price per lead", "custom_n": "Custom", "custom_p": "Your number",
            "custom_t": "Tell us how many leads you need per week, and we will make you an offer that fits your team."},
     "fr": {"h": "Pourquoi ces pistes génèrent du chiffre d'affaires",
@@ -171,8 +171,8 @@ T2 = {
            "role": "Fondateur, NextGen Profit",
            "f_ind": "Secteur", "f_form": "Forme juridique", "f_reg": "Immatriculée", "f_loc": "Lieu", "f_web": "Site web", "f_noweb": "pas encore trouvé",
            "p1": "10 pistes sélectionnées pour vous", "p1s": "Coordonnées professionnelles issues de registres publics et des sites des entreprises",
-           "plan_txt": {"starter": "Jusqu'à 30 nouvelles pistes par semaine. Chaque piste réservée à votre entreprise.",
-                        "pro": "Jusqu'à 100 nouvelles pistes par semaine, tous les signaux utiles. Chaque piste réservée à votre entreprise."},
+           "plan_txt": {"starter": "Jusqu'à 15 nouvelles pistes par semaine. Chaque piste réservée à votre entreprise.",
+                        "pro": "Jusqu'à 50 nouvelles pistes par semaine, tous les signaux utiles. Chaque piste réservée à votre entreprise."},
            "tagline": "De nouveaux clients. Au bon moment.", "per_lead": "À partir d'environ {price} par piste", "per_lead_c": "Plus de pistes, prix unitaire plus bas", "custom_n": "Sur mesure", "custom_p": "Votre volume",
            "custom_t": "Dites-nous combien de pistes il vous faut par semaine, nous vous faisons une offre adaptée à votre équipe."},
 }
@@ -199,7 +199,7 @@ def _money(plan: dict, cents: bool = False) -> str:
     return f"{txt} {sym}".strip() if (plan.get("currency") or "").lower() == "eur" else f"{sym}{txt}"
 
 
-PER_WEEK = {"starter": 30, "pro": 100}  # Höchstmenge je Paket, wie in plan_txt beschrieben
+PER_WEEK = {"starter": 15, "pro": 50}  # Höchstmenge je Paket, wie in plan_txt beschrieben
 
 
 def _per_lead(plan: dict, t2: dict) -> str:

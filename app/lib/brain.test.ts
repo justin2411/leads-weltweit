@@ -96,6 +96,6 @@ test("Individuelles Volumen: Grenzen, Preis steigt, Preis pro Lead sinkt", async
   assert.equal(validWeekly(149), null); assert.equal(validWeekly(10001), null); assert.equal(validWeekly("150"), 150); assert.equal(validWeekly(200.5), null);
   const a = customCents(base, 150), b = customCents(base, 10000);
   assert.ok(a > 24900 && b > a && b <= 1_000_000);
-  assert.ok(b / perMonth(10000) < a / perMonth(150) && a / perMonth(150) < 24900 / perMonth(100));
+  assert.ok(b / perMonth(10000) < a / perMonth(150) && a / perMonth(150) < 24900 / perMonth(50));
   assert.equal(fromSlider(0), 150); assert.equal(fromSlider(1000), 10000); assert.equal(fromSlider(toSlider(500)), 500);
 });

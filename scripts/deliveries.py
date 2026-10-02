@@ -30,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lib.rules import brand  # noqa: E402
 
 FRESH_DAYS = 14          # nur Leads, die höchstens so alt sind
-DEFAULT_MAX = 30         # Leads pro Woche, falls im Abo nichts steht
+DEFAULT_MAX = 15         # Leads pro Woche, falls im Abo nichts steht
 # Reihenfolge so, wie der Kunde arbeitet: wer, wie erreichbar, worum es geht, was sagen, woher belegt.
 CSV_HEADER = ["company", "phone", "email", "website", "location", "company_profile", "event", "event_date",
               "why_now", "priority", "signal", "sales_tip", "question_to_ask", "opening_line",

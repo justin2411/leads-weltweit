@@ -22,8 +22,8 @@ const TXT = {
     lede: "Every Monday a fresh briefing: companies with a real reason to buy your service right now, each with phone, email, contact person and a short sales briefing.",
     for: "For", per: "per month", pick: "Start with", popular: "Recommended",
     plan: {
-      starter: ["Up to 30 new leads per week", "Weekly PDF briefing and spreadsheet", "Phone, email and contact person", "Every lead exclusive to your firm"],
-      pro: ["Up to 100 new leads per week", "All signals that fit your business", "Weekly PDF briefing and spreadsheet", "Every lead exclusive to your firm"],
+      starter: ["Up to 15 new leads per week", "Weekly PDF briefing and spreadsheet", "Phone, email and contact person", "Every lead exclusive to your firm"],
+      pro: ["Up to 50 new leads per week", "All signals that fit your business", "Weekly PDF briefing and spreadsheet", "Every lead exclusive to your firm"],
     } as Record<string, string[]>,
     how: "How it works",
     steps: [["Choose your plan", "Pick the number of leads that fits your team and pay securely by card via Stripe."],
@@ -47,8 +47,8 @@ const TXT = {
     lede: "Chaque lundi un nouveau briefing : des entreprises qui ont en ce moment une vraie raison d'acheter votre service, avec téléphone, e-mail, interlocuteur et un court briefing commercial.",
     for: "Pour", per: "par mois", pick: "Choisir", popular: "Recommandé",
     plan: {
-      starter: ["Jusqu'à 30 nouvelles pistes par semaine", "Briefing PDF et tableau chaque semaine", "Téléphone, e-mail et interlocuteur", "Chaque piste réservée à votre entreprise"],
-      pro: ["Jusqu'à 100 nouvelles pistes par semaine", "Tous les signaux utiles", "Briefing PDF et tableau chaque semaine", "Chaque piste réservée à votre entreprise"],
+      starter: ["Jusqu'à 15 nouvelles pistes par semaine", "Briefing PDF et tableau chaque semaine", "Téléphone, e-mail et interlocuteur", "Chaque piste réservée à votre entreprise"],
+      pro: ["Jusqu'à 50 nouvelles pistes par semaine", "Tous les signaux utiles", "Briefing PDF et tableau chaque semaine", "Chaque piste réservée à votre entreprise"],
     } as Record<string, string[]>,
     how: "Comment ça marche",
     steps: [["Choisissez votre formule", "Choisissez le nombre de pistes adapté à votre équipe et payez par carte en toute sécurité via Stripe."],
