@@ -483,7 +483,8 @@ def main(argv=None) -> int:
     for co in ("UK", "FR") + S2_EXTRA + (("US",) if args.us_overture else ()):
         if co in countries and "S2" in segs:
             known = {i for s_, i in guard.known if s_ == "overture"}
-            p[f"S2/{co}"] = [c for c in load_overture_s2(co, args.s2_limit, stats, known) if segments.fits("S2", c)[0]]
+            # mehr laden als bearbeitet wird: der Abgleich mit der Datenbank (unten) wirft Gespeicherte noch raus
+            p[f"S2/{co}"] = [c for c in load_overture_s2(co, args.s2_limit * 4, stats, known) if segments.fits("S2", c)[0]]
     if guard.known:
         p = {k: [c for c in v if (c["source"], c["source_id"]) not in guard.known] for k, v in p.items()}
     if args.shard:
@@ -492,6 +493,11 @@ def main(argv=None) -> int:
         import hashlib
         part = lambda c: int(hashlib.md5(f"{c['source']}:{c['source_id']}".encode()).hexdigest(), 16) % n == i
         p = {k: [c for c in v if part(c)] for k, v in p.items()}
+    if guard.db is not None:
+        # nach dem Aufteilen gezielt nachschlagen: nur Firmen, die noch nicht gespeichert sind
+        before = sum(len(v) for v in p.values())
+        p = {k: guard.drop_known(v) for k, v in p.items()}
+        log(f"Datenbank-Abgleich: {before - sum(len(v) for v in p.values())} schon gespeichert, übersprungen")
     keys = [k for k in p if p[k]]
     log("Kandidaten je Branche: " + ", ".join(f"{k} {len(p[k])}" for k in keys))
 
