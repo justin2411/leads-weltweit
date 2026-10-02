@@ -483,16 +483,16 @@ class ConnecticutTests(unittest.TestCase):
 
 
 class FokusTests(unittest.TestCase):
-    """Fokus (Inhaber 01.10.2026): S4, S5, S2 in US, UK und FR – gleichrangig."""
+    """Fokus (Inhaber 02.10.2026): nur Webagenturen S2 in US, UK und FR, andere Branchen ruhen."""
 
     def test_focus_file_and_rank(self):
         from lib import fokus
         pairs = fokus.focus_pairs()
         for co in ("US", "UK", "FR"):
-            for seg in ("S4", "S5", "S2"):
-                self.assertIn((seg, co), pairs)
-                self.assertEqual(fokus.rank(seg, co, pairs), 0)
-        self.assertEqual(fokus.rank("S9", "UK", pairs), 1)
+            self.assertIn(("S2", co), pairs)
+            self.assertEqual(fokus.rank("S2", co, pairs), 0)
+        self.assertEqual(fokus.rank("S4", "US", pairs), 1)
+        self.assertTrue(fokus.focus_only())
 
 
 

@@ -259,12 +259,12 @@ def brand() -> str:
 FOOTER = {
     "en": (
         "—\n{sender_name} · {postal_address}\n"
-        "You received this one-time email because {company} lists this address publicly as a business contact. "
+        "You received this email because {company} lists this address publicly as a business contact. "
         "{unsubscribe_url}"
     ),
     "fr": (
         "—\n{sender_name} · {postal_address}\n"
-        "Vous recevez ce message unique car {company} publie cette adresse comme contact professionnel. "
+        "Vous recevez ce message car {company} publie cette adresse comme contact professionnel. "
         "{unsubscribe_url}"
     ),
 }

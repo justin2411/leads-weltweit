@@ -54,7 +54,7 @@ jobs:
       SENDER_WEBSITE: ${{ secrets.SENDER_WEBSITE }}
       SENDER_PHONE: ${{ secrets.SENDER_PHONE }}
       SENDER_POSTAL_ADDRESS: ${{ secrets.SENDER_POSTAL_ADDRESS }}
-      UNSUBSCRIBE_MODE: reply
+      UNSUBSCRIBE_MODE: link   # Abmeldelink + List-Unsubscribe-Post (CLAUDE.md §2: Abmeldelink vom System)
       APP_BASE_URL: ${{ vars.SITE_URL || 'https://www.nextgen-profit.de' }}   # persönlicher Seitenlink in der Erstmail
       FREIGABE: ${{ inputs.freigabe || 'Dauerfreigabe des Inhabers laut config/versand.yaml' }}
     steps:

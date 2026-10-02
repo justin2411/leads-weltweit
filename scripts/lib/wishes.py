@@ -88,6 +88,22 @@ def matches(key: str, l: dict, sic: str | None = None) -> bool:
     return False
 
 
+# signal_type-Werte, unter denen ein Wunsch-Lead stehen kann (Vorauswahl in der Datenbank, siehe matches)
+SIGNAL_TYPES = {
+    "job_open_30d": ["job_open_30d"], "jobs_3plus": ["jobs_3plus"], "new_location": ["new_location"],
+    "new_incorporation": ["new_incorporation"], "new_director": ["new_incorporation"], "growth": ["jobs_3plus"],
+    "expansion": ["new_location", "jobs_3plus"], "finance_roles": ["job_open_30d", "jobs_3plus"],
+    "no_website": ["no_website", "new_incorporation"], "website_outdated": ["website_outdated", "website_broken"],
+    "not_mobile": ["website_not_mobile", "website_outdated"], "security": ["no_https"], "broken": ["website_broken"],
+    "fleet_warehouse": ["new_incorporation", "new_location"],
+}
+
+
+def signal_types(keys: list[str]) -> list[str]:
+    """Alle signal_type-Werte, die zu den Wünschen passen können."""
+    return sorted({t for k in keys for t in SIGNAL_TYPES.get(k, [])})
+
+
 def prefer(leads: list[dict], keys: list[str], sic_of=None) -> list[dict]:
     """Gewünschte Leads zuerst (Reihenfolge sonst unverändert), danach alle übrigen als Auffüllung."""
     if not keys:

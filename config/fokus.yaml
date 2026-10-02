@@ -8,19 +8,11 @@
 # Mentions légales und dem offenen Firmenregister (recherche-entreprises.api.gouv.fr).
 # Wirkung: Entwürfe, Käufersuche (Kunden-Werk) und später der Versand bearbeiten diese Tests zuerst; alles andere läuft
 # nachrangig weiter. Versand bleibt über config/versand.yaml aus („wir produzieren vor wie im Restaurant“).
+# Inhaber 02.10.2026: „lass uns bitte erstmal auf webagenturen fokussieren … andere Branchen ruhen“ und Start der
+# Kaltmails für Webagenturen in US, UK und FR. nur_fokus: true = der Versand schickt ausschließlich diese Tests
+# (Erst- und Nachfassmails); Entwürfe anderer Branchen bleiben freigegeben liegen, bis der Inhaber sie wieder freigibt.
+nur_fokus: true
 fokus:
-  - S4/US
-  - S5/US
   - S2/US
-  - S4/UK
-  - S5/UK
   - S2/UK
-  - S4/FR
-  - S5/FR
   - S2/FR
-  # Scout-Sprint 01.10.2026: Webagenturen auch in den übrigen Mail-Ländern (countries.yaml allowed), dort gibt es
-  # sofort lieferbare Leads (Overture: Firmen ohne Website mit Telefon und E-Mail)
-  - S2/IE
-  - S2/NL
-  - S2/BE
-  - S2/SE

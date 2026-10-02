@@ -17,7 +17,7 @@ button{cursor:pointer}button.primary{background:var(--accent);color:#fff;border-
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="de">
+    <html lang="de" suppressHydrationWarning>
       <head>
         <style dangerouslySetInnerHTML={{ __html: css }} />
       </head>

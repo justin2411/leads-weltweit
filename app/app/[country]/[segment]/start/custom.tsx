@@ -18,7 +18,7 @@ export function CustomPlan({ base, variantId, preview, r, online, offerHref, T, 
   const [weekly, setWeekly] = useState(500);
   const [typed, setTyped] = useState("500");
   const cur = (base.currency ?? "gbp").toUpperCase();
-  const loc = cur === "EUR" ? "de-DE" : "en-GB";
+  const loc = lang === "fr" ? "fr-FR" : cur === "USD" ? "en-US" : cur === "EUR" ? "de-DE" : "en-GB";
   const money = (v: number, d = 0) => new Intl.NumberFormat(loc, { style: "currency", currency: cur, minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
   const num = (v: number) => new Intl.NumberFormat(lang === "fr" ? "fr-FR" : "en-GB").format(v);
   const cents = customCents(base, weekly);

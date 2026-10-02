@@ -81,7 +81,8 @@ def main(argv=None) -> int:
         lang = "fr" if r.get("country") == "FR" else "en"
         # Wunsch aus dem Formular ("Welche Leads?"): passende vollständige Leads zuerst, sonst auffüllen
         wish, wish_text = parse(r.get("note"))
-        files, _ = regional_sample(db, r["segment_id"], r["country"], None, wish=wish)
+        # Probelauf oder ohne Versandweg: Leads nicht als „sample“ verbrauchen (Audit 02.10.2026)
+        files, _ = regional_sample(db, r["segment_id"], r["country"], None, wish=wish, mark=bool(args.apply and can_send))
         body, blocks = sample_mail(lang, None, files, True, r["segment_id"], r["country"])
         if body and can_send:
             print(f"PROBE     {r['company_name']} ({r['segment_id']}/{r['country']})"

@@ -350,10 +350,22 @@ def tag_fresh_leads(db) -> None:
         print(f"WARNUNG: Leads taggen fehlgeschlagen ({exc.__class__.__name__}: {str(exc)[:200]}), nutze vorhandene Tags")
 
 
-def _load_leads(db, since: dt.date) -> tuple[list[dict], dict[str, dict]]:
+POOL_PER_MARKET = 5000  # neueste unvergebene Leads je Branche und Land (reicht für viele Kunden je Woche)
+
+
+def _load_leads(db, since: dt.date, markets: set[tuple[str, str]] | None = None) -> tuple[list[dict], dict[str, dict]]:
     # nur unvergebene Leads: Probe-Leads (sample) und gelieferte gehen an keinen weiteren Käufer (exklusiv, 01.10.2026)
-    leads = db.select_all("leads", {"created_at": f"gte.{since.isoformat()}", "status": "eq.new",
-                                    "select": LEAD_SELECT, "order": "event_date.desc,id"})
+    params = {"created_at": f"gte.{since.isoformat()}", "status": "eq.new", "select": LEAD_SELECT,
+              "order": "event_date.desc,id"}
+    if markets is None:
+        leads = db.select_all("leads", params)
+    else:
+        # Nur Märkte mit aktiven Abos und je Markt die neuesten: alle frischen Leads (200.000+ allein S2/US)
+        # seitenweise zu laden lief in einen Statement-Timeout (Audit 02.10.2026)
+        from responder import _newest
+        leads = []
+        for seg, country in sorted(markets):
+            leads += _newest(db, {**params, "segment_id": f"eq.{seg}", "country": f"eq.{country}"}, POOL_PER_MARKET)
     details = {}
     us_obs = {l["observation_ids"][0]: l["id"] for l in leads if l["country"] == "US" and l.get("observation_ids")}
     ids = list(us_obs)
@@ -395,15 +407,17 @@ def cmd_prepare(args) -> int:
         print("Keine aktiven Abos – nichts zu liefern.")
         return 0
     tag_fresh_leads(db)
-    leads, details = _load_leads(db, dt.date.today() - dt.timedelta(days=FRESH_DAYS))
+    markets = {(s["segment_id"], (s.get("filters") or {}).get("country") or s["customers"]["country"]) for s in subs}
+    leads, details = _load_leads(db, dt.date.today() - dt.timedelta(days=FRESH_DAYS), markets)
     known = None
     if REQUIRE_CONTACT:
         known = contact_companies(db)
-        # S2-Neugründungen ohne Website zählen trotzdem als vollständig
+        # Webagenturen (S2): keine Website-Pflicht (fehlende Website ist der Verkaufsgrund, Inhaber 27.09.2026) – für
+        # alle S2-Signale, nicht nur Neugründungen; sonst fielen alle Leads „ohne Website“ aus der Lieferung (Audit 02.10.)
         known_s2 = contact_companies(db, website_optional=True)
         before = len(leads)
         leads = [l for l in leads if l["company_id"] in known
-                 or (l.get("segment_id") == "S2" and l.get("signal_type") == "new_incorporation" and l["company_id"] in known_s2)]
+                 or (l.get("segment_id") == "S2" and l["company_id"] in known_s2)]
         known = {**known_s2, **known}
         print(f"{len(leads)} von {before} frischen Leads vollständig (Telefon, E-Mail, Website, Adresse, Ansprechperson)")
     ids = [l["id"] for l in leads]

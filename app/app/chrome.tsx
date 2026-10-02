@@ -13,6 +13,8 @@ export function BrandShell({ lang, children, extraCss }: { lang: string; childre
   return (
     <div className={`bx ${sans.variable}`} lang={lang}>
       <style dangerouslySetInnerHTML={{ __html: BRAND_CSS + (extraCss ?? "") }} />
+      {/* Das Grundgerüst steht auf lang="de"; Browser und Screenreader sollen die Sprache der Seite kennen */}
+      <script dangerouslySetInnerHTML={{ __html: `document.documentElement.lang=${JSON.stringify(/^[a-z]{2}$/.test(lang) ? lang : "en")}` }} />
       <Motion />
       {children}
     </div>
