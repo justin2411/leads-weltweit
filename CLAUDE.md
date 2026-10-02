@@ -123,6 +123,7 @@ Für jedes Segment in jedem Land:
 - Schluss: eine einfache Ja/Nein-Frage
 - Sprache des Landes (FR Französisch, sonst Englisch), Anrede ohne Personennamen, wenn nur allgemeine Adressen erlaubt sind
 - Verboten: Garantien, Dringlichkeit, erfundene Zahlen, Übertreibungen
+- **Bauplan:** Aufbau, Wortlaut und Checklisten für neue Branchen und Länder stehen in `docs/KALTMAIL-VORLAGE.md` (Inhaber 02.10.2026: „1:1 nachbauen“). Neue Kaltmails immer danach bauen.
 
 ## 8. Wiederkehrende Aufgaben
 

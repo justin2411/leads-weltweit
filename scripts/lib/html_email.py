@@ -65,7 +65,7 @@ def cta_button(company: str, region: str | None, lang: str) -> str:
     first = (os.environ.get("SENDER_NAME") or "").split(" ")[0]
     area = region or ""
     if lang == "fr":
-        label = "Oui, envoyez-moi l'échantillon"
+        label = "Envoyez-moi mes 10 pistes gratuites"
         subj = f"Demande d'échantillon : 10 pistes{' pour ' + area if area else ''}"
         body = (f"Bonjour{' ' + first if first else ''},\n\n"
                 f"Merci pour votre message. Nous serions heureux de recevoir l'échantillon gratuit de 10 pistes"
@@ -76,7 +76,7 @@ def cta_button(company: str, region: str | None, lang: str) -> str:
                 f"Vous pouvez envoyer l'échantillon à cette adresse.\n\n"
                 f"Bien cordialement\n")
     else:
-        label = "Yes, send my free sample"
+        label = "Send me my 10 free leads"
         subj = f"Sample request: 10 leads{' for ' + area if area else ''}"
         body = (f"Dear {first or 'team'},\n\n"
                 f"Thank you for your email. We would be glad to receive the free sample of 10 leads"
@@ -94,9 +94,14 @@ def cta_button(company: str, region: str | None, lang: str) -> str:
             f'</td></tr></table>')
 
 
-def page_button(url: str, lang: str) -> str:
+def plan_button(url: str, lang: str) -> str:
+    """Knopf zur Buchungsseite in der Probe-Mail (Inhaber 02.10.2026), gleiche Gestaltung wie in der Kaltmail."""
+    return page_button(url, lang, "Choisir ma formule" if lang == "fr" else "Choose your plan")
+
+
+def page_button(url: str, lang: str, label: str | None = None) -> str:
     """Knopf zur persönlichen Seite (dort: Video, Beispiel-Leads, Probe mit einem Klick)."""
-    label = "Voir mes 10 pistes gratuites" if lang == "fr" else "See my 10 free leads"
+    label = label or ("Voir mes 10 pistes gratuites" if lang == "fr" else "See my 10 free leads")
     # Sicherheitshinweis unter dem Knopf (Inhaber 02.10.2026); nur, was stimmt: HTTPS-Link auf unsere eigene Domain
     host = re.sub(r"^https?://(www\.)?", "", url).split("/")[0] or site_label()
     # Kein Schloss-Emoji (Inhaber 02.10.2026: „sieht sehr schlecht aus“): goldenes Häkchen, Domain als eigener,

@@ -455,12 +455,12 @@ def _test_sample(args, region: str) -> int:
     lang = "fr" if args.country == "FR" else "en"
     files, regional = regional_sample(DB(), args.segment, args.country, region, mark=False)  # Test: Leads nicht verbrauchen
     area = None  # Leads aus dem ganzen Land
-    body, blocks = sample_mail(lang, area, files, regional)
+    body, blocks = sample_mail(lang, area, files, regional, args.segment, args.country)
     if not body:
         print("Keine Probe-Datei vorhanden")
         return 1
     print(body)
-    out = send_reply(args.to, "[TEST] " + sample_subject(lang, area), body, None, lang, files, blocks=blocks, requested=True)
+    out = send_reply(args.to, "[TEST] " + sample_subject(lang, area, args.country), body, None, lang, files, blocks=blocks, requested=True)
     print(f"gesendet an {args.to}: {out} ({'regional' if regional else 'Landes-Probe'}, {len(files)} Datei(en))")
     return 0
 

@@ -127,7 +127,7 @@ class BrainSampleTest(unittest.TestCase):
                 mock.patch.object(responder, "send_reply") as send, \
                 mock.patch.dict("os.environ", {"RESEND_API_KEY": "x", "MAIL_FROM": "a@b.c"}):
             brain._send_sample(db, db.rows("sample_requests")[0])
-        self.assertEqual(send.call_args[0][1], "Your 10 free leads")
+        self.assertEqual(send.call_args[0][1], "Your 10 free leads from across the UK")  # landesweit, ohne Region
         self.assertNotIn("Leeds", send.call_args[0][2])
 
 

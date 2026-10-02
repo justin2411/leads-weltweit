@@ -40,7 +40,9 @@ def _place(region: str | None) -> tuple[str, str]:
 
 
 def _clean_name(name: str) -> str:
-    return re.sub(r"\s+(Ltd\.?|Limited|LLP|LLC|Inc\.?|SAS|SARL|SASU|EURL)$", "", name.strip(), flags=re.I)
+    # Rechtsformen aller Mail-Länder (UK/US/FR/IE/NL/BE/SE) aus der Anrede entfernen
+    return re.sub(r"[\s,]+(Ltd\.?|Limited|LLP|LLC|Inc\.?|Corp\.?|SAS|SARL|SASU|EURL|SA|DAC|CLG|UC|Teo\.?|"
+                  r"B\.?V\.?|N\.?V\.?|VOF|BVBA|SRL|SPRL|CommV|AB|HB|KB)$", "", name.strip(), flags=re.I)
 
 
 _GENERIC_WORDS = {"website", "websites", "web", "and", "&", "marketing", "solutions", "design", "designs", "agency",
