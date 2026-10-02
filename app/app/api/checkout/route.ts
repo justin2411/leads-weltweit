@@ -92,7 +92,11 @@ export async function POST(req: Request) {
   }, mode);
   } catch (e) {
     // Nie eine nackte 500: Fehler protokollieren, Kunde bekommt eine Seite mit E-Mail-Weg
-    console.error("checkout", pkg, mode, (e as Error).message);
+    const msg = (e as Error).message.replace(/\b(sk|rk|pk|whsec)_[A-Za-z0-9_]+/g, "[Schlüssel]").slice(0, 400);
+    console.error("checkout", pkg, mode, msg);
+    // Grund für den Inhaber sichtbar (Dashboard/Tagescheck), ohne Vercel-Logs
+    await db().from("learning_log").insert({ kind: "note", segment_id: page.segment_id,
+      text: `checkout_error ${mode} ${page.slug} ${pkg}: ${msg}` }).then(() => null, () => null);
     return failPage(lang, pkg, page.slug, back);
   }
   if (mode === "live") await recordEvent(v.id, "checkout_started");
