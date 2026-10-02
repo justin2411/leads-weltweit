@@ -17,6 +17,9 @@ from extraktor import segments
 from lib.rules import FORBIDDEN_PATTERNS
 
 MAX_AGE_DAYS = 45
+# Quartalsdaten erscheinen mit Verzug (DOL LCA: Datei endet am Quartalsende, Veröffentlichung Wochen später);
+# Inhaber 02.10.2026 („doch lockere das“): nur für diese amtliche Quelle bis 200 Tage, Daten stehen im Signal
+MAX_AGE_BY_SOURCE = {"dol_lca": 200}
 FIELDS = ("signal", "company_info", "opener", "urgency_reason")
 
 
@@ -67,7 +70,7 @@ def run(c: dict, seg: str, t: dict, today: dt.date | None = None) -> dict:
         problems.append("signal_without_date")
     else:
         age = (today - sd).days
-        if age > MAX_AGE_DAYS:
+        if age > MAX_AGE_BY_SOURCE.get(c.get("source"), MAX_AGE_DAYS):
             problems.append(f"signal_too_old ({age} days)")
         if age < 0:
             problems.append("signal_date_in_future")

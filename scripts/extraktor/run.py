@@ -429,6 +429,8 @@ def main(argv=None) -> int:
     ap.add_argument("--out", default="out/extraktor")
     ap.add_argument("--us-overture", action="store_true",
                     help="S2 US: Firmen ohne Website aus Overture (Fokus Webagenturen, 02.10.2026)")
+    ap.add_argument("--lca", action="store_true",
+                    help="S1 US: Arbeitgeber mit Fachkräfte-Bedarf aus den DOL-LCA-Daten (Quellen-Scout 02.10.2026)")
     ap.add_argument("--deadline-min", type=float, default=0,
                     help="nach N Minuten keine neuen Kandidaten mehr anfangen, Ergebnisse speichern (0 = aus)")
     args = ap.parse_args(argv)
@@ -462,7 +464,7 @@ def main(argv=None) -> int:
         p.update(eu_pools(segs, load_fr(args.fr_days, stats), "FR"))
     for co in ("UK", "US"):
         # S1 aus Karriereseiten; FR nicht (Code du travail L5331-1, Inhaber 01.10.2026)
-        if co in countries and "S1" in segs:
+        if co in countries and "S1" in segs and args.s1_probe > 0:
             try:
                 got = [c for c in load_careers(co, args.s1_probe, args.workers * 2, fetcher, stats)
                        if segments.fits("S1", c)[0]]
@@ -471,6 +473,13 @@ def main(argv=None) -> int:
                 got = []
             key = "S1" if co == "US" else "S1/UK"  # US-Pools haben keinen Länder-Zusatz
             p[key] = got + p.get(key, [])
+    if us and args.lca and "S1" in segs:
+        # S1/US: Arbeitgeber mit Fachkräfte-Bedarf aus den DOL-LCA-Daten (Zwischenspeicher aus dem Job „us-auszug“)
+        from extraktor.sources import us_dol_lca
+        got = [c for c in filters.dedupe([c for c in us_dol_lca.load(log=log) if not filters.pre_filter(c)])
+               if segments.fits("S1", c)[0]]
+        stats["dol_lca_candidates"] = len(got)
+        p["S1"] = got + p.get("S1", [])
     for co in ("UK", "FR") + S2_EXTRA + (("US",) if args.us_overture else ()):
         if co in countries and "S2" in segs:
             known = {i for s_, i in guard.known if s_ == "overture"}

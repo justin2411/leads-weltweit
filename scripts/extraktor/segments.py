@@ -90,6 +90,12 @@ def fits(seg: str, c: dict) -> tuple[bool, str]:
         age = (dt.date.today() - dt.date.fromisoformat(oldest)).days if oldest else 0
         ok = n >= 3 or age >= 30
         return ok, (f"{n} open roles, oldest {age} days" if ok else "fewer than 3 roles and none open 30+ days")
+    if c["source"] == "dol_lca":
+        if seg != "S1":
+            return False, "source only carries the hiring signal"
+        ok = f.get("new_hires", 0) >= 3
+        return ok, (f"{f['new_hires']} new hires for skilled roles filed with the US Department of Labor" if ok
+                    else "fewer than 3 new hires filed")
     if c["source"] == "overture":
         if seg != "S2":
             return False, "source only carries the no-website signal"
@@ -349,10 +355,31 @@ def texts_jobs(c: dict) -> dict:
             "urgency": "high" if age >= 30 else "medium", "urgency_reason": why}
 
 
+def texts_lca(c: dict) -> dict:
+    """S1/US aus den LCA-Daten: ehrlich als Bedarf an Fachkräften, nicht als offene Stelle; ohne Lohnangaben."""
+    f, name = c["facts"], c["name"]
+    first, last = f["first_received"], f["last_received"]
+    titles = f.get("titles") or []
+    roles = "; ".join(titles) if titles else "skilled roles"
+    span = f"on {uk_day(last)}" if first == last else f"between {uk_day(first)} and {uk_day(last)}"
+    signal = (f"{name} filed H-1B labor condition applications with the US Department of Labor for "
+              f"{plural(f['positions'], 'position')} {span}, {f['new_hires']} of them new hires: {roles}.")
+    info = (f"{name}, based in {c['city']}, {c['state']}, is hiring skilled staff in the US: "
+            f"{plural(f['cases'], 'labor condition application')} for {plural(f['positions'], 'position')} "
+            f"in one quarter, mainly {(f.get('soc_titles') or ['specialist roles'])[0].split(',')[0].lower()}.")
+    opener = (f"I saw {name} has been hiring for roles like {titles[0] if titles else 'skilled specialists'} in the US. "
+              f"Would pre-screened candidates from a specialist recruiter help?")
+    why = "Several filings for skilled roles in one quarter show an ongoing need for specialist hires."
+    return {"signal": signal, "signal_date": last, "company_info": info, "opener": opener,
+            "urgency": "medium", "urgency_reason": why}
+
+
 def texts(seg: str, c: dict) -> dict:
     """{'signal', 'signal_date', 'company_info', 'opener', 'urgency', 'urgency_reason'}"""
     if c["source"] in ("ats_jobs", "careers"):
         return texts_jobs(c)
+    if c["source"] == "dol_lca":
+        return texts_lca(c)
     if c["source"] == "ct_registry":
         return texts_ct(seg, c)
     if c["source"] == "overture":

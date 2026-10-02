@@ -1,6 +1,6 @@
 # Lead-Werk (Inhaber 01.10.2026: „eigener Bereich der 24/7 die leads holt und anreichert“).
-# Fokus Webagenturen (Inhaber 02.10.2026: „erstmal auf Webagenturen fokussieren … massenweise“): alle 30 Teile S2
-# (Firmen ohne Website) in US/UK/FR/IE/NL/BE/SE. Dauerbetrieb, eine Welle: kostenlose Quellen -> Sicherheitsfilter -> kostenlose Anreicherung -> Qualitäts- und
+# Fokus Webagenturen (Inhaber 02.10.2026: „erstmal auf Webagenturen fokussieren … massenweise“): 29 Teile S2
+# (Firmen ohne Website) in US/UK/FR/IE/NL/BE/SE, 1 Teil S1 US (DOL LCA, Quellen-Scout). Dauerbetrieb, eine Welle: kostenlose Quellen -> Sicherheitsfilter -> kostenlose Anreicherung -> Qualitäts- und
 # Signalkontrolle -> grüne Leads direkt in Supabase (watch_companies, observations, leads). Schon gespeicherte
 # Firmen werden übersprungen, so arbeitet sich jeder Lauf weiter durch den Bestand.
 # Lädt KEINE Lead-Dateien hoch (öffentliches Repo) – nur den Zählbericht. Sendet nichts.
@@ -21,7 +21,7 @@ jobs:
   us-auszug:
     # US-Auszug (Overture, Firmen ohne Website, ~250 MB) einmal im Monat bauen und allen US-Teilen geben
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     outputs:
       monat: ${{ steps.m.outputs.monat }}
     steps:
@@ -34,13 +34,23 @@ jobs:
           path: out/cache/overture_us_s2.parquet
           key: overture-us-s2-${{ steps.m.outputs.monat }}
       - uses: actions/setup-python@v5
-        if: steps.cache.outputs.cache-hit != 'true'
         with: { python-version: "3.11" }
       - name: US-Auszug bauen
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           pip install -r requirements.txt
           python -c "import sys; sys.path.insert(0, 'scripts'); from extraktor.sources import overture as o; o.build_cache(path=o.CACHE_US)"
+      - id: lca
+        uses: actions/cache@v4
+        with:
+          path: out/cache/dol_lca.json
+          key: dol-lca-${{ steps.m.outputs.monat }}
+      - name: DOL-LCA-Auszug bauen (S1 US, neueste Quartalsdatei, ~250 MB -> kleine JSON)
+        if: steps.lca.outputs.cache-hit != 'true'
+        continue-on-error: true  # fehlt die Datei, läuft nur der S1-Teil leer, die S2-Teile nicht
+        run: |
+          pip install -r requirements.txt
+          python -c "import sys; sys.path.insert(0, 'scripts'); from extraktor.sources import us_dol_lca as l; l.build()"
 
   holen:
     needs: us-auszug
@@ -53,12 +63,14 @@ jobs:
       max-parallel: 30
       matrix:
         include:
-          - { name: s2-fr-0, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 0/6" }
-          - { name: s2-fr-1, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 1/6" }
-          - { name: s2-fr-2, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 2/6" }
-          - { name: s2-fr-3, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 3/6" }
-          - { name: s2-fr-4, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 4/6" }
-          - { name: s2-fr-5, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 5/6" }
+          - { name: s2-fr-0, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 0/5" }
+          - { name: s2-fr-1, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 1/5" }
+          - { name: s2-fr-2, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 2/5" }
+          - { name: s2-fr-3, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 3/5" }
+          - { name: s2-fr-4, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 4/5" }
+          # Quellen-Scout S1 (Inhaber 02.10.2026: „recruiting kunden und leads … darauf fokussieren“): US-Arbeitgeber mit
+          # Fachkräfte-Bedarf aus den DOL-LCA-Daten, Test 50 -> 26 grün; Platz von FR-S2 (6 -> 5 Teile)
+          - { name: s1-us-lca, args: "--segments S1 --countries US --fmcsa-days 0 --formd-days 0 --s1-probe 0 --lca --per 4000 --max-tries 4000" }
           - { name: s2-uk-0, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 0/2" }
           - { name: s2-uk-1, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 1/2" }
           - { name: s2-ie-0, args: "--segments S2 --countries IE --s2-limit 20000 --per 4000 --max-tries 4000" }
@@ -124,6 +136,12 @@ jobs:
         with:
           path: out/cache/overture_us_s2.parquet
           key: overture-us-s2-${{ needs.us-auszug.outputs.monat }}
+      - name: DOL-LCA-Auszug laden
+        if: steps.gate.outputs.an == 'true' && matrix.name == 's1-us-lca'
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/dol_lca.json
+          key: dol-lca-${{ needs.us-auszug.outputs.monat }}
       - name: Leads holen, prüfen, speichern
         if: steps.gate.outputs.an == 'true'
         run: python scripts/extraktor/run.py ${{ matrix.args }} --workers 16 --db --store --out out/lead-werk --deadline-min 75

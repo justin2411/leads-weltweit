@@ -717,4 +717,59 @@ class WebAgencyFocusTests(unittest.TestCase):
         import yaml
         jobs = yaml.safe_load((ROOT / ".github" / "workflows" / "lead-werk.yml").read_text())["jobs"]
         for e in jobs["holen"]["strategy"]["matrix"]["include"]:
+            if e["name"] == "s1-us-lca":  # einziger S1-Teil (Quellen-Scout 02.10.2026)
+                continue
             self.assertIn("--segments S2 ", e["args"] + " ", e["name"])
+        us = [e for e in jobs["holen"]["strategy"]["matrix"]["include"] if e["name"].startswith("s2-us-")]
+        self.assertEqual(len(us), 18)  # US-S2 wird für S1 nicht gekürzt
+
+
+class DolLcaTests(unittest.TestCase):
+    """Quellen-Scout 02.10.2026: S1 US aus den LCA-Offenlegungsdaten des US-Arbeitsministeriums."""
+
+    def rows(self, **kw):
+        base = {"CASE_NUMBER": "I-200-1", "CASE_STATUS": "Certified", "RECEIVED_DATE": "2026-06-20",
+                "EMPLOYER_NAME": "LARSON ENGINEERING, INC.", "EMPLOYER_FEIN": "41-1", "EMPLOYER_ADDRESS1": "3524 Labore Rd",
+                "EMPLOYER_ADDRESS2": "", "EMPLOYER_CITY": "White Bear Lake", "EMPLOYER_STATE": "MN",
+                "EMPLOYER_POSTAL_CODE": "55110", "EMPLOYER_PHONE": "+16514819120", "NAICS_CODE": "541330",
+                "EMPLOYER_POC_FIRST_NAME": "Kate", "EMPLOYER_POC_LAST_NAME": "Doe",
+                "EMPLOYER_POC_JOB_TITLE": "HR Manager", "EMPLOYER_POC_PHONE": "+16514819121",
+                "EMPLOYER_POC_EMAIL": "kdoe@larsonengr.com", "AGENT_ATTORNEY_EMAIL_ADDRESS": "x@fragomen.com",
+                "JOB_TITLE": "MECHANICAL ENGINEER II", "SOC_TITLE": "Mechanical Engineers",
+                "TOTAL_WORKER_POSITIONS": "1", "NEW_EMPLOYMENT": "1", "CHANGE_EMPLOYER": "0"}
+        base.update(kw)
+        return base
+
+    def test_company_mail_only_on_own_domain(self):
+        from extraktor.sources import us_dol_lca as L
+        self.assertTrue(L.company_mail("kdoe@larsonengr.com", "LARSON ENGINEERING, INC."))
+        self.assertFalse(L.company_mail("kdoe@gmail.com", "LARSON ENGINEERING, INC."))
+        self.assertFalse(L.company_mail("pat@fragomen.com", "LARSON ENGINEERING, INC."))
+        self.assertFalse(L.company_mail("a@shared.com", "LARSON ENGINEERING", "b@shared.com"))  # Domain des Anwalts
+
+    def test_select_needs_three_new_hires_and_skips_staffing(self):
+        from extraktor.sources import us_dol_lca as L
+        three = [self.rows(CASE_NUMBER=f"I-{i}", RECEIVED_DATE=f"2026-06-2{i}") for i in range(3)]
+        two = [self.rows(CASE_NUMBER=f"J-{i}", EMPLOYER_FEIN="2", EMPLOYER_NAME="SMALL CO") for i in range(2)]
+        staff = [self.rows(CASE_NUMBER=f"K-{i}", EMPLOYER_FEIN="3", EMPLOYER_NAME="ACME STAFFING LLC",
+                           EMPLOYER_POC_EMAIL="a@acmestaffing.com") for i in range(3)]
+        out = L.select(three + two + staff, log=lambda *_: None)
+        self.assertEqual([e["key"] for e in out], ["41-1"])
+        e = out[0]
+        self.assertEqual((e["new_hires"], e["positions"], e["first"], e["last"]), (3, 3, "2026-06-20", "2026-06-22"))
+        self.assertEqual(e["titles"], ["Mechanical Engineer II"])
+
+    def test_lead_texts_pass_checks_with_longer_age_only_for_this_source(self):
+        from extraktor.sources import us_dol_lca as L
+        e = L.select([self.rows(CASE_NUMBER=f"I-{i}", RECEIVED_DATE=f"2026-06-2{i}") for i in range(3)],
+                     log=lambda *_: None)[0]
+        c = L.to_candidate(e)
+        self.assertTrue(segments.fits("S1", c)[0])
+        t = segments.texts("S1", c)
+        for k in ("signal", "company_info", "opener", "urgency_reason"):
+            self.assertNotRegex(t[k], "[–—]", k)  # keine Gedankenstriche (Inhaber 02.10.2026)
+        self.assertIn("White Bear Lake, MN", t["company_info"])
+        self.assertEqual(sc.run(c, "S1", t, today=dt.date(2026, 10, 2))["status"], "pass")
+        self.assertIn("signal_too_old", " ".join(sc.run(c, "S1", t, today=dt.date(2027, 3, 1))["problems"]))
+        other = {**c, "source": "careers"}
+        self.assertEqual(sc.MAX_AGE_BY_SOURCE.get(other["source"], sc.MAX_AGE_DAYS), 45)
