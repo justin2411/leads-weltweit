@@ -97,6 +97,14 @@ def find_site(c: dict, fetcher, max_examined: int = 3) -> dict:
         checked.append(dom)
         site = check_site(c["website"], c, fetcher, from_email=True)
         return {"site": site, "method": "own_careers_site", "checked": checked}
+    listed = (c.get("facts") or {}).get("listed_website") if c.get("source") == "find_tender" else ""
+    if listed:
+        # Website, die der Lieferant selbst in seiner amtlichen Vergabemeldung angegeben hat: wie eine eigene
+        # E-Mail-Domain (schwächere Belege reichen, solange nichts widerspricht)
+        checked.append(W.site_domain(listed))
+        site = check_site(listed, c, fetcher, from_email=True)
+        if site:
+            return {"site": site, "method": "award_notice_website", "checked": checked}
     if c.get("email") and not is_freemail(c["email"]):
         dom = email_domain(c["email"])
         checked.append(dom)
