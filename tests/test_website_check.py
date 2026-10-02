@@ -320,6 +320,21 @@ class LeadTests(unittest.TestCase):
         run_part = lambda x, i, n: int(hashlib.md5(f"overture_web:{x}".encode()).hexdigest(), 16) % n == i  # noqa: E731
         self.assertTrue(all(run_part(x, 2, 4) for x in parts[2]))  # gleiche Aufteilung wie run.py --shard
 
+    def test_seen_memory_merges_all_parts_of_a_country(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            orig = wc.SEEN
+            wc.SEEN = Path(d) / "webcheck_seen.json"
+            try:
+                old = (TODAY - dt.timedelta(days=3)).isoformat()
+                (Path(d) / "webcheck_seen_0.json").write_text(json.dumps({"a": old, "b": TODAY.isoformat()}))
+                (Path(d) / "webcheck_seen_1.json").write_text(json.dumps({"a": TODAY.isoformat(), "c": old}))
+                (Path(d) / "webcheck_seen_2.json").write_text("kaputt")
+                self.assertEqual(wc.load_seen(), {"a": TODAY.isoformat(), "b": TODAY.isoformat(), "c": old})
+            finally:
+                wc.SEEN = orig
+                wc._seen.clear()
+
     def test_seen_memory(self):
         import tempfile
         with tempfile.TemporaryDirectory() as d:

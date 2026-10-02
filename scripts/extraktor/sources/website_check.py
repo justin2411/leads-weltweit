@@ -95,11 +95,18 @@ def usable(url: str) -> bool:
 
 
 def load_seen() -> dict[str, str]:
+    """Gedächtnis dieses Teils plus das aller anderen Teile desselben Landes (`webcheck_seen_<i>.json`, vom
+    Workflow abgelegt): wird die Aufteilung geändert, ruft kein Teil eine Seite erneut ab, die ein anderer Teil
+    gerade geprüft hat (höchstens einmal täglich je Seite). Je Firma gilt das jüngste Datum."""
     global _seen
-    try:
-        _seen = json.loads(SEEN.read_text())
-    except (OSError, ValueError):
-        _seen = {}
+    _seen = {}
+    for f in sorted(SEEN.parent.glob(SEEN.stem + "*.json")):
+        try:
+            for k, v in json.loads(f.read_text()).items():
+                if v > _seen.get(k, ""):
+                    _seen[k] = v
+        except (OSError, ValueError):
+            continue
     return _seen
 
 
