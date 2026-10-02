@@ -1,5 +1,6 @@
 import { sendConsentMail } from "@/lib/mail";
 import { welcomeMail } from "@/lib/welcome-mail";
+import { receiptPdf } from "@/lib/receipt-pdf";
 import { recordEvent } from "@/lib/page-events";
 import { BRAND, siteUrl } from "@/lib/site";
 import { STATUS_MAP, stripeKeys, verifyStripeSignature } from "@/lib/stripe";
@@ -73,7 +74,15 @@ export async function POST(req: Request) {
       const planName = m.package === "custom" ? (o.locale === "fr" ? "Sur mesure" : "Custom") : m.package ? m.package[0].toUpperCase() + m.package.slice(1) : "";
       const weekly = Number(m.weekly) || ({ starter: 15, pro: 50 } as Record<string, number>)[m.package] || undefined;
       const wm = welcomeMail({ lang: o.locale === "fr" ? "fr" : "en", company, plan: planName, weekly, price, formLink: link, test: !event.livemode });
-      await sendConsentMail(email, wm.subject, wm.text, wm.html).catch(async (e) => {
+      // Zahlungsbestätigung als PDF (keine Rechnung – die stellt Stripe aus; Inhaber 02.10.2026)
+      const money = (c: number) => new Intl.NumberFormat(o.locale === "fr" ? "fr-FR" : "en-GB", { style: "currency", currency: String(o.currency ?? "gbp").toUpperCase(), maximumFractionDigits: c % 100 ? 2 : 0 }).format(c / 100);
+      const files = price ? await receiptPdf({ lang: o.locale === "fr" ? "fr" : "en", company, email, plan: planName, weekly, amount: price,
+        tax: o.total_details?.amount_tax > 0 ? money(o.total_details.amount_tax) : undefined,
+        paidAt: new Date((o.created ?? Date.now() / 1000) * 1000), reference: String(o.invoice || o.payment_intent || o.id), test: !event.livemode })
+        .then((pdf) => [{ filename: o.locale === "fr" ? "Confirmation-de-paiement.pdf" : "Payment-Confirmation.pdf", content: pdf }])
+        .catch(async (e) => { await log("Zahlungsbestätigung (PDF) fehlgeschlagen", `${company}: ${(e as Error).message}`, true); return undefined; })
+        : undefined;
+      await sendConsentMail(email, wm.subject, wm.text, wm.html, files).catch(async (e) => {
         // Kunde und Abo sind gespeichert; Mail-Fehler nicht als Webhook-Fehler werten (sonst doppelte Willkommensmails)
         await log("Willkommensmail fehlgeschlagen", `${company}: ${(e as Error).message}`, true);
       });
