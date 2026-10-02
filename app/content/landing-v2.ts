@@ -17,7 +17,7 @@ export const LANDING: Record<"en" | "fr", LandingText> = {
   en: {
     pill: "Free sample · {country}",
     every: "In every lead",
-    chips: [["phone", "Phone"], ["mail", "Email"], ["pin", "Address"], ["bulb", "How to win them"]],
+    chips: [["phone", "Phone"], ["mail", "Email"], ["pin", "Address"], ["bulb", "Sales tips"]],
     kpi: { leads: "Leads", areas: "{areas}", industries: "Industries", firm: ["1", "Firm per lead"] },
     kpiNote: "From a recent free sample · {date}",
     where: "Where your leads are",
@@ -52,7 +52,7 @@ export const LANDING: Record<"en" | "fr", LandingText> = {
   fr: {
     pill: "Échantillon gratuit · {country}",
     every: "Pour chaque prospect",
-    chips: [["phone", "Téléphone"], ["mail", "E-mail"], ["pin", "Adresse"], ["bulb", "Comment les convaincre"]],
+    chips: [["phone", "Téléphone"], ["mail", "E-mail"], ["pin", "Adresse"], ["bulb", "Conseils de vente"]],
     kpi: { leads: "Prospects", areas: "{areas}", industries: "Secteurs", firm: ["1", "Agence par prospect"] },
     kpiNote: "Issu d'un échantillon gratuit récent · {date}",
     where: "Où se trouvent vos prospects",
