@@ -97,11 +97,17 @@ def cta_button(company: str, region: str | None, lang: str) -> str:
 def page_button(url: str, lang: str) -> str:
     """Knopf zur persönlichen Seite (dort: Video, Beispiel-Leads, Probe mit einem Klick)."""
     label = "Voir mes 10 pistes gratuites" if lang == "fr" else "See my 10 free leads"
-    return (f'<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 24px 0;"><tr>'
+    # Sicherheitshinweis unter dem Knopf (Inhaber 02.10.2026); nur, was stimmt: HTTPS-Link auf unsere eigene
+    # Domain, für die Probe keine Anmeldung und keine Zahlung
+    host = re.sub(r"^https?://(www\.)?", "", url).split("/")[0] or site_label()
+    note = (f"&#128274; Lien sécurisé vers {html.escape(host)} · sans inscription, sans paiement" if lang == "fr" else
+            f"&#128274; Secure link to {html.escape(host)} · no sign-up, no payment")
+    return (f'<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 8px 0;"><tr>'
             f'<td style="background:{GOLD};border-radius:99px;">'
             f'<a href="{html.escape(url)}" style="display:inline-block;padding:13px 26px;font-family:{FONT};'
             f'font-size:15px;font-weight:500;color:{NAVY};text-decoration:none;white-space:nowrap;">{html.escape(label)} &rarr;</a>'
-            f'</td></tr></table>')
+            f'</td></tr></table>'
+            f'<p style="margin:0 0 24px 4px;font-family:{FONT};font-size:12px;line-height:17px;color:{MUTED};">{note}</p>')
 
 
 def process_strip(lang: str = "en") -> str:
