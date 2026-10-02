@@ -90,3 +90,24 @@ Die Schritte 2–6 werden nach demselben Muster abgestimmt und hier ergänzt, so
 
 Regeln: keine leeren Felder („–“), keine Platzhalter wie „ask for the owner“, keine Sätze, die bei allen Firmen gleich sind.
 Dateinamen nach Inhalt: `Your-10-Free-Leads-US.pdf`, `How-It-Works-US.pdf`, `sample-leads.csv` (CSV ohne leere Ansprechperson-Spalten).
+
+### 5.2 Nachfassmails (abgenommen 02.10.2026: „ja perfekt genauso“)
+
+`scripts/followups.py`, Versand über `outreach.py send` (Versand bleibt aus, bis der Inhaber ihn freigibt).
+
+| Mail | Wann | Inhalt | Anhang |
+|---|---|---|---|
+| Erinnerung | 4 Tage nach der Kaltmail ohne Antwort | Anrede wie Kaltmail; „Just a short follow-up on my note about {Signal wie Kaltmail} across {Land}“; Probe ist fertig (company, phone, email, who to ask for, opening line); „Shall I send it over?“; Knopf „See my 10 free leads“ zur Landingpage | keiner |
+| Nachfrage | 3 Tage nach der Probe ohne Antwort | „Did you get a chance to look at the 10 leads?“; jeden Montag eine neue Liste, {Land}, nur für ihre Firma; Knopf „Choose your plan“ zur Buchungsseite; „Shall we start next Monday?“ | How-It-Works-PDF |
+
+PDFs insgesamt (Inhaber 02.10.2026): Probe-Mail = Lead-PDF + How-It-Works-PDF + CSV; Nachfrage nach der Probe = How-It-Works-PDF; alle anderen Mails ohne Anhang.
+Testmails: `testmail.yml` mit `art=nachfass` bzw. `art=probe-nachfass`.
+
+## 6. Vorgehen je Schritt (so stimmen wir jeden Kontaktpunkt ab)
+
+1. Bestehenden Stand zeigen: Testmail an den Inhaber (`testmail.yml`: `art=kaltmail`, `probe`, `nachfass`,
+   `probe-nachfass`), Seiten als Screenshot oder Link.
+2. Rückmeldung des Inhabers umsetzen, nur wahre Aussagen, keine leeren Felder oder Platzhalter, landesweit.
+3. Neue Testmail an den Inhaber, bis er „passt“ sagt.
+4. Erst dann als abgenommen hier im Bauplan eintragen (Inhalt, Zeitpunkt, Anhänge) und nach `main` mergen.
+5. Neue Branchen und Länder bauen jeden abgenommenen Schritt 1:1 nach diesem Bauplan nach.

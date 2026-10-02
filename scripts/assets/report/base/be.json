@@ -1,0 +1,191 @@
+{
+ "brand": {
+  "name": "NextGen",
+  "accent": "Profit"
+ },
+ "report": {
+  "lang": "fr",
+  "date": "2 oct. 2026",
+  "documentTitle": "NextGen Profit – Briefing prospects {date}",
+  "kicker": "Briefing prospects · {date}",
+  "eyebrow": "{count} prospects sélectionnés pour vous · {country}",
+  "title": "Votre échantillon gratuit.",
+  "subtitle": "{count} entreprises qui ont une vraie raison de vous parler **maintenant**.",
+  "footer": "Confidentiel · réservé à votre entreprise",
+  "country": "Belgique",
+  "map": "be"
+ },
+ "cover": {
+  "inEveryLead": [
+   {
+    "icon": "phone",
+    "text": "Téléphone"
+   },
+   {
+    "icon": "mail",
+    "text": "E-mail"
+   },
+   {
+    "icon": "pin",
+    "text": "Adresse"
+   },
+   {
+    "icon": "user",
+    "text": "Interlocuteur"
+   },
+   {
+    "icon": "bulb",
+    "text": "Comment les convaincre"
+   }
+  ],
+  "presenceTitle": "Joignables – mais sans site web",
+  "presenceNote": "Vérifié le {date} · un point = un prospect",
+  "presenceRows": [
+   {
+    "key": "phone",
+    "icon": "phone",
+    "label": "Téléphone"
+   },
+   {
+    "key": "email",
+    "icon": "mail",
+    "label": "Adresse e-mail"
+   },
+   {
+    "key": "facebook",
+    "icon": "social",
+    "label": "Page Facebook"
+   },
+   {
+    "key": "website",
+    "icon": "globe",
+    "label": "Site web",
+    "highlight": true
+   }
+  ],
+  "opening": "Ce manque, c’est votre opportunité.",
+  "industriesNote": "De l’artisanat à la restauration"
+ },
+ "closing": {
+  "title": "Pourquoi ces prospects se transforment en",
+  "titleAccent": "chiffre d’affaires",
+  "reasons": [
+   {
+    "icon": "target",
+    "title": "Une vraie raison d’acheter",
+    "text": "Chaque entreprise a une raison concrète d’avoir besoin de vos services."
+   },
+   {
+    "icon": "bolt",
+    "title": "Vous appelez en premier",
+    "text": "Vous recevez les prospects dans les jours qui suivent l’événement, souvent avant que l’entreprise n’ait trouvé un prestataire."
+   },
+   {
+    "icon": "lock",
+    "title": "Réservé à votre entreprise",
+    "text": "Chaque prospect n’est attribué qu’à une seule entreprise de votre secteur. Aucun concurrent n’appelle le même prospect."
+   }
+  ],
+  "steps": [
+   {
+    "icon": "focus",
+    "title": "Vous choisissez votre cible",
+    "text": "Les secteurs et signaux qui correspondent à votre activité, ou tout simplement l’ensemble du pays."
+   },
+   {
+    "icon": "cal",
+    "title": "Chaque lundi",
+    "text": "Un nouveau rapport comme celui-ci, en PDF et en tableur pour votre CRM."
+   },
+   {
+    "icon": "phone",
+    "title": "Vous appelez et gagnez des clients",
+    "text": "Téléphone, e-mail, interlocuteur et un court briefing commercial pour chaque prospect."
+   }
+  ],
+  "plans": [
+   {
+    "name": "Starter",
+    "price": "129 €",
+    "per": "par mois",
+    "text": "Jusqu’à **15** nouveaux prospects par semaine. Chaque prospect est exclusif à votre entreprise.",
+    "perLead": 1.98,
+    "perLeadLabel": "Dès env. 1,98 €"
+   },
+   {
+    "name": "Pro",
+    "price": "249 €",
+    "per": "par mois",
+    "text": "Jusqu’à **50** nouveaux prospects par semaine, tous les signaux pertinents. Chaque prospect est exclusif à votre entreprise.",
+    "perLead": 1.15,
+    "perLeadLabel": "Dès env. 1,15 €",
+    "highlight": true
+   },
+   {
+    "name": "Sur mesure",
+    "price": "Votre volume",
+    "text": "Dites-nous de combien de prospects vous avez besoin par semaine, et nous vous ferons une offre adaptée à votre équipe.",
+    "note": "Plus de prospects, prix unitaire plus bas",
+    "dashed": true
+   }
+  ],
+  "cta": {
+   "title": "Prêt à commencer ?",
+   "text": "Choisissez une formule ou indiquez-nous votre volume. Votre première livraison arrive lundi prochain.",
+   "button": "Recevoir mes prospects chaque semaine",
+   "url": "https://www.nextgen-profit.de/be/web-agencies/start"
+  },
+  "tagline": "De nouveaux clients. Au bon moment.",
+  "filler": {
+   "eyebrow": "Prochaine étape",
+   "title": "Ces prospects vous plaisent ? Recevez-en chaque semaine.",
+   "text": "De nouveaux prospects chaque lundi, rien que pour vous.",
+   "button": "Recevoir mes prospects chaque semaine"
+  }
+ },
+ "labels": {
+  "phone": "Téléphone",
+  "email": "E-mail",
+  "address": "Adresse",
+  "contact": "Interlocuteur",
+  "website": "Site web",
+  "detected": "Détecté",
+  "whyNow": "Pourquoi maintenant",
+  "needs": "Ce dont ils ont besoin",
+  "howToWin": "Comment les convaincre",
+  "offer": "Offre :",
+  "ask": "Question :",
+  "callPrompt": "Appelez maintenant",
+  "onlineCheck": "Présence en ligne",
+  "online": {
+   "phone": "Téléphone",
+   "email": "E-mail",
+   "facebook": "Facebook",
+   "website": "Site web"
+  },
+  "priority": {
+   "high": "Priorité haute",
+   "medium": "Priorité moyenne",
+   "low": "Priorité basse"
+  },
+  "leadsRange": "Prospects {from}–{to}",
+  "ofTotal": "sur {total}",
+  "pageShort": "p. ",
+  "kpiLeads": "Prospects",
+  "kpiStates": "Provinces",
+  "kpiIndustries": "Secteurs",
+  "kpiDetected": "Détectés",
+  "whereTitle": "Où se trouvent vos prospects",
+  "commonTitle": "Ce qu’ils ont en commun",
+  "industriesTitle": "{industries} secteurs",
+  "inEveryLead": "Pour chaque prospect",
+  "moreLeads": "+ {n} autres prospects",
+  "moreIndustries": "+ {n} autres",
+  "noValue": "–",
+  "howItWorks": "Comment ça marche",
+  "plansTitle": "Formules",
+  "perLead": "Prix par prospect",
+  "demo": "Données de démo"
+ },
+ "leads": []
+}

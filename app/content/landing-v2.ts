@@ -1,0 +1,95 @@
+/**
+ * Landingpage im Design der Lead-PDF (Inhaber 02.10.2026: „wenig Text, gute Grafiken, toller Hero pro Land, dann das
+ * Video“). Kurze Beschriftungen; Inhalte (Überschrift, FAQ) kommen weiter aus der Datenbank (page_variants).
+ * Nur Aussagen, die stimmen: Kennzahlen und Kartenpins stammen aus einer echten Probe (content/maps/{land}.json).
+ */
+export type LandingText = {
+  pill: string; every: string; chips: [string, string][]; kpi: { leads: string; areas: string; industries: string; firm: [string, string] };
+  kpiNote: string; where: string; whereNote: string; common: string; presence: Record<string, string>;
+  presenceTitle: string; presenceNote: string; opening: string; examples: string; examplesNote: string;
+  phone: string; email: string; contact: string; askFor: string; website: string; noneFound: string; detected: string;
+  whyNow: string; online: string; howWin: string; ask: string; call: string; hidden: string; unlock: string;
+  revenue: string; reasons: [string, string, string][]; howTitle: string; steps: [string, string, string][];
+  sampleTitle: string; questions: string; video: string;
+};
+
+export const LANDING: Record<"en" | "fr", LandingText> = {
+  en: {
+    pill: "Free sample · {country}",
+    every: "In every lead",
+    chips: [["phone", "Phone"], ["mail", "Email"], ["pin", "Address"], ["bulb", "How to win them"]],
+    kpi: { leads: "Leads", areas: "{areas}", industries: "Industries", firm: ["1", "Firm per lead"] },
+    kpiNote: "From a recent free sample · {date}",
+    where: "Where your leads are",
+    whereNote: "The 10 leads of a recent sample, across {land}",
+    common: "What they have in common",
+    presence: { phone: "Phone number", email: "Email address", facebook: "Facebook page", website: "Own website" },
+    presenceTitle: "Reachable – but no website",
+    presenceNote: "Checked {date} · one dot = one lead",
+    opening: "That gap is your opening.",
+    examples: "Two leads from that sample",
+    examplesNote: "Name, phone and email are unlocked in your free sample.",
+    phone: "Phone", email: "Email", contact: "Contact person", askFor: "Ask for", website: "Website", noneFound: "none found",
+    detected: "Detected", whyNow: "Why now", online: "Online check", howWin: "How to win them", ask: "Ask:",
+    call: "Pick up the phone", hidden: "(hidden)", unlock: "Unlocked in your free sample",
+    revenue: "Why these leads turn into revenue",
+    reasons: [
+      ["target", "A real reason to buy", "Every company has a concrete reason that creates demand for your service."],
+      ["bolt", "You call first", "Fresh every Monday, often before the company has found a provider."],
+      ["lock", "Only for your firm", "Each lead goes to one firm in your field only."],
+    ],
+    howTitle: "How it works",
+    steps: [
+      ["focus", "You choose your focus", "The signals that fit your business, or simply the whole country."],
+      ["cal", "Every Monday", "A fresh report like the sample, as PDF and spreadsheet."],
+      ["phone", "You call and win clients", "Phone, email and a short sales briefing in every lead."],
+    ],
+    sampleTitle: "Your 10 free leads from across {land}",
+    questions: "Questions",
+    video: "The film",
+  },
+  fr: {
+    pill: "Échantillon gratuit · {country}",
+    every: "Pour chaque prospect",
+    chips: [["phone", "Téléphone"], ["mail", "E-mail"], ["pin", "Adresse"], ["bulb", "Comment les convaincre"]],
+    kpi: { leads: "Prospects", areas: "{areas}", industries: "Secteurs", firm: ["1", "Agence par prospect"] },
+    kpiNote: "Issu d'un échantillon gratuit récent · {date}",
+    where: "Où se trouvent vos prospects",
+    whereNote: "Les 10 prospects d'un échantillon récent, partout en France",
+    common: "Ce qu'ils ont en commun",
+    presence: { phone: "Téléphone", email: "Adresse e-mail", facebook: "Page Facebook", website: "Site web" },
+    presenceTitle: "Joignables – mais sans site web",
+    presenceNote: "Vérifié le {date} · un point = un prospect",
+    opening: "Ce manque, c’est votre opportunité.",
+    examples: "Deux prospects de cet échantillon",
+    examplesNote: "Nom, téléphone et e-mail figurent dans votre échantillon gratuit.",
+    phone: "Téléphone", email: "E-mail", contact: "Interlocuteur", askFor: "Demander", website: "Site web", noneFound: "aucun trouvé",
+    detected: "Détecté", whyNow: "Pourquoi maintenant", online: "Présence en ligne", howWin: "Comment les convaincre", ask: "Question :",
+    call: "Appelez maintenant", hidden: "(masqué)", unlock: "Visible dans votre échantillon gratuit",
+    revenue: "Pourquoi ces prospects génèrent du chiffre d'affaires",
+    reasons: [
+      ["target", "Une vraie raison d'acheter", "Chaque entreprise a une raison concrète d'avoir besoin de votre service."],
+      ["bolt", "Vous appelez en premier", "Chaque lundi, souvent avant qu'elle ait trouvé un prestataire."],
+      ["lock", "Réservé à votre agence", "Chaque prospect ne va qu'à une seule entreprise de votre secteur."],
+    ],
+    howTitle: "Comment ça marche",
+    steps: [
+      ["focus", "Vous choisissez votre cible", "Les signaux qui vous conviennent, ou tout simplement toute la France."],
+      ["cal", "Chaque lundi", "Un nouveau rapport comme l'échantillon, en PDF et en tableur."],
+      ["phone", "Vous appelez et gagnez des clients", "Téléphone, e-mail et un court briefing commercial pour chaque prospect."],
+    ],
+    sampleTitle: "Vos 10 prospects gratuits de toute la France",
+    questions: "Questions",
+    video: "Le film",
+  },
+};
+
+/** Bezeichnung der Gebiete in den Kennzahlen (wie die PDF-Vorlage). */
+export const AREA_LABEL: Record<string, Record<"en" | "fr", string>> = {
+  US: { en: "States", fr: "États" }, UK: { en: "Regions", fr: "Régions" }, FR: { en: "Regions", fr: "Régions" },
+  IE: { en: "Counties", fr: "Comtés" }, BE: { en: "Provinces", fr: "Provinces" }, NL: { en: "Provinces", fr: "Provinces" },
+};
+export const COUNTRY_NAME: Record<string, Record<"en" | "fr", string>> = {
+  US: { en: "United States", fr: "États-Unis" }, UK: { en: "United Kingdom", fr: "Royaume-Uni" }, FR: { en: "France", fr: "France" },
+  IE: { en: "Ireland", fr: "Irlande" }, BE: { en: "Belgium", fr: "Belgique" }, NL: { en: "Netherlands", fr: "Pays-Bas" },
+};

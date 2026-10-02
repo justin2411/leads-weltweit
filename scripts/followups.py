@@ -18,7 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from drafts import LAND, _clean_name, signature  # noqa: E402
+from drafts import LAND, short_name, signature  # noqa: E402
 from lib.rules import lint_draft  # noqa: E402
 
 NEGATIVE = {"bounced", "complained", "failed", "reply", "reply_positive", "reply_negative", "sample_requested",
@@ -26,7 +26,7 @@ NEGATIVE = {"bounced", "complained", "failed", "reply", "reply_positive", "reply
 
 SIGNAL = {
     "S1": ("employers whose job adverts have stayed open for 30+ days", "employeurs dont les offres restent ouvertes"),
-    "S2": ("newly registered businesses", "sociétés nouvellement créées"),
+    "S2": ("local businesses {land} that still have no website", "entreprises locales encore sans site web"),
     "S3": ("growing businesses", "entreprises en croissance"),
     "S4": ("newly registered and expanding businesses", "sociétés nouvellement créées"),
     "S5": ("newly registered companies", "sociétés nouvellement créées"),
@@ -42,32 +42,39 @@ def _land(p: dict, lang: str) -> str:
 
 
 def followup_text(p: dict, lang: str) -> tuple[str, str]:
-    firm = _clean_name(p["company_name"])
+    """Eine Nachfassmail nach 4 Tagen ohne Antwort; gleicher Aufbau wie die Kaltmail (docs/KALTMAIL-VORLAGE.md)."""
     land = _land(p, lang)
     en, fr = SIGNAL.get(p["segment_id"], ("companies with a current reason to buy", "entreprises avec un besoin actuel"))
     if lang == "fr":
-        body = (f"Bonjour,\n\nJuste un petit rappel de mon message sur les {fr} {land}.\n\n"
-                f"L'échantillon est prêt : 10 pistes actuelles, chacune avec sa source, les coordonnées de "
-                f"l'entreprise et une phrase d'accroche. Gratuit, sans engagement, et vous voyez tout de suite si "
+        body = (f"Bonjour,\n\nJe reviens brièvement vers vous au sujet des {fr} {land}.\n\n"
+                f"Votre échantillon gratuit de 10 pistes actuelles est prêt : entreprise, téléphone, e-mail, la "
+                f"personne à demander et une phrase d'accroche. Sans engagement, et vous voyez en quelques minutes si "
                 f"cela vous correspond.\n\nJe vous l'envoie ?\n\nBien cordialement,\n{signature(lang)}")
     else:
-        body = (f"Hello {firm} team,\n\nJust a short nudge on my note about {en} {land}.\n\n"
-                f"The sample is ready to go: 10 current leads, each with its source, the company's contact details "
-                f"and an opening line. It's free, there is no obligation, and you will see within a few minutes "
-                f"whether it fits.\n\nShall I send it over?\n\nBest regards,\n{signature(lang)}")
+        short = short_name(p["company_name"])
+        greet = f"Hi {short} team," if short else "Hi there,"
+        about = en.format(land=land) if "{land}" in en else f"{en} {land}"
+        body = (f"{greet}\n\nJust a short follow-up on my note about {about}.\n\n"
+                f"Your free sample of 10 current leads is ready: company, phone, email, who to ask for and an "
+                f"opening line. No obligation, and you will see within a few minutes whether it fits.\n\n"
+                f"Shall I send it over?\n\nBest regards,\n{signature(lang)}")
     return body, land
 
 
-def sample_followup_text(p: dict, lang: str) -> str:
+def sample_followup_text(p: dict, lang: str, plan_url: str | None = None) -> str:
+    """Nachfrage 3 Tage nach der Probe; mit Link zur Buchungsseite, wenn es eine gibt (wie die Probe-Mail)."""
     land = _land(p, lang)
     if lang == "fr":
+        step = (f"Choisissez votre formule : {plan_url}" if plan_url
+                else "Répondez simplement à cet e-mail et nous nous occupons du reste.")
         return (f"Bonjour,\n\nAvez-vous pu jeter un œil aux 10 pistes que je vous ai envoyées ?\n\n"
-                f"Si une ou deux entreprises vous ont parlé, imaginez une nouvelle liste chaque lundi, {land} et "
-                f"réservée à votre entreprise. Rien à installer, vous répondez et nous nous occupons du reste.\n\n"
+                f"Si une ou deux entreprises vous ont parlé, vous recevez une nouvelle liste comme celle-ci chaque "
+                f"lundi, {land}, réservée à votre entreprise.\n\n{step}\n\n"
                 f"On démarre lundi prochain ?\n\nBien cordialement,\n{signature(lang)}")
+    step = f"Choose your plan: {plan_url}" if plan_url else "Just reply to this email and we will set it up."
     return (f"Hello,\n\nDid you get a chance to look at the 10 leads I sent over?\n\n"
-            f"If one or two of them caught your eye, picture a fresh list every Monday, {land} and reserved for "
-            f"your firm. Nothing to set up: you reply, we take care of the rest.\n\n"
+            f"If one or two of them caught your eye, you get a fresh list like this every Monday, {land}, "
+            f"reserved for your firm.\n\n{step}\n\n"
             f"Shall we start next Monday?\n\nBest regards,\n{signature(lang)}")
 
 
@@ -119,7 +126,8 @@ def main(argv=None) -> int:
         if later or db.rpc("is_suppressed", {"p_email": m["to_email"]}):
             continue
         lang = m.get("language") or "en"
-        body = sample_followup_text(p, lang)
+        from responder import booking_url
+        body = sample_followup_text(p, lang, booking_url(p["segment_id"], p.get("country")))
         print(f"PROBE-NACHFASS {m['to_email']}")
         n2 += 1
         if args.apply:

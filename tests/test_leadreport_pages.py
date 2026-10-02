@@ -155,7 +155,7 @@ class UsTemplateDataTests(unittest.TestCase):
 
     def test_report_data(self):
         import csv, io
-        from lib.leadreport_us import report_data
+        from lib.leadreport_tpl import report_data
         buf = io.StringIO()
         w = csv.DictWriter(buf, fieldnames=["company", "phone", "email", "location", "event", "event_date", "signal",
                                             "industry", "address", "contact_name", "contact_role"])
@@ -164,7 +164,7 @@ class UsTemplateDataTests(unittest.TestCase):
                     "event": "A Cafe has no website: it is listed with a phone number and a Facebook page.",
                     "event_date": "2026-10-02", "signal": "no_website", "industry": "Cafe", "address": "1 Main St",
                     "contact_role": "Owner (ask for the owner)"})
-        d = report_data(buf.getvalue().encode(), plans=[{"key": "starter", "name": "Starter", "amount_cents": 12900,
+        d = report_data(buf.getvalue().encode(), "US", plans=[{"key": "starter", "name": "Starter", "amount_cents": 12900,
                                                          "currency": "usd"}], segment="S2")
         self.assertEqual(len(d["leads"]), 1)
         lead = d["leads"][0]
@@ -173,3 +173,34 @@ class UsTemplateDataTests(unittest.TestCase):
         self.assertTrue(lead["online"]["facebook"])
         self.assertNotIn("Who to ask for", [x["text"] for x in d["cover"]["inEveryLead"]])
         self.assertEqual(d["closing"]["plans"][0]["price"], "$129")
+
+
+class TemplateCountryTests(unittest.TestCase):
+    """Vorlage für sechs Länder: Region aus der Postleitzahl, Sprache wie die Lead-Texte."""
+
+    def test_regions(self):
+        from lib.report_regions import region_of
+        self.assertEqual(region_of("UK", "Hoyland Road, Barnsley, S74 0LT"), "Yorkshire and the Humber")
+        self.assertEqual(region_of("UK", "116 Western Road, Kilmarnock, KA3 1LA"), "Scotland")
+        self.assertEqual(region_of("FR", "6 bis Chem. des Cougoulins, Antibes, 06600"), "Provence-Alpes-Côte d'Azur")
+        self.assertEqual(region_of("BE", "Rue du Pont 13, Thuin, 6530"), "Hainaut")
+        self.assertEqual(region_of("NL", "Nieuwstraat 58, Oostburg, 4501 BE"), "Zeeland")
+        self.assertEqual(region_of("IE", "Main Street, Mallow, Co. Cork"), "Cork")
+
+    def test_language_and_map(self):
+        import csv, io
+        from lib.leadreport_tpl import report_data
+        buf = io.StringIO()
+        w = csv.DictWriter(buf, fieldnames=["company", "phone", "email", "location", "event", "event_date", "signal",
+                                            "industry", "address"])
+        w.writeheader()
+        w.writerow({"company": "A", "phone": "1", "email": "a@a.fr", "location": "Strasbourg", "event": "x",
+                    "event_date": "2026-10-02", "signal": "no_website", "industry": "Cafe",
+                    "address": "4 Boulevard Leblois, Strasbourg, 67000"})
+        fr = report_data(buf.getvalue().encode(), "FR", segment="S2")
+        self.assertEqual((fr["report"]["map"], fr["report"]["lang"]), ("fr", "fr"))
+        self.assertEqual(fr["leads"][0]["region"], "Grand Est")
+        nl = report_data(buf.getvalue().encode(), "NL", segment="S2")
+        self.assertEqual(nl["report"]["map"], "nl")
+        self.assertTrue(nl["report"]["lang"].startswith("en"))
+        self.assertNotIn("demo", fr["report"])
