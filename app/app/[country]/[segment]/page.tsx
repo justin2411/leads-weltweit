@@ -9,6 +9,7 @@ import { fill, fillDeep, type Personal } from "@/lib/personalize";
 import { personalFor } from "@/lib/recipient";
 import { db } from "@/lib/supabase";
 import { pickVariant } from "@/lib/variants";
+import { unstable_cache } from "next/cache";
 import { Tracker } from "./tracker";
 import { segmentCopy } from "@/content/segment-words";
 import { AREA_LABEL, COUNTRY_NAME, LANDING } from "@/content/landing-v2";
@@ -19,7 +20,11 @@ import S2_UK from "@/content/maps/s2-uk.json";
 import S2_FR from "@/content/maps/s2-fr.json";
 
 /** Karte und Kennzahlen einer echten Probe je Zielgruppe und Land (scripts: Lead-PDF-Vorlage, 02.10.2026). */
-const MAPS: Record<string, MapData> = { "S2:US": S2_US as unknown as MapData, "S2:UK": S2_UK as unknown as MapData, "S2:FR": S2_FR as unknown as MapData };
+// Kartenumriss als statische Datei (scripts/map_svg.py), im HTML nur die Pins
+const mapOf = (m: unknown, src: string): MapData => ({ ...(m as MapData), land: "", borders: "", neighbors: "", src });
+const MAPS: Record<string, MapData> = {
+  "S2:US": mapOf(S2_US, "/maps/s2-us.svg"), "S2:UK": mapOf(S2_UK, "/maps/s2-uk.svg"), "S2:FR": mapOf(S2_FR, "/maps/s2-fr.svg"),
+};
 import { countryWords, localize, segKey } from "@/lib/country";
 import HINTS from "@/content/industry-hints.json";
 import type { CSSProperties } from "react";
@@ -108,7 +113,7 @@ const cache = new Map<string, { at: number; rows: Sample[] }>();
  * Leads sehen gleich aus“): Kandidaten aus mehreren Abfragen (neueste, andere Signale, ältere Tage), dann
  * pickDiverse – verschiedene Signale, Branchen, Prioritäten, Tage und Website-Befunde. 10 Minuten zwischengespeichert.
  */
-async function countrySamples(page: { segment_id: string; country: string }): Promise<Sample[]> {
+async function countrySamplesRaw(page: { segment_id: string; country: string }): Promise<Sample[]> {
   const ck = `${page.segment_id}|${page.country}`;
   const hit = cache.get(ck);
   if (hit && process.env.NODE_ENV === "production" && Date.now() - hit.at < 10 * 60 * 1000) return hit.rows;
@@ -198,12 +203,26 @@ async function countrySamples(page: { segment_id: string; country: string }): Pr
   return out;
 }
 
+/**
+ * Beispiel-Leads im Datencache von Vercel (über alle Server-Instanzen, 10 Minuten): der erste Aufruf nach einer Pause
+ * – typisch nach einer Kaltmail – wartet sonst auf rund 12 Abfragen über den ganzen Lead-Bestand (Inhaber 02.10.2026:
+ * „die landingpage … braucht noch zu lange“).
+ */
+const countrySamplesCached = unstable_cache(
+  (segment_id: string, country: string) => countrySamplesRaw({ segment_id, country }),
+  ["landing-samples-v1"], { revalidate: 600 },
+);
+const countrySamples = (page: { segment_id: string; country: string }) =>
+  countrySamplesCached(page.segment_id, page.country).catch(() => countrySamplesRaw(page));
+const loadPageCached = unstable_cache(loadPage, ["landing-page-v1"], { revalidate: 120 });
+const getSettingsCached = unstable_cache(getSettings, ["landing-settings-v1"], { revalidate: 120 });
+
 async function resolve(params: Params, searchParams: Search) {
   const { country, segment } = await params;
   const sp = await searchParams;
   const slug = `${country}/${segment}`.toLowerCase();
   if (!/^[a-z]{2}\/[a-z0-9-]+$/.test(slug)) return null;
-  const [data, settings] = await Promise.all([loadPage(slug), getSettings()]);
+  const [data, settings] = await Promise.all([loadPageCached(slug), getSettingsCached()]);
   if (!data) return null;
   const isPublic = pageIsPublic(data.page, settings);
   const preview = !isPublic && sp.vorschau === "1" && (await isOwner());
