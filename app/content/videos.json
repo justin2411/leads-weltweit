@@ -15,9 +15,9 @@
     "seconds": 53
   },
   "fr/agences-web": {
-    "src": "/video/v5-fr-web-agencies.mp4",
-    "poster": "/video/v5-fr-web-agencies.jpg",
-    "seconds": 42
+    "src": "/video/v7-fr-web-agencies.mp4",
+    "poster": "/video/v7-fr-web-agencies.jpg",
+    "seconds": 48
   },
   "fr/conseillers-patrimoine": {
     "src": "/video/v5-fr-financial-advisers.mp4",
@@ -60,9 +60,9 @@
     "seconds": 42
   },
   "uk/web-agencies": {
-    "src": "/video/v5-uk-web-agencies.mp4",
-    "poster": "/video/v5-uk-web-agencies.jpg",
-    "seconds": 40
+    "src": "/video/v7-uk-web-agencies.mp4",
+    "poster": "/video/v7-uk-web-agencies.jpg",
+    "seconds": 46
   },
   "us/accountants": {
     "src": "/video/v5-us-accountants.mp4",
@@ -85,9 +85,9 @@
     "seconds": 44
   },
   "us/web-agencies": {
-    "src": "/video/v6-us-web-agencies.mp4",
-    "poster": "/video/v6-us-web-agencies.jpg",
-    "seconds": 51
+    "src": "/video/v7-us-web-agencies.mp4",
+    "poster": "/video/v7-us-web-agencies.jpg",
+    "seconds": 47
   },
   "de:ind/accountants": {
     "src": "/video/v5-de-accountants.mp4",
