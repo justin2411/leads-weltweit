@@ -97,11 +97,14 @@ def cta_button(company: str, region: str | None, lang: str) -> str:
 def page_button(url: str, lang: str) -> str:
     """Knopf zur persönlichen Seite (dort: Video, Beispiel-Leads, Probe mit einem Klick)."""
     label = "Voir mes 10 pistes gratuites" if lang == "fr" else "See my 10 free leads"
-    # Sicherheitshinweis unter dem Knopf (Inhaber 02.10.2026); nur, was stimmt: HTTPS-Link auf unsere eigene
-    # Domain (Inhaber: nur dieser Satz)
+    # Sicherheitshinweis unter dem Knopf (Inhaber 02.10.2026); nur, was stimmt: HTTPS-Link auf unsere eigene Domain
     host = re.sub(r"^https?://(www\.)?", "", url).split("/")[0] or site_label()
-    note = (f"&#128274; Lien sécurisé vers {html.escape(host)}" if lang == "fr" else
-            f"&#128274; Secure link to {html.escape(host)}")
+    # Kein Schloss-Emoji (Inhaber 02.10.2026: „sieht sehr schlecht aus“): goldenes Häkchen, Domain als eigener,
+    # unauffälliger Link (sonst färbt Gmail sie blau und unterstreicht sie)
+    dom = (f'<a href="{html.escape(url)}" style="color:{MUTED};text-decoration:none;font-weight:600;">'
+           f'{html.escape(host)}</a>')
+    note = (f'<span style="color:{GOLD};font-weight:700;">&#10003;</span>&nbsp; '
+            + (f"Lien sécurisé vers {dom}" if lang == "fr" else f"Secure link to {dom}"))
     return (f'<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 8px 0;"><tr>'
             f'<td style="background:{GOLD};border-radius:99px;">'
             f'<a href="{html.escape(url)}" style="display:inline-block;padding:13px 26px;font-family:{FONT};'
@@ -112,11 +115,11 @@ def page_button(url: str, lang: str) -> str:
 
 def process_strip(lang: str = "en") -> str:
     """Kleine Ablauf-Grafik für Webagenturen (wie im PDF), nur HTML-Tabelle: keine Bilder, keine externen
-    Ressourcen (Inhaber 02.10.2026). „Ready to call“ statt „Exclusive leads“: keine Exklusivitätszusage in Kaltmails."""
-    steps = ([("ON TROUVE", "Les bonnes entreprises"), ("ON VÉRIFIE", "Chaque contact"),
-              ("VOUS RECEVEZ", "Prêtes à appeler"), ("VOUS GAGNEZ", "Nouveaux clients")] if lang == "fr" else
-             [("WE FIND", "The right businesses"), ("WE CHECK", "Every contact"),
-              ("YOU GET", "Ready to call"), ("YOU WIN", "New clients")])
+    Ressourcen (Inhaber 02.10.2026). „Leads every Monday“ statt „Exclusive leads“: keine Exklusivitätszusage in Kaltmails."""
+    steps = ([("ON TROUVE", "Une raison d'appeler"), ("ON VÉRIFIE", "Chaque contact"),
+              ("VOUS RECEVEZ", "Chaque lundi"), ("VOUS GAGNEZ", "Nouveaux clients")] if lang == "fr" else
+             [("WE FIND", "A reason to call"), ("WE CHECK", "Every contact"),
+              ("YOU GET", "Leads every Monday"), ("YOU WIN", "New clients")])
     cells = []
     for i, (k, v) in enumerate(steps):
         if i:
