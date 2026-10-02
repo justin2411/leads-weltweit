@@ -5,6 +5,7 @@ import { checkoutMode, germanVatRate, lineItemFor, stripe, stripeEnabled, type P
 import { db } from "@/lib/supabase";
 import { basePlan, customCents, PER_WEEK, validWeekly } from "@/lib/custom-price";
 import { prospectIdFor } from "@/lib/recipient";
+import { chargesGermanVat, normalizeBilling } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
 
@@ -65,7 +66,8 @@ export async function POST(req: Request) {
   const r = String(f.get("r") ?? "");
   // Kauf der Kaltmail zuordnen (?r=<Token der Mail>): der Webhook speichert customers.prospect_id
   const prospectId = await prospectIdFor(r, page).catch(() => null);
-  const meta = { segment_id: page.segment_id, country: page.country, variant_id: v.id, package: pkg, mode,
+  const billing = normalizeBilling(f.get("billing"), page.country);
+  const meta = { segment_id: page.segment_id, country: page.country, variant_id: v.id, package: pkg, mode, billing,
                  amount_cents: String(plan?.amount_cents ?? ""), currency: plan?.currency ?? "", weekly: String(week ?? ""),
                  ...(prospectId ? { prospect_id: prospectId } : {}) };
   // Zurück aus Stripe: auf die Pläne-Seite (/start), nicht auf die Landingpage
@@ -75,10 +77,9 @@ export async function POST(req: Request) {
   const back = `${siteUrl()}/${page.slug}/start${q.size ? `?${q}` : ""}`;
   let session: any;
   try {
-    // 19 % USt. nur für Kunden in Deutschland, sonst netto. Stripe hat `dynamic_tax_rates` (Satz nach Rechnungsland)
-    // abgeschafft (Fehler 02.10.2026: „unknown parameter … deprecated“); ohne kostenpflichtiges Stripe Tax gilt der
-    // Satz deshalb fest nach dem Land der Seite: nur deutsche Seiten bekommen 19 %.
-    if (page.country === "DE") item.tax_rates = { 0: await germanVatRate(mode) };
+    // 19 % USt. nur bei Rechnungsland Deutschland (Auswahl auf der Buchungsseite, lib/billing.ts), sonst netto.
+    // Stripe hat `dynamic_tax_rates` abgeschafft; der Webhook gleicht die Angabe mit der echten Rechnungsadresse ab.
+    if (chargesGermanVat(billing)) item.tax_rates = { 0: await germanVatRate(mode) };
     session = await stripe("checkout/sessions", {
     mode: "subscription",
     line_items: { 0: item },
