@@ -63,11 +63,17 @@ export function lineItemFor(plan: Plan | undefined, mode: StripeMode, brand: str
 }
 
 /** Anzeige, z. B. "£199" oder "249 €". */
-export function priceLabel(plan: Plan): string {
+/** Schreibweise je Währung: $129 (US), £129 (UK), 1 192 € (FR) bzw. 1.192 € (DE). */
+export function moneyLocale(cur: string, lang?: string): string {
+  if (lang === "fr") return "fr-FR";
+  return cur === "USD" ? "en-US" : cur === "EUR" ? "de-DE" : "en-GB";
+}
+
+export function priceLabel(plan: Plan, lang?: string): string {
   if (plan.price_label) return plan.price_label;
   if (plan.amount_cents === undefined) return "";
   const cur = (plan.currency ?? "eur").toUpperCase();
-  return new Intl.NumberFormat(cur === "EUR" ? "de-DE" : "en-GB", { style: "currency", currency: cur, maximumFractionDigits: 0 })
+  return new Intl.NumberFormat(moneyLocale(cur, lang), { style: "currency", currency: cur, maximumFractionDigits: 0 })
     .format(plan.amount_cents / 100);
 }
 

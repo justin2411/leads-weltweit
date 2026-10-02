@@ -412,11 +412,12 @@ def cmd_prepare(args) -> int:
     known = None
     if REQUIRE_CONTACT:
         known = contact_companies(db)
-        # S2-Neugründungen ohne Website zählen trotzdem als vollständig
+        # Webagenturen (S2): keine Website-Pflicht (fehlende Website ist der Verkaufsgrund, Inhaber 27.09.2026) – für
+        # alle S2-Signale, nicht nur Neugründungen; sonst fielen alle Leads „ohne Website“ aus der Lieferung (Audit 02.10.)
         known_s2 = contact_companies(db, website_optional=True)
         before = len(leads)
         leads = [l for l in leads if l["company_id"] in known
-                 or (l.get("segment_id") == "S2" and l.get("signal_type") == "new_incorporation" and l["company_id"] in known_s2)]
+                 or (l.get("segment_id") == "S2" and l["company_id"] in known_s2)]
         known = {**known_s2, **known}
         print(f"{len(leads)} von {before} frischen Leads vollständig (Telefon, E-Mail, Website, Adresse, Ansprechperson)")
     ids = [l["id"] for l in leads]

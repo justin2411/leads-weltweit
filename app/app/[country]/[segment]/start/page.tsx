@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getSettings, isOwner, loadPage, pageIsPublic } from "@/lib/pages";
 import { BRAND, CONTACT } from "@/lib/site";
-import { checkoutMode, lineItemFor, priceLabel, stripeEnabled, type Plan } from "@/lib/stripe";
+import { checkoutMode, lineItemFor, moneyLocale, priceLabel, stripeEnabled, type Plan } from "@/lib/stripe";
 import { personalFor } from "@/lib/recipient";
 import { pickVariant } from "@/lib/variants";
 import { BrandShell, SiteFooter, SiteHeader } from "../../../chrome";
@@ -105,11 +105,11 @@ function offerMail(lang: "en" | "fr", country: string, segment: string, firma?: 
   ];
   return `mailto:${CONTACT}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body.join("\r\n"))}`;
 }
-function perLead(p: Plan): string | null {
+function perLead(p: Plan, lang?: string): string | null {
   const n = PER_WEEK[p.key];
   if (!n || !p.amount_cents) return null;
   const cur = (p.currency ?? "eur").toUpperCase();
-  return new Intl.NumberFormat(cur === "EUR" ? "de-DE" : "en-GB", { style: "currency", currency: cur, minimumFractionDigits: 2 })
+  return new Intl.NumberFormat(moneyLocale(cur, lang), { style: "currency", currency: cur, minimumFractionDigits: 2 })
     .format(p.amount_cents / 100 / (n * 52 / 12));
 }
 
@@ -221,9 +221,9 @@ export default async function StartPage({ params, searchParams }: { params: Para
             <section className={`plan2${hi ? " hi" : ""}`} key={p.key}>
               {hi && <span className="tag">{T.popular}</span>}
               <h2>{p.name}</h2>
-              <div className="price">{priceLabel(p)}<small>{T.per}</small></div>
+              <div className="price">{priceLabel(p, lang)}<small>{T.per}</small></div>
               <ul>{(T.plan[p.key] ?? (p.description ? [p.description] : [])).map((x) => <li key={x}>{x}</li>)}</ul>
-              {perLead(p) && <div className="pl">{T.perLead.replace("{p}", perLead(p)!)}</div>}
+              {perLead(p, lang) && <div className="pl">{T.perLead.replace("{p}", perLead(p, lang)!)}</div>}
               {online && lineItemFor(p, mode, BRAND) ? (
                 <form method="post" action="/api/checkout">
                   <input type="hidden" name="variant_id" value={v.id} />

@@ -23,7 +23,7 @@ export const WISHES: Record<string, Wish[]> = {
     { key: "not_mobile", en: "Not mobile-friendly", fr: "Site non adapté au mobile", de: "Nicht mobilfähig" },
     { key: "security", en: "Security gaps", fr: "Failles de sécurité", de: "Sicherheitslücken" },
     { key: "broken", en: "Broken website", fr: "Site en panne", de: "Kaputte Website" },
-    { key: "new_incorporation", en: "Newly registered", fr: "Création récente", de: "Neu gegründet" },
+    // „Neu gegründet“ entfernt (Audit 02.10.2026): S2-Neugründungen haben keine Kontaktdaten, nicht lieferbar
   ],
   "insurance-brokers": [
     { key: "new_incorporation", en: "Newly registered", fr: "Création récente", de: "Neu gegründet" },
