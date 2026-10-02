@@ -93,3 +93,8 @@ Alle 1280×720, 25 fps, H.264 (crf ~26, faststart), AAC. Zuordnung in `app/conte
 - **Überschriften ohne Satzzeichen (Inhaber 02.10.2026):** keine Punkte, Kommas, Doppelpunkte oder Ausrufezeichen in Überschriften; nur das Fragezeichen bei echten Fragen.
 - **Keine Binde- und Gedankenstriche in Kundentexten (Inhaber 02.10.2026: „sieht sehr nach KI aus“):** Seiten, PDFs, Mails und Videos ohne „–“, „—“ und ohne Bindestrich-Wörter („ready-made“, „mobile-friendly“); stattdessen Punkt, Komma oder umformulieren.
 - **Kunden-PDF Webagenturen (02.10.2026):** Vorlage „Premium Leads“ (6 Seiten, dunkles Titelblatt mit Ablaufgrafik, Preis pro Lead auf der letzten Seite, Knopf zur Buchungsseite `/[land]/web-agencies/start`). Geht mit der Mail zu den 10 Testleads raus, nennt keine Branchen der Lead-Firmen.
+
+## Mail-Kopf: Etikett „✓ Certified“ (02.10.2026)
+Rechts im blauen Kopf aller HTML-Mails ein Etikett „✓ Certified“ (FR „✓ Certifié“), Goldrand, reiner Text, kein Bild.
+Inhaber 02.10.2026 im Chat: „nimm certified“, auf Nachfrage „doch das haben wir“ und „echtes Prüfsiegel“.
+Name und Aussteller des Siegels liegen beim Inhaber; sobald bekannt, hier eintragen und ggf. „Certified by …“.
