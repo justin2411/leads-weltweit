@@ -551,9 +551,50 @@ def send_delivery(db, d: dict, live: bool) -> str:
     return "sent"
 
 
+def cmd_test_mail(args) -> int:
+    """Testmail der Montagslieferung an den Inhaber (Betreff mit [TEST]): echte, vollständige Leads aus dem Bestand,
+    gleiche Mail und Anhänge wie beim Kunden. Ändert nichts in der Datenbank (Leads bleiben unvergeben)."""
+    from lib.db import DB
+    from lib.html_email import render
+    from lib.leadreport import attachments
+    db = DB()
+    cand = db.select("leads", {"segment_id": f"eq.{args.segment}", "country": f"eq.{args.country}", "status": "eq.new",
+                               "select": LEAD_SELECT, "order": "created_at.desc", "limit": "400"})
+    known = contact_companies(db, website_optional=args.segment == "S2",
+                              only=sorted({l["company_id"] for l in cand if l.get("company_id")}))
+    leads, seen = [], set()
+    for l in cand:
+        if l["company_id"] in known and l["company_id"] not in seen:
+            seen.add(l["company_id"])
+            leads.append(l)
+        if len(leads) >= DEFAULT_MAX:
+            break
+    if not leads:
+        print("Keine vollständigen Leads für diese Branche und dieses Land – keine Testmail")
+        return 1
+    enrich(db, leads, known)
+    lang = _lang(args.country)
+    period = week_start() + dt.timedelta(days=7)
+    subject, body = delivery_text(lang, len(leads), period, [], args.country)
+    footer = f"{brand()} · {os.environ.get('SENDER_POSTAL_ADDRESS', '')}".strip(" ·")
+    files = attachments(to_csv(leads, lang), lang, None, "Example Studio", period, name=f"leads-{period.isoformat()}",
+                        segment=args.segment, country=args.country)
+    if not files:
+        print("Kein Anhang (Daten unvollständig) – keine Testmail")
+        return 1
+    _resend([args.to], f"[TEST] {subject}", body + "\n\n" + footer, render(body, footer, lang), files)
+    print(f"Lieferung (Test) mit {len(leads)} Leads an {args.to} gesendet")
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
+    tm = sub.add_parser("test-mail", help="Montagslieferung als Testmail an den Inhaber")
+    tm.add_argument("--to", required=True)
+    tm.add_argument("--segment", default="S2")
+    tm.add_argument("--country", default="US", choices=["UK", "US", "FR"])
+    tm.set_defaults(fn=cmd_test_mail)
     a = sub.add_parser("add-customer")
     a.add_argument("--company", required=True)
     a.add_argument("--country", required=True, choices=["UK", "US", "FR", "IE", "NL", "SE", "BE", "DE", "AT", "CH"])
