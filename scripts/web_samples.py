@@ -82,13 +82,13 @@ def main(argv=None) -> int:
         # Wunsch aus dem Formular ("Welche Leads?"): passende vollständige Leads zuerst, sonst auffüllen
         wish, wish_text = parse(r.get("note"))
         files, _ = regional_sample(db, r["segment_id"], r["country"], None, wish=wish)
-        body, blocks = sample_mail(lang, None, files, True)
+        body, blocks = sample_mail(lang, None, files, True, r["segment_id"], r["country"])
         if body and can_send:
             print(f"PROBE     {r['company_name']} ({r['segment_id']}/{r['country']})"
                   + (f" Wunsch: {','.join(wish)}" if wish else ""))
             n["sent"] += 1
             if args.apply:
-                send_reply(email, sample_subject(lang, None), body, None, lang, files, blocks, requested=True)
+                send_reply(email, sample_subject(lang, None, r["country"]), body, None, lang, files, blocks, requested=True)
                 db.update("sample_requests", {"id": r["id"]},
                           {"status": "sent", "sent_at": dt.datetime.now(dt.timezone.utc).isoformat()})
                 mark(db, msg, "sample_requested", "Probe über Landingpage angefordert und gesendet")

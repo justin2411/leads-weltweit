@@ -270,11 +270,11 @@ def _send_sample(db, r: dict) -> None:
     # Wunsch aus dem Probe-Formular ("Welche Leads?") bevorzugen
     files, regional = regional_sample(db, r["segment_id"], r["country"], r.get("region"), wish=parse(r.get("note"))[0])
     area = None  # landesweit statt regional (Inhaber 27.09.2026)
-    body, blocks = sample_mail(lang, area, files, regional)
+    body, blocks = sample_mail(lang, area, files, regional, r["segment_id"], r["country"])
     if not body or not (os.environ.get("RESEND_API_KEY") and os.environ.get("MAIL_FROM")):
         return
     # gleiche gestaltete Mail wie der Antwort-Assistent (Text + HTML, Pflichtfußzeile), eigener Betreff ohne "Re:"
-    send_reply(r["email"], sample_subject(lang, None), body, None, lang, files, blocks, requested=True)
+    send_reply(r["email"], sample_subject(lang, None, r["country"]), body, None, lang, files, blocks, requested=True)
     db.update("sample_requests", {"id": r["id"]}, {"status": "sent", "sent_at": dt.datetime.now(dt.timezone.utc).isoformat()})
 
 

@@ -465,63 +465,99 @@ def has_contacts(files: list[tuple[str, bytes]]) -> bool:
     return bool(rows) and all((r.get("phone") or "").strip() and (r.get("email") or "").strip() for r in rows)
 
 
+BROCHURES = Path(__file__).resolve().parent / "assets" / "brochure"
+BOOKING_SLUG = {("S2", "FR"): "agences-web"}  # übrige aus lib.playbook.SLUG
+SHORT_NEED = {"S2": ("a reason to talk to a web agency", "une bonne raison de parler à une agence web")}
+
+
+def booking_url(segment: str | None, country: str | None) -> str | None:
+    """Buchungsseite /{land}/{branche}/start (dort Pakete und Checkout), nur für Länder mit eigener Seite."""
+    from lib.playbook import SLUG
+    cc = (country or "").upper()
+    if not segment or cc not in ("US", "UK", "FR"):
+        return None
+    slug = BOOKING_SLUG.get((segment, cc)) or SLUG.get(segment)
+    if not slug:
+        return None
+    base = (os.environ.get("SITE_URL") or "https://www.nextgen-profit.de").rstrip("/")
+    return f"{base}/{cc.lower()}/{slug}/start"
+
+
+def brochure(segment: str | None, country: str | None) -> tuple[str, bytes] | None:
+    """Erklär-PDF „wie wir helfen“ zur Probe (Inhaber 02.10.2026), falls für Branche und Land vorhanden."""
+    f = BROCHURES / f"{segment}-{(country or '').upper()}.pdf"
+    if not segment or not f.exists():
+        return None
+    name = {"S2": "Web-Agencies"}.get(segment, segment)
+    return f"NextGen-Profit-{name}-{(country or '').upper()}.pdf", f.read_bytes()
+
+
 def sample_text(lang: str, region: str | None, has_files: bool, regional: bool = True, preview: str = "",
-                contacts: bool = False) -> str | None:
-    """Mail mit der Probe, im Namen des Inhabers. Ziel: wiederkehrende Lieferung (Abo), keine Preise, keine Zusagen.
-    preview: optionaler Absatz mit den ersten Einträgen (in HTML als Tabelle dargestellt)."""
+                contacts: bool = False, segment: str | None = None, url: str | None = None) -> str | None:
+    """Mail mit der Probe, im Namen des Inhabers (Inhaber 02.10.2026). Ziel: Abo über die Buchungsseite.
+    Keine Preise im Text (stehen im PDF und auf der Seite), keine Zusagen, landesweit, keine Regionen."""
     if not has_files:
         return None
-    if not regional:
-        region = None
-    parts: list[str]
+    need_en, need_fr = SHORT_NEED.get(segment or "", ("a reason to buy from you right now",
+                                                      "une bonne raison de faire appel à vous"))
     if lang == "fr":
         parts = [
             "Bonjour,",
-            "Voici vos 10 pistes gratuites" + (f" pour {region}" if region else "")
-            + ", en rapport PDF et en tableau pour votre CRM.",
-            "Chaque piste est une entreprise qui a en ce moment un besoin concret de votre service, "
-            "avec téléphone, e-mail et une phrase d'accroche prête à l'emploi.",
+            "Voici vos 10 pistes gratuites de toute la France, en court briefing PDF et en tableau pour votre CRM.",
+            f"Chaque piste est une entreprise locale avec {need_fr}, avec téléphone, e-mail, la personne à demander "
+            "et une phrase d'accroche.",
+            "Mon conseil : commencez par les pistes en priorité haute et utilisez la phrase d'accroche pour la "
+            "première minute de l'appel.",
+            "Si elles vous conviennent, vous recevez de nouvelles pistes comme celles-ci chaque lundi.",
         ]
-        if not regional:
-            parts.append("Votre zone n'avait pas encore assez d'événements récents, l'échantillon contient donc aussi "
-                         "des zones voisines. La livraison régulière ne couvre que vos villes.")
-        parts += [
-            "Mon conseil : commencez par les pistes en priorité haute. Leur besoin est le plus urgent, et la phrase d'accroche vous porte pendant la première minute de l'appel.",
-            "Si cela vous convient, vous recevez une nouvelle liste comme celle-ci chaque lundi, partout en France "
-            "et réservée à votre entreprise.",
-            "On commence lundi prochain ? Un simple « oui » suffit.",
-            "Bien cordialement,\n" + signature(lang),
-        ]
+        parts.append(f"Choisissez votre formule : {url}" if url else
+                     "Répondez simplement à cet e-mail et nous mettons tout en place.")
+        if url:
+            parts.append("Une question ? Répondez simplement à cet e-mail.")
+        parts.append("Bien cordialement,\n" + signature(lang))
     else:
+        area = region or "the country"
         parts = [
             "Hello,",
-            "Here are your 10 free leads" + (f" for {region}" if region else "")
-            + ", as a PDF report and as a spreadsheet for your CRM.",
-            "Each lead is a company with a real need for your service right now, "
-            "with phone, email and an opening line ready to use.",
+            f"Here are your 10 free leads from across {area}, as a short PDF briefing and a spreadsheet for your CRM.",
+            f"Each one is a local business with {need_en}, with phone, email, who to ask for and an opening line.",
+            "My tip: start with the leads marked high priority and use the opening line for the first minute of the call.",
+            "If they work for you, you get fresh leads like these every Monday.",
         ]
-        if not regional:
-            parts.append("Your area did not yet have enough recent events, so the sample also includes nearby areas. "
-                         "The regular delivery only covers your towns.")
-        parts += [
-            "My tip: start with the leads marked high priority. They need help most urgently, and the opening line gets you through the first minute of the call.",
-            "If the leads work for you, you get a new list like this every Monday, from across the country and reserved for your firm.",
-            "Shall we start next Monday? A simple \"yes\" is enough.",
-            "Kind regards,\n" + signature(lang),
-        ]
+        parts.append(f"Choose your plan: {url}" if url else "Just reply to this email and we will set it up.")
+        if url:
+            parts.append("Any questions? Just reply to this email.")
+        parts.append("Best regards,\n" + signature(lang))
     return "\n\n".join(parts)
 
 
-def sample_mail(lang: str, region: str | None, files: list[tuple[str, bytes]], regional: bool) -> tuple[str | None, dict]:
-    """(Text, HTML-Blöcke) für die Probe-Mail: Text mit Vorschau-Absatz, HTML mit Vorschau-Tabelle."""
-    # Keine Lead-Vorschau in der Mail (Inhaber 27.09.2026): der PDF-Report im Anhang zeigt die Leads
-    return sample_text(lang, region, bool(files), regional, contacts=has_contacts(files)), {}
+def sample_mail(lang: str, region: str | None, files: list[tuple[str, bytes]], regional: bool,
+                segment: str | None = None, country: str | None = None) -> tuple[str | None, dict]:
+    """(Text, HTML-Blöcke) für die Probe-Mail. Hängt die Erklär-PDF an (falls vorhanden) und macht aus der
+    Zeile „Choose your plan: …“ im HTML einen Button zur Buchungsseite."""
+    from drafts import LAND
+    url = booking_url(segment, country)
+    area = LAND.get((country or "").upper()) if lang != "fr" else None
+    text = sample_text(lang, area, bool(files), regional, contacts=has_contacts(files), segment=segment, url=url)
+    blocks = {}
+    if text and files is not None:
+        b = brochure(segment, country)
+        if b and all(n != b[0] for n, _ in files):
+            files.append(b)
+    if text and url:
+        from lib.html_email import plan_button
+        line = next(p for p in text.split("\n\n") if url in p)
+        blocks[line] = plan_button(url, lang)
+    return text, blocks
 
 
-def sample_subject(lang: str, region: str | None) -> str:
+def sample_subject(lang: str, region: str | None, country: str | None = None) -> str:
+    """Landesweit (Inhaber 27.09.2026): „Your 10 free leads from across the US“."""
+    from drafts import LAND
     if lang == "fr":
-        return f"Vos 10 pistes gratuites{' pour ' + region if region else ''}"
-    return f"Your 10 free leads{' for ' + region if region else ''}"
+        return "Vos 10 pistes gratuites de toute la France" if (country or "").upper() == "FR" else "Vos 10 pistes gratuites"
+    land = LAND.get((country or "").upper())
+    return f"Your 10 free leads from across {land}" if land else "Your 10 free leads"
 
 
 def hold_text(lang: str) -> str:
@@ -634,7 +670,7 @@ def handle_message(db, msg: EmailMessage, mid: str, apply: bool, own: set[str] |
     files = body = blocks = None
     if action in ("sample", "sample_owner"):
         files, _ = regional_sample(db, p["segment_id"], p["country"], p.get("region"))
-        body, blocks = sample_mail(lang, None, files, True)  # Leads aus dem ganzen Land, kein Regionshinweis
+        body, blocks = sample_mail(lang, None, files, True, p["segment_id"], p["country"])  # ganzes Land
         if not body and event_type == "sample_requested":
             # Probe nicht lieferbar: nicht als "Probe gesendet" zählen, sonst fragt followups.py nach einer
             # Probe, die nie ankam.
