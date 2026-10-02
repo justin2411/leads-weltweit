@@ -1,7 +1,7 @@
 # Lead-Werk (Inhaber 01.10.2026: „eigener Bereich der 24/7 die leads holt und anreichert“).
 # Fokus Webagenturen (Inhaber 02.10.2026: „erstmal auf Webagenturen fokussieren … massenweise“): 8 Teile S2
 # Website-Prüfung (US 5, UK 2, FR 2: unsichere, nicht handytaugliche, veraltete oder kaputte Websites), 21 Teile S2
-# ohne Website (US 18, FR und IE/NL/BE/SE je 1), 1 Teil S1 US (DOL LCA, Quellen-Scout). Dauerbetrieb, eine Welle: kostenlose Quellen -> Sicherheitsfilter -> kostenlose Anreicherung -> Qualitäts- und
+# ohne Website (US 18, IE/NL/BE/SE 1), 1 Teil S1 US (DOL LCA), 1 Teil S1 UK (Find a Tender, Quellen-Scout). Dauerbetrieb, eine Welle: kostenlose Quellen -> Sicherheitsfilter -> kostenlose Anreicherung -> Qualitäts- und
 # Signalkontrolle -> grüne Leads direkt in Supabase (watch_companies, observations, leads). Schon gespeicherte
 # Firmen werden übersprungen, so arbeitet sich jeder Lauf weiter durch den Bestand.
 # Lädt KEINE Lead-Dateien hoch (öffentliches Repo) – nur den Zählbericht. Sendet nichts.
@@ -93,9 +93,12 @@ jobs:
           # Quellen-Scout S1 (Inhaber 02.10.2026: „recruiting kunden und leads … darauf fokussieren“): US-Arbeitgeber mit
           # Fachkräfte-Bedarf aus den DOL-LCA-Daten, Test 50 -> 26 grün
           - { name: s1-us-lca, args: "--segments S1 --countries US --fmcsa-days 0 --formd-days 0 --s1-probe 0 --lca --per 4000 --max-tries 4000" }
-          # S2 ohne Website: FR und IE/NL/BE/SE je ein Teil. UK ohne Website ruht (Lauf 19: 5 grüne aus 3.792, Vorrat
+          # S2 ohne Website: IE/NL/BE/SE ein Teil (FR ruht seit R15, Platz an s1-uk-tender). UK ohne Website ruht (Lauf 19: 5 grüne aus 3.792, Vorrat
           # erschöpft, nur noch Rohbestand, Speichern lief in Zeitüberschreitung); der Platz ging an web-us-4
-          - { name: s2-fr-0, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000" }
+          # Quellen-Scout R15 (02.10.2026): S1 UK aus Find a Tender (KMU mit gewonnenem öffentlichem Auftrag, OGL v3),
+          # Test 300 -> 82 grün. Platz von s2-fr-0 (S2 FR ohne Website: ~47.500 Leads im Bestand, FR-Website-Prüfung
+          # läuft weiter mit 2 Teilen). Schnittstelle und Companies-House-Daten höchstens einmal am Tag (Zwischenspeicher)
+          - { name: s1-uk-tender, workers: 32, args: "--segments S1 --countries UK --s1-probe 0 --tender-days 45 --tender-pages 25 --per 4000 --max-tries 4000" }
           - { name: s2-north-0, args: "--segments S2 --countries IE,NL,BE,SE --s2-limit 20000 --per 4000 --max-tries 4000" }
           # Fokus Webagenturen (Inhaber 02.10.2026): US-Firmen ohne Website aus Overture, ~390.000 mit E-Mail, Test 95 % grün
           - { name: s2-us-0, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 0/18" }
@@ -147,6 +150,8 @@ jobs:
             out/cache/formd
             out/cache/careers_seen.json
             out/cache/wdc_job_domains.csv
+            out/cache/find_tender.json
+            out/cache/find_tender_ch.json
           key: lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-${{ github.run_id }}
           restore-keys: |
             lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-
@@ -256,6 +261,8 @@ jobs:
             out/cache/formd
             out/cache/careers_seen.json
             out/cache/wdc_job_domains.csv
+            out/cache/find_tender.json
+            out/cache/find_tender_ch.json
           key: lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-${{ github.run_id }}
       - name: Gedächtnis der Website-Prüfung sichern
         if: always() && steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')

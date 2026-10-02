@@ -96,6 +96,12 @@ def fits(seg: str, c: dict) -> tuple[bool, str]:
         ok = f.get("new_hires", 0) >= 3
         return ok, (f"{f['new_hires']} new hires for skilled roles filed with the US Department of Labor" if ok
                     else "fewer than 3 new hires filed")
+    if c["source"] == "find_tender":
+        if seg != "S1":
+            return False, "source only carries the contract-award signal"
+        ok = bool(f.get("contract_title") and f.get("buyer") and f.get("awarded_on"))
+        return ok, ("small or medium-sized supplier that just won a public contract: delivering it may need extra staff"
+                    if ok else "award notice without title, buyer or date")
     if c["source"] == "overture":
         if seg != "S2":
             return False, "source only carries the no-website signal"
@@ -467,8 +473,25 @@ def texts_lca(c: dict) -> dict:
             "urgency": "medium", "urgency_reason": why}
 
 
+def texts_tender(c: dict) -> dict:
+    """S1/UK aus Find a Tender: ehrlich als gewonnener öffentlicher Auftrag, keine offene Stelle behauptet."""
+    f, name = c["facts"], c["name"]
+    won = uk_day(f["awarded_on"])
+    signal = (f"{name} won a public contract, published on Find a Tender on {won}: "
+              f"\u201c{f['contract_title']}\u201d for {f['buyer']}.")
+    info = (f"{name}" + (f", based in {c['city']}," if c.get("city") else "")
+            + f" is a small or medium-sized UK supplier that was awarded a public contract by {f['buyer']} on {won}.")
+    opener = (f"I saw {name} won the \u201c{f['contract_title']}\u201d contract with {f['buyer']}. If delivering it "
+              f"means adding people to the team, would pre-screened candidates from a specialist recruiter help?")
+    why = "A newly won contract often has to be staffed within weeks of the award; no open role is claimed."
+    return {"signal": signal, "signal_date": f["awarded_on"], "company_info": info, "opener": opener,
+            "urgency": "medium", "urgency_reason": why}
+
+
 def texts(seg: str, c: dict) -> dict:
     """{'signal', 'signal_date', 'company_info', 'opener', 'urgency', 'urgency_reason'}"""
+    if c["source"] == "find_tender":
+        return texts_tender(c)
     if c["source"] in ("ats_jobs", "careers"):
         return texts_jobs(c)
     if c["source"] == "dol_lca":

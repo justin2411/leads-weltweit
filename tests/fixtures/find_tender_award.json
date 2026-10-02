@@ -1,0 +1,52 @@
+{
+  "uri": "https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages",
+  "license": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+  "_note": "synthetisch: erfundene Firmen, Namen und Nummern (Beispiel-Domains example.*, Telefon aus dem Ofcom-Dramabereich)",
+  "links": {"next": null},
+  "releases": [
+    {
+      "ocid": "ocds-h6vhtk-000001", "id": "099001-2026", "date": "2026-09-30T10:15:00+01:00", "tag": ["award", "contract"],
+      "tender": {"title": "Grounds Maintenance Services – Lot 2 (North Area) 2026-2029"},
+      "buyer": {"id": "GB-PPON-BUY1", "name": "Example Borough Council"},
+      "parties": [
+        {"id": "GB-PPON-BUY1", "name": "Example Borough Council", "roles": ["buyer"],
+         "contactPoint": {"name": "Procurement Team", "email": "procurement@council.example.gov.uk", "telephone": "+44 1632 960000"},
+         "address": {"streetAddress": "Town Hall", "locality": "Exampleton", "postalCode": "EX1 1AA", "countryName": "United Kingdom"}},
+        {"id": "GB-COH-01234567", "name": "Greenleaf Landscapes Ltd", "roles": ["supplier"],
+         "identifier": {"scheme": "GB-COH", "id": "1234567"},
+         "details": {"scale": "sme", "url": "www.greenleaf-landscapes.example"},
+         "contactPoint": {"email": "info@greenleaf-landscapes.example", "telephone": "01632 960123"},
+         "address": {"streetAddress": "4 Mill Lane", "locality": "Exampleton", "postalCode": "EX2 3BB", "countryName": "United Kingdom"}},
+        {"id": "GB-COH-09999999", "name": "Bigcorp Facilities PLC", "roles": ["supplier"],
+         "identifier": {"scheme": "GB-COH", "id": "09999999"}, "details": {"scale": "large"},
+         "address": {"streetAddress": "1 Tower Road", "locality": "London", "postalCode": "EC1A 1AA", "countryName": "United Kingdom"}}
+      ],
+      "awards": [{"id": "1", "status": "active", "date": "2026-09-29",
+                  "suppliers": [{"id": "GB-COH-01234567", "name": "Greenleaf Landscapes Ltd"},
+                                {"id": "GB-COH-09999999", "name": "Bigcorp Facilities PLC"}]}]
+    },
+    {
+      "ocid": "ocds-h6vhtk-000002", "id": "098500-2026", "date": "2026-09-20T09:00:00+01:00", "tag": ["award"],
+      "tender": {"title": "Temporary Agency Staff Framework"},
+      "buyer": {"id": "GB-PPON-BUY2", "name": "Example NHS Foundation Trust"},
+      "parties": [
+        {"id": "S1", "name": "Quickhire Recruitment Ltd", "roles": ["supplier"], "details": {"scale": "sme"},
+         "contactPoint": {"telephone": "01632 960555"},
+         "address": {"streetAddress": "9 High Street", "locality": "Exampleton", "postalCode": "EX3 4CC", "countryName": "United Kingdom"}},
+        {"id": "S2", "name": "Nordic Widgets AB", "roles": ["supplier"], "details": {"scale": "sme"},
+         "address": {"streetAddress": "Storgatan 1", "locality": "Stockholm", "postalCode": "111 22", "countryName": "Sweden"}},
+        {"id": "S3", "name": "Greenleaf Landscapes Ltd", "roles": ["supplier"],
+         "identifier": {"scheme": "GB-COH", "id": "01234567"}, "details": {"scale": "sme"},
+         "address": {"streetAddress": "4 Mill Lane", "locality": "Exampleton", "postalCode": "EX2 3BB", "countryName": "United Kingdom"}}
+      ],
+      "awards": [{"id": "1", "status": "active", "suppliers": [{"id": "S1"}, {"id": "S2"}, {"id": "S3"}]}]
+    },
+    {
+      "ocid": "ocds-h6vhtk-000003", "id": "080000-2026", "date": "2026-06-01T09:00:00+01:00", "tag": ["award"],
+      "tender": {"title": "Old Contract"}, "buyer": {"name": "Example County Council"},
+      "parties": [{"id": "S9", "name": "Oldwin Ltd", "roles": ["supplier"], "details": {"scale": "sme"},
+                   "address": {"streetAddress": "1 Old Road", "locality": "Exampleton", "postalCode": "EX9 9ZZ", "countryName": "United Kingdom"}}],
+      "awards": [{"id": "1", "status": "active", "suppliers": [{"id": "S9"}]}]
+    }
+  ]
+}

@@ -718,11 +718,12 @@ class WebAgencyFocusTests(unittest.TestCase):
         import yaml
         jobs = yaml.safe_load((ROOT / ".github" / "workflows" / "lead-werk.yml").read_text())["jobs"]
         for e in jobs["holen"]["strategy"]["matrix"]["include"]:
-            if e["name"] == "s1-us-lca":  # einziger S1-Teil (Quellen-Scout 02.10.2026)
+            if e["name"] in ("s1-us-lca", "s1-uk-tender"):  # S1-Teile (Quellen-Scout 02.10.2026, R15)
                 continue
             self.assertIn("--segments S2 ", e["args"] + " ", e["name"])
         us = [e for e in jobs["holen"]["strategy"]["matrix"]["include"] if e["name"].startswith("s2-us-")]
         self.assertEqual(len(us), 18)  # US-S2 wird für S1 nicht gekürzt
+        self.assertLessEqual(len(jobs["holen"]["strategy"]["matrix"]["include"]), 30)  # 30 + 8 Kunden-Werk = 38
 
 
 class DolLcaTests(unittest.TestCase):

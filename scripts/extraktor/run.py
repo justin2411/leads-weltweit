@@ -273,6 +273,52 @@ def load_careers(country: str, probe_limit: int, workers: int, fetcher, stats: C
     return cands
 
 
+def load_tender(days: int, max_pages: int, stats: Counter) -> list[dict]:
+    """S1/UK: KMU mit gewonnenem öffentlichem Auftrag (Find a Tender). Companies-House-Nummer aus der Meldung ->
+    fehlende Sitzadresse aus dem Register, Eigentümer (PSC) als Ansprechperson."""
+    from extraktor.sources import uk_find_tender
+    cands = uk_find_tender.load(dt.date.today() - dt.timedelta(days=days), max_pages, log=log)
+    cands = filters.dedupe([c for c in cands if not filters.pre_filter(c)])
+    nums = {c["facts"]["company_number"] for c in cands if c["facts"]["company_number"]}
+    if nums:
+        info, owners = tender_registry(nums)
+        for c in cands:
+            num = c["facts"]["company_number"]
+            if num not in info:
+                continue
+            c["legal_name"] = info[num]["legal_name"]
+            if not (c.get("street") and c.get("zip")):
+                c.update(street=info[num]["street"], city=info[num]["city"], zip=info[num]["zip"])
+            if not c.get("person_name") and owners.get(num):
+                c["person_name"], c["person_role"] = owners[num]["name"], owners[num]["role"]
+    stats["find_tender_candidates"] = len(cands)
+    return cands
+
+
+TENDER_CH = Path("out/cache/find_tender_ch.json")
+
+
+def tender_registry(nums: set[str], path: Path = TENDER_CH) -> tuple[dict, dict]:
+    """Sitz und Eigentümer je Firmennummer, höchstens einmal am Tag aus den Companies-House-Massendaten
+    (Tages-Zwischenspeicher: das Lead-Werk läuft alle ~80 Minuten, die Massendaten ändern sich täglich)."""
+    today = dt.date.today().isoformat()
+    try:
+        d = json.loads(path.read_text(encoding="utf-8"))
+        if d.get("day") == today and nums <= set(d.get("nums") or []):
+            log(f"UK: Register-Angaben für {len(nums)} Firmennummern aus dem Tages-Zwischenspeicher")
+            return d["info"], d["owners"]
+    except (OSError, ValueError, KeyError):
+        pass
+    import os
+    os.environ.setdefault("EXTRAKTOR_KEEP_PSC", "1")
+    info = uk_ch.details(nums, log=log)
+    owners = uk_ch.owners(set(info), log=log)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"day": today, "nums": sorted(nums), "info": info, "owners": owners}, default=str),
+                    encoding="utf-8")
+    return info, owners
+
+
 def load_ct(days: int, stats: Counter) -> list[dict]:
     """US/Connecticut: Neugründungen mit E-Mail aus dem offenen Firmenregister, Inhaber aus der Principals-Tabelle."""
     from extraktor.sources import ct_registry
@@ -494,6 +540,9 @@ def main(argv=None) -> int:
                     help="S2 US: Firmen ohne Website aus Overture (Fokus Webagenturen, 02.10.2026)")
     ap.add_argument("--lca", action="store_true",
                     help="S1 US: Arbeitgeber mit Fachkräfte-Bedarf aus den DOL-LCA-Daten (Quellen-Scout 02.10.2026)")
+    ap.add_argument("--tender-days", type=int, default=0,
+                    help="S1 UK: KMU mit gewonnenem öffentlichem Auftrag (Find a Tender), letzte N Tage (0 = aus)")
+    ap.add_argument("--tender-pages", type=int, default=30, help="Find a Tender: höchstens so viele Abrufe (je 100)")
     ap.add_argument("--web-check", action="store_true",
                     help="S2: Firmen MIT Website prüfen (unsicher, nicht handytauglich, veraltet, kaputt) statt ohne Website")
     ap.add_argument("--deadline-min", type=float, default=0,
@@ -545,6 +594,14 @@ def main(argv=None) -> int:
                if segments.fits("S1", c)[0]]
         stats["dol_lca_candidates"] = len(got)
         p["S1"] = got + p.get("S1", [])
+    if "UK" in countries and args.tender_days > 0 and "S1" in segs:
+        # S1/UK: KMU mit gewonnenem öffentlichem Auftrag (Find a Tender, Quellen-Scout 02.10.2026)
+        try:
+            got = [c for c in load_tender(args.tender_days, args.tender_pages, stats) if segments.fits("S1", c)[0]]
+        except Exception as e:  # noqa: BLE001 - eine ausgefallene Quelle darf die anderen nicht stoppen
+            log(f"S1/UK: Find a Tender übersprungen ({type(e).__name__}: {str(e)[:200]})")
+            got = []
+        p["S1/UK"] = got + p.get("S1/UK", [])
     if args.web_check and "S2" in segs:
         website_check.load_seen()
         part = tuple(int(x) for x in args.shard.split("/")) if args.shard else None
