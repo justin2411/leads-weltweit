@@ -646,8 +646,8 @@ class GithubProTests(unittest.TestCase):
         kunden = yaml.safe_load((wf / "kunden-werk.yml").read_text())["jobs"]
         n_lead = len(lead["holen"]["strategy"]["matrix"]["include"])
         n_kunden = len(kunden["pruefen"]["strategy"]["matrix"]["shard"])
-        # höchstens 25 gleichzeitig (Inhaber 02.10.2026, Disk-IO der Datenbank); übrige Teile starten in freien Plätzen
-        self.assertLessEqual(lead["holen"]["strategy"]["max-parallel"], min(n_lead, 25))
+        # alle Teile gleichzeitig, höchstens 30 (Inhaber 02.10.2026: „Mach 30“; vorher 25 wegen Disk-IO)
+        self.assertLessEqual(lead["holen"]["strategy"]["max-parallel"], min(n_lead, 30))
         self.assertEqual(kunden["pruefen"]["strategy"]["max-parallel"], n_kunden)
         self.assertLessEqual(n_lead + n_kunden, 38)  # GitHub Pro: 40 gleichzeitig, 2 frei für die übrigen Abläufe
         for e in lead["holen"]["strategy"]["matrix"]["include"]:
