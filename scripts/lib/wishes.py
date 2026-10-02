@@ -19,7 +19,7 @@ FLEET_WORDS = re.compile(r"\b(warehous\w*|fleet|logistic\w*|haulage|freight|tran
 FLEET_SIC = ("49", "52", "53")
 
 KEYS = {"job_open_30d", "jobs_3plus", "new_location", "new_incorporation", "new_director", "growth", "expansion",
-        "finance_roles", "no_website", "website_outdated", "not_mobile", "security", "fleet_warehouse"}
+        "finance_roles", "no_website", "website_outdated", "not_mobile", "security", "broken", "fleet_warehouse"}
 
 
 def parse(note: str | None) -> tuple[list[str], str]:
@@ -65,6 +65,8 @@ def matches(key: str, l: dict, sic: str | None = None) -> bool:
     if key == "website_outdated":
         # Website-Prüfung (02.10.2026): kaputt oder veraltet gehört zum Wunsch „veraltete Website“
         return st in ("website_outdated", "website_broken")
+    if key == "broken":
+        return st == "website_broken"
     if key == "security":
         return st == "no_https"
     if key == "new_director":

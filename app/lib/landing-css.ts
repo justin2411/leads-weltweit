@@ -140,12 +140,14 @@ export const LANDING_CSS = `
 .bx .lp2 .step h3{margin:0 0 6px;font-size:17px;color:#fff}.bx .lp2 .step p{margin:0;font-size:14.5px;color:#aab4ca}
 
 /* Probe-Formular */
-.bx .lp2 .formwrap{display:grid;grid-template-columns:1.1fr .9fr;gap:30px;align-items:start}
+.bx .lp2 .formwrap{display:grid;grid-template-columns:1.1fr .9fr;gap:30px;align-items:stretch}
 .bx .lp2 .formcard{background:linear-gradient(170deg,#13265a,#0B1530);color:#fff;border-radius:24px;padding:30px;box-shadow:0 40px 80px -45px rgba(11,21,48,.8)}
 .bx .lp2 .formcard h2{color:#fff}
 .bx .lp2 .formcard .gold-h{color:var(--gold,#E2C58C);background:linear-gradient(90deg,#E9D3A2,#C9A363);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .bx .lp2 .side2{display:flex;flex-direction:column;gap:14px}
-.bx .lp2 .getcard{background:#fff;border:1px solid var(--pline);border-radius:20px;padding:20px 20px 16px;display:grid;gap:14px}
+.bx .lp2 .getcard{background:#fff;border:1px solid var(--pline);border-radius:20px;padding:20px 20px 16px;display:flex;flex-direction:column;gap:14px;flex:1}
+.bx .lp2 .getcard .mapcard{flex:1;display:flex;flex-direction:column;min-height:0}
+.bx .lp2 .getcard .mapcard > svg{flex:1 1 0;min-height:150px;width:100%}
 .bx .lp2 .getcard .gf{display:flex;gap:12px;align-items:flex-start}
 .bx .lp2 .getcard .gf b{display:block;color:var(--pink);font-size:15px}
 .bx .lp2 .getcard .gf em{display:block;font-style:normal;color:#5b6478;font-size:14px;line-height:1.45}
