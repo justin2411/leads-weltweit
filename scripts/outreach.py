@@ -176,16 +176,18 @@ def _country_area(country: str) -> str | None:
 
 
 def html_version(body: str, footer: str, lang: str, company: str | None = None,
-                 region: str | None = None, url: str | None = None) -> str | None:
-    """Gestaltete HTML-Alternative (ohne Bilder/Tracking). EMAIL_HTML=0 schaltet sie ab."""
+                 region: str | None = None, url: str | None = None, segment: str | None = None) -> str | None:
+    """Gestaltete HTML-Alternative (ohne Bilder/Tracking). EMAIL_HTML=0 schaltet sie ab.
+    segment S2: kleine Ablauf-Grafik unter der Signatur (Inhaber 02.10.2026)."""
     if os.environ.get("EMAIL_HTML", "1") == "0":
         return None
-    from lib.html_email import cta_button, page_button, render
+    from lib.html_email import cta_button, page_button, process_strip, render
+    extra = process_strip(lang) if segment == "S2" else ""
     if url:  # Knopf zur persönlichen Landingpage; die Textzeile mit dem nackten Link entfällt im HTML
         body = "\n\n".join(p for p in re.split(r"\n\s*\n", body) if url not in p)
-        return render(body, footer, lang, page_button(url, lang))
+        return render(body, footer, lang, page_button(url, lang), extra=extra)
     cta = cta_button(company, region, lang) if company else ""
-    return render(body, footer, lang, cta)
+    return render(body, footer, lang, cta, extra=extra)
 
 
 def deliver(to: str, subject: str, text: str, unsub_url: str | None, html: str | None = None,
@@ -385,7 +387,8 @@ def cmd_send(args) -> int:
             provider_fields = deliver(m["to_email"], m["subject"], text, unsub,
                                       html_version(body, footer, m.get("language") or "en",
                                                    p["company_name"] if kind != "sample_followup" else None,
-                                                   _country_area(country), link),
+                                                   _country_area(country), link,
+                                                   segment=e["segment_id"] if kind == "initial" else None),
                                       mailbox=box if box.get("user") else None)
         except Exception as exc:  # noqa: BLE001 - Versandfehler melden, nicht abbrechen
             print(f"FEHLER Versand {m['to_email']}: {exc}")
@@ -439,7 +442,7 @@ def cmd_test(args) -> int:
     text = body.rstrip() + "\n\n" + footer
     print(f"Prüfung: {lint.summary()}\n\nBetreff: [TEST] {subject}\n\n{text}\n")
     out = deliver(args.to, f"[TEST] {subject}", text, unsubscribe_target("test"),
-                  html_version(body, footer, lang, name, _country_area(args.country), link))
+                  html_version(body, footer, lang, name, _country_area(args.country), link, segment=args.segment))
     print(f"gesendet an {args.to}: {out}")
     return 0
 

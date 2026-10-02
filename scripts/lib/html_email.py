@@ -97,15 +97,46 @@ def cta_button(company: str, region: str | None, lang: str) -> str:
 def page_button(url: str, lang: str) -> str:
     """Knopf zur persönlichen Seite (dort: Video, Beispiel-Leads, Probe mit einem Klick)."""
     label = "Voir mes 10 pistes gratuites" if lang == "fr" else "See my 10 free leads"
-    return (f'<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 24px 0;"><tr>'
+    # Sicherheitshinweis unter dem Knopf (Inhaber 02.10.2026); nur, was stimmt: HTTPS-Link auf unsere eigene Domain
+    host = re.sub(r"^https?://(www\.)?", "", url).split("/")[0] or site_label()
+    # Kein Schloss-Emoji (Inhaber 02.10.2026: „sieht sehr schlecht aus“): goldenes Häkchen, Domain als eigener,
+    # unauffälliger Link (sonst färbt Gmail sie blau und unterstreicht sie)
+    dom = (f'<a href="{html.escape(url)}" style="color:{MUTED};text-decoration:none;font-weight:600;">'
+           f'{html.escape(host)}</a>')
+    note = (f'<span style="color:{GOLD};font-weight:700;">&#10003;</span>&nbsp; '
+            + (f"Lien sécurisé vers {dom}" if lang == "fr" else f"Secure link to {dom}"))
+    return (f'<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 8px 0;"><tr>'
             f'<td style="background:{GOLD};border-radius:99px;">'
             f'<a href="{html.escape(url)}" style="display:inline-block;padding:13px 26px;font-family:{FONT};'
             f'font-size:15px;font-weight:500;color:{NAVY};text-decoration:none;white-space:nowrap;">{html.escape(label)} &rarr;</a>'
-            f'</td></tr></table>')
+            f'</td></tr></table>'
+            f'<p style="margin:0 0 24px 4px;font-family:{FONT};font-size:12px;line-height:17px;color:{MUTED};">{note}</p>')
+
+
+def process_strip(lang: str = "en") -> str:
+    """Kleine Ablauf-Grafik für Webagenturen (wie im PDF), nur HTML-Tabelle: keine Bilder, keine externen
+    Ressourcen (Inhaber 02.10.2026). „Leads every Monday“ statt „Exclusive leads“: keine Exklusivitätszusage in Kaltmails."""
+    steps = ([("ON TROUVE", "Une raison d'appeler"), ("ON VÉRIFIE", "Chaque contact"),
+              ("VOUS RECEVEZ", "Chaque lundi"), ("VOUS GAGNEZ", "Nouveaux clients")] if lang == "fr" else
+             [("WE FIND", "A reason to call"), ("WE CHECK", "Every contact"),
+              ("YOU GET", "Leads every Monday"), ("YOU WIN", "New clients")])
+    cells = []
+    for i, (k, v) in enumerate(steps):
+        if i:
+            cells.append(f'<td style="padding:0 3px;font-family:{FONT};font-size:13px;color:{GOLD};">&rarr;</td>')
+        last = i == len(steps) - 1
+        cells.append(
+            f'<td style="background:{NAVY if last else "#F4F1EA"};border-radius:8px;padding:8px 6px;text-align:center;">'
+            f'<div style="font-family:{FONT};font-size:9px;letter-spacing:1px;font-weight:700;'
+            f'color:{GOLD};">{html.escape(k)}</div>'
+            f'<div style="font-family:{FONT};font-size:12px;line-height:16px;font-weight:600;'
+            f'color:{"#FFFFFF" if last else NAVY};margin-top:2px;">{html.escape(v)}</div></td>')
+    return (f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:22px 0 0 0;">'
+            f'<tr>{"".join(cells)}</tr></table>')
 
 
 def render(body_text: str, footer_text: str, lang: str = "en", cta: str = "",
-           signer: tuple[str, str] | None = None, blocks: dict[str, str] | None = None) -> str:
+           signer: tuple[str, str] | None = None, blocks: dict[str, str] | None = None, extra: str = "") -> str:
     """body_text: Text ohne Signatur-Block (Signatur wird aus Umgebung gebaut), footer_text: Pflichtfußzeile.
     blocks: Absatz-Text -> fertiges HTML (z. B. Vorschau-Tabelle der Probe statt der Textliste)."""
     # Text in Absätze; Gruß + Signatur (letzter Absatz) gesondert gestalten
@@ -160,6 +191,7 @@ def render(body_text: str, footer_text: str, lang: str = "en", cta: str = "",
 <div style="font-family:{FONT};font-size:13px;line-height:20px;color:{MUTED};">{html.escape(tagline)}</div>
 <div style="margin-top:2px;">{link(label)}{f'<span style="font-family:{FONT};font-size:13px;color:{MUTED};"> · {html.escape(phone)}</span>' if phone else ''}</div>
 </td></tr></table>
+{extra}
 </td></tr>
 <tr><td style="padding:28px 40px 30px 40px;">
 <div style="border-top:1px solid {LINE};padding-top:16px;font-family:{FONT};font-size:11px;line-height:17px;color:{MUTED};">{footer_html}</div>
