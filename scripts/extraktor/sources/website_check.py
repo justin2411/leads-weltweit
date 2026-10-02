@@ -121,9 +121,19 @@ def recently_checked(today: dt.date | None = None) -> set[str]:
     return {k for k, v in _seen.items() if v >= cut}
 
 
+def in_part(source_id: str, part: tuple[int, int] | None) -> bool:
+    """Gleiche feste Aufteilung wie run.py --shard (Quelle + ID), damit parallele Teile nie dieselbe Firma prüfen."""
+    if not part:
+        return True
+    import hashlib
+    i, n = part
+    return int(hashlib.md5(f"{SOURCE}:{source_id}".encode()).hexdigest(), 16) % n == i
+
+
 def with_website(country: str, limit: int, log=print, exclude: set[str] | None = None,
-                 path: Path | None = None) -> list[dict]:
-    """Firmen mit eingetragener Website und Telefon, ohne Ketten (Name oder Domain mehrfach) und ohne Behörden."""
+                 path: Path | None = None, part: tuple[int, int] | None = None) -> list[dict]:
+    """Firmen mit eingetragener Website und Telefon, ohne Ketten (Name oder Domain mehrfach) und ohne Behörden.
+    part = (i, n): nur der eigene Anteil dieses Teils, damit `limit` eigene Firmen zählt."""
     import duckdb
     path = path or web_cache_for(country)
     if not path.exists():
@@ -165,6 +175,8 @@ def with_website(country: str, limit: int, log=print, exclude: set[str] | None =
         offset += len(rows)
         for r in rows:
             d = dict(zip(cols, r))
+            if not in_part(d["id"], part):
+                continue
             if overture.SKIP_CAT.search(d["category"] or "none") or not (d["street"] and d["postcode"]):
                 continue
             if overture.BRANDS.search(d["name"] or "") or not usable(d["websites"][0]):

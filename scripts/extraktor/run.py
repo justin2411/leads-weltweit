@@ -142,11 +142,11 @@ def load_overture_s2(country: str, limit: int, stats: Counter, exclude: set[str]
     return cands
 
 
-def load_web(country: str, limit: int, stats: Counter) -> list[dict]:
+def load_web(country: str, limit: int, stats: Counter, part: tuple[int, int] | None = None) -> list[dict]:
     """S2 Website-Prüfung: Overture-Firmen MIT Website, die dieser Teil in den letzten RECHECK_DAYS noch nicht
-    geprüft hat (Gedächtnis im Zwischenspeicher, keine Datenbank-Abfrage je Firma)."""
+    geprüft hat (Gedächtnis im Zwischenspeicher, keine Datenbank-Abfrage je Firma). part: eigener Anteil (--shard)."""
     seen = website_check.recently_checked()
-    rows = website_check.with_website(country, limit, log=log, exclude=seen)
+    rows = website_check.with_website(country, limit, log=log, exclude=seen, part=part)
     cands = filters.dedupe([c for c in (website_check.to_candidate(d, country) for d in rows) if not filters.pre_filter(c)])
     stats[f"overture_web_{country}"] = len(cands)
     stats[f"overture_web_{country}_skipped_recent"] = len(seen)
@@ -169,6 +169,14 @@ def process_web(c: dict, fetcher) -> str:
     site_emails = W.emails_on_page(res["html"]) if res["html"] else []
     if not c.get("email") or (not E.is_freemail(c["email"]) and E.email_domain(c["email"]) != dom):
         e = E.pick_email(site_emails, dom)
+        if not e and res["html"] and fetcher is not None:
+            # nur bei einem Befund: Kontakt-/Impressumsseite der eigenen Website (robots.txt, Drosselung wie immer)
+            for sub in W.subpage_links(res["html"], final, limit=2):
+                got = fetcher.get(sub)
+                if got:
+                    e = E.pick_email(W.emails_on_page(got[1]), dom)
+                    if e:
+                        break
         if e:
             c["email"] = e
             c["evidence"]["email_from"] = "website"
@@ -539,8 +547,9 @@ def main(argv=None) -> int:
         p["S1"] = got + p.get("S1", [])
     if args.web_check and "S2" in segs:
         website_check.load_seen()
+        part = tuple(int(x) for x in args.shard.split("/")) if args.shard else None
         for co in countries:
-            p[f"S2/{co}"] = load_web(co, args.s2_limit, stats)
+            p[f"S2/{co}"] = load_web(co, args.s2_limit, stats, part)
     for co in ("UK", "FR") + S2_EXTRA + (("US",) if args.us_overture else ()):
         if co in countries and "S2" in segs and not args.web_check:
             known = {i for s_, i in guard.known if s_ == "overture"}
