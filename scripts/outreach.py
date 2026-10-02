@@ -388,8 +388,8 @@ def cmd_send(args) -> int:
         link = (landing_link(db, pages, e["segment_id"], country, m["unsubscribe_token"])
                 if kind in ("initial", "followup") else None)
         plan_url = _plan_url(body) if kind == "sample_followup" else None
-        # Nachfassmail: Erklär-PDF „How it works“ im Anhang (Inhaber 02.10.2026)
-        files = [b] if kind == "followup" and (b := brochure(e["segment_id"], country)) else None
+        # Nachfrage nach der Probe: Erklär-PDF „How it works“ im Anhang (Inhaber 02.10.2026)
+        files = [b] if kind == "sample_followup" and (b := brochure(e["segment_id"], country)) else None
         if link:
             lang = m.get("language") if m.get("language") in LANDING_LINE else "en"
             body += "\n\n" + LANDING_LINE[lang].format(url=link)
@@ -497,7 +497,7 @@ def _test_followup(args, name: str) -> int:
                            unsubscribe_url=unsubscribe_target("test"))
     text = body.rstrip() + "\n\n" + footer
     print(f"Prüfung: {lint.summary()}\n\nBetreff: [TEST] {subject}\n\n{text}\n")
-    files = [b] if args.art == "nachfass" and (b := brochure(args.segment, args.country)) else None
+    files = [b] if args.art == "probe-nachfass" and (b := brochure(args.segment, args.country)) else None
     out = deliver(args.to, f"[TEST] {subject}", text, unsubscribe_target("test"),
                   html_version(body, footer, lang, name if args.art == "nachfass" else None,
                                _country_area(args.country), link or plan_url, plan=bool(plan_url)),
