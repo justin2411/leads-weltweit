@@ -110,6 +110,11 @@ function perLead(p: Plan): string | null {
     .format(p.amount_cents / 100 / (n * 52 / 12));
 }
 
+/** Erklärvideo „How it works“ je Land (zeigt Preise in der Landeswährung, darum nicht länderübergreifend). */
+const HOW_VIDEO: Record<string, { src: string; poster: string; vtt: string; srclang: string }> = {
+  us: { src: "/video/howitworks-us.mp4", poster: "/video/howitworks-us.jpg", vtt: "/video/howitworks-us.vtt", srclang: "en" },
+};
+
 const CSS = `
 .bx .start{padding:72px 0 88px}
 .bx .start .eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);font-weight:700}
@@ -150,8 +155,13 @@ const CSS = `
 .bx .sx-steps .n span{font-size:30px;font-weight:800;letter-spacing:-.03em;line-height:1;background:linear-gradient(135deg,#d4b075,#8a6a33);-webkit-background-clip:text;background-clip:text;color:transparent}
 .bx .sx-steps .n i{flex:1;height:1px;background:linear-gradient(90deg,rgba(176,141,87,.55),rgba(176,141,87,0))}
 .bx .sx-steps b{display:block;font-size:17px;margin-bottom:6px;letter-spacing:-.01em}.bx .sx-steps p{margin:0;color:var(--soft);font-size:14.5px;line-height:1.55}
+.bx .sx-vid{position:relative;border-radius:22px;overflow:hidden;background:#0b1430;border:1.5px solid rgba(176,141,87,.55);box-shadow:0 40px 90px -50px rgba(11,20,48,.75),0 30px 70px -48px rgba(176,141,87,.6);aspect-ratio:16/9}
+.bx .sx-vid video{display:block;width:100%;height:100%;object-fit:cover;background:#0b1430}
+.bx .sx-steps.short{margin-top:16px}.bx .sx-steps.short li{padding:18px 20px;display:flex;align-items:center;gap:14px}
+.bx .sx-steps.short .n{margin:0}.bx .sx-steps.short .n i{display:none}.bx .sx-steps.short .n span{font-size:26px}
+.bx .sx-steps.short b{margin:0;font-size:16px}
 @media (max-width:1100px){.bx .sx-steps{grid-template-columns:repeat(2,1fr)}}
-@media (max-width:820px){.bx .sx-steps{grid-template-columns:1fr}}
+@media (max-width:820px){.bx .sx-steps{grid-template-columns:1fr}.bx .sx-steps.short{grid-template-columns:1fr 1fr;gap:10px}.bx .sx-steps.short li{padding:14px;gap:10px}.bx .sx-steps.short .n span{font-size:22px}.bx .sx-steps.short b{font-size:14.5px;line-height:1.3}}
 .bx .start .billing{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 22px;font-size:14.5px;font-weight:600;color:var(--soft)}
 .bx .start .billing select{font:inherit;font-weight:600;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 44px 10px 14px;-webkit-appearance:none;appearance:none;cursor:pointer;background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23b08d57' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 16px center}
 .bx .start .billing select:focus{outline:2px solid rgba(176,141,87,.45);outline-offset:1px}
@@ -179,6 +189,7 @@ export default async function StartPage({ params, searchParams }: { params: Para
   if (!plans.length) notFound();
   const mode = checkoutMode({ vercelEnv: process.env.VERCEL_ENV, ownerPreview: preview });
   const online = stripeEnabled(mode);
+  const howVideo = HOW_VIDEO[String(page.country).toLowerCase()];
   const who = await personalFor(sp.r, page);
 
   return (
@@ -237,8 +248,15 @@ export default async function StartPage({ params, searchParams }: { params: Para
 
         {!online && <p className="note">{T.mailNote}</p>}
         <div className="sx-how"><div className="hd">{T.how}</div>
+          {online && howVideo ? (<>
+            <div className="sx-vid"><video controls playsInline preload="metadata" poster={howVideo.poster} src={howVideo.src}>
+              <track kind="captions" src={howVideo.vtt} srcLang={howVideo.srclang} label={lang === "fr" ? "Français" : "English"} />
+            </video></div>
+            <ol className="sx-steps short">{T.steps.map(([h], k) => (
+              <li key={h}><div className="n"><span>{String(k + 1).padStart(2, "0")}</span></div><b>{h}</b></li>))}</ol>
+          </>) : (
           <ol className="sx-steps">{(online ? T.steps : T.stepsMail).map(([h, d], k) => (
-            <li key={h}><div className="n"><span>{String(k + 1).padStart(2, "0")}</span><i /></div><b>{h}</b><p>{d}</p></li>))}</ol>
+            <li key={h}><div className="n"><span>{String(k + 1).padStart(2, "0")}</span><i /></div><b>{h}</b><p>{d}</p></li>))}</ol>)}
         </div>
         <p className="note">{T.q} <a href={`mailto:${CONTACT}`}>{CONTACT}</a>.</p>
       </div></main>
