@@ -77,3 +77,16 @@ HTML + Text (multipart).
 6. Filter-Formular, Willkommensmail, erste Lieferung am Montag (Vorschau an den Inhaber)
 
 Die Schritte 2–6 werden nach demselben Muster abgestimmt und hier ergänzt, sobald sie abgenommen sind.
+
+### 5.1 Lead-PDF (abgenommen 02.10.2026: „pdf ist super“)
+
+`scripts/lib/leadreport.py` `build_html()`; gilt für Proben und Wochenlieferungen.
+
+| Seite | Inhalt |
+|---|---|
+| 1 Deckblatt (dunkelblau) | Etikett „★ Free sample“, Siegel „Premium verified“, Titel „Your 10 free leads“, Unterzeile Anlass · Land, 3–4 Kennzahlen (Firmen, mit Telefon und E-Mail, mit Ansprechperson nur wenn > 0, Prüfdatum), Übersicht aller Firmen (Branche, Ort, Telefon; bei gemischten Anlässen „Reason“), 3 Schritte Pick/Call/Follow up |
+| 2–3 Karten | 5 je Seite: Nummer, Firma, Branche · Ort, Anlass-Etikett; Kontaktband (Telefon, E-Mail, Adresse, Ansprechperson und Website nur wenn vorhanden); „Why now“ kurz ohne Wiederholungen + Einstiegsfrage; „Your pitch“ + Bedarfs-Chips |
+| 4 Abschluss (nur Probe) | Nutzen, Ablauf, Pakete, Button zur Buchungsseite |
+
+Regeln: keine leeren Felder („–“), keine Platzhalter wie „ask for the owner“, keine Sätze, die bei allen Firmen gleich sind.
+Dateinamen nach Inhalt: `Your-10-Free-Leads-US.pdf`, `How-It-Works-US.pdf`, `sample-leads.csv` (CSV ohne leere Ansprechperson-Spalten).
