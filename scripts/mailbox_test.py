@@ -4,6 +4,7 @@
 1. DNS: MX/SPF/DMARC von nextgen-profit.de (scripts/dns_check.py)
 2. SMTP: Anmeldung und Testmail vom Postfach an OWNER_EMAIL (Versand)
 3. Empfang: Testmail von außen (Resend) an das Postfach, danach per IMAP suchen (prüft den MX-Eintrag)
+4. DKIM: Testmail vom Postfach an sich selbst, per IMAP holen und die Signatur (d=Domain) mit dkimpy prüfen
 """
 from __future__ import annotations
 
@@ -41,6 +42,40 @@ def resend_send(to: str, subject: str, body: str) -> None:
                       headers={"Authorization": f"Bearer {os.environ['RESEND_API_KEY']}"},
                       json={"from": os.environ["MAIL_FROM"], "to": [to], "subject": subject, "text": body})
     r.raise_for_status()
+
+
+def imap_fetch(token: str, wait: int = 180) -> bytes | None:
+    """Rohe Mail mit dem Token im Betreff aus dem Postfach holen (Posteingang oder Spam)."""
+    end = time.time() + wait
+    while time.time() < end:
+        with imaplib.IMAP4_SSL(os.environ["IMAP_HOST"]) as m:
+            m.login(os.environ["IMAP_USER"], os.environ["IMAP_PASSWORD"])
+            for box in ("INBOX", "Spam", "Junk"):
+                if m.select(box, readonly=True)[0] == "OK":
+                    typ, data = m.search(None, "SUBJECT", token)
+                    if typ == "OK" and data[0].split():
+                        typ, msg = m.fetch(data[0].split()[-1], "(BODY.PEEK[])")
+                        if typ == "OK":
+                            return msg[0][1]
+        time.sleep(15)
+    return None
+
+
+def dkim_check(raw: bytes, domain: str) -> bool:
+    import re
+    sigs = re.findall(rb"(?im)^DKIM-Signature:.*?(?=^\S)", raw, flags=re.S) if raw else []
+    ds = [m.decode() for s in sigs for m in re.findall(rb"\bd=([^;\s]+)", s)]
+    print(f"   DKIM-Signaturen: {ds or 'keine'}")
+    if domain not in ds:
+        return False
+    try:
+        import dkim
+        ok = bool(dkim.verify(raw))
+    except Exception as exc:  # noqa: BLE001
+        print(f"   Prüfung nicht möglich: {type(exc).__name__}: {exc}")
+        return False
+    print(f"   Signatur gültig: {ok}")
+    return ok
 
 
 def imap_find(token: str, wait: int = 180) -> bool:
@@ -90,6 +125,18 @@ def main() -> int:
         ok &= found
     except Exception as exc:  # noqa: BLE001
         print(f"FEHLER Empfang: {type(exc).__name__}: {exc}")
+        ok = False
+
+    print("4. DKIM")
+    domain = os.environ.get("DOMAIN", "nextgen-profit.de")
+    try:
+        addr = os.environ["SMTP_FROM"].split("<")[-1].strip("> ")
+        smtp_send(addr, f"[TEST] DKIM {token}", "DKIM-Test: Signatur der eigenen Domain?")
+        good = dkim_check(imap_fetch(f"DKIM {token}"), domain)
+        print(f"{'OK    ' if good else 'FEHLT '} DKIM-Signatur für {domain} {'gültig' if good else 'fehlt oder ungültig'}")
+        ok &= good
+    except Exception as exc:  # noqa: BLE001
+        print(f"FEHLER DKIM: {type(exc).__name__}: {exc}")
         ok = False
     return 0 if ok else 1
 
