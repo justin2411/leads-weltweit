@@ -30,7 +30,7 @@ import requests  # noqa: E402
 from extraktor import enrich as E  # noqa: E402
 from extraktor import filters, qc, sc, segments  # noqa: E402
 from extraktor.model import CSV_COLUMNS  # noqa: E402
-from extraktor.sources import fmcsa, formd, fr_bodacc, overture, uk_ch  # noqa: E402
+from extraktor.sources import fmcsa, formd, fr_bodacc, overture, uk_ch, website_check  # noqa: E402
 from lib import websites as W  # noqa: E402
 
 FORM_D_SEGMENTS = ("S1", "S5", "S9")
@@ -140,6 +140,44 @@ def load_overture_s2(country: str, limit: int, stats: Counter, exclude: set[str]
                     c["person_name"], c["person_role"] = o["name"], o["role"]
     stats[f"overture_{country}"] = len(cands)
     return cands
+
+
+def load_web(country: str, limit: int, stats: Counter) -> list[dict]:
+    """S2 Website-Prüfung: Overture-Firmen MIT Website, die dieser Teil in den letzten RECHECK_DAYS noch nicht
+    geprüft hat (Gedächtnis im Zwischenspeicher, keine Datenbank-Abfrage je Firma)."""
+    seen = website_check.recently_checked()
+    rows = website_check.with_website(country, limit, log=log, exclude=seen)
+    cands = filters.dedupe([c for c in (website_check.to_candidate(d, country) for d in rows) if not filters.pre_filter(c)])
+    stats[f"overture_web_{country}"] = len(cands)
+    stats[f"overture_web_{country}_skipped_recent"] = len(seen)
+    return cands
+
+
+def process_web(c: dict, fetcher) -> str:
+    """Startseite prüfen und Befunde in den Kandidaten schreiben; gibt den Grund zurück, wenn es keinen Lead gibt."""
+    res = website_check.inspect(c, fetcher)
+    website_check.remember(c["source_id"])
+    website_check.count(res)
+    if not res["findings"]:
+        return f"no_finding:{res['note'] or 'site_ok'}"
+    final = res["final_url"] or c["facts"]["listed_website"]
+    dom = W.site_domain(final)
+    c["website"] = f"{'https' if final.startswith('https') else 'http'}://{dom}"
+    c["facts"].update(findings=res["findings"], signal_type=website_check.primary(res["findings"]),
+                      domain=dom, checked_on=dt.date.today())
+    c["evidence"]["website"] = {"method": "overture_listing", "score": 0, "evidence": res["belongs"]}
+    site_emails = W.emails_on_page(res["html"]) if res["html"] else []
+    if not c.get("email") or (not E.is_freemail(c["email"]) and E.email_domain(c["email"]) != dom):
+        e = E.pick_email(site_emails, dom)
+        if e:
+            c["email"] = e
+            c["evidence"]["email_from"] = "website"
+    if res["html"]:
+        c["evidence"]["site_phones"] = W.phones_on_page(res["html"], c["country"])[0][:5]
+    if c.get("email"):
+        from enrich import mx_ok
+        c["evidence"]["mx"] = mx_ok(E.email_domain(c["email"]))
+    return ""
 
 
 SKIP_SPONSOR = re.compile(r"\b(care|nursing|home|homes|healthcare|domiciliary|church|school|academy|trust|nhs|council|"
@@ -302,15 +340,28 @@ def pools(segs: list[str], fm: list[dict], fd: list[dict], distinct: bool) -> di
 # ---------------------------------------------------------------------------
 def process(c: dict, seg: str, fetcher, shared: Counter, guard: filters.Guard) -> dict:
     c = {**c, "evidence": {}, "facts": dict(c["facts"])}
-    why = guard.problem(c)
+    # Website-Prüfung: Sperrliste erst bei einem Befund prüfen (Datenbank schonen: die meisten Seiten sind in Ordnung)
+    why = None if c["source"] == website_check.SOURCE else guard.problem(c)
     if why:
         return {**c, "segment": seg, "ampel": "skip", "qc": {"status": "skip", "blocking": [why], "missing": [],
                                                               "warnings": [], "evidence": []},
                 "sc": {"status": "skip", "problems": []}}
     try:
-        E.enrich(c, fetcher, need_website=True)
+        if c["source"] == website_check.SOURCE:
+            why = process_web(c, fetcher)
+            why = why or guard.problem(c)  # mit der E-Mail von der Website gegen die Sperrliste
+            if why:  # Website ohne Befund: kein Lead, nichts speichern (nur im Gedächtnis, nicht erneut prüfen)
+                return {**c, "segment": seg, "ampel": "skip", "qc": {"status": "skip", "blocking": [why], "missing": [],
+                                                                      "warnings": [], "evidence": []},
+                        "sc": {"status": "skip", "problems": []}}
+        else:
+            E.enrich(c, fetcher, need_website=True)
     except Exception as exc:  # noqa: BLE001 - ein Fehler bei einer Firma darf den Lauf nicht beenden
         c["evidence"]["enrich_error"] = f"{type(exc).__name__}: {exc}"[:200]
+        if c["source"] == website_check.SOURCE:
+            return {**c, "segment": seg, "ampel": "skip", "qc": {"status": "skip", "blocking": ["check_error"],
+                                                                  "missing": [], "warnings": [], "evidence": []},
+                    "sc": {"status": "skip", "problems": []}}
     t = segments.texts(seg, c)
     q = qc.run(c, seg, shared)
     s = sc.run(c, seg, t)
@@ -368,6 +419,10 @@ def row(l: dict) -> dict:
         "qc_notes": "; ".join(q["blocking"] + [f"missing:{m}" for m in q["missing"]] + q["warnings"]
                               + [f"+{e}" for e in q["evidence"]]),
         "sc": s["status"], "sc_notes": "; ".join(s["problems"]),
+        "signal_type": (l.get("facts") or {}).get("signal_type", ""),
+        "signal_evidence": json.dumps({"findings": l["facts"]["findings"], "checked_on": str(l["facts"]["checked_on"]),
+                                       "listed_website": l["facts"].get("listed_website")}, ensure_ascii=False)
+        if (l.get("facts") or {}).get("findings") else "",
     }
 
 
@@ -431,6 +486,8 @@ def main(argv=None) -> int:
                     help="S2 US: Firmen ohne Website aus Overture (Fokus Webagenturen, 02.10.2026)")
     ap.add_argument("--lca", action="store_true",
                     help="S1 US: Arbeitgeber mit Fachkräfte-Bedarf aus den DOL-LCA-Daten (Quellen-Scout 02.10.2026)")
+    ap.add_argument("--web-check", action="store_true",
+                    help="S2: Firmen MIT Website prüfen (unsicher, nicht handytauglich, veraltet, kaputt) statt ohne Website")
     ap.add_argument("--deadline-min", type=float, default=0,
                     help="nach N Minuten keine neuen Kandidaten mehr anfangen, Ergebnisse speichern (0 = aus)")
     args = ap.parse_args(argv)
@@ -480,8 +537,12 @@ def main(argv=None) -> int:
                if segments.fits("S1", c)[0]]
         stats["dol_lca_candidates"] = len(got)
         p["S1"] = got + p.get("S1", [])
+    if args.web_check and "S2" in segs:
+        website_check.load_seen()
+        for co in countries:
+            p[f"S2/{co}"] = load_web(co, args.s2_limit, stats)
     for co in ("UK", "FR") + S2_EXTRA + (("US",) if args.us_overture else ()):
-        if co in countries and "S2" in segs:
+        if co in countries and "S2" in segs and not args.web_check:
             known = {i for s_, i in guard.known if s_ == "overture"}
             # mehr laden als bearbeitet wird: der Abgleich mit der Datenbank (unten) wirft Gespeicherte noch raus
             p[f"S2/{co}"] = [c for c in load_overture_s2(co, args.s2_limit * 4, stats, known) if segments.fits("S2", c)[0]]
@@ -496,7 +557,11 @@ def main(argv=None) -> int:
     if guard.db is not None:
         # nach dem Aufteilen gezielt nachschlagen: nur Firmen, die noch nicht gespeichert sind
         before = sum(len(v) for v in p.values())
-        p = {k: guard.drop_known(v) for k, v in p.items()}
+        # Website-Prüfung: kein Abgleich je Firma (Datenbank schonen) – das Gedächtnis des Teils verhindert doppelte
+        # Prüfungen, der eindeutige Domain-Index beim Speichern doppelte Firmen
+        web = website_check.SOURCE
+        p = {k: [c for c in v if c["source"] == web] + guard.drop_known([c for c in v if c["source"] != web])
+             for k, v in p.items()}
         log(f"Datenbank-Abgleich: {before - sum(len(v) for v in p.values())} schon gespeichert, übersprungen")
     keys = [k for k in p if p[k]]
     log("Kandidaten je Branche: " + ", ".join(f"{k} {len(p[k])}" for k in keys))
@@ -519,11 +584,15 @@ def main(argv=None) -> int:
                 failed.append(key)
                 log(f"{key}: Speichern fehlgeschlagen ({type(exc).__name__}: {str(exc)[:200]}), weiter mit der nächsten")
         write(out, leads, args.per)  # nach jeder Branche sichern (Abbruch kostet nur die laufende Branche)
+        if args.web_check:
+            website_check.save_seen()
     sc.batch_unique([l for l in leads if l["ampel"] in ("green", "yellow")])
     for l in leads:
         l["ampel"] = ampel(l)
 
     per_seg = write(out, leads, args.per)
+    if args.web_check:
+        stats["website_check"] = dict(website_check.COUNTS)
     rep = {"date": dt.date.today().isoformat(), "stats": stats, "green_written": per_seg,
            "segments": funnel(leads, p), "web_requests": fetcher.requests}
     (out / "bericht.json").write_text(json.dumps(rep, indent=2, default=str, ensure_ascii=False), encoding="utf-8")

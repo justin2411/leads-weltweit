@@ -24,13 +24,19 @@ CACHE = Path(os.environ.get("EXTRAKTOR_OVERTURE", "out/cache/overture_gb_fr.parq
 CACHE_NORTH = Path(os.environ.get("EXTRAKTOR_OVERTURE_NORTH", "out/cache/overture_ie_nl_be_se.parquet"))
 # Fokus Webagenturen (Inhaber 02.10.2026): US-Auszug nur mit Firmen OHNE Website (sonst zu groß), ~2,5 Mio. Firmen
 CACHE_US = Path(os.environ.get("EXTRAKTOR_OVERTURE_US", "out/cache/overture_us_s2.parquet"))
+# Website-Prüfung S2 (Inhaber 02.10.2026: „sehr alte Websites oder fehlende Sicherheit“): US-Firmen MIT Website,
+# nur jede vierte (fest nach ID), damit der Auszug klein bleibt (mehr Firmen, als ein Teil im Monat prüft)
+CACHE_US_WEB = Path(os.environ.get("EXTRAKTOR_OVERTURE_US_WEB", "out/cache/overture_us_web.parquet"))
 COUNTRY = {"GB": "UK", "FR": "FR", "IE": "IE", "NL": "NL", "BE": "BE", "SE": "SE", "US": "US"}
 # Auszug -> (Overture-Ländercodes, Bounding-Box xmin, xmax, ymin, ymax)
 GROUPS = {CACHE: (("GB", "FR"), (-8.7, 9.6, 41.3, 60.9)),
           CACHE_NORTH: (("IE", "NL", "BE", "SE"), (-10.7, 24.2, 49.4, 69.1)),
-          CACHE_US: (("US",), (-180.0, -60.0, 15.0, 72.0))}
+          CACHE_US: (("US",), (-180.0, -60.0, 15.0, 72.0)),
+          CACHE_US_WEB: (("US",), (-180.0, -60.0, 15.0, 72.0))}
 # zusätzliche Bedingung je Auszug
 ONLY_NO_WEBSITE = {CACHE_US}
+EXTRA_WHERE = {CACHE_US: "AND (websites IS NULL OR len(websites) = 0)",
+               CACHE_US_WEB: "AND len(websites) > 0 AND hash(id) % 4 = 0 AND coalesce(confidence, 0) >= 0.6"}
 
 
 def code(country: str) -> str:
@@ -40,7 +46,7 @@ def code(country: str) -> str:
 
 def cache_for(country: str) -> Path:
     cc = code(country)
-    return next(p for p, (codes, _) in GROUPS.items() if cc in codes)
+    return next(p for p, (codes, _) in GROUPS.items() if cc in codes)  # US: der Auszug ohne Website
 # keine Käuferziele: Behörden, Schulen, Kirchen, Vereine, Parks …
 # Filialen von Ketten/Franchise-Marken: die Marke hat längst eine Website (kein S2-Anlass)
 BRANDS = re.compile(r"\b(euro ?spar|spar|premier|costcutter|londis|budgens|nisa|one stop|co-?op|tesco|sainsbury'?s|"
@@ -85,7 +91,7 @@ def build_cache(log=print, path: Path = CACHE) -> Path:
       FROM read_parquet({files})
       WHERE bbox.xmin BETWEEN {x0} AND {x1} AND bbox.ymin BETWEEN {y0} AND {y1}
         AND addresses[1].country IN ({listed}) AND len(phones) > 0
-        {"AND (websites IS NULL OR len(websites) = 0)" if path in ONLY_NO_WEBSITE else ""}) TO '{path}' (FORMAT parquet)""")
+        {EXTRA_WHERE.get(path, "")}) TO '{path}' (FORMAT parquet)""")
     log(f"Overture: Auszug {rel} ({'/'.join(codes)}) -> {path}")
     return path
 
