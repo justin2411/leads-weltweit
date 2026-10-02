@@ -72,14 +72,14 @@ jobs:
       fail-fast: false
       # 30 Teile, alle gleichzeitig (Inhaber 01.10.2026: „Erhöhe die lead läufe auf 30“, GitHub Pro: 40 Jobs
       # gleichzeitig; 8 für das Kunden-Werk, 2 frei). --shard verteilt fest nach Quell-ID.
-      # 25 gleichzeitig (Inhaber 02.10.2026: „senke nur auf 25“, nach Supabase-Warnung Disk-IO-Budget);
-      # alle 30 Teile laufen weiter, 5 starten, sobald Plätze frei werden.
-      max-parallel: 25
+      # Zwischendurch 25 (Inhaber 02.10.2026: „senke nur auf 25“, Supabase Disk-IO); wieder 30 (Inhaber 02.10.2026
+      # abends: „Mach 30“): bei 25 warteten 5 Teile, ein Durchgang dauerte ~2,5 h statt ~80 min. 30 + 8 Kunden-Werk = 38.
+      max-parallel: 30
       matrix:
         include:
           # Website-Prüfung S2 im großen Stil (Inhaber 02.10.2026: „mach das jetzt bitte im ganz großen stil und hol viele
           # leads rein“): 9 Teile mit je 40 gleichzeitigen Abrufen (verschiedene Domains, je Domain weiter 1/s, robots.txt).
-          # Zuerst in der Liste, damit sie bei max-parallel 25 sofort starten. Plätze von S2 ohne Website in FR (3 -> 1),
+          # Zuerst in der Liste, damit sie immer sofort starten. Plätze von S2 ohne Website in FR (3 -> 1),
           # UK (1 -> 0) und IE/NL/BE/SE (4 -> 1 gemeinsamer Teil): dort liegen schon ~130.000 Leads bei wenigen Käufern.
           - { name: web-us-0, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 0/5" }
           - { name: web-us-1, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 1/5" }
