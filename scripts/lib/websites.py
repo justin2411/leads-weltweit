@@ -30,7 +30,26 @@ GENERIC = {"the", "and", "uk", "gb", "group", "holdings", "holding", "services",
            "paris", "london", "hq"}
 TLDS = {"UK": ["co.uk", "uk", "com"], "IE": ["ie", "com"], "FR": ["fr", "com"], "US": ["com", "net", "us"],
         "NL": ["nl", "com"], "BE": ["be", "com"], "SE": ["se", "com"]}
-MAX_CANDIDATES = 12
+MAX_CANDIDATES = 16
+# Branchen-Endungen (echte gTLDs): kleine Firmen nutzen sie oft statt .com, z. B. 202main.coffee (Inhaber 02.10.2026:
+# Lead „ohne Website“ hatte eine). Schlüssel = Wort im Namen oder in der Overture-Kategorie.
+CAT_TLDS = {"coffee": ["coffee", "cafe"], "cafe": ["cafe", "coffee"], "espresso": ["coffee"], "bakery": ["bakery"],
+            "pizza": ["pizza"], "pizzeria": ["pizza"], "restaurant": ["restaurant"], "kitchen": ["kitchen"],
+            "bar": ["bar"], "pub": ["pub"], "grill": ["restaurant"], "salon": ["salon", "hair"], "hair": ["hair", "salon"],
+            "barber": ["barber"], "spa": ["spa"], "nails": ["nails"], "beauty": ["beauty"], "yoga": ["yoga"],
+            "fitness": ["fitness", "fit"], "gym": ["fitness", "fit"], "dental": ["dental", "dentist"],
+            "dentist": ["dentist", "dental"], "clinic": ["clinic"], "vet": ["vet"], "law": ["law", "legal"],
+            "legal": ["legal", "law"], "auto": ["auto", "cars"], "car": ["cars", "auto"], "repair": ["repair"],
+            "plumbing": ["plumbing"], "plumber": ["plumbing"], "electric": ["solutions"], "cleaning": ["cleaning"],
+            "construction": ["construction", "build"], "builders": ["builders", "build"], "roofing": ["builders"],
+            "florist": ["florist", "flowers"], "flowers": ["flowers"], "photography": ["photography", "photo"],
+            "photo": ["photo"], "studio": ["studio"], "design": ["design", "studio"], "shop": ["shop", "store"],
+            "store": ["store", "shop"], "boutique": ["boutique", "shop"], "consulting": ["consulting"],
+            "realty": ["realty"], "realestate": ["realestate"], "insurance": ["insurance"], "tax": ["tax"],
+            "accounting": ["accountants"], "pet": ["pet"], "dog": ["dog"], "farm": ["farm"], "golf": ["golf"],
+            "church": ["church"], "school": ["school"], "academy": ["academy"], "events": ["events"],
+            "catering": ["catering"], "wine": ["wine"], "beer": ["beer"], "tattoo": ["tattoo"], "garden": ["garden"]}
+GENERIC_TLDS = {"US": ["co", "biz"], "UK": ["co"], "IE": [], "FR": [], "NL": [], "BE": [], "SE": []}
 
 
 def ascii_fold(s: str) -> str:
@@ -52,8 +71,24 @@ def core_words(name: str) -> list[str]:
     return core or words
 
 
-def domain_candidates(name: str, country: str) -> list[str]:
-    """Naheliegende Domains aus dem Firmennamen (keine Suche, kein Raten über Dritte)."""
+def category_candidates(name: str, country: str, category: str | None = None) -> list[str]:
+    """Branchen-Endungen: „202 Main Coffee“ -> 202main.coffee, 202maincoffee.cafe … (nur Namen, keine Suche)."""
+    words = name_words(name)
+    keys = [w for w in words if w in CAT_TLDS] + [w for w in re.findall(r"[a-z]+", (category or "").lower()) if w in CAT_TLDS]
+    out: list[str] = []
+    for key in dict.fromkeys(keys):
+        rest = [w for w in words if w != key and w != "and"]
+        stems = [x for x in ("".join(rest), "".join(words), "-".join(rest)) if len(x) >= 3]
+        for tld in CAT_TLDS[key]:
+            for st in dict.fromkeys(stems):
+                out.append(f"{st}.{tld}")
+    joined = "".join(w for w in words if w != "and")
+    out += [f"{joined}.{t}" for t in GENERIC_TLDS.get(country, []) if len(joined) >= 4]
+    return list(dict.fromkeys(out))
+
+
+def domain_candidates(name: str, country: str, category: str | None = None) -> list[str]:
+    """Naheliegende Domains aus dem Firmennamen (keine Suche, kein Raten über Dritte); mit Branchen-Endungen."""
     words = name_words(name)
     core = core_words(name)
     no_and = [w for w in words if w != "and"]
@@ -69,6 +104,9 @@ def domain_candidates(name: str, country: str) -> list[str]:
                     out.append(d)
     if country == "UK" and joined:  # häufig: firmaltd.co.uk
         out.insert(min(3, len(out)), f"{joined[0]}ltd.co.uk")
+    # Branchen-Endungen nach den drei üblichsten Treffern einreihen (sonst fallen sie hinten ab)
+    cat = [d for d in category_candidates(name, country, category) if d not in out]
+    out = out[:3] + cat[:6] + out[3:]
     return out[:MAX_CANDIDATES]
 
 

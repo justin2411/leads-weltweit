@@ -247,7 +247,7 @@ class S1S2Tests(unittest.TestCase):
     def test_s2_overture_fr_texts_french(self):
         c = self.ov("FR", postcode="75011", city="Paris", category="restaurant", phones=["+33142000000"])
         t = segments.texts("S2", c)
-        self.assertIn("n'a pas de site web", t["signal"])
+        self.assertIn("Aucun site web trouvé", t["signal"])
         self.assertEqual(sc.run(c, "S2", t)["status"], "pass", t)
 
     def test_s2_rejects_found_website(self):
@@ -788,3 +788,43 @@ class KundenWerkNieStillTests(unittest.TestCase):
         many = [{"segment": "S2", "domain": f"{i}.com"} for i in range(K.FALLBACK_MIN)]
         self.assertIs(K.fill_up(many, {"S2"}, lambda: rest), many)
         self.assertIs(K.fill_up(few, set(), lambda: rest), few)
+
+
+class CategoryTldTests(unittest.TestCase):
+    """Inhaber 02.10.2026: „202 Main Coffee“ hatte 202main.coffee, wir lieferten sie als „ohne Website“."""
+
+    def test_category_tld_candidates(self):
+        from lib import websites as W
+        doms = W.domain_candidates("202 Main Coffee", "US", "coffee shop")
+        self.assertIn("202main.coffee", doms)
+        self.assertLess(doms.index("202main.coffee"), 12)  # innerhalb der Kandidaten, die das Lead-Werk prüft
+        self.assertIn("bellasalon.hair", W.domain_candidates("Bella Hair Salon", "UK", "beauty salon"))
+
+
+class SiteRecheckTests(unittest.TestCase):
+    """Vor Probe/Lieferung: „ohne Website“-Leads, deren Firma doch eine Website hat, gehen nicht raus."""
+
+    def test_drop_with_site(self):
+        from unittest import mock
+        from lib import site_recheck
+
+        class DB:
+            def __init__(self):
+                self.updates = []
+
+            def select(self, table, q):
+                return [{"id": "c1", "name": "202 Main Coffee", "country": "US", "website": None},
+                        {"id": "c2", "name": "Nowhere Cafe", "country": "US", "website": None}]
+
+            def update(self, table, match, values):
+                self.updates.append((table, match, values))
+
+        db = DB()
+        leads = [{"id": "l1", "company_id": "c1", "signal_type": "no_website"},
+                 {"id": "l2", "company_id": "c2", "signal_type": "no_website"},
+                 {"id": "l3", "company_id": "c3", "signal_type": "new_incorporation"}]
+        found = lambda co, f: "https://202main.coffee" if co["id"] == "c1" else None
+        with mock.patch.object(site_recheck, "found_site", side_effect=found):
+            bad = site_recheck.drop_with_site(db, leads, fetcher=object(), log=lambda *a: None)
+        self.assertEqual(bad, {"l1"})
+        self.assertIn(("leads", {"id": "l1"}, {"status": "expired"}), db.updates)

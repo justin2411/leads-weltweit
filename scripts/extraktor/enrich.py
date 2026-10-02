@@ -105,7 +105,7 @@ def find_site(c: dict, fetcher, max_examined: int = 3) -> dict:
             if site:
                 return {"site": site, "method": "email_domain", "checked": checked}
     best, examined = None, 0
-    doms = W.domain_candidates(c["name"], c["country"])[:8]
+    doms = W.domain_candidates(c["name"], c["country"], (c.get("facts") or {}).get("category"))[:12]
     if c.get("source") == "sec_form_d":
         doms += [d for d in startup_candidates(c["name"]) if d not in doms]
     for dom in doms:

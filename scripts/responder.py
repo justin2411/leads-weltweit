@@ -388,7 +388,15 @@ def regional_sample(db, seg: str, country: str, region: str | None,
         per[name] = 1  # gleiche Firma unter zwei Datensätzen nur einmal (genau 10 verschiedene Firmen)
         picked.append(l)
         if len(picked) >= 10:
-            break
+            # „ohne Website“ vor dem Versand mit der aktuellen Suche nachprüfen (Inhaber 02.10.2026, 202main.coffee);
+            # wer doch eine Website hat, fliegt raus und wird durch den nächsten Lead ersetzt
+            from lib.site_recheck import drop_with_site
+            bad = drop_with_site(db, [x for x in picked if not x.get("_rechecked")])
+            for x in picked:
+                x["_rechecked"] = True
+            if not bad:
+                break
+            picked = [x for x in picked if x["id"] not in bad]
     if len(picked) < 10 and area:
         # nicht genug vollständige Leads aus der Region: vollständige Leads aus dem ganzen Land
         return _country_sample(db, seg, country, rows, known, mark)
@@ -396,6 +404,7 @@ def regional_sample(db, seg: str, country: str, region: str | None,
         return [], False  # nie unvollständige Leads verschicken; Inhaber wird benachrichtigt
     for l in picked:
         l["segment_id"] = seg
+        l.pop("_rechecked", None)
     enrich(db, picked, known)
     if mark:
         mark_sampled(db, picked)

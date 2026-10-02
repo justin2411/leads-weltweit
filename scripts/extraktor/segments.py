@@ -302,16 +302,16 @@ def texts_overture(c: dict) -> dict:
     if c["country"] == "FR":
         cat_fr = CAT_FR.get(cat, "entreprise locale")
         extra = (", une adresse e-mail" if c.get("email") else "") + (f" et une page {social}" if social else "")
-        signal = (f"{name} n'a pas de site web : l'entreprise est référencée avec un numéro de téléphone{extra}, "
-                  f"mais aucun site propre n'a été trouvé (vérifié le {jour(today)}).")
+        signal = (f"Aucun site web trouvé pour {name} : l'entreprise est référencée avec un numéro de téléphone{extra}, "
+                  f"mais nous n'avons trouvé aucun site propre (vérifié le {jour(today)}).")
         info = f"{name} : {cat_fr} à {c['city']} ({c['zip']})" + (f", présent sur {social}." if social else ".")
         opener = (f"Bonjour, je n'ai pas trouvé de site web pour {name} – un site simple pour être trouvé par de "
                   f"nouveaux clients vous intéresserait-il ?")
         why = "Sans site web, l'entreprise est peu visible pour les clients qui la cherchent en ligne."
     else:
         extra = (", an email address" if c.get("email") else "") + (f" and a {social} page" if social else "")
-        signal = (f"{name} has no website: it is listed with a phone number{extra}, but no own website could be "
-                  f"found (checked {uk_day(today)}).")
+        signal = (f"No website found for {name}: it is listed with a phone number{extra}, but we could not find "
+                  f"an own website (checked {uk_day(today)}).")
         label = CAT_EN.get(cat, cat)
         art = "an" if label[:1].lower() in "aeiou" else "a"
         # US: Bundesstaat nennen („Milton, FL 32570“), wie in der Adresse (Signalkontrolle prüft das)
