@@ -60,8 +60,11 @@ def matches(key: str, l: dict, sic: str | None = None) -> bool:
     """Passt der Lead zum Wunsch? sic: SIC-Code der Beobachtung (nur für fleet_warehouse nötig)."""
     st = l.get("signal_type") or ""
     ev = l.get("event_summary") or ""
-    if key in ("job_open_30d", "jobs_3plus", "new_location", "new_incorporation", "website_outdated"):
+    if key in ("job_open_30d", "jobs_3plus", "new_location", "new_incorporation"):
         return st == key
+    if key == "website_outdated":
+        # Website-Prüfung (02.10.2026): unsicher, kaputt oder veraltet gehört zum Wunsch „veraltete Website“
+        return st in ("website_outdated", "no_https", "website_broken")
     if key == "new_director":
         return st == "new_incorporation"
     if key == "growth":
