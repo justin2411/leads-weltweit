@@ -60,7 +60,9 @@ jobs:
       fail-fast: false
       # 30 Teile, alle gleichzeitig (Inhaber 01.10.2026: „Erhöhe die lead läufe auf 30“, GitHub Pro: 40 Jobs
       # gleichzeitig; 8 für das Kunden-Werk, 2 frei). --shard verteilt fest nach Quell-ID.
-      max-parallel: 30
+      # 25 gleichzeitig (Inhaber 02.10.2026: „senke nur auf 25“, nach Supabase-Warnung Disk-IO-Budget);
+      # alle 30 Teile laufen weiter, 5 starten, sobald Plätze frei werden.
+      max-parallel: 25
       matrix:
         include:
           - { name: s2-fr-0, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 0/5" }

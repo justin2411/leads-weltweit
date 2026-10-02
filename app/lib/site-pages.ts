@@ -34,13 +34,25 @@ export async function publicPages(): Promise<PublicPage[]> {
 export type HomeStats = { companies: number; signals: number };
 export type HomeFeedItem = { company: string; place: string; event: string; date: string; source: string; opener: string; urgency: string };
 
+let statsCache: { at: number; stats: HomeStats } | null = null;
+
 /** Echte Kennzahlen für die Startseite (keine geschätzten oder erfundenen Werte). */
 export async function homeStats(): Promise<HomeStats> {
-  const [c, l] = await Promise.all([
-    db().from("watch_companies").select("id", { count: "exact", head: true }),
-    db().from("leads").select("id", { count: "exact", head: true }),
-  ]);
-  return { companies: c.count ?? 0, signals: l.count ?? 0 };
+  // Exakte Zählung liest beide Tabellen ganz (Disk-IO): höchstens alle 10 Minuten je Server-Instanz zählen,
+  // dazwischen den letzten Stand zeigen; antwortet die Datenbank nicht, ebenfalls den letzten Stand.
+  if (statsCache && Date.now() - statsCache.at < 10 * 60_000) return statsCache.stats;
+  try {
+    const [c, l] = await Promise.all([
+      db().from("watch_companies").select("id", { count: "exact", head: true }),
+      db().from("leads").select("id", { count: "exact", head: true }),
+    ]);
+    if (c.error || l.error) throw new Error((c.error ?? l.error)!.message);
+    statsCache = { at: Date.now(), stats: { companies: c.count ?? 0, signals: l.count ?? 0 } };
+    return statsCache.stats;
+  } catch (e) {
+    if (statsCache) return statsCache.stats;
+    throw e;
+  }
 }
 
 /** Echte Beispiel-Leads aus den Proben (status sample), nur Firmendaten, je Firma einmal, für die laufende Anzeige. */
