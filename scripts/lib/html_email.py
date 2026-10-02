@@ -98,10 +98,10 @@ def page_button(url: str, lang: str) -> str:
     """Knopf zur persönlichen Seite (dort: Video, Beispiel-Leads, Probe mit einem Klick)."""
     label = "Voir mes 10 pistes gratuites" if lang == "fr" else "See my 10 free leads"
     # Sicherheitshinweis unter dem Knopf (Inhaber 02.10.2026); nur, was stimmt: HTTPS-Link auf unsere eigene
-    # Domain, für die Probe keine Anmeldung und keine Zahlung
+    # Domain (Inhaber: nur dieser Satz)
     host = re.sub(r"^https?://(www\.)?", "", url).split("/")[0] or site_label()
-    note = (f"&#128274; Lien sécurisé vers {html.escape(host)} · sans inscription, sans paiement" if lang == "fr" else
-            f"&#128274; Secure link to {html.escape(host)} · no sign-up, no payment")
+    note = (f"&#128274; Lien sécurisé vers {html.escape(host)}" if lang == "fr" else
+            f"&#128274; Secure link to {html.escape(host)}")
     return (f'<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 8px 0;"><tr>'
             f'<td style="background:{GOLD};border-radius:99px;">'
             f'<a href="{html.escape(url)}" style="display:inline-block;padding:13px 26px;font-family:{FONT};'
