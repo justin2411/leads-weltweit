@@ -1,5 +1,6 @@
 # Lead-Werk (Inhaber 01.10.2026: „eigener Bereich der 24/7 die leads holt und anreichert“).
-# Dauerbetrieb, 30 Teile gleichzeitig in einer Welle: kostenlose Quellen -> Sicherheitsfilter -> kostenlose Anreicherung -> Qualitäts- und
+# Fokus Webagenturen (Inhaber 02.10.2026: „erstmal auf Webagenturen fokussieren … massenweise“): alle 30 Teile S2
+# (Firmen ohne Website) in US/UK/FR/IE/NL/BE/SE. Dauerbetrieb, eine Welle: kostenlose Quellen -> Sicherheitsfilter -> kostenlose Anreicherung -> Qualitäts- und
 # Signalkontrolle -> grüne Leads direkt in Supabase (watch_companies, observations, leads). Schon gespeicherte
 # Firmen werden übersprungen, so arbeitet sich jeder Lauf weiter durch den Bestand.
 # Lädt KEINE Lead-Dateien hoch (öffentliches Repo) – nur den Zählbericht. Sendet nichts.
@@ -17,7 +18,32 @@ concurrency: { group: lead-werk, cancel-in-progress: false }
 permissions:
   contents: read
 jobs:
+  us-auszug:
+    # US-Auszug (Overture, Firmen ohne Website, ~250 MB) einmal im Monat bauen und allen US-Teilen geben
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      monat: ${{ steps.m.outputs.monat }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: m
+        run: echo "monat=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+      - id: cache
+        uses: actions/cache@v4
+        with:
+          path: out/cache/overture_us_s2.parquet
+          key: overture-us-s2-${{ steps.m.outputs.monat }}
+      - uses: actions/setup-python@v5
+        if: steps.cache.outputs.cache-hit != 'true'
+        with: { python-version: "3.11" }
+      - name: US-Auszug bauen
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          pip install -r requirements.txt
+          python -c "import sys; sys.path.insert(0, 'scripts'); from extraktor.sources import overture as o; o.build_cache(path=o.CACHE_US)"
+
   holen:
+    needs: us-auszug
     runs-on: ubuntu-latest
     timeout-minutes: 130
     strategy:
@@ -27,37 +53,37 @@ jobs:
       max-parallel: 30
       matrix:
         include:
-          - { name: s2-uk-0, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 0/6" }
-          - { name: s2-uk-1, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 1/6" }
-          - { name: s2-uk-2, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 2/6" }
-          - { name: s2-uk-3, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 3/6" }
-          - { name: s2-uk-4, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 4/6" }
-          - { name: s2-uk-5, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 5/6" }
           - { name: s2-fr-0, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 0/6" }
           - { name: s2-fr-1, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 1/6" }
           - { name: s2-fr-2, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 2/6" }
           - { name: s2-fr-3, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 3/6" }
           - { name: s2-fr-4, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 4/6" }
           - { name: s2-fr-5, args: "--segments S2 --countries FR --s2-limit 32000 --per 4000 --max-tries 4000 --shard 5/6" }
-          # Scout-Sprint 01.10.2026: S2 auch in den übrigen Mail-Ländern (countries.yaml allowed)
+          - { name: s2-uk-0, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 0/2" }
+          - { name: s2-uk-1, args: "--segments S2 --countries UK --s2-limit 32000 --per 4000 --max-tries 4000 --shard 1/2" }
           - { name: s2-ie-0, args: "--segments S2 --countries IE --s2-limit 20000 --per 4000 --max-tries 4000" }
           - { name: s2-nl-0, args: "--segments S2 --countries NL --s2-limit 32000 --per 4000 --max-tries 4000" }
           - { name: s2-be-0, args: "--segments S2 --countries BE --s2-limit 20000 --per 4000 --max-tries 4000" }
           - { name: s2-se-0, args: "--segments S2 --countries SE --s2-limit 32000 --per 4000 --max-tries 4000" }
-          - { name: us-fmcsa-0, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 0/3" }
-          - { name: us-fmcsa-1, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 1/3" }
-          - { name: us-fmcsa-2, args: "--segments S2,S4,S5 --countries US --fmcsa-days 44 --formd-days 0 --per 4000 --max-tries 3000 --shard 2/3" }
-          - { name: us-formd-0, args: "--segments S1,S5,S9 --countries US --fmcsa-days 0 --formd-days 44 --formd-max-docs 20000 --per 4000 --max-tries 4000 --shard 0/2" }
-          - { name: us-formd-1, args: "--segments S1,S5,S9 --countries US --fmcsa-days 0 --formd-days 44 --formd-max-docs 20000 --per 4000 --max-tries 4000 --shard 1/2" }
-          - { name: uk-register-0, args: "--segments S4,S5,S9 --countries UK --uk-days 44 --eu-pool 200000 --per 4000 --max-tries 4000 --shard 0/3" }
-          - { name: uk-register-1, args: "--segments S4,S5,S9 --countries UK --uk-days 44 --eu-pool 200000 --per 4000 --max-tries 4000 --shard 1/3" }
-          - { name: uk-register-2, args: "--segments S4,S5,S9 --countries UK --uk-days 44 --eu-pool 200000 --per 4000 --max-tries 4000 --shard 2/3" }
-          - { name: fr-register-0, args: "--segments S4,S5,S9 --countries FR --fr-days 44 --per 4000 --max-tries 4000 --shard 0/2" }
-          - { name: fr-register-1, args: "--segments S4,S5,S9 --countries FR --fr-days 44 --per 4000 --max-tries 4000 --shard 1/2" }
-          - { name: us-ct-0, args: "--segments S2,S4,S5,S9 --countries US --fmcsa-days 0 --formd-days 0 --ct-days 44 --per 4000 --max-tries 4000 --shard 0/2" }
-          - { name: us-ct-1, args: "--segments S2,S4,S5,S9 --countries US --fmcsa-days 0 --formd-days 0 --ct-days 44 --per 4000 --max-tries 4000 --shard 1/2" }
-          - { name: s1-karriere-uk, args: "--segments S1 --countries UK --s1-probe 4000 --formd-days 0 --per 4000 --max-tries 4000" }
-          - { name: s1-karriere-us, args: "--segments S1 --countries US --s1-probe 6000 --formd-days 0 --per 4000 --max-tries 4000" }
+          # Fokus Webagenturen (Inhaber 02.10.2026): US-Firmen ohne Website aus Overture, ~390.000 mit E-Mail, Test 95 % grün
+          - { name: s2-us-0, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 0/18" }
+          - { name: s2-us-1, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 1/18" }
+          - { name: s2-us-2, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 2/18" }
+          - { name: s2-us-3, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 3/18" }
+          - { name: s2-us-4, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 4/18" }
+          - { name: s2-us-5, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 5/18" }
+          - { name: s2-us-6, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 6/18" }
+          - { name: s2-us-7, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 7/18" }
+          - { name: s2-us-8, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 8/18" }
+          - { name: s2-us-9, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 9/18" }
+          - { name: s2-us-10, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 10/18" }
+          - { name: s2-us-11, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 11/18" }
+          - { name: s2-us-12, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 12/18" }
+          - { name: s2-us-13, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 13/18" }
+          - { name: s2-us-14, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 14/18" }
+          - { name: s2-us-15, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 15/18" }
+          - { name: s2-us-16, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 16/18" }
+          - { name: s2-us-17, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 17/18" }
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -92,6 +118,12 @@ jobs:
           key: lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-${{ github.run_id }}
           restore-keys: |
             lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-
+      - name: US-Auszug laden
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 's2-us-')
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/overture_us_s2.parquet
+          key: overture-us-s2-${{ needs.us-auszug.outputs.monat }}
       - name: Leads holen, prüfen, speichern
         if: steps.gate.outputs.an == 'true'
         run: python scripts/extraktor/run.py ${{ matrix.args }} --workers 16 --db --store --out out/lead-werk --deadline-min 75

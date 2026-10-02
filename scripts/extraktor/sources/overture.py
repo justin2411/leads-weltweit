@@ -22,10 +22,15 @@ BUCKET = "https://overturemaps-us-west-2.s3.us-west-2.amazonaws.com/"
 CACHE = Path(os.environ.get("EXTRAKTOR_OVERTURE", "out/cache/overture_gb_fr.parquet"))
 # Scout-Sprint 01.10.2026: weitere Mail-Länder aus countries.yaml (allowed) mit eigenem, kleinerem Auszug
 CACHE_NORTH = Path(os.environ.get("EXTRAKTOR_OVERTURE_NORTH", "out/cache/overture_ie_nl_be_se.parquet"))
-COUNTRY = {"GB": "UK", "FR": "FR", "IE": "IE", "NL": "NL", "BE": "BE", "SE": "SE"}
+# Fokus Webagenturen (Inhaber 02.10.2026): US-Auszug nur mit Firmen OHNE Website (sonst zu groß), ~2,5 Mio. Firmen
+CACHE_US = Path(os.environ.get("EXTRAKTOR_OVERTURE_US", "out/cache/overture_us_s2.parquet"))
+COUNTRY = {"GB": "UK", "FR": "FR", "IE": "IE", "NL": "NL", "BE": "BE", "SE": "SE", "US": "US"}
 # Auszug -> (Overture-Ländercodes, Bounding-Box xmin, xmax, ymin, ymax)
 GROUPS = {CACHE: (("GB", "FR"), (-8.7, 9.6, 41.3, 60.9)),
-          CACHE_NORTH: (("IE", "NL", "BE", "SE"), (-10.7, 24.2, 49.4, 69.1))}
+          CACHE_NORTH: (("IE", "NL", "BE", "SE"), (-10.7, 24.2, 49.4, 69.1)),
+          CACHE_US: (("US",), (-180.0, -60.0, 15.0, 72.0))}
+# zusätzliche Bedingung je Auszug
+ONLY_NO_WEBSITE = {CACHE_US}
 
 
 def code(country: str) -> str:
@@ -79,7 +84,8 @@ def build_cache(log=print, path: Path = CACHE) -> Path:
         [s.update_time FOR s IN sources] AS updated
       FROM read_parquet({files})
       WHERE bbox.xmin BETWEEN {x0} AND {x1} AND bbox.ymin BETWEEN {y0} AND {y1}
-        AND addresses[1].country IN ({listed}) AND len(phones) > 0) TO '{path}' (FORMAT parquet)""")
+        AND addresses[1].country IN ({listed}) AND len(phones) > 0
+        {"AND (websites IS NULL OR len(websites) = 0)" if path in ONLY_NO_WEBSITE else ""}) TO '{path}' (FORMAT parquet)""")
     log(f"Overture: Auszug {rel} ({'/'.join(codes)}) -> {path}")
     return path
 
@@ -95,16 +101,17 @@ def no_website(country: str, limit: int, log=print, exclude: set[str] | None = N
     rows = con.execute(f"""
         WITH base AS (SELECT * FROM '{path}' WHERE country = ?),
              chains AS (SELECT lower(name) n FROM base GROUP BY 1 HAVING count(*) > 3)
-        SELECT id, name, phones, emails, socials, street, city, postcode, category, datasets, updated, confidence
+        SELECT id, name, phones, emails, socials, street, city, postcode, category, datasets, updated, confidence, region
         FROM base
         WHERE (websites IS NULL OR len(websites) = 0)
           AND coalesce(operating_status, 'open') NOT IN ('permanently_closed', 'temporarily_closed')
           AND name IS NOT NULL AND lower(name) NOT IN (SELECT n FROM chains)
           AND coalesce(confidence, 0) >= 0.6
+          AND (? <> 'US' OR len(emails) > 0)  -- US: nur mit E-Mail (sonst Millionen Rohbestand ohne Nutzen)
         ORDER BY (len(emails) > 0) DESC, (len(socials) > 0) DESC, confidence DESC
-        LIMIT ?""", [cc, limit * 3 + len(exclude or ())]).fetchall()
+        LIMIT ?""", [cc, cc, limit * 3 + len(exclude or ())]).fetchall()
     cols = ["id", "name", "phones", "emails", "socials", "street", "city", "postcode", "category", "datasets",
-            "updated", "confidence"]
+            "updated", "confidence", "region"]
     out = []
     for r in rows:
         d = dict(zip(cols, r))
@@ -134,7 +141,8 @@ def to_candidate(d: dict, country: str) -> dict:
         source_url=f"https://explore.overturemaps.org/#16/0/0?id={d['id']}",
         source_date=dt.date.today(), event_date=dt.date.today(),
         name=re.sub(r"\s+", " ", d["name"]).strip(), legal_name="",
-        street=d["street"] or "", city=d["city"] or "", state="", zip=(d["postcode"] or "").upper(),
+        street=d["street"] or "", city=d["city"] or "", state=(d.get("region") or "") if country == "US" else "",
+        zip=(d["postcode"] or "").upper(),
         phone=(d["phones"] or [""])[0], email=((d.get("emails") or [""])[0] or "").lower(),
         facts={"category": (d["category"] or "").replace("_", " "), "social": social_kind(d.get("socials")),
                "social_url": (d.get("socials") or [""])[0], "listed_by": [x for x in (d.get("datasets") or []) if x],

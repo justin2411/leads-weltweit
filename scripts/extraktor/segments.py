@@ -308,7 +308,9 @@ def texts_overture(c: dict) -> dict:
                   f"found (checked {uk_day(today)}).")
         label = CAT_EN.get(cat, cat)
         art = "an" if label[:1].lower() in "aeiou" else "a"
-        info = f"{name} is {art} {label} in {c['city']} {c['zip']}" + (f", active on {social}." if social else ".")
+        # US: Bundesstaat nennen („Milton, FL 32570“), wie in der Adresse (Signalkontrolle prüft das)
+        place = f"{c['city']}, {c['state']} {c['zip']}" if c["country"] == "US" and c.get("state") else f"{c['city']} {c['zip']}"
+        info = f"{name} is {art} {label} in {place}" + (f", active on {social}." if social else ".")
         opener = (f"Hi – I couldn't find a website for {name}; would a simple site that helps new customers find "
                   f"you be useful?")
         why = "Without a website the business is hard to find for customers searching online."
