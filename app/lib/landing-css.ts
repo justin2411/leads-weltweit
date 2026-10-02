@@ -27,7 +27,8 @@ export const LANDING_CSS = `
 .bx .lp2 .pill{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#EBD7AE,#C9A465);color:#1b1404;font-size:11.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;padding:7px 14px;border-radius:99px}
 .bx .lp2 .h2o h1{font-size:clamp(36px,5vw,62px);line-height:1.04;letter-spacing:-.035em;margin:22px 0 16px;color:#fff;font-weight:800}
 .bx .lp2 .h2o .sub{font-size:clamp(17px,1.6vw,20px);color:#cfd6e4;margin:0 0 24px;max-width:560px;line-height:1.5}
-.bx .lp2 .every{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 30px}
+.bx .lp2 .every{display:flex;flex-direction:column;align-items:flex-start;gap:10px;margin:0 0 30px}
+.bx .lp2 .chiprow{display:flex;flex-wrap:wrap;gap:8px}
 .bx .lp2 .every .cap{color:#97a2bd;margin-right:6px}
 .bx .lp2 .chip{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;font-weight:600;color:#e9edf6;border:1px solid rgba(255,255,255,.18);border-radius:99px;padding:6px 12px;background:rgba(255,255,255,.03)}
 .bx .lp2 .chip .ic{width:15px;height:15px;color:var(--gink)}
