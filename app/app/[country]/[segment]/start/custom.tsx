@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { CUSTOM_MAX, CUSTOM_MIN, customCents, fromSlider, perMonth, toSlider } from "@/lib/custom-price";
 
+// Schnellwahl unter dem Regler (Inhaber 02.10.2026: Regler „könnte von der Nutzung besser sein“)
+const PRESETS = [250, 500, 1000, 2500];
+
 type Props = {
   base: { key: string; amount_cents?: number; currency?: string };
   variantId: string; preview: boolean; r?: string; online: boolean; offerHref: string;
@@ -25,19 +28,26 @@ export function CustomPlan({ base, variantId, preview, r, online, offerHref, T, 
     set(Number.isFinite(v) ? Math.min(CUSTOM_MAX, Math.max(CUSTOM_MIN, v)) : weekly);
   };
   const pct = toSlider(weekly) / 10;
+  // Füllung endet in der Mitte des Reglerknopfs (Knopf 26px): sonst läuft der Strich vor oder nach
+  const fill = `calc(13px + (100% - 26px) * ${pct / 100})`;
 
   return (
     <section className="plan2 cu">
       <h2>{T.title}</h2>
-      <div className="price">{money(cents / 100)}<small>{T.per}</small></div>
+      <div className="price"><span className="amt">{money(cents / 100)}</span><small>{T.per}</small></div>
       <div className="qty">
         <label className="qn"><input type="number" inputMode="numeric" min={CUSTOM_MIN} max={CUSTOM_MAX} value={typed}
           onChange={(e) => setTyped(e.target.value)} onBlur={commit} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), commit())}
           aria-label={T.perWeek} /><span>{T.perWeek}</span></label>
         <input className="rg" type="range" min={0} max={1000} step={1} value={toSlider(weekly)} aria-label={T.perWeek}
-          style={{ background: `linear-gradient(90deg,#b08d57 ${pct}%,var(--line) ${pct}%)` }}
+          style={{ background: `linear-gradient(90deg,#b08d57 ${fill},var(--line) ${fill})` }}
           onChange={(e) => set(fromSlider(Number(e.target.value)))} />
         <div className="rgl"><span>{num(CUSTOM_MIN)}</span><span>{num(CUSTOM_MAX)}</span></div>
+        <div className="chips" role="group" aria-label={T.perWeek}>
+          {PRESETS.map((v) => (
+            <button type="button" key={v} className={v === weekly ? "on" : ""} onClick={() => set(v)}>{num(v)}</button>
+          ))}
+        </div>
       </div>
       <ul>
         <li>{T.perMonthL.replace("{n}", num(perMonth(weekly)))}</li>

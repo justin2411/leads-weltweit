@@ -20,10 +20,11 @@ class PagesTest(unittest.TestCase):
         self.raw = (ROOT / "samples/S5/US/leads.csv").read_bytes()
 
     def test_ten_leads_on_three_pages(self):
-        self.assertEqual(per_page(build_html(self.raw, "en", layout=(3, 4), segment="S5", country="US")), [3, 4, 3])
+        # Deckblatt mit Übersicht, dann 4/3/3 Karten (Inhaber 02.10.2026: Freiräume nutzen)
+        self.assertEqual(per_page(build_html(self.raw, "en", layout=(0, 4), segment="S5", country="US")), [4, 3, 3])
 
     def test_never_single_lead_on_last_page(self):
-        for layout in ((3, 3), (2, 3), (2, 2), (3, 4)):
+        for layout in ((0, 4), (0, 3), (0, 2)):
             counts = per_page(build_html(self.raw, "en", layout=layout, segment="S5", country="US"))
             self.assertEqual(sum(counts), 10)
             self.assertGreater(counts[-1], 1, (layout, counts))
@@ -77,3 +78,73 @@ class NoShadowTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CleanCsvContactTests(unittest.TestCase):
+    """Inhaber 02.10.2026: Ansprechperson-Spalten nur, wenn eine Firma sie hat."""
+
+    def _csv(self, name="", role=""):
+        import csv, io
+        buf = io.StringIO()
+        w = csv.DictWriter(buf, fieldnames=["company", "phone", "email", "contact_name", "contact_role", "address"])
+        w.writeheader()
+        w.writerow({"company": "A Cafe", "phone": "1", "email": "a@a.com", "contact_name": name, "contact_role": role,
+                    "address": "1 Main St"})
+        return buf.getvalue().encode()
+
+    def _head(self, data):
+        from lib.leadreport import clean_csv
+        return clean_csv(data).decode("utf-8-sig").splitlines()[0].split(",")
+
+    def test_empty_contact_columns_dropped(self):
+        head = self._head(self._csv())
+        self.assertNotIn("Contact person", head)
+        self.assertNotIn("Contact role", head)
+        self.assertIn("Address", head)
+
+    def test_contact_kept_when_present(self):
+        head = self._head(self._csv("Jane Doe", "Owner"))
+        self.assertIn("Contact person", head)
+        self.assertIn("Contact role", head)
+
+
+class PlaceholderRoleTests(unittest.TestCase):
+    """Inhaber 02.10.2026: „ask for the owner“ nie zeigen."""
+
+    def test_placeholder_hidden(self):
+        from lib.leadreport import real_role
+        self.assertEqual(real_role("Owner (ask for the owner)"), "")
+        self.assertEqual(real_role("Gérant / propriétaire (demander le responsable)"), "")
+        self.assertEqual(real_role("Hiring manager (ask for the person responsible for recruiting)"), "")
+        self.assertEqual(real_role("Director"), "Director")
+
+    def test_csv_drops_placeholder_column(self):
+        import csv, io
+        from lib.leadreport import clean_csv
+        buf = io.StringIO()
+        w = csv.DictWriter(buf, fieldnames=["company", "phone", "email", "contact_name", "contact_role"])
+        w.writeheader()
+        w.writerow({"company": "A Cafe", "phone": "1", "email": "a@a.com", "contact_name": "",
+                    "contact_role": "Owner (ask for the owner)"})
+        out = clean_csv(buf.getvalue().encode()).decode("utf-8-sig")
+        self.assertNotIn("ask for", out.lower())
+        self.assertNotIn("Contact role", out)
+
+
+class IntroPromiseTests(unittest.TestCase):
+    """Inhaber 02.10.2026: „who to ask for“ nur, wenn eine Ansprechperson im Report steht."""
+
+    def _html(self, name):
+        import csv, io
+        buf = io.StringIO()
+        w = csv.DictWriter(buf, fieldnames=["company", "phone", "email", "contact_name", "contact_role", "address"])
+        w.writeheader()
+        w.writerow({"company": "A Cafe", "phone": "1", "email": "a@a.com", "contact_name": name,
+                    "contact_role": "Owner (ask for the owner)", "address": "1 Main St"})
+        return build_html(buf.getvalue().encode(), "en", plans=[{"key": "starter", "amount_cents": 12900}], country="US")
+
+    def test_no_contact_no_promise(self):
+        self.assertNotIn("who to ask for", self._html(""))
+
+    def test_named_contact_keeps_promise(self):
+        self.assertIn("who to ask for", self._html("Jane Doe"))

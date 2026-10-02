@@ -121,16 +121,23 @@ const CSS = `
 .bx .plan2 .qn{display:flex;align-items:baseline;gap:10px;font-size:14.5px;color:var(--soft)}
 .bx .plan2 .qn input{width:110px;font:inherit;font-size:20px;font-weight:800;color:var(--ink,inherit);padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:transparent}
 .bx .plan2 .qn input:focus{outline:none;border-color:var(--gold)}
-.bx .plan2 .rg{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:99px;margin:6px 0 0;cursor:pointer}
-.bx .plan2 .rg::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;border:2px solid #b08d57;box-shadow:0 4px 12px -4px rgba(0,0,0,.35)}
-.bx .plan2 .rg::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#fff;border:2px solid #b08d57}
+.bx .plan2 .rg{-webkit-appearance:none;appearance:none;width:100%;height:8px;border-radius:99px;margin:10px 0 2px;cursor:pointer;touch-action:pan-y}
+.bx .plan2 .rg:focus-visible{outline:2px solid var(--gold);outline-offset:6px}
+.bx .plan2 .rg::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:#fff;border:2px solid #b08d57;box-shadow:0 4px 12px -4px rgba(0,0,0,.35);cursor:grab}
+.bx .plan2 .rg::-moz-range-thumb{box-sizing:border-box;width:26px;height:26px;border-radius:50%;background:#fff;border:2px solid #b08d57;cursor:grab}
+.bx .plan2 .chips{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:2px}
+.bx .plan2 .chips button{font:inherit;font-size:13px;font-weight:600;padding:7px 4px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--soft);cursor:pointer;font-variant-numeric:tabular-nums}
+.bx .plan2 .chips button:hover{border-color:var(--gold);color:inherit}
+.bx .plan2 .chips button.on{background:linear-gradient(135deg,#e2c894,#b08d57);border-color:transparent;color:#141008}
 .bx .plan2 .rgl{display:flex;justify-content:space-between;font-size:12px;color:var(--soft)}
 .bx .plan2 .more{font-size:13px;color:var(--soft);text-align:center;text-decoration:underline;text-underline-offset:3px}
 .bx .plan2{position:relative;border:1px solid var(--line);border-radius:22px;padding:30px 30px 26px;background:var(--card);display:flex;flex-direction:column;gap:14px}
 .bx .plan2.hi{border:1.5px solid var(--gold);box-shadow:0 30px 70px -44px rgba(176,141,87,.7)}
 .bx .plan2 .tag{position:absolute;top:-12px;right:24px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;background:linear-gradient(135deg,#e2c894,#b08d57);color:#141008;padding:5px 12px;border-radius:99px}
 .bx .plan2 h2{margin:0;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--soft)}
-.bx .plan2 .price{font-size:44px;font-weight:800;letter-spacing:-.02em}.bx .plan2 .price small{font-size:15px;font-weight:600;color:var(--soft);margin-left:6px}
+.bx .plan2 .price{font-size:44px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;font-variant-numeric:tabular-nums}
+.bx .plan2.cu .price{font-size:clamp(30px,2.9vw,40px)}
+.bx .plan2.cu .price .amt{display:inline-block;min-width:7.6ch}.bx .plan2 .price small{font-size:15px;font-weight:600;color:var(--soft);margin-left:6px}
 .bx .plan2 ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}.bx .plan2 li{font-size:15.5px;display:flex;gap:10px}.bx .plan2 li:before{content:"✓";color:var(--gold);font-weight:800;flex:none}
 .bx .plan2 .pl{font-size:13.5px;font-weight:700;color:#8a6a33;padding-top:12px;border-top:1px solid var(--line)}
 .bx .plan2 form,.bx .plan2 .go{margin-top:auto}.bx .plan2 .btn{width:100%;justify-content:center}
