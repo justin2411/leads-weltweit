@@ -38,7 +38,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: out/cache/kunden_pool.parquet
-          key: kunden-pool-v3-${{ steps.m.outputs.monat }}  # v3: mehr Webagentur-Kategorien (Fokus 02.10.2026)
+          key: kunden-pool-v4-${{ steps.m.outputs.monat }}  # v4: weitere Käufer-Kategorien (02.10.2026, alle v3-Kandidaten geprüft)
       - uses: actions/setup-python@v5
         if: steps.gate.outputs.an == 'true' && steps.cache.outputs.cache-hit != 'true'
         with: { python-version: "3.11" }
@@ -93,7 +93,7 @@ jobs:
       - uses: actions/cache/restore@v4
         with:
           path: out/cache/kunden_pool.parquet
-          key: kunden-pool-v3-${{ needs.pool.outputs.monat }}
+          key: kunden-pool-v4-${{ needs.pool.outputs.monat }}
           fail-on-cache-miss: true
       - uses: actions/cache/restore@v4
         with:

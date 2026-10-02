@@ -57,6 +57,14 @@ CATEGORIES = {
     "sign_making": "S10", "b2b_signage_service": "S10",
     "marketing_agency": "S12", "advertising_agency": "S12", "b2b_marketing_consultant": "S12",
     "internet_marketing_service": "S2",
+    # Erweiterung 02.10.2026 (Kunden-Werk hatte alle bisherigen Kandidaten geprüft): nur eindeutige Kategorien,
+    # geprüft an Stichproben; zusammen ~180.000 Orte mit Website, geschätzt ~90.000 neue Domains
+    "software_development": "S2", "b2b_advertising_and_marketing_service": "S2", "media_agency": "S2",
+    "e_commerce_service": "S2",
+    "temp_agency": "S1", "b2b_executive_search_consultants": "S1",
+    "auto_insurance": "S4", "life_insurance": "S4", "home_and_rental_insurance": "S4",
+    "carpet_cleaning": "S7", "window_washing": "S7", "pressure_washing": "S7",
+    "investing": "S9", "investment_management_company": "S9",
 }
 NOT_OWN_SITE = re.compile(r"(facebook|instagram|linkedin|twitter|x\.com|yelp|google|wix(site)?\.com|godaddysites|"
                           r"business\.site|yell\.com|pagesjaunes|bark\.com|checkatrade|houzz|tripadvisor|"
