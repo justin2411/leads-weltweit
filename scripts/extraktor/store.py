@@ -20,6 +20,8 @@ import datetime as dt
 import sys
 from pathlib import Path
 
+import requests
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from extraktor.sources.overture import BRANDS  # noqa: E402
@@ -118,6 +120,11 @@ def _store_block(db, block: list[dict], today: str) -> int:
         return _store_block_once(db, block, today)
     except RuntimeError as e:
         if TIMEOUT not in str(e) or len(block) <= MIN_CHUNK:
+            raise
+    except requests.Timeout:
+        # Antwort kam nicht rechtzeitig (02.10.2026: S2/UK, 799 grüne Leads): Block ist entfernt bzw. schon
+        # gespeicherte Firmen werden beim Neuversuch über die Domain erkannt -> kleiner neu schreiben
+        if len(block) <= MIN_CHUNK:
             raise
     half = len(block) // 2
     return _store_block(db, block[:half], today) + _store_block(db, block[half:], today)

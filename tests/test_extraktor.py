@@ -428,6 +428,16 @@ class WerkeTests(unittest.TestCase):
         rows = [dict(base, source_id=str(i), company=f"Shop {i}", website=f"https://shop{i}.co.uk") for i in range(40)]
         db = SlowDB()
         self.assertEqual(S.store_many(db, rows, today="2026-10-01", chunk=20), 40)
+
+        class TimeoutDB(SlowDB):
+            def insert(self, table, rows, **kw):
+                if table == "observations" and len(rows) > 5 * 6:  # Antwort bleibt aus (ReadTimeout)
+                    import requests
+                    raise requests.ReadTimeout("read timeout=60")
+                return FakeDB.insert(self, table, rows, **kw)
+        db2 = TimeoutDB()
+        self.assertEqual(S.store_many(db2, rows, today="2026-10-01", chunk=20), 40)
+        self.assertEqual(len(db2.tables["watch_companies"]), 40)
         self.assertEqual(len(db.tables["leads"]), 40)
         self.assertEqual(len(db.tables["watch_companies"]), 40)  # keine Firma doppelt oder ohne Lead
         self.assertEqual(len(db.tables["observations"]), 200)
