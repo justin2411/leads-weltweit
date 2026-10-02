@@ -64,6 +64,15 @@ class TotalLimitTest(unittest.TestCase):
         self.assertIn("Nachfassmail zu spät", out)
         self.assertNotIn("würde senden an a@x.co.uk", out)
 
+    def test_role_address_blocked(self):
+        # Funktionsadressen ohne Vertriebsbezug nicht anschreiben (Audit 02.10.2026)
+        self.assertTrue(outreach.role_address("privacy@example.com"))
+        self.assertTrue(outreach.role_address("Support@example.com"))
+        self.assertFalse(outreach.role_address("info@example.com"))
+        db = FakeDB({"messages": [msg("a1", "initial", "approved", to="privacy@z.co.uk")]})
+        out = run_send(db, limit=1000)
+        self.assertIn("BLOCKIERT privacy@z.co.uk", out)
+
     def test_below_limit_sends(self):
         db = FakeDB({"messages": [msg("a1", "initial", "approved", to="c@z.co.uk")]})
         self.assertIn("würde senden an c@z.co.uk", run_send(db, limit=1000))
