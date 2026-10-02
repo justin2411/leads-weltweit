@@ -12,6 +12,7 @@ const price = fr ? "249 €" : `${cur}249`;
 const m = welcomeMail({ lang: fr ? "fr" : "en", company: "Example Studio", plan: "Pro", weekly: 50, price,
   formLink: `${siteUrl()}/danke?demo=1&seg=S2#focus` });
 
+async function main() {
 const r = await fetch("https://api.resend.com/emails", {
   method: "POST",
   headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
@@ -20,3 +21,5 @@ const r = await fetch("https://api.resend.com/emails", {
 });
 if (!r.ok) throw new Error(`Resend ${r.status} ${await r.text()}`);
 console.log(`Willkommensmail (Test) an ${to} gesendet`);
+}
+main().catch((e) => { console.error(e); process.exit(1); });
