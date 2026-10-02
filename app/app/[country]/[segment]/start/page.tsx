@@ -27,6 +27,8 @@ const TXT = {
       pro: ["Up to 50 new leads per week", "All signals that fit your business", "Weekly PDF briefing and spreadsheet", "Every lead exclusive to your firm"],
     } as Record<string, string[]>,
     how: "How it works",
+    // Überschriften unter dem Video, einzeilig (Inhaber 02.10.2026)
+    short: ["Choose your plan", "Set your focus", "Personal contact", "Leads every Monday"],
     steps: [["Choose your plan", "Pick the number of leads that fits your team and pay securely by card via Stripe."],
             ["Set your focus", "Right after payment you get a short form. Choose the signals and the kind of companies you want, it takes two minutes."],
             ["Personal contact", "You get your own contact person to talk through your leads at any time. Together you fine tune them so they keep working for you in the long run."],
@@ -52,6 +54,7 @@ const TXT = {
       pro: ["Jusqu'à 50 nouvelles pistes par semaine", "Tous les signaux utiles", "Briefing PDF et tableau chaque semaine", "Chaque piste réservée à votre entreprise"],
     } as Record<string, string[]>,
     how: "Comment ça marche",
+    short: ["Votre formule", "Votre cible", "Votre contact", "Chaque lundi"],
     steps: [["Choisissez votre formule", "Choisissez le nombre de pistes adapté à votre équipe et payez par carte en toute sécurité via Stripe."],
             ["Définissez votre cible", "Juste après le paiement, vous recevez un court formulaire. Choisissez les signaux et le type d'entreprises souhaités, en deux minutes."],
             ["Votre interlocuteur dédié", "Vous avez votre propre interlocuteur pour parler de vos pistes à tout moment. Ensemble, vous les ajustez pour qu'elles fonctionnent pour vous sur la durée."],
@@ -111,8 +114,10 @@ function perLead(p: Plan): string | null {
 }
 
 /** Erklärvideo „How it works“ je Land (zeigt Preise in der Landeswährung, darum nicht länderübergreifend). */
-const HOW_VIDEO: Record<string, { src: string; poster: string; vtt: string; srclang: string }> = {
+const HOW_VIDEO: Record<string, { src: string; poster: string; vtt?: string; srclang: string }> = {
   us: { src: "/video/howitworks-us.mp4", poster: "/video/howitworks-us.jpg", vtt: "/video/howitworks-us.vtt", srclang: "en" },
+  uk: { src: "/video/howitworks-uk.mp4", poster: "/video/howitworks-uk.jpg", srclang: "en" },
+  fr: { src: "/video/howitworks-fr.mp4", poster: "/video/howitworks-fr.jpg", srclang: "fr" },
 };
 
 const CSS = `
@@ -159,9 +164,9 @@ const CSS = `
 .bx .sx-vid video{display:block;width:100%;height:100%;object-fit:cover;background:#0b1430}
 .bx .sx-steps.short{margin-top:28px}.bx .sx-steps.short li{padding:18px 20px;display:flex;align-items:center;gap:14px}
 .bx .sx-steps.short .n{margin:0}.bx .sx-steps.short .n i{display:none}.bx .sx-steps.short .n span{font-size:26px}
-.bx .sx-steps.short b{margin:0;font-size:16px}
+.bx .sx-steps.short b{margin:0;font-size:16px;white-space:nowrap}
 @media (max-width:1100px){.bx .sx-steps{grid-template-columns:repeat(2,1fr)}}
-@media (max-width:820px){.bx .sx-steps{grid-template-columns:1fr}.bx .sx-steps.short{grid-template-columns:1fr 1fr;gap:10px}.bx .sx-steps.short li{padding:14px;gap:10px}.bx .sx-steps.short .n span{font-size:22px}.bx .sx-steps.short b{font-size:14.5px;line-height:1.3}}
+@media (max-width:820px){.bx .sx-steps{grid-template-columns:1fr}.bx .sx-steps.short{grid-template-columns:1fr 1fr;gap:10px}.bx .sx-steps.short li{padding:14px;gap:10px}.bx .sx-steps.short .n span{font-size:22px}.bx .sx-steps.short b{font-size:14.5px;line-height:1.3;white-space:normal}}
 .bx .start .billing{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 22px;font-size:14.5px;font-weight:600;color:var(--soft)}
 .bx .start .billing select{font:inherit;font-weight:600;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 44px 10px 14px;-webkit-appearance:none;appearance:none;cursor:pointer;background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23b08d57' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 16px center}
 .bx .start .billing select:focus{outline:2px solid rgba(176,141,87,.45);outline-offset:1px}
@@ -250,9 +255,9 @@ export default async function StartPage({ params, searchParams }: { params: Para
         <div className="sx-how"><div className="hd">{T.how}</div>
           {online && howVideo ? (<>
             <div className="sx-vid"><video controls playsInline preload="metadata" poster={howVideo.poster} src={howVideo.src}>
-              <track kind="captions" src={howVideo.vtt} srcLang={howVideo.srclang} label={lang === "fr" ? "Français" : "English"} />
+              {howVideo.vtt && <track kind="captions" src={howVideo.vtt} srcLang={howVideo.srclang} label={lang === "fr" ? "Français" : "English"} />}
             </video></div>
-            <ol className="sx-steps short">{T.steps.map(([h], k) => (
+            <ol className="sx-steps short">{T.short.map((h, k) => (
               <li key={h}><div className="n"><span>{String(k + 1).padStart(2, "0")}</span></div><b>{h}</b></li>))}</ol>
           </>) : (
           <ol className="sx-steps">{(online ? T.steps : T.stepsMail).map(([h, d], k) => (
