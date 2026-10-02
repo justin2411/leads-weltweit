@@ -252,7 +252,8 @@ def main(argv=None) -> int:
     from extraktor.filters import Guard
     from lib.db import DB
     db = DB()
-    guard = Guard(db)
+    guard = Guard(db, preload=())
+    guard.drop_known([{"source": r["source"], "source_id": r["source_id"]} for r in rows])  # füllt guard.known
     if not args.apply:
         green = {(r["source"], r["source_id"]) for r in rows if r["ampel"] == "green"}
         print({"neu": len(green - guard.known), "schon_da": len(green & guard.known)}, "(Probelauf – mit --apply schreiben)")

@@ -70,13 +70,51 @@ def dedupe(candidates: list[dict]) -> list[dict]:
 class Guard:
     """Sperrliste und vorhandene Leads aus der Datenbank (optional: ohne DB nur Hinweis im Ergebnis)."""
 
-    def __init__(self, db=None):
+    def __init__(self, db=None, preload: tuple[str, ...] = ("overture",)):
         self.db = db
         self.known: set[tuple[str, str]] = set()
         if db is not None:
-            for r in db.select_all("watch_companies", {"registry_source": "not.is.null",
-                                                       "select": "registry_source,registry_id"}):
-                self.known.add((r["registry_source"], r["registry_id"]))
+            self.known = self._load(db, preload)
+
+    @staticmethod
+    def _load(db, sources, page: int = 1000) -> set[tuple[str, str]]:
+        """Vorab-Liste nur für Quellen, die schon beim Laden aussortieren (Overture): seitenweise über den Index
+        (registry_source, registry_id) statt Offset, in 16 Bereichen parallel (Overture-IDs sind UUIDs). Fällt die
+        Datenbank aus (57014 unter Last, Lauf 10 am 02.10.2026 brach daran in allen Teilen ab), geht es mit dem
+        Teilstand weiter: drop_known gleicht gezielt ab."""
+        import time
+        from concurrent.futures import ThreadPoolExecutor
+        cuts = [""] + list("123456789abcdef") + [None]
+
+        def part(src: str, lo: str, hi: str | None) -> list[str]:
+            got, last = [], lo  # gt."" auch am Anfang: sonst nutzt Postgres den Teil-Index nicht (1,5 s statt 1 ms)
+            while True:
+                cond = f'registry_id.gt."{last}"' + (f',registry_id.lt."{hi}"' if hi else "")
+                q = {"select": "registry_id", "registry_source": f"eq.{src}", "and": f"({cond})",
+                     "order": "registry_id", "limit": str(page)}
+                rows = None
+                for attempt in range(4):
+                    try:
+                        rows = db.select("watch_companies", q)
+                        break
+                    except RuntimeError as exc:
+                        print(f"Vorab-Liste {src}>{last[:8]}: Versuch {attempt + 1} fehlgeschlagen "
+                              f"({str(exc)[-120:]})", flush=True)
+                        time.sleep(3 * (attempt + 1))
+                if rows is None:
+                    print(f"Vorab-Liste {src}>{last[:8]}: abgebrochen, Abgleich läuft gezielt weiter", flush=True)
+                    return got
+                got += [r["registry_id"] for r in rows]
+                if len(rows) < page:
+                    return got
+                last = rows[-1]["registry_id"]
+
+        known: set[tuple[str, str]] = set()
+        with ThreadPoolExecutor(8) as ex:
+            for src in sources:
+                for ids in ex.map(lambda i: part(src, cuts[i], cuts[i + 1]), range(len(cuts) - 1)):
+                    known.update((src, x) for x in ids)
+        return known
 
     def drop_known(self, cands: list[dict], batch: int = 150) -> list[dict]:
         """Schon gespeicherte Firmen gezielt nachschlagen (Index registry_source, registry_id), in kleinen Paketen.
