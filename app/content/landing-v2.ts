@@ -10,7 +10,7 @@ export type LandingText = {
   phone: string; email: string; contact: string; askFor: string; website: string; noneFound: string; detected: string;
   whyNow: string; online: string; howWin: string; ask: string; call: string; hidden: string; unlock: string;
   revenue: string; reasons: [string, string, string][]; howTitle: string; steps: [string, string, string][];
-  sampleTitle: [string, string]; get: { title: string; pdf: [string, string]; csv: [string, string]; map: string }; questions: string; video: string;
+  sampleTitle: [string, string]; get: { title: string; pdf: [string, string]; csv: [string, string]; map: string }; questions: string; video: string; byMail: string;
 };
 
 export const LANDING: Record<"en" | "fr", LandingText> = {
@@ -48,6 +48,7 @@ export const LANDING: Record<"en" | "fr", LandingText> = {
     get: { title: "What you receive", pdf: ["Lead report (PDF)", "Map, overview and a short sales briefing for every lead."], csv: ["Spreadsheet (CSV)", "All contact data, ready for your CRM."], map: "10 companies from across {land}" },
     questions: "Questions",
     video: "The film",
+    byMail: "Sent by email",
   },
   fr: {
     pill: "Échantillon gratuit · {country}",
@@ -83,6 +84,7 @@ export const LANDING: Record<"en" | "fr", LandingText> = {
     get: { title: "Ce que vous recevez", pdf: ["Rapport (PDF)", "Carte, vue d’ensemble et un court briefing commercial par prospect."], csv: ["Tableur (CSV)", "Toutes les coordonnées, prêtes pour votre CRM."], map: "10 entreprises de toute la France" },
     questions: "Questions",
     video: "Le film",
+    byMail: "Envoyé par e-mail",
   },
 };
 
