@@ -133,7 +133,7 @@ def render(body_text: str, footer_text: str, lang: str = "en", cta: str = "",
     footer_html = html.escape(footer_text.lstrip("—-").strip()).replace("\n", "<br>")
     link = lambda text, size=13, color=ORANGE: (f'<a href="{html.escape(url)}" style="font-family:{FONT};font-size:{size}px;'
                                                 f'color:{color};text-decoration:none;font-weight:600;">{html.escape(text)}</a>')
-    script = (f'<div style="font-family:{SIGN};font-size:30px;line-height:36px;color:{NAVY};margin:0 0 4px 0;">'
+    script = (f'<div style="font-family:{SIGN};font-size:30px;line-height:36px;color:{NAVY};margin:0 0 12px 0;">'
               f'{html.escape(name)}</div>') if has_person else ""
 
     return f"""<!doctype html>
