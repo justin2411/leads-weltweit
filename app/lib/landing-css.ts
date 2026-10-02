@@ -21,9 +21,9 @@ export const LANDING_CSS = `
 .bx .lp2 .h2o{position:relative;overflow:hidden;color:#fff;background:
   radial-gradient(900px 420px at 0% 0%,rgba(74,91,140,.35),transparent 60%),
   radial-gradient(800px 500px at 100% 35%,rgba(30,56,120,.5),transparent 65%),linear-gradient(180deg,#0d1834,#0B1530)}
-.bx .lp2 section.h2o{padding-bottom:24px}
+.bx .lp2 section.h2o{padding-top:40px;padding-bottom:24px}
 .bx .lp2 .h2o:before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.07) 1px,transparent 1px);background-size:22px 22px;mask-image:linear-gradient(180deg,#000,transparent 85%);pointer-events:none}
-.bx .lp2 .h2o .wrap{position:relative;display:grid;grid-template-columns:1.08fr .92fr;gap:48px;align-items:center;padding-top:44px;padding-bottom:28px}
+.bx .lp2 .h2o .wrap{position:relative;display:grid;grid-template-columns:1.08fr .92fr;gap:48px;align-items:center;padding-top:16px;padding-bottom:28px}
 .bx .lp2 .pill{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#EBD7AE,#C9A465);color:#1b1404;font-size:11.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;padding:7px 14px;border-radius:99px}
 .bx .lp2 .h2o h1{font-size:clamp(36px,5vw,62px);line-height:1.04;letter-spacing:-.035em;margin:22px 0 16px;color:#fff;font-weight:800}
 .bx .lp2 .h2o .sub{font-size:clamp(17px,1.6vw,20px);color:#cfd6e4;margin:0 0 24px;max-width:560px;line-height:1.5}
@@ -34,6 +34,7 @@ export const LANDING_CSS = `
 .bx .lp2 .chip .ic{width:15px;height:15px;color:var(--gink)}
 .bx .lp2 .ctaline{display:flex;flex-wrap:wrap;align-items:center;gap:16px}
 .bx .lp2 .ctabox{display:inline-flex;flex-direction:column;align-items:center;gap:12px}
+.bx .lp2 .btn{white-space:nowrap}
 .bx .lp2 .free2{display:flex;flex-wrap:wrap;justify-content:center;gap:14px;font-size:13px;color:#9aa6ba}
 .bx .lp2 .free2 span:before{content:"✓ ";color:var(--gink)}
 .bx .lp2 .for{display:inline-block;margin-left:12px;font-size:13px;color:#cfd6e4}
@@ -163,13 +164,15 @@ export const LANDING_CSS = `
 .bx .lp2 .faq2 p{margin:10px 0 0;color:var(--muted)}
 
 @media (max-width:980px){
-  .bx .lp2 .h2o .wrap{grid-template-columns:1fr;gap:28px;padding-top:44px}
+  .bx .lp2 .h2o .wrap{grid-template-columns:1fr;gap:28px;padding-top:4px}
   .bx .lp2 .kpis{grid-template-columns:repeat(2,1fr)}
   .bx .lp2 .two,.bx .lp2 .formwrap{grid-template-columns:1fr}
   .bx .lp2 .tile{grid-template-columns:1fr}
   .bx .lp2 .rs,.bx .lp2 .steps{grid-template-columns:1fr}
 }
 @media (max-width:560px){
+  .bx .lp2 .free2{gap:10px;font-size:clamp(11px,3.2vw,13px);white-space:nowrap}
+  .bx .lp2 .btn{white-space:nowrap;font-size:clamp(13px,3.9vw,16px);padding:15px clamp(16px,5vw,24px);gap:8px;max-width:100%}
   .bx .lp2 .sec{padding:52px 0}
   .bx .lp2 .tile .cgrid{grid-template-columns:1fr}
   .bx .lp2 .prow{grid-template-columns:1fr auto;gap:6px}.bx .lp2 .prow .dots{grid-column:1/-1;order:3}
