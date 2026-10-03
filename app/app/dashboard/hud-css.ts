@@ -340,6 +340,17 @@ export const HUD_CSS = `
 .seg{display:flex;gap:6px}.seg a{padding:5px 12px;border:1px solid var(--line);border-radius:999px;text-decoration:none;font-size:13px;color:#a9c3e3!important}.seg a.on{border-color:var(--cy);color:#fff!important;background:rgba(95,212,255,.14)}
 .more2{font-size:14px;font-weight:600;color:var(--gold2)!important;text-decoration:none}
 .lock{margin:0;font-size:13px;color:var(--soft)}.dash .drw .lock,.dash .jv2 .lock{font-size:13px;font-weight:500}.warn{margin:0;font-size:13.5px;color:#ffb547;font-weight:600}
+/* Autopilot (Nachtschicht 04.10.2026) */
+.ap{border:1px solid rgba(95,212,255,.25);border-radius:12px;padding:12px 14px;margin:10px 0 14px;background:rgba(95,212,255,.05)}
+.ap-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ap-h b{display:inline-flex;align-items:center;gap:6px;font-size:15px;color:#fff}
+.ap-h em{font-style:normal;font-size:13px;color:var(--soft);margin-left:auto}
+.ap-l{list-style:none;margin:10px 0 4px;padding:0;display:grid;gap:6px}
+.ap-l li{display:grid;grid-template-columns:34px 64px 1fr;align-items:baseline;gap:8px;font-size:13px}
+.ap-l li b{font-size:18px;color:var(--cy2);font-variant-numeric:tabular-nums;text-align:right}
+.ap-l li span{font-weight:700;color:#fff}
+.ap-l li em{font-style:normal;color:var(--soft);line-height:1.35}
+.ap-l li.off{opacity:.55}
 .row-sw,.row-sw2{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .row-sw2 button{padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:600}.row-sw2 button.on.go{background:rgba(61,220,151,.2);border-color:#3ddc97}.row-sw2 button.on.stop{background:rgba(255,94,115,.2);border-color:#ff5e73}
 .row-go button{padding:7px 12px;border-radius:8px;cursor:pointer;font-weight:600}.row-go button:disabled{opacity:.45;cursor:default}

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadDaily, loadGateChecks, loadLive, loadOwnerSettings, loadRecentSent, loadRunRows, loadStock } from "@/lib/dashboard-data";
+import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadDaily, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock } from "@/lib/dashboard-data";
 import { berlin, berlinDay, chain, compact, currencySign, mailboxes, monthly, nextRun, onlySegment, realSubscriptions, sampleStock, stockSegment, COUNTRY_COLOR } from "@/lib/dashboard-logic";
 import { totals } from "@/lib/dashboard-periods";
 import { coach, hall, laneOf, laneStats, neckTask, running, utilization, type Beat } from "@/lib/leitstand";
@@ -18,6 +18,7 @@ import { Ampeln, Drawer, FlowMap, MiniBars, Ticker } from "./flow";
 import { Bays, LANE_COLOR, Reactor, UtilChart, laneColor } from "./hud";
 import { Pult } from "./pult";
 import { AgentDrawer, AgentRow } from "./agents";
+import { AutopilotPanel } from "./autopilot";
 import { DragTip } from "./dnd";
 import { Clock, Voice } from "./voice";
 import { Icon, type IconName } from "@/app/icons";
@@ -57,11 +58,13 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   stockP.catch(() => {});
   const today = berlinDay(new Date());
   const from7 = new Date(Date.parse(`${today}T12:00:00Z`) - 6 * 86_400_000).toISOString().slice(0, 10);
-  const [liveAll, own, act, rows, stockAll, daily, sent, checks, agentTasks, starts] = await Promise.all([
+  const [liveAll, own, act, rows, stockAll, daily, sent, checks, agentTasks, starts, planLog] = await Promise.all([
     loadLive(), loadOwnerSettings(), loadActivity(), loadRunRows(24),
-    Promise.race([stockP.catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 2500))]),
+    // Bestand: höchstens 5 s warten (Abfrage ~3,5 s, 10 min zwischengespeichert); sonst „…“ statt falscher Nullen
+    Promise.race([stockP.catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 5000))]),
     loadDaily(from7, today), loadRecentSent(12), s === "lead" || s === "gate" ? loadGateChecks(14, s === "gate" && tab === "check" && sp.f === "rot") : Promise.resolve([]),
     loadAgentTasks(), s === "lead" || s === "kwerk" || s === "proben" ? loadStarts() : Promise.resolve([] as StartRequest[]),
+    loadPlanLog(),
   ]);
   const live = onlySegment(liveAll, SEGMENT);
   const stock = stockSegment(stockAll, SEGMENT);
@@ -72,7 +75,10 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
 
   // ---------------------------------------------------------------- Zahlen
   const beats = act.heartbeats as Beat[];
-  const plan = slotCounts(REG, own.slot_plan);
+  // Belegung: die zuletzt wirklich gestartete (Autopilot/Inhaber, werk_plan_log), sonst die Einstellung des Inhabers
+  const plan = { ...slotCounts(REG, own.slot_plan), ...(planLog["lead-werk"]?.plan ?? {}), ...(planLog["kunden-werk"]?.plan ?? {}) };
+  const autopilotOn = own.slot_autopilot?.on !== false;
+  const leadPlanned = REG.lanes.filter((l) => l.werk === "lead-werk").reduce((a, l) => a + (plan[l.id] ?? 0), 0);
   const bays = hall(REG, plan, beats, t);
   const busy = bays.filter((b) => b.state === "run" || b.state === "other").length;
   const stats = laneStats(REG, rows, t);
@@ -110,12 +116,12 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     return x.live ? "live" : x.cls === "t-red" ? "bad" : "idle";
   };
   const stations: Station[] = ([
-    { id: "lead", label: "Lead-Werk", icon: "lead-werk", value: compact(leads24), sub: `${busy} läuft · ${Object.values(plan).reduce((a, b) => a + b, 0)} geplant`, state: state("lead-werk", "lead-werk", 4), tip: "neue Leads in 24 h · belegte Plätze" },
+    { id: "lead", label: "Lead-Werk", icon: "lead-werk", value: stockAll ? compact(leads24) : "…", sub: `${busy} läuft · ${leadPlanned} geplant${autopilotOn ? " · Auto" : ""}`, state: state("lead-werk", "lead-werk", 4), tip: "neue Leads in 24 h · belegte Plätze" },
     { id: "gate", label: "Freigabe", icon: "freigabe", value: gatePct === null ? "–" : `${gatePct}`, unit: gatePct === null ? "" : "%", sub: `${compact(gateOk)} frei/h`, state: act.last_gate_at && t - Date.parse(act.last_gate_at) < 15 * 60_000 ? "live" : "idle", tip: "Stichprobe bestanden · letzte Stunde freigegeben" },
-    { id: "bestand", label: "Bestand", icon: "bestand", value: compact(Object.values(leadsNew).reduce((a, b) => a + b, 0)), sub: "Leads", state: "idle", tip: "lieferbare Leads US/UK/FR" },
+    { id: "bestand", label: "Bestand", icon: "bestand", value: stock ? compact(Object.values(leadsNew).reduce((a, b) => a + b, 0)) : "…", sub: stock ? "Leads" : "lädt", state: "idle", tip: "lieferbare Leads US/UK/FR" },
     { id: "proben", label: "Proben", icon: "proben", value: `${ready}/${target}`, sub: "bereit", state: state("proben-vorrat", "proben-vorrat", 26), tip: "fertige, geprüfte Proben / Soll" },
-    { id: "kwerk", label: "Kunden-Werk", icon: "kunden-werk", value: compact(newBuyers24), sub: "neu 24 h", state: state("kunden-werk", "kunden-werk", 5), tip: "neue mail-fähige Webagenturen in 24 h" },
-    { id: "kaeufer", label: "Käufer", icon: "kaeufer", value: compact(Object.values(freeBuyers).reduce((a, b) => a + b, 0)), sub: "frei", state: "idle", tip: "mail-fähige Käufer ohne Mail" },
+    { id: "kwerk", label: "Kunden-Werk", icon: "kunden-werk", value: stockAll ? compact(newBuyers24) : "…", sub: "neu 24 h", state: state("kunden-werk", "kunden-werk", 5), tip: "neue mail-fähige Webagenturen in 24 h" },
+    { id: "kaeufer", label: "Käufer", icon: "kaeufer", value: stock ? compact(Object.values(freeBuyers).reduce((a, b) => a + b, 0)) : "…", sub: stock ? "frei" : "lädt", state: "idle", tip: "mail-fähige Käufer ohne Mail" },
     { id: "versand", label: "Versand", icon: "versand", value: `${sentToday}`, unit: `/${cap}`, sub: "heute", state: own.send_paused ? "off" : isLive(act, "versand", now) ? "live" : "idle", tip: "Mails heute / Kapazität" },
     { id: "antworten", label: "Antworten", icon: "antworten", value: `${w.replies}`, sub: `${w.positive} positiv`, state: state("antworten", "antworten", 30), tip: "echte Antworten 7 Tage (ohne Abwesenheit)" },
     { id: "kunden", label: "Kunden", icon: "kunden", value: `${subs.length}`, sub: `${revenue}/Mon.`, state: subs.length ? "live" : "idle", tip: "zahlende Kunden · Umsatz pro Monat" },
@@ -132,7 +138,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   ];
 
   // ---------------------------------------------------------------- JARVIS, Ampeln, Ticker
-  const tips = coach({ reg: REG, plan, stats, util: util.rate, queue, freeBuyers, leads: leadsNew, capPerDay: cap, kundenNew24h: stockAll ? newBuyers24 : null,
+  const tips = coach({ reg: REG, plan, stats, util: util.rate, queue, freeBuyers, leads: leadsNew, capPerDay: cap, kundenNew24h: stockAll ? newBuyers24 : null, stockKnown: !!stock,
     failed: beats.filter((b) => /^abgebrochen/.test(b.note ?? "") && t - Date.parse(b.beat_at) < 6 * 3_600_000).map((b) => `${b.werk} ${b.part} · ${berlin(b.beat_at)}`),
     countedHours: firstRun ? Math.min(24, (t - firstRun) / 3_600_000) : 0 });
   const tipStation = (href?: string): StationId => (href === "#pult" ? "lead" : href?.includes("bestand") ? "kaeufer" : href?.includes("versand") ? "versand" : "lead");
@@ -210,11 +216,12 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     if (s === "lead") body = tab === "set" ? (<>
       <div className="row-sw"><WerkSwitch werk="lead-werk" on={sw("lead-werk").on} back={back} label="Lead-Werk" />{Start({ wf: "lead-werk" })}</div>
       {tokenHint}
+      <AutopilotPanel on={autopilotOn} log={planLog["lead-werk"]} reg={REG} werk="lead-werk" back={back} />
       <Pult lanes={pultLanes} only={REG.lanes.filter((l) => l.werk === "lead-werk").map((l) => l.id)} cap={REG.total_slots - REG.reserve} total={REG.total_slots} back={back} action={saveSlotPlan} nextStart={nextStart} custom={custom} />
     </>) : tab === "check" ? <>{checkList}{lnk("/dashboard/werke", "alle Prüfstufen")}</> : (<>
       <div className="row-sw">{Start({ wf: "lead-werk" })}</div>
       {tokenHint}
-      <Reactor bays={bays} running={busy} util={util.rate} center={`${busy}`} sub={`von ${REG.total_slots} Plätzen arbeiten gerade · ${Object.values(plan).reduce((a, b) => a + b, 0)} geplant`} />
+      <Reactor bays={bays} running={busy} util={util.rate} center={`${busy}`} sub={`von ${REG.total_slots} Plätzen arbeiten gerade · ${Object.values(plan).reduce((a, b) => a + b, 0)} geplant${autopilotOn ? " (Autopilot)" : ""}`} />
       <MiniBars rows={REG.lanes.filter((l) => l.werk === "lead-werk" && (plan[l.id] || stats[l.id].runs)).map((l) => ({ key: l.id, label: l.short, n: stats[l.id].green, color: LANE_COLOR[l.id], href: `${base("lead")}&t=set`, tip: `${l.label}: ${plan[l.id]} Plätze · grün in 24 h` }))} />
       <UtilChart buckets={util.buckets} total={REG.total_slots} cap={REG.total_slots - REG.reserve} />
       <Bays bays={bays} labels={Object.fromEntries(REG.lanes.flatMap((l) => [[l.id, l.label], [`short:${l.id}`, l.short]]))} />
@@ -243,6 +250,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     if (s === "kwerk") body = tab === "set" ? (<>
       <div className="row-sw"><WerkSwitch werk="kunden-werk" on={sw("kunden-werk").on} back={back} label="Kunden-Werk" />{Start({ wf: "kunden-werk" })}</div>
       {countryToggles(own.buyer_countries_off, toggleBuyerCountry)}
+      <AutopilotPanel on={autopilotOn} log={planLog["kunden-werk"]} reg={REG} werk="kunden-werk" back={back} />
       <Pult lanes={pultLanes} only={["kunden"]} cap={REG.total_slots - REG.reserve} total={REG.total_slots} back={back} action={saveSlotPlan} nextStart={nextStart} custom={custom} />
     </>) : tab === "check" ? lnk("/dashboard/kontakte", "Käufer ansehen") : (<>
       <div className="row-sw">{Start({ wf: "kunden-werk" })}</div>

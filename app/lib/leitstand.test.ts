@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { coach, hall, laneOf, laneStats, neckTask, utilization, type Beat, type RunRow } from "./leitstand.ts";
+import { coach, hall, laneOf, laneStats, neckTask, partRuns, utilization, type Beat, type RunRow } from "./leitstand.ts";
 import { validateTask } from "./agents.ts";
 import { slotCounts } from "./owner-settings.ts";
 
@@ -90,4 +90,20 @@ test("Coach: leere Plätze, erschöpfte Linie, Käufer knapp, Warteschlange", ()
   assert.equal(usa.task!.market, "US");
   assert.equal(tips.find((t) => t.title === "UK: Käufer werden knapp")!.task!.market, "UK");
   assert.equal(neckTask("Antworten").kind, "frage");
+});
+
+test("partRuns: mehrere Zeilen je Teil (je Zielgruppe/Land) zählen als ein Teil", () => {
+  const base = { werk: "lead-werk", part: "web-us-0", run_id: "r1", country: "US", started_at: "2026-10-03T19:00:00Z", finished_at: "2026-10-03T19:30:00Z", processed: 10, green: 2 };
+  const rows: RunRow[] = [base, { ...base, country: "UK", green: 1 }, { ...base, country: "FR" }, { ...base, country: "IE", finished_at: "2026-10-03T19:31:00Z" }];
+  const parts = partRuns(rows);
+  assert.equal(parts.length, 1);
+  assert.equal(parts[0].green, 7);
+  assert.equal(parts[0].finished_at, "2026-10-03T19:31:00Z");
+  const s = laneStats(reg, rows, NOW);
+  assert.equal(s["web-us"].runs, 1);
+  assert.equal(Math.round(s["web-us"].avgRunMin!), 31);
+  // Auslastung: 31 Platz-Minuten, nicht 4 × 31
+  const u = utilization(rows, [], NOW, 40, 2, 30);
+  const used = u.rate * 120 * 40;  // belegte Platz-Minuten im Fenster
+  assert.ok(Math.abs(used - 31) < 0.5, `belegt ${used}`);
 });

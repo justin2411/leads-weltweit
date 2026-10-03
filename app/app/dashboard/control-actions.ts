@@ -128,6 +128,16 @@ export async function toggleWerk(f: FormData) {
   });
 }
 
+/** Autopilot der Plätze an/aus (Inhaber 03.10.2026: „Ja, Autopilot an“); festgesetzte Linien (locks) bleiben. */
+export async function toggleAutopilot(f: FormData) {
+  const want = f.get("on") === "1";
+  await run(f, want ? "Autopilot an – wirkt beim nächsten Start" : "Autopilot aus – deine Belegung gilt ab dem nächsten Start", async () => {
+    const cur = (await loadOwnerSettings()).slot_autopilot ?? { on: true, locks: {} };
+    if ((cur.on !== false) === want) return; // schon so
+    await setSetting("slot_autopilot", { on: want, locks: cur.locks && typeof cur.locks === "object" ? cur.locks : {} });
+  });
+}
+
 // ------------------------------------------------------------------------------------------- Belegungsplan
 /** Plätze je Linie (Inhaber 03.10.2026: „wv plätze werden belegt … wie maschinen steuern“). Wirkt beim nächsten Start
  *  des Werks (Job plan in lead-werk.yml/kunden-werk.yml). Grenzen je Linie und Summe prüft validateSlotPlan.

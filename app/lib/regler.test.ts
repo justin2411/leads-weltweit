@@ -331,3 +331,18 @@ test("letzter Lauf", () => {
   assert.equal(prevRun("53 4 * * 1", NOW).toISOString(), "2026-09-28T04:53:00.000Z");
   assert.equal(prevRun("7 6-21 * * *", new Date("2026-10-04T05:00:00Z")).toISOString(), "2026-10-03T21:07:00.000Z");
 });
+
+test("Autopilot: an/aus als Änderung, Sperren bleiben, Prüfung streng", () => {
+  const saved = S({ slot_autopilot: { on: true, locks: { "web-us": 4 } } });
+  const d = draftFrom(saved, ctx);
+  assert.equal(d.autopilot, true);
+  const ch = diff(saved, { ...d, autopilot: false }, ctx);
+  assert.equal(ch.length, 1);
+  assert.equal(ch[0].text, "Autopilot an → aus");
+  assert.deepEqual(toSettings(ch, saved, "x").slot_autopilot, { on: false, locks: { "web-us": 4 } });
+  assert.deepEqual(validateValue("slot_autopilot", { on: false, locks: { "web-us": 4 } }, ctx), { on: false, locks: { "web-us": 4 } });
+  assert.throws(() => validateValue("slot_autopilot", { on: "ja" }, ctx), InputError);
+  assert.throws(() => validateValue("slot_autopilot", { on: true, locks: { "web-us": 99 } }, ctx), InputError);
+  assert.throws(() => validateValue("slot_autopilot", { on: true, locks: { unbekannt: 1 } }, ctx), InputError);
+  assert.equal(draftFrom(DEFAULTS, ctx).autopilot, true);  // Inhaber 03.10.2026: Standard an
+});

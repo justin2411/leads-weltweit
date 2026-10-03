@@ -203,6 +203,13 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
       const min = Math.min(countriesOn(plan, reg), max);
       const full = tot >= max ? capHint(plan, reg, "lead-werk") : null;
       return (<>
+        <div className="rg-k"><span>Autopilot</span>
+          <div className="rg-chips">
+            <Chip on={draft.autopilot} disabled={locked} title="verteilt die Plätze bei jedem Start dorthin, wo Ertrag ist – innerhalb deiner Einstellung" onClick={() => set({ autopilot: true })}>an</Chip>
+            <Chip on={!draft.autopilot} disabled={locked} title="es gilt genau deine Belegung" onClick={() => set({ autopilot: false })}>aus</Chip>
+          </div>
+          {draft.autopilot && <p className="rg-note">Tempo und Länder = Rahmen · Land aus bleibt aus</p>}
+        </div>
         <div className="rg-k"><span>Tempo</span>
           <div className="rg-row">
             <Stepper label="Tempo (Plätze)" value={tot} min={min} max={max} unit="Plätze" changed={changedPart(k, "tempo")} disabled={locked}

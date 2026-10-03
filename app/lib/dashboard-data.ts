@@ -190,14 +190,14 @@ const runRowsCached = unstable_cache(
     {
       const since = new Date(Date.now() - hours * 3_600_000).toISOString();
       const { data, error } = await db().from("run_stats")
-        .select("werk, part, country, started_at, finished_at, processed, green, yellow, red")
+        .select("werk, part, run_id, country, started_at, finished_at, candidates, processed, green, yellow, red")
         .in("werk", ["lead-werk", "kunden-werk"]).gte("finished_at", since).order("finished_at", { ascending: false }).limit(5000)
         .abortSignal(AbortSignal.timeout(6000));
       if (error) throw new Error(error.message);
       return (data ?? []) as import("@/lib/leitstand").RunRow[];
     }
   },
-  ["dashboard-run-rows-v1"],
+  ["dashboard-run-rows-v2"],
   { revalidate: 60 },
 );
 export async function loadRunRows(hours = 24) {
@@ -245,5 +245,21 @@ export async function loadAgentTasks(): Promise<import("@/lib/agents").AgentTask
     return (data ?? []) as import("@/lib/agents").AgentTask[];
   } catch {
     return [];
+  }
+}
+
+/** Gestartete Belegung je Werk (werk_plan_log, geschrieben vom Plan-Job: Autopilot/Inhaber/Standard, Speicher-Bremse). */
+export type PlanLog = { werk: "lead-werk" | "kunden-werk"; at: string; mode: "autopilot" | "inhaber" | "standard"; bremse: "aus" | "hinweis" | "drossel" | "ohne-rohbestand";
+  db_bytes: number | null; plan: Record<string, number>; reasons: Record<string, string> };
+export async function loadPlanLog(): Promise<Partial<Record<PlanLog["werk"], PlanLog>>> {
+  try {
+    const { data, error } = await db().from("werk_plan_log").select("werk, at, mode, bremse, db_bytes, plan, reasons")
+      .order("at", { ascending: false }).limit(12).abortSignal(AbortSignal.timeout(4000));
+    if (error) throw new Error(error.message);
+    const out: Partial<Record<PlanLog["werk"], PlanLog>> = {};
+    for (const r of (data ?? []) as PlanLog[]) if (!out[r.werk]) out[r.werk] = r;
+    return out;
+  } catch {
+    return {};
   }
 }
