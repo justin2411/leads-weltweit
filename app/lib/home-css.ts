@@ -278,9 +278,9 @@ export const HOME_CSS = `
 .is-ready .hpz .hp-map svg{clip-path:inset(-60%)}
 @media (prefers-reduced-motion:reduce){.js .hpz .hp-map svg,.is-ready .hpz .hp-map svg{clip-path:none}}
 /* Kennzahlen enger an den Film (Inhaber 03.10.2026): ~40px über der Überschrift, ~56px unter der Fußnote */
-.hpz section.hp-film{padding-bottom:40px}
+.hpz section.hp-film{padding-bottom:88px;overflow-x:clip;overflow-y:visible;position:relative;z-index:1}
 .hpz section.hp-proofsec{padding:0}
 .hpz .hp-proofsec .hp-proof{padding-block:0 56px}
-@media (max-width:720px){.hpz section.hp-film{padding-bottom:32px}.hpz .hp-proofsec .hp-proof{padding-block:0 40px}}
+@media (max-width:720px){.hpz section.hp-film{padding-bottom:56px}.hpz .hp-proofsec .hp-proof{padding-block:0 40px}}
 `;
 
