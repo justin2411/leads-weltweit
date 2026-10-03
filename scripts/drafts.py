@@ -235,6 +235,7 @@ def main(argv=None) -> int:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--variant", default="v1")
     ap.add_argument("--approve", help="Freigabe des Inhabers (Wortlaut/Datum): Entwürfe ohne Regelverstoß freigeben")
+    ap.add_argument("--max-new", type=int, default=300, help="höchstens so viele neue Entwürfe je Experiment und Lauf")
     ap.add_argument("--refresh", action="store_true",
                     help="offene Entwürfe (draft/approved, nicht gesendet) auf den aktuellen Text bringen")
     args = ap.parse_args(argv)
@@ -245,10 +246,11 @@ def main(argv=None) -> int:
     # nur laufende Experimente (gestoppte und abgeschlossene bekommen keine neuen Entwürfe)
     exps = {(e["segment_id"], e["country"]): e for e in db.select("experiments", {"variant": f"eq.{args.variant}"})
             if e.get("decision") != "killed" and e.get("status") != "done"}
-    prospects = db.select_all("prospects", {"check_status": "eq.ok", "order": "created_at"})
-    # Fokus-Tests zuerst (config/fokus.yaml, Inhaber 01.10.2026: „lass fokus aufbauen“)
-    from lib.fokus import rank
-    prospects.sort(key=lambda p: rank(p["segment_id"], p["country"]))
+    # Fokus-Tests zuerst (config/fokus.yaml); bei nur_fokus nur diese (andere Branchen ruhen, Inhaber 02.10.2026)
+    from lib.fokus import focus_only, rank
+    keys = sorted(exps, key=lambda k: rank(*k))
+    if focus_only():
+        keys = [k for k in keys if rank(*k) == 0]
     # CLAUDE.md 5.1: ohne mindestens 10 echte Probe-Leads kein Entwurf und kein Versand
     samples = {}
     for l in db.select("leads", {"status": "eq.sample", "select": "segment_id,country"}):
@@ -257,36 +259,45 @@ def main(argv=None) -> int:
     ready = {k for k, v in samples.items() if v >= 10}
     print("Probe vorhanden für:", ", ".join(f"{a}/{b}" for a, b in sorted(ready)) or "keine")
     n = bad = 0
-    counts: dict[str, int] = {}
     total_cap = int(os.environ.get("MAX_TOTAL_MAILS", "100000"))  # Inhaber 26.09.2026: 250 pro Tag fortlaufend
     total = len(db.select_all("messages", {"select": "id"}))
-    for p in prospects:
-        e = exps.get((p["segment_id"], p["country"]))
-        if not e or (p["segment_id"], p["country"]) not in ready:
+    # Je Experiment einmal laden statt je Käufer abfragen (03.10.2026: der tägliche Lauf brach nach Stunden ab,
+    # weil für ~70.000 Käufer je eine Abfrage lief); höchstens --max-new neue Entwürfe je Experiment und Lauf
+    for key in keys:
+        if key not in ready:
             continue
-        if total + n >= total_cap:
-            print(f"Gesamtgrenze {total_cap} erreicht")
-            break
-        planned = e.get("planned_count") or 50
-        if counts.setdefault(e["id"], len(db.select_all("messages", {"experiment_id": f"eq.{e['id']}", "select": "id"}))) >= planned:
+        e = exps[key]
+        have = {m["prospect_id"] for m in db.select_all("messages", {"experiment_id": f"eq.{e['id']}",
+                                                                     "select": "prospect_id"})}
+        room = min((e.get("planned_count") or 50) - len(have), args.max_new)
+        if room <= 0:
             continue
-        if db.select("messages", {"prospect_id": f"eq.{p['id']}", "experiment_id": f"eq.{e['id']}", "select": "id"}):
-            continue
-        if db.rpc("is_suppressed", {"p_email": p["email"]}):
-            continue
-        subject, body, lang = build(p)
-        lint = lint_draft(subject, body, lang)
-        n += 1
-        bad += 0 if lint.ok else 1
-        print(f"{p['segment_id']}/{p['country']} {p['email']:<40} {lint.summary()}")
-        if not args.dry_run:
-            approve = bool(args.approve) and lint.ok
-            db.insert("messages", {"prospect_id": p["id"], "experiment_id": e["id"], "to_email": p["email"],
-                                   "subject": subject, "body": body, "language": lang,
-                                   "status": "approved" if approve else "draft", "check_errors": lint.errors,
-                                   **({"approved_at": dt.datetime.now(dt.timezone.utc).isoformat(),
-                                       "approved_by": f"Inhaber: {args.approve}"} if approve else {})})
-            counts[e["id"]] = counts.get(e["id"], 0) + 1
+        made = 0
+        for p in db.select_all("prospects", {"check_status": "eq.ok", "segment_id": f"eq.{key[0]}",
+                                             "country": f"eq.{key[1]}", "order": "created_at"}):
+            if made >= room:
+                break
+            if total + n >= total_cap:
+                print(f"Gesamtgrenze {total_cap} erreicht")
+                break
+            if p["id"] in have or not p.get("email"):
+                continue
+            if db.rpc("is_suppressed", {"p_email": p["email"]}):
+                continue
+            subject, body, lang = build(p)
+            lint = lint_draft(subject, body, lang)
+            n += 1
+            made += 1
+            bad += 0 if lint.ok else 1
+            print(f"{p['segment_id']}/{p['country']} {p['email']:<40} {lint.summary()}")
+            if not args.dry_run:
+                approve = bool(args.approve) and lint.ok
+                db.insert("messages", {"prospect_id": p["id"], "experiment_id": e["id"], "to_email": p["email"],
+                                       "subject": subject, "body": body, "language": lang,
+                                       "status": "approved" if approve else "draft", "check_errors": lint.errors,
+                                       **({"approved_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+                                           "approved_by": f"Inhaber: {args.approve}"} if approve else {})})
+        print(f"{key[0]}/{key[1]}: {made} neue Entwürfe (bisher {len(have)})")
     print(f"\n{n} Entwürfe, davon {bad} mit Regelverstoß")
     return 0
 
