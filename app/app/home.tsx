@@ -7,14 +7,14 @@ import { wishesFor } from "@/content/sample-wishes";
 import { LANDING_CSS } from "@/lib/landing-css";
 import { HOME_CSS } from "@/lib/home-css";
 import { HOME_SPRITE, HOME_V2_CSS } from "@/lib/home-v2-css";
-import { SampleForm, type FormOption } from "./sample-form";
+import { SampleForm, type IndustryOption } from "./sample-form";
 import { homeStats, publicPages, type PublicPage } from "@/lib/site-pages";
 import { BrandShell, SiteFooter, SiteHeader } from "./chrome";
 import { HOME, HOME_LANGS, HOME_PATH, type HomeLang } from "./home-i18n";
 import { CONTACT_PATH } from "./contact/contact-i18n";
 import { HomeFx } from "./home-fx";
 import { DOT_MAPS } from "@/content/home-dot-maps";
-import { COUNTRIES, segKey, type CountryCode } from "@/lib/country";
+import { COUNTRIES, LEAD_COUNTRIES, segKey, type CountryCode } from "@/lib/country";
 
 // Register (Inhaber 27.09.2026 „über 18 Millionen“): Companies House 4.930.634 (effektives Register, März 2026,
 // GOV.UK Companies register activities 2025/26) + INSEE SIRENE 13,7 Mio. aktive Rechtseinheiten (2022) = 18,6 Mio.
@@ -97,14 +97,16 @@ export async function Home({ lang }: { lang: HomeLang }) {
   const segs = [...bySeg.keys()].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
   const countries = CC.filter((c) => pages.some((p) => p.country === c));
   const defCountry: CountryCode = lang === "fr" && countries.includes("FR") ? "FR" : countries.includes("UK") ? "UK" : countries[0] ?? "UK";
-  const formOptions: FormOption[] = [...pages]
-    .sort((a, b) => Number(b.country === defCountry) - Number(a.country === defCountry) || a.country.localeCompare(b.country)
-      || ORDER.indexOf(segKey(a.slug)) - ORDER.indexOf(segKey(b.slug)))
-    .map((p) => ({
-      value: p.slug,
-      label: `${t.industries[segKey(p.slug)]?.[0] ?? p.name} · ${COUNTRIES[p.country as CountryCode]?.name[lang] ?? p.country}`,
-      wishes: wishesFor(segKey(p.slug)).map((w) => ({ key: w.key, label: w[lang] })),
-    }));
+  // Probe-Formular: Branche und Lieferland getrennt (Inhaber 03.10.2026), Länder nur dort, wo wir Leads haben
+  const industries: IndustryOption[] = segs.map((k) => {
+    const byCc = bySeg.get(k) ?? {};
+    return {
+      value: k, label: t.industries[k]?.[0] ?? k,
+      pages: Object.fromEntries(Object.entries(byCc).map(([cc, href]) => [cc, String(href).slice(1)])),
+      wishes: wishesFor(k).map((w) => ({ key: w.key, label: w[lang] })),
+    };
+  });
+  const leadCountries = LEAD_COUNTRIES.map((x) => ({ code: x.code, label: x.name[lang] }));
   const contactHref = CONTACT_PATH[lang];
   const ld = {
     "@context": "https://schema.org", "@type": "Organization", name: BRAND, legalName: LEGAL_NAME, url: siteUrl(), email: CONTACT,
@@ -368,65 +370,58 @@ export async function Home({ lang }: { lang: HomeLang }) {
           </div>
         </section>
 
-        <section className="sec pcl" id="contact-person"><div className="wrap pc2">
-          <div>
-            <div className="kick"><span className="cap gold">{t.pcKick}</span></div>
-            <h2>{t.pcH[0]}<i>{t.pcH[1]}</i></h2>
-            <p className="lede2">{t.pcLede}</p>
-            <ul className="plist">
-              {t.pcList.map(([ic, h, d], k) => (
-                <li key={h} data-rv style={i(k)}><span className="gi"><I n={{ user: "users", focus: "filter" }[ic] ?? ic} /></span><span><b>{h}</b><span>{d}</span></span></li>))}
-            </ul>
-            <a className="hp-btn hp-btn--gold" href={contactHref} data-magnetic=""><span>{t.pcBtn}</span><I n="arrow" c="hp-ico hp-btn__arrow" /></a>
-          </div>
-          {/* Neue Karte (Inhaber 03.10.2026: „rechts bitte nochmal besser anders“): Ablauf der Abstimmung + Filter */}
-          <div className="pccard" data-rv>
-            <div className="pchead">
-              <span className="pcav"><I n="users" /><i /></span>
-              <span><b>{t.pcWho[0]}</b><em><span className="pcdot" />{t.pcCard.reply}</em></span>
-            </div>
-            <ol className="pctl">
-              {t.pcCard.tl.map(([ic, w, d], k) => (
-                <li key={w} style={i(k)}><span className="pcic"><I n={ic} /></span><span><small>{w}</small><b>{d}</b></span></li>))}
-            </ol>
-            <div className="pcfilters">
-              <span className="cap">{t.pcCard.fTitle}</span>
-              <div className="pcchips">
-                {t.pcCard.filters.map(([st, l], k) => (
-                  <span key={l} className={`pcchip ${st}`} style={i(k)}><I n={st === "off" ? "ban" : st === "new" ? "star" : "check"} />{l}</span>))}
+        {/* Persönlicher Ansprechpartner und Probe nach Vorlage v1 (Inhaber 03.10.2026) */}
+        <section className="nx nx-contact-sec hp-cream" id="contact-person" aria-labelledby="pc-title">
+          <div className="hp-wrap">
+            <div className="nx-contact">
+              <div className="nx-contact-top">
+                <div className="nx-contact-copy">
+                  <p className="nx-kicker">{t.pcKick}</p>
+                  <h2 className="nx-h2" id="pc-title">{t.pcH[0]}{t.pcH[1]}</h2>
+                  <p className="nx-sub">{t.pcLede}</p>
+                  <a className="hp-btn hp-btn--gold" href={contactHref}><span>{t.pcBtn}</span><I n="arrow" c="hp-ico hp-btn__arrow" /></a>
+                </div>
+                {/* nur Bild: Ihr Feedback erreicht den Ansprechpartner, der die drei Filter aus dem Text verstellt */}
+                <div className="nx-cg" aria-hidden="true">
+                  <span className="nx-cg-say"><I n="chat" />{t.pcGfx.say}</span>
+                  <span className="nx-cg-link" />
+                  <div className="nx-cg-panel">
+                    <div className="nx-cg-head">
+                      <span className="nx-cg-avatar"><I n="users" /></span>
+                      <b>{t.pcGfx.who}</b>
+                      <span className="nx-cg-loop"><I n="calendar" />{t.pcGfx.loop}</span>
+                    </div>
+                    <div className="nx-cg-rows">
+                      {t.pcGfx.rows.map((r, k) => <div className="nx-cg-row" key={r}><span>{r}</span><i style={{ "--v": ["64%", "36%", "80%"][k] } as CSSProperties} /></div>)}
+                    </div>
+                  </div>
+                </div>
               </div>
+              <ul className="nx-contact-points">
+                {t.pcList.map(([ic, h, d]) => (
+                  <li key={h}><span className="nx-contact-ic" aria-hidden="true"><I n={{ user: "users", focus: "filter", target: "trend" }[ic] ?? ic} /></span><div><h3 className="nx-h3">{h}</h3><p>{d}</p></div></li>))}
+              </ul>
             </div>
-            <blockquote className="pcquote" style={i(3)}><span className="pcav sm"><I n="users" /></span><span>{t.pcCard.quote}</span></blockquote>
-            <p className="fnote">{t.pcNote}</p>
           </div>
-        </div></section>
+        </section>
 
-        <section className="hp-sec hp-cream hp-sample" id="sample" aria-labelledby="sample-title">
-          <div className="hp-wrap hp-sample__grid">
-            <div className="hp-formcard hp-grain" id="probe" data-reveal="">
-              <h2 className="hp-h2" id="sample-title">{t.sampleTitle[0]}<br /><span className="hp-gold">{t.sampleTitle[1]}</span></h2>
-              <p className="hp-formcard__intro">{t.sampleSub}</p>
-              {formOptions.length > 0 && (
-                <SampleForm lang={lang} field="slug" options={formOptions} consent={consentText(lang)}
+        <section className="nx nx-sample" id="sample" aria-labelledby="sample-title">
+          <div className="hp-wrap nx-sample-grid">
+            <div className="nx-sample-head">
+              <h2 className="nx-h2" id="sample-title">{t.sampleTitle[0]}<br />{t.sampleTitle[1]}</h2>
+              <p className="nx-sub">{t.sampleSub}</p>
+            </div>
+            <div className="nx-formcard" id="probe">
+              {industries.length > 0 && (
+                <SampleForm lang={lang} field="slug" options={[]} industries={industries} countries={leadCountries} consent={consentText(lang)}
                   privacyHref={{ en: "/privacy", fr: "/confidentialite", de: "/datenschutz" }[lang]} />
               )}
             </div>
-            <div className="hp-side">
-              <div className="hp-panel" data-reveal="" style={{ "--d": ".1s" } as CSSProperties}>
-                <h3 className="hp-panel__title">{t.howTitle}</h3>
-                <ol className="hp-how">{t.how.map((h) => <li key={h}><span>{h}</span></li>)}</ol>
-              </div>
-              <div className="hp-panel" data-reveal="" style={{ "--d": ".2s" } as CSSProperties}>
-                <h3 className="hp-panel__title">{t.receive.title}</h3>
-                <ul className="hp-receive">
-                  <li><span className="hp-receive__icon"><I n="doc" /></span><p><strong>{t.receive.pdf[0]}</strong><span>{t.receive.pdf[1]}</span></p></li>
-                  <li><span className="hp-receive__icon"><I n="table" /></span><p><strong>{t.receive.csv[0]}</strong><span>{t.receive.csv[1]}</span></p></li>
-                </ul>
-              </div>
-              <p className="hp-side__note" data-reveal="" style={{ "--d": ".3s" } as CSSProperties}><I n="mail" /><span>{t.mailHint}</span></p>
-              <a className="hp-panel hp-talk" href={contactHref} data-reveal="" style={{ "--d": ".35s" } as CSSProperties}>
-                <span className="hp-receive__icon"><I n="users" /></span><span><small>{t.talk[0]}</small><strong>{t.talk[1]} →</strong></span>
-              </a>
+            <div className="nx-sample-flow">
+              <ol className="nx-flow">
+                {t.how.map((h, k) => <li key={h}><span className="nx-flow-n" aria-hidden="true">{k + 1}</span><p>{h}</p></li>)}
+              </ol>
+              <p className="nx-sample-note"><I n="mail" />{t.mailHint}</p>
             </div>
           </div>
         </section>

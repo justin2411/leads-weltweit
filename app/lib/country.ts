@@ -40,3 +40,20 @@ export function localize(text: string, country: string): string {
   if (country !== "US") return text;
   return US_TERMS.reduce((t, [a, b]) => t.replace(a, b), text);
 }
+
+/**
+ * Lieferländer im Probe-Formular der Startseite (Inhaber 03.10.2026): die Länder, in denen wir Leads haben,
+ * nicht alle Länder der Welt. Länder ohne eigene Landingpage speichern die Anfrage ohne Seiten-Variante.
+ */
+export type LeadCountry = { code: string; name: { en: string; fr: string; de: string }; land: string; landFr: string };
+export const LEAD_COUNTRIES: LeadCountry[] = [
+  { code: "UK", name: COUNTRIES.UK.name, land: "the UK", landFr: "de tout le Royaume-Uni" },
+  { code: "US", name: COUNTRIES.US.name, land: "the US", landFr: "de tous les États-Unis" },
+  { code: "FR", name: COUNTRIES.FR.name, land: "France", landFr: "de toute la France" },
+  { code: "BE", name: { en: "Belgium", fr: "Belgique", de: "Belgien" }, land: "Belgium", landFr: "de toute la Belgique" },
+  { code: "DE", name: { en: "Germany", fr: "Allemagne", de: "Deutschland" }, land: "Germany", landFr: "de toute l'Allemagne" },
+  { code: "IE", name: { en: "Ireland", fr: "Irlande", de: "Irland" }, land: "Ireland", landFr: "de toute l'Irlande" },
+  { code: "NL", name: { en: "Netherlands", fr: "Pays-Bas", de: "Niederlande" }, land: "the Netherlands", landFr: "de tous les Pays-Bas" },
+  { code: "SE", name: { en: "Sweden", fr: "Suède", de: "Schweden" }, land: "Sweden", landFr: "de toute la Suède" },
+];
+export const leadCountry = (code: string) => LEAD_COUNTRIES.find((c) => c.code === code);
