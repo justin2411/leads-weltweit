@@ -36,9 +36,6 @@ export function homeMetadata(lang: HomeLang): Metadata {
 
 /** Gleiche Reihenfolge der Branchen in jedem Land (Vorlage Inhaber 03.10.2026). */
 const ORDER = ["accountants", "financial-advisers", "insurance-brokers", "recruitment", "web-agencies", "it-services"];
-const IND_ICON: Record<string, string> = {
-  accountants: "calc", "financial-advisers": "trend", "insurance-brokers": "umbrella", recruitment: "users", "web-agencies": "globe", "it-services": "zap",
-};
 const CC: CountryCode[] = ["UK", "US", "FR"];
 const FLAG: Record<string, string> = { UK: "f-uk", US: "f-us", FR: "f-fr" };
 
@@ -109,8 +106,6 @@ export async function Home({ lang }: { lang: HomeLang }) {
     bySeg.set(k, { ...(bySeg.get(k) ?? {}), [p.country as CountryCode]: "/" + p.slug });
   }
   const segs = [...bySeg.keys()].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
-  const countries = CC.filter((c) => pages.some((p) => p.country === c));
-  const defCountry: CountryCode = lang === "fr" && countries.includes("FR") ? "FR" : countries.includes("UK") ? "UK" : countries[0] ?? "UK";
   // Probe-Formular: Branche und Lieferland getrennt (Inhaber 03.10.2026), Länder nur dort, wo wir Leads haben
   const industries: IndustryOption[] = segs.map((k) => {
     const byCc = bySeg.get(k) ?? {};
@@ -140,7 +135,7 @@ export async function Home({ lang }: { lang: HomeLang }) {
       <script dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('js')" }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
       <div dangerouslySetInnerHTML={{ __html: HOME_SPRITE }} />
-      <SiteHeader links={[["#film", "Film"], ["#industries", t.nav[1][1]], ["#contact-person", t.nav[2][1]], [contactHref, t.contact]]} cta={["#sample", t.cta]}
+      <SiteHeader links={[["#film", "Film"], ["#contact-person", t.nav[2][1]], [contactHref, t.contact]]} cta={["#sample", t.cta]}
         langs={HOME_LANGS.map((l) => [l.toUpperCase(), HOME_PATH[l], l === lang])} />
       <HomeFx />
       <div className="lp2 hm hpz">
@@ -376,43 +371,6 @@ export async function Home({ lang }: { lang: HomeLang }) {
           </div>
         </section>
 
-        <section className="hp-sec hp-dark hp-grain" id="industries" aria-labelledby="ind-title">
-          <div className="hp-wrap">
-            <div className="hp-ind__top">
-              <div className="hp-intro" data-reveal=""><h2 className="hp-h2" id="ind-title">{t.indH}</h2><p>{t.indSub}</p></div>
-              {countries.length > 1 && (
-                <div className="hp-tabs" role="tablist" aria-label={t.countryPick} data-reveal="" style={{ "--d": ".1s" } as CSSProperties}>
-                  <span className="hp-tabs__ind" aria-hidden="true" />
-                  {countries.map((cc) => (
-                    <button className="hp-tab" role="tab" type="button" key={cc} aria-selected={cc === defCountry} tabIndex={cc === defCountry ? 0 : -1}
-                      aria-controls="ind-list" data-country={cc.toLowerCase()} id={`tab-${cc.toLowerCase()}`}>
-                      <I n={FLAG[cc]} c="hp-flag" /><span className="hp-tab__long">{COUNTRIES[cc].name[lang]}</span><span className="hp-tab__short">{cc}</span>
-                    </button>))}
-                </div>)}
-            </div>
-            <ul className="hp-ind" id="ind-list" role="tabpanel" aria-labelledby={`tab-${defCountry.toLowerCase()}`} data-country={defCountry.toLowerCase()}>
-              {segs.map((k, n) => {
-                const links = bySeg.get(k) ?? {};
-                const [name, desc] = t.industries[k] ?? [k, ""];
-                return (
-                  <li className="hp-ind__card" data-reveal="" style={{ "--d": `${(n * 0.08).toFixed(2)}s` } as CSSProperties} key={k} hidden={!links[defCountry]}>
-                    <div className="hp-ind__top-row"><span className="hp-ind__icon"><I n={IND_ICON[k] ?? "target"} /></span>
-                      <span className="hp-cc" aria-hidden="true"><span className="hp-cc__strip" style={{ "--d": `${n * 60}ms` } as CSSProperties}>
-                        {CC.map((cc) => <span key={cc}><I n={FLAG[cc]} c="hp-flag" />{cc}</span>)}
-                      </span></span></div>
-                    <h3>{name}</h3>
-                    {desc && <p>{desc}</p>}
-                    <a className="hp-ind__link" href={links[defCountry] ?? "#sample"} data-uk={links.UK} data-us={links.US} data-fr={links.FR}>{t.indGo}<I n="arrow" /></a>
-                  </li>);
-              })}
-              <li className="hp-ind__card hp-ind__card--cta" data-reveal="" style={{ "--d": ".4s" } as CSSProperties}>
-                <h3>{t.ctaCard[0]}</h3><p>{t.ctaCard[1]}</p>
-                <a className="hp-btn hp-btn--gold" href="#sample" data-magnetic=""><span>{t.btn}</span><I n="arrow" c="hp-ico hp-btn__arrow" /></a>
-              </li>
-            </ul>
-          </div>
-        </section>
-
         {/* Persönlicher Ansprechpartner nach Vorlage v4 (Inhaber 03.10.2026): vier Beispielwochen, die Filter werden enger */}
         <section className="hp-sec hp-dark hp-grain hp-contact" id="contact-person" aria-labelledby="contact-title">
           <div className="hp-wrap hp-contact__grid">
@@ -500,18 +458,21 @@ export async function Home({ lang }: { lang: HomeLang }) {
                 <h3 className="hp-side__title">{t.howTitle}</h3>
                 <ol className="hp-how">{t.how.map((h) => <li key={h}><span>{h}</span></li>)}</ol>
               </div>
-              <p className="hp-side__note" data-reveal="" style={{ "--d": ".3s" } as CSSProperties}><I n="mail" /><span>{t.mailHint}</span></p>
             </div>
           </div>
         </section>
 
         {/* Fragen: schmale Spalte, Plus-Symbol dreht sich beim Öffnen (Vorlage home_1, Inhaber 03.10.2026) */}
         <section className="hp-sec hp-faq" id="faq" aria-labelledby="faq-title">
-          <div className="hp-wrap hp-wrap--narrow">
-            <h2 className="hp-h2" id="faq-title">{t.faqH}</h2>
-            {t.faq.map((f) => (
-              <details className="hp-qa" key={f.q}><summary>{f.q}<I n="plus" c="hp-ico hp-qa__ic" /></summary><div className="hp-qa__a"><p>{f.a}</p></div></details>))}
-            <p className="hp-faq__more">{t.askMore} <a href={`mailto:${CONTACT}`}>{CONTACT}</a></p>
+          <div className="hp-wrap hp-faq__grid">
+            <div className="hp-faq__head">
+              <h2 className="hp-h2" id="faq-title">{t.faqH}</h2>
+              <p className="hp-faq__more"><span className="hp-faq__mail"><I n="mail" /></span><span>{t.askMore}<br /><a href={`mailto:${CONTACT}`}>{CONTACT}</a></span></p>
+            </div>
+            <div className="hp-faq__list">
+              {t.faq.map((f) => (
+                <details className="hp-qa" key={f.q}><summary>{f.q}<span className="hp-qa__btn" aria-hidden="true"><I n="plus" c="hp-ico hp-qa__ic" /></span></summary><div className="hp-qa__a"><p>{f.a}</p></div></details>))}
+            </div>
           </div>
         </section>
       </div>

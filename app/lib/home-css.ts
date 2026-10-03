@@ -255,23 +255,8 @@ export const HOME_CSS = `
 .hpz .hp-ledger__txt small{gap:0}
 
 /* ---- Fragen nach Vorlage home_1 (Inhaber 03.10.2026): schmale Spalte, Plus dreht sich ---- */
-.hpz .hp-sec.hp-faq{background:var(--cream);border-top:1px solid #e6dfcf;color:var(--text)}
 .hpz .hp-wrap--narrow{max-width:calc(760px + 2 * var(--gutter))}
-.hpz .hp-faq .hp-h2{margin-bottom:26px}
-.hpz .hp-qa{margin:0;padding:0;border:0;border-bottom:1px solid #ddd3bf;border-radius:0;background:none;box-shadow:none}
-.hpz .hp-qa:first-of-type{border-top:1px solid #ddd3bf}
-.hpz .hp-qa summary{display:flex;align-items:center;gap:20px;padding:22px 0;list-style:none;font-size:17.5px;font-weight:700;line-height:1.4;color:var(--ink);cursor:pointer;transition:color .2s}
-.hpz .hp-qa summary::-webkit-details-marker{display:none}
-.hpz .hp-qa summary:hover{color:var(--gold-deep)}
-.hpz .hp-qa__ic{width:20px;height:20px;margin-left:auto;color:var(--gold-lo);transition:transform .35s var(--ease)}
-.hpz .hp-qa[open] .hp-qa__ic{transform:rotate(45deg)}
-.hpz .hp-qa__a{max-width:62ch;padding:0 40px 24px 0;font-size:16px;line-height:1.7;color:var(--muted)}
-.hpz .hp-qa[open] .hp-qa__a{animation:hp-rise .4s var(--ease)}
 @keyframes hp-rise{from{opacity:0;translate:0 14px}}
-.hpz .hp-faq__more{margin-top:26px;font-size:16px;color:var(--muted)}
-.hpz .hp-faq__more a{color:var(--gold-deep);font-weight:600;text-underline-offset:3px;overflow-wrap:anywhere}
-@media (max-width:720px){.hpz .hp-qa__a{padding-right:0}}
-@media (prefers-reduced-motion:reduce){.hpz .hp-qa[open] .hp-qa__a{animation:none}.hpz .hp-qa__ic{transition:none}}
 
 /* Länderwechsel: Lichtwelle nicht am Kartenrand abschneiden (Inhaber 03.10.2026) */
 .js .hpz .hp-map svg{clip-path:inset(-60% -60% 160% -60%)}
@@ -282,5 +267,29 @@ export const HOME_CSS = `
 .hpz section.hp-proofsec{padding:0}
 .hpz .hp-proofsec .hp-proof{padding-block:0 56px}
 @media (max-width:720px){.hpz section.hp-film{padding-bottom:56px}.hpz .hp-proofsec .hp-proof{padding-block:0 40px}}
+/* FAQ „Good to know“ zweispaltig mit Karten (Inhaber 03.10.2026) */
+.hpz .hp-sample{padding-bottom:88px}
+.hpz .hp-sec.hp-faq{padding:72px 0 112px;background:var(--cream);color:var(--text)}
+.hpz .hp-faq__grid{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.5fr);gap:64px;align-items:start}
+.hpz .hp-faq__head{position:sticky;top:96px}
+.hpz .hp-faq__more{display:flex;gap:14px;align-items:flex-start;margin-top:28px;padding:18px 20px;border-radius:16px;background:#fff;border:1px solid #ece5d6;font-size:15px;line-height:1.55;color:var(--muted)}
+.hpz .hp-faq__mail{flex:none;display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--gold-tint);color:var(--gold-deep)}
+.hpz .hp-faq__mail .hp-ico{width:18px;height:18px}
+.hpz .hp-faq__more a{color:var(--ink);font-weight:700;text-decoration:underline;text-decoration-color:var(--gold-lo);text-underline-offset:3px;overflow-wrap:anywhere}
+.hpz .hp-faq__list{display:grid;gap:12px}
+.hpz .hp-qa{margin:0;padding:0 24px;border:1px solid #ece5d6;border-radius:16px;background:#fff;box-shadow:0 1px 2px rgba(14,26,51,.04);transition:border-color .3s,box-shadow .3s}
+.hpz .hp-qa:hover{border-color:#e0d2b4}
+.hpz .hp-qa[open]{border-color:rgba(176,141,87,.55);box-shadow:0 24px 44px -30px rgba(14,26,51,.35)}
+.hpz .hp-qa summary{display:flex;align-items:center;gap:20px;padding:20px 0;list-style:none;font-size:17px;font-weight:700;line-height:1.4;color:var(--ink);cursor:pointer}
+.hpz .hp-qa summary::-webkit-details-marker{display:none}
+.hpz .hp-qa__btn{flex:none;display:grid;place-items:center;width:34px;height:34px;margin-left:auto;border-radius:50%;background:var(--gold-tint);color:var(--gold-deep);transition:background-color .3s,color .3s,transform .35s var(--ease)}
+.hpz .hp-qa__ic{width:16px;height:16px}
+.hpz .hp-qa[open] .hp-qa__btn{background:var(--ink);color:var(--gold-hi);transform:rotate(45deg)}
+.hpz .hp-qa__a{max-width:62ch;padding:0 0 22px;font-size:16px;line-height:1.7;color:var(--muted)}
+.hpz .hp-qa[open] .hp-qa__a{animation:hp-rise .4s var(--ease)}
+.hpz .hp-qa__a p{margin:0}
+@media (max-width:900px){.hpz .hp-faq__grid{grid-template-columns:1fr;gap:28px}.hpz .hp-faq__head{position:static}}
+@media (max-width:720px){.hpz .hp-sample{padding-bottom:64px}.hpz .hp-sec.hp-faq{padding:48px 0 80px}.hpz .hp-qa{padding:0 18px}.hpz .hp-qa summary{font-size:16px}}
+@media (prefers-reduced-motion:reduce){.hpz .hp-qa[open] .hp-qa__a{animation:none}.hpz .hp-qa__btn{transition:none}}
 `;
 
