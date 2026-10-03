@@ -436,13 +436,13 @@ export function sampleStock(live: Live, cfg: OpsConfig, now: Date): StockRow[] {
 }
 
 // --------------------------------------------------------------------------------------------- Ampel
-export type Alert = { level: "rot" | "gelb" | "gruen"; area: string; title: string; detail?: string };
+export type Alert = { level: "rot" | "gelb" | "gruen"; area: string; title: string; detail?: string; short?: string };
 
 export const DB_LIMIT_BYTES = 8 * 1024 ** 3; // Supabase Pro: 8 GB Speicher inklusive, darüber kostet es
 
 export function alerts(live: Live, stock: Stock | null, cfg: OpsConfig, now: Date, runs: RunInfo[] | null): Alert[] {
   const a: Alert[] = [];
-  const add = (level: Alert["level"], area: string, title: string, detail?: string) => a.push({ level, area, title, detail });
+  const add = (level: Alert["level"], area: string, title: string, detail?: string, short?: string) => a.push({ level, area, title, detail, short });
   const v = cfg.versand;
   const b = brake(live, cfg);
 
@@ -452,22 +452,22 @@ export function alerts(live: Live, stock: Stock | null, cfg: OpsConfig, now: Dat
   const sentToday = boxes.reduce((s, x) => s + x.today, 0);
   const sendWf = cfg.workflows.find((w) => w.file === "send.yml");
   const nextSend = sendWf ? nextRun(sendWf.crons, now) : null;
-  if (!v.aktiv) add("gelb", "Versand", "Versand ist ausgeschaltet", "config/versand.yaml: aktiv: false");
-  if (b.stop) add("rot", "Versand", "Notbremse aktiv", b.stop);
+  if (!v.aktiv) add("gelb", "Versand", "Versand ist ausgeschaltet", "config/versand.yaml: aktiv: false", "Versand ausgeschaltet");
+  if (b.stop) add("rot", "Versand", "Notbremse aktiv", b.stop, "Notbremse aktiv");
   else if (b.complained === 0) {
     const detail = `${b.bounced} von ${b.sent} seit ${berlin(b.start)}` + (b.sent < MIN_SAMPLE ? ` – Notbremse bewertet erst ab ${MIN_SAMPLE} Mails` : "");
-    if (b.rate > BOUNCE_STOP * 0.8) add(b.sent >= MIN_SAMPLE * 0.8 ? "rot" : "gelb", "Versand", `Bounce-Quote ${pctS(b.rate)} nahe an der Notbremse (5 %)`, detail);
+    if (b.rate > BOUNCE_STOP * 0.8) add(b.sent >= MIN_SAMPLE * 0.8 ? "rot" : "gelb", "Versand", `Bounce-Quote ${pctS(b.rate)} nahe an der Notbremse (5 %)`, detail, "Bounce-Quote nahe Notbremse");
     else add("gruen", "Versand", `Bounce-Quote ${pctS(b.rate)}`, detail);
   }
-  if (b.complained > 0 && !b.stop) add("rot", "Versand", `${b.complained} Spam-Beschwerde(n)`);
+  if (b.complained > 0 && !b.stop) add("rot", "Versand", `${b.complained} Spam-Beschwerde(n)`, undefined, "Spam-Beschwerde eingegangen");
   const hourBerlin = Number(new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "numeric", hourCycle: "h23" }).format(now));
   if (v.aktiv && !b.stop) {
-    if (hoursSince(live.last_sent_at, now) > 26) add("rot", "Versand", "Seit über 26 h keine Mail gesendet", `zuletzt ${berlin(live.last_sent_at)}`);
-    else if (hourBerlin >= 21 && sentToday < cap * 0.8) add("gelb", "Versand", `Versand heute unter Ziel: ${sentToday} von ${cap}`, "Kapazität aller Postfächer heute");
+    if (hoursSince(live.last_sent_at, now) > 26) add("rot", "Versand", "Seit über 26 h keine Mail gesendet", `zuletzt ${berlin(live.last_sent_at)}`, "Seit 26 h kein Versand");
+    else if (hourBerlin >= 21 && sentToday < cap * 0.8) add("gelb", "Versand", `Versand heute unter Ziel: ${sentToday} von ${cap}`, "Kapazität aller Postfächer heute", "Versand heute unter Ziel");
     else add("gruen", "Versand", `Heute ${sentToday} von ${cap} Mails gesendet`, nextSend ? `nächster geplanter Lauf ${berlin(nextSend)}` : undefined);
   }
   const totalSent = live.boxes.reduce((s, x) => s + x.n, 0);
-  if (totalSent >= v.gesamtgrenze * 0.9) add(totalSent >= v.gesamtgrenze ? "rot" : "gelb", "Versand", `Gesamtgrenze fast erreicht: ${totalSent} von ${v.gesamtgrenze}`);
+  if (totalSent >= v.gesamtgrenze * 0.9) add(totalSent >= v.gesamtgrenze ? "rot" : "gelb", "Versand", `Gesamtgrenze fast erreicht: ${totalSent} von ${v.gesamtgrenze}`, undefined, "Gesamtgrenze fast erreicht");
 
   // Warteschlange / Käufer je Fokus-Test
   const sendable = cfg.nur_fokus ? cfg.fokus : pairs(live, cfg).focus;
@@ -476,13 +476,13 @@ export function alerts(live: Live, stock: Stock | null, cfg: OpsConfig, now: Dat
     const [s, c] = k.split("/");
     const f = funnel(live, stock, s, c);
     const days = perPair ? f.queue / perPair : Infinity;
-    if (f.queue === 0) add("rot", "Entwürfe", `${k}: keine freigegebenen Erstmails mehr`, stock ? `${fmt(f.buyersUnused)} mail-fähige Käufer noch ohne Mail` : undefined);
-    else if (days < 3) add("gelb", "Entwürfe", `${k}: Erstmails reichen nur noch ~${Math.max(1, Math.floor(days))} Tag(e)`, `${f.queue} freigegeben bei ~${Math.round(perPair)}/Tag`);
-    if (stock && f.buyersUnused < perPair * 7 && f.mailCountry) add(f.buyersUnused < perPair ? "rot" : "gelb", "Käufer", `${k}: nur ${fmt(f.buyersUnused)} mail-fähige Käufer ohne Mail`, "Kunden-Werk füllt nach");
+    if (f.queue === 0) add("rot", "Entwürfe", `${k}: keine freigegebenen Erstmails mehr`, stock ? `${fmt(f.buyersUnused)} mail-fähige Käufer noch ohne Mail` : undefined, `${k}: keine Mails freigegeben`);
+    else if (days < 3) add("gelb", "Entwürfe", `${k}: Erstmails reichen nur noch ~${Math.max(1, Math.floor(days))} Tag(e)`, `${f.queue} freigegeben bei ~${Math.round(perPair)}/Tag`, `${k}: Mails fast aufgebraucht`);
+    if (stock && f.buyersUnused < perPair * 7 && f.mailCountry) add(f.buyersUnused < perPair ? "rot" : "gelb", "Käufer", `${k}: nur ${fmt(f.buyersUnused)} mail-fähige Käufer ohne Mail`, "Kunden-Werk füllt nach", `${k}: Käufer werden knapp`);
   }
   const drafts = live.msg.filter((m) => m.status === "draft").reduce((s, m) => s + m.n, 0);
   const blocked = Math.min(drafts, live.drafts_blocked ?? 0);
-  if (drafts - blocked > 0) add("gelb", "Entwürfe", `${drafts - blocked} Entwürfe warten auf deine Freigabe`, "unten unter „Freigaben“" + (blocked ? `; dazu ${blocked} von der Prüfung gestoppt` : ""));
+  if (drafts - blocked > 0) add("gelb", "Entwürfe", `${drafts - blocked} Entwürfe warten auf deine Freigabe`, "unten unter „Freigaben“" + (blocked ? `; dazu ${blocked} von der Prüfung gestoppt` : ""), "Entwürfe warten auf Freigabe");
   else if (blocked) add("gruen", "Entwürfe", `${blocked} Entwürfe von der Prüfung gestoppt`, "nicht freigebbar – nur ablehnen oder liegen lassen");
 
   // Antworten mit Handlungsbedarf (letzte 7 Tage)
@@ -490,38 +490,38 @@ export function alerts(live: Live, stock: Stock | null, cfg: OpsConfig, now: Dat
   const hot = positive.filter((e) => hoursSince(e.occurred_at, now) < 72);
   const warm = positive.filter((e) => hoursSince(e.occurred_at, now) >= 72 && hoursSince(e.occurred_at, now) < 7 * 24);
   const who = (l: Ev[]) => l.map((e) => `${e.company_name ?? e.to_email} (${e.segment_id}/${e.country}, ${berlin(e.occurred_at)})`).join(", ");
-  if (hot.length) add("rot", "Antworten", `${hot.length} Kaufinteresse – bitte selbst antworten`, who(hot));
-  if (warm.length) add("gelb", "Antworten", `${warm.length} Kaufinteresse älter als 3 Tage – beantwortet?`, who(warm));
+  if (hot.length) add("rot", "Antworten", `${hot.length} Kaufinteresse – bitte selbst antworten`, who(hot), "Kaufinteresse – selbst antworten");
+  if (warm.length) add("gelb", "Antworten", `${warm.length} Kaufinteresse älter als 3 Tage – beantwortet?`, who(warm), "Kaufinteresse noch beantworten?");
 
   // Proben
   const waiting = live.sample_requests.filter((r) => r.status === "new" && hoursSince(r.created_at, now) > 10 / 60);
-  if (waiting.length) add("rot", "Proben", `${waiting.length} Probe-Anfrage(n) seit über 10 min unbeantwortet`, waiting.map((r) => `${r.company_name} (${r.segment_id}/${r.country}, seit ${durationS(now.getTime() - Date.parse(r.created_at))})`).join(", "));
+  if (waiting.length) add("rot", "Proben", `${waiting.length} Probe-Anfrage(n) seit über 10 min unbeantwortet`, waiting.map((r) => `${r.company_name} (${r.segment_id}/${r.country}, seit ${durationS(now.getTime() - Date.parse(r.created_at))})`).join(", "), "Probe-Anfrage wartet");
   const st = sampleStock(live, cfg, now);
   const empty = st.filter((r) => r.ready === 0);
   const low = st.filter((r) => r.ready > 0 && r.ready < Math.ceil(r.target / 2));
-  if (empty.length) add(empty.some((r) => r.focus) ? "rot" : "gelb", "Proben", `Proben-Vorrat leer: ${empty.map((r) => r.key).join(", ")}`, "Klick auf „Probe anfordern“ landet in der Warteschlange");
-  if (low.length) add("gelb", "Proben", `Proben-Vorrat niedrig: ${low.map((r) => `${r.key} ${r.ready}/${r.target}`).join(", ")}`);
+  if (empty.length) add(empty.some((r) => r.focus) ? "rot" : "gelb", "Proben", `Proben-Vorrat leer: ${empty.map((r) => r.key).join(", ")}`, "Klick auf „Probe anfordern“ landet in der Warteschlange", `Proben leer: ${empty.map((r) => r.key).join(", ")}`);
+  if (low.length) add("gelb", "Proben", `Proben-Vorrat niedrig: ${low.map((r) => `${r.key} ${r.ready}/${r.target}`).join(", ")}`, undefined, "Proben-Vorrat niedrig");
   const aging = st.filter((r) => r.oldestH !== null && r.oldestH > cfg.proben.max_alter_stunden - 6);
-  if (aging.length) add("gelb", "Proben", `Proben verfallen bald (> ${cfg.proben.max_alter_stunden - 6} h alt): ${aging.map((r) => r.key).join(", ")}`);
+  if (aging.length) add("gelb", "Proben", `Proben verfallen bald (> ${cfg.proben.max_alter_stunden - 6} h alt): ${aging.map((r) => r.key).join(", ")}`, undefined, "Proben verfallen bald");
   const below = st.some((r) => r.ready < r.target);
-  if (below && hoursSince(live.stock_last_built, now) > 3) add("gelb", "Proben", `Proben-Vorrat seit ${ago(live.stock_last_built, now).replace("vor ", "")} nicht nachgebaut`, "proben-vorrat.yml läuft stündlich");
+  if (below && hoursSince(live.stock_last_built, now) > 3) add("gelb", "Proben", `Proben-Vorrat seit ${ago(live.stock_last_built, now).replace("vor ", "")} nicht nachgebaut`, "proben-vorrat.yml läuft stündlich", "Proben-Vorrat baut nicht nach");
   if (st.length && !empty.length && !low.length) add("gruen", "Proben", `Proben-Vorrat: ${st.reduce((s, r) => s + r.ready, 0)} fertige Proben (Soll ${st.reduce((s, r) => s + r.target, 0)})`);
 
   // Werke
   if (cfg.lead_suche) {
     const h = hoursSince(live.last_lead_at, now);
-    if (h > 9) add("rot", "Werke", `Lead-Werk: seit ${Math.round(h)} h kein neuer Lead`, "läuft alle 3 h");
-    else if (h > 4) add("gelb", "Werke", `Lead-Werk: seit ${Math.round(h)} h kein neuer Lead`, "läuft alle 3 h");
+    if (h > 9) add("rot", "Werke", `Lead-Werk: seit ${Math.round(h)} h kein neuer Lead`, "läuft alle 3 h", "Lead-Werk steht");
+    else if (h > 4) add("gelb", "Werke", `Lead-Werk: seit ${Math.round(h)} h kein neuer Lead`, "läuft alle 3 h", "Lead-Werk still");
     else add("gruen", "Werke", `Lead-Werk: letzter Lead ${ago(live.last_lead_at, now)}`);
   }
   if (cfg.kunden_suche) {
     const h = hoursSince(live.last_prospect_at, now);
-    if (h > 12) add("rot", "Werke", `Kunden-Werk: seit ${Math.round(h)} h kein neuer Käufer`, "läuft alle 2 h");
-    else if (h > 5) add("gelb", "Werke", `Kunden-Werk: seit ${Math.round(h)} h kein neuer Käufer`, "läuft alle 2 h – evtl. keine neuen Kandidaten");
+    if (h > 12) add("rot", "Werke", `Kunden-Werk: seit ${Math.round(h)} h kein neuer Käufer`, "läuft alle 2 h", "Kunden-Werk steht");
+    else if (h > 5) add("gelb", "Werke", `Kunden-Werk: seit ${Math.round(h)} h kein neuer Käufer`, "läuft alle 2 h – evtl. keine neuen Kandidaten", `Kunden-Werk ${Math.round(h)} h still`);
     else add("gruen", "Werke", `Kunden-Werk: letzter Käufer ${ago(live.last_prospect_at, now)}`);
   }
   for (const r of runs ?? []) {
-    if (r.status === "completed" && r.conclusion && !["success", "skipped", "cancelled"].includes(r.conclusion)) add("rot", "Abläufe", `${r.name}: letzter Lauf ${r.conclusion}`, `${berlin(r.updated_at)}`);
+    if (r.status === "completed" && r.conclusion && !["success", "skipped", "cancelled"].includes(r.conclusion)) add("rot", "Abläufe", `${r.name}: letzter Lauf ${r.conclusion}`, `${berlin(r.updated_at)}`, `${r.name} fehlgeschlagen`);
   }
 
   // Leads knapp für Fokus-Tests und Live-Seiten
@@ -530,8 +530,8 @@ export function alerts(live: Live, stock: Stock | null, cfg: OpsConfig, now: Dat
     for (const k of keys) {
       const [s, c] = k.split("/");
       const n = stock.leads.filter((l) => l.segment_id === s && l.country === c && l.status === "new").reduce((x, l) => x + Number(l.n), 0);
-      if (n < 10) add(cfg.fokus.includes(k) ? "rot" : "gelb", "Leads", `${k}: nur ${n} lieferbare Leads – keine volle Probe möglich`);
-      else if (n < 100) add("gelb", "Leads", `${k}: nur ${n} lieferbare Leads`);
+      if (n < 10) add(cfg.fokus.includes(k) ? "rot" : "gelb", "Leads", `${k}: nur ${n} lieferbare Leads – keine volle Probe möglich`, undefined, `${k}: zu wenig Leads`);
+      else if (n < 100) add("gelb", "Leads", `${k}: nur ${n} lieferbare Leads`, undefined, `${k}: Leads knapp`);
     }
   }
 
@@ -539,13 +539,13 @@ export function alerts(live: Live, stock: Stock | null, cfg: OpsConfig, now: Dat
   const real = realSubscriptions(live);
   for (const s of real) {
     const pend = live.deliveries.find((d) => d.subscription_id === s.id && d.status === "prepared");
-    if (pend && !s.first_delivery_approved) add("gelb", "Kunden", `Erste Lieferung an ${s.customer?.company_name} wartet auf Freigabe`, `vorbereitet ${berlin(pend.created_at)}`);
+    if (pend && !s.first_delivery_approved) add("gelb", "Kunden", `Erste Lieferung an ${s.customer?.company_name} wartet auf Freigabe`, `vorbereitet ${berlin(pend.created_at)}`, "Erste Lieferung freigeben");
   }
 
   // Datenbank
   const share = live.db_size / DB_LIMIT_BYTES;
-  if (share > 0.9) add("rot", "Datenbank", `Datenbank ${gb(live.db_size)} von 8 GB`, "darüber kostet Supabase extra");
-  else if (share > 0.75) add("gelb", "Datenbank", `Datenbank ${gb(live.db_size)} von 8 GB`);
+  if (share > 0.9) add("rot", "Datenbank", `Datenbank ${gb(live.db_size)} von 8 GB`, "darüber kostet Supabase extra", "Datenbank fast voll");
+  else if (share > 0.75) add("gelb", "Datenbank", `Datenbank ${gb(live.db_size)} von 8 GB`, undefined, "Datenbank wird voll");
   else add("gruen", "Datenbank", `Datenbank ${gb(live.db_size)} von 8 GB`);
 
   const order = { rot: 0, gelb: 1, gruen: 2 };
@@ -558,4 +558,149 @@ export function gb(bytes: number): string {
 
 export function fmt(n: number | null | undefined): string {
   return n === null || n === undefined ? "–" : Number(n).toLocaleString("de-DE");
+}
+
+// ============================================================================================= Ansicht v2
+// Inhaber 03.10.2026: „ganz wenig text und grafiken die es zeigen, einfache workflows, sehr übersichtlich“.
+
+/** Länderfarben (validiert mit dataviz/validate_palette.js auf #fffdf9, alle Paare): Navy, Gold, Petrol. */
+export const COUNTRY_COLOR: Record<string, string> = { US: "#3560a8", UK: "#c9973a", FR: "#2a9d8f" };
+export const OTHER_COLOR = "#c3bcae";
+
+export type Days = {
+  sent: { day: string; country: string; segment_id: string; n: number }[];
+  events: { day: string; type: string; country: string | null; n: number }[];
+};
+
+/** Die letzten n Kalendertage (deutsche Zeit) bis einschließlich `today`, älteste zuerst. */
+export function lastDays(today: string, n: number): string[] {
+  const t = Date.parse(`${today}T12:00:00Z`);
+  return Array.from({ length: n }, (_, i) => new Date(t - (n - 1 - i) * 86_400_000).toISOString().slice(0, 10));
+}
+
+/** Gesendete Mails je Tag, aufgeteilt nach den gezeigten Ländern + „andere“. */
+export function sentPerDay(days: Days, today: string, n: number, countries: string[]) {
+  return lastDays(today, n).map((day) => {
+    const parts: Record<string, number> = Object.fromEntries([...countries, "andere"].map((c) => [c, 0]));
+    for (const r of days.sent) if (r.day === day) parts[countries.includes(r.country) ? r.country : "andere"] += Number(r.n);
+    return { day, parts, total: Object.values(parts).reduce((a, b) => a + b, 0) };
+  });
+}
+
+/** Kurzer nächster Schritt (1–3 Wörter) für die Aktionsliste. */
+export function nextChip(next: string): string {
+  const d = next.match(/(\d{2}\.\d{2}\.)/)?.[1] ?? "";
+  if (next.startsWith("Selbst antworten")) return "Selbst antworten";
+  if (next.startsWith("Nachfrage zur Probe automatisch")) return `Nachfrage ${d}`;
+  if (next.startsWith("Nachfrage gesendet")) return "Antwort abwarten";
+  if (next.startsWith("Nachfrage zur Probe")) return "Nachfrage bereit";
+  if (next.startsWith("Antwort im Postfach")) return "Antwort lesen";
+  if (next.startsWith("Nachfassmail")) return d ? `Nachfass ${d}` : "Nachfass";
+  if (next.startsWith("Probe nach")) return "Nachfrage folgt";
+  if (next.startsWith("Probe ausstehend")) return "Probe senden";
+  if (next.startsWith("Erste Lieferung")) return "Lieferung freigeben";
+  if (next.startsWith("Lieferung")) return "Lieferung Mo.";
+  if (next.startsWith("Gesperrt")) return "Gesperrt";
+  return "–";
+}
+
+/** Offene Aktionen: alles, wo noch etwas passiert (keine Abmeldungen, Abwesenheiten, Testkäufe). */
+export function openActions(people: Person[], countries: string[]): Person[] {
+  return people.filter((p) => p.tone !== "grey" && (!p.country || countries.includes(p.country)));
+}
+
+export type StageKey = "leads" | "kaeufer" | "mails" | "antworten" | "proben" | "kunden" | "umsatz";
+export type StageMetrics = {
+  leads: number | null; buyersUnused: number | null; perDay: number; mailsOn: boolean; queue: number;
+  delivered: number; positive: number; samplesSent: number; stockEmpty: boolean; customers: number;
+};
+
+/** Erste Stufe der Kette, die gerade bremst (null = keine). Reihenfolge = Ablauf. */
+export function bottleneckOf(m: StageMetrics): StageKey | null {
+  if (m.leads !== null && m.leads < 100) return "leads";
+  if (m.buyersUnused !== null && m.buyersUnused < 7 * m.perDay) return "kaeufer";
+  if (!m.mailsOn || m.queue === 0) return "mails";
+  if (m.delivered >= 50 && m.positive / m.delivered < 0.02) return "antworten";
+  if (m.stockEmpty) return "proben";
+  if (m.samplesSent >= 5 && m.customers === 0) return "kunden";
+  return null;
+}
+
+export type ChainStage = { key: StageKey; label: string; value: string; sub: string; tip: string };
+
+/** Prozesskette Leads → Käufer → Mails → Antworten → Proben → Kunden → Umsatz für die gewählten Fokus-Länder. */
+export function chain(live: Live, stock: Stock | null, cfg: OpsConfig, countries: string[]) {
+  const keys = cfg.fokus.filter((k) => countries.includes(k.split("/")[1]));
+  const fs = keys.map((k) => funnel(live, stock, ...(k.split("/") as [string, string])));
+  const sum = (f: (x: Funnel) => number) => fs.reduce((a, x) => a + f(x), 0);
+  const leads = stock ? stock.leads.filter((l) => l.status === "new" && keys.includes(`${l.segment_id}/${l.country}`)).reduce((a, l) => a + Number(l.n), 0) : null;
+  const leads24 = stock ? stock.leads_24h.filter((l) => keys.includes(`${l.segment_id}/${l.country}`)).reduce((a, l) => a + Number(l.n), 0) : 0;
+  const cap = mailboxes(live, cfg).reduce((a, b) => a + b.cap, 0);
+  const perDay = (cap / Math.max(1, cfg.fokus.length)) * keys.length;
+  const b = brake(live, cfg);
+  const st = sampleStock(live, cfg, new Date(live.now)).filter((r) => keys.includes(r.key));
+  const byCur = new Map<string, number>();
+  for (const f of fs) if (f.revenue) byCur.set(f.currency, (byCur.get(f.currency) ?? 0) + f.revenue);
+  const revenue = [...byCur].map(([c, v]) => `${compact(v)} ${c}`).join(" + ") || "0";
+  const m: StageMetrics = {
+    leads, buyersUnused: stock ? sum((x) => x.buyersUnused) : null, perDay, mailsOn: cfg.versand.aktiv && !b.stop,
+    queue: sum((x) => x.queue), delivered: sum((x) => x.delivered), positive: sum((x) => x.positive),
+    samplesSent: sum((x) => x.samplesSent), stockEmpty: st.some((r) => r.ready === 0), customers: sum((x) => x.customers),
+  };
+  const pos = m.delivered ? pctS(m.positive / m.delivered) : "–";
+  const stages: ChainStage[] = [
+    { key: "leads", label: "Leads", value: leads === null ? "…" : compact(leads), sub: `+${compact(leads24)} heute`, tip: "lieferbare Leads (Status neu) · neu in 24 h" },
+    { key: "kaeufer", label: "Käufer", value: stock ? compact(sum((x) => x.buyersOk)) : "…", sub: stock ? `${compact(m.buyersUnused ?? 0)} frei` : "", tip: "mail-fähige Käufer (Prüfung ok, Mail-Land) · davon noch ohne Mail. Nur Anruf/Brief zählt nicht." },
+    { key: "mails", label: "Mails", value: compact(sum((x) => x.sent)), sub: `${compact(sum((x) => x.sentToday))} heute`, tip: `gesendete Erstmails · heute · ${fmt(m.queue)} freigegeben in der Warteschlange` },
+    { key: "antworten", label: "Antworten", value: compact(sum((x) => x.replies)), sub: `${m.positive} positiv`, tip: `Antworten ohne Abwesenheitsnotizen · positiv ${pos} der zugestellten (Ziel ≥ 2 %)` },
+    { key: "proben", label: "Proben", value: compact(m.samplesSent), sub: `${sum((x) => x.samplesRequested)} angefragt`, tip: "gesendete Proben (Mail-Antwort + Website) · angefragt" },
+    { key: "kunden", label: "Kunden", value: compact(m.customers), sub: "zahlend", tip: "aktive Abos ohne Testkäufe" },
+    { key: "umsatz", label: "Umsatz", value: revenue, sub: "pro Monat", tip: "Summe der aktiven Abos pro Monat" },
+  ];
+  return { stages, bottleneck: bottleneckOf(m) };
+}
+
+/** 1.234 · 12,3 Tsd. · 1,2 Mio. */
+export function compact(n: number): string {
+  const a = Math.abs(n);
+  if (a >= 1e6) return `${(n / 1e6).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Mio.`;
+  if (a >= 1e4) return `${Math.round(n / 1e3).toLocaleString("de-DE")} Tsd.`;
+  return Math.round(n).toLocaleString("de-DE");
+}
+
+/** Höchstens drei Hinweise für die Ampelzeile (rot vor gelb), sonst „Alles läuft“. */
+export function topAlerts(list: Alert[], max = 3): Alert[] {
+  return list.filter((a) => a.level !== "gruen").slice(0, max);
+}
+
+/** Nur eine Zielgruppe (Inhaber 03.10.2026: „nur webagencies“) – Versand-Kapazität und Postfächer bleiben gesamt. */
+export function onlySegment(live: Live, seg: string): Live {
+  const subs = live.subscriptions.filter((s) => s.segment_id === seg);
+  const cust = new Set(subs.map((s) => s.customer_id));
+  const subIds = new Set(subs.map((s) => s.id));
+  return {
+    ...live,
+    msg: live.msg.filter((m) => m.segment_id === seg),
+    events: live.events.filter((e) => e.segment_id === seg),
+    followups_due: { n: live.followups_due.rows.filter((r) => r.segment_id === seg).length, rows: live.followups_due.rows.filter((r) => r.segment_id === seg) },
+    sample_requests: live.sample_requests.filter((r) => r.segment_id === seg),
+    stock: live.stock.filter((s) => s.segment_id === seg),
+    pages: live.pages.filter((p) => p.segment_id === seg),
+    subscriptions: subs,
+    customers: live.customers.filter((c) => cust.has(c.id)),
+    deliveries: live.deliveries.filter((d) => subIds.has(d.subscription_id)),
+    experiments: live.experiments.filter((e) => e.segment_id === seg),
+    contact_requests: [],
+  };
+}
+
+export function stockSegment(stock: Stock | null, seg: string): Stock | null {
+  if (!stock) return null;
+  return {
+    ...stock,
+    leads: stock.leads.filter((l) => l.segment_id === seg),
+    leads_24h: stock.leads_24h.filter((l) => l.segment_id === seg),
+    prospects: stock.prospects.filter((p) => p.segment_id === seg),
+    prospects_24h: stock.prospects_24h.filter((p) => p.segment_id === seg),
+  };
 }
