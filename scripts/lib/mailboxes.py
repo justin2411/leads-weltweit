@@ -20,8 +20,10 @@ import os
 from lib.deliverability import HARD_MAX_PER_DAY, _cfg, warmup_cap
 
 MAX_BOXES = 10
-# Tage seit der ersten Mail aus dem Postfach -> Mails pro Tag (Obergrenze postfach_tageslimit)
-NEW_BOX_WARMUP = [(0, 20), (3, 40), (7, 70), (14, 100), (21, 150)]
+# Neues Postfach: Start und tägliche Steigerung bis postfach_tageslimit (Inhaber 03.10.2026: „starte bei dem neuen
+# postfach auch mit 60 und geh jeden tag höher bis auf 150“); Werte in config/versand.yaml
+NEW_BOX_START = 60
+NEW_BOX_STEP = 15
 
 
 def mailboxes(env=None) -> list[dict]:
@@ -57,12 +59,10 @@ def box_cap(box: dict, first_sent: dt.date | None, today: dt.date) -> int:
     """Tagesmenge eines Postfachs."""
     if box["n"] == 1:
         return warmup_cap(first_sent, today)
-    day = 0 if first_sent is None else (today - first_sent).days
-    cap = NEW_BOX_WARMUP[0][1]
-    for start, limit in NEW_BOX_WARMUP:
-        if day >= start:
-            cap = limit
-    return max(0, min(cap, box_limit(), HARD_MAX_PER_DAY))
+    day = 0 if first_sent is None else max(0, (today - first_sent).days)
+    start = int(_cfg("postfach_start") or NEW_BOX_START)
+    step = int(_cfg("postfach_schritt") or NEW_BOX_STEP)
+    return max(0, min(start + step * day, box_limit(), HARD_MAX_PER_DAY))
 
 
 def pick(boxes: list[dict], caps: dict[int, int], sent: dict[int, int]) -> dict | None:
