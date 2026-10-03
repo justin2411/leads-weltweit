@@ -249,7 +249,7 @@ export async function loadBoxHealth(days = 14): Promise<BoxHealth[] | null> {
     ]);
     if (m.error || e.error) throw new Error((m.error ?? e.error)!.message);
     const events = ((e.data ?? []) as any[]).map((x) => ({
-      message_id: x.message_id, type: x.type, bounce_type: x.payload?.bounce?.type ?? null,
+      message_id: x.message_id, type: x.type, bounce_type: x.payload?.bounce?.type ?? null, bounce_status: x.payload?.bounce?.status ?? null,
       to_email: (Array.isArray(x.messages) ? x.messages[0] : x.messages)?.to_email ?? null,
     }));
     return boxHealth((m.data ?? []) as { id: string; sent_from: string | null }[], events);

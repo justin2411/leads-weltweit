@@ -279,6 +279,9 @@ test("Bounces je Postfach: Zählung wie die Notbremse, Ampel erst ab 30 Mails", 
     ["main", 50, 0, "green"], // info@ und Mails ohne Absender = Hauptpostfach
     ["webagency@nextgen-profit.de", 40, 2, "red"], // 2/40 = 5 %
   ]);
+  const withCodes = boxHealth(msgs, [{ message_id: "b1", type: "bounced", to_email: "x1@y.com", bounce_status: "5.1.1" },
+    { message_id: "b3", type: "bounced", to_email: "x3@y.com", bounce_status: "5.1.1" }, { message_id: "b4", type: "bounced", to_email: "x4@y.com" }]);
+  assert.deepEqual(withCodes.find((x) => x.box !== "main")?.codes, { "5.1.1": 2 });
 });
 
 test("Trichter je Land: zugestellt = gesendet − Bounces ohne Zustell-Ereignisse, fehlende Länder mit Nullen", async () => {

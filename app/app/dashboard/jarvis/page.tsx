@@ -303,7 +303,8 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
             <i aria-hidden><Icon name={h.tone === "red" || h.tone === "gold" ? "warnung" : "mail"} size={16} /></i>
             <b>{h.box === "main" ? "Hauptpostfach" : h.box}</b>
             <span>{h.sent < BOX_MIN ? "zu wenig Mails" : `${(h.rate * 100).toFixed(1).replace(".", ",")} % Bounces`}</span>
-            <em>{h.bounced} von {h.sent} · 14 Tage{h.complained ? ` · ${h.complained} Beschwerde` : ""}</em></li>))}</ul>
+            <em>{h.bounced} von {h.sent} · 14 Tage{h.complained ? ` · ${h.complained} Beschwerde` : ""}
+              {Object.keys(h.codes).length > 0 && <span title="5.1.x = Adresse unbekannt, 5.7.x = abgelehnt/blockiert"> · {Object.entries(h.codes).sort((a, b) => b[1] - a[1]).map(([c, k]) => `${c}×${k}`).join(" ")}</span>}</em></li>))}</ul>
       )}
     </>);
     if (s === "antworten") body = tab === "set" ? (<>
