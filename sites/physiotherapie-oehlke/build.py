@@ -29,7 +29,7 @@ def _version() -> str:
     """Cache-Schlüssel aus dem Inhalt von CSS/JS: jede Änderung lädt sofort neu."""
     import hashlib
     h = hashlib.sha1()
-    for f in ("css/site.css", "js/site.js", "assets/fonts/fonts.css", "css/dash.css", "js/dash.js"):
+    for f in ("css/site.css", "js/site.js", "assets/fonts/fonts.css", "css/dash.css", "js/dash-core.js", "js/dash-praxis.js", "js/dash-topics.js", "js/dash-seo.js", "js/ratgeber.js"):
         h.update((ROOT / "public" / f).read_bytes())
     return h.hexdigest()[:10]
 
@@ -754,7 +754,10 @@ def cockpit_head(title: str) -> str:
 <link rel="preload" href="/assets/fonts/poppins-600-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/fonts/fonts.css?v={VERSION}">
 <link rel="stylesheet" href="/css/dash.css?v={VERSION}">
-<script src="/js/dash.js?v={VERSION}" defer></script>
+<script src="/js/dash-core.js?v={VERSION}" defer></script>
+<script src="/js/dash-praxis.js?v={VERSION}" defer></script>
+<script src="/js/dash-topics.js?v={VERSION}" defer></script>
+<script src="/js/dash-seo.js?v={VERSION}" defer></script>
 </head>"""
 
 
@@ -801,6 +804,7 @@ def dashboard_page() -> str:
     <div class="side__logo"><img src="/assets/img/logo-white.png" alt="Mobile Physiotherapie Oehlke" width="105" height="40"></div>
     <nav id="nav" aria-label="Cockpit"></nav>
     <div class="side__foot">
+      <a href="#einstellungen">Einstellungen</a>
       <a href="/">Zur Website</a>
       <a href="#" id="reset">Beispieldaten zurücksetzen</a>
       <a href="#" id="logout">Abmelden</a>
@@ -812,7 +816,7 @@ def dashboard_page() -> str:
       <div><h1 id="vTitle">Praxis-Cockpit</h1><div class="sub" id="vSub"></div></div>
       <div class="top__r"><img class="avatar" src="/assets/img/ramon-800.webp" alt=""><b>Ramon Oehlke</b></div>
     </header>
-    <div class="demo-bar"><b>Demo:</b> Alle Zahlen, Namen und Termine sind Beispieldaten. Änderungen bleiben nur in diesem Browser gespeichert. Die SEO-Analyse prüft die echten Seiten dieser Website.</div>
+    <div class="demo-bar"><b>Demo mit Beispieldaten:</b> Namen, Termine und Zahlen sind erfunden. Änderungen bleiben in diesem Browser. Die SEO-Analyse prüft die echten Seiten.</div>
     <div id="view" class="view"></div>
   </div>
 </div>
@@ -820,6 +824,24 @@ def dashboard_page() -> str:
 </body>
 </html>
 """
+
+
+def ratgeber_pages() -> dict:
+    """Ratgeber-Übersicht und Beitragsseite. Inhalte kommen im Demo-Betrieb aus dem Praxis-Cockpit (Browser)."""
+    script = f'<script src="/js/ratgeber.js?v={VERSION}" defer></script>'
+    overview = (phero({"h1": "Ratgeber", "sub": "Wissen rund um Physiotherapie zu Hause: verständlich erklärt und fachlich geprüft."},
+                      [("/", "Startseite"), ("", "Ratgeber")], "geriatrie")
+                + '<section class="section"><div class="container"><div class="rg-cards" id="rgList"></div></div></section>'
+                + cta("Fragen zu Ihrer <em>Situation</em>?", "Rufen Sie an. Ich berate Sie gern, ob ein Hausbesuch für Sie passt.") + script)
+    article = (phero({"h1": "Ratgeber", "eyebrow": "Ratgeber", "sub": '<span id="rgSub">&nbsp;</span>'},
+                     [("/", "Startseite"), ("/ratgeber", "Ratgeber"), ("", "Beitrag")], "hero-hausbesuch")
+               + '<section class="section"><div class="container" style="max-width:860px"><div id="rgBanner"></div>'
+               + '<article class="rg-article" id="rgArticle"><p>Beitrag wird geladen …</p></article><div id="rgAuthor"></div></div></section>'
+               + cta("Hausbesuch <em>anfragen</em>?", "Ich komme zu Ihnen nach Hause, in Hockenheim, Schwetzingen, Heidelberg und Umgebung.") + script)
+    return {
+        "ratgeber/index.html": page("Ratgeber · Mobile Physiotherapie Oehlke", "Ratgeber rund um Physiotherapie im Hausbesuch.", "/ratgeber", overview, noindex=True),
+        "ratgeber/beitrag.html": page("Ratgeber · Mobile Physiotherapie Oehlke", "Ratgeber rund um Physiotherapie im Hausbesuch.", "/ratgeber/beitrag", article, noindex=True),
+    }
 
 
 # ---------------------------------------------------------------- Bauen
@@ -834,8 +856,9 @@ def main() -> None:
     files["404.html"] = page("Seite nicht gefunden · Mobile Physiotherapie Oehlke", "", "/404",
                              phero({"h1": "Diese Seite gibt es nicht (mehr).", "sub": ""}, [("/", "Startseite"), ("", "404")], None)
                              + cta("Zurück zur <em>Startseite</em>?", "Oder rufen Sie direkt an. Ich helfe gern weiter."), noindex=True)
-    tools = {"login.html": login_page(), "dashboard.html": dashboard_page()}
+    tools = {"login.html": login_page(), "dashboard.html": dashboard_page(), **ratgeber_pages()}
     for name, content in {**files, **tools}.items():
+        (OUT / name).parent.mkdir(parents=True, exist_ok=True)
         (OUT / name).write_text(content, encoding="utf-8")
     robots = "User-agent: *\nDisallow: /\n" if DEMO else f"User-agent: *\nAllow: /\n\nSitemap: {LIVE_URL}/sitemap.xml\n"
     (OUT / "robots.txt").write_text(robots, encoding="utf-8")
