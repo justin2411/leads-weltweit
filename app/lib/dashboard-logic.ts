@@ -243,6 +243,28 @@ export function boxHealth(msgs: { id: string; sent_from: string | null }[],
   });
 }
 
+export type FunnelRow = { country: string; sent: number; delivered: number; replies: number; positive: number; samples: number; customers: number };
+type ExpStat = { segment_id: string | null; country: string | null; sent: number | null; delivered: number | null; bounced: number | null;
+  replies: number | null; positive: number | null; samples: number | null; customers: number | null };
+
+/**
+ * Trichter je Land aus experiment_stats (alle Experimente einer Zielgruppe zusammen). Zugestellt wie lib.stats.delivered:
+ * der größere Wert aus Zustell-Ereignissen (nur frühe Resend-Mails) und gesendet minus Bounces.
+ * Länder ohne Mails erscheinen mit Nullen, damit der Vergleich US/UK/FR immer vollständig ist.
+ */
+export function funnelByCountry(rows: ExpStat[], segment: string, countries: readonly string[]): FunnelRow[] {
+  const n = (v: number | null | undefined) => Number(v ?? 0) || 0;
+  const by = new Map<string, FunnelRow & { bounced: number; dlvEv: number }>();
+  for (const c of countries) by.set(c, { country: c, sent: 0, delivered: 0, replies: 0, positive: 0, samples: 0, customers: 0, bounced: 0, dlvEv: 0 });
+  for (const r of rows) {
+    if (r.segment_id !== segment || !r.country || !by.has(r.country)) continue;
+    const x = by.get(r.country)!;
+    x.sent += n(r.sent); x.bounced += n(r.bounced); x.dlvEv += n(r.delivered); x.replies += n(r.replies);
+    x.positive += n(r.positive); x.samples += n(r.samples); x.customers += n(r.customers);
+  }
+  return [...by.values()].map(({ bounced, dlvEv, ...x }) => ({ ...x, delivered: Math.max(dlvEv, x.sent - bounced, 0) }));
+}
+
 export const BOUNCE_STOP = 0.05;
 export const MIN_SAMPLE = 100;
 

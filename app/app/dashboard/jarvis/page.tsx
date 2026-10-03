@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadBoxHealth, loadDaily, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock } from "@/lib/dashboard-data";
-import { berlin, berlinDay, chain, compact, currencySign, mailboxes, monthly, nextRun, onlySegment, realSubscriptions, sampleStock, stockSegment, BOX_MIN, COUNTRY_COLOR } from "@/lib/dashboard-logic";
+import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadBoxHealth, loadDaily, loadFunnel, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock } from "@/lib/dashboard-data";
+import { berlin, berlinDay, brake, chain, compact, currencySign, mailboxes, monthly, nextRun, onlySegment, realSubscriptions, sampleStock, stockSegment, BOX_MIN, COUNTRY_COLOR } from "@/lib/dashboard-logic";
 import { totals } from "@/lib/dashboard-periods";
 import { coach, hall, laneOf, laneStats, neckTask, running, utilization, type Beat } from "@/lib/leitstand";
 import { NECK_TO_STATION, ticker, type Edge, type Station, type StationId, type TickerItem } from "@/lib/fluss";
@@ -22,6 +22,7 @@ import { AutopilotPanel } from "./autopilot";
 import { DragTip } from "./dnd";
 import { Clock, Voice } from "./voice";
 import { Icon, type IconName } from "@/app/icons";
+import type { FunnelRow } from "@/lib/dashboard-logic";
 
 export const metadata = { title: "JARVIS" };
 const REG = LANES as unknown as LaneRegistry;
@@ -58,7 +59,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   stockP.catch(() => {});
   const today = berlinDay(new Date());
   const from7 = new Date(Date.parse(`${today}T12:00:00Z`) - 6 * 86_400_000).toISOString().slice(0, 10);
-  const [liveAll, own, act, rows, stockAll, daily, sent, checks, agentTasks, starts, planLog, openReplies, health] = await Promise.all([
+  const [liveAll, own, act, rows, stockAll, daily, sent, checks, agentTasks, starts, planLog, openReplies, health, funnel] = await Promise.all([
     loadLive(), loadOwnerSettings(), loadActivity(), loadRunRows(24),
     // Bestand: höchstens 5 s warten (Abfrage ~3,5 s, 10 min zwischengespeichert); sonst „…“ statt falscher Nullen
     Promise.race([stockP.catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 5000))]),
@@ -70,6 +71,8 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
       .then((r) => (r.error ? null : r.count ?? 0), () => null),
     // Bounce-Quote je Postfach nur für die Station Versand
     s === "versand" ? loadBoxHealth(14) : Promise.resolve(null),
+    // Trichter je Land (US/UK/FR im Vergleich) nur für die Station Antworten
+    s === "antworten" ? loadFunnel() : Promise.resolve(null),
   ]);
   const live = onlySegment(liveAll, SEGMENT);
   const stock = stockSegment(stockAll, SEGMENT);
@@ -143,9 +146,14 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   ];
 
   // ---------------------------------------------------------------- JARVIS, Ampeln, Ticker
-  const tips = coach({ reg: REG, plan, stats, util: util.rate, queue, freeBuyers, leads: leadsNew, capPerDay: cap, kundenNew24h: stockAll ? newBuyers24 : null, stockKnown: !!stock,
+  // Notbremse (wie deliverability.emergency_stop, über alle Zielgruppen): steht sie, ganz oben und rot
+  const nb = brake(liveAll, CONFIG);
+  const tips = [
+    ...(nb.stop ? [{ level: "rot" as const, title: "Notbremse: Versand gestoppt", text: `${nb.stop}. Neustart nur nach deiner Entscheidung.`, href: "/dashboard/versand" }] : []),
+    ...coach({ reg: REG, plan, stats, util: util.rate, queue, freeBuyers, leads: leadsNew, capPerDay: cap, kundenNew24h: stockAll ? newBuyers24 : null, stockKnown: !!stock, autopilot: autopilotOn,
     failed: beats.filter((b) => /^abgebrochen/.test(b.note ?? "") && t - Date.parse(b.beat_at) < 6 * 3_600_000).map((b) => `${b.werk} ${b.part} · ${berlin(b.beat_at)}`),
-    countedHours: firstRun ? Math.min(24, (t - firstRun) / 3_600_000) : 0 });
+    countedHours: firstRun ? Math.min(24, (t - firstRun) / 3_600_000) : 0 }),
+  ];
   const tipStation = (href?: string): StationId => (href === "#pult" ? "lead" : href?.includes("bestand") ? "kaeufer" : href?.includes("versand") ? "versand" : "lead");
   const base = (id: StationId) => `/dashboard/jarvis?s=${id}`;
   const href = (id: StationId) => (s === id ? "/dashboard/jarvis" : base(id));
@@ -156,7 +164,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     openReplies
       ? { label: "Antworten offen", value: `${openReplies}`, sub: "jetzt beantworten", tone: "gold", href: "/dashboard/antworten" }
       : { label: "Antworten 7 T", value: `${w.replies}`, sub: `${w.positive} positiv`, tone: w.positive ? "green" : w.replies ? "gold" : "grey", href: base("antworten") },
-    { label: "Mails heute", value: `${sentToday}/${cap}`, sub: own.send_paused ? "pausiert" : "Versand", tone: own.send_paused ? "red" : sentToday ? "cyan" : "grey", href: base("versand") },
+    { label: "Mails heute", value: `${sentToday}/${cap}`, sub: nb.stop ? "Notbremse" : own.send_paused ? "pausiert" : "Versand", tone: nb.stop || own.send_paused ? "red" : sentToday ? "cyan" : "grey", href: base("versand") },
     { label: "Engpass", value: neck ? stations.find((x) => x.id === neck)!.label : "keiner", sub: "hier ansetzen", tone: neck ? "red" : "green", href: neck ? base(neck) : "/dashboard/jarvis", task: neck ? neckTask(stations.find((x) => x.id === neck)!.label) : undefined },
   ] as { label: string; value: string; sub: string; tone: "green" | "gold" | "red" | "cyan" | "grey"; href: string }[];
   const items: TickerItem[] = [
@@ -310,6 +318,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     </>) : (<>
       <Big items={[[openReplies === null ? "…" : `${openReplies}`, "offen"], [`${w.replies}`, "Antworten 7 T"], [`${w.positive}`, "positiv"], [`${w.samples_requested}`, "Proben angefragt"]]} />
       {lnk("/dashboard/antworten", openReplies ? `${openReplies} offene Antworten bearbeiten` : "Antworten-Cockpit")}
+      <Funnel rows={funnel} />
     </>);
     if (s === "kunden") body = tab === "set" ? lnk("/dashboard/kunden", "Kunden anlegen & freigeben") : tab === "check" ? (
       <ul className="chk">{subs.map((x) => <li key={x.id} className="ok"><i aria-hidden><Icon name="kunde" size={16} /></i><b>{x.customer?.company_name}</b><span>{x.customer?.country}</span><em>{compact(monthly(x))} {currencySign(x.currency, x.customer?.country)}</em></li>)}
@@ -340,5 +349,20 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
       </div>
       <Ticker items={ticker(items)} />
     </div>
+  );
+}
+
+/** Trichter je Land seit Start (alle Experimente der Zielgruppe): wo klappt was? Quote = Antworten je zugestellter Mail. */
+function Funnel({ rows }: { rows: FunnelRow[] | null }) {
+  if (!rows) return <p className="lock">Trichter lädt …</p>;
+  const pct = (a: number, b: number) => (b ? `${((a / b) * 100).toFixed(1).replace(".", ",")} %` : "–");
+  return (
+    <table className="fun" aria-label="Trichter je Land seit Start">
+      <thead><tr><th>Land</th><th>Mails</th><th>zugestellt</th><th>Antw.</th><th>positiv</th><th title="per Mail angefragt (Website-Proben zählen oben mit)">Probe</th><th>Kunde</th><th title="Antworten je zugestellter Mail">Quote</th></tr></thead>
+      <tbody>{rows.map((r) => (
+        <tr key={r.country}><th>{r.country}</th><td>{r.sent}</td><td>{r.delivered}</td><td>{r.replies}</td><td>{r.positive}</td>
+          <td>{r.samples}</td><td>{r.customers}</td><td title="Antworten je zugestellter Mail">{pct(r.replies, r.delivered)}</td></tr>))}
+      </tbody>
+    </table>
   );
 }

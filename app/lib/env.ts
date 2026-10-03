@@ -15,6 +15,10 @@ export const ENV_VARS: { name: string; purpose: string; required: boolean }[] = 
   { name: "STRIPE_TEST_WEBHOOK_SECRET", purpose: "Stripe TEST-Webhook (whsec_…)", required: false },
   { name: "BRAND_NAME", purpose: "Markenname (Standard NextGen Profit)", required: false },
   { name: "GH_DISPATCH_TOKEN", purpose: "Probe-Lauf sofort anstoßen, wenn kein Vorrat passt (GitHub-Token, nur Actions: write)", required: false },
+  // Handy-Alarm (Web-Push), angelegt von vercel.yml env-add-vapid (Nachtschicht 04.10.2026)
+  { name: "VAPID_PUBLIC_KEY", purpose: "Handy-Alarm: öffentlicher Schlüssel", required: false },
+  { name: "VAPID_PRIVATE_KEY", purpose: "Handy-Alarm: privater Schlüssel (sensitiv)", required: false },
+  { name: "VAPID_SUBJECT", purpose: "Handy-Alarm: Kontakt (mailto:)", required: false },
 ];
 
 export function envStatus(env: Record<string, string | undefined> = process.env) {

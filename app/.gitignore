@@ -4,3 +4,6 @@ node_modules
 !.env.example
 next-env.d.ts
 *.tsbuildinfo
+# vom lokalen Next-Dev-Server erzeugte Agenten-Hinweise (nicht ins Repo)
+/AGENTS.md
+/CLAUDE.md
