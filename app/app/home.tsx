@@ -3,18 +3,18 @@ import type { Metadata } from "next";
 import VIDEOS from "@/content/videos.json";
 import { BRAND, CONTACT, LEGAL_NAME, siteUrl } from "@/lib/site";
 import { consentText } from "@/lib/consent";
-import { wishesFor } from "@/content/sample-wishes";
 import { LANDING_CSS } from "@/lib/landing-css";
 import { HOME_CSS } from "@/lib/home-css";
 import { HOME_SPRITE, HOME_STAT_ART, HOME_V2_CSS } from "@/lib/home-v2-css";
-import { SampleForm, type IndustryOption } from "./sample-form";
+import { SampleForm } from "./sample-form";
+import { industryOptions } from "./industry-options";
 import { homeStats, publicPages, type PublicPage } from "@/lib/site-pages";
 import { BrandShell, SiteFooter, SiteHeader } from "./chrome";
 import { HOME, HOME_LANGS, HOME_PATH, type HomeLang } from "./home-i18n";
 import { CONTACT_PATH } from "./contact/contact-i18n";
 import { HomeFx } from "./home-fx";
 import { DOT_MAPS } from "@/content/home-dot-maps";
-import { COUNTRIES, LEAD_COUNTRIES, segKey, type CountryCode } from "@/lib/country";
+import { COUNTRIES, LEAD_COUNTRIES, type CountryCode } from "@/lib/country";
 
 // Register (Inhaber 27.09.2026 „über 18 Millionen“): Companies House 4.930.634 (effektives Register, März 2026,
 // GOV.UK Companies register activities 2025/26) + INSEE SIRENE 13,7 Mio. aktive Rechtseinheiten (2022) = 18,6 Mio.
@@ -34,8 +34,6 @@ export function homeMetadata(lang: HomeLang): Metadata {
   };
 }
 
-/** Gleiche Reihenfolge der Branchen in jedem Land (Vorlage Inhaber 03.10.2026). */
-const ORDER = ["accountants", "financial-advisers", "insurance-brokers", "recruitment", "web-agencies", "it-services"];
 const CC: CountryCode[] = ["UK", "US", "FR"];
 const FLAG: Record<string, string> = { UK: "f-uk", US: "f-us", FR: "f-fr" };
 
@@ -100,22 +98,8 @@ export async function Home({ lang }: { lang: HomeLang }) {
   ]);
   const V = VIDEOS as Record<string, { src: string; poster: string; seconds: number }>;
   const video = V[`${lang}:home`] ?? V["en:home"];
-  // Branchen je Land: Schlüssel -> Seite je Land
-  const bySeg = new Map<string, Partial<Record<CountryCode, string>>>();
-  for (const p of pages) {
-    const k = segKey(p.slug);
-    bySeg.set(k, { ...(bySeg.get(k) ?? {}), [p.country as CountryCode]: "/" + p.slug });
-  }
-  const segs = [...bySeg.keys()].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
   // Probe-Formular: Branche und Lieferland getrennt (Inhaber 03.10.2026), Länder nur dort, wo wir Leads haben
-  const industries: IndustryOption[] = segs.map((k) => {
-    const byCc = bySeg.get(k) ?? {};
-    return {
-      value: k, label: t.industries[k]?.[0] ?? k,
-      pages: Object.fromEntries(Object.entries(byCc).map(([cc, href]) => [cc, String(href).slice(1)])),
-      wishes: wishesFor(k).map((w) => ({ key: w.key, label: w[lang] })),
-    };
-  });
+  const industries = industryOptions(lang, pages);
   const leadCountries = LEAD_COUNTRIES.map((x) => ({ code: x.code, label: x.name[lang] }));
   const contactHref = CONTACT_PATH[lang];
   const ld = {

@@ -52,7 +52,7 @@ export const HOME: Record<HomeLang, HomeText> = {
   en: {
     title: "B2B leads with a reason to call",
     desc: "Every week: companies across the country with a real reason to buy. Each lead dated, with its source, phone, email and an opening line. For web agencies, recruiters, accountants, insurance brokers and other B2B service firms.",
-    nav: [["#film", "Film"], ["#industries", "Industries"], ["#contact-person", "Personal contact"]], cta: "Free sample", contact: "Contact",
+    nav: [["#film", "Film"], ["#industries", "Industries"], ["#contact-person", "Account manager"]], cta: "Free sample", contact: "Contact",
     pill: "Trigger leads for B2B service firms",
     h1: "Reach companies at the moment they need you", h1gold: ["need", "you"],
     sub: "Every week we read official registers and company careers pages, find the businesses across the country with a real reason to buy, and send you a short list. Each lead with its date, its source and an opening line.",
@@ -166,7 +166,7 @@ export const HOME: Record<HomeLang, HomeText> = {
   fr: {
     title: "Des prospects B2B avec une vraie raison d'appeler",
     desc: "Chaque semaine : des entreprises de tout le pays avec une vraie raison d'acheter. Chaque prospect daté, avec sa source, téléphone, e-mail et une phrase d'accroche. Pour agences web, cabinets de recrutement, experts-comptables, courtiers et autres prestataires B2B.",
-    nav: [["#film", "Film"], ["#industries", "Secteurs"], ["#contact-person", "Interlocuteur"]], cta: "Échantillon gratuit", contact: "Contact",
+    nav: [["#film", "Film"], ["#industries", "Secteurs"], ["#contact-person", "Chargé de compte"]], cta: "Échantillon gratuit", contact: "Contact",
     pill: "Prospects à déclencheur pour les prestataires B2B",
     h1: "Touchez les entreprises au moment où elles ont besoin de vous", h1gold: ["besoin", "de", "vous"],
     sub: "Chaque semaine, nous lisons les registres officiels et les pages carrières des entreprises, repérons celles qui, partout dans le pays, ont une vraie raison d'acheter, et vous envoyons une courte liste. Chaque prospect avec sa date, sa source et une phrase d'accroche.",
@@ -280,7 +280,7 @@ export const HOME: Record<HomeLang, HomeText> = {
   de: {
     title: "B2B-Leads mit echtem Anlass",
     desc: "Jede Woche: Unternehmen im ganzen Land mit echtem Kaufanlass. Jeder Lead mit Datum, Quelle, Telefon, E-Mail und Einstiegssatz. Für Webagenturen, Personalvermittler, Steuerberater, Versicherungsmakler und andere B2B-Dienstleister.",
-    nav: [["#film", "Film"], ["#industries", "Branchen"], ["#contact-person", "Ansprechpartner"]], cta: "Kostenlose Probe", contact: "Kontakt",
+    nav: [["#film", "Film"], ["#industries", "Branchen"], ["#contact-person", "Kundenbetreuung"]], cta: "Kostenlose Probe", contact: "Kontakt",
     pill: "Leads mit Anlass für B2B-Dienstleister",
     h1: "Erreichen Sie Unternehmen genau dann, wenn sie Sie brauchen", h1gold: ["brauchen"],
     sub: "Jede Woche lesen wir amtliche Register und Karriereseiten von Unternehmen, finden landesweit die Firmen mit echtem Kaufanlass und schicken Ihnen eine kurze Liste. Jeder Lead mit Datum, Quelle und Einstiegssatz.",
