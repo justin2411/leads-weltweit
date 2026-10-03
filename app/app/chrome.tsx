@@ -4,15 +4,21 @@ import { BRAND_CSS } from "@/lib/brand-css";
 import { CONTACT } from "@/lib/site";
 import { LEGAL_LABELS, LEGAL_PATHS } from "@/content/legal-i18n";
 import { Motion } from "./motion";
+import { preload } from "react-dom";
+import { cssHrefs, type CssBundle } from "@/lib/css-bundles";
 
 // Schrift wird beim Build selbst gehostet (kein Abruf bei Google durch Besucher, DSGVO).
 const sans = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--sans", display: "swap" });
 
 /** Rahmen aller öffentlichen Seiten: gleiches Design, Schrift, Effekte. */
-export function BrandShell({ lang, children, extraCss }: { lang: string; children: ReactNode; extraCss?: string }) {
+/** css: Seiten-CSS als zwischengespeicherte Datei (lib/css-bundles.ts, gleicher Inhalt wie BRAND_CSS + extraCss). */
+export function BrandShell({ lang, children, extraCss, css }: { lang: string; children: ReactNode; extraCss?: string; css?: CssBundle }) {
+  const hrefs = css ? cssHrefs(css) : [];
+  // früh im <head> anfordern; angewendet wird es wie bisher an dieser Stelle (gleiche Reihenfolge der Regeln)
+  for (const href of hrefs) preload(href, { as: "style" });
   return (
     <div className={`bx ${sans.variable}`} lang={lang}>
-      <style dangerouslySetInnerHTML={{ __html: BRAND_CSS + (extraCss ?? "") }} />
+      {css ? hrefs.map((href) => <link rel="stylesheet" href={href} key={href} />) : <style dangerouslySetInnerHTML={{ __html: BRAND_CSS + (extraCss ?? "") }} />}
       {/* Das Grundgerüst steht auf lang="de"; Browser und Screenreader sollen die Sprache der Seite kennen */}
       <script dangerouslySetInnerHTML={{ __html: `document.documentElement.lang=${JSON.stringify(/^[a-z]{2}$/.test(lang) ? lang : "en")}` }} />
       <Motion />

@@ -1,9 +1,6 @@
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import { BRAND, CONTACT, siteUrl } from "@/lib/site";
-import { LANDING_CSS } from "@/lib/landing-css";
-import { HOME_CSS } from "@/lib/home-css";
-import { HOME_V2_CSS } from "@/lib/home-v2-css";
 import { LEAD_COUNTRIES } from "@/lib/country";
 import { BrandShell, SiteFooter, SiteHeader, Words } from "../chrome";
 import { HeroNet } from "../motion";
@@ -11,7 +8,6 @@ import { HOME, HOME_PATH, HOME_LANGS, type HomeLang } from "../home-i18n";
 import { Icon } from "../[country]/[segment]/v2";
 import { ContactForm } from "./contact-form";
 import { CONTACT_PATH, CONTACT_TX } from "./contact-i18n";
-import { CONTACT_CSS } from "./contact-css";
 import { ContactFx } from "./contact-fx";
 import { contactIndustries } from "../industry-options";
 
@@ -46,7 +42,7 @@ export async function ContactPage({ lang, sent, error }: { lang: HomeLang; sent?
   const errText = error ? (T.f as Record<string, string>)[`e_${error}`] ?? T.f.e_server : "";
 
   return (
-    <BrandShell lang={lang} extraCss={LANDING_CSS + HOME_V2_CSS + HOME_CSS + CONTACT_CSS}>
+    <BrandShell lang={lang} css="contact">
       <SiteHeader links={[[home, lang === "de" ? "Start" : lang === "fr" ? "Accueil" : "Home"]]} cta={[home === "/" ? "/#sample" : `${home}#sample`, H.cta]}
         langs={HOME_LANGS.map((l) => [l.toUpperCase(), CONTACT_PATH[l], l === lang])} />
       <div className="lp2 hm">
