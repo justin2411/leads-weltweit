@@ -12,6 +12,7 @@ nie einen Lauf. Grenzen: je Linie 0 … max, Summe höchstens total_slots - rese
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
 import os
 import sys
@@ -68,11 +69,12 @@ def read_plan(werk: str | None = None) -> dict | None:
         sys.path.insert(0, str(ROOT / "scripts"))
         from lib.db import DB
         db = DB(timeout=15)
+        seen = dt.datetime.now(dt.timezone.utc).isoformat()  # Lesezeitpunkt (nicht Quittungszeit)
         rows = db.select("owner_settings", {"select": "key,value", "key": "eq.slot_plan"}) or []
         plan = rows[0]["value"] if rows else None
         if werk:
             from lib.owner_settings import ack
-            ack(db, werk, ["slot_plan"], {"slot_plan": plan if plan is not None else {}})
+            ack(db, werk, ["slot_plan"], {"slot_plan": plan if plan is not None else {}}, seen_at=seen)
         return plan
     except BaseException as e:  # noqa: BLE001 – ohne Datenbank gilt der Standard (SystemExit ohne Schlüssel inklusive)
         print(f"Belegungsplan nicht lesbar ({type(e).__name__}) – Standardbelegung", file=sys.stderr)

@@ -110,7 +110,7 @@ export async function applySettings(changes: Change[], startNow: boolean, seen: 
     const at = new Date().toISOString();
     const next = toSettings(changes, saved, at) as Partial<Record<SettingKey, unknown>>;
     const values: Partial<Record<SettingKey, unknown>> = {};
-    for (const k of Object.keys(next) as SettingKey[]) values[k] = validateValue(k, next[k], ctx);
+    for (const k of Object.keys(next) as SettingKey[]) values[k] = validateValue(k, next[k], ctx, saved);
     if ("send_paused" in values && typeof values.send_paused !== "boolean") throw new InputError("Versand: an/aus");
     await write(values, saved, at);
     const after = { ...saved, ...values } as OwnerSettings;
@@ -161,7 +161,7 @@ export async function undoChange(logId: number): Promise<ApplyResult> {
     const at = new Date().toISOString();
     const raw = undoValue(key, row.old_value, row.new_value, saved[key], at);
     // Standard (null) als Zahl speichern – owner_settings.value ist NOT NULL
-    const value = validateValue(key, raw ?? (key === "followup_days" ? ctx.followupDefault ?? 4 : ctx.proben.max_alter_stunden), ctx);
+    const value = validateValue(key, raw ?? (key === "followup_days" ? ctx.followupDefault ?? 4 : ctx.proben.max_alter_stunden), ctx, saved);
     await write({ [key]: value }, saved, at, `rückgängig #${logId}`);
     const after = { ...saved, [key]: value } as OwnerSettings;
     const applied = diff(saved, draftFrom(after, ctx), ctx).map((c) => ({ card: c.card, text: c.text }));

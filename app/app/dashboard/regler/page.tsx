@@ -20,22 +20,25 @@ export default async function Page() {
   const now = new Date(d.now);
   const ctx = reglerCtx(d.pages);
   const plan = slotCounts(REG, d.saved.slot_plan);
+  const soll = (k: string) => d.saved.sample_targets[k] ?? (CONFIG.fokus.includes(k) ? CONFIG.proben.fokus_je_seite : CONFIG.proben.andere_je_seite);
+  // gemessen: jede Live-Seite hat ihr Soll (zählt im Status nur nach einem Lauf seit dem Speichern)
+  const reached = d.pages.length > 0 && d.pages.every((k) => (d.ready[k] ?? 0) >= soll(k));
   const effect: Record<string, { text: string; tone?: "bad" | "off" } | null> = {
     "lead-werk": { text: `läuft ${d.running["lead-werk"] ?? 0} · geplant ${leadTotal(plan, REG)}` },
     "kunden-werk": { text: `läuft ${d.running["kunden-werk"] ?? 0} · geplant ${plan.kunden ?? 0}` },
-    "proben-vorrat": { text: `Vorrat ${d.pages.reduce((a, k) => a + (d.ready[k] ?? 0), 0)}/${d.pages.reduce((a, k) => a + (d.saved.sample_targets[k] ?? (CONFIG.fokus.includes(k) ? CONFIG.proben.fokus_je_seite : CONFIG.proben.andere_je_seite)), 0)}` },
+    "proben-vorrat": { text: `Vorrat ${d.pages.reduce((a, k) => a + (d.ready[k] ?? 0), 0)}/${d.pages.reduce((a, k) => a + soll(k), 0)}` },
     versand: versandStopText(CONFIG) ? { text: versandStopText(CONFIG)!, tone: "bad" }
       : d.saved.send_paused ? { text: `pausiert · ${d.versand?.today ?? 0} heute`, tone: "off" }
       : d.versand ? { text: `läuft · ${d.versand.today} heute / ${d.versand.cap}` } : null,
   };
   const cards: CardView[] = CARDS.map((c) => {
-    const st = status(c.key, { updatedAt: d.updatedAt, acks: d.acks, startRequests: d.starts, now, saved: d.saved, reg: REG });
+    const st = status(c.key, { updatedAt: d.updatedAt, acks: d.acks, startRequests: d.starts, now, saved: d.saved, reg: REG, reached: c.key === "proben-vorrat" && reached });
     return {
       key: c.key, kind: st.kind, text: st.text,
       saved: st.savedAt ? fmtWhen(st.savedAt, now) : null,
       at: st.at ? fmtWhen(st.at, now) : null,
       next: fmtWhen(nextRun(c.cron, now), now),
-      effect: effect[c.key] ?? (c.key === "nachfass" || c.key === "antworten" || c.key === "kundenlieferung" || c.key === "tagescheck" ? { text: `nächster Lauf ${fmtWhen(nextRun(c.cron, now), now)}` } : null),
+      effect: effect[c.key] ?? null, // „nächster Lauf“ steht in der Statuszeile
     };
   });
   const history = d.log.map((r) => entryOf(r, ctx)).filter((x): x is Entry => !!x).map((e) => ({ ...e, when: fmtWhen(e.at, now) }));

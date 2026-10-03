@@ -63,6 +63,20 @@ class AckTest(unittest.TestCase):
         self.assertEqual(rows[0]["value"], ["FR"])
         self.assertGreater(rows[0]["seen_at"], "2026-10-01T00:00:00+00:00")
 
+    def test_seen_at_is_read_time_not_write_time(self):
+        # Speichert der Inhaber zwischen Lesen und Quittung, darf die Quittung nicht danach datiert sein
+        db = FakeDB({"owner_settings": [{"key": "sample_targets", "value": {"S2/US": 50}}]})
+        s = O.load(db)
+        self.assertIsInstance(s, dict)
+        self.assertTrue(s.loaded_at)
+        with mock.patch.object(O, "_now", return_value="2099-01-01T00:00:00+00:00"):
+            O.ack(db, "proben-vorrat", ["sample_targets"], s)
+            O.ack(db, "versand", ["send_paused"], {"send_paused": False}, seen_at="2026-10-03T19:00:00+00:00")
+            O.ack(db, "nachfass", ["followup_days"], {})  # ohne Lesezeit: jetzt
+        self.assertEqual(acks(db, "proben-vorrat")["sample_targets"]["seen_at"], s.loaded_at)
+        self.assertEqual(acks(db, "versand")["send_paused"]["seen_at"], "2026-10-03T19:00:00+00:00")
+        self.assertEqual(acks(db, "nachfass")["followup_days"]["seen_at"], "2099-01-01T00:00:00+00:00")
+
     def test_never_raises(self):
         class Broken(FakeDB):
             def insert(self, *a, **k):

@@ -6,7 +6,7 @@
  * Grenzen kommen aus lib/owner-settings.ts (nie lockerer). Versand ist hier nur Pause/Status – nie einschaltbar.
  */
 import {
-  InputError, WERK_SWITCHES, slotCounts, validateFollowupDays, validateMaxAge, validateSampleTargets, validateSlotPlan, werkOn,
+  DEFAULTS, InputError, WERK_SWITCHES, slotCounts, validateFollowupDays, validateMaxAge, validateSampleTargets, validateSlotPlan, werkOn,
   type Lane, type LaneRegistry, type OwnerSettings, type SettingKey, type WerkKey,
 } from "./owner-settings.ts";
 import { START_MAX_AGE_MIN, fmtBerlin, nextPickup, type StartKey, type StartRequest } from "./start-queue.ts";
@@ -46,6 +46,9 @@ export const versandStopText = (cfg: { versand?: { aktiv?: boolean } }): string 
   cfg.versand?.aktiv === false ? "gestoppt (config/versand.yaml, deine Entscheidung 28.09.)" : null;
 /** Proben-Verfall gilt nicht für Webagenturen (S2) – dort Drei-Stufen-Nachprüfung statt Verfall. */
 export const MAX_AGE_NOTE = "S2 (Webagenturen) hat keinen Verfall – dort werden die Leads alle 20 h neu geprüft.";
+export const NO_EXPIRY_SEGMENTS = ["S2"];
+/** Verfall wirkt nur, wenn eine Live-Seite außerhalb von S2 Proben hält – sonst kein Regler (würde nichts ändern). */
+export const maxAgeMatters = (pages: string[]) => pages.some((k) => !NO_EXPIRY_SEGMENTS.includes(k.split("/")[0]));
 
 // ------------------------------------------------------------------------------------------------ Zeitplan
 function field(spec: string, lo: number, hi: number): number[] | null {
@@ -80,6 +83,28 @@ export function nextRun(cron: string, now: Date): Date {
     for (const m of min) {
       const c = new Date(d.getTime() + m * 60_000);
       if (c.getTime() > now.getTime()) return c;
+    }
+  }
+  throw new Error(`cron ohne Lauf: ${cron}`);
+}
+
+/** Letzter planmäßiger Lauf vor `now` (gleiches Muster wie nextRun). */
+export function prevRun(cron: string, now: Date): Date {
+  const f = cron.trim().split(/\s+/);
+  if (f.length !== 5) throw new Error(`cron: ${cron}`);
+  const min = field(f[0], 0, 59) ?? Array.from({ length: 60 }, (_, i) => i);
+  const [hour, dom, mon] = [field(f[1], 0, 23), field(f[2], 1, 31), field(f[3], 1, 12)];
+  const dow = field(f[4].replace(/\b7\b/g, "0"), 0, 6);
+  const h0 = Math.floor(now.getTime() / 3_600_000) * 3_600_000;
+  for (let i = 0; i <= 24 * 366; i++) {
+    const d = new Date(h0 - i * 3_600_000);
+    if (hour && !hour.includes(d.getUTCHours())) continue;
+    if (dom && !dom.includes(d.getUTCDate())) continue;
+    if (mon && !mon.includes(d.getUTCMonth() + 1)) continue;
+    if (dow && !dow.includes(d.getUTCDay())) continue;
+    for (const m of [...min].reverse()) {
+      const c = new Date(d.getTime() + m * 60_000);
+      if (c.getTime() < now.getTime()) return c;
     }
   }
   throw new Error(`cron ohne Lauf: ${cron}`);
@@ -154,16 +179,35 @@ export function leadMax(plan: Record<string, number>, reg: LaneRegistry): number
 /**
  * „Tempo“: Lead-Werk auf `total` Plätze skalieren – anteilig nach dem aktuellen Plan (sonst Standard), größter Rest,
  * jede Linie ≤ max, Summe aller Linien ≤ total_slots − reserve (inkl. Kunden-Linie, die bleibt). Abgeschaltete Länder
- * (0 Plätze) bleiben aus. Ergebnis: vollständiger Plan für alle Linien.
+ * (0 Plätze) bleiben aus. „Langsamer“ schaltet nie ein Land ab: jede aktive Linie behält mindestens 1 Platz, solange
+ * das Tempo reicht (sonst wenigstens jedes aktive Land). Ergebnis: vollständiger Plan für alle Linien.
  */
 export function scalePlan(plan: Record<string, number>, reg: LaneRegistry, total: number): Record<string, number> {
   const out = Object.fromEntries(reg.lanes.map((l) => [l.id, Math.min(at(plan, l.id), l.max)]));
   const t = Math.max(0, Math.min(Math.round(Number(total) || 0), leadMax(out, reg)));
-  return { ...out, ...distribute(leadLanes(reg), leadWeights(out, reg), t) };
+  const w = leadWeights(out, reg);
+  const p = distribute(leadLanes(reg), w, t);
+  const active = leadLanes(reg).filter((l) => w[l.id] > 0);
+  const top = new Map<LeadCountry, Lane>(); // je Land die Linie mit dem größten Gewicht
+  for (const l of active) { const b = top.get(countryOf(l)); if (!b || w[l.id] > w[b.id]) top.set(countryOf(l), l); }
+  const need = t >= active.length ? active : t >= top.size ? [...top.values()] : [];
+  const otherOn = (x: Lane) => leadLanes(reg).some((y) => y !== x && countryOf(y) === countryOf(x) && p[y.id] > 0);
+  for (const l of need) {
+    if (p[l.id] > 0 || (need !== active && otherOn(l))) continue;
+    // 1 Platz von der größten Linie, die ihn abgeben kann, ohne selbst eine gebrauchte Linie oder ihr Land abzuschalten
+    const donor = leadLanes(reg).filter((x) => p[x.id] > 1 || (p[x.id] === 1 && !need.includes(x) && otherOn(x))).sort((a, b) => p[b.id] - p[a.id])[0];
+    if (!donor) break;
+    p[donor.id] -= 1;
+    p[l.id] += 1;
+  }
+  return { ...out, ...p };
 }
 
 export const countryOn = (plan: Record<string, number>, reg: LaneRegistry, c: LeadCountry) =>
   leadLanes(reg).some((l) => countryOf(l) === c && at(plan, l.id) > 0);
+
+/** Zahl der eingeschalteten Lead-Länder (Untergrenze fürs Tempo: weniger Plätze würden Länder abschalten). */
+export const countriesOn = (plan: Record<string, number>, reg: LaneRegistry) => LEAD_COUNTRIES.filter((c) => countryOn(plan, reg, c.id)).length;
 
 /** Land an/aus: aus -> seine Linien 0; an -> Standardwerte, andere Lead-Linien rücken anteilig zusammen, falls es eng wird. */
 export function setCountry(plan: Record<string, number>, reg: LaneRegistry, c: LeadCountry, on: boolean): Record<string, number> {
@@ -193,6 +237,21 @@ export function setLane(plan: Record<string, number>, reg: LaneRegistry, id: str
   return out;
 }
 
+/** Hinweis am Anschlag: alle Plätze (total_slots − reserve) belegt – Lead- und Kunden-Werk teilen sie sich. */
+export function capHint(plan: Record<string, number>, reg: LaneRegistry, card: "lead-werk" | "kunden-werk"): string | null {
+  if (sum(reg.lanes.map((l) => at(plan, l.id))) < capOf(reg)) return null;
+  return `Maximum – alle ${capOf(reg)} Plätze belegt. Mehr hier = ${card === "lead-werk" ? "Kunden-Werk" : "Lead-Werk-Tempo"} senken`;
+}
+
+/** Vorschau am Schalter, solange an/aus noch nicht übernommen ist (eine Zeile). */
+export function switchPreview(card: CardKey, on: boolean): string {
+  if (on) return card === "versand" ? "läuft wieder ab Übernehmen (Limits bleiben)" : "läuft wieder ab Übernehmen";
+  if (card === "versand") return "wird pausiert – keine Kalt-/Nachfassmails";
+  if (card === "nachfass") return "wird pausiert – keine Nachfassmails";
+  if (card === "antworten") return "wird pausiert – Abmeldungen werden weiter gesperrt";
+  return "wird pausiert ab Übernehmen";
+}
+
 export type Preset = { id: "sparsam" | "standard" | "voll"; label: string; total: number };
 /** Tempo-Vorgaben: Standard = Summe der Standardwerte, Sparsam ≈ ein Drittel, Voll = höchstes erreichbares Tempo. */
 export function presets(plan: Record<string, number>, reg: LaneRegistry): Preset[] {
@@ -203,6 +262,25 @@ export function presets(plan: Record<string, number>, reg: LaneRegistry): Preset
     { id: "standard", label: "Standard", total: std },
     { id: "voll", label: "Voll", total: max },
   ];
+}
+
+/** Vorgaben für die Chips: gleiche Zahl nur einmal; ist Standard schon das Maximum, heißt der Chip „Standard = Voll“. */
+export function presetChips(plan: Record<string, number>, reg: LaneRegistry): Preset[] {
+  const [sp, std, voll] = presets(plan, reg);
+  const out = std.total === voll.total ? [sp, { ...std, label: "Standard = Voll" }] : [sp, std, voll];
+  return out.filter((p, i, a) => a.findIndex((q) => q.total === p.total) === i);
+}
+
+/**
+ * Vorgabe anwenden. „Standard“ setzt die Standardbelegung der eingeschalteten Länder (statt einen vorher verkleinerten
+ * Plan hochzurechnen) – so kommt jede Linie zurück; Sparsam/Voll skalieren den aktuellen Plan.
+ */
+export function presetPlan(plan: Record<string, number>, reg: LaneRegistry, p: Preset): Record<string, number> {
+  if (p.id !== "standard") return scalePlan(plan, reg, p.total);
+  const on = LEAD_COUNTRIES.filter((c) => countryOn(plan, reg, c.id)).map((c) => c.id);
+  const base = { ...plan };
+  for (const l of leadLanes(reg)) base[l.id] = !on.length || on.includes(countryOf(l)) ? l.default : 0;
+  return scalePlan(base, reg, p.total);
 }
 
 // ------------------------------------------------------------------------------------------------ Entwurf
@@ -318,9 +396,12 @@ export function toSettings(changes: Change[], saved: OwnerSettings, nowIso: stri
   return out as Partial<OwnerSettings>;
 }
 
-const PAGE_KEY = /^S\d{1,2}\/[A-Z]{2}$/;
-/** Prüft einen Wert vor dem Speichern – gleiche Grenzen wie lib/owner-settings.ts. Wirft InputError. */
-export function validateValue(key: SettingKey, value: unknown, ctx: ReglerCtx): unknown {
+/**
+ * Prüft einen Wert vor dem Speichern – gleiche Grenzen wie lib/owner-settings.ts. Wirft InputError.
+ * sample_targets: wie saveSampleTargets nur die Regler-Seiten (ctx.pages); andere Seiten müssen unverändert aus
+ * `saved` kommen (nie neue Seiten-Ziele über den Regler).
+ */
+export function validateValue(key: SettingKey, value: unknown, ctx: ReglerCtx, saved?: OwnerSettings): unknown {
   const obj = (v: unknown) => {
     if (!v || typeof v !== "object" || Array.isArray(v)) throw new InputError(`${key}: ungültig`);
     return v as Record<string, unknown>;
@@ -339,9 +420,10 @@ export function validateValue(key: SettingKey, value: unknown, ctx: ReglerCtx): 
     }
     case "slot_plan": return validateSlotPlan(obj(value), ctx.reg);
     case "sample_targets": {
-      const v = obj(value), keys = Object.keys(v);
-      if (keys.some((k) => !PAGE_KEY.test(k))) throw new InputError("Seite ungültig");
-      return validateSampleTargets(v, keys);
+      const v = obj(value), old = saved?.sample_targets ?? {};
+      const rest = Object.keys(v).filter((k) => !ctx.pages.includes(k));
+      if (rest.some((k) => !(k in old) || old[k] !== v[k])) throw new InputError("Seite ungültig");
+      return { ...Object.fromEntries(rest.map((k) => [k, old[k]])), ...validateSampleTargets(v, ctx.pages.filter((k) => k in v)) };
     }
     case "sample_max_age_hours": return validateMaxAge(value);
     case "followup_days": return validateFollowupDays(value);
@@ -355,7 +437,7 @@ export function validateValue(key: SettingKey, value: unknown, ctx: ReglerCtx): 
 
 // ------------------------------------------------------------------------------------------------ Zustand
 export type Ack = { werk: string; key: string; seen_at: string; value: unknown };
-export type StatusKind = "angewandt" | "wartet" | "start angefordert" | "noch nie geändert";
+export type StatusKind = "angewandt" | "erreicht" | "wartet" | "start angefordert" | "noch nie geändert";
 export type CardStatus = {
   kind: StatusKind; text: string;
   /** ② übernommen: letzte Speicherung eines Schlüssels der Karte */
@@ -386,23 +468,34 @@ function slice(card: Card, key: SettingKey, v: unknown, reg?: LaneRegistry): str
 export function status(cardKey: CardKey, o: {
   updatedAt: Partial<Record<SettingKey, string | null>>; acks: Ack[]; startRequests: Pick<StartRequest, "workflow" | "status" | "created_at" | "started_at">[];
   now: Date; saved?: OwnerSettings; reg?: LaneRegistry;
+  /** gemessen erreicht (Proben-Vorrat: jede Seite hat ihr Soll) – zählt nur nach einem planmäßigen Lauf seit dem Speichern */
+  reached?: boolean;
 }): CardStatus {
   const c = cardOf(cardKey);
-  const keys = c.keys.filter((k) => o.updatedAt[k]);
+  const ackOf = (k: SettingKey) => o.acks.filter((a) => a.werk === c.werk && a.key === k).sort((a, b) => (a.seen_at < b.seen_at ? 1 : -1))[0];
+  // gemeinsamer Schlüssel ohne Quittung, dessen Teil für dieses Werk noch Standard ist: für diese Karte nie geändert
+  const untouched = (k: SettingKey) => (k === "werke_paused" || k === "slot_plan") && !ackOf(k) && !!o.saved
+    && slice(c, k, o.saved[k], o.reg) === slice(c, k, DEFAULTS[k], o.reg);
+  const keys = c.keys.filter((k) => o.updatedAt[k] && !untouched(k));
   const base = { werk: c.name, at: null, next: null };
   if (!keys.length) return { ...base, kind: "noch nie geändert", text: "Standard", savedAt: null };
   const savedAt = keys.map((k) => o.updatedAt[k]!).sort().at(-1)!;
-  const ackOf = (k: SettingKey) => o.acks.filter((a) => a.werk === c.werk && a.key === k).sort((a, b) => (a.seen_at < b.seen_at ? 1 : -1))[0];
   const applied = (k: SettingKey) => {
     const a = ackOf(k);
     if (!a) return false;
-    if (Date.parse(a.seen_at) >= Date.parse(o.updatedAt[k]!)) return true;
-    return !!o.saved && slice(c, k, a.value, o.reg) === slice(c, k, o.saved[k], o.reg);
+    const same = !o.saved || slice(c, k, a.value, o.reg) === slice(c, k, o.saved[k], o.reg);
+    // Quittung nach dem Speichern zählt nur mit dem gespeicherten Wert (sonst hat das Werk noch den alten gelesen)
+    if (Date.parse(a.seen_at) >= Date.parse(o.updatedAt[k]!)) return same;
+    return !!o.saved && same;
   };
   const pending = keys.filter((k) => !applied(k));
   if (!pending.length) {
     const at = keys.map((k) => ackOf(k)!.seen_at).sort().at(-1)!;
     return { ...base, kind: "angewandt", text: `angewandt ${fmtWhen(at, o.now)} (${c.name})`, savedAt, at };
+  }
+  if (o.reached && pending.every((k) => k === "sample_targets") && (!o.saved || werkOn(o.saved, c.key).on)
+    && Date.parse(savedAt) < prevRun(c.cron, o.now).getTime()) {
+    return { ...base, kind: "erreicht", text: "erreicht – Vorrat hat das Soll", savedAt };
   }
   const t = o.now.getTime();
   if (c.start) {
