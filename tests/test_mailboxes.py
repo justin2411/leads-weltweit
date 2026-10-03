@@ -28,8 +28,13 @@ class MailboxTests(unittest.TestCase):
         d = dt.date(2026, 10, 1)
         with mock.patch.object(mb, "warmup_cap", return_value=150):
             self.assertEqual(mb.box_cap(boxes[0], None, d), 150)
-        self.assertEqual(mb.box_cap(boxes[1], None, d), 20)
-        self.assertEqual(mb.box_cap(boxes[1], d, d + dt.timedelta(days=8)), 70)
+        cfg = {"postfach_start": "60", "postfach_schritt": "15", "postfach_tageslimit": "150"}
+        with mock.patch.object(mb, "_cfg", side_effect=cfg.get):
+            # Inhaber 03.10.2026: Start 60, jeden Tag höher bis 150
+            self.assertEqual(mb.box_cap(boxes[1], None, d), 60)
+            self.assertEqual(mb.box_cap(boxes[1], d, d + dt.timedelta(days=1)), 75)
+            self.assertEqual(mb.box_cap(boxes[1], d, d + dt.timedelta(days=6)), 150)
+            self.assertEqual(mb.box_cap(boxes[1], d, d + dt.timedelta(days=30)), 150)
         with mock.patch.object(mb, "box_limit", return_value=120):
             self.assertEqual(mb.box_cap(boxes[1], d, d + dt.timedelta(days=60)), 120)
 

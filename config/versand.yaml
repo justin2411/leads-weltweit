@@ -17,8 +17,11 @@ freigabe: "Justin Koch, Chat 03.10.2026: '1 bis 3 genauso umsetzen 4. wir starte
 gesamtgrenze: 1000
 # Tagesgrenze des Mail-Postfachs für Kaltmails (SMTP, Strato). 10 Reserve für Antworten.
 anbieter_tageslimit: 160
-# Weitere Postfächer (SMTP_USER_2 … in GitHub-Secrets, scripts/lib/mailboxes.py) fahren je mit eigener Aufwärmphase
-# hoch (20 → 40 → 70 → 100 → 150 pro Tag über drei Wochen) bis höchstens zu dieser Tagesmenge je Postfach.
+# Weitere Postfächer (SMTP_USER_2 … in GitHub-Secrets, scripts/lib/mailboxes.py) fahren je mit eigener Steigerung
+# hoch bis höchstens zu dieser Tagesmenge je Postfach. Inhaber 03.10.2026 (leads@nextgen-profit.de als Postfach 2):
+# „starte bei dem neuen postfach auch mit 60 und geh jeden tag höher bis auf 150“ -> 60, 75, 90 … 150 ab Tag 7.
+postfach_start: 60
+postfach_schritt: 15
 # Inhaber 01.10.2026: „wir sollten die Möglichkeit haben auch hochzuskalieren, Hauptdomain passt“.
 postfach_tageslimit: 150
 kaufinteresse_an: justin.koch@horbach.de   # Meldungen bei Kaufinteresse/Rückfragen (Morgenbericht geht an OWNER_EMAIL)
