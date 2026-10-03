@@ -182,6 +182,14 @@ def check_mailboxes(c: Check, db) -> None:
         bounced, complained = count_bounces(per.get(b, []))
         rate = bounced / n
         detail = f"{bounced} Bounces, {complained} Beschwerden bei {n} Mails (14 Tage)"
+        # Gründe aus der Unzustellbar-Meldung (seit 04.10.2026 gespeichert): 5.1.x = Adresse unbekannt, 5.7.x = abgelehnt
+        codes: dict[str, int] = {}
+        for e in per.get(b, []):
+            st = (((e.get("payload") or {}).get("bounce") or {}).get("status") or "") if isinstance(e.get("payload"), dict) else ""
+            if st:
+                codes[st] = codes.get(st, 0) + 1
+        if codes:
+            detail += "; Gründe: " + ", ".join(f"{k} ×{v}" for k, v in sorted(codes.items(), key=lambda x: -x[1]))
         if complained:
             c.add("Postfach", FAIL, f"{b}: Spam-Beschwerde", detail)
         elif n < BOX_MIN:
