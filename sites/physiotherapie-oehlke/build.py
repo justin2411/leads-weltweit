@@ -29,7 +29,7 @@ def _version() -> str:
     """Cache-Schlüssel aus dem Inhalt von CSS/JS: jede Änderung lädt sofort neu."""
     import hashlib
     h = hashlib.sha1()
-    for f in ("css/site.css", "js/site.js", "assets/fonts/fonts.css", "css/dash.css", "js/dash-core.js", "js/dash-praxis.js", "js/dash-topics.js", "js/dash-seo.js", "js/ratgeber.js"):
+    for f in ("css/site.css", "js/site.js", "assets/fonts/fonts.css", "css/dash.css", "js/dash-core.js", "js/dash-praxis.js", "js/dash-topics.js", "js/dash-seo.js", "js/ratgeber.js", "favicon.svg"):
         h.update((ROOT / "public" / f).read_bytes())
     return h.hexdigest()[:10]
 
@@ -164,8 +164,10 @@ def head(title: str, desc: str, path: str, noindex: bool) -> str:
 <meta property="og:title" content="{e(title)}">
 <meta property="og:description" content="{e(desc)}">
 <meta property="og:image" content="/assets/img/og.jpg">
-<link rel="icon" href="/assets/img/logo-icon-180.png">
-<link rel="apple-touch-icon" href="/assets/img/logo-icon-180.png">
+<link rel="icon" href="/favicon.ico?v={VERSION}" sizes="48x48">
+<link rel="icon" href="/favicon.svg?v={VERSION}" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png?v={VERSION}">
+<link rel="manifest" href="/site.webmanifest">
 <link rel="preload" href="/assets/fonts/poppins-600-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/inter-400-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/fonts/fonts.css?v={VERSION}">
@@ -749,7 +751,9 @@ def cockpit_head(title: str) -> str:
 <title>{e(title)}</title>
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#081429">
-<link rel="icon" href="/assets/img/logo-icon-180.png">
+<link rel="icon" href="/favicon.ico?v={VERSION}" sizes="48x48">
+<link rel="icon" href="/favicon.svg?v={VERSION}" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png?v={VERSION}">
 <link rel="preload" href="/assets/fonts/poppins-600-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/fonts/fonts.css?v={VERSION}">
 <link rel="stylesheet" href="/css/dash.css?v={VERSION}">
