@@ -246,6 +246,9 @@ export async function Home({ lang }: { lang: HomeLang }) {
               {/* Mitlaufende Grafik zum aktuellen Schritt (Desktop); auf Handy und Tablet setzt das Skript je Schritt eine Kopie darunter.
                   Illustration, die Bewertungswerte sind ein Beispiel. */}
               <div className="hp-story__aside" aria-hidden="true">
+                <div className="hp-story__stick">
+                {/* Siegel aus Vorlage v5 (Inhaber 03.10.2026) */}
+                <span className="hp-story__seal" data-reveal=""><svg viewBox="0 0 120 120"><defs><path id="hp-sseal-arc" d="M22 60a38 38 0 1 1 76 0a38 38 0 1 1-76 0" /><radialGradient id="hp-g-sseal" cx=".35" cy=".3" r=".85"><stop offset="0" stopColor="#1D3670" /><stop offset="1" stopColor="#0B1530" /></radialGradient></defs><path d="M60.00 2.00L64.85 4.61L70.07 2.88L74.39 6.29L79.84 5.50L83.50 9.61L89.00 9.77L91.89 14.46L97.28 15.57L99.32 20.68L104.43 22.72L105.54 28.11L110.23 31.00L110.39 36.50L114.50 40.16L113.71 45.61L117.12 49.93L115.39 55.15L118.00 60.00L115.39 64.85L117.12 70.07L113.71 74.39L114.50 79.84L110.39 83.50L110.23 89.00L105.54 91.89L104.43 97.28L99.32 99.32L97.28 104.43L91.89 105.54L89.00 110.23L83.50 110.39L79.84 114.50L74.39 113.71L70.07 117.12L64.85 115.39L60.00 118.00L55.15 115.39L49.93 117.12L45.61 113.71L40.16 114.50L36.50 110.39L31.00 110.23L28.11 105.54L22.72 104.43L20.68 99.32L15.57 97.28L14.46 91.89L9.77 89.00L9.61 83.50L5.50 79.84L6.29 74.39L2.88 70.07L4.61 64.85L2.00 60.00L4.61 55.15L2.88 49.93L6.29 45.61L5.50 40.16L9.61 36.50L9.77 31.00L14.46 28.11L15.57 22.72L20.68 20.68L22.72 15.57L28.11 14.46L31.00 9.77L36.50 9.61L40.16 5.50L45.61 6.29L49.93 2.88L55.15 4.61Z" fill="url(#hp-g-sseal)" /><circle cx="60" cy="60" r="50" fill="none" stroke="#E2C894" strokeWidth="1.2" /><circle cx="60" cy="60" r="47" fill="none" stroke="#E2C894" strokeOpacity=".45" strokeWidth=".6" /><circle cx="60" cy="60" r="27" fill="none" stroke="#E2C894" strokeOpacity=".6" strokeWidth=".8" /><text fontSize="8.4" fontWeight="800" letterSpacing="1.4" fill="#E2C894"><textPath href="#hp-sseal-arc" textLength="232" lengthAdjust="spacing">NEXTGEN PROFIT • LEIPZIG • GERMANY •</textPath></text><text x="60" y="67" textAnchor="middle" fontSize="20" fontWeight="800" letterSpacing="-1" fill="#fff">N<tspan fill="#E2C894">P</tspan></text></svg></span>
                 <div className="hp-story__stage" data-step="0">
                   <span className="hp-story__grid" />
                   <span className="hp-story__marks"><i /><i /><i /><i /></span>
@@ -281,7 +284,7 @@ export async function Home({ lang }: { lang: HomeLang }) {
                     {/* Fließband wie im Film (Inhaber 03.10.2026): Karten laufen durch den Scanner, der Qualitätswert füllt sich,
                         bestanden = grün mit Wert, unter dem Mindestwert = rot und fällt heraus. Beispielwerte. */}
                     <div className="hp-qs">
-                      <div className="hp-qs__head"><span className="hp-qs__ic"><I n="target" /></span><b>{t.story.qs}</b><span className="hp-qs__min">{t.story.minPill}</span></div>
+                      <div className="hp-qs__head"><span className="hp-qs__ic"><I n="target" /></span><b>{t.story.qs}</b></div>
                       {t.story.rows.map(([l, v]) => <div className="hp-qs__row" key={l} style={{ "--v": v } as CSSProperties}><span>{l}</span><b className="hp-qs__bar"><i /></b><em>{v}</em></div>)}
                     </div>
                     <span className="hp-qs__link" />
@@ -318,6 +321,7 @@ export async function Home({ lang }: { lang: HomeLang }) {
                   </div>
                   <ol className="hp-story__track">{t.story.track.map((x, k) => <li className={k === 0 ? "is-on is-cur" : undefined} key={x}>{x}</li>)}</ol>
                 </div>
+                </div>
               </div>
             </div>
 
@@ -342,6 +346,7 @@ export async function Home({ lang }: { lang: HomeLang }) {
                         <div className="hp-fact hp-fact--wide hp-fact--event" data-mark="1"><dt>{c.event} <span className="hp-mark" aria-hidden="true">1</span></dt><dd>{c.eventText}</dd></div>
                         <div className="hp-fact" data-mark="2"><dt>{c.date} <span className="hp-mark" aria-hidden="true">2</span></dt><dd>{c.dateText}</dd></div>
                         <div className="hp-fact" data-mark="2"><dt>{c.source} <span className="hp-mark" aria-hidden="true">2</span></dt><dd>{c.sourceText}</dd></div>
+                        <div className="hp-fact hp-fact--wide" data-mark="2"><dt>{c.person} <span className="hp-mark" aria-hidden="true">2</span></dt><dd><R t="xxxxx xxxxxxx" /><span className="hp-sr">{c.hidden}</span> · {c.role}</dd></div>
                         <div className="hp-fact hp-fact--wide" data-mark="2"><dt>{c.phone} <span className="hp-mark" aria-hidden="true">2</span></dt><dd>{t.ex.phonePrefix} <R t="xxxx xxxx" /><span className="hp-sr">{c.hidden}</span></dd></div>
                         <div className="hp-fact hp-fact--wide" data-mark="2"><dt>{c.email} <span className="hp-mark" aria-hidden="true">2</span></dt><dd className="hp-nowrap"><R t="xxxxx" />@<R t="xxxxxxxx" />.co.uk<span className="hp-sr">{c.hidden}</span></dd></div>
                       </dl>
