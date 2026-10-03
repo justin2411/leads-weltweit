@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadBoxHealth, loadDaily, loadFunnel, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock } from "@/lib/dashboard-data";
-import { berlin, berlinDay, chain, compact, currencySign, mailboxes, monthly, nextRun, onlySegment, realSubscriptions, sampleStock, stockSegment, BOX_MIN, COUNTRY_COLOR } from "@/lib/dashboard-logic";
+import { berlin, berlinDay, brake, chain, compact, currencySign, mailboxes, monthly, nextRun, onlySegment, realSubscriptions, sampleStock, stockSegment, BOX_MIN, COUNTRY_COLOR } from "@/lib/dashboard-logic";
 import { totals } from "@/lib/dashboard-periods";
 import { coach, hall, laneOf, laneStats, neckTask, running, utilization, type Beat } from "@/lib/leitstand";
 import { NECK_TO_STATION, ticker, type Edge, type Station, type StationId, type TickerItem } from "@/lib/fluss";
@@ -146,9 +146,14 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   ];
 
   // ---------------------------------------------------------------- JARVIS, Ampeln, Ticker
-  const tips = coach({ reg: REG, plan, stats, util: util.rate, queue, freeBuyers, leads: leadsNew, capPerDay: cap, kundenNew24h: stockAll ? newBuyers24 : null, stockKnown: !!stock, autopilot: autopilotOn,
+  // Notbremse (wie deliverability.emergency_stop, über alle Zielgruppen): steht sie, ganz oben und rot
+  const nb = brake(liveAll, CONFIG);
+  const tips = [
+    ...(nb.stop ? [{ level: "rot" as const, title: "Notbremse: Versand gestoppt", text: `${nb.stop}. Neustart nur nach deiner Entscheidung.`, href: "/dashboard/versand" }] : []),
+    ...coach({ reg: REG, plan, stats, util: util.rate, queue, freeBuyers, leads: leadsNew, capPerDay: cap, kundenNew24h: stockAll ? newBuyers24 : null, stockKnown: !!stock, autopilot: autopilotOn,
     failed: beats.filter((b) => /^abgebrochen/.test(b.note ?? "") && t - Date.parse(b.beat_at) < 6 * 3_600_000).map((b) => `${b.werk} ${b.part} · ${berlin(b.beat_at)}`),
-    countedHours: firstRun ? Math.min(24, (t - firstRun) / 3_600_000) : 0 });
+    countedHours: firstRun ? Math.min(24, (t - firstRun) / 3_600_000) : 0 }),
+  ];
   const tipStation = (href?: string): StationId => (href === "#pult" ? "lead" : href?.includes("bestand") ? "kaeufer" : href?.includes("versand") ? "versand" : "lead");
   const base = (id: StationId) => `/dashboard/jarvis?s=${id}`;
   const href = (id: StationId) => (s === id ? "/dashboard/jarvis" : base(id));
@@ -159,7 +164,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     openReplies
       ? { label: "Antworten offen", value: `${openReplies}`, sub: "jetzt beantworten", tone: "gold", href: "/dashboard/antworten" }
       : { label: "Antworten 7 T", value: `${w.replies}`, sub: `${w.positive} positiv`, tone: w.positive ? "green" : w.replies ? "gold" : "grey", href: base("antworten") },
-    { label: "Mails heute", value: `${sentToday}/${cap}`, sub: own.send_paused ? "pausiert" : "Versand", tone: own.send_paused ? "red" : sentToday ? "cyan" : "grey", href: base("versand") },
+    { label: "Mails heute", value: `${sentToday}/${cap}`, sub: nb.stop ? "Notbremse" : own.send_paused ? "pausiert" : "Versand", tone: nb.stop || own.send_paused ? "red" : sentToday ? "cyan" : "grey", href: base("versand") },
     { label: "Engpass", value: neck ? stations.find((x) => x.id === neck)!.label : "keiner", sub: "hier ansetzen", tone: neck ? "red" : "green", href: neck ? base(neck) : "/dashboard/jarvis", task: neck ? neckTask(stations.find((x) => x.id === neck)!.label) : undefined },
   ] as { label: string; value: string; sub: string; tone: "green" | "gold" | "red" | "cyan" | "grey"; href: string }[];
   const items: TickerItem[] = [
