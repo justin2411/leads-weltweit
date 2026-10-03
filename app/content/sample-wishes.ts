@@ -54,10 +54,15 @@ export function cleanText(s: string): string {
   return s.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, MAX_TEXT);
 }
 
+/** Erlaubte Wunsch-Schlüssel dieser Branche (höchstens MAX_WISHES, ohne Doppelte). */
+export function wishKeys(seg: string, keys: string[]): string[] {
+  const allowed = new Set(wishesFor(seg).map((w) => w.key));
+  return [...new Set(keys)].filter((k) => allowed.has(k)).slice(0, MAX_WISHES);
+}
+
 /** Maschinenlesbarer Wunsch für sample_requests.note (immer am Ende, Freitext zuletzt). */
 export function wishNote(seg: string, keys: string[], text: string): string {
-  const allowed = new Set(wishesFor(seg).map((w) => w.key));
-  const ks = [...new Set(keys)].filter((k) => allowed.has(k)).slice(0, MAX_WISHES);
+  const ks = wishKeys(seg, keys);
   const tx = cleanText(text);
   if (!ks.length && !tx) return "";
   return `wunsch:signals=${ks.join(",")}${tx ? `;text=${tx}` : ""}`;

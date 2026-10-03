@@ -27,6 +27,8 @@ jobs:
       - run: psql -v ON_ERROR_STOP=1 -c "create role anon; create role authenticated; create role service_role bypassrls; create schema extensions;"
       - name: Migrationen zweimal anwenden (idempotent)
         run: for i in 1 2; do for f in supabase/migrations/*.sql; do psql -v ON_ERROR_STOP=1 -q -f "$f"; done; done
+      - name: SQL-Tests (Proben-Vorrat)
+        run: for f in supabase/tests/*.sql; do psql -v ON_ERROR_STOP=1 -q -f "$f"; done
   app:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: app } }

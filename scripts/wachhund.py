@@ -33,6 +33,8 @@ ROOT = Path(__file__).resolve().parents[1]
 #   daily:  "HH:MM" UTC, Wochentage (0=Mo) oder None
 JOBS = [
     {"wf": "antworten.yml", "kind": "hourly", "window": (6, 21), "max_min": 90, "inputs": {"probelauf": "false"}},
+    # Proben-Vorrat + Web-Proben rund um die Uhr (03.10.2026: Anfrage 18:30 wartete 5 h, weil GitHub Läufe ausließ)
+    {"wf": "proben-vorrat.yml", "kind": "hourly", "window": (0, 23), "max_min": 75, "inputs": {"befehl": "run"}},
     {"wf": "morgenbericht.yml", "kind": "daily", "at": "04:47", "grace": 45},
     {"wf": "kaeufer.yml", "kind": "daily", "at": "05:13", "grace": 60},
     {"wf": "sync.yml", "kind": "daily", "at": "06:17", "grace": 45},

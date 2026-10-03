@@ -272,30 +272,47 @@ def signer(lang: str) -> None:
     return None  # Standard-Signatur des Inhabers
 
 
-def send_reply(to: str, subject: str, text: str, in_reply_to: str | None, lang: str,
-               attachments: list[tuple[str, bytes]] | None = None, blocks: dict[str, str] | None = None,
-               requested: bool = False) -> str | None:
+def reply_content(company: str, subject: str, text: str, in_reply_to: str | None, lang: str,
+                  attachments: list[tuple[str, bytes]] | None = None, blocks: dict[str, str] | None = None,
+                  requested: bool = False) -> dict:
+    """Inhalt einer Antwort-Mail ohne Absender/Empfänger: Betreff, Text, HTML, Kopfzeilen, Anhänge (Base64).
+    company: Domain des Empfängers für die Fußzeile (Proben-Vorrat: Platzhalter, die App setzt sie beim Versand)."""
     from lib.html_email import render
     from lib.rules import render_footer
-    company = brand()
     footer = render_footer(lang, sender_name=legal_name(), postal_address=postal_address(),
-                           company=normalize_domain(to.split("@")[-1]), unsubscribe_url=None, requested=requested)
+                           company=company, unsubscribe_url=None, requested=requested)
     full = text.rstrip() + "\n\n" + footer
     headers = {}
     if in_reply_to:
         headers = {"In-Reply-To": in_reply_to, "References": in_reply_to}
     # "Re:" nur bei echten Antworten (nie gefälscht)
     subj = subject if not in_reply_to or subject.lower().startswith(("re:", "aw:")) else f"Re: {subject}"
-    payload = {"from": os.environ["MAIL_FROM"], "to": [to], "subject": subj,
-               "text": full, "html": render(text, footer, lang, signer=signer(lang), blocks=blocks), "headers": headers,
-               "reply_to": os.environ.get("REPLY_TO") or os.environ["MAIL_FROM"]}
+    out = {"subject": subj, "text": full, "html": render(text, footer, lang, signer=signer(lang), blocks=blocks),
+           "headers": headers}
     if attachments:
-        payload["attachments"] = [{"filename": n, "content": base64.b64encode(b).decode()} for n, b in attachments]
-    r = requests.post("https://api.resend.com/emails", timeout=30, json=payload,
-                      headers={"Authorization": f"Bearer {os.environ['RESEND_API_KEY']}"})
+        out["attachments"] = [{"filename": n, "content": base64.b64encode(b).decode()} for n, b in attachments]
+    return out
+
+
+def resend_post(payload: dict, idempotency_key: str | None = None) -> str | None:
+    """Mail über Resend (nur Empfänger mit Einwilligung). idempotency_key: dieselbe Probe-Anfrage nie doppelt."""
+    h = {"Authorization": f"Bearer {os.environ['RESEND_API_KEY']}"}
+    if idempotency_key:
+        h["Idempotency-Key"] = idempotency_key
+    r = requests.post("https://api.resend.com/emails", timeout=30, json=payload, headers=h)
     if r.status_code >= 400:
         raise RuntimeError(f"Resend {r.status_code} {r.text}")
     return r.json().get("id")
+
+
+def send_reply(to: str, subject: str, text: str, in_reply_to: str | None, lang: str,
+               attachments: list[tuple[str, bytes]] | None = None, blocks: dict[str, str] | None = None,
+               requested: bool = False, idempotency_key: str | None = None) -> str | None:
+    content = reply_content(normalize_domain(to.split("@")[-1]), subject, text, in_reply_to, lang, attachments,
+                            blocks, requested)
+    payload = {"from": os.environ["MAIL_FROM"], "to": [to], **content,
+               "reply_to": os.environ.get("REPLY_TO") or os.environ["MAIL_FROM"]}
+    return resend_post(payload, idempotency_key)
 
 
 def alert_address() -> str | None:
@@ -364,12 +381,24 @@ def _newest(db, params: dict, n: int, page: int = 1000) -> list[dict]:
     return out
 
 
+def best_first(rows: list[dict]) -> list[dict]:
+    """Aktuell beste Leads zuerst (Inhaber 03.10.2026): höchste Dringlichkeit, dann frischestes Ereignis."""
+    from lib.leadreport import URG
+    rows = sorted(rows, key=lambda l: str(l.get("id") or ""))
+    rows.sort(key=lambda l: l.get("event_date") or "", reverse=True)
+    rows.sort(key=lambda l: URG.get(l.get("urgency") or "", 3))
+    return rows
+
+
 def regional_sample(db, seg: str, country: str, region: str | None,
-                    wish: list[str] | None = None, mark: bool = True) -> tuple[list[tuple[str, bytes]], bool]:
+                    wish: list[str] | None = None, mark: bool = True, picked_out: list | None = None,
+                    exclude_companies: set[str] | None = None) -> tuple[list[tuple[str, bytes]], bool]:
     """10 vollständige Leads aus dem ganzen Land (Inhaber 27.09.2026). (Dateien, True) – sonst ([], False).
 
     wish: Signal-Schlüssel aus dem Probe-Formular (lib/wishes.py). Passende vollständige Leads kommen zuerst,
-    aufgefüllt mit anderen vollständigen Leads der Branche; nie unvollständige."""
+    aufgefüllt mit anderen vollständigen Leads der Branche; nie unvollständige.
+    picked_out: bekommt die 10 gewählten Leads (Proben-Vorrat reserviert sie selbst, mark=False).
+    exclude_companies: Firmen, die schon in einer vorbereiteten Probe stehen (eine Firma nie in zwei Proben)."""
     from deliveries import REQUIRE_CONTACT, _lang, contact_companies, enrich, to_csv
     from lib.regions import area_of, lead_matches
     from lib.wishes import prefer
@@ -383,14 +412,17 @@ def regional_sample(db, seg: str, country: str, region: str | None,
                         "urgency_reason,opener,signal_type,company_id,observation_ids,"
                         "watch_companies(name,legal_form,city,region,address,website,website_checked_at)",
               "order": "event_date.desc,id"}
-    rows = _newest(db, params, SAMPLE_POOL)
+    rows = best_first(_newest(db, params, SAMPLE_POOL))
+    if exclude_companies:
+        rows = [r for r in rows if r.get("company_id") not in exclude_companies]
     if wish:
         from lib.wishes import signal_types
         types = signal_types(wish)
         if types:  # seltene Wunsch-Signale stehen evtl. nicht unter den neuesten Leads: gezielt nachladen
             have = {r["id"] for r in rows}
             extra = _newest(db, {**params, "signal_type": f"in.({','.join(types)})"}, SAMPLE_POOL // 2)
-            rows = [r for r in extra if r["id"] not in have] + rows
+            rows = [r for r in best_first(extra) if r["id"] not in have
+                    and r.get("company_id") not in (exclude_companies or ())] + rows
         rows = prefer(rows, wish, _sic_lookup(db, rows) if "fleet_warehouse" in wish else None)
     # Vollständigkeit nur blockweise für die nächsten Kandidaten prüfen (bei 90.000+ Leads war die Prüfung aller
     # Firmen zu langsam; Test 01.10.2026)
@@ -432,6 +464,8 @@ def regional_sample(db, seg: str, country: str, region: str | None,
     enrich(db, picked, known)
     if mark:
         mark_sampled(db, picked)
+    if picked_out is not None:
+        picked_out.extend(picked)
     data = to_csv(picked, _lang(country), area)
     name = re.sub(r"[^A-Za-z0-9]+", "-", area or country).strip("-")
     from lib.leadreport import attachments

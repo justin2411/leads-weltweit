@@ -14,6 +14,7 @@ export const ENV_VARS: { name: string; purpose: string; required: boolean }[] = 
   { name: "STRIPE_TEST_SECRET_KEY", purpose: "Stripe TEST (sk_test_/rk_test_) – Vorschau und Tests", required: false },
   { name: "STRIPE_TEST_WEBHOOK_SECRET", purpose: "Stripe TEST-Webhook (whsec_…)", required: false },
   { name: "BRAND_NAME", purpose: "Markenname (Standard NextGen Profit)", required: false },
+  { name: "GH_DISPATCH_TOKEN", purpose: "Probe-Lauf sofort anstoßen, wenn kein Vorrat passt (GitHub-Token, nur Actions: write)", required: false },
 ];
 
 export function envStatus(env: Record<string, string | undefined> = process.env) {

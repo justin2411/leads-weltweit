@@ -1,0 +1,56 @@
+# Proben-Vorrat (Inhaber 03.10.2026): rund um die Uhr fertige, geprüfte Proben vorhalten (scripts/sample_stock.py),
+# damit die Website die Probe direkt nach dem Klick schicken kann. Beantwortet außerdem wartende Probe-Anfragen
+# (scripts/web_samples.py, zuerst aus dem Vorrat) – auch nachts, wenn antworten.yml pausiert.
+# Wird vom Wachhund nachgestartet, wenn GitHub einen geplanten Lauf auslässt; die App kann ihn per
+# workflow_dispatch sofort anstoßen, wenn kein Vorrat passte (Vercel-Variable GH_DISPATCH_TOKEN, optional).
+name: proben-vorrat
+on:
+  schedule: [{ cron: "23 * * * *" }]
+  workflow_dispatch:
+    inputs:
+      befehl:
+        description: "run | test-send | status"
+        default: run
+      probelauf:
+        type: boolean
+        default: false
+concurrency: { group: proben-vorrat, cancel-in-progress: false }
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      MAIL_FROM: ${{ secrets.MAIL_FROM }}
+      REPLY_TO: ${{ secrets.REPLY_TO }}
+      OWNER_EMAIL: ${{ secrets.OWNER_EMAIL }}
+      SENDER_NAME: ${{ secrets.SENDER_NAME }}
+      SENDER_COMPANY: ${{ secrets.SENDER_COMPANY }}
+      SENDER_TITLE: ${{ secrets.SENDER_TITLE }}
+      SENDER_WEBSITE: ${{ secrets.SENDER_WEBSITE }}
+      SENDER_PHONE: ${{ secrets.SENDER_PHONE }}
+      SENDER_POSTAL_ADDRESS: ${{ secrets.SENDER_POSTAL_ADDRESS }}
+      BEFEHL: ${{ inputs.befehl || 'run' }}
+      APPLY: ${{ inputs.probelauf == true && ' ' || '--apply' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt && python -m playwright install --with-deps chromium
+      - name: Wartende Probe-Anfragen beantworten
+        if: ${{ env.BEFEHL == 'run' }}
+        run: python scripts/web_samples.py $APPLY
+      - name: Vorrat verwerfen und auffüllen
+        if: ${{ !cancelled() && env.BEFEHL == 'run' }}
+        run: python scripts/sample_stock.py run $APPLY
+      - name: Neue Anfragen aus dem frischen Vorrat beantworten
+        if: ${{ !cancelled() && env.BEFEHL == 'run' }}
+        run: python scripts/web_samples.py $APPLY
+      - name: Test oder Bestand
+        if: ${{ env.BEFEHL != 'run' }}
+        run: python scripts/sample_stock.py "$BEFEHL" $APPLY
+      - name: Bestand
+        if: ${{ !cancelled() }}
+        run: python scripts/sample_stock.py status

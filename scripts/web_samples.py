@@ -1,6 +1,8 @@
 """Probe-Anfragen von den Landingpages beantworten (stündlich über antworten.yml).
 
-Die Seite verspricht nach dem Klick „Ihre 10 Leads sind unterwegs“. Dieses Skript liefert sie:
+Die Seite verspricht nach dem Klick „Ihre 10 Leads sind unterwegs“. Meist hat die App sie schon direkt nach dem Klick
+aus dem Proben-Vorrat geschickt (scripts/sample_stock.py). Dieses Skript bedient den Rest (Warteschlange):
+  - fertige Probe im Vorrat -> sofort aus dem Vorrat (gleiche Mail), Status sent
   - 10 vollständige Leads vorhanden -> Probe (PDF + CSV) per Resend (Einwilligung liegt vor), Status sent
   - noch nicht genug vollständige Leads -> Inhaber wird einmal benachrichtigt, Anfrage bleibt offen
   - Adresse gesperrt -> rejected
@@ -52,6 +54,18 @@ def skip_reason(db, r: dict, msg: dict | None) -> str | None:
     return None
 
 
+def after_sent(db, r: dict, email: str, msg: dict | None, wish: list[str], wish_text: str) -> None:
+    """Nach dem Versand: Erstmail vermerken (keine Nachfassmail mehr) und Freitext-Hinweis an den Inhaber."""
+    from responder import notify_owner
+    mark(db, msg, "sample_requested", "Probe über Landingpage angefordert und gesendet")
+    if wish_text:
+        # Freitext (z. B. Branche, Größe) wird nicht automatisch ausgewertet: Inhaber kurz informieren
+        notify_owner(f"[Leads] Probe gesendet, Hinweis des Kunden: {r['company_name']}",
+                     f"{r['company_name']} ({email}, {r['segment_id']}/{r['country']}) hat die Probe "
+                     f"bekommen. Gewünschte Signale: {', '.join(wish) or '-'}.\n"
+                     f"Hinweis im Formular (nicht automatisch berücksichtigt): {wish_text}")
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--apply", action="store_true")
@@ -63,6 +77,10 @@ def main(argv=None) -> int:
     can_send = bool(os.environ.get("RESEND_API_KEY") and os.environ.get("MAIL_FROM"))
     n = {"sent": 0, "waiting": 0, "rejected": 0}
     for r in db.select("sample_requests", {"status": "eq.new", "order": "created_at", "limit": "50"}):
+        if r.get("claimed_at") and dt.datetime.fromisoformat(r["claimed_at"].replace("Z", "+00:00")) > \
+                dt.datetime.now(dt.timezone.utc) - dt.timedelta(minutes=15):
+            print(f"IN ARBEIT {r['company_name']} ({r['segment_id']}/{r['country']}): wird gerade gesendet")
+            continue
         email = (r.get("email") or "").strip().lower()
         msg = initial_message(db, email) if email else None
         if not email or db.rpc("is_suppressed", {"p_email": email}):
@@ -81,24 +99,47 @@ def main(argv=None) -> int:
         lang = "fr" if r.get("country") == "FR" else "en"
         # Wunsch aus dem Formular ("Welche Leads?"): passende vollständige Leads zuerst, sonst auffüllen
         wish, wish_text = parse(r.get("note"))
+        if args.apply and can_send:
+            # Sperre: die App sendet gerade selbst (Sofortversand nach dem Klick) oder ein anderer Lauf -> überspringen
+            if not db.rpc("lock_sample_request", {"p_request": r["id"]}):
+                print(f"IN ARBEIT {r['company_name']} ({r['segment_id']}/{r['country']}): wird gerade gesendet")
+                continue
+            # 1) fertige, geprüfte Probe aus dem Vorrat (scripts/sample_stock.py) – sofort und exklusiv
+            from sample_stock import send_stock
+            got = send_stock(db, r, email, wish)
+            if got == "sent":
+                print(f"PROBE     {r['company_name']} ({r['segment_id']}/{r['country']}) aus dem Vorrat"
+                      + (f" Wunsch: {','.join(wish)}" if wish else ""))
+                n["sent"] += 1
+                after_sent(db, r, email, msg, wish, wish_text)
+                continue
+            if got == "error":
+                # Versand aus dem Vorrat gescheitert: Sperre bleibt 15 min, nächster Lauf versucht es erneut
+                print(f"FEHLER    {r['company_name']} ({r['segment_id']}/{r['country']}): Versand aus dem Vorrat")
+                n["waiting"] += 1
+                continue
         # Probelauf oder ohne Versandweg: Leads nicht als „sample“ verbrauchen (Audit 02.10.2026)
-        files, _ = regional_sample(db, r["segment_id"], r["country"], None, wish=wish, mark=bool(args.apply and can_send))
+        try:
+            files, _ = regional_sample(db, r["segment_id"], r["country"], None, wish=wish,
+                                       mark=bool(args.apply and can_send))
+        except Exception as exc:  # noqa: BLE001 – eine Anfrage darf die übrigen nicht aufhalten (02.10.: Timeout)
+            print(f"FEHLER    {r['company_name']} ({r['segment_id']}/{r['country']}): {type(exc).__name__}: "
+                  f"{str(exc)[:200]}")
+            n["waiting"] += 1
+            if args.apply and can_send:
+                db.update("sample_requests", {"id": r["id"]}, {"claimed_at": None})
+            continue
         body, blocks = sample_mail(lang, None, files, True, r["segment_id"], r["country"])
         if body and can_send:
             print(f"PROBE     {r['company_name']} ({r['segment_id']}/{r['country']})"
                   + (f" Wunsch: {','.join(wish)}" if wish else ""))
             n["sent"] += 1
             if args.apply:
-                send_reply(email, sample_subject(lang, None, r["country"]), body, None, lang, files, blocks, requested=True)
+                send_reply(email, sample_subject(lang, None, r["country"]), body, None, lang, files, blocks,
+                           requested=True, idempotency_key=f"sample-{r['id']}")
                 db.update("sample_requests", {"id": r["id"]},
                           {"status": "sent", "sent_at": dt.datetime.now(dt.timezone.utc).isoformat()})
-                mark(db, msg, "sample_requested", "Probe über Landingpage angefordert und gesendet")
-                if wish_text:
-                    # Freitext (z. B. Branche, Größe) wird nicht automatisch ausgewertet: Inhaber kurz informieren
-                    notify_owner(f"[Leads] Probe gesendet, Hinweis des Kunden: {r['company_name']}",
-                                 f"{r['company_name']} ({email}, {r['segment_id']}/{r['country']}) hat die Probe "
-                                 f"bekommen. Gewünschte Signale: {', '.join(wish) or '-'}.\n"
-                                 f"Hinweis im Formular (nicht automatisch berücksichtigt): {wish_text}")
+                after_sent(db, r, email, msg, wish, wish_text)
             continue
         n["waiting"] += 1
         why = "noch keine 10 vollständigen Leads" if not body else "Resend nicht eingerichtet"
@@ -117,6 +158,8 @@ def main(argv=None) -> int:
                          f"warten, bis die Anreicherung genug vollständige Leads hat – dann geht die Probe "
                          f"automatisch raus.")
             db.update("sample_requests", {"id": r["id"]}, {"note": with_note(r.get("note"), NOTIFIED)})
+        if args.apply and can_send:
+            db.update("sample_requests", {"id": r["id"]}, {"claimed_at": None})  # Sperre frei für den nächsten Lauf
     print(f"\n{n}" + ("" if args.apply else "\nProbelauf – mit --apply handeln."))
     return 0
 

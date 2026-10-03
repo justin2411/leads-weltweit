@@ -30,6 +30,7 @@ WORKFLOWS = {
     "send.yml": ("Versand Kaltmails", 27),
     "taeglich.yml": ("Automatiklauf (Nachfassmails, Entwürfe)", 27),
     "antworten.yml": ("Antwort-Assistent + Web-Proben", 12),  # läuft 06–21 UTC stündlich, nachts Pause
+    "proben-vorrat.yml": ("Proben-Vorrat + Web-Proben (24/7)", 3),
     "morgenbericht.yml": ("Morgenbericht", 27),
     "sync.yml": ("Bounces/Ereignisse", 27),
     "kaeufer.yml": ("Käufersuche", 27),
@@ -234,6 +235,23 @@ def check_sample_supply(c: Check, db) -> None:
         c.add("Proben", OK, f"Probe lieferbar für alle {len(pages)} Seiten")
 
 
+def check_sample_stock(c: Check, db) -> None:
+    """Fertige Proben im Vorrat je Zielgruppe/Land (Sofortversand nach dem Klick, Inhaber 03.10.2026)."""
+    from sample_stock import inventory, live_pages, settings, targets
+    from lib.fokus import focus_pairs
+    inv = inventory(db)
+    want = targets(live_pages(db), settings(), focus_pairs())
+    rows = [f"{s}/{cc} {inv.get(f'{s}/{cc}', 0)}/{t}" for (s, cc), t in want.items()]
+    empty = [f"{s}/{cc}" for (s, cc) in want if not inv.get(f"{s}/{cc}")]
+    since = (NOW - dt.timedelta(hours=24)).isoformat()
+    sent = len(db.select("sample_stock", {"status": "eq.sent", "sent_at": f"gte.{since}", "select": "id"}))
+    focus_empty = [k for k in empty if tuple(k.split("/")) in focus_pairs()]
+    status = FAIL if focus_empty else WARN if empty else OK
+    c.add("Proben", status, f"Vorrat: {sum(inv.values())} fertige Proben (Soll {sum(want.values())}), "
+          f"{sent} in 24 h sofort gesendet",
+          "je Zielgruppe/Land: " + ", ".join(rows) + (f"; leer: {', '.join(empty)}" if empty else ""))
+
+
 def check_website(c: Check, db) -> None:
     base = (os.environ.get("SITE_URL") or "https://www.nextgen-profit.de").rstrip("/")
     s = requests.Session()
@@ -423,6 +441,7 @@ def main(argv=None) -> int:
     c.guard("Antworten", lambda: check_replies(c, db))
     c.guard("Proben", lambda: check_web_samples(c, db))
     c.guard("Proben", lambda: check_sample_supply(c, db))
+    c.guard("Proben", lambda: check_sample_stock(c, db))
     c.guard("Website", lambda: check_website(c, db))
     c.guard("Kunden", lambda: check_customers(c, db))
     c.guard("Werke", lambda: check_werke(c, db))

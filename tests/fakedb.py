@@ -84,6 +84,14 @@ class FakeDB:
             return bool({e, e.split("@")[-1]} & (self.suppressed | listed))
         if fn == "suppress_email":
             self.suppressed.add(args["p_email"].lower())
+        if fn == "lock_sample_request":  # Sperre je Probe-Anfrage (Proben-Vorrat, 03.10.2026)
+            for r in self.tables.get("sample_requests", []):
+                if r["id"] == args["p_request"] and r.get("status") == "new" and not r.get("claimed_at"):
+                    r["claimed_at"] = "jetzt"
+                    return True
+            return False
+        if fn == "claim_sample_stock":  # kein Vorrat in der einfachen Attrappe
+            return []
         return None
 
     def is_suppressed(self, email: str) -> bool:
