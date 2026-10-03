@@ -34,7 +34,7 @@ export const CARDS: readonly Card[] = [
   { key: "lead-werk", icon: "lead-werk", name: "Lead-Werk", keys: ["werke_paused", "slot_plan", "slot_autopilot"], werk: "lead-werk", start: "lead-werk", cron: "23 */3 * * *", file: "lead-werk.yml" },
   { key: "kunden-werk", icon: "kunden-werk", name: "Kunden-Werk", keys: ["werke_paused", "slot_plan", "buyer_countries_off"], werk: "kunden-werk", start: "kunden-werk", cron: "41 */2 * * *", file: "kunden-werk.yml" },
   { key: "proben-vorrat", icon: "proben", name: "Proben-Vorrat", keys: ["werke_paused", "sample_targets", "sample_max_age_hours"], werk: "proben-vorrat", start: "proben-vorrat", cron: "23 * * * *", file: "proben-vorrat.yml" },
-  { key: "antworten", icon: "antworten", name: "Antwort-Assistent", keys: ["werke_paused"], werk: "antworten", start: null, cron: "7 6-21 * * *", file: "antworten.yml", note: WERK_SWITCHES.antworten.note },
+  { key: "antworten", icon: "antworten", name: "Antwort-Assistent", keys: ["werke_paused"], werk: "antworten", start: null, cron: "*/10 * * * *", file: "antworten.yml", note: WERK_SWITCHES.antworten.note },
   { key: "nachfass", icon: "nachfass", name: "Nachfassmails", keys: ["followup_enabled", "followup_days"], werk: "nachfass", start: null, cron: "17 12 * * *", file: "taeglich.yml" },
   { key: "versand", icon: "versand", name: "Versand", keys: ["send_paused"], werk: "versand", start: null, cron: "23 14 * * *", file: "send.yml" },
   { key: "kundenlieferung", icon: "lieferung", name: "Kundenlieferung", keys: ["werke_paused"], werk: "kundenlieferung", start: null, cron: "53 4 * * 1", file: "kundenlieferung.yml" },

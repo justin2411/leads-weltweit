@@ -5,8 +5,11 @@
   python scripts/vercel_admin.py preview-add NAME[,NAME…]       # Variable zusätzlich für Preview freigeben
   python scripts/vercel_admin.py redeploy BRANCH                # letztes Deployment dieses Branches neu bauen
   python scripts/vercel_admin.py site-setup physiotherapie-oehlke # Website aus sites/<name> als eigenes Projekt + Subdomain
+  python scripts/vercel_admin.py env-add-vapid                  # Web-Push-Schlüssel anlegen (nur wenn sie fehlen) + Redeploy
 
 Umgebung: VERCEL_TOKEN (GitHub-Secret). Kann nichts löschen, keine Werte lesen oder ändern.
+Neue Variablen: nur env-add-vapid legt VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY (sensitiv) und VAPID_SUBJECT an
+(Inhaber 03.10.2026) – nur wenn sie noch fehlen, nie überschreiben, Schlüssel werden im Runner erzeugt und nie ausgegeben.
 Domains: nur site-setup legt die fest eingetragene Subdomain einer Website aus SITES an (Inhaber 03.10.2026) –
 bestehende Domains und DNS-Einträge werden nie geändert.
 Live-Stripe-Schlüssel dürfen nie in Preview (dort gilt der Testmodus).
@@ -14,8 +17,10 @@ Live-Stripe-Schlüssel dürfen nie in Preview (dort gilt der Testmodus).
 from __future__ import annotations
 
 import argparse
+import base64
 import datetime as dt
 import os
+import re
 import sys
 
 import requests
@@ -142,9 +147,91 @@ def site_setup(name: str) -> None:
     print(f"Produktions-Deployment gestartet: https://{dep.get('url')} → https://{cfg['domain']}")
 
 
+VAPID_PAIR = ("VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY")
+VAPID_TARGETS = ("production", "preview")
+
+
+def vapid_keypair() -> tuple[str, str]:
+    """Neues VAPID-Schlüsselpaar (P-256) im Format von web-push: öffentlicher Punkt unkomprimiert, privater Skalar,
+    beides Base64url ohne Auffüllzeichen."""
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    key = ec.generate_private_key(ec.SECP256R1())
+    pub = key.public_key().public_bytes(serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)
+    priv = key.private_numbers().private_value.to_bytes(32, "big")
+    b64 = lambda b: base64.urlsafe_b64encode(b).rstrip(b"=").decode()  # noqa: E731
+    return b64(pub), b64(priv)
+
+
+def create_env(key: str, value: str, typ: str) -> None:
+    """Neue Variable für Production und Preview. Ohne upsert: gibt es sie schon, lehnt Vercel ab (nie überschreiben).
+    Fehlertexte werden von Werten bereinigt, bevor sie im Log landen."""
+    r = requests.post(f"{API}/v10/projects/{PROJECT}/env", params={"teamId": TEAM}, timeout=30,
+                      headers={"Authorization": f"Bearer {os.environ['VERCEL_TOKEN']}"},
+                      json={"key": key, "value": value, "type": typ, "target": list(VAPID_TARGETS)})
+    if r.status_code >= 400:
+        raise SystemExit(f"Vercel: {key} nicht angelegt: {r.status_code} {r.text[:300].replace(value, '[Wert]')}")
+    print(f"  {key}: angelegt ({typ}, {','.join(VAPID_TARGETS)})")
+
+
+def ensure_targets(key: str, entries: list[dict]) -> bool:
+    """Bestehende Variable zusätzlich für fehlende Umgebungen freigeben (wie preview-add, ohne Wert). True = geändert."""
+    plain = [e for e in entries if not e.get("gitBranch")]
+    have = set().union(*(set(e.get("target") or []) for e in plain)) if plain else set()
+    missing = set(VAPID_TARGETS) - have
+    if not plain or not missing:
+        print(f"  {key}: existiert bereits ({','.join(sorted(have)) or 'nur Branch'}) – unverändert")
+        return False
+    e = plain[0]
+    target = sorted(set(e.get("target") or []) | missing)
+    call("PATCH", f"/v9/projects/{PROJECT}/env/{e['id']}", json={"target": target})
+    print(f"  {key}: existiert bereits, jetzt {','.join(target)}")
+    return True
+
+
+def vapid_subject() -> str:
+    mail = (os.environ.get("OWNER_EMAIL") or "").strip()
+    if not re.fullmatch(r"[^@\s<>\"']+@[^@\s<>\"']+\.[A-Za-z]{2,}", mail):
+        mail = "info@nextgen-profit.de"
+    return f"mailto:{mail}"
+
+
+def env_add_vapid() -> None:
+    """Idempotent: Web-Push-Schlüssel anlegen, wenn sie fehlen; danach Produktion neu bauen. Liest nie Werte
+    (nur Namen, Umgebungen, IDs) und gibt nie Werte aus."""
+    by_key: dict[str, list[dict]] = {}
+    for e in envs():
+        by_key.setdefault(e["key"], []).append(e)
+    changed = False
+    present = [k for k in VAPID_PAIR if k in by_key]
+    if len(present) == 1:
+        raise SystemExit(f"Nur {present[0]} existiert – Schlüsselpaar unvollständig, nichts geändert. "
+                         "Bitte in Vercel prüfen (das Paar gehört zusammen).")
+    if present:
+        for k in VAPID_PAIR:
+            changed |= ensure_targets(k, by_key[k])
+    else:
+        pub, priv = vapid_keypair()
+        if os.environ.get("GITHUB_ACTIONS") == "true":
+            print(f"::add-mask::{priv}")  # GitHub zeigt diese Zeile nicht; Wert wäre in jedem Log geschwärzt
+        create_env("VAPID_PUBLIC_KEY", pub, "encrypted")
+        create_env("VAPID_PRIVATE_KEY", priv, "sensitive")
+        changed = True
+    if "VAPID_SUBJECT" in by_key:
+        changed |= ensure_targets("VAPID_SUBJECT", by_key["VAPID_SUBJECT"])
+    else:
+        create_env("VAPID_SUBJECT", vapid_subject(), "encrypted")
+        changed = True
+    if changed:
+        redeploy("main")
+    else:
+        print("Nichts zu tun – Produktion nicht neu gebaut")
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("befehl", choices=["status", "preview-add", "redeploy", "site-setup"])
+    ap.add_argument("befehl", choices=["status", "preview-add", "redeploy", "site-setup", "env-add-vapid"])
     ap.add_argument("arg", nargs="?", default="")
     a = ap.parse_args(argv)
     if a.befehl == "status":
@@ -153,6 +240,8 @@ def main(argv=None) -> int:
         preview_add([x.strip() for x in a.arg.split(",") if x.strip()])
     elif a.befehl == "site-setup":
         site_setup(a.arg)
+    elif a.befehl == "env-add-vapid":
+        env_add_vapid()
     else:
         redeploy(a.arg or "main")
     return 0

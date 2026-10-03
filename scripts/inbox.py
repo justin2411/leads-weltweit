@@ -71,6 +71,24 @@ def referenced_ids(msg: EmailMessage) -> list[str]:
     return MSGID.findall(" ".join(filter(None, [msg.get("In-Reply-To"), msg.get("References")])))
 
 
+def received_at(msg: EmailMessage, now: dt.datetime | None = None) -> str | None:
+    """Eingangszeit aus der Date-Kopfzeile (ISO, UTC). Unplausible Werte (mehr als 1 h in der Zukunft oder älter als
+    60 Tage) zählen nicht – dann None und die Datenbank nimmt die Verarbeitungszeit."""
+    from email.utils import parsedate_to_datetime
+    try:
+        when = parsedate_to_datetime(msg.get("Date"))
+    except (TypeError, ValueError, IndexError):
+        return None
+    if when is None:
+        return None
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=dt.timezone.utc)
+    now = now or dt.datetime.now(dt.timezone.utc)
+    if when > now + dt.timedelta(hours=1) or when < now - dt.timedelta(days=60):
+        return None
+    return when.astimezone(dt.timezone.utc).isoformat()
+
+
 def subject_is_optout(subject: str | None) -> bool:
     """Abmeldung im Betreff, z. B. List-Unsubscribe per mailto (Betreff „unsubscribe“, meist ohne In-Reply-To)."""
     subj = re.sub(r"^((re|aw|fwd?|wg|tr)\s*:\s*)+", "", (subject or "").strip(), flags=re.I).strip()
@@ -110,8 +128,12 @@ def handle_reply(db, msg: EmailMessage, dedupe: str, apply: bool) -> str | None:
     kind = "auto_reply" if auto else "reply"
     print(f"{'AUTOMATISCHE ANTWORT' if auto else 'ANTWORT'} von {sender} auf {ours[0]['to_email']}{' (Abmeldewunsch)' if optout else ''}: {subject}")
     if apply:
-        db.insert("email_events", {"message_id": ours[0]["id"], "type": kind, "dedupe_key": dedupe,
-                                   "note": ("Abmeldewunsch. " if optout else "Automatische Antwort: " if auto else "") + subject})
+        event = {"message_id": ours[0]["id"], "type": kind, "dedupe_key": dedupe,
+                 "note": ("Abmeldewunsch. " if optout else "Automatische Antwort: " if auto else "") + subject}
+        when = received_at(msg)
+        if when:  # echte Eingangszeit statt Verarbeitungszeit (Antwortzeiten im Dashboard)
+            event["occurred_at"] = when
+        db.insert("email_events", event)
         if optout:
             for addr in {sender, ours[0]["to_email"]} - {""}:
                 suppress(db, addr, "reply_optout", "imap-reply")

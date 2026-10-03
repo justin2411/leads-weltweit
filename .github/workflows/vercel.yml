@@ -1,11 +1,12 @@
-# Vercel verwalten (eingeschränkt): Status, Variable für Preview freigeben, neu deployen, Website-Subdomain einrichten.
+# Vercel verwalten (eingeschränkt): Status, Variable für Preview freigeben, neu deployen, Website-Subdomain einrichten,
+# Web-Push-Schlüssel anlegen (env-add-vapid: nur wenn sie fehlen, nie überschreiben, danach Redeploy).
 # Braucht das GitHub-Secret VERCEL_TOKEN. Zeigt nie Werte von Variablen.
 name: vercel
 on:
   workflow_dispatch:
     inputs:
       befehl:
-        description: "status | preview-add | redeploy | site-setup"
+        description: "status | preview-add | redeploy | site-setup | env-add-vapid"
         default: status
       arg:
         description: "preview-add: Namen mit Komma; redeploy: Branch (z. B. main); site-setup: Website (z. B. physiotherapie-oehlke)"
@@ -17,9 +18,10 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       BEFEHL: ${{ inputs.befehl }}
       ARG: ${{ inputs.arg }}
+      OWNER_EMAIL: ${{ secrets.OWNER_EMAIL }}   # nur env-add-vapid: VAPID_SUBJECT (mailto:)
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
-      - run: pip install requests
+      - run: pip install requests cryptography
       - run: python scripts/vercel_admin.py "$BEFEHL" "$ARG"

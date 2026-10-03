@@ -10,7 +10,10 @@ import { vatMismatch } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
 
-const SALE_NOTIFY = process.env.SALE_NOTIFY_EMAIL?.trim() || "deinetop5@gmail.com";
+/** Inhaber-Adresse nur aus der Umgebung (öffentliches Repo: keine Adresse im Code). Fehlt sie, keine Verkaufsmeldung. */
+function saleNotifyAddress(): string | undefined {
+  return process.env.SALE_NOTIFY_EMAIL?.trim() || process.env.OWNER_EMAIL?.trim() || undefined;
+}
 
 async function log(subject: string, reasoning: string, ok: boolean, metrics: Record<string, unknown> = {}) {
   await db().from("decisions").insert({ type: "webhook", subject, reasoning, metrics, status: ok ? "done" : "rejected" });
@@ -88,7 +91,11 @@ export async function POST(req: Request) {
       });
       // Verkaufsmeldung an den Inhaber (Inhaber 27.09.2026: bei jedem Kauf eine Mail an den Inhaber)
       const amount = o.amount_total != null ? `${(o.amount_total / 100).toFixed(2)} ${String(o.currency ?? "").toUpperCase()}` : "?";
-      await sendConsentMail(SALE_NOTIFY, `${event.livemode ? "" : "[TEST] "}Neuer Kunde: ${company} – ${amount}/Monat`, [
+      const saleNotify = saleNotifyAddress();
+      if (!saleNotify) {
+        console.warn("Verkaufsmeldung übersprungen: SALE_NOTIFY_EMAIL/OWNER_EMAIL nicht gesetzt");
+        await log("Verkaufsmeldung übersprungen", `${company}: SALE_NOTIFY_EMAIL/OWNER_EMAIL nicht gesetzt`, true);
+      } else await sendConsentMail(saleNotify, `${event.livemode ? "" : "[TEST] "}Neuer Kunde: ${company} – ${amount}/Monat`, [
         `Neuer Abschluss${event.livemode ? "" : " (Stripe-Testmodus, kein echtes Geld)"}.`, "",
         `Firma:          ${company}`,
         `E-Mail:         ${email}`,
