@@ -13,7 +13,7 @@ export type HomeText = {
   title: string; desc: string; nav: [string, string][]; cta: string; contact: string;
   pill: string; h1: string; h1gold: string[]; sub: string; subShort: string; every: string; chips: [string, string][];
   btn: string; film: string; vtag: (s: number) => string; monday: string;
-  statsH: string; stats: [string, string, string, string];
+  statsH: string; stats: [string, string, string, string]; live: string; watched: string;
   ticker: [string, string[]]; filmH: (s: number) => string; filmSub: string;
   /** Titelbild des Films (Vorlage v2): Einheit der Sekunden-Plakette und Titel unten links [vor, Marke, nach] */
   cine: { secs: string; title: [string, string, string] };
@@ -61,7 +61,7 @@ export const HOME: Record<HomeLang, HomeText> = {
     chips: [["bolt", "Event"], ["cal", "Date"], ["doc", "Source"], ["phone", "Phone & email"], ["bulb", "Sales tip"], ["chat", "Opening line"]],
     btn: "Get 10 free sample leads", film: "Watch the film",
     vtag: (s) => `The film · ${s} seconds`, monday: "New list every Monday",
-    statsH: "Built on public record, checked every day",
+    statsH: "Built on public record, checked every day", live: "Live", watched: "companies under daily watch",
     stats: ["companies in the official registers of our markets", "new companies a year within our view", "dated signals recorded", "free leads in every sample"],
     ticker: ["Read daily from", ["Official business registers", "Official public notices", "Public contract notices", "Company careers pages", "Company websites"]],
     filmH: (s) => `How it works in ${s} seconds`, filmSub: "Exclusive leads, delivered every Monday, for any industry that sells to businesses.",
@@ -175,7 +175,7 @@ export const HOME: Record<HomeLang, HomeText> = {
     chips: [["bolt", "Événement"], ["cal", "Date"], ["doc", "Source"], ["phone", "Téléphone et e-mail"], ["bulb", "Conseil de vente"], ["chat", "Phrase d'accroche"]],
     btn: "Recevoir 10 prospects gratuits", film: "Voir le film",
     vtag: (s) => `Le film · ${s} secondes`, monday: "Nouvelle liste chaque lundi",
-    statsH: "Fondé sur des données publiques, vérifié chaque jour",
+    statsH: "Fondé sur des données publiques, vérifié chaque jour", live: "En direct", watched: "entreprises suivies chaque jour",
     stats: ["entreprises dans les registres officiels de nos marchés", "nouvelles entreprises par an dans notre champ", "signaux datés enregistrés", "prospects gratuits dans chaque échantillon"],
     ticker: ["Lu chaque jour", ["Registres officiels des entreprises", "Annonces officielles", "Avis de marchés publics", "Pages carrières des entreprises", "Sites des entreprises"]],
     filmH: (s) => `Comment ça marche en ${s} secondes`, filmSub: "Des prospects exclusifs, livrés chaque lundi, pour tout secteur qui vend aux entreprises.",
@@ -289,7 +289,7 @@ export const HOME: Record<HomeLang, HomeText> = {
     chips: [["bolt", "Ereignis"], ["cal", "Datum"], ["doc", "Quelle"], ["phone", "Telefon & E-Mail"], ["bulb", "Vertriebstipp"], ["chat", "Einstiegssatz"]],
     btn: "10 kostenlose Probe-Leads", film: "Film ansehen",
     vtag: (s) => `Der Film · ${s} Sekunden`, monday: "Jeden Montag eine neue Liste",
-    statsH: "Auf öffentlichen Daten gebaut, jeden Tag geprüft",
+    statsH: "Auf öffentlichen Daten gebaut, jeden Tag geprüft", live: "Live", watched: "Unternehmen täglich im Blick",
     stats: ["Unternehmen in den amtlichen Registern unserer Märkte", "neue Unternehmen pro Jahr in unserem Blick", "datierte Signale erfasst", "kostenlose Leads in jeder Probe"],
     ticker: ["Täglich gelesen", ["Amtliche Unternehmensregister", "Amtliche Bekanntmachungen", "Öffentliche Ausschreibungen", "Karriereseiten der Unternehmen", "Websites der Unternehmen"]],
     filmH: (s) => `So funktioniert es in ${s} Sekunden`, filmSub: "Exklusive Leads, jeden Montag geliefert, für jede Branche, die an Unternehmen verkauft.",
