@@ -9,6 +9,11 @@ export const HOME_CSS = `
 .bx .hm .h2o .ctaline{justify-content:center}
 .bx .hm .net{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.9}
 .bx .hm section.h2o{padding-bottom:56px}
+.bx .hm .h2o .every{align-items:center;margin:0}
+.bx .hm .h2o .chiprow{justify-content:center}
+.bx .hm .aftervid{background:var(--cream);display:flex;justify-content:center;padding:34px 16px 0}
+.bx .hm .aftervid .free2{color:var(--muted)}
+.bx .hm .aftervid .free2 span:before{color:var(--pgold-d)}
 .bx .hm .vbase{margin-top:-1px}
 
 /* Video: Hauptelement, ragt aus dem Hero in den hellen Teil */
