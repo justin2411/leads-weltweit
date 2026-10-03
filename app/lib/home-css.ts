@@ -186,9 +186,9 @@ export const HOME_CSS = `
 .hpz .hp-landd{fill:none;stroke:var(--dot-c);stroke-opacity:var(--dot-o);stroke-width:4.3;stroke-linecap:round}
 .hpz .hp-nbd{fill:none;stroke:#8FA3CC;stroke-opacity:.12;stroke-width:3.4;stroke-linecap:round}
 .hpz .hp-city{gap:9px;padding:5px 14px 5px 5px}
-.hpz .hp-cflag{position:relative;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;padding:2px;background:linear-gradient(135deg,#EBD7AE,#A98447);box-shadow:0 4px 10px -4px rgba(0,0,0,.6)}
-.hpz .hp-cflag .hp-flag{width:20px;height:20px;border-radius:50%;box-shadow:none}
-.hpz .hp-city:not([aria-selected="true"]) .hp-cflag{background:rgba(255,255,255,.18);filter:saturate(.75)}
+.hpz .hp-cflag{position:relative;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;border:1px solid rgba(226,200,148,.55);color:#E2C894;background:rgba(226,200,148,.06)}
+.hpz .hp-cflag .hp-flag{width:18px;height:18px;border-radius:50%;box-shadow:none;display:block}
+.hpz .hp-city:not([aria-selected="true"]) .hp-cflag{border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.55);background:none}
 .hpz .hp-city::before{display:none}
 @media (max-width:1060px){
   .hpz .hp-maps{display:block;position:relative;height:min(540px,118vw);margin:4px auto 0}
@@ -222,4 +222,8 @@ export const HOME_CSS = `
   .bx .hm .radar .lbl{font-size:11px;padding:4px 9px}
 }
 @media (prefers-reduced-motion:reduce){.bx .hm *{animation:none!important}}
+/* Chips: „Sales tip“ beginnt die zweite Zeile (Inhaber 03.10.) */
+@media (min-width:721px){.hpz .hp-chips{row-gap:0}.hpz .hp-chip-br{flex-basis:100%;height:8px}}
+@media (max-width:720px){.hpz .hp-chip-br{display:none}}
 `;
+

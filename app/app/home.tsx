@@ -43,6 +43,17 @@ const CC: CountryCode[] = ["UK", "US", "FR"];
 const FLAG: Record<string, string> = { UK: "f-uk", US: "f-us", FR: "f-fr" };
 
 /** Symbol aus dem Sprite der Vorlage. */
+/** Flaggen einfarbig in Gold (Linien statt Landesfarben), rund. */
+const MonoFlag = ({ cc }: { cc: string }) => (
+  <svg className="hp-flag" viewBox="0 0 20 20" aria-hidden="true">
+    <clipPath id={`mf-${cc}`}><circle cx="10" cy="10" r="10" /></clipPath>
+    <g clipPath={`url(#mf-${cc})`} fill="currentColor">
+      <rect width="20" height="20" opacity=".16" />
+      {cc === "UK" && <g stroke="currentColor" fill="none"><path d="M0 0 20 20M20 0 0 20" strokeWidth="2.2" opacity=".55" /><path d="M10 0v20M0 10h20" strokeWidth="4.2" /></g>}
+      {cc === "US" && <>{[1, 5, 9, 13, 17].map((y) => <rect key={y} y={y} width="20" height="2" opacity=".75" />)}<rect width="10" height="10" /><g fill="#141414">{[[2.5, 2.5], [6.5, 2.5], [4.5, 5], [2.5, 7.5], [6.5, 7.5]].map(([x, y]) => <circle key={`${x}${y}`} cx={x} cy={y} r=".9" />)}</g></>}
+      {cc === "FR" && <><rect width="6.67" height="20" /><rect x="6.67" width="6.66" height="20" opacity=".22" /><rect x="13.33" width="6.67" height="20" opacity=".6" /></>}
+    </g>
+  </svg>);
 const I = ({ n, c = "hp-ico" }: { n: string; c?: string }) => <svg className={c} aria-hidden="true"><use href={`#${/^fs?-/.test(n) ? n : "i-" + n}`} /></svg>;
 const R = ({ t }: { t: string }) => <span className="hp-redact" aria-hidden="true">{t}</span>;
 const i = (n: number) => ({ "--i": n }) as CSSProperties;
@@ -133,7 +144,7 @@ export async function Home({ lang }: { lang: HomeLang }) {
                 <p className="hp-lede hp-in" style={{ "--d": ".6s" } as CSSProperties}><span className="lede-l">{t.sub}</span><span className="lede-s">{t.subShort}</span></p>
                 <div className="hp-inlead hp-in" style={{ "--d": ".75s" } as CSSProperties}>
                   <span className="hp-label">{t.every}</span>
-                  <ul className="hp-chips">{t.chips.map(([ic, txt]) => <li className="hp-chip" key={txt}><I n={{ bolt: "zap", cal: "calendar" }[ic] ?? ic} />{txt}</li>)}</ul>
+                  <ul className="hp-chips">{t.chips.map(([ic, txt], k) => [k === 4 && <li className="hp-chip-br" aria-hidden="true" key="br" />, <li className="hp-chip" key={txt}><I n={{ bolt: "zap", cal: "calendar" }[ic] ?? ic} />{txt}</li>])}</ul>
                 </div>
                 <div className="hp-cta hp-in" style={{ "--d": ".9s" } as CSSProperties}>
                   <a className="hp-btn hp-btn--gold" href="#sample" data-magnetic=""><span>{t.btn}</span><I n="arrow" c="hp-ico hp-btn__arrow" /></a>
@@ -144,11 +155,10 @@ export async function Home({ lang }: { lang: HomeLang }) {
               {/* Echte Signale aus einer UK-Probe (Firmennamen verdeckt) auf der Karte; die Städte stehen in der Karte */}
               <div className="hp-stage">
                 <div className="hp-stage__head">
-                  <p className="hp-stage__title"><span className="hp-live" aria-hidden="true" />{t.feedTitle}</p>
                   <div className="hp-stage__cities" role="tablist" aria-label={t.countryPick}>
                     {CC.map((cc, k) => (
                       <button type="button" role="tab" className="hp-city" data-cc={cc} aria-selected={k === 0} key={cc}>
-                        <span className="hp-cflag"><I n={FLAG[cc].replace("f-", "fs-")} c="hp-flag" /></span>{COUNTRIES[cc].name[lang]}
+                        <span className="hp-cflag"><MonoFlag cc={cc} /></span>{COUNTRIES[cc].name[lang]}
                       </button>))}
                   </div>
                 </div>
@@ -211,15 +221,6 @@ export async function Home({ lang }: { lang: HomeLang }) {
           </div>
         </section>
 
-
-        <section className="hp-statement hp-grain" aria-labelledby="statement-title">
-          <div className="hp-wrap">
-            <h2 className="hp-statement__text" id="statement-title">
-              {[...t.statement[0].split(" ").map((w) => [w, false] as const), ...t.statement[1].split(" ").map((w) => [w, true] as const)].map(([w, g], k, all) => (
-                <span key={k}><span className={`hp-sw${g ? " hp-sw--gold" : ""}`}>{w}</span>{k < all.length - 1 ? " " : ""}</span>))}
-            </h2>
-          </div>
-        </section>
 
         <section className="hp-sec hp-cream hp-method" id="method" aria-labelledby="method-title">
           <div className="hp-wrap">
