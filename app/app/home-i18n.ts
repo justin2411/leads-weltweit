@@ -15,6 +15,8 @@ export type HomeText = {
   btn: string; film: string; vtag: (s: number) => string; monday: string;
   statsH: string; stats: [string, string, string, string];
   ticker: [string, string[]]; filmH: (s: number) => string; filmSub: string;
+  /** Titelbild des Films (Vorlage v2): Einheit der Sekunden-Plakette und Titel unten links [vor, Marke, nach] */
+  cine: { secs: string; title: [string, string, string] };
   methH: string; methSub: string; steps: [string, string, string][];
   ex: { label: string; tag: string; win: string; pick: string; pills: [string, string]; phonePrefix: string; stamp: string; stampDay: [string, string] };
   revenue: [string, string]; reasons: Row[]; radar: [string, string][]; // [Symbol, Signal] – bewusst ohne Länder (Inhaber 03.10.2026)
@@ -63,6 +65,7 @@ export const HOME: Record<HomeLang, HomeText> = {
     stats: ["companies in the official registers of our markets", "new companies a year within our view", "dated signals recorded", "free leads in every sample"],
     ticker: ["Read daily from", ["Official business registers", "Official public notices", "Public contract notices", "Company careers pages", "Company websites"]],
     filmH: (s) => `How it works in ${s} seconds`, filmSub: "Exclusive leads, delivered every Monday, for any industry that sells to businesses.",
+    cine: { secs: "seconds", title: ["How ", "NextGen Profit", " works"] },
     methH: "From public record to your next client", methSub: "We do the watching. You receive a short list you can act on the same morning.",
     steps: [["search", "We read the sources", "Every day we check company registers, official notices and company careers pages."],
       ["target", "We spot the moment", "A new registration, a role open for weeks, several hires at once. Each event is recorded with its date and source."],
@@ -176,6 +179,7 @@ export const HOME: Record<HomeLang, HomeText> = {
     stats: ["entreprises dans les registres officiels de nos marchés", "nouvelles entreprises par an dans notre champ", "signaux datés enregistrés", "prospects gratuits dans chaque échantillon"],
     ticker: ["Lu chaque jour", ["Registres officiels des entreprises", "Annonces officielles", "Avis de marchés publics", "Pages carrières des entreprises", "Sites des entreprises"]],
     filmH: (s) => `Comment ça marche en ${s} secondes`, filmSub: "Des prospects exclusifs, livrés chaque lundi, pour tout secteur qui vend aux entreprises.",
+    cine: { secs: "secondes", title: ["Comment fonctionne ", "NextGen Profit", ""] },
     methH: "Des données publiques à votre prochain client", methSub: "Nous surveillons pour vous. Vous recevez une courte liste exploitable dès le matin.",
     steps: [["search", "Nous lisons les sources", "Chaque jour, nous vérifions les registres, les annonces officielles et les pages carrières des entreprises."],
       ["target", "Nous repérons le moment", "Une création, un poste ouvert depuis des semaines, plusieurs recrutements à la fois. Chaque événement est enregistré avec sa date et sa source."],
@@ -289,6 +293,7 @@ export const HOME: Record<HomeLang, HomeText> = {
     stats: ["Unternehmen in den amtlichen Registern unserer Märkte", "neue Unternehmen pro Jahr in unserem Blick", "datierte Signale erfasst", "kostenlose Leads in jeder Probe"],
     ticker: ["Täglich gelesen", ["Amtliche Unternehmensregister", "Amtliche Bekanntmachungen", "Öffentliche Ausschreibungen", "Karriereseiten der Unternehmen", "Websites der Unternehmen"]],
     filmH: (s) => `So funktioniert es in ${s} Sekunden`, filmSub: "Exklusive Leads, jeden Montag geliefert, für jede Branche, die an Unternehmen verkauft.",
+    cine: { secs: "Sekunden", title: ["So funktioniert ", "NextGen Profit", ""] },
     methH: "Von öffentlichen Daten zu Ihrem nächsten Kunden", methSub: "Wir beobachten für Sie. Sie erhalten eine kurze Liste, mit der Sie noch am selben Morgen arbeiten können.",
     steps: [["search", "Wir lesen die Quellen", "Jeden Tag prüfen wir Unternehmensregister, amtliche Bekanntmachungen und Karriereseiten."],
       ["target", "Wir erkennen den Moment", "Eine Neugründung, eine seit Wochen offene Stelle, mehrere Einstellungen gleichzeitig. Jedes Ereignis wird mit Datum und Quelle erfasst."],

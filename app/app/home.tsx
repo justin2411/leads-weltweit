@@ -6,7 +6,7 @@ import { consentText } from "@/lib/consent";
 import { wishesFor } from "@/content/sample-wishes";
 import { LANDING_CSS } from "@/lib/landing-css";
 import { HOME_CSS } from "@/lib/home-css";
-import { HOME_SPRITE, HOME_V2_CSS } from "@/lib/home-v2-css";
+import { HOME_SPRITE, HOME_STAT_ART, HOME_V2_CSS } from "@/lib/home-v2-css";
 import { SampleForm, type IndustryOption } from "./sample-form";
 import { homeStats, publicPages, type PublicPage } from "@/lib/site-pages";
 import { BrandShell, SiteFooter, SiteHeader } from "./chrome";
@@ -59,6 +59,9 @@ const i = (n: number) => ({ "--i": n }) as CSSProperties;
 const RADAR_T1 = "M108.1 6.9L108.6 1.9M116.2 7.9L117.1 3.0M124.2 9.7L125.5 4.9M132.0 12.1L133.7 7.4M139.5 15.3L141.6 10.7M153.6 23.4L156.5 19.3M160.1 28.4L163.3 24.5M166.1 33.9L169.7 30.3M171.6 39.9L175.5 36.7M176.6 46.4L180.7 43.5M184.7 60.5L189.3 58.4M187.9 68.0L192.6 66.3M190.3 75.8L195.1 74.5M192.1 83.8L197.0 82.9M193.1 91.9L198.1 91.4M193.1 108.1L198.1 108.6M192.1 116.2L197.0 117.1M190.3 124.2L195.1 125.5M187.9 132.0L192.6 133.7M184.7 139.5L189.3 141.6M176.6 153.6L180.7 156.5M171.6 160.1L175.5 163.3M166.1 166.1L169.7 169.7M160.1 171.6L163.3 175.5M153.6 176.6L156.5 180.7M139.5 184.7L141.6 189.3M132.0 187.9L133.7 192.6M124.2 190.3L125.5 195.1M116.2 192.1L117.1 197.0M108.1 193.1L108.6 198.1M91.9 193.1L91.4 198.1M83.8 192.1L82.9 197.0M75.8 190.3L74.5 195.1M68.0 187.9L66.3 192.6M60.5 184.7L58.4 189.3M46.4 176.6L43.5 180.7M39.9 171.6L36.7 175.5M33.9 166.1L30.3 169.7M28.4 160.1L24.5 163.3M23.4 153.6L19.3 156.5M15.3 139.5L10.7 141.6M12.1 132.0L7.4 133.7M9.7 124.2L4.9 125.5M7.9 116.2L3.0 117.1M6.9 108.1L1.9 108.6M6.9 91.9L1.9 91.4M7.9 83.8L3.0 82.9M9.7 75.8L4.9 74.5M12.1 68.0L7.4 66.3M15.3 60.5L10.7 58.4M23.4 46.4L19.3 43.5M28.4 39.9L24.5 36.7M33.9 33.9L30.3 30.3M39.9 28.4L36.7 24.5M46.4 23.4L43.5 19.3M60.5 15.3L58.4 10.7M68.0 12.1L66.3 7.4M75.8 9.7L74.5 4.9M83.8 7.9L82.9 3.0M91.9 6.9L91.4 1.9";
 const RADAR_T2 = "M100.0 13.0L100.0 1.5M143.5 24.7L149.2 14.7M175.3 56.5L185.3 50.7M187.0 100.0L198.5 100.0M175.3 143.5L185.3 149.2M143.5 175.3L149.2 185.3M100.0 187.0L100.0 198.5M56.5 175.3L50.7 185.3M24.7 143.5L14.7 149.3M13.0 100.0L1.5 100.0M24.7 56.5L14.7 50.7M56.5 24.7L50.7 14.7";
 const BLIPS: [string, string, string][] = [["73.7%", "30.1%", ".58s"], ["56.2%", "73.2%", "1.93s"], ["16.2%", "40.9%", "3.33s"]];
+// Punkte auf dem Film-Titelbild: [x %, y %, Verzögerung s, weiß]
+const CINE_BLIPS: [number, number, number, boolean][] = [[59.16, 29.16, -8.94, false], [69.47, 63.99, -6.89, false], [74.84, 27.5, -8.25, true], [44.67, 74.69, -4.42, false],
+  [41.37, 43.49, -1.86, false], [79.08, 13.8, -8.47, false], [24.15, 68.56, -3.11, true], [37.07, 20.58, -1.06, false], [93.57, 60.89, -7.28, false]];
 const Lock = () => <svg className="hp-lock" viewBox="0 0 24 24"><path className="hp-lock__shackle" d="M8 10.5V8a4 4 0 0 1 8 0v2.5" /><rect x="5" y="10.5" width="14" height="10" rx="2" /></svg>;
 /** Ansprechpartner (Vorlage v4): zehn Punkte im Passungsring, Startlage Woche 4 (ohne JavaScript sichtbar). */
 const TUNE_DOTS: [number, number, boolean][] = [[18.4, -26.2, true], [13.6, -8.5, true], [25.2, 9.7, true], [9.8, 6.9, true], [4.0, 45.8, false], [-7.5, 20.7, true], [-27.6, 9.0, true], [-8.0, -0.8, true], [-22.0, -27.2, true], [-6.8, -17.7, true]];
@@ -202,13 +205,44 @@ export async function Home({ lang }: { lang: HomeLang }) {
             <div className="hp-wrap"><div className="hp-film__in">
               <h2 className="hp-rule" id="film-title" data-reveal="">{t.filmH(video.seconds)}</h2>
               <p className="hp-film__sub" data-reveal="" style={{ "--d": ".1s" } as CSSProperties}>{t.filmSub}</p>
-              <div className="hp-video" data-scale="">
+              <div className="hp-video hp-cine" data-scale="" data-io="" data-live="">
                 {/* Eigenes Video, keine Drittanbieter, lädt erst beim Abspielen */}
                 <video controls preload="none" playsInline poster={video.poster} src={video.src} />
-                <button className="hp-video__play" type="button" aria-label={t.film} hidden>
-                  <span className="hp-video__btn"><svg aria-hidden="true"><use href="#i-play" /></svg></span>
-                  <span className="hp-video__len">0:{String(video.seconds).padStart(2, "0")}</span>
-                </button>
+                {/* Titelbild nach Vorlage v2 (Radar mit Ringen, Strahl und Punkten); erscheint nur mit JavaScript, ein Klick startet das Video */}
+                <div className="hp-cine__poster" hidden>
+                  <div className="hp-cine__stage" aria-hidden="true">
+                    <div className="hp-cine__bg" />
+                    <div className="hp-cine__layer hp-cine__layer--far">
+                      <div className="hp-cine__dots" />
+                      <svg className="hp-cine__rings" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+                        <defs>
+                          <linearGradient id="hp-cine-lit" gradientUnits="userSpaceOnUse" x1="690" y1="560" x2="910" y2="340"><stop offset="0" stopColor="#d8bd8a" stopOpacity=".08" /><stop offset="1" stopColor="#f1e1bd" stopOpacity=".95" /></linearGradient>
+                          <linearGradient id="hp-cine-h" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="1600" y2="0"><stop offset="0" stopColor="#d8bd8a" stopOpacity="0" /><stop offset=".5" stopColor="#d8bd8a" stopOpacity=".3" /><stop offset="1" stopColor="#d8bd8a" stopOpacity="0" /></linearGradient>
+                          <linearGradient id="hp-cine-v" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="900"><stop offset="0" stopColor="#d8bd8a" stopOpacity="0" /><stop offset=".5" stopColor="#d8bd8a" stopOpacity=".26" /><stop offset="1" stopColor="#d8bd8a" stopOpacity="0" /></linearGradient>
+                        </defs>
+                        <g stroke="#d8bd8a" strokeWidth="1">
+                          <path d="M0 450H1600" stroke="url(#hp-cine-h)" /><path d="M800 0V900" stroke="url(#hp-cine-v)" />
+                          <circle cx="800" cy="450" r="150" stroke="url(#hp-cine-lit)" strokeWidth="1.5" />
+                          {[[238, ".2"], [336, ".16"], [446, ".13"], [568, ".1"], [704, ".07"]].map(([r, o]) => <circle cx="800" cy="450" r={r} strokeOpacity={o} key={r} />)}
+                          <g className="hp-cine__arcs"><path d="M903.8 130.4A336 336 0 0 1 1096.7 292.3" /><path d="M355.7 411.1A446 446 0 0 1 468.6 151.6" /><path d="M919 656.1A238 238 0 0 1 734.4 678.8" /></g>
+                        </g>
+                      </svg>
+                      <div className="hp-cine__ticks" />
+                    </div>
+                    <div className="hp-cine__layer hp-cine__layer--near">
+                      <div className="hp-cine__sweep" />
+                      <svg className="hp-cine__links" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice"><path d="M946.5 262.5 593.1 185.2 661.9 391.4 386.5 617.1 714.7 672.2 1111.5 575.9 1497.1 548" /><path d="M946.5 262.5 1197.4 247.5 1265.3 124.2" /></svg>
+                      {CINE_BLIPS.map(([x, y, dl, wh], k) => <i className={`hp-cine__blip${wh ? " hp-cine__blip--w" : ""}`} style={{ "--x": x + "%", "--y": y + "%", "--dl": dl + "s" } as CSSProperties} key={k} />)}
+                    </div>
+                    <div className="hp-cine__scrim" />
+                  </div>
+                  <span className="hp-cine__chip">{video.seconds} {t.cine.secs}</span>
+                  <button className="hp-cine__play" type="button" aria-label={`${t.film} (${video.seconds} ${t.cine.secs})`}>
+                    <span className="hp-cine__ring" aria-hidden="true" /><span className="hp-cine__ring hp-cine__ring--b" aria-hidden="true" />
+                    <span className="hp-cine__disc" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8.6 5.9v12.2c0 .8.9 1.3 1.6.9l9.5-6.1c.6-.4.6-1.3 0-1.7L10.2 5c-.7-.4-1.6.1-1.6.9z" fill="currentColor" /></svg></span>
+                  </button>
+                  <p className="hp-cine__title" aria-hidden="true">{t.cine.title[0]}<b>{t.cine.title[1]}</b>{t.cine.title[2]}</p>
+                </div>
               </div>
             </div></div>
           </section>
@@ -217,12 +251,14 @@ export async function Home({ lang }: { lang: HomeLang }) {
         <section className="hp-proofsec" aria-labelledby="proof-title">
           <div className="hp-wrap hp-proof">
             <h2 className="hp-proof__title" id="proof-title" data-reveal="">{t.statsH}</h2>
-            <ul className="hp-statbar" data-reveal="" style={{ "--d": ".1s" } as CSSProperties}>
-              {nums.map(([n, label, live]) => (
-                <li className={`hp-stat${live ? " hp-stat--live" : ""}`} key={label}>
-                  {live ? <p className="hp-stat__num"><span data-odo="">{n}</span><span className="hp-live" aria-hidden="true" /></p>
-                    : <p className="hp-stat__num" data-odo="">{n}</p>}
-                  <p className="hp-stat__label">{label}</p>
+            {/* Kennzahlen als Glas-Band nach Vorlage v2: je Karte eine kleine Grafik (Punktraster, Balken, Puls mit Live-Punkt, zehn Punkte) */}
+            <ul className="hp-band" data-reveal="" data-live="" style={{ "--d": ".1s" } as CSSProperties}>
+              {nums.map(([n, label], k) => (
+                <li className={`hp-band__item${k === 3 ? " hp-band__item--accent" : ""}`} key={label}>
+                  <div className={`hp-stat-art hp-stat-art--${["dots", "bars", "pulse", "ten"][k]}`} aria-hidden="true" dangerouslySetInnerHTML={{ __html: HOME_STAT_ART[k] }} />
+                  <p className="hp-band__num" data-odo="">{n}</p>
+                  <p className="hp-band__label">{label}</p>
+                  {k === 3 && <i className="hp-stat-sheen" aria-hidden="true" />}
                 </li>))}
             </ul>
           </div>
@@ -428,7 +464,7 @@ export async function Home({ lang }: { lang: HomeLang }) {
         {/* Probe nach Vorlage v4: Formular auf dunkler Karte links, Vorschau der zwei Dateien rechts. Formular und Logik unverändert (SampleForm). */}
         <section className="hp-sec hp-cream hp-sample" id="sample" aria-labelledby="sample-title">
           <div className="hp-wrap hp-sample__grid">
-            <div className="hp-formcard hp-grain" id="probe" data-reveal="">
+            <div className="hp-formcard hp-grain" id="probe" data-reveal="" data-live="">
               <h2 className="hp-h2" id="sample-title">{t.sampleTitle[0]}<br /><span className="hp-gold">{t.sampleTitle[1]}</span></h2>
               <p className="hp-formcard__intro">{t.sampleSub}</p>
               {industries.length > 0 && (
