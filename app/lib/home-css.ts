@@ -377,5 +377,6 @@ export const HOME_CSS = `
 /* Siegel aus Vorlage v5 auf der Methoden-Grafik (Inhaber 03.10.2026) */
 .hpz .hp-story__stick{position:sticky;top:calc(50vh - 260px + 30px)}
 .hpz .hp-story__stage{position:relative;top:auto}
+.hpz .hp-fact__role{display:block;margin-top:2px;font-size:13.5px;font-weight:500;color:var(--muted)}
 `;
 
