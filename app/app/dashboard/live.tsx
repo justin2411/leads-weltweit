@@ -7,6 +7,7 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { COUNTRY_COLOR, OTHER_COLOR, compact } from "@/lib/dashboard-logic";
+import { PipeDelta } from "./pipe-delta";
 
 type V = CSSProperties & Record<`--${string}`, string | number>;
 
@@ -73,13 +74,13 @@ export function FunnelViz({ title, stages, result, live, note, href }: {
   );
 }
 
-export type PipeStep = { id: string; label: string; value: string; sub: string; href: string; tip: string; perHour: number; neck?: boolean };
+export type PipeStep = { id: string; label: string; value: string; sub: string; href: string; tip: string; perHour: number; neck?: boolean; n?: number };
 
 /**
  * Prozesskette als Leitung: Stationen (klickbar) und Rohre dazwischen. Punkte fließen in Richtung der nächsten Stufe;
  * Tempo/Dichte nach der Aktivität der letzten Stunde (`perHour` der Zielstation). Engpass: Rohr davor staut (rot).
  */
-export function Pipeline({ steps, flow }: { steps: PipeStep[]; flow: (perHour: number) => number | null }) {
+export function Pipeline({ steps, flow, at, scope }: { steps: PipeStep[]; flow: (perHour: number) => number | null; at?: string; scope?: string }) {
   return (
     <ol className="pipe" aria-label="Ablauf">
       {steps.map((s, i) => {
@@ -92,6 +93,7 @@ export function Pipeline({ steps, flow }: { steps: PipeStep[]; flow: (perHour: n
               <span className="v">{s.value}</span>
               <span className="l">{s.label}</span>
               <span className="s">{s.sub}</span>
+              {at && typeof s.n === "number" && <PipeDelta k={`${scope ?? "alle"}:${s.id}`} at={at} n={s.n} />}
             </Link>
             {i < steps.length - 1 && (
               <span className={`tube ${sec ? "flow" : ""} ${jam ? "jam" : ""}`} style={{ "--dur": `${sec ?? 6}s` } as V} aria-hidden>
@@ -192,6 +194,7 @@ export const LIVE_CSS = `
 .dash .pipe .v{font-size:28px;font-weight:700;letter-spacing:-.02em;line-height:1.1;white-space:nowrap}
 .dash .pipe .l{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);font-weight:700}
 .dash .pipe .s{font-size:12px;color:var(--soft)}
+.dash .pipe .pd{display:block;margin-top:4px;font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums}.dash .pipe .pd.up{color:#1f8a5b}.dash .pipe .pd.down{color:var(--soft)}.dash .pipe .pd em{font-style:normal;font-weight:500;color:var(--soft)}
 .dash .pipe li.neck>a{border:2px solid #d03b3b;background:#fdf1f0}
 .dash .pipe .neck-tag{position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:#d03b3b;color:#fff;font-size:10px;font-weight:700;border-radius:99px;padding:1px 8px;white-space:nowrap}
 .dash .tube{position:absolute;top:50%;right:-22px;width:22px;height:8px;margin-top:-4px;border-radius:4px;background:#ece7dd;overflow:hidden;z-index:0}

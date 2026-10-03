@@ -81,6 +81,9 @@ export default async function Overview({ searchParams }: { searchParams: SP }) {
   const map: Record<StageKey, string> = { leads: "leads", kaeufer: "kaeufer", mails: "contacted", antworten: "replied", proben: "sample", kunden: "customer", umsatz: "umsatz" };
   const neck = ch.bottleneck ? map[ch.bottleneck] : null;
   const perHour: Record<string, number> = { leads: act.leads_60m, kaeufer: act.buyers_ok_60m, contacted: act.sent_60m, replied: act.replies_60m, sample: act.stock_sent_60m, customer: 0, umsatz: 0 };
+  const kaeuferFrei = okRows.reduce((a, x) => a + Number(x.unused), 0);
+  const nums: Record<string, number | undefined> = { leads: leads ?? undefined, kaeufer: stock ? kaeuferFrei : undefined,
+    contacted: m("contacted") + m("replied") + m("sample") + m("out"), replied: m("replied") + m("sample"), sample: n("sample"), customer: subs.length };
   const steps: { id: string; label: string; value: string; sub: string; href: string; tip: string }[] = [
     { id: "leads", label: "Leads", value: leads === null ? "…" : compact(leads), sub: "lieferbar", href: withQuery("/dashboard/bestand", q()), tip: "lieferbare Leads (Firmen ohne Website)" },
     { id: "kaeufer", label: "Käufer", value: stock ? compact(okRows.reduce((a, x) => a + Number(x.unused), 0)) : "…", sub: "frei", href: withQuery("/dashboard/bestand", q()), tip: `mail-fähige Käufer ohne Mail · gesamt ${compact(okRows.reduce((a, x) => a + Number(x.n), 0))}` },
@@ -114,7 +117,7 @@ export default async function Overview({ searchParams }: { searchParams: SP }) {
       </div>
 
       <div className="th2"><span>Ablauf</span><Link href={withQuery("/dashboard/kontakte", q())} className="more">Wer ist wo ›</Link></div>
-      <Pipeline steps={steps.map((s) => ({ ...s, perHour: perHour[s.id] ?? 0, neck: s.id === neck }))} flow={flowSeconds} />
+      <Pipeline steps={steps.map((s) => ({ ...s, perHour: perHour[s.id] ?? 0, neck: s.id === neck, n: nums[s.id] }))} flow={flowSeconds} at={stock?.at ?? now.toISOString()} scope={land ?? "alle"} />
 
       <div className="th2"><span>Werke</span><Link href={withQuery("/dashboard/werke", q())} className="more">Werke ›</Link></div>
       <div className="werkrow">
