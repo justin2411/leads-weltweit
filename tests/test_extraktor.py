@@ -721,8 +721,10 @@ class WebAgencyFocusTests(unittest.TestCase):
             if e["name"] in ("s1-us-lca", "s1-uk-tender"):  # S1-Teile (Quellen-Scout 02.10.2026, R15)
                 continue
             self.assertIn("--segments S2 ", e["args"] + " ", e["name"])
-        us = [e for e in jobs["holen"]["strategy"]["matrix"]["include"] if e["name"].startswith("s2-us-")]
-        self.assertEqual(len(us), 18)  # US-S2 wird für S1 nicht gekürzt
+        # US-S2 wird für S1 nicht gekürzt: ohne Website + Website-Prüfung zusammen mindestens 18 Teile
+        # (Scout R16: Vorrat ohne Website abgearbeitet, Plätze an die Website-Prüfung)
+        us = [e for e in jobs["holen"]["strategy"]["matrix"]["include"] if e["name"].startswith(("s2-us-", "web-us-"))]
+        self.assertGreaterEqual(len(us), 18)
         self.assertLessEqual(len(jobs["holen"]["strategy"]["matrix"]["include"]), 30)  # 30 + 8 Kunden-Werk = 38
 
 
