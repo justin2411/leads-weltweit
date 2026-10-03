@@ -120,7 +120,7 @@
       "file": "antworten.yml",
       "name": "Antwort-Assistent",
       "crons": [
-        "7 6-21 * * *"
+        "*/10 * * * *"
       ]
     },
     {

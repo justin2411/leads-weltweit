@@ -6,6 +6,8 @@ import { db } from "@/lib/supabase";
 import { basePlan, customCents, PER_WEEK, validWeekly } from "@/lib/custom-price";
 import { prospectIdFor } from "@/lib/recipient";
 import { chargesGermanVat, normalizeBilling } from "@/lib/billing";
+import { pushAlarmSafe } from "@/lib/push";
+import { after } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -103,6 +105,8 @@ export async function POST(req: Request) {
     return failPage(lang, pkg, page.slug, back);
   }
   if (mode === "live") await recordEvent(v.id, "checkout_started");
+  // Sofort-Alarm aufs Handy (Web-Push, feuern und vergessen; ändert nichts am Checkout)
+  if (mode === "live") after(() => pushAlarmSafe("Checkout gestartet", `${page.slug} · ${pkg}`, "/dashboard/kunden", "checkout"));
   return Response.redirect(session.url, 303);
 }
 

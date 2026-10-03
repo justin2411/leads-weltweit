@@ -260,3 +260,23 @@ test("v2: Kette je Land, Ampelzeile höchstens 3, kurze Aktionen", () => {
   assert.deepEqual(openActions(people, ["US", "UK"]).map((p) => p.company), ["Drei"]);
   assert.deepEqual(openActions(people, ["US"]).map((p) => p.company), []);
 });
+
+test("Bounces je Postfach: Zählung wie die Notbremse, Ampel erst ab 30 Mails", async () => {
+  const { boxHealth } = await import("./dashboard-logic.ts");
+  const msgs = [
+    ...Array.from({ length: 40 }, (_, i) => ({ id: `a${i}`, sent_from: "NextGen Profit <info@nextgen-profit.de>" })),
+    ...Array.from({ length: 40 }, (_, i) => ({ id: `b${i}`, sent_from: "webagency@nextgen-profit.de" })),
+    ...Array.from({ length: 10 }, (_, i) => ({ id: `c${i}`, sent_from: null })),
+  ];
+  const ev = [
+    { message_id: "b1", type: "bounced", to_email: "x1@y.com" }, { message_id: "b2", type: "bounced", to_email: "x2@y.com" },
+    { message_id: "b2", type: "bounced", to_email: "x2@y.com" }, // dieselbe Adresse zählt einmal
+    { message_id: "a1", type: "bounced", bounce_type: "Transient", to_email: "t@y.com" }, // vorübergehend, einmal: zählt nicht
+    { message_id: "zz", type: "bounced", to_email: "fremd@y.com" }, // keine Mail aus dem Zeitraum
+  ];
+  const h = boxHealth(msgs, ev);
+  assert.deepEqual(h.map((x) => [x.box, x.sent, x.bounced, x.tone]), [
+    ["main", 50, 0, "green"], // info@ und Mails ohne Absender = Hauptpostfach
+    ["webagency@nextgen-profit.de", 40, 2, "red"], // 2/40 = 5 %
+  ]);
+});

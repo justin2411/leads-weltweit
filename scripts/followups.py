@@ -78,6 +78,20 @@ def sample_followup_text(p: dict, lang: str, plan_url: str | None = None) -> str
             f"Shall we start next Monday?\n\nBest regards,\n{signature(lang)}")
 
 
+def answered(db, prospect_id: str, since: str | None = None) -> bool:
+    """Hat die Firma geantwortet (Antworten-Cockpit, auch von einer anderen Adresse oder während der Pause des
+    Antwort-Assistenten)? Dann keine Nachfassmail (Nachtschicht 04.10.2026). Abwesenheitsnotizen stehen nicht im
+    Cockpit. Ist die Tabelle nicht lesbar, lieber keine Nachfassmail (Rückgabe True)."""
+    params = {"prospect_id": f"eq.{prospect_id}", "select": "id", "limit": "1"}
+    if since:
+        params["received_at"] = f"gt.{since}"
+    try:
+        return bool(db.select("inbound_replies", params))
+    except Exception as exc:  # noqa: BLE001
+        print(f"  Antworten-Cockpit nicht lesbar ({exc.__class__.__name__}) – Nachfassmail an {prospect_id} ausgelassen")
+        return True
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--apply", action="store_true")
@@ -108,6 +122,8 @@ def main(argv=None) -> int:
         evs = db.select("email_events", {"message_id": f"eq.{m['id']}", "select": "type"})
         if any(e["type"] in NEGATIVE for e in evs) or db.rpc("is_suppressed", {"p_email": m["to_email"]}):
             continue
+        if answered(db, p["id"]):
+            continue
         lang = m.get("language") or "en"
         body, _ = followup_text(p, lang)
         lint = lint_draft(m["subject"], body, lang, min_words=30, max_words=120, require_sample=False)
@@ -132,7 +148,7 @@ def main(argv=None) -> int:
         later = db.select("email_events", {"message_id": f"eq.{m['id']}", "created_at": f"gt.{ev['created_at']}",
                                            "type": "in.(reply,reply_positive,reply_negative,unsubscribed,complained)",
                                            "select": "id"})
-        if later or db.rpc("is_suppressed", {"p_email": m["to_email"]}):
+        if later or db.rpc("is_suppressed", {"p_email": m["to_email"]}) or answered(db, p["id"], ev["created_at"]):
             continue
         lang = m.get("language") or "en"
         from responder import booking_url

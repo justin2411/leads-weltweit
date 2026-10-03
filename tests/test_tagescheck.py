@@ -27,6 +27,24 @@ class TagescheckTest(unittest.TestCase):
         c.guard("Kunden", lambda: 1 / 0)
         self.assertEqual(c.rows[0][1], t.FAIL)
 
+    def test_mailbox_lamps(self):
+        recent = (t.NOW).isoformat()
+        msgs = [{"id": f"a{i}", "status": "sent", "sent_at": recent, "sent_from": "NextGen <info@nextgen-profit.de>"}
+                for i in range(40)]
+        msgs += [{"id": f"b{i}", "status": "sent", "sent_at": recent, "sent_from": "webagency@nextgen-profit.de"}
+                 for i in range(40)]
+        msgs += [{"id": f"c{i}", "status": "sent", "sent_at": recent, "sent_from": "leads@nextgen-profit.de"}
+                 for i in range(10)]
+        ev = [{"id": f"e{i}", "type": "bounced", "created_at": recent, "message_id": f"b{i}",
+               "messages": {"to_email": f"x{i}@y.com"}} for i in range(3)]          # 3/40 = 7,5 % -> rot
+        ev += [{"id": "e9", "type": "bounced", "created_at": recent, "message_id": "c1",
+                "messages": {"to_email": "z@y.com"}}]                              # 1/10: zu wenig Mails
+        c = t.Check()
+        t.check_mailboxes(c, FakeDB({"messages": msgs, "email_events": ev}))
+        rows = {r[2].split(":")[0]: r[1] for r in c.rows}
+        self.assertEqual(rows, {"info@nextgen-profit.de": t.OK, "webagency@nextgen-profit.de": t.FAIL,
+                                "leads@nextgen-profit.de": t.OK})
+
     def test_kpi_line_counts_funnel_of_one_test(self):
         db = FakeDB({
             "experiments": [{"id": "e1", "segment_id": "S4", "country": "US"},

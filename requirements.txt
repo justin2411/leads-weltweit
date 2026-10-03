@@ -7,3 +7,4 @@ phonenumbers>=8.13
 gender-guesser>=0.4
 duckdb>=1.0
 python-calamine>=0.2
+cryptography>=42

@@ -10,6 +10,7 @@ import { leadCountry, segKey } from "@/lib/country";
 import { cleanText, validEmail, wishKeys, wishNote } from "@/content/sample-wishes";
 import { after } from "next/server";
 import { dispatchSampleWorkflow, previewFromStock, sendFromStock, STOCK_BUCKET, type StockDeps } from "@/lib/sample-stock";
+import { pushAlarmSafe } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 // Sofortversand nach dem Klick läuft per after() nach der Antwort: Vorrat abrufen + Resend (wenige Sekunden)
@@ -103,6 +104,10 @@ export async function POST(req: Request) {
   }).select("id").single();
   if (error) return json ? Response.json({ ok: false, error: "server" }, { status: 500 }) : new Response("Fehler", { status: 500 });
   if (!test && ownPage) await recordEvent(v.id, "sample_request");
+  // Sofort-Alarm aufs Handy (Web-Push, feuern und vergessen; ändert nichts am Ablauf der Anfrage)
+  // Nur feste Bezeichnungen (keine Formulareingaben wie den Firmennamen) – Details stehen im Dashboard
+  if (!test && !suppressed) after(() => pushAlarmSafe("Probe angefragt", `${page.segment_id}/${country}`,
+                                                      "/dashboard/proben", "sample"));
 
   const m = confirmationMail((ownPage ? page.language : formLang) === "fr" ? "fr" : "en", country, consent);
   const keys = wishKeys(segKey(page.slug), f.getAll("signals").map(String));

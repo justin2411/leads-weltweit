@@ -212,6 +212,37 @@ export function countBounces(events: Pick<Ev, "type" | "bounce_type" | "to_email
   return { bounced: hard.size, complained: complained.size };
 }
 
+export type BoxHealth = { box: string; sent: number; bounced: number; complained: number; rate: number; tone: "green" | "gold" | "red" | "grey" };
+export const BOX_WARN = 0.03, BOX_FAIL = 0.05, BOX_MIN = 30;
+
+/**
+ * Bounce-Quote je Versand-Postfach (wie tagescheck.check_mailboxes, Nachtschicht 04.10.2026): Zählung wie die
+ * Notbremse (je Empfänger, vorübergehende Abweisung erst beim zweiten Mal), gelb ab 3 %, rot ab 5 % oder bei einer
+ * Beschwerde, grau unter 30 Mails (zu wenig für eine Aussage). Mails ohne Absender zählen zum Hauptpostfach.
+ */
+export function boxHealth(msgs: { id: string; sent_from: string | null }[],
+                          events: Pick<Ev, "type" | "bounce_type" | "to_email" | "message_id">[]): BoxHealth[] {
+  const key = (from: string | null) => {
+    const a = (from ?? "").match(/<([^>]+)>/)?.[1] ?? from ?? "";
+    const addr = a.trim().toLowerCase();
+    return isMainBox(addr) ? "main" : addr;
+  };
+  const boxOf = new Map(msgs.map((m) => [m.id, key(m.sent_from)]));
+  const sent = new Map<string, number>();
+  for (const b of boxOf.values()) sent.set(b, (sent.get(b) ?? 0) + 1);
+  const evs = new Map<string, typeof events>();
+  for (const e of events) {
+    const b = e.message_id ? boxOf.get(e.message_id) : undefined;
+    if (b) evs.set(b, [...(evs.get(b) ?? []), e]);
+  }
+  return [...sent.entries()].sort((a, b) => b[1] - a[1]).map(([box, n]) => {
+    const { bounced, complained } = countBounces(evs.get(box) ?? []);
+    const rate = n ? bounced / n : 0;
+    const tone = complained ? "red" : n < BOX_MIN ? "grey" : rate >= BOX_FAIL ? "red" : rate >= BOX_WARN ? "gold" : "green";
+    return { box, sent: n, bounced, complained, rate, tone };
+  });
+}
+
 export const BOUNCE_STOP = 0.05;
 export const MIN_SAMPLE = 100;
 

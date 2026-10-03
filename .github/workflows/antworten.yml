@@ -1,18 +1,26 @@
-# Antwort-Assistent: stündlich Antworten lesen, Proben/FAQ automatisch beantworten, Inhaber bei Kaufinteresse benachrichtigen.
-# Läuft nur, wenn IMAP_HOST gesetzt ist (eigenes Postfach für Antworten).
+# Antwort-Assistent: rund um die Uhr alle 10 Minuten Antworten lesen, Proben/FAQ automatisch beantworten, Inhaber bei
+# Kaufinteresse/Fragen sofort benachrichtigen (Mail + Push, Deep-Link ins Antworten-Cockpit). Nachtschicht 03.10.2026:
+# US-Antworten kommen in unserer Nacht, vorher bis zu 9 h Verzögerung. Öffentliches Repo: Actions-Minuten kostenlos.
+# Läuft nur, wenn IMAP_HOST gesetzt ist (eigenes Postfach für Antworten). Pause im Dashboard (werke_paused.antworten)
+# schaltet nur die automatischen Antworten ab; Abmeldungen werden immer gesperrt.
 name: antworten
 on:
-  schedule: [{ cron: "7 6-21 * * *" }]
+  schedule: [{ cron: "*/10 * * * *" }]
   workflow_dispatch:
     inputs:
       probelauf:
         type: boolean
         default: true
+# Läufe überlappen nie: ein neuer wartet, bis der laufende fertig ist (kein doppeltes Antworten)
 concurrency: { group: antworten, cancel-in-progress: false }
 jobs:
   run:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
+      SITE_URL: ${{ vars.SITE_URL || 'https://www.nextgen-profit.de' }}   # Deep-Link ins Cockpit, Push über /api/push
+      # Chromium fürs Proben-PDF erst installieren, wenn wirklich eine Probe gebaut wird (responder.ensure_chromium)
+      PLAYWRIGHT_LAZY_INSTALL: "1"
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
@@ -29,15 +37,33 @@ jobs:
       IMAP_HOST: ${{ secrets.IMAP_HOST }}
       IMAP_USER: ${{ secrets.IMAP_USER }}
       IMAP_PASSWORD: ${{ secrets.IMAP_PASSWORD }}
+      # Alle Versand-Postfächer mitlesen (Nachtschicht 04.10.2026, lib/imap_boxes.py): Rückläufer und manche Antworten
+      # gehen an das sendende Postfach, nicht an REPLY_TO. Nur lesend; gesendet wird hier nie per SMTP (Antworten über
+      # Resend). Leere Werte = Postfach nicht vorhanden.
+      SMTP_USER: ${{ secrets.SMTP_USER }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      SMTP_FROM: ${{ secrets.SMTP_FROM }}
+      SMTP_USER_2: ${{ secrets.SMTP_USER_2 }}
+      SMTP_PASSWORD_2: ${{ secrets.SMTP_PASSWORD_2 }}
+      SMTP_FROM_2: ${{ secrets.SMTP_FROM_2 }}
+      SMTP_USER_3: ${{ secrets.SMTP_USER_3 }}
+      SMTP_PASSWORD_3: ${{ secrets.SMTP_PASSWORD_3 }}
+      SMTP_FROM_3: ${{ secrets.SMTP_FROM_3 }}
+      SMTP_USER_4: ${{ secrets.SMTP_USER_4 }}
+      SMTP_PASSWORD_4: ${{ secrets.SMTP_PASSWORD_4 }}
+      SMTP_FROM_4: ${{ secrets.SMTP_FROM_4 }}
+      SMTP_USER_5: ${{ secrets.SMTP_USER_5 }}
+      SMTP_PASSWORD_5: ${{ secrets.SMTP_PASSWORD_5 }}
+      SMTP_FROM_5: ${{ secrets.SMTP_FROM_5 }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: "3.11" }
-      - run: pip install -r requirements.txt && python -m playwright install --with-deps chromium
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
       - name: Postfach eingerichtet?
         id: gate
         run: if [ -n "$IMAP_HOST" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "IMAP noch nicht eingerichtet"; fi
-      - name: Bounces aus dem Postfach
+      - name: Bounces aus allen Postfächern
         if: ${{ steps.gate.outputs.ok == 'true' }}
         run: python scripts/inbox.py --days 14 --apply
       - name: Antworten bearbeiten

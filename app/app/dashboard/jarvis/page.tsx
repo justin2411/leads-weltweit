@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadDaily, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock } from "@/lib/dashboard-data";
-import { berlin, berlinDay, chain, compact, currencySign, mailboxes, monthly, nextRun, onlySegment, realSubscriptions, sampleStock, stockSegment, COUNTRY_COLOR } from "@/lib/dashboard-logic";
+import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadBoxHealth, loadDaily, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock } from "@/lib/dashboard-data";
+import { berlin, berlinDay, chain, compact, currencySign, mailboxes, monthly, nextRun, onlySegment, realSubscriptions, sampleStock, stockSegment, BOX_MIN, COUNTRY_COLOR } from "@/lib/dashboard-logic";
 import { totals } from "@/lib/dashboard-periods";
 import { coach, hall, laneOf, laneStats, neckTask, running, utilization, type Beat } from "@/lib/leitstand";
 import { NECK_TO_STATION, ticker, type Edge, type Station, type StationId, type TickerItem } from "@/lib/fluss";
@@ -58,13 +58,18 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   stockP.catch(() => {});
   const today = berlinDay(new Date());
   const from7 = new Date(Date.parse(`${today}T12:00:00Z`) - 6 * 86_400_000).toISOString().slice(0, 10);
-  const [liveAll, own, act, rows, stockAll, daily, sent, checks, agentTasks, starts, planLog] = await Promise.all([
+  const [liveAll, own, act, rows, stockAll, daily, sent, checks, agentTasks, starts, planLog, openReplies, health] = await Promise.all([
     loadLive(), loadOwnerSettings(), loadActivity(), loadRunRows(24),
     // Bestand: höchstens 5 s warten (Abfrage ~3,5 s, 10 min zwischengespeichert); sonst „…“ statt falscher Nullen
     Promise.race([stockP.catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 5000))]),
     loadDaily(from7, today), loadRecentSent(12), s === "lead" || s === "gate" ? loadGateChecks(14, s === "gate" && tab === "check" && sp.f === "rot") : Promise.resolve([]),
     loadAgentTasks(), s === "lead" || s === "kwerk" || s === "proben" ? loadStarts() : Promise.resolve([] as StartRequest[]),
     loadPlanLog(),
+    // offene Antworten im Cockpit (null = nicht lesbar, dann bleibt die Ampel wie bisher)
+    db().from("inbound_replies").select("id", { count: "exact", head: true }).eq("status", "offen")
+      .then((r) => (r.error ? null : r.count ?? 0), () => null),
+    // Bounce-Quote je Postfach nur für die Station Versand
+    s === "versand" ? loadBoxHealth(14) : Promise.resolve(null),
   ]);
   const live = onlySegment(liveAll, SEGMENT);
   const stock = stockSegment(stockAll, SEGMENT);
@@ -148,7 +153,9 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const hello = h < 5 ? "Gute Nacht, Justin." : h < 11 ? "Guten Morgen, Justin." : h < 18 ? "Guten Tag, Justin." : "Guten Abend, Justin.";
   const amps = [
     { label: "Umsatz / Monat", value: revenue, sub: `${subs.length} Kunden`, tone: subs.length ? "green" : "grey", href: base("kunden") },
-    { label: "Antworten 7 T", value: `${w.replies}`, sub: `${w.positive} positiv`, tone: w.positive ? "green" : w.replies ? "gold" : "grey", href: base("antworten") },
+    openReplies
+      ? { label: "Antworten offen", value: `${openReplies}`, sub: "jetzt beantworten", tone: "gold", href: "/dashboard/antworten" }
+      : { label: "Antworten 7 T", value: `${w.replies}`, sub: `${w.positive} positiv`, tone: w.positive ? "green" : w.replies ? "gold" : "grey", href: base("antworten") },
     { label: "Mails heute", value: `${sentToday}/${cap}`, sub: own.send_paused ? "pausiert" : "Versand", tone: own.send_paused ? "red" : sentToday ? "cyan" : "grey", href: base("versand") },
     { label: "Engpass", value: neck ? stations.find((x) => x.id === neck)!.label : "keiner", sub: "hier ansetzen", tone: neck ? "red" : "green", href: neck ? base(neck) : "/dashboard/jarvis", task: neck ? neckTask(stations.find((x) => x.id === neck)!.label) : undefined },
   ] as { label: string; value: string; sub: string; tone: "green" | "gold" | "red" | "cyan" | "grey"; href: string }[];
@@ -281,6 +288,15 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     </>) : (<>
       <Big items={[[`${sentToday}/${cap}`, "heute"], [compact(Object.values(queue).reduce((a, b) => a + b, 0)), "warten"], [nx("send.yml"), "nächster Lauf"]]} />
       <MiniBars rows={countries.map((c) => ({ key: c, label: c, n: effectiveLimit(CONFIG.countries[c]?.daily_limit ?? 0, own, c), color: COUNTRY_COLOR[c], href: `${base("versand")}&t=set`, tip: "Mails/Tag (Limit)" }))} unit="/Tag" />
+      {health && health.length > 0 && (
+        <ul className="chk" aria-label="Bounces je Postfach (14 Tage)">{health.map((h) => (
+          <li key={h.box} className={{ red: "bad", gold: "warn", grey: "grey", green: "" }[h.tone] || undefined}
+            title={`${h.bounced} Bounces, ${h.complained} Beschwerden bei ${h.sent} Mails in 14 Tagen · gelb ab 3 %, rot ab 5 %`}>
+            <i aria-hidden><Icon name={h.tone === "red" || h.tone === "gold" ? "warnung" : "mail"} size={16} /></i>
+            <b>{h.box === "main" ? "Hauptpostfach" : h.box}</b>
+            <span>{h.sent < BOX_MIN ? "zu wenig Mails" : `${(h.rate * 100).toFixed(1).replace(".", ",")} % Bounces`}</span>
+            <em>{h.bounced} von {h.sent} · 14 Tage{h.complained ? ` · ${h.complained} Beschwerde` : ""}</em></li>))}</ul>
+      )}
     </>);
     if (s === "antworten") body = tab === "set" ? (<>
       <div className="row-sw"><WerkSwitch werk="antworten" on={sw("antworten").on} back={back} label="Antwort-Assistent" note="Abmeldungen werden immer gesperrt" /></div>
@@ -290,10 +306,11 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
         <li key={e.id} className={e.type === "reply_negative" ? "bad" : "ok"} title={e.note ?? ""}><i aria-hidden><Icon name={e.type === "reply_positive" ? "stern" : "antwort"} size={16} /></i>
           <b>{e.prospect_id ? <Link href={`/dashboard/kontakte/${e.prospect_id}`}>{e.company_name ?? "?"}</Link> : e.company_name ?? "?"}</b>
           <span>{e.country} · {berlin(e.occurred_at)}</span><em>{(e.note ?? "").slice(0, 60)}</em></li>))}</ul>
-      {lnk("/dashboard/liste?m=replies&z=jahr", "alle Antworten")}
-    </>) : (
-      <Big items={[[`${w.replies}`, "Antworten 7 T"], [`${w.positive}`, "positiv"], [`${w.samples_requested}`, "Proben angefragt"]]} />
-    );
+      {lnk("/dashboard/antworten", "Antworten bearbeiten")}
+    </>) : (<>
+      <Big items={[[openReplies === null ? "…" : `${openReplies}`, "offen"], [`${w.replies}`, "Antworten 7 T"], [`${w.positive}`, "positiv"], [`${w.samples_requested}`, "Proben angefragt"]]} />
+      {lnk("/dashboard/antworten", openReplies ? `${openReplies} offene Antworten bearbeiten` : "Antworten-Cockpit")}
+    </>);
     if (s === "kunden") body = tab === "set" ? lnk("/dashboard/kunden", "Kunden anlegen & freigeben") : tab === "check" ? (
       <ul className="chk">{subs.map((x) => <li key={x.id} className="ok"><i aria-hidden><Icon name="kunde" size={16} /></i><b>{x.customer?.company_name}</b><span>{x.customer?.country}</span><em>{compact(monthly(x))} {currencySign(x.currency, x.customer?.country)}</em></li>)}
         {!subs.length && <li className="none">noch keine Kunden</li>}</ul>

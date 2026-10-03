@@ -13,7 +13,8 @@ Einordnung je Antwort (Claude, Fallback: Schlüsselwörter):
   abwesend               -> ignorieren
 Automatische Antworten erfinden nichts: keine Preise, Garantien, Referenzen oder Zusagen.
 
-Umgebung: IMAP_HOST, IMAP_USER, IMAP_PASSWORD (Postfach aus REPLY_TO), OWNER_EMAIL,
+Umgebung: IMAP_HOST, IMAP_USER, IMAP_PASSWORD (Postfach aus REPLY_TO), dazu SMTP_USER[_n]/SMTP_PASSWORD[_n] der
+  Versand-Postfächer (werden mitgelesen, lib/imap_boxes.py), OWNER_EMAIL,
   ANTHROPIC_API_KEY (optional), RESEND_API_KEY, MAIL_FROM, REPLY_TO, SENDER_*, SUPABASE_*
 """
 from __future__ import annotations
@@ -21,13 +22,10 @@ from __future__ import annotations
 import argparse
 import base64
 import datetime as dt
-import email
-import imaplib
 import json
 import os
 import re
 import sys
-from email import policy
 from email.message import EmailMessage
 from email.utils import parseaddr
 from pathlib import Path
@@ -44,28 +42,37 @@ FAQ_KEYS = ["sources", "frequency", "regions", "data_privacy", "format", "how_it
 
 FAQ = {
     "en": {
-        "sources": "All leads come from public records (company registers, official notices) and companies' own "
-                   "websites and careers pages. Every lead lists its source and the date we checked it.",
+        "sources": "All leads come from public records (company registers, official notices), open business "
+                   "directories and companies' own websites and careers pages. Every lead lists its source and the "
+                   "date we checked it.",
         "frequency": "New leads are detected daily; subscribers receive a weekly list for their country and signals.",
         "regions": "We currently cover the UK, the US and France, each country-wide. If you only work in certain "
                    "areas, you can narrow the weekly list down after signing up.",
-        "data_privacy": "Leads contain company data: name, address, website, the central phone number and email, the "
-                        "event and its source, plus the owner or director named in the public register or the "
-                        "company's legal notice. No private contact details and no other employees.",
+        # Seit 01.10.2026 dürfen Leads alle von erlaubten Quellen veröffentlichten Kontaktdaten enthalten (auch Handy,
+        # Freemail) – deshalb keine Aussage mehr über „keine privaten Kontaktdaten“ (Nachtschicht 03.10.2026).
+        # Quellen vollständig nennen: S2-Leads (Firmen ohne Website) kommen aus offenen Datensätzen (Overture/OSM)
+        "data_privacy": "Leads contain the business contact details published by official registers, open business "
+                        "directories and the company's own website: name, address, website, phone and email, the "
+                        "event and its source, "
+                        "and the owner or director where the register or the company's legal notice names them. "
+                        "Nothing comes from platforms whose terms forbid it.",
         "format": "You receive a spreadsheet (CSV/Excel) and a clear overview page; each lead has the company, "
                   "the event, the date, the source, an urgency rating and a suggested opening line.",
         "how_it_works": "We monitor public sources for events that create a reason to talk: new registrations, "
                         "long-open vacancies, several roles at once, new locations. You get only those companies.",
     },
     "fr": {
-        "sources": "Toutes les pistes proviennent de sources publiques (registres, annonces officielles) et des sites "
-                   "des entreprises. Chaque piste indique sa source et la date de vérification.",
+        "sources": "Toutes les pistes proviennent de sources publiques (registres, annonces officielles), "
+                   "d'annuaires ouverts d'entreprises et des sites des entreprises. Chaque piste indique sa source et "
+                   "la date de vérification.",
         "frequency": "Les pistes sont détectées chaque jour ; les abonnés reçoivent une liste hebdomadaire.",
         "regions": "Nous couvrons actuellement la France, le Royaume-Uni et les États-Unis, chaque pays en entier. "
                    "Après l'inscription, vous pouvez limiter la liste à vos régions.",
-        "data_privacy": "Des données d'entreprise : nom, adresse, site, téléphone et e-mail de l'entreprise, événement "
-                        "et source, ainsi que le dirigeant inscrit au registre public ou dans les mentions légales. "
-                        "Aucune coordonnée privée, aucun autre salarié.",
+        "data_privacy": "Les pistes contiennent les coordonnées professionnelles publiées par les registres officiels, "
+                        "des annuaires ouverts d'entreprises et le site de l'entreprise : nom, adresse, site, téléphone "
+                        "et e-mail, l'événement et sa source, "
+                        "ainsi que le dirigeant lorsque le registre ou les mentions légales le nomment. Rien ne provient "
+                        "de plateformes dont les conditions l'interdisent.",
         "format": "Un tableur (CSV/Excel) et une page de synthèse ; chaque piste comprend l'entreprise, l'événement, "
                   "la date, la source, un niveau d'urgence et une phrase d'accroche.",
         "how_it_works": "Nous surveillons des sources publiques et repérons les moments propices : créations, postes "
@@ -144,7 +151,8 @@ DMARC_SUBJECT = re.compile(r"^(report domain:|dmarc|\[?dmarc|aggregate report)",
 def own_addresses() -> set[str]:
     """Eigene Adressen und Domains (Absender, Antwort-Postfach, Inhaber) – deren Mails sind keine Anfragen."""
     out = set()
-    for var in ("MAIL_FROM", "REPLY_TO", "IMAP_USER", "SMTP_USER", "OWNER_EMAIL"):
+    for var in ("MAIL_FROM", "REPLY_TO", "IMAP_USER", "SMTP_USER", "OWNER_EMAIL",
+                *(f"SMTP_USER_{n}" for n in range(2, 11)), *(f"SMTP_FROM_{n}" for n in range(2, 11))):
         addr = parseaddr(os.environ.get(var) or "")[1].lower()
         if "@" in addr:
             out.add(addr)
@@ -327,7 +335,37 @@ def alert_address() -> str | None:
     return os.environ.get("OWNER_EMAIL")
 
 
-def notify_owner(subject: str, text: str) -> None:
+def site_base() -> str:
+    return (os.environ.get("SITE_URL") or "https://www.nextgen-profit.de").rstrip("/")
+
+
+def reply_link(reply_id: str | None) -> str:
+    """Deep-Link ins Antworten-Cockpit (ohne Zeile: die Liste)."""
+    return f"{site_base()}/dashboard/antworten" + (f"/{reply_id}" if reply_id else "")
+
+
+def push(title: str, body: str, url: str, kind: str) -> bool:
+    """Sofort-Alarm aufs Handy (scripts/lib/push.py, Web Push über die App). Wirft nie; fehlt das Modul: False."""
+    try:
+        from lib.push import notify
+    except Exception:  # noqa: BLE001 - Push ist optional
+        return False
+    try:
+        return bool(notify(title, body, url, kind))
+    except Exception as exc:  # noqa: BLE001
+        print(f"  Hinweis: Push fehlgeschlagen ({exc.__class__.__name__})")
+        return False
+
+
+def notify_owner(subject: str, text: str, reply_id: str | None = None, kind: str | None = None,
+                 push_title: str | None = None, push_body: str | None = None) -> None:
+    """Mail an den Inhaber. Mit kind (buy/question/unclear/…) zusätzlich Push aufs Handy; beides mit Deep-Link ins
+    Antworten-Cockpit, wenn kind oder reply_id gesetzt ist. Der Push geht vor der Mail raus und wirft nie."""
+    if kind or reply_id:
+        link = reply_link(reply_id)
+        text = f"{text}\n\nIm Cockpit ansehen und antworten: {link}"
+        if kind:
+            push(push_title or subject.replace("[Leads] ", "")[:80], (push_body or "")[:160], link, kind)
     owner = alert_address()
     if not owner:
         print("  WARNUNG: OWNER_EMAIL fehlt – Meldung nur im Protokoll")
@@ -475,8 +513,36 @@ def regional_sample(db, seg: str, country: str, region: str | None,
         picked_out.extend(picked)
     data = to_csv(picked, _lang(country), area)
     name = re.sub(r"[^A-Za-z0-9]+", "-", area or country).strip("-")
+    ensure_chromium()
     from lib.leadreport import attachments
     return attachments(data, _lang(country), area, name="sample-leads", sample=True, **sample_extras(db, seg, country)), True
+
+
+_CHROMIUM_CHECKED = False
+
+
+def ensure_chromium() -> None:
+    """Chromium fürs Proben-PDF erst installieren, wenn wirklich eine Probe gebaut wird (antworten.yml läuft alle
+    10 Minuten; die Installation dauert rund eine Minute). Nur mit PLAYWRIGHT_LAZY_INSTALL=1, einmal je Lauf.
+    Scheitert sie, geht die Probe wie bisher ohne PDF (nur CSV) raus."""
+    global _CHROMIUM_CHECKED
+    if _CHROMIUM_CHECKED or os.environ.get("PLAYWRIGHT_LAZY_INSTALL") != "1" or os.environ.get("CHROMIUM_PATH"):
+        return
+    _CHROMIUM_CHECKED = True
+    try:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as pw:
+            if Path(pw.chromium.executable_path).exists():
+                return
+    except Exception:  # noqa: BLE001 - dann installieren
+        pass
+    import subprocess
+    print("Chromium fürs Proben-PDF wird installiert …")
+    try:
+        subprocess.run([sys.executable, "-m", "playwright", "install", "--with-deps", "chromium"],
+                       check=False, timeout=600)
+    except Exception as exc:  # noqa: BLE001
+        print(f"  Hinweis: Chromium-Installation fehlgeschlagen ({exc.__class__.__name__}) – Probe ohne PDF")
 
 
 def mark_sampled(db, picked: list[dict]) -> None:
@@ -484,6 +550,17 @@ def mark_sampled(db, picked: list[dict]) -> None:
     for l in picked:
         if l.get("id"):
             db.update("leads", {"id": l["id"]}, {"status": "sample"})
+
+
+def release_sampled(db, picked: list[dict]) -> None:
+    """Probe kam nicht beim Absender an: die eben vergebenen Leads wieder freigeben (nur die noch auf sample stehen;
+    gewählt werden ausschließlich Leads mit status new). Fehler hier halten nichts auf – dann bleiben sie vergeben."""
+    for l in picked:
+        if l.get("id"):
+            try:
+                db.update("leads", {"id": l["id"], "status": "sample"}, {"status": "new"})
+            except Exception as exc:  # noqa: BLE001
+                print(f"  WARNUNG: Lead {l['id']} nicht freigegeben ({exc.__class__.__name__})")
 
 
 def sample_extras(db, seg: str, country: str) -> dict:
@@ -512,6 +589,7 @@ def _country_sample(db, seg: str, country: str, rows: list[dict], known,
     enrich(db, picked, known)
     if mark:
         mark_sampled(db, picked)
+    ensure_chromium()
     from lib.leadreport import attachments
     return attachments(to_csv(picked, _lang(country)), _lang(country), None, name="sample-leads", sample=True,
                        **sample_extras(db, seg, country)), False
@@ -523,6 +601,7 @@ def sample_files(seg: str, country: str) -> list[tuple[str, bytes]]:
     for name in ("leads.csv",):
         p = d / name
         if p.exists():
+            ensure_chromium()
             from lib.leadreport import attachments
             files += attachments(p.read_bytes(), "fr" if country == "FR" else "en", name=f"sample-{seg}-{country}", sample=True)
     return files
@@ -644,6 +723,132 @@ def hold_text(lang: str) -> str:
             f"Best regards,\n{signature(lang)}")
 
 
+def faq_text(lang: str, keys: list[str]) -> str:
+    """Antwort nur aus den festen FAQ-Bausteinen plus Frage nach der kostenlosen Probe."""
+    table = FAQ[lang if lang in FAQ else "en"]
+    answers = "\n\n".join(table[k] for k in keys if k in table)
+    if lang == "fr":
+        return (f"Bonjour,\n\nMerci pour votre "
+                f"question.\n\n{answers}\n\nSouhaitez-vous recevoir l'échantillon gratuit de 10 pistes "
+                f"actuelles ? Il suffit de répondre « oui ».\n\nBien cordialement,\n{signature(lang)}")
+    return (f"Hello,\n\nThank you for your question."
+            f"\n\n{answers}\n\nWould you like me to send you the free sample of 10 current leads? "
+            f"A simple \"yes\" is enough.\n\nBest regards,\n{signature(lang)}")
+
+
+def booking_text(lang: str, url: str) -> str:
+    """Antwort bei Kaufinteresse: Link zur Buchungsseite (dort Pakete). Selbst keine Preise, keine Zusagen."""
+    if lang == "fr":
+        return ("Bonjour,\n\nMerci pour votre message. Vous trouverez les formules et pourrez démarrer ici :\n"
+                f"{url}\n\nUne question ? Répondez simplement à cet e-mail.\n\nBien cordialement,\n{signature(lang)}")
+    return ("Hello,\n\nThank you for your message. You can see the plans and get started here:\n"
+            f"{url}\n\nAny questions? Just reply to this email.\n\nBest regards,\n{signature(lang)}")
+
+
+def owner_draft(c: dict, lang: str, p: dict | None) -> tuple[str, str]:
+    """(Entwurf, Art) für das Antworten-Cockpit – nur aus festen Textbausteinen (Eingangsbestätigung, FAQ,
+    Buchungslink). Nie Preise, Garantien oder Zusagen; der Inhaber kann ihn vor dem Senden ändern."""
+    if c.get("intent") == "buy" and p:
+        url = booking_url(p.get("segment_id"), p.get("country"))
+        if url:
+            return booking_text(lang, url), "buchungslink"
+    if c.get("intent") == "question":
+        keys = [k for k in c.get("faq") or [] if k in FAQ["en"]]
+        if keys and "none" not in (c.get("faq") or []):
+            return faq_text(lang, keys), "faq"
+    return hold_text(lang), "eingang"
+
+
+def alert_kind(intent: str | None) -> str:
+    """Art des Sofort-Alarms: Kaufinteresse, Frage, sonst unklar."""
+    return {"buy": "buy", "question": "question"}.get(intent or "", "unclear")
+
+
+def guess_lang(sender: str) -> str:
+    return "fr" if sender.lower().endswith(".fr") else "en"
+
+
+def received_iso(msg) -> str | None:
+    from inbox import received_at
+    return received_at(msg)
+
+
+def record_reply(db, mid: str, msg, sender: str, text: str, p: dict | None, m: dict | None, c: dict,
+                 action: str, draft: tuple[str, str] | None = None, status: str | None = None) -> dict | None:
+    """Eine Zeile je menschlicher Mail in inbound_replies (Antworten-Cockpit). Gibt es sie schon (nächster Lauf),
+    werden nur Einordnung und Aktion aktualisiert – Status, Entwurf und Aktionen des Inhabers bleiben.
+    Fehler hier halten die Bearbeitung nicht auf (Rückgabe None)."""
+    try:
+        old = db.select("inbound_replies", {"imap_message_id": f"eq.{mid}", "select": "id,alert_sent_at,status,owner_action"})
+        fields = {"intent": c.get("intent"), "summary_de": (c.get("summary_de") or "")[:500], "auto_action": action}
+        if old:
+            db.update("inbound_replies", {"id": old[0]["id"]}, fields)
+            return old[0]
+        row = {"imap_message_id": mid, "received_at": received_iso(msg), "message_id": (m or {}).get("id"),
+               "prospect_id": (p or {}).get("id"), "from_email": sender, "subject": (msg.get("Subject") or "")[:500],
+               "body_text": (text or "")[:8000], **fields}
+        if draft:
+            row["draft_text"], row["draft_kind"] = draft
+        if status:
+            row["status"] = status
+        out = db.insert("inbound_replies", row, upsert_on="imap_message_id", ignore_duplicates=True)
+        if out:
+            return out[0]
+        again = db.select("inbound_replies", {"imap_message_id": f"eq.{mid}", "select": "id,alert_sent_at,status,owner_action"})
+        return again[0] if again else None
+    except Exception as exc:  # noqa: BLE001
+        print(f"  WARNUNG: Antwort nicht im Cockpit gespeichert ({exc.__class__.__name__}: {str(exc)[:200]})")
+        return None
+
+
+def cached_class(db, mid: str) -> dict | None:
+    """Einordnung aus dem Cockpit wiederverwenden, statt dieselbe Mail alle 10 Minuten neu von Claude einordnen zu
+    lassen (kostet je Aufruf; z. B. während der Pause oder wenn die Meldung an den Inhaber scheitert). None, wenn es
+    noch keine Zeile mit Einordnung gibt oder sie nicht lesbar ist."""
+    try:
+        rows = db.select("inbound_replies", {"imap_message_id": f"eq.{mid}", "select": "intent,summary_de"})
+    except Exception:  # noqa: BLE001 - dann neu einordnen
+        return None
+    if not rows or not rows[0].get("intent"):
+        return None
+    return {"intent": rows[0]["intent"], "faq": ["none"], "needs_owner": rows[0]["intent"] in ("buy", "question", "other"),
+            "summary_de": rows[0].get("summary_de") or "", "by": "cockpit"}
+
+
+def mark_alerted(db, row: dict | None) -> None:
+    if not row or not row.get("id"):
+        return
+    try:
+        db.update("inbound_replies", {"id": row["id"]},
+                  {"alert_sent_at": dt.datetime.now(dt.timezone.utc).isoformat()})
+    except Exception as exc:  # noqa: BLE001
+        print(f"  WARNUNG: alert_sent_at nicht gesetzt ({exc.__class__.__name__})")
+
+
+def alert_once(db, row: dict | None, subject: str, text: str, **kw) -> None:
+    """Inhaber benachrichtigen (Mail + Push), aber je Antwort nur einmal: Steht alert_sent_at schon (früherer Lauf,
+    dessen Antwort an den Absender scheiterte, oder Push während der Pause), passiert nichts – sonst käme bei einem
+    Resend-Fehler alle 10 Minuten dieselbe Meldung. Ohne Cockpit-Zeile wie bisher immer."""
+    if row and row.get("alert_sent_at"):
+        print("  Inhaber wurde schon benachrichtigt (alert_sent_at) – keine zweite Meldung")
+        return
+    notify_owner(subject, text, **kw)
+    mark_alerted(db, row)
+
+
+def owner_handled(db, mid: str) -> dict | None:
+    """Antwort, die der Inhaber im Cockpit schon bearbeitet hat (Status nicht offen oder eine Aktion gesetzt), sonst
+    None. Dann antwortet der Assistent nicht mehr selbst (z. B. nach dem Wiedereinschalten aus der Pause)."""
+    try:
+        rows = db.select("inbound_replies", {"imap_message_id": f"eq.{mid}", "select": "id,status,owner_action"})
+    except Exception as exc:  # noqa: BLE001 - Cockpit optional, Bearbeitung geht weiter
+        print(f"  WARNUNG: Cockpit-Zeile nicht lesbar ({exc.__class__.__name__})")
+        return None
+    if rows and ((rows[0].get("status") or "offen") != "offen" or rows[0].get("owner_action")):
+        return rows[0]
+    return None
+
+
 def skipped(sender: str, subject: str, why: str) -> str:
     """Übersprungene Mail im Protokoll sichtbar machen (Absender, Betreff, Grund)."""
     print(f"{sender:<35} übersprungen: {why} ({subject[:60]})")
@@ -670,6 +875,9 @@ def handle_unknown(db, msg, mid: str, sender: str, text: str, apply: bool, own: 
                 suppress(db, sender, "reply_optout", "responder-subject")
                 db.insert("email_events", {"message_id": None, "type": "unsubscribed", "dedupe_key": key,
                                            "note": f"Abmeldung per Betreff von {sender}: {subject[:150]}"})
+                record_reply(db, mid, msg, sender, text, None, None,
+                             {"intent": "unsubscribe", "summary_de": "Abmeldung (Betreff, unbekannter Absender)"},
+                             "suppress", status="erledigt")
             except Exception as exc:  # noqa: BLE001 - nächster Lauf versucht es erneut
                 print(f"  FEHLER Sperre {sender}: {exc}")
                 return "error"
@@ -681,9 +889,17 @@ def handle_unknown(db, msg, mid: str, sender: str, text: str, apply: bool, own: 
     print(f"{sender:<35} unbekannter Absender -> owner ({subject[:60]})")
     if apply:
         try:
-            notify_owner(f"[Leads] Mail von unbekanntem Absender: {subject[:80] or sender}",
-                         f"Im Antwort-Postfach liegt eine Mail von {sender}, der nicht zu einem angeschriebenen Käufer "
-                         f"gehört. Ich habe nicht geantwortet.\n\nBetreff: {subject}\n\n{text[:3000]}")
+            # Einordnung nur fürs Cockpit (Sortierung, Kurzfassung) – keine automatische Aktion. Scheiterte ein
+            # früherer Lauf, die gespeicherte Einordnung nehmen und nicht erneut melden (alert_once)
+            c = cached_class(db, mid) or classify(text, subject)
+            row = record_reply(db, mid, msg, sender, text, None, None, c, "unknown",
+                               draft=owner_draft(c, guess_lang(sender), None))
+            kind = alert_kind(c.get("intent"))
+            alert_once(db, row, f"[Leads] Mail von unbekanntem Absender: {subject[:80] or sender}",
+                       f"Im Antwort-Postfach liegt eine Mail von {sender}, der nicht zu einem angeschriebenen Käufer "
+                       f"gehört. Ich habe nicht geantwortet.\n\nBetreff: {subject}\n\n{text[:3000]}",
+                       reply_id=(row or {}).get("id"), kind=kind,
+                       push_title=f"Neue Mail: {sender}"[:80], push_body=c.get("summary_de") or subject)
             db.insert("email_events", {"message_id": None, "type": "reply", "dedupe_key": key,
                                        "note": f"Unbekannter Absender {sender}: {subject[:150]}",
                                        "payload": {"unknown_sender": sender}})
@@ -704,6 +920,34 @@ def auto_replies_paused(db) -> bool:
     return _PAUSED[id(db)]
 
 
+PROSPECT_COLS = "id,company_name,segment_id,country,region"
+MESSAGE_COLS = "id,subject,language,experiment_id,prospect_id"
+
+
+def match_sent(db, msg, sender: str) -> tuple[dict | None, dict | None, str]:
+    """(Käufer, unsere gesendete Mail, wie gefunden). Zuerst über In-Reply-To/References → messages.smtp_message_id
+    (trifft auch Antworten von einer anderen Adresse oder Domain), sonst wie bisher über die Absender-Domain."""
+    from inbox import referenced_ids
+    for ref in referenced_ids(msg):  # In-Reply-To (direkte Vorgängermail) zuerst, dann References
+        rows = db.select("messages", {"smtp_message_id": f"eq.{ref}", "select": MESSAGE_COLS, "limit": "1"})
+        if rows and rows[0].get("prospect_id"):
+            pros = db.select("prospects", {"id": f"eq.{rows[0]['prospect_id']}", "select": PROSPECT_COLS})
+            if pros:
+                return pros[0], rows[0], "verlauf"
+    dom = sender.split("@")[-1]
+    pros = db.select("prospects", {"domain": f"eq.{normalize_domain(dom)}", "select": PROSPECT_COLS})
+    if pros:
+        sent = db.select("messages", {"prospect_id": f"eq.{pros[0]['id']}", "status": "eq.sent",
+                                      "order": "sent_at.desc", "limit": "1", "select": MESSAGE_COLS})
+        if sent:
+            return pros[0], sent[0], "domain"
+    return None, None, ""
+
+
+def alert_title(intent: str | None) -> str:
+    return {"buy": "Kaufinteresse", "question": "Frage", "sample": "Probe"}.get(intent or "", "Antwort")
+
+
 def handle_message(db, msg: EmailMessage, mid: str, apply: bool, own: set[str] | None = None) -> str:
     """Eine Mail aus dem Postfach einordnen und (mit apply) handeln. Rückgabe: Aktion bzw. done/ignore/error.
 
@@ -717,18 +961,11 @@ def handle_message(db, msg: EmailMessage, mid: str, apply: bool, own: set[str] |
     sender = parseaddr(msg.get("From") or "")[1].lower()
     if "@" not in sender:
         return "ignore"
-    dom = sender.split("@")[-1]
     text = _text(msg)
-    # Nur Antworten von Firmen, die wir angeschrieben haben
-    pros = db.select("prospects", {"domain": f"eq.{normalize_domain(dom)}", "select": "id,company_name,segment_id,country,region"})
-    sent = []
-    if pros:
-        p = pros[0]
-        sent = db.select("messages", {"prospect_id": f"eq.{p['id']}", "status": "eq.sent", "order": "sent_at.desc",
-                                      "limit": "1", "select": "id,subject,language,experiment_id"})
-    if not sent:
+    # Nur Antworten von Firmen, die wir angeschrieben haben: zuerst über den Mail-Verlauf, dann über die Domain
+    p, m, how = match_sent(db, msg, sender)
+    if not m:
         return handle_unknown(db, msg, mid, sender, text, apply, own)
-    m = sent[0]
     lang = m.get("language") or "en"
     if subject_optout(msg.get("Subject")):
         c = {"intent": "unsubscribe", "faq": ["none"], "needs_owner": False,
@@ -737,7 +974,9 @@ def handle_message(db, msg: EmailMessage, mid: str, apply: bool, own: set[str] |
         c = {"intent": "out_of_office", "faq": ["none"], "needs_owner": False,
              "summary_de": "Automatische Antwort (Kopfzeilen)", "by": "headers"}
     else:
-        c = classify(text, msg.get("Subject") or "")
+        # Pause: die Mail bleibt offen und kommt alle 10 min wieder – dann die gespeicherte Einordnung nehmen
+        cached = cached_class(db, mid) if apply and auto_replies_paused(db) else None
+        c = cached or classify(text, msg.get("Subject") or "")
     action = decide(c)
     # Probe schon verschickt? Dann ist ein weiteres "Ja" Kaufinteresse (wöchentliche Lieferung), keine zweite Probe.
     if action in ("sample", "sample_owner"):
@@ -747,20 +986,49 @@ def handle_message(db, msg: EmailMessage, mid: str, apply: bool, own: set[str] |
             action = "owner"
             c["intent"] = "buy"
             c["summary_de"] = "Will nach der Probe weitermachen (wöchentliche Lieferung): " + c.get("summary_de", "")
-    print(f"{p['company_name']:<35} {c['intent']:<14} -> {action:<12} ({c['by']}) {c['summary_de']}")
+    print(f"{p['company_name']:<35} {c['intent']:<14} -> {action:<12} ({c['by']}, {how}) {c['summary_de']}")
+    human = c["intent"] != "out_of_office"
+    owner_case = action in ("owner", "sample_owner")
+    draft = owner_draft(c, lang, p) if owner_case else None
     if action != "suppress" and auto_replies_paused(db):
         # Schalter im Dashboard (Inhaber 03.10.2026): automatische Antworten pausiert. Abmeldungen werden IMMER
         # gesperrt (oben: action "suppress"); diese Mail bleibt offen und wird nach dem Einschalten bearbeitet.
+        # Im Cockpit steht sie trotzdem sofort (mit Entwurf), Kaufinteresse/Fragen lösen einmal den Push aus.
         print("  Antwort-Assistent pausiert durch Inhaber – keine automatische Antwort, Mail bleibt offen")
+        if apply and human:
+            row = record_reply(db, mid, msg, sender, text, p, m, c, "paused",
+                               draft=draft or owner_draft(c, lang, p))
+            if row and not row.get("alert_sent_at") and c["intent"] != "unsubscribe":
+                if push(f"{alert_title(c['intent'])}: {p['company_name']}"[:80], c.get("summary_de") or "",
+                        reply_link(row.get("id")), alert_kind(c["intent"])):
+                    mark_alerted(db, row)
         return "paused"
     if not apply:
         return action
+    done_by_owner = owner_handled(db, mid) if action != "suppress" else None
+    if done_by_owner:
+        # Inhaber hat im Cockpit schon geantwortet / eine Probe geschickt / erledigt: nichts mehr automatisch senden
+        print(f"  vom Inhaber im Cockpit bearbeitet ({done_by_owner.get('owner_action') or done_by_owner.get('status')})"
+              " – keine automatische Antwort")
+        db.insert("email_events", {"message_id": m["id"], "type": "reply", "dedupe_key": dedupe,
+                                   "note": f"vom Inhaber im Cockpit erledigt | {c['summary_de'][:150]}",
+                                   "payload": {"intent": c["intent"], "by": c["by"],
+                                               "owner_action": done_by_owner.get("owner_action")}})
+        return "done"
+    row = record_reply(db, mid, msg, sender, text, p, m, c, action, draft=draft,
+                       status="erledigt" if action == "suppress" else None) if human else None
+    rid = (row or {}).get("id")
 
     event_type = {"buy": "reply_positive", "sample": "sample_requested", "not_interested": "reply_negative",
                   "unsubscribe": "reply_negative", "out_of_office": "auto_reply"}.get(c["intent"], "reply")
     files = body = blocks = None
+    picked: list[dict] = []
     if action in ("sample", "sample_owner"):
-        files, _ = regional_sample(db, p["segment_id"], p["country"], p.get("region"))
+        # Leads sofort vergeben (exklusiv: der Proben-Vorrat darf sie nicht gleichzeitig nehmen) und nur wieder
+        # freigeben, wenn die Probe nicht beim Absender ankommt (sonst verbrennt jeder Fehlversuch 10 Leads)
+        files, _ = regional_sample(db, p["segment_id"], p["country"], p.get("region"), mark=False, picked_out=picked)
+        if files:
+            mark_sampled(db, picked)
         body, blocks = sample_mail(lang, None, files, True, p["segment_id"], p["country"])  # ganzes Land
         if not body and event_type == "sample_requested":
             # Probe nicht lieferbar: nicht als "Probe gesendet" zählen, sonst fragt followups.py nach einer
@@ -781,36 +1049,33 @@ def handle_message(db, msg: EmailMessage, mid: str, apply: bool, own: set[str] |
         elif action in ("sample", "sample_owner"):
             if body:
                 reply(sender, subject, body, mid, lang, files, blocks, requested=True)
+                state["sample_sent"] = True
                 if event_type != "sample_requested":
                     db.insert("email_events", {"message_id": m["id"], "type": "sample_requested",
                                                "note": "Probe automatisch gesendet"})
             else:
                 reply(sender, subject, sample_delay_text(lang), mid, lang)
             if action == "sample_owner" or not body:
-                notify_owner(f"[Leads] Bitte ansehen: {p['company_name']}",
-                             f"{p['company_name']} ({p['segment_id']}/{p['country']}) hat geantwortet.\n\n"
-                             f"Einordnung: {c['summary_de']}\nProbe gesendet: {'ja' if body else 'nein (keine Datei)'}\n\n"
-                             f"Antwort von {sender}:\n\n{text[:3000]}")
+                alert_once(db, row, f"[Leads] Bitte ansehen: {p['company_name']}",
+                           f"{p['company_name']} ({p['segment_id']}/{p['country']}) hat geantwortet.\n\n"
+                           f"Einordnung: {c['summary_de']}\nProbe gesendet: {'ja' if body else 'nein (keine Datei)'}\n\n"
+                           f"Antwort von {sender}:\n\n{text[:3000]}",
+                           reply_id=rid, kind=alert_kind(c["intent"]) if action == "sample_owner" else "sample",
+                           push_title=f"Bitte ansehen: {p['company_name']}"[:80], push_body=c.get("summary_de"))
         elif action == "faq":
             keys = [k for k in c["faq"] if k in FAQ[lang if lang in FAQ else 'en']]
-            answers = "\n\n".join(FAQ[lang if lang in FAQ else "en"][k] for k in keys)
-            if lang == "fr":
-                faq_body = (f"Bonjour,\n\nMerci pour votre "
-                            f"question.\n\n{answers}\n\nSouhaitez-vous recevoir l'échantillon gratuit de 10 pistes "
-                            f"actuelles ? Il suffit de répondre « oui ».\n\nBien cordialement,\n{signature(lang)}")
-            else:
-                faq_body = (f"Hello,\n\nThank you for your question."
-                            f"\n\n{answers}\n\nWould you like me to send you the free sample of 10 current leads? "
-                            f"A simple \"yes\" is enough.\n\nBest regards,\n{signature(lang)}")
-            reply(sender, subject, faq_body, mid, lang)
+            reply(sender, subject, faq_text(lang, keys), mid, lang)
         elif action == "owner":
-            notify_owner(f"[Leads] Interessent: {p['company_name']} – {c['summary_de'][:80]}",
-                         f"{p['company_name']} ({p['segment_id']}/{p['country']}, {p.get('region') or ''}) "
-                         f"hat geantwortet.\n\nEinordnung: {c['intent']} – {c['summary_de']}\n\n"
-                         f"Antwort von {sender}:\n\n{text[:3000]}\n\n"
-                         f"Bitte selbst antworten (Antworten in deinem Postfach)."
-                         + (" Ich habe nur eine kurze Eingangsbestätigung geschickt." if c["intent"] in ("buy", "question")
-                            else " Ich habe nicht geantwortet."))
+            alert_once(db, row, f"[Leads] Interessent: {p['company_name']} – {c['summary_de'][:80]}",
+                       f"{p['company_name']} ({p['segment_id']}/{p['country']}, {p.get('region') or ''}) "
+                       f"hat geantwortet.\n\nEinordnung: {c['intent']} – {c['summary_de']}\n\n"
+                       f"Antwort von {sender}:\n\n{text[:3000]}\n\n"
+                       f"Bitte selbst antworten (im Cockpit liegt ein Entwurf bereit)."
+                       + (" Ich habe nur eine kurze Eingangsbestätigung geschickt." if c["intent"] in ("buy", "question")
+                          else " Ich habe nicht geantwortet."),
+                       reply_id=rid, kind=alert_kind(c["intent"]),
+                       push_title=f"{alert_title(c['intent'])}: {p['company_name']}"[:80],
+                       push_body=c.get("summary_de"))
             if c["intent"] not in ("buy", "question"):
                 return  # unklar: nur den Inhaber informieren, keine Zusage an den Absender
             hold = hold_text(lang)
@@ -821,6 +1086,8 @@ def handle_message(db, msg: EmailMessage, mid: str, apply: bool, own: set[str] |
         perform()
     except Exception as exc:  # noqa: BLE001 - nicht abbrechen, nächste Mail bearbeiten
         print(f"  FEHLER bei {p['company_name']} ({action}): {exc.__class__.__name__}: {str(exc)[:300]}")
+        if not state.get("sample_sent"):
+            release_sampled(db, picked)  # Probe nicht angekommen: Leads wieder frei (leer, wenn keine gebaut)
         if not state["replied"]:
             return "error"  # nichts beim Absender angekommen: kein Ereignis, nächster Lauf versucht es erneut
         note += f" | Fehler nach der Antwort: {exc.__class__.__name__}"
@@ -839,27 +1106,26 @@ def main(argv=None) -> int:
     if args.apply:  # Schalter einmal je Lauf lesen und fürs Dashboard quittieren (settings_ack), auch ohne neue Mails
         auto_replies_paused(db)
 
-    imap = imaplib.IMAP4_SSL(os.environ["IMAP_HOST"])
-    imap.login(os.environ["IMAP_USER"], os.environ["IMAP_PASSWORD"])
-    imap.select("INBOX", readonly=True)
+    # Alle Postfächer (Nachtschicht 04.10.2026): Hauptpostfach + Versand-Postfächer 2 …, je Posteingang und Spam/Junk
+    # (dort nur Antworten auf unsere Mails), siehe lib/imap_boxes.py
+    from lib.imap_boxes import fallback_id, read_all
     since = (dt.date.today() - dt.timedelta(days=args.days)).strftime("%d-%b-%Y")
-    _, data = imap.search(None, "SINCE", since)
     handled = {"owner": 0, "sample": 0, "faq": 0, "suppress": 0, "ignore": 0, "error": 0, "paused": 0}
     own = own_addresses()
-    for num in data[0].split():
-        _, fetched = imap.fetch(num, "(BODY.PEEK[])")
-        msg: EmailMessage = email.message_from_bytes(fetched[0][1], policy=policy.default)
-        mid = (msg.get("Message-ID") or f"imap-{num.decode()}").strip()
+
+    def handle(acct: dict, folder: str, num: str, msg: EmailMessage) -> None:
+        mid = (msg.get("Message-ID") or fallback_id(acct, folder, num)).strip()
         try:
             action = handle_message(db, msg, mid, args.apply, own)
         except Exception as exc:  # noqa: BLE001 - eine kaputte Mail darf den Lauf nicht beenden
             print(f"FEHLER {mid}: {exc.__class__.__name__}: {str(exc)[:300]}")
             action = "error"
         if action in ("done",):
-            continue
+            return
         key = "sample" if action == "sample_owner" else action
         handled[key if key in handled else "owner"] += 1
-    imap.logout()
+
+    read_all(since, handle)
     print(f"\n{handled}" + ("" if args.apply else "\nProbelauf – mit --apply handeln."))
     return 0
 
