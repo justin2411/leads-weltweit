@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Inter } from "next/font/google";
 import { BRAND_CSS } from "@/lib/brand-css";
-import { CONTACT, LEGAL_NAME } from "@/lib/site";
+import { CONTACT } from "@/lib/site";
 import { LEGAL_LABELS, LEGAL_PATHS } from "@/content/legal-i18n";
 import { Motion } from "./motion";
 
@@ -71,10 +71,11 @@ export function SiteFooter({ lang = "en" }: { lang?: string }) {
     <footer><div className="wrap">
       <div>
         <Mark />
-        <address>Hauptstraße 14a · 06333 Hettstedt · Germany<br /><a href={`mailto:${CONTACT}`}>{CONTACT}</a></address>
+        {/* Inhaber 03.10.2026: im Fuß das Büro Leipzig; Rechnungs-/Impressumsanschrift bleibt Hettstedt (Impressum) */}
+        <address>Nikolaistraße 3-7 · 04109 Leipzig · Germany<br /><a href={`mailto:${CONTACT}`}>{CONTACT}</a></address>
       </div>
       <nav aria-label="Legal"><a href={paths.impressum}>{labels[0]}</a><a href={paths.datenschutz}>{labels[1]}</a><a href={paths.agb}>{labels[2]}</a></nav>
-      <div style={{ width: "100%", marginTop: 8 }}>© {new Date().getFullYear()} {LEGAL_NAME}</div>
+      <div style={{ width: "100%", marginTop: 8 }}>© {new Date().getFullYear()} NextGen Profit</div>
     </div></footer>
   );
 }

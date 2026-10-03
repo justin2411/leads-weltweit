@@ -23,7 +23,7 @@ import S2_FR from "@/content/maps/s2-fr.json";
 // Kartenumriss als statische Datei (scripts/map_svg.py), im HTML nur die Pins
 const mapOf = (m: unknown, src: string): MapData => ({ ...(m as MapData), land: "", borders: "", neighbors: "", src });
 const MAPS: Record<string, MapData> = {
-  "S2:US": mapOf(S2_US, "/maps/s2-us.svg"), "S2:UK": mapOf(S2_UK, "/maps/s2-uk.svg"), "S2:FR": mapOf(S2_FR, "/maps/s2-fr.svg"),
+  "S2:US": mapOf(S2_US, "/maps/s2-us.svg"), "S2:UK": { ...mapOf(S2_UK, "/maps/s2-uk.svg"), crop: "232 125 711 445" }, "S2:FR": mapOf(S2_FR, "/maps/s2-fr.svg"),
 };
 import { countryWords, localize, segKey } from "@/lib/country";
 import HINTS from "@/content/industry-hints.json";
@@ -453,7 +453,7 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
             <div className="rcard" key={h} data-rv style={i(k)}><span className="gi"><Icon name={ic} /></span><h3>{h}</h3><p>{d}</p></div>))}</div>
           <div className="kick"><span className="cap" style={{ color: "var(--gink)" }}>{T2.howTitle}</span></div>
           <div className="steps">{T2.steps.map(([ic, h, d], k) => (
-            <div className="step" key={h} data-rv style={i(k)}><div className="no"><b>{String(k + 1).padStart(2, "0")}</b><span className="ring"><Icon name={ic} /></span></div><h3>{h}</h3><p>{d}</p></div>))}</div>
+            <div className="step" key={h} data-rv style={i(k)}><div className="no"><b>{String(k + 1).padStart(2, "0")}</b><span className="ring"><Icon name={ic} /></span></div><h3>{h}</h3>{d && <p>{d}</p>}</div>))}</div>
         </div></section>
 
         {canBuy && (
