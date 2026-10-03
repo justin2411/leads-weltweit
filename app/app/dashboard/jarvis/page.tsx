@@ -93,7 +93,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     return x.live ? "live" : x.cls === "t-red" ? "bad" : "idle";
   };
   const stations: Station[] = ([
-    { id: "lead", label: "Lead-Werk", icon: "⛏", value: compact(leads24), sub: `${busy}/${REG.total_slots} Plätze`, state: state("lead-werk", "lead-werk", 4), tip: "neue Leads in 24 h · belegte Plätze" },
+    { id: "lead", label: "Lead-Werk", icon: "⛏", value: compact(leads24), sub: `${busy} läuft · ${Object.values(plan).reduce((a, b) => a + b, 0)} geplant`, state: state("lead-werk", "lead-werk", 4), tip: "neue Leads in 24 h · belegte Plätze" },
     { id: "gate", label: "Freigabe", icon: "⛨", value: gatePct === null ? "–" : `${gatePct}`, unit: gatePct === null ? "" : "%", sub: `${compact(gateOk)} frei/h`, state: act.last_gate_at && t - Date.parse(act.last_gate_at) < 15 * 60_000 ? "live" : "idle", tip: "Stichprobe bestanden · letzte Stunde freigegeben" },
     { id: "bestand", label: "Bestand", icon: "▤", value: compact(Object.values(leadsNew).reduce((a, b) => a + b, 0)), sub: "Leads", state: "idle", tip: "lieferbare Leads US/UK/FR" },
     { id: "proben", label: "Proben", icon: "✉", value: `${ready}/${target}`, sub: "bereit", state: state("proben-vorrat", "proben-vorrat", 26), tip: "fertige, geprüfte Proben / Soll" },
@@ -186,7 +186,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
       <div className="row-sw"><WerkSwitch werk="lead-werk" on={sw("lead-werk").on} back={back} label="Lead-Werk" />{Start({ wf: "lead-werk" })}</div>
       <Pult lanes={pultLanes} only={REG.lanes.filter((l) => l.werk === "lead-werk").map((l) => l.id)} cap={REG.total_slots - REG.reserve} total={REG.total_slots} back={back} action={saveSlotPlan} nextStart={nextStart} custom={custom} />
     </>) : tab === "check" ? <>{checkList}{lnk("/dashboard/werke", "alle Prüfstufen")}</> : (<>
-      <Reactor bays={bays} running={busy} util={util.rate} center={`${busy}/${REG.total_slots}`} sub={`Auslastung ${Math.round(util.rate * 100)} %`} />
+      <Reactor bays={bays} running={busy} util={util.rate} center={`${busy}`} sub={`von ${REG.total_slots} Plätzen arbeiten gerade · ${Object.values(plan).reduce((a, b) => a + b, 0)} geplant`} />
       <MiniBars rows={REG.lanes.filter((l) => l.werk === "lead-werk" && (plan[l.id] || stats[l.id].runs)).map((l) => ({ key: l.id, label: l.short, n: stats[l.id].green, color: LANE_COLOR[l.id], href: `${base("lead")}&t=set`, tip: `${l.label}: ${plan[l.id]} Plätze · grün in 24 h` }))} />
       <UtilChart buckets={util.buckets} total={REG.total_slots} cap={REG.total_slots - REG.reserve} />
       <Bays bays={bays} labels={Object.fromEntries(REG.lanes.flatMap((l) => [[l.id, l.label], [`short:${l.id}`, l.short]]))} />
