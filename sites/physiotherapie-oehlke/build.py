@@ -565,7 +565,7 @@ def home() -> str:
   </g></svg>
   <div class="container hero__grid">
     <div>
-      <p class="hero__badge fade-up" style="--d:.05s"><i></i>Hausbesuche · Hockenheim · Schwetzingen · Heidelberg</p>
+      <p class="hero__badge fade-up" style="--d:.05s"><i></i><span>Hausbesuche · Hockenheim · Schwetzingen <br>· Heidelberg &amp; Umgebung</span></p>
       <h1>{words("Physiotherapie, die zu *Ihnen* nach Hause kommt.")}</h1>
       <p class="hero__sub fade-up" style="--d:.8s">60 Minuten Zeit pro Termin. Keine Anfahrt, kein Wartezimmer. Für Privatpatienten, Beihilfeberechtigte &amp; Selbstzahler.</p>
       <div class="btns fade-up" style="--d:1s">
