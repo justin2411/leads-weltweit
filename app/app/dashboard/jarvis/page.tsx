@@ -1,9 +1,9 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadBoxHealth, loadDaily, loadFunnel, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock } from "@/lib/dashboard-data";
-import { berlin, berlinDay, brake, chain, compact, currencySign, mailboxes, monthly, nextRun, onlySegment, realSubscriptions, sampleStock, stockSegment, BOX_MIN, COUNTRY_COLOR } from "@/lib/dashboard-logic";
+import { berlin, berlinDay, brake, chain, compact, currencySign, greeting, mailboxes, monthly, nextRun, onlySegment, realSubscriptions, sampleStock, stockSegment, BOX_MIN, COUNTRY_COLOR } from "@/lib/dashboard-logic";
 import { totals } from "@/lib/dashboard-periods";
-import { coach, hall, laneOf, laneStats, neckTask, running, utilization, type Beat } from "@/lib/leitstand";
+import { alarmTips, coach, hall, laneOf, laneStats, neckTask, rankTips, running, utilization, type Beat } from "@/lib/leitstand";
 import { NECK_TO_STATION, ticker, type Edge, type Station, type StationId, type TickerItem } from "@/lib/fluss";
 import { effectiveLimit, slotCounts, werkOn, type LaneRegistry, type WerkKey } from "@/lib/owner-settings";
 import { START_WORKFLOWS, startState, type StartKey, type StartRequest } from "@/lib/start-queue";
@@ -148,17 +148,20 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   // ---------------------------------------------------------------- JARVIS, Ampeln, Ticker
   // Notbremse (wie deliverability.emergency_stop, über alle Zielgruppen): steht sie, ganz oben und rot
   const nb = brake(liveAll, CONFIG);
-  const tips = [
+  // Wichtigstes zuerst (Nachtschicht 04.10.2026): Notbremse, offene Antworten, leerer Proben-Vorrat vor den Werk-Hinweisen
+  const tips = rankTips([
     ...(nb.stop ? [{ level: "rot" as const, title: "Notbremse: Versand gestoppt", text: `${nb.stop}. Neustart nur nach deiner Entscheidung.`, href: "/dashboard/versand" }] : []),
+    ...alarmTips({ openReplies, samplesReady: st.length ? ready : null, samplesTarget: target }),
     ...coach({ reg: REG, plan, stats, util: util.rate, queue, freeBuyers, leads: leadsNew, capPerDay: cap, kundenNew24h: stockAll ? newBuyers24 : null, stockKnown: !!stock, autopilot: autopilotOn,
     failed: beats.filter((b) => /^abgebrochen/.test(b.note ?? "") && t - Date.parse(b.beat_at) < 6 * 3_600_000).map((b) => `${b.werk} ${b.part} · ${berlin(b.beat_at)}`),
     countedHours: firstRun ? Math.min(24, (t - firstRun) / 3_600_000) : 0 }),
-  ];
-  const tipStation = (href?: string): StationId => (href === "#pult" ? "lead" : href?.includes("bestand") ? "kaeufer" : href?.includes("versand") ? "versand" : "lead");
+  ]);
+  const tipStation = (href?: string): StationId => (href === "#pult" ? "lead" : href?.includes("bestand") ? "kaeufer" : href?.includes("versand") ? "versand" : href?.includes("proben") ? "proben" : "lead");
   const base = (id: StationId) => `/dashboard/jarvis?s=${id}`;
+  // Antworten öffnen direkt das Cockpit, alles andere die passende Station
+  const tipHref = (x: { href?: string }) => (x.href === "/dashboard/antworten" ? x.href : `${base(tipStation(x.href))}${x.href === "#pult" || x.href?.includes("proben") ? "&t=set" : ""}`);
   const href = (id: StationId) => (s === id ? "/dashboard/jarvis" : base(id));
-  const h = Number(new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "numeric" }).format(now));
-  const hello = h < 5 ? "Gute Nacht, Justin." : h < 11 ? "Guten Morgen, Justin." : h < 18 ? "Guten Tag, Justin." : "Guten Abend, Justin.";
+  const hello = greeting(now);
   const amps = [
     { label: "Umsatz / Monat", value: revenue, sub: `${subs.length} Kunden`, tone: subs.length ? "green" : "grey", href: base("kunden") },
     openReplies
@@ -338,7 +341,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
       {tips.length > 0 && (
         <div className="jtips2">
           {tips.slice(0, 4).map((x, i) => (
-            <DragTip key={i} task={x.task} title={x.title} href={`${base(tipStation(x.href))}${x.href === "#pult" ? "&t=set" : ""}`} level={x.level} tip={x.text} />
+            <DragTip key={i} task={x.task} title={x.title} href={tipHref(x)} level={x.level} tip={x.text} />
           ))}
         </div>
       )}

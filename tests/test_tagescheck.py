@@ -74,6 +74,19 @@ class TagescheckTest(unittest.TestCase):
                                 "leads@nextgen-profit.de": t.OK})
         self.assertIn("bei 45 Mails", next(r[3] for r in c.rows if r[2].startswith("info@")))
 
+    def test_unsubscribe_scanner_suspects(self):
+        ev = [{"occurred_at": "2026-10-03T15:30:43+00:00", "message_id": "m1",
+               "messages": {"sent_at": "2026-10-03T15:30:29+00:00"}},                   # 14 s -> Verdacht
+              {"occurred_at": "2026-10-03T16:10:02Z", "message_id": "m2",
+               "messages": {"sent_at": "2026-10-03T15:20:10Z"}},                        # 50 min -> Mensch
+              {"occurred_at": "2026-10-03T16:10:02Z", "message_id": None, "messages": None}]  # ohne Mail
+        self.assertEqual(t.scanner_suspects(ev), 1)
+        c = t.Check()
+        t.check_unsubscribes(c, FakeDB({"email_events": [dict(e, type="unsubscribed", created_at=t.NOW.isoformat())
+                                                         for e in ev]}))
+        self.assertEqual(c.rows[0][1:3], (t.OK, "Abmeldungen in 7 Tagen: 3"))   # nur gezählt, nie rot
+        self.assertIn("davon 1 weniger als 60 s", c.rows[0][3])
+
     def test_kpi_line_counts_funnel_of_one_test(self):
         db = FakeDB({
             "experiments": [{"id": "e1", "segment_id": "S4", "country": "US"},

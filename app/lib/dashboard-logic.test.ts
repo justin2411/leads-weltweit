@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  alerts, berlin, brake, countBounces, distinctReplies, extraBoxCap, funnel, mailboxes, mainBoxCap, nextCron, nextRun,
+  alerts, berlin, greeting, brake, countBounces, distinctReplies, extraBoxCap, funnel, mailboxes, mainBoxCap, nextCron, nextRun,
   pipeline, sampleStock, type Live, type OpsConfig, type Stock,
   bottleneckOf, chain, compact, lastDays, nextChip, openActions, sentPerDay, topAlerts,
 } from "./dashboard-logic.ts";
@@ -298,4 +298,12 @@ test("Trichter je Land: zugestellt = gesendet − Bounces ohne Zustell-Ereigniss
     { country: "UK", sent: 40, delivered: 38, replies: 1, positive: 0, samples: 0, customers: 1 },
     { country: "FR", sent: 0, delivered: 0, replies: 0, positive: 0, samples: 0, customers: 0 },
   ]);
+});
+
+test("Begrüßung nach deutscher Uhrzeit (vorher immer „Guten Abend“)", () => {
+  assert.equal(greeting(new Date("2026-10-03T23:46:00Z")), "Gute Nacht, Justin.");   // 01:46 MESZ
+  assert.equal(greeting(new Date("2026-10-04T06:30:00Z")), "Guten Morgen, Justin."); // 08:30
+  assert.equal(greeting(new Date("2026-10-04T12:00:00Z")), "Guten Tag, Justin.");    // 14:00
+  assert.equal(greeting(new Date("2026-10-04T18:00:00Z")), "Guten Abend, Justin.");  // 20:00
+  assert.equal(greeting(new Date("2026-12-04T03:30:00Z")), "Gute Nacht, Justin.");   // 04:30 MEZ
 });

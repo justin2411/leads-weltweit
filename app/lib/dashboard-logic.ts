@@ -72,6 +72,13 @@ export type RunInfo = { file: string; name: string; status: string; conclusion: 
 
 // --------------------------------------------------------------------------------------------- Zeit
 const TZ = "Europe/Berlin";
+
+/** Begrüßung in JARVIS nach deutscher Uhrzeit. Nachtschicht 04.10.2026: vorher ergab „01 Uhr“ (de-DE) NaN und JARVIS
+ *  sagte rund um die Uhr „Guten Abend“. */
+export function greeting(now: Date, name = "Justin"): string {
+  const h = Number(new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "numeric", hourCycle: "h23" }).format(now));
+  return `${h < 5 ? "Gute Nacht" : h < 11 ? "Guten Morgen" : h < 18 ? "Guten Tag" : "Guten Abend"}, ${name}.`;
+}
 const HOUR = 3600_000;
 
 /** „03.10. 18:23“ in deutscher Zeit; mit Jahr, wenn nicht dieses Jahr. */
