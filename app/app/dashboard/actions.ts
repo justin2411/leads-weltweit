@@ -2,13 +2,20 @@
 
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { SESSION_COOKIE, verifySession } from "@/lib/auth";
 import { db, suppressEmail } from "@/lib/supabase";
 
+/** Nur der Inhaber. Ohne gültige Sitzung eine normale 404 (Inhaber 03.10.2026: die Adresse soll nichts verraten). */
 export async function requireOwner() {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
-  if (!verifySession(token, process.env.SESSION_SECRET?.trim())) redirect("/login");
+  if (!verifySession(token, process.env.SESSION_SECRET?.trim())) notFound();
+}
+
+/** Abmelden: Sitzungs-Cookie löschen, zurück zur Anmeldung. */
+export async function logout() {
+  (await cookies()).delete(SESSION_COOKIE);
+  redirect("/login");
 }
 
 /** Inhaber gibt einen Entwurf frei (Status draft -> approved). */

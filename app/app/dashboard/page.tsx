@@ -1,88 +1,177 @@
+import { Suspense } from "react";
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import { db } from "@/lib/supabase";
-import { approveDraft, logReply, rejectDraft, requireOwner } from "./actions";
+import { CONFIG, loadLive, loadRawStock, loadRuns, loadStock } from "@/lib/dashboard-data";
+import { alerts, berlin, funnel, pairs, type Live, type RawStock, type Stock } from "@/lib/dashboard-logic";
+import { approveDraft, logReply, logout, rejectDraft, requireOwner } from "./actions";
+import { AutoRefresh } from "./auto-refresh";
 import { BrainSection } from "./brain-section";
+import { DASH_CSS } from "./dash-css";
+import {
+  Customers, FunnelCard, FunnelTable, Kpis, Lights, PagesTable, People, SampleRequests, SampleStockTable, Sending, StockTables,
+} from "./sections";
 
+// Inhaber-Übersicht (Inhaber 03.10.2026): immer frisch, nie zwischengespeichert, nie indexiert, nirgends verlinkt.
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "Übersicht", robots: { index: false, follow: false, nocache: true } };
 
-const pct = (n: number, d: number) => (d > 0 ? `${((100 * n) / d).toFixed(1)} %` : "–");
+const sans = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--sans", display: "swap" });
+
+const NAV: [string, string][] = [
+  ["ampel", "Engpässe"], ["trichter", "Trichter"], ["prozess", "Wer ist wo"], ["bestand", "Bestand"],
+  ["versand", "Versand"], ["kunden", "Kunden & Umsatz"], ["aktionen", "Freigaben"], ["gehirn", "Gehirn"],
+];
+
+/** Wartet höchstens `ms` – ist der große Bestand nicht im Zwischenspeicher, lädt die Seite trotzdem sofort. */
+function within<T>(p: Promise<T>, ms: number): Promise<T | null> {
+  return Promise.race([p.catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), ms))]);
+}
 
 export default async function Dashboard() {
   await requireOwner();
-  const sb = db();
-  const [segments, stats, drafts, events, suppression] = await Promise.all([
-    sb.from("segments").select("*").order("id"),
-    sb.from("experiment_stats").select("*"),
-    sb
-      .from("messages")
-      .select("id, to_email, subject, body, check_errors, created_at, prospects(company_name, country), experiments(segment_id, variant)")
-      .eq("status", "draft")
-      .order("created_at")
-      .limit(50),
-    sb
-      .from("email_events")
-      .select("id, type, note, occurred_at, messages(to_email)")
-      .in("type", ["reply", "reply_positive", "reply_negative", "sample_requested", "unsubscribed", "complained", "bounced"])
-      .order("occurred_at", { ascending: false })
-      .limit(20),
-    sb.from("suppression").select("id", { count: "exact", head: true }),
-  ]);
-
-  const err = [segments, stats, drafts, events].find((r) => r.error)?.error;
-  if (err) return <main><h1>Fehler</h1><p className="bad">{err.message}</p></main>;
+  const stockP = loadStock();
+  const rawP = loadRawStock();
+  stockP.catch(() => {});
+  rawP.catch(() => {});
+  let live: Live;
+  try {
+    live = await loadLive();
+  } catch (e) {
+    return (
+      <div className={`dash ${sans.variable}`}><style dangerouslySetInnerHTML={{ __html: DASH_CSS }} />
+        <main><h1>Übersicht</h1><p className="bad">Datenbank antwortet nicht: {(e as Error).message}</p><p className="muted">Seite in einer Minute neu laden.</p></main>
+      </div>
+    );
+  }
+  const [stock, runs] = await Promise.all([within(stockP, 1200), within(loadRuns(), 1500)]);
+  const cfg = CONFIG;
+  const now = new Date(live.now);
+  const list = alerts(live, stock, cfg, now, runs);
+  const segName = (id: string) => live.segments.find((s) => s.id === id)?.name ?? id;
+  const { focus, other } = pairs(live, cfg);
 
   return (
-    <main>
-      <h1>Signalwerk</h1>
-      <p className="muted">Gesperrte Einträge: {suppression.count ?? 0}</p>
+    <div className={`dash ${sans.variable}`}>
+      <style dangerouslySetInnerHTML={{ __html: DASH_CSS }} />
+      <header className="top">
+        <div className="in">
+          <span className="mark">NextGen <i>Profit</i></span>
+          <span className="stamp">Stand {berlin(now)} Uhr (deutsche Zeit)</span>
+          <span className="sp" />
+          <AutoRefresh />
+          <form action={logout}><button type="submit">Abmelden</button></form>
+        </div>
+        <nav className="tabs">{NAV.map(([id, l]) => <a key={id} href={`#${id}`}>{l}</a>)}</nav>
+      </header>
+      <main>
+        <section id="ampel" style={{ marginTop: 0 }}>
+          <div className="eyebrow">Übersicht</div>
+          <h1>Wo hakt es gerade?</h1>
+          <p className="sub">Automatisch erkannt aus Datenbank und Konfiguration. Rot = Engpass, sofort ansehen. Käufer zählen nur, wenn sie per Mail angeschrieben werden dürfen.</p>
+          <Lights alerts={list} />
+          <div style={{ marginTop: 16 }}><Kpis live={live} stock={stock} cfg={cfg} /></div>
+        </section>
 
-      <BrainSection />
+        <section id="trichter">
+          <h2>Trichter je Fokus-Test</h2>
+          <p className="sub">Vom mail-fähigen Käufer bis zum Umsatz. Zugestellt = gesendet − Bounces (das eigene Postfach meldet keine Zustellungen).</p>
+          <div className="grid funnels">
+            {focus.map((k) => {
+              const [s, c] = k.split("/");
+              return <FunnelCard key={k} f={funnel(live, stock, s, c)} name={segName(s)} />;
+            })}
+          </div>
+          {other.length > 0 && (
+            <details className="more">
+              <summary>Übrige Experimente ({other.length}) – ruhen, solange nur der Fokus gesendet wird</summary>
+              <FunnelTable rows={other.map((k) => funnel(live, stock, ...(k.split("/") as [string, string])))} segName={segName} />
+            </details>
+          )}
+        </section>
 
-      <h2>Experimente</h2>
-      <div className="scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Segment</th><th>Land</th><th>Botschaft</th><th>Status</th><th>Gesendet</th><th>Zugestellt</th>
-              <th>Bounce</th><th>Beschwerden</th><th>Antworten</th><th>Positiv</th><th>Proben</th><th>Kunden</th><th>Entscheidung</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(stats.data ?? []).map((s: any) => (
-              <tr key={s.experiment_id}>
-                <td>{s.segment_id}</td><td>{s.country}</td><td>{s.variant}</td><td>{s.status}</td>
-                <td>{s.sent}</td><td>{s.delivered}</td>
-                <td className={s.bounced / Math.max(s.sent, 1) > 0.03 ? "bad" : ""}>{s.bounced} ({pct(s.bounced, s.sent)})</td>
-                <td className={s.complained > 0 ? "bad" : ""}>{s.complained}</td>
-                <td>{s.replies}</td><td>{s.positive} ({pct(s.positive, s.delivered)})</td>
-                <td>{s.samples}</td><td>{s.customers}</td><td>{s.decision ?? "–"}</td>
-              </tr>
-            ))}
-            {(stats.data ?? []).length === 0 && <tr><td colSpan={13} className="muted">Noch keine Experimente.</td></tr>}
-          </tbody>
-        </table>
-      </div>
+        <section id="prozess">
+          <h2>Wer ist wo im Prozess</h2>
+          <p className="sub">Käufer mit Antwort, Probe, fälliger Nachfassmail oder Abo – mit dem nächsten Schritt.</p>
+          <People live={live} cfg={cfg} />
+          <h3>Probe-Anfragen über die Website</h3>
+          <SampleRequests live={live} />
+        </section>
 
-      <h2>Segmente</h2>
-      <div className="scroll">
-        <table>
-          <thead><tr><th>Nr.</th><th>Käufer</th><th>Länder (Mail)</th><th>Status</th></tr></thead>
-          <tbody>
-            {(segments.data ?? []).map((s: any) => (
-              <tr key={s.id}><td>{s.id}</td><td>{s.name}</td><td>{s.email_countries.join(", ") || "keine"}</td><td>{s.status}</td></tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+        <section id="bestand">
+          <h2>Bestand</h2>
+          <p className="sub">Was vorbereitet ist: Leads, Käufer, fertige Proben und Landingpages.</p>
+          <Suspense fallback={<p className="muted">Bestand wird gezählt …</p>}>
+            <StockBlock live={live} stockP={stockP} rawP={rawP} />
+          </Suspense>
+          <div className="two" style={{ marginTop: 8 }}>
+            <div><h3>Proben-Vorrat je Live-Seite</h3><SampleStockTable live={live} cfg={cfg} /></div>
+            <div><h3>Live-Landingpages, letzte 7 Tage</h3><PagesTable live={live} /></div>
+          </div>
+        </section>
 
-      <h2>Entwürfe zur Freigabe ({drafts.data?.length ?? 0})</h2>
+        <section id="versand">
+          <h2>Versand</h2>
+          <Sending live={live} cfg={cfg} runs={runs} />
+        </section>
+
+        <section id="kunden">
+          <h2>Kunden &amp; Umsatz</h2>
+          <Customers live={live} cfg={cfg} />
+        </section>
+
+        <section id="aktionen" className="legacy">
+          <h2>Freigaben und Antworten</h2>
+          <Suspense fallback={<p className="muted">lädt …</p>}><Actions /></Suspense>
+        </section>
+
+        <section id="gehirn" className="legacy">
+          <details className="more">
+            <summary>Gehirn, Schalter, Seiten-Varianten und Entscheidungen</summary>
+            <Suspense fallback={<p className="muted">lädt …</p>}><BrainSection /></Suspense>
+          </details>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+async function StockBlock({ live, stockP, rawP }: { live: Live; stockP: Promise<Stock>; rawP: Promise<RawStock> }) {
+  let stock: Stock;
+  try {
+    stock = await stockP;
+  } catch (e) {
+    return <p className="bad">Bestand gerade nicht abrufbar: {(e as Error).message}</p>;
+  }
+  const raw = await within(rawP, 6000);
+  return <StockTables live={live} stock={stock} raw={raw} cfg={CONFIG} />;
+}
+
+/** Bisherige Aktionen: Entwürfe freigeben/ablehnen, Antwort erfassen, letzte Ereignisse. */
+async function Actions() {
+  const sb = db();
+  const [drafts, events] = await Promise.all([
+    sb.from("messages")
+      .select("id, to_email, subject, body, check_errors, created_at, prospects(company_name, country), experiments(segment_id, variant)")
+      .eq("status", "draft").order("created_at").limit(50),
+    sb.from("email_events")
+      .select("id, type, note, occurred_at, messages(to_email)")
+      .in("type", ["reply", "reply_positive", "reply_negative", "sample_requested", "unsubscribed", "complained", "bounced"])
+      .order("occurred_at", { ascending: false }).limit(20),
+  ]);
+  const err = drafts.error ?? events.error;
+  if (err) return <p className="bad">{err.message}</p>;
+  return (
+    <>
+      <h3>Entwürfe zur Freigabe ({drafts.data?.length ?? 0})</h3>
       {(drafts.data ?? []).map((m: any) => (
         <div className="card" key={m.id}>
-          <div className="muted">
+          <div className="muted small">
             {m.experiments?.segment_id}/{m.experiments?.variant} · {m.prospects?.company_name} ({m.prospects?.country}) · {m.to_email}
           </div>
           <strong>{m.subject}</strong>
           <pre>{m.body}</pre>
-          {m.check_errors?.length > 0 && <p className="bad">Prüfung: {m.check_errors.join("; ")}</p>}
+          {m.check_errors?.length > 0 && <p className="bad small">Prüfung: {m.check_errors.join("; ")}</p>}
           <div className="row">
             <form action={approveDraft}>
               <input type="hidden" name="id" value={m.id} />
@@ -96,9 +185,10 @@ export default async function Dashboard() {
           </div>
         </div>
       ))}
+      {(drafts.data ?? []).length === 0 && <p className="muted">Keine offenen Entwürfe.</p>}
 
-      <h2>Antwort erfassen</h2>
-      <form action={logReply} className="row">
+      <h3>Antwort erfassen</h3>
+      <form action={logReply} className="row card">
         <input name="email" type="email" placeholder="Adresse des Absenders" required />
         <select name="type" defaultValue="reply">
           <option value="reply">Antwort (neutral)</option>
@@ -111,20 +201,15 @@ export default async function Dashboard() {
         <button className="primary">Speichern</button>
       </form>
 
-      <h2>Letzte Antworten und Ereignisse</h2>
-      <div className="scroll">
-        <table>
-          <thead><tr><th>Wann</th><th>Typ</th><th>Adresse</th><th>Notiz</th></tr></thead>
-          <tbody>
-            {(events.data ?? []).map((e: any) => (
-              <tr key={e.id}>
-                <td>{new Date(e.occurred_at).toLocaleString("de-DE")}</td><td>{e.type}</td>
-                <td>{e.messages?.to_email ?? "–"}</td><td>{e.note ?? ""}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </main>
+      <h3>Letzte Antworten und Ereignisse</h3>
+      <div className="tbl"><table>
+        <thead><tr><th>Wann</th><th>Typ</th><th>Adresse</th><th>Notiz</th></tr></thead>
+        <tbody>
+          {(events.data ?? []).map((e: any) => (
+            <tr key={e.id}><td className="nw">{berlin(e.occurred_at)}</td><td>{e.type}</td><td>{e.messages?.to_email ?? "–"}</td><td className="small">{e.note ?? ""}</td></tr>
+          ))}
+        </tbody>
+      </table></div>
+    </>
   );
 }
