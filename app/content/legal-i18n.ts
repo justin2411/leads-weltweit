@@ -26,7 +26,7 @@ export const LEGAL_I18N: Record<LegalLang, Record<LegalKey, LegalDoc>> = {
       body: `Information pursuant to § 5 DDG (German Digital Services Act)
 
 Justin Koch
-NextGen Profit (sole proprietorship)
+NextGen Profit
 ${ADDRESS}
 
 ${CONTACT_EN}
@@ -44,7 +44,7 @@ We are neither willing nor obliged to participate in dispute resolution proceedi
 The following information provides an overview of what happens to your personal data when you visit this website or use our services. Personal data is any data by which you can be personally identified.
 
 2. Controller
-Justin Koch, NextGen Profit (sole proprietorship)
+Justin Koch, NextGen Profit
 ${ADDRESS}
 ${CONTACT_EN}
 
@@ -78,7 +78,7 @@ Data is deleted as soon as the purpose ceases to apply, unless statutory retenti
       title: "Terms and conditions",
       placeholder: false,
       body: `1. Scope
-These terms and conditions apply to all contracts between Justin Koch, trading as NextGen Profit (sole proprietorship), ${ADDRESS} ("Provider"), and its customers for the supply of company leads ("lead subscription"). The offer is aimed exclusively at businesses within the meaning of § 14 of the German Civil Code (BGB), not at consumers. Deviating terms of the customer apply only if the Provider expressly agrees to them in writing.
+These terms and conditions apply to all contracts between Justin Koch, trading as NextGen Profit, ${ADDRESS} ("Provider"), and its customers for the supply of company leads ("lead subscription"). The offer is aimed exclusively at businesses within the meaning of § 14 of the German Civil Code (BGB), not at consumers. Deviating terms of the customer apply only if the Provider expressly agrees to them in writing.
 
 2. Conclusion of contract
 The presentation on the website is not a binding offer. The contract is concluded when the customer completes the ordering process (Stripe Checkout) and authorises the payment, or by written order confirmation from the Provider.
@@ -109,7 +109,7 @@ The law of the Federal Republic of Germany applies, excluding the UN Convention 
       body: `Informations conformément au § 5 DDG (loi allemande sur les services numériques)
 
 Justin Koch
-NextGen Profit (entreprise individuelle)
+NextGen Profit
 ${ADRESSE}
 
 ${CONTACT_FR}
@@ -127,7 +127,7 @@ Nous ne sommes ni disposés ni tenus de participer à une procédure de règleme
 Les informations suivantes donnent un aperçu de ce qu'il advient de vos données personnelles lorsque vous consultez ce site ou utilisez nos services. Les données personnelles sont toutes les données permettant de vous identifier personnellement.
 
 2. Responsable du traitement
-Justin Koch, NextGen Profit (entreprise individuelle)
+Justin Koch, NextGen Profit
 ${ADRESSE}
 ${CONTACT_FR}
 
@@ -161,7 +161,7 @@ Les données sont supprimées dès que la finalité disparaît, sauf obligation 
       title: "Conditions générales de vente",
       placeholder: false,
       body: `1. Champ d'application
-Les présentes conditions générales s'appliquent à tous les contrats conclus entre Justin Koch, exerçant sous le nom NextGen Profit (entreprise individuelle), ${ADRESSE} (« le Prestataire »), et ses clients pour la fourniture de pistes d'entreprises (« abonnement de pistes »). L'offre s'adresse exclusivement aux professionnels au sens du § 14 du Code civil allemand (BGB), et non aux consommateurs. Les conditions divergentes du client ne s'appliquent que si le Prestataire les accepte expressément par écrit.
+Les présentes conditions générales s'appliquent à tous les contrats conclus entre Justin Koch, exerçant sous le nom NextGen Profit, ${ADRESSE} (« le Prestataire »), et ses clients pour la fourniture de pistes d'entreprises (« abonnement de pistes »). L'offre s'adresse exclusivement aux professionnels au sens du § 14 du Code civil allemand (BGB), et non aux consommateurs. Les conditions divergentes du client ne s'appliquent que si le Prestataire les accepte expressément par écrit.
 
 2. Conclusion du contrat
 La présentation sur le site ne constitue pas une offre ferme. Le contrat est conclu lorsque le client finalise la commande (Stripe Checkout) et autorise le paiement, ou par confirmation écrite de commande du Prestataire.

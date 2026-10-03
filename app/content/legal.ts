@@ -18,7 +18,7 @@ export const LEGAL: Record<"impressum" | "datenschutz" | "agb", LegalDoc> = {
     body: `Angaben gemäß § 5 DDG
 
 Justin Koch
-NextGen Profit (Einzelunternehmen)
+NextGen Profit
 ${ANSCHRIFT}
 
 ${KONTAKT}
@@ -36,7 +36,7 @@ Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer 
 Die folgenden Hinweise geben einen Überblick darüber, was mit Ihren personenbezogenen Daten passiert, wenn Sie diese Website besuchen oder unsere Leistungen nutzen. Personenbezogene Daten sind alle Daten, mit denen Sie persönlich identifiziert werden können.
 
 2. Verantwortliche Stelle
-Justin Koch, NextGen Profit (Einzelunternehmen)
+Justin Koch, NextGen Profit
 ${ANSCHRIFT}
 ${KONTAKT}
 
@@ -70,7 +70,7 @@ Daten werden gelöscht, sobald der Zweck entfällt, soweit keine gesetzlichen Au
     title: "Allgemeine Geschäftsbedingungen",
     placeholder: false,
     body: `1. Geltungsbereich
-Diese AGB gelten für alle Verträge zwischen Justin Koch, handelnd unter NextGen Profit (Einzelunternehmen), ${ANSCHRIFT} („Anbieter“), und seinen Kunden über den Bezug von Unternehmens-Leads („Lead-Abo“). Das Angebot richtet sich ausschließlich an Unternehmer im Sinne von § 14 BGB, nicht an Verbraucher. Abweichende Bedingungen des Kunden gelten nur, wenn der Anbieter ihnen ausdrücklich schriftlich zustimmt.
+Diese AGB gelten für alle Verträge zwischen Justin Koch, handelnd unter NextGen Profit, ${ANSCHRIFT} („Anbieter“), und seinen Kunden über den Bezug von Unternehmens-Leads („Lead-Abo“). Das Angebot richtet sich ausschließlich an Unternehmer im Sinne von § 14 BGB, nicht an Verbraucher. Abweichende Bedingungen des Kunden gelten nur, wenn der Anbieter ihnen ausdrücklich schriftlich zustimmt.
 
 2. Vertragsschluss
 Die Darstellung auf der Website ist kein bindendes Angebot. Der Vertrag kommt zustande, wenn der Kunde den Bestellvorgang (Stripe Checkout) abschließt und die Zahlung autorisiert, oder durch schriftliche Auftragsbestätigung des Anbieters.
