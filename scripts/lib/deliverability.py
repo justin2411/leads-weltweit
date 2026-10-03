@@ -51,6 +51,19 @@ def warmup_cap(first_sent: dt.date | None, today: dt.date, schedule=None) -> int
     return max(0, min(cap, HARD_MAX_PER_DAY, provider_cap() - 10))
 
 
+def window_start(now: dt.datetime, days: int = 30) -> dt.datetime:
+    """Beginn des Notbremse-Fensters: letzte `days` Tage, aber nicht vor `notbremse_ab` aus config/versand.yaml
+    (Inhaber 03.10.2026: „pass die notbremse an, das sie ab jetzt neu zählt“). Schwelle und Mindestmenge bleiben."""
+    start = now - dt.timedelta(days=days)
+    raw = _cfg("notbremse_ab")
+    if raw:
+        reset = dt.datetime.fromisoformat(raw.strip('"').replace("Z", "+00:00"))
+        if reset.tzinfo is None:
+            reset = reset.replace(tzinfo=dt.timezone.utc)
+        start = max(start, reset)
+    return start
+
+
 def emergency_stop(sent: int, bounced: int, complained: int) -> str | None:
     """Grund für einen Versandstopp oder None."""
     if complained >= COMPLAINT_STOP:
@@ -58,6 +71,29 @@ def emergency_stop(sent: int, bounced: int, complained: int) -> str | None:
     if sent >= MIN_SAMPLE and bounced / sent > BOUNCE_STOP:
         return f"Bounce-Quote {bounced}/{sent} = {bounced / sent:.1%} über {BOUNCE_STOP:.0%}: Versand gestoppt"
     return None
+
+
+def count_bounces(events: list[dict]) -> tuple[int, int]:
+    """(Bounces, Beschwerden) für die Notbremse, je Empfängeradresse gezählt (Inhaber 03.10.2026, Punkt 3):
+    dieselbe Adresse zählt nur einmal, eine vorübergehende Abweisung („Transient“, Postfach existiert)
+    erst, wenn sie bei derselben Adresse wiederholt auftritt. Ereignisse: type, payload, to_email (oder message_id)."""
+    hard: set[str] = set()
+    soft: dict[str, int] = {}
+    complained: set[str] = set()
+    for e in events:
+        who = (e.get("to_email") or e.get("message_id") or "").lower()
+        if e.get("type") == "complained":
+            complained.add(who)
+            continue
+        if e.get("type") != "bounced":
+            continue
+        bounce = ((e.get("payload") or {}).get("bounce") or {}) if isinstance(e.get("payload"), dict) else {}
+        if str(bounce.get("type", "")).lower() == "transient":
+            soft[who] = soft.get(who, 0) + 1
+        else:
+            hard.add(who)
+    hard |= {w for w, n in soft.items() if n >= 2}
+    return len(hard), len(complained)
 
 
 def interleave(messages: list[dict], key: str = "experiment_id") -> list[dict]:

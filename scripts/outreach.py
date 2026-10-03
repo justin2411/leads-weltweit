@@ -298,15 +298,17 @@ def cmd_send(args) -> int:
             if not os.environ.get(var):
                 raise SystemExit(f"{var} fehlt")
 
-    from lib.deliverability import domain_accepts_mail, emergency_stop, interleave
+    from lib.deliverability import count_bounces, domain_accepts_mail, emergency_stop, interleave, window_start
 
-    # Notbremse über die letzten 30 Tage, über alle Experimente
-    since = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=30)).isoformat()
+    # Notbremse über die letzten 30 Tage, über alle Experimente; je Adresse gezählt (Inhaber 03.10.2026)
+    since = window_start(dt.datetime.now(dt.timezone.utc)).isoformat()
     recent = db.select("messages", {"status": "eq.sent", "sent_at": f"gte.{since}", "select": "id"})
     ev = db.select("email_events", {"created_at": f"gte.{since}", "type": "in.(bounced,complained)",
-                                    "select": "message_id,type"})
-    stop = emergency_stop(len(recent), len({e["message_id"] for e in ev if e["type"] == "bounced"}),
-                          len({e["message_id"] for e in ev if e["type"] == "complained"}))
+                                    "select": "message_id,type,payload,messages(to_email)"})
+    for e in ev:
+        e["to_email"] = (e.get("messages") or {}).get("to_email")
+    bounced, complained = count_bounces(ev)
+    stop = emergency_stop(len(recent), bounced, complained)
     if stop:
         print(f"NOTBREMSE: {stop}")
         return 2
@@ -358,6 +360,8 @@ def cmd_send(args) -> int:
     if limit_total is not None:
         print(f"Gesamtgrenze Erstmails: {initial_total} von {limit_total} gesendet")
     n_sent = 0
+    from lib import freshness
+    fetcher = None
     for m in rows:
         p, e = m["prospects"], m["experiments"]
         country = p["country"]
@@ -398,6 +402,24 @@ def cmd_send(args) -> int:
         if sent_today.get(country, 0) >= limit:
             print(f"Tageslimit {country} ({limit}) erreicht, Rest morgen")
             continue
+        if kind == "initial" and freshness.needs_rescan(p) and not live:
+            print(f"Frischeprüfung im echten Lauf: {m['to_email']} (Website wird dann einmal abgerufen)")
+        elif kind == "initial" and freshness.needs_rescan(p):
+            # Adresse muss heute noch auf der eigenen Website stehen (Inhaber 03.10.2026: Bounce-Quote senken).
+            # Nur im echten Lauf abrufen: der Probelauf davor im selben Workflow würde die Seite sonst zweimal holen.
+            if fetcher is None:
+                from enrich import Fetcher
+                fetcher = Fetcher()
+            found, url = freshness.confirm_on_website(m["to_email"], p.get("website") or "", fetcher)
+            if not found:
+                print(f"BLOCKIERT {m['to_email']}: Adresse steht nicht (mehr) auf der Website")
+                if live:
+                    db.update("messages", {"id": m["id"]}, {"status": "blocked",
+                              "blocked_reason": "Frischeprüfung: Adresse nicht (mehr) auf der Website"})
+                continue
+            if live:
+                db.update("prospects", {"id": p["id"]}, {"source_url": url,
+                          "checked_at": dt.datetime.now(dt.timezone.utc).isoformat()})
 
         if live and not args.owner_ok:
             ok, why = _auto_send_allowed(db, e)
