@@ -34,16 +34,24 @@ export function Icon({ name, className = "ic" }: { name: string; className?: str
 
 export type MapData = {
   viewBox: string; land: string; borders: string; neighbors: string; pins: [number, number][];
+  /** Ausschnitt (gleiches Seitenverhältnis wie viewBox): Land größer, Karte gleich groß (Inhaber 03.10.2026, UK) */
+  crop?: string;
   /** Kartenumriss als statische SVG-Datei (statt land/borders/neighbors im HTML) */
   src?: string;
   stats: { leads: number; areas: number; industries: number; date: string; presence: Record<string, number>; kinds: Record<string, number> };
 };
 
+/** Pins bleiben bei einem Ausschnitt gleich groß wie auf der ganzen Karte. */
+function pinScale(map: MapData): number {
+  if (!map.crop) return 1;
+  return Number(map.crop.split(/\s+/)[2]) / Number(map.viewBox.split(/\s+/)[2]);
+}
+
 /** Landkarte der Probe, Pins wie in der PDF (Navy mit Goldrand). */
 export function MapCard({ map, note }: { map: MapData; note: string }) {
   return (
     <figure className="mapcard" style={{ margin: 0 }}>
-      <svg viewBox={map.viewBox} role="img" aria-label={note}>
+      <svg viewBox={map.crop ?? map.viewBox} role="img" aria-label={note}>
         {map.src ? (() => {
           const [x, y, w, h] = map.viewBox.split(/\s+/).map(Number);
           return <image href={map.src} x={x} y={y} width={w} height={h} />;
@@ -53,7 +61,7 @@ export function MapCard({ map, note }: { map: MapData; note: string }) {
         </>}
         {map.pins.map(([x, y], k) => (
           // Position außen, Animation innen: sonst überschreibt die CSS-Animation das translate (alle Pins oben links)
-          <g key={k} transform={`translate(${x},${y})`}>
+          <g key={k} transform={`translate(${x},${y}) scale(${pinScale(map)})`}>
             <g className="pin" style={{ "--k": k } as CSSProperties}>
               <circle r="30" className="halo" /><circle r="19" className="dot" />
               <text className="num" textAnchor="middle" dominantBaseline="central">{k + 1}</text>
