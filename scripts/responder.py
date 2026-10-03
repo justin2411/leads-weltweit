@@ -392,7 +392,8 @@ def best_first(rows: list[dict]) -> list[dict]:
 
 def regional_sample(db, seg: str, country: str, region: str | None,
                     wish: list[str] | None = None, mark: bool = True, picked_out: list | None = None,
-                    exclude_companies: set[str] | None = None) -> tuple[list[tuple[str, bytes]], bool]:
+                    exclude_companies: set[str] | None = None, gate_context: str = "probe"
+                    ) -> tuple[list[tuple[str, bytes]], bool]:
     """10 vollständige Leads aus dem ganzen Land (Inhaber 27.09.2026). (Dateien, True) – sonst ([], False).
 
     wish: Signal-Schlüssel aus dem Probe-Formular (lib/wishes.py). Passende vollständige Leads kommen zuerst,
@@ -446,10 +447,16 @@ def regional_sample(db, seg: str, country: str, region: str | None,
         if len(picked) >= 10:
             # „ohne Website“ vor dem Versand mit der aktuellen Suche nachprüfen (Inhaber 02.10.2026, 202main.coffee);
             # wer doch eine Website hat, fliegt raus und wird durch den nächsten Lead ersetzt
+            from lib import release_gate
             from lib.site_recheck import drop_with_site
-            bad = drop_with_site(db, [x for x in picked if not x.get("_rechecked")])
+            new = [x for x in picked if not x.get("_rechecked")]
+            bad = drop_with_site(db, new)
             for x in picked:
                 x["_rechecked"] = True
+            # Drei-Stufen-Freigabe je Lead (Inhaber 03.10.2026): nur freigegebene Leads kommen in die Probe
+            ok, _ = release_gate.release(db, [x for x in new if x["id"] not in bad], context=gate_context,
+                                         country=country)
+            bad |= {x["id"] for x in new} - {x["id"] for x in ok}
             if not bad:
                 break
             picked = [x for x in picked if x["id"] not in bad]
@@ -686,6 +693,17 @@ def handle_unknown(db, msg, mid: str, sender: str, text: str, apply: bool, own: 
     return "owner"
 
 
+_PAUSED: dict[int, bool] = {}
+
+
+def auto_replies_paused(db) -> bool:
+    """Antwort-Assistent im Dashboard pausiert? (einmal je Lauf und Datenbank gelesen)"""
+    if id(db) not in _PAUSED:
+        from lib.owner_settings import paused
+        _PAUSED[id(db)] = bool(paused(db, "antworten"))
+    return _PAUSED[id(db)]
+
+
 def handle_message(db, msg: EmailMessage, mid: str, apply: bool, own: set[str] | None = None) -> str:
     """Eine Mail aus dem Postfach einordnen und (mit apply) handeln. Rückgabe: Aktion bzw. done/ignore/error.
 
@@ -730,6 +748,11 @@ def handle_message(db, msg: EmailMessage, mid: str, apply: bool, own: set[str] |
             c["intent"] = "buy"
             c["summary_de"] = "Will nach der Probe weitermachen (wöchentliche Lieferung): " + c.get("summary_de", "")
     print(f"{p['company_name']:<35} {c['intent']:<14} -> {action:<12} ({c['by']}) {c['summary_de']}")
+    if action != "suppress" and auto_replies_paused(db):
+        # Schalter im Dashboard (Inhaber 03.10.2026): automatische Antworten pausiert. Abmeldungen werden IMMER
+        # gesperrt (oben: action "suppress"); diese Mail bleibt offen und wird nach dem Einschalten bearbeitet.
+        print("  Antwort-Assistent pausiert durch Inhaber – keine automatische Antwort, Mail bleibt offen")
+        return "paused"
     if not apply:
         return action
 
@@ -819,7 +842,7 @@ def main(argv=None) -> int:
     imap.select("INBOX", readonly=True)
     since = (dt.date.today() - dt.timedelta(days=args.days)).strftime("%d-%b-%Y")
     _, data = imap.search(None, "SINCE", since)
-    handled = {"owner": 0, "sample": 0, "faq": 0, "suppress": 0, "ignore": 0, "error": 0}
+    handled = {"owner": 0, "sample": 0, "faq": 0, "suppress": 0, "ignore": 0, "error": 0, "paused": 0}
     own = own_addresses()
     for num in data[0].split():
         _, fetched = imap.fetch(num, "(BODY.PEEK[])")

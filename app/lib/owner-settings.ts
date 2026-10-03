@@ -17,13 +17,49 @@ export type OwnerSettings = {
   sample_targets: Record<string, number>;
   sample_max_age_hours: number | null;
   buyer_countries_off: string[];
+  /** Werke an/aus per Klick (Inhaber 03.10.2026): Werk -> pausiert seit (ISO). */
+  werke_paused: Record<string, string>;
 };
 export type SettingKey = keyof OwnerSettings;
 
 export const DEFAULTS: OwnerSettings = {
   send_paused: false, send_countries_off: [], send_country_limits: {}, followup_enabled: true, followup_days: null,
-  sample_targets: {}, sample_max_age_hours: null, buyer_countries_off: [],
+  sample_targets: {}, sample_max_age_hours: null, buyer_countries_off: [], werke_paused: {},
 };
+
+/**
+ * Schalter je Werk (Inhaber 03.10.2026: „alles direkt per click an und ausschalten können jedes werk“). Versand und
+ * Nachfass nutzen ihre bestehenden Schalter. NIE schaltbar (Sicherheit): Abmelde-Link, Resend-Webhook (Bounce/
+ * Beschwerde-Sperre), Sperrliste, Notbremse und die Abmelde-Erkennung im Antwort-Assistenten.
+ */
+export const WERK_SWITCHES = {
+  "lead-werk": { label: "Lead-Werk", via: "werke_paused" },
+  "kunden-werk": { label: "Kunden-Werk", via: "werke_paused" },
+  "proben-vorrat": { label: "Proben-Vorrat", via: "werke_paused" },
+  versand: { label: "Versand", via: "send_paused" },
+  nachfass: { label: "Nachfassmails", via: "followup_enabled" },
+  antworten: { label: "Antwort-Assistent", via: "werke_paused", note: "Abmeldungen per Antwort werden trotzdem immer gesperrt – pausiert werden nur automatische Antworten." },
+  kundenlieferung: { label: "Kundenlieferung", via: "werke_paused" },
+  tagescheck: { label: "Tagescheck", via: "werke_paused" },
+} as const;
+export type WerkKey = keyof typeof WERK_SWITCHES;
+
+/** Ist das Werk an? (true = läuft nach Plan) und seit wann pausiert. */
+export function werkOn(s: OwnerSettings, key: WerkKey): { on: boolean; since: string | null } {
+  if (key === "versand") return { on: !s.send_paused, since: null };
+  if (key === "nachfass") return { on: s.followup_enabled !== false, since: null };
+  const since = (s.werke_paused ?? {})[key] ?? null;
+  return { on: !since, since };
+}
+
+/** Neuer Wert von werke_paused nach dem Umschalten (nur bekannte Werke). */
+export function toggleWerkPaused(cur: Record<string, string>, key: string, nowIso: string): Record<string, string> {
+  if (!(key in WERK_SWITCHES) || WERK_SWITCHES[key as WerkKey].via !== "werke_paused") throw new InputError("unbekanntes Werk");
+  const next = { ...(cur ?? {}) };
+  if (next[key]) delete next[key];
+  else next[key] = nowIso;
+  return next;
+}
 
 export function merge(rows: { key: string; value: unknown }[]): OwnerSettings {
   const out: any = { ...DEFAULTS };

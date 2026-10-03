@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import deliveries  # noqa: E402
 from fakedb import FakeDB  # noqa: E402
+from gatestub import setUpModule, tearDownModule  # noqa: E402,F401  (Freigabe-Durchreiche)
 
 TODAY = dt.date.today().isoformat()
 

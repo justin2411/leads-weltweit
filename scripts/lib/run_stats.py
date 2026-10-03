@@ -6,7 +6,7 @@ from __future__ import annotations
 import os
 import sys
 
-WERKE = {"lead-werk", "kunden-werk", "proben-vorrat"}
+WERKE = {"lead-werk", "kunden-werk", "proben-vorrat", "freigabe", "stichprobe"}
 
 
 def _part() -> str:
@@ -21,7 +21,8 @@ def rows_from_lead_report(segments: dict) -> list[dict]:
         out.append({"segment_id": seg or None, "country": country or None, "candidates": int(r.get("pool") or 0),
                     "processed": int(r.get("processed") or 0), "green": int(r.get("green") or 0),
                     "yellow": int(r.get("yellow") or 0), "red": int(r.get("red") or 0),
-                    "reasons": {str(k): int(v) for k, v in (r.get("top_reasons") or [])}})
+                    "reasons": {str(k): int(v) for k, v in (r.get("top_reasons") or [])},
+                    "extra": {"stufen": r["stufen"]} if r.get("stufen") else {}})
     return out
 
 

@@ -1,4 +1,7 @@
-import { COUNTRIES, CONFIG, SEGMENT, canDispatch, loadLive, loadOwnerSettings, loadStock } from "@/lib/dashboard-data";
+import Link from "next/link";
+import { COUNTRIES, CONFIG, SEGMENT, canDispatch, loadActivity, loadLive, loadOwnerSettings, loadStock } from "@/lib/dashboard-data";
+import { isLive } from "@/lib/werke-live";
+import { SampleFactory } from "../live";
 import { MAX_AGE_RANGE, MAX_SAMPLE_TARGET } from "@/lib/owner-settings";
 import { dispatchWorkflow, saveMaxAge, saveSampleTargets } from "../control-actions";
 import { COUNTRY_COLOR, berlin, compact, distinctReplies, durationS, nextRun, onlySegment, sampleStock, stockSegment } from "@/lib/dashboard-logic";
@@ -10,7 +13,7 @@ import { readParams, withQuery, type SP } from "../params";
 export default async function Proben({ searchParams }: { searchParams: SP }) {
   await requireOwner();
   const { land, countries, raw } = await readParams(searchParams);
-  const [liveAll, own, stockAll] = await Promise.all([loadLive(), loadOwnerSettings(), loadStock().catch(() => null)]);
+  const [liveAll, own, stockAll, act] = await Promise.all([loadLive(), loadOwnerSettings(), loadStock().catch(() => null), loadActivity()]);
   const live = onlySegment(liveAll, SEGMENT);
   const stock = stockSegment(stockAll, SEGMENT);
   const now = new Date(live.now);
@@ -35,13 +38,15 @@ export default async function Proben({ searchParams }: { searchParams: SP }) {
       <Crumbs items={[["Übersicht", "/dashboard"], ["Proben", ""]]} />
       <div className="head2"><span /><Chips base="/dashboard/proben" param="land" value={land} options={COUNTRY_OPTS} params={raw} dots /></div>
       <div className="kpis2 four">
-        <Kpi value={`${ready}/${target}`} label="Vorrat fertig" tip={`Verfall nach ${cfg.proben.max_alter_stunden} h`} />
+        <Kpi value={`${ready}/${target}`} label="Vorrat fertig" tip={SEGMENT === "S2" ? "Webagenturen: kein Verfall – Freigabe aller 10 Leads wird alle 20 h erneuert" : `Verfall nach ${cfg.proben.max_alter_stunden} h`} />
         <Kpi value={compact(web.filter((r) => r.status === "new").length)} label="offen" />
         <Kpi value={compact(rows.filter((r) => r.status === "gesendet").length)} label="gesendet" />
         <Kpi value={compact(st.reduce((a, r) => a + r.sent24, 0))} label="24 h sofort" tip="aus dem Vorrat direkt nach dem Klick" />
       </div>
       <section className="card tile">
-        <header className="th"><span>Vorrat je Seite</span></header>
+        <header className="th"><span title="Läuft nur, wenn gerade Proben gebaut und durch die Drei-Stufen-Freigabe geprüft werden">Probenfertigung</span></header>
+        <SampleFactory building={isLive(act, "proben-vorrat", now)} sending={act.stock_sent_60m > 0 || (act.last_stock_sent_at ? now.getTime() - Date.parse(act.last_stock_sent_at) < 15 * 60_000 : false)}
+          stacks={st.map((r) => ({ country: r.key.split("/")[1], ready: r.ready, target: r.target }))} />
         <div className="fills">{st.map((r) => <Fill key={r.key} label={r.slug} ready={r.ready} target={r.target} tip={r.oldestH !== null ? `älteste ${Math.round(r.oldestH)} h` : "leer"} />)}</div>
       </section>
       <section className="card tile">
@@ -74,6 +79,12 @@ export default async function Proben({ searchParams }: { searchParams: SP }) {
           </form>
         </Ctrl>
         <Ctrl title="Verfall" tip={`Proben älter als das werden verworfen und neu gebaut (Signale altern). ${MAX_AGE_RANGE[0]}–${MAX_AGE_RANGE[1]} h.`}>
+          {SEGMENT === "S2" ? (
+            <div className="facts">
+              <span><b>Webagenturen: kein Verfall</b> (Inhaber 03.10.2026)</span>
+              <span className="muted">Sicherheit: alle 10 Leads jeder Probe laufen alle 20 h erneut durch die Drei-Stufen-Freigabe (Trigger live nachgeprüft); eine Probe geht nur mit Freigabe &lt; 26 h raus, sonst wird sie neu gebaut.</span>
+            </div>
+          ) : (
           <form action={saveMaxAge}>
             <Back to={here} />
             <label className="frow"><b>h</b>
@@ -82,13 +93,14 @@ export default async function Proben({ searchParams }: { searchParams: SP }) {
             </label>
             <button className="primary">Speichern</button>
           </form>
+          )}
         </Ctrl>
         <Ctrl title="Auffüllen" tip="Baut fehlende Proben sofort (sonst stündlich nach Zeitplan).">
           <form action={dispatchWorkflow}>
             <Back to={here} /><input type="hidden" name="wf" value="proben-vorrat" />
             <button disabled={!canDispatch()}>Jetzt auffüllen</button>
           </form>
-          <span className="hint">nächster Lauf {nextFill ? berlin(nextFill) : "–"}{canDispatch() ? "" : " · Sofortstart braucht GH_DISPATCH_TOKEN"}</span>
+          <span className="hint">{canDispatch() ? <>nächster Lauf {nextFill ? berlin(nextFill) : "–"}</> : <>Startet beim nächsten Lauf {nextFill ? berlin(nextFill, false) : "–"}. Sofortstart: Token in Vercel einrichten (<Link href="/dashboard/hilfe#token">Anleitung</Link>)</>}</span>
         </Ctrl>
         <Ctrl title="Feste Regeln" tip="Nicht änderbar." locked="nur Anzeige">
           <div className="facts">

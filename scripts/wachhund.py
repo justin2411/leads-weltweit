@@ -43,6 +43,7 @@ JOBS = [
      "inputs": {"freigabe": "Dauerfreigabe des Inhabers laut config/versand.yaml (Wachhund: geplanter Lauf ausgefallen)",
                 "probelauf": "false"}},
     {"wf": "tagescheck.yml", "kind": "daily", "at": "17:37", "grace": 40, "inputs": {"mail": "true"}},
+    {"wf": "freigabe-stichprobe.yml", "kind": "daily", "at": "05:07", "grace": 60},
     {"wf": "kundenlieferung.yml", "kind": "daily", "at": "04:53", "grace": 60, "weekdays": [0], "until": "12:00"},
     {"wf": "anreichern.yml", "kind": "daily", "at": "08:41", "grace": 60, "cond": "lead_suche"},
     # Werke (24/7): GitHub ließ am 01.10.2026 die ersten geplanten Kunden-Werk-Läufe aus. Inhaber 01.10.2026: „Er soll
@@ -51,6 +52,36 @@ JOBS = [
     {"wf": "lead-werk.yml", "kind": "continuous", "min_gap": 20, "cond": "lead_suche"},
     {"wf": "kunden-werk.yml", "kind": "continuous", "min_gap": 20, "cond": "kunden_suche"},
 ]
+
+
+# Schalter im Dashboard (Inhaber 03.10.2026): pausierte Werke startet der Wachhund nie nach. antworten.yml bleibt
+# immer an (Abmeldungen per Antwort dürfen nie liegen bleiben; pausiert werden dort nur automatische Antworten).
+PAUSE_KEY = {"lead-werk.yml": "lead-werk", "kunden-werk.yml": "kunden-werk", "proben-vorrat.yml": "proben-vorrat",
+             "kundenlieferung.yml": "kundenlieferung", "tagescheck.yml": "tagescheck"}
+
+
+def owner_paused(job: dict, settings: dict | None) -> str | None:
+    """Grund, wenn der Inhaber dieses Werk im Dashboard pausiert hat, sonst None."""
+    if not settings:
+        return None
+    if job["wf"] == "send.yml" and settings.get("send_paused"):
+        return "Versand im Dashboard pausiert"
+    key = PAUSE_KEY.get(job["wf"])
+    since = (settings.get("werke_paused") or {}).get(key) if key and isinstance(settings.get("werke_paused"), dict) else None
+    return f"pausiert durch Inhaber (seit {since})" if since else None
+
+
+def load_settings() -> dict | None:
+    if not (os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SERVICE_ROLE_KEY")):
+        return None
+    try:
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from lib.db import DB
+        from lib.owner_settings import load
+        return load(DB())
+    except Exception as exc:  # noqa: BLE001 - ohne Einstellungen gelten nur die Datei-Schalter
+        print(f"Einstellungen nicht lesbar: {type(exc).__name__}")
+        return None
 
 
 def cfg(name: str, key: str) -> str | None:
@@ -114,8 +145,11 @@ def main(argv=None) -> int:
     h = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
     now = dt.datetime.now(dt.timezone.utc)
     started = []
+    settings = load_settings()
     for job in JOBS:
         ok, why = allowed(job)
+        if ok and owner_paused(job, settings):
+            ok, why = False, owner_paused(job, settings)
         if not ok:
             print(f"-  {job['wf']:<22} {why}")
             continue

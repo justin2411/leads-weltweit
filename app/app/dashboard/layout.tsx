@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import { logout, requireOwner } from "./actions";
 import { AutoRefresh } from "./auto-refresh";
 import { DASH_CSS, DASH_V2_CSS } from "./dash-css";
+import { LIVE_CSS } from "./live";
 import { Nav } from "./nav";
 import { Flash } from "./flash";
 
@@ -17,7 +18,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   await requireOwner();
   return (
     <div className={`dash ${sans.variable}`}>
-      <style dangerouslySetInnerHTML={{ __html: DASH_CSS + DASH_V2_CSS }} />
+      <style dangerouslySetInnerHTML={{ __html: DASH_CSS + DASH_V2_CSS + LIVE_CSS }} />
       <header className="top">
         <div className="in">
           <a href="/dashboard" className="mark" style={{ color: "inherit", textDecoration: "none" }}>NextGen <i>Profit</i></a>

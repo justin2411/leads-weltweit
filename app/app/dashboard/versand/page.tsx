@@ -1,4 +1,6 @@
-import { COUNTRIES, CONFIG, loadDaily, loadLive, loadOwnerSettings } from "@/lib/dashboard-data";
+import { COUNTRIES, CONFIG, loadActivity, loadDaily, loadLive, loadOwnerSettings } from "@/lib/dashboard-data";
+import { isLive } from "@/lib/werke-live";
+import { MailFlight } from "../live";
 import { COUNTRY_COLOR, berlin, berlinDay, brake, compact, mailboxes, nextRun, pctS } from "@/lib/dashboard-logic";
 import { PERIODS, period, revenueByCurrency, series, totals, type Metric } from "@/lib/dashboard-periods";
 import { effectiveLimit, FOLLOWUP_DAYS_RANGE } from "@/lib/owner-settings";
@@ -15,7 +17,8 @@ export default async function Versand({ searchParams }: { searchParams: SP }) {
   const p = period(z, today);
   const single = p.from === p.to;
   const from14 = new Date(Date.parse(`${today}T12:00:00Z`) - 13 * 86_400_000).toISOString().slice(0, 10);
-  const [live, daily, own] = await Promise.all([loadLive(), loadDaily(p.prevFrom < from14 ? p.prevFrom : from14, today), loadOwnerSettings()]);
+  const [live, daily, own, act] = await Promise.all([loadLive(), loadDaily(p.prevFrom < from14 ? p.prevFrom : from14, today), loadOwnerSettings(), loadActivity()]);
+  const sending = isLive(act, "versand", new Date(act.now));
   const t = totals(daily, p.from, p.to, countries);
   const tp = totals(daily, p.prevFrom, p.prevTo, countries);
   const rev = revenueByCurrency(daily, p.from, p.to, countries);
@@ -45,6 +48,7 @@ export default async function Versand({ searchParams }: { searchParams: SP }) {
         <Chips base="/dashboard/versand" param="land" value={land} options={COUNTRY_OPTS} params={raw} dots />
       </div>
       <div className="sub2" title={`Vergleich: ${p.prevLabel}`}>{range} · vs. {p.prevLabel}</div>
+      <MailFlight live={sending} label={sending ? `Versand läuft gerade · ${act.sent_15m} Mails in 15 min, ${act.sent_60m} in 1 h` : own.send_paused ? "Versand pausiert (Inhaber)" : "Versand ruht gerade"} />
       <div className="kpis2 eight">
         <Kpi value={compact(t.sent)} label="Mails" cur={t.sent} prev={tp.sent} tip={`Erstmails · dazu ${t.followups} Nachfassmails`} href={list("sent")} />
         <Kpi value={compact(t.bounced)} label="Bounces" cur={t.bounced} prev={tp.bounced} goodDown tip={t.sent ? `${pctS(t.bounced / t.sent)} der Mails` : undefined} href={list("bounced")} />
