@@ -114,7 +114,7 @@ a.tk:hover .tk-glass,a.tk:focus-visible .tk-glass{border-color:rgba(168,236,255,
 @media (max-width:480px){
   /* Handy: drei Tanks je Zeile – Zahlen und „nur Anruf/Brief“ passen ohne Umbruch */
   .tk-row{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 10px}
-  .tk-row .tk:nth-child(4n+1) .tk-tick span{display:none}.tk-row .tk:nth-child(3n+1) .tk-tick:not(.top) span{display:inline}
+  .tk-row .tk:nth-child(4n+1) .tk-tick:not(.top) span{display:none}.tk-row .tk:nth-child(3n+1) .tk-tick:not(.top) span{display:inline}
   .tk-call span{white-space:nowrap}
   .tk-row.small{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
