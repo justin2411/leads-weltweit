@@ -226,7 +226,9 @@ def header(current: str, light: bool) -> str:
 </div>"""
 
 
-GOOGLE_URL = "https://www.google.com/search?q=mobile+physiotherapie+oehlke"
+# Öffnet direkt die Bewertungsliste des Google-Eintrags (lrd = Feature-ID aus dem Maps-Link, ,1 = Rezensionen)
+GOOGLE_URL = ("https://www.google.com/search?hl=de&q=Mobile+Physiotherapie+Oehlke&ludocid=9389132945967097191"
+              "#lrd=0x4f769d8bc25e5f07:0x824ce6ab29492567,1")
 
 
 def google_badge() -> str:
