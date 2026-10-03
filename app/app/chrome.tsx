@@ -71,8 +71,8 @@ export function SiteFooter({ lang = "en" }: { lang?: string }) {
     <footer><div className="wrap">
       <div>
         <Mark />
-        {/* Inhaber 03.10.2026: keine Anschrift im Fuß, nur Kontakt; vollständige Angaben im Impressum */}
-        <address><a href={`mailto:${CONTACT}`}>{CONTACT}</a></address>
+        {/* Inhaber 03.10.2026: im Fuß das Büro Leipzig; Rechnungs-/Impressumsanschrift bleibt Hettstedt (Impressum) */}
+        <address>Nikolaistraße 3-7 · 04109 Leipzig · Germany<br /><a href={`mailto:${CONTACT}`}>{CONTACT}</a></address>
       </div>
       <nav aria-label="Legal"><a href={paths.impressum}>{labels[0]}</a><a href={paths.datenschutz}>{labels[1]}</a><a href={paths.agb}>{labels[2]}</a></nav>
       <div style={{ width: "100%", marginTop: 8 }}>© {new Date().getFullYear()} NextGen Profit</div>
