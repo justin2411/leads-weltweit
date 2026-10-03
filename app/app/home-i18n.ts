@@ -31,6 +31,7 @@ export type HomeText = {
   indH: string; indSub: string; indGo: string; soon: string; countryPick: string;
   industries: Record<string, [string, string]>;
   pcKick: string; pcH: [string, string]; pcLede: string; pcList: Row[]; pcWho: [string, string]; pcFit: string;
+  pcGfx: { say: string; who: string; loop: string; rows: [string, string, string] };
   pcRows: [string, string, string]; pcChat: [string, string]; pcNote: string; pcBtn: string;
   pcCard: { reply: string; tl: [string, string, string][]; fTitle: string; filters: [string, string][]; quote: string };
   trustH: string; trustSub: string; facts: Row[];
@@ -110,6 +111,7 @@ export const HOME: Record<HomeLang, HomeText> = {
       ["target", "Leads that earn money", "Over time your list shows exactly the companies you win."],
     ],
     pcWho: ["Your personal contact", "Looks after your account"], pcFit: "Fit to your firm",
+    pcGfx: { say: "Your feedback", who: "Your contact", loop: "every week", rows: ["Industry", "Size", "Signals"] },
     pcRows: ["Week 1", "Month 1", "Month 3"],
     pcChat: ["Fewer sole traders, more firms with staff, please.", "Done. From Monday your list only shows firms with staff."],
     pcNote: "Illustration of how your leads are refined over time.", pcBtn: "Talk to your contact",
@@ -212,6 +214,7 @@ export const HOME: Record<HomeLang, HomeText> = {
       ["target", "Des prospects qui rapportent", "Avec le temps, votre liste montre exactement les entreprises que vous gagnez."],
     ],
     pcWho: ["Votre interlocuteur personnel", "S'occupe de votre compte"], pcFit: "Adéquation à votre entreprise",
+    pcGfx: { say: "Vos retours", who: "Votre interlocuteur", loop: "chaque semaine", rows: ["Secteur", "Taille", "Signaux"] },
     pcRows: ["Semaine 1", "Mois 1", "Mois 3"],
     pcChat: ["Moins d'auto-entrepreneurs, plus d'entreprises avec salariés, svp.", "C'est fait. Dès lundi, votre liste ne montre que des entreprises avec salariés."],
     pcNote: "Illustration de l'affinage de vos prospects au fil du temps.", pcBtn: "Écrire à votre interlocuteur",
@@ -314,6 +317,7 @@ export const HOME: Record<HomeLang, HomeText> = {
       ["target", "Leads, die Geld bringen", "Mit der Zeit zeigt Ihre Liste genau die Firmen, die Sie gewinnen."],
     ],
     pcWho: ["Ihr persönlicher Ansprechpartner", "Betreut Ihr Konto"], pcFit: "Passung zu Ihrem Unternehmen",
+    pcGfx: { say: "Ihr Feedback", who: "Ihr Ansprechpartner", loop: "jede Woche", rows: ["Branche", "Größe", "Signale"] },
     pcRows: ["Woche 1", "Monat 1", "Monat 3"],
     pcChat: ["Bitte weniger Einzelunternehmer, mehr Firmen mit Personal.", "Erledigt. Ab Montag zeigt Ihre Liste nur Firmen mit Personal."],
     pcNote: "Illustration, wie Ihre Leads mit der Zeit verfeinert werden.", pcBtn: "Ansprechpartner kontaktieren",

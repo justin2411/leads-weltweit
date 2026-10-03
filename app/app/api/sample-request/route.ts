@@ -6,7 +6,7 @@ import { getSettings, isOwner, pageIsPublic } from "@/lib/pages";
 import { BRAND, LEGAL_NAME, siteUrl } from "@/lib/site";
 import { db } from "@/lib/supabase";
 import { personalFor } from "@/lib/recipient";
-import { COUNTRIES, segKey, type CountryCode } from "@/lib/country";
+import { leadCountry, segKey } from "@/lib/country";
 import { validEmail, wishNote } from "@/content/sample-wishes";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +41,11 @@ export async function POST(req: Request) {
   const isPublic = v.status === "live" && pageIsPublic(page, await getSettings());
   const test = !isPublic && f.get("vorschau") === "1" && (await isOwner());
   if (!isPublic && !test) return json ? Response.json({ ok: false, error: "page" }, { status: 404 }) : new Response("Not found", { status: 404 });
+  // Startseite: Lieferland getrennt gewählt. Gibt es für Branche und Land keine eigene Seite (z. B. IE, NL, BE,
+  // SE, DE), gilt die Seite derselben Branche nur als Branchen-Nachweis; gespeichert wird das gewählte Land.
+  const ccIn = String(f.get("country") ?? "").toUpperCase();
+  const country = !variantId && ccIn && leadCountry(ccIn) ? ccIn : page.country;
+  const ownPage = country === page.country;
   const rTok = String(f.get("r") ?? "");
   const pv = (test ? `vorschau=1&v=${v.variant_key}&` : "") + (/^[A-Za-z0-9_-]{8,80}$/.test(rTok) ? `r=${rTok}&` : "");
 
@@ -64,7 +69,7 @@ export async function POST(req: Request) {
   if (!test) {
     const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
     const { data: dup } = await db().from("sample_requests").select("id")
-      .eq("email", email).eq("segment_id", page.segment_id).eq("country", page.country)
+      .eq("email", email).eq("segment_id", page.segment_id).eq("country", country)
       .in("status", ["new", "sent"]).gte("created_at", since).limit(1);
     if (dup?.length) return answer(true, "", page.slug, pv);
     const day = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
@@ -83,14 +88,14 @@ export async function POST(req: Request) {
   const note = [suppressed ? "Adresse/Domain gesperrt – keine Mail" : "", test ? "TEST (Inhaber-Vorschau)" : "", wish]
     .filter(Boolean).join("; ") || null;
   const { error } = await db().from("sample_requests").insert({
-    variant_id: v.id, company_name: company, email, segment_id: page.segment_id, country: page.country,
+    variant_id: ownPage ? v.id : null, company_name: company, email, segment_id: page.segment_id, country,
     region: region || null, consent_text: consent, consent_at: new Date().toISOString(),
     status: suppressed || test ? "rejected" : "new", note,
   });
   if (error) return json ? Response.json({ ok: false, error: "server" }, { status: 500 }) : new Response("Fehler", { status: 500 });
-  if (!test) await recordEvent(v.id, "sample_request");
+  if (!test && ownPage) await recordEvent(v.id, "sample_request");
 
-  const m = confirmationMail(page.language === "fr" ? "fr" : "en", page.country, consent);
+  const m = confirmationMail((ownPage ? page.language : formLang) === "fr" ? "fr" : "en", country, consent);
   if (test) {
     // Vorschau: Bestätigung nur an den Inhaber (falls hinterlegt), nie an die Adresse aus dem Mail-Link
     const owner = process.env.SALE_NOTIFY_EMAIL?.trim() || process.env.OWNER_EMAIL?.trim();
@@ -105,8 +110,8 @@ export async function POST(req: Request) {
  *  Landesweit formuliert (Inhaber 27.09.2026): keine Städte oder Regionen, nur das Land. */
 function confirmationMail(lang: "en" | "fr", country: string, consent: string) {
   const fr = lang === "fr";
-  const c = COUNTRIES[country as CountryCode];
-  const area = c ? (fr ? ` ${c.landDe ?? `pour ${c.name.fr}`}` : ` from across ${c.land}`) : "";
+  const c = leadCountry(country);
+  const area = c ? (fr ? ` ${c.landFr}` : ` from across ${c.land}`) : "";
   const subject = fr ? "Votre demande d'échantillon est confirmée" : "Your sample request is confirmed";
   // Kurz, leicht, ohne Druck: was jetzt passiert und warum es sich lohnt, kurz hineinzuschauen
   const blocks: MailBlock[] = fr ? [
