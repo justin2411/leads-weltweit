@@ -562,5 +562,7 @@ export const HOME_CSS = `
   .hpz .hp-sample__grid .hp-side__block:not(:first-child){order:1;margin-top:32px}
   .bx footer{padding:28px 0}
 }
+/* „Example from a real sample“ vorerst ausgeblendet, Inhalt bleibt im Code (Inhaber 03.10.2026) */
+.hpz .hp-example--off{display:none}
 `;
 

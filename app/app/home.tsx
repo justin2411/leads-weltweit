@@ -344,7 +344,7 @@ export async function Home({ lang }: { lang: HomeLang }) {
             </div>
 
             {/* Beispiel aus einer echten Probe (Firmen- und Kontaktdaten verdeckt); ohne Zierlinien auf der dunklen Seite (Inhaber 03.10.2026) */}
-            <div className="hp-example" data-example-lead="">
+            <div className="hp-example hp-example--off" data-example-lead="">
               <p className="hp-rule hp-rule--cream" data-reveal="">{t.ex.label}</p>
               <div className="hp-example__grid">
                 <div className="hp-lead-wrap" data-reveal="" style={{ "--d": ".1s" } as CSSProperties}>
