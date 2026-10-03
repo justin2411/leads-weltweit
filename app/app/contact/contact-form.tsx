@@ -6,15 +6,16 @@ import type { ContactText } from "./contact-i18n";
 /**
  * Kontaktformular (Inhaber 03.10.2026): Name, Firma, E-Mail, Telefon, Branche, Land, gewünschte Leads, Nachricht,
  * Einwilligung. Sendet per JavaScript an /api/contact, ohne JavaScript als normales Formular (Weiterleitung).
- * Gleiche Klassen wie das Probe-Formular (pf-).
+ * Gleiche Klassen und Auswahllisten wie das Probe-Formular der Startseite (pf-, Branchen + LEAD_COUNTRIES).
  */
 export type IndustryOption = { value: string; label: string; wishes: { key: string; label: string }[] };
 
-export function ContactForm({ T, lang, industries, markets, privacyHref }: {
-  T: ContactText; lang: string; industries: IndustryOption[]; markets: [string, string][]; privacyHref: string;
+export function ContactForm({ T, lang, industries, countries, privacyHref }: {
+  T: ContactText; lang: string; industries: IndustryOption[]; countries: { code: string; label: string }[]; privacyHref: string;
 }) {
   const f = T.f;
   const [industry, setIndustry] = useState("");
+  const [cc, setCc] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [state, setState] = useState<"idle" | "busy" | "done">("idle");
   const [err, setErr] = useState("");
@@ -29,6 +30,7 @@ export function ContactForm({ T, lang, industries, markets, privacyHref }: {
     if (String(fd.get("company") ?? "").trim().length < 2) return setErr(f.e_company);
     if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(mail)) return setErr(f.e_email);
     if (!industry) return setErr(f.e_industry);
+    if (!cc) return setErr(f.e_country);
     if (!fd.get("consent")) return setErr(f.e_consent);
     setErr(""); setState("busy");
     try {
@@ -73,8 +75,9 @@ export function ContactForm({ T, lang, industries, markets, privacyHref }: {
           </select>
         </label>
         <label className="pf-field"><span>{f.market}</span>
-          <select name="country" defaultValue={markets[0][0]}>
-            {markets.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          <select name="country" value={cc} required onChange={(e) => setCc(e.target.value)}>
+            <option value="" disabled>{f.choose}</option>
+            {countries.map((o) => <option key={o.code} value={o.code}>{o.label}</option>)}
           </select>
         </label>
       </div>

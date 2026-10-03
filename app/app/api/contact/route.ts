@@ -3,8 +3,10 @@ import { mailText, renderMail, type MailBlock } from "@/lib/mail-html";
 import { BRAND, LEGAL_NAME, siteUrl } from "@/lib/site";
 import { db } from "@/lib/supabase";
 import { validEmail, wishesFor } from "@/content/sample-wishes";
-import { CONTACT_PATH, CONTACT_TX, INDUSTRY_KEYS, MARKETS } from "../../contact/contact-i18n";
-import type { HomeLang } from "../../home-i18n";
+import { LEAD_COUNTRIES, leadCountry } from "@/lib/country";
+import { CONTACT_PATH, CONTACT_TX } from "../../contact/contact-i18n";
+import { CONTACT_INDUSTRY_KEYS } from "../../industry-options";
+import { HOME, type HomeLang } from "../../home-i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -28,12 +30,14 @@ export async function POST(req: Request) {
 
   const company = clean(f.get("company"), 200);
   const email = clean(f.get("email"), 200).toLowerCase();
-  const industry = INDUSTRY_KEYS.find((k) => k === f.get("industry"));
-  const country = MARKETS.find((k) => k === f.get("country")) ?? null;
+  // Branchen und Länder wie im Probe-Formular der Startseite (Inhaber 03.10.2026)
+  const industry = CONTACT_INDUSTRY_KEYS.find((k) => k === f.get("industry"));
+  const country = LEAD_COUNTRIES.find((c) => c.code === f.get("country"))?.code ?? null;
   const consented = ["yes", "on", "1", "true"].includes(String(f.get("consent") ?? ""));
   if (company.length < 2) return answer(false, "company");
   if (!validEmail(email)) return answer(false, "email");
   if (!industry) return answer(false, "industry");
+  if (!country) return answer(false, "country");
   if (!consented) return answer(false, "consent");
   const allowed = new Set(wishesFor(industry).map((w) => w.key));
   const wishes = [...new Set(f.getAll("signals").map(String))].filter((k) => allowed.has(k)).slice(0, 10);
@@ -63,7 +67,7 @@ export async function POST(req: Request) {
     const lines = [
       `Neue Kontaktanfrage über die Website (${lang.toUpperCase()})`, "",
       `Firma: ${company}`, `Name: ${name ?? "–"}`, `E-Mail: ${email}`, `Telefon: ${phone ?? "–"}`,
-      `Branche: ${CONTACT_TX.de.industries[industry]}`, `Leads aus: ${country ? CONTACT_TX.de.markets[country] : "–"}`,
+      `Branche: ${HOME.de.industries[industry]?.[0] ?? industry}`, `Leads aus: ${leadCountry(country)?.name.de ?? country}`,
       `Gewünschte Leads: ${wishes.length ? wishes.map(wl).join(", ") : "–"}`, "", `Nachricht:`, message ?? "–",
       ...(suppressed ? ["", "Achtung: Adresse oder Domain steht auf der Sperrliste – keine Bestätigung verschickt."] : []),
     ];
