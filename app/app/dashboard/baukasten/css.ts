@@ -36,6 +36,7 @@ export const BAUKASTEN_CSS = `
 .bk-btn.go:disabled{background:rgba(95,212,255,.12);color:#6e8db3;box-shadow:none;opacity:1}
 .bk-btn.gold{border:0;color:#02060f;background:linear-gradient(180deg,#f2dcae,#e2c68f);box-shadow:0 0 18px rgba(226,198,143,.4);font-weight:700}
 .bk-btn.green{border:0;color:#02060f;background:linear-gradient(180deg,#8ff0c4,#3ddc97);box-shadow:0 0 18px rgba(61,220,151,.4);font-weight:700}
+.bk-undo{padding:6px 11px;font-size:16px}
 .bk-btn.red{border-color:rgba(255,94,115,.55);color:#ffb3bd}
 .bk-btn.dot{position:relative}
 .bk-btn.dot:after{content:"";position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:50%;background:#ffb547;box-shadow:0 0 8px #ffb547}
@@ -55,7 +56,7 @@ export const BAUKASTEN_CSS = `
 .bk-pl em{font-style:normal;color:var(--soft)}
 
 /* ---------- Arbeitsfläche ---------- */
-.bk-main{display:grid;grid-template-columns:184px minmax(0,1fr) 372px;gap:10px;height:max(560px,var(--bk-h))}
+.bk-main{display:grid;grid-template-columns:172px minmax(0,1fr) 352px;gap:10px;height:max(560px,var(--bk-h))}
 .bk-pal,.bk-ins{min-height:0;overflow:auto;scrollbar-width:thin;border:1px solid var(--line);border-radius:12px;background:linear-gradient(180deg,rgba(9,24,48,.7),rgba(4,12,26,.55))}
 .bk-pal{padding:10px 8px;display:grid;align-content:start;gap:12px}
 .bk-pal h4,.bk-ins h4{margin:0 0 6px;font-family:var(--hud);font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--cy2)}
@@ -70,7 +71,7 @@ export const BAUKASTEN_CSS = `
 
 .bk-cv{position:relative;min-width:0;min-height:0;border:1px solid rgba(95,212,255,.22);border-radius:12px;overflow:hidden;
   background:radial-gradient(800px 420px at 50% 40%,rgba(40,110,190,.14),transparent 70%),rgba(2,8,18,.72);box-shadow:inset 0 0 60px rgba(0,0,0,.5)}
-.bk-cv .react-flow{background:transparent}
+.bk-cv .react-flow{--xy-background-color:transparent;--xy-edge-label-background-color:transparent;background:transparent!important}
 .bk-cv.over{border-color:var(--gold);box-shadow:inset 0 0 0 2px rgba(226,198,143,.35),inset 0 0 60px rgba(0,0,0,.5)}
 .bk-cn{position:absolute;width:16px;height:16px;border:2px solid var(--cy);opacity:.7;pointer-events:none;z-index:5}
 .bk-cn.tl{top:6px;left:6px;border-right:0;border-bottom:0}.bk-cn.tr{top:6px;right:6px;border-left:0;border-bottom:0}

@@ -376,6 +376,9 @@ class ParityTest(unittest.TestCase):
         for i, case in enumerate(data.get("flows") or []):
             f = case["flow"]
             for j, rc in enumerate(case.get("rows") or []):
+                if "row" not in rc:  # Format von flow.test.ts: rows = Zeilen, pipeline = {id: pipelineCheck}
+                    rc = {"row": rc, **({"pipeline_check": case["pipeline"][rc["id"]]}
+                                        if rc.get("id") in (case.get("pipeline") or {}) else {})}
                 r = rc["row"]
                 with self.subTest(kind="flow", i=i, j=j, name=case.get("name")):
                     if "in_scope" in rc:

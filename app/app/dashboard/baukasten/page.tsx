@@ -5,6 +5,8 @@ import { Builder, type BuilderInit, type SavedFlow } from "./builder";
 import { BAUKASTEN_CSS } from "./css";
 
 export const metadata = { title: "Baukasten" };
+// Server-Actions (Stichprobe bis 5000 Zeilen in 1000er-Seiten) erben das Zeitlimit der Seite
+export const maxDuration = 60;
 type SP = Promise<Record<string, string | string[] | undefined>>;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SEG_LABEL = Object.fromEntries((FIELDS.find((f) => f.key === "segment")?.options ?? []).map((o) => [o.v, o.label.replace(/^S\d+\s*/, "")]));

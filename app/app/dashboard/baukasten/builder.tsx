@@ -166,6 +166,45 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
     return { scope, held };
   }, [pipe, quelle?.source, loading, sample.rows, res, deferred]);
 
+  // ---------------------------------------------------------------- Rückgängig (Strg+Z): Einstellungen und Verbindungen
+  const hist = useRef<Flow[]>([]);
+  const last = useRef<Flow>(flow);
+  const flowRef = useRef(flow);
+  flowRef.current = flow;
+  const skipHist = useRef(false);
+  const [undoN, setUndoN] = useState(0);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const cur = flowRef.current;
+      if (skipHist.current) { skipHist.current = false; last.current = cur; return; }
+      if (JSON.stringify(last.current) !== JSON.stringify(cur)) {
+        hist.current = [...hist.current.slice(-49), last.current];
+        setUndoN(hist.current.length);
+      }
+      last.current = cur;
+    }, 500);
+    return () => clearTimeout(t);
+  }, [logicKey]);
+  const undo = useCallback(() => {
+    const prev = hist.current.pop();
+    setUndoN(hist.current.length);
+    if (!prev) return;
+    skipHist.current = true;
+    setNodes(toRfNodes(prev));
+    setEdges(toRfEdges(prev));
+  }, []);
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "z" || e.shiftKey) return;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable)) return;
+      e.preventDefault();
+      undo();
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [undo]);
+
   // ---------------------------------------------------------------- Stichprobe laden (entprellt)
   const qKey = quelle ? JSON.stringify({ source: quelle.source, segment: quelle.segment, countries: quelle.countries, status: quelle.status, size: quelle.size }) : "";
   useEffect(() => {
@@ -255,8 +294,13 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
     if (!pos && sel && NODE_META[sel.data.cfg.kind].ports.length && NODE_META[kind].input) {
       const ports = NODE_META[sel.data.cfg.kind].ports;
       const port = ports.find((p) => !es.some((e) => e.source === sel.id && (e.sourceHandle ?? "out") === p)) ?? ports[0];
-      let p = { x: sel.position.x + 320, y: sel.position.y + (ports.length > 1 ? (port === "ja" ? -100 : 100) : 0) };
-      while (ns.some((n) => Math.abs(n.position.x - p.x) < 220 && Math.abs(n.position.y - p.y) < 130)) p = { x: p.x, y: p.y + 150 };
+      const p = { x: sel.position.x + 320, y: sel.position.y + (ports.length > 1 ? (port === "ja" ? -100 : 100) : 0) };
+      // nicht auf einen anderen Baustein legen: unter den überlappenden schieben
+      for (let i = 0; i < 40; i++) {
+        const hit = ns.find((n) => Math.abs(n.position.x - p.x) < 260 && p.y < n.position.y + (n.measured?.height ?? 170) + 30 && p.y + 190 > n.position.y);
+        if (!hit) break;
+        p.y = hit.position.y + (hit.measured?.height ?? 170) + 40;
+      }
       pos = p;
       link = { id: uid("e", es.map((e) => e.id)), source: sel.id, sourceHandle: port, target: id, targetHandle: "in", type: "bk" };
     }
@@ -298,6 +342,9 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
     setFlowId(id);
     setBase(id ? sig(n, f) : "");
     setPristine(sig(n, f));
+    hist.current = [];
+    setUndoN(0);
+    skipHist.current = true;
     onNav(nav);
     window.history.replaceState(null, "", url);
     setTimeout(() => { void rf.fitView({ padding: 0.2, maxZoom: 1, duration: 300 }); }, 60);
@@ -430,6 +477,7 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
               </div>
             )}
           </span>
+          <button type="button" className="bk-btn bk-undo" onClick={undo} disabled={!undoN} title="Rückgängig (Strg+Z)" aria-label="Rückgängig">↶</button>
           <button type="button" className={`bk-btn go${dirty ? " dot" : ""}`} onClick={save} disabled={busy || !dirty || (active && errors > 0)}
             title={active && errors ? "Läuft in der Pipeline – erst Fehler beheben" : "Speichern (nie automatisch)"}>
             {busy ? "…" : "Speichern"}
@@ -475,7 +523,7 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
               nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
               onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} isValidConnection={isValidConnection}
               onNodeClick={() => setSheet("ins")} onPaneClick={() => setSheet(null)}
-              snapToGrid snapGrid={GRID} fitView fitViewOptions={{ padding: 0.12, maxZoom: 1 }} minZoom={0.2} maxZoom={1.8}
+              snapToGrid snapGrid={GRID} fitView fitViewOptions={{ padding: 0.08, maxZoom: 1 }} minZoom={0.2} maxZoom={1.8}
               deleteKeyCode={["Backspace", "Delete"]} colorMode="dark" defaultEdgeOptions={{ type: "bk" }}
               connectionRadius={28} elevateNodesOnSelect>
               <Background variant={BackgroundVariant.Dots} gap={GRID[0]} size={1.4} color="rgba(95,212,255,.22)" />
