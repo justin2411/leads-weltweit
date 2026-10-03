@@ -78,3 +78,113 @@ class WerkPlanTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _rows(lane, run, parts, minutes, cand, green=0, rows_per_part=4, start="2026-10-03T20:00:00+00:00", werk="lead-werk"):
+    """run_stats-Zeilen wie im Lead-Werk: je Teil mehrere Zeilen (je Zielgruppe/Land)."""
+    import datetime as dt
+    st = dt.datetime.fromisoformat(start)
+    out = []
+    for i in range(parts):
+        for j in range(rows_per_part):
+            out.append({"werk": werk, "part": f"{lane}-{i}" if werk == "lead-werk" else f"run --shard {i}/{parts}",
+                        "run_id": run, "started_at": st.isoformat(),
+                        "finished_at": (st + dt.timedelta(minutes=minutes)).isoformat(),
+                        "candidates": cand if j == 0 else 0, "processed": cand if j == 0 else 0,
+                        "green": green if j == 0 else 0})
+    return out
+
+
+class AutopilotTests(unittest.TestCase):
+    """Autopilot (Inhaber 03.10.2026: „Ja, Autopilot an“) und Speicher-Bremse."""
+
+    def setUp(self):
+        self.reg = W.load_lines()
+        self.base = W.counts(self.reg, None)[0]
+        self.lead = {k: v for k, v in self.base.items() if k != "kunden"}
+
+    def test_stats_count_each_part_once(self):
+        s = W.lane_stats(_rows("web-us", "r1", 3, 2, 0), "lead-werk")["web-us"]
+        self.assertEqual((s["parts"], s["parts_last"], s["empty"]), (3, 3, 3))  # 12 Zeilen = 3 Teile
+        self.assertAlmostEqual(s["avg_min"], 2)
+
+    def test_exhausted_lane_keeps_one_watch_slot(self):
+        stats = W.lane_stats(_rows("web-us", "r1", 21, 2, 0) + _rows("web-us", "r0", 21, 2, 0, start="2026-10-03T18:00:00+00:00"), "lead-werk")
+        plan, why = W.autopilot(self.reg, "lead-werk", self.lead, stats, other={"kunden": 8})
+        self.assertEqual(plan["web-us"], 1)
+        self.assertIn("Wachplatz", why["web-us"])
+
+    def test_full_lane_grows_toward_30_minute_parts(self):
+        # alle anderen Linien erschöpft (je 1 Wachplatz) -> genug freie Plätze
+        empty = [r for l in self.lead if l != "web-north" for r in _rows(l, "r1", 2, 1, 0)]
+        stats = W.lane_stats(empty + _rows("web-north", "r1", 1, 75, 7000, 500), "lead-werk")
+        plan, why = W.autopilot(self.reg, "lead-werk", self.lead, stats, other={"kunden": 8})
+        self.assertEqual(plan["web-north"], 3)  # ceil(75 * 1 / 30) = 3, höchstens 2 * 1 + 2 = 4
+        self.assertIn("voll ausgelastet", why["web-north"])
+        stats = W.lane_stats(empty + _rows("web-north", "r1", 3, 70, 7000, 500), "lead-werk")
+        self.assertEqual(W.autopilot(self.reg, "lead-werk", self.lead, stats, other={"kunden": 8})[0]["web-north"], 7)
+        # ohne freie Plätze (andere Linien laufen gut) wächst nichts über die Summe
+        busy = [r for l in self.lead if l != "web-north" for r in _rows(l, "r1", self.lead[l] or 1, 40, 100)]
+        plan, _ = W.autopilot(self.reg, "lead-werk", self.lead, W.lane_stats(busy + _rows("web-north", "r1", 1, 75, 7000, 500), "lead-werk"), other={"kunden": 8})
+        self.assertLessEqual(sum(plan.values()), 30)
+
+    def test_owner_zero_and_locks_stay(self):
+        base = dict(self.lead, **{"web-fr": 0})
+        stats = W.lane_stats(_rows("web-fr", "r1", 1, 75, 5000, 100) + _rows("web-uk", "r1", 5, 1, 0), "lead-werk")
+        plan, why = W.autopilot(self.reg, "lead-werk", base, stats, locks={"web-uk": 4}, other={"kunden": 8})
+        self.assertEqual(plan["web-fr"], 0)
+        self.assertEqual(plan["web-uk"], 4)
+        self.assertIn("festgesetzt", why["web-uk"])
+
+    def test_sum_never_exceeds_cap_and_lane_max(self):
+        import random
+        rnd = random.Random(7)
+        lanes = [l for l in self.reg["lanes"] if l["werk"] == "lead-werk"]
+        cap = self.reg["total_slots"] - self.reg["reserve"]
+        for n in range(300):
+            rows = []
+            for l in lanes:
+                parts = rnd.randint(1, 21)
+                rows += _rows(l["id"], "r1", parts, rnd.choice([1, 5, 40, 60, 75]), rnd.choice([0, 0, 50, 5000]),
+                              rnd.randint(0, 900), rows_per_part=rnd.randint(1, 4))
+            base = {l["id"]: rnd.randint(0, l["max"]) for l in lanes}
+            other = {"kunden": rnd.randint(0, 16)}
+            brake = rnd.choice(["aus", "hinweis", "drossel", "ohne-rohbestand"])
+            plan, _ = W.autopilot(self.reg, "lead-werk", base, W.lane_stats(rows, "lead-werk"), other=other, brake=brake)
+            limit = min(cap - other["kunden"], W.BRAKE_LEAD_MAX if brake in ("drossel", "ohne-rohbestand") else 99)
+            self.assertLessEqual(sum(plan.values()), max(limit, 0), (n, plan, other, brake))
+            for l in lanes:
+                self.assertLessEqual(plan[l["id"]], l["max"])
+                if base[l["id"]] == 0:
+                    self.assertEqual(plan[l["id"]], 0)
+
+    def test_brake_levels_with_hysteresis(self):
+        gb = W.GB
+        self.assertEqual(W.brake_level(int(5.4 * gb)), "aus")
+        self.assertEqual(W.brake_level(int(5.6 * gb)), "hinweis")
+        self.assertEqual(W.brake_level(int(6.1 * gb)), "drossel")
+        self.assertEqual(W.brake_level(int(7.2 * gb)), "ohne-rohbestand")
+        self.assertEqual(W.brake_level(int(6.9 * gb), "ohne-rohbestand"), "ohne-rohbestand")  # 0,2 GB Abstand
+        self.assertEqual(W.brake_level(int(6.7 * gb), "ohne-rohbestand"), "drossel")
+        self.assertEqual(W.brake_level(None, "drossel"), "drossel")  # ohne Messwert gilt die letzte Stufe
+
+    def test_decide_falls_back_and_applies_brake(self):
+        # Einstellungen nicht lesbar -> Belegung wie bisher (kein Autopilot)
+        res = W.decide(self.reg, "lead-werk", {"settings": None, "rows": []})
+        self.assertEqual(res["plan"], self.lead)
+        # Autopilot aus -> Belegung des Inhabers
+        res = W.decide(self.reg, "lead-werk", {"settings": {"slot_autopilot": {"on": False}}, "rows": _rows("web-us", "r1", 21, 1, 0)})
+        self.assertEqual((res["mode"], res["plan"]["web-us"]), ("standard", 21))
+        # Bremse ab 7 GB: höchstens 8 Lead-Plätze und ohne Rohbestand
+        res = W.decide(self.reg, "lead-werk", {"settings": {"slot_autopilot": {"on": False}}, "rows": [],
+                                               "db_bytes": int(7.1 * W.GB)})
+        self.assertLessEqual(sum(res["plan"].values()), W.BRAKE_LEAD_MAX)
+        self.assertEqual(res["extra"], " --no-raw")
+        self.assertTrue(all("--no-raw" in r["args"] for r in W.matrix(self.reg, "lead-werk", res["plan"], res["extra"])))
+        # Kunden-Werk: nie --no-raw
+        self.assertEqual(W.decide(self.reg, "kunden-werk", {"settings": {}, "rows": [], "db_bytes": int(7.5 * W.GB)})["extra"], "")
+
+    def test_kunden_lane_uses_processed(self):
+        rows = _rows("kunden", "r1", 8, 3, 40, 10, werk="kunden-werk")
+        plan, why = W.autopilot(self.reg, "kunden-werk", {"kunden": 8}, W.lane_stats(rows, "kunden-werk"), other={})
+        self.assertEqual(plan["kunden"], 1)  # Pool durchgeprüft: Teile nach 3 min fertig

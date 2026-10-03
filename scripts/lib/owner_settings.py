@@ -27,6 +27,9 @@ DEFAULTS = {
     "werke_paused": {},
     # Belegungsplan (Inhaber 03.10.2026): Plätze je Linie, gelesen von scripts/werk_plan.py; {} = Standard
     "slot_plan": {},
+    # Autopilot der Plätze (Inhaber 03.10.2026: „Ja, Autopilot an“): verteilt bei jedem Start nach Ertrag um,
+    # innerhalb aller Grenzen; locks = Linien, die der Inhaber festsetzt ({"web-us": 4}). Gelesen von werk_plan.py
+    "slot_autopilot": {"on": True, "locks": {}},
 }
 
 # Schaltbare Werke (Schlüssel wie im Dashboard). Sicherheitsfunktionen sind NIE schaltbar: Abmelde-Link, Resend-Webhook

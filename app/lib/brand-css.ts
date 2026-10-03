@@ -316,7 +316,7 @@ export const BRAND_CSS = `
 .bx summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:24px;font-size:19px;font-weight:600;transition:color .3s}
 .bx summary:hover{color:var(--gold)}
 .bx summary::-webkit-details-marker{display:none}
-.bx summary:after{content:"+";color:var(--gold);font-size:24px;font-weight:400;line-height:1;transition:transform .35s}
+.bx summary:after{content:"";flex:none;width:20px;height:20px;margin-top:2px;background:var(--gold);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M5 12h14M12 5v14'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M5 12h14M12 5v14'/%3E%3C/svg%3E") center/contain no-repeat;transition:transform .35s}
 .bx details[open] summary:after{transform:rotate(45deg)}
 .bx details p{color:var(--soft);margin:12px 0 0;max-width:720px}
 .bx details[open] p{animation:fade .5s both}

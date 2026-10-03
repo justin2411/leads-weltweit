@@ -86,16 +86,16 @@ class Guard:
         from concurrent.futures import ThreadPoolExecutor
         cuts = [""] + list("123456789abcdef") + [None]
 
-        def part(src: str, lo: str, hi: str | None) -> list[str]:
+        def part(src: str, lo: str, hi: str | None, table: str = "watch_companies", col_src: str = "registry_source",
+                 col_id: str = "registry_id") -> list[str]:
             got, last = [], lo  # gt."" auch am Anfang: sonst nutzt Postgres den Teil-Index nicht (1,5 s statt 1 ms)
             while True:
-                cond = f'registry_id.gt."{last}"' + (f',registry_id.lt."{hi}"' if hi else "")
-                q = {"select": "registry_id", "registry_source": f"eq.{src}", "and": f"({cond})",
-                     "order": "registry_id", "limit": str(page)}
+                cond = f'{col_id}.gt."{last}"' + (f',{col_id}.lt."{hi}"' if hi else "")
+                q = {"select": col_id, col_src: f"eq.{src}", "and": f"({cond})", "order": col_id, "limit": str(page)}
                 rows = None
                 for attempt in range(4):
                     try:
-                        rows = db.select("watch_companies", q)
+                        rows = db.select(table, q)
                         break
                     except RuntimeError as exc:
                         print(f"Vorab-Liste {src}>{last[:8]}: Versuch {attempt + 1} fehlgeschlagen "
@@ -104,15 +104,21 @@ class Guard:
                 if rows is None:
                     print(f"Vorab-Liste {src}>{last[:8]}: abgebrochen, Abgleich läuft gezielt weiter", flush=True)
                     return got
-                got += [r["registry_id"] for r in rows]
+                got += [r[col_id] for r in rows]
                 if len(rows) < page:
                     return got
-                last = rows[-1]["registry_id"]
+                last = rows[-1][col_id]
 
         known: set[tuple[str, str]] = set()
         with ThreadPoolExecutor(8) as ex:
             for src in sources:
                 for ids in ex.map(lambda i: part(src, cuts[i], cuts[i + 1]), range(len(cuts) - 1)):
+                    known.update((src, x) for x in ids)
+        # kompakter Rohbestand (raw_candidates, seit 04.10.2026): genauso, über den Schlüssel (source, source_id)
+        with ThreadPoolExecutor(8) as ex:
+            for src in sources:
+                for ids in ex.map(lambda i: part(src, cuts[i], cuts[i + 1], "raw_candidates", "source", "source_id"),
+                                  range(len(cuts) - 1)):
                     known.update((src, x) for x in ids)
         return known
 
@@ -141,6 +147,16 @@ class Guard:
                             raise
                         time.sleep(3 * (attempt + 1))
                 self.known.update((src, r["registry_id"]) for r in rows)
+                # Rohbestand liegt seit 04.10.2026 kompakt in raw_candidates (nicht mehr als Firma): auch dort
+                # nachschlagen, sonst würde derselbe unvollständige Kandidat jeden Lauf erneut angereichert
+                left = [x for x in part if (src, x) not in self.known]
+                if left:
+                    try:
+                        raw = self.db.select("raw_candidates", {"select": "source_id", "source": f"eq.{src}",
+                                                                "source_id": "in.(" + ",".join(f'"{x}"' for x in left) + ")"})
+                        self.known.update((src, r["source_id"]) for r in raw)
+                    except RuntimeError:
+                        pass  # Tabelle fehlt oder Zeitüberschreitung: höchstens doppelte Prüfung, nie doppelte Firma
         return [c for c in cands if (c["source"], c["source_id"]) not in self.known]
 
     def problem(self, c: dict) -> str | None:

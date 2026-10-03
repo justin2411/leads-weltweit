@@ -172,7 +172,7 @@ export const LANDING_CSS = `
 .bx .lp2 .ticks2 li .ic{color:var(--green);width:20px;height:20px;margin-top:2px}
 .bx .lp2 .faq2 details{border-bottom:1px solid var(--pline);padding:16px 0}
 .bx .lp2 .faq2 summary{cursor:pointer;font-weight:700;color:var(--pink);font-size:17px;list-style:none;display:flex;justify-content:space-between;gap:16px}
-.bx .lp2 .faq2 summary:after{content:"+";color:var(--pgold-d);font-size:24px;line-height:1}.bx .lp2 .faq2 details[open] summary:after{content:"–"}
+.bx .lp2 .faq2 summary:after{content:"";flex:none;width:20px;height:20px;background:var(--pgold-d);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M5 12h14M12 5v14'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M5 12h14M12 5v14'/%3E%3C/svg%3E") center/contain no-repeat}.bx .lp2 .faq2 details[open] summary:after{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M5 12h14'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M5 12h14'/%3E%3C/svg%3E")}
 .bx .lp2 .faq2 p{margin:10px 0 0;color:var(--muted)}
 
 @media (max-width:980px){

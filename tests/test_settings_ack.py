@@ -121,14 +121,21 @@ class ConsumersAckTest(unittest.TestCase):
             self.assertIsNone(werk_plan.read_plan("kunden-werk"))
         self.assertEqual(acks(db2, "kunden-werk")["slot_plan"]["value"], {})
 
-    def test_werk_plan_main_passes_werk(self):
+    def test_werk_plan_main_acks_and_logs_only_real_runs(self):
         import werk_plan
-        with mock.patch.object(werk_plan, "read_plan", return_value=None) as rp, \
+        db = FakeDB({"owner_settings": [{"key": "slot_plan", "value": {"kunden": 4}}]})
+        db.rpc = lambda fn, args: 3 * 1024 ** 3 if fn == "db_size_bytes" else None
+        with mock.patch("lib.db.DB", return_value=db), \
                 mock.patch.dict("os.environ", {"SUPABASE_URL": "x", "GITHUB_OUTPUT": "", "GITHUB_STEP_SUMMARY": ""}), \
                 contextlib.redirect_stdout(io.StringIO()):
             werk_plan.main(["kunden-werk", "--dry"])
+            self.assertEqual(acks(db, "kunden-werk"), {})  # --dry quittiert nicht
+            self.assertEqual(db.tables.get("werk_plan_log", []), [])  # und protokolliert nicht
             werk_plan.main(["kunden-werk"])
-        self.assertEqual([c.args for c in rp.call_args_list], [(None,), ("kunden-werk",)])  # --dry quittiert nicht
+        got = acks(db, "kunden-werk")
+        self.assertEqual(set(got), {"slot_plan", "slot_autopilot"})
+        self.assertEqual(got["slot_plan"]["value"], {"kunden": 4})
+        self.assertEqual(len(db.tables["werk_plan_log"]), 1)
 
     def test_sample_stock_acks_targets_and_age(self):
         import sample_stock

@@ -569,6 +569,8 @@ def main(argv=None) -> int:
     ap.add_argument("--s1-probe", type=int, default=3000, help="S1 UK/US: so viele Karriereseiten prüfen")
     ap.add_argument("--s2-limit", type=int, default=3000, help="S2 UK/FR: so viele Overture-Firmen ohne Website laden")
     ap.add_argument("--store", action="store_true", help="grüne Leads direkt in die Datenbank schreiben (mit --db)")
+    ap.add_argument("--no-raw", action="store_true",
+                    help="Speicher-Bremse ab 7 GB (werk_plan.py): nur grüne Leads speichern, keinen Rohbestand")
     ap.add_argument("--shard", default="", help="i/n: nur jeden n-ten Kandidaten ab i (parallele Teilläufe)")
     ap.add_argument("--out", default="out/extraktor")
     ap.add_argument("--us-overture", action="store_true",
@@ -692,7 +694,7 @@ def main(argv=None) -> int:
         if args.store and guard.db is not None:
             from extraktor.store import store_new
             try:
-                log(f"{key}: Datenbank {store_new(guard.db, guard, [row(l) for l in part if l['ampel'] != 'skip'])}")
+                log(f"{key}: Datenbank {store_new(guard.db, guard, [row(l) for l in part if l['ampel'] != 'skip'], raw=not args.no_raw)}")
             except Exception as exc:  # noqa: BLE001 - eine Branche darf die übrigen nicht mitreißen
                 failed.append(key)
                 log(f"{key}: Speichern fehlgeschlagen ({type(exc).__name__}: {str(exc)[:200]}), weiter mit der nächsten")

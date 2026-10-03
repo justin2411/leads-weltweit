@@ -376,22 +376,44 @@ class WerkeTests(unittest.TestCase):
         self.assertEqual([r["source_id"] for r in calls[0]], ["a"])
         self.assertEqual(calls[0][0]["signal_date"], TODAY.isoformat())
 
-    def test_store_raw_skips_domains_already_in_database(self):
-        """Lauf 01.10.2026: 409 auf watch_companies_domain_uq brach den ganzen Teillauf ab."""
+    def test_store_raw_is_compact_and_idempotent(self):
+        """Inhaber 03.10.2026: Rohbestand nicht mehr als Firma + 5 Beobachtungen, sondern eine Zeile je Kandidat."""
         sys.path.insert(0, str(Path(__file__).resolve().parent))
         from fakedb import FakeDB
         from extraktor.store import store_raw
         db = FakeDB({"watch_companies": [{"id": "old", "domain": "jsbarbershop.com"}]})
         base = {"ampel": "yellow", "segment": "S2", "source": "overture", "company": "JS Barbers", "street": "", "city": "Leeds",
                 "state": "", "zip": "", "country": "UK", "phone": "", "email": "", "phone_type": "",
-                "email_type": "", "contact_name": "", "contact_role": "", "qc": "", "sc": "", "qc_notes": "",
+                "email_type": "", "contact_name": "", "contact_role": "", "qc": "", "sc": "", "qc_notes": "missing:email",
                 "company_info": "", "signal": "no website", "source_url": "", "signal_date": "", "opener": "",
                 "urgency": "", "urgency_reason": ""}
         rows = [dict(base, source_id="1", website="https://jsbarbershop.com"),
-                dict(base, source_id="2", website="https://new-shop.co.uk"),
-                dict(base, source_id="3", website="https://www.new-shop.co.uk/")]
-        self.assertEqual(store_raw(db, rows), 1)
-        self.assertEqual(sorted(c["domain"] for c in db.tables["watch_companies"]), ["jsbarbershop.com", "new-shop.co.uk"])
+                dict(base, source_id="2", website="https://new-shop.co.uk", ampel="red")]
+        self.assertEqual(store_raw(db, rows), 2)
+        self.assertEqual(store_raw(db, rows), 0)  # schon da: bleibt unverändert, zählt nicht doppelt
+        raw = db.tables["raw_candidates"]
+        self.assertEqual([(r["source_id"], r["ampel"], r["domain"], r["missing"]) for r in raw],
+                         [("1", "yellow", "jsbarbershop.com", ["email"]), ("2", "red", "new-shop.co.uk", ["email"])])
+        self.assertEqual(raw[0]["data"]["city"], "Leeds")
+        self.assertNotIn("observations", db.tables)  # keine Firma, keine Beobachtungen, kein Lead
+        self.assertEqual(len(db.tables["watch_companies"]), 1)
+
+    def test_store_new_without_raw_when_brake_is_on(self):
+        class FakeGuard:
+            known = set()
+
+        import extraktor.store as S
+        raw = []
+        orig, orig_raw = S.store_many, S.store_raw
+        S.store_many = lambda db, rows: len(rows)
+        S.store_raw = lambda db, rows: raw.append(rows) or len(rows)
+        try:
+            base = {"source": "overture", "company": "Joe's Cafe", "signal_date": TODAY}
+            res = S.store_new(object(), FakeGuard(), [dict(base, source_id="a", ampel="green"),
+                                                     dict(base, source_id="b", ampel="yellow")], raw=False)
+        finally:
+            S.store_many, S.store_raw = orig, orig_raw
+        self.assertEqual((res["neu"], res["rohbestand"], raw), (1, 0, []))
 
     def test_store_many_splits_block_on_statement_timeout(self):
         """Lauf 01.10.2026: 500/57014 auf observations bei großen Blöcken – ~8.100 grüne S2-Leads gingen verloren."""
