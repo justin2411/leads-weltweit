@@ -554,7 +554,8 @@ export const HOME_CSS = `
 @media (max-width:720px){
   .hpz .hp-hero .hp-stage{display:none}
   .hpz .hp-example{display:none}
-  .hpz section.hp-film{padding-bottom:84px}
+  .hpz section.hp-film{padding-bottom:48px}
+  .hpz section.hp-proofsec{padding-top:40px}
   .hpz .hp-sample__grid{display:flex;flex-direction:column}
   .hpz .hp-sample__grid>.hp-side{display:contents}
   .hpz .hp-sample__grid .hp-side__block:first-child{order:-1;margin-bottom:28px}
