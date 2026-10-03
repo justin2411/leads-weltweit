@@ -26,11 +26,20 @@ returns uuid language sql as $$
     'score', 5, 'storage_path', p_path, 'subject', 's', 'expires_at', (now() + interval '48 hours')::text))
 $$;
 
+-- Drei-Stufen-Freigabe (Migration 20261004000000): Probe gilt erst als abrufbar, wenn alle 10 Leads freigegeben sind
+create function pg_temp.release(p_path text) returns void language sql as $$
+  insert into signalwerk.lead_checks (lead_id, result, context)
+    select unnest(lead_ids), 'released', 'test' from signalwerk.sample_stock where storage_path = p_path
+  on conflict (lead_id) do update set result = 'released', checked_at = now();
+  select signalwerk.mark_sample_stock_checked(id) from signalwerk.sample_stock where storage_path = p_path;
+$$;
+
 do $$
 declare n int; ok boolean; got record;
 begin
   -- 1) genau 10 reserviert
   perform pg_temp.stock('asc', 'a.json', '["no_website"]', '{"no_website": 10}');
+  perform pg_temp.release('a.json');
   select count(*) into n from signalwerk.leads where segment_id = 'SX' and status = 'reserved';
   assert n = 10, format('reserviert %s statt 10', n);
 
@@ -65,6 +74,7 @@ begin
   -- 6) Resend lehnt ab: Probe wieder bereit, Sperre frei
   update signalwerk.leads set status = 'new' where segment_id = 'SX';
   perform pg_temp.stock('desc', 'c.json');
+  perform pg_temp.release('c.json');
   perform signalwerk.lock_sample_request('20000000-0000-0000-0000-000000000002');
   select * into got from signalwerk.claim_sample_stock('SX', 'US', '{}', '20000000-0000-0000-0000-000000000002');
   perform signalwerk.finish_sample_stock(got.id, false, true, null, 'Resend 422');
@@ -80,6 +90,7 @@ begin
 
   -- 8) Nachprüfung beim Abruf: Lead inzwischen ungültig -> Probe verworfen, nichts vergeben
   perform pg_temp.stock('asc', 'd.json');
+  perform pg_temp.release('d.json');
   update signalwerk.leads set status = 'expired' where id = '10000000-0000-0000-0000-000000000001';
   select count(*) into n from signalwerk.claim_sample_stock('SX', 'US', '{}', null);
   assert n = 0, 'ungültige Probe vergeben';
@@ -88,10 +99,33 @@ begin
   -- 9) widersprüchliche Firma (Qualitätsprüfung blocking) -> nie vergeben
   update signalwerk.leads set status = 'new' where segment_id = 'SX' and status <> 'expired';
   perform pg_temp.stock('desc', 'e.json');
+  perform pg_temp.release('e.json');
   insert into signalwerk.observations (company_id, kind, key, source_name, details)
     values ('00000000-0000-0000-0000-000000000012', 'other', 'quality', 'enrich', '{"blocking": true}');
   select count(*) into n from signalwerk.claim_sample_stock('SX', 'US', '{}', null);
   assert n = 0, 'Probe mit widersprüchlicher Firma vergeben';
+
+  -- 10) ohne Freigabe (oder Freigabe älter als 26 h) nie vergeben, Probe verworfen, Leads frei
+  delete from signalwerk.observations where company_id = '00000000-0000-0000-0000-000000000012';
+  update signalwerk.leads set status = 'new' where segment_id = 'SX' and status <> 'expired';
+  perform pg_temp.stock('desc', 'f.json');
+  select count(*) into n from signalwerk.claim_sample_stock('SX', 'US', '{}', null);
+  assert n = 0, 'Probe ohne Freigabe vergeben';
+  assert (select note from signalwerk.sample_stock where storage_path = 'f.json') like '%Freigabe%';
+  update signalwerk.leads set status = 'new' where segment_id = 'SX' and status <> 'expired';
+  perform pg_temp.stock('desc', 'g.json');
+  perform pg_temp.release('g.json');
+  update signalwerk.sample_stock set gate_checked_at = now() - interval '27 hours' where storage_path = 'g.json';
+  select count(*) into n from signalwerk.claim_sample_stock('SX', 'US', '{}', null);
+  assert n = 0, 'Probe mit alter Freigabe vergeben';
+
+  -- 11) Webagenturen (S2): kein Verfall nach Alter
+  update signalwerk.leads set status = 'new' where segment_id = 'SX' and status <> 'expired';
+  insert into signalwerk.segments (id, name) values ('S2', 'Webagenturen') on conflict do nothing;
+  perform pg_temp.stock('desc', 'h.json');
+  update signalwerk.sample_stock set segment_id = 'S2', built_at = now() - interval '100 hours' where storage_path = 'h.json';
+  n := signalwerk.expire_sample_stock(48);
+  assert (select status from signalwerk.sample_stock where storage_path = 'h.json') = 'ready', 'S2-Probe verfallen';
   raise notice 'Vorrats-Tests ok';
 end $$;
 rollback;

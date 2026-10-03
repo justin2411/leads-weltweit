@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from fakedb import FakeDB  # noqa: E402
 from lib import wishes  # noqa: E402
+from gatestub import setUpModule, tearDownModule  # noqa: E402,F401  (Freigabe-Durchreiche)
 
 
 def lead(i, signal, summary="", company=None, **co):

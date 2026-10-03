@@ -15,6 +15,7 @@ import responder  # noqa: E402
 import sample_stock as ss  # noqa: E402
 import web_samples  # noqa: E402
 from fakedb import FakeDB  # noqa: E402
+from gatestub import setUpModule, tearDownModule  # noqa: E402,F401  (Freigabe-Durchreiche)
 
 
 class StockDB(FakeDB):
