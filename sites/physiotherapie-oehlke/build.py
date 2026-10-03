@@ -6,7 +6,7 @@
 Inhalte der Unterseiten: content/pages.json (aus der bisherigen Website übernommen, frei bearbeitbar).
 Startseite, Navigation und Footer: hier im Code. Nur Standardbibliothek.
 
-DEMO = True: Vorschau auf der Subdomain – alle Seiten noindex, keine kanonischen Links.
+DEMO = True: Vorschau auf der Subdomain: alle Seiten noindex, keine kanonischen Links.
 Zum Livegang auf physiotherapie-oehlke.de DEMO = False setzen.
 """
 from __future__ import annotations
@@ -66,15 +66,15 @@ ARROW = icon("arrow").replace("<svg", '<svg class="arrow"')
 # ---------------------------------------------------------------- Stammdaten
 SERVICES = [
     ("geriatrische-physiotherapie-hausbesuch", "Geriatrie", "Geriatrische Physiotherapie", "heart", "geriatrie",
-     "Mein Schwerpunkt: Menschen wieder in Bewegung bringen – aufstehen, gehen, den Alltag selbst meistern."),
+     "Mein Schwerpunkt: Menschen wieder in Bewegung bringen. Aufstehen, gehen, den Alltag selbst meistern."),
     ("krankengymnastik-hausbesuch", "Krankengymnastik", "Krankengymnastik (KG)", "dumbbell", "leistung-krankengymnastik",
      "Aktive und passive Übungen für mehr Beweglichkeit, Kraft und Sicherheit im Alltag."),
     ("gangschule-hausbesuch", "Gangschule", "Gangschule & Mobilität", "walk", "leistung-gangschule",
-     "Sicheres Gehen und Stehen üben – für mehr Selbstständigkeit und Vertrauen in die eigene Bewegung."),
+     "Sicheres Gehen und Stehen üben, für mehr Selbstständigkeit und Vertrauen in die eigene Bewegung."),
     ("alltagstraining-hausbesuch", "Alltagstraining", "Alltagstraining", "stairs", "leistung-alltagstraining",
      "Bewegungen aus Ihrem Alltag trainieren: Aufstehen, Treppen steigen, Anziehen."),
     ("manuelle-therapie-hausbesuch", "Manuelle Therapie", "Manuelle Therapie (MT)", "hand", "leistung-manuelle-therapie",
-     "Gezielte Handgriffe an Gelenken und Muskeln – für mehr Beweglichkeit und weniger Schmerz."),
+     "Gezielte Handgriffe an Gelenken und Muskeln für mehr Beweglichkeit und weniger Schmerz."),
     ("lymphdrainage-hausbesuch", "Lymphdrainage", "Lymphdrainage (MLD)", "drop", "leistung-lymphdrainage",
      "Sanfte Grifftechnik, die den Abtransport von Gewebeflüssigkeit fördern und Schwellungen reduzieren soll."),
     ("atemtherapie-hausbesuch", "Atemtherapie", "Atemtherapie (AT)", "wind", "leistung-atemtherapie",
@@ -82,7 +82,7 @@ SERVICES = [
     ("klassische-massage-hausbesuch", "Massage", "Klassische Massage", "spark", "leistung-massage",
      "Massagetechniken zur Lockerung verspannter Muskulatur und zur Schmerzlinderung."),
     ("befundung-beratung-hausbesuch", "Befundung", "Befundung & Beratung", "clip", "leistung-befundung",
-     "Ausführliche Anamnese im Ersttermin – gemeinsam legen wir Ihre Therapieziele fest."),
+     "Ausführliche Anamnese im Ersttermin. Gemeinsam legen wir Ihre Therapieziele fest."),
 ]
 SVC = {s[0]: s for s in SERVICES}
 SPANS = [7, 5, 4, 4, 4, 4, 4, 4, 12]  # Raster der Leistungskacheln (12 Spalten)
@@ -187,7 +187,7 @@ def header(current: str, light: bool) -> str:
 <div class="progress" aria-hidden="true"></div>
 <header class="hdr{' hdr--light' if light else ''}">
   <div class="container hdr__in">
-    <a class="hdr__logo" href="/" aria-label="Mobile Physiotherapie Oehlke – Startseite">
+    <a class="hdr__logo" href="/" aria-label="Mobile Physiotherapie Oehlke, Startseite">
       <img class="l-white" src="/assets/img/logo-white.png" alt="" width="479" height="183">
       <img class="l-color" src="/assets/img/logo.png" alt="" width="479" height="183">
     </a>
@@ -226,8 +226,8 @@ def footer() -> str:
     <div class="ftr__grid" style="margin-top:70px">
       <div>
         <img class="ftr__logo" src="/assets/img/logo-white.png" alt="Mobile Physiotherapie Oehlke" width="157" height="60" loading="lazy">
-        <p>Mobile Physiotherapie im Hausbesuch für Privatpatienten, Beihilfeberechtigte und Selbstzahler – im Raum Hockenheim, Schwetzingen und Heidelberg.</p>
-        <ul><li><a href="{TEL}">{PHONE}</a></li><li><a href="mailto:{MAIL}">{MAIL}</a></li><li>Mo–Fr 8–18 Uhr · Sa 9–15 Uhr</li></ul>
+        <p>Mobile Physiotherapie im Hausbesuch für Privatpatienten, Beihilfeberechtigte und Selbstzahler im Raum Hockenheim, Schwetzingen und Heidelberg.</p>
+        <ul><li><a href="{TEL}">{PHONE}</a></li><li><a href="mailto:{MAIL}">{MAIL}</a></li><li>Mo bis Fr 8 bis 18 Uhr · Sa 9 bis 15 Uhr</li></ul>
       </div>
       <div><h4>Leistungen</h4><ul>{svc}<li><a href="/#leistungen">Alle Leistungen</a></li></ul></div>
       <div><h4>Einsatzgebiet</h4><ul>{towns}<li><a href="/#einsatzgebiet">Alle Orte</a></li></ul></div>
@@ -447,7 +447,7 @@ def service_page(slug: str) -> str:
         more = [SERVICES[0]] + [x for x in SERVICES[1:] if x[0] != slug][:2]
     more_html = "".join(svc_card(x) for x in more)
     cta_title = "Jetzt <em>Termin</em> vereinbaren"
-    cta_text = " ".join(strip_tags(p) for p in (ctab[1] if ctab else []))[:400] or "Rufen Sie an oder schreiben Sie – ich melde mich persönlich zurück."
+    cta_text = " ".join(strip_tags(p) for p in (ctab[1] if ctab else []))[:400] or "Rufen Sie an oder schreiben Sie. Ich melde mich persönlich zurück."
     crumbs = [("/", "Startseite"), ("/#leistungen", "Leistungen"), ("", s[1])]
     if slug == SERVICES[0][0]:
         crumbs = [("/", "Startseite"), ("", "Geriatrische Physiotherapie")]
@@ -544,11 +544,11 @@ def home() -> str:
     cards = "".join(svc_card(s, sp, "Mein Schwerpunkt" if i == 0 else "", small=sp < 7) for i, (s, sp) in enumerate(zip(SERVICES, SPANS)))
     marquee = "".join(f"<span>{e(s[2])}</span>" for s in SERVICES)
     steps = [
-        ("Kontakt", "Anrufen oder Formular – ganz unverbindlich."),
+        ("Kontakt", "Anrufen oder Formular, ganz unverbindlich."),
         ("Telefonat", "Wir klären Beschwerden, Fragen und die passende Behandlung."),
         ("Termin", "Wir finden einen Termin, der in Ihren Alltag passt."),
         ("Erster Besuch", "Zeit für Anamnese, Befund und Ihre Therapieziele."),
-        ("Therapie", "Behandlung ab Tag eins – regelmäßig an Ihre Fortschritte angepasst."),
+        ("Therapie", "Behandlung ab Tag eins, regelmäßig an Ihre Fortschritte angepasst."),
     ]
     steps_html = "".join(f'<div class="step rv" style="--d:{k * .08:.2f}s"><div class="step__n">{k + 1}</div><div><h3>{t}</h3><p>{x}</p></div></div>' for k, (t, x) in enumerate(steps))
     towns = "".join(f'<li><a href="/physiotherapie-{t[0]}" data-town="{t[0]}">{e(t[1])}</a></li>' for t in TOWNS)
@@ -565,7 +565,7 @@ def home() -> str:
   </g></svg>
   <div class="container hero__grid">
     <div>
-      <p class="hero__badge fade-up" style="--d:.05s"><i></i>Hausbesuche · Hockenheim · Schwetzingen · Heidelberg</p>
+      <p class="hero__badge fade-up" style="--d:.05s"><i></i><span>Hausbesuche · Hockenheim · Schwetzingen <br>· Heidelberg &amp; Umgebung</span></p>
       <h1>{words("Physiotherapie, die zu *Ihnen* nach Hause kommt.")}</h1>
       <p class="hero__sub fade-up" style="--d:.8s">60 Minuten Zeit pro Termin. Keine Anfahrt, kein Wartezimmer. Für Privatpatienten, Beihilfeberechtigte &amp; Selbstzahler.</p>
       <div class="btns fade-up" style="--d:1s">
@@ -573,7 +573,7 @@ def home() -> str:
         <a class="btn btn--ghost btn--lg" href="{TEL}">{icon('phone')} {PHONE}</a>
       </div>
       <div class="hero__facts fade-up" style="--d:1.2s">
-        <span>{icon('clock')} Mo–Fr ab 8, Sa ab 9 Uhr</span><span>{icon('badge')} Staatlich anerkannt</span><span>{icon('pin')} ca. 30 km um Hockenheim</span>
+        <span>{icon('clock')} Mo bis Fr ab 8, Sa ab 9 Uhr</span><span>{icon('badge')} Staatlich anerkannt</span><span>{icon('pin')} ca. 30 km um Hockenheim</span>
       </div>
     </div>
     <div class="hero__visual" data-depth="-14">
@@ -600,7 +600,7 @@ def home() -> str:
       <div>
         <p class="eyebrow rv">Über mich</p>
         <h2 class="rv" style="--d:.05s">Ihre Therapie in besten Händen, <em>zu Hause</em></h2>
-        <p class="quote rv" style="--d:.1s">Ich nehme mir bewusst Zeit – ohne Hektik, ganz in Ruhe in Ihrem gewohnten Umfeld.</p>
+        <p class="quote rv" style="--d:.1s">Ich nehme mir bewusst Zeit, ohne Hektik, ganz in Ruhe in Ihrem gewohnten Umfeld.</p>
         <p class="lead rv" style="--d:.15s">Mein Ziel: dass Sie möglichst lange selbstständig und sicher in Ihrem eigenen Zuhause bleiben können.</p>
         <ul class="checks">
           <li class="rv" style="--d:.2s">Staatlich anerkannter Physiotherapeut</li>
@@ -610,9 +610,9 @@ def home() -> str:
       </div>
     </div>
     <div class="stats">
-      <div class="stat rv"><b><span data-count="60">60</span><small>Min</small></b><p>volle Zeit pro Hausbesuch – ohne Hektik</p></div>
+      <div class="stat rv"><b><span data-count="60">60</span><small>Min</small></b><p>volle Zeit pro Hausbesuch, ohne Hektik</p></div>
       <div class="stat rv" style="--d:.1s"><b><span data-count="30">30</span><small>km</small></b><p>Einsatzradius rund um Hockenheim</p></div>
-      <div class="stat rv" style="--d:.2s"><b><span data-count="6">6</span><small>Tage</small></b><p>Mo – Sa persönlich für Sie erreichbar</p></div>
+      <div class="stat rv" style="--d:.2s"><b><span data-count="6">6</span><small>Tage</small></b><p>Mo bis Sa persönlich für Sie erreichbar</p></div>
     </div>
   </div>
 </section>
@@ -634,7 +634,7 @@ def home() -> str:
     </div>
     <div>
       <p class="eyebrow rv">Mein Schwerpunkt · Geriatrie</p>
-      <h2 class="rv" style="--d:.05s">Wieder mobil werden – <em>Schritt für Schritt</em></h2>
+      <h2 class="rv" style="--d:.05s">Wieder mobil werden, <em>Schritt für Schritt</em></h2>
       <p class="lead rv" style="--d:.1s">Menschen wieder in Bewegung bringen: aufstehen, gehen, den Alltag selbst meistern. Gemeinsam, in Ihrem Tempo.</p>
       <ul class="checks">
         <li class="rv" style="--d:.15s">Aufstehen, Gehen &amp; Treppen sicher üben</li>
@@ -660,9 +660,9 @@ def home() -> str:
     <div>
       <p class="eyebrow rv">Einsatzgebiet</p>
       <h2 class="rv">Ich komme <em>zu Ihnen.</em></h2>
-      <p class="lead rv">Im Umkreis von ca. 30 km rund um Hockenheim – unter anderem hier:</p>
+      <p class="lead rv">Im Umkreis von ca. 30 km rund um Hockenheim, unter anderem hier:</p>
       <ul class="towns rv">{towns}</ul>
-      <p class="rv" style="color:var(--ink-mute)">Ihr Ort ist nicht dabei? Fragen Sie einfach – oft lässt sich das einrichten.</p>
+      <p class="rv" style="color:var(--ink-mute)">Ihr Ort ist nicht dabei? Fragen Sie einfach, oft lässt sich das einrichten.</p>
       <div class="btns rv"><a class="btn btn--magnet" href="#kontakt">Termin anfragen {ARROW}</a></div>
     </div>
   </div>
@@ -680,18 +680,18 @@ def home() -> str:
     <div class="on-dark">
       <p class="eyebrow rv">Kontakt &amp; Termin</p>
       <h2 class="rv">Lassen Sie uns ins <em>Gespräch</em> kommen.</h2>
-      <p class="lead rv">Rufen Sie an oder schreiben Sie – ich melde mich in der Regel innerhalb von 24 Stunden persönlich zurück.</p>
+      <p class="lead rv">Rufen Sie an oder schreiben Sie. Ich melde mich in der Regel innerhalb von 24 Stunden persönlich zurück.</p>
       <div class="cards">
         <a class="ccard rv" href="{TEL}"><span class="ico">{icon('phone')}</span><span><small>Anrufen</small><b>{PHONE}</b></span></a>
         <a class="ccard rv" style="--d:.05s" href="{WA}" target="_blank" rel="noopener"><span class="ico">{icon('wa')}</span><span><small>WhatsApp</small><b>Nachricht schreiben</b></span></a>
         <a class="ccard rv" style="--d:.1s" href="mailto:{MAIL}"><span class="ico">{icon('mail')}</span><span><small>E-Mail</small><b>{MAIL}</b></span></a>
       </div>
-      <div class="hours rv"><b>Mo – Fr</b><span>08:00 – 18:00 Uhr</span><b>Samstag</b><span>09:00 – 15:00 Uhr</span><b>Sonntag</b><span>Ruhetag</span></div>
+      <div class="hours rv"><b>Mo bis Fr</b><span>08:00 bis 18:00 Uhr</span><b>Samstag</b><span>09:00 bis 15:00 Uhr</span><b>Sonntag</b><span>Ruhetag</span></div>
     </div>
     <form class="form rv rv--r" id="terminForm" novalidate>
       <div class="form__body">
         <h3>Termin anfragen</h3>
-        <p style="color:var(--ink-mute);margin-bottom:24px">Unverbindlich – ich rufe Sie zurück.</p>
+        <p style="color:var(--ink-mute);margin-bottom:24px">Unverbindlich. Ich rufe Sie zurück.</p>
         <div class="f-grid">
           <div class="field"><input id="f-name" name="name" placeholder=" " autocomplete="name" required><label for="f-name">Name *</label></div>
           <div class="field"><input id="f-tel" name="tel" type="tel" placeholder=" " autocomplete="tel" required><label for="f-tel">Telefon *</label></div>
@@ -703,12 +703,12 @@ def home() -> str:
           </fieldset>
           <div class="field field--full"><textarea id="f-msg" name="msg" placeholder=" "></textarea><label for="f-msg">Ihre Nachricht</label></div>
           <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
-          <label class="consent field--full"><input type="checkbox" name="consent" required><span>Ich bin damit einverstanden, dass meine Angaben – auch freiwillige Angaben zu Beschwerden – zur Bearbeitung meiner Anfrage verarbeitet werden. Hinweise in der <a href="/datenschutz">Datenschutzerklärung</a>. *</span></label>
+          <label class="consent field--full"><input type="checkbox" name="consent" required><span>Ich bin damit einverstanden, dass meine Angaben, auch freiwillige Angaben zu Beschwerden, zur Bearbeitung meiner Anfrage verarbeitet werden. Hinweise in der <a href="/datenschutz">Datenschutzerklärung</a>. *</span></label>
           <p class="form__status field--full" role="status" aria-live="polite"></p>
           <div class="field--full"><button class="btn btn--lg btn--magnet" type="submit">Anfrage senden {ARROW}</button></div>
         </div>
       </div>
-      <div class="form__ok" role="status"><div class="ico">{icon('check', 3)}</div><h3>Vielen Dank!</h3><p style="color:var(--ink-mute)">Ihr E-Mail-Programm öffnet sich mit der vorbereiteten Nachricht – bitte dort noch absenden.<br>Ich melde mich schnellstmöglich persönlich zurück.</p></div>
+      <div class="form__ok" role="status"><div class="ico">{icon('check', 3)}</div><h3>Vielen Dank!</h3><p style="color:var(--ink-mute)">Ihr Mailprogramm öffnet sich mit der vorbereiteten Nachricht. Bitte dort noch absenden.<br>Ich melde mich schnellstmöglich persönlich zurück.</p></div>
     </form>
   </div>
 </section>"""
@@ -726,7 +726,7 @@ def main() -> None:
         files[f"{slug}.html"] = legal_page(slug)
     files["404.html"] = page("Seite nicht gefunden · Mobile Physiotherapie Oehlke", "", "/404",
                              phero({"h1": "Diese Seite gibt es nicht (mehr).", "sub": ""}, [("/", "Startseite"), ("", "404")], None)
-                             + cta("Zurück zur <em>Startseite</em>?", "Oder rufen Sie direkt an – ich helfe gern weiter."), noindex=True)
+                             + cta("Zurück zur <em>Startseite</em>?", "Oder rufen Sie direkt an. Ich helfe gern weiter."), noindex=True)
     for name, content in files.items():
         (OUT / name).write_text(content, encoding="utf-8")
     robots = "User-agent: *\nDisallow: /\n" if DEMO else f"User-agent: *\nAllow: /\n\nSitemap: {LIVE_URL}/sitemap.xml\n"
