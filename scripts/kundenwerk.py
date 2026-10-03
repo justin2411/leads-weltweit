@@ -344,6 +344,7 @@ def fill_up(pool: list[dict], keep: set[str], more) -> list[dict]:
 
 def cmd_run(args) -> int:
     from lib.db import DB
+    started_at = dt.datetime.now(dt.timezone.utc).isoformat()
     db = DB()
     cfg = load_countries()
     generic = {g.lower() for g in cfg.get("generic_local_parts") or []}
@@ -443,6 +444,8 @@ def cmd_run(args) -> int:
     for k, v in sorted(stats.items()):
         if "/" in k:
             log(f"  {k} {v}")
+    from lib.run_stats import record, rows_from_buyer_stats
+    record(db, "kunden-werk", rows_from_buyer_stats(dict(stats), len(pool)), started_at, log)
     return 0
 
 

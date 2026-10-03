@@ -277,6 +277,9 @@ def run(db, apply: bool, log=print) -> dict:
             built[(seg, cc)] = built.get((seg, cc), 0) + 1
     summary = {f"{s}/{c}": {"soll": t, "vorher": have[(s, c)], "neu": built.get((s, c), 0)} for (s, c), t in want.items()}
     log(json.dumps(summary, ensure_ascii=False))
+    if apply:  # Zähler je Lauf fürs Dashboard „Werke“
+        from lib.run_stats import record, rows_from_stock_summary
+        record(db, "proben-vorrat", rows_from_stock_summary(summary), None, log)
     return {"built": sum(built.values()), "missing": missing, "summary": summary}
 
 

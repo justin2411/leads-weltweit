@@ -517,6 +517,7 @@ def funnel(leads: list[dict], pools_: dict[str, list[dict]]) -> dict:
 
 
 def main(argv=None) -> int:
+    started_at = dt.datetime.now(dt.timezone.utc).isoformat()
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--segments", default="S1,S2,S4,S5,S9")
     ap.add_argument("--per", type=int, default=100, help="grüne Leads je Branche")
@@ -664,6 +665,9 @@ def main(argv=None) -> int:
     rep = {"date": dt.date.today().isoformat(), "stats": stats, "green_written": per_seg,
            "segments": funnel(leads, p), "web_requests": fetcher.requests}
     (out / "bericht.json").write_text(json.dumps(rep, indent=2, default=str, ensure_ascii=False), encoding="utf-8")
+    if guard.db is not None:  # Zähler je Lauf fürs Dashboard „Werke“ (Inhaber 03.10.2026)
+        from lib.run_stats import record, rows_from_lead_report
+        record(guard.db, "lead-werk", rows_from_lead_report(rep["segments"]), started_at, log)
     log(f"fertig: {per_seg} grüne Leads -> {out}/leads_gruen.csv")
     for seg, r in rep["segments"].items():
         log(f"  {seg}: Vorrat {r['pool']}, bearbeitet {r['processed']}, grün {r.get('green', 0)}, "

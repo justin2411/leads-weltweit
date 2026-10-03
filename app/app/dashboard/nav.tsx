@@ -10,6 +10,7 @@ export const SECTIONS: [string, string, string][] = [
   ["/dashboard/proben", "Proben", "◫"],
   ["/dashboard/bestand", "Bestand", "▤"],
   ["/dashboard/kunden", "Kunden", "€"],
+  ["/dashboard/werke", "Werke", "⚙"],
 ];
 
 /** Bereiche des Dashboards: oben als Tabs, am Handy als Leiste unten. Land- und Zeitraum-Auswahl bleiben erhalten. */

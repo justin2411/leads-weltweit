@@ -83,6 +83,10 @@
       "daily_limit": 20
     }
   },
+  "rules": {
+    "signal_max_age_days": 45,
+    "sample_size": 10
+  },
   "workflows": [
     {
       "file": "send.yml",
