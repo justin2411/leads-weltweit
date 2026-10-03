@@ -139,10 +139,6 @@ export async function Home({ lang }: { lang: HomeLang }) {
                   {words.map((w, k) => <span key={k}><span className={`hp-w${gold.has(w.toLowerCase().replace(/[.,!?]/g, "")) ? " hp-gold" : ""}`} style={i(k)}>{w}</span>{k < words.length - 1 ? " " : ""}</span>)}
                 </h1>
                 <p className="hp-lede hp-in" style={{ "--d": ".6s" } as CSSProperties}><span className="lede-l">{t.sub}</span><span className="lede-s">{t.subShort}</span></p>
-                <div className="hp-inlead hp-in" style={{ "--d": ".75s" } as CSSProperties}>
-                  <span className="hp-label">{t.every}</span>
-                  <ul className="hp-chips">{t.chips.map(([ic, txt], k) => [k === 4 && <li className="hp-chip-br" aria-hidden="true" key="br" />, <li className="hp-chip" key={txt}><I n={{ bolt: "zap", cal: "calendar" }[ic] ?? ic} />{txt}</li>])}</ul>
-                </div>
                 <div className="hp-cta hp-in" style={{ "--d": ".9s" } as CSSProperties}>
                   <a className="hp-btn hp-btn--gold" href="#sample" data-magnetic=""><span>{t.btn}</span><I n="arrow" c="hp-ico hp-btn__arrow" /></a>
                   {video && <a className="hp-btn hp-btn--line" href="#film"><span className="hp-play-dot" aria-hidden="true"><svg><use href="#i-play" /></svg></span><span>{t.film}</span></a>}

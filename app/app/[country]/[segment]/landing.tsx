@@ -484,10 +484,6 @@ export async function Landing({ params, sp: search, rand }: { params: LandingPar
               {personal?.firma && <span className="for">{fr ? `Préparé pour ${personal.firma}` : `Prepared for ${personal.firma}`}</span>}
               <h1><Words text={headline} gold={goldWords} /></h1>
               {subheadline && <p className="sub">{subheadline}</p>}
-              <div className="every"><span className="cap">{T2.every}</span>
-                {/* zwei Zeilen: Kontaktdaten, dann Vertriebshilfe */}
-                {[T2.chips.slice(0, 3), T2.chips.slice(3)].map((row, r) => (
-                  <span className="chiprow" key={r}>{row.map(([ic, txt]) => <span className="chip" key={txt}><Icon name={ic} />{txt}</span>)}</span>))}</div>
               {sp.angefragt ? <p className="ok">{known ? L.thanksTo(personal!.email!) : L.thanks}</p>
                 : sp.fehler ? <p className="err">{L.error}</p> : null}
               {step ? <Probe /> : !sp.angefragt && (
