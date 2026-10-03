@@ -57,7 +57,7 @@ def imap_fetch(token: str, wait: int = 180, user: str | None = None, password: s
             m.login(user or os.environ["IMAP_USER"], password or os.environ["IMAP_PASSWORD"])
             for box in ("INBOX", "Spam", "Junk"):
                 if m.select(box, readonly=True)[0] == "OK":
-                    typ, data = m.search(None, "SUBJECT", token)
+                    typ, data = m.search(None, "SUBJECT", f'"{token}"')
                     if typ == "OK" and data[0].split():
                         typ, msg = m.fetch(data[0].split()[-1], "(BODY.PEEK[])")
                         if typ == "OK":
@@ -90,7 +90,7 @@ def imap_find(token: str, wait: int = 180) -> bool:
             m.login(os.environ["IMAP_USER"], os.environ["IMAP_PASSWORD"])
             for box in ("INBOX", "Spam", "Junk"):
                 if m.select(box, readonly=True)[0] == "OK":
-                    typ, data = m.search(None, "SUBJECT", token)
+                    typ, data = m.search(None, "SUBJECT", f'"{token}"')
                     if typ == "OK" and data[0].split():
                         print(f"   gefunden in {box}")
                         return True
