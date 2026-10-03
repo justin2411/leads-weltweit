@@ -156,6 +156,32 @@ class SubjectOptoutTest(unittest.TestCase):
         self.assertIsNone(inbox.handle_reply(FakeDB(), mail("a@b.co.uk", "Hello"), "imap:<o4@x>", True))
 
 
+class InboxAutoReplyTest(unittest.TestCase):
+    """03.10.2026: „Automatic reply“ zählte im Dashboard als Antwort – Postfach-Abgleich erkennt Autoresponder."""
+
+    def _db(self):
+        db = db_with_prospect()
+        db.rows("messages")[0].update({"to_email": "info@acme.co.uk", "smtp_message_id": "<sent1@nextgen-profit.de>"})
+        return db
+
+    def test_auto_reply_subject_is_not_a_reply(self):
+        db = self._db()
+        msg = mail("info@acme.co.uk", "Automatic reply: Local businesses across the US without a website", "I am away", mid="<a1@x>", In_Reply_To="<sent1@nextgen-profit.de>")
+        self.assertEqual(inbox.handle_reply(db, msg, "imap:<a1@x>", True), "auto_reply")
+        self.assertEqual(db.rows("email_events")[0]["type"], "auto_reply")
+
+    def test_auto_submitted_header_is_not_a_reply(self):
+        db = self._db()
+        msg = mail("info@acme.co.uk", "Re: Leads", "Thanks, I am out", mid="<a2@x>", Auto_Submitted="auto-replied", In_Reply_To="<sent1@nextgen-profit.de>")
+        self.assertEqual(inbox.handle_reply(db, msg, "imap:<a2@x>", True), "auto_reply")
+
+    def test_real_reply_stays_reply(self):
+        db = self._db()
+        msg = mail("info@acme.co.uk", "Re: Leads", "Yes please send the sample", mid="<a3@x>", In_Reply_To="<sent1@nextgen-profit.de>")
+        self.assertEqual(inbox.handle_reply(db, msg, "imap:<a3@x>", True), "reply")
+        self.assertEqual(db.rows("email_events")[0]["type"], "reply")
+
+
 class FreemailSuppressTest(unittest.TestCase):
     """Fix 22: Freemail-Adressen nur als Adresse sperren, nie die ganze Domain."""
 
