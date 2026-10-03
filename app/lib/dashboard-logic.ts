@@ -64,7 +64,7 @@ export type Stock = {
   at: string;
   leads: { segment_id: string | null; country: string; status: string; n: number }[];
   leads_24h: { segment_id: string | null; country: string; n: number }[];
-  prospects: { check_status: string; segment_id: string; country: string; n: number; unused: number }[];
+  prospects: { check_status: string; segment_id: string; country: string; n: number; unused: number; sent?: number; queued?: number }[];
   prospects_24h: { check_status: string; segment_id: string; country: string; n: number }[];
 };
 export type RawStock = { at: string; by_country: Record<string, number> };

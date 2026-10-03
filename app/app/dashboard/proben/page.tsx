@@ -24,7 +24,7 @@ export default async function Proben({ searchParams }: { searchParams: SP }) {
   const wf = CONFIG.workflows.find((w) => w.file === "proben-vorrat.yml");
   const nextFill = wf ? nextRun(wf.crons, now) : null;
   const L = (c: string) => stock?.leads.filter((l) => l.country === c && l.status === "new").reduce((a, l) => a + Number(l.n), 0) ?? 0;
-  const P = (c: string, f: "n" | "unused") => Number(stock?.prospects.find((x) => x.country === c && x.check_status === "ok")?.[f] ?? 0);
+  const P = (c: string, f: "n" | "unused" | "sent" | "queued") => Number(stock?.prospects.find((x) => x.country === c && x.check_status === "ok")?.[f] ?? 0);
   const web = live.sample_requests.filter((r) => countries.includes(r.country ?? ""));
   const mail = distinctReplies(live.events).filter((e) => e.type === "sample_requested" && countries.includes(e.country ?? ""));
   const rows = [
@@ -52,11 +52,11 @@ export default async function Proben({ searchParams }: { searchParams: SP }) {
       <section className="card tile">
         <header className="th"><span title="Kunden-Leads = lieferbare Leads für Webagentur-Kunden · Käufer = mail-fähige Webagenturen">Je Land</span></header>
         <div className="tbl"><table>
-          <thead><tr><th>Land</th><th className="num">Kunden-Leads</th><th className="num">Käufer mail-fähig</th><th className="num">frei</th><th className="num">angeschrieben</th></tr></thead>
+          <thead><tr><th>Land</th><th className="num">Kunden-Leads</th><th className="num">Käufer mail-fähig</th><th className="num" title="noch ohne Mail">frei</th><th className="num" title="Mail geschrieben und geprüft, wartet auf Versand">Mail bereit</th><th className="num" title="Mail wirklich gesendet">gesendet</th></tr></thead>
           <tbody>{countries.map((c) => (
             <tr key={c}><td><i className="dot" style={{ background: COUNTRY_COLOR[c] }} />{c}</td><td className="num">{stock ? compact(L(c)) : "…"}</td>
               <td className="num">{stock ? compact(P(c, "n")) : "…"}</td><td className="num">{stock ? compact(P(c, "unused")) : "…"}</td>
-              <td className="num">{stock ? compact(P(c, "n") - P(c, "unused")) : "…"}</td></tr>
+              <td className="num">{stock ? compact(P(c, "queued")) : "…"}</td><td className="num">{stock ? compact(P(c, "sent")) : "…"}</td></tr>
           ))}</tbody>
         </table></div>
       </section>
