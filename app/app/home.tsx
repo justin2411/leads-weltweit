@@ -59,8 +59,6 @@ const i = (n: number) => ({ "--i": n }) as CSSProperties;
 const RADAR_T1 = "M108.1 6.9L108.6 1.9M116.2 7.9L117.1 3.0M124.2 9.7L125.5 4.9M132.0 12.1L133.7 7.4M139.5 15.3L141.6 10.7M153.6 23.4L156.5 19.3M160.1 28.4L163.3 24.5M166.1 33.9L169.7 30.3M171.6 39.9L175.5 36.7M176.6 46.4L180.7 43.5M184.7 60.5L189.3 58.4M187.9 68.0L192.6 66.3M190.3 75.8L195.1 74.5M192.1 83.8L197.0 82.9M193.1 91.9L198.1 91.4M193.1 108.1L198.1 108.6M192.1 116.2L197.0 117.1M190.3 124.2L195.1 125.5M187.9 132.0L192.6 133.7M184.7 139.5L189.3 141.6M176.6 153.6L180.7 156.5M171.6 160.1L175.5 163.3M166.1 166.1L169.7 169.7M160.1 171.6L163.3 175.5M153.6 176.6L156.5 180.7M139.5 184.7L141.6 189.3M132.0 187.9L133.7 192.6M124.2 190.3L125.5 195.1M116.2 192.1L117.1 197.0M108.1 193.1L108.6 198.1M91.9 193.1L91.4 198.1M83.8 192.1L82.9 197.0M75.8 190.3L74.5 195.1M68.0 187.9L66.3 192.6M60.5 184.7L58.4 189.3M46.4 176.6L43.5 180.7M39.9 171.6L36.7 175.5M33.9 166.1L30.3 169.7M28.4 160.1L24.5 163.3M23.4 153.6L19.3 156.5M15.3 139.5L10.7 141.6M12.1 132.0L7.4 133.7M9.7 124.2L4.9 125.5M7.9 116.2L3.0 117.1M6.9 108.1L1.9 108.6M6.9 91.9L1.9 91.4M7.9 83.8L3.0 82.9M9.7 75.8L4.9 74.5M12.1 68.0L7.4 66.3M15.3 60.5L10.7 58.4M23.4 46.4L19.3 43.5M28.4 39.9L24.5 36.7M33.9 33.9L30.3 30.3M39.9 28.4L36.7 24.5M46.4 23.4L43.5 19.3M60.5 15.3L58.4 10.7M68.0 12.1L66.3 7.4M75.8 9.7L74.5 4.9M83.8 7.9L82.9 3.0M91.9 6.9L91.4 1.9";
 const RADAR_T2 = "M100.0 13.0L100.0 1.5M143.5 24.7L149.2 14.7M175.3 56.5L185.3 50.7M187.0 100.0L198.5 100.0M175.3 143.5L185.3 149.2M143.5 175.3L149.2 185.3M100.0 187.0L100.0 198.5M56.5 175.3L50.7 185.3M24.7 143.5L14.7 149.3M13.0 100.0L1.5 100.0M24.7 56.5L14.7 50.7M56.5 24.7L50.7 14.7";
 const BLIPS: [string, string, string][] = [["73.7%", "30.1%", ".58s"], ["56.2%", "73.2%", "1.93s"], ["16.2%", "40.9%", "3.33s"]];
-const Ring = ({ v, low = false }: { v: number; low?: boolean }) => (
-  <span className={`hp-ring${low ? " hp-ring--low" : ""}`} style={{ "--v": v } as CSSProperties}><svg viewBox="0 0 44 44"><circle className="hp-ring__bg" cx="22" cy="22" r="19" /><circle className="hp-ring__fg" cx="22" cy="22" r="19" pathLength={100} /></svg><b className="hp-ring__n" /></span>);
 const Lock = () => <svg className="hp-lock" viewBox="0 0 24 24"><path className="hp-lock__shackle" d="M8 10.5V8a4 4 0 0 1 8 0v2.5" /><rect x="5" y="10.5" width="14" height="10" rx="2" /></svg>;
 /** Ansprechpartner (Vorlage v4): zehn Punkte im Passungsring, Startlage Woche 4 (ohne JavaScript sichtbar). */
 const TUNE_DOTS: [number, number, boolean][] = [[18.4, -26.2, true], [13.6, -8.5, true], [25.2, 9.7, true], [9.8, 6.9, true], [4.0, 45.8, false], [-7.5, 20.7, true], [-27.6, 9.0, true], [-8.0, -0.8, true], [-22.0, -27.2, true], [-6.8, -17.7, true]];
@@ -281,22 +279,24 @@ export async function Home({ lang }: { lang: HomeLang }) {
                   </div>
                   <div className="hp-viz" data-viz="2">
                     <p className="hp-viz__label">{t.story.v2} <span className="hp-viz__ex">{t.story.ex}</span></p>
-                    <div className="hp-score">
-                      <div className="hp-score__head">
-                        <Ring v={91} />
-                        <div className="hp-score__who"><b><R t="xxxxxxxxxxxxx" /></b><small>{t.story.rateLead}</small></div>
-                        <span className="hp-score__pass"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>{t.story.pass}</span>
-                      </div>
-                      <div className="hp-score__rows">
-                        <span className="hp-score__min"><em>{t.story.min}</em></span>
-                        {t.story.rows.map(([l, v], k) => <div className="hp-score__row" style={{ "--v": v, "--k": k } as CSSProperties} key={l}><span>{l}</span><b className="hp-score__bar"><i /></b><em /></div>)}
-                      </div>
+                    {/* Fließband wie im Film (Inhaber 03.10.2026): Karten laufen durch den Scanner, der Qualitätswert füllt sich,
+                        bestanden = grün mit Wert, unter dem Mindestwert = rot und fällt heraus. Beispielwerte. */}
+                    <div className="hp-qs">
+                      <div className="hp-qs__head"><span className="hp-qs__ic"><I n="target" /></span><b>{t.story.qs}</b><span className="hp-qs__min">{t.story.minPill}</span></div>
+                      {t.story.rows.map(([l, v]) => <div className="hp-qs__row" key={l} style={{ "--v": v } as CSSProperties}><span>{l}</span><b className="hp-qs__bar"><i /></b><em>{v}</em></div>)}
                     </div>
-                    <div className="hp-score__out">
-                      <Ring v={41} low />
-                      <span className="hp-score__name"><R t="xxxxxxxxxx" /><i /></span>
-                      <span className="hp-score__fail"><I n="ban" />{t.story.fail}</span>
+                    <span className="hp-qs__link" />
+                    <div className="hp-belt" data-belt="">
+                      <span className="hp-belt__line" />
+                      <span className="hp-belt__scan"><i /></span>
+                      {[0, 1, 2, 3, 4].map((k) => (
+                        <div className={`hp-belt__card${k === 3 ? " is-done is-pass has-score" : ""}`} data-slot={k - 1} key={k}>
+                          <span className="hp-belt__sq" /><span className="hp-belt__l1" /><span className="hp-belt__l2" /><span className="hp-belt__l3" />
+                          <b className="hp-belt__score">{k === 3 ? 91 : ""}</b>
+                          <span className="hp-belt__ok"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg></span>
+                        </div>))}
                     </div>
+                    <p className="hp-belt__legend"><span className="hp-belt__yes"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>{t.story.pass}</span><span className="hp-belt__no"><I n="ban" />{t.story.fail}</span></p>
                   </div>
                   <div className="hp-viz" data-viz="3">
                     <div className="hp-mail">
@@ -334,8 +334,8 @@ export async function Home({ lang }: { lang: HomeLang }) {
                         <div className="hp-fact hp-fact--wide hp-fact--event" data-mark="1"><dt>{c.event} <span className="hp-mark" aria-hidden="true">1</span></dt><dd>{c.eventText}</dd></div>
                         <div className="hp-fact" data-mark="2"><dt>{c.date} <span className="hp-mark" aria-hidden="true">2</span></dt><dd>{c.dateText}</dd></div>
                         <div className="hp-fact" data-mark="2"><dt>{c.source} <span className="hp-mark" aria-hidden="true">2</span></dt><dd>{c.sourceText}</dd></div>
-                        <div className="hp-fact hp-fact--wide"><dt>{c.phone}</dt><dd>{t.ex.phonePrefix} <R t="xxxx xxxx" /><span className="hp-sr">{c.hidden}</span></dd></div>
-                        <div className="hp-fact hp-fact--wide"><dt>{c.email}</dt><dd className="hp-nowrap"><R t="xxxxx" />@<R t="xxxxxxxx" />.co.uk<span className="hp-sr">{c.hidden}</span></dd></div>
+                        <div className="hp-fact hp-fact--wide" data-mark="2"><dt>{c.phone} <span className="hp-mark" aria-hidden="true">2</span></dt><dd>{t.ex.phonePrefix} <R t="xxxx xxxx" /><span className="hp-sr">{c.hidden}</span></dd></div>
+                        <div className="hp-fact hp-fact--wide" data-mark="2"><dt>{c.email} <span className="hp-mark" aria-hidden="true">2</span></dt><dd className="hp-nowrap"><R t="xxxxx" />@<R t="xxxxxxxx" />.co.uk<span className="hp-sr">{c.hidden}</span></dd></div>
                       </dl>
                       <div className="hp-lead__foot">
                         <span className="hp-pill"><I n="lock" />{t.ex.pills[0]}</span>

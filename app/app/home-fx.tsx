@@ -205,6 +205,42 @@ export function HomeFx() {
       on(grid, "pointerleave", () => grid.classList.remove("is-pointer"));
     }
 
+    // 9b · Bewertung als Fließband (Inhaber 03.10.2026, wie im Film): je Takt rückt jede Karte einen Platz weiter.
+    //      Platz 1 = Scanner: der Qualitätswert füllt sich mit den Werten dieser Karte; Platz 2 = Ergebnis
+    //      (bestanden grün mit Wert, unter 60 rot und fällt heraus). Gilt auch für die Handy-Kopien der Grafik.
+    const BELT: [number, number, number][] = [[92, 86, 95], [44, 31, 48], [88, 90, 79], [71, 66, 80], [38, 52, 35], [95, 84, 91]];
+    let beltN = 0;
+    const beltTick = () => {
+      if (d.hidden) return;
+      $$("[data-belt]").forEach((belt) => {
+        const viz = belt.closest(".hp-viz"); if (!viz) return;
+        const rows = $$(".hp-qs__row", viz);
+        $$(".hp-belt__card", belt).forEach((c) => {
+          let slot = +(c.dataset.slot ?? 0) + 1;
+          if (slot > 3) {
+            slot = -1; c.classList.add("no-anim"); c.className = "hp-belt__card no-anim";
+            const sc = $(".hp-belt__score", c); if (sc) sc.textContent = "";
+            c.dataset.slot = "-1"; void c.offsetWidth; c.classList.remove("no-anim"); return;
+          }
+          c.dataset.slot = String(slot);
+          if (slot === 1) {
+            const v = BELT[beltN % BELT.length]; c.dataset.v = v.join(",");
+            c.classList.add("is-scan");
+            rows.forEach((r) => { r.style.setProperty("--v", "0"); const em = $("em", r); if (em) em.textContent = "–"; });
+            timers.push(window.setTimeout(() => rows.forEach((r, k) => { r.style.setProperty("--v", String(v[k])); const em = $("em", r); if (em) em.textContent = String(v[k]); }), 350));
+            timers.push(window.setTimeout(() => {
+              const tot = Math.round((v[0] + v[1] + v[2]) / 3), sc = $(".hp-belt__score", c);
+              if (sc) sc.textContent = String(tot);
+              c.classList.add("has-score", tot >= 60 ? "is-pass" : "is-fail");
+            }, 1500));
+          }
+          if (slot === 2) { c.classList.remove("is-scan"); c.classList.add("is-done"); }
+        });
+      });
+      beltN += 1;
+    };
+    if (!reduce) { timers.push(window.setTimeout(beltTick, 600)); timers.push(window.setInterval(beltTick, 2800)); }
+
     // 10 · Beispiel-Lead (Vorlage v4): geführter Fokus 1-2-3 (der Rest der Karte tritt zurück), der Quellen-Stempel landet
     //      bei „Beleg“, der Einstiegssatz tippt sich selbst. Die Tour läuft einmal (je Punkt 3,2 s) und startet nicht neu (Inhaber 03.10.2026).
     const notes = $$("[data-note]"), example = $("[data-example-lead]"), lead = $(".hp-lead"), stamp = $(".hp-stamp"), notesList = $(".hp-notes");
