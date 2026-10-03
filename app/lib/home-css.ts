@@ -550,5 +550,16 @@ export const HOME_CSS = `
 .hpz.hp-motion .hp-formcard.is-live::before{animation-play-state:running;will-change:transform}
 /* Kennzahlen-Überschrift wie „How it works in 51 seconds“ (Inhaber 03.10.2026) */
 .hpz .hp-proof__rule{margin:0 0 18px}
+/* Handy (Inhaber 03.10.2026): Hero-Grafik und Beispiel-Lead aus, mehr Luft über den Kennzahlen, Probe: „What you receive“ vor dem Formular */
+@media (max-width:720px){
+  .hpz .hp-hero .hp-stage{display:none}
+  .hpz .hp-example{display:none}
+  .hpz section.hp-film{padding-bottom:84px}
+  .hpz .hp-sample__grid{display:flex;flex-direction:column}
+  .hpz .hp-sample__grid>.hp-side{display:contents}
+  .hpz .hp-sample__grid .hp-side__block:first-child{order:-1;margin-bottom:28px}
+  .hpz .hp-sample__grid .hp-side__block:not(:first-child){order:1;margin-top:32px}
+  .bx footer{padding:28px 0}
+}
 `;
 

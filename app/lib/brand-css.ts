@@ -312,7 +312,7 @@ export const BRAND_CSS = `
 .bx .doc p{white-space:pre-line;color:#2a303b}.bx .doc .warn{border:2px solid #b91c1c;color:#b91c1c;padding:12px;border-radius:10px;font-weight:600}
 
 /* Fußzeile */
-.bx footer{background:var(--ink);color:#9aa6ba;padding:56px 0;font-size:14px}
+.bx footer{background:var(--ink);color:#9aa6ba;padding:36px 0;font-size:14px}
 .bx footer .wrap{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;align-items:flex-end}
 .bx footer .mark{font-size:22px}.bx footer address{font-style:normal;margin-top:10px;line-height:1.7}
 .bx footer nav a{margin-left:22px;text-decoration:none;color:#c9d1de}.bx footer nav a:hover{color:#fff}
