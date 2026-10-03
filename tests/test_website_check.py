@@ -296,10 +296,11 @@ class LeadTests(unittest.TestCase):
         jobs = yaml.safe_load((ROOT / ".github" / "workflows" / "lead-werk.yml").read_text())["jobs"]
         include = jobs["holen"]["strategy"]["matrix"]["include"]
         web = [e for e in include if e["name"].startswith("web-")]
-        self.assertEqual({e["name"].rsplit("-", 1)[0]: 0 for e in web}.keys(), {"web-us", "web-uk", "web-fr"})
+        self.assertEqual({e["name"].rsplit("-", 1)[0]: 0 for e in web}.keys(), {"web-us", "web-uk", "web-fr", "web-north"})
         self.assertGreaterEqual(len(web), 8)  # Inhaber 02.10.2026: „im ganz großen stil“
         for e in web:
             co = e["name"].split("-")[1].upper()
+            co = "IE,NL,BE,SE" if co == "NORTH" else co  # Quellen-Scout R19: Website-Prüfung IE/NL/BE/SE
             self.assertIn("--web-check", e["args"])
             self.assertIn(f"--countries {co} ", e["args"] + " ")
             self.assertGreaterEqual(e.get("workers", 16), 32)
@@ -311,7 +312,7 @@ class LeadTests(unittest.TestCase):
         self.assertGreaterEqual(sum(e["name"].startswith("s2-us-") for e in include), 1)  # Neuzugänge im Monatsauszug
         # Gedächtnis aller Teile eines Landes wird geladen (sonst prüft ein Teil Seiten erneut)
         loads = sum("Gedächtnis der Website-Prüfung laden" in (s.get("name") or "") for s in jobs["holen"]["steps"])
-        for co in ("us", "uk", "fr"):
+        for co in ("us", "uk", "fr", "north"):
             self.assertLessEqual(sum(e["name"].startswith(f"web-{co}-") for e in web), loads, co)
         run = next(s["run"] for s in jobs["holen"]["steps"] if s.get("name") == "Leads holen, prüfen, speichern")
         self.assertIn("--workers ${{ matrix.workers || 16 }}", run)

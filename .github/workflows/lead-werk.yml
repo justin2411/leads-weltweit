@@ -102,11 +102,15 @@ jobs:
           - { name: web-uk-2, workers: 40, args: "--segments S2 --countries UK --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 2/5" }
           - { name: web-uk-3, workers: 40, args: "--segments S2 --countries UK --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 3/5" }
           - { name: web-uk-4, workers: 40, args: "--segments S2 --countries UK --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 4/5" }
-          - { name: web-fr-0, workers: 40, args: "--segments S2 --countries FR --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 0/5" }
-          - { name: web-fr-1, workers: 40, args: "--segments S2 --countries FR --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 1/5" }
-          - { name: web-fr-2, workers: 40, args: "--segments S2 --countries FR --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 2/5" }
-          - { name: web-fr-3, workers: 40, args: "--segments S2 --countries FR --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 3/5" }
-          - { name: web-fr-4, workers: 40, args: "--segments S2 --countries FR --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 4/5" }
+          # Quellen-Scout R19 (03.10.2026): FR-Vorrat abgearbeitet (Lauf 10:40: 218 Firmen, 0 neu, je Teil 1 min), 120 Tage
+          # Pause je Firma -> 1 FR-Teil ohne Aufteilung für Neuzugänge; die 4 Plätze an die Website-Prüfung IE/NL/BE/SE
+          # (Overture mit Website: NL 565.448, BE 324.377, SE 264.896, IE 97.337; Test 895 Seiten -> 70 grün:
+          # NL 18/150, BE 14/150, SE 22/298, IE 16/297). Je Land 2.500 je Teil und Lauf, damit alle vier Länder drankommen
+          - { name: web-fr-0, workers: 40, args: "--segments S2 --countries FR --web-check --s2-limit 60000 --per 60000 --max-tries 60000" }
+          - { name: web-north-0, workers: 40, args: "--segments S2 --countries IE,NL,BE,SE --web-check --s2-limit 2500 --per 60000 --max-tries 60000 --shard 0/4" }
+          - { name: web-north-1, workers: 40, args: "--segments S2 --countries IE,NL,BE,SE --web-check --s2-limit 2500 --per 60000 --max-tries 60000 --shard 1/4" }
+          - { name: web-north-2, workers: 40, args: "--segments S2 --countries IE,NL,BE,SE --web-check --s2-limit 2500 --per 60000 --max-tries 60000 --shard 2/4" }
+          - { name: web-north-3, workers: 40, args: "--segments S2 --countries IE,NL,BE,SE --web-check --s2-limit 2500 --per 60000 --max-tries 60000 --shard 3/4" }
           # Quellen-Scout S1 (Inhaber 02.10.2026: „recruiting kunden und leads … darauf fokussieren“): US-Arbeitgeber mit
           # Fachkräfte-Bedarf aus den DOL-LCA-Daten, Test 50 -> 26 grün
           - { name: s1-us-lca, args: "--segments S1 --countries US --fmcsa-days 0 --formd-days 0 --s1-probe 0 --lca --per 4000 --max-tries 4000" }
@@ -159,7 +163,7 @@ jobs:
           key: lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-${{ github.run_id }}
           restore-keys: |
             lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-
-            lead-werk-${{ startsWith(matrix.name, 'web-uk') && 's2-uk-0' || startsWith(matrix.name, 'web-fr') && 's2-fr-0' || matrix.name == 's2-north-0' && 's2-ie-0' || matrix.name }}-${{ steps.m.outputs.monat }}-
+            lead-werk-${{ startsWith(matrix.name, 'web-uk') && 's2-uk-0' || startsWith(matrix.name, 'web-fr') && 's2-fr-0' || startsWith(matrix.name, 'web-north') && 's2-north-0' || matrix.name == 's2-north-0' && 's2-ie-0' || matrix.name }}-${{ steps.m.outputs.monat }}-
       # Gedächtnis der Website-Prüfung (geprüfte Firmen, 120 Tage): das ALLER Teile desselben Landes laden, damit eine
       # geänderte Aufteilung keine Seite am selben Tag erneut abruft (je Teil gesichert, hier nacheinander geholt)
       - name: Gedächtnis der Website-Prüfung – Land bestimmen
