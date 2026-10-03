@@ -74,7 +74,7 @@ export function SiteFooter({ lang = "en" }: { lang?: string }) {
         {/* Inhaber 03.10.2026: Büro Leipzig, gilt für alles */}
         <address>Nikolaistraße 3-7 · 04109 Leipzig · Germany<br /><a href={`mailto:${CONTACT}`}>{CONTACT}</a></address>
       </div>
-      <nav aria-label="Legal"><a href={paths.impressum}>{labels[0]}</a><a href={paths.datenschutz}>{labels[1]}</a><a href={paths.agb}>{labels[2]}</a></nav>
+      <nav aria-label="Legal"><a href={{ en: "/contact", fr: "/fr/contact", de: "/de/kontakt" }[k]}>{{ en: "Contact", fr: "Contact", de: "Kontakt" }[k]}</a><a href={paths.impressum}>{labels[0]}</a><a href={paths.datenschutz}>{labels[1]}</a><a href={paths.agb}>{labels[2]}</a></nav>
       <div style={{ width: "100%", marginTop: 8 }}>© {new Date().getFullYear()} NextGen Profit</div>
     </div></footer>
   );

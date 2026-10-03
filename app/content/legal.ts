@@ -50,8 +50,9 @@ Beim Aufruf verarbeitet unser Hoster technisch notwendige Daten (u. a. IP-Adress
 5. Reichweitenmessung ohne Cookies
 Unsere Landingpages setzen keine Cookies und speichern keine IP-Adressen. Wir zählen lediglich anonym, wie oft eine Seitenvariante aufgerufen oder ein Button geklickt wurde (Seitenvariante, Ereignistyp, Zeitpunkt). Ein Personenbezug wird nicht hergestellt.
 
-6. Anfrage einer kostenlosen Probe
+6. Anfrage einer kostenlosen Probe und Kontaktformular
 Wenn Sie über das Formular eine Probe anfordern, verarbeiten wir Firmenname, geschäftliche E-Mail-Adresse, gewünschte Region sowie Wortlaut und Zeitpunkt Ihrer Einwilligung, um Ihnen die Probe und eine Nachfrage dazu zu senden (Art. 6 Abs. 1 lit. a und b DSGVO). Sie können die Einwilligung jederzeit widerrufen, z. B. durch Antwort „unsubscribe“ bzw. „Abmelden“; Ihre Adresse wird dann dauerhaft gesperrt.
+Wenn Sie uns über das Kontaktformular schreiben, verarbeiten wir Ihren Namen (optional), Firmenname, geschäftliche E-Mail-Adresse, Telefonnummer (optional), Branche, gewünschtes Land und gewünschte Leads, Ihre Nachricht sowie Wortlaut und Zeitpunkt Ihrer Einwilligung, um Ihre Anfrage zu beantworten (Art. 6 Abs. 1 lit. a und b DSGVO). Sie können die Einwilligung jederzeit widerrufen, etwa mit der Antwort „abmelden“.
 
 7. Kunden und Zahlungen
 Für Abonnements verarbeiten wir Firmenname, Rechnungs- und Kontaktdaten sowie Ihre Lieferwünsche (Regionen, Signale). Zahlungsdaten gibt Stripe nicht an uns weiter. Rechtsgrundlage: Art. 6 Abs. 1 lit. b und c DSGVO (Vertrag, steuerliche Aufbewahrung).
