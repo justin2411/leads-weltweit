@@ -29,41 +29,50 @@ export function HomeFx() {
     fonts.then(() => requestAnimationFrame(() => { root.classList.add("is-ready"); timers.push(window.setTimeout(sweep, 250)); }));
     if (!reduce) timers.push(window.setInterval(() => { if (!d.hidden && hero && hero.getBoundingClientRect().bottom > 0) sweep(); }, 15000));
 
-    // 2 · Film-Zoom und Zeitstrahl beim Scrollen
+    // 2 · Beim Scrollen: Film-Zoom, Methode mit mitlaufender Grafik, Statement Wort für Wort
+    const desktop = () => matchMedia("(min-width: 1061px)").matches;
     const film = $("[data-scale]");
-    const stepsWrap = $("[data-steps]"), track = $(".hp-track"), fill = $(".hp-track__fill"), steps = $$(".hp-step");
-    if (!reduce) steps.forEach((s) => s.classList.remove("is-on"));
-    let thresholds: number[] | null = [];
+    const story = $("[data-story]"), rail = $(".hp-story__rail"), railFill = $(".hp-story__fill");
+    const ssteps = $$(".hp-sstep"), vizs = $$(".hp-viz"), sdots = $$(".hp-story__dots span");
+    const statement = $(".hp-statement"), words = $$(".hp-sw");
+    let active = -1;
+    const setStep = (i: number) => {
+      if (i === active) return; active = i;
+      ssteps.forEach((s, k) => { s.classList.toggle("is-active", k === i); s.classList.toggle("is-done", k <= i); });
+      vizs.forEach((v, k) => v.classList.toggle("is-active", k === i));
+      sdots.forEach((s, k) => s.classList.toggle("is-on", k <= i));
+    };
     const measure = () => {
-      if (!track || !stepsWrap || getComputedStyle(track).display === "none") { thresholds = null; return; }
-      if (matchMedia("(max-width: 720px)").matches) {
-        const w = stepsWrap.getBoundingClientRect(), last = $(".hp-step__icon", steps[steps.length - 1])!.getBoundingClientRect();
-        track.style.bottom = Math.max(0, w.bottom - (last.top + last.height / 2)) + "px";
-      } else track.style.bottom = "";
-      const tr = track.getBoundingClientRect(), vertical = tr.height > tr.width;
-      thresholds = steps.map((s) => {
-        const r = $(".hp-step__icon", s)!.getBoundingClientRect();
-        const c = vertical ? r.top + r.height / 2 - tr.top : r.left + r.width / 2 - tr.left;
-        return clamp(c / (vertical ? tr.height : tr.width), 0, 1);
-      });
+      if (!rail || !ssteps.length || !rail.parentElement) return;
+      const col = rail.parentElement.getBoundingClientRect();
+      const a = $(".hp-step__icon", ssteps[0])!.getBoundingClientRect(), b = $(".hp-step__icon", ssteps[ssteps.length - 1])!.getBoundingClientRect();
+      rail.style.top = (a.top + a.height / 2 - col.top) + "px";
+      rail.style.height = Math.max(0, (b.top + b.height / 2) - (a.top + a.height / 2)) + "px";
     };
     let ticking = false;
     const update = () => {
       ticking = false;
-      if (reduce) return;
       const vh = innerHeight;
-      if (film) { const r = film.getBoundingClientRect(); const p = clamp((vh - r.top) / (vh * 0.75), 0, 1); film.style.setProperty("--s", (0.9 + 0.1 * p).toFixed(4)); film.style.setProperty("--p", p.toFixed(3)); }
-      if (stepsWrap) {
-        const r = stepsWrap.getBoundingClientRect();
-        const p = clamp((vh * 0.82 - r.top) / (vh * 0.5), 0, 1);
-        fill?.style.setProperty("--p", p.toFixed(4));
-        steps.forEach((s, i) => s.classList.toggle("is-on", thresholds ? p >= thresholds[i] - 0.001 : r.top < vh * 0.8));
+      if (story && ssteps.length) {
+        let i = 0;
+        ssteps.forEach((s, k) => { const r = $(".hp-step__icon", s)!.getBoundingClientRect(); if (r.top + r.height / 2 < vh * 0.58) i = k; });
+        setStep(i);
+        if (railFill && rail && !reduce) { const r = rail.getBoundingClientRect(); railFill.style.setProperty("--p", clamp((vh * 0.58 - r.top) / Math.max(1, r.height), 0, 1).toFixed(4)); }
+      }
+      if (reduce) return;
+      if (film) { const r = film.getBoundingClientRect(); const p = clamp((vh - r.top) / (vh * 0.75), 0, 1); film.style.setProperty("--s", (0.88 + 0.12 * p).toFixed(4)); film.style.setProperty("--p", p.toFixed(3)); }
+      if (statement && words.length) {
+        const r = statement.getBoundingClientRect();
+        const p = clamp((vh * 0.92 - r.top) / (r.height * 0.55 + vh * 0.35), 0, 1);
+        const n = Math.round(p * (words.length + 0.4));
+        words.forEach((w, i) => w.classList.toggle("is-lit", i < n));
       }
     };
     const onScroll = () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } };
     on(window, "scroll", onScroll, { passive: true });
     on(window, "resize", () => { measure(); onScroll(); }, { passive: true });
-    measure(); update();
+    if (reduce) words.forEach((w) => w.classList.add("is-lit"));
+    measure(); update(); fonts.then(() => { measure(); update(); });
 
     // 3 · Einblenden beim Scrollen
     const reveals = $$("[data-reveal]");
@@ -89,43 +98,72 @@ export function HomeFx() {
       }
     });
 
-    // 5 · Hero: Lichtkegel auf dem Punkteraster, 3D-Neigung der Signalkarte
-    const feed = $(".hp-feed");
-    if (fine && !reduce && hero && feed) {
+    // 5 · Karte im Hero: Signale wechseln, die Stadt pulsiert, eine goldene Linie verbindet Karte und Stadt
+    const stage = $(".hp-stage");
+    let linkLater = () => {};
+    if (stage) {
+      const sigs = $$(".hp-sig", stage), pins = $$<SVGGElement>(".hp-pin", stage), wave = $<SVGCircleElement>(".hp-wave", stage);
+      const list = $(".hp-sigs", stage), cities = $(".hp-stage__cities", stage);
+      const linkPath = $<SVGPathElement>(".hp-link path", stage), linkDot = $<SVGCircleElement>(".hp-link circle", stage);
+      let idx = Math.max(0, sigs.findIndex((s) => s.classList.contains("is-active"))), hold = 0;
+      const pinOf = (s: HTMLElement) => pins.find((p) => p.dataset.city === s.dataset.city);
+      const drawLink = (animate: boolean) => {
+        if (!linkPath || !linkDot) return;
+        const pin = pinOf(sigs[idx]);
+        if (!desktop() || !pin) { linkPath.setAttribute("d", ""); linkDot.setAttribute("cx", "-99"); return; }
+        const st = stage.getBoundingClientRect(), card = sigs[idx].getBoundingClientRect(), pr = $(".hp-pin__dot", pin)!.getBoundingClientRect();
+        const x1 = card.left - st.left + 30, y1 = card.bottom - st.top, x2 = pr.left + pr.width / 2 - st.left, y2 = pr.top + pr.height / 2 - st.top - 9;
+        linkPath.setAttribute("d", `M${x1.toFixed(1)} ${y1.toFixed(1)} C${x1.toFixed(1)} ${(y1 + (y2 - y1) * 0.6).toFixed(1)} ${x2.toFixed(1)} ${(y2 - (y2 - y1) * 0.5).toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`);
+        linkDot.setAttribute("cx", x1.toFixed(1)); linkDot.setAttribute("cy", y1.toFixed(1));
+        if (animate && !reduce && linkPath.animate) { const L = linkPath.getTotalLength(); linkPath.animate([{ strokeDasharray: `${L}`, strokeDashoffset: L }, { strokeDasharray: `${L}`, strokeDashoffset: 0 }], { duration: 1000, easing: "cubic-bezier(.16,1,.3,1)" }); }
+      };
+      let lraf = 0, lend = 0;
+      linkLater = () => { lend = performance.now() + 1400; if (!lraf) { const loop = (tm: number) => { drawLink(false); lraf = tm < lend ? requestAnimationFrame(loop) : 0; }; lraf = requestAnimationFrame(loop); } };
+      const chips: HTMLButtonElement[] = [];
+      const show = (i: number) => {
+        const prev = sigs[idx]; idx = (i + sigs.length) % sigs.length; const cur = sigs[idx];
+        if (prev !== cur) { prev.classList.remove("is-active"); prev.classList.add("is-leaving"); timers.push(window.setTimeout(() => prev.classList.remove("is-leaving"), 650)); }
+        cur.classList.add("is-active");
+        if (list) list.style.height = cur.offsetHeight + "px";
+        chips.forEach((c, k) => c.setAttribute("aria-selected", String(k === idx)));
+        const pin = pinOf(cur); pins.forEach((p) => p.classList.toggle("is-active", p === pin));
+        if (pin && wave && !reduce) { wave.setAttribute("cx", pin.dataset.x ?? "0"); wave.setAttribute("cy", pin.dataset.y ?? "0"); wave.classList.remove("is-on"); wave.getBoundingClientRect(); wave.classList.add("is-on"); }
+        requestAnimationFrame(() => { drawLink(true); linkLater(); });
+      };
+      if (cities && !cities.children.length) sigs.forEach((s, i) => {
+        const b = d.createElement("button"); b.type = "button"; b.className = "hp-city"; b.setAttribute("role", "tab"); b.textContent = s.dataset.city ?? "";
+        on(b, "click", () => { hold = Date.now() + 14000; show(i); });
+        cities.appendChild(b); chips.push(b);
+      });
+      show(idx);
+      fonts.then(() => timers.push(window.setTimeout(() => { if (list) list.style.height = sigs[idx].offsetHeight + "px"; drawLink(true); linkLater(); }, 1500)));
+      on(window, "resize", () => { if (list) list.style.height = sigs[idx].offsetHeight + "px"; drawLink(false); }, { passive: true });
+      if (!reduce) timers.push(window.setInterval(() => { if (Date.now() < hold || d.hidden || !hero || hero.getBoundingClientRect().bottom < 0) return; show(idx + 1); }, 5600));
+    }
+
+    // 6 · Hero: Lichtkegel auf dem Punkteraster, goldene Kartenpunkte unter dem Mauszeiger, Tiefe
+    const mapSvg = $<SVGSVGElement>(".hp-map svg"), litC = $<SVGCircleElement>("#hp-lit-c");
+    if (fine && !reduce && hero) {
       let raf = 0, px = 0, py = 0;
       on(hero, "pointermove", ((e: PointerEvent) => {
         px = e.clientX; py = e.clientY;
         if (raf) return;
         raf = requestAnimationFrame(() => {
-          raf = 0; const h = hero.getBoundingClientRect(), f = feed.getBoundingClientRect();
-          hero.style.setProperty("--mx", (px - h.left) + "px"); hero.style.setProperty("--my", (py - h.top) + "px");
-          const nx = clamp((px - (f.left + f.width / 2)) / h.width, -0.5, 0.5), ny = clamp((py - (f.top + f.height / 2)) / h.height, -0.5, 0.5);
-          feed.style.setProperty("--ry", (nx * 12).toFixed(2) + "deg"); feed.style.setProperty("--rx", (-ny * 9).toFixed(2) + "deg");
-          feed.style.setProperty("--gx", ((px - f.left) / f.width * 100).toFixed(1) + "%"); feed.style.setProperty("--gy", ((py - f.top) / f.height * 100).toFixed(1) + "%");
-          hero.classList.add("is-pointer");
+          raf = 0; const h = hero.getBoundingClientRect();
+          hero.style.setProperty("--mx", (px - h.left) + "px"); hero.style.setProperty("--my", (py - h.top) + "px"); hero.classList.add("is-pointer");
+          if (mapSvg && litC) { const m = mapSvg.getScreenCTM(); if (m) { const pt = new DOMPoint(px, py).matrixTransform(m.inverse()); litC.setAttribute("cx", pt.x.toFixed(1)); litC.setAttribute("cy", pt.y.toFixed(1)); } }
+          if (stage && desktop()) {
+            const nx = (px - h.left) / h.width - 0.5, ny = (py - h.top) / h.height - 0.5;
+            stage.style.setProperty("--mpx", (-nx * 16).toFixed(1) + "px"); stage.style.setProperty("--mpy", (-ny * 12).toFixed(1) + "px");
+            stage.style.setProperty("--cpx", (nx * 18).toFixed(1) + "px"); stage.style.setProperty("--cpy", (ny * 14).toFixed(1) + "px");
+            linkLater();
+          }
         });
       }) as EventListener);
-      on(hero, "pointerleave", () => { hero.classList.remove("is-pointer"); feed.style.setProperty("--rx", "0deg"); feed.style.setProperty("--ry", "0deg"); });
-    }
-
-    // 6 · Signale rotieren: der älteste fällt heraus und kommt oben wieder (FLIP)
-    const list = $(".hp-feed__list");
-    if (list && !reduce && list.children.length > 1 && "animate" in Element.prototype) {
-      const ease = "cubic-bezier(.16,1,.3,1)";
-      const cycle = () => {
-        if (d.hidden || !hero || hero.getBoundingClientRect().bottom < 0) return;
-        const items = [...list.children] as HTMLElement[], last = items[items.length - 1];
-        const before = new Map(items.map((el) => [el, el.getBoundingClientRect().top]));
-        last.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(12px) scale(.98)" }], { duration: 320, easing: "ease-in", fill: "forwards" }).onfinish = () => {
-          list.prepend(last);
-          items.forEach((el) => { if (el === last) return; const dy = before.get(el)! - el.getBoundingClientRect().top; el.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 800, easing: ease }); });
-          last.getAnimations().forEach((a) => a.cancel());
-          last.animate([{ opacity: 0, transform: "translateY(-18px) scale(.97)" }, { opacity: 1, transform: "none" }], { duration: 800, easing: ease });
-          last.classList.remove("is-new"); void last.offsetWidth; last.classList.add("is-new");
-          timers.push(window.setTimeout(() => last.classList.remove("is-new"), 2600));
-        };
-      };
-      timers.push(window.setTimeout(() => timers.push(window.setInterval(cycle, 5200)), 3400));
+      on(hero, "pointerleave", () => {
+        hero.classList.remove("is-pointer"); litC?.setAttribute("cx", "-999");
+        if (stage) { ["--mpx", "--mpy", "--cpx", "--cpy"].forEach((v) => stage.style.setProperty(v, "0px")); linkLater(); }
+      });
     }
 
     // 7 · Magnetische Gold-Knöpfe
