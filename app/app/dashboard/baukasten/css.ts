@@ -7,6 +7,7 @@
 export const BAUKASTEN_CSS = `
 .bk{--bk-h:calc(100vh - 250px);position:relative;width:min(calc(100vw - 32px),1680px);margin-left:calc(50% - min(calc(50vw - 16px),840px));display:grid;gap:10px}
 .bk *{box-sizing:border-box}
+.bk section{margin:0}
 .bk button{font-family:var(--sans);cursor:pointer}
 .bk button:disabled{cursor:default;opacity:.45}
 .bk-num{font-variant-numeric:tabular-nums}
@@ -15,7 +16,7 @@ export const BAUKASTEN_CSS = `
 .bk-top{display:flex;align-items:center;gap:8px 10px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:linear-gradient(180deg,rgba(9,24,48,.78),rgba(4,12,26,.62))}
 .bk-brand{display:flex;align-items:center;gap:8px;font-family:var(--hud);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#fff;font-size:15px;text-shadow:0 0 16px rgba(95,212,255,.55)}
 .bk-brand i{font-style:normal;display:grid;place-items:center;width:28px;height:28px;border-radius:8px;border:1px solid var(--cy);color:var(--cy);box-shadow:var(--glow);font-size:15px}
-.bk-name{flex:1 1 220px;min-width:0;max-width:360px;padding:7px 10px;border-radius:8px;font:600 15px var(--sans);border:1px solid rgba(95,212,255,.28)}
+.bk-name{flex:1 1 170px;min-width:0;max-width:300px;padding:7px 10px;border-radius:8px;font:600 15px var(--sans);border:1px solid rgba(95,212,255,.28)}
 .bk-dirty{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:#ffb547;white-space:nowrap}
 .bk-dirty:before{content:"";width:8px;height:8px;border-radius:50%;background:#ffb547;box-shadow:0 0 8px #ffb547}
 .bk-saved{font-size:12.5px;color:var(--soft);white-space:nowrap}
@@ -24,7 +25,7 @@ export const BAUKASTEN_CSS = `
 .bk-chip.on{color:#3ddc97;border-color:rgba(61,220,151,.55);background:rgba(61,220,151,.1);box-shadow:0 0 14px -4px rgba(61,220,151,.7)}
 .bk-chip.aus{color:#8ba6c9}
 .bk-sp{flex:1}
-.bk-sel{padding:7px 9px;border-radius:8px;font:600 13px var(--sans);max-width:220px}
+.bk-sel{padding:7px 9px;border-radius:8px;font:600 13px var(--sans);max-width:150px}
 .bk-seg{display:inline-flex;border:1px solid rgba(95,212,255,.28);border-radius:8px;overflow:hidden}
 .bk-seg button{border:0;border-radius:0;padding:6px 10px;font:600 12.5px var(--sans);background:rgba(4,14,30,.8);color:#a9c3e3}
 .bk-seg button+button{border-left:1px solid rgba(95,212,255,.2)}
@@ -55,7 +56,6 @@ export const BAUKASTEN_CSS = `
 
 /* ---------- Arbeitsfläche ---------- */
 .bk-main{display:grid;grid-template-columns:184px minmax(0,1fr) 372px;gap:10px;height:max(560px,var(--bk-h))}
-.bk-main.noin{grid-template-columns:184px minmax(0,1fr) 300px}
 .bk-pal,.bk-ins{min-height:0;overflow:auto;scrollbar-width:thin;border:1px solid var(--line);border-radius:12px;background:linear-gradient(180deg,rgba(9,24,48,.7),rgba(4,12,26,.55))}
 .bk-pal{padding:10px 8px;display:grid;align-content:start;gap:12px}
 .bk-pal h4,.bk-ins h4{margin:0 0 6px;font-family:var(--hud);font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--cy2)}
@@ -79,7 +79,7 @@ export const BAUKASTEN_CSS = `
 .bk-hud b{color:#fff;font-weight:700}
 .bk-hud .ld{color:var(--cy2)}
 .bk-hud .er{color:#ffb3bd;pointer-events:auto}
-.bk-add{display:none}
+.bk-fab{display:none}
 .bk-empty{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:4;color:#4d6b91;font-size:14px;text-align:center}
 
 /* React-Flow-Bedienelemente im HUD-Stil */
@@ -117,7 +117,8 @@ export const BAUKASTEN_CSS = `
 .bkn-v{display:flex;align-items:baseline;gap:8px;margin-top:6px}
 .bkn-v b{font-size:28px;font-weight:700;line-height:1.05;color:#fff;font-variant-numeric:tabular-nums;text-shadow:0 0 16px color-mix(in srgb,var(--nc) 60%,transparent)}
 .bkn-v span{font-size:12px;color:var(--soft)}
-.bkn-v em{margin-left:auto;font-style:normal;font-size:13px;font-weight:700;color:var(--nc);font-variant-numeric:tabular-nums}
+.bkn-v span{white-space:nowrap}
+.bkn-v em{margin-left:auto;white-space:nowrap;font-style:normal;font-size:13px;font-weight:700;color:var(--nc);font-variant-numeric:tabular-nums}
 .bkn-bar{position:relative;height:5px;margin-top:6px;border-radius:3px;background:rgba(95,212,255,.1);overflow:hidden}
 .bkn-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--nc);box-shadow:0 0 8px var(--nc);transition:width .3s}
 .bkn-io{display:flex;justify-content:space-between;margin-top:4px;font-size:11.5px;color:#7f9bbd;font-variant-numeric:tabular-nums}
@@ -177,7 +178,7 @@ export const BAUKASTEN_CSS = `
 .bk-hint{margin:0;font-size:12.5px;color:var(--soft);line-height:1.4}
 .bk-bigs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .bk-bigs div{padding:8px 6px;border:1px solid var(--line);border-radius:10px;background:rgba(2,8,18,.5);text-align:center;min-width:0}
-.bk-bigs b{display:block;font-size:21px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bk-bigs b{display:block;font-size:19px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bk-bigs span{font-size:11.5px;color:var(--soft)}
 .bk-bigs .hi b{color:var(--nc);text-shadow:0 0 14px color-mix(in srgb,var(--nc) 60%,transparent)}
 .bk-sec{display:grid;gap:8px}
@@ -250,12 +251,12 @@ export const BAUKASTEN_CSS = `
 @keyframes bk-in{from{opacity:.4;transform:translateX(8px)}}
 
 @media (max-width:1180px){
-  .bk-main,.bk-main.noin{grid-template-columns:150px minmax(0,1fr) 320px}
+  .bk-main{grid-template-columns:150px minmax(0,1fr) 320px}
   .bk-tile{grid-template-columns:26px 1fr;padding:6px}.bk-tile span{display:none}.bk-tile i{width:26px;height:26px}
 }
 @media (max-width:900px){
   .bk{width:auto;margin-left:0}
-  .bk-main,.bk-main.noin{grid-template-columns:minmax(0,1fr);height:auto}
+  .bk-main{grid-template-columns:minmax(0,1fr);height:auto}
   .bk-cv{height:max(440px,calc(100vh - 290px))}
   .bk-pal{display:none}
   .bk-pal.open{display:grid;position:fixed;left:0;right:0;bottom:0;z-index:48;max-height:72vh;border-radius:16px 16px 0 0;padding:12px 12px calc(16px + env(safe-area-inset-bottom));background:#06101f;border-color:rgba(226,198,143,.45);grid-template-columns:minmax(0,1fr)}
@@ -266,17 +267,21 @@ export const BAUKASTEN_CSS = `
   .bk-shade.open{display:block;position:fixed;inset:0;z-index:47;background:rgba(2,6,15,.55)}
   .bk-sheet-h{display:flex;align-items:center;justify-content:space-between}
   .bk-sheet-h:before{content:"";position:absolute;left:50%;top:5px;width:44px;height:4px;margin-left:-22px;border-radius:2px;background:rgba(139,166,201,.4)}
-  .bk-add{display:inline-flex;position:absolute;left:12px;bottom:12px;z-index:6;align-items:center;gap:6px;padding:10px 16px;border-radius:999px;border:0;font:700 14px var(--sans);color:#02060f;background:linear-gradient(180deg,#f2dcae,#e2c68f);box-shadow:0 0 20px rgba(226,198,143,.55)}
-  .bk-insbtn{display:inline-flex;position:absolute;right:12px;bottom:12px;z-index:6}
+  .bk-fab{display:flex;position:absolute;left:10px;right:10px;top:34px;z-index:6;justify-content:space-between;gap:8px;pointer-events:none}
+  .bk-fab>*{pointer-events:auto}
+  .bk-add{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:999px;border:0;font:700 14px var(--sans);color:#02060f;background:linear-gradient(180deg,#f2dcae,#e2c68f);box-shadow:0 0 20px rgba(226,198,143,.55)}
   .bk .react-flow__controls{display:none}
 }
-@media (min-width:901px){.bk-insbtn{display:none}}
+@media (min-width:901px){.bk-fab{display:none}}
 @media (max-width:600px){
   .bk-top{padding:8px}
   .bk-brand span{display:none}
-  .bk-name{flex-basis:100%;max-width:none;order:2}
+  .bk-name{flex:1 1 150px;max-width:none}
   .bk-top .bk-sp{display:none}
-  .bk-sel{max-width:calc(50vw - 30px);flex:1}
+  .bk-sel{max-width:none;flex:1 1 140px}
+  .bk-pb .t{display:none}
+  .bk-top .bk-btn.go{margin-left:auto}
+  .bk-cv{height:max(380px,calc(100svh - 230px))}
   .bk-bigs b{font-size:18px}
   .bk-bars li{grid-template-columns:minmax(0,88px) 1fr 62px}
 }

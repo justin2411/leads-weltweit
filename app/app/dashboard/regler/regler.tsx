@@ -10,8 +10,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { FOLLOWUP_DAYS_RANGE, MAX_AGE_RANGE, MAX_SAMPLE_TARGET, type OwnerSettings, type SettingKey } from "@/lib/owner-settings";
 import {
-  CARDS, LEAD_COUNTRIES, MAX_AGE_NOTE, cardOf, countryOn, diff, draftFrom, fmtBerlin, laneRoom, leadMax, leadTotal, presets, scalePlan,
-  setCountry, setLane, type CardKey, type Draft, type ReglerCtx, type StatusKind,
+  CARDS, LEAD_COUNTRIES, MAX_AGE_NOTE, capHint, cardOf, countriesOn, countryOn, diff, draftFrom, fmtBerlin, laneRoom, leadMax, leadTotal,
+  maxAgeMatters, presetChips, presetPlan, scalePlan, setCountry, setLane, switchPreview, type CardKey, type Draft, type ReglerCtx, type StatusKind,
 } from "@/lib/regler";
 import type { Entry } from "@/lib/regler-verlauf";
 import { applySettings, startNow, undoChange } from "./actions";
@@ -35,17 +35,19 @@ function Switch({ on, label, onChange, disabled }: { on: boolean; label: string;
   );
 }
 
-function Stepper({ value, min, max, step = 1, unit, label, changed, disabled, onChange }: {
-  value: number; min: number; max: number; step?: number; unit?: string; label: string; changed?: boolean; disabled?: boolean; onChange: (n: number) => void;
+function Stepper({ value, min, max, step = 1, unit, label, changed, disabled, minHint, maxHint, onChange }: {
+  value: number; min: number; max: number; step?: number; unit?: string; label: string; changed?: boolean; disabled?: boolean;
+  /** Erklärung am Anschlag (Titel des gesperrten Knopfs) */
+  minHint?: string; maxHint?: string; onChange: (n: number) => void;
 }) {
   // Schritte > 1 rasten auf Vielfache ein (48 -> 50 -> 55, 48 -> 45)
   const down = Math.max(min, step > 1 ? Math.ceil(value / step) * step - step : value - 1);
   const up = Math.min(max, step > 1 ? Math.floor(value / step) * step + step : value + 1);
   return (
     <div className={`rg-st${changed ? " chg" : ""}`}>
-      <button type="button" aria-label={`${label}: weniger`} onClick={() => onChange(down)} disabled={disabled || value <= min}>−</button>
+      <button type="button" aria-label={`${label}: weniger`} title={value <= min ? minHint : undefined} onClick={() => onChange(down)} disabled={disabled || value <= min}>−</button>
       <output aria-label={label} aria-live="polite">{value}{unit && <small>{unit}</small>}</output>
-      <button type="button" aria-label={`${label}: mehr`} onClick={() => onChange(up)} disabled={disabled || value >= max}>+</button>
+      <button type="button" aria-label={`${label}: mehr`} title={value >= max ? maxHint : undefined} onClick={() => onChange(up)} disabled={disabled || value >= max}>+</button>
     </div>
   );
 }
@@ -54,8 +56,12 @@ function Chip({ on, onClick, children, title, pre, disabled }: { on: boolean; on
   return <button type="button" className={`rg-chip${pre ? " pre" : ""}`} aria-pressed={on} title={title} onClick={onClick} disabled={disabled}>{children}</button>;
 }
 
-/** ① eingestellt → ② übernommen → ③ angewandt */
+/** ① eingestellt → ② übernommen → ③ angewandt – in Ruhe (nichts offen) nur eine Zeile. */
 function Rail({ v, dirty, startable, on, busy, onGo }: { v: CardView; dirty: boolean; startable: boolean; on: boolean; busy: boolean; onGo: () => void }) {
+  if (!dirty && (v.kind === "noch nie geändert" || v.kind === "angewandt" || v.kind === "erreicht")) {
+    const what = v.kind === "angewandt" ? `angewandt ${v.at}` : v.kind === "erreicht" ? "erreicht" : on ? "aktiv" : "aus";
+    return <p className="rg-calm"><i aria-hidden>✓</i><span>{what}{v.kind === "angewandt" && <small> ({cardOf(v.key).name})</small>}{on && ` · nächster Lauf ${v.next}`}</span></p>;
+  }
   type Step = { cls: "ok" | "now" | "wait" | "todo"; b: string; s?: string };
   const s1: Step = dirty ? { cls: "now", b: "geändert", s: "noch nicht übernommen" } : { cls: "ok", b: "eingestellt ✓" };
   const s2: Step = dirty ? { cls: "todo", b: "übernehmen", s: "Leiste unten" } : v.saved ? { cls: "ok", b: `übernommen ✓ ${v.saved}` } : { cls: "ok", b: "Standard", s: "nie geändert" };
@@ -89,6 +95,7 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
   const [hold, setHold] = useState<string | null>(null);
   const [toast, setToast] = useState<Toast>(null);
   const [boost, setBoost] = useState(0);
+  const [list, setList] = useState(false);
   const [busy, startT] = useTransition();
   const root = useRef<HTMLDivElement>(null);
 
@@ -133,17 +140,20 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
     return () => clearTimeout(t);
   }, [boost, router]);
 
-  // Leiste über der Handy-Navigation (Höhe je nach Zahl der Reiter)
+  // Leiste über der Handy-Navigation (Höhe je nach Zahl der Reiter); Seitenende (Fußzeile) bleibt über Leiste + Navigation
   useEffect(() => {
+    if (!pending) setList(false);
     const fit = () => {
       const nav = document.querySelector<HTMLElement>(".bnav");
       const h = nav && getComputedStyle(nav).display !== "none" ? nav.offsetHeight : 0;
       root.current?.style.setProperty("--bnav", `${h}px`);
+      const bar = root.current?.querySelector<HTMLElement>(".rg-bar");
+      document.documentElement.style.setProperty("--rg-cover", `${h + (bar?.offsetHeight ?? 0)}px`);
     };
     fit();
     window.addEventListener("resize", fit);
-    return () => window.removeEventListener("resize", fit);
-  }, [pending]);
+    return () => { window.removeEventListener("resize", fit); document.documentElement.style.removeProperty("--rg-cover"); };
+  }, [pending, list, changes.length]);
 
   useEffect(() => {
     if (!toast?.ok) return;
@@ -187,17 +197,20 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
   const changedPart = (card: CardKey, part: string) => changes.some((c) => c.card === card && c.part.startsWith(part));
   const knobs = (k: CardKey): ReactNode => {
     if (k === "lead-werk") {
-      const tot = leadTotal(plan, reg);
-      const pres = presets(plan, reg).filter((p, i, a) => a.findIndex((q) => q.total === p.total) === i);
+      const tot = leadTotal(plan, reg), max = leadMax(plan, reg);
+      // weniger als ein Platz je Land würde Länder abschalten – das geht nur über die Länder-Chips
+      const min = Math.min(countriesOn(plan, reg), max);
+      const full = tot >= max ? capHint(plan, reg, "lead-werk") : null;
       return (<>
         <div className="rg-k"><span>Tempo</span>
           <div className="rg-row">
-            <Stepper label="Tempo (Plätze)" value={tot} min={0} max={leadMax(plan, reg)} unit="Plätze" changed={changedPart(k, "tempo")} disabled={locked}
-              onChange={(n) => set({ slot_plan: scalePlan(plan, reg, n) })} />
-            <div className="rg-chips">{pres.map((p) => (
-              <Chip key={p.id} pre on={tot === p.total} disabled={locked} onClick={() => set({ slot_plan: scalePlan(plan, reg, p.total) })}>{p.label}<small>{p.total}</small></Chip>))}
+            <Stepper label="Tempo (Plätze)" value={tot} min={min} max={max} unit="Plätze" changed={changedPart(k, "tempo")} disabled={locked}
+              minHint="weniger nur über die Länder (1 Platz je Land)" maxHint={full ?? "Maximum der Linien erreicht"} onChange={(n) => set({ slot_plan: scalePlan(plan, reg, n) })} />
+            <div className="rg-chips">{presetChips(plan, reg).map((p) => (
+              <Chip key={p.id} pre on={tot === p.total} disabled={locked} onClick={() => set({ slot_plan: presetPlan(plan, reg, p) })}>{p.label}<small>{p.total}</small></Chip>))}
             </div>
           </div>
+          {full && <p className="rg-note">{full}</p>}
         </div>
         <div className="rg-k"><span>Länder</span>
           <div className="rg-chips">{LEAD_COUNTRIES.map((c) => {
@@ -208,10 +221,13 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
         <Link href="/dashboard/jarvis?s=lead&t=set" className="rg-fine">Feinsteuerung je Linie ›</Link>
       </>);
     }
-    if (k === "kunden-werk") return (<>
+    if (k === "kunden-werk") {
+      const room = laneRoom(plan, reg, "kunden"), full = (plan.kunden ?? 0) >= room ? capHint(plan, reg, "kunden-werk") : null;
+      return (<>
       <div className="rg-k"><span>Plätze</span>
-        <Stepper label="Kunden-Werk Plätze" value={plan.kunden ?? 0} min={0} max={laneRoom(plan, reg, "kunden")} changed={changedPart(k, "linie")} disabled={locked}
-          onChange={(n) => set({ slot_plan: setLane(plan, reg, "kunden", n) })} />
+        <Stepper label="Kunden-Werk Plätze" value={plan.kunden ?? 0} min={0} max={room} changed={changedPart(k, "linie")} disabled={locked}
+          maxHint={full ?? "Maximum dieser Linie"} onChange={(n) => set({ slot_plan: setLane(plan, reg, "kunden", n) })} />
+        {full && <p className="rg-note">{full}</p>}
       </div>
       <div className="rg-k"><span>Länder</span>
         <div className="rg-chips">{ctx.buyerCountries.map((c) => {
@@ -220,19 +236,23 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
         })}</div>
       </div>
     </>);
+    }
     if (k === "proben-vorrat") return (<>
       <div className="rg-pages">{ctx.pages.map((p) => (
         <div key={p} className="rg-page">
-          <div><b>{p.split("/")[1]}</b><em>{ready[p] ?? 0} bereit</em></div>
-          <Stepper label={`Soll ${p}`} value={draft.sample_targets[p] ?? 0} min={0} max={MAX_SAMPLE_TARGET} step={5} changed={changedPart(k, `soll:${p}`)} disabled={locked}
-            onChange={(n) => set({ sample_targets: { ...draft.sample_targets, [p]: n } })} />
+          <div><b>{p.split("/")[1]}</b><em title="fertige Proben / gespeichertes Soll">bereit {ready[p] ?? 0}/{base.sample_targets[p] ?? 0}</em></div>
+          <div className="rg-soll"><span>Soll</span>
+            <Stepper label={`Soll ${p}`} value={draft.sample_targets[p] ?? 0} min={0} max={MAX_SAMPLE_TARGET} step={5} changed={changedPart(k, `soll:${p}`)} disabled={locked}
+              onChange={(n) => set({ sample_targets: { ...draft.sample_targets, [p]: n } })} />
+          </div>
         </div>))}
       </div>
-      <div className="rg-k dim"><span>Verfall</span>
-        <Stepper label="Verfall (Stunden)" value={draft.sample_max_age_hours} min={MAX_AGE_RANGE[0]} max={MAX_AGE_RANGE[1]} step={12} unit="h" changed={changedPart(k, "verfall")} disabled={locked}
-          onChange={(n) => set({ sample_max_age_hours: n })} />
-        <p className="rg-note">{MAX_AGE_NOTE}</p>
-      </div>
+      {maxAgeMatters(ctx.pages) ? (
+        <div className="rg-k"><span>Verfall</span>
+          <Stepper label="Verfall (Stunden)" value={draft.sample_max_age_hours} min={MAX_AGE_RANGE[0]} max={MAX_AGE_RANGE[1]} step={12} unit="h" changed={changedPart(k, "verfall")} disabled={locked}
+            onChange={(n) => set({ sample_max_age_hours: n })} />
+        </div>
+      ) : <p className="rg-lock" title={MAX_AGE_NOTE}>Verfall: entfällt bei Webagenturen (Leads alle 20 h neu geprüft)</p>}
     </>);
     if (k === "nachfass") return (
       <div className="rg-k"><span>nach</span>
@@ -258,13 +278,15 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
           const on = draft.on[c.key];
           const dirty = dirtyCards.has(c.key);
           const label = c.key === "versand" ? "Versand (Pause)" : c.name;
+          // an/aus gestellt, aber noch nicht übernommen: Vorschau statt Messwert
+          const eff: { text: string; tone?: string } | null = on !== base.on[c.key] ? { text: switchPreview(c.key, on), tone: "pre" } : v.effect;
           return (
             <section key={c.key} className={`rg-card${on ? "" : " off"}${dirty ? " dirty" : ""}`} aria-label={c.name}>
               <div className="rg-h">
                 <span className="rg-ic" aria-hidden>{c.icon}</span>
                 <div style={{ minWidth: 0 }}>
                   <h2>{c.name}</h2>
-                  {v.effect && <span className={`rg-eff${v.effect.tone ? ` ${v.effect.tone}` : ""}`} title={v.effect.text}>{v.effect.text}</span>}
+                  {eff && <span className={`rg-eff${eff.tone ? ` ${eff.tone}` : ""}`} title={eff.text}>{eff.text}</span>}
                 </div>
                 <Switch on={on} label={label} disabled={locked} onChange={(x) => setOn(c.key, x)} />
               </div>
@@ -291,8 +313,15 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
 
       {pending && (
         <div className="rg-bar" role="region" aria-label="Änderungen übernehmen">
+          {list && (
+            <ul id="rg-pop" className="rg-pop" aria-label="Diese Änderungen werden gespeichert">
+              {changes.map((c) => <li key={`${c.card}:${c.part}`}><b>{cardOf(c.card).name}</b>{c.text}</li>)}
+            </ul>
+          )}
           <div className="in">
-            <span className="rg-n"><b>{changes.length}</b>{changes.length === 1 ? "Änderung" : "Änderungen"}</span>
+            <button type="button" className="rg-n" aria-expanded={list} aria-controls="rg-pop" onClick={() => setList((x) => !x)} title="Liste der Änderungen ein-/ausblenden">
+              <b>{changes.length}</b>{changes.length === 1 ? "Änderung" : "Änderungen"}<i aria-hidden>{list ? "▾" : "▴"}</i>
+            </button>
             <span className="rg-list" title={changes.map((c) => c.text).join("\n")}>{changes.map((c) => c.text).join(" · ")}</span>
             <button type="button" className="rg-x" onClick={() => setDraft(base)} disabled={busy}>Verwerfen</button>
             <div className="rg-btns">

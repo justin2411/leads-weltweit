@@ -11,7 +11,7 @@ import "@xyflow/react/dist/base.css";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition, type CSSProperties, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Background, BackgroundVariant, Controls, MiniMap, ReactFlow, ReactFlowProvider, applyEdgeChanges, applyNodeChanges, useReactFlow,
+  Background, BackgroundVariant, Controls, MiniMap, ReactFlow, ReactFlowProvider, applyEdgeChanges, applyNodeChanges, useNodesInitialized, useReactFlow,
   type Connection, type EdgeChange, type NodeChange,
 } from "@xyflow/react";
 import {
@@ -36,6 +36,8 @@ const GROUPS: [string, NodeKind[]][] = [
   ["Ziele", NODE_KINDS.filter((k) => NODE_META[k].group === "ziel")],
 ];
 
+/** Vorlagen etwas weiter auseinander, damit die Mengen auf den Verbindungen Platz haben. */
+const spread = (f: Flow): Flow => ({ ...f, nodes: f.nodes.map((n) => ({ ...n, x: Math.round((n.x * 1.15) / 20) * 20, y: Math.round((n.y * 1.1) / 20) * 20 })) });
 const toRfNodes = (f: Flow): BkNode[] => f.nodes.map((n) => ({ id: n.id, type: "bk", position: { x: n.x, y: n.y }, data: { cfg: n } }));
 const toRfEdges = (f: Flow): BkEdge[] => f.edges.map((e) => ({ id: e.id, source: e.from, sourceHandle: e.port, target: e.to, targetHandle: "in", type: "bk" }));
 function fromRf(nodes: BkNode[], edges: BkEdge[]): Flow {
@@ -79,10 +81,11 @@ function useReducedMotion() {
  * Schlüssel: "flow:<id>" bzw. "neu:<land>|<seg>|<quelle>|<vorlage>" (page.tsx).
  */
 export function Builder({ navKey, initial, flows, notice }: { navKey: string; initial: BuilderInit; flows: SavedFlow[]; notice: string | null }) {
-  const [st, setSt] = useState({ prop: navKey, own: null as string | null, gen: 0, initial, notice });
+  const prep = (i: BuilderInit) => (i.id ? i : { ...i, flow: spread(i.flow) });
+  const [st, setSt] = useState(() => ({ prop: navKey, own: null as string | null, gen: 0, initial: prep(initial), notice }));
   if (navKey !== st.prop) {
     if (navKey === st.own) setSt({ ...st, prop: navKey });
-    else setSt({ prop: navKey, own: null, gen: st.gen + 1, initial, notice });
+    else setSt({ prop: navKey, own: null, gen: st.gen + 1, initial: prep(initial), notice });
   }
   const onNav = useCallback((k: string) => setSt((s) => ({ ...s, own: k })), []);
   return (
@@ -197,6 +200,19 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
     return () => window.removeEventListener("beforeunload", h);
   }, [touched]);
 
+  // Handy: lesbar starten (Quelle und erster Schritt statt des ganzen Flows in Mini-Schrift)
+  const inited = useNodesInitialized();
+  const didFit = useRef(false);
+  useEffect(() => {
+    if (!inited || didFit.current) return;
+    didFit.current = true;
+    if ((wrap.current?.clientWidth ?? 1000) >= 600) return;
+    const q = nodesRef.current.find((n) => n.data.cfg.kind === "quelle");
+    if (!q) return;
+    const h = wrap.current?.clientHeight ?? 500, z = 0.82;
+    void rf.setViewport({ x: 18 - q.position.x * z, y: h * 0.42 - (q.position.y + 70) * z, zoom: z });
+  }, [inited, rf]);
+
   // ---------------------------------------------------------------- Leinwand
   const onNodesChange = useCallback((ch: NodeChange<BkNode>[]) => setNodes((ns) => applyNodeChanges(ch, ns)), []);
   const onEdgesChange = useCallback((ch: EdgeChange<BkEdge>[]) => setEdges((es) => applyEdgeChanges(ch, es)), []);
@@ -289,7 +305,7 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
   const loadTemplate = (tid: string) => {
     const t = TEMPLATES.find((x) => x.id === tid);
     if (!t || (touched && !window.confirm("Ungespeicherte Änderungen verwerfen?"))) return;
-    replaceAll(structuredClone(t.flow), t.label.slice(0, 60), null, BLANK_NAV, "/dashboard/baukasten");
+    replaceAll(spread(structuredClone(t.flow)), t.label.slice(0, 60), null, BLANK_NAV, "/dashboard/baukasten");
   };
   const blank = () => {
     if (touched && !window.confirm("Ungespeicherte Änderungen verwerfen?")) return;
@@ -360,7 +376,7 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
       try {
         const r = await archiveFlow(id);
         if (!r || !(r as { ok?: unknown }).ok) { setMsg({ good: false, text: errText(r, "Archivieren fehlgeschlagen") }); return; }
-        replaceAll(structuredClone(TEMPLATES[0].flow), TEMPLATES[0].label, null, BLANK_NAV, "/dashboard/baukasten");
+        replaceAll(spread(structuredClone(TEMPLATES[0].flow)), TEMPLATES[0].label, null, BLANK_NAV, "/dashboard/baukasten");
         setMsg({ good: true, text: "Archiviert" });
         router.refresh();
       } catch {
@@ -397,8 +413,7 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
             {TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
           </select>
           {quelle && (
-            <span className="bk-seg" role="group" aria-label="Stichprobe">
-              <em>Stichprobe</em>
+            <span className="bk-seg" role="group" aria-label="Stichprobe" title="Stichprobe: so viele neueste Zeilen werden live durchgerechnet">
               {([1000, 2000, 5000] as const).map((n) => (
                 <button key={n} type="button" className={quelle.size === n ? "on" : ""} onClick={() => setCfg({ ...quelle, size: n })}>{fmt(n)}</button>
               ))}
@@ -407,7 +422,7 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
           <span className="bk-prob">
             <button type="button" className="bk-pb" onClick={() => setShowProbs((v) => !v)} aria-expanded={showProbs} title="Prüfung des Flows">
               {errors ? <b className="e">{errors}</b> : null}{warns ? <b className="w">{warns}</b> : null}{!probs.length && <b className="ok">✓</b>}
-              {errors ? "Fehler" : warns ? "Hinweise" : "alles gut"}
+              <span className="t">{errors ? "Fehler" : warns ? "Hinweise" : "alles gut"}</span>
             </button>
             {showProbs && probs.length > 0 && (
               <div className="bk-pop">
@@ -422,7 +437,7 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
         </div>
         {msg && <div className={`bk-msg ${msg.good ? "good" : "bad"}`} role="status">{msg.text}</div>}
 
-        <div className={`bk-main${selected ? "" : " noin"}`}>
+        <div className="bk-main">
           <aside className={`bk-pal${sheet === "pal" ? " open" : ""}`} aria-label="Bausteine">
             <div className="bk-sheet-h"><h4>Baustein hinzufügen</h4><button type="button" className="bk-x" onClick={() => setSheet(null)} aria-label="Schließen">✕</button></div>
             {GROUPS.map(([label, kinds]) => (
@@ -460,7 +475,7 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
               nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
               onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} isValidConnection={isValidConnection}
               onNodeClick={() => setSheet("ins")} onPaneClick={() => setSheet(null)}
-              snapToGrid snapGrid={GRID} fitView fitViewOptions={{ padding: 0.2, maxZoom: 1 }} minZoom={0.2} maxZoom={1.8}
+              snapToGrid snapGrid={GRID} fitView fitViewOptions={{ padding: 0.12, maxZoom: 1 }} minZoom={0.2} maxZoom={1.8}
               deleteKeyCode={["Backspace", "Delete"]} colorMode="dark" defaultEdgeOptions={{ type: "bk" }}
               connectionRadius={28} elevateNodesOnSelect>
               <Background variant={BackgroundVariant.Dots} gap={GRID[0]} size={1.4} color="rgba(95,212,255,.22)" />
@@ -468,8 +483,10 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
               <MiniMap pannable zoomable position="bottom-right" nodeColor={(n) => NODE_META[(n as BkNode).data.cfg.kind].color} nodeStrokeWidth={0}
                 maskColor="rgba(2,6,15,.72)" style={{ width: 150, height: 100 }} className="bk-mm" />
             </ReactFlow>
-            <button type="button" className="bk-add" onClick={() => setSheet("pal")}>＋ Baustein</button>
-            <button type="button" className="bk-btn bk-insbtn" onClick={() => setSheet("ins")}>{selected ? "Einstellen" : "Übersicht"}</button>
+            <div className="bk-fab">
+              <button type="button" className="bk-add" onClick={() => setSheet("pal")}>＋ Baustein</button>
+              <button type="button" className="bk-btn" onClick={() => setSheet("ins")}>{selected ? "⚙ Einstellen" : "Übersicht"}</button>
+            </div>
           </div>
 
           <aside className={`bk-ins${sheet === "ins" ? " open" : ""}`} aria-label={selected ? "Baustein einstellen" : "Übersicht"}>

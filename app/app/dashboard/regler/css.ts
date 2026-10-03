@@ -2,16 +2,18 @@
 export const REGLER_CSS = `
 .rg{--ok:#3ddc97;--wait:#ffb547;--now:#e2c68f;--bnav:0px;padding-bottom:40px}
 .rg.has-bar{padding-bottom:110px}
+.dash:has(.rg.has-bar) .foot{padding-bottom:calc(var(--rg-cover,220px) + 16px)}
 .rg-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:4px 0 16px}
 .rg-head h1{margin:0;font-size:26px;letter-spacing:.12em;color:#fff;text-transform:uppercase;text-shadow:0 0 22px rgba(95,212,255,.5)}
 .rg-steps{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--soft);flex-wrap:wrap}
-.rg-steps b{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;border:1px solid var(--line);font-size:11px;color:var(--cy2);margin-right:4px}
-.rg-steps i{font-style:normal;color:#3d5677}
+.rg-steps b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;border:1px solid var(--line);font-size:12px;color:var(--cy2);margin-right:4px}
+.rg-steps i{font-style:normal;color:#6e8db3}
 .rg-err{margin:0 0 14px;padding:10px 14px;border:1px solid rgba(255,94,115,.5);border-radius:10px;background:rgba(255,94,115,.12);color:#ffb3bd;font-weight:600}
-.rg-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:stretch}
+.rg-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
 @media (min-width:1100px){.rg-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 .rg-card{position:relative;margin:0;display:flex;flex-direction:column;gap:14px;padding:16px 16px 14px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,rgba(9,24,48,.72),rgba(4,12,26,.55));transition:border-color .2s,box-shadow .2s}
+.rg .rg-card{margin:0}.rg .rg-hist{margin-top:22px} /* gegen .dash section{margin-top:34px} */
 .rg-card.dirty{border-color:rgba(226,198,143,.7);box-shadow:0 0 0 1px rgba(226,198,143,.25),0 0 26px -8px rgba(226,198,143,.5)}
 .rg-card.off .rg-knobs{opacity:.5}
 .rg-h{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:12px;align-items:center}
@@ -19,7 +21,7 @@ export const REGLER_CSS = `
 .rg-card.off .rg-ic{filter:grayscale(1);opacity:.6}
 .rg-h h2{margin:0;font-family:var(--sans);font-size:18px;font-weight:700;letter-spacing:0;color:#fff}
 .rg-eff{display:block;margin-top:2px;font-size:13.5px;color:var(--cy2);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rg-eff.bad{color:var(--wait)}.rg-eff.off{color:var(--soft)}
+.rg-eff.bad{color:var(--wait)}.rg-eff.off{color:var(--soft)}.rg-eff.pre{color:var(--now);white-space:normal}
 
 .rg-sw{position:relative;display:inline-flex;align-items:center;gap:10px;padding:0;border:0!important;background:none!important;box-shadow:none!important;cursor:pointer;color:var(--text);font:700 14px var(--sans)}
 .rg-sw .tr{position:relative;width:62px;height:34px;border-radius:99px;background:rgba(139,166,201,.25);border:1px solid rgba(139,166,201,.35);transition:background .2s,border-color .2s}
@@ -33,9 +35,8 @@ export const REGLER_CSS = `
 .rg-knobs{display:grid;gap:12px}
 .rg-k{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;align-items:center}
 .rg-k>span{font-size:13px;font-weight:600;color:var(--soft)}
-.rg-k.dim{opacity:.55}
 .rg-k>.rg-st{justify-self:start}
-.rg-k .rg-note{grid-column:2;margin:-4px 0 0;font-size:12px;color:var(--soft)}
+.rg-k .rg-note{grid-column:2;margin:-4px 0 0;font-size:13px;color:var(--soft)}
 .rg-st{display:inline-grid;grid-template-columns:44px minmax(74px,auto) 44px;align-items:center;gap:6px}
 .rg-st button{height:44px;width:44px;padding:0;border-radius:10px;font-size:24px;line-height:1;color:var(--cy);cursor:pointer;border:1px solid rgba(95,212,255,.35)}
 .rg-st button:disabled{opacity:.3;cursor:default}
@@ -44,24 +45,25 @@ export const REGLER_CSS = `
 .rg-st.chg output{color:var(--gold2);text-shadow:0 0 14px rgba(226,198,143,.5)}
 .rg-row{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap}
 .rg-chips{display:flex;flex-wrap:wrap;gap:6px}
-.rg-chip{min-height:38px;padding:0 14px;border-radius:999px;font:600 14px var(--sans);cursor:pointer;color:#a9c3e3;background:rgba(2,8,18,.5);border:1px solid var(--line)}
+.rg-chip{min-height:40px;padding:0 14px;border-radius:999px;font:600 14px var(--sans);cursor:pointer;color:#a9c3e3;background:rgba(2,8,18,.5);border:1px solid var(--line)}
 .rg-chip[aria-pressed=true]{color:#fff;border-color:var(--cy);background:rgba(95,212,255,.18);box-shadow:0 0 12px -2px rgba(95,212,255,.6)}
-.rg-chip.pre{min-height:32px;padding:0 12px;font-size:13px}
+.rg-chip.pre{min-height:40px;padding:0 12px;font-size:13.5px}
 .rg-chip.pre[aria-pressed=true]{border-color:var(--gold);background:rgba(226,198,143,.16);box-shadow:none}
-.rg-chip small{font-weight:500;color:var(--soft);margin-left:5px}
+.rg-chip small{font-size:13px;font-weight:500;color:var(--soft);margin-left:5px}
 .rg-pages{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .rg-page{display:grid;gap:4px;justify-items:center;padding:8px 6px 6px;border:1px solid var(--line);border-radius:10px;background:rgba(2,8,18,.4)}
 .rg-page>div:first-child{display:flex;gap:8px;align-items:baseline}
 .rg-page b{font-size:14px;color:var(--cy2)}
-.rg-page em{font-style:normal;font-size:12px;color:var(--soft);font-variant-numeric:tabular-nums}
+.rg-page em{font-style:normal;font-size:13px;color:var(--soft);font-variant-numeric:tabular-nums}
+.rg-soll{display:grid;justify-items:center;gap:2px}.rg-soll>span{font-size:13px;font-weight:600;color:var(--soft)}
 .rg-page .rg-st{grid-template-columns:40px minmax(54px,auto) 40px}.rg-page .rg-st button{width:40px;height:40px}
-.rg-lock{margin:0;font-size:12.5px;color:var(--soft)}
-.rg-fine{font-size:13px;font-weight:600;color:var(--gold2)!important;text-decoration:none;justify-self:start}
+.rg-lock{margin:0;font-size:13px;color:var(--soft)}
+.rg-fine{display:inline-flex;align-items:center;min-height:40px;font-size:13.5px;font-weight:600;color:var(--gold2)!important;text-decoration:none;justify-self:start}
 
-.rg-rail{list-style:none;margin:auto 0 0;padding:10px 0 0;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;counter-reset:rg}
-.rg-rail li{position:relative;display:grid;grid-template-columns:22px minmax(0,1fr);gap:0 7px;align-items:start;font-size:12.5px;color:var(--soft);min-width:0}
+.rg-rail{list-style:none;margin:auto 0 0;padding:10px 0 0;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;align-items:start}
+.rg-rail li{position:relative;display:grid;grid-template-columns:22px minmax(0,1fr);gap:0 7px;align-items:start;align-content:start;font-size:13px;color:var(--soft);min-width:0}
 .rg-rail li>i{grid-row:span 2;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:11px;font-weight:700;border:1px solid rgba(139,166,201,.35);color:#6e8db3}
-.rg-rail li b{font-size:12.5px;font-weight:600;color:#cfe3f7;line-height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rg-rail li b{font-size:13px;font-weight:600;color:#cfe3f7;line-height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rg-rail li span{line-height:1.3;overflow-wrap:anywhere}
 .rg-rail li.ok>i{border-color:var(--ok);background:rgba(61,220,151,.18);color:var(--ok)}
 .rg-rail li.ok b{color:var(--ok)}
@@ -69,9 +71,12 @@ export const REGLER_CSS = `
 .rg-rail li.wait b{color:var(--wait)}
 .rg-rail li.now>i{border-color:var(--now);background:rgba(226,198,143,.2);color:var(--now)}
 .rg-rail li.now b{color:var(--now)}
-.rg-rail li.todo{opacity:.55}
-.rg-go{grid-column:2;justify-self:start;margin-top:5px;padding:6px 12px;border-radius:8px;font:700 12.5px var(--sans);cursor:pointer;color:#02060f!important;background:linear-gradient(180deg,#a8ecff,#5fd4ff)!important;border:0!important}
+.rg-rail li.todo b,.rg-rail li.todo span{color:#8ba6c9}.rg-rail li.todo>i{opacity:.6}
+.rg-go{grid-column:2;justify-self:start;margin-top:5px;min-height:40px;padding:0 14px;border-radius:8px;font:700 12.5px var(--sans);cursor:pointer;color:#02060f!important;background:linear-gradient(180deg,#a8ecff,#5fd4ff)!important;border:0!important}
 .rg-go:disabled{opacity:.5;cursor:default}
+.rg-calm{margin:auto 0 0;padding:10px 0 0;border-top:1px solid var(--line);display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ok);font-variant-numeric:tabular-nums}
+.rg-calm>i{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:12px;font-weight:700;border:1px solid var(--ok);background:rgba(61,220,151,.18)}
+.rg-calm small{font-size:13px;color:var(--soft)}
 
 .rg-hist{margin-top:22px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:rgba(4,12,26,.5)}
 .rg-hist h2{margin:0 0 10px;font-family:var(--sans);font-size:15px;font-weight:700;letter-spacing:0;color:var(--cy2)}
@@ -81,12 +86,18 @@ export const REGLER_CSS = `
 .rg-hist time{font-size:13px;color:#7f9bbd;font-variant-numeric:tabular-nums}
 .rg-hist li span{font-size:13.5px;color:#e6f6ff}
 .rg-hist li span em{font-style:normal;color:var(--soft);margin-left:6px}
-.rg-hist button{padding:6px 12px;border-radius:8px;font:600 12.5px var(--sans);cursor:pointer}
+.rg-hist button{min-height:40px;padding:0 14px;border-radius:8px;font:600 12.5px var(--sans);cursor:pointer}
 .rg-hist .none{display:block;color:var(--soft);font-size:13px}
 
 .rg-bar{position:fixed;left:0;right:0;bottom:var(--bnav);z-index:45;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:rgba(4,10,22,.94);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-top:1px solid rgba(226,198,143,.6);box-shadow:0 -12px 40px -10px rgba(226,198,143,.35);animation:rg-up .2s ease-out}
 .rg-bar .in{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:10px 14px}
-.rg-n{flex:none;display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:15px;color:#fff}
+.rg-n{flex:none;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 10px 0 4px;border-radius:10px;font:700 15px var(--sans);color:#fff;cursor:pointer;background:transparent!important;border:1px solid transparent!important}
+.rg-n:hover,.rg-n[aria-expanded=true]{border-color:rgba(226,198,143,.45)!important}
+.rg-n i{font-style:normal;font-size:12px;color:var(--gold2)}
+.rg-pop{list-style:none;max-width:1240px;margin:0 auto 10px;padding:6px 12px;max-height:40vh;overflow:auto;border:1px solid rgba(226,198,143,.35);border-radius:10px;background:rgba(2,8,18,.6);display:grid;gap:2px}
+.rg-pop li{display:flex;gap:10px;align-items:baseline;padding:5px 0;font-size:14px;color:#e6f6ff;border-top:1px solid rgba(95,212,255,.08)}
+.rg-pop li:first-child{border-top:0}
+.rg-pop li b{flex:none;min-width:120px;font-size:13px;font-weight:600;color:var(--soft)}
 .rg-n b{display:inline-grid;place-items:center;min-width:28px;height:28px;padding:0 6px;border-radius:99px;background:var(--gold);color:#02060f;font-size:14px}
 .rg-list{flex:1;min-width:0;font-size:13px;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rg-btns{flex:none;display:flex;gap:8px}
@@ -120,18 +131,20 @@ export const REGLER_CSS = `
   .rg-pages{grid-template-columns:1fr;gap:6px}
   .rg-page{grid-template-columns:minmax(0,1fr) auto;justify-items:start;align-items:center;padding:6px 8px 6px 12px}
   .rg-page>div:first-child{flex-direction:column;gap:0}
+  .rg-soll{display:flex;align-items:center;gap:6px}
   .rg-page .rg-st{grid-template-columns:44px 64px 44px;width:auto}.rg-page .rg-st button{width:44px;height:44px}
   .rg-rail{gap:6px}
   .rg-rail li{grid-template-columns:1fr;gap:3px}
   .rg-rail li>i{grid-row:auto}
-  .rg-rail li b{white-space:normal;line-height:1.25;font-size:12px}
-  .rg-rail li span{font-size:11.5px}
-  .rg-go{grid-column:1;padding:6px 8px;font-size:12px}
+  .rg-rail li b{white-space:normal;line-height:1.25;font-size:13px}
+  .rg-rail li span{font-size:13px}
+  .rg-go{grid-column:1;padding:0 10px;font-size:13px}
+  .rg-pop li{flex-direction:column;gap:0}.rg-pop li b{min-width:0}
   .rg-hist li{grid-template-columns:52px minmax(0,1fr);}.rg-hist li button{grid-column:2;justify-self:start}
   .rg.has-bar{padding-bottom:150px}
   .rg-bar{padding:8px 12px 10px}
   .rg-bar .in{flex-wrap:wrap;gap:8px}
-  .rg-x{min-height:36px}
+  .rg-x{min-height:44px}
   .rg-btns{flex:1 1 100%}.rg-btns button{flex:1 1 0;min-width:0;padding:4px 8px;font-size:14px;white-space:normal;line-height:1.15}
 }
 `;

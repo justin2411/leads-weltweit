@@ -31,8 +31,8 @@ export const outRows = (n: FlowNode, r: NodeRows | undefined) => (!r ? [] : NODE
 export const portCount = (r: NodeRows | undefined, port: Port) => (!r?.connected ? null : port === "ja" ? r.ja?.length ?? 0 : port === "nein" ? r.nein?.length ?? 0 : r.out.length);
 
 const VERB: Record<FlowNode["kind"], string> = {
-  quelle: "in der Stichprobe", filter: "kommen durch", weiche: "geprüft", punkte: "kommen durch", top: "genommen", dubletten: "einzeln",
-  statistik: "gezählt", pipeline: "erreichen die Regel", export: "zum Herunterladen", agent: "gehen an den Agenten",
+  quelle: "in der Stichprobe", filter: "durch", weiche: "geprüft", punkte: "durch", top: "genommen", dubletten: "einzeln",
+  statistik: "gezählt", pipeline: "erreichen die Regel", export: "zum Herunterladen", agent: "für den Agenten",
 };
 
 function NodeCard({ id, data, selected }: NodeProps<BkNode>) {

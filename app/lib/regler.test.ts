@@ -3,8 +3,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { DEFAULTS, InputError, merge, validateSlotPlan, type LaneRegistry, type OwnerSettings } from "./owner-settings.ts";
 import {
-  CARDS, LEAD_COUNTRIES, capOf, countryOf, countryOn, diff, draftFrom, fmtBerlin, fmtWhen, laneRoom, leadLanes, leadMax, leadTotal, nextRun,
-  presets, scalePlan, setCountry, setLane, status, toSettings, validateValue, versandStopText, type Ack, type ReglerCtx,
+  CARDS, LEAD_COUNTRIES, capHint, capOf, countriesOn, countryOf, countryOn, diff, draftFrom, fmtBerlin, fmtWhen, laneRoom, leadLanes, leadMax,
+  leadTotal, maxAgeMatters, nextRun, presetChips, presetPlan, presets, prevRun, scalePlan, setCountry, setLane, status, switchPreview, toSettings,
+  validateValue, versandStopText, type Ack, type ReglerCtx,
 } from "./regler.ts";
 
 const reg: LaneRegistry = JSON.parse(readFileSync(new URL("./werk-linien.json", import.meta.url), "utf8"));
@@ -238,4 +239,95 @@ test("Zustand: noch nie geändert, wartet, start angefordert, angewandt, pausier
 test("Lead-Linien je Land wie werk-linien.json", () => {
   const by = Object.fromEntries(LEAD_COUNTRIES.map((c) => [c.id, leadLanes(reg).filter((l) => countryOf(l) === c.id).map((l) => l.id)]));
   assert.deepEqual(by, { US: ["web-us", "s2-us", "s1-us-lca"], UK: ["web-uk", "s1-uk-tender"], FR: ["web-fr"], Nord: ["web-north"] });
+});
+
+test("Tempo: langsamer schaltet nie ein Land ab; Standard bringt die Standardbelegung zurück", () => {
+  const d = defaults();
+  const on = (p: Record<string, number>) => LEAD_COUNTRIES.map((c) => countryOn(p, reg, c.id));
+  const all = on(d);
+  for (let t = 4; t <= 30; t++) {
+    const p = scalePlan(d, reg, t);
+    check(p);
+    assert.equal(leadTotal(p, reg), t);
+    assert.deepEqual(on(p), all, `t=${t}`);
+    if (t >= 5) for (const l of leadLanes(reg)) if (d[l.id] > 0) assert.ok(p[l.id] >= 1, `t=${t} ${l.id}`);
+  }
+  // Sparsam (10) -> Standard (30) und Sparsam -> + bis 30: alle Länder bleiben an
+  const sp = presetPlan(d, reg, presets(d, reg)[0]);
+  assert.equal(leadTotal(sp, reg), 10);
+  assert.deepEqual(on(sp), all);
+  assert.deepEqual(on(scalePlan(sp, reg, 30)), all);
+  assert.deepEqual(on(scalePlan(scalePlan(d, reg, 10), reg, 30)), all);
+  const std = presetPlan(sp, reg, presets(sp, reg)[1]);
+  assert.deepEqual(std, d); // genau die Standardbelegung
+  // Standard respektiert abgeschaltete Länder
+  const noFr = presetPlan(setCountry(sp, reg, "FR", false), reg, presets(sp, reg)[1]);
+  assert.equal(countryOn(noFr, reg, "FR"), false);
+  assert.equal(leadTotal(noFr, reg), 30);
+  check(noFr);
+  // Untergrenze des Steppers: 1 Platz je Land
+  assert.equal(countriesOn(d, reg), 4);
+  assert.equal(countriesOn(setCountry(d, reg, "Nord", false), reg), 3);
+  // unter die Zahl der Länder: so viele Länder wie Plätze (nicht mehr erzwingbar)
+  check(scalePlan(d, reg, 2));
+});
+
+test("Vorgaben-Chips und Anschlag-Hinweis", () => {
+  const d = defaults();
+  assert.deepEqual(presetChips(d, reg).map((p) => [p.label, p.total]), [["Sparsam", 10], ["Standard = Voll", 30]]);
+  const k4 = setLane(d, reg, "kunden", 4);
+  assert.deepEqual(presetChips(k4, reg).map((p) => p.label), ["Sparsam", "Standard", "Voll"]);
+  assert.equal(capHint(d, reg, "lead-werk"), "Maximum – alle 38 Plätze belegt. Mehr hier = Kunden-Werk senken");
+  assert.equal(capHint(d, reg, "kunden-werk"), "Maximum – alle 38 Plätze belegt. Mehr hier = Lead-Werk-Tempo senken");
+  assert.equal(capHint(k4, reg, "lead-werk"), null);
+});
+
+test("Schalter-Vorschau und Verfall nur außerhalb von S2", () => {
+  assert.equal(switchPreview("versand", false), "wird pausiert – keine Kalt-/Nachfassmails");
+  assert.equal(switchPreview("lead-werk", false), "wird pausiert ab Übernehmen");
+  assert.equal(switchPreview("lead-werk", true), "läuft wieder ab Übernehmen");
+  assert.equal(maxAgeMatters(["S2/US", "S2/UK", "S2/FR"]), false);
+  assert.equal(maxAgeMatters(["S2/US", "S4/US"]), true);
+});
+
+test("validateValue: Proben-Soll nur für Regler-Seiten, andere Seiten unverändert", () => {
+  const c2 = { ...ctx, pages: ["S2/US", "S2/UK", "S2/FR"] };
+  assert.throws(() => validateValue("sample_targets", { "S2/US": 10, "S4/UK": 100 }, c2), /Seite/);
+  const saved = S({ sample_targets: { "S2/US": 50, "S4/UK": 7 } });
+  assert.deepEqual(validateValue("sample_targets", { "S2/US": 10, "S4/UK": 7 }, c2, saved), { "S2/US": 10, "S4/UK": 7 });
+  assert.throws(() => validateValue("sample_targets", { "S2/US": 10, "S4/UK": 100 }, c2, saved), /Seite/);
+  assert.deepEqual(validateValue("sample_targets", { "S2/US": 10 }, c2, saved), { "S2/US": 10 }); // Seite entfernt = Standard
+});
+
+test("Zustand: gemeinsamer Schlüssel ohne Quittung, Quittung mit altem Wert, gemessen erreicht", () => {
+  const base = { acks: [] as Ack[], startRequests: [], now: NOW, reg };
+  // Lead-Werk pausiert -> Kundenlieferung/Tagescheck/Kunden-Werk ohne Quittung bleiben „Standard“, nicht „wartet“
+  const wp = { ...base, saved: S({ werke_paused: { "lead-werk": "2026-10-03T19:40:00Z" } }), updatedAt: { werke_paused: "2026-10-03T19:40:00Z" } };
+  for (const k of ["kundenlieferung", "tagescheck", "antworten", "proben-vorrat", "kunden-werk"] as const) assert.equal(status(k, wp).kind, "noch nie geändert", k);
+  assert.equal(status("lead-werk", wp).kind, "wartet");
+  // Plan nur für Lead-Linien geändert -> Kunden-Werk ohne Quittung nicht „wartet“
+  const sp = { ...base, saved: S({ slot_plan: scalePlan(defaults(), reg, 12) }), updatedAt: { slot_plan: "2026-10-03T19:40:00Z" } };
+  assert.equal(status("kunden-werk", sp).kind, "noch nie geändert");
+  assert.equal(status("lead-werk", sp).kind, "wartet");
+  // Quittung nach dem Speichern, aber mit altem Wert (Speicherung zwischen Lesen und Quittung) -> wartet
+  const st = { ...base, saved: S({ sample_targets: { "S2/US": 50 } }), updatedAt: { sample_targets: "2026-10-03T19:40:00Z" } };
+  const late: Ack = { werk: "proben-vorrat", key: "sample_targets", seen_at: "2026-10-03T19:40:05Z", value: { "S2/US": 30 } };
+  assert.equal(status("proben-vorrat", { ...st, acks: [late] }).kind, "wartet");
+  assert.equal(status("proben-vorrat", { ...st, acks: [{ ...late, value: { "S2/US": 50 } }] }).kind, "angewandt");
+  // gemessen erreicht: nur nach einem planmäßigen Lauf seit dem Speichern (19:40 -> Lauf 20:23 UTC)
+  assert.equal(status("proben-vorrat", { ...st, reached: true }).kind, "wartet");
+  const later = new Date("2026-10-03T20:30:00Z");
+  const r = status("proben-vorrat", { ...st, now: later, reached: true });
+  assert.equal(r.kind, "erreicht");
+  assert.equal(status("proben-vorrat", { ...st, now: later, reached: false }).kind, "wartet");
+  // Pause ist nicht messbar -> nie „erreicht“
+  const ps = { ...st, now: later, reached: true, saved: S({ sample_targets: { "S2/US": 50 }, werke_paused: { "proben-vorrat": "2026-10-03T19:40:00Z" } }), updatedAt: { ...st.updatedAt, werke_paused: "2026-10-03T19:40:00Z" } };
+  assert.notEqual(status("proben-vorrat", ps).kind, "erreicht");
+});
+
+test("letzter Lauf", () => {
+  assert.equal(prevRun("23 * * * *", NOW).toISOString(), "2026-10-03T19:23:00.000Z");
+  assert.equal(prevRun("23 * * * *", new Date("2026-10-03T19:23:00Z")).toISOString(), "2026-10-03T18:23:00.000Z");
+  assert.equal(prevRun("53 4 * * 1", NOW).toISOString(), "2026-09-28T04:53:00.000Z");
+  assert.equal(prevRun("7 6-21 * * *", new Date("2026-10-04T05:00:00Z")).toISOString(), "2026-10-03T21:07:00.000Z");
 });
