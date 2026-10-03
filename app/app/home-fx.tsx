@@ -297,13 +297,46 @@ export function HomeFx() {
       io2.observe(lead);
     } else stamp?.classList.add("is-on");
 
-    // 11 · Film: ein goldener Play-Knopf über dem Vorschaubild, danach die normale Steuerung
-    const video = $<HTMLVideoElement>(".hp-video video"), play = $<HTMLButtonElement>(".hp-video__play");
-    if (video && play) {
-      video.controls = false; play.hidden = false;
-      on(play, "click", () => { video.controls = true; play.hidden = true; video.play().catch(() => null); });
+    // 11 · Film: Titelbild als Radar (Vorlage v2) über dem Video; ein Klick blendet es aus, danach die normale Steuerung
+    const video = $<HTMLVideoElement>(".hp-video video"), poster = $(".hp-cine__poster"), play = $<HTMLButtonElement>(".hp-cine__play");
+    if (video && poster && play) {
+      video.controls = false; poster.hidden = false; video.setAttribute("tabindex", "-1");
+      const start = () => { film?.classList.add("is-playing"); video.controls = true; video.removeAttribute("tabindex"); video.play().catch(() => null); };
+      on(play, "click", start);
+      on(poster, "click", ((e: Event) => { if (!(e.target as Element).closest(".hp-cine__play")) start(); }) as EventListener);
       on(video, "play", () => film?.classList.add("is-playing"));
+      // leichtes Mitbewegen der Radar-Ebenen mit der Maus
+      if (fine && !reduce) {
+        let raf = 0, px = 0, py = 0;
+        const apply = () => { raf = 0; poster.style.setProperty("--px", px.toFixed(3)); poster.style.setProperty("--py", py.toFixed(3)); };
+        on(poster, "pointermove", ((e: PointerEvent) => {
+          if (e.pointerType === "touch") return; const r = poster.getBoundingClientRect(); if (!r.width) return;
+          px = ((e.clientX - r.left) / r.width - 0.5) * 2; py = ((e.clientY - r.top) / r.height - 0.5) * 2; if (!raf) raf = requestAnimationFrame(apply);
+        }) as EventListener, { passive: true });
+        on(poster, "pointerleave", () => { px = 0; py = 0; if (!raf) raf = requestAnimationFrame(apply); });
+      }
     }
+
+    // 12 · Vorlage v2: Bewegung nur ohne reduzierte Bewegung (.hp-motion); [data-io] einmal beim Einblenden (.is-io),
+    //      [data-live] solange sichtbar (.is-live, nur dann laufen die Schleifen); Lichtschein folgt dem Zeiger über dem Kennzahlen-Band
+    let io5: IntersectionObserver | null = null, io6: IntersectionObserver | null = null;
+    if (!reduce && "IntersectionObserver" in window) {
+      page.classList.add("hp-motion");
+      io5 = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("is-io"); io5!.unobserve(e.target); } }), { rootMargin: "0px 0px -10% 0px", threshold: 0.1 });
+      $$("[data-io]").forEach((el) => io5!.observe(el));
+      io6 = new IntersectionObserver((es) => es.forEach((e) => e.target.classList.toggle("is-live", e.isIntersecting)), { threshold: 0.15 });
+      $$("[data-live]").forEach((el) => io6!.observe(el));
+      const band = $(".hp-band");
+      if (band && fine) {
+        let raf = 0, x = 0, y = 0;
+        on(band, "pointermove", ((e: PointerEvent) => {
+          const r = band.getBoundingClientRect(); x = e.clientX - r.left; y = e.clientY - r.top;
+          band.classList.add("is-hot");
+          if (!raf) raf = requestAnimationFrame(() => { raf = 0; band.style.setProperty("--stat-mx", x + "px"); band.style.setProperty("--stat-my", y + "px"); });
+        }) as EventListener, { passive: true });
+        on(band, "pointerleave", () => band.classList.remove("is-hot"));
+      }
+    } else $$("[data-io]").forEach((el) => el.classList.add("is-io"));
 
     // 13 · Fragen: weich auf- und zuklappen
     $$<HTMLDetailsElement>(".hp-qa details").forEach((det) => {
@@ -385,7 +418,7 @@ export function HomeFx() {
     buildInline();
     on(mqStory, "change", buildInline);
 
-    return () => { offs.forEach((f) => f()); timers.forEach((t) => { clearTimeout(t); clearInterval(t); }); io?.disconnect(); io2?.disconnect(); io3?.disconnect(); io4?.disconnect(); $$(".hp-sstep__stage").forEach((b) => b.remove()); };
+    return () => { offs.forEach((f) => f()); timers.forEach((t) => { clearTimeout(t); clearInterval(t); }); io?.disconnect(); io2?.disconnect(); io3?.disconnect(); io4?.disconnect(); io5?.disconnect(); io6?.disconnect(); page.classList.remove("hp-motion"); $$(".hp-sstep__stage").forEach((b) => b.remove()); };
   }, []);
   return null;
 }
