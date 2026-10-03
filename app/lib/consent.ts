@@ -18,7 +18,7 @@ export const T = {
   en: {
     examples: "Example leads", examplesNote: "Real signals from a recent sample. Company name, phone and email are unlocked in your free sample.",
     what: "What we flag", how: "How it works",
-    steps: ["We check official registers and company careers pages every day.", "Each signal is dated, sourced and rated for urgency.", "Every Monday you receive your new leads as a PDF briefing and a spreadsheet."],
+    steps: ["We monitor public business sources every day.", "Each signal is dated, sourced and rated for urgency.", "Every Monday you receive your new leads as a PDF briefing and a spreadsheet."],
     pricing: "Plans", perMonth: "per month", subscribe: "Start subscription",
     stepTitle: "Your 10 free leads, one more click",
     free: "Free of charge.", freeText: "No card, no payment details.",
@@ -38,7 +38,7 @@ export const T = {
   fr: {
     examples: "Exemples de pistes", examplesNote: "Signaux réels issus d'un échantillon récent. Nom, téléphone et e-mail figurent dans votre échantillon gratuit.",
     what: "Ce que nous repérons", how: "Comment ça marche",
-    steps: ["Nous consultons chaque jour les registres officiels et les pages carrières des entreprises.", "Chaque signal est daté, sourcé et évalué selon son urgence.", "Chaque lundi, vous recevez vos nouvelles pistes en briefing PDF et en tableau."],
+    steps: ["Nous suivons chaque jour des sources publiques sur les entreprises.", "Chaque signal est daté, sourcé et évalué selon son urgence.", "Chaque lundi, vous recevez vos nouvelles pistes en briefing PDF et en tableau."],
     pricing: "Offres", perMonth: "par mois", subscribe: "Démarrer l'abonnement",
     stepTitle: "Vos 10 pistes gratuites, encore un clic",
     free: "Gratuit.", freeText: "Pas de carte, pas de données de paiement.",

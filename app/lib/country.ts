@@ -10,8 +10,8 @@ export const COUNTRIES: Record<CountryCode, {
   /** in Sätzen: "across the UK", "de toute la France" */
   land: string; landDe?: string; register: string;
 }> = {
-  UK: { path: "uk", lang: "en", flag: "🇬🇧", name: { en: "United Kingdom", fr: "Royaume-Uni", de: "Vereinigtes Königreich" }, land: "the UK", register: "Companies House" },
-  US: { path: "us", lang: "en", flag: "🇺🇸", name: { en: "United States", fr: "États-Unis", de: "USA" }, land: "the US", register: "state business registers" },
+  UK: { path: "uk", lang: "en", flag: "🇬🇧", name: { en: "United Kingdom", fr: "Royaume-Uni", de: "Vereinigtes Königreich" }, land: "the UK", register: "public business registers" },
+  US: { path: "us", lang: "en", flag: "🇺🇸", name: { en: "United States", fr: "États-Unis", de: "USA" }, land: "the US", register: "public business registers" },
   FR: { path: "fr", lang: "fr", flag: "🇫🇷", name: { en: "France", fr: "France", de: "Frankreich" }, land: "la France", landDe: "de toute la France", register: "le registre national des entreprises" },
 };
 
