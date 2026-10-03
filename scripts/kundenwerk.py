@@ -66,6 +66,12 @@ CATEGORIES = {
     "carpet_cleaning": "S7", "window_washing": "S7", "pressure_washing": "S7",
     "investing": "S9", "investment_management_company": "S9",
 }
+# Zweite Zielgruppe je Kategorie für Länder, in die die erste nicht mailen darf (Quellen-Scout 03.10.2026, R16b):
+# Werbe-/Marketingagenturen bleiben in UK/US eigener Test S12 (getrennt von S2 testbar, config/zielgruppen.yaml);
+# in FR/IE/NL/BE/SE gibt es S12 nicht, dort sind sie Käufer für S2 (bauen Websites für kleine Firmen, wie
+# b2b_advertising_and_marketing_service/media_agency). Test: 95 Firmen -> 10 ok (FR 7/30, SE 3/15).
+SECOND = {"marketing_agency": "S2", "advertising_agency": "S2", "b2b_marketing_consultant": "S2"}
+SECOND_COUNTRIES = {"FR", "IE", "NL", "BE", "SE"}  # nicht UK/US: dort bleibt S12 eigener Test, auch im S2-Fokuslauf
 NOT_OWN_SITE = re.compile(r"(facebook|instagram|linkedin|twitter|x\.com|yelp|google|wix(site)?\.com|godaddysites|"
                           r"business\.site|yell\.com|pagesjaunes|bark\.com|checkatrade|houzz|tripadvisor|"
                           r"booking\.com|amazon|ebay|etsy|youtube|tiktok|linktr\.ee|square\.site)", re.I)
@@ -102,6 +108,16 @@ def build_pool() -> Path:
     return POOL
 
 
+def segment_for(category: str, co: str | None, segments: dict[str, set[str]]) -> tuple[str | None, str | None]:
+    """Zielgruppe für Kategorie und Land: erste, wenn sie dort mailen darf, sonst die zweite (SECOND)."""
+    if not co:
+        return None, None
+    for seg in (CATEGORIES.get(category), SECOND.get(category) if co in SECOND_COUNTRIES else None):
+        if seg and co in segments.get(seg, set()):
+            return seg, co
+    return None, None
+
+
 def candidates(segments: dict[str, set[str]]) -> list[dict]:
     """Pool ohne Ketten (gleicher Name > 3x im Land), geschlossene Firmen und unsichere Einträge;
     nur Zielgruppe/Land-Paare, in die wir mailen dürfen und für die wir Leads liefern."""
@@ -120,8 +136,8 @@ def candidates(segments: dict[str, set[str]]) -> list[dict]:
     out = []
     for r in rows:
         d = dict(zip(cols, r))
-        seg, co = CATEGORIES.get(d["category"]), COUNTRIES.get(d["country"])
-        if not seg or not co or co not in segments.get(seg, set()):
+        seg, co = segment_for(d["category"], COUNTRIES.get(d["country"]), segments)
+        if not seg:
             continue
         site = next((w for w in d["websites"] or [] if w and not NOT_OWN_SITE.search(w) and not host_blocked(w)), None)
         dom = normalize_domain(site) if site else ""
