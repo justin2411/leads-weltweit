@@ -1,7 +1,7 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
 import { db } from "@/lib/supabase";
-import type { Days, Live, OpsConfig, RawStock, RunInfo, Stock } from "@/lib/dashboard-logic";
+import { boxHealth, type BoxHealth, type Days, type Live, type OpsConfig, type RawStock, type RunInfo, type Stock } from "@/lib/dashboard-logic";
 import type { DailyRow } from "@/lib/dashboard-periods";
 import { merge, type OwnerSettings } from "@/lib/owner-settings";
 import { EMPTY_ACTIVITY, type Activity } from "@/lib/werke-live";
@@ -234,6 +234,27 @@ export async function loadRecentSent(limit = 10): Promise<SentMail[]> {
     return (data ?? []) as unknown as SentMail[];
   } catch {
     return [];
+  }
+}
+
+/** Gesendete Mails und Bounces/Beschwerden der letzten Tage je Postfach (für boxHealth); Fehler -> null. */
+export async function loadBoxHealth(days = 14): Promise<BoxHealth[] | null> {
+  try {
+    const since = new Date(Date.now() - days * 86_400_000).toISOString();
+    const sb = db();
+    const [m, e] = await Promise.all([
+      sb.from("messages").select("id, sent_from").eq("status", "sent").gte("sent_at", since).limit(20000).abortSignal(AbortSignal.timeout(5000)),
+      sb.from("email_events").select("message_id, type, payload, messages(to_email)").in("type", ["bounced", "complained"])
+        .gte("created_at", since).limit(5000).abortSignal(AbortSignal.timeout(5000)),
+    ]);
+    if (m.error || e.error) throw new Error((m.error ?? e.error)!.message);
+    const events = ((e.data ?? []) as any[]).map((x) => ({
+      message_id: x.message_id, type: x.type, bounce_type: x.payload?.bounce?.type ?? null,
+      to_email: (Array.isArray(x.messages) ? x.messages[0] : x.messages)?.to_email ?? null,
+    }));
+    return boxHealth((m.data ?? []) as { id: string; sent_from: string | null }[], events);
+  } catch {
+    return null;
   }
 }
 

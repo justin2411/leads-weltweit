@@ -334,7 +334,7 @@ export const HUD_CSS = `
 .mbars a:hover .mb-b{background:rgba(95,212,255,.16)}
 .chk{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 .chk li{display:grid;grid-template-columns:22px 1fr auto;grid-template-areas:"i b s" "i e e";gap:0 8px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:rgba(2,8,18,.45)}
-.chk i{grid-area:i;font-style:normal;font-weight:700;color:#3ddc97}.chk li.bad i{color:#ff5e73}
+.chk i{grid-area:i;font-style:normal;font-weight:700;color:#3ddc97}.chk li.bad i{color:#ff5e73}.chk li.warn i{color:#ffb547}.chk li.grey i{color:var(--soft)}
 .chk b{grid-area:b;font-size:14px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.chk b a{color:#fff}
 .chk span{grid-area:s;font-size:12px;color:var(--soft);white-space:nowrap}
 .chk em{grid-area:e;font-style:normal;font-size:12.5px;color:#9db6d6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

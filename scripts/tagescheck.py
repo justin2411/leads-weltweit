@@ -150,6 +150,46 @@ def check_sending(c: Check, db) -> None:
               "Käufervorrat oder Entwürfe prüfen")
 
 
+BOX_WARN, BOX_FAIL, BOX_MIN = 0.03, 0.05, 30
+
+
+def check_mailboxes(c: Check, db) -> None:
+    """Bounce-Quote je Versand-Postfach, 14 Tage (Nachtschicht 04.10.2026). Seit alle Postfächer gelesen werden
+    (lib/imap_boxes.py), kommen Rückläufer an Postfach 2/3 an; ein schlechtes Postfach fällt so auf, bevor es die
+    gemeinsame Notbremse auslöst. Gelb ab 3 %, rot ab 5 %, erst ab 30 Mails je Postfach (sonst Zufall)."""
+    from lib.deliverability import count_bounces
+    from lib.mailboxes import address
+    since = (NOW - dt.timedelta(days=14)).isoformat()
+    sent = db.select_all("messages", {"status": "eq.sent", "sent_at": f"gte.{since}", "select": "id,sent_from"})
+    if not sent:
+        return
+    box = {m["id"]: address(m.get("sent_from") or "") or "Postfach 1 (vor Mehrfach-Versand)" for m in sent}
+    ev = db.select_all("email_events", {"created_at": f"gte.{since}", "type": "in.(bounced,complained)",
+                                        "select": "message_id,type,payload,messages(to_email)"})
+    per: dict[str, list[dict]] = {}
+    for e in ev:
+        if e.get("message_id") in box:
+            e["to_email"] = (e.get("messages") or {}).get("to_email")
+            per.setdefault(box[e["message_id"]], []).append(e)
+    counts: dict[str, int] = {}
+    for b in box.values():
+        counts[b] = counts.get(b, 0) + 1
+    for b, n in sorted(counts.items(), key=lambda x: -x[1]):
+        bounced, complained = count_bounces(per.get(b, []))
+        rate = bounced / n
+        detail = f"{bounced} Bounces, {complained} Beschwerden bei {n} Mails (14 Tage)"
+        if complained:
+            c.add("Postfach", FAIL, f"{b}: Spam-Beschwerde", detail)
+        elif n < BOX_MIN:
+            c.add("Postfach", OK, f"{b}: {rate:.1%} Bounces", f"{detail} – noch zu wenig für eine Aussage")
+        elif rate >= BOX_FAIL:
+            c.add("Postfach", FAIL, f"{b}: Bounce-Quote {rate:.1%}", f"{detail} – Adressqualität/Absender prüfen")
+        elif rate >= BOX_WARN:
+            c.add("Postfach", WARN, f"{b}: Bounce-Quote {rate:.1%}", detail)
+        else:
+            c.add("Postfach", OK, f"{b}: Bounce-Quote {rate:.1%}", detail)
+
+
 def check_followups(c: Check, db) -> None:
     from followups import NEGATIVE
     cutoff = (NOW - dt.timedelta(days=5)).isoformat()   # 4 Tage + 1 Tag Puffer für den Automatiklauf
@@ -472,6 +512,7 @@ def main(argv=None) -> int:
     c = Check()
     c.guard("Abläufe", lambda: check_workflows(c))
     c.guard("Versand", lambda: check_sending(c, db))
+    c.guard("Postfach", lambda: check_mailboxes(c, db))
     c.guard("Nachfass", lambda: check_followups(c, db))
     c.guard("Antworten", lambda: check_replies(c, db))
     c.guard("Proben", lambda: check_web_samples(c, db))
