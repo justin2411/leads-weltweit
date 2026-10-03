@@ -344,8 +344,8 @@ export async function Home({ lang }: { lang: HomeLang }) {
                         <div className="hp-fact hp-fact--wide hp-fact--event" data-mark="1"><dt>{c.event} <span className="hp-mark" aria-hidden="true">1</span></dt><dd>{c.eventText}</dd></div>
                         <div className="hp-fact" data-mark="2"><dt>{c.date} <span className="hp-mark" aria-hidden="true">2</span></dt><dd>{c.dateText}</dd></div>
                         <div className="hp-fact" data-mark="2"><dt>{c.source} <span className="hp-mark" aria-hidden="true">2</span></dt><dd>{c.sourceText}</dd></div>
-                        <div className="hp-fact hp-fact--wide" data-mark="2"><dt>{c.person} <span className="hp-mark" aria-hidden="true">2</span></dt><dd><R t="xxxxx xxxxxxx" /><span className="hp-sr">{c.hidden}</span> · {c.role}</dd></div>
-                        <div className="hp-fact hp-fact--wide" data-mark="2"><dt>{c.phone} <span className="hp-mark" aria-hidden="true">2</span></dt><dd>{t.ex.phonePrefix} <R t="xxxx xxxx" /><span className="hp-sr">{c.hidden}</span></dd></div>
+                        <div className="hp-fact" data-mark="2"><dt>{c.person} <span className="hp-mark" aria-hidden="true">2</span></dt><dd><R t="xxxxx xxxxxxx" /><span className="hp-sr">{c.hidden}</span><small className="hp-fact__role">{c.role}</small></dd></div>
+                        <div className="hp-fact" data-mark="2"><dt>{c.phone} <span className="hp-mark" aria-hidden="true">2</span></dt><dd>{t.ex.phonePrefix} <R t="xxxx xxxx" /><span className="hp-sr">{c.hidden}</span></dd></div>
                         <div className="hp-fact hp-fact--wide" data-mark="2"><dt>{c.email} <span className="hp-mark" aria-hidden="true">2</span></dt><dd className="hp-nowrap"><R t="xxxxx" />@<R t="xxxxxxxx" />.co.uk<span className="hp-sr">{c.hidden}</span></dd></div>
                       </dl>
                       <div className="hp-lead__foot">
