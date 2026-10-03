@@ -139,6 +139,41 @@ export const HOME_CSS = `
 .hpz .hp-qa summary::after{content:none;display:none}
 @media (max-width:440px){.hpz .hp-stat__num{font-size:clamp(28px,8.4vw,36px)}}
 
+
+/* Ansprechpartner-Karte rechts (Inhaber 03.10.2026): hell, Gold-Linie oben, Ablauf + Filter + Nachricht */
+.bx .hm .pccard{position:relative;background:#fff;border:1px solid var(--pline);border-radius:26px;padding:28px;box-shadow:0 40px 80px -50px rgba(11,21,48,.45);overflow:hidden}
+.bx .hm .pccard:before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:linear-gradient(90deg,#EBD7AE,#C9A465,#A98447)}
+.bx .hm .pchead{display:flex;align-items:center;gap:14px;padding-bottom:20px;border-bottom:1px solid var(--line2,#EFEAE0)}
+.bx .hm .pchead b{display:block;color:var(--pink);font-size:16px}
+.bx .hm .pchead em{display:flex;align-items:center;gap:7px;font-style:normal;font-size:13px;color:var(--muted)}
+.bx .hm .pcdot{width:8px;height:8px;border-radius:50%;background:#3BD18A;box-shadow:0 0 0 0 rgba(59,209,138,.6)}
+.motion .bx .hm .pcdot{animation:pcping 2s ease-out infinite}
+@keyframes pcping{0%{box-shadow:0 0 0 0 rgba(59,209,138,.6)}100%{box-shadow:0 0 0 9px rgba(59,209,138,0)}}
+.bx .hm .pcav{position:relative;flex:none;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#EBD7AE,#C9A465);color:#0B1530}
+.bx .hm .pcav .hp-ico{width:24px;height:24px}
+.bx .hm .pcav.sm{width:30px;height:30px}.bx .hm .pcav.sm .hp-ico{width:15px;height:15px}
+.bx .hm .pctl{list-style:none;margin:22px 0 0;padding:0;position:relative;display:grid;gap:16px}
+.bx .hm .pctl:before{content:"";position:absolute;left:19px;top:20px;bottom:20px;width:2px;background:linear-gradient(180deg,#C9A465,#EBD7AE)}
+.bx .hm .pctl li{position:relative;display:flex;align-items:center;gap:14px}
+.bx .hm .pcic{position:relative;z-index:1;flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:#fff;border:2px solid #C9A465;color:var(--gtext)}
+.bx .hm .pctl li:last-child .pcic{background:linear-gradient(135deg,#EBD7AE,#C9A465);border-color:transparent;color:#0B1530}
+.bx .hm .pcic .hp-ico{width:18px;height:18px}
+.bx .hm .pctl small{display:block;font-size:11.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+.bx .hm .pctl b{display:block;font-size:15.5px;color:var(--pink)}
+.bx .hm .pcfilters{margin-top:22px;padding:16px 18px;border-radius:16px;background:var(--cream)}
+.bx .hm .pcchips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.bx .hm .pcchip{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:99px;font-size:13.5px;font-weight:600;background:#fff;border:1px solid var(--pline);color:var(--pink)}
+.bx .hm .pcchip .hp-ico{width:14px;height:14px}
+.bx .hm .pcchip.on .hp-ico{color:var(--green)}
+.bx .hm .pcchip.off{color:var(--faint);text-decoration:line-through;background:transparent}
+.bx .hm .pcchip.off .hp-ico{color:var(--coral)}
+.bx .hm .pcchip.new{background:linear-gradient(135deg,#EBD7AE,#C9A465);border-color:transparent;color:#1b1404}
+.bx .hm .pcquote{display:flex;gap:12px;align-items:flex-start;margin:18px 0 0;padding:14px 16px;border-radius:16px 16px 16px 4px;background:linear-gradient(170deg,#13265a,#0B1530);color:#e9edf6;font-size:14.5px;line-height:1.5}
+.bx .hm .pccard .fnote{color:var(--faint);margin-top:14px}
+.motion .bx .hm .pccard .pctl li,.motion .bx .hm .pccard .pcchip,.motion .bx .hm .pccard .pcquote{opacity:0;transform:translateY(8px);transition:opacity .5s,transform .5s;transition-delay:calc(.25s + var(--i) * .25s)}
+.motion .bx .hm .pccard.in .pctl li,.motion .bx .hm .pccard.in .pcchip,.motion .bx .hm .pccard.in .pcquote{opacity:1;transform:none}
+.bx .hm #revenue{padding-bottom:24px}
+
 @media (max-width:980px){
   .bx .hm .pc2{grid-template-columns:1fr;gap:28px}
   .bx .hm .icards{grid-template-columns:1fr 1fr}

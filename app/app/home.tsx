@@ -8,11 +8,12 @@ import { LANDING_CSS } from "@/lib/landing-css";
 import { HOME_CSS } from "@/lib/home-css";
 import { HOME_SPRITE, HOME_V2_CSS } from "@/lib/home-v2-css";
 import { SampleForm, type FormOption } from "./sample-form";
-import { homeFeed, homeStats, publicPages, type PublicPage } from "@/lib/site-pages";
+import { homeStats, publicPages, type PublicPage } from "@/lib/site-pages";
 import { BrandShell, SiteFooter, SiteHeader } from "./chrome";
 import { HOME, HOME_LANGS, HOME_PATH, type HomeLang } from "./home-i18n";
 import { CONTACT_PATH } from "./contact/contact-i18n";
 import { HomeFx } from "./home-fx";
+import { UK_MAP_SVG } from "@/content/home-uk-map";
 import { COUNTRIES, segKey, type CountryCode } from "@/lib/country";
 
 // Register (Inhaber 27.09.2026 „über 18 Millionen“): Companies House 4.930.634 (effektives Register, März 2026,
@@ -46,7 +47,7 @@ const I = ({ n, c = "hp-ico" }: { n: string; c?: string }) => <svg className={c}
 const R = ({ t }: { t: string }) => <span className="hp-redact" aria-hidden="true">{t}</span>;
 const i = (n: number) => ({ "--i": n }) as CSSProperties;
 
-/** Beispiele für „Recently detected“, falls die Datenbank nichts liefert (echte Probe, Firmenname verdeckt). */
+/** „Recently detected“: drei echte Signale einer UK-Probe (Firmenname verdeckt), Städte mit Pins auf der Karte. */
 const FALLBACK = [
   { place: "London", date: "2 Oct 2026", source: "Find a Tender", event: "Won a public contract, published on Find a Tender on 2 October 2026: “London Borough of Richmond” for Sutton, Achieving for Children and Kingston" },
   { place: "Wolverhampton", date: "2 Oct 2026", source: "Find a Tender", event: "Won a public contract, published on Find a Tender on 2 October 2026: “FP&A Tool Consultancy” for Agriculture and Horticulture Development Board" },
@@ -99,14 +100,12 @@ export async function Home({ lang }: { lang: HomeLang }) {
   const t = HOME[lang];
   const loc = { en: "en-GB", fr: "fr-FR", de: "de-DE" }[lang];
   const mio = { en: "M+", fr: " M+", de: " Mio.+" }[lang];
-  const [pages, stats, feed] = await Promise.all([
+  const [pages, stats] = await Promise.all([
     publicPages().catch(() => [] as PublicPage[]),
     homeStats().catch(() => ({ companies: 0, signals: 0 })),
-    homeFeed(lang).catch(() => []),
   ]);
   const V = VIDEOS as Record<string, { src: string; poster: string; seconds: number }>;
   const video = V[`${lang}:home`] ?? V["en:home"];
-  const signals = (feed.length >= 3 ? feed.slice(0, 3).map((f) => ({ place: f.place, date: f.date, source: f.source, event: f.event })) : FALLBACK);
   // Branchen je Land: Schlüssel -> Seite je Land
   const bySeg = new Map<string, Partial<Record<CountryCode, string>>>();
   for (const p of pages) {
@@ -171,21 +170,23 @@ export async function Home({ lang }: { lang: HomeLang }) {
                 </div>
                 <ul className="hp-assure hp-in" style={{ "--d": "1s" } as CSSProperties}>{t.fine.map((f) => <li key={f}><I n="check" />{f}</li>)}</ul>
               </div>
-              <div className="hp-feed-wrap">
-                <aside className="hp-feed" aria-labelledby="feed-title">
-                  <div className="hp-feed__head"><p className="hp-feed__title" id="feed-title"><span className="hp-live" aria-hidden="true" />{t.feedTitle}</p></div>
-                  <ol className="hp-feed__list">
-                    {signals.map((s, k) => (
-                      <li className="hp-signal" style={i(k)} key={k}>
-                        <span className="hp-signal__node" aria-hidden="true" />
-                        <p className="hp-signal__meta"><time>{s.date}</time><span className="hp-src"><I n="doc" />{s.source}</span></p>
-                        <p className="hp-signal__who"><R t={"x".repeat(10 + (k * 3) % 7)} /><span className="hp-sr">{c.hidden},</span>{s.place && <span className="hp-signal__place"><I n="pin" />{s.place}</span>}</p>
-                        <p className="hp-signal__event">{s.event}</p>
-                      </li>))}
-                  </ol>
-                  <p className="hp-feed__note"><I n="info" />{t.feedNote}</p>
-                  <span className="hp-feed__glare" aria-hidden="true" />
-                </aside>
+              {/* Echte Signale aus einer UK-Probe (Firmennamen verdeckt) auf der Karte; die Städte stehen in der Karte */}
+              <div className="hp-stage">
+                <div className="hp-stage__head">
+                  <p className="hp-stage__title"><span className="hp-live" aria-hidden="true" />{t.feedTitle}</p>
+                  <div className="hp-stage__cities" role="tablist" aria-label={t.feedTitle} />
+                </div>
+                <div className="hp-map" aria-hidden="true" dangerouslySetInnerHTML={{ __html: UK_MAP_SVG }} />
+                <svg className="hp-link" aria-hidden="true"><defs><linearGradient id="hp-g-link" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#E2C894" stopOpacity=".95" /><stop offset="1" stopColor="#E2C894" stopOpacity=".35" /></linearGradient></defs><path d="" /><circle cx="-99" cy="-99" r="3.2" /></svg>
+                <ol className="hp-sigs">
+                  {FALLBACK.map((g, k) => (
+                    <li className={`hp-sig${k === 0 ? " is-active" : ""}`} data-city={g.place} key={g.place}>
+                      <p className="hp-sig__meta"><time>{g.date}</time><span className="hp-src"><I n="doc" />{g.source}</span></p>
+                      <p className="hp-sig__who"><R t={"x".repeat(14 - k * 2)} /><span className="hp-sr">{c.hidden},</span><span className="hp-sig__place"><I n="pin" />{g.place}</span></p>
+                      <p className="hp-sig__event">{g.event}</p>
+                    </li>))}
+                </ol>
+                <p className="hp-stage__note"><I n="info" />{t.feedNote}</p>
               </div>
             </div>
             <div className="hp-sources">
@@ -229,18 +230,73 @@ export async function Home({ lang }: { lang: HomeLang }) {
           </section>
         )}
 
-        <section className="hp-sec hp-cream" id="method" aria-labelledby="method-title">
+
+        <section className="hp-statement hp-grain" aria-labelledby="statement-title">
+          <div className="hp-wrap">
+            <h2 className="hp-statement__text" id="statement-title">
+              {[...t.statement[0].split(" ").map((w) => [w, false] as const), ...t.statement[1].split(" ").map((w) => [w, true] as const)].map(([w, g], k, all) => (
+                <span key={k}><span className={`hp-sw${g ? " hp-sw--gold" : ""}`}>{w}</span>{k < all.length - 1 ? " " : ""}</span>))}
+            </h2>
+          </div>
+        </section>
+
+        <section className="hp-sec hp-cream hp-method" id="method" aria-labelledby="method-title">
           <div className="hp-wrap">
             <div className="hp-intro" data-reveal=""><h2 className="hp-h2" id="method-title">{t.methH}</h2><p>{t.methSub}</p></div>
-            <div className="hp-steps-wrap" data-steps="">
-              <div className="hp-track" aria-hidden="true"><span className="hp-track__fill" /></div>
-              <ol className="hp-steps">
-                {t.steps.map(([ic, h, d], k) => (
-                  <li className="hp-step is-on" key={h}>
-                    <span className="hp-step__icon"><I n={ic} /></span><span className="hp-step__num">{String(k + 1).padStart(2, "0")}</span>
-                    <div><h3>{h}</h3><p>{d}</p></div>
-                  </li>))}
-              </ol>
+            <div className="hp-story" data-story="">
+              <div className="hp-story__col">
+                <span className="hp-story__rail" aria-hidden="true"><span className="hp-story__fill" /></span>
+                <ol className="hp-story__steps">
+                  {t.steps.map(([ic, h, d], k) => (
+                    <li className={`hp-sstep is-done${k === 0 ? " is-active" : ""}`} key={h}>
+                      <span className="hp-step__icon"><I n={ic} /></span><span className="hp-step__num">{String(k + 1).padStart(2, "0")}</span>
+                      <div><h3>{h}</h3><p>{d}</p></div>
+                    </li>))}
+                </ol>
+              </div>
+              {/* Mitlaufende Grafik zum aktuellen Schritt (nur Desktop, Illustration) */}
+              <div className="hp-story__aside" aria-hidden="true">
+                <div className="hp-story__stage">
+                  <div className="hp-viz is-active" data-viz="0">
+                    <p className="hp-viz__label"><span className="hp-live" />{t.story.v0}</p>
+                    <ul className="hp-srcs">
+                      {t.ticker[1].map((x, k) => (
+                        <li style={{ "--k": k } as CSSProperties} key={x}><span className="hp-srcs__ico"><I n={["landmark", "doc", "landmark", "users", "globe"][k] ?? "doc"} /></span>
+                          <span className="hp-srcs__txt"><b>{x}</b><span className="hp-srcs__bar"><i /></span></span><span className="hp-srcs__ok"><I n="check" /></span></li>))}
+                    </ul>
+                  </div>
+                  <div className="hp-viz" data-viz="1">
+                    <p className="hp-viz__label">{t.story.v1}</p>
+                    <div className="hp-moment-wrap">
+                      <div className="hp-radar">
+                        <span className="hp-radar__cross" /><span className="hp-radar__sweep" /><span className="hp-radar__core" />
+                        {[["26%", "32%"], ["72%", "40%"], ["44%", "76%"]].map(([x, y], k) => <span className="hp-blip" key={k} style={{ "--bx": x, "--by": y, "--k": k } as CSSProperties} />)}
+                      </div>
+                      <ul className="hp-moments">{t.story.moments.map(([ic, txt], k) => <li style={{ "--k": k } as CSSProperties} key={txt}><I n={ic} />{txt}</li>)}</ul>
+                    </div>
+                    <p className="hp-moment__stamp"><I n="doc" />{t.story.stamp}</p>
+                  </div>
+                  <div className="hp-viz" data-viz="2">
+                    <p className="hp-viz__label">{t.story.v2} <span className="hp-viz__ex">{t.story.ex}</span></p>
+                    <div className="hp-rate">
+                      <div className="hp-rate__lead"><span className="hp-rate__ico"><I n="building" /></span><div><b><R t="xxxxxxxxxxxxx" /></b><small>{t.story.rateLead}</small></div><span className="hp-rate__pass"><I n="check" />{t.story.pass}</span></div>
+                      {t.story.rows.map(([l, v], k) => <div className="hp-rate__row" style={{ "--v": v, "--k": k } as CSSProperties} key={l}><span>{l}</span><b className="hp-rate__bar"><i /></b><em>{v}</em></div>)}
+                      <p className="hp-rate__legend">{t.story.min}</p>
+                    </div>
+                    <p className="hp-rate__out"><R t="xxxxxxxxxx" /><span className="hp-rate__fail"><I n="ban" />{t.story.fail}</span></p>
+                  </div>
+                  <div className="hp-viz" data-viz="3">
+                    <div className="hp-mail">
+                      <div className="hp-mail__head"><span className="hp-mail__logo">N<span>P</span></span><div><b>NextGen Profit</b><small>{t.story.mailSub}</small></div><span className="hp-mail__day">{t.story.mon}</span></div>
+                      <p className="hp-mail__subject">{t.story.mailSubject}</p>
+                      <div className="hp-mail__files"><span><I n="doc" />{t.story.files[0]}</span><span><I n="table" />{t.story.files[1]}</span></div>
+                      <ul className="hp-mail__leads">{t.story.mailLeads.map((m, k) => <li style={{ "--k": k } as CSSProperties} key={m}><R t={"x".repeat(14 - k)} /><small>{m}</small><I n="lock" /></li>)}</ul>
+                    </div>
+                    <p className="hp-mail__excl"><I n="lock" />{t.story.excl}</p>
+                  </div>
+                  <div className="hp-story__dots"><span className="is-on" /><span /><span /><span /></div>
+                </div>
+              </div>
             </div>
 
             <div className="hp-example" data-example-lead="">
@@ -293,6 +349,21 @@ export async function Home({ lang }: { lang: HomeLang }) {
           </div>
         </section>
 
+        <section className="sec dark" id="revenue"><div className="wrap">
+          <div className="pc2">
+            <div>
+              <h2>{t.revenue[0]}<i>{t.revenue[1]}</i></h2>
+              <div className="rs" style={{ gridTemplateColumns: "1fr", margin: "22px 0 0", gap: 12 }}>
+                {t.reasons.map(([ic, h, d], k) => (
+                  <div className="rcard" key={h} data-rv style={{ ...i(k), display: "flex", gap: 14, alignItems: "flex-start", padding: 18 }}>
+                    <span className="gi" style={{ margin: 0, flex: "none" }}><I n={ic} /></span><span><h3>{h}</h3><p>{d}</p></span>
+                  </div>))}
+              </div>
+            </div>
+            <Radar labels={t.radar} />
+          </div>
+        </div></section>
+
         <section className="hp-sec hp-dark hp-grain" id="industries" aria-labelledby="ind-title">
           <div className="hp-wrap">
             <div className="hp-ind__top">
@@ -342,21 +413,6 @@ export async function Home({ lang }: { lang: HomeLang }) {
           </div>
         </section>
 
-        <section className="sec dark" id="revenue"><div className="wrap">
-          <div className="pc2">
-            <div>
-              <h2>{t.revenue[0]}<i>{t.revenue[1]}</i></h2>
-              <div className="rs" style={{ gridTemplateColumns: "1fr", margin: "22px 0 0", gap: 12 }}>
-                {t.reasons.map(([ic, h, d], k) => (
-                  <div className="rcard" key={h} data-rv style={{ ...i(k), display: "flex", gap: 14, alignItems: "flex-start", padding: 18 }}>
-                    <span className="gi" style={{ margin: 0, flex: "none" }}><I n={ic} /></span><span><h3>{h}</h3><p>{d}</p></span>
-                  </div>))}
-              </div>
-            </div>
-            <Radar labels={t.radar} />
-          </div>
-        </div></section>
-
         <section className="sec pcl" id="contact-person"><div className="wrap pc2">
           <div>
             <div className="kick"><span className="cap gold">{t.pcKick}</span></div>
@@ -368,18 +424,24 @@ export async function Home({ lang }: { lang: HomeLang }) {
             </ul>
             <a className="hp-btn hp-btn--gold" href={contactHref} data-magnetic=""><span>{t.pcBtn}</span><I n="arrow" c="hp-ico hp-btn__arrow" /></a>
           </div>
-          <div className="fitcard" data-rv>
-            <div className="who"><span className="av"><I n="users" /></span><span><b>{t.pcWho[0]}</b><span>{t.pcWho[1]}</span></span></div>
-            <div className="fitrows">
-              <span className="cap" style={{ color: "#97a2bd" }}>{t.pcFit}</span>
-              {t.pcRows.map((r, k) => (
-                <div className="fitrow" key={r}><span>{r}</span>
-                  <span className="fitbar"><i style={{ "--w": ["48%", "74%", "96%"][k], ...i(k) } as CSSProperties} /></span></div>))}
+          {/* Neue Karte (Inhaber 03.10.2026: „rechts bitte nochmal besser anders“): Ablauf der Abstimmung + Filter */}
+          <div className="pccard" data-rv>
+            <div className="pchead">
+              <span className="pcav"><I n="users" /><i /></span>
+              <span><b>{t.pcWho[0]}</b><em><span className="pcdot" />{t.pcCard.reply}</em></span>
             </div>
-            <div className="chat">
-              <span className="bubble me" style={i(0)}>{t.pcChat[0]}</span>
-              <span className="bubble them" style={i(1)}>{t.pcChat[1]}</span>
+            <ol className="pctl">
+              {t.pcCard.tl.map(([ic, w, d], k) => (
+                <li key={w} style={i(k)}><span className="pcic"><I n={ic} /></span><span><small>{w}</small><b>{d}</b></span></li>))}
+            </ol>
+            <div className="pcfilters">
+              <span className="cap">{t.pcCard.fTitle}</span>
+              <div className="pcchips">
+                {t.pcCard.filters.map(([st, l], k) => (
+                  <span key={l} className={`pcchip ${st}`} style={i(k)}><I n={st === "off" ? "ban" : st === "new" ? "star" : "check"} />{l}</span>))}
+              </div>
             </div>
+            <blockquote className="pcquote" style={i(3)}><span className="pcav sm"><I n="users" /></span><span>{t.pcCard.quote}</span></blockquote>
             <p className="fnote">{t.pcNote}</p>
           </div>
         </div></section>
