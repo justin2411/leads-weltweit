@@ -123,6 +123,7 @@
     return out;
   }
   var SOURCES = [["Google Suche", 58], ["Direkt", 17], ["Google Maps", 14], ["Verweise (Ärzte, Verzeichnisse)", 7], ["Social Media", 4]];
+  var DEVICES = [["Smartphone", 64], ["Computer", 27], ["Tablet", 9]];
   var PAGES = [["/", 1240, "1:42"], ["/geriatrische-physiotherapie-hausbesuch", 486, "2:51"], ["/physiotherapie-hockenheim", 371, "1:20"], ["/krankengymnastik-hausbesuch", 302, "2:05"], ["/physiotherapie-schwetzingen", 244, "1:11"], ["/karriere", 131, "1:37"]];
 
   // ------------------------------------------------------------ Bausteine
@@ -135,7 +136,13 @@
 
   // Liniendiagramm mit Fadenkreuz und Tooltip (eine Reihe, kein Legendenkasten)
   function lineChart(el, data, opts) {
-    var W = 720, H = 240, P = { l: 38, r: 12, t: 12, b: 26 };
+    var box = el.classList.contains("chartbox");
+    var W = box ? Math.max(300, el.clientWidth) : 720, H = box ? Math.max(200, el.clientHeight) : 240, P = { l: 38, r: 12, t: 12, b: 26 };
+    if (box && !el._ro && window.ResizeObserver) {
+      var last = W + "x" + H;
+      el._ro = new ResizeObserver(function () { var k = el.clientWidth + "x" + el.clientHeight; if (k !== last && el.isConnected) { last = k; lineChart(el, data, opts); } });
+      el._ro.observe(el);
+    }
     var max = Math.max.apply(null, data.map(function (d) { return d.v; })), top = Math.ceil(max / 20) * 20;
     var x = function (i) { return P.l + i * (W - P.l - P.r) / (data.length - 1); };
     var y = function (v) { return H - P.b - v / top * (H - P.t - P.b); };
@@ -180,14 +187,14 @@
       kpi("Auslastung Woche", pct(ist, soll) + '<small> %</small>', ist + " von " + soll + " Behandlungen geplant", "gauge") +
       kpi("Neue Anfragen", newReq, '<a href="#anfragen">Jetzt bearbeiten →</a>', "inbox") +
       kpi("Website-Besucher", fmt(sum30), '<b class="up">+18 %</b> zu den 30 Tagen davor', "eye") +
-      '</div><div class="grid g-21" style="margin-top:18px"><div class="grid" style="align-content:start"><div class="card"><div class="card__head"><div><h3>Heute unterwegs</h3><p class="hint">Touren aller Therapeut:innen · ' + today.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" }) + '</p></div><a class="btn btn--ghost btn--sm" href="#touren">Tourenplan</a></div>' + timeline(0) + "</div>" +
-      '<div class="card"><div class="card__head"><div><h3>Website-Besucher</h3><p class="hint">letzte 30 Tage</p></div><a class="btn btn--ghost btn--sm" href="#besucher">Details</a></div><div id="ovChart"></div></div></div>' +
-      '<div class="grid" style="align-content:start"><div class="card"><h3>Braucht deine Aufmerksamkeit</h3><p class="hint">automatisch aus den Daten erkannt</p><ul class="list">' +
+      '</div><div class="grid g-21" style="margin-top:18px"><div class="stack"><div class="card"><div class="card__head"><div><h3>Heute unterwegs</h3><p class="hint">Touren aller Therapeut:innen · ' + today.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" }) + '</p></div><a class="btn btn--ghost btn--sm" href="#touren">Tourenplan</a></div>' + timeline(0) + "</div>" +
+      '<div class="card fill"><div class="card__head"><div><h3>Website-Besucher</h3><p class="hint">letzte 30 Tage</p></div><a class="btn btn--ghost btn--sm" href="#besucher">Details</a></div><div id="ovChart" class="chartbox"></div></div></div>' +
+      '<div class="stack"><div class="card"><h3>Braucht deine Aufmerksamkeit</h3><p class="hint">automatisch aus den Daten erkannt</p><ul class="list">' +
       rxSoon.map(function (r) { return '<li><span class="dot" style="background:#d69426"></span><div class="t">Verordnung ' + esc(r.p) + "<small>" + (r.until < 0 ? "abgelaufen" : r.of - r.done <= 1 ? "nur noch " + (r.of - r.done) + " Behandlung" : "läuft in " + r.until + " Tagen ab") + "</small></div></li>"; }).join("") +
       open.filter(function (i) { return i.st === "überfällig"; }).map(function (i) { return '<li><span class="dot" style="background:#c2410c"></span><div class="t">Rechnung ' + i.nr + " überfällig<small>" + esc(i.p) + " · " + i.sum + " € · seit " + i.days + " Tagen</small></div></li>"; }).join("") +
       TEAM.filter(function (t) { return t.doku > 1; }).map(function (t) { return '<li><span class="dot" style="background:#46b2d0"></span><div class="t">' + t.doku + " Dokumentationen offen<small>" + esc(t.name) + "</small></div></li>"; }).join("") +
       TEAM.filter(function (t) { return t.fb < 20; }).map(function (t) { return '<li><span class="dot" style="background:#8a5a9e"></span><div class="t">Fortbildungspunkte knapp<small>' + esc(t.name) + ": " + t.fb + " von 60 bis " + t.fbDue + "</small></div></li>"; }).join("") +
-      '</ul></div><div class="card"><h3>Google-Bewertungen</h3><p class="hint">Stand laut Google-Profil</p><div style="display:flex;align-items:center;gap:14px"><span style="font:600 2.4rem var(--f-head);color:var(--navy)">5,0</span><div><div class="stars">★★★★★</div><small style="color:var(--ink-mute)">21 Bewertungen</small></div></div><p style="margin:12px 0 0;font-size:.85rem"><a href="https://www.google.com/search?hl=de&q=Mobile+Physiotherapie+Oehlke&ludocid=9389132945967097191#lrd=0x4f769d8bc25e5f07:0x824ce6ab29492567,1" target="_blank" rel="noopener">Bewertungen öffnen</a> · <a href="https://www.google.com/search?hl=de&q=Mobile+Physiotherapie+Oehlke&ludocid=9389132945967097191#lrd=0x4f769d8bc25e5f07:0x824ce6ab29492567,3" target="_blank" rel="noopener">Link zum Bewerten</a></p></div></div></div>' +
+      '</ul></div><div class="card fill center"><h3>Google-Bewertungen</h3><p class="hint">Stand laut Google-Profil</p><div style="display:flex;align-items:center;gap:14px"><span style="font:600 2.4rem var(--f-head);color:var(--navy)">5,0</span><div><div class="stars">★★★★★</div><small style="color:var(--ink-mute)">21 Bewertungen</small></div></div><p style="margin:12px 0 0;font-size:.85rem"><a href="https://www.google.com/search?hl=de&q=Mobile+Physiotherapie+Oehlke&ludocid=9389132945967097191#lrd=0x4f769d8bc25e5f07:0x824ce6ab29492567,1" target="_blank" rel="noopener">Bewertungen öffnen</a> · <a href="https://www.google.com/search?hl=de&q=Mobile+Physiotherapie+Oehlke&ludocid=9389132945967097191#lrd=0x4f769d8bc25e5f07:0x824ce6ab29492567,3" target="_blank" rel="noopener">Link zum Bewerten</a></p></div></div></div>' +
       '<div class="grid" style="margin-top:18px"><div class="card"><div class="card__head"><div><h3>Top-Rankings</h3><p class="hint">Google-Positionen deiner wichtigsten Suchbegriffe</p></div><a class="btn btn--ghost btn--sm" href="#rankings">Alle</a></div>' + rankTable(KEYWORDS.slice(0, 6), true) + "</div></div>";
   };
   V.uebersicht.after = function () { lineChart($("#ovChart"), visits(30), { label: "Besucher pro Tag, letzte 30 Tage", unit: "Besucher" }); };
@@ -308,11 +315,14 @@
     var rows = KEYWORDS.filter(function (k) { return f === "alle" || (f === "top3" && k[1] <= 3) || (f === "top10" && k[1] > 3 && k[1] <= 10) || (f === "weiter" && k[1] > 10); }).sort(function (a, b) { return a[1] - b[1]; });
     var c3 = KEYWORDS.filter(function (k) { return k[1] <= 3; }).length, c10 = KEYWORDS.filter(function (k) { return k[1] <= 10; }).length;
     var avg = (KEYWORDS.reduce(function (s, k) { return s + k[1]; }, 0) / KEYWORDS.length).toFixed(1).replace(".", ",");
+    var dist = [["Platz 1–3", c3], ["Platz 4–10", c10 - c3], ["Platz 11–20", KEYWORDS.filter(function (k) { return k[1] > 10 && k[1] <= 20; }).length], ["ab Platz 21", KEYWORDS.filter(function (k) { return k[1] > 20; }).length]];
     var chances = KEYWORDS.filter(function (k) { return k[1] > 3 && k[1] <= 15; }).sort(function (a, b) { return b[3] - a[3]; }).slice(0, 4);
     return '<div class="grid g4">' + kpi("Top 3", c3, "von " + KEYWORDS.length + " Suchbegriffen", "star") + kpi("Seite 1 (Top 10)", c10, "Ziel: alle Ortsseiten", "trend") + kpi("Ø Position", avg, '<b class="up">▲ 1,8</b> zum Vormonat', "chart") + kpi("Sichtbarkeit", "34<small> %</small>", "Anteil möglicher Klicks", "eye") + "</div>" +
-      '<div class="grid g-21" style="margin-top:18px"><div class="card"><div class="toolbar"><div class="seg">' + [["alle", "Alle"], ["top3", "Top 3"], ["top10", "Plätze 4–10"], ["weiter", "Ab Platz 11"]].map(function (b) { return '<button data-rf="' + b[0] + '" class="' + (f === b[0] ? "on" : "") + '">' + b[1] + "</button>"; }).join("") + "</div></div>" + rankTable(rows) +
-      '</div><div class="card" style="align-self:start"><h3>Größte Chancen</h3><p class="hint">knapp unter den Top 3, viele Suchen, hier lohnt ein neuer Beitrag</p><ul class="list">' +
-      chances.map(function (k) { return '<li><span class="pos ' + (k[1] <= 10 ? "top10" : "far") + '">' + k[1] + '</span><div class="t">' + esc(k[0]) + "<small>" + k[3] + ' Suchen/Monat</small></div><a class="btn btn--ghost btn--sm" href="#beitraege" data-kw="' + esc(k[0]) + '">Beitrag</a></li>'; }).join("") + '</ul><p class="hint" style="margin-top:12px">Beispieldaten. Echte Positionen kommen später aus der Google Search Console.</p></div></div>';
+      '<div class="grid g2" style="margin-top:18px"><div class="card"><h3>Größte Chancen</h3><p class="hint">knapp unter den Top 3, viele Suchen, hier lohnt ein neuer Beitrag</p><ul class="list">' +
+      chances.map(function (k) { return '<li><span class="pos ' + (k[1] <= 10 ? "top10" : "far") + '">' + k[1] + '</span><div class="t">' + esc(k[0]) + "<small>" + k[3] + ' Suchen/Monat</small></div><a class="btn btn--ghost btn--sm" href="#beitraege" data-kw="' + esc(k[0]) + '">Beitrag</a></li>'; }).join("") + '</ul></div>' +
+      '<div class="card fill"><h3>Verteilung der Positionen</h3><p class="hint">Wie viele Suchbegriffe auf welcher Position stehen</p>' + hbars(dist, "") +
+      '<p class="hint" style="margin:auto 0 0;padding-top:16px">Beispieldaten. Echte Positionen kommen später aus der Google Search Console.</p></div></div>' +
+      '<div class="card" style="margin-top:18px"><div class="card__head"><div><h3>Alle Suchbegriffe</h3><p class="hint">Position, Trend, Suchvolumen und passende Seite</p></div><div class="seg">' + [["alle", "Alle"], ["top3", "Top 3"], ["top10", "Plätze 4–10"], ["weiter", "Ab Platz 11"]].map(function (b) { return '<button data-rf="' + b[0] + '" class="' + (f === b[0] ? "on" : "") + '">' + b[1] + "</button>"; }).join("") + "</div></div>" + rankTable(rows) + "</div>";
   };
   V.rankings.after = function () {
     $$("[data-rf]").forEach(function (b) { b.onclick = function () { V.rankings.f = b.dataset.rf; render(); }; });
@@ -323,7 +333,7 @@
     var range = V.besucher.r || 30, data = visits(range), sum = data.reduce(function (s, d) { return s + d.v; }, 0);
     return '<div class="toolbar"><div class="seg">' + [7, 30, 90].map(function (r) { return '<button data-r="' + r + '" class="' + (r === range ? "on" : "") + '">' + r + " Tage</button>"; }).join("") + '</div></div><div class="grid g4">' +
       kpi("Besucher", fmt(sum), '<b class="up">+18 %</b> zum Vorzeitraum', "eye") + kpi("Anfragen über Website", Math.round(sum * 0.021), "Formular, Telefon-Klick, WhatsApp", "inbox") + kpi("Conversion", "2,1<small> %</small>", "Besucher → Anfrage", "gauge") + kpi("Ø Verweildauer", "1:58", "Minuten pro Besuch", "cal") +
-      '</div><div class="card" style="margin-top:18px"><h3>Besucher pro Tag</h3><p class="hint">Fahre mit der Maus über die Linie für Einzelwerte</p><div id="vChart"></div></div><div class="grid g2" style="margin-top:18px"><div class="card"><h3>Woher kommen die Besucher?</h3><p class="hint">Anteil in Prozent</p>' + hbars(SOURCES, " %") +
+      '</div><div class="card" style="margin-top:18px"><h3>Besucher pro Tag</h3><p class="hint">Fahre mit der Maus über die Linie für Einzelwerte</p><div id="vChart"></div></div><div class="grid g2" style="margin-top:18px"><div class="card"><h3>Woher kommen die Besucher?</h3><p class="hint">Anteil in Prozent</p>' + hbars(SOURCES, " %") + '<h4 style="margin:20px 0 10px;font-size:.9rem">Geräte</h4>' + hbars(DEVICES, " %") +
       '</div><div class="card"><h3>Beliebteste Seiten</h3><p class="hint">Aufrufe und Verweildauer</p><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Seite</th><th class="num">Aufrufe</th><th class="num">Dauer</th></tr></thead><tbody>' + PAGES.map(function (p) { return '<tr><td><a href="' + p[0] + '" target="_blank" rel="noopener">' + p[0] + '</a></td><td class="num">' + fmt(p[1]) + '</td><td class="num">' + p[2] + "</td></tr>"; }).join("") + '</tbody></table></div></div></div><p class="hint" style="margin-top:12px">Beispieldaten. Für echte Zahlen lässt sich eine datenschutzfreundliche Statistik ohne Cookie-Banner anbinden (z. B. Vercel Web Analytics oder Plausible).</p>';
   };
   V.besucher.after = function () {
@@ -334,8 +344,9 @@
   // Echte SEO-Analyse der eigenen Seiten
   var SEO_PAGES = ["/", "/geriatrische-physiotherapie-hausbesuch", "/krankengymnastik-hausbesuch", "/gangschule-hausbesuch", "/lymphdrainage-hausbesuch", "/manuelle-therapie-hausbesuch", "/physiotherapie-hockenheim", "/physiotherapie-schwetzingen", "/physiotherapie-heidelberg", "/karriere"];
   V.analyse = function () {
-    return '<div class="grid g-12"><div class="card"><h3>SEO-Score</h3><p class="hint">Prüfung der echten Seiten dieser Website</p><div class="score"><div class="ring" id="ring" style="--p:0"><b id="scoreV">–</b></div><div><p style="margin:0 0 10px;color:var(--ink-soft)" id="scoreTxt">Analyse läuft …</p><button class="btn btn--sm" id="reRun">' + icon("spark") + ' Neu prüfen</button></div></div></div>' +
-      '<div class="card"><h3>Wichtigste Hinweise</h3><p class="hint">nach Wirkung sortiert</p><ul class="checks" id="sumChecks"><li class="empty">wird geprüft …</li></ul></div></div><div class="card" style="margin-top:18px"><h3>Seiten im Detail</h3><p class="hint">Titel, Beschreibung, Überschrift, Bilder, Textlänge, Verlinkung</p><div class="tbl-wrap"><table class="tbl" id="pageTbl"><thead><tr><th>Seite</th><th class="num">Score</th><th>Titel</th><th>Beschreibung</th><th class="num">H1</th><th class="num">Wörter</th><th class="num">Bilder ohne Alt</th><th>Indexierung</th></tr></thead><tbody><tr><td colspan="8" class="empty">wird geprüft …</td></tr></tbody></table></div></div>';
+    return '<div class="grid g-12"><div class="stack"><div class="card"><h3>SEO-Score</h3><p class="hint">Prüfung der echten Seiten dieser Website</p><div class="score"><div class="ring" id="ring" style="--p:0"><b id="scoreV">–</b></div><div><p style="margin:0 0 10px;color:var(--ink-soft)" id="scoreTxt">Analyse läuft …</p><button class="btn btn--sm" id="reRun">' + icon("spark") + ' Neu prüfen</button></div></div></div>' +
+      '<div class="card fill"><h3>Auf einen Blick</h3><p class="hint">Durchschnitt über alle geprüften Seiten</p><div class="stats" id="sumStats"><p class="empty">wird geprüft …</p></div></div></div>' +
+      '<div class="card fill"><h3>Wichtigste Hinweise</h3><p class="hint">nach Wirkung sortiert</p><ul class="checks spread" id="sumChecks"><li class="empty">wird geprüft …</li></ul></div></div><div class="card" style="margin-top:18px"><h3>Seiten im Detail</h3><p class="hint">Titel, Beschreibung, Überschrift, Bilder, Textlänge, Verlinkung</p><div class="tbl-wrap"><table class="tbl" id="pageTbl"><thead><tr><th>Seite</th><th class="num">Score</th><th>Titel</th><th>Beschreibung</th><th class="num">H1</th><th class="num">Wörter</th><th class="num">Bilder ohne Alt</th><th>Indexierung</th></tr></thead><tbody><tr><td colspan="8" class="empty">wird geprüft …</td></tr></tbody></table></div></div>';
   };
   V.analyse.after = function () { runAnalysis(); $("#reRun").onclick = runAnalysis; };
   function analyse(path, html) {
@@ -357,7 +368,7 @@
     if (links < 3) iss("w", "Wenig interne Links (" + links + ")", 4);
     if (!ld) iss("w", "Keine strukturierten Daten", 4);
     if (/noindex/.test(robots)) iss("e", "noindex aktiv, Seite erscheint nicht bei Google", 0);
-    return { path: path, title: title, desc: desc, h1: h1, words: words, noAlt: noAlt, noindex: /noindex/.test(robots), score: Math.max(0, s), issues: issues };
+    return { path: path, title: title, desc: desc, h1: h1, words: words, noAlt: noAlt, links: links, ld: ld, noindex: /noindex/.test(robots), score: Math.max(0, s), issues: issues };
   }
   function runAnalysis() {
     $("#scoreTxt").textContent = "Analyse läuft …";
@@ -370,6 +381,8 @@
       $("#scoreV").innerHTML = avg + "<small>/100</small>";
       var noidx = res.filter(function (r) { return r.noindex; }).length;
       $("#scoreTxt").innerHTML = res.length + " Seiten geprüft. " + (avg >= 85 ? "Technisch sehr gut aufgestellt." : avg >= 65 ? "Solide, mit ein paar schnellen Verbesserungen." : "Hier ist Luft nach oben.") + (noidx ? '<br><span class="pill pill--warn" style="margin-top:8px">Vorschau-Modus: noindex aktiv</span>' : "");
+      var n = res.length, sumOf = function (k) { return res.reduce(function (a, r) { return a + r[k]; }, 0); };
+      $("#sumStats").innerHTML = [["Geprüfte Seiten", n], ["Ø Wörter pro Seite", fmt(Math.round(sumOf("words") / n))], ["Ø interne Links", Math.round(sumOf("links") / n)], ["Bilder ohne Alt-Text", sumOf("noAlt")], ["Seiten mit genau einer H1", res.filter(function (r) { return r.h1 === 1; }).length + " von " + n], ["Strukturierte Daten", res.filter(function (r) { return r.ld; }).length + " von " + n]].map(function (x) { return "<div><b>" + x[1] + "</b><span>" + x[0] + "</span></div>"; }).join("");
       var all = []; res.forEach(function (r) { all = all.concat(r.issues); });
       var grouped = {}; all.forEach(function (i) { var k = i.txt.replace(/\d+/g, "#"); (grouped[k] = grouped[k] || { sev: i.sev, txt: i.txt, pages: [] }).pages.push(i.path); });
       var list = Object.keys(grouped).map(function (k) { return grouped[k]; }).sort(function (a, b) { return (a.sev === "e" ? 0 : 1) - (b.sev === "e" ? 0 : 1) || b.pages.length - a.pages.length; });
@@ -394,14 +407,14 @@
   };
   V.beitraege = function () {
     var kw = V.beitraege.kw || "";
-    return '<div class="grid g-12"><div class="card" style="align-self:start"><h3>Neuen Beitrag erstellen</h3><p class="hint">Thema wählen, Ort und Suchbegriff anpassen, der Entwurf entsteht sofort</p>' +
+    return '<div class="grid g-12"><div class="card"><h3>Neuen Beitrag erstellen</h3><p class="hint">Thema wählen, Ort und Suchbegriff anpassen, der Entwurf entsteht sofort</p>' +
       '<label class="fld"><span>Thema</span><select id="bTopic">' + Object.keys(TOPICS).map(function (t) { return "<option>" + t + "</option>"; }).join("") + "</select></label>" +
       '<label class="fld"><span>Ort</span><select id="bTown">' + TOWNS.map(function (t) { return "<option>" + t + "</option>"; }).join("") + "</select></label>" +
       '<label class="fld"><span>Haupt-Suchbegriff</span><input id="bKw" value="' + esc(kw) + '" placeholder="wird aus dem Thema übernommen"></label>' +
       '<label class="fld"><span>Ansprache</span><select id="bTone"><option value="sie">Betroffene (Sie)</option><option value="ang">Angehörige</option></select></label>' +
       '<button class="btn btn--lime btn--block" id="bGen">' + icon("spark") + ' Entwurf erstellen</button><h4 style="margin:22px 0 8px;font-size:.9rem">Redaktionsplan</h4><ul class="list">' +
       [["Okt", "Sturzprävention im Alter"], ["Nov", "Physiotherapie nach Hüft-OP zu Hause"], ["Dez", "Wann lohnt sich Physiotherapie zu Hause?"], ["Jan", "Lymphdrainage im Hausbesuch"]].map(function (r) { return '<li><span class="pill pill--plain">' + r[0] + '</span><div class="t">' + r[1] + "</div></li>"; }).join("") +
-      '</ul></div><div class="card"><div class="card__head"><div><h3>Entwurf</h3><p class="hint">direkt im Text bearbeitbar</p></div><div style="display:flex;gap:8px"><button class="btn btn--ghost btn--sm" id="bCopy">' + icon("copy") + ' Kopieren</button><button class="btn btn--sm" id="bDl">' + icon("dl") + ' Als HTML</button></div></div><div class="article" id="bOut" contenteditable="true"></div></div></div>';
+      '</ul></div><div class="card fill"><div class="card__head"><div><h3>Entwurf</h3><p class="hint">direkt im Text bearbeitbar</p></div><div style="display:flex;gap:8px"><button class="btn btn--ghost btn--sm" id="bCopy">' + icon("copy") + ' Kopieren</button><button class="btn btn--sm" id="bDl">' + icon("dl") + ' Als HTML</button></div></div><div class="fillbox" style="--min:420px"><div class="article" id="bOut" contenteditable="true"></div></div></div></div>';
   };
   V.beitraege.after = function () {
     function gen() {
@@ -434,7 +447,7 @@
     var have = KEYWORDS.map(function (k) { return k[0]; }), ideas = [];
     services.forEach(function (s) { TOWNS.slice(0, 8).forEach(function (t) { var k = s + " " + t.toLowerCase(); if (have.indexOf(k) < 0) ideas.push(k); }); });
     return '<div class="grid g2"><div class="card"><h3>Google-Vorschau</h3><p class="hint">So erscheint eine Seite im Suchergebnis, Titel und Beschreibung testen</p><label class="fld"><span>Titel</span><input id="sT" value="Physiotherapie Hausbesuch Schwetzingen | Mobile Physiotherapie Oehlke"></label><div class="counter" id="sTc"></div><label class="fld"><span>Beschreibung</span><textarea id="sD" rows="3">Physiotherapie bei Ihnen zu Hause in Schwetzingen: 60 Minuten Zeit pro Termin, Schwerpunkt Geriatrie. Für Privatpatienten, Beihilfe und Selbstzahler.</textarea></label><div class="counter" id="sDc"></div><label class="fld"><span>Pfad</span><input id="sU" value="physiotherapie-schwetzingen"></label><div class="serp" id="serp"></div></div>' +
-      '<div class="card"><h3>Keyword-Ideen</h3><p class="hint">Kombinationen aus Leistungen und Orten, für die es noch keine eigene Seite gibt, Klick übernimmt den Begriff in den Beitragsgenerator</p><input id="kwF" placeholder="filtern, z. B. walldorf" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--line);margin-bottom:12px"><div class="kw-chips" id="kwList">' + ideas.map(function (k) { return '<button data-k="' + esc(k) + '">' + esc(k) + "</button>"; }).join("") + "</div></div></div>" +
+      '<div class="card fill"><h3>Keyword-Ideen</h3><p class="hint">Kombinationen aus Leistungen und Orten, für die es noch keine eigene Seite gibt, Klick übernimmt den Begriff in den Beitragsgenerator</p><input id="kwF" placeholder="filtern, z. B. walldorf" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--line);margin-bottom:12px"><div class="fillbox" style="--min:260px"><div class="kw-chips" id="kwList">' + ideas.map(function (k) { return '<button data-k="' + esc(k) + '">' + esc(k) + "</button>"; }).join("") + "</div></div></div></div>" +
       '<div class="card" style="margin-top:18px"><h3>Checkliste lokale Sichtbarkeit</h3><p class="hint">abhaken, was erledigt ist</p><ul class="checks" id="lc"></ul></div>';
   };
   V.werkzeuge.after = function () {
