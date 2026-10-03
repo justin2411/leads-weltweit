@@ -149,7 +149,8 @@ p{margin:0 0 1em}
 .waves g{animation:sway 12s ease-in-out infinite alternate}
 @keyframes sway{to{transform:translateX(-6%)}}
 .hero__grid{display:grid;grid-template-columns:1.1fr .9fr;gap:clamp(30px,5vw,80px);align-items:center}
-.hero h1{color:#fff;font-weight:600;font-size:clamp(2.5rem,5.4vw,4.7rem);margin-bottom:24px}
+.hero h1{color:#fff;font-weight:600;font-size:clamp(2.1rem,5.4vw,4.7rem);margin-bottom:24px;white-space:nowrap}
+@media (max-width:560px){.hero h1{font-size:min(calc((100vw - 40px) / 10),2.6rem)}}
 .hero__badge{display:inline-flex;align-items:center;gap:10px;padding:9px 16px 9px 10px;border-radius:var(--pill);background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.16);backdrop-filter:blur(10px);font:500 .88rem/1 var(--f-head);color:var(--on-dark);margin-bottom:28px;max-width:100%;white-space:nowrap}
 .hero__badge i{flex:none}
 @media (max-width:560px){.hero__badge{font-size:clamp(.5rem,2.7vw,.88rem);gap:7px;padding:8px 12px 8px 10px;letter-spacing:-.01em}}
