@@ -57,7 +57,7 @@ const EN: Record<string, SegmentCopy> = {
     chips: ["New directors", "No accountant yet", "First payroll", "Finance roles open"],
     stepsTitle: "How {firma} could win the first call",
     steps: [
-      "We watch {register} and company careers pages across {land} every day.",
+      "We monitor public business sources across {land} every day.",
       "We keep only businesses that will soon need {leistung}, and leave out the rest.",
       "As a client, {firma} would get the list every Monday, with date, source and an opening line written for {beruf}.",
     ],
@@ -65,7 +65,7 @@ const EN: Record<string, SegmentCopy> = {
     gets: [
       "Companies registered across {land} in recent weeks, with registered address and date",
       "Local firms hiring for bookkeeping or payroll roles",
-      "The official {register} record for every lead",
+      "The public source for every lead",
       "The company's phone number and email, a short profile and a sales tip for {beruf} with every lead",
       "A short opening line that refers to {anlass}",
     ],
@@ -88,7 +88,7 @@ const EN: Record<string, SegmentCopy> = {
     chips: ["Newly trading", "First employees", "Growing teams", "Cover to arrange"],
     stepsTitle: "How {firma} could reach them first",
     steps: [
-      "We watch {register} and company careers pages across {land} every day.",
+      "We monitor public business sources across {land} every day.",
       "We keep only businesses at the point where {leistung} is arranged or reviewed.",
       "As a client, {firma} would get the list every Monday, with date, source and an opening line written for {beruf}.",
     ],
@@ -119,7 +119,7 @@ const EN: Record<string, SegmentCopy> = {
     chips: ["New directors", "Workplace pensions", "Protection needs", "Growing employers"],
     stepsTitle: "How {firma} could start the right conversation",
     steps: [
-      "We watch {register} and company careers pages across {land} every day.",
+      "We monitor public business sources across {land} every day.",
       "We keep only owners and employers at the point where {leistung} come up.",
       "As a client, {firma} would get the list every Monday, with date, source and an opening line written for {beruf}.",
     ],
@@ -150,7 +150,7 @@ const EN: Record<string, SegmentCopy> = {
     chips: ["Roles open 30+ days", "Several hires at once", "Reposted roles", "New sites"],
     stepsTitle: "How {firma} could call the right employer first",
     steps: [
-      "We read the careers pages of employers across {land} every day and note when each role first appeared.",
+      "We monitor hiring activity across {land} every day and note when each role first appeared.",
       "We keep only employers where hiring is hard or growing fast, the moment outside help with {leistung} is welcome.",
       "As a client, {firma} would get the list every Monday, with the roles, how long they have been open and an opening line written for {beruf}.",
     ],
@@ -219,7 +219,7 @@ const EN_DEFAULT: SegmentCopy = {
   chips: ["Newly registered", "Hiring now", "Growing teams", "Dated and sourced"],
   stepsTitle: "How {firma} could get there first",
   steps: [
-    "We watch official registers and company careers pages across {land} every day.",
+    "We monitor public business sources across {land} every day.",
     "We keep only businesses with a fresh reason to buy {leistung}.",
     "As a client, {firma} would get the list every Monday, with date, source and an opening line.",
   ],
@@ -244,7 +244,7 @@ const FR_DEFAULT: SegmentCopy = {
   chips: ["Créations récentes", "Recrutements", "Équipes en croissance", "Datées et sourcées"],
   stepsTitle: "Comment {firma} pourrait arriver en premier",
   steps: [
-    "Nous suivons chaque jour les registres officiels et les pages carrières des entreprises {land_de}.",
+    "Nous suivons chaque jour des sources publiques sur les entreprises {land_de}.",
     "Nous ne gardons que les entreprises qui ont une raison récente d'acheter {leistung}.",
     "En tant que client, {firma} recevrait chaque lundi la liste avec date, source et une phrase d'accroche.",
   ],
