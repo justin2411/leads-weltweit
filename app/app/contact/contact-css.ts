@@ -91,4 +91,12 @@ export const CONTACT_CSS = `
   .hpz .ct-who{padding:14px}
   .hpz .ct-msg{max-width:94%}
   .hpz .hp-formcard .pf-row{grid-template-columns:minmax(0,1fr)}}
+
+/* Inhaber 03.10.2026: links und rechts oben und unten bündig (Desktop) */
+@media (min-width:1061px){.hpz .ct-grid{align-items:stretch}
+  .hpz .ct-side{padding-top:0;grid-template-rows:minmax(0,1fr) auto}
+  .hpz .ct .hp-formcard{display:flex;flex-direction:column}
+  .hpz .ct .hp-formcard > form.pf{flex:1;display:flex;flex-direction:column;gap:16px}
+  .hpz .ct .hp-formcard > form.pf > .pf-field:has(textarea){flex:1;display:flex;flex-direction:column}
+  .hpz .ct .hp-formcard > form.pf > .pf-field:has(textarea) textarea{flex:1}}
 `;
