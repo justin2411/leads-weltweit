@@ -225,5 +225,7 @@ export const HOME_CSS = `
 /* Chips: „Sales tip“ beginnt die zweite Zeile (Inhaber 03.10.) */
 @media (min-width:721px){.hpz .hp-chips{row-gap:0}.hpz .hp-chip-br{flex-basis:100%;height:8px}}
 @media (max-width:720px){.hpz .hp-chip-br{display:none}}
+/* Länder-Umschalter nebeneinander (Inhaber 03.10.) */
+.hpz .hp-stage__cities{flex-direction:row;flex-wrap:wrap;gap:8px}
 `;
 
