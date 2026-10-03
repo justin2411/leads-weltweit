@@ -377,12 +377,5 @@ export const HOME_CSS = `
 /* Siegel aus Vorlage v5 auf der Methoden-Grafik (Inhaber 03.10.2026) */
 .hpz .hp-story__stick{position:sticky;top:calc(50vh - 260px + 30px)}
 .hpz .hp-story__stage{position:relative;top:auto}
-.hpz .hp-story__seal{position:absolute;right:-30px;top:-46px;z-index:5;width:118px;height:118px;transform:rotate(-8deg);filter:drop-shadow(0 18px 22px rgba(11,21,48,.38));pointer-events:none}
-.hpz .hp-story__seal svg{display:block;width:100%;height:100%;overflow:visible}
-.hpz .hp-story__seal text{font-family:var(--font)}
-.js .hpz .hp-story__seal{opacity:0;transform:scale(1.55) rotate(-24deg);filter:drop-shadow(0 18px 22px rgba(11,21,48,.38));translate:none}
-.js .hpz .hp-story__seal.is-in{opacity:1;transform:rotate(-8deg);filter:drop-shadow(0 18px 22px rgba(11,21,48,.38));transition:opacity .25s ease-out .45s,transform .75s cubic-bezier(.2,1.45,.35,1) .45s}
-@media (max-width:1180px){.hpz .hp-story__seal{width:96px;height:96px;right:-14px;top:-38px}}
-@media (prefers-reduced-motion:reduce){.js .hpz .hp-story__seal{opacity:1;transform:rotate(-8deg)}}
 `;
 
