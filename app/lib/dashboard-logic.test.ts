@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   alerts, berlin, brake, countBounces, distinctReplies, extraBoxCap, funnel, mailboxes, mainBoxCap, nextCron, nextRun,
   pipeline, sampleStock, type Live, type OpsConfig, type Stock,
+  bottleneckOf, chain, compact, lastDays, nextChip, openActions, sentPerDay, topAlerts,
 } from "./dashboard-logic.ts";
 
 const cfg: OpsConfig = {
@@ -215,4 +216,47 @@ test("Wer ist wo: Stufe und nächster Schritt", () => {
   assert.equal(by.Drei.stage, "Nachfass fällig");
   assert.match(by.Drei.next, /04\.10\. 14:17/);
   assert.deepEqual(p.map((x) => x.company), ["Eins", "Drei", "Zwei"]);
+});
+
+test("v2: Tage, Mails je Tag nach Land, kompakte Zahlen", () => {
+  assert.deepEqual(lastDays("2026-10-03", 3), ["2026-10-01", "2026-10-02", "2026-10-03"]);
+  const r = sentPerDay({ sent: [
+    { day: "2026-10-03", country: "US", segment_id: "S2", n: 30 }, { day: "2026-10-03", country: "UK", segment_id: "S2", n: 5 },
+    { day: "2026-10-03", country: "UK", segment_id: "S4", n: 2 }, { day: "2026-10-02", country: "NL", segment_id: "S2", n: 4 },
+  ], events: [] }, "2026-10-03", 2, ["US", "UK", "FR"]);
+  assert.deepEqual(r[0], { day: "2026-10-02", parts: { US: 0, UK: 0, FR: 0, andere: 4 }, total: 4 });
+  assert.deepEqual(r[1].parts, { US: 30, UK: 7, FR: 0, andere: 0 });
+  assert.equal(compact(1234), "1.234");
+  assert.equal(compact(29082), "29 Tsd.");
+  assert.equal(compact(496718), "497 Tsd.");
+  assert.equal(compact(1_250_000), "1,3 Mio.");
+});
+
+test("v2: Engpass ist die erste bremsende Stufe der Kette", () => {
+  const ok = { leads: 5000, buyersUnused: 5000, perDay: 70, mailsOn: true, queue: 900, delivered: 30, positive: 0, samplesSent: 0, stockEmpty: false, customers: 0 };
+  assert.equal(bottleneckOf(ok), null);
+  assert.equal(bottleneckOf({ ...ok, leads: 50 }), "leads");
+  assert.equal(bottleneckOf({ ...ok, buyersUnused: 300 }), "kaeufer");
+  assert.equal(bottleneckOf({ ...ok, mailsOn: false }), "mails");
+  assert.equal(bottleneckOf({ ...ok, delivered: 67, positive: 1 }), "antworten");
+  assert.equal(bottleneckOf({ ...ok, delivered: 67, positive: 2 }), null);
+  assert.equal(bottleneckOf({ ...ok, stockEmpty: true }), "proben");
+  assert.equal(bottleneckOf({ ...ok, delivered: 100, positive: 10, samplesSent: 6 }), "kunden");
+  assert.equal(bottleneckOf({ ...ok, leads: null, buyersUnused: null }), null);
+});
+
+test("v2: Kette je Land, Ampelzeile höchstens 3, kurze Aktionen", () => {
+  const c = chain(live(), stock, cfg, ["US"]);
+  assert.deepEqual(c.stages.map((s) => s.key), ["leads", "kaeufer", "mails", "antworten", "proben", "kunden", "umsatz"]);
+  assert.equal(c.stages[0].value, "5.000");
+  assert.equal(c.stages[1].value, "20 Tsd.");
+  assert.equal(c.stages[2].value, "60");
+  assert.equal(chain(live(), stock, cfg, ["UK"]).bottleneck, "leads");
+  const many = Array.from({ length: 5 }, (_, i) => ({ level: "gelb" as const, area: "x", title: String(i) }));
+  assert.equal(topAlerts([{ level: "gruen", area: "x", title: "g" }, ...many]).length, 3);
+  assert.equal(nextChip("Nachfrage zur Probe automatisch ab 06.10. 14:00"), "Nachfrage 06.10.");
+  assert.equal(nextChip("Selbst antworten – Kaufinteresse"), "Selbst antworten");
+  const people = pipeline(live({ events: [ev({ type: "unsubscribed", prospect_id: "p2", company_name: "Zwei", message_id: "m2" }), ev({ type: "reply", prospect_id: "p3", company_name: "Drei", message_id: "m3", country: "UK" })] }), cfg, new Date("2026-10-03T16:00:00Z"));
+  assert.deepEqual(openActions(people, ["US", "UK"]).map((p) => p.company), ["Drei"]);
+  assert.deepEqual(openActions(people, ["US"]).map((p) => p.company), []);
 });

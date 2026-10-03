@@ -32,7 +32,10 @@ export function AutoRefresh() {
   return (
     <button
       type="button"
-      title="Automatisch alle 60 Sekunden aktualisieren"
+      className="ib"
+      aria-label={on ? "Auto-Aktualisierung an" : "Auto-Aktualisierung aus"}
+      title={on ? "Aktualisiert alle 60 s – klicken zum Ausschalten" : "Auto-Aktualisierung aus – klicken zum Einschalten"}
+      style={on ? undefined : { opacity: 0.5 }}
       onClick={() => {
         const next = !on;
         setOn(next);
@@ -41,7 +44,7 @@ export function AutoRefresh() {
         } catch {}
       }}
     >
-      {on ? "Auto-Aktualisierung an" : "Auto-Aktualisierung aus"}
+      ⟳
     </button>
   );
 }

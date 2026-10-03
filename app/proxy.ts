@@ -25,7 +25,7 @@ export function proxy(req: NextRequest) {
   const { pathname, searchParams } = req.nextUrl;
   // Dashboard (Inhaber 03.10.2026: nur über /login erreichbar, nirgends verlinkt): ohne Sitzung zeigt die Seite selbst
   // eine normale 404; nur mit Sitzungs-Cookie kommen die privaten Kopfzeilen dazu, damit die Adresse nichts verrät.
-  if (pathname === "/dashboard") {
+  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
     const res = NextResponse.next();
     if (req.cookies.has(SESSION_COOKIE)) for (const [k, v] of Object.entries(PRIVATE_HEADERS)) res.headers.set(k, v);
     return res;
@@ -47,6 +47,7 @@ export function proxy(req: NextRequest) {
 export const config = {
   matcher: [
     "/dashboard",
+    "/dashboard/:path*",
     "/:country([a-z]{2})/:segment([a-z0-9-]+)",
     { source: "/contact", has: [{ type: "query", key: "gesendet" }] },
     { source: "/contact", has: [{ type: "query", key: "fehler" }] },

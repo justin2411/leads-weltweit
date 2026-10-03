@@ -1,215 +1,132 @@
-import { Suspense } from "react";
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import { db } from "@/lib/supabase";
-import { CONFIG, loadLive, loadRawStock, loadRuns, loadStock } from "@/lib/dashboard-data";
-import { alerts, berlin, funnel, pairs, type Live, type RawStock, type Stock } from "@/lib/dashboard-logic";
-import { approveDraft, logReply, logout, rejectDraft, requireOwner } from "./actions";
-import { AutoRefresh } from "./auto-refresh";
-import { BrainSection } from "./brain-section";
-import { DASH_CSS } from "./dash-css";
+import Link from "next/link";
+import { CONFIG, SEGMENT, loadContacts, loadDaily, loadLive, loadStock } from "@/lib/dashboard-data";
 import {
-  Customers, FunnelCard, FunnelTable, Kpis, Lights, PagesTable, People, SampleRequests, SampleStockTable, Sending, StockTables,
-} from "./sections";
+  alerts, chain, compact, funnel, mailboxes, monthly, nextRun, onlySegment, realSubscriptions, sampleStock, stockSegment,
+  topAlerts, berlin, berlinDay, currencySign, type StageKey,
+} from "@/lib/dashboard-logic";
+import { PERIODS, period, series, totals } from "@/lib/dashboard-periods";
+import { board } from "@/lib/dashboard-board";
+import { requireOwner } from "./actions";
+import { AmpelRow, Bars, COUNTRY_OPTS, Chips, Columns, Fill, Kpi, Legend, Tile, countrySeries } from "./v2";
+import { readParams, withQuery, type SP } from "./params";
 
-// Inhaber-Übersicht (Inhaber 03.10.2026): immer frisch, nie zwischengespeichert, nie indexiert, nirgends verlinkt.
-export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Übersicht", robots: { index: false, follow: false, nocache: true } };
-
-const sans = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--sans", display: "swap" });
-
-const NAV: [string, string][] = [
-  ["ampel", "Engpässe"], ["trichter", "Trichter"], ["prozess", "Wer ist wo"], ["bestand", "Bestand"],
-  ["versand", "Versand"], ["kunden", "Kunden & Umsatz"], ["aktionen", "Freigaben"], ["gehirn", "Gehirn"],
-];
-
-/** Wartet höchstens `ms` – ist der große Bestand nicht im Zwischenspeicher, lädt die Seite trotzdem sofort. */
-function within<T>(p: Promise<T>, ms: number): Promise<T | null> {
-  return Promise.race([p.catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), ms))]);
-}
-
-export default async function Dashboard() {
+/** Übersicht: Ampel, Prozesskette, je Bereich die wichtigsten Zahlen – Klick führt in die Details. */
+export default async function Overview({ searchParams }: { searchParams: SP }) {
   await requireOwner();
+  const { land, countries, z, raw } = await readParams(searchParams);
   const stockP = loadStock();
-  const rawP = loadRawStock();
   stockP.catch(() => {});
-  rawP.catch(() => {});
-  let live: Live;
-  try {
-    live = await loadLive();
-  } catch (e) {
-    return (
-      <div className={`dash ${sans.variable}`}><style dangerouslySetInnerHTML={{ __html: DASH_CSS }} />
-        <main><h1>Übersicht</h1><p className="bad">Datenbank antwortet nicht: {(e as Error).message}</p><p className="muted">Seite in einer Minute neu laden.</p></main>
-      </div>
-    );
-  }
-  const [stock, runs] = await Promise.all([within(stockP, 1200), within(loadRuns(), 1500)]);
+  const today = berlinDay(new Date());
+  const p = period(z, today);
+  const from14 = new Date(Date.parse(`${today}T12:00:00Z`) - 13 * 86_400_000).toISOString().slice(0, 10);
+  const [liveAll, contacts, daily, stockAll] = await Promise.all([
+    loadLive(),
+    loadContacts(5),
+    loadDaily(p.prevFrom < from14 ? p.prevFrom : from14, today),
+    Promise.race([stockP.catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 1500))]),
+  ]);
+  const live = onlySegment(liveAll, SEGMENT);
+  const stock = stockSegment(stockAll, SEGMENT);
   const cfg = CONFIG;
   const now = new Date(live.now);
-  const list = alerts(live, stock, cfg, now, runs);
-  const segName = (id: string) => live.segments.find((s) => s.id === id)?.name ?? id;
-  const { focus, other } = pairs(live, cfg);
+  const amp = topAlerts(alerts(live, stock, cfg, now, null));
+  const q = (extra: Record<string, string | undefined> = {}) => ({ ...raw, ...extra });
+
+  // Prozesskette
+  const cols = board(contacts, live.sample_requests, live.customers, countries);
+  const n = (id: string) => cols.find((c) => c.id === id)?.count ?? 0;
+  // nur angeschriebene Firmen (Mail), ohne Website-Anfragen
+  const m = (st: string) => contacts.counts.filter((c) => c.stage === st && countries.includes(c.country)).reduce((a, c) => a + Number(c.n), 0);
+  const fs = countries.map((c) => funnel(live, stock, SEGMENT, c));
+  const ch = chain(live, stock, cfg, countries);
+  const subs = realSubscriptions(live).filter((s) => countries.includes(s.customer?.country ?? ""));
+  const rev = new Map<string, number>();
+  for (const s of subs) rev.set(currencySign(s.currency, s.customer?.country), (rev.get(currencySign(s.currency, s.customer?.country)) ?? 0) + monthly(s));
+  const revenue = [...rev].map(([c, v]) => `${compact(v)} ${c}`).join(" + ") || "0";
+  const leads = stock ? stock.leads.filter((l) => l.status === "new" && countries.includes(l.country)).reduce((a, l) => a + Number(l.n), 0) : null;
+  const okRows = stock?.prospects.filter((x) => x.check_status === "ok" && countries.includes(x.country)) ?? [];
+  const map: Record<StageKey, string> = { leads: "leads", kaeufer: "kaeufer", mails: "contacted", antworten: "replied", proben: "sample", kunden: "customer", umsatz: "umsatz" };
+  const neck = ch.bottleneck ? map[ch.bottleneck] : null;
+  const steps: { id: string; label: string; value: string; sub: string; href: string; tip: string }[] = [
+    { id: "leads", label: "Leads", value: leads === null ? "…" : compact(leads), sub: "lieferbar", href: withQuery("/dashboard/bestand", q()), tip: "lieferbare Leads (Firmen ohne Website)" },
+    { id: "kaeufer", label: "Käufer", value: stock ? compact(okRows.reduce((a, x) => a + Number(x.unused), 0)) : "…", sub: "frei", href: withQuery("/dashboard/bestand", q()), tip: `mail-fähige Käufer ohne Mail · gesamt ${compact(okRows.reduce((a, x) => a + Number(x.n), 0))}` },
+    { id: "contacted", label: "Kontaktiert", value: compact(m("contacted") + m("replied") + m("sample") + m("out")), sub: `${fs.reduce((a, f) => a + f.sentToday, 0)} heute`, href: withQuery("/dashboard/kontakte", q({ stufe: "contacted" })), tip: "angeschriebene Firmen" },
+    { id: "replied", label: "Geantwortet", value: compact(m("replied") + m("sample") + m("out")), sub: `${fs.reduce((a, f) => a + f.positive, 0)} positiv`, href: withQuery("/dashboard/kontakte", q({ stufe: "replied" })), tip: `Firmen mit Antwort (ohne Abwesenheitsnotiz) · davon ${m("out")} Absage/Abmeldung` },
+    { id: "sample", label: "Proben", value: compact(n("sample")), sub: `${n("requested")} offen`, href: withQuery("/dashboard/kontakte", q({ stufe: "sample" })), tip: "Probe erhalten (Mail + Website) · offen = angefordert, noch nicht gesendet" },
+    { id: "customer", label: "Kunden", value: compact(subs.length), sub: "zahlend", href: withQuery("/dashboard/kunden", q()), tip: "aktive Abos ohne Testkäufe" },
+    { id: "umsatz", label: "Umsatz", value: revenue, sub: "/ Monat", href: withQuery("/dashboard/kunden", q()), tip: "Summe der aktiven Abos pro Monat" },
+  ];
+
+  // Versand-Kachel
+  const t = totals(daily, p.from, p.to, countries);
+  const tp = totals(daily, p.prevFrom, p.prevTo, countries);
+  const single = p.from === p.to;
+  const chart = single ? series(daily, from14, today, "day", "sent", countries) : series(daily, p.from, p.to, p.bucket, "sent", countries);
+  const cap = mailboxes(liveAll, cfg).reduce((a, b) => a + b.cap, 0);
+
+  // Proben, Bestand, Kunden
+  const st = sampleStock(live, cfg, now).filter((r) => countries.some((c) => r.key.endsWith(`/${c}`)));
+  const wf = cfg.workflows.find((w) => w.file === "kundenlieferung.yml");
+  const nextDelivery = wf ? nextRun(wf.crons, now) : null;
 
   return (
-    <div className={`dash ${sans.variable}`}>
-      <style dangerouslySetInnerHTML={{ __html: DASH_CSS }} />
-      <header className="top">
-        <div className="in">
-          <span className="mark">NextGen <i>Profit</i></span>
-          <span className="stamp">Stand {berlin(now)} Uhr (deutsche Zeit)</span>
-          <span className="sp" />
-          <AutoRefresh />
-          <form action={logout}><button type="submit">Abmelden</button></form>
-        </div>
-        <nav className="tabs">{NAV.map(([id, l]) => <a key={id} href={`#${id}`}>{l}</a>)}</nav>
-      </header>
-      <main>
-        <section id="ampel" style={{ marginTop: 0 }}>
-          <div className="eyebrow">Übersicht</div>
-          <h1>Wo hakt es gerade?</h1>
-          <p className="sub">Automatisch erkannt aus Datenbank und Konfiguration. Rot = Engpass, sofort ansehen. Käufer zählen nur, wenn sie per Mail angeschrieben werden dürfen.</p>
-          <Lights alerts={list} />
-          <div style={{ marginTop: 16 }}><Kpis live={live} stock={stock} cfg={cfg} /></div>
-        </section>
+    <div className="v2">
+      <div className="head2">
+        <AmpelRow alerts={amp} />
+        <Chips base="/dashboard" param="land" value={land} options={COUNTRY_OPTS} params={raw} dots />
+      </div>
 
-        <section id="trichter">
-          <h2>Trichter je Fokus-Test</h2>
-          <p className="sub">Vom mail-fähigen Käufer bis zum Umsatz. Zugestellt = gesendet − Bounces (das eigene Postfach meldet keine Zustellungen).</p>
-          <div className="grid funnels">
-            {focus.map((k) => {
-              const [s, c] = k.split("/");
-              return <FunnelCard key={k} f={funnel(live, stock, s, c)} name={segName(s)} />;
-            })}
+      <div className="th2"><span>Ablauf</span><Link href={withQuery("/dashboard/kontakte", q())} className="more">Wer ist wo ›</Link></div>
+      <ol className="chain" aria-label="Ablauf">
+        {steps.map((s) => (
+          <li key={s.id} className={s.id === neck ? "neck" : ""}>
+            <Link href={s.href} title={s.tip + (s.id === neck ? " · ENGPASS" : "")}>
+              {s.id === neck && <span className="neck-tag">✕ Engpass</span>}
+              <span className="v">{s.value}</span>
+              <span className="l">{s.label}</span>
+              <span className="s">{s.sub}</span>
+            </Link>
+          </li>
+        ))}
+      </ol>
+
+      <div className="tiles">
+        <Tile title="Versand & Ergebnisse" href={withQuery("/dashboard/versand", q({ z }))} wide tip={`${p.label}: ${berlin(`${p.from}T12:00:00Z`).slice(0, 6)}–${berlin(`${p.to}T12:00:00Z`).slice(0, 6)} · Vergleich: ${p.prevLabel}`}>
+          <Chips base="/dashboard" param="z" value={z} options={PERIODS.map(([k, l]) => [k, l])} params={raw} />
+          <div className="kpis2">
+            <Kpi value={compact(t.sent)} label="Mails" cur={t.sent} prev={tp.sent} tip={`Erstmails · dazu ${t.followups} Nachfassmails · Kapazität heute ${cap}`} />
+            <Kpi value={compact(t.replies)} label="Antworten" cur={t.replies} prev={tp.replies} />
+            <Kpi value={compact(t.positive)} label="Positiv" cur={t.positive} prev={tp.positive} />
+            <Kpi value={compact(t.samples_sent)} label="Proben" cur={t.samples_sent} prev={tp.samples_sent} />
           </div>
-          {other.length > 0 && (
-            <details className="more">
-              <summary>Übrige Experimente ({other.length}) – ruhen, solange nur der Fokus gesendet wird</summary>
-              <FunnelTable rows={other.map((k) => funnel(live, stock, ...(k.split("/") as [string, string])))} segName={segName} />
-            </details>
-          )}
-        </section>
+          <Legend series={countrySeries(countries)} />
+          <Columns rows={chart} series={countrySeries(countries)} title="Mails" height={170} compactLabels />
+        </Tile>
 
-        <section id="prozess">
-          <h2>Wer ist wo im Prozess</h2>
-          <p className="sub">Käufer mit Antwort, Probe, fälliger Nachfassmail oder Abo – mit dem nächsten Schritt.</p>
-          <People live={live} cfg={cfg} />
-          <h3>Probe-Anfragen über die Website</h3>
-          <SampleRequests live={live} />
-        </section>
+        <Tile title="Proben-Vorrat" href={withQuery("/dashboard/proben", q())} tip="fertige, geprüfte Proben je Seite (Ist/Soll)">
+          <div className="fills">{st.map((r) => <Fill key={r.key} label={r.key.split("/")[1]} ready={r.ready} target={r.target} tip={`${r.slug}${r.oldestH !== null ? ` · älteste ${Math.round(r.oldestH)} h` : ""}`} />)}</div>
+          <div className="mini"><b>{live.sample_requests.filter((r) => r.status === "new" && countries.includes(r.country ?? "")).length}</b> Anfragen offen</div>
+        </Tile>
 
-        <section id="bestand">
-          <h2>Bestand</h2>
-          <p className="sub">Was vorbereitet ist: Leads, Käufer, fertige Proben und Landingpages.</p>
-          <Suspense fallback={<p className="muted">Bestand wird gezählt …</p>}>
-            <StockBlock live={live} stockP={stockP} rawP={rawP} />
-          </Suspense>
-          <div className="two" style={{ marginTop: 8 }}>
-            <div><h3>Proben-Vorrat je Live-Seite</h3><SampleStockTable live={live} cfg={cfg} /></div>
-            <div><h3>Live-Landingpages, letzte 7 Tage</h3><PagesTable live={live} /></div>
+        <Tile title="Bestand" href={withQuery("/dashboard/bestand", q())} tip="Leads lieferbar · Käufer mail-fähig ohne Mail">
+          {stock ? (
+            <div className="bars2">
+              <Bars title="Leads" rows={countries.map((c) => ({ key: c, n: stock.leads.filter((l) => l.country === c && l.status === "new").reduce((a, l) => a + Number(l.n), 0) }))} />
+              <Bars title="Käufer frei" rows={countries.map((c) => ({ key: c, n: Number(stock.prospects.find((x) => x.country === c && x.check_status === "ok")?.unused ?? 0) }))} />
+            </div>
+          ) : <span className="muted">…</span>}
+        </Tile>
+
+        <Tile title="Kunden & Umsatz" href={withQuery("/dashboard/kunden", q())}>
+          <div className="kpis2 two">
+            <Kpi value={compact(subs.length)} label="Kunden" />
+            <Kpi value={revenue} label="pro Monat" />
           </div>
-        </section>
+          <div className="mini" title="Kundenlieferung (montags)">nächste Lieferung <b>{nextDelivery ? berlin(nextDelivery) : "–"}</b></div>
+        </Tile>
 
-        <section id="versand">
-          <h2>Versand</h2>
-          <Sending live={live} cfg={cfg} runs={runs} />
-        </section>
-
-        <section id="kunden">
-          <h2>Kunden &amp; Umsatz</h2>
-          <Customers live={live} cfg={cfg} />
-        </section>
-
-        <section id="aktionen" className="legacy">
-          <h2>Freigaben und Antworten</h2>
-          <Suspense fallback={<p className="muted">lädt …</p>}><Actions /></Suspense>
-        </section>
-
-        <section id="gehirn" className="legacy">
-          <details className="more">
-            <summary>Gehirn, Schalter, Seiten-Varianten und Entscheidungen</summary>
-            <Suspense fallback={<p className="muted">lädt …</p>}><BrainSection /></Suspense>
-          </details>
-        </section>
-      </main>
+      </div>
     </div>
   );
 }
 
-async function StockBlock({ live, stockP, rawP }: { live: Live; stockP: Promise<Stock>; rawP: Promise<RawStock> }) {
-  let stock: Stock;
-  try {
-    stock = await stockP;
-  } catch (e) {
-    return <p className="bad">Bestand gerade nicht abrufbar: {(e as Error).message}</p>;
-  }
-  const raw = await within(rawP, 6000);
-  return <StockTables live={live} stock={stock} raw={raw} cfg={CONFIG} />;
-}
-
-/** Bisherige Aktionen: Entwürfe freigeben/ablehnen, Antwort erfassen, letzte Ereignisse. */
-async function Actions() {
-  const sb = db();
-  const [drafts, events] = await Promise.all([
-    sb.from("messages")
-      .select("id, to_email, subject, body, check_errors, created_at, prospects(company_name, country), experiments(segment_id, variant)")
-      .eq("status", "draft").order("created_at").limit(50),
-    sb.from("email_events")
-      .select("id, type, note, occurred_at, messages(to_email)")
-      .in("type", ["reply", "reply_positive", "reply_negative", "sample_requested", "unsubscribed", "complained", "bounced"])
-      .order("occurred_at", { ascending: false }).limit(20),
-  ]);
-  const err = drafts.error ?? events.error;
-  if (err) return <p className="bad">{err.message}</p>;
-  return (
-    <>
-      <h3>Entwürfe zur Freigabe ({drafts.data?.length ?? 0})</h3>
-      {(drafts.data ?? []).map((m: any) => (
-        <div className="card" key={m.id}>
-          <div className="muted small">
-            {m.experiments?.segment_id}/{m.experiments?.variant} · {m.prospects?.company_name} ({m.prospects?.country}) · {m.to_email}
-          </div>
-          <strong>{m.subject}</strong>
-          <pre>{m.body}</pre>
-          {m.check_errors?.length > 0 && <p className="bad small">Prüfung: {m.check_errors.join("; ")}</p>}
-          <div className="row">
-            <form action={approveDraft}>
-              <input type="hidden" name="id" value={m.id} />
-              <button className="primary" disabled={m.check_errors?.length > 0}>Freigeben</button>
-            </form>
-            <form action={rejectDraft} className="row">
-              <input type="hidden" name="id" value={m.id} />
-              <input name="reason" placeholder="Grund (optional)" />
-              <button>Ablehnen</button>
-            </form>
-          </div>
-        </div>
-      ))}
-      {(drafts.data ?? []).length === 0 && <p className="muted">Keine offenen Entwürfe.</p>}
-
-      <h3>Antwort erfassen</h3>
-      <form action={logReply} className="row card">
-        <input name="email" type="email" placeholder="Adresse des Absenders" required />
-        <select name="type" defaultValue="reply">
-          <option value="reply">Antwort (neutral)</option>
-          <option value="reply_positive">Positiv</option>
-          <option value="sample_requested">Probe angefordert</option>
-          <option value="reply_negative">Kein Interesse</option>
-          <option value="optout">Bitte nicht mehr schreiben (sperrt)</option>
-        </select>
-        <input name="note" placeholder="Notiz" />
-        <button className="primary">Speichern</button>
-      </form>
-
-      <h3>Letzte Antworten und Ereignisse</h3>
-      <div className="tbl"><table>
-        <thead><tr><th>Wann</th><th>Typ</th><th>Adresse</th><th>Notiz</th></tr></thead>
-        <tbody>
-          {(events.data ?? []).map((e: any) => (
-            <tr key={e.id}><td className="nw">{berlin(e.occurred_at)}</td><td>{e.type}</td><td>{e.messages?.to_email ?? "–"}</td><td className="small">{e.note ?? ""}</td></tr>
-          ))}
-        </tbody>
-      </table></div>
-    </>
-  );
-}
