@@ -151,11 +151,8 @@ export const LANDING_CSS = `
 .bx .lp2 .formwrap{display:grid;grid-template-columns:1.1fr .9fr;gap:30px;align-items:stretch}
 .bx .lp2 .formcard{background:linear-gradient(170deg,#13265a,#0B1530);color:#fff;border-radius:24px;padding:30px;box-shadow:0 40px 80px -45px rgba(11,21,48,.8)}
 .bx .lp2 .formcard{position:relative;animation:fcglow 3.2s ease-in-out infinite}
-.bx .lp2 .formcard::before,.bx .lp2 .formcard::after{content:"";position:absolute;inset:0;border-radius:24px;pointer-events:none;background:radial-gradient(circle at 12% 1px,#fff 0 2.4px,rgba(255,255,255,.6) 4px,transparent 10px),radial-gradient(circle at 63% calc(100% - 1px),#fff 0 2.4px,rgba(255,255,255,.6) 4px,transparent 10px),radial-gradient(circle at calc(100% - 1px) 35%,#fff 0 2.4px,rgba(255,255,255,.6) 4px,transparent 10px);animation:fcspark 2.6s ease-in-out infinite}
-.bx .lp2 .formcard::after{background:radial-gradient(circle at 44% 1px,#fff 0 2px,rgba(255,255,255,.55) 3.5px,transparent 9px),radial-gradient(circle at 1px 70%,#fff 0 2px,rgba(255,255,255,.55) 3.5px,transparent 9px),radial-gradient(circle at 88% calc(100% - 1px),#fff 0 2px,rgba(255,255,255,.55) 3.5px,transparent 9px);animation-delay:1.3s}
 @keyframes fcglow{0%,100%{box-shadow:0 40px 80px -45px rgba(11,21,48,.8),0 0 0 1px rgba(255,255,255,.7),0 0 22px 5px rgba(255,255,255,.75),0 0 50px 14px rgba(255,255,255,.5)}50%{box-shadow:0 40px 80px -45px rgba(11,21,48,.8),0 0 0 1.5px #fff,0 0 40px 12px #fff,0 0 90px 30px #fff}}
-@keyframes fcspark{0%,100%{opacity:0}45%,55%{opacity:1}}
-@media (prefers-reduced-motion:reduce){.bx .lp2 .formcard,.bx .lp2 .formcard::before,.bx .lp2 .formcard::after{animation:none}}
+@media (prefers-reduced-motion:reduce){.bx .lp2 .formcard{animation:none}}
 .bx .lp2 .formcard h2{color:#fff}
 .bx .lp2 .formcard .gold-h{color:var(--gold,#E2C58C);background:linear-gradient(90deg,#E9D3A2,#C9A363);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .bx .lp2 .side2{display:flex;flex-direction:column;gap:14px}
