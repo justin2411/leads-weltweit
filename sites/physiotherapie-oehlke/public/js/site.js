@@ -191,9 +191,9 @@
       if (!name || !tel) { status.textContent = "Bitte Name und Telefonnummer angeben."; return; }
       if (!form.consent.checked) { status.textContent = "Bitte stimmen Sie der Verarbeitung Ihrer Angaben zu."; return; }
       status.textContent = "";
-      var art = (form.querySelector('input[name="art"]:checked') || {}).value || "–";
-      var body = "Name: " + name + "\nTelefon: " + tel + "\nE-Mail: " + (form.email.value.trim() || "–") +
-        "\nIch bin: " + art + "\n\nNachricht:\n" + (form.msg.value.trim() || "–");
+      var art = (form.querySelector('input[name="art"]:checked') || {}).value || "keine Angabe";
+      var body = "Name: " + name + "\nTelefon: " + tel + "\nE-Mail: " + (form.email.value.trim() || "keine Angabe") +
+        "\nIch bin: " + art + "\n\nNachricht:\n" + (form.msg.value.trim() || "keine Angabe");
       window.location.href = "mailto:info@physiotherapie-oehlke.de?subject=" +
         encodeURIComponent("Terminanfrage über die Website") + "&body=" + encodeURIComponent(body);
       form.classList.add("sent");
