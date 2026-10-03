@@ -105,3 +105,21 @@ class FollowupSettingsTest(unittest.TestCase):
                     contextlib.redirect_stdout(out):
                 followups.main([])
             self.assertEqual(out.getvalue().count("FOLLOWUP "), expect, (enabled, days, out.getvalue()))
+
+    def test_no_followup_after_reply_in_cockpit(self):
+        # Nachtschicht 04.10.2026: Antwort von einer anderen Adresse / während der Pause steht nur im Cockpit
+        import contextlib
+        import io
+        from unittest import mock
+        import followups
+        from test_outreach_send import RECENT
+        sent = msg("s1", "initial", "sent", to="a@x.co.uk")
+        pid = sent["prospects"]["id"]
+        for replies, expect in [([], 1), ([{"id": "r1", "prospect_id": pid, "received_at": RECENT}], 0)]:
+            db = FakeDB({"owner_settings": [{"key": "followup_enabled", "value": True}],
+                         "messages": [dict(sent, sent_at=RECENT)], "email_events": [], "inbound_replies": replies})
+            out = io.StringIO()
+            with mock.patch("lib.db.DB", return_value=db), mock.patch.object(db, "rpc", return_value=False), \
+                    contextlib.redirect_stdout(out):
+                followups.main([])
+            self.assertEqual(out.getvalue().count("FOLLOWUP "), expect, out.getvalue())
