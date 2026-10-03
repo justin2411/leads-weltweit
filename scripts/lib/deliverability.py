@@ -38,8 +38,13 @@ def _cfg(key: str) -> str | None:
 
 def warmup_cap(first_sent: dt.date | None, today: dt.date, schedule=None) -> int:
     if _cfg("aufwaermphase") == "false" and schedule is None:
-        # Inhaber hat die Aufwärmphase abgeschaltet (26.09.2026): gleich das Tagesziel
+        # Inhaber hat die Aufwärmphase abgeschaltet (26.09.2026): gleich das Tagesziel. Ab `tagesziel_ab` steigt es
+        # täglich um `tagesziel_schritt` bis `tagesziel_max` (Inhaber 03.10.2026: „haupt soll auch bis auf 150 hochgehen“)
         target = int(_cfg("tagesziel") or 100)
+        since, step, top = _cfg("tagesziel_ab"), _cfg("tagesziel_schritt"), _cfg("tagesziel_max")
+        if since and step and top:
+            days = max(0, (today - dt.date.fromisoformat(since)).days)
+            target = min(target + int(step) * days, int(top))
         return max(0, min(target, HARD_MAX_PER_DAY, provider_cap() - 10))
     schedule = sorted(schedule or DEFAULT_WARMUP)
     day = 0 if first_sent is None else (today - first_sent).days

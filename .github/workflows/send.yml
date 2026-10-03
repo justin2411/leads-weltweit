@@ -76,6 +76,13 @@ jobs:
       - name: Offene Entwürfe auf den aktuellen Text bringen
         if: ${{ steps.gate.outputs.ok == 'true' && !(github.event_name == 'workflow_dispatch' && inputs.probelauf) }}
         run: python scripts/drafts.py --refresh
+      - name: Neue Entwürfe für die Fokus-Tests (Inhaber 03.10.2026: UK/FR sollen nicht leerlaufen)
+        if: ${{ steps.gate.outputs.ok == 'true' && !(github.event_name == 'workflow_dispatch' && inputs.probelauf) }}
+        continue-on-error: true  # ohne neue Entwürfe wird der vorhandene Vorrat trotzdem gesendet
+        timeout-minutes: 30
+        run: |
+          APPROVE=$(grep -E '^freigabe:' config/versand.yaml | cut -d'"' -f2)
+          python scripts/drafts.py --approve "$APPROVE" --max-new 300
       - name: Probelauf
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.probelauf }}
         run: python scripts/outreach.py send

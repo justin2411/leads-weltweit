@@ -78,7 +78,7 @@ class TotalLimitTest(unittest.TestCase):
         self.assertIn("würde senden an c@z.co.uk", run_send(db, limit=1000))
 
     def test_config_value(self):
-        self.assertEqual(outreach.total_limit(), 1000)
+        self.assertEqual(outreach.total_limit(), 5000)  # Inhaber 03.10.2026: von 1000 auf 5000
 
 
 class FollowupRecheckTest(unittest.TestCase):
@@ -180,3 +180,18 @@ class NotbremseFensterTests(unittest.TestCase):
             self.assertEqual(D.window_start(now), now - dt.timedelta(days=30))
         with mock.patch.object(D, "_cfg", return_value=None):
             self.assertEqual(D.window_start(now), now - dt.timedelta(days=30))
+
+
+class HauptpostfachSteigerungTests(unittest.TestCase):
+    """Inhaber 03.10.2026: Hauptpostfach startet mit 90 und steigt täglich um 15 bis 150."""
+
+    def test_ramp(self):
+        import datetime as dt
+        from lib import deliverability as D
+        cfg = {"aufwaermphase": "false", "tagesziel": "90", "tagesziel_ab": "2026-10-03",
+               "tagesziel_schritt": "15", "tagesziel_max": "150"}
+        with mock.patch.object(D, "_cfg", side_effect=cfg.get), mock.patch.object(D, "provider_cap", return_value=160):
+            day = dt.date(2026, 10, 3)
+            self.assertEqual(D.warmup_cap(None, day), 90)
+            self.assertEqual(D.warmup_cap(None, day + dt.timedelta(days=2)), 120)
+            self.assertEqual(D.warmup_cap(None, day + dt.timedelta(days=10)), 150)

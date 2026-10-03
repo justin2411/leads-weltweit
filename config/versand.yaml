@@ -13,8 +13,12 @@ aufwaermphase: false
 notbremse_ab: 2026-10-03T06:52:00Z
 # Inhaber 03.10.2026: „wir starten mit 90 mails pro tag“; vor jeder Erstmail Frischeprüfung der Adresse (lib/freshness.py)
 tagesziel: 90
+# Hauptpostfach steigt wie die neuen Postfächer jeden Tag um 15 bis 150 (Inhaber 03.10.2026: „haupt soll auch bis auf 150 hochgehen“)
+tagesziel_ab: 2026-10-03
+tagesziel_schritt: 15
+tagesziel_max: 150
 freigabe: "Justin Koch, Chat 03.10.2026: '1 bis 3 genauso umsetzen 4. wir starten mit 90 mails pro tag'"
-gesamtgrenze: 1000
+gesamtgrenze: 5000   # Inhaber 03.10.2026: Gesamtgrenze erste Welle von 1000 auf 5000 („1. ja“)
 # Tagesgrenze des Mail-Postfachs für Kaltmails (SMTP, Strato). 10 Reserve für Antworten.
 anbieter_tageslimit: 160
 # Weitere Postfächer (SMTP_USER_2 … in GitHub-Secrets, scripts/lib/mailboxes.py) fahren je mit eigener Steigerung
