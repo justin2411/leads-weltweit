@@ -19,7 +19,7 @@ import { InputError } from "@/lib/owner-settings";
 import { hadSample, stockDeps, stockReady } from "@/lib/antworten-data";
 import {
   answerLang, cleanAnswer, domainOf, isStatus, isUuid, lintAnswer, replyFooter, replySubject, shortHash, STATUS_LABEL,
-  threadHeaders,
+  suppressTargets, threadHeaders,
 } from "@/lib/antworten";
 import { requireOwner } from "../actions";
 
@@ -41,7 +41,8 @@ type Reply = {
   id: string; status: string; from_email: string | null; subject: string | null; imap_message_id: string | null;
   message_id: string | null; prospect_id: string | null; received_at: string | null; owner_action: string | null;
   prospects: { id: string; company_name: string; country: string; domain: string | null; segment_id: string | null; email: string | null } | null;
-  messages: { id: string; subject: string; smtp_message_id: string | null; resend_id: string | null; language: string | null } | null;
+  messages: { id: string; subject: string; smtp_message_id: string | null; resend_id: string | null; language: string | null;
+              to_email: string | null } | null;
 };
 
 async function loadOne(raw: unknown): Promise<Reply> {
@@ -49,7 +50,7 @@ async function loadOne(raw: unknown): Promise<Reply> {
   if (!isUuid(id)) throw new InputError("Antwort unbekannt");
   const { data, error } = await db().from("inbound_replies")
     .select("id, status, from_email, subject, imap_message_id, message_id, prospect_id, received_at, owner_action, "
-      + "prospects(id, company_name, country, domain, segment_id, email), messages(id, subject, smtp_message_id, resend_id, language)")
+      + "prospects(id, company_name, country, domain, segment_id, email), messages(id, subject, smtp_message_id, resend_id, language, to_email)")
     .eq("id", id).maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new InputError("Antwort unbekannt");
@@ -76,10 +77,10 @@ async function suppressed(email: string): Promise<boolean> {
 }
 
 /** Unsere zuletzt gesendete Mail an die Firma (für Ereignisse), bevorzugt die, auf die geantwortet wurde. */
-async function ourMessage(r: Reply): Promise<{ id: string; resend_id: string | null } | null> {
-  if (r.messages) return { id: r.messages.id, resend_id: r.messages.resend_id };
+async function ourMessage(r: Reply): Promise<{ id: string; resend_id: string | null; to_email: string | null } | null> {
+  if (r.messages) return { id: r.messages.id, resend_id: r.messages.resend_id, to_email: r.messages.to_email ?? null };
   if (!r.prospect_id) return null;
-  const { data } = await db().from("messages").select("id, resend_id").eq("prospect_id", r.prospect_id).eq("status", "sent")
+  const { data } = await db().from("messages").select("id, resend_id, to_email").eq("prospect_id", r.prospect_id).eq("status", "sent")
     .order("sent_at", { ascending: false }).limit(1).maybeSingle();
   return data ?? null;
 }
@@ -129,18 +130,24 @@ export async function markBuyInterest(f: FormData) {
 }
 
 // ------------------------------------------------------------------------------------------- Sperren
-/** Wie contactSuppress: Adresse + Domain dauerhaft sperren, offene Entwürfe der Firma stoppen. Nie rückgängig. */
+/**
+ * Wie contactSuppress: dauerhaft sperren, offene Entwürfe der Firma stoppen. Nie rückgängig. Gesperrt werden der
+ * Absender UND die Adresse, die wir angeschrieben hatten (unsere Mail bzw. prospects.email) – wie inbox.py bei einer
+ * Abmeldung per Antwort; sonst bliebe z. B. info@firma.com nach „Sperren“ der Antwort von joe@gmail.com anschreibbar.
+ */
 export async function suppressReply(f: FormData) {
   await run(f, async (r) => {
     if (f.get("confirm") !== "ja") throw new InputError("Bitte Haken „wirklich sperren“ setzen");
     const email = sender(r);
-    await suppressEmail(email, "manual", "owner-dashboard");
+    const ours = (await ourMessage(r))?.to_email ?? r.prospects?.email ?? null;
+    const emails = suppressTargets(email, ours);
+    for (const e of emails) await suppressEmail(e, "manual", "owner-dashboard");
     if (r.prospect_id) {
       await db().from("messages").update({ status: "blocked", blocked_reason: `${BY}: gesperrt` })
         .eq("prospect_id", r.prospect_id).in("status", ["draft", "approved"]);
     }
     await mark(r, "gesperrt", "erledigt");
-    await log("antwort:sperren", r.id, { email, prospect: r.prospect_id });
+    await log("antwort:sperren", r.id, { emails, prospect: r.prospect_id });
     return { to: LIST, msg: "dauerhaft gesperrt" };
   });
 }
@@ -186,6 +193,9 @@ export async function sendSample(f: FormData) {
     const email = sender(r);
     if (await suppressed(email)) throw new InputError("Adresse ist gesperrt – nichts gesendet");
     if (await hadSample(email, r.prospect_id)) throw new InputError("hat schon eine Probe bekommen");
+    if (r.owner_action === "probe_unklar") {
+      throw new InputError("Letzter Probe-Versand war unklar (evtl. angekommen) – nicht erneut senden, bitte im Postfach prüfen");
+    }
     if (!process.env.RESEND_API_KEY || !process.env.MAIL_FROM) throw new InputError("Resend nicht eingerichtet – nichts gesendet");
     if ((await stockReady(p.segment_id, p.country)) < 1) throw new InputError(`Kein fertiger Vorrat für ${p.country} – nichts gesendet`);
     const now = new Date().toISOString();
@@ -206,8 +216,17 @@ export async function sendSample(f: FormData) {
       throw new InputError(`Kein fertiger Vorrat für ${p.country} – nichts gesendet`);
     }
     if (res.status !== "sent") {
-      await log("antwort:probe", r.id, { result: res.status, detail: "detail" in res ? res.detail : null });
-      throw new InputError(`Probe nicht gesendet (${"detail" in res && res.detail ? res.detail : "Fehler"})`);
+      const detail = ("detail" in res && res.detail) || "Fehler";
+      // Anfrage schließen: sonst übernimmt web_samples.py sie nach 15 Minuten und sendet doch noch eine Probe
+      // (bei „Versand unklar“ evtl. eine zweite). Der Inhaber entscheidet selbst, ob er es noch einmal versucht.
+      await db().from("sample_requests").update({ status: "rejected", claimed_at: null,
+        note: `Antworten-Cockpit ${r.id}: Fehler ${String(detail).slice(0, 120)}` }).eq("id", req.id).eq("status", "new");
+      const unclear = /unklar/i.test(String(detail));
+      if (unclear) await mark(r, "probe_unklar");
+      await log("antwort:probe", r.id, { result: res.status, detail, request: req.id });
+      throw new InputError(unclear
+        ? "Versand unklar (Probe evtl. angekommen) – bitte nicht erneut senden, im Postfach prüfen"
+        : `Probe nicht gesendet (${detail}) – es wird auch nichts nachgesendet`);
     }
     const m = await ourMessage(r);
     if (m) {

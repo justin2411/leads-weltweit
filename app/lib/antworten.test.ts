@@ -2,7 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   ALERT_MIN, ageLabel, ageMinutes, answerLang, arrivedAt, cleanAnswer, countByStatus, domainOf, firstLines, intentMeta,
-  isOverdue, isStatus, isUuid, lintAnswer, messageId, replyFooter, replySubject, shortHash, sortReplies, threadHeaders,
+  isOverdue, isStatus, isUuid, lintAnswer, messageId, replyFooter, replySubject, shortHash, sortReplies, suppressTargets,
+  threadHeaders,
 } from "./antworten.ts";
 
 const NOW = new Date("2026-10-04T03:00:00Z");
@@ -69,6 +70,36 @@ test("Antwort-Prüfung: keine Preise, Währungen, Beträge, Garantien", () => {
   assert.deepEqual(lintAnswer("10 leads every Monday, 15 per week"), []);
 });
 
+test("Antwort prüfen: Tarnung mit Unicode, Beträge ohne Währung, auseinandergezogene Wörter", () => {
+  const bad = [
+    "Our pri\u200bce is 129",          // Zero-Width-Space
+    "We gu\u00adarantee results",      // weiches Trennzeichen
+    "It costs \uff04129 a month",      // Vollbreite-$
+    "\uff30reis 129",                   // Vollbreite-P
+    "129 per month", "Pro plan 249/mo", "249 / month", "129 pro Monat", "129 € par mois", "129 par mois",
+    "129 monthly", "1290 a year",
+    "only 129\u00a2", "₹ 999", "₩129", "₽500", "\u20bf 1", // ¢, Rupie, Won, Rubel, Bitcoin-Zeichen (U+20A0–20CF)
+    "p r i c e on request", "g-u-a-r-a-n-t-e-e", "P.R.E.I.S", "pr\u0456ce",  // kyrillisches і
+    "pri\u0301ce", "\u202eecirp\u202c price", "129 USD", "129 bucks", "SEK 900",
+  ];
+  for (const t of bad) assert.ok(lintAnswer(cleanAnswer(t)).length > 0, JSON.stringify(t));
+  for (const t of bad) assert.ok(lintAnswer(t).length > 0, `roh: ${JSON.stringify(t)}`);
+  // Normale Antworten bleiben erlaubt
+  for (const ok of ["10 leads every Monday, 15 per week", "Happy to call you Tuesday at 3 pm.",
+                    "Merci ! Je vous envoie 10 pistes de toute la France.", "We cover the US, the UK and France.",
+                    "Thanks, I will send the sample within a month at the latest."]) {
+    assert.deepEqual(lintAnswer(cleanAnswer(ok)), [], ok);
+  }
+});
+
+test("Text säubern: NFKC und unsichtbare Formatzeichen", () => {
+  assert.equal(cleanAnswer("pri\u200bce"), "price");
+  assert.equal(cleanAnswer("gu\u00adarantee\ufeff"), "guarantee");
+  assert.equal(cleanAnswer("\uff30reis \uff04"), "Preis $");
+  assert.equal(cleanAnswer("a\u200e\u202eb\u2066c"), "abc");
+  assert.equal(cleanAnswer("x\u0085y"), "xy");
+});
+
 test("Text säubern: Zeilenenden, Steuerzeichen, Leerzeilen", () => {
   assert.equal(cleanAnswer("a\r\nb\u0007\n\n\n\n\nc  "), "a\nb\n\n\nc");
   assert.equal(cleanAnswer(null), "");
@@ -109,4 +140,11 @@ test("Sprache, Domain, Fußzeile, erste Zeilen, UUID, Hash", () => {
   assert.equal(isUuid("../etc"), false);
   assert.equal(shortHash("abc"), shortHash("abc"));
   assert.notEqual(shortHash("abc"), shortHash("abd"));
+});
+
+test("Sperren: Absender und unsere angeschriebene Adresse, ohne Doppelte", () => {
+  assert.deepEqual(suppressTargets("joe@gmail.com", "Info@Alpha-Web.com"), ["joe@gmail.com", "info@alpha-web.com"]);
+  assert.deepEqual(suppressTargets("info@alpha-web.com", "INFO@alpha-web.com"), ["info@alpha-web.com"]);
+  assert.deepEqual(suppressTargets("info@alpha-web.com", null), ["info@alpha-web.com"]);
+  assert.deepEqual(suppressTargets("info@alpha-web.com", "kein-mail"), ["info@alpha-web.com"]);
 });

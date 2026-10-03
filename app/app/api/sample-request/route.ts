@@ -105,7 +105,8 @@ export async function POST(req: Request) {
   if (error) return json ? Response.json({ ok: false, error: "server" }, { status: 500 }) : new Response("Fehler", { status: 500 });
   if (!test && ownPage) await recordEvent(v.id, "sample_request");
   // Sofort-Alarm aufs Handy (Web-Push, feuern und vergessen; ändert nichts am Ablauf der Anfrage)
-  if (!test && !suppressed) after(() => pushAlarmSafe("Probe angefragt", `${company} · ${page.segment_id}/${country}`,
+  // Nur feste Bezeichnungen (keine Formulareingaben wie den Firmennamen) – Details stehen im Dashboard
+  if (!test && !suppressed) after(() => pushAlarmSafe("Probe angefragt", `${page.segment_id}/${country}`,
                                                       "/dashboard/proben", "sample"));
 
   const m = confirmationMail((ownPage ? page.language : formLang) === "fr" ? "fr" : "en", country, consent);

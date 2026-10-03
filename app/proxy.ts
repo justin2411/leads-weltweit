@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { SESSION_COOKIE } from "@/lib/auth";
+import { SESSION_COOKIE, verifySession } from "@/lib/auth";
 import { BUCKETS } from "@/lib/landing-buckets";
 
 /**
@@ -14,6 +14,9 @@ const LANDING_DYNAMIC = ["vorschau", "v", "angefragt", "fehler", "r", "schritt"]
 const NOT_LANDING = new Set(["/fr/contact", "/de/kontakt"]);
 const CONTACT: Record<string, string> = { "/contact": "en", "/fr/contact": "fr", "/de/kontakt": "de" };
 
+/** Manifest des Antworten-Cockpits (nur mit Sitzung, sonst 404). */
+const OWNER_MANIFEST = "/dashboard/antworten/manifest.webmanifest";
+
 /** Kopfzeilen für den Inhaber-Bereich: nie indexieren, nie zwischenspeichern. */
 const PRIVATE_HEADERS: Record<string, string> = {
   "X-Robots-Tag": "noindex, nofollow, noarchive",
@@ -26,6 +29,13 @@ export function proxy(req: NextRequest) {
   // Dashboard (Inhaber 03.10.2026: nur über /login erreichbar, nirgends verlinkt): ohne Sitzung zeigt die Seite selbst
   // eine normale 404; nur mit Sitzungs-Cookie kommen die privaten Kopfzeilen dazu, damit die Adresse nichts verrät.
   if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
+    // Route-Handler (Manifest) laufen ohne das Dashboard-Layout: ohne gültige Sitzung auf eine nicht vorhandene
+    // Dashboard-Seite umschreiben, damit dieselbe normale 404 kommt wie überall im Dashboard (Review 04.10.2026)
+    if (pathname === OWNER_MANIFEST && !verifySession(req.cookies.get(SESSION_COOKIE)?.value, process.env.SESSION_SECRET?.trim())) {
+      const url = req.nextUrl.clone();
+      url.pathname = "/dashboard/antworten/manifest";
+      return NextResponse.rewrite(url);
+    }
     const res = NextResponse.next();
     if (req.cookies.has(SESSION_COOKIE)) for (const [k, v] of Object.entries(PRIVATE_HEADERS)) res.headers.set(k, v);
     return res;

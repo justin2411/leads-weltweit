@@ -29,7 +29,7 @@ ICON = {OK: "✓", WARN: "!", FAIL: "✗"}
 WORKFLOWS = {
     "send.yml": ("Versand Kaltmails", 27),
     "taeglich.yml": ("Automatiklauf (Nachfassmails, Entwürfe)", 27),
-    "antworten.yml": ("Antwort-Assistent + Web-Proben", 12),  # läuft 06–21 UTC stündlich, nachts Pause
+    "antworten.yml": ("Antwort-Assistent + Web-Proben (24/7)", 2),  # läuft rund um die Uhr alle 10 min
     "proben-vorrat.yml": ("Proben-Vorrat + Web-Proben (24/7)", 3),
     "morgenbericht.yml": ("Morgenbericht", 27),
     "sync.yml": ("Bounces/Ereignisse", 27),

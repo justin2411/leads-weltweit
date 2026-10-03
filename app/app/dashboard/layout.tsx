@@ -8,6 +8,7 @@ import { HUD_CSS } from "./hud-css";
 import { LIVE_CSS } from "./live";
 import { Nav } from "./nav";
 import { Flash } from "./flash";
+import { db } from "@/lib/supabase";
 
 // Inhaber-Bereich (Inhaber 03.10.2026): nur nach Anmeldung über /login, ohne Sitzung 404, nie indexiert, nie gecacht.
 export const dynamic = "force-dynamic";
@@ -18,8 +19,17 @@ const sans = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"], v
 const hud = Rajdhani({ subsets: ["latin"], weight: ["500", "600", "700"], variable: "--hudf", display: "swap" });
 const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "600"], variable: "--monof", display: "swap" });
 
+/** Offene Antworten für den Zähler im Menü (Index status+received_at). Fehler oder langsame Datenbank: kein Zähler
+ *  statt einer hängenden Seite – das Cockpit selbst zeigt die echten Zahlen. */
+async function openReplies(): Promise<number> {
+  const q = db().from("inbound_replies").select("id", { count: "exact", head: true }).eq("status", "offen")
+    .then((r) => (r.error ? 0 : r.count ?? 0), () => 0);
+  return Promise.race([q, new Promise<number>((ok) => setTimeout(() => ok(0), 1500))]);
+}
+
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   await requireOwner();
+  const badges = { "/dashboard/antworten": await openReplies() };
   return (
     <div className={`dash ${sans.variable} ${hud.variable} ${mono.variable}`}>
       <style dangerouslySetInnerHTML={{ __html: DASH_CSS + DASH_V2_CSS + LIVE_CSS + HUD_CSS }} />
@@ -36,12 +46,12 @@ export default async function DashboardLayout({ children }: { children: ReactNod
             </svg>
           </button></form>
         </div>
-        <div className="tabs-wrap"><Suspense><Nav /></Suspense></div>
+        <div className="tabs-wrap"><Suspense><Nav badges={badges} /></Suspense></div>
       </header>
       <Suspense><Flash /></Suspense>
       <main>{children}</main>
       <footer className="foot"><a href="/dashboard/alt" title="Bisherige Detailansicht mit allen Branchen, Freigaben und Gehirn">Alte Ansicht</a></footer>
-      <Suspense><Nav bottom /></Suspense>
+      <Suspense><Nav bottom badges={badges} /></Suspense>
     </div>
   );
 }

@@ -206,6 +206,15 @@ export function domainOf(email: string | null | undefined): string {
   return d.startsWith("www.") ? d.slice(4) : d;
 }
 
+/**
+ * Adressen für „Sperren“ im Cockpit: Absender und die Adresse, die wir angeschrieben haben (beide klein, gültig, ohne
+ * Doppelte) – wie inbox.py bei einer Abmeldung per Antwort.
+ */
+export function suppressTargets(sender: string, ours: string | null | undefined): string[] {
+  const ok = (e: string) => /^[^\s@<>"]+@[^\s@<>"]+\.[a-z]{2,}$/i.test(e);
+  return [sender, ours ?? ""].map((e) => String(e).trim().toLowerCase()).filter((e, i, a) => ok(e) && a.indexOf(e) === i);
+}
+
 /** Pflichtfußzeile für Antworten an Leute, die uns geschrieben haben (wie rules.render_footer, Abmeldung per Antwort). */
 export function replyFooter(lang: "en" | "fr", legalName: string, address: string, domain: string): string {
   const who = domain || (lang === "fr" ? "votre adresse" : "your address");

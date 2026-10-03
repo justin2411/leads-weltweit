@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  asKind, buildPayload, isGoneStatus, MAX_SKEW_S, RateLimiter, ReplayGuard, safePath, sign, validSubscription, verifySigned,
+  AlarmBudget, asKind, buildPayload, isGoneStatus, MAX_SKEW_S, PUBLIC_RATE_LIMIT, RATE_LIMIT, RateLimiter, ReplayGuard, safePath, sign, validSubscription, verifySigned,
 } from "./push-core.ts";
 
 const KEY = "service-role-test-key";
@@ -49,6 +49,17 @@ test("Ratenbegrenzung: 30 pro Stunde, danach frei nach Ablauf des Fensters", () 
   assert.equal(rl.take(NOW + 3599_000), false);
   assert.equal(rl.take(NOW + 3600_000), true); // erster Treffer ist aus dem Fenster
   assert.equal(rl.take(NOW + 3600_500), false);
+});
+
+test("Budgets getrennt: öffentliche Auslöser verbrauchen nie das Budget der signierten Alarme", () => {
+  const b = new AlarmBudget();
+  let pub = 0;
+  for (let i = 0; i < 100; i++) if (b.take("public", NOW + i)) pub++;
+  assert.equal(pub, PUBLIC_RATE_LIMIT);
+  assert.ok(PUBLIC_RATE_LIMIT < RATE_LIMIT);
+  for (let i = 0; i < RATE_LIMIT; i++) assert.equal(b.take("signed", NOW + 200 + i), true, `signiert ${i + 1}`);
+  assert.equal(b.take("signed", NOW + 500), false);
+  assert.equal(b.take("public", NOW + 3600_000), true); // neues Fenster
 });
 
 test("Wiederholungsschutz: dieselbe Signatur nur einmal", () => {

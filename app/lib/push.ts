@@ -2,7 +2,9 @@ import "server-only";
 import webpush from "web-push";
 import { db } from "@/lib/supabase";
 import { siteUrl } from "@/lib/site";
-import { buildPayload, isGoneStatus, MAX_FAILURES, RateLimiter, type PushKind, type PushSubscriptionInput } from "@/lib/push-core";
+import {
+  AlarmBudget, buildPayload, isGoneStatus, MAX_FAILURES, type PushBucket, type PushKind, type PushSubscriptionInput,
+} from "@/lib/push-core";
 
 /**
  * Sofort-Alarm aufs Handy des Inhabers (Web-Push, kostenlos; Nachtschicht 03./04.10.2026). Empfänger stehen in
@@ -14,8 +16,8 @@ import { buildPayload, isGoneStatus, MAX_FAILURES, RateLimiter, type PushKind, t
  */
 export type PushResult = { sent: number; failed: number; skipped?: "keys" | "empty" | "rate" | "error" };
 
-/** Je Server-Instanz höchstens 30 Alarme pro Stunde (API, Website-Auslöser und Test zusammen). */
-const limiter = new RateLimiter();
+/** Je Server-Instanz: signierte Alarme + Test höchstens 30/h, öffentliche Auslöser (Probe, Checkout) getrennt 10/h. */
+const budget = new AlarmBudget();
 
 function vapid(): { publicKey: string; privateKey: string; subject: string } | null {
   const publicKey = process.env.VAPID_PUBLIC_KEY?.trim();
@@ -65,19 +67,23 @@ export async function sendToAll(title: string, body: string, url: string, kind: 
   return { sent, failed };
 }
 
-/** Mit Ratenbegrenzung (30/h). Für die API und die Auslöser in der App. */
-export async function pushAlarm(title: string, body: string, url: string, kind: PushKind = "other"): Promise<PushResult> {
-  if (!limiter.take()) {
-    console.log("push: mehr als 30 Alarme in der letzten Stunde – übersprungen");
+/** Mit Ratenbegrenzung je Budget: "signed" (API, Test-Knopf; 30/h) oder "public" (Website-Auslöser; 10/h). */
+export async function pushAlarm(title: string, body: string, url: string, kind: PushKind = "other",
+                                bucket: PushBucket = "signed"): Promise<PushResult> {
+  if (!budget.take(bucket)) {
+    console.log(`push: Budget „${bucket}“ für diese Stunde aufgebraucht – übersprungen`);
     return { sent: 0, failed: 0, skipped: "rate" };
   }
   return sendToAll(title, body, url, kind);
 }
 
-/** Feuern und vergessen: wirft nie (für Probe-Anfrage, Checkout). Aufruf in after(), damit die Antwort nicht wartet. */
+/**
+ * Feuern und vergessen für öffentliche Auslöser (Probe-Anfrage, Checkout): wirft nie, eigenes kleines Budget.
+ * Aufruf in after(), damit die Antwort nicht wartet. Nur feste Texte übergeben (keine Formulareingaben).
+ */
 export async function pushAlarmSafe(title: string, body: string, url: string, kind: PushKind = "other"): Promise<void> {
   try {
-    await pushAlarm(title, body, url, kind);
+    await pushAlarm(title, body, url, kind, "public");
   } catch (e) {
     console.log(`push: ${String((e as Error)?.message ?? e).slice(0, 160)}`);
   }

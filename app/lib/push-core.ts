@@ -80,6 +80,24 @@ export class RateLimiter {
   }
 }
 
+/**
+ * Getrennte Budgets (Review 04.10.2026): signierte Alarme (/api/push: Kaufinteresse, Frage, Notbremse …) und der
+ * Test-Knopf haben ihr eigenes Budget (30/h); öffentliche Auslöser (Probe-Formular, Checkout) ein kleineres eigenes
+ * (10/h). So kann Verkehr von außen nie das Budget für Kaufinteresse-/Frage-Alarme aufbrauchen.
+ */
+export const PUBLIC_RATE_LIMIT = 10;
+export type PushBucket = "signed" | "public";
+
+export class AlarmBudget {
+  private buckets: Record<PushBucket, RateLimiter>;
+  constructor(signed = RATE_LIMIT, pub = PUBLIC_RATE_LIMIT, windowMs = RATE_WINDOW_MS) {
+    this.buckets = { signed: new RateLimiter(signed, windowMs), public: new RateLimiter(pub, windowMs) };
+  }
+  take(bucket: PushBucket, nowMs = Date.now()): boolean {
+    return this.buckets[bucket].take(nowMs);
+  }
+}
+
 /** Dieselbe Signatur nie zweimal (Wiederholung abgefangener Anfragen innerhalb der 5 Minuten). */
 export class ReplayGuard {
   private seen = new Map<string, number>();

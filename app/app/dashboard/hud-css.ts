@@ -24,6 +24,8 @@ export const HUD_CSS = `
 .dash .tabs a.on{background:linear-gradient(180deg,rgba(95,212,255,.24),rgba(95,212,255,.08));border-color:var(--cy);color:#fff;box-shadow:var(--glow)}
 .dash .tabs a.jv-tab{border-color:rgba(226,198,143,.55);color:var(--gold2)}
 .dash .tabs a.jv-tab.on{background:linear-gradient(180deg,rgba(226,198,143,.28),rgba(226,198,143,.06));border-color:var(--gold);color:#fff;box-shadow:0 0 18px rgba(226,198,143,.35)}
+.dash .nb{display:inline-block;min-width:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:var(--gold);color:#071423;font:600 11px/18px var(--mono);letter-spacing:0;text-align:center;vertical-align:1px}
+.dash .bnav .bi{position:relative}.dash .bnav .bi .nb{position:absolute;top:-5px;left:12px;margin:0;min-width:16px;font-size:10px;line-height:16px;padding:0 4px}
 .dash .card,.dash .kpi2,.dash .stagebar a,.dash .tro,.dash .sf-stack{background:var(--card);border-color:var(--line);box-shadow:inset 0 1px 0 rgba(255,255,255,.03),0 10px 40px -24px rgba(0,0,0,.9);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .dash .card{border-radius:6px;clip-path:polygon(0 10px,10px 0,calc(100% - 10px) 0,100% 10px,100% calc(100% - 10px),calc(100% - 10px) 100%,10px 100%,0 calc(100% - 10px))}
 .dash .kpi .v,.dash .kpi2 b,.dash .pipe .v,.dash .num,.dash td.num,.dash output{font-family:var(--mono);font-variant-numeric:tabular-nums}
@@ -227,7 +229,7 @@ export const HUD_CSS = `
   .machines{grid-template-columns:1fr}
   .hp{padding:12px 12px 10px}
   .bay .bl{font-size:11px;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:clip}
-  .dash .bnav{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}.dash .bnav a{font-size:13px;white-space:nowrap}
+  .dash .bnav{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}.dash .bnav a{font-size:10px;white-space:nowrap;min-width:0;letter-spacing:-.02em}.dash .bnav a .bnl{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 }
 
 /* ------------------------------------------------------------------ JARVIS v2: Fluss-Karte (Inhaber 03.10.2026) */

@@ -37,6 +37,24 @@ jobs:
       IMAP_HOST: ${{ secrets.IMAP_HOST }}
       IMAP_USER: ${{ secrets.IMAP_USER }}
       IMAP_PASSWORD: ${{ secrets.IMAP_PASSWORD }}
+      # Alle Versand-Postfächer mitlesen (Nachtschicht 04.10.2026, lib/imap_boxes.py): Rückläufer und manche Antworten
+      # gehen an das sendende Postfach, nicht an REPLY_TO. Nur lesend; gesendet wird hier nie per SMTP (Antworten über
+      # Resend). Leere Werte = Postfach nicht vorhanden.
+      SMTP_USER: ${{ secrets.SMTP_USER }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      SMTP_FROM: ${{ secrets.SMTP_FROM }}
+      SMTP_USER_2: ${{ secrets.SMTP_USER_2 }}
+      SMTP_PASSWORD_2: ${{ secrets.SMTP_PASSWORD_2 }}
+      SMTP_FROM_2: ${{ secrets.SMTP_FROM_2 }}
+      SMTP_USER_3: ${{ secrets.SMTP_USER_3 }}
+      SMTP_PASSWORD_3: ${{ secrets.SMTP_PASSWORD_3 }}
+      SMTP_FROM_3: ${{ secrets.SMTP_FROM_3 }}
+      SMTP_USER_4: ${{ secrets.SMTP_USER_4 }}
+      SMTP_PASSWORD_4: ${{ secrets.SMTP_PASSWORD_4 }}
+      SMTP_FROM_4: ${{ secrets.SMTP_FROM_4 }}
+      SMTP_USER_5: ${{ secrets.SMTP_USER_5 }}
+      SMTP_PASSWORD_5: ${{ secrets.SMTP_PASSWORD_5 }}
+      SMTP_FROM_5: ${{ secrets.SMTP_FROM_5 }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -45,7 +63,7 @@ jobs:
       - name: Postfach eingerichtet?
         id: gate
         run: if [ -n "$IMAP_HOST" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "IMAP noch nicht eingerichtet"; fi
-      - name: Bounces aus dem Postfach
+      - name: Bounces aus allen Postfächern
         if: ${{ steps.gate.outputs.ok == 'true' }}
         run: python scripts/inbox.py --days 14 --apply
       - name: Antworten bearbeiten

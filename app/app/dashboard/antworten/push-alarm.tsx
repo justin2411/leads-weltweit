@@ -10,7 +10,7 @@ import { PushButton } from "./push-button";
 export function PushAlarm() {
   return (
     <>
-      <link rel="manifest" href="/dashboard/antworten/manifest.webmanifest" />
+      <link rel="manifest" href="/dashboard/antworten/manifest.webmanifest" crossOrigin="use-credentials" />
       <meta name="apple-mobile-web-app-capable" content="yes" />
       <meta name="apple-mobile-web-app-title" content="NextGen" />
       <style dangerouslySetInnerHTML={{ __html: PUSH_CSS }} />

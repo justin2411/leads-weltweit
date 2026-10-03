@@ -166,6 +166,146 @@ class InboundRowTest(unittest.TestCase):
         self.assertEqual(len(db.rows("inbound_replies")), 1)
         self.assertEqual(db.rows("email_events"), [])  # Mail bleibt offen wie bisher
 
+    def test_pause_owner_action_unpause_sends_nothing(self):
+        # Review 04.10.2026: während der Pause beantwortet der Inhaber im Cockpit; nach dem Einschalten keine
+        # automatische Zwischenantwort / Probe / Meldung mehr an jemanden, dem er schon geantwortet hat
+        for body, action in (("How much per month?", "antwort_gesendet"), ("Yes please, send it over", "probe_gesendet")):
+            db = two_prospects()
+            msg = mail("info@alpha-web.com", "Re: x", body, mid="<po@x>", In_Reply_To="<sentA@nextgen-profit.de>")
+            with mock.patch.object(r, "auto_replies_paused", return_value=True), \
+                    mock.patch.object(r, "push", return_value=True):
+                self.assertEqual(r.handle_message(db, msg, "<po@x>", True, OWN), "paused")
+            row = db.rows("inbound_replies")[0]
+            row.update({"status": "erledigt", "owner_action": action})
+            with mock.patch.object(r, "auto_replies_paused", return_value=False), \
+                    mock.patch.object(r, "send_reply") as send, mock.patch.object(r, "notify_owner") as note, \
+                    mock.patch.object(r, "regional_sample") as sample:
+                self.assertEqual(r.handle_message(db, msg, "<po@x>", True, OWN), "done")
+                self.assertEqual(r.handle_message(db, msg, "<po@x>", True, OWN), "done")
+            send.assert_not_called()
+            note.assert_not_called()
+            sample.assert_not_called()
+            ev = [e for e in db.rows("email_events") if e.get("dedupe_key") == "reply:<po@x>"]
+            self.assertEqual(len(ev), 1)
+            self.assertIn("Cockpit", ev[0]["note"])
+
+    def test_pause_reuses_stored_classification(self):
+        # Nachtschicht 04.10.2026: während der Pause kommt die Mail alle 10 min wieder – nur einmal Claude fragen
+        db = two_prospects()
+        msg = mail("info@alpha-web.com", "Re: x", "How much per month?", mid="<pc@x>")
+        real = r.classify
+        with mock.patch.object(r, "auto_replies_paused", return_value=True), mock.patch.object(r, "push"), \
+                mock.patch.object(r, "classify", side_effect=real) as cl:
+            for _ in range(3):
+                self.assertEqual(r.handle_message(db, msg, "<pc@x>", True, OWN), "paused")
+        self.assertEqual(cl.call_count, 1)
+        with mock.patch.object(r, "classify", side_effect=real) as cl, mock.patch.object(r, "notify_owner"), \
+                mock.patch.object(r, "send_reply"):
+            r.handle_message(db, msg, "<pc@x>", True, OWN)
+        self.assertEqual(cl.call_count, 1)  # nach der Pause frisch eingeordnet (FAQ-Schlüssel stehen nicht im Cockpit)
+
+    def test_unknown_sender_classified_and_alerted_once_when_mail_fails(self):
+        db = two_prospects()
+        msg = mail("someone@else.org", "Partnership", "Hi, can we talk about a partnership?", mid="<uk@x>")
+        with mock.patch.object(r, "classify", return_value={"intent": "question", "faq": ["none"], "needs_owner": True,
+                                                             "summary_de": "Frage", "by": "test"}) as cl, \
+                mock.patch.object(r, "is_recent", return_value=True), \
+                mock.patch.object(r, "notify_owner", side_effect=[RuntimeError("Resend 500"), None]) as note:
+            self.assertEqual(r.handle_message(db, msg, "<uk@x>", True, OWN), "error")
+            self.assertEqual(r.handle_message(db, msg, "<uk@x>", True, OWN), "owner")
+            self.assertEqual(r.handle_message(db, msg, "<uk@x>", True, OWN), "done")
+        self.assertEqual(cl.call_count, 1)
+        self.assertEqual(note.call_count, 2)
+
+    def test_owner_status_later_also_stops_automation(self):
+        db = two_prospects()
+        msg = mail("info@alpha-web.com", "Re: x", "How much per month?", mid="<pl@x>")
+        with mock.patch.object(r, "auto_replies_paused", return_value=True), mock.patch.object(r, "push"):
+            r.handle_message(db, msg, "<pl@x>", True, OWN)
+        db.rows("inbound_replies")[0].update({"status": "spaeter", "owner_action": "status:spaeter"})
+        with mock.patch.object(r, "send_reply") as send:
+            self.assertEqual(r.handle_message(db, msg, "<pl@x>", True, OWN), "done")
+        send.assert_not_called()
+
+    def test_unsubscribe_after_owner_action_still_suppresses(self):
+        db = two_prospects()
+        msg = mail("info@alpha-web.com", "Re: x", "Please remove us from your list", mid="<us@x>")
+        db.insert("inbound_replies", {"imap_message_id": "<us@x>", "status": "erledigt", "owner_action": "antwort_gesendet"})
+        self.assertEqual(r.handle_message(db, msg, "<us@x>", True, OWN), "suppress")
+        self.assertTrue(db.is_suppressed("info@alpha-web.com"))
+
+    def test_owner_alert_not_repeated_when_hold_reply_fails(self):
+        # Review 04.10.2026: Meldung ging raus, Zwischenantwort scheitert -> nächster Lauf (10 min) meldet nicht erneut
+        db = two_prospects()
+        msg = mail("info@alpha-web.com", "Re: x", "How much per month?", mid="<rf@x>")
+        with mock.patch.object(r, "notify_owner") as note, \
+                mock.patch.object(r, "send_reply", side_effect=RuntimeError("Resend 500")):
+            self.assertEqual(r.handle_message(db, msg, "<rf@x>", True, OWN), "error")
+            self.assertEqual(r.handle_message(db, msg, "<rf@x>", True, OWN), "error")
+        self.assertEqual(note.call_count, 1)
+        with mock.patch.object(r, "notify_owner") as note, mock.patch.object(r, "send_reply") as send:
+            self.assertEqual(r.handle_message(db, msg, "<rf@x>", True, OWN), "owner")
+        note.assert_not_called()
+        send.assert_called_once()
+
+    def test_unpause_after_pause_push_no_second_alert(self):
+        db = two_prospects()
+        msg = mail("info@alpha-web.com", "Re: x", "How much per month?", mid="<pp@x>")
+        with mock.patch.object(r, "auto_replies_paused", return_value=True), \
+                mock.patch.object(r, "push", return_value=True) as push:
+            r.handle_message(db, msg, "<pp@x>", True, OWN)
+        push.assert_called_once()
+        with mock.patch.object(r, "notify_owner") as note, mock.patch.object(r, "send_reply") as send:
+            self.assertEqual(r.handle_message(db, msg, "<pp@x>", True, OWN), "owner")
+        note.assert_not_called()
+        send.assert_called_once()  # Zwischenantwort an den Absender geht wie bisher raus
+
+    def test_sample_leads_reserved_then_released_on_failure(self):
+        # Review 04.10.2026: ein Fehlversuch darf keine 10 Leads verbrennen – aber vergeben werden sie sofort, damit der
+        # Proben-Vorrat sie nicht gleichzeitig in eine andere Probe packt (exklusiv)
+        db = two_prospects()
+        db.insert("leads", [{"id": f"l{i}", "status": "new"} for i in range(10)])
+        msg = mail("info@alpha-web.com", "Re: x", "Yes please, send it over", mid="<sm@x>")
+        seen_at_send = []
+
+        def fake_sample(db_, seg, country, region, mark=True, picked_out=None, **kw):
+            self.assertFalse(mark)
+            picked_out.extend({"id": f"l{i}"} for i in range(10))
+            return [("s.csv", b"x")], True
+
+        def failing_send(*a, **kw):
+            seen_at_send.append({l["status"] for l in db.rows("leads")})
+            raise RuntimeError("Resend 500")
+        with mock.patch.object(r, "regional_sample", side_effect=fake_sample), \
+                mock.patch.object(r, "send_reply", side_effect=failing_send):
+            self.assertEqual(r.handle_message(db, msg, "<sm@x>", True, OWN), "error")
+        self.assertEqual(seen_at_send, [{"sample"}])  # beim Versand schon vergeben
+        self.assertEqual({l["status"] for l in db.rows("leads")}, {"new"})  # danach wieder frei
+        with mock.patch.object(r, "regional_sample", side_effect=fake_sample), mock.patch.object(r, "send_reply"):
+            self.assertEqual(r.handle_message(db, msg, "<sm@x>", True, OWN), "sample")
+        self.assertEqual({l["status"] for l in db.rows("leads")}, {"sample"})
+
+    def test_sample_leads_stay_taken_when_sent_but_later_step_fails(self):
+        db = two_prospects()
+        db.insert("leads", [{"id": f"l{i}", "status": "new"} for i in range(10)])
+        msg = mail("info@alpha-web.com", "Re: x", "Yes please, send it over", mid="<sl@x>")
+
+        def fake_sample(db_, seg, country, region, mark=True, picked_out=None, **kw):
+            picked_out.extend({"id": f"l{i}"} for i in range(10))
+            return [("s.csv", b"x")], True
+        real_insert = db.insert
+
+        def insert(table, rows, **kw):
+            if table == "email_events" and isinstance(rows, dict) and rows.get("dedupe_key") == "reply:<sl@x>":
+                raise RuntimeError("DB weg")
+            return real_insert(table, rows, **kw)
+        db.insert = insert
+        with mock.patch.object(r, "regional_sample", side_effect=fake_sample), \
+                mock.patch.object(r, "send_reply") as send, self.assertRaises(RuntimeError):
+            r.handle_message(db, msg, "<sl@x>", True, OWN)
+        send.assert_called_once()
+        self.assertEqual({l["status"] for l in db.rows("leads")}, {"sample"})  # Probe ist angekommen: bleibt vergeben
+
     def test_cockpit_write_failure_does_not_block_reply(self):
         db = two_prospects()
         msg = mail("info@alpha-web.com", "Re: x", "Yes please, send it over", mid="<f1@x>")
@@ -215,6 +355,12 @@ class FaqTruthTest(unittest.TestCase):
             self.assertNotIn("no other employees", txt)
         self.assertIn("official registers", r.FAQ["en"]["data_privacy"])
         self.assertIn("registres officiels", r.FAQ["fr"]["data_privacy"])
+
+    def test_open_data_sources_named(self):
+        # S2-Leads (US, Overture/OSM) stammen aus offenen Datensätzen – die FAQ muss das nennen (Review 04.10.2026)
+        for key in ("data_privacy", "sources"):
+            self.assertIn("open business directories", r.FAQ["en"][key], key)
+            self.assertIn("annuaires ouverts", r.FAQ["fr"][key], key)
 
 
 class PushTest(unittest.TestCase):

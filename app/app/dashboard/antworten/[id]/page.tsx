@@ -63,6 +63,9 @@ export default async function Antwort({ params }: { params: Promise<{ id: string
         </div>
       </div>
 
+      {r.owner_action === "probe_unklar" && (
+        <div className="aw-done"><Icon name="achtung" size={18} /> Probe-Versand unklar – im Postfach prüfen · {berlin(r.owner_action_at)}</div>
+      )}
       {r.owner_action && DONE[r.owner_action] && (
         <div className="aw-done"><Icon name="ok-kreis" size={18} /> {DONE[r.owner_action]} · {berlin(r.owner_action_at)}</div>
       )}
