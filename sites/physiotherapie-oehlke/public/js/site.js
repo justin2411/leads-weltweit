@@ -128,20 +128,6 @@
     try { p.style.setProperty("--len", Math.ceil(p.getTotalLength())); } catch (e) {}
   });
 
-  /* Hero: Maus-Parallaxe + Lichtschein */
-  var hero = $(".hero"), cursor = $(".cursor");
-  if (hero && !reduce && window.matchMedia("(pointer:fine)").matches) {
-    var layers = $$("[data-depth]", hero);
-    hero.addEventListener("mousemove", function (e) {
-      var x = e.clientX / window.innerWidth - 0.5, y = e.clientY / window.innerHeight - 0.5;
-      layers.forEach(function (l) {
-        var d = +l.getAttribute("data-depth");
-        l.style.translate = (x * d).toFixed(1) + "px " + (y * d).toFixed(1) + "px";
-      });
-      if (cursor) cursor.style.transform = "translate3d(" + e.clientX + "px," + e.clientY + "px,0)";
-    });
-  }
-
   /* Karten: leichtes 3D-Kippen */
   if (!reduce && window.matchMedia("(pointer:fine)").matches) {
     $$("[data-tilt]").forEach(function (c) {
@@ -151,13 +137,6 @@
         c.style.transform = "perspective(900px) rotateX(" + (-y * 5).toFixed(2) + "deg) rotateY(" + (x * 6).toFixed(2) + "deg) translateY(-4px)";
       });
       c.addEventListener("mouseleave", function () { c.style.transform = ""; });
-    });
-    $$(".btn--magnet").forEach(function (b) {
-      b.addEventListener("mousemove", function (e) {
-        var r = b.getBoundingClientRect();
-        b.style.translate = ((e.clientX - r.left - r.width / 2) * 0.2).toFixed(1) + "px " + ((e.clientY - r.top - r.height / 2) * 0.3).toFixed(1) + "px";
-      });
-      b.addEventListener("mouseleave", function () { b.style.translate = ""; });
     });
   }
 

@@ -582,7 +582,7 @@ def home() -> str:
 
     body = f"""
 <section class="hero" aria-label="Willkommen">
-  <div class="hero__glow hero__glow--1" data-depth="-30"></div><div class="hero__glow hero__glow--2" data-depth="30"></div><div class="hero__glow hero__glow--3" data-depth="50"></div>
+  <div class="hero__glow hero__glow--1"></div><div class="hero__glow hero__glow--2"></div><div class="hero__glow hero__glow--3"></div>
   <div class="hero__grain"></div>
   <svg class="waves" viewBox="0 0 1600 400" preserveAspectRatio="none" aria-hidden="true"><g>
     <path d="M-100 300C200 200 400 380 700 290S1200 120 1700 230" stroke="#46b2d0" stroke-opacity=".55" stroke-width="2"/>
@@ -603,7 +603,7 @@ def home() -> str:
         <span>{icon('clock')} Mo bis Fr ab 8, Sa ab 9 Uhr</span><span>{icon('badge')} Staatlich anerkannt</span><span>{icon('pin')} ca. 30 km um Hockenheim</span>
       </div>
     </div>
-    <div class="hero__visual" data-depth="-14">
+    <div class="hero__visual">
       <div class="hero__ring"></div><div class="hero__ring hero__ring--2"></div>
       <div class="hero__arch">{img('hero-hausbesuch', 'Physiotherapeut Ramon Oehlke hilft einer älteren Patientin im Wohnzimmer beim Aufstehen', eager=True)}</div>
       <div class="chip chip--1 float" data-depth="22"><span class="ico">{icon('clock')}</span><span><b>60 Min</b><small>pro Hausbesuch</small></span></div>
@@ -612,7 +612,6 @@ def home() -> str:
     </div>
   </div>
 </section>
-<div class="cursor" aria-hidden="true"></div>
 <div class="marquee" aria-hidden="true"><div class="marquee__track">{marquee}{marquee}</div></div>
 
 <section class="section" id="ueber-mich">
