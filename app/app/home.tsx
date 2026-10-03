@@ -13,6 +13,7 @@ import { BrandShell, SiteFooter, SiteHeader } from "./chrome";
 import { HOME, HOME_LANGS, HOME_PATH, type HomeLang } from "./home-i18n";
 import { CONTACT_PATH } from "./contact/contact-i18n";
 import { HomeFx } from "./home-fx";
+import { ContactPersonSec } from "./contact-person";
 import { DOT_MAPS } from "@/content/home-dot-maps";
 import { COUNTRIES, LEAD_COUNTRIES, type CountryCode } from "@/lib/country";
 
@@ -62,7 +63,6 @@ const CINE_BLIPS: [number, number, number, boolean][] = [[59.16, 29.16, -8.94, f
   [41.37, 43.49, -1.86, false], [79.08, 13.8, -8.47, false], [24.15, 68.56, -3.11, true], [37.07, 20.58, -1.06, false], [93.57, 60.89, -7.28, false]];
 const Lock = () => <svg className="hp-lock" viewBox="0 0 24 24"><path className="hp-lock__shackle" d="M8 10.5V8a4 4 0 0 1 8 0v2.5" /><rect x="5" y="10.5" width="14" height="10" rx="2" /></svg>;
 /** Ansprechpartner (Vorlage v4): zehn Punkte im Passungsring, Startlage Woche 4 (ohne JavaScript sichtbar). */
-const TUNE_DOTS: [number, number, boolean][] = [[18.4, -26.2, true], [13.6, -8.5, true], [25.2, 9.7, true], [9.8, 6.9, true], [4.0, 45.8, false], [-7.5, 20.7, true], [-27.6, 9.0, true], [-8.0, -0.8, true], [-22.0, -27.2, true], [-6.8, -17.7, true]];
 /** Probe (Vorlage v4): Balkenbreiten der Tabellen-Vorschau, je Zeile Firma, Telefon, E-Mail, Ereignis. */
 const SHEET = [[70, 79, 68, 73], [85, 74, 67, 52], [56, 82, 80, 51], [69, 86, 85, 65], [66, 73, 78, 61], [56, 90, 78, 65], [67, 75, 81, 66], [78, 72, 83, 90], [79, 86, 77, 59], [70, 85, 79, 53]];
 const SEAL = "M50.00 1.00L56.00 4.39L62.68 2.67L67.60 7.50L74.50 7.56L78.00 13.51L84.65 15.35L86.49 22.00L92.44 25.50L92.50 32.40L97.33 37.32L95.61 44.00L99.00 50.00L95.61 56.00L97.33 62.68L92.50 67.60L92.44 74.50L86.49 78.00L84.65 84.65L78.00 86.49L74.50 92.44L67.60 92.50L62.68 97.33L56.00 95.61L50.00 99.00L44.00 95.61L37.32 97.33L32.40 92.50L25.50 92.44L22.00 86.49L15.35 84.65L13.51 78.00L7.56 74.50L7.50 67.60L2.67 62.68L4.39 56.00L1.00 50.00L4.39 44.00L2.67 37.32L7.50 32.40L7.56 25.50L13.51 22.00L15.35 15.35L22.00 13.51L25.50 7.56L32.40 7.50L37.32 2.67L44.00 4.39Z";
@@ -402,48 +402,7 @@ export async function Home({ lang }: { lang: HomeLang }) {
           </div>
         </section>
 
-        {/* Persönlicher Ansprechpartner nach Vorlage v4 (Inhaber 03.10.2026): vier Beispielwochen, die Filter werden enger */}
-        <section className="hp-sec hp-dark hp-grain hp-contact" id="contact-person" aria-labelledby="contact-title">
-          <div className="hp-wrap hp-contact__grid">
-            <div className="hp-contact__copy" data-reveal="">
-              <p className="hp-rule">{t.pcKick}</p>
-              <h2 className="hp-h2" id="contact-title">{t.pcH[0]}{t.pcH[1]}</h2>
-              <p className="hp-contact__lede">{t.pcLede}</p>
-              <ul className="hp-contact__points">
-                {t.pcList.map(([ic, h, d]) => (
-                  <li key={h}><span className="hp-contact__ico"><I n={{ user: "user", focus: "sliders", target: "coins" }[ic] ?? ic} /></span><div><h3>{h}</h3><p>{d}</p></div></li>))}
-              </ul>
-              <a className="hp-btn hp-btn--gold" href={contactHref} data-magnetic=""><span>{t.pcBtn}</span><I n="arrow" c="hp-ico hp-btn__arrow" /></a>
-            </div>
-            <figure className="hp-tune" data-tune="" data-reveal="" style={{ "--d": ".15s" } as CSSProperties}>
-              <figcaption className="hp-sr">{t.tune.cap}</figcaption>
-              <div className="hp-tune__note">
-                <span className="hp-tune__avatar" aria-hidden="true">N<span>P</span></span>
-                <div className="hp-tune__msg">
-                  <p className="hp-tune__who">{t.tune.who} <span className="hp-tune__ex">{t.tune.ex}</span></p>
-                  <div className="hp-tune__texts">
-                    {t.tune.texts.map((x, k) => <p data-w={k} aria-hidden={k < 3 ? true : undefined} className={k === 3 ? "is-on" : undefined} key={k}>{x}</p>)}
-                  </div>
-                </div>
-              </div>
-              <div className="hp-tune__body">
-                <div className="hp-target" aria-hidden="true">
-                  <svg viewBox="0 0 200 200"><path className="cross" d="M100 4V196M4 100H196" /><circle className="ring" cx="100" cy="100" r="94" /><circle className="ring ring--mid" cx="100" cy="100" r="67" /><circle className="ring ring--fit" cx="100" cy="100" r="40" /><circle className="core" cx="100" cy="100" r="2.5" />
-                    <g>{TUNE_DOTS.map(([x, y, fit], k) => <circle className={`dot${fit ? " is-fit" : ""}`} cx="100" cy="100" r="4.6" style={{ transform: `translate(${x}px,${y}px)` }} key={k} />)}</g></svg>
-                  <p className="hp-target__legend"><span><i className="is-fit" />{t.tune.fit}</span><span><i />{t.tune.notYet}</span></p>
-                </div>
-                <dl className="hp-filters">
-                  {t.tune.rows.map(([label, vals, from], k) => (
-                    <div className={k === t.tune.rows.length - 1 ? "is-changed" : undefined} key={label}><dt data-upd={t.tune.upd}>{label}</dt>
-                      <dd>{vals.map((v, j) => <span data-from={from[j]} aria-hidden={j < vals.length - 1 ? true : undefined} className={j === vals.length - 1 ? "is-on" : undefined} key={v}>{v}</span>)}</dd></div>))}
-                </dl>
-              </div>
-              <div className="hp-tune__weeks" role="tablist" aria-label={t.tune.weeks}>
-                {[0, 1, 2, 3].map((k) => <button className="hp-week" type="button" role="tab" aria-selected={k === 3} tabIndex={k === 3 ? 0 : -1} key={k}>{t.tune.week} {k + 1}</button>)}
-              </div>
-            </figure>
-          </div>
-        </section>
+        <ContactPersonSec t={t} contactHref={contactHref} />
 
         {/* Probe nach Vorlage v4: Formular auf dunkler Karte links, Vorschau der zwei Dateien rechts. Formular und Logik unverändert (SampleForm). */}
         <section className="hp-sec hp-cream hp-sample" id="sample" aria-labelledby="sample-title">

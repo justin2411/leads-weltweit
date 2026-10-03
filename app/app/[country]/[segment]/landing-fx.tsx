@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { initTune } from "../../tune-fx";
 
 /**
  * Effekte der Landingpages, übernommen aus den Effekten der Startseite (app/home-fx.tsx, Inhaber 03.10.2026):
@@ -240,6 +241,10 @@ export function LandingFx() {
     };
     buildInline();
     on(mqStory, "change", buildInline);
+
+    // Persönlicher Ansprechpartner: Beispielwochen wie auf der Startseite
+    const tune = $("[data-tune]");
+    if (tune) offs.push(initTune(tune, reduce));
 
     return () => {
       offs.forEach((f) => f()); timers.forEach((t) => { clearTimeout(t); clearInterval(t); });
