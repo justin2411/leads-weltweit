@@ -21,13 +21,13 @@ export type HomeText = {
   ctaCard: [string, string]; askMore: string; feedTitle: string; feedNote: string; howTitle: string;
   statement: [string, string];
   story: { v0: string; v1: string; moments: [string, string][]; stamp: string; v2: string; ex: string; rateLead: string; pass: string;
-    rows: [string, number][]; min: string; fail: string; qs: string; minPill: string; mailSub: string; mon: string; mailSubject: string; files: [string, string];
+    rows: [string, number][]; min: string; fail: string; qs: string; mailSub: string; mon: string; mailSubject: string; files: [string, string];
     mailLeads: [string, string, number][]; excl: string; inbox: string; isNew: string; fileSub: [string, string];
     /** Quellen-Liste in der Methode: [Symbol, Name, Länder], ohne Flaggen (Inhaber 03.10.2026) */
     src: [string, string, string][]; track: [string, string, string, string] };
   callH: string; callSub: string; call: {
     city: string; prio: string; event: string; eventText: string; date: string; dateText: string; source: string; sourceText: string;
-    phone: string; email: string; opening: string; openingText: [string, string]; ready: string; hidden: string;
+    phone: string; email: string; person: string; role: string; opening: string; openingText: [string, string]; ready: string; hidden: string;
     points: [string, string][];
   };
   indH: string; indSub: string; indGo: string; soon: string; countryPick: string;
@@ -81,7 +81,7 @@ export const HOME: Record<HomeLang, HomeText> = {
       moments: [["building", "A new registration"], ["calendar", "A role open for weeks"], ["users", "Several hires at once"]],
       stamp: "Each event is recorded with its date and source.", v2: "Rated before you see it", ex: "Example",
       rateLead: "Public contract · 2 Oct 2026", pass: "Passes", rows: [["Freshness", 92], ["Clarity of the signal", 86], ["Company data", 95]],
-      min: "Minimum", fail: "Below the minimum, left out", qs: "Quality score", minPill: "minimum 60", mailSub: "Every Monday morning", mon: "MON", mailSubject: "Your leads this week",
+      min: "Minimum", fail: "Below the minimum, left out", qs: "Quality score", mailSub: "Every Monday morning", mon: "MON", mailSubject: "Your leads this week",
       files: ["PDF briefing", "Spreadsheet"], mailLeads: [["doc", "London · Public contract", 91], ["building", "Wolverhampton · New company", 86], ["globe", "Wakefield · No website", 78]],
       inbox: "Inbox", isNew: "New", fileSub: ["Sales tip and opening line", "Ready for your CRM"],
       excl: "Each lead goes to only one firm in your industry.",
@@ -94,7 +94,7 @@ export const HOME: Record<HomeLang, HomeText> = {
     call: {
       city: "London", prio: "Medium priority", event: "Event",
       eventText: "Won a public contract, published on Find a Tender on 2 October 2026: “London Borough of Richmond” for Sutton, Achieving for Children and Kingston",
-      date: "Date", dateText: "2 Oct 2026", source: "Source", sourceText: "Find a Tender", phone: "Phone", email: "Email",
+      date: "Date", dateText: "2 Oct 2026", source: "Source", sourceText: "Find a Tender", phone: "Phone", email: "Email", person: "Contact person", role: "Director",
       opening: "Opening line",
       openingText: ["“I saw ", " won the ‘London Borough of Richmond’ contract with Sutton, Achieving for Children and Kingston. If delivering it means adding people to the team, would pre-screened candidates from a specialist recruiter help?”"],
       ready: "Ready for a call or an email", hidden: "Hidden in sample",
@@ -194,7 +194,7 @@ export const HOME: Record<HomeLang, HomeText> = {
       moments: [["building", "Une création d'entreprise"], ["calendar", "Un poste ouvert depuis des semaines"], ["users", "Plusieurs recrutements à la fois"]],
       stamp: "Chaque événement est enregistré avec sa date et sa source.", v2: "Évalué avant de vous parvenir", ex: "Exemple",
       rateLead: "Marché public · 2 oct. 2026", pass: "Retenu", rows: [["Fraîcheur", 92], ["Clarté du signal", 86], ["Données d'entreprise", 95]],
-      min: "Minimum", fail: "Sous le minimum, écarté", qs: "Score de qualité", minPill: "minimum 60", mailSub: "Chaque lundi matin", mon: "LUN", mailSubject: "Vos prospects de la semaine",
+      min: "Minimum", fail: "Sous le minimum, écarté", qs: "Score de qualité", mailSub: "Chaque lundi matin", mon: "LUN", mailSubject: "Vos prospects de la semaine",
       files: ["Rapport PDF", "Tableur"], mailLeads: [["doc", "Londres · Marché public", 91], ["building", "Wolverhampton · Nouvelle entreprise", 86], ["globe", "Wakefield · Sans site web", 78]],
       inbox: "Boîte de réception", isNew: "Nouveau", fileSub: ["Conseil et phrase d'accroche", "Prêt pour votre CRM"],
       excl: "Chaque prospect ne va qu'à une seule entreprise de votre secteur.",
@@ -207,7 +207,7 @@ export const HOME: Record<HomeLang, HomeText> = {
     call: {
       city: "Londres", prio: "Priorité moyenne", event: "Événement",
       eventText: "Won a public contract, published on Find a Tender on 2 October 2026: “London Borough of Richmond” for Sutton, Achieving for Children and Kingston",
-      date: "Date", dateText: "2 oct. 2026", source: "Source", sourceText: "Find a Tender", phone: "Téléphone", email: "E-mail",
+      date: "Date", dateText: "2 oct. 2026", source: "Source", sourceText: "Find a Tender", phone: "Téléphone", email: "E-mail", person: "Interlocuteur", role: "Dirigeant",
       opening: "Phrase d'accroche",
       openingText: ["“I saw ", " won the ‘London Borough of Richmond’ contract with Sutton, Achieving for Children and Kingston. If delivering it means adding people to the team, would pre-screened candidates from a specialist recruiter help?”"],
       ready: "Prêt pour un appel ou un e-mail", hidden: "Masqué dans l'échantillon",
@@ -307,7 +307,7 @@ export const HOME: Record<HomeLang, HomeText> = {
       moments: [["building", "Eine Neugründung"], ["calendar", "Eine seit Wochen offene Stelle"], ["users", "Mehrere Einstellungen gleichzeitig"]],
       stamp: "Jedes Ereignis wird mit Datum und Quelle erfasst.", v2: "Bewertet, bevor Sie es sehen", ex: "Beispiel",
       rateLead: "Öffentlicher Auftrag · 2. Okt. 2026", pass: "Bestanden", rows: [["Aktualität", 92], ["Klarheit des Signals", 86], ["Firmendaten", 95]],
-      min: "Mindestwert", fail: "Unter dem Mindestwert, aussortiert", qs: "Qualitätswert", minPill: "Mindestwert 60", mailSub: "Jeden Montagmorgen", mon: "MO", mailSubject: "Ihre Leads dieser Woche",
+      min: "Mindestwert", fail: "Unter dem Mindestwert, aussortiert", qs: "Qualitätswert", mailSub: "Jeden Montagmorgen", mon: "MO", mailSubject: "Ihre Leads dieser Woche",
       files: ["PDF-Briefing", "Tabelle"], mailLeads: [["doc", "London · Öffentlicher Auftrag", 91], ["building", "Wolverhampton · Neugründung", 86], ["globe", "Wakefield · Keine Website", 78]],
       inbox: "Posteingang", isNew: "Neu", fileSub: ["Verkaufstipp und Einstiegssatz", "Bereit für Ihr CRM"],
       excl: "Jeder Lead geht nur an ein Unternehmen Ihrer Branche.",
@@ -320,7 +320,7 @@ export const HOME: Record<HomeLang, HomeText> = {
     call: {
       city: "London", prio: "Mittlere Priorität", event: "Ereignis",
       eventText: "Won a public contract, published on Find a Tender on 2 October 2026: “London Borough of Richmond” for Sutton, Achieving for Children and Kingston",
-      date: "Datum", dateText: "2. Okt. 2026", source: "Quelle", sourceText: "Find a Tender", phone: "Telefon", email: "E-Mail",
+      date: "Datum", dateText: "2. Okt. 2026", source: "Quelle", sourceText: "Find a Tender", phone: "Telefon", email: "E-Mail", person: "Ansprechpartner", role: "Geschäftsführer",
       opening: "Einstiegssatz",
       openingText: ["“I saw ", " won the ‘London Borough of Richmond’ contract with Sutton, Achieving for Children and Kingston. If delivering it means adding people to the team, would pre-screened candidates from a specialist recruiter help?”"],
       ready: "Bereit für Anruf oder E-Mail", hidden: "In der Probe verdeckt",
