@@ -43,22 +43,26 @@ const CC: CountryCode[] = ["UK", "US", "FR"];
 const FLAG: Record<string, string> = { UK: "f-uk", US: "f-us", FR: "f-fr" };
 
 /** Symbol aus dem Sprite der Vorlage. */
-const I = ({ n, c = "hp-ico" }: { n: string; c?: string }) => <svg className={c} aria-hidden="true"><use href={`#${n.startsWith("f-") ? n : "i-" + n}`} /></svg>;
+const I = ({ n, c = "hp-ico" }: { n: string; c?: string }) => <svg className={c} aria-hidden="true"><use href={`#${/^fs?-/.test(n) ? n : "i-" + n}`} /></svg>;
 const R = ({ t }: { t: string }) => <span className="hp-redact" aria-hidden="true">{t}</span>;
 const i = (n: number) => ({ "--i": n }) as CSSProperties;
 
 /** „Recently detected“: je drei echte Signale aus UK, US und FR (Firmennamen verdeckt), Städte als Pins auf der Karte.
  *  Die Karte wechselt automatisch zwischen den Ländern (Inhaber 03.10.2026). */
 const SIGNALS: { cc: CountryCode; place: string; date: string; source: string; event: string }[] = [
+  // je Land verschiedene Auslöser (Inhaber 03.10.2026: „unterschiedliche trigger und texte“)
   { cc: "UK", place: "London", date: "2 Oct 2026", source: "Find a Tender", event: "Won a public contract, published on Find a Tender on 2 October 2026: “London Borough of Richmond” for Sutton, Achieving for Children and Kingston" },
-  { cc: "UK", place: "Wolverhampton", date: "2 Oct 2026", source: "Find a Tender", event: "Won a public contract, published on Find a Tender on 2 October 2026: “FP&A Tool Consultancy” for Agriculture and Horticulture Development Board" },
-  { cc: "UK", place: "Wakefield", date: "2 Oct 2026", source: "Find a Tender", event: "Won a public contract, published on Find a Tender on 2 October 2026: “Cleaning Services” for Inspire Learning Trust" },
+  { cc: "UK", place: "Wolverhampton", date: "30 Sep 2026", source: "Companies House", event: "A new advertising agency, incorporated on 30 September 2026." },
+  { cc: "UK", place: "Wakefield", date: "2 Oct 2026", source: "Business listing", event: "Has no website: listed with a phone number, an email address and a Facebook page, but no own website could be found." },
+  { cc: "UK", place: "London", date: "3 Oct 2026", source: "Website check", event: "Its website shows an error page (HTTP 404) instead of a homepage." },
   { cc: "US", place: "Seattle", date: "3 Oct 2026", source: "Website check", event: "Its website uses a self-signed security certificate, so browsers warn visitors before opening it." },
-  { cc: "US", place: "Chicago", date: "3 Oct 2026", source: "Website check", event: "The homepage is not built for phones, and its copyright notice dates from 2011." },
-  { cc: "US", place: "Houston", date: "3 Oct 2026", source: "Website check", event: "Chrome shows ‘Not secure’ on its website, because the site has no HTTPS encryption." },
-  { cc: "FR", place: "Nantes", date: "3 oct. 2026", source: "Contrôle du site", event: "La page d'accueil charge une ancienne version de la bibliothèque jQuery." },
+  { cc: "US", place: "Chicago", date: "24 Sep 2026", source: "US DOT", event: "Registered on 24 September 2026 as a private-fleet operator with 4 trucks and 8 drivers." },
+  { cc: "US", place: "Houston", date: "29 Sep 2026", source: "SEC Form D", event: "Filed an SEC Form D on 29 September 2026: raised $18.6 million from 2 investors." },
+  { cc: "US", place: "Miami", date: "2 Oct 2026", source: "Business listing", event: "Has no website: listed with a phone number, an email address and a Facebook page, but no own website was found." },
+  { cc: "FR", place: "Nantes", date: "3 oct. 2026", source: "Contrôle du site", event: "Le site tourne sous une ancienne version de WordPress (4.9.8)." },
   { cc: "FR", place: "Toulouse", date: "3 oct. 2026", source: "Contrôle du site", event: "La page d'accueil n'est pas adaptée aux mobiles (pas de réglage viewport)." },
-  { cc: "FR", place: "Marseille", date: "3 oct. 2026", source: "Contrôle du site", event: "La page d'accueil intègre encore Adobe Flash, que les navigateurs ne lisent plus." },
+  { cc: "FR", place: "Lyon", date: "27 sept. 2026", source: "BODACC", event: "Nouvelle entreprise, immatriculée le 27 septembre 2026 (annonce au BODACC)." },
+  { cc: "FR", place: "Marseille", date: "3 oct. 2026", source: "Contrôle du site", event: "Son site affiche une page d'erreur (HTTP 404) au lieu d'une page d'accueil." },
 ];
 
 
@@ -144,7 +148,7 @@ export async function Home({ lang }: { lang: HomeLang }) {
                   <div className="hp-stage__cities" role="tablist" aria-label={t.countryPick}>
                     {CC.map((cc, k) => (
                       <button type="button" role="tab" className="hp-city" data-cc={cc} aria-selected={k === 0} key={cc}>
-                        <I n={FLAG[cc]} c="hp-flag" />{COUNTRIES[cc].name[lang]}
+                        <span className="hp-cflag"><I n={FLAG[cc].replace("f-", "fs-")} c="hp-flag" /></span>{COUNTRIES[cc].name[lang]}
                       </button>))}
                   </div>
                 </div>
@@ -154,7 +158,7 @@ export async function Home({ lang }: { lang: HomeLang }) {
                 <svg className="hp-link" aria-hidden="true"><defs><linearGradient id="hp-g-link" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#E2C894" stopOpacity=".95" /><stop offset="1" stopColor="#E2C894" stopOpacity=".35" /></linearGradient></defs><path d="" /><circle cx="-99" cy="-99" r="3.2" /></svg>
                 <ol className="hp-sigs">
                   {SIGNALS.map((g, k) => (
-                    <li className={`hp-sig${k === 0 ? " is-active" : ""}`} data-city={g.place} data-cc={g.cc} key={g.place}>
+                    <li className={`hp-sig${k === 0 ? " is-active" : ""}`} data-city={g.place} data-cc={g.cc} key={g.cc + k}>
                       <p className="hp-sig__meta"><time>{g.date}</time><span className="hp-src"><I n="doc" />{g.source}</span></p>
                       <p className="hp-sig__who"><R t={"x".repeat(14 - (k % 3) * 2)} /><span className="hp-sr">{c.hidden},</span><span className="hp-sig__place"><I n="pin" />{g.place}</span></p>
                       <p className="hp-sig__event">{g.event}</p>

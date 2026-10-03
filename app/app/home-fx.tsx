@@ -114,7 +114,7 @@ export function HomeFx() {
         const pin = pinOf(sigs[idx]);
         if (!desktop() || !pin) { linkPath.setAttribute("d", ""); linkDot.setAttribute("cx", "-99"); return; }
         const st = stage.getBoundingClientRect(), card = sigs[idx].getBoundingClientRect(), pr = $(".hp-pin__dot", pin)!.getBoundingClientRect();
-        const x1 = card.left - st.left + 30, y1 = card.bottom - st.top, x2 = pr.left + pr.width / 2 - st.left, y2 = pr.top + pr.height / 2 - st.top - 9;
+        const x1 = card.left - st.left + 30, y1 = card.bottom - st.top, x2 = pr.left + pr.width / 2 - st.left, y2 = pr.top - st.top - 3;
         linkPath.setAttribute("d", `M${x1.toFixed(1)} ${y1.toFixed(1)} C${x1.toFixed(1)} ${(y1 + (y2 - y1) * 0.6).toFixed(1)} ${x2.toFixed(1)} ${(y2 - (y2 - y1) * 0.5).toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`);
         linkDot.setAttribute("cx", x1.toFixed(1)); linkDot.setAttribute("cy", y1.toFixed(1));
         if (animate && !reduce && linkPath.animate) { const L = linkPath.getTotalLength(); linkPath.animate([{ strokeDasharray: `${L}`, strokeDashoffset: L }, { strokeDasharray: `${L}`, strokeDashoffset: 0 }], { duration: 1000, easing: "cubic-bezier(.16,1,.3,1)" }); }
@@ -136,7 +136,7 @@ export function HomeFx() {
         // Karte blendet über: Linie erst nach dem Überblenden neu zeichnen
         timers.push(window.setTimeout(() => { drawLink(true); linkLater(); }, prev.dataset.cc !== cur.dataset.cc ? 450 : 0));
       };
-      chips.forEach((c) => on(c, "click", () => { hold = Date.now() + 14000; show(sigs.findIndex((s) => s.dataset.cc === c.dataset.cc)); }));
+      chips.forEach((c) => on(c, "click", () => { hold = Date.now() + 8000; show(sigs.findIndex((s) => s.dataset.cc === c.dataset.cc)); }));
       show(idx);
       fonts.then(() => timers.push(window.setTimeout(() => { if (list) list.style.height = sigs[idx].offsetHeight + "px"; drawLink(true); linkLater(); }, 1500)));
       on(window, "resize", () => { if (list) list.style.height = sigs[idx].offsetHeight + "px"; drawLink(false); }, { passive: true });
