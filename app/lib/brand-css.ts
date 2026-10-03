@@ -455,4 +455,6 @@ export const BRAND_CSS = `
 .bx .leadp .lock dt{white-space:nowrap;flex:none}
 .bx .leadp .lock dd.gold{color:var(--gold2);font-weight:600}
 @media (max-width:640px){.bx .pf-chip{font-size:13.5px;padding:8px 12px;gap:6px}.bx .pf-chip span:before{width:10px;margin-right:4px}.bx .pf-row{grid-template-columns:1fr}.bx .pf-go{flex-direction:column;align-items:stretch;text-align:center}.bx .pf-go .btn{width:100%;justify-content:center}}
+/* Linien-Icons (app/icons.tsx): Textgröße, auf der Grundlinie */
+.ico{display:inline-block;vertical-align:-0.18em;flex:none}
 `;

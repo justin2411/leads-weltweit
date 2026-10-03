@@ -416,4 +416,6 @@ export const HUD_CSS = `
 .agc-t{font-size:12px;color:var(--soft)}.ghost2{padding:6px 12px;border-radius:8px;cursor:pointer;font-size:13px}
 @media (prefers-reduced-motion:no-preference){.ag.st-laeuft .ag-ring{animation:jv-spin 2.4s linear infinite}.ag.st-offen .ag-orb{animation:jv-blink 2s ease-in-out infinite}}
 @media (max-width:720px){.ag,.ag-drop{flex:0 0 150px}.ag-drop>.ag{flex:1}}
+/* Linien-Icons (app/icons.tsx): Textgröße, auf der Grundlinie */
+.ico{display:inline-block;vertical-align:-0.18em;flex:none}
 `;
