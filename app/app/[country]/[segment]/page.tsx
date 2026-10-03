@@ -23,7 +23,7 @@ import S2_FR from "@/content/maps/s2-fr.json";
 // Kartenumriss als statische Datei (scripts/map_svg.py), im HTML nur die Pins
 const mapOf = (m: unknown, src: string): MapData => ({ ...(m as MapData), land: "", borders: "", neighbors: "", src });
 const MAPS: Record<string, MapData> = {
-  "S2:US": mapOf(S2_US, "/maps/s2-us.svg"), "S2:UK": { ...mapOf(S2_UK, "/maps/s2-uk.svg"), crop: "190 130 703 440" }, "S2:FR": mapOf(S2_FR, "/maps/s2-fr.svg"),
+  "S2:US": mapOf(S2_US, "/maps/s2-us.svg"), "S2:UK": { ...mapOf(S2_UK, "/maps/s2-uk.svg"), crop: "232 125 711 445" }, "S2:FR": mapOf(S2_FR, "/maps/s2-fr.svg"),
 };
 import { countryWords, localize, segKey } from "@/lib/country";
 import HINTS from "@/content/industry-hints.json";
