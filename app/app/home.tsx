@@ -298,12 +298,21 @@ export async function Home({ lang }: { lang: HomeLang }) {
                     <p className="hp-belt__legend"><span className="hp-belt__yes"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>{t.story.pass}</span><span className="hp-belt__no"><I n="ban" />{t.story.fail}</span></p>
                   </div>
                   <div className="hp-viz" data-viz="3">
+                    {/* Postfach-Ansicht (Inhaber 03.10.2026: „hochwertiger“): Fensterleiste, Absender, Anhänge, Leads mit Anlass und Wert */}
                     <div className="hp-mail">
                       <span className="hp-mail__sheen" />
-                      <div className="hp-mail__head"><span className="hp-mail__logo">N<span>P</span></span><div><b>NextGen Profit</b><small>{t.story.mailSub}</small></div><span className="hp-mail__day">{t.story.mon}</span></div>
-                      <p className="hp-mail__subject">{t.story.mailSubject}</p>
-                      <div className="hp-mail__files"><span><b className="hp-file hp-file--pdf">PDF</b>{t.story.files[0]}</span><span><b className="hp-file hp-file--xls"><I n="table" /></b>{t.story.files[1]}</span></div>
-                      <ul className="hp-mail__leads">{t.story.mailLeads.map((m, k) => <li style={{ "--k": k } as CSSProperties} key={m}><R t={"x".repeat(14 - k)} /><small>{m}</small><Lock /></li>)}</ul>
+                      <div className="hp-mail__bar"><span className="hp-mail__dots"><i /><i /><i /></span><span className="hp-mail__inbox"><I n="inbox" />{t.story.inbox}</span><em>{t.story.mon} 07:00</em></div>
+                      <div className="hp-mail__body">
+                        <div className="hp-mail__head"><span className="hp-mail__logo">N<span>P</span></span><div><b>NextGen Profit</b><small>{t.story.mailSub}</small></div><span className="hp-mail__new"><i />{t.story.isNew}</span></div>
+                        <p className="hp-mail__subject">{t.story.mailSubject}</p>
+                        <div className="hp-mail__files">
+                          <span><b className="hp-file hp-file--pdf">PDF</b><span><strong>{t.story.files[0]}</strong><small>{t.story.fileSub[0]}</small></span></span>
+                          <span><b className="hp-file hp-file--xls"><I n="table" /></b><span><strong>{t.story.files[1]}</strong><small>{t.story.fileSub[1]}</small></span></span>
+                        </div>
+                        <ul className="hp-mail__leads">{t.story.mailLeads.map(([ic, m, sc], k) => (
+                          <li style={{ "--k": k } as CSSProperties} key={m}><span className="hp-mail__ic"><I n={ic} /></span><span className="hp-mail__who"><R t={"x".repeat(14 - k)} /><small>{m}</small></span><span className="hp-mail__sc">{sc}</span><Lock /></li>))}
+                        </ul>
+                      </div>
                     </div>
                     <p className="hp-mail__excl"><I n="lock" />{t.story.excl}</p>
                   </div>
