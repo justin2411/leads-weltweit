@@ -212,7 +212,9 @@ export function countBounces(events: Pick<Ev, "type" | "bounce_type" | "to_email
   return { bounced: hard.size, complained: complained.size };
 }
 
-export type BoxHealth = { box: string; sent: number; bounced: number; complained: number; rate: number; tone: "green" | "gold" | "red" | "grey" };
+export type BoxHealth = { box: string; sent: number; bounced: number; complained: number; rate: number; tone: "green" | "gold" | "red" | "grey";
+  /** Gründe aus der Unzustellbar-Meldung (seit 04.10.2026 gespeichert), z. B. { "5.1.1": 2 } */
+  codes: Record<string, number> };
 export const BOX_WARN = 0.03, BOX_FAIL = 0.05, BOX_MIN = 30;
 
 /**
@@ -221,7 +223,7 @@ export const BOX_WARN = 0.03, BOX_FAIL = 0.05, BOX_MIN = 30;
  * Beschwerde, grau unter 30 Mails (zu wenig für eine Aussage). Mails ohne Absender zählen zum Hauptpostfach.
  */
 export function boxHealth(msgs: { id: string; sent_from: string | null }[],
-                          events: Pick<Ev, "type" | "bounce_type" | "to_email" | "message_id">[]): BoxHealth[] {
+                          events: (Pick<Ev, "type" | "bounce_type" | "to_email" | "message_id"> & { bounce_status?: string | null })[]): BoxHealth[] {
   const key = (from: string | null) => {
     const a = (from ?? "").match(/<([^>]+)>/)?.[1] ?? from ?? "";
     const addr = a.trim().toLowerCase();
@@ -239,7 +241,9 @@ export function boxHealth(msgs: { id: string; sent_from: string | null }[],
     const { bounced, complained } = countBounces(evs.get(box) ?? []);
     const rate = n ? bounced / n : 0;
     const tone = complained ? "red" : n < BOX_MIN ? "grey" : rate >= BOX_FAIL ? "red" : rate >= BOX_WARN ? "gold" : "green";
-    return { box, sent: n, bounced, complained, rate, tone };
+    const codes: Record<string, number> = {};
+    for (const e of evs.get(box) ?? []) if (e.type === "bounced" && e.bounce_status) codes[e.bounce_status] = (codes[e.bounce_status] ?? 0) + 1;
+    return { box, sent: n, bounced, complained, rate, tone, codes };
   });
 }
 
