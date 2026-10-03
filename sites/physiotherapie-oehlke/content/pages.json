@@ -274,14 +274,14 @@
  },
  "alltagstraining-hausbesuch": {
   "title": "Alltagstraining im Hausbesuch · Hockenheim, Schwetzingen & Heidelberg",
-  "description": "Alltagstraining als Hausbesuch im Raum Hockenheim, Schwetzingen und Heidelberg. Aufstehen, Treppensteigen, Transfers – genau dort geübt, wo sie täglich gebraucht werden. 60 Minuten pro Termin.",
+  "description": "Alltagstraining als Hausbesuch im Raum Hockenheim, Schwetzingen und Heidelberg. Aufstehen, Treppensteigen, Transfers: genau dort geübt, wo sie täglich gebraucht werden. 60 Minuten pro Termin.",
   "noindex": false,
   "hero": {
    "img": "assets/images/leistung-alltagstraining.jpg",
    "alt": "Physiotherapeut unterstützt einen älteren Mann beim sicheren Aufstehen vom Stuhl in der eigenen Wohnung",
    "eyebrow": "Leistung im Hausbesuch",
    "h1": "Alltagstraining im Hausbesuch in Hockenheim und Umgebung",
-   "sub": "Individuelles Alltagstraining direkt bei Ihnen zu Hause – für mehr Selbstständigkeit, Sicherheit und Lebensqualität"
+   "sub": "Individuelles Alltagstraining direkt bei Ihnen zu Hause, für mehr Selbstständigkeit, Sicherheit und Lebensqualität"
   },
   "blocks": [
    {
@@ -304,7 +304,7 @@
    },
    {
     "t": "p",
-    "html": "Viele alltägliche Tätigkeiten erscheinen selbstverständlich – bis sie durch Schmerzen, eine Operation, eine Erkrankung oder altersbedingte Einschränkungen plötzlich schwerfallen. Das sichere Aufstehen, Treppensteigen oder Anziehen kann dann zu einer täglichen Herausforderung werden."
+    "html": "Viele alltägliche Tätigkeiten erscheinen selbstverständlich, bis sie durch Schmerzen, eine Operation, eine Erkrankung oder altersbedingte Einschränkungen plötzlich schwerfallen. Das sichere Aufstehen, Treppensteigen oder Anziehen kann dann zu einer täglichen Herausforderung werden."
    },
    {
     "t": "p",
@@ -338,7 +338,7 @@
      "Treppensteigen",
      "Sicheres Gehen innerhalb der Wohnung",
      "Transfers, beispielsweise vom Bett in den Rollstuhl",
-     "An- und Ausziehen",
+     "Anziehen und Ausziehen",
      "Sicherer Umgang mit Rollator oder Gehstock",
      "Bewegungsabläufe in Küche oder Badezimmer",
      "Aufheben und Tragen leichter Gegenstände"
@@ -470,7 +470,7 @@
    },
    {
     "t": "p",
-    "html": "Das Alltagstraining entfaltet seine größte Wirkung dort, wo alltägliche Herausforderungen tatsächlich stattfinden – bei Ihnen zu Hause."
+    "html": "Das Alltagstraining entfaltet seine größte Wirkung dort, wo alltägliche Herausforderungen tatsächlich stattfinden: bei Ihnen zu Hause."
    },
    {
     "t": "ul",
@@ -530,20 +530,20 @@
    },
    {
     "t": "p",
-    "html": "Die Mobile Physiotherapie Oehlke unterstützt Sie mit einem individuell abgestimmten Alltagstraining direkt bei Ihnen zu Hause – persönlich, alltagsnah und mit ausreichend Zeit für Ihre Therapie."
+    "html": "Die Mobile Physiotherapie Oehlke unterstützt Sie mit einem individuell abgestimmten Alltagstraining direkt bei Ihnen zu Hause, persönlich, alltagsnah und mit ausreichend Zeit für Ihre Therapie."
    }
   ]
  },
  "atemtherapie-hausbesuch": {
   "title": "Atemtherapie im Hausbesuch · Hockenheim, Schwetzingen & Heidelberg",
-  "description": "Atemtherapie als Hausbesuch im Raum Hockenheim, Schwetzingen und Heidelberg. Bei COPD, chronischer Bronchitis oder nach Operationen – 60 Minuten Zeit, individuell an Ihre Belastbarkeit angepasst.",
+  "description": "Atemtherapie als Hausbesuch im Raum Hockenheim, Schwetzingen und Heidelberg. Bei COPD, chronischer Bronchitis oder nach Operationen. 60 Minuten Zeit, individuell an Ihre Belastbarkeit angepasst.",
   "noindex": false,
   "hero": {
    "img": "assets/images/leistung-atemtherapie.jpg",
    "alt": "Physiotherapeut leitet einen älteren Mann bei einer Atemübung im Sitzen an",
    "eyebrow": "Leistung im Hausbesuch",
    "h1": "Atemtherapie im Hausbesuch in Hockenheim und Umgebung",
-   "sub": "Individuelle Atemtherapie direkt bei Ihnen zu Hause – zur Unterstützung einer verbesserten Atmung und Mobilität"
+   "sub": "Individuelle Atemtherapie direkt bei Ihnen zu Hause, zur Unterstützung einer verbesserten Atmung und Mobilität"
   },
   "blocks": [
    {
@@ -607,7 +607,7 @@
      "Chronischer Bronchitis",
      "Asthma bronchiale",
      "Lungenentzündung (nach der Akutphase)",
-     "Nach Operationen im Brust- oder Bauchbereich",
+     "Nach Operationen im Brustbereich oder Bauchbereich",
      "Eingeschränkter Belastbarkeit",
      "Immobilität mit verminderter Atemtiefe",
      "Neurologischen Erkrankungen mit eingeschränkter Atemfunktion",
@@ -680,7 +680,7 @@
    },
    {
     "t": "p",
-    "html": "Nach Operationen im Brust- oder Bauchbereich kann die Atmung vorübergehend eingeschränkt sein. Gezielte physiotherapeutische Übungen unterstützen den Wiedereinstieg in den Alltag."
+    "html": "Nach Operationen im Brustbereich oder Bauchbereich kann die Atmung vorübergehend eingeschränkt sein. Gezielte physiotherapeutische Übungen unterstützen den Wiedereinstieg in den Alltag."
    },
    {
     "t": "h3",
@@ -764,7 +764,7 @@
    },
    {
     "t": "p",
-    "html": "Die Mobile Physiotherapie Oehlke unterstützt Sie mit einer individuell abgestimmten Atemtherapie direkt bei Ihnen zu Hause – persönlich, professionell und mit ausreichend Zeit für Ihre Behandlung."
+    "html": "Die Mobile Physiotherapie Oehlke unterstützt Sie mit einer individuell abgestimmten Atemtherapie direkt bei Ihnen zu Hause, persönlich, professionell und mit ausreichend Zeit für Ihre Behandlung."
    }
   ]
  },
@@ -839,12 +839,12 @@
     "items": [
      "Beginn einer physiotherapeutischen Behandlung",
      "Beschwerden des Bewegungsapparates",
-     "Rücken- und Nackenschmerzen",
-     "Schulter-, Hüft- oder Kniebeschwerden",
+     "Rückenschmerzen und Nackenschmerzen",
+     "Beschwerden an Schulter, Hüfte oder Knie",
      "Nach Operationen",
      "Nach Krankenhausaufenthalten",
      "Neurologischen Erkrankungen",
-     "Gleichgewichts- und Gangstörungen",
+     "Gleichgewichtsstörungen und Gangstörungen",
      "Wiederkehrenden Schmerzen",
      "Unsicherheit bei alltäglichen Bewegungen"
     ]
@@ -999,7 +999,7 @@
    },
    {
     "t": "p",
-    "html": "Die Mobile Physiotherapie Oehlke nimmt sich Zeit für eine sorgfältige Befundung und persönliche Beratung direkt bei Ihnen zu Hause – individuell, verständlich und auf Ihre persönlichen Ziele abgestimmt."
+    "html": "Die Mobile Physiotherapie Oehlke nimmt sich Zeit für eine sorgfältige Befundung und persönliche Beratung direkt bei Ihnen zu Hause, individuell, verständlich und auf Ihre persönlichen Ziele abgestimmt."
    }
   ]
  },
@@ -1245,14 +1245,14 @@
  },
  "gangschule-hausbesuch": {
   "title": "Gangschule im Hausbesuch · Hockenheim, Schwetzingen & Heidelberg",
-  "description": "Gangschule als Hausbesuch im Raum Hockenheim, Schwetzingen und Heidelberg. Sicheres Gehen, Gleichgewicht und Rollatortraining – 60 Minuten Zeit, direkt in Ihrer gewohnten Umgebung.",
+  "description": "Gangschule als Hausbesuch im Raum Hockenheim, Schwetzingen und Heidelberg. Sicheres Gehen, Gleichgewicht und Rollatortraining. 60 Minuten Zeit, direkt in Ihrer gewohnten Umgebung.",
   "noindex": false,
   "hero": {
    "img": "assets/images/leistung-gangschule.jpg",
    "alt": "Physiotherapeut übt mit einer älteren Frau das sichere Gehen im Flur ihrer Wohnung",
    "eyebrow": "Leistung im Hausbesuch",
    "h1": "Gangschule im Hausbesuch in Hockenheim und Umgebung",
-   "sub": "Individuelle Gangschule direkt bei Ihnen zu Hause – für mehr Sicherheit, Mobilität und Selbstständigkeit im Alltag"
+   "sub": "Individuelle Gangschule direkt bei Ihnen zu Hause, für mehr Sicherheit, Mobilität und Selbstständigkeit im Alltag"
   },
   "blocks": [
    {
@@ -1265,7 +1265,7 @@
      "Hausbesuche im Rhein-Neckar-Kreis",
      "Für Privatpatienten, Beihilfeberechtigte und Selbstzahler",
      "60 Minuten Behandlungszeit",
-     "Individuelles Gang- und Gleichgewichtstraining",
+     "Individuelles Gangtraining und Gleichgewichtstraining",
      "Alltagstraining direkt in Ihrer gewohnten Umgebung"
     ]
    },
@@ -1316,7 +1316,7 @@
      "Wiederholten Stürzen",
      "Gleichgewichtsstörungen",
      "Altersbedingtem Kraftverlust",
-     "Nach Hüft- oder Knieoperationen",
+     "Nach Hüftoperationen oder Knieoperationen",
      "Nach Knochenbrüchen",
      "Nach längeren Krankenhausaufenthalten",
      "Nach Schlaganfällen",
@@ -1355,7 +1355,7 @@
      "Sicheres Drehen und Wenden",
      "Gehen auf unterschiedlichen Untergründen",
      "Training mit Rollator oder Gehstock",
-     "Ein- und Aussteigen an der Haustür oder im Eingangsbereich"
+     "Einsteigen und Aussteigen an der Haustür oder im Eingangsbereich"
     ]
    },
    {
@@ -1479,20 +1479,20 @@
    },
    {
     "t": "p",
-    "html": "Die Mobile Physiotherapie Oehlke unterstützt Sie mit einer individuell abgestimmten Gangschule direkt bei Ihnen zu Hause – alltagsnah, persönlich und mit ausreichend Zeit für Ihre Therapie."
+    "html": "Die Mobile Physiotherapie Oehlke unterstützt Sie mit einer individuell abgestimmten Gangschule direkt bei Ihnen zu Hause, alltagsnah, persönlich und mit ausreichend Zeit für Ihre Therapie."
    }
   ]
  },
  "geriatrische-physiotherapie-hausbesuch": {
   "title": "Geriatrische Physiotherapie im Hausbesuch · Hockenheim & Umgebung",
-  "description": "Geriatrische Physiotherapie im Hausbesuch in Hockenheim, Schwetzingen, Heidelberg und Umgebung. Schwerpunkt der Mobilen Physiotherapie Oehlke: mehr Mobilität, Selbstständigkeit und Sicherheit im Alter – 60 Minuten Zeit pro Behandlung, für Privatpatienten, Beihilfeberechtigte und Selbstzahler.",
+  "description": "Geriatrische Physiotherapie im Hausbesuch in Hockenheim, Schwetzingen, Heidelberg und Umgebung. Schwerpunkt der Mobilen Physiotherapie Oehlke: mehr Mobilität, Selbstständigkeit und Sicherheit im Alter. 60 Minuten Zeit pro Behandlung, für Privatpatienten, Beihilfeberechtigte und Selbstzahler.",
   "noindex": false,
   "hero": {
    "img": "assets/images/geriatrie.jpg",
    "alt": "Physiotherapeut unterstützt eine ältere Person beim sicheren Gehen mit Gehgestell in der eigenen Wohnung",
    "eyebrow": "Unser Schwerpunkt",
    "h1": "Geriatrische Physiotherapie im Hausbesuch in Hockenheim und Umgebung",
-   "sub": "Ihr Spezialist für geriatrische Physiotherapie – individuelle Behandlung für mehr Mobilität, Selbstständigkeit und Lebensqualität im Alter"
+   "sub": "Ihr Spezialist für geriatrische Physiotherapie: individuelle Behandlung für mehr Mobilität, Selbstständigkeit und Lebensqualität im Alter"
   },
   "blocks": [
    {
@@ -1530,7 +1530,7 @@
    },
    {
     "t": "p",
-    "html": "Ein besonderer Vorteil der mobilen Behandlung besteht darin, dass die Therapie direkt dort stattfinden kann, wo die täglichen Herausforderungen entstehen – in der eigenen Wohnung. Dadurch lassen sich Bewegungsabläufe und Alltagssituationen realitätsnah trainieren und gemeinsam Lösungen entwickeln, die unmittelbar im täglichen Leben umgesetzt werden können."
+    "html": "Ein besonderer Vorteil der mobilen Behandlung besteht darin, dass die Therapie direkt dort stattfinden kann, wo die täglichen Herausforderungen entstehen: in der eigenen Wohnung. Dadurch lassen sich Bewegungsabläufe und Alltagssituationen realitätsnah trainieren und gemeinsam Lösungen entwickeln, die unmittelbar im täglichen Leben umgesetzt werden können."
    },
    {
     "t": "p",
@@ -1538,7 +1538,7 @@
    },
    {
     "t": "p",
-    "html": "Jede Behandlung dauert 60 Minuten. Diese Zeit ermöglicht eine ausführliche Befundung, eine individuell abgestimmte physiotherapeutische Behandlung sowie persönliche Beratung – ohne Zeitdruck und direkt in Ihrer vertrauten Umgebung."
+    "html": "Jede Behandlung dauert 60 Minuten. Diese Zeit ermöglicht eine ausführliche Befundung, eine individuell abgestimmte physiotherapeutische Behandlung sowie persönliche Beratung, ohne Zeitdruck und direkt in Ihrer vertrauten Umgebung."
    },
    {
     "t": "h2",
@@ -1589,7 +1589,7 @@
    },
    {
     "t": "p",
-    "html": "Die meisten Einschränkungen entstehen nicht in einer Physiotherapiepraxis, sondern dort, wo der Alltag stattfindet – zu Hause."
+    "html": "Die meisten Einschränkungen entstehen nicht in einer Physiotherapiepraxis, sondern dort, wo der Alltag stattfindet: zu Hause."
    },
    {
     "t": "p",
@@ -1606,7 +1606,7 @@
      "das Aufstehen vom Sofa oder Stuhl",
      "das Gehen mit oder ohne Rollator",
      "das sichere Bewältigen von Treppen",
-     "das Ein- und Aussteigen aus dem Bett",
+     "das Einsteigen und Aussteigen aus dem Bett",
      "das sichere Bewegen im Badezimmer",
      "das Erreichen von Schränken oder Arbeitsflächen",
      "das sichere Gehen innerhalb der Wohnung",
@@ -1649,7 +1649,7 @@
      "Osteoporose",
      "Parkinson",
      "Schlaganfall",
-     "Zustand nach Hüft- oder Knieoperationen",
+     "Zustand nach Hüftoperationen oder Knieoperationen",
      "längeren Krankenhausaufenthalten",
      "allgemeiner Muskelschwäche",
      "mehreren gleichzeitig bestehenden Erkrankungen",
@@ -1729,7 +1729,7 @@
    },
    {
     "t": "p",
-    "html": "Die geriatrische Physiotherapie setzt genau an diesem Punkt an. Durch gezieltes Kraft-, Gleichgewichts- und Koordinationstraining fördern wir die körperliche Stabilität und unterstützen Sie dabei, sich im Alltag wieder sicherer zu bewegen. Gleichzeitig helfen wir dabei, das individuelle Sturzrisiko möglichst zu reduzieren."
+    "html": "Die geriatrische Physiotherapie setzt genau an diesem Punkt an. Durch gezieltes Krafttraining, Gleichgewichtstraining und Koordinationstraining fördern wir die körperliche Stabilität und unterstützen Sie dabei, sich im Alltag wieder sicherer zu bewegen. Gleichzeitig helfen wir dabei, das individuelle Sturzrisiko möglichst zu reduzieren."
    },
    {
     "t": "h3",
@@ -1801,7 +1801,7 @@
    },
    {
     "t": "p",
-    "html": "Im Rahmen der geriatrischen Physiotherapie trainieren wir gezielt Gleichgewicht, Koordination und Reaktionsfähigkeit. Ziel ist es, die Stand- und Gangsicherheit nachhaltig zu verbessern und dadurch mehr Sicherheit im Alltag zu schaffen."
+    "html": "Im Rahmen der geriatrischen Physiotherapie trainieren wir gezielt Gleichgewicht, Koordination und Reaktionsfähigkeit. Ziel ist es, die Standsicherheit und Gangsicherheit nachhaltig zu verbessern und dadurch mehr Sicherheit im Alltag zu schaffen."
    },
    {
     "t": "h3",
@@ -1882,7 +1882,7 @@
    },
    {
     "t": "h2",
-    "html": "Sturzprävention – <em>Sicherheit im Alltag</em> gezielt stärken"
+    "html": "Sturzprävention: <em>Sicherheit im Alltag</em> gezielt stärken"
    },
    {
     "t": "img",
@@ -1913,7 +1913,7 @@
      "Training der Reaktionsfähigkeit",
      "Verbesserung der Gangsicherheit",
      "Training sicherer Bewegungsabläufe",
-     "Rollator- und Gehhilfentraining",
+     "Rollatortraining und Gehhilfentraining",
      "Erkennen möglicher Stolperfallen in der Wohnung",
      "Empfehlungen zur sicheren Gestaltung des Wohnumfeldes"
     ]
@@ -2167,12 +2167,12 @@
  },
  "index": {
   "title": "Mobile Physiotherapie Oehlke · Hausbesuche in Hockenheim, Schwetzingen & Heidelberg",
-  "description": "Physiotherapie bei Ihnen zu Hause – im Raum Hockenheim, Schwetzingen und Heidelberg, ca. 30 km rund um Hockenheim. 60 Minuten Zeit, ohne Anfahrt und Wartezimmer. Schwerpunkt geriatrische Physiotherapie. Für Privatpatienten, Beihilfeberechtigte & Selbstzahler.",
+  "description": "Physiotherapie bei Ihnen zu Hause, im Raum Hockenheim, Schwetzingen und Heidelberg, ca. 30 km rund um Hockenheim. 60 Minuten Zeit, ohne Anfahrt und Wartezimmer. Schwerpunkt geriatrische Physiotherapie. Für Privatpatienten, Beihilfeberechtigte & Selbstzahler.",
   "noindex": false,
   "hero": {
    "eyebrow": "Hausbesuche · Hockenheim · Schwetzingen · Heidelberg &amp; Umgebung",
    "h1": "Mobile Physiotherapie für <em>Privatpatienten &amp; Selbstzahler</em>",
-   "sub": "Physiotherapie bei Ihnen zu Hause – mit 60 Minuten Zeit, ohne eigene Anfahrt und ohne Wartezimmer. Im Raum Hockenheim, Schwetzingen, Heidelberg und Umgebung."
+   "sub": "Physiotherapie bei Ihnen zu Hause, mit 60 Minuten Zeit, ohne eigene Anfahrt und ohne Wartezimmer. Im Raum Hockenheim, Schwetzingen, Heidelberg und Umgebung."
   },
   "blocks": [
    {
@@ -2208,11 +2208,11 @@
    },
    {
     "t": "quote",
-    "html": "„Ich nehme mir bewusst Zeit – ohne Hektik, ganz in Ruhe in Ihrem gewohnten Umfeld.“"
+    "html": "„Ich nehme mir bewusst Zeit, ohne Hektik, ganz in Ruhe in Ihrem gewohnten Umfeld.“"
    },
    {
     "t": "p",
-    "html": "Es geht nicht nur um Symptome, sondern darum, gemeinsam an Ihren individuellen Therapiezielen zu arbeiten – jede Behandlung in Ihrem Tempo."
+    "html": "Es geht nicht nur um Symptome, sondern darum, gemeinsam an Ihren individuellen Therapiezielen zu arbeiten. Jede Behandlung in Ihrem Tempo."
    },
    {
     "t": "p",
@@ -2256,7 +2256,7 @@
    },
    {
     "t": "p",
-    "html": "Sicheres Gehen und Stehen üben – für mehr Selbstständigkeit, Sicherheit und Vertrauen in die eigene Bewegung."
+    "html": "Sicheres Gehen und Stehen üben, für mehr Selbstständigkeit, Sicherheit und Vertrauen in die eigene Bewegung."
    },
    {
     "t": "h3",
@@ -2280,7 +2280,7 @@
    },
    {
     "t": "p",
-    "html": "Gezielte Handgriffe an Gelenken und Muskeln – mit dem Ziel, die Beweglichkeit zu verbessern und Schmerzen zu lindern."
+    "html": "Gezielte Handgriffe an Gelenken und Muskeln, mit dem Ziel, die Beweglichkeit zu verbessern und Schmerzen zu lindern."
    },
    {
     "t": "h3",
@@ -2317,11 +2317,11 @@
    },
    {
     "t": "h2",
-    "html": "Wieder mobil werden – <em>Schritt für Schritt</em>"
+    "html": "Wieder mobil werden, <em>Schritt für Schritt</em>"
    },
    {
     "t": "p",
-    "html": "Mein Herzensthema: Menschen wieder in Bewegung bringen – aufstehen, gehen, den Alltag selbst meistern. Gemeinsam, in Ihrem Tempo."
+    "html": "Mein Herzensthema: Menschen wieder in Bewegung bringen. Aufstehen, gehen, den Alltag selbst meistern. Gemeinsam, in Ihrem Tempo."
    },
    {
     "t": "ul",
@@ -2333,7 +2333,7 @@
    },
    {
     "t": "quote",
-    "html": "Mein Ziel ist es, dass Sie Ihren Alltag wieder möglichst selbstständig und sicher meistern können – in Ihrem eigenen Zuhause."
+    "html": "Mein Ziel ist es, dass Sie Ihren Alltag wieder möglichst selbstständig und sicher meistern können, in Ihrem eigenen Zuhause."
    },
    {
     "t": "ul",
@@ -2349,7 +2349,7 @@
    },
    {
     "t": "h2",
-    "html": "Ihr Weg zum Hausbesuch – <em>ganz einfach</em>"
+    "html": "Ihr Weg zum Hausbesuch: <em>ganz einfach</em>"
    },
    {
     "t": "p",
@@ -2361,7 +2361,7 @@
    },
    {
     "t": "p",
-    "html": "Sie rufen an oder schreiben über das Formular – ganz unverbindlich."
+    "html": "Sie rufen an oder schreiben über das Formular, ganz unverbindlich."
    },
    {
     "t": "h3",
@@ -2397,7 +2397,7 @@
    },
    {
     "t": "p",
-    "html": "Weiterscrollen — die Schritte gleiten mit"
+    "html": "Weiterscrollen, die Schritte gleiten mit"
    },
    {
     "t": "quote",
@@ -2413,7 +2413,7 @@
    },
    {
     "t": "p",
-    "html": "Ich komme zu Ihnen – im Umkreis von ca. 30 km rund um Hockenheim. Dazu gehören unter anderem:"
+    "html": "Ich komme zu Ihnen im Umkreis von ca. 30 km rund um Hockenheim. Dazu gehören unter anderem:"
    },
    {
     "t": "eyebrow",
@@ -2434,7 +2434,7 @@
     "t": "faq",
     "q": "Was kostet ein Hausbesuch?",
     "a": [
-     "Die Behandlung wird privat abgerechnet. Die Kosten richten sich nach Aufwand und werden vor Beginn der Behandlung transparent mit Ihnen besprochen. Sie erhalten anschließend eine übersichtliche Rechnung, die – je nach Versicherung – zur Erstattung eingereicht werden kann."
+     "Die Behandlung wird privat abgerechnet. Die Kosten richten sich nach Aufwand und werden vor Beginn der Behandlung transparent mit Ihnen besprochen. Sie erhalten anschließend eine übersichtliche Rechnung, die, je nach Versicherung, zur Erstattung eingereicht werden kann."
     ]
    },
    {
@@ -2448,7 +2448,7 @@
     "t": "faq",
     "q": "Für wen ist die mobile Physiotherapie geeignet?",
     "a": [
-     "Für Privatpatienten, Beihilfeberechtigte und Selbstzahler. Gesetzlich Versicherte können die Leistung als Selbstzahler in Anspruch nehmen. Als Selbstzahler tragen Sie die Kosten der Behandlung selbst – eine Erstattung durch die Krankenkasse erfolgt nicht automatisch. Ob und in welcher Höhe sich Ihre Versicherung beteiligt, klären Sie bitte vorab direkt mit ihr."
+     "Für Privatpatienten, Beihilfeberechtigte und Selbstzahler. Gesetzlich Versicherte können die Leistung als Selbstzahler in Anspruch nehmen. Als Selbstzahler tragen Sie die Kosten der Behandlung selbst. Eine Erstattung durch die Krankenkasse erfolgt nicht automatisch. Ob und in welcher Höhe sich Ihre Versicherung beteiligt, klären Sie bitte vorab direkt mit ihr."
     ]
    },
    {
@@ -2469,7 +2469,7 @@
     "t": "faq",
     "q": "In welchem Gebiet kommen Sie zu Hausbesuchen?",
     "a": [
-     "Ich komme im Umkreis von ca. 30 km rund um Hockenheim zu Ihnen – unter anderem nach Hockenheim, Schwetzingen, Heidelberg, Ketsch, Oftersheim, Plankstadt, Reilingen, Altlußheim, Neulußheim, Brühl, Walldorf, Wiesloch, Sandhausen und Eppelheim."
+     "Ich komme im Umkreis von ca. 30 km rund um Hockenheim zu Ihnen, unter anderem nach Hockenheim, Schwetzingen, Heidelberg, Ketsch, Oftersheim, Plankstadt, Reilingen, Altlußheim, Neulußheim, Brühl, Walldorf, Wiesloch, Sandhausen und Eppelheim."
     ]
    },
    {
@@ -2497,7 +2497,7 @@
    },
    {
     "t": "p",
-    "html": "Ich freue mich darauf, Sie kennenzulernen. Rufen Sie mich an oder schreiben Sie mir – ich melde mich zeitnah persönlich bei Ihnen zurück."
+    "html": "Ich freue mich darauf, Sie kennenzulernen. Rufen Sie mich an oder schreiben Sie mir. Ich melde mich zeitnah persönlich bei Ihnen zurück."
    },
    {
     "t": "h3",
@@ -2519,7 +2519,7 @@
  },
  "karriere": {
   "title": "Karriere bei Mobile Physiotherapie Oehlke · Hockenheim",
-  "description": "Physiotherapeutin oder Physiotherapeut mit Interesse an Hausbesuchen? 60 Minuten Behandlungszeit pro Patient, keine 20-Minuten-Taktung, selbstständiges Arbeiten. Initiativbewerbungen jederzeit willkommen.",
+  "description": "Physiotherapeutin oder Physiotherapeut mit Interesse an Hausbesuchen? 60 Minuten Behandlungszeit pro Patient, keine Taktung im Rhythmus von 20 Minuten, selbstständiges Arbeiten. Initiativbewerbungen jederzeit willkommen.",
   "noindex": false,
   "hero": {
    "img": "assets/images/ramon.jpg",
@@ -2545,7 +2545,7 @@
     "t": "ul",
     "items": [
      "60 Minuten Behandlungszeit pro Patient",
-     "Keine Taktung im 20-Minuten-Rhythmus",
+     "Keine Taktung im Rhythmus von 20 Minuten",
      "Moderne Arbeitsweise",
      "Selbstständiges Arbeiten",
      "Persönliche Entwicklungsmöglichkeiten",
@@ -2560,7 +2560,7 @@
    },
    {
     "t": "p",
-    "html": "Ich freue mich über Bewerbungen von engagierten Physiotherapeutinnen und Physiotherapeuten – unabhängig davon, ob Sie Berufseinsteiger sind oder bereits Berufserfahrung mitbringen."
+    "html": "Ich freue mich über Bewerbungen von engagierten Physiotherapeutinnen und Physiotherapeuten, unabhängig davon, ob Sie Berufseinsteiger sind oder bereits Berufserfahrung mitbringen."
    },
    {
     "t": "h3",
@@ -2583,24 +2583,24 @@
    },
    {
     "t": "p",
-    "html": "Aktuell sind nicht dauerhaft Stellen ausgeschrieben – über Initiativbewerbungen freue ich mich jederzeit."
+    "html": "Aktuell sind nicht dauerhaft Stellen ausgeschrieben. Über Initiativbewerbungen freue ich mich jederzeit."
    },
    {
     "t": "p",
-    "html": "Mit dem weiteren Wachstum der Praxis werden regelmäßig neue Möglichkeiten entstehen. Schreiben Sie mir gerne, wer Sie sind und was Sie an der mobilen Physiotherapie reizt – ich melde mich persönlich bei Ihnen zurück."
+    "html": "Mit dem weiteren Wachstum der Praxis werden regelmäßig neue Möglichkeiten entstehen. Schreiben Sie mir gerne, wer Sie sind und was Sie an der mobilen Physiotherapie reizt. Ich melde mich persönlich bei Ihnen zurück."
    }
   ]
  },
  "klassische-massage-hausbesuch": {
   "title": "Klassische Massage im Hausbesuch · Hockenheim & Umgebung",
-  "description": "Klassische Massage als medizinische Behandlung im Hausbesuch, Raum Hockenheim, Schwetzingen und Heidelberg. Bei Verspannungen, Nacken- und Rückenschmerzen – 60 Minuten Zeit.",
+  "description": "Klassische Massage als medizinische Behandlung im Hausbesuch, Raum Hockenheim, Schwetzingen und Heidelberg. Bei Verspannungen, Nackenschmerzen und Rückenschmerzen. 60 Minuten Zeit.",
   "noindex": false,
   "hero": {
    "img": "assets/images/leistung-massage.jpg",
-   "alt": "Physiotherapeut behandelt die verspannte Nacken- und Schultermuskulatur eines Patienten",
+   "alt": "Physiotherapeut behandelt die verspannte Nackenmuskulatur und Schultermuskulatur eines Patienten",
    "eyebrow": "Leistung im Hausbesuch",
    "h1": "Klassische Massage im Hausbesuch in Hockenheim und Umgebung",
-   "sub": "Individuelle klassische Massage direkt bei Ihnen zu Hause – zur Behandlung muskulärer Verspannungen und Schmerzen"
+   "sub": "Individuelle klassische Massage direkt bei Ihnen zu Hause, zur Behandlung muskulärer Verspannungen und Schmerzen"
   },
   "blocks": [
    {
@@ -2647,7 +2647,7 @@
    },
    {
     "t": "p",
-    "html": "Es handelt sich dabei um eine medizinische Massage und nicht um eine Wellness- oder Entspannungsmassage."
+    "html": "Es handelt sich dabei um eine medizinische Massage und nicht um eine Wellnessmassage oder Entspannungsmassage."
    },
    {
     "t": "h2",
@@ -2808,20 +2808,20 @@
    },
    {
     "t": "p",
-    "html": "Die Mobile Physiotherapie Oehlke unterstützt Sie mit einer individuell abgestimmten klassischen Massage direkt bei Ihnen zu Hause – persönlich, professionell und mit ausreichend Zeit für Ihre Behandlung."
+    "html": "Die Mobile Physiotherapie Oehlke unterstützt Sie mit einer individuell abgestimmten klassischen Massage direkt bei Ihnen zu Hause, persönlich, professionell und mit ausreichend Zeit für Ihre Behandlung."
    }
   ]
  },
  "krankengymnastik-hausbesuch": {
   "title": "Krankengymnastik im Hausbesuch · Hockenheim, Schwetzingen & Heidelberg",
-  "description": "Krankengymnastik als Hausbesuch im Raum Hockenheim, Schwetzingen und Heidelberg. 60 Minuten Behandlungszeit, individuell abgestimmt – für Privatpatienten, Beihilfeberechtigte und Selbstzahler.",
+  "description": "Krankengymnastik als Hausbesuch im Raum Hockenheim, Schwetzingen und Heidelberg. 60 Minuten Behandlungszeit, individuell abgestimmt, für Privatpatienten, Beihilfeberechtigte und Selbstzahler.",
   "noindex": false,
   "hero": {
    "img": "assets/images/leistung-krankengymnastik.jpg",
    "alt": "Physiotherapeut leitet eine ältere Patientin bei einer Kräftigungsübung im Wohnzimmer an",
    "eyebrow": "Leistung im Hausbesuch",
    "h1": "Krankengymnastik im Hausbesuch in Hockenheim und Umgebung",
-   "sub": "Individuelle Krankengymnastik direkt bei Ihnen zu Hause – mit persönlicher Betreuung und 60 Minuten Behandlungszeit"
+   "sub": "Individuelle Krankengymnastik direkt bei Ihnen zu Hause, mit persönlicher Betreuung und 60 Minuten Behandlungszeit"
   },
   "blocks": [
    {
@@ -2875,7 +2875,7 @@
     "items": [
      "Verbesserung der Beweglichkeit",
      "Muskelaufbau und Kräftigung",
-     "Koordinations- und Gleichgewichtstraining",
+     "Koordinationstraining und Gleichgewichtstraining",
      "Haltungsschulung",
      "Dehnübungen",
      "Stabilisationsübungen",
@@ -2902,12 +2902,12 @@
    {
     "t": "ul",
     "items": [
-     "Rücken- und Nackenschmerzen",
+     "Rückenschmerzen und Nackenschmerzen",
      "Schulterbeschwerden",
-     "Hüft- und Kniebeschwerden",
+     "Hüftbeschwerden und Kniebeschwerden",
      "Arthrose",
      "Rehabilitation nach Operationen",
-     "Muskel- und Sehnenverletzungen",
+     "Muskelverletzungen und Sehnenverletzungen",
      "Gleichgewichtsstörungen",
      "Gangunsicherheit",
      "Sturzfolgen",
@@ -2971,7 +2971,7 @@
    },
    {
     "t": "p",
-    "html": "Rückenschmerzen gehören zu den häufigsten Gründen für eine physiotherapeutische Behandlung. Ziel ist es, verspannte Muskulatur zu lockern, die Rumpfmuskulatur zu kräftigen und ungünstige Bewegungs- sowie Haltungsmuster langfristig zu verbessern."
+    "html": "Rückenschmerzen gehören zu den häufigsten Gründen für eine physiotherapeutische Behandlung. Ziel ist es, verspannte Muskulatur zu lockern, die Rumpfmuskulatur zu kräftigen und ungünstige Bewegungsmuster sowie Haltungsmuster langfristig zu verbessern."
    },
    {
     "t": "h3",
@@ -2979,7 +2979,7 @@
    },
    {
     "t": "p",
-    "html": "Durch individuell angepasste Mobilisations- und Kräftigungsübungen kann die Beweglichkeit der Schulter verbessert und die Belastbarkeit schrittweise wieder aufgebaut werden. Ziel ist es, alltägliche Bewegungen möglichst schmerzarm ausführen zu können."
+    "html": "Durch individuell angepasste Mobilisationsübungen und Kräftigungsübungen kann die Beweglichkeit der Schulter verbessert und die Belastbarkeit schrittweise wieder aufgebaut werden. Ziel ist es, alltägliche Bewegungen möglichst schmerzarm ausführen zu können."
    },
    {
     "t": "h3",
@@ -3055,20 +3055,20 @@
    },
    {
     "t": "p",
-    "html": "Die Mobile Physiotherapie Oehlke begleitet Sie mit individueller Krankengymnastik direkt bei Ihnen zu Hause – persönlich, professionell und mit ausreichend Zeit für Ihre Therapie."
+    "html": "Die Mobile Physiotherapie Oehlke begleitet Sie mit individueller Krankengymnastik direkt bei Ihnen zu Hause, persönlich, professionell und mit ausreichend Zeit für Ihre Therapie."
    }
   ]
  },
  "lymphdrainage-hausbesuch": {
   "title": "Manuelle Lymphdrainage im Hausbesuch · Hockenheim & Umgebung",
-  "description": "Manuelle Lymphdrainage als Hausbesuch im Raum Hockenheim, Schwetzingen und Heidelberg. Sanfte Grifftechnik bei Lymphödemen und Schwellungen – 60 Minuten Zeit, ohne belastende Anfahrt.",
+  "description": "Manuelle Lymphdrainage als Hausbesuch im Raum Hockenheim, Schwetzingen und Heidelberg. Sanfte Grifftechnik bei Lymphödemen und Schwellungen. 60 Minuten Zeit, ohne belastende Anfahrt.",
   "noindex": false,
   "hero": {
    "img": "assets/images/leistung-lymphdrainage.jpg",
    "alt": "Physiotherapeut behandelt das Bein einer Patientin mit sanften Grifftechniken der Manuellen Lymphdrainage",
    "eyebrow": "Leistung im Hausbesuch",
    "h1": "Manuelle Lymphdrainage im Hausbesuch in Hockenheim und Umgebung",
-   "sub": "Individuelle Manuelle Lymphdrainage direkt bei Ihnen zu Hause – zur Behandlung von Schwellungen und zur Unterstützung des Lymphsystems"
+   "sub": "Individuelle Manuelle Lymphdrainage direkt bei Ihnen zu Hause, zur Behandlung von Schwellungen und zur Unterstützung des Lymphsystems"
   },
   "blocks": [
    {
@@ -3268,20 +3268,20 @@
    },
    {
     "t": "p",
-    "html": "Die Mobile Physiotherapie Oehlke unterstützt Sie mit einer individuell abgestimmten Manuellen Lymphdrainage direkt bei Ihnen zu Hause – persönlich, professionell und mit ausreichend Zeit für Ihre Behandlung."
+    "html": "Die Mobile Physiotherapie Oehlke unterstützt Sie mit einer individuell abgestimmten Manuellen Lymphdrainage direkt bei Ihnen zu Hause, persönlich, professionell und mit ausreichend Zeit für Ihre Behandlung."
    }
   ]
  },
  "manuelle-therapie-hausbesuch": {
   "title": "Manuelle Therapie im Hausbesuch · Hockenheim, Schwetzingen & Heidelberg",
-  "description": "Manuelle Therapie als Hausbesuch im Raum Hockenheim, Schwetzingen und Heidelberg. Gezielte Behandlung von Gelenken, Muskeln und Nerven – 60 Minuten Zeit, individuell abgestimmt.",
+  "description": "Manuelle Therapie als Hausbesuch im Raum Hockenheim, Schwetzingen und Heidelberg. Gezielte Behandlung von Gelenken, Muskeln und Nerven. 60 Minuten Zeit, individuell abgestimmt.",
   "noindex": false,
   "hero": {
    "img": "assets/images/leistung-manuelle-therapie.jpg",
    "alt": "Physiotherapeut behandelt mit gezielten Handgriffen die Schulter einer Patientin",
    "eyebrow": "Leistung im Hausbesuch",
    "h1": "Manuelle Therapie im Hausbesuch in Hockenheim und Umgebung",
-   "sub": "Individuelle Manuelle Therapie direkt bei Ihnen zu Hause – zur gezielten Behandlung von Schmerzen und Bewegungseinschränkungen"
+   "sub": "Individuelle Manuelle Therapie direkt bei Ihnen zu Hause, zur gezielten Behandlung von Schmerzen und Bewegungseinschränkungen"
   },
   "blocks": [
    {
@@ -3364,7 +3364,7 @@
    },
    {
     "t": "p",
-    "html": "Auf Grundlage dieser Untersuchung wird die Behandlung individuell geplant. Je nach Beschwerdebild kommen verschiedene Mobilisations- und Behandlungstechniken zum Einsatz, die darauf abzielen, Schmerzen zu reduzieren und die Beweglichkeit zu verbessern."
+    "html": "Auf Grundlage dieser Untersuchung wird die Behandlung individuell geplant. Je nach Beschwerdebild kommen verschiedene Mobilisationstechniken und Behandlungstechniken zum Einsatz, die darauf abzielen, Schmerzen zu reduzieren und die Beweglichkeit zu verbessern."
    },
    {
     "t": "p",
@@ -3416,11 +3416,11 @@
    },
    {
     "t": "h3",
-    "html": "Manuelle Therapie bei Hüft- und Kniebeschwerden"
+    "html": "Manuelle Therapie bei Hüftbeschwerden und Kniebeschwerden"
    },
    {
     "t": "p",
-    "html": "Funktionsstörungen der Hüft- oder Kniegelenke können Schmerzen und Einschränkungen im Alltag verursachen. Die Behandlung wird individuell an Ihre Beschwerden angepasst und kann die Gelenkfunktion verbessern."
+    "html": "Funktionsstörungen der Hüftgelenke oder Kniegelenke können Schmerzen und Einschränkungen im Alltag verursachen. Die Behandlung wird individuell an Ihre Beschwerden angepasst und kann die Gelenkfunktion verbessern."
    },
    {
     "t": "h2",
@@ -3488,7 +3488,7 @@
    },
    {
     "t": "p",
-    "html": "Die Mobile Physiotherapie Oehlke unterstützt Sie mit einer individuell abgestimmten Manuellen Therapie direkt bei Ihnen zu Hause – persönlich, professionell und mit ausreichend Zeit für Ihre Behandlung."
+    "html": "Die Mobile Physiotherapie Oehlke unterstützt Sie mit einer individuell abgestimmten Manuellen Therapie direkt bei Ihnen zu Hause, persönlich, professionell und mit ausreichend Zeit für Ihre Behandlung."
    }
   ]
  },
@@ -3730,7 +3730,7 @@
    },
    {
     "t": "p",
-    "html": "Hockenheim ist unser Ausgangspunkt: Der Sitz der Mobilen Physiotherapie Oehlke befindet sich in der Leopoldstraße. Entsprechend kurz sind hier die Wege zu Ihnen – von der Innenstadt über die Wohngebiete bis nach Talhaus."
+    "html": "Hockenheim ist unser Ausgangspunkt: Der Sitz der Mobilen Physiotherapie Oehlke befindet sich in der Leopoldstraße. Entsprechend kurz sind hier die Wege zu Ihnen, von der Innenstadt über die Wohngebiete bis nach Talhaus."
    },
    {
     "t": "h2",
