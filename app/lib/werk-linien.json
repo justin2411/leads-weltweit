@@ -1,0 +1,30 @@
+{
+  "_info": "Linien der Werke und ihre Plätze (Inhaber 03.10.2026: „die werke wie maschinen steuern … wv plätze werden belegt“). Gelesen vom Plan-Job (scripts/werk_plan.py) und vom Dashboard (Leitstand). Belegung je Linie stellt der Inhaber im Dashboard ein (owner_settings.slot_plan); ohne Einstellung gelten die Standardwerte hier. Grenzen: höchstens max je Linie (Website-Prüfung 21 = so viele Gedächtnis-Teile lädt lead-werk.yml), Summe aller Linien höchstens total_slots - reserve.",
+  "total_slots": 40,
+  "reserve": 2,
+  "lanes": [
+    { "id": "web-us", "werk": "lead-werk", "label": "Website-Prüfung USA", "short": "WEB·US", "segment": "S2", "country": "US", "default": 21, "max": 21, "workers": 40,
+      "what": "Firmen mit Website in den USA: unsicher, nicht handytauglich, veraltet oder kaputt",
+      "args": "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000" },
+    { "id": "web-uk", "werk": "lead-werk", "label": "Website-Prüfung UK", "short": "WEB·UK", "segment": "S2", "country": "UK", "default": 5, "max": 21, "workers": 40,
+      "what": "Firmen mit Website in Großbritannien: unsicher, nicht handytauglich, veraltet oder kaputt",
+      "args": "--segments S2 --countries UK --web-check --s2-limit 60000 --per 60000 --max-tries 60000" },
+    { "id": "web-fr", "werk": "lead-werk", "label": "Website-Prüfung Frankreich", "short": "WEB·FR", "segment": "S2", "country": "FR", "default": 1, "max": 21, "workers": 40,
+      "what": "Firmen mit Website in Frankreich: unsicher, nicht handytauglich, veraltet oder kaputt",
+      "args": "--segments S2 --countries FR --web-check --s2-limit 60000 --per 60000 --max-tries 60000" },
+    { "id": "web-north", "werk": "lead-werk", "label": "Website-Prüfung IE·NL·BE·SE", "short": "WEB·NORD", "segment": "S2", "country": "IE,NL,BE,SE", "default": 1, "max": 21, "workers": 40,
+      "what": "Firmen mit Website in Irland, Niederlande, Belgien, Schweden (je Land 2.500 je Teil und Lauf)",
+      "args": "--segments S2 --countries IE,NL,BE,SE --web-check --s2-limit 2500 --per 60000 --max-tries 60000" },
+    { "id": "s2-us", "werk": "lead-werk", "label": "Ohne Website USA (Overture)", "short": "OHNE·US", "segment": "S2", "country": "US", "default": 2, "max": 21, "workers": 16,
+      "what": "US-Firmen ohne Website mit E-Mail aus Overture (Neuzugänge im Monatsauszug)",
+      "args": "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000" },
+    { "id": "s1-us-lca", "werk": "lead-werk", "label": "Recruiting USA (DOL LCA)", "short": "S1·US", "segment": "S1", "country": "US", "default": 0, "max": 4, "workers": 16,
+      "what": "US-Arbeitgeber mit Fachkräfte-Bedarf (Personalvermittlung, ruht im Webagentur-Fokus)",
+      "args": "--segments S1 --countries US --fmcsa-days 0 --formd-days 0 --s1-probe 0 --lca --per 4000 --max-tries 4000" },
+    { "id": "s1-uk-tender", "werk": "lead-werk", "label": "Recruiting UK (Find a Tender)", "short": "S1·UK", "segment": "S1", "country": "UK", "default": 0, "max": 4, "workers": 32,
+      "what": "UK-KMU mit gewonnenem öffentlichem Auftrag (Personalvermittlung, ruht im Webagentur-Fokus)",
+      "args": "--segments S1 --countries UK --s1-probe 0 --tender-days 45 --tender-pages 25 --cf-pages 25 --per 4000 --max-tries 4000" },
+    { "id": "kunden", "werk": "kunden-werk", "label": "Käufer prüfen (Kunden-Werk)", "short": "KÄUFER", "segment": "S2", "country": "US,UK,FR", "default": 8, "max": 16, "workers": 16,
+      "what": "Webagenturen und Recruiter aus Overture auf ihrer Website prüfen und als Käufer speichern" }
+  ]
+}

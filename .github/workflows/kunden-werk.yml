@@ -72,16 +72,36 @@ jobs:
           path: out/cache/kunden_known.json
           key: kunden-known-${{ github.run_id }}
 
+  plan:
+    # Belegungsplan (Inhaber 03.10.2026): Teile des Kunden-Werks aus dem Leitstand (owner_settings.slot_plan, Linie
+    # „kunden“), sonst Standard aus app/lib/werk-linien.json
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.p.outputs.matrix }}
+      teile: ${{ steps.p.outputs.teile }}
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install requests
+      - id: p
+        run: python scripts/werk_plan.py kunden-werk
+
   pruefen:
-    needs: pool
-    if: needs.pool.outputs.an == 'true'
+    needs: [pool, plan]
+    if: needs.pool.outputs.an == 'true' && needs.plan.outputs.teile != '0'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     strategy:
       fail-fast: false
-      max-parallel: 8   # Inhaber 01.10.2026: „kunden auf 7 gleichzeitig“, dann „maximale Effizienz für GitHub Pro“
-      matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+      # früher fest 8 (Inhaber 01.10.2026: „kunden auf 7 gleichzeitig“, dann „maximale Effizienz für GitHub Pro“);
+      # jetzt aus dem Belegungsplan (Job plan)
+      max-parallel: 16
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -101,7 +121,7 @@ jobs:
           key: kunden-known-${{ github.run_id }}
       # ca. 150 Firmen/min je Teil: --max reicht für das ganze Zeitfenster, das Zeitfenster beendet den Teil
       - name: Käufer prüfen und speichern
-        run: python scripts/kundenwerk.py run --shard ${{ matrix.shard }}/8 --max 15000 --workers 16 --deadline-min 90 --segments S2,S1 | tee -a "$GITHUB_STEP_SUMMARY"
+        run: python scripts/kundenwerk.py run --shard ${{ matrix.shard }}/${{ matrix.of }} --max 15000 --workers 16 --deadline-min 90 --segments S2,S1 | tee -a "$GITHUB_STEP_SUMMARY"
 
   nachpruefen:
     # Quellen-Scout R20 (03.10.2026): „nur Anruf/Brief“-Käufer mit Firmen-E-Mail, die nur an der fehlenden Rechtsform
@@ -125,7 +145,7 @@ jobs:
 
   weiter:
     # sofort den nächsten Lauf starten (nur bei Schalter an und echter Laufzeit, sonst Cron/Wachhund)
-    needs: [pool, pruefen, nachpruefen]
+    needs: [pool, plan, pruefen, nachpruefen]
     if: always() && needs.pool.outputs.an == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5

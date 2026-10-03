@@ -293,8 +293,10 @@ class LeadTests(unittest.TestCase):
 
     def test_lead_werk_runs_website_check_parts(self):
         import yaml
+        import werk_plan
         jobs = yaml.safe_load((ROOT / ".github" / "workflows" / "lead-werk.yml").read_text())["jobs"]
-        include = jobs["holen"]["strategy"]["matrix"]["include"]
+        reg = werk_plan.load_lines()
+        include = werk_plan.matrix(reg, "lead-werk", werk_plan.counts(reg, None)[0])  # Standardbelegung des Plans
         web = [e for e in include if e["name"].startswith("web-")]
         self.assertEqual({e["name"].rsplit("-", 1)[0]: 0 for e in web}.keys(), {"web-us", "web-uk", "web-fr", "web-north"})
         self.assertGreaterEqual(len(web), 8)  # Inhaber 02.10.2026: „im ganz großen stil“
@@ -314,6 +316,8 @@ class LeadTests(unittest.TestCase):
         loads = sum("Gedächtnis der Website-Prüfung laden" in (s.get("name") or "") for s in jobs["holen"]["steps"])
         for co in ("us", "uk", "fr", "north"):
             self.assertLessEqual(sum(e["name"].startswith(f"web-{co}-") for e in web), loads, co)
+            # auch bei jeder Belegung aus dem Leitstand: nie mehr Teile als geladene Gedächtnis-Teile
+            self.assertLessEqual(next(l["max"] for l in reg["lanes"] if l["id"] == f"web-{co}"), loads, co)
         run = next(s["run"] for s in jobs["holen"]["steps"] if s.get("name") == "Leads holen, prüfen, speichern")
         self.assertIn("--workers ${{ matrix.workers || 16 }}", run)
 

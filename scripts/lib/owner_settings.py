@@ -25,6 +25,8 @@ DEFAULTS = {
     # Werke an/aus per Klick (Inhaber 03.10.2026: „alles direkt per click an und ausschalten können jedes werk“):
     # {"lead-werk": "2026-10-03T18:00:00Z", …} = pausiert seit. Versand = send_paused, Nachfass = followup_enabled.
     "werke_paused": {},
+    # Belegungsplan (Inhaber 03.10.2026): Plätze je Linie, gelesen von scripts/werk_plan.py; {} = Standard
+    "slot_plan": {},
 }
 
 # Schaltbare Werke (Schlüssel wie im Dashboard). Sicherheitsfunktionen sind NIE schaltbar: Abmelde-Link, Resend-Webhook
