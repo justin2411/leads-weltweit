@@ -17,6 +17,7 @@ import re
 import csv
 import datetime as dt
 import json
+import os
 import sys
 import time
 from collections import Counter, defaultdict
@@ -511,9 +512,41 @@ def funnel(leads: list[dict], pools_: dict[str, list[dict]]) -> dict:
                 reasons.update(x.split(" (")[0].split(":")[0] for x in l["qc"]["blocking"] + l["sc"]["problems"])
             if l["ampel"] == "yellow":
                 reasons.update(f"missing:{m}" for m in l["qc"]["missing"])
-        rep[seg] = {"pool": len(pools_.get(seg, pools_.get(seg.replace("/US", ""), []))), "processed": len(ls),
-                    **Counter(l["ampel"] for l in ls), "top_reasons": reasons.most_common(8)}
+        pool = len(pools_.get(seg, pools_.get(seg.replace("/US", ""), [])))
+        rep[seg] = {"pool": pool, "processed": len(ls),
+                    **Counter(l["ampel"] for l in ls), "top_reasons": reasons.most_common(8), "stufen": stages(ls, pool)}
     return rep
+
+
+GUARD_REASONS = ("already", "suppressed", "public", "placeholder", "outside", "shared", "duplicate", "chain", "junk")
+
+
+def stages(ls: list[dict], pool: int) -> dict:
+    """Trichter für das Dashboard (Inhaber 03.10.2026: Filter „wirklich wie ein trichter“): wie viele Kandidaten
+    nach jedem Prüfer übrig sind – Sicherheitsfilter, Befund/Signal gefunden, Kontaktdaten stimmig, Signal und
+    Texte geprüft, vollständig (grün)."""
+    guard = nofind = qc_red = sc_red = yellow = 0
+    for l in ls:
+        if l["ampel"] == "skip":
+            why = (l["qc"].get("blocking") or [""])[0]
+            if str(why).startswith(GUARD_REASONS):
+                guard += 1
+            else:
+                nofind += 1
+        elif l["qc"]["status"] == "red":
+            qc_red += 1
+        elif l["sc"]["status"] == "fail":
+            sc_red += 1
+        elif l["ampel"] == "yellow":
+            yellow += 1
+    n = len(ls)
+    out = {"kandidaten": max(pool, n), "bearbeitet": n}
+    out["sicherheitsfilter"] = n - guard
+    out["befund"] = out["sicherheitsfilter"] - nofind
+    out["kontaktdaten"] = out["befund"] - qc_red
+    out["signal"] = out["kontaktdaten"] - sc_red
+    out["gruen"] = out["signal"] - yellow
+    return out
 
 
 def main(argv=None) -> int:
@@ -557,8 +590,16 @@ def main(argv=None) -> int:
     stats = Counter()
 
     guard = filters.Guard(None)
+    hb = None
     if args.db:
         from lib.db import DB
+        from lib.heartbeat import Heartbeat
+        from lib.owner_settings import stop_if_paused
+        db0 = DB()
+        if args.store and stop_if_paused(db0, "lead-werk", log):  # Schalter im Dashboard (Inhaber 03.10.2026)
+            return 0
+        if args.store:  # Lebenszeichen fürs Dashboard (läuft/steht)
+            hb = Heartbeat(db0, "lead-werk", os.environ.get("RUN_PART") or args.shard or ",".join(countries)).__enter__()
         guard = filters.Guard(DB())
         log(f"Datenbank: {len(guard.known)} Firmen schon bekannt")
     us = "US" in countries
@@ -643,7 +684,10 @@ def main(argv=None) -> int:
             continue
         seg = key.split("/")[0]
         part = run_segment(seg, p.get(key, []), args.per, fetcher, shared, guard, args.workers, args.max_tries,
-                           progress=lambda part: write(out, leads + part, args.per), deadline=deadline)
+                           progress=lambda part: (write(out, leads + part, args.per),
+                                                  hb and hb.update(processed=len(leads) + len(part),
+                                                                   green=sum(l["ampel"] == "green" for l in leads + part))),
+                           deadline=deadline)
         leads += part
         if args.store and guard.db is not None:
             from extraktor.store import store_new
@@ -668,6 +712,9 @@ def main(argv=None) -> int:
     if guard.db is not None:  # Zähler je Lauf fürs Dashboard „Werke“ (Inhaber 03.10.2026)
         from lib.run_stats import record, rows_from_lead_report
         record(guard.db, "lead-werk", rows_from_lead_report(rep["segments"]), started_at, log)
+    if hb:
+        hb.update(processed=len(leads), green=sum(l["ampel"] == "green" for l in leads))
+        hb.__exit__(None, None, None)
     log(f"fertig: {per_seg} grüne Leads -> {out}/leads_gruen.csv")
     for seg, r in rep["segments"].items():
         log(f"  {seg}: Vorrat {r['pool']}, bearbeitet {r['processed']}, grün {r.get('green', 0)}, "

@@ -344,8 +344,11 @@ def fill_up(pool: list[dict], keep: set[str], more) -> list[dict]:
 
 def cmd_run(args) -> int:
     from lib.db import DB
+    from lib.owner_settings import stop_if_paused
     started_at = dt.datetime.now(dt.timezone.utc).isoformat()
     db = DB()
+    if stop_if_paused(db, "kunden-werk", log):
+        return 0
     cfg = load_countries()
     generic = {g.lower() for g in cfg.get("generic_local_parts") or []}
     all_segs = {s["id"]: set(s.get("email_countries") or []) for s in db.select_all("segments", {"select": "id,email_countries"})}
@@ -435,8 +438,11 @@ def cmd_run(args) -> int:
         if rows:
             db.insert("prospects", rows, upsert_on="domain", ignore_duplicates=True)
 
-    with ThreadPoolExecutor(max_workers=args.workers) as ex:
-        list(ex.map(work, pool))
+    from lib.heartbeat import Heartbeat
+    with Heartbeat(db, "kunden-werk", f"pruefen {args.shard or '-'}") as hb, ThreadPoolExecutor(max_workers=args.workers) as ex:
+        for k, _ in enumerate(ex.map(work, pool)):
+            if k % 200 == 0:
+                hb.update(processed=k, green=stats["ok"])
     with lock:
         flush()
     log(f"fertig: {stats['ok']} neue Käufer per E-Mail, {stats['call_only']} nur Anruf/Brief, "
@@ -518,8 +524,11 @@ def cmd_recheck(args) -> int:
     vom Register bestätigt (aktive Ltd/PLC/LLP bzw. SAS/SASU/SARL/EURL/SA) -> dieselbe Prüfregel wie immer
     (lib.rules.check_prospect). Ändert nur den Prüfstand dieser Zeilen, löscht nichts, sendet nie."""
     from lib.db import DB
+    from lib.owner_settings import stop_if_paused
     from enrich import Fetcher
     db = DB()
+    if stop_if_paused(db, "kunden-werk", log):
+        return 0
     cfg = load_countries()
     pairs = [tuple(p.split(":")) for p in args.pairs.split(",") if ":" in p]
     rows = {r["id"]: r for r in recheck_rows(db, pairs, args.max)}
@@ -546,10 +555,14 @@ def cmd_recheck(args) -> int:
             if ns:
                 found[i] = ns
 
-    with ThreadPoolExecutor(max_workers=args.workers) as ex:
-        list(ex.map(work, list(rows)))
+    from lib.heartbeat import Heartbeat
+    with Heartbeat(db, "kunden-werk", "nachpruefen") as hb, ThreadPoolExecutor(max_workers=args.workers) as ex:
+        for k, _ in enumerate(ex.map(work, list(rows))):
+            if k % 100 == 0:
+                hb.update(processed=k, green=len(found))
     hits = verify_numbers(found, rows, fetcher, log=log)
     stats = Counter()
+    stats_ok: dict[int, bool] = {}
     today = dt.date.today().strftime("%d.%m.%Y")
     for i in sorted(done):
         r = rows[i]
@@ -559,6 +572,7 @@ def cmd_recheck(args) -> int:
             sup = r["domain"] in blocked or (r["email"] or "").lower() in blocked
             chk = check_prospect(email=r["email"], country=r["country"], website=r["website"], legal_form=h["form"],
                                  source_url=r["source_url"], size_note=h["note"], suppressed=sup, cfg=cfg)
+        stats_ok[i] = bool(chk and chk.ok)
         if chk and chk.ok:
             vals = {"check_status": "ok", "legal_form": h["form"], "size_note": h["note"][:300],
                     "check_reason": f"{chk.summary()} | {RECHECK_MARK} {today}"[:500],
@@ -582,6 +596,21 @@ def cmd_recheck(args) -> int:
         f"{' (Probelauf, nichts gespeichert)' if args.dry_run else ''}")
     for k, v in sorted(stats.items()):
         log(f"  {k} {v}")
+    if not args.dry_run:  # Trichter der Nachprüfung fürs Dashboard (geprüft -> Nummer -> Register -> mail-fähig)
+        from lib.run_stats import record
+        per: dict[tuple[str, str], Counter] = {}
+        for i in done:
+            k = (rows[i]["segment_id"], rows[i]["country"])
+            c = per.setdefault(k, Counter())
+            c["geprueft"] += 1
+            c["nummer"] += i in found
+            c["register"] += i in hits
+            c["ok"] += stats_ok.get(i, False)
+        record(db, "kunden-werk", [{"segment_id": s, "country": co, "candidates": c["geprueft"], "processed": c["geprueft"],
+                                    "yellow": c["register"], "green": c["ok"], "red": c["geprueft"] - c["ok"], "reasons": {},
+                                    "extra": {"teil": "nachpruefen", "stufen": {"geprueft": c["geprueft"], "nummer": c["nummer"],
+                                                                                "register": c["register"], "ok": c["ok"]}}}
+                                   for (s, co), c in sorted(per.items())], None, log)
     return 0
 
 

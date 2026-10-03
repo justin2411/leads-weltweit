@@ -21,3 +21,6 @@ jobs:
       - run: python scripts/wachhund.py --apply
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          # nur lesend: Schalter des Inhabers (owner_settings), damit pausierte Werke nicht nachgestartet werden
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

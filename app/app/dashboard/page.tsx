@@ -1,5 +1,9 @@
 import Link from "next/link";
-import { COUNTRIES, CONFIG, SEGMENT, canDispatch, loadContacts, loadDaily, loadLive, loadOwnerLog, loadOwnerSettings, loadStock } from "@/lib/dashboard-data";
+import { COUNTRIES, CONFIG, SEGMENT, canDispatch, loadActivity, loadContacts, loadDaily, loadLive, loadOwnerLog, loadOwnerSettings, loadStock } from "@/lib/dashboard-data";
+import { flowSeconds, isLive, werkStatus, type WerkId } from "@/lib/werke-live";
+import { WERK_SWITCHES, werkOn, type WerkKey } from "@/lib/owner-settings";
+import { LiveDot, MailFlight, Pipeline, SampleFactory } from "./live";
+import { WerkSwitch } from "./werk-switch";
 import {
   alerts, chain, compact, funnel, mailboxes, monthly, nextRun, onlySegment, realSubscriptions, sampleStock, stockSegment,
   topAlerts, berlin, berlinDay, currencySign, COUNTRY_COLOR, type StageKey,
@@ -22,6 +26,8 @@ const LOG: Record<string, string> = {
 };
 const LOG_LABEL = (a: string) => LOG[a] ?? a;
 
+const MINI: [WerkKey, WerkId, number][] = [["lead-werk", "lead-werk", 4], ["kunden-werk", "kunden-werk", 5], ["proben-vorrat", "proben-vorrat", 26], ["versand", "versand", 26], ["antworten", "antworten", 30]];
+
 /** Übersicht: Ampel, Prozesskette, je Bereich die wichtigsten Zahlen – Klick führt in die Details. */
 export default async function Overview({ searchParams }: { searchParams: SP }) {
   await requireOwner();
@@ -31,13 +37,14 @@ export default async function Overview({ searchParams }: { searchParams: SP }) {
   const today = berlinDay(new Date());
   const p = period(z, today);
   const from14 = new Date(Date.parse(`${today}T12:00:00Z`) - 13 * 86_400_000).toISOString().slice(0, 10);
-  const [liveAll, contacts, daily, stockAll, own, ownLog] = await Promise.all([
+  const [liveAll, contacts, daily, stockAll, own, ownLog, act] = await Promise.all([
     loadLive(),
     loadContacts(5),
     loadDaily(p.prevFrom < from14 ? p.prevFrom : from14, today),
     Promise.race([stockP.catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 1500))]),
     loadOwnerSettings(),
     loadOwnerLog(6),
+    loadActivity(),
   ]);
   const live = onlySegment(liveAll, SEGMENT);
   const stock = stockSegment(stockAll, SEGMENT);
@@ -46,9 +53,15 @@ export default async function Overview({ searchParams }: { searchParams: SP }) {
 
   const q = (extra: Record<string, string | undefined> = {}) => ({ ...raw, ...extra });
   const here = withQuery("/dashboard", raw);
+  // Kunden-Werk ehrlich aus Lebenszeichen/Läufen statt nur „letzter neuer Käufer“ (Inhaber 03.10.2026: „warum ist kunden werk aus?“)
+  const kSw = werkOn(own, "kunden-werk");
+  const ks = werkStatus({ werk: "kunden-werk", a: act, now, maxH: 5, pausedSince: kSw.since });
+  const kAlert = ks.cls === "t-red" ? [{ level: "rot" as const, area: "Werke", title: `Kunden-Werk ${ks.label}`, detail: ks.why, short: "Kunden-Werk steht" }]
+    : ks.cls === "t-gold" ? [{ level: "gelb" as const, area: "Werke", title: `Kunden-Werk: ${ks.label}`, detail: ks.why, short: "Kunden-Werk: Pool erschöpft" }] : [];
   const amp = topAlerts([
     ...(own.send_paused ? [{ level: "rot" as const, area: "Versand", title: "Versand im Dashboard pausiert", short: "Versand pausiert" }] : []),
-    ...alerts(live, stock, cfg, now, null),
+    ...alerts(live, stock, cfg, now, null).filter((a) => !(a.area === "Werke" && a.title.startsWith("Kunden-Werk"))),
+    ...kAlert,
   ]);
   const dispatch = canDispatch();
 
@@ -67,6 +80,7 @@ export default async function Overview({ searchParams }: { searchParams: SP }) {
   const okRows = stock?.prospects.filter((x) => x.check_status === "ok" && countries.includes(x.country)) ?? [];
   const map: Record<StageKey, string> = { leads: "leads", kaeufer: "kaeufer", mails: "contacted", antworten: "replied", proben: "sample", kunden: "customer", umsatz: "umsatz" };
   const neck = ch.bottleneck ? map[ch.bottleneck] : null;
+  const perHour: Record<string, number> = { leads: act.leads_60m, kaeufer: act.buyers_ok_60m, contacted: act.sent_60m, replied: act.replies_60m, sample: act.stock_sent_60m, customer: 0, umsatz: 0 };
   const steps: { id: string; label: string; value: string; sub: string; href: string; tip: string }[] = [
     { id: "leads", label: "Leads", value: leads === null ? "…" : compact(leads), sub: "lieferbar", href: withQuery("/dashboard/bestand", q()), tip: "lieferbare Leads (Firmen ohne Website)" },
     { id: "kaeufer", label: "Käufer", value: stock ? compact(okRows.reduce((a, x) => a + Number(x.unused), 0)) : "…", sub: "frei", href: withQuery("/dashboard/bestand", q()), tip: `mail-fähige Käufer ohne Mail · gesamt ${compact(okRows.reduce((a, x) => a + Number(x.n), 0))}` },
@@ -100,18 +114,22 @@ export default async function Overview({ searchParams }: { searchParams: SP }) {
       </div>
 
       <div className="th2"><span>Ablauf</span><Link href={withQuery("/dashboard/kontakte", q())} className="more">Wer ist wo ›</Link></div>
-      <ol className="chain" aria-label="Ablauf">
-        {steps.map((s) => (
-          <li key={s.id} className={s.id === neck ? "neck" : ""}>
-            <Link href={s.href} title={s.tip + (s.id === neck ? " · ENGPASS" : "")}>
-              {s.id === neck && <span className="neck-tag">✕ Engpass</span>}
-              <span className="v">{s.value}</span>
-              <span className="l">{s.label}</span>
-              <span className="s">{s.sub}</span>
-            </Link>
-          </li>
-        ))}
-      </ol>
+      <Pipeline steps={steps.map((s) => ({ ...s, perHour: perHour[s.id] ?? 0, neck: s.id === neck }))} flow={flowSeconds} />
+
+      <div className="th2"><span>Werke</span><Link href={withQuery("/dashboard/werke", q())} className="more">Werke ›</Link></div>
+      <div className="werkrow">
+        {MINI.map(([key, werk, maxH]) => {
+          const sw = werkOn(own, key);
+          const s = werkStatus({ werk, a: act, now, maxH, pausedSince: sw.since, off: !sw.on });
+          return (
+            <section key={key} className="card werkmini" title={`${WERK_SWITCHES[key].label}: ${s.label}${s.why ? ` – ${s.why}` : ""}`}>
+              <Link href={withQuery("/dashboard/werke", q())}><LiveDot state={!sw.on ? "off" : s.live ? "live" : s.cls === "t-red" ? "bad" : "idle"} title={s.label} />
+                <span>{WERK_SWITCHES[key].label}<small>{s.label}</small></span></Link>
+              <WerkSwitch werk={key} on={sw.on} back={here} label={WERK_SWITCHES[key].label} />
+            </section>
+          );
+        })}
+      </div>
 
       <div className="tiles">
         <Tile title="Versand & Ergebnisse" href={withQuery("/dashboard/versand", q({ z }))} wide tip={`${p.label}: ${berlin(`${p.from}T12:00:00Z`).slice(0, 6)}–${berlin(`${p.to}T12:00:00Z`).slice(0, 6)} · Vergleich: ${p.prevLabel}`}>
@@ -122,12 +140,14 @@ export default async function Overview({ searchParams }: { searchParams: SP }) {
             <Kpi value={compact(t.positive)} label="Positiv" cur={t.positive} prev={tp.positive} href={list("positive")} />
             <Kpi value={compact(t.samples_sent)} label="Proben" cur={t.samples_sent} prev={tp.samples_sent} href={list("samples_sent")} />
           </div>
+          <MailFlight live={isLive(act, "versand", now)} label={isLive(act, "versand", now) ? `Versand läuft · ${act.sent_15m} Mails in 15 min` : `Versand ruht · letzte Mail ${act.last_sent_at ? berlin(act.last_sent_at) : "–"}`} />
           <Legend series={METRIC_SERIES} />
           <Columns rows={chart} series={METRIC_SERIES} title="Mails, Antworten, Positiv, Proben, Kunden je Tag" height={170} showSum={false} />
         </Tile>
 
         <Tile title="Proben-Vorrat" href={withQuery("/dashboard/proben", q())} tip="fertige, geprüfte Proben je Seite (Ist/Soll)">
-          <div className="fills">{st.map((r) => <Fill key={r.key} label={r.key.split("/")[1]} ready={r.ready} target={r.target} tip={`${r.slug}${r.oldestH !== null ? ` · älteste ${Math.round(r.oldestH)} h` : ""}`} />)}</div>
+          <SampleFactory building={isLive(act, "proben-vorrat", now)} sending={act.stock_sent_60m > 0}
+            stacks={st.map((r) => ({ country: r.key.split("/")[1], ready: r.ready, target: r.target }))} href={withQuery("/dashboard/proben", q())} />
           <div className="mini"><b>{live.sample_requests.filter((r) => r.status === "new" && countries.includes(r.country ?? "")).length}</b> Anfragen offen</div>
         </Tile>
 

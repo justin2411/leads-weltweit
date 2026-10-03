@@ -97,7 +97,7 @@ def make_leads(n, seg="S2", cc="US", start=0):
              "event_summary": "x", "watch_companies": {"name": f"Firma {i}"}} for i in range(start, start + n)]
 
 
-def fake_regional(db, seg, country, region, wish=None, mark=True, picked_out=None, exclude_companies=None):
+def fake_regional(db, seg, country, region, wish=None, mark=True, picked_out=None, exclude_companies=None, **kw):
     """Wie responder.regional_sample: nur freie Leads (new), je Firma einer, genau 10 – sonst nichts."""
     free = [l for l in db.tables["leads"] if l["segment_id"] == seg and l["country"] == country
             and l["status"] == "new" and l["company_id"] not in (exclude_companies or set())]

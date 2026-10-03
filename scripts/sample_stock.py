@@ -47,6 +47,12 @@ BUCKET = "sample-stock"
 PLACEHOLDER = "__EMPFAENGER_DOMAIN__"
 URG_POINTS = {"high": 3, "medium": 2, "low": 1}
 WISH_FILE = ROOT / "app" / "content" / "sample-wishes.ts"
+# Kein Verfall nach Alter für Webagenturen (Inhaber 03.10.2026: „proben sollen nicht entfallen wenn sie zu alt sind …
+# bei webagencys ist das kein thema“). Sicherheit: die Freigabe aller 10 Leads wird alle RECHECK_HOURS erneuert,
+# claim_sample_stock gibt nur Proben mit Freigabe < 26 h heraus.
+NO_EXPIRY = ("S2",)
+NO_EXPIRY_DAYS = 3650
+RECHECK_HOURS = 20
 
 
 # ---------------------------------------------------------------------------- Einstellungen
@@ -172,7 +178,7 @@ def build_one(db, seg: str, country: str, wish: list[str], exclude: set[str], ho
     from responder import regional_sample
     picked: list[dict] = []
     files, _ = regional_sample(db, seg, country, None, wish=wish or None, mark=False, picked_out=picked,
-                               exclude_companies=exclude)
+                               exclude_companies=exclude, gate_context="vorrat")
     if files and not any(n.endswith(".pdf") for n, _ in files):
         # ohne Lead-Report (PDF) keine fertige Probe – die Mail verspricht ihn (Leads bleiben frei)
         raise RuntimeError("PDF-Report nicht erstellt")
@@ -189,7 +195,8 @@ def build_one(db, seg: str, country: str, wish: list[str], exclude: set[str], ho
            "lead_ids": ids, "company_ids": cos, "score": score(picked),
            "newest_event": dates[-1] if dates else None, "oldest_event": dates[0] if dates else None,
            "subject": payload["subject"],
-           "expires_at": (dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=hours)).isoformat()}
+           "expires_at": (dt.datetime.now(dt.timezone.utc)
+                          + (dt.timedelta(days=NO_EXPIRY_DAYS) if seg in NO_EXPIRY else dt.timedelta(hours=hours))).isoformat()}
     if not apply:
         log(f"  würde bauen: {seg}/{country} Wunsch {','.join(wish) or '-'} Score {row['score']}")
         exclude.update(cos)
@@ -201,6 +208,8 @@ def build_one(db, seg: str, country: str, wish: list[str], exclude: set[str], ho
     except Exception:
         remove(db, [path])  # Leads inzwischen anderweitig vergeben: Datei wieder weg, nichts reserviert
         raise
+    # alle 10 Leads haben eben die Drei-Stufen-Freigabe bestanden (regional_sample): Zeitpunkt an der Probe merken
+    db.rpc("mark_sample_stock_checked", {"p_stock": row["id"]})
     exclude.update(cos)
     log(f"  gebaut: {seg}/{country} Wunsch {','.join(wish) or '-'} Score {row['score']} ({path})")
     return row
@@ -209,7 +218,48 @@ def build_one(db, seg: str, country: str, wish: list[str], exclude: set[str], ho
 def stock_rows(db, statuses: str = "ready") -> list[dict]:
     return db.select_all("sample_stock", {"status": f"in.({statuses})", "order": "built_at.desc",
                                           "select": "id,segment_id,country,status,wish,wish_match,company_ids,score,"
-                                                    "built_at,expires_at,storage_path,files_removed_at,sent_at"})
+                                                    "built_at,expires_at,storage_path,files_removed_at,sent_at,"
+                                                    "lead_ids,gate_checked_at"})
+
+
+def verify_stock(db, apply: bool, log=print, max_hours: int = RECHECK_HOURS, fetcher=None) -> dict:
+    """Fertige Proben erneut durch die Drei-Stufen-Freigabe (alle max_hours, live nachgeprüft). Besteht ein Lead
+    nicht, wird die Probe verworfen (Leads frei, durchgefallene auf 'held') und im selben Lauf neu gebaut."""
+    from lib import release_gate as G
+    now = dt.datetime.now(dt.timezone.utc)
+    res = {"geprueft": 0, "bestanden": 0, "verworfen": 0, "verdicts": []}
+    for r in stock_rows(db, "ready"):
+        at = r.get("gate_checked_at")
+        if at and now - dt.datetime.fromisoformat(str(at).replace("Z", "+00:00")) < dt.timedelta(hours=max_hours):
+            continue
+        vs = G.check(db, r["lead_ids"] or [], country=r["country"], allowed_status=("reserved",), own_stock=r["id"],
+                     fetcher=fetcher)
+        res["geprueft"] += 1
+        res["verdicts"] += vs
+        bad = [v for v in vs if not v.ok]
+        if len(vs) != 10:
+            bad = bad or [G.Verdict("", False, 3, ["s3:probe_nicht_10_leads"])]
+        if not apply:
+            log(f"  Probe {r['id']} {r['segment_id']}/{r['country']}: {'besteht' if not bad else 'fällt durch'}"
+                + (f" ({'; '.join(', '.join(v.reasons[:2]) for v in bad[:3])})" if bad else ""))
+            continue
+        if bad:
+            note = "Freigabe nicht bestanden: " + "; ".join(sorted({x for v in bad for x in v.reasons[:2]}))[:250]
+            if db.rpc("discard_sample_stock", {"p_stock": r["id"], "p_note": note}):
+                for v in vs:  # Leads sind jetzt wieder frei: durchgefallene auf 'held'
+                    v.status = "new" if v.status == "reserved" else v.status
+                G.persist(db, vs, "vorrat", log=log)
+                res["verworfen"] += 1
+                log(f"  Probe {r['segment_id']}/{r['country']} verworfen: {note}")
+        else:
+            G.persist(db, vs, "vorrat", log=log)
+            db.rpc("mark_sample_stock_checked", {"p_stock": r["id"]})
+            res["bestanden"] += 1
+    if apply and res["verdicts"]:
+        from lib.run_stats import record
+        record(db, "freigabe", [{**x, "extra": {**x["extra"], "kontext": "vorrat-nachpruefung"}}
+                                for x in G.stats_rows(res["verdicts"])], None, log)
+    return res
 
 
 def cleanup_files(db, log=print) -> int:
@@ -238,16 +288,22 @@ def live_pages(db) -> list[dict]:
 
 def run(db, apply: bool, log=print) -> dict:
     from lib.fokus import focus_pairs
-    from lib.owner_settings import load as load_owner_settings, max_age_hours
+    from lib.owner_settings import load as load_owner_settings, max_age_hours, paused as owner_paused
     owner = load_owner_settings(db)
+    if apply and owner_paused(db, "proben-vorrat", owner):
+        log(f"proben-vorrat: pausiert durch Inhaber (seit {owner_paused(db, 'proben-vorrat', owner)}) – baut und prüft nichts")
+        return {"built": 0, "missing": {}, "summary": {}, "paused": True}
     cfg = settings()
     cfg["max_alter_stunden"] = max_age_hours(cfg["max_alter_stunden"], owner["sample_max_age_hours"])
     t0 = time.monotonic()
     if apply:
-        n = db.rpc("expire_sample_stock", {"p_hours": cfg["max_alter_stunden"]})
+        n = db.rpc("expire_sample_stock", {"p_hours": cfg["max_alter_stunden"]})  # S2 ausgenommen (in der Funktion)
         if n:
-            log(f"{n} Proben verfallen (älter als {cfg['max_alter_stunden']} h) – Leads freigegeben")
+            log(f"{n} Proben verfallen (älter als {cfg['max_alter_stunden']} h, ohne {', '.join(NO_EXPIRY)}) – Leads freigegeben")
         cleanup_files(db, log)
+    v = verify_stock(db, apply, log)
+    if v["geprueft"]:
+        log(f"Freigabe fertiger Proben: {v['geprueft']} geprüft, {v['bestanden']} bestanden, {v['verworfen']} verworfen")
     pages = live_pages(db)
     slug_of = {}
     for p in pages:  # Wunsch-Schlüssel stehen unter dem englischen Seitennamen (FR-Seiten: gleiche Branche)
@@ -378,7 +434,13 @@ def main(argv=None) -> int:
         return 0
     if args.befehl == "test-send":
         return test_send(db, args.apply, args.segment, args.country)
-    res = run(db, args.apply)
+    if args.apply:
+        from lib.heartbeat import Heartbeat
+        with Heartbeat(db, "proben-vorrat", "run") as hb:
+            res = run(db, args.apply)
+            hb.update(processed=len(res.get("summary") or {}), green=res["built"])
+    else:
+        res = run(db, args.apply)
     print(f"\n{res['built']} Proben gebaut" + ("" if args.apply else " (Probelauf)"))
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:

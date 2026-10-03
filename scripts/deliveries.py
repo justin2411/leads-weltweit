@@ -394,7 +394,10 @@ def cmd_add_customer(args) -> int:
 
 def cmd_prepare(args) -> int:
     from lib.db import DB
+    from lib.owner_settings import stop_if_paused
     db = DB()
+    if stop_if_paused(db, "kundenlieferung"):
+        return 0
     period = week_start()
     subs = db.select("subscriptions", {"status": "eq.active",
                                        "select": "*,customers(company_name,country,billing_email,status,"
@@ -441,14 +444,23 @@ def cmd_prepare(args) -> int:
                                                                  "select": "lead_ids,status,period_start"}), period)
         cf = db.select("customer_filters", {"customer_id": f"eq.{s['customer_id']}"})
         picked = select_leads(leads, s, already, details, tags=tags, cfilter=cf[0] if cf else None)
-        # „ohne Website“ vor der Lieferung nachprüfen (Inhaber 02.10.2026); Treffer raus, Lücke neu auffüllen
+        # „ohne Website“ vor der Lieferung nachprüfen (Inhaber 02.10.2026) und jeden Lead durch die Drei-Stufen-Freigabe
+        # (Inhaber 03.10.2026); Durchgefallene raus, Lücke neu auffüllen – geliefert wird nur, was freigegeben ist
+        from lib import release_gate
         from lib.site_recheck import drop_with_site
-        for _ in range(3):
-            bad = drop_with_site(db, picked)
+        country = (s.get("filters") or {}).get("country") or s["customers"]["country"]
+        released: set[str] = set()
+        for _ in range(5):
+            todo = [l for l in picked if l["id"] not in released]
+            bad = drop_with_site(db, todo)
+            ok, _ = release_gate.release(db, [l for l in todo if l["id"] not in bad], context="lieferung", country=country)
+            released |= {l["id"] for l in ok}
+            bad |= {l["id"] for l in todo} - released
             if not bad:
                 break
             leads = [l for l in leads if l["id"] not in bad]
             picked = select_leads(leads, s, already, details, tags=tags, cfilter=cf[0] if cf else None)
+        picked = [l for l in picked if l["id"] in released]
         enrich(db, picked, known)
         if len(picked) < 5:
             db.insert("decisions", {"type": "delivery", "subject": f"Wenig Leads für {s['customers']['company_name']}",
@@ -504,7 +516,10 @@ def cmd_approve(args) -> int:
 
 def cmd_send(args) -> int:
     from lib.db import DB
+    from lib.owner_settings import stop_if_paused
     db = DB()
+    if stop_if_paused(db, "kundenlieferung"):
+        return 0
     todo = db.select("deliveries", {"status": "eq.approved", "select": "*,subscriptions(segment_id,filters,status,"
                                                                        "customers(company_name,country,billing_email,"
                                                                        "status,stripe_customer_id,notes))"})
@@ -535,6 +550,18 @@ def send_delivery(db, d: dict, live: bool) -> str:
         return "skipped"
     ids = d["lead_ids"] or []
     leads = load_leads_by_id(db, ids)
+    if live and leads:
+        # direkt vor dem Versand noch einmal die Drei-Stufen-Freigabe (Inhaber 03.10.2026): Durchgefallene fliegen raus
+        from lib import release_gate
+        ok, _ = release_gate.release(db, leads, context="lieferung-versand", own_delivery=d["id"],
+                                     country=(s.get("filters") or {}).get("country") or c["country"])
+        if len(ok) != len(leads):
+            gone = len(leads) - len(ok)
+            leads = ok
+            ids = [l["id"] for l in ok]
+            db.update("deliveries", {"id": d["id"]}, {"lead_ids": ids,
+                      "note": f"{gone} Lead(s) vor dem Versand von der Freigabe aussortiert"})
+            print(f"  {c['company_name']}: {gone} Lead(s) vor dem Versand aussortiert")
     enrich(db, leads)
     lang = _lang(c["country"])
     period = dt.date.fromisoformat(d["period_start"])

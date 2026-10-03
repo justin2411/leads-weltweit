@@ -12,7 +12,8 @@ import { db, suppressEmail } from "@/lib/supabase";
 import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadOwnerSettings } from "@/lib/dashboard-data";
 import {
   InputError, PACKAGES, WORKFLOWS, toggleIn, validateCountryLimits, validateCustomer, validateFollowupDays, validateMaxAge,
-  validateNote, validateReplyKind, validateSampleTargets, type SettingKey, type WorkflowKey,
+  validateNote, validateReplyKind, validateSampleTargets, WERK_SWITCHES, toggleWerkPaused, type SettingKey, type WerkKey,
+  type WorkflowKey,
 } from "@/lib/owner-settings";
 import { requireOwner } from "./actions";
 
@@ -103,6 +104,24 @@ export async function toggleBuyerCountry(f: FormData) {
   await run(f, "gespeichert", async () => {
     const s = await loadOwnerSettings();
     await setSetting("buyer_countries_off", toggleIn(s.buyer_countries_off, String(f.get("country")), COUNTRIES));
+  });
+}
+
+// ------------------------------------------------------------------------------------------- Werke an/aus
+/** Ein Werk per Klick an- oder ausschalten (Inhaber 03.10.2026). Versand und Nachfass über ihre bestehenden Schalter,
+ *  alle anderen über werke_paused. Sicherheitsfunktionen (Abmeldung, Webhook-Sperren, Sperrliste, Notbremse,
+ *  Abmelde-Erkennung) sind nicht schaltbar. Jede Änderung wird protokolliert (owner_log). */
+export async function toggleWerk(f: FormData) {
+  const key = String(f.get("werk") ?? "") as WerkKey;
+  const want = f.get("on") === "1";
+  await run(f, want ? `${WERK_SWITCHES[key]?.label ?? key} eingeschaltet` : `${WERK_SWITCHES[key]?.label ?? key} pausiert`, async () => {
+    if (!(key in WERK_SWITCHES)) throw new InputError("unbekanntes Werk");
+    const s = await loadOwnerSettings();
+    if (key === "versand") return setSetting("send_paused", !want);
+    if (key === "nachfass") return setSetting("followup_enabled", want);
+    const cur = s.werke_paused ?? {};
+    if (!!cur[key] === !want) return; // schon so
+    await setSetting("werke_paused", toggleWerkPaused(cur, key, new Date().toISOString()));
   });
 }
 

@@ -207,6 +207,37 @@ def check_web_samples(c: Check, db) -> None:
         c.add("Proben", OK, "Alle Probe-Anfragen von der Website beantwortet")
 
 
+def check_release_gate(c: Check, db) -> None:
+    """Drei-Stufen-Freigabe: Fehlerquote der täglichen Stichprobe je Land (über 2 % gelb, über 5 % rot) und
+    pausierte Werke (Inhaber 03.10.2026)."""
+    import datetime as _dt
+    from freigabe import LIMIT_RED, LIMIT_YELLOW
+    since = (_dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(hours=30)).isoformat()
+    rows = db.select("run_stats", {"werk": "eq.stichprobe", "finished_at": f"gte.{since}", "order": "finished_at.desc",
+                                   "select": "country,candidates,green,reasons,finished_at"})
+    seen = {}
+    for r in rows:
+        seen.setdefault(r["country"], r)
+    if not seen:
+        c.add("Freigabe", WARN, "Keine Freigabe-Stichprobe in den letzten 30 h", "freigabe-stichprobe.yml prüfen")
+    for co, r in sorted(seen.items()):
+        n = int(r.get("candidates") or 0)
+        rate = (n - int(r.get("green") or 0)) / n if n else None
+        top = ", ".join(f"{k} {v}" for k, v in sorted((r.get("reasons") or {}).items(), key=lambda x: -x[1])[:3])
+        if rate is None:
+            c.add("Freigabe", WARN, f"Stichprobe {co}: keine freien Leads geprüft")
+        elif rate > LIMIT_RED:
+            c.add("Freigabe", FAIL, f"Stichprobe {co}: Fehlerquote {rate:.1%} ({n} geprüft)", top)
+        elif rate > LIMIT_YELLOW:
+            c.add("Freigabe", WARN, f"Stichprobe {co}: Fehlerquote {rate:.1%} ({n} geprüft)", top)
+        else:
+            c.add("Freigabe", OK, f"Stichprobe {co}: Fehlerquote {rate:.1%} ({n} geprüft)")
+    from lib.owner_settings import load
+    paused = load(db).get("werke_paused") or {}
+    for k, v in sorted(paused.items() if isinstance(paused, dict) else []):
+        c.add("Werke", WARN, f"{k} pausiert durch Inhaber", f"seit {v}")
+
+
 def check_sample_supply(c: Check, db) -> None:
     # gleiche Auswahl wie responder.regional_sample (10 vollständige Leads, je Firma einer), ohne PDF zu bauen
     from deliveries import contact_companies
@@ -434,7 +465,10 @@ def main(argv=None) -> int:
     ap.add_argument("--send", action="store_true")
     args = ap.parse_args(argv)
     from lib.db import DB
+    from lib.owner_settings import stop_if_paused
     db = DB()
+    if stop_if_paused(db, "tagescheck"):
+        return 0
     c = Check()
     c.guard("Abläufe", lambda: check_workflows(c))
     c.guard("Versand", lambda: check_sending(c, db))
@@ -443,6 +477,7 @@ def main(argv=None) -> int:
     c.guard("Proben", lambda: check_web_samples(c, db))
     c.guard("Proben", lambda: check_sample_supply(c, db))
     c.guard("Proben", lambda: check_sample_stock(c, db))
+    c.guard("Freigabe", lambda: check_release_gate(c, db))
     c.guard("Website", lambda: check_website(c, db))
     c.guard("Kunden", lambda: check_customers(c, db))
     c.guard("Werke", lambda: check_werke(c, db))

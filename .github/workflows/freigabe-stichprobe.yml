@@ -1,0 +1,27 @@
+# Freigabe-Stichprobe (Inhaber 03.10.2026: „alle leads müssen individuell geprüft werden, es dürfen keine fehler
+# passieren“): täglich 100 zufällige freie, vollständige Webagentur-Leads (S2) je Land US/UK/FR durch die
+# Drei-Stufen-Freigabe (scripts/lib/release_gate.py, inkl. Live-Nachprüfung des Triggers). Fehlerquote je Land in
+# run_stats -> Dashboard „Werke“ und Tagescheck (über 2 % gelb, über 5 % rot). Durchgefallene Leads gehen nie raus.
+# Sendet nichts, löscht nichts, lädt keine Lead-Daten hoch (öffentliches Repo) – nur Zahlen in der Zusammenfassung.
+name: freigabe-stichprobe
+on:
+  schedule: [{ cron: "7 5 * * *" }]   # 07:07 MESZ
+  workflow_dispatch:
+concurrency: { group: freigabe-stichprobe, cancel-in-progress: false }
+permissions:
+  contents: read
+jobs:
+  stichprobe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RUN_PART: stichprobe
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - name: Stichprobe S2 US/UK/FR
+        run: python scripts/freigabe.py stichprobe --segment S2 --countries US,UK,FR --per 100 --apply

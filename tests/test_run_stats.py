@@ -15,7 +15,7 @@ class RunStatsTest(unittest.TestCase):
         rows = rows_from_lead_report({"S2/US": {"pool": 100, "processed": 80, "green": 50, "yellow": 20, "red": 10,
                                                "top_reasons": [("missing:email", 15), ("signal_too_old", 3)]}})
         self.assertEqual(rows, [{"segment_id": "S2", "country": "US", "candidates": 100, "processed": 80, "green": 50,
-                                 "yellow": 20, "red": 10, "reasons": {"missing:email": 15, "signal_too_old": 3}}])
+                                 "yellow": 20, "red": 10, "reasons": {"missing:email": 15, "signal_too_old": 3}, "extra": {}}])
 
     def test_buyer_stats(self):
         rows = rows_from_buyer_stats({"ok": 5, "S2/US:ok": 4, "S2/US:call_only": 6, "S2/UK:rejected": 1, "fehler": 2}, 30)
@@ -35,3 +35,16 @@ class RunStatsTest(unittest.TestCase):
             def insert(self, *a, **k):
                 raise RuntimeError("Tabelle fehlt")
         self.assertEqual(record(Broken(), "lead-werk", rows, log=lambda *_: None), 0)
+
+class StagesTest(unittest.TestCase):
+    def test_lead_funnel_stages(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+        from extraktor.run import stages
+        mk = lambda a, qc="green", sc="pass", why="": {"ampel": a, "qc": {"status": qc, "blocking": [why] if why else []}, "sc": {"status": sc}}  # noqa: E731
+        ls = [mk("skip", "skip", "skip", "already_in_database"), mk("skip", "skip", "skip", "site_ok"),
+              mk("red", "red"), mk("red", "green", "fail"), mk("yellow", "yellow"), mk("green"), mk("green")]
+        self.assertEqual(stages(ls, 10), {"kandidaten": 10, "bearbeitet": 7, "sicherheitsfilter": 6, "befund": 5,
+                                          "kontaktdaten": 4, "signal": 3, "gruen": 2})
+        rows = rows_from_lead_report({"S2/UK": {"pool": 10, "processed": 7, "stufen": stages(ls, 10)}})
+        self.assertEqual(rows[0]["extra"]["stufen"]["gruen"], 2)
+

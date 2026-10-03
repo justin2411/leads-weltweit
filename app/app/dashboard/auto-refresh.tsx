@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 const KEY = "dash-auto-refresh";
 
-/** Lädt die Übersicht alle 60 s neu, solange der Tab sichtbar ist (abschaltbar, Wahl bleibt im Browser). */
+/** Lädt die Daten alle 30 s ohne Neuladen der Seite nach (router.refresh, Live-Anzeigen der Werke), solange der Tab sichtbar ist (abschaltbar, Wahl bleibt im Browser). */
 export function AutoRefresh() {
   const router = useRouter();
   const [on, setOn] = useState(true);
@@ -20,7 +20,7 @@ export function AutoRefresh() {
     if (!on) return;
     const id = setInterval(() => {
       if (document.visibilityState === "visible") router.refresh();
-    }, 60_000);
+    }, 30_000);
     const onVis = () => document.visibilityState === "visible" && router.refresh();
     document.addEventListener("visibilitychange", onVis);
     return () => {
@@ -34,7 +34,7 @@ export function AutoRefresh() {
       type="button"
       className="ib"
       aria-label={on ? "Auto-Aktualisierung an" : "Auto-Aktualisierung aus"}
-      title={on ? "Automatisch aktualisieren (an, alle 60 s)" : "Automatisch aktualisieren (aus)"}
+      title={on ? "Automatisch aktualisieren (an, alle 30 s)" : "Automatisch aktualisieren (aus)"}
       style={on ? undefined : { opacity: 0.5 }}
       onClick={() => {
         const next = !on;

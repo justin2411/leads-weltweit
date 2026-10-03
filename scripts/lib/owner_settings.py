@@ -22,7 +22,14 @@ DEFAULTS = {
     "sample_targets": {},
     "sample_max_age_hours": None,
     "buyer_countries_off": [],
+    # Werke an/aus per Klick (Inhaber 03.10.2026: „alles direkt per click an und ausschalten können jedes werk“):
+    # {"lead-werk": "2026-10-03T18:00:00Z", …} = pausiert seit. Versand = send_paused, Nachfass = followup_enabled.
+    "werke_paused": {},
 }
+
+# Schaltbare Werke (Schlüssel wie im Dashboard). Sicherheitsfunktionen sind NIE schaltbar: Abmelde-Link, Resend-Webhook
+# (Bounce/Beschwerde-Sperre), Sperrliste, Notbremse und die Abmelde-Erkennung im Antwort-Assistenten.
+WERKE = ("lead-werk", "kunden-werk", "proben-vorrat", "antworten", "kundenlieferung", "tagescheck")
 
 
 def load(db) -> dict:
@@ -36,6 +43,32 @@ def load(db) -> dict:
         if r.get("key") in DEFAULTS and r.get("value") is not None:
             out[r["key"]] = r["value"]
     return out
+
+
+def paused(db, werk: str, settings: dict | None = None) -> str | None:
+    """Zeitpunkt, seit dem der Inhaber dieses Werk pausiert hat, sonst None. Lesefehler = nicht pausiert (die
+    Datei-Schalter config/*.yaml bleiben unabhängig davon wirksam)."""
+    s = settings if settings is not None else load(db)
+    v = (s.get("werke_paused") or {}).get(werk) if isinstance(s.get("werke_paused"), dict) else None
+    return str(v) if v else None
+
+
+def stop_if_paused(db, werk: str, log=print) -> bool:
+    """True = pausiert (Aufrufer beendet sich sauber, Exit 0). Schreibt den Grund auch in die Actions-Zusammenfassung."""
+    import os
+    since = paused(db, werk)
+    if not since:
+        return False
+    msg = f"{werk}: pausiert durch Inhaber (seit {since}) – nichts zu tun"
+    log(msg)
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if path:
+        try:
+            with open(path, "a", encoding="utf-8") as f:
+                f.write(msg + "\n")
+        except OSError:
+            pass
+    return True
 
 
 def _int(v) -> int | None:
