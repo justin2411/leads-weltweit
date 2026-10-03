@@ -73,7 +73,8 @@ export function CondEdit({ c, source, input, pipe, onChange, onRemove, extra }: 
     const cnt = new Map(seen.map((s) => [s.key, s.n]));
     const list = (def?.options ?? []).map((o) => ({ v: o.v, label: o.label, n: cnt.get(o.v) ?? 0 }));
     for (const s of seen) if (s.key !== "–" && !list.some((o) => o.v === s.key)) list.push({ v: s.key, label: s.key, n: s.n });
-    return list.slice(0, 40);
+    // Häufige zuerst (gewählte bleiben sichtbar), leere gedimmt am Ende
+    return list.sort((a, b) => b.n - a.n).slice(0, 40);
   }, [type, seen, def]);
   const sel = new Set(Array.isArray(c.v) ? c.v.map(String) : c.v !== undefined ? [String(c.v)] : []);
   return (
@@ -106,7 +107,7 @@ export function CondEdit({ c, source, input, pipe, onChange, onRemove, extra }: 
           {type === "enum" && ar !== 0 && (
             <div className="bk-chips">
               {chips.map((o) => (
-                <button key={o.v} type="button" className={`bk-c${sel.has(o.v) ? " on" : ""}`}
+                <button key={o.v} type="button" className={`bk-c${sel.has(o.v) ? " on" : ""}${o.n ? "" : " z"}`} aria-pressed={sel.has(o.v)}
                   onClick={() => {
                     if (ar === "list") {
                       const next = new Set(sel);
@@ -421,7 +422,7 @@ export function Inspector({ cfg, rows, source, pipe, probs, ctx, set, remove, cl
           {probs.map((p, i) => <li key={i} className={p.level}><button type="button" tabIndex={-1}><i />{p.msg}</button></li>)}
         </ul>
       )}
-      <div style={{ "--nc": meta.color, display: "grid", gap: 14 } as CSSProperties}>{form}</div>
+      <div style={{ "--nc": meta.color, display: "grid", gridTemplateColumns: "minmax(0,1fr)", gap: 14 } as CSSProperties}>{form}</div>
       <section className="bk-sec">
         <header>
           <h4>Beispiele</h4>

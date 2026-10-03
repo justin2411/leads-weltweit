@@ -95,8 +95,12 @@ test("CSV: Anführungszeichen, Formeln entschärft, BOM, Käufer-Prüfung benann
   assert.equal(csvCell("@SUM(A1)"), "'@SUM(A1)");
   assert.equal(csvCell("+cmd|' /C calc'!A0"), "'+cmd|' /C calc'!A0");
   assert.equal(csvCell("-2+3+cmd"), "'-2+3+cmd");
-  assert.equal(csvCell("+1 (555) 010-0000"), "+1 (555) 010-0000"); // Telefonnummer bleibt
-  assert.equal(csvCell("-5"), "-5");
+  assert.equal(csvCell("+1 (555) 010-0000"), "'+1 (555) 010-0000"); // Excel rechnete sonst
+  assert.equal(csvCell("+1-555-123-4567"), "'+1-555-123-4567");
+  assert.equal(csvCell("+15551234567"), "'+15551234567");
+  assert.equal(csvCell("-2+3"), "'-2+3");
+  assert.equal(csvCell("-5"), "'-5");
+  assert.equal(csvCell(-5), "-5"); // Zahl aus der DB bleibt
   const rows = [row("k1", { firma: "Ä GmbH", pruefung: "call_only" }), row("k2", { firma: "B", pruefung: "ok" })];
   const csv = toCsv(exportColumns("kaeufer", rows), rows);
   assert.ok(csv.startsWith("﻿Firma,Land,"));

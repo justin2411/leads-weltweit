@@ -73,13 +73,21 @@ def _warn(msg: str, log=print) -> None:
 
 
 # ---------------------------------------------------------------------------- Bedingungen
+# Leerraum genau wie JS String.prototype.trim (WhiteSpace + LineTerminator): Python str.strip() kennt U+FEFF nicht und
+# entfernt zusätzlich U+001C–U+001F und U+0085 – darum ausdrücklich diese Liste.
+WS = ("\t\n\v\f\r \u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a"
+      "\u2028\u2029\u202f\u205f\u3000\ufeff")
+# Zahl aus Text wie in flow.ts NUM_RE (kein 0x…, kein 1_000, nur ASCII-Ziffern)
+_NUM_RE = re.compile(r"[ \t\n\r]*[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?[ \t\n\r]*\Z", re.ASCII)
+
+
 def norm(s) -> str:
     s = unicodedata.normalize("NFKD", str(s))
-    return re.sub("[̀-ͯ]", "", s).lower().strip()
+    return re.sub("[̀-ͯ]", "", s).lower().strip(WS)
 
 
 def missing(x) -> bool:
-    return x is None or (isinstance(x, str) and x.strip() == "")
+    return x is None or (isinstance(x, str) and x.strip(WS) == "")
 
 
 def _sv(v) -> str:
@@ -90,15 +98,25 @@ def _sv(v) -> str:
         return "true" if v else "false"
     if isinstance(v, float) and v.is_integer():
         return str(int(v))
+    if isinstance(v, list):  # JS Array.prototype.toString
+        return ",".join(_sv(e) for e in v)
+    if isinstance(v, dict):
+        return "[object Object]"
     return str(v)
 
 
 def _num(v) -> float | None:
+    """Number(v) wie toNum in flow.ts: echte Zahl (kein bool) oder Text in NUM_RE-Schreibweise, sonst None."""
     if isinstance(v, bool):
-        return float(v)
+        return None
     try:
-        f = float(v)
-    except (TypeError, ValueError):
+        if isinstance(v, (int, float)):
+            f = float(v)
+        elif isinstance(v, str) and _NUM_RE.match(v):
+            f = float(v)
+        else:
+            return None
+    except (OverflowError, ValueError):
         return None
     return f if math.isfinite(f) else None
 
@@ -119,10 +137,12 @@ def eval_cond(cond, row: dict) -> bool:
         return (x is True) if op == "ja" else (x is not True)
     if typ == "enum":
         if op in ("in", "nicht_in"):
+            if op == "nicht_in" and missing(x):
+                return True  # wie flow.ts: fehlender Wert ist „nicht in“, auch bei ungültiger Liste
             if not isinstance(v, list):
                 return False
             vals = [_sv(e) for e in v]
-            return (not missing(x) and _sv(x) in vals) if op == "in" else (missing(x) or _sv(x) not in vals)
+            return (not missing(x) and _sv(x) in vals) if op == "in" else _sv(x) not in vals
         hit = not missing(x) and _sv(x) == _sv(v)
         return hit if op == "ist" else not hit
     if typ == "text":

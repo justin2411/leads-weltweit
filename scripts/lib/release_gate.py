@@ -112,11 +112,14 @@ class Verdict:
     country: str = ""
     segment: str = ""
     status: str = ""
+    # Zeitpunkt des Urteils (nicht des Schreibens): flow_release_stale_held vergleicht ihn mit flows.updated_at –
+    # wurde eine Regel nach dem Urteil geändert/gelöst, gibt der Wachhund den Lead an die Freigabe zurück.
+    at: str = field(default_factory=lambda: dt.datetime.now(dt.timezone.utc).isoformat())
 
     def row(self, context: str) -> dict:
         return {"lead_id": self.lead_id, "result": "released" if self.ok else "failed", "failed_stage": self.stage,
                 "reasons": self.reasons[:20], "context": context, "rechecked": self.rechecked,
-                "checked_at": dt.datetime.now(dt.timezone.utc).isoformat()}
+                "checked_at": self.at}
 
 
 # ---------------------------------------------------------------------------- Hilfen
@@ -533,10 +536,11 @@ def check(db, lead_ids: list[str], *, country: str | None = None, allowed_status
           own_delivery: str | None = None, live: bool = True, fetcher=None, today: dt.date | None = None, mx=mx_cached, workers: int = 8,
           items: list[dict] | None = None, owner_rules: bool = True) -> list[Verdict]:
     """Alle Stufen für diese Leads. live=False: ohne Netzabruf (Stufe 1 nur aus den Daten).
-    owner_rules=False: ohne Stufe 4 (Inhaber-Regeln); die Regeln werden je Aufruf einmal geladen."""
+    owner_rules=False: ohne Stufe 4 (Inhaber-Regeln); die Regeln werden je Aufruf einmal geladen – erst NACH der
+    Live-Nachprüfung, direkt vor dem Urteil, damit eine währenddessen gelöste/geänderte Regel nicht mehr zählt
+    (Rest-Fenster bis persist(): Sicherheitsnetz flow_release_stale_held im Wachhund)."""
     today = today or dt.datetime.now(dt.timezone.utc).date()
     items = items if items is not None else load_items(db, lead_ids)
-    rules = load_rules(db) if owner_rules else []
     ctx = load_context(db, items, country, allowed_status, own_stock, own_delivery)
     dups = duplicates(items)
     rechecks: dict[str, tuple[list[str], bool]] = {}
@@ -551,6 +555,7 @@ def check(db, lead_ids: list[str], *, country: str | None = None, allowed_status
             for it, res in zip(todo, ex.map(lambda x: live_recheck(x, fetcher, today), todo)):
                 rechecks[it["id"]] = res
     found = {it["id"]: it for it in items}
+    rules = load_rules(db) if owner_rules else []
     out = [verdict_of(it, today, ctx, dups.get(it["id"]), rechecks.get(it["id"]), mx, rules) for it in items]
     missing = set(lead_ids) - set(found)
     out += [Verdict(x, False, 3, ["s3:lead_nicht_gefunden"]) for x in sorted(missing)]

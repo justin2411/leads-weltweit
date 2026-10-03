@@ -30,7 +30,7 @@ function Tank({ href, h, layers, tk = [], n, label, sub, call, off, title }: {
   const body = (
     <>
       <div className="tk-glass" aria-hidden>
-        {tk.map((t) => <div key={t.label} className="tk-tick" style={{ bottom: `${t.at * 100}%` }}><span>{t.label}</span></div>)}
+        {tk.map((t) => <div key={t.label} className={`tk-tick${t.at > 0.94 ? " top" : ""}`} style={{ bottom: `${t.at * 100}%` }}><span>{t.label}</span></div>)}
         {h > 0 && top ? (
           <div className="tk-liq" style={{ height: `${Math.max(h, 0.025) * 100}%`, "--wc": top.c } as CSSProperties}>
             {shown.map((l, i) => <i key={i} className={i === shown.length - 1 ? "tk-top" : undefined} style={{ "--c": l.c, flex: `0 0 ${l.share * 100}%` } as CSSProperties} />)}
@@ -65,7 +65,10 @@ export default async function Speicher({ searchParams }: { searchParams: SP }) {
   const raw = typeof sp.seg === "string" ? sp.seg : "S2";
   const seg = raw === ALL || /^S\d{1,2}$/.test(raw) ? raw : "S2";
   const [st, pr] = await Promise.all([
-    loadStorage().then((d) => ({ ok: true as const, d }), (e: unknown) => ({ ok: false as const, err: e instanceof Error ? e.message : String(e) })),
+    loadStorage().then((d) => ({ ok: true as const, d }), (e: unknown) => {
+      console.error("speicher:", e); // Details nur im Server-Protokoll, nie im Browser
+      return { ok: false as const };
+    }),
     loadProben().catch(() => null as ProbeRow[] | null),
   ]);
 
@@ -86,7 +89,7 @@ export default async function Speicher({ searchParams }: { searchParams: SP }) {
         <span className="sp-at">{st.ok ? `Stand ${berlin(st.d.at, false)}` : ""}</span>
       </div>
       {st.ok ? <Body d={st.d} seg={seg} proben={pr} /> : (
-        <section className="sp-card sp-err"><p className="sp-none">Speicher-Zahlen gerade nicht erreichbar – gleich noch einmal laden. ({st.err.slice(0, 160)})</p></section>
+        <section className="sp-card sp-err"><p className="sp-none">Speicher-Zahlen gerade nicht erreichbar – gleich noch einmal laden.</p></section>
       )}
     </div>
   );
@@ -141,8 +144,8 @@ function Body({ d, seg, proben }: { d: Storage; seg: string; proben: ProbeRow[] 
             <Tank key={t.country} href={baukastenHref(t.country, seg, "kaeufer")} h={logHeight(t.mail, bTop)} tk={bTicks} off={!t.mailCountry}
               layers={[{ c: "var(--b-sent)", n: t.sent, title: "angeschrieben" }, { c: "var(--b-frei)", n: t.free, title: "noch frei" }]}
               n={t.mailCountry ? big(t.mail) : "–"} label={t.country}
-              sub={t.mailCountry ? <><b>{big(t.free)}</b> frei · {big(t.sent)} angeschr.</> : "kein Mail-Land"}
-              call={t.callOnly > 0 ? <span className="tk-call" title="zählt nicht als Käufer">☎ {big(t.callOnly)} nur Anruf/Brief</span> : undefined}
+              sub={t.mailCountry ? <><span><b>{big(t.free)}</b> frei</span><span className="dot"> · </span><span>{big(t.sent)} angeschr.</span></> : "kein Mail-Land"}
+              call={t.callOnly > 0 ? <span className="tk-call" title="zählt nicht als Käufer">☎ {big(t.callOnly)} <span>nur Anruf/Brief</span></span> : undefined}
               title={t.mailCountry ? `mail-fähig ${t.mail.toLocaleString("de-DE")} · angeschrieben ${t.sent.toLocaleString("de-DE")} · noch frei ${t.free.toLocaleString("de-DE")} · nur Anruf/Brief ${t.callOnly.toLocaleString("de-DE")}` : `kein Mail-Land dieser Zielgruppe · nur Anruf/Brief ${t.callOnly.toLocaleString("de-DE")}`} />
           ))}
         </div>

@@ -21,14 +21,27 @@ def req(i, wf, minutes_ago, status="offen"):
 
 
 class FakeDB:
-    def __init__(self, rows):
+    def __init__(self, rows, paused=None, settings_down=False):
         self.rows = rows
+        self.paused = paused
+        self.settings_down = settings_down
         self.updates = []
         self.selects = []
+        self.rpcs = []
 
     def select(self, table, params=None):
         self.selects.append((table, params))
+        if table == "owner_settings":
+            if self.settings_down:
+                raise RuntimeError("Supabase GET …/owner_settings: 503")
+            return [{"key": "werke_paused", "value": self.paused}] if self.paused is not None else []
         return [r for r in self.rows if r["status"] == "offen"]
+
+    def rpc(self, fn, args):
+        self.rpcs.append(fn)
+        if fn == "flow_release_stale_held":
+            return 3
+        raise RuntimeError("unbekannt")
 
     def update(self, table, match, values):
         self.updates.append((table, match, values))
@@ -51,6 +64,18 @@ class PlanStartsTest(unittest.TestCase):
         got = w.plan_starts([req(1, "lead-werk", 5), req(2, "kunden-werk", 5)], settings, NOW)
         self.assertEqual([(r["id"], what) for r, what, _ in got], [("id1", "verworfen"), ("id2", "starten")])
         self.assertIn("pausiert durch Inhaber", got[0][2])
+
+    def test_file_switches_apply_to_requests(self):
+        orig = w.cfg
+        w.cfg = lambda name, key: "false" if (name, key) == ("pipeline.yaml", "lead_suche") else "true"
+        try:
+            got = w.plan_starts([req(1, "lead-werk", 5), req(2, "kunden-werk", 5), req(3, "proben-vorrat", 5)], None, NOW)
+        finally:
+            w.cfg = orig
+        by = {r["id"]: (what, why) for r, what, why in got}
+        self.assertEqual(by["id1"], ("verworfen", "Lead-Suche pausiert (config/pipeline.yaml)"))
+        self.assertEqual(by["id2"][0], "starten")
+        self.assertEqual(by["id3"][0], "starten")
 
     def test_whitelist_never_contains_sending(self):
         files = {v["wf"] for v in w.START_WF.values()}
@@ -90,11 +115,40 @@ class HandleStartsTest(unittest.TestCase):
         self.assertEqual(db.updates, [])
 
     def test_paused_is_not_dispatched(self):
-        db = FakeDB([req(1, "kunden-werk", 5)])
-        settings = {"werke_paused": {"kunden-werk": "2026-10-03T18:00:00Z"}}
-        started = w.handle_starts(db, settings, lambda *_: self.fail("pausiert darf nicht starten"), NOW, apply=True)
+        # Pause frisch aus der DB, auch wenn die beim Start geladenen Einstellungen (noch) keine Pause kannten
+        db = FakeDB([req(1, "kunden-werk", 5)], paused={"kunden-werk": "2026-10-03T18:00:00Z"})
+        started = w.handle_starts(db, {"werke_paused": {}}, lambda *_: self.fail("pausiert darf nicht starten"), NOW, apply=True)
         self.assertEqual(started, [])
         self.assertEqual(db.updates[0][2]["status"], "verworfen")
+
+    def test_unreadable_settings_leave_requests_open(self):
+        db = FakeDB([req(1, "lead-werk", 5)], settings_down=True)
+        started = w.handle_starts(db, None, lambda *_: self.fail("ohne lesbare Pausen kein Start"), NOW, apply=True)
+        self.assertEqual(started, [])
+        self.assertEqual(db.updates, [])
+        self.assertNotIn("start_requests", [t for t, _ in db.selects])
+
+    def test_running_workflow_is_not_dispatched_twice(self):
+        db = FakeDB([req(1, "lead-werk", 5), req(2, "kunden-werk", 5)])
+        calls = []
+        started = w.handle_starts(db, None, lambda wf, i: (calls.append(wf), (True, ""))[1], NOW, apply=True,
+                                  running=lambda wf: wf == "lead-werk.yml")
+        self.assertEqual(started, ["kunden-werk.yml"])
+        self.assertEqual(calls, ["kunden-werk.yml"])
+        by_id = {m["id"]: v for _, m, v in db.updates}
+        self.assertEqual((by_id["id1"]["status"], by_id["id1"]["note"]), ("gestartet", "läuft bereits"))
+
+    def test_is_running(self):
+        self.assertTrue(w.is_running([{"status": "completed"}, {"status": "queued"}]))
+        self.assertFalse(w.is_running([{"status": "completed"}] * 3 + [{"status": "in_progress"}]))
+
+    def test_release_stale_held_never_raises(self):
+        self.assertEqual(w.release_stale_held(FakeDB([])), 3)
+
+        class Down:
+            def rpc(self, *a):
+                raise RuntimeError("PGRST202")
+        self.assertEqual(w.release_stale_held(Down()), 0)
 
 
 class WorkflowEnvTest(unittest.TestCase):

@@ -16,7 +16,7 @@ import {
   type SettingKey, type WerkKey, type WorkflowKey,
 } from "@/lib/owner-settings";
 import LANES from "@/lib/werk-linien.json";
-import { START_WORKFLOWS, fmtBerlin, isStartKey, nextPickup, type StartKey } from "@/lib/start-queue";
+import { COND_LABEL, RECENT_START_MIN, START_WORKFLOWS, fmtBerlin, isStartKey, nextPickup, type StartKey } from "@/lib/start-queue";
 import { requireOwner } from "./actions";
 
 const BY = "Inhaber Dashboard";
@@ -173,6 +173,31 @@ async function ghDispatch(token: string, file: string, inputs: Record<string, st
   }
 }
 
+/** Läuft der Ablauf schon (oder wartet er)? Wie wachhund.py overdue(): die letzten 3 Läufe auf main. Fehler → false
+ *  (dann höchstens ein Lauf zusätzlich in der Warteschlange, nie ein ausgelassener Start). */
+async function ghRunning(token: string, file: string): Promise<boolean> {
+  const repo = process.env.GH_REPO?.trim() || "justin2411/leads-weltweit";
+  try {
+    const r = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/${file}/runs?per_page=3&branch=main`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" }, signal: AbortSignal.timeout(5000), cache: "no-store",
+    });
+    if (!r.ok) return false;
+    const j = (await r.json()) as { workflow_runs?: { status?: string }[] };
+    return (j.workflow_runs ?? []).some((x) => ["queued", "in_progress", "waiting", "requested", "pending"].includes(String(x.status)));
+  } catch {
+    return false;
+  }
+}
+
+/** Pausen der Werke – anders als loadOwnerSettings() ohne Rückfall auf Standardwerte: ist owner_settings nicht
+ *  lesbar, startet nichts (ein pausiertes Werk darf nie aus Versehen loslaufen). */
+async function pausedStrict(): Promise<Record<string, unknown>> {
+  const { data, error } = await db().from("owner_settings").select("value").eq("key", "werke_paused").abortSignal(AbortSignal.timeout(5000)).maybeSingle();
+  if (error) throw new InputError("Einstellungen nicht lesbar – kein Start");
+  const v = data?.value;
+  return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+}
+
 export async function dispatchWorkflow(f: FormData) {
   await run(f, "gestartet", async () => {
     const key = String(f.get("wf")) as WorkflowKey;
@@ -195,15 +220,22 @@ export async function dispatchWorkflow(f: FormData) {
  *  startet. Ein schon offener Wunsch wird nicht verdoppelt. Gibt den Text für den Inhaber zurück. */
 async function startWerk(key: StartKey): Promise<string> {
   const spec = START_WORKFLOWS[key];
-  if (spec.pause && (await loadOwnerSettings()).werke_paused?.[spec.pause]) throw new InputError(`${spec.label} ist pausiert – erst einschalten`);
+  if (spec.cond && !CONFIG[spec.cond]) throw new InputError(`${COND_LABEL[spec.cond]} ist in config/pipeline.yaml aus – kein Start`);
+  if (spec.pause && (await pausedStrict())[spec.pause]) throw new InputError(`${spec.label} ist pausiert – erst einschalten`);
   const sb = db();
   const now = new Date();
   const { data: open, error: e0 } = await sb.from("start_requests").select("id").eq("workflow", key).eq("status", "offen").limit(5);
   if (e0) throw new Error(e0.message);
+  const since = new Date(now.getTime() - RECENT_START_MIN * 60_000).toISOString();
+  const { data: recent, error: e1 } = await sb.from("start_requests").select("started_at").eq("workflow", key).eq("status", "gestartet")
+    .gte("started_at", since).order("started_at", { ascending: false }).limit(1);
+  if (e1) throw new Error(e1.message);
+  if (recent?.length) return `${spec.label} läuft bereits (gestartet ${fmtBerlin(recent[0].started_at)})`;
   const inputs: Record<string, string> = { ...spec.inputs };
   const token = process.env.GH_DISPATCH_TOKEN?.trim();
   let note: string | null = null;
   if (token) {
+    if (await ghRunning(token, spec.file)) return `${spec.label} läuft bereits`;
     const r = await ghDispatch(token, spec.file, inputs);
     if (r.ok) {
       const at = now.toISOString();

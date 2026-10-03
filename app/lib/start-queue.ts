@@ -4,12 +4,16 @@
  * das Dashboard sofort; ohne Token legt es einen Wunsch in signalwerk.start_requests ab, den der Wachhund
  * (scripts/wachhund.py, START_WF – gleiche Liste) spätestens beim nächsten Lauf startet. Der Versand ist NIE dabei.
  */
+// cond = Datei-Schalter in config/pipeline.yaml (wie wachhund.py JOBS „cond“): aus → kein Start, auch nicht direkt.
 export const START_WORKFLOWS = {
-  "lead-werk": { file: "lead-werk.yml", label: "Lead-Werk", inputs: {} as Record<string, string>, pause: "lead-werk" },
-  "kunden-werk": { file: "kunden-werk.yml", label: "Kunden-Werk", inputs: {} as Record<string, string>, pause: "kunden-werk" },
-  "proben-vorrat": { file: "proben-vorrat.yml", label: "Proben-Vorrat", inputs: { befehl: "run", probelauf: "false" } as Record<string, string>, pause: "proben-vorrat" },
-  "freigabe-stichprobe": { file: "freigabe-stichprobe.yml", label: "Freigabe-Stichprobe", inputs: {} as Record<string, string>, pause: null },
+  "lead-werk": { file: "lead-werk.yml", label: "Lead-Werk", inputs: {} as Record<string, string>, pause: "lead-werk", cond: "lead_suche" },
+  "kunden-werk": { file: "kunden-werk.yml", label: "Kunden-Werk", inputs: {} as Record<string, string>, pause: "kunden-werk", cond: "kunden_suche" },
+  "proben-vorrat": { file: "proben-vorrat.yml", label: "Proben-Vorrat", inputs: { befehl: "run", probelauf: "false" } as Record<string, string>, pause: "proben-vorrat", cond: null },
+  "freigabe-stichprobe": { file: "freigabe-stichprobe.yml", label: "Freigabe-Stichprobe", inputs: {} as Record<string, string>, pause: null, cond: null },
 } as const;
+export const COND_LABEL = { lead_suche: "Lead-Suche", kunden_suche: "Käufersuche" } as const;
+/** Ein eben gestarteter Lauf gilt so lange als „läuft bereits“ (kein zweiter Start in die Warteschlange). */
+export const RECENT_START_MIN = 15;
 export type StartKey = keyof typeof START_WORKFLOWS;
 export const isStartKey = (x: unknown): x is StartKey => typeof x === "string" && Object.hasOwn(START_WORKFLOWS, x);
 

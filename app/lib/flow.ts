@@ -249,9 +249,11 @@ export function parseFlow(x: unknown): { ok: true; flow: Flow } | { ok: false; e
 
 // ---------- Bedingungen (identisch in Python) ----------
 export const norm = (s: string) => s.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+// Leerraum = String.prototype.trim (Python: owner_rules.WS, gleiche Liste). Zahlen aus Text nur in dieser Schreibweise
+// (kein 0x…, kein 1_000) – Python: owner_rules._NUM_RE.
 const missing = (x: unknown) => x === null || x === undefined || (typeof x === "string" && x.trim() === "");
-const toNum = (v: unknown) => (v === null || v === undefined || typeof v === "boolean" || Array.isArray(v)
-  || (typeof v === "string" && v.trim() === "") ? NaN : Number(v));
+const NUM_RE = /^[ \t\n\r]*[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?[ \t\n\r]*$/;
+const toNum = (v: unknown) => (typeof v === "number" ? v : typeof v === "string" && NUM_RE.test(v) ? Number(v) : NaN);
 
 /** Eine Bedingung für eine Zeile. Unbekanntes Feld/unbekannter Vergleich → false (strenger, nie lockerer). */
 export function evalCond(c: Cond, row: Row): boolean {
@@ -286,7 +288,7 @@ export function evalCond(c: Cond, row: Row): boolean {
       return false;
     }
     case "num": {
-      const n = missing(x) ? NaN : toNum(x);
+      const n = typeof x === "number" ? x : NaN; // Zeilenwert nur als echte Zahl (wie Python _finite)
       if (!Number.isFinite(n)) return false;
       if (c.op === "zwischen") {
         if (!Array.isArray(v) || v.length !== 2) return false;

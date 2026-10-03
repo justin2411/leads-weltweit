@@ -37,7 +37,7 @@ const GROUPS: [string, NodeKind[]][] = [
 ];
 
 /** Vorlagen etwas weiter auseinander, damit die Mengen auf den Verbindungen Platz haben. */
-const spread = (f: Flow): Flow => ({ ...f, nodes: f.nodes.map((n) => ({ ...n, x: Math.round((n.x * 1.15) / 20) * 20, y: Math.round((n.y * 1.1) / 20) * 20 })) });
+const spread = (f: Flow): Flow => ({ ...f, nodes: f.nodes.map((n) => ({ ...n, x: Math.round((n.x * 1.05) / 20) * 20, y: Math.round((n.y * 1.1) / 20) * 20 })) });
 const toRfNodes = (f: Flow): BkNode[] => f.nodes.map((n) => ({ id: n.id, type: "bk", position: { x: n.x, y: n.y }, data: { cfg: n } }));
 const toRfEdges = (f: Flow): BkEdge[] => f.edges.map((e) => ({ id: e.id, source: e.from, sourceHandle: e.port, target: e.to, targetHandle: "in", type: "bk" }));
 function fromRf(nodes: BkNode[], edges: BkEdge[]): Flow {
@@ -291,10 +291,14 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
     const sel = ns.find((n) => n.selected);
     let pos = at ?? null;
     let link: BkEdge | null = null;
-    if (!pos && sel && NODE_META[sel.data.cfg.kind].ports.length && NODE_META[kind].input) {
-      const ports = NODE_META[sel.data.cfg.kind].ports;
-      const port = ports.find((p) => !es.some((e) => e.source === sel.id && (e.sourceHandle ?? "out") === p)) ?? ports[0];
-      const p = { x: sel.position.x + 320, y: sel.position.y + (ports.length > 1 ? (port === "ja" ? -100 : 100) : 0) };
+    // Antippen ohne Auswahl: ans Ende hängen – rechtester Schritt, freie Ausgänge zuerst
+    const free = (n: BkNode) => NODE_META[n.data.cfg.kind].ports.some((p) => !es.some((e) => e.source === n.id && (e.sourceHandle ?? "out") === p));
+    const from = sel ?? (at ? undefined : ns.filter((n) => NODE_META[n.data.cfg.kind].ports.length)
+      .sort((a, b) => Number(free(b)) - Number(free(a)) || b.position.x - a.position.x)[0]);
+    if (!pos && from && NODE_META[from.data.cfg.kind].ports.length && NODE_META[kind].input) {
+      const ports = NODE_META[from.data.cfg.kind].ports;
+      const port = ports.find((p) => !es.some((e) => e.source === from.id && (e.sourceHandle ?? "out") === p)) ?? ports[0];
+      const p = { x: from.position.x + 300, y: from.position.y + (ports.length > 1 ? (port === "ja" ? -100 : 100) : 0) };
       // nicht auf einen anderen Baustein legen: unter den überlappenden schieben
       for (let i = 0; i < 40; i++) {
         const hit = ns.find((n) => Math.abs(n.position.x - p.x) < 260 && p.y < n.position.y + (n.measured?.height ?? 170) + 30 && p.y + 190 > n.position.y);
@@ -302,19 +306,26 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
         p.y = hit.position.y + (hit.measured?.height ?? 170) + 40;
       }
       pos = p;
-      link = { id: uid("e", es.map((e) => e.id)), source: sel.id, sourceHandle: port, target: id, targetHandle: "in", type: "bk" };
+      link = { id: uid("e", es.map((e) => e.id)), source: from.id, sourceHandle: port, target: id, targetHandle: "in", type: "bk" };
     }
     if (!pos) {
+      // frei: rechts neben dem rechtesten Baustein, sonst Mitte der Fläche
+      const right = [...ns].sort((a, b) => b.position.x - a.position.x)[0];
       const b = wrap.current?.getBoundingClientRect();
       const c = b ? rf.screenToFlowPosition({ x: b.left + b.width / 2, y: b.top + b.height / 2 }) : { x: 0, y: 0 };
-      pos = { x: c.x - 120, y: c.y - 70 };
+      pos = right ? { x: right.position.x + 300, y: right.position.y } : { x: c.x - 110, y: c.y - 70 };
     }
     const p = { x: Math.round(pos.x / GRID[0]) * GRID[0], y: Math.round(pos.y / GRID[1]) * GRID[1] };
     setNodes((list) => [...list.map((n) => (n.selected ? { ...n, selected: false } : n)), { id, type: "bk", position: p, data: { cfg: newNode(kind, id, p.x, p.y) }, selected: true }]);
-    if (link) {
-      const l = link;
-      setEdges((list) => [...list, l]);
-      setTimeout(() => { void rf.fitView({ nodes: [{ id }, { id: l.source }], duration: 350, maxZoom: 1, padding: 0.4 }); }, 60);
+    if (link) { const l = link; setEdges((list) => [...list, l]); }
+    if (!at) {
+      // Handy: neuen Baustein lesbar groß in die Mitte holen; sonst ihn und seinen Vorgänger zeigen
+      const narrow = (wrap.current?.clientWidth ?? 1000) < 600;
+      const src = link?.source;
+      setTimeout(() => {
+        if (narrow) void rf.setCenter(p.x + 112, p.y + 80, { zoom: 0.82, duration: 350 });
+        else void rf.fitView({ nodes: src ? [{ id }, { id: src }] : [{ id }], duration: 350, maxZoom: 1, padding: src ? 0.4 : 0.6 });
+      }, 60);
     }
     setSheet(null);
   }, [rf]);
@@ -433,8 +444,9 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
   };
 
   // ---------------------------------------------------------------- Ansicht
-  const live = useMemo<Live>(() => ({ res, probs: probMap, loading, total: sample.total, reduced, pipelineLive: active && !dirty, remove, removeEdge }),
-    [res, probMap, loading, sample.total, reduced, active, dirty, remove, removeEdge]);
+  const pending = loading && !sample.rows.length;
+  const live = useMemo<Live>(() => ({ res, probs: probMap, loading, pending, total: sample.total, reduced, pipelineLive: active && !dirty, remove, removeEdge }),
+    [res, probMap, loading, pending, sample.total, reduced, active, dirty, remove, removeEdge]);
   const selected = nodes.find((n) => n.selected) ?? null;
   const ctx: InsCtx = { flowId, dirty, active, errors, busy, size: quelle?.size ?? 1000, sample: sample.rows.length, total: sample.total, at: sample.at, loading, error: loadErr, hold };
   const nodeProbs = (id: string) => probMap.get(id) ?? [];
@@ -451,11 +463,11 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
           {dirty ? <span className="bk-dirty">ungespeichert</span> : flowId ? <span className="bk-saved">gespeichert</span> : null}
           <span className="bk-sp" />
           <select className="bk-sel" value={flowId ?? ""} onChange={(e) => openFlow(e.target.value)} aria-label="Gespeicherte Flows">
-            <option value="">{flows.length ? `Gespeichert (${flows.length}) …` : "Noch keine gespeichert"}</option>
+            <option value="">{`Flows (${flows.length})`}</option>
             {flows.map((f) => <option key={f.id} value={f.id}>{f.status === "aktiv" ? "⇶ " : ""}{f.name}</option>)}
           </select>
           <select className="bk-sel" value="" onChange={(e) => (e.target.value === "_neu" ? blank() : loadTemplate(e.target.value))} aria-label="Vorlagen">
-            <option value="">Vorlagen …</option>
+            <option value="">Vorlagen</option>
             <option value="_neu">＋ Leer (nur Quelle)</option>
             {TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
           </select>
@@ -508,7 +520,7 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
                 </ul>
               </div>
             ))}
-            <p>Ziehen oder antippen. Antippen hängt den Baustein direkt an den gewählten an.</p>
+            <p title="Antippen hängt den Baustein an den gewählten an – ohne Auswahl ans Ende.">Ziehen oder antippen.</p>
           </aside>
 
           <div ref={wrap} className={`bk-cv${over ? " over" : ""}`} onDragOver={onDragOver} onDragLeave={() => setOver(false)} onDrop={onDrop}>
@@ -523,7 +535,7 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
               nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
               onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} isValidConnection={isValidConnection}
               onNodeClick={() => setSheet("ins")} onPaneClick={() => setSheet(null)}
-              snapToGrid snapGrid={GRID} fitView fitViewOptions={{ padding: 0.08, maxZoom: 1 }} minZoom={0.2} maxZoom={1.8}
+              snapToGrid snapGrid={GRID} fitView fitViewOptions={{ padding: 0.05, maxZoom: 1 }} minZoom={0.2} maxZoom={1.8}
               deleteKeyCode={["Backspace", "Delete"]} colorMode="dark" defaultEdgeOptions={{ type: "bk" }}
               connectionRadius={28} elevateNodesOnSelect>
               <Background variant={BackgroundVariant.Dots} gap={GRID[0]} size={1.4} color="rgba(95,212,255,.22)" />

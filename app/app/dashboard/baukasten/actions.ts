@@ -19,15 +19,17 @@ import { requireOwner } from "../actions";
 
 export type Result<T extends object = object> = ({ ok: true } & T) | { ok: false; error: string };
 
-/** Rahmen: Sitzung zuerst (404 ohne Inhaber), Eingabefehler als Hinweis, andere Fehler kurz gemeldet und protokolliert. */
+/** Rahmen: Sitzung zuerst (404 ohne Inhaber), Eingabefehler als Hinweis. Andere Fehler nur im Server-Protokoll (mit
+ *  Kennung); der Browser bekommt einen allgemeinen Text + Kennung, nie Interna der Datenbank. */
 async function guard<T extends object>(what: string, fn: () => Promise<T>): Promise<Result<T>> {
   await requireOwner();
   try {
     return { ok: true, ...(await fn()) };
   } catch (e) {
     if (e instanceof InputError) return { ok: false, error: e.message };
-    console.error(`baukasten ${what}:`, e);
-    return { ok: false, error: `${what} fehlgeschlagen: ${e instanceof Error ? e.message.slice(0, 200) : "unbekannter Fehler"}` };
+    const ref = Math.random().toString(36).slice(2, 8);
+    console.error(`baukasten ${what} [${ref}]:`, e);
+    return { ok: false, error: `${what} fehlgeschlagen – bitte gleich noch einmal (Fehler ${ref})` };
   }
 }
 
@@ -60,11 +62,27 @@ async function mustLoad(id: unknown): Promise<FlowRow> {
   return f;
 }
 
-/** Status nur ändern, wenn er noch der erwartete ist (sonst hat jemand parallel geändert). */
-async function setStatus(id: string, from: FlowStatus[], patch: Record<string, unknown>): Promise<boolean> {
-  const { data, error } = await db().from("flows").update(patch).eq("id", id).in("status", from).select("id");
+/** Status nur ändern, wenn er noch der erwartete ist (sonst hat jemand parallel geändert). Mit `version` (updated_at
+ *  der geprüften Fassung) zusätzlich nur, wenn die Definition seitdem nicht gespeichert wurde. */
+async function setStatus(id: string, from: FlowStatus[], patch: Record<string, unknown>, version?: string): Promise<boolean> {
+  let q = db().from("flows").update(patch).eq("id", id).in("status", from);
+  if (version) q = q.eq("updated_at", version);
+  const { data, error } = await q.select("id");
   if (error) throw new Error(error.message);
   return !!data?.length;
+}
+
+/** Neue/geänderte Regel gilt sofort auch für den Proben-Vorrat: fertige Proben in ihrem Bereich verlieren ihre
+ *  Freigabe-Frische (nicht destruktiv). claim_sample_stock gibt sie dann nicht heraus; die nächste Nachprüfung
+ *  (proben-vorrat, stündlich) prüft sie mit Stufe 4 neu oder baut neu. */
+async function staleStock(flow: Flow): Promise<void> {
+  const q = queryOf(flow);
+  if (!q || q.source !== "leads") return;
+  let u = db().from("sample_stock").update({ gate_checked_at: null }).eq("status", "ready");
+  if (q.segment) u = u.eq("segment_id", q.segment);
+  if (q.countries.length) u = u.in("country", q.countries);
+  const { error } = await u;
+  if (error) console.error("baukasten sample_stock:", error.message); // Regel steht schon; Vorrat spätestens nach 26 h neu geprüft
 }
 
 // ------------------------------------------------------------------------------------------- Vorschau
@@ -98,6 +116,7 @@ export async function saveFlow(input: { id?: string | null; name: unknown; def: 
     if (error) throw new Error(error.message);
     if (!data?.length) throw new InputError("inzwischen geändert – bitte neu laden");
     const released = cur.status === "aktiv" ? await releaseHeld(cur.id) : 0;
+    if (cur.status === "aktiv") await staleStock(flow);
     await logOwner("flow:save", cur.id, { name: cur.name, status: cur.status }, { name, nodes: flow.nodes.length, released });
     return { id: cur.id, status: cur.status, released };
   });
@@ -112,8 +131,10 @@ export async function activateFlow(id: unknown): Promise<Result<{ snapshot: Snap
     if (!cur.def) throw new InputError("gespeicherter Flow unlesbar – neu speichern");
     const q = checkPipeline(cur.def);
     const snapshot = snapshotOf(cur.def, await loadSourceRows(q), new Date().toISOString());
-    const ok = await setStatus(cur.id, ["entwurf", "aus", "aktiv"], { status: "aktiv", activated_at: new Date().toISOString(), snapshot });
+    // nur die eben geprüfte Fassung anschließen: in einem zweiten Tab gespeichert → updated_at anders → kein Treffer
+    const ok = await setStatus(cur.id, ["entwurf", "aus", "aktiv"], { status: "aktiv", activated_at: new Date().toISOString(), snapshot }, cur.updated_at);
     if (!ok) throw new InputError("inzwischen geändert – bitte neu laden");
+    await staleStock(cur.def);
     await logOwner("flow:activate", cur.id, { status: cur.status }, { name: cur.name, ...snapshot });
     return { snapshot };
   });

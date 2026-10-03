@@ -139,11 +139,12 @@ export function exportColumns(source: Source, rows: Row[]): CsvCol[] {
   return cols;
 }
 
-/** Ein Feld als CSV: Zeichenketten, die Excel als Formel läse (=, @, +Text, -Text, Tab), bekommen ein ' davor. */
+/** Ein Feld als CSV: Zeichenketten mit =, +, -, @, Tab oder CR am Anfang bekommen ein ' davor (Excel läse sie
+ *  als Formel, auch „+1-555-123-4567“). Zahlen aus der Datenbank (typeof number) bleiben unverändert. */
 export function csvCell(v: unknown): string {
   if (v === null || v === undefined) return "";
   let s = typeof v === "boolean" ? (v ? "ja" : "nein") : String(v);
-  if (/^[=@\t\r]/.test(s) || (/^[+-]/.test(s) && /[^\d\s().\/+-]/.test(s))) s = `'${s}`;
+  if (typeof v === "string" && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return /[",\r\n]|^\s|\s$/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 

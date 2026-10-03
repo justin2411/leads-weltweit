@@ -345,6 +345,34 @@ class Stage4Test(unittest.TestCase):
         self.assertFalse(v.ok)
         self.assertEqual(v.stage, 2)
 
+    def test_rule_switched_off_during_live_recheck_not_applied(self):
+        """Regeln erst nach der (langen) Live-Nachprüfung laden: eine währenddessen gelöste Regel zählt nicht mehr."""
+        from unittest import mock
+        db = self.db([self.rule(c("hat_person", "ja"))])
+
+        def recheck(it, fetcher, today):
+            db.tables["flows"][0]["status"] = "aus"  # Inhaber löst die Regel, während geprüft wird
+            return [], True
+        with mock.patch.object(G, "live_recheck", recheck):
+            v = G.check(db, ["l1"], live=True, fetcher=object(), mx=mx_ok, today=TODAY, workers=1)[0]
+        self.assertTrue(v.ok, v.reasons)
+
+    def test_checked_at_is_verdict_time(self):
+        """checked_at = Zeitpunkt des Urteils (flow_release_stale_held vergleicht ihn mit flows.updated_at)."""
+        db = self.db([self.rule(c("hat_person", "ja"))])
+        v = G.check(db, ["l1"], live=False, mx=mx_ok, today=TODAY)[0]
+        v.at = "2026-10-03T10:00:00+00:00"
+        G.persist(db, [v], "test", log=lambda *a: None)
+        self.assertEqual(db.rows("lead_checks")[0]["checked_at"], "2026-10-03T10:00:00+00:00")
+
+    def test_sweep_migration_matches_rule_tag(self):
+        sql = (Path(__file__).resolve().parents[1] / "supabase" / "migrations"
+               / "20261004030300_signalwerk_flow_release_sweep.sql").read_text(encoding="utf-8")
+        self.assertIn("substr(t.r, 10)", sql)  # 's4:regel:' = 9 Zeichen
+        self.assertEqual(len("s4:regel:"), 9)
+        self.assertTrue(R.rule_tag(FLOW_ID).startswith("s4:regel:"))
+        self.assertIn("f.updated_at <= c.checked_at", sql)
+
     def test_rules_loaded_once_per_call(self):
         db = self.db([self.rule(c("hat_telefon", "ja"))])
         calls = []

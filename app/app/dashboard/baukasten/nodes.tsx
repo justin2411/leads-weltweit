@@ -15,7 +15,7 @@ export type BkEdge = Edge<Record<string, unknown>, "bk">;
 
 /** Live-Zustand für alle Karten: Zeilen je Baustein, Probleme, Laden. */
 export type Live = {
-  res: Record<string, NodeRows>; probs: Map<string, Problem[]>; loading: boolean; total: number | null; reduced: boolean;
+  res: Record<string, NodeRows>; probs: Map<string, Problem[]>; loading: boolean; pending: boolean; total: number | null; reduced: boolean;
   pipelineLive: boolean; remove: (id: string) => void; removeEdge: (id: string) => void;
 };
 export const LiveCtx = createContext<Live | null>(null);
@@ -48,7 +48,8 @@ function NodeCard({ id, data, selected }: NodeProps<BkNode>) {
   const inN = r?.input.length ?? 0, outN = outRows(n, r).length;
   const pct = inN ? Math.round((outN / inN) * 100) : null;
   const step = meta.group === "schritt" && n.kind !== "statistik" && n.kind !== "weiche";
-  const loading = n.kind === "quelle" && live.loading;
+  // Erste Stichprobe lädt noch: alle Zahlen schimmern statt „0“ zu zeigen
+  const loading = (n.kind === "quelle" && live.loading) || (live.pending && (on || n.kind === "quelle"));
   const pipeLive = n.kind === "pipeline" && live.pipelineLive;
   const cls = ["bkn", `k-${n.kind}`, selected && "sel", !on && n.kind !== "quelle" && "off", errs && "has-e", loading && "load", sink && "sink", pipeLive && "live"]
     .filter(Boolean).join(" ");
@@ -69,7 +70,7 @@ function NodeCard({ id, data, selected }: NodeProps<BkNode>) {
       </header>
       <p className="bkn-d">{describeNode(n)}</p>
       <div className="bkn-v">
-        <b>{on || n.kind === "quelle" ? fmt(outN) : "–"}</b>
+        <b>{loading && live.pending ? "…" : on || n.kind === "quelle" ? fmt(outN) : "–"}</b>
         <span>{on || n.kind === "quelle" ? VERB[n.kind] : "nicht verbunden"}</span>
         {step && on && pct !== null && <em>{pct} %</em>}
       </div>
@@ -118,10 +119,10 @@ function EdgeView({ id, source, sourceHandleId, sourceX, sourceY, targetX, targe
   const [d, lx, ly] = getBezierPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, curvature: 0.35 });
   const port = (sourceHandleId === "ja" || sourceHandleId === "nein" ? sourceHandleId : "out") as Port;
   const n = live ? portCount(live.res[source], port) : null;
-  const f = n && live && !live.reduced ? dots(n) : null;
+  const f = n && live && !live.reduced && !live.pending ? dots(n) : null;
   const ec = PORT_COLOR[port];
   return (
-    <g className={`bke ${n ? "" : "bke-zero"}`} style={{ "--ec": ec } as CSSProperties}>
+    <g className={`bke ${n || live?.pending ? "" : "bke-zero"}`} style={{ "--ec": ec } as CSSProperties}>
       <path d={d} className="bke-pipe" />
       <BaseEdge id={id} path={d} className="bke-core" interactionWidth={22} />
       {f && Array.from({ length: f.count }, (_, i) => (
@@ -133,7 +134,7 @@ function EdgeView({ id, source, sourceHandleId, sourceX, sourceY, targetX, targe
       <EdgeLabelRenderer>
         <div className={`bke-l nodrag nopan ${selected ? "" : "nox"} ${n ? "" : "zero"}`} style={{ transform: `translate(-50%,-50%) translate(${lx}px,${ly}px)`, "--ec": ec } as CSSProperties}
           title={port === "out" ? "Menge auf dieser Verbindung" : `Menge auf „${port}“`}>
-          {n === null ? "–" : fmt(n)}
+          {live?.pending ? "…" : n === null ? "–" : fmt(n)}
           {selected && live && <button type="button" onClick={() => live.removeEdge(id)} aria-label="Verbindung löschen">✕</button>}
         </div>
       </EdgeLabelRenderer>
