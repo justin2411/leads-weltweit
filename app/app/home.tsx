@@ -13,7 +13,7 @@ import { BrandShell, SiteFooter, SiteHeader } from "./chrome";
 import { HOME, HOME_LANGS, HOME_PATH, type HomeLang } from "./home-i18n";
 import { CONTACT_PATH } from "./contact/contact-i18n";
 import { HomeFx } from "./home-fx";
-import { UK_MAP_SVG } from "@/content/home-uk-map";
+import { DOT_MAPS } from "@/content/home-dot-maps";
 import { COUNTRIES, segKey, type CountryCode } from "@/lib/country";
 
 // Register (Inhaber 27.09.2026 „über 18 Millionen“): Companies House 4.930.634 (effektives Register, März 2026,
@@ -47,53 +47,20 @@ const I = ({ n, c = "hp-ico" }: { n: string; c?: string }) => <svg className={c}
 const R = ({ t }: { t: string }) => <span className="hp-redact" aria-hidden="true">{t}</span>;
 const i = (n: number) => ({ "--i": n }) as CSSProperties;
 
-/** „Recently detected“: drei echte Signale einer UK-Probe (Firmenname verdeckt), Städte mit Pins auf der Karte. */
-const FALLBACK = [
-  { place: "London", date: "2 Oct 2026", source: "Find a Tender", event: "Won a public contract, published on Find a Tender on 2 October 2026: “London Borough of Richmond” for Sutton, Achieving for Children and Kingston" },
-  { place: "Wolverhampton", date: "2 Oct 2026", source: "Find a Tender", event: "Won a public contract, published on Find a Tender on 2 October 2026: “FP&A Tool Consultancy” for Agriculture and Horticulture Development Board" },
-  { place: "Wakefield", date: "2 Oct 2026", source: "Find a Tender", event: "Won a public contract, published on Find a Tender on 2 October 2026: “Cleaning Services” for Inspire Learning Trust" },
+/** „Recently detected“: je drei echte Signale aus UK, US und FR (Firmennamen verdeckt), Städte als Pins auf der Karte.
+ *  Die Karte wechselt automatisch zwischen den Ländern (Inhaber 03.10.2026). */
+const SIGNALS: { cc: CountryCode; place: string; date: string; source: string; event: string }[] = [
+  { cc: "UK", place: "London", date: "2 Oct 2026", source: "Find a Tender", event: "Won a public contract, published on Find a Tender on 2 October 2026: “London Borough of Richmond” for Sutton, Achieving for Children and Kingston" },
+  { cc: "UK", place: "Wolverhampton", date: "2 Oct 2026", source: "Find a Tender", event: "Won a public contract, published on Find a Tender on 2 October 2026: “FP&A Tool Consultancy” for Agriculture and Horticulture Development Board" },
+  { cc: "UK", place: "Wakefield", date: "2 Oct 2026", source: "Find a Tender", event: "Won a public contract, published on Find a Tender on 2 October 2026: “Cleaning Services” for Inspire Learning Trust" },
+  { cc: "US", place: "Seattle", date: "3 Oct 2026", source: "Website check", event: "Its website uses a self-signed security certificate, so browsers warn visitors before opening it." },
+  { cc: "US", place: "Chicago", date: "3 Oct 2026", source: "Website check", event: "The homepage is not built for phones, and its copyright notice dates from 2011." },
+  { cc: "US", place: "Houston", date: "3 Oct 2026", source: "Website check", event: "Chrome shows ‘Not secure’ on its website, because the site has no HTTPS encryption." },
+  { cc: "FR", place: "Nantes", date: "3 oct. 2026", source: "Contrôle du site", event: "La page d'accueil charge une ancienne version de la bibliothèque jQuery." },
+  { cc: "FR", place: "Toulouse", date: "3 oct. 2026", source: "Contrôle du site", event: "La page d'accueil n'est pas adaptée aux mobiles (pas de réglage viewport)." },
+  { cc: "FR", place: "Marseille", date: "3 oct. 2026", source: "Contrôle du site", event: "La page d'accueil intègre encore Adobe Flash, que les navigateurs ne lisent plus." },
 ];
 
-/** Radar: Signale aus drei Ländern leuchten auf, wenn der Strahl sie erreicht (Inhaber 03.10.2026: „das radar auf jeden fall drin“). */
-function Radar({ labels }: { labels: [string, string][] }) {
-  const C = 200;
-  const pt = (deg: number, r: number) => [C + r * Math.cos((deg * Math.PI) / 180), C + r * Math.sin((deg * Math.PI) / 180)];
-  const blips: [number, number][] = [[30, 130], [150, 120], [260, 150], [75, 70], [200, 165], [320, 95], [115, 175], [345, 160], [230, 60]];
-  return (
-    <div className="radar" aria-hidden="true">
-      <svg viewBox="0 0 400 400">
-        <defs>
-          <radialGradient id="hmsw" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(200 200) scale(195)">
-            <stop offset="0" stopColor="#C9A465" stopOpacity=".05" /><stop offset="1" stopColor="#EBD7AE" stopOpacity=".35" />
-          </radialGradient>
-        </defs>
-        {[60, 110, 160, 195].map((r) => <circle key={r} className="ring" cx={C} cy={C} r={r} />)}
-        <path className="axis" d="M5 200H395M200 5V395" />
-        <g className="sweep">
-          {/* Keil hinter dem Strahl (gegen den Uhrzeigersinn), Strahl zeigt bei 0° nach rechts */}
-          <path d={`M200 200L395 200A195 195 0 0 0 ${pt(-50, 195).join(" ")}Z`} fill="url(#hmsw)" />
-          <path d="M200 200H395" stroke="#EBD7AE" strokeWidth="1.5" strokeOpacity=".8" />
-        </g>
-        {blips.map(([deg, r], k) => {
-          const [x, y] = pt(deg, r);
-          return <circle key={k} className="blip" cx={x} cy={y} r={k < 3 ? 7 : 4.5} fill={k < 3 ? "#EBD7AE" : "#C9A465"}
-            style={{ "--d": `${(deg / 60).toFixed(2)}s` } as CSSProperties} />;
-        })}
-        <circle className="core" cx={C} cy={C} r="12" />
-      </svg>
-      {labels.map(([cc, txt], k) => {
-        const [x, y] = pt(blips[k][0], blips[k][1]);
-        const left = `calc(${(x / 4).toFixed(1)}% + 12px)`;
-        const pos: Record<string, string> = { top: `calc(${(y / 4).toFixed(1)}% - 14px)`, "--d": `${k * 0.8}s` };
-        if (k === 1) pos.right = `calc(${(100 - x / 4).toFixed(1)}% + 12px)`; else pos.left = left;
-        return (
-          <span className="lbl" key={cc} style={pos as CSSProperties}>
-            <I n={cc} /><em>{txt}</em>
-          </span>);
-      })}
-    </div>
-  );
-}
 
 
 export async function Home({ lang }: { lang: HomeLang }) {
@@ -137,7 +104,7 @@ export async function Home({ lang }: { lang: HomeLang }) {
   const c = t.call;
 
   return (
-    <BrandShell lang={lang} extraCss={LANDING_CSS + HOME_CSS + HOME_V2_CSS}>
+    <BrandShell lang={lang} extraCss={LANDING_CSS + HOME_V2_CSS + HOME_CSS}>
       {/* Effekte der Vorlage nur mit JavaScript (sonst bleibt alles sichtbar) */}
       <script dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('js')" }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
@@ -159,7 +126,7 @@ export async function Home({ lang }: { lang: HomeLang }) {
                 <h1 className="hp-h1" id="hero-title">
                   {words.map((w, k) => <span key={k}><span className={`hp-w${gold.has(w.toLowerCase().replace(/[.,!?]/g, "")) ? " hp-gold" : ""}`} style={i(k)}>{w}</span>{k < words.length - 1 ? " " : ""}</span>)}
                 </h1>
-                <p className="hp-lede hp-in" style={{ "--d": ".6s" } as CSSProperties}>{t.sub}</p>
+                <p className="hp-lede hp-in" style={{ "--d": ".6s" } as CSSProperties}><span className="lede-l">{t.sub}</span><span className="lede-s">{t.subShort}</span></p>
                 <div className="hp-inlead hp-in" style={{ "--d": ".75s" } as CSSProperties}>
                   <span className="hp-label">{t.every}</span>
                   <ul className="hp-chips">{t.chips.map(([ic, txt]) => <li className="hp-chip" key={txt}><I n={{ bolt: "zap", cal: "calendar" }[ic] ?? ic} />{txt}</li>)}</ul>
@@ -174,15 +141,22 @@ export async function Home({ lang }: { lang: HomeLang }) {
               <div className="hp-stage">
                 <div className="hp-stage__head">
                   <p className="hp-stage__title"><span className="hp-live" aria-hidden="true" />{t.feedTitle}</p>
-                  <div className="hp-stage__cities" role="tablist" aria-label={t.feedTitle} />
+                  <div className="hp-stage__cities" role="tablist" aria-label={t.countryPick}>
+                    {CC.map((cc, k) => (
+                      <button type="button" role="tab" className="hp-city" data-cc={cc} aria-selected={k === 0} key={cc}>
+                        <I n={FLAG[cc]} c="hp-flag" />{COUNTRIES[cc].name[lang]}
+                      </button>))}
+                  </div>
                 </div>
-                <div className="hp-map" aria-hidden="true" dangerouslySetInnerHTML={{ __html: UK_MAP_SVG }} />
+                <div className="hp-maps" aria-hidden="true">
+                  {CC.map((cc, k) => <div className={`hp-map${k === 0 ? " is-on" : ""}`} data-cc={cc} key={cc} dangerouslySetInnerHTML={{ __html: DOT_MAPS[cc] }} />)}
+                </div>
                 <svg className="hp-link" aria-hidden="true"><defs><linearGradient id="hp-g-link" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#E2C894" stopOpacity=".95" /><stop offset="1" stopColor="#E2C894" stopOpacity=".35" /></linearGradient></defs><path d="" /><circle cx="-99" cy="-99" r="3.2" /></svg>
                 <ol className="hp-sigs">
-                  {FALLBACK.map((g, k) => (
-                    <li className={`hp-sig${k === 0 ? " is-active" : ""}`} data-city={g.place} key={g.place}>
+                  {SIGNALS.map((g, k) => (
+                    <li className={`hp-sig${k === 0 ? " is-active" : ""}`} data-city={g.place} data-cc={g.cc} key={g.place}>
                       <p className="hp-sig__meta"><time>{g.date}</time><span className="hp-src"><I n="doc" />{g.source}</span></p>
-                      <p className="hp-sig__who"><R t={"x".repeat(14 - k * 2)} /><span className="hp-sr">{c.hidden},</span><span className="hp-sig__place"><I n="pin" />{g.place}</span></p>
+                      <p className="hp-sig__who"><R t={"x".repeat(14 - (k % 3) * 2)} /><span className="hp-sr">{c.hidden},</span><span className="hp-sig__place"><I n="pin" />{g.place}</span></p>
                       <p className="hp-sig__event">{g.event}</p>
                     </li>))}
                 </ol>
@@ -198,18 +172,6 @@ export async function Home({ lang }: { lang: HomeLang }) {
                 </div></div>
               </div>
             </div>
-          </div>
-          <div className="hp-wrap hp-proof">
-            <h2 className="hp-proof__title" data-reveal="">{t.statsH}</h2>
-            <ul className="hp-statbar" data-reveal="" style={{ "--d": ".1s" } as CSSProperties}>
-              {nums.map(([n, label, live]) => (
-                <li className={`hp-stat${live ? " hp-stat--live" : ""}`} key={label}>
-                  {live ? <p className="hp-stat__num"><span data-odo="">{n}</span><span className="hp-live" aria-hidden="true" /></p>
-                    : <p className="hp-stat__num" data-odo="">{n}</p>}
-                  <p className="hp-stat__label">{label}</p>
-                </li>))}
-            </ul>
-            <p className="hp-footnote" data-reveal="" style={{ "--d": ".2s" } as CSSProperties}>{t.statsNote}</p>
           </div>
         </section>
 
@@ -229,6 +191,21 @@ export async function Home({ lang }: { lang: HomeLang }) {
             </div></div>
           </section>
         )}
+
+        <section className="hp-proofsec" aria-labelledby="proof-title">
+          <div className="hp-wrap hp-proof">
+            <h2 className="hp-proof__title" id="proof-title" data-reveal="">{t.statsH}</h2>
+            <ul className="hp-statbar" data-reveal="" style={{ "--d": ".1s" } as CSSProperties}>
+              {nums.map(([n, label, live]) => (
+                <li className={`hp-stat${live ? " hp-stat--live" : ""}`} key={label}>
+                  {live ? <p className="hp-stat__num"><span data-odo="">{n}</span><span className="hp-live" aria-hidden="true" /></p>
+                    : <p className="hp-stat__num" data-odo="">{n}</p>}
+                  <p className="hp-stat__label">{label}</p>
+                </li>))}
+            </ul>
+            <p className="hp-footnote" data-reveal="" style={{ "--d": ".2s" } as CSSProperties}>{t.statsNote}</p>
+          </div>
+        </section>
 
 
         <section className="hp-statement hp-grain" aria-labelledby="statement-title">
@@ -349,21 +326,6 @@ export async function Home({ lang }: { lang: HomeLang }) {
           </div>
         </section>
 
-        <section className="sec dark" id="revenue"><div className="wrap">
-          <div className="pc2">
-            <div>
-              <h2>{t.revenue[0]}<i>{t.revenue[1]}</i></h2>
-              <div className="rs" style={{ gridTemplateColumns: "1fr", margin: "22px 0 0", gap: 12 }}>
-                {t.reasons.map(([ic, h, d], k) => (
-                  <div className="rcard" key={h} data-rv style={{ ...i(k), display: "flex", gap: 14, alignItems: "flex-start", padding: 18 }}>
-                    <span className="gi" style={{ margin: 0, flex: "none" }}><I n={ic} /></span><span><h3>{h}</h3><p>{d}</p></span>
-                  </div>))}
-              </div>
-            </div>
-            <Radar labels={t.radar} />
-          </div>
-        </div></section>
-
         <section className="hp-sec hp-dark hp-grain" id="industries" aria-labelledby="ind-title">
           <div className="hp-wrap">
             <div className="hp-ind__top">
@@ -397,18 +359,6 @@ export async function Home({ lang }: { lang: HomeLang }) {
                 <h3>{t.ctaCard[0]}</h3><p>{t.ctaCard[1]}</p>
                 <a className="hp-btn hp-btn--gold" href="#sample" data-magnetic=""><span>{t.btn}</span><I n="arrow" c="hp-ico hp-btn__arrow" /></a>
               </li>
-            </ul>
-          </div>
-        </section>
-
-        <section className="hp-sec hp-cream" id="trust" aria-labelledby="trust-title">
-          <div className="hp-wrap">
-            <div className="hp-intro" data-reveal=""><h2 className="hp-h2" id="trust-title">{t.trustH}</h2><p>{t.trustSub}</p></div>
-            <ul className="hp-trust" data-reveal="" style={{ "--d": ".1s" } as CSSProperties}>
-              {t.facts.map(([ic, h, d], k) => (
-                <li style={{ "--d": `${(k * 0.12).toFixed(2)}s` } as CSSProperties} key={h}>
-                  <span className="hp-trust__icon"><I n={ic} /></span><h3>{h}</h3><p>{d.replace("{LEGAL}", LEGAL_NAME)}</p>
-                </li>))}
             </ul>
           </div>
         </section>

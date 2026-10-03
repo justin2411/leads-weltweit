@@ -174,6 +174,35 @@ export const HOME_CSS = `
 .motion .bx .hm .pccard.in .pctl li,.motion .bx .hm .pccard.in .pcchip,.motion .bx .hm .pccard.in .pcquote{opacity:1;transform:none}
 .bx .hm #revenue{padding-bottom:24px}
 
+
+/* Hero-Karte: drei Länder blenden über (Inhaber 03.10.2026), weniger Abstand oben */
+.hpz section.hp-hero{padding:0}
+.hpz .hp-hero__stage{min-height:0}
+.hpz .hp-hero__grid{padding-block:28px 48px}
+@media (min-width:1061px){.hpz .hp-hero__grid{grid-template-columns:minmax(0,1.22fr) minmax(0,.78fr);gap:48px}}
+.hpz .hp-maps{display:contents}
+.hpz .hp-map{opacity:0;transition:opacity .9s var(--ease)}
+.hpz .hp-map.is-on{opacity:1}
+.hpz .hp-landd{fill:none;stroke:var(--dot-c);stroke-opacity:var(--dot-o);stroke-width:4.3;stroke-linecap:round}
+.hpz .hp-nbd{fill:none;stroke:#8FA3CC;stroke-opacity:.12;stroke-width:3.4;stroke-linecap:round}
+.hpz .hp-city .hp-flag{width:16px;height:11px;border-radius:2px}
+.hpz .hp-city::before{display:none}
+@media (max-width:1060px){
+  .hpz .hp-maps{display:block;position:relative;height:min(540px,118vw);margin:4px auto 0}
+  .hpz .hp-maps .hp-map{position:absolute;inset:0;height:auto;margin:0 auto}
+  .hpz .hp-hero__grid{padding-block:24px 48px}
+}
+@media (max-width:720px){.hpz .hp-maps{height:min(470px,118vw)}}
+
+
+/* Kennzahlen als eigener Abschnitt nach dem Film (Inhaber 03.10.2026: Video direkt nach „Read daily from“) */
+.hpz .hp-proofsec{padding:0 0 clamp(56px,7vw,88px);background:var(--navy-900);color:#fff}
+.hpz .hp-film{padding-top:clamp(48px,6vw,72px)}
+/* Hero-Text höchstens drei Zeilen: breit genug auf dem Desktop, auf dem Handy die kurze Fassung */
+.hpz .hp-lede{max-width:none;font-size:clamp(15px,1.15vw,16.5px);line-height:1.6}
+.hpz .lede-s{display:none}
+@media (max-width:720px){.hpz .lede-l{display:none}.hpz .lede-s{display:inline}}
+
 @media (max-width:980px){
   .bx .hm .pc2{grid-template-columns:1fr;gap:28px}
   .bx .hm .icards{grid-template-columns:1fr 1fr}
