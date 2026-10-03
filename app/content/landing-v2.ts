@@ -40,8 +40,8 @@ export const LANDING: Record<"en" | "fr", LandingText> = {
     ],
     howTitle: "How it works",
     steps: [
-      ["focus", "Choose your signals or the whole country", ""],
-      ["cal", "Every Monday: new leads as PDF and spreadsheet", ""],
+      ["focus", "Choose the signals you need", ""],
+      ["cal", "New leads every Monday", ""],
       ["phone", "You call them and win new clients", ""],
     ],
     sampleTitle: ["Your 10 free leads", "from across {land}"],
@@ -76,9 +76,9 @@ export const LANDING: Record<"en" | "fr", LandingText> = {
     ],
     howTitle: "Comment ça marche",
     steps: [
-      ["focus", "Choisissez vos signaux ou toute la France", ""],
-      ["cal", "Chaque lundi : nouveaux prospects en PDF et tableur", ""],
-      ["phone", "Vous les appelez et gagnez de nouveaux clients", ""],
+      ["focus", "Choisissez vos signaux", ""],
+      ["cal", "Nouveaux prospects chaque lundi", ""],
+      ["phone", "Vous appelez et gagnez des clients", ""],
     ],
     sampleTitle: ["Vos 10 prospects gratuits", "de toute la France"],
     get: { title: "Ce que vous recevez", pdf: ["Rapport (PDF)", "Carte, vue d’ensemble et un court briefing commercial par prospect."], csv: ["Tableur (CSV)", "Toutes les coordonnées, prêtes pour votre CRM."], map: "10 entreprises de toute la France" },
