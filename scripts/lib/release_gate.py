@@ -1,4 +1,5 @@
-"""Drei-Stufen-Freigabe: jeder Lead wird einzeln geprüft, bevor er an einen Kunden oder in eine Probe geht.
+"""Drei-Stufen-Freigabe (+ Stufe 4 Inhaber-Regeln): jeder Lead wird einzeln geprüft, bevor er an einen Kunden oder
+in eine Probe geht.
 
 Inhaber 03.10.2026: „alle leads müssen individuell geprüft werden, es dürfen keine fehler passieren – prüfung immer der
 trigger an sich ob er auch wirklich passt, danach ob die lead qualität auch mit infos und texten etc stimmt und
@@ -22,7 +23,13 @@ Zusätzlich zu den Prüfungen beim Erzeugen (extraktor qc/sc, contact_companies,
             sinnvoll (S2: keine Immobilien-/Beteiligungsgesellschaft), Text ehrlich (keine verbotenen Wörter, jede
             Zahl belegt).
 
-Ergebnis je Lead: Verdict (ok, Stufe, Gründe „s1:…“, „s2:…“, „s3:…“). persist() schreibt lead_checks und setzt
+  Stufe 4 – Inhaber-Regeln: aktive Baukasten-Flows mit Pipeline-Baustein (lib/owner_rules.py, signalwerk.flows).
+            Jeder Lead im Bereich einer Regel muss ihren Pipeline-Baustein erreichen, sonst „s4:regel:xxxxxxxx“.
+            Regeln können nur zusätzlich zurückhalten, nie etwas freigeben, was Stufe 1–3 ablehnen. Umkehrbar:
+            Regel lösen/ändern ruft flow_release_held(flow) und gibt ihre zurückgehaltenen Leads wieder frei.
+            check(owner_rules=False) lässt Stufe 4 weg (tägliche Stichprobe misst Datenqualität, nicht Vorlieben).
+
+Ergebnis je Lead: Verdict (ok, Stufe, Gründe „s1:…“, „s2:…“, „s3:…“, „s4:…“). persist() schreibt lead_checks und setzt
 durchgefallene Leads auf status 'held' (gehen nie raus, nichts gelöscht). Gesendet wird nur, was ok ist.
 """
 from __future__ import annotations
@@ -33,7 +40,9 @@ import unicodedata
 from collections import Counter
 from dataclasses import dataclass, field
 
-STAGES = {1: "Trigger echt", 2: "Qualität & Vollständigkeit", 3: "auslieferbar"}
+from lib.owner_rules import check as owner_check, load_rules
+
+STAGES = {1: "Trigger echt", 2: "Qualität & Vollständigkeit", 3: "auslieferbar", 4: "Inhaber-Regeln"}
 WEB_FINDINGS = {"no_https", "website_not_mobile", "website_outdated", "website_broken"}
 NO_SITE = {"no_website"}
 INCORPORATION = {"new_incorporation"}
@@ -103,11 +112,14 @@ class Verdict:
     country: str = ""
     segment: str = ""
     status: str = ""
+    # Zeitpunkt des Urteils (nicht des Schreibens): flow_release_stale_held vergleicht ihn mit flows.updated_at –
+    # wurde eine Regel nach dem Urteil geändert/gelöst, gibt der Wachhund den Lead an die Freigabe zurück.
+    at: str = field(default_factory=lambda: dt.datetime.now(dt.timezone.utc).isoformat())
 
     def row(self, context: str) -> dict:
         return {"lead_id": self.lead_id, "result": "released" if self.ok else "failed", "failed_stage": self.stage,
                 "reasons": self.reasons[:20], "context": context, "rechecked": self.rechecked,
-                "checked_at": dt.datetime.now(dt.timezone.utc).isoformat()}
+                "checked_at": self.at}
 
 
 # ---------------------------------------------------------------------------- Hilfen
@@ -419,7 +431,7 @@ def live_recheck(it: dict, fetcher, today: dt.date) -> tuple[list[str], bool]:
 
 # ---------------------------------------------------------------------------- Laden und Prüfen
 LEAD_FIELDS = ("id,segment_id,country,signal_type,event_summary,event_date,source_name,source_url,source_date,urgency,"
-               "urgency_reason,opener,status,company_id,observation_ids")
+               "urgency_reason,opener,status,company_id,observation_ids,created_at")
 CO_FIELDS = "id,name,country,city,region,address,website,phone_main,legal_form,industry"
 
 
@@ -435,12 +447,14 @@ def load_items(db, lead_ids: list[str]) -> list[dict]:
         leads += db.select("leads", {"id": f"in.({','.join(part)})", "select": LEAD_FIELDS})
     cids = sorted({l["company_id"] for l in leads if l.get("company_id")})
     cos, contact, person, blocking = {}, {}, {}, set()
+    raw: dict[tuple[str, str], dict] = {}  # Rohdaten je Firma und Art (Stufe 4 / Baukasten-Felder)
     for part in _chunks(cids):
         for c in db.select("watch_companies", {"id": f"in.({','.join(part)})", "select": CO_FIELDS}):
             cos[c["id"]] = c
         for o in db.select("observations", {"company_id": f"in.({','.join(part)})", "kind": "eq.other",
                                             "key": "in.(contact,person,quality)", "select": "company_id,key,details"}):
             d = o.get("details") or {}
+            raw[(o["company_id"], o["key"])] = d if isinstance(d, dict) else {}
             if o["key"] == "contact" and (d.get("email") or d.get("phone")):
                 contact[o["company_id"]] = d
             elif o["key"] == "person" and (d.get("name") or d.get("role")):
@@ -461,6 +475,7 @@ def load_items(db, lead_ids: list[str]) -> list[dict]:
         l["contact"] = contact.get(cid) or {}
         l["person"] = person.get(cid) or {}
         l["quality_blocking"] = cid in blocking
+        l["contact_raw"], l["person_raw"], l["quality_raw"] = (raw.get((cid, k)) or {} for k in ("contact", "person", "quality"))
         ch = checks.get(l["id"]) or {}
         l["rechecked_today"] = bool(ch.get("rechecked")) and str(ch.get("checked_at") or "")[:10] == today
         l["source_key"] = "dol_lca" if "LCA" in (l.get("source_name") or "") else ""
@@ -505,20 +520,25 @@ def mx_cached(domain: str) -> bool | None:
     return _MX[domain]
 
 
-def verdict_of(it: dict, today: dt.date, ctx: dict, dup: str | None, recheck: tuple[list[str], bool] | None, mx) -> Verdict:
+def verdict_of(it: dict, today: dt.date, ctx: dict, dup: str | None, recheck: tuple[list[str], bool] | None, mx,
+               rules: list[dict] | None = None) -> Verdict:
     r1 = stage1(it, today) + (recheck[0] if recheck else [])
     r2 = stage2(it, today, mx) + ([dup] if dup else [])
     r3 = stage3(it, ctx)
-    reasons = [f"s1:{x}" for x in r1] + [f"s2:{x}" for x in r2] + [f"s3:{x}" for x in r3]
-    stage = 1 if r1 else 2 if r2 else 3 if r3 else None
+    r4 = owner_check(rules, it, today) if rules else []  # nur zusätzliche Gründe, nie eine Freigabe
+    reasons = [f"s1:{x}" for x in r1] + [f"s2:{x}" for x in r2] + [f"s3:{x}" for x in r3] + [f"s4:{x}" for x in r4]
+    stage = 1 if r1 else 2 if r2 else 3 if r3 else 4 if r4 else None
     return Verdict(it["id"], stage is None, stage, reasons, bool(recheck and recheck[1]),
                    it.get("country") or "", it.get("segment_id") or "", it.get("status") or "")
 
 
 def check(db, lead_ids: list[str], *, country: str | None = None, allowed_status=("new",), own_stock: str | None = None,
           own_delivery: str | None = None, live: bool = True, fetcher=None, today: dt.date | None = None, mx=mx_cached, workers: int = 8,
-          items: list[dict] | None = None) -> list[Verdict]:
-    """Alle drei Stufen für diese Leads. live=False: ohne Netzabruf (Stufe 1 nur aus den Daten)."""
+          items: list[dict] | None = None, owner_rules: bool = True) -> list[Verdict]:
+    """Alle Stufen für diese Leads. live=False: ohne Netzabruf (Stufe 1 nur aus den Daten).
+    owner_rules=False: ohne Stufe 4 (Inhaber-Regeln); die Regeln werden je Aufruf einmal geladen – erst NACH der
+    Live-Nachprüfung, direkt vor dem Urteil, damit eine währenddessen gelöste/geänderte Regel nicht mehr zählt
+    (Rest-Fenster bis persist(): Sicherheitsnetz flow_release_stale_held im Wachhund)."""
     today = today or dt.datetime.now(dt.timezone.utc).date()
     items = items if items is not None else load_items(db, lead_ids)
     ctx = load_context(db, items, country, allowed_status, own_stock, own_delivery)
@@ -535,7 +555,8 @@ def check(db, lead_ids: list[str], *, country: str | None = None, allowed_status
             for it, res in zip(todo, ex.map(lambda x: live_recheck(x, fetcher, today), todo)):
                 rechecks[it["id"]] = res
     found = {it["id"]: it for it in items}
-    out = [verdict_of(it, today, ctx, dups.get(it["id"]), rechecks.get(it["id"]), mx) for it in items]
+    rules = load_rules(db) if owner_rules else []
+    out = [verdict_of(it, today, ctx, dups.get(it["id"]), rechecks.get(it["id"]), mx, rules) for it in items]
     missing = set(lead_ids) - set(found)
     out += [Verdict(x, False, 3, ["s3:lead_nicht_gefunden"]) for x in sorted(missing)]
     for v in out:  # gefundene Website merken (wie site_recheck.drop_with_site)
@@ -581,7 +602,7 @@ def summary(verdicts: list[Verdict]) -> dict:
     f = Counter(v.stage for v in verdicts if not v.ok)
     reasons = Counter(r.split(":")[0] + ":" + r.split(":")[1] for v in verdicts for r in v.reasons)
     return {"geprueft": n, "stufe1": n - f[1], "stufe2": n - f[1] - f[2], "freigegeben": sum(v.ok for v in verdicts),
-            "durchgefallen": {"1": f[1], "2": f[2], "3": f[3]}, "gruende": dict(reasons.most_common(15))}
+            "durchgefallen": {"1": f[1], "2": f[2], "3": f[3], "4": f[4]}, "gruende": dict(reasons.most_common(15))}
 
 
 def stats_rows(verdicts: list[Verdict]) -> list[dict]:
@@ -596,7 +617,7 @@ def stats_rows(verdicts: list[Verdict]) -> list[dict]:
         out.append({"segment_id": seg or None, "country": c or None, "candidates": s["geprueft"], "processed": s["stufe1"],
                     "yellow": s["stufe2"], "green": s["freigegeben"], "red": s["geprueft"] - s["freigegeben"],
                     "reasons": s["gruende"],
-                    "extra": {"stufen": {"geprueft": s["geprueft"], "stufe1": s["stufe1"], "stufe2": s["stufe2"],
+                    "extra": {"durchgefallen": s["durchgefallen"], "stufen": {"geprueft": s["geprueft"], "stufe1": s["stufe1"], "stufe2": s["stufe2"],
                                          "freigegeben": s["freigegeben"]}}})
     return out
 

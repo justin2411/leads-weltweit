@@ -3,25 +3,41 @@ import type { ReactNode } from "react";
 import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadDaily, loadGateChecks, loadLive, loadOwnerSettings, loadRecentSent, loadRunRows, loadStock } from "@/lib/dashboard-data";
 import { berlin, berlinDay, chain, compact, currencySign, mailboxes, monthly, nextRun, onlySegment, realSubscriptions, sampleStock, stockSegment, COUNTRY_COLOR } from "@/lib/dashboard-logic";
 import { totals } from "@/lib/dashboard-periods";
-import { coach, hall, laneOf, laneStats, running, utilization, type Beat } from "@/lib/leitstand";
+import { coach, hall, laneOf, laneStats, neckTask, running, utilization, type Beat } from "@/lib/leitstand";
 import { NECK_TO_STATION, ticker, type Edge, type Station, type StationId, type TickerItem } from "@/lib/fluss";
-import { WORKFLOWS, effectiveLimit, slotCounts, werkOn, type LaneRegistry } from "@/lib/owner-settings";
+import { effectiveLimit, slotCounts, werkOn, type LaneRegistry, type WerkKey } from "@/lib/owner-settings";
+import { START_WORKFLOWS, startState, type StartKey, type StartRequest } from "@/lib/start-queue";
+import { db } from "@/lib/supabase";
 import { isLive, werkStatus } from "@/lib/werke-live";
 import LANES from "@/lib/werk-linien.json";
 import { requireOwner } from "../actions";
-import { dispatchWorkflow, saveCountryLimits, saveFollowups, saveSampleTargets, saveSlotPlan, setPaused, toggleBuyerCountry, toggleSendCountry } from "../control-actions";
+import { requestStart, saveCountryLimits, saveFollowups, saveSampleTargets, saveSlotPlan, setPaused, toggleBuyerCountry, toggleSendCountry } from "../control-actions";
 import { WerkSwitch } from "../werk-switch";
 import { Back } from "../v2";
 import { Ampeln, Drawer, FlowMap, MiniBars, Ticker } from "./flow";
 import { Bays, LANE_COLOR, Reactor, UtilChart, laneColor } from "./hud";
 import { Pult } from "./pult";
 import { AgentDrawer, AgentRow } from "./agents";
+import { DragTip } from "./dnd";
 import { Clock, Voice } from "./voice";
 
 export const metadata = { title: "JARVIS" };
 const REG = LANES as unknown as LaneRegistry;
 type SP = Promise<Record<string, string | string[] | undefined>>;
 const IDS: StationId[] = ["lead", "gate", "bestand", "proben", "kwerk", "kaeufer", "versand", "antworten", "kunden"];
+
+/** Startwünsche der letzten 3 h (Direktstart, start_requests); Fehler/fehlende Tabelle -> leer. */
+async function loadStarts(): Promise<StartRequest[]> {
+  try {
+    const since = new Date(new Date().getTime() - 3 * 3_600_000).toISOString();
+    const { data, error } = await db().from("start_requests").select("id, created_at, workflow, status, started_at, note")
+      .gte("created_at", since).order("created_at", { ascending: false }).limit(30).abortSignal(AbortSignal.timeout(4000));
+    if (error) throw new Error(error.message);
+    return (data ?? []) as StartRequest[];
+  } catch {
+    return [];
+  }
+}
 
 /**
  * JARVIS – Fluss-Karte des ganzen Geschäfts (Inhaber 03.10.2026: „besser strukturieren … informiert werden,
@@ -40,11 +56,11 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   stockP.catch(() => {});
   const today = berlinDay(new Date());
   const from7 = new Date(Date.parse(`${today}T12:00:00Z`) - 6 * 86_400_000).toISOString().slice(0, 10);
-  const [liveAll, own, act, rows, stockAll, daily, sent, checks, agentTasks] = await Promise.all([
+  const [liveAll, own, act, rows, stockAll, daily, sent, checks, agentTasks, starts] = await Promise.all([
     loadLive(), loadOwnerSettings(), loadActivity(), loadRunRows(24),
     Promise.race([stockP.catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 2500))]),
     loadDaily(from7, today), loadRecentSent(12), s === "lead" || s === "gate" ? loadGateChecks(14, s === "gate" && tab === "check" && sp.f === "rot") : Promise.resolve([]),
-    loadAgentTasks(),
+    loadAgentTasks(), s === "lead" || s === "kwerk" || s === "proben" ? loadStarts() : Promise.resolve([] as StartRequest[]),
   ]);
   const live = onlySegment(liveAll, SEGMENT);
   const stock = stockSegment(stockAll, SEGMENT);
@@ -127,7 +143,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     { label: "Umsatz / Monat", value: revenue, sub: `${subs.length} Kunden`, tone: subs.length ? "green" : "grey", href: base("kunden") },
     { label: "Antworten 7 T", value: `${w.replies}`, sub: `${w.positive} positiv`, tone: w.positive ? "green" : w.replies ? "gold" : "grey", href: base("antworten") },
     { label: "Mails heute", value: `${sentToday}/${cap}`, sub: own.send_paused ? "pausiert" : "Versand", tone: own.send_paused ? "red" : sentToday ? "cyan" : "grey", href: base("versand") },
-    { label: "Engpass", value: neck ? stations.find((x) => x.id === neck)!.label : "keiner", sub: "hier ansetzen", tone: neck ? "red" : "green", href: neck ? base(neck) : "/dashboard/jarvis" },
+    { label: "Engpass", value: neck ? stations.find((x) => x.id === neck)!.label : "keiner", sub: "hier ansetzen", tone: neck ? "red" : "green", href: neck ? base(neck) : "/dashboard/jarvis", task: neck ? neckTask(stations.find((x) => x.id === neck)!.label) : undefined },
   ] as { label: string; value: string; sub: string; tone: "green" | "gold" | "red" | "cyan" | "grey"; href: string }[];
   const items: TickerItem[] = [
     ...sent.map((m) => ({ at: m.sent_at, icon: "✉", text: `${m.prospects?.company_name ?? "?"} ${m.prospects?.country ?? ""}`, tone: "cyan" as const, href: m.prospects ? `/dashboard/kontakte/${m.prospects.id}` : undefined })),
@@ -147,10 +163,18 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const back = s ? `/dashboard/jarvis?s=${s}&t=${tab}` : "/dashboard/jarvis";
   const nx = (file: string) => { const x = CONFIG.workflows.find((y) => y.file === file); const d = x ? nextRun(x.crons, now) : null; return d ? berlin(d, false) : "–"; };
   const dispatch = canDispatch();
-  const Start = ({ wf }: { wf: keyof typeof WORKFLOWS }) => (
-    <form action={dispatchWorkflow} className="row-go"><Back to={back} /><input type="hidden" name="wf" value={wf} />
-      <button disabled={!dispatch} title={dispatch ? "jetzt starten" : "braucht GitHub-Token in Vercel"}>▶ Jetzt starten</button></form>
-  );
+  // Direktstart (03.10.2026): mit Token sofort, sonst startet der Wachhund spätestens beim nächsten Lauf; Pausen gelten
+  const Start = ({ wf }: { wf: StartKey }) => {
+    const pk = START_WORKFLOWS[wf].pause as WerkKey | null;
+    const paused = !!pk && !sw(pk).on;
+    const st = startState(starts, wf, now);
+    return (<>
+      <form action={requestStart} className="row-go"><Back to={back} /><input type="hidden" name="wf" value={wf} />
+        <button disabled={paused} title={paused ? "pausiert – erst einschalten" : dispatch ? "startet sofort" : "Wachhund startet spätestens in 15 min"}>▶ Jetzt starten</button></form>
+      {st && <span className={st.tone === "bad" ? "warn" : "lock"} aria-live="polite">{st.text}</span>}
+    </>);
+  };
+  const tokenHint = !dispatch && <p className="lock">Sofort statt in ≤ 15 min: GH_DISPATCH_TOKEN einmal in Vercel setzen (Anleitung: <Link href="/dashboard/hilfe">Hilfe</Link>)</p>;
   const Big = ({ items: k }: { items: [string, string][] }) => <div className="bigs">{k.map(([v, l]) => <div key={l}><b>{v}</b><span>{l}</span></div>)}</div>;
   const byCountry = (o: Record<string, number>) => countries.map((c) => ({ key: c, label: c, n: o[c] ?? 0, color: COUNTRY_COLOR[c] }));
   const liveByLane: Record<string, number> = {};
@@ -184,8 +208,11 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     let body: ReactNode = null;
     if (s === "lead") body = tab === "set" ? (<>
       <div className="row-sw"><WerkSwitch werk="lead-werk" on={sw("lead-werk").on} back={back} label="Lead-Werk" />{Start({ wf: "lead-werk" })}</div>
+      {tokenHint}
       <Pult lanes={pultLanes} only={REG.lanes.filter((l) => l.werk === "lead-werk").map((l) => l.id)} cap={REG.total_slots - REG.reserve} total={REG.total_slots} back={back} action={saveSlotPlan} nextStart={nextStart} custom={custom} />
     </>) : tab === "check" ? <>{checkList}{lnk("/dashboard/werke", "alle Prüfstufen")}</> : (<>
+      <div className="row-sw">{Start({ wf: "lead-werk" })}</div>
+      {tokenHint}
       <Reactor bays={bays} running={busy} util={util.rate} center={`${busy}`} sub={`von ${REG.total_slots} Plätzen arbeiten gerade · ${Object.values(plan).reduce((a, b) => a + b, 0)} geplant`} />
       <MiniBars rows={REG.lanes.filter((l) => l.werk === "lead-werk" && (plan[l.id] || stats[l.id].runs)).map((l) => ({ key: l.id, label: l.short, n: stats[l.id].green, color: LANE_COLOR[l.id], href: `${base("lead")}&t=set`, tip: `${l.label}: ${plan[l.id]} Plätze · grün in 24 h` }))} />
       <UtilChart buckets={util.buckets} total={REG.total_slots} cap={REG.total_slots - REG.reserve} />
@@ -202,11 +229,13 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
       <Big items={[[compact(Object.values(leadsNew).reduce((a, b) => a + b, 0)), "lieferbar"], [`+${compact(leads24)}`, "24 h"]]} />
       <MiniBars rows={byCountry(leadsNew)} />
     </>);
-    if (s === "proben") body = tab === "set" ? (
+    if (s === "proben") body = tab === "set" ? (<>
+      <div className="row-sw">{Start({ wf: "proben-vorrat" })}</div>
       <form action={saveSampleTargets} className="frm"><Back to={back} />
         {countries.map((c) => <label key={c}><span>{c}</span><input name={`target_${SEGMENT}/${c}`} inputMode="numeric" defaultValue={own.sample_targets[`${SEGMENT}/${c}`] ?? ""} placeholder={String(st.find((r) => r.key.endsWith(`/${c}`))?.target ?? "")} /><em>Soll</em></label>)}
         <button className="go">Speichern</button></form>
-    ) : tab === "check" ? lnk("/dashboard/proben", "Proben im Detail") : (<>
+    </>) : tab === "check" ? lnk("/dashboard/proben", "Proben im Detail") : (<>
+      <div className="row-sw">{Start({ wf: "proben-vorrat" })}</div>
       <Big items={[[`${ready}/${target}`, "bereit"], [`${st.reduce((a, r) => a + r.sent24, 0)}`, "raus 24 h"]]} />
       <MiniBars rows={st.map((r) => ({ key: r.key, label: r.key.split("/")[1], n: r.ready, color: COUNTRY_COLOR[r.key.split("/")[1]], href: `${base("proben")}&t=set`, tip: `Soll ${r.target}` }))} />
     </>);
@@ -215,6 +244,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
       {countryToggles(own.buyer_countries_off, toggleBuyerCountry)}
       <Pult lanes={pultLanes} only={["kunden"]} cap={REG.total_slots - REG.reserve} total={REG.total_slots} back={back} action={saveSlotPlan} nextStart={nextStart} custom={custom} />
     </>) : tab === "check" ? lnk("/dashboard/kontakte", "Käufer ansehen") : (<>
+      <div className="row-sw">{Start({ wf: "kunden-werk" })}</div>
       <Big items={[[compact(newBuyers24), "neu 24 h"], [`${act.buyers_ok_60m}`, "geprüft / h"], [`${plan.kunden}`, "Plätze"]]} />
       {newBuyers24 === 0 && <p className="warn">Quelle durchgeprüft – neue nötig</p>}
     </>);
@@ -272,7 +302,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
       {tips.length > 0 && (
         <div className="jtips2">
           {tips.slice(0, 4).map((x, i) => (
-            <Link key={i} href={`${base(tipStation(x.href))}${x.href === "#pult" ? "&t=set" : ""}`} scroll={false} className={`jt ${x.level}`} title={x.text}>{x.title}</Link>
+            <DragTip key={i} task={x.task} title={x.title} href={`${base(tipStation(x.href))}${x.href === "#pult" ? "&t=set" : ""}`} level={x.level} tip={x.text} />
           ))}
         </div>
       )}

@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { coach, hall, laneOf, laneStats, utilization, type Beat, type RunRow } from "./leitstand.ts";
+import { coach, hall, laneOf, laneStats, neckTask, utilization, type Beat, type RunRow } from "./leitstand.ts";
+import { validateTask } from "./agents.ts";
 import { slotCounts } from "./owner-settings.ts";
 
 const reg = JSON.parse(readFileSync(new URL("./werk-linien.json", import.meta.url), "utf8"));
@@ -78,4 +79,15 @@ test("Coach: leere Plätze, erschöpfte Linie, Käufer knapp, Warteschlange", ()
   assert.ok(!titles.includes("US: Käufer werden knapp"));
   assert.ok(titles.some((t) => t.startsWith("Versand: Warteschlange reicht 16 Tage")));
   assert.ok(titles.includes("Kunden-Werk findet keine neuen Käufer"));
+  // jeder Hinweis außer reinen Infos lässt sich als fertiger Auftrag an einen Agenten ziehen (validateTask besteht)
+  for (const t of tips.filter((x) => x.level !== "info" || x.task)) {
+    assert.ok(t.task, `Auftrag fehlt: ${t.title}`);
+    const v = validateTask({ agent: 1, kind: t.task!.kind, market: t.task!.market ?? "", brief: t.task!.brief });
+    assert.equal(v.kind, t.task!.kind);
+  }
+  const usa = tips.find((t) => t.title.startsWith("Website-Prüfung USA"))!;
+  assert.equal(usa.task!.kind, "quelle");
+  assert.equal(usa.task!.market, "US");
+  assert.equal(tips.find((t) => t.title === "UK: Käufer werden knapp")!.task!.market, "UK");
+  assert.equal(neckTask("Antworten").kind, "frage");
 });

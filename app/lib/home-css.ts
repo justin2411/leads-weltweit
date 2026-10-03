@@ -566,13 +566,6 @@ export const HOME_CSS = `
 .hpz .hp-example--off{display:none}
 .hpz details.hp-qa .hp-qa__a{overflow:hidden}
 /* großer Live-Zähler unter der Quellen-Leiste (Inhaber 03.10.2026) */
-.hpz .hp-livecount{display:flex;flex-direction:column;align-items:center;text-align:center;padding:64px 0 72px}
-.hpz .hp-livecount__badge{display:inline-flex;align-items:center;gap:10px;margin:0 0 18px;padding:6px 16px 6px 10px;border:1px solid rgba(59,209,138,.28);border-radius:999px;background:rgba(59,209,138,.07);font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#9FE8C4}
-.hpz .hp-livecount__pulse{position:static;display:flex;align-items:center;gap:6px;width:auto;height:26px;opacity:1}
-.hpz .hp-livecount__pulse .hp-stat-wavebox{width:54px;height:26px}
-.hpz .hp-livecount__num{margin:0;font-size:clamp(52px,9vw,112px);font-weight:800;line-height:1;letter-spacing:-.035em;font-variant-numeric:tabular-nums;white-space:nowrap;background:linear-gradient(180deg,#fff 30%,#E2C68F 140%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 60px rgba(226,198,143,.12)}
-.hpz .hp-livecount__label{margin:14px 0 0;font-size:13px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-soft)}
-@media (max-width:720px){.hpz .hp-livecount{padding:44px 0 52px}.hpz .hp-livecount__label{font-size:11.5px}}
 /* Film so breit wie das Kennzahlen-Band darunter (Inhaber 03.10.2026: Überschriften gleich breit) */
 .hpz .hp-film__in{max-width:none}
 `;

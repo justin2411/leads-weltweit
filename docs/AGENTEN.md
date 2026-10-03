@@ -1,13 +1,13 @@
 # Agenten – Aufträge aus dem Dashboard
 
 Inhaber 03.10.2026: „einzelne agenten nutzen die sachen für mich machen, z.b. ich beauftrage agent 1 neue leads zu
-holen für den markt“. Der Inhaber erteilt Aufträge in JARVIS (Agenten-Leiste, „+ Auftrag“). Eine Claude-Sitzung
+holen für den markt“. Der Inhaber erteilt Aufträge in JARVIS (Agenten-Leiste, „+ Auftrag“, oder einen gelben Hinweis bzw. den Engpass auf A1–A4 ziehen – dann steht der Auftragstext schon fertig drin). Eine Claude-Sitzung
 (Routine „Agenten“, stündlich) bearbeitet sie nach dieser Anleitung. CLAUDE.md gilt immer zuerst.
 
 ## Ablauf je Sitzung
 
 1. `python scripts/agent_tasks.py offen` – nichts offen: sofort beenden (keine weitere Arbeit, keine Nachricht).
-2. Je Auftrag (älteste zuerst, höchstens 3 je Sitzung): `start <id>`, beim Arbeiten `schritt <id> <prozent> "<kurz>"`
+2. Je Auftrag (älteste zuerst, höchstens 3 je Sitzung): `start <id>` (Exit-Code 3 = schon von einer anderen Sitzung übernommen → überspringen), beim Arbeiten `schritt <id> <prozent> "<kurz>"`
    (alle paar Minuten), am Ende `fertig <id> "<Ergebnis in 1–3 Sätzen>" '<Kennzahlen als JSON>'` oder `fehler`.
 3. Ergebnis-Sätze: kurz, Deutsch, echte Zahlen, keine Fachbegriffe. Kennzahlen nur gemessene Werte
    (z. B. `{"neue Leads": 420, "grün %": 94}`).

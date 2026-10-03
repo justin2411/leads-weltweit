@@ -16,6 +16,7 @@ import {
   type SettingKey, type WerkKey, type WorkflowKey,
 } from "@/lib/owner-settings";
 import LANES from "@/lib/werk-linien.json";
+import { COND_LABEL, RECENT_START_MIN, START_WORKFLOWS, fmtBerlin, isStartKey, nextPickup, type StartKey } from "@/lib/start-queue";
 import { requireOwner } from "./actions";
 
 const BY = "Inhaber Dashboard";
@@ -43,8 +44,9 @@ async function setSetting<K extends SettingKey>(key: K, value: unknown) {
   await log(`setting:${key}`, null, old, value);
 }
 
-/** Gemeinsamer Rahmen: Sitzung, Fehler als Hinweis zurück, Erfolg als „gespeichert“. */
-async function run(f: FormData, okMsg: string, fn: () => Promise<void>) {
+/** Gemeinsamer Rahmen: Sitzung, Fehler als Hinweis zurück, Erfolg als „gespeichert“ (okMsg als Funktion: Text erst
+ *  nach der Aktion, z. B. „gestartet“ oder „startet spätestens 21:41“). */
+async function run(f: FormData, okMsg: string | (() => string), fn: () => Promise<void>) {
   await requireOwner();
   const to = back(f);
   try {
@@ -54,7 +56,7 @@ async function run(f: FormData, okMsg: string, fn: () => Promise<void>) {
     throw e;
   }
   revalidatePath("/dashboard", "layout");
-  go(to, "ok", okMsg);
+  go(to, "ok", typeof okMsg === "function" ? okMsg() : okMsg);
 }
 
 // ------------------------------------------------------------------------------------------- Versand
@@ -128,16 +130,74 @@ export async function toggleWerk(f: FormData) {
 
 // ------------------------------------------------------------------------------------------- Belegungsplan
 /** Plätze je Linie (Inhaber 03.10.2026: „wv plätze werden belegt … wie maschinen steuern“). Wirkt beim nächsten Start
- *  des Werks (Job plan in lead-werk.yml/kunden-werk.yml). Grenzen je Linie und Summe prüft validateSlotPlan. */
+ *  des Werks (Job plan in lead-werk.yml/kunden-werk.yml). Grenzen je Linie und Summe prüft validateSlotPlan.
+ *  start=1 („Übernehmen & jetzt starten“): danach die Werke aus `werke` (Standard: Lead- und Kunden-Werk) starten;
+ *  changed=0 = Plan unverändert, nur starten (nichts speichern). Pausierte Werke werden übersprungen und gemeldet. */
 export async function saveSlotPlan(f: FormData) {
-  await run(f, "Belegung gespeichert – wirkt beim nächsten Start der Werke", async () => {
+  const start = f.get("start") === "1" && f.get("reset") !== "1";
+  const msgs: string[] = [];
+  await run(f, () => msgs.join(" · ") || "Belegung gespeichert – wirkt beim nächsten Start der Werke", async () => {
     const reg = LANES as unknown as LaneRegistry;
-    const input = Object.fromEntries(reg.lanes.map((l) => [l.id, f.get(`slot_${l.id}`)]));
-    await setSetting("slot_plan", f.get("reset") === "1" ? {} : validateSlotPlan(input, reg));
+    if (!start || f.get("changed") !== "0") {
+      const input = Object.fromEntries(reg.lanes.map((l) => [l.id, f.get(`slot_${l.id}`)]));
+      await setSetting("slot_plan", f.get("reset") === "1" ? {} : validateSlotPlan(input, reg));
+      if (start) msgs.push("Belegung gespeichert");
+    }
+    if (!start) return;
+    const want = String(f.get("werke") ?? "").split(",").filter((k): k is StartKey => k === "lead-werk" || k === "kunden-werk");
+    for (const k of want.length ? [...new Set(want)] : (["lead-werk", "kunden-werk"] as StartKey[])) {
+      try {
+        msgs.push(await startWerk(k));
+      } catch (e) {
+        if (!(e instanceof InputError)) throw e;
+        msgs.push(e.message);
+      }
+    }
   });
 }
 
 // ------------------------------------------------------------------------------------------- Werke starten
+/** workflow_dispatch auf main mit GH_DISPATCH_TOKEN; Antwort-Status (0 = Netzfehler/Zeitüberschreitung). */
+async function ghDispatch(token: string, file: string, inputs: Record<string, string>): Promise<{ ok: boolean; status: number }> {
+  const repo = process.env.GH_REPO?.trim() || "justin2411/leads-weltweit";
+  try {
+    const r = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/${file}/dispatches`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "Content-Type": "application/json" },
+      body: JSON.stringify({ ref: "main", inputs }),
+      signal: AbortSignal.timeout(8000),
+    });
+    return { ok: r.ok, status: r.status };
+  } catch {
+    return { ok: false, status: 0 };
+  }
+}
+
+/** Läuft der Ablauf schon (oder wartet er)? Wie wachhund.py overdue(): die letzten 3 Läufe auf main. Fehler → false
+ *  (dann höchstens ein Lauf zusätzlich in der Warteschlange, nie ein ausgelassener Start). */
+async function ghRunning(token: string, file: string): Promise<boolean> {
+  const repo = process.env.GH_REPO?.trim() || "justin2411/leads-weltweit";
+  try {
+    const r = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/${file}/runs?per_page=3&branch=main`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" }, signal: AbortSignal.timeout(5000), cache: "no-store",
+    });
+    if (!r.ok) return false;
+    const j = (await r.json()) as { workflow_runs?: { status?: string }[] };
+    return (j.workflow_runs ?? []).some((x) => ["queued", "in_progress", "waiting", "requested", "pending"].includes(String(x.status)));
+  } catch {
+    return false;
+  }
+}
+
+/** Pausen der Werke – anders als loadOwnerSettings() ohne Rückfall auf Standardwerte: ist owner_settings nicht
+ *  lesbar, startet nichts (ein pausiertes Werk darf nie aus Versehen loslaufen). */
+async function pausedStrict(): Promise<Record<string, unknown>> {
+  const { data, error } = await db().from("owner_settings").select("value").eq("key", "werke_paused").abortSignal(AbortSignal.timeout(5000)).maybeSingle();
+  if (error) throw new InputError("Einstellungen nicht lesbar – kein Start");
+  const v = data?.value;
+  return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+}
+
 export async function dispatchWorkflow(f: FormData) {
   await run(f, "gestartet", async () => {
     const key = String(f.get("wf")) as WorkflowKey;
@@ -146,17 +206,64 @@ export async function dispatchWorkflow(f: FormData) {
     const token = process.env.GH_DISPATCH_TOKEN?.trim();
     if (!canDispatch() || !token) throw new InputError("Starten braucht GH_DISPATCH_TOKEN in Vercel");
     if (key === "versand" && (await loadOwnerSettings()).send_paused) throw new InputError("Versand ist pausiert");
-    const repo = process.env.GH_REPO?.trim() || "justin2411/leads-weltweit";
     const inputs: Record<string, string> = { ...wf.inputs };
     if (key === "versand") inputs.freigabe = `${BY}, ${new Date().toISOString()}`;
-    const r = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/${wf.file}/dispatches`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "Content-Type": "application/json" },
-      body: JSON.stringify({ ref: "main", inputs }),
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!r.ok) throw new InputError(`GitHub: ${r.status}`);
+    const r = await ghDispatch(token, wf.file, inputs);
+    if (!r.ok) throw new InputError(r.status ? `GitHub: ${r.status}` : "GitHub nicht erreichbar");
     await log("workflow:start", wf.file, null, inputs);
+  });
+}
+
+/** Ein Werk jetzt starten (Inhaber 03.10.2026: „Werke direkt starten statt erst beim nächsten Zeitplan“). Nur
+ *  START_WORKFLOWS (nie Versand), nie bei Pause durch den Inhaber. Mit GH_DISPATCH_TOKEN sofort, sonst (oder wenn
+ *  GitHub nicht antwortet) als offener Wunsch in start_requests, den der Wachhund spätestens beim nächsten Lauf
+ *  startet. Ein schon offener Wunsch wird nicht verdoppelt. Gibt den Text für den Inhaber zurück. */
+async function startWerk(key: StartKey): Promise<string> {
+  const spec = START_WORKFLOWS[key];
+  if (spec.cond && !CONFIG[spec.cond]) throw new InputError(`${COND_LABEL[spec.cond]} ist in config/pipeline.yaml aus – kein Start`);
+  if (spec.pause && (await pausedStrict())[spec.pause]) throw new InputError(`${spec.label} ist pausiert – erst einschalten`);
+  const sb = db();
+  const now = new Date();
+  const { data: open, error: e0 } = await sb.from("start_requests").select("id").eq("workflow", key).eq("status", "offen").limit(5);
+  if (e0) throw new Error(e0.message);
+  const since = new Date(now.getTime() - RECENT_START_MIN * 60_000).toISOString();
+  const { data: recent, error: e1 } = await sb.from("start_requests").select("started_at").eq("workflow", key).eq("status", "gestartet")
+    .gte("started_at", since).order("started_at", { ascending: false }).limit(1);
+  if (e1) throw new Error(e1.message);
+  if (recent?.length) return `${spec.label} läuft bereits (gestartet ${fmtBerlin(recent[0].started_at)})`;
+  const inputs: Record<string, string> = { ...spec.inputs };
+  const token = process.env.GH_DISPATCH_TOKEN?.trim();
+  let note: string | null = null;
+  if (token) {
+    if (await ghRunning(token, spec.file)) return `${spec.label} läuft bereits`;
+    const r = await ghDispatch(token, spec.file, inputs);
+    if (r.ok) {
+      const at = now.toISOString();
+      // offene Wünsche erledigt der Direktstart mit (sonst startete der Wachhund ein zweites Mal)
+      if (open?.length) await sb.from("start_requests").update({ status: "gestartet", started_at: at, note: "direkt (Dashboard)" }).in("id", open.map((o) => o.id)).eq("status", "offen");
+      else {
+        const { error } = await sb.from("start_requests").insert({ workflow: key, inputs, status: "gestartet", started_at: at, note: "direkt (Dashboard)", created_by: BY });
+        if (error) throw new Error(error.message);
+      }
+      await log("workflow:start", spec.file, null, { ...inputs, via: "direkt" });
+      return `${spec.label} gestartet`;
+    }
+    note = r.status ? `GitHub ${r.status} – Wachhund übernimmt` : "GitHub nicht erreichbar – Wachhund übernimmt";
+  }
+  const when = fmtBerlin(nextPickup(now));
+  if (open?.length) return `${spec.label}: Start schon angefordert – spätestens ${when}`;
+  const { error } = await sb.from("start_requests").insert({ workflow: key, inputs, status: "offen", note, created_by: BY });
+  if (error) throw new Error(error.message);
+  await log("workflow:request_start", spec.file, null, { ...inputs, via: "wachhund", note });
+  return `${spec.label}: startet spätestens ${when}${note ? ` (${note})` : ""}`;
+}
+
+export async function requestStart(f: FormData) {
+  const msg: string[] = [];
+  await run(f, () => msg[0] ?? "Start angefordert", async () => {
+    const key = String(f.get("wf") ?? "");
+    if (!isStartKey(key)) throw new InputError("unbekannter Ablauf");
+    msg.push(await startWerk(key));
   });
 }
 

@@ -9,8 +9,14 @@ Regeln:
   - Dauerbetrieb (Lead-/Kunden-Werk): sobald kein Lauf aktiv ist, nächster Lauf (frühestens min_gap nach dem letzten Start)
   - tägliche Läufe: überfällig, wenn die geplante Zeit + Karenz vorbei ist und seit der geplanten Zeit kein Lauf
     gestartet wurde
+  - Direktstart (Inhaber 03.10.2026): offene Startwünsche aus dem Dashboard (signalwerk.start_requests) werden vor
+    den Plan-Prüfungen gestartet – nur erlaubte Abläufe (START_WF, nie der Versand), nie bei Pause durch den Inhaber,
+    Wünsche älter als 2 h werden verworfen
   - der Versand wird nur nachgestartet, wenn config/versand.yaml aktiv: true sagt (ein Handstart würde den
-    Schalter sonst umgehen); die Lead-Suche nur, wenn config/pipeline.yaml lead_suche: true sagt
+    Schalter sonst umgehen); die Lead-Suche nur, wenn config/pipeline.yaml lead_suche: true sagt – das gilt auch für
+    Startwünsche; läuft ein Ablauf schon, startet ein Wunsch keinen zweiten Lauf
+  - Sicherheitsnetz Baukasten: Leads, die nur an einer gelösten/geänderten Inhaber-Regel hängen, gehen zurück an die
+    Freigabe (flow_release_stale_held)
 
   python scripts/wachhund.py            # nur anzeigen
   python scripts/wachhund.py --apply    # überfällige Läufe starten
@@ -60,6 +66,17 @@ PAUSE_KEY = {"lead-werk.yml": "lead-werk", "kunden-werk.yml": "kunden-werk", "pr
              "kundenlieferung.yml": "kundenlieferung", "tagescheck.yml": "tagescheck"}
 
 
+# Direktstart aus dem Dashboard (gleiche Liste wie app/lib/start-queue.ts START_WORKFLOWS und die DB-Prüfung in
+# supabase/migrations/20261004030100_signalwerk_start_requests.sql). Der Versand ist NIE startbar.
+START_WF = {
+    "lead-werk": {"wf": "lead-werk.yml", "inputs": {}},
+    "kunden-werk": {"wf": "kunden-werk.yml", "inputs": {}},
+    "proben-vorrat": {"wf": "proben-vorrat.yml", "inputs": {"befehl": "run", "probelauf": "false"}},
+    "freigabe-stichprobe": {"wf": "freigabe-stichprobe.yml", "inputs": {}},
+}
+START_MAX_AGE_MIN = 120
+
+
 def owner_paused(job: dict, settings: dict | None) -> str | None:
     """Grund, wenn der Inhaber dieses Werk im Dashboard pausiert hat, sonst None."""
     if not settings:
@@ -71,17 +88,111 @@ def owner_paused(job: dict, settings: dict | None) -> str | None:
     return f"pausiert durch Inhaber (seit {since})" if since else None
 
 
-def load_settings() -> dict | None:
+def open_db():
     if not (os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SERVICE_ROLE_KEY")):
         return None
     try:
         sys.path.insert(0, str(ROOT / "scripts"))
         from lib.db import DB
+        return DB()
+    except Exception as exc:  # noqa: BLE001
+        print(f"Datenbank nicht erreichbar: {type(exc).__name__}")
+        return None
+
+
+def load_settings(db=None) -> dict | None:
+    db = db or open_db()
+    if db is None:
+        return None
+    try:
+        sys.path.insert(0, str(ROOT / "scripts"))
         from lib.owner_settings import load
-        return load(DB())
+        return load(db)
     except Exception as exc:  # noqa: BLE001 - ohne Einstellungen gelten nur die Datei-Schalter
         print(f"Einstellungen nicht lesbar: {type(exc).__name__}")
         return None
+
+
+def plan_starts(rows: list[dict], settings: dict | None, now: dt.datetime) -> list[tuple[dict, str, str]]:
+    """Offene Startwünsche -> [(Zeile, 'starten'|'verworfen', Grund)]. Je Ablauf nur der neueste; ältere doppelte,
+    unbekannte, zu alte (> 2 h) und vom Inhaber pausierte Abläufe werden verworfen."""
+    out, seen = [], set()
+    for r in sorted(rows, key=lambda x: x.get("created_at") or "", reverse=True):
+        wf = r.get("workflow")
+        if wf not in START_WF:
+            out.append((r, "verworfen", "Ablauf nicht erlaubt"))
+            continue
+        if wf in seen:
+            out.append((r, "verworfen", "doppelt (neuerer Wunsch)"))
+            continue
+        seen.add(wf)
+        try:
+            age = (now - dt.datetime.fromisoformat(str(r["created_at"]).replace("Z", "+00:00"))).total_seconds() / 60
+        except (KeyError, ValueError):
+            age = START_MAX_AGE_MIN + 1
+        if age > START_MAX_AGE_MIN:
+            out.append((r, "verworfen", f"älter als {START_MAX_AGE_MIN // 60} h"))
+            continue
+        job = next((j for j in JOBS if j["wf"] == START_WF[wf]["wf"]), {"wf": START_WF[wf]["wf"]})
+        ok, why = allowed(job)  # Datei-Schalter (config/pipeline.yaml) gelten auch für Startwünsche
+        if not ok:
+            out.append((r, "verworfen", why))
+            continue
+        why = owner_paused({"wf": START_WF[wf]["wf"]}, settings)
+        if why:
+            out.append((r, "verworfen", why))
+            continue
+        out.append((r, "starten", "Wunsch aus dem Dashboard"))
+    return out
+
+
+def strict_settings(db, settings: dict | None) -> dict | None:
+    """Pausen frisch und OHNE Rückfall lesen (owner_settings.load fällt bei Fehlern auf Standardwerte zurück):
+    None = nicht lesbar -> kein Direktstart."""
+    try:
+        rows = db.select("owner_settings", {"select": "key,value", "key": "eq.werke_paused"}) or []
+    except Exception as exc:  # noqa: BLE001
+        print(f"Einstellungen nicht lesbar ({type(exc).__name__}) – Startwünsche bleiben offen")
+        return None
+    paused = next((r.get("value") for r in rows if r.get("key") == "werke_paused"), None)
+    return {**(settings or {}), "werke_paused": paused if isinstance(paused, dict) else {}}
+
+
+def handle_starts(db, settings: dict | None, dispatch, now: dt.datetime, apply: bool, running=None) -> list[str]:
+    """Startwünsche abarbeiten. dispatch(wf_datei, inputs) -> (ok, Text); running(wf_datei) -> bool (läuft/wartet
+    schon ein Lauf? dann kein zweiter). Gibt die gestarteten Dateien zurück. Sind die Pausen nicht lesbar, bleibt
+    alles offen. Fehler hier dürfen die normalen Prüfungen nie verhindern (Aufrufer fängt ab)."""
+    settings = strict_settings(db, settings)
+    if settings is None:
+        return []
+    rows = db.select("start_requests", {"select": "id,workflow,created_at,status", "status": "eq.offen",
+                                        "order": "created_at.desc", "limit": "50"}) or []
+    started = []
+    for r, what, why in plan_starts(rows, settings, now):
+        wf = START_WF.get(r.get("workflow"), {}).get("wf", str(r.get("workflow")))
+        print(f"{'▶' if what == 'starten' else '-'}  Start {wf:<16} {why}")
+        if not apply:
+            continue
+        if what == "verworfen":
+            db.update("start_requests", {"id": r["id"], "status": "offen"}, {"status": "verworfen", "note": why[:300]})
+            continue
+        if running is not None and running(wf):
+            db.update("start_requests", {"id": r["id"], "status": "offen"},
+                      {"status": "gestartet", "started_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+                       "note": "läuft bereits"})
+            print("   läuft bereits – kein zweiter Lauf")
+            continue
+        ok, text = dispatch(wf, START_WF[r["workflow"]]["inputs"])
+        stamp = dt.datetime.now(dt.timezone.utc).isoformat()
+        if ok:
+            started.append(wf)
+            db.update("start_requests", {"id": r["id"], "status": "offen"},
+                      {"status": "gestartet", "started_at": stamp, "note": "Wachhund"})
+            print("   gestartet")
+        else:
+            db.update("start_requests", {"id": r["id"], "status": "offen"}, {"status": "fehler", "note": text[:300]})
+            print(f"   Start fehlgeschlagen: {text[:200]}")
+    return started
 
 
 def cfg(name: str, key: str) -> str | None:
@@ -107,10 +218,31 @@ def at_today(now: dt.datetime, hhmm: str) -> dt.datetime:
     return now.replace(hour=h, minute=m, second=0, microsecond=0)
 
 
+ACTIVE_RUN = ("queued", "in_progress", "waiting", "requested", "pending")
+
+
+def is_running(runs: list[dict]) -> bool:
+    """Läuft oder wartet einer der letzten 3 Läufe (neueste zuerst)?"""
+    return any(r.get("status") in ACTIVE_RUN for r in runs[:3])
+
+
+def release_stale_held(db) -> int:
+    """Sicherheitsnetz Stufe 4 (Baukasten-Regeln): Leads, die nur an einer inzwischen gelösten/geänderten Regel
+    hängen, zurück an die normale Freigabe (signalwerk.flow_release_stale_held). Fehler nur melden."""
+    try:
+        n = int(db.rpc("flow_release_stale_held", {}) or 0)
+    except Exception as exc:  # noqa: BLE001 - darf den Wachhund nie aufhalten
+        print(f"Regel-Rücknahme nicht möglich: {type(exc).__name__}: {str(exc)[:160]}")
+        return 0
+    if n:
+        print(f"↺  {n} Leads von gelösten/geänderten Inhaber-Regeln zurück an die Freigabe")
+    return n
+
+
 def overdue(job: dict, runs: list[dict], now: dt.datetime) -> tuple[bool, str]:
     """runs: neueste zuerst, jeweils mit created_at (ISO) und status."""
     starts = [dt.datetime.fromisoformat(r["created_at"].replace("Z", "+00:00")) for r in runs]
-    if any(r["status"] in ("queued", "in_progress", "waiting", "requested", "pending") for r in runs[:3]):
+    if is_running(runs):
         return False, "läuft gerade"
     if job["kind"] == "continuous":
         last = starts[0] if starts else None
@@ -145,25 +277,51 @@ def main(argv=None) -> int:
     h = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
     now = dt.datetime.now(dt.timezone.utc)
     started = []
-    settings = load_settings()
+    db = open_db()
+    settings = load_settings(db)
+
+    def dispatch(wf: str, inputs: dict) -> tuple[bool, str]:
+        d = requests.post(f"https://api.github.com/repos/{repo}/actions/workflows/{wf}/dispatches",
+                          json={"ref": "main", "inputs": inputs}, headers=h, timeout=30)
+        return d.status_code < 300, f"GitHub {d.status_code} {d.text[:200]}"
+
+    def runs_of(wf: str) -> list[dict]:
+        r = requests.get(f"https://api.github.com/repos/{repo}/actions/workflows/{wf}/runs",
+                         params={"per_page": 10, "branch": "main"}, headers=h, timeout=30)
+        r.raise_for_status()
+        return r.json().get("workflow_runs", [])
+
+    def running(wf: str) -> bool:
+        try:
+            return is_running(runs_of(wf))
+        except Exception as exc:  # noqa: BLE001 - lieber ein Lauf zu viel in der Warteschlange als ein ausgelassener
+            print(f"   Läufe von {wf} nicht lesbar: {type(exc).__name__}")
+            return False
+
+    if db is not None:
+        try:
+            started += handle_starts(db, settings, dispatch, now, args.apply, running)
+        except Exception as exc:  # noqa: BLE001 - Startwünsche dürfen den Wachhund nie aufhalten
+            print(f"Startwünsche nicht lesbar: {type(exc).__name__}: {str(exc)[:200]}")
+        if args.apply:
+            release_stale_held(db)
     for job in JOBS:
+        if job["wf"] in started:
+            print(f"✓  {job['wf']:<22} eben auf Wunsch gestartet")
+            continue
         ok, why = allowed(job)
         if ok and owner_paused(job, settings):
             ok, why = False, owner_paused(job, settings)
         if not ok:
             print(f"-  {job['wf']:<22} {why}")
             continue
-        r = requests.get(f"https://api.github.com/repos/{repo}/actions/workflows/{job['wf']}/runs",
-                         params={"per_page": 10, "branch": "main"}, headers=h, timeout=30)
-        r.raise_for_status()
-        runs = r.json().get("workflow_runs", [])
+        runs = runs_of(job["wf"])
         late, why = overdue(job, runs, now)
         print(f"{'!' if late else '✓'}  {job['wf']:<22} {why}")
         if late and args.apply:
-            d = requests.post(f"https://api.github.com/repos/{repo}/actions/workflows/{job['wf']}/dispatches",
-                              json={"ref": "main", "inputs": job.get("inputs", {})}, headers=h, timeout=30)
-            if d.status_code >= 300:
-                print(f"   Start fehlgeschlagen: {d.status_code} {d.text[:200]}")
+            ok, text = dispatch(job["wf"], job.get("inputs", {}))
+            if not ok:
+                print(f"   Start fehlgeschlagen: {text}")
             else:
                 started.append(job["wf"])
                 print("   nachgestartet")

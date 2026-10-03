@@ -25,8 +25,9 @@ CACHE_NORTH = Path(os.environ.get("EXTRAKTOR_OVERTURE_NORTH", "out/cache/overtur
 # Fokus Webagenturen (Inhaber 02.10.2026): US-Auszug nur mit Firmen OHNE Website (sonst zu groß), ~2,5 Mio. Firmen
 CACHE_US = Path(os.environ.get("EXTRAKTOR_OVERTURE_US", "out/cache/overture_us_s2.parquet"))
 # Website-Prüfung S2 (Inhaber 02.10.2026: „sehr alte Websites oder fehlende Sicherheit“, dann „im ganz großen
-# stil“): US-Firmen MIT Website, je Monat die andere Hälfte (fest nach ID), damit der Auszug handlich bleibt
-# (~0,5 GB) und die Teile jeden Monat neue Firmen bekommen
+# stil“): US-Firmen MIT Website. Bis 03.10.2026 je Monat nur eine Hälfte (fest nach ID) – im Oktober war die
+# Hälfte nach ~1,5 Tagen abgearbeitet und die 21 Teile liefen leer (Scout R22). Jetzt der ganze Bestand (~1 GB);
+# das Gedächtnis der Teile (120 Tage) überspringt die schon geprüfte Hälfte
 CACHE_US_WEB = Path(os.environ.get("EXTRAKTOR_OVERTURE_US_WEB", "out/cache/overture_us_web.parquet"))
 COUNTRY = {"GB": "UK", "FR": "FR", "IE": "IE", "NL": "NL", "BE": "BE", "SE": "SE", "US": "US"}
 # Auszug -> (Overture-Ländercodes, Bounding-Box xmin, xmax, ymin, ymax)
@@ -37,8 +38,7 @@ GROUPS = {CACHE: (("GB", "FR"), (-8.7, 9.6, 41.3, 60.9)),
 # zusätzliche Bedingung je Auszug
 ONLY_NO_WEBSITE = {CACHE_US}
 EXTRA_WHERE = {CACHE_US: "AND (websites IS NULL OR len(websites) = 0)",
-               CACHE_US_WEB: "AND len(websites) > 0 AND hash(id) % 2 = "
-                             f"{dt.date.today().month % 2} AND coalesce(confidence, 0) >= 0.6"}
+               CACHE_US_WEB: "AND len(websites) > 0 AND coalesce(confidence, 0) >= 0.6"}
 
 
 def code(country: str) -> str:
