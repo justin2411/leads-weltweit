@@ -99,4 +99,25 @@ export const CONTACT_CSS = `
   .hpz .ct .hp-formcard > form.pf{flex:1;display:flex;flex-direction:column;gap:16px}
   .hpz .ct .hp-formcard > form.pf > .pf-field:has(textarea){flex:1;display:flex;flex-direction:column}
   .hpz .ct .hp-formcard > form.pf > .pf-field:has(textarea) textarea{flex:1}}
+
+/* Inhaber 03.10.2026: rechte Karte hell (Formular links bleibt dunkel) */
+.hpz .ct-card{color:var(--ink);background:radial-gradient(420px 240px at 100% 0%,rgba(216,189,138,.16),transparent 70%),linear-gradient(180deg,#FFFFFF,#FAF6EE);
+  box-shadow:0 50px 90px -50px rgba(14,26,51,.35),0 1px 2px rgba(14,26,51,.06),inset 0 1px 0 #fff}
+.hpz .ct-card::before{background:linear-gradient(140deg,rgba(176,141,87,.55),rgba(14,26,51,.08) 40%,rgba(14,26,51,.06) 70%,rgba(176,141,87,.35))}
+.hpz .ct-card::after{background:radial-gradient(closest-side,rgba(216,189,138,.2),transparent)}
+.hpz .ct-who{background:linear-gradient(180deg,#F8F3E9,#F1EADB);box-shadow:inset 0 0 0 1px rgba(176,141,87,.22),inset 0 1px 0 #fff}
+.hpz .ct-ex{border-color:rgba(14,26,51,.14);color:var(--muted)}
+.hpz .ct-msg--you{border-color:var(--line);background:#F4F1EA;color:var(--ink)}
+.hpz .ct-msg--you b{color:var(--muted)}
+.hpz .ct-msg--np{border-color:transparent;background:linear-gradient(160deg,#132A5F,var(--navy-900));color:#fff;box-shadow:0 18px 34px -20px rgba(14,26,51,.6)}
+.hpz .ct-msg--np b{color:var(--gold-soft)}
+.hpz .ct-card.is-anim .ct-typing{border-color:rgba(176,141,87,.35);background:rgba(226,200,148,.16)}
+.hpz .ct-typing i{background:var(--gold-deep)}
+.hpz .ct-steps-h{color:var(--gold-deep)}
+.hpz .ct-steps-h::after{background:linear-gradient(90deg,rgba(176,141,87,.5),rgba(176,141,87,.04))}
+.hpz .ct-num{border-color:rgba(176,141,87,.5);background:#fff;color:var(--gold-deep)}
+.hpz .ct-steps h3{color:var(--ink)}
+.hpz .ct-steps h3 small{color:var(--gold-deep)}
+.hpz .ct-steps p{color:var(--muted)}
+.hpz .ct-card .hp-grain::after,.hpz .ct-card.hp-grain::after{opacity:0}
 `;
