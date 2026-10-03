@@ -98,4 +98,9 @@ export const LANDING_V2_CSS = `
 /* Hero: mehr Abstand zwischen Button und den vier Kennzahl-Kästchen (Inhaber 03.10.2026) */
 .lp2 .h2o .kpis{margin-top:64px}
 @media (max-width:720px){.lp2 .h2o .kpis{margin-top:40px}}
+/* Hero-Hintergrund wie Startseite: Farbverlauf, Lichtflächen, Punkteraster mit Lichtkegel (Inhaber 03.10.2026) */
+.bx .lp2 .h2o{background:linear-gradient(180deg,#0D1834,#0B1530 70%);overflow:hidden}
+.bx .lp2 .h2o:before{display:none}
+.lp2 .lz-beam .hp-dots--lit{opacity:0;transition:opacity .4s}
+.lp2 .lz-beam.is-pointer .hp-dots--lit{opacity:1}
 `;

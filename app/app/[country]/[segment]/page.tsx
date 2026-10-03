@@ -464,7 +464,10 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
       <div className="lp2">
 
         <section className="h2o" id="top">
-          <div className="hpz lz-beam" aria-hidden="true"><span className="hp-beam" /></div>
+          <div className="hpz lz-beam" aria-hidden="true">
+            <span className="hp-aurora hp-aurora--blue" /><span className="hp-aurora hp-aurora--gold" /><span className="hp-aurora hp-aurora--deep" />
+            <span className="hp-dots" /><span className="hp-dots hp-dots--lit" /><span className="hp-beam" />
+          </div>
           <div className="wrap">
             <div>
               <span className="pill"><Icon name="star" className="ic" />{T2.pill.replace("{country}", cname)}</span>
