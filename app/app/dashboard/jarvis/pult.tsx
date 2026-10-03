@@ -38,7 +38,7 @@ export function Pult({ lanes, cap, total, back, action, nextStart, custom, only 
           <i className="ps-cap" style={{ left: `${(cap / total) * 100}%` }} />
         </div>
         <div className="ps-read">
-          <b className={over ? "bad" : ""}>{sum}</b><span>/ {cap} Plätze für Werke · {total - cap} reserviert</span>
+          <b className={over ? "bad" : ""}>{sum}</b><span>von {cap} Plätzen geplant · {total - cap} reserviert</span>
           {over && <em className="bad">{sum - cap} zu viel</em>}
           {!over && sum < cap && <em>{cap - sum} frei</em>}
         </div>
