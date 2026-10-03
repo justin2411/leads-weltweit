@@ -109,7 +109,18 @@ export function utilization(rows: RunRow[], beats: Beat[], now: number, total: n
   return { buckets: buckets.map((b) => ({ ...b, slots: Math.round(b.slots * 10) / 10, counted: Date.parse(b.from) + stepMin * MIN > c0 })), rate: Math.min(1, used / (span * total)), since: new Date(c0).toISOString() };
 }
 
-export type Tip = { level: "rot" | "gelb" | "gruen" | "info"; title: string; text: string; href?: string };
+/** Fertiger Auftrag zu einem Hinweis (Inhaber 03.10.2026: „die gelben sachen … ziehen können und dieses problem agents
+ *  geben, das die das ausführen“): Art, Markt und Auftragstext für agent_tasks (Grenzen wie validateTask). */
+export type TipTask = { kind: "leads" | "kaeufer" | "quelle" | "pruefen" | "frage"; market: string | null; brief: string };
+export type Tip = { level: "rot" | "gelb" | "gruen" | "info"; title: string; text: string; href?: string; task?: TipTask };
+
+const MARKET = new Set(["US", "UK", "FR", "IE", "NL", "BE", "SE"]);
+const marketOf = (c: string | null | undefined) => (c && MARKET.has(c) ? c : null);
+
+/** Auftrag zum Engpass der Kette (Ampel „Engpass“): nur auswerten und vorschlagen, nie senden. */
+export function neckTask(label: string): TipTask {
+  return { kind: "frage", market: null, brief: `Engpass „${label}“: Ursachen aus echten Zahlen finden und 2–3 konkrete Verbesserungen vorschlagen, die nichts kosten. Nichts senden, keine Prüfregeln ändern.` };
+}
 
 /**
  * Coach: Empfehlungen aus echten Zahlen. Jede nennt den Messwert, auf dem sie beruht. Keine Garantien, keine
@@ -125,35 +136,42 @@ export function coach(o: {
   const measured = Object.values(o.stats).filter((s) => s.runs > 0);
   const span = o.countedHours ?? 24;
   if (measured.length && pct < 50 && span >= 2) {
-    tips.push({ level: "gelb", title: `Plätze ${100 - pct} % der Zeit leer`, text: `In den letzten ${span >= 23.5 ? "24 h" : `${Math.round(span)} h (seit Beginn der Zählung)`} waren im Schnitt nur ${pct} % der ${o.reg.total_slots} Plätze belegt. Ein Werk startet erst neu, wenn sein langsamster Teil fertig ist – kurze Teile warten so auf lange. Plätze aus erschöpften Linien abziehen und an ergiebige geben.`, href: "#pult" });
+    tips.push({ level: "gelb", title: `Plätze ${100 - pct} % der Zeit leer`, text: `In den letzten ${span >= 23.5 ? "24 h" : `${Math.round(span)} h (seit Beginn der Zählung)`} waren im Schnitt nur ${pct} % der ${o.reg.total_slots} Plätze belegt. Ein Werk startet erst neu, wenn sein langsamster Teil fertig ist – kurze Teile warten so auf lange. Plätze aus erschöpften Linien abziehen und an ergiebige geben.`, href: "#pult",
+      task: { kind: "leads", market: null, brief: `Plätze ${100 - pct} % der Zeit leer: Belegung umstellen – erschöpfte Linien auf 1–2 Plätze, freie Plätze an die ergiebigsten Linien, dann Lead-Werk starten. Ergebnis: Auslastung und grüne Leads vorher/nachher.` } });
   }
   for (const s of measured) {
     const lane = o.reg.lanes.find((l) => l.id === s.id)!;
     if (s.exhausted && (o.plan[s.id] ?? 0) > 1) {
-      tips.push({ level: "gelb", title: `${lane.label}: Vorrat erschöpft`, text: `Teile sind im Schnitt nach ${Math.round(s.avgRunMin ?? 0)} min fertig (Zeitfenster 75 min), ${Math.round(s.perRun ?? 0)} grüne je Teil. ${o.plan[s.id]} Plätze sind hier zu viel – 1–2 reichen für Neuzugänge.`, href: "#pult" });
+      tips.push({ level: "gelb", title: `${lane.label}: Vorrat erschöpft`, text: `Teile sind im Schnitt nach ${Math.round(s.avgRunMin ?? 0)} min fertig (Zeitfenster 75 min), ${Math.round(s.perRun ?? 0)} grüne je Teil. ${o.plan[s.id]} Plätze sind hier zu viel – 1–2 reichen für Neuzugänge.`, href: "#pult",
+        task: { kind: "quelle", market: marketOf(lane.country), brief: `${lane.label}: Vorrat erschöpft. Neue kostenlose, erlaubte Quelle oder mehr Kandidaten für diese Linie finden, mit mindestens 10 grünen Leads testen und ins Lead-Werk einbauen; Plätze dieser Linie bis dahin auf 1–2 setzen.` } });
     }
   }
   const best = measured.filter((s) => s.perSlotH !== null && !s.exhausted).sort((a, b) => (b.perSlotH ?? 0) - (a.perSlotH ?? 0))[0];
   if (best) {
     const lane = o.reg.lanes.find((l) => l.id === best.id)!;
-    if ((o.plan[best.id] ?? 0) < lane.max) tips.push({ level: "gruen", title: `Ergiebigste Linie: ${lane.label}`, text: `${Math.round(best.perSlotH ?? 0)} grüne je Platz-Stunde in den letzten 24 h. Freie Plätze bringen hier am meisten (${o.plan[best.id] ?? 0} von max. ${lane.max} belegt).`, href: "#pult" });
+    if ((o.plan[best.id] ?? 0) < lane.max) tips.push({ level: "gruen", title: `Ergiebigste Linie: ${lane.label}`, text: `${Math.round(best.perSlotH ?? 0)} grüne je Platz-Stunde in den letzten 24 h. Freie Plätze bringen hier am meisten (${o.plan[best.id] ?? 0} von max. ${lane.max} belegt).`, href: "#pult",
+      task: { kind: "leads", market: marketOf(lane.country), brief: `Ergiebigste Linie ${lane.label}: mehr Plätze geben (bis max. ${lane.max}), dafür aus erschöpften Linien abziehen, Lead-Werk starten. Ergebnis: grüne Leads je Stunde vorher/nachher.` } });
   }
   for (const [c, q] of Object.entries(o.queue)) {
     const free = o.freeBuyers[c] ?? 0;
-    if (q > 0 && free < q) tips.push({ level: "gelb", title: `${c}: Käufer werden knapp`, text: `${q.toLocaleString("de-DE")} Mails warten, aber nur ${free.toLocaleString("de-DE")} mail-fähige Käufer sind noch ohne Mail. Nachschub kommt nur noch aus der Nachprüfung – neue Käuferquelle für ${c} nötig.`, href: "/dashboard/bestand" });
+    if (q > 0 && free < q) tips.push({ level: "gelb", title: `${c}: Käufer werden knapp`, text: `${q.toLocaleString("de-DE")} Mails warten, aber nur ${free.toLocaleString("de-DE")} mail-fähige Käufer sind noch ohne Mail. Nachschub kommt nur noch aus der Nachprüfung – neue Käuferquelle für ${c} nötig.`, href: "/dashboard/bestand",
+      task: { kind: "kaeufer", market: marketOf(c), brief: `${c}: Käufer werden knapp (${q.toLocaleString("de-DE")} Mails warten, ${free.toLocaleString("de-DE")} freie Käufer). Neue kostenlose Käuferquelle für Webagenturen in ${c} finden, testen und ins Kunden-Werk einbauen.` } });
   }
   const totalQ = Object.values(o.queue).reduce((a, b) => a + b, 0);
   if (o.capPerDay > 0 && totalQ > 0) {
     const days = Math.round(totalQ / o.capPerDay);
-    tips.push({ level: days > 14 ? "info" : "gelb", title: `Versand: Warteschlange reicht ${days} Tage`, text: `${totalQ.toLocaleString("de-DE")} geprüfte Mails warten bei ${o.capPerDay} Mails/Tag Kapazität (alle Postfächer). ${days > 14 ? "Engpass ist der Versand, nicht die Käufer – mehr Postfächer würden schneller Antworten bringen (kostet Geld, nur mit deinem Ja)." : "Bald neue Käufer nötig."}`, href: "/dashboard/versand" });
+    tips.push({ level: days > 14 ? "info" : "gelb", title: `Versand: Warteschlange reicht ${days} Tage`, text: `${totalQ.toLocaleString("de-DE")} geprüfte Mails warten bei ${o.capPerDay} Mails/Tag Kapazität (alle Postfächer). ${days > 14 ? "Engpass ist der Versand, nicht die Käufer – mehr Postfächer würden schneller Antworten bringen (kostet Geld, nur mit deinem Ja)." : "Bald neue Käufer nötig."}`, href: "/dashboard/versand",
+      task: { kind: "frage", market: null, brief: `Versand-Warteschlange reicht ${days} Tage (${totalQ.toLocaleString("de-DE")} Mails, ${o.capPerDay}/Tag). Kostenlose Wege zeigen, wie die besten Mails zuerst rausgehen (Reihenfolge nach Land/Zielgruppe). Nichts senden, nichts kaufen.` } });
   }
   const leadsAll = Object.values(o.leads).reduce((a, b) => a + b, 0);
   const freeAll = Object.values(o.freeBuyers).reduce((a, b) => a + b, 0);
   if (leadsAll > 0 && freeAll > 0 && leadsAll / freeAll > 10) {
-    tips.push({ level: "info", title: "Leads reichen weit, Käufer sind der Hebel", text: `${leadsAll.toLocaleString("de-DE")} lieferbare Leads stehen ${freeAll.toLocaleString("de-DE")} freien Käufern gegenüber. Mehr Leads bringen gerade keinen Umsatz – Umsatz entsteht über Antworten der Käufer.` });
+    tips.push({ level: "info", title: "Leads reichen weit, Käufer sind der Hebel", text: `${leadsAll.toLocaleString("de-DE")} lieferbare Leads stehen ${freeAll.toLocaleString("de-DE")} freien Käufern gegenüber. Mehr Leads bringen gerade keinen Umsatz – Umsatz entsteht über Antworten der Käufer.`,
+      task: { kind: "kaeufer", market: null, brief: "Leads reichen weit, Käufer sind der Hebel: neue kostenlose Käuferquellen für Webagenturen in den Mail-Ländern finden, testen und ins Kunden-Werk einbauen." } });
   }
-  if (o.kundenNew24h === 0) tips.push({ level: "gelb", title: "Kunden-Werk findet keine neuen Käufer", text: "In 24 h kein neuer Käufer – die Overture-Liste ist durchgeprüft. Plätze im Kunden-Werk bringen erst mit einer neuen Quelle wieder etwas (Auftrag an den Quellen-Scout).", href: "#pult" });
-  for (const f of o.failed) tips.push({ level: "rot", title: "Teil abgebrochen", text: f });
+  if (o.kundenNew24h === 0) tips.push({ level: "gelb", title: "Kunden-Werk findet keine neuen Käufer", text: "In 24 h kein neuer Käufer – die Overture-Liste ist durchgeprüft. Plätze im Kunden-Werk bringen erst mit einer neuen Quelle wieder etwas (Auftrag an den Quellen-Scout).", href: "#pult",
+    task: { kind: "kaeufer", market: null, brief: "Kunden-Werk findet keine neuen Käufer (Overture-Liste durchgeprüft): neue kostenlose Käuferquelle für Webagenturen finden, testen und einbauen." } });
+  for (const f of o.failed) tips.push({ level: "rot", title: "Teil abgebrochen", text: f, task: { kind: "pruefen", market: null, brief: `Abgebrochenen Teil untersuchen und beheben (Ursache, Fix mit Test, PR): ${f}`.slice(0, 1000) } });
   if (!measured.length) tips.push({ level: "info", title: "Noch keine Laufzahlen", text: "Ertrag je Linie wird seit dem 03.10.2026 je Lauf gezählt – nach den nächsten Läufen erscheinen hier Empfehlungen." });
   const rank = { rot: 0, gelb: 1, gruen: 2, info: 3 } as const;
   return tips.sort((a, b) => rank[a.level] - rank[b.level]);

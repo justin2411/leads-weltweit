@@ -4,6 +4,7 @@
  * Steuerpult (Inhaber 03.10.2026: „wv plätze werden belegt … die werke wie maschinen steuern“): je Linie ein Regler
  * 0 … max mit Ertrag der letzten 24 h, Summenanzeige gegen die verfügbaren Plätze. Speichern schreibt
  * owner_settings.slot_plan (Server Action, Prüfung serverseitig); wirkt beim nächsten Start des Werks.
+ * „Übernehmen & jetzt starten“ (start=1) speichert und startet die gezeigten Werke sofort (Direktstart, 03.10.2026).
  */
 import { useMemo, useState } from "react";
 
@@ -73,11 +74,15 @@ export function Pult({ lanes, cap, total, back, action, nextStart, custom, only 
           );
         })}
       </ul>
+      <input type="hidden" name="changed" value={dirty ? "1" : "0"} />
+      <input type="hidden" name="werke" value={[...new Set(shown.map((l) => l.werk))].join(",")} />
       <div className="pult-go">
         <button type="submit" className="go" disabled={!dirty || over}>{over ? "Zu viele Plätze" : dirty ? "Belegung übernehmen" : "Keine Änderung"}</button>
+        <button type="submit" name="start" value="1" className="go" disabled={over} title="Belegung speichern (falls geändert) und das Werk sofort starten statt beim nächsten Zeitplan">
+          {dirty ? "Übernehmen & jetzt starten" : "▶ Jetzt starten"}</button>
         {dirty && <button type="button" className="ghost" onClick={() => setV(Object.fromEntries(lanes.map((l) => [l.id, l.cur])))}>Zurücksetzen</button>}
         {custom && <button type="submit" name="reset" value="1" className="ghost" formNoValidate>Standard wiederherstellen</button>}
-        <span className="hint">Wirkt beim nächsten Start des Werks. Laufende Teile arbeiten zu Ende.</span>
+        <span className="hint">Wirkt beim nächsten Start des Werks – oder sofort mit „jetzt starten“. Laufende Teile arbeiten zu Ende.</span>
       </div>
     </form>
   );

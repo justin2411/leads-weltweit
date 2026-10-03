@@ -62,12 +62,18 @@ def matrix(reg: dict, werk: str, n: dict[str, int]) -> list[dict]:
     return rows
 
 
-def read_plan() -> dict | None:
+def read_plan(werk: str | None = None) -> dict | None:
+    """Belegungsplan aus owner_settings; mit `werk` quittiert dieses Werk den gelesenen Plan (settings_ack)."""
     try:
         sys.path.insert(0, str(ROOT / "scripts"))
         from lib.db import DB
-        rows = DB(timeout=15).select("owner_settings", {"select": "key,value", "key": "eq.slot_plan"}) or []
-        return rows[0]["value"] if rows else None
+        db = DB(timeout=15)
+        rows = db.select("owner_settings", {"select": "key,value", "key": "eq.slot_plan"}) or []
+        plan = rows[0]["value"] if rows else None
+        if werk:
+            from lib.owner_settings import ack
+            ack(db, werk, ["slot_plan"], {"slot_plan": plan if plan is not None else {}})
+        return plan
     except BaseException as e:  # noqa: BLE001 – ohne Datenbank gilt der Standard (SystemExit ohne Schlüssel inklusive)
         print(f"Belegungsplan nicht lesbar ({type(e).__name__}) – Standardbelegung", file=sys.stderr)
         return None
@@ -79,7 +85,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dry", action="store_true", help="nur anzeigen")
     a = ap.parse_args(argv)
     reg = load_lines()
-    n, why = counts(reg, None if a.dry and not os.environ.get("SUPABASE_URL") else read_plan())
+    # Quittung (settings_ack) nur bei echten Läufen, nicht bei --dry
+    n, why = counts(reg, None if a.dry and not os.environ.get("SUPABASE_URL") else read_plan(None if a.dry else a.werk))
     rows = matrix(reg, a.werk, n)
     summary = ", ".join(f"{l['id']} {n[l['id']]}" for l in reg["lanes"] if l["werk"] == a.werk)
     print(f"{a.werk}: {len(rows)} Teile ({why}) – {summary}")

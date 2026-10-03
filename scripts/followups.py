@@ -87,8 +87,10 @@ def main(argv=None) -> int:
     db = DB()
     now = dt.datetime.now(dt.timezone.utc)
     # Dashboard (Inhaber 03.10.2026): Nachfassmail an/aus und Tage bis zur Nachfassmail (3–10)
-    from lib.owner_settings import followup_days, load as load_owner_settings
+    from lib.owner_settings import ack, followup_days, load as load_owner_settings
     owner = load_owner_settings(db)
+    if args.apply:  # Quittung fürs Dashboard (nur echte Läufe)
+        ack(db, "nachfass", ["followup_enabled", "followup_days"], owner)
     days = args.days if args.days is not None else followup_days(4, owner["followup_days"])
     cutoff = (now - dt.timedelta(days=days)).isoformat()
     note = "Inhaber 26.09.2026: Nachfassmails freigegeben ('stell alles ein')"

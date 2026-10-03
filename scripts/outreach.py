@@ -288,8 +288,10 @@ def cmd_send(args) -> int:
     live = args.live
     # Hauptschalter im Dashboard (Inhaber 03.10.2026): „Pause“ hält alle Kaltmails und Nachfassmails sofort an;
     # weiter geht es nur, wenn der Inhaber im Dashboard wieder auf „Läuft“ stellt.
-    from lib.owner_settings import country_limit, load as load_owner_settings
-    if load_owner_settings(db)["send_paused"]:
+    from lib.owner_settings import ack, country_limit, load as load_owner_settings
+    owner = load_owner_settings(db)
+    ack(db, "versand", ["send_paused", "send_countries_off", "send_country_limits"], owner)
+    if owner["send_paused"]:
         print("PAUSE: Versand im Dashboard angehalten (Inhaber) – nichts gesendet")
         return 0
     if live:
@@ -329,7 +331,6 @@ def cmd_send(args) -> int:
     cap = sum(caps.values())
 
     # Dashboard (Inhaber 03.10.2026): Mails pro Tag je Land (nie über countries.yaml daily_limit), Länder aus
-    owner = load_owner_settings(db)
     owner_limits, owner_off = owner["send_country_limits"], owner["send_countries_off"]
     if owner_limits:
         print("Tageslimit je Land (Dashboard): " + ", ".join(f"{k} {v}" for k, v in sorted(owner_limits.items())))

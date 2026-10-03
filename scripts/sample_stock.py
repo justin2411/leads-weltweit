@@ -288,11 +288,13 @@ def live_pages(db) -> list[dict]:
 
 def run(db, apply: bool, log=print) -> dict:
     from lib.fokus import focus_pairs
-    from lib.owner_settings import load as load_owner_settings, max_age_hours, paused as owner_paused
+    from lib.owner_settings import ack, load as load_owner_settings, max_age_hours, paused as owner_paused
     owner = load_owner_settings(db)
     if apply and owner_paused(db, "proben-vorrat", owner):
         log(f"proben-vorrat: pausiert durch Inhaber (seit {owner_paused(db, 'proben-vorrat', owner)}) – baut und prüft nichts")
         return {"built": 0, "missing": {}, "summary": {}, "paused": True}
+    if apply:  # Quittung fürs Dashboard: Soll und Verfall gelesen und angewandt
+        ack(db, "proben-vorrat", ["sample_targets", "sample_max_age_hours"], owner)
     cfg = settings()
     cfg["max_alter_stunden"] = max_age_hours(cfg["max_alter_stunden"], owner["sample_max_age_hours"])
     t0 = time.monotonic()

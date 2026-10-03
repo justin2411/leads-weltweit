@@ -6,6 +6,8 @@ import { usePathname, useSearchParams } from "next/navigation";
 export const SECTIONS: [string, string, string][] = [
   // Inhaber 03.10.2026: wenige Reiter – alles Weitere öffnet sich über die Stationen der Fluss-Karte in JARVIS
   ["/dashboard/jarvis", "JARVIS", "◎"],
+  ["/dashboard/baukasten", "Baukasten", "⧉"],
+  ["/dashboard/speicher", "Speicher", "▤"],
   ["/dashboard/kontakte", "Kontakte", "☰"],
   ["/dashboard/kunden", "Kunden", "€"],
 ];

@@ -8,6 +8,7 @@ import type { CSSProperties } from "react";
 import { AGENT_COUNT, KINDS, MARKETS, agentBoard, type AgentTask } from "@/lib/agents";
 import { cancelAgentTask, createAgentTask } from "../control-actions";
 import { Back } from "../v2";
+import { AgentDrop } from "./dnd";
 
 type V = CSSProperties & Record<`--${string}`, string | number>;
 const STATUS: Record<AgentTask["status"], string> = { offen: "wartet", laeuft: "arbeitet", fertig: "fertig", fehler: "Fehler", abgebrochen: "zurückgezogen" };
@@ -21,13 +22,15 @@ export function AgentRow({ tasks, active }: { tasks: AgentTask[]; active: string
         const c = a.current;
         const st = c?.status ?? "idle";
         return (
-          <Link key={a.n} href={active === String(a.n) ? "/dashboard/jarvis" : `/dashboard/jarvis?a=${a.n}`} scroll={false} className={`ag st-${st} ${active === String(a.n) ? "on" : ""}`}
+          <AgentDrop key={a.n} n={a.n}>
+          <Link href={active === String(a.n) ? "/dashboard/jarvis" : `/dashboard/jarvis?a=${a.n}`} scroll={false} className={`ag st-${st} ${active === String(a.n) ? "on" : ""}`}
             style={{ "--p": `${c?.status === "laeuft" ? c.progress : c?.status === "fertig" ? 100 : 0}` } as V}
             title={c ? `Agent ${a.n}: ${KINDS[c.kind].label}${c.market ? ` ${c.market}` : ""} – ${STATUS[c.status]}` : `Agent ${a.n}: frei`}>
             <span className="ag-orb" aria-hidden><i className="ag-ring" /><i className="ag-arc" /><b>A{a.n}</b></span>
             <span className="ag-t">{c ? <>{KINDS[c.kind].icon} {KINDS[c.kind].label}{c.market ? ` · ${c.market}` : ""}</> : "frei"}</span>
             <span className="ag-s">{c ? (c.status === "laeuft" ? `${c.progress} %${c.step ? ` · ${c.step}` : ""}` : STATUS[c.status]) : "bereit"}{a.queued > 0 ? ` · +${a.queued}` : ""}</span>
           </Link>
+          </AgentDrop>
         );
       })}
       <Link href={active === "neu" ? "/dashboard/jarvis" : "/dashboard/jarvis?a=neu"} scroll={false} className={`ag ag-new ${active === "neu" ? "on" : ""}`} title="Neuen Auftrag erteilen">

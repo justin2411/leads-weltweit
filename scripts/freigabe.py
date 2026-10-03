@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Drei-Stufen-Freigabe von der Kommandozeile (lib/release_gate.py, Inhaber 03.10.2026).
+"""Freigabe (Stufen 1–3, Stufe 4 Inhaber-Regeln) von der Kommandozeile (lib/release_gate.py, Inhaber 03.10.2026).
 
   python scripts/freigabe.py stichprobe --per 100 --countries US,UK,FR   # tägliche Stichprobe -> Fehlerquote je Land
   python scripts/freigabe.py vorrat [--apply] [--alle]                   # fertige Proben erneut prüfen (verwerfen/neu bauen)
@@ -62,7 +62,8 @@ def cmd_stichprobe(args) -> int:
     out = {}
     for c in [x.strip().upper() for x in args.countries.split(",") if x.strip()]:
         ids = sample_ids(db, args.segment, c, args.per, rng)
-        vs = G.check(db, ids, country=c, live=not args.offline)
+        # ohne Inhaber-Regeln (Stufe 4): die Fehlerquote misst die Datenqualität, nicht die Vorlieben des Inhabers
+        vs = G.check(db, ids, country=c, live=not args.offline, owner_rules=False)
         if args.apply:
             G.persist(db, vs, "stichprobe")
         s = G.summary(vs)

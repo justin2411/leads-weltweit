@@ -34,7 +34,15 @@ def main(argv: list[str]) -> int:
         return 0
     tid = argv[1]
     if cmd == "start":
-        db.update("agent_tasks", {"id": tid}, {"status": "laeuft", "progress": 5, "started_at": NOW(), "step": "startet"})
+        # atomar übernehmen: nur ein offener Auftrag (oder ein seit 2 h liegengebliebener) – zwei Sitzungen nie am selben
+        claim = {"status": "laeuft", "progress": 5, "started_at": NOW(), "step": "startet"}
+        if not db.update("agent_tasks", {"id": tid, "status": "offen"}, claim):
+            row = (db.select("agent_tasks", {"id": f"eq.{tid}", "select": "status,started_at"}) or [{}])[0]
+            stale = row.get("status") == "laeuft" and str(row.get("started_at") or "") < (
+                dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=2)).isoformat()
+            if not (stale and db.update("agent_tasks", {"id": tid, "status": "laeuft", "started_at": row["started_at"]}, claim)):
+                print(f"start: {tid} ist nicht (mehr) offen – übersprungen")
+                return 3
     elif cmd == "schritt":
         db.update("agent_tasks", {"id": tid}, {"progress": max(0, min(99, int(argv[2]))), "step": argv[3][:200]})
     elif cmd == "fertig":

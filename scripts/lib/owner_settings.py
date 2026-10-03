@@ -47,10 +47,38 @@ def load(db) -> dict:
     return out
 
 
+# (Werk, Schlüssel), die dieser Prozess schon quittiert hat – höchstens eine Quittung je Lauf
+_ACKED: set[tuple[str, str]] = set()
+
+
+def ack(db, werk: str, keys, settings: dict | None = None) -> int:
+    """„Angewandt“-Quittung (Inhaber 03.10.2026: „dass die änderungen auch übernommen werden“): schreibt je Schlüssel
+    eine Zeile in signalwerk.settings_ack (Werk, Schlüssel, Zeitpunkt, gelesener Wert, GITHUB_RUN_ID). Das Dashboard
+    zeigt damit „angewandt ✓ HH:MM“. Höchstens einmal je Prozess und (Werk, Schlüssel); wirft NIE – eine fehlende
+    Quittung darf kein Werk anhalten. Rückgabe: Anzahl geschriebener Zeilen (0 bei Fehler)."""
+    try:
+        import datetime as dt
+        import os
+        todo = [k for k in ([keys] if isinstance(keys, str) else list(keys or ())) if (werk, k) not in _ACKED]
+        if not todo:
+            return 0
+        _ACKED.update((werk, k) for k in todo)  # vor dem Schreiben: ein Fehler wird nicht wiederholt
+        s = settings if settings is not None else load(db)
+        now = dt.datetime.now(dt.timezone.utc).isoformat()
+        run_id = os.environ.get("GITHUB_RUN_ID") or None
+        rows = [{"werk": werk, "key": k, "seen_at": now, "value": s.get(k, DEFAULTS.get(k)), "run_id": run_id}
+                for k in todo]
+        db.insert("settings_ack", rows, upsert_on="werk,key")
+        return len(rows)
+    except BaseException:  # noqa: BLE001 – auch SystemExit aus der Datenbank-Schicht: Quittung ist nie kritisch
+        return 0
+
+
 def paused(db, werk: str, settings: dict | None = None) -> str | None:
     """Zeitpunkt, seit dem der Inhaber dieses Werk pausiert hat, sonst None. Lesefehler = nicht pausiert (die
-    Datei-Schalter config/*.yaml bleiben unabhängig davon wirksam)."""
+    Datei-Schalter config/*.yaml bleiben unabhängig davon wirksam). Quittiert „werke_paused“ für dieses Werk."""
     s = settings if settings is not None else load(db)
+    ack(db, werk, ["werke_paused"], s)
     v = (s.get("werke_paused") or {}).get(werk) if isinstance(s.get("werke_paused"), dict) else None
     return str(v) if v else None
 

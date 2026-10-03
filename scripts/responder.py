@@ -836,6 +836,8 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     from lib.db import DB
     db = DB()
+    if args.apply:  # Schalter einmal je Lauf lesen und fürs Dashboard quittieren (settings_ack), auch ohne neue Mails
+        auto_replies_paused(db)
 
     imap = imaplib.IMAP4_SSL(os.environ["IMAP_HOST"])
     imap.login(os.environ["IMAP_USER"], os.environ["IMAP_PASSWORD"])
