@@ -29,7 +29,7 @@ def _version() -> str:
     """Cache-Schlüssel aus dem Inhalt von CSS/JS: jede Änderung lädt sofort neu."""
     import hashlib
     h = hashlib.sha1()
-    for f in ("css/site.css", "js/site.js", "assets/fonts/fonts.css"):
+    for f in ("css/site.css", "js/site.js", "assets/fonts/fonts.css", "css/dash.css", "js/dash.js"):
         h.update((ROOT / "public" / f).read_bytes())
     return h.hexdigest()[:10]
 
@@ -258,7 +258,7 @@ def footer() -> str:
       <div><h4>Einsatzgebiet</h4><ul>{towns}<li><a href="/#einsatzgebiet">Alle Orte</a></li></ul></div>
       <div><h4>Praxis</h4><ul><li><a href="/#ueber-mich">Über mich</a></li><li><a href="/#ablauf">Ablauf</a></li><li><a href="/karriere">Karriere</a></li><li><a href="/#kontakt">Kontakt</a></li></ul>{google_badge()}</div>
     </div>
-    <div class="ftr__bottom"><span>© 2026 Mobile Physiotherapie Oehlke · Ramon Oehlke</span><span><a href="/impressum">Impressum</a> · <a href="/datenschutz">Datenschutz</a> · <a href="/agb">AGB</a></span></div>
+    <div class="ftr__bottom"><span>© 2026 Mobile Physiotherapie Oehlke · Ramon Oehlke</span><span><a href="/impressum">Impressum</a> · <a href="/datenschutz">Datenschutz</a> · <a href="/agb">AGB</a> · <a href="/login">Team-Login</a></span></div>
   </div>
 </footer>
 <div class="fab" aria-label="Schnellkontakt"><a class="wa" href="{WA}" aria-label="WhatsApp" rel="noopener" target="_blank">{icon('wa')}</a><a class="tel" href="{TEL}" aria-label="Anrufen">{icon('phone')}</a></div>
@@ -740,6 +740,88 @@ def home() -> str:
     return page(d["title"], d["description"], "/", body)
 
 
+# ---------------------------------------------------------------- Praxis-Cockpit (Demo)
+def cockpit_head(title: str) -> str:
+    return f"""<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{e(title)}</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#081429">
+<link rel="icon" href="/assets/img/logo-icon-180.png">
+<link rel="preload" href="/assets/fonts/poppins-600-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/fonts/fonts.css?v={VERSION}">
+<link rel="stylesheet" href="/css/dash.css?v={VERSION}">
+<script src="/js/dash.js?v={VERSION}" defer></script>
+</head>"""
+
+
+def login_page() -> str:
+    return cockpit_head("Anmelden · Praxis-Cockpit") + """
+<body data-page="login">
+<div class="login">
+  <section class="login__art">
+    <img class="bg" src="/assets/img/hero-hausbesuch.webp" alt="">
+    <img src="/assets/img/logo-white.png" alt="Mobile Physiotherapie Oehlke" width="157" height="60" style="height:48px;width:auto;align-self:flex-start">
+    <div>
+      <h1>Ihr <em>Praxis-Cockpit</em> für Team, Touren und Website</h1>
+      <p>Alles an einem Ort: Wer heute wohin fährt, welche Anfragen offen sind und wie die Website bei Google dasteht.</p>
+      <div class="login__feat"><span>Tourenplan</span><span>Team</span><span>Anfragen</span><span>Verordnungen</span><span>SEO</span><span>Beiträge</span></div>
+    </div>
+  </section>
+  <section class="login__panel">
+    <div class="login__box">
+      <img src="/assets/img/logo.png" alt="Mobile Physiotherapie Oehlke" width="147" height="56">
+      <h2>Willkommen zurück</h2>
+      <p class="sub">Bitte melden Sie sich an.</p>
+      <form id="loginForm" novalidate>
+        <label class="fld"><span>Benutzername</span><input id="lu" name="user" autocomplete="username" required></label>
+        <label class="fld"><span>Passwort</span><input id="lp" name="pass" type="password" autocomplete="current-password" required></label>
+        <p class="err" role="alert"></p>
+        <button class="btn btn--block" type="submit">Anmelden</button>
+      </form>
+      <div class="demo-note"><b>Demo-Zugang:</b> Benutzer <b>ramon</b>, Passwort <b>demo</b>. Alle Inhalte sind Beispieldaten.</div>
+      <p style="margin-top:22px;font-size:.85rem"><a href="/">Zurück zur Website</a></p>
+    </div>
+  </section>
+</div>
+<div class="toast" role="status"></div>
+</body>
+</html>
+"""
+
+
+def dashboard_page() -> str:
+    return cockpit_head("Praxis-Cockpit · Mobile Physiotherapie Oehlke") + """
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="side__logo"><img src="/assets/img/logo-white.png" alt="Mobile Physiotherapie Oehlke" width="105" height="40"></div>
+    <nav id="nav" aria-label="Cockpit"></nav>
+    <div class="side__foot">
+      <a href="/">Zur Website</a>
+      <a href="#" id="reset">Beispieldaten zurücksetzen</a>
+      <a href="#" id="logout">Abmelden</a>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="top">
+      <button class="burger" type="button" aria-label="Menü">☰</button>
+      <div><h1 id="vTitle">Praxis-Cockpit</h1><div class="sub" id="vSub"></div></div>
+      <div class="top__r"><img class="avatar" src="/assets/img/ramon-800.webp" alt=""><b>Ramon Oehlke</b></div>
+    </header>
+    <div class="demo-bar"><b>Demo:</b> Alle Zahlen, Namen und Termine sind Beispieldaten. Änderungen bleiben nur in diesem Browser gespeichert. Die SEO-Analyse prüft die echten Seiten dieser Website.</div>
+    <div id="view" class="view"></div>
+  </div>
+</div>
+<div class="toast" role="status"></div>
+</body>
+</html>
+"""
+
+
 # ---------------------------------------------------------------- Bauen
 def main() -> None:
     files = {"index.html": home(), "karriere.html": career_page()}
@@ -752,7 +834,8 @@ def main() -> None:
     files["404.html"] = page("Seite nicht gefunden · Mobile Physiotherapie Oehlke", "", "/404",
                              phero({"h1": "Diese Seite gibt es nicht (mehr).", "sub": ""}, [("/", "Startseite"), ("", "404")], None)
                              + cta("Zurück zur <em>Startseite</em>?", "Oder rufen Sie direkt an. Ich helfe gern weiter."), noindex=True)
-    for name, content in files.items():
+    tools = {"login.html": login_page(), "dashboard.html": dashboard_page()}
+    for name, content in {**files, **tools}.items():
         (OUT / name).write_text(content, encoding="utf-8")
     robots = "User-agent: *\nDisallow: /\n" if DEMO else f"User-agent: *\nAllow: /\n\nSitemap: {LIVE_URL}/sitemap.xml\n"
     (OUT / "robots.txt").write_text(robots, encoding="utf-8")
