@@ -564,5 +564,6 @@ export const HOME_CSS = `
 }
 /* „Example from a real sample“ vorerst ausgeblendet, Inhalt bleibt im Code (Inhaber 03.10.2026) */
 .hpz .hp-example--off{display:none}
+.hpz details.hp-qa .hp-qa__a{overflow:hidden}
 `;
 

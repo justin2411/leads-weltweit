@@ -5,7 +5,7 @@ import VIDEOS from "@/content/videos.json";
 import { getSettings, isOwner, loadPage, pageIsPublic } from "@/lib/pages";
 import { BRAND, siteUrl } from "@/lib/site";
 import { checkoutMode, lineItemFor, priceLabel, stripeEnabled, type Plan } from "@/lib/stripe";
-import { fill, fillDeep, type Personal } from "@/lib/personalize";
+import { fill, type Personal } from "@/lib/personalize";
 import { personalFor } from "@/lib/recipient";
 import { db } from "@/lib/supabase";
 import { pickVariant } from "@/lib/variants";
@@ -14,7 +14,15 @@ import { Tracker } from "./tracker";
 import { segmentCopy } from "@/content/segment-words";
 import { AREA_LABEL, COUNTRY_NAME, LANDING } from "@/content/landing-v2";
 import { LANDING_CSS } from "@/lib/landing-css";
-import { Field, Icon, MapCard, Presence, type MapData } from "./v2";
+import { Field, Icon, type MapData } from "./v2";
+import { HOME_CSS } from "@/lib/home-css";
+import { HOME_SPRITE, HOME_V2_CSS } from "@/lib/home-v2-css";
+import { LANDING_V2_CSS } from "@/lib/landing-v2-css";
+import { HOME } from "../../home-i18n";
+import { CONTACT } from "@/lib/site";
+import { LandingFx } from "./landing-fx";
+import { Common, Faq, HeroStage, Method, SampleSec, type ExampleLead } from "./landing-parts";
+import { HERO_SIGNALS, LZ, METHOD, SOURCES, ccOf, segOf } from "./landing-i18n";
 import S2_US from "@/content/maps/s2-us.json";
 import S2_UK from "@/content/maps/s2-uk.json";
 import S2_FR from "@/content/maps/s2-fr.json";
@@ -87,6 +95,43 @@ function nameRe(company: string): RegExp {
   const core = company.replace(/(,?\s+(ltd\.?|limited|llp|plc|llc|l\.l\.c\.?|inc\.?|corp\.?|corporation|sas|sasu|sarl|eurl|sa|sci))+$/i, "").trim();
   const alts = [...new Set([company, core].filter((x) => x.length >= 3))].sort((a, b) => b.length - a.length).map(esc);
   return new RegExp(`(?:${alts.join("|")})`, "i");
+}
+
+/** Text mit verdecktem Firmennamen und verdeckten Web-Adressen (Beispiel-Lead). */
+function maskText(x: string, company: string, seed: number): Part[] {
+  const name = nameRe(company);
+  // Web-Adresse zuerst (enthält oft den Firmennamen): ganz verdeckt, Endung sichtbar
+  const re = new RegExp(`\\b(?:www\\.)?[a-z0-9][a-z0-9-]*(?:\\.[a-z0-9-]+)*(\\.(?:co\\.uk|com|fr|uk|net|org|io|us|biz|info|eu|ie|nl|be))\\b|${name.source}`, "gi");
+  const out: Part[] = [];
+  let last = 0;
+  for (const m of x.matchAll(re)) {
+    const at = m.index ?? 0;
+    if (at > last) out.push({ t: x.slice(last, at) });
+    if (m[1]) out.push({ t: "x".repeat(Math.min(12, Math.max(6, m[0].length - m[1].length))), m: true }, { t: m[1] });
+    else out.push(...maskCompany(company, seed));
+    last = at + m[0].length;
+  }
+  out.push({ t: x.slice(last) });
+  return out.filter((q) => q.t);
+}
+
+/** Quelle kurz und ohne Firmennamen ("Careers page Intercom" -> "Careers page"). */
+function shortSource(src: string | undefined, fr: boolean): string {
+  const s = String(src ?? "").trim();
+  if (/^ct_registry$/i.test(s)) return fr ? "Registre du Connecticut" : "Connecticut registry";
+  if (/^dol_lca$/i.test(s)) return "US Dept. of Labor";
+  if (/find a tender/i.test(s)) return "Find a Tender";
+  if (/FMCSA|US DOT/i.test(s)) return "US DOT (FMCSA)";
+  if (/^(careers page|page carrières)/i.test(s)) return fr ? "Page carrières" : "Careers page";
+  if (/^website check/i.test(s)) return fr ? "Contrôle du site" : "Website check";
+  if (/overture/i.test(s)) return fr ? "Annuaire ouvert" : "Business listing";
+  return s.replace(/\s*\(.*$/, "").slice(0, 28);
+}
+
+/** Registernummern (USDOT, company no., SIREN) würden die verdeckte Firma verraten: entfernen. */
+function stripIds(x: string): string {
+  return x.replace(/\s*\((?:USDOT|US DOT|DOT|company no\.?|n° ?|SIREN|SIRET|CIK)[^()]*\)/gi, "")
+    .replace(/\b(?:USDOT|company no\.?|SIREN|SIRET)\s*:?\s*\d[\d ]{4,}\d/gi, "");
 }
 
 function cleanEvent(ev: string, company: string): string {
@@ -272,7 +317,6 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
   const W = { ...SC.words, ...CW };
   // Platzhalter füllen; Satzanfang groß (z. B. "{team} calls" -> "Your practice calls")
   const F = (x: string) => { const r = localize(nd(fill(x, P, lang, W)), page.country); return r ? r[0].toUpperCase() + r.slice(1) : r; };
-  const faq = fillDeep((v.faq ?? []) as { q: string; a: string }[], P, lang, W).map((f) => ({ q: localize(f.q, page.country), a: localize(f.a, page.country) }));
   const headline = F(v.headline);
   const subheadline = v.subheadline ? F(v.subheadline) : null;
   const cta = localize(fill(v.cta_label, P, lang, W), page.country);
@@ -332,7 +376,7 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
     const why = hint?.[0] ?? (sm.signal ? SC.why[sm.signal] : undefined);
     const webT = WEB_TITLE[wl][sm.signal ?? ""];
     const kindTxt = sm.industry ? short(sm.industry.split(/[,;]/)[0], 40) : (fr ? "Entreprise locale" : "Local business");
-    const detail = localizeJob(cleanEvent(sm.event, sm.company), lang);
+    const detail = stripIds(localizeJob(cleanEvent(sm.event, sm.company), lang)).replace(/^[\s:;,–-]+/, "");
     const title = webT ? webT.replace("{x}", kindTxt.charAt(0).toUpperCase() + kindTxt.slice(1)) : (detail || label || "");
     const opener = sm.opener ? localizeJob(sm.opener.split(sm.company).join(nice(sm.company)), lang) : undefined;
     const seed = seedOf(sm.companyId ?? sm.company);
@@ -375,15 +419,48 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
       </article>);
   };
 
+  // ---- Abschnitte im Stil der Startseite (Inhaber 03.10.2026) ----
+  const H = HOME[wl];
+  const seg = segOf(segKey(page.slug));
+  const cc = ccOf(page.country);
+  const lz = LZ[wl];
+  /** Beispiel-Lead aus der echten Probe der Seite (erste Firma; die Kacheln zeigen die beiden anderen). */
+  const toExample = (s0: Sample): ExampleLead => {
+    const sm = { ...s0, signal: s0.signal ?? (/registered on|immatricul/i.test(s0.event) ? "new_incorporation" : undefined) };
+    const seed = seedOf(sm.companyId ?? sm.company);
+    const sig = sm.signal ?? "";
+    const label = SIGNAL_LABEL[wl][sig] ?? (sig === "contract_award" ? (fr ? "Marché public" : "Public contract") : /fleet/.test(sig) ? (fr ? "Nouvelle flotte" : "New fleet") : METHOD[wl][seg].tag);
+    const raw = stripIds(localizeJob(cleanEvent(sm.event, sm.company), lang)).replace(/^[\s:;,–-]+/, "");
+    const webT = WEB_TITLE[wl][sig];
+    const kindTxt = sm.industry ? short(sm.industry.split(/[,;]/)[0], 40) : (fr ? "Entreprise locale" : "Local business");
+    const ev = raw ? raw[0].toUpperCase() + raw.slice(1) : webT ? webT.replace("{x}", kindTxt.charAt(0).toUpperCase() + kindTxt.slice(1)) : label;
+    const dd = sm.date && /^\d{4}-\d{2}-\d{2}$/.test(sm.date) ? new Date(sm.date + "T12:00:00Z") : null;
+    const opener = sm.opener ? localizeJob(sm.opener.split(sm.company).join(nice(sm.company)), lang) : undefined;
+    return {
+      name: maskCompany(sm.company, seed), place: cname, tag: label, prio: PRIO[wl][sm.urgency ?? "medium"] ?? "",
+      event: maskText(nd(ev), sm.company, seed), date: day(sm.date, lang) ?? "", source: shortSource(sm.source, fr),
+      stamp: WEB_SIGNALS.includes(sig) || /^job/.test(sig) ? lz.stampDated : lz.stampOfficial,
+      stampDay: dd ? [dd.toLocaleDateString(fr ? "fr-FR" : "en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).toUpperCase(), String(dd.getUTCFullYear())] : ["", ""],
+      person: { name: sm.personKnown ? [{ t: maskCompany("Name Surname", seed ^ 7)[1].t, m: true }] : undefined, role: roleFor(page.country, sm.legalForm, sm.role, lang), askFor: lz.askFor },
+      phone: maskPhone(page.country, seed, sm.phone), email: maskEmail(sm.company, page.country, seed, sm.email),
+      opener: opener ? maskText(nd(opener), sm.company, seed) : undefined,
+    };
+  };
+  const example = samples[0] ? toExample(samples[0]) : undefined;
+
   return (
-    <BrandShell lang={page.language} extraCss={LANDING_CSS}>
+    <BrandShell lang={page.language} extraCss={LANDING_CSS + HOME_V2_CSS + HOME_CSS + LANDING_V2_CSS}>
+      {/* Effekte der Startseite nur mit JavaScript (sonst bleibt alles sichtbar) */}
+      <script dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('js')" }} />
+      <div dangerouslySetInnerHTML={{ __html: HOME_SPRITE }} />
       {preview && <div className="banner">VORSCHAU (nicht öffentlich) · Seite {page.status} · Variante {v.variant_key} ({v.status}) · keine Ereignisse gezählt</div>}
       <Tracker variantId={v.id} enabled={!preview} />
       <SiteHeader links={video ? [["#video", fr ? "Vidéo" : "Film"]] : []} cta={[stepHref, fr ? "Échantillon gratuit" : "Free sample"]} />
+      <LandingFx />
       <div className="lp2">
 
         <section className="h2o" id="top">
-          <div className="wrap" style={MAP ? undefined : { gridTemplateColumns: "1fr", maxWidth: 920 }}>
+          <div className="wrap">
             <div>
               <span className="pill"><Icon name="star" className="ic" />{T2.pill.replace("{country}", cname)}</span>
               {personal?.firma && <span className="for">{fr ? `Préparé pour ${personal.firma}` : `Prepared for ${personal.firma}`}</span>}
@@ -401,7 +478,7 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
                   {canBuy && <a className="btn ghost" href="#plans" data-cta>{L.subscribe}</a>}</div>
               )}
             </div>
-            {MAP && <MapCard map={MAP} note={T2.whereNote.replace("{land}", CW.land)} />}
+            <HeroStage cc={cc} sigs={HERO_SIGNALS[seg][cc]} note={lz.heroNote} hidden={lz.hidden} />
           </div>
           {st && (
             <div className="wrap" style={{ display: "block", paddingTop: 0 }}>
@@ -424,26 +501,17 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
         )}
 
         {(st || signals.length > 0) && (
-          <section className="sec cream"><div className="wrap">
-            <div className="kick"><span className="cap gold">{T2.common}</span></div>
-            <div className="two" style={st ? undefined : { gridTemplateColumns: "1fr" }}>
-              {st && <Presence title={st.kinds.nosite > 0 ? T2.presenceTitle : T2.common} note={T2.presenceNote.replace("{date}", st.date)}
-                rows={presenceRows} total={st.leads} opening={T2.opening} />}
-              <div className="box">
-                {signals.map((sg, k) => (
-                  <div className="prow" key={sg.title} style={{ gridTemplateColumns: "auto 1fr", alignItems: "start", borderTop: k ? undefined : 0 }}>
-                    <span className="gi" style={{ width: 38, height: 38, margin: 0 }}><Icon name={sigIcons[k] ?? "check"} /></span>
-                    <span><b style={{ display: "block", fontSize: 16 }}>{F(sg.title)}</b><span style={{ color: "var(--muted)", fontSize: 14.5 }}>{F(sg.text)}</span></span>
-                  </div>))}
-              </div>
-            </div>
-          </div></section>
+          <Common kick={T2.common}
+            presence={st ? { title: st.kinds.nosite > 0 ? T2.presenceTitle : T2.common, note: T2.presenceNote.replace("{date}", st.date), rows: presenceRows, total: st.leads, opening: T2.opening } : undefined}
+            signals={signals.map((sg, k) => ({ icon: sigIcons[k] ?? "check", title: F(sg.title), text: F(sg.text) }))} />
         )}
+
+        <Method t={H} m={METHOD[wl][seg]} sources={SOURCES[seg][cc]} across={lz.across[cc]} example={example} hidden={lz.hidden} />
 
         {samples.length > 0 && (
           <section className="sec"><div className="wrap">
             <div className="kick"><span className="cap gold">{st ? T2.examples : (fr ? L.examples : F("Example leads from across {land}"))}</span></div>
-            <div className="tiles">{samples.slice(0, 2).map(tile)}</div>
+            <div className="tiles">{(samples.length >= 3 ? samples.slice(1, 3) : samples.slice(0, 2)).map(tile)}</div>
           </div></section>
         )}
 
@@ -470,34 +538,12 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
         )}
 
         {!step && !sp.angefragt && (
-          <section className="sec cream" id="sample"><div className="wrap formwrap">
-            <div className="formcard" id="probe">
-              <h2>{F(T2.sampleTitle[0])} <span className="gold-h">{localize(nd(fill(T2.sampleTitle[1], P, lang, W)), page.country)}</span></h2>
-              <p className="lede2" style={{ color: "#aab4ca" }}>{known ? L.sendsTo(CW.land, personal!.email!) : L.sendsToUnknown}</p>
-              {form}
-            </div>
-            <div className="side2">
-              <ul className="ticks2">
-                <li><Icon name="check" /><span><b>{L.free}</b> {L.freeText}</span></li>
-                <li><Icon name="check" /><span><b>{L.noObl}</b> {L.noOblText}</span></li>
-                <li><Icon name="check" /><span>{L.followUp}</span></li>
-              </ul>
-              <div className="getcard">
-                <span className="cap gold">{T2.get.title}</span>
-                <div className="gf"><span className="ci"><Icon name="doc" /></span><span><b>{T2.get.pdf[0]}</b><em>{T2.get.pdf[1]}</em></span></div>
-                <div className="gf"><span className="ci"><Icon name="table" /></span><span><b>{T2.get.csv[0]}</b><em>{T2.get.csv[1]}</em></span></div>
-                {MAP && <MapCard map={MAP as MapData} note={localize(nd(fill(T2.get.map, P, lang, W)), page.country)} />}
-              </div>
-            </div>
-          </div></section>
+          <SampleSec t={H} title={F(T2.sampleTitle[0])} gold={localize(nd(fill(T2.sampleTitle[1], P, lang, W)), page.country)}
+            intro={known ? L.sendsTo(CW.land, personal!.email!) : lz.formIntro} form={form} place={cname}
+            how={lz.howForm.map((x) => x.replace("{across}", lz.across[cc]))} />
         )}
 
-        {faq.length > 0 && (
-          <section className="sec"><div className="wrap faq2" style={{ maxWidth: 820 }}>
-            <h2>{T2.questions}</h2>
-            {faq.map((f, k) => <details key={k}><summary>{nd(f.q)}</summary><p>{nd(f.a)}</p></details>)}
-          </div></section>
-        )}
+        <Faq t={H} contact={CONTACT} />
       </div>
       <SiteFooter lang={lang} />
     </BrandShell>

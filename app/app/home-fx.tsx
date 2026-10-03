@@ -339,7 +339,7 @@ export function HomeFx() {
     } else $$("[data-io]").forEach((el) => el.classList.add("is-io"));
 
     // 13 · Fragen: weich auf- und zuklappen
-    $$<HTMLDetailsElement>(".hp-qa details").forEach((det) => {
+    $$<HTMLDetailsElement>("details.hp-qa").forEach((det) => {
       const sum = $("summary", det), body = $(".hp-qa__a", det);
       if (!sum || !body) return;
       on(sum, "click", ((e: Event) => {
