@@ -355,7 +355,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
 /** Trichter je Land seit Start (alle Experimente der Zielgruppe): wo klappt was? Quote = Antworten je zugestellter Mail. */
 function Funnel({ rows }: { rows: FunnelRow[] | null }) {
   if (!rows) return <p className="lock">Trichter lädt …</p>;
-  const pct = (a: number, b: number) => (b ? `${((a / b) * 100).toFixed(1).replace(".", ",")} %` : "–");
+  const pct = (a: number, b: number) => (b ? `${((a / b) * 100).toFixed(1).replace(".", ",")}\u00a0%` : "–");
   return (
     <table className="fun" aria-label="Trichter je Land seit Start">
       <thead><tr><th>Land</th><th>Mails</th><th>zugestellt</th><th>Antw.</th><th>positiv</th><th title="per Mail angefragt (Website-Proben zählen oben mit)">Probe</th><th>Kunde</th><th title="Antworten je zugestellter Mail">Quote</th></tr></thead>
