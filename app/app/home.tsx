@@ -6,7 +6,6 @@ import { consentText } from "@/lib/consent";
 import { HOME_SPRITE, HOME_STAT_ART } from "@/lib/home-v2-css";
 import { SampleForm } from "./sample-form";
 import { industryOptions } from "./industry-options";
-import { LiveCount } from "./live-count";
 import { homeStats, publicPages, type PublicPage } from "@/lib/site-pages";
 import { BrandShell, SiteFooter, SiteHeader } from "./chrome";
 import { HOME, HOME_LANGS, HOME_PATH, type HomeLang } from "./home-i18n";
@@ -179,8 +178,6 @@ export async function Home({ lang }: { lang: HomeLang }) {
                 </div></div>
               </div>
             </div>
-            {/* großer Live-Zähler (Inhaber 03.10.2026): echte Zählung, wächst mit der Arbeit der Werke */}
-            <div className="hp-wrap"><LiveCount initial={stats.signals} perDay={stats.signals24h} locale={loc} label={t.stats[2]} live={t.live} art={HOME_STAT_ART[2]} /></div>
           </div>
         </section>
 
