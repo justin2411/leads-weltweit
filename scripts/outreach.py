@@ -336,13 +336,28 @@ def cmd_send(args) -> int:
     sel = "*,prospects(*),experiments(*)"
     # Nachfassmails zuerst: ihr Zeitpunkt (4 Tage nach der Erstmail, 3 Tage nach der Probe) zählt, sonst warten sie
     # hinter dem Rückstau neuer Erstmails.
-    later = db.select("messages", {"status": "eq.approved", "kind": "neq.initial", "order": "approved_at.asc",
-                                   "limit": str(args.limit), "select": sel})
-    initial = db.select("messages", {"status": "eq.approved", "kind": "eq.initial",
-                                     "order": "approved_at.asc", "limit": str(args.limit), "select": sel})
     # Fokus-Tests zuerst (config/fokus.yaml), innerhalb Fokus und Rest jeweils abwechselnd je Experiment
     from lib.fokus import focus_only, focus_pairs
     pairs = set(focus_pairs())
+    # Nur Fokus: schon in der Abfrage auf die Fokus-Experimente einschränken. Sonst füllen ältere Entwürfe ruhender
+    # Branchen das Limit und Fokus-Entwürfe (z. B. S2/FR, später freigegeben) kommen nie an die Reihe (03.10.2026).
+    only: dict = {}
+    exp_ids: list[str] = []
+    if focus_only() and pairs:
+        exp_ids = [x["id"] for x in db.select_all("experiments", {"select": "id,segment_id,country"})
+                   if (x.get("segment_id"), x.get("country")) in pairs]
+        only = {"experiment_id": "in.(" + ",".join(exp_ids) + ")"} if exp_ids else {"experiment_id": "is.null"}
+    later = db.select("messages", {"status": "eq.approved", "kind": "neq.initial", "order": "approved_at.asc",
+                                   "limit": str(args.limit), "select": sel, **only})
+    if only and exp_ids:
+        # je Fokus-Experiment eigener Anteil, damit interleave() alle Länder mischen kann (US/UK/FR gleichrangig)
+        per = max(50, args.limit // len(exp_ids))
+        initial = [m for x in exp_ids for m in db.select("messages", {
+            "status": "eq.approved", "kind": "eq.initial", "experiment_id": f"eq.{x}",
+            "order": "approved_at.asc", "limit": str(per), "select": sel})]
+    else:
+        initial = db.select("messages", {"status": "eq.approved", "kind": "eq.initial",
+                                         "order": "approved_at.asc", "limit": str(args.limit), "select": sel, **only})
     in_focus = lambda m: ((m.get("experiments") or {}).get("segment_id"), (m.get("prospects") or {}).get("country")) in pairs
     if focus_only():
         # Andere Branchen ruhen (Inhaber 02.10.2026): ihre Entwürfe bleiben freigegeben liegen, nichts wird gesendet
