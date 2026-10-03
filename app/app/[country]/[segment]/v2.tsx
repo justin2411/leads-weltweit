@@ -2,6 +2,7 @@
  * Bausteine der Landingpage im Design der Lead-PDF (Inhaber 02.10.2026). Symbole wie in der PDF-Vorlage (Linien, 24er Raster).
  */
 import type { CSSProperties, ReactNode } from "react";
+import { Icon as LineIcon } from "@/app/icons";
 
 const PATHS: Record<string, string> = {
   phone: "M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2",
@@ -98,7 +99,7 @@ export function Presence({ title, note, rows, total, opening }: {
         <div className={`prow${r.gap ? " gap" : ""}`} key={r.key}>
           <span className="lbl"><Icon name={r.icon} />{r.label}</span>
           <span className="dots" aria-hidden="true">{Array.from({ length: total }, (_, k) => <i key={k} style={k < r.n ? undefined : { background: "transparent", border: "1.6px solid currentColor" }} />)}</span>
-          <span className="n">{r.gap ? "✕" : "✓"} {r.n}/{total}</span>
+          <span className="n"><LineIcon name={r.gap ? "fehler" : "ok"} size={14} /> {r.n}/{total}</span>
         </div>))}
       <p className="opening"><Icon name="spark" />{opening}</p>
     </div>

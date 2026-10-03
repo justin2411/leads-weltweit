@@ -9,6 +9,7 @@ import { AGENT_COUNT, KINDS, MARKETS, agentBoard, type AgentTask } from "@/lib/a
 import { cancelAgentTask, createAgentTask } from "../control-actions";
 import { Back } from "../v2";
 import { AgentDrop } from "./dnd";
+import { Icon } from "@/app/icons";
 
 type V = CSSProperties & Record<`--${string}`, string | number>;
 const STATUS: Record<AgentTask["status"], string> = { offen: "wartet", laeuft: "arbeitet", fertig: "fertig", fehler: "Fehler", abgebrochen: "zurückgezogen" };
@@ -27,14 +28,14 @@ export function AgentRow({ tasks, active }: { tasks: AgentTask[]; active: string
             style={{ "--p": `${c?.status === "laeuft" ? c.progress : c?.status === "fertig" ? 100 : 0}` } as V}
             title={c ? `Agent ${a.n}: ${KINDS[c.kind].label}${c.market ? ` ${c.market}` : ""} – ${STATUS[c.status]}` : `Agent ${a.n}: frei`}>
             <span className="ag-orb" aria-hidden><i className="ag-ring" /><i className="ag-arc" /><b>A{a.n}</b></span>
-            <span className="ag-t">{c ? <>{KINDS[c.kind].icon} {KINDS[c.kind].label}{c.market ? ` · ${c.market}` : ""}</> : "frei"}</span>
+            <span className="ag-t">{c ? <><Icon name={KINDS[c.kind].icon} size={16} /> {KINDS[c.kind].label}{c.market ? ` · ${c.market}` : ""}</> : "frei"}</span>
             <span className="ag-s">{c ? (c.status === "laeuft" ? `${c.progress} %${c.step ? ` · ${c.step}` : ""}` : STATUS[c.status]) : "bereit"}{a.queued > 0 ? ` · +${a.queued}` : ""}</span>
           </Link>
           </AgentDrop>
         );
       })}
       <Link href={active === "neu" ? "/dashboard/jarvis" : "/dashboard/jarvis?a=neu"} scroll={false} className={`ag ag-new ${active === "neu" ? "on" : ""}`} title="Neuen Auftrag erteilen">
-        <span className="ag-orb" aria-hidden><b>+</b></span><span className="ag-t">Auftrag</span><span className="ag-s">erteilen</span>
+        <span className="ag-orb" aria-hidden><b><Icon name="mehr" size={22} /></b></span><span className="ag-t">Auftrag</span><span className="ag-s">erteilen</span>
       </Link>
     </div>
   );
@@ -48,7 +49,7 @@ function NewTask({ agent, back }: { agent: number | null; back: string }) {
         {Array.from({ length: AGENT_COUNT }, (_, i) => <label key={i}><input type="radio" name="agent" value={i + 1} defaultChecked={(agent ?? 1) === i + 1} /><span>A{i + 1}</span></label>)}
       </div></fieldset>
       <fieldset><legend>Was</legend><div className="chips3">
-        {(Object.keys(KINDS) as (keyof typeof KINDS)[]).map((k, i) => <label key={k} title={KINDS[k].hint}><input type="radio" name="kind" value={k} defaultChecked={i === 0} /><span>{KINDS[k].icon} {KINDS[k].label}</span></label>)}
+        {(Object.keys(KINDS) as (keyof typeof KINDS)[]).map((k, i) => <label key={k} title={KINDS[k].hint}><input type="radio" name="kind" value={k} defaultChecked={i === 0} /><span><Icon name={KINDS[k].icon} size={16} /> {KINDS[k].label}</span></label>)}
       </div></fieldset>
       <fieldset><legend>Markt</legend><div className="chips3">
         <label><input type="radio" name="market" value="" defaultChecked /><span>alle</span></label>
@@ -66,8 +67,8 @@ export function AgentDrawer({ which, tasks }: { which: string; tasks: AgentTask[
   if (which === "neu") {
     return (
       <aside className="drw" aria-label="Neuer Auftrag">
-        <header><span className="drw-ic" aria-hidden>✦</span><h2>Neuer Auftrag</h2><Link href="/dashboard/jarvis" scroll={false} className="drw-x" aria-label="Schließen">✕</Link></header>
-        <div className="drw-body"><NewTask agent={null} back={back} /><p className="lock">🔒 Agenten senden nie Mails, geben kein Geld aus und ändern keine Prüfregeln.</p></div>
+        <header><span className="drw-ic" aria-hidden><Icon name="neu" size={20} /></span><h2>Neuer Auftrag</h2><Link href="/dashboard/jarvis" scroll={false} className="drw-x" aria-label="Schließen"><Icon name="schliessen" size={16} /></Link></header>
+        <div className="drw-body"><NewTask agent={null} back={back} /><p className="lock"><Icon name="schloss" size={14} /> Agenten senden nie Mails, geben kein Geld aus und ändern keine Prüfregeln.</p></div>
       </aside>
     );
   }
@@ -76,11 +77,11 @@ export function AgentDrawer({ which, tasks }: { which: string; tasks: AgentTask[
   const cur = agentBoard(tasks)[n - 1]?.current ?? null;
   return (
     <aside className="drw" aria-label={`Agent ${n}`}>
-      <header><span className="drw-ic" aria-hidden>A{n}</span><h2>Agent {n}</h2><Link href="/dashboard/jarvis" scroll={false} className="drw-x" aria-label="Schließen">✕</Link></header>
+      <header><span className="drw-ic" aria-hidden>A{n}</span><h2>Agent {n}</h2><Link href="/dashboard/jarvis" scroll={false} className="drw-x" aria-label="Schließen"><Icon name="schliessen" size={16} /></Link></header>
       <div className="drw-body">
         {cur && (
           <div className={`agc st-${cur.status}`}>
-            <div className="agc-h"><b>{KINDS[cur.kind].icon} {KINDS[cur.kind].label}{cur.market ? ` · ${cur.market}` : ""}</b><em>{STATUS[cur.status]}</em></div>
+            <div className="agc-h"><b><Icon name={KINDS[cur.kind].icon} size={16} /> {KINDS[cur.kind].label}{cur.market ? ` · ${cur.market}` : ""}</b><em>{STATUS[cur.status]}</em></div>
             {cur.brief && <p className="agc-b">{cur.brief}</p>}
             {(cur.status === "laeuft" || cur.status === "fertig") && <div className="agc-bar"><i style={{ width: `${cur.status === "fertig" ? 100 : cur.progress}%` }} /></div>}
             {cur.step && cur.status === "laeuft" && <p className="agc-step">{cur.step}</p>}
@@ -93,7 +94,7 @@ export function AgentDrawer({ which, tasks }: { which: string; tasks: AgentTask[
         <NewTask agent={n} back={back} />
         {mine.length > 1 && (
           <ul className="chk">{mine.filter((t) => t.id !== cur?.id).slice(0, 6).map((t) => (
-            <li key={t.id} className={t.status === "fehler" ? "bad" : "ok"} title={t.result ?? t.brief}><i aria-hidden>{KINDS[t.kind].icon}</i><b>{KINDS[t.kind].label}{t.market ? ` · ${t.market}` : ""}</b><span>{when(t.created_at)}</span><em>{STATUS[t.status]}{t.result ? ` · ${t.result.slice(0, 60)}` : ""}</em></li>
+            <li key={t.id} className={t.status === "fehler" ? "bad" : "ok"} title={t.result ?? t.brief}><i aria-hidden><Icon name={KINDS[t.kind].icon} size={16} /></i><b>{KINDS[t.kind].label}{t.market ? ` · ${t.market}` : ""}</b><span>{when(t.created_at)}</span><em>{STATUS[t.status]}{t.result ? ` · ${t.result.slice(0, 60)}` : ""}</em></li>
           ))}</ul>
         )}
       </div>

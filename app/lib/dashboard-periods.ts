@@ -89,7 +89,7 @@ export function revenueByCurrency(rows: DailyRow[], from: string, to: string, co
   return out;
 }
 
-/** Veränderung zum Vorzeitraum: ▲ 12 %, ▼ 30 %, „neu“, „±0“ oder „–“ (beide 0). */
+/** Veränderung zum Vorzeitraum: „12 %“ mit dir up/down (Pfeil zeigt die Komponente als Linien-Icon), „neu“, „±0“ oder „–“ (beide 0). */
 export function delta(cur: number, prev: number): { text: string; dir: "up" | "down" | "flat" } {
   if (!cur && !prev) return { text: "–", dir: "flat" };
   // kleine Zahlen: absolute Änderung statt Prozent (Inhaber 03.10.2026: „▼ 100 %“ bei 1 → 0 wirkt dramatisch)
@@ -100,7 +100,7 @@ export function delta(cur: number, prev: number): { text: string; dir: "up" | "d
   if (!prev) return { text: "neu", dir: "up" };
   const p = Math.round((100 * (cur - prev)) / prev);
   if (p === 0) return { text: "±0 %", dir: "flat" };
-  return { text: `${p > 0 ? "▲" : "▼"} ${Math.abs(p)} %`, dir: p > 0 ? "up" : "down" };
+  return { text: `${Math.abs(p)} %`, dir: p > 0 ? "up" : "down" };
 }
 
 /** Eimer für das Diagramm: Tage, Wochen (ab Montag) oder Monate zwischen from und to. */

@@ -3,13 +3,14 @@
 /**
  * Hinweise an Agenten geben (Inhaber 03.10.2026: „die gelben sachen … ziehen können und dieses problem agents geben, das
  * die das ausführen“). Ein Hinweis mit fertigem Auftrag lässt sich auf A1–A4 ziehen; am Handy (kein Ziehen) per Tippen
- * auf ⤳ und Agent wählen. Erteilt wird über die bestehende Server Action createAgentTask (gleiche Prüfung wie das
+ * auf den Weitergeben-Knopf (Linien-Icon „an-agent“) und Agent wählen. Erteilt wird über die bestehende Server Action createAgentTask (gleiche Prüfung wie das
  * Formular „Neuer Auftrag“) – danach öffnet sich der Agent mit dem neuen Auftrag.
  */
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import type { TipTask } from "@/lib/leitstand";
 import { createAgentTask } from "../control-actions";
+import { Icon } from "@/app/icons";
 
 const MIME = "application/x-jarvis-task";
 const AGENTS = [1, 2, 3, 4];
@@ -27,7 +28,7 @@ function give(agent: number, t: Payload) {
 
 const dragging = (on: boolean) => document.documentElement.classList.toggle("jv-dragging", on);
 
-/** Ziehbarer Hinweis (Link bleibt klickbar) mit ⤳-Knopf für Handys. */
+/** Ziehbarer Hinweis (Link bleibt klickbar) mit Weitergeben-Knopf für Handys. */
 export function DragTip({ task, title, href, level, tip }: { task?: TipTask; title: string; href: string; level: string; tip: string }) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
@@ -45,10 +46,10 @@ export function DragTip({ task, title, href, level, tip }: { task?: TipTask; tit
       <Link href={href} scroll={false} className={`jt ${level} jt-drag`} title={`${tip}\n\nAuf einen Agenten ziehen, um es zu beauftragen.`} draggable
         onDragStart={(e) => { e.dataTransfer.setData(MIME, JSON.stringify(payload)); e.dataTransfer.setData("text/plain", title); e.dataTransfer.effectAllowed = "copy"; dragging(true); }}
         onDragEnd={() => dragging(false)}>
-        <i className="jt-grip" aria-hidden>⠿</i>{title}
+        <i className="jt-grip" aria-hidden><Icon name="griff" size={14} /></i>{title}
       </Link>
       <button type="button" className="jt-give" aria-label={`„${title}“ an einen Agenten geben`} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M2 8h10M8.5 4.5 12 8l-3.5 3.5" /><path d="M14.5 3v10" /></svg>
+        <Icon name="an-agent" size={16} />
       </button>
       {open && (
         <span className="jt-pick" role="menu">

@@ -1,5 +1,6 @@
 import { saveFilters } from "./actions";
 import { filterQuestions } from "@/content/filter-questions";
+import { Icon } from "@/app/icons";
 
 const TXT = {
   en: {
@@ -50,7 +51,7 @@ export function FilterForm({ token, f, back, lang, saved, demo, segment }: { tok
     <section className="ff" id="focus">
       <h2>{T.title}</h2>
       <p className="sub">{T.sub}</p>
-      {saved && <div className="ok">✓ {T.saved}</div>}
+      {saved && <div className="ok"><Icon name="ok" size={16} /> {T.saved}</div>}
       <form action={saveFilters}>
         <input type="hidden" name="t" value={token} />
         <input type="hidden" name="back" value={back} />
@@ -69,7 +70,7 @@ export function FilterForm({ token, f, back, lang, saved, demo, segment }: { tok
         </div>
         <label><span className="lb">{T.exclusions}<em>{T.optional}</em></span>
           <input type="text" name="exclusions" placeholder={Q.exclusionsPh[lang]} defaultValue={(f?.exclusions ?? []).join(", ")} /></label>
-        <button className="btn gold big" type={demo ? "button" : "submit"}>{T.save} <span className="ar">→</span></button>
+        <button className="btn gold big" type={demo ? "button" : "submit"}>{T.save} <span className="ar"><Icon name="pfeil" size={18} /></span></button>
         {demo && <p className="hint">Preview only – nothing is saved.</p>}
       </form>
     </section>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CUSTOM_MAX, CUSTOM_MIN, customCents, fromSlider, perMonth, toSlider } from "@/lib/custom-price";
+import { Icon } from "@/app/icons";
 
 // Schnellwahl unter dem Regler (Inhaber 02.10.2026: Regler „könnte von der Nutzung besser sein“)
 const PRESETS = [250, 500, 1000, 2500];
@@ -60,10 +61,10 @@ export function CustomPlan({ base, variantId, preview, r, online, offerHref, T, 
           <input type="hidden" name="weekly" value={weekly} />
           {preview && <input type="hidden" name="vorschau" value="1" />}
           {r && <input type="hidden" name="r" value={r} />}
-          <button className="btn gold big" type="submit">{T.pay.replace("{n}", num(weekly))} <span className="ar">→</span></button>
+          <button className="btn gold big" type="submit">{T.pay.replace("{n}", num(weekly))} <span className="ar"><Icon name="pfeil" size={18} /></span></button>
         </form>
       ) : (
-        <div className="go"><a className="btn line big" href={offerHref}>{T.mail} <span className="ar">→</span></a></div>
+        <div className="go"><a className="btn line big" href={offerHref}>{T.mail} <span className="ar"><Icon name="pfeil" size={18} /></span></a></div>
       )}
       <a className="more" href={offerHref}>{T.more}</a>
     </section>

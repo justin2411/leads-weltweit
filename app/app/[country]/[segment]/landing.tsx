@@ -40,6 +40,7 @@ import { HeroNet } from "../../motion";
 import { SampleForm } from "../../sample-form";
 import { wishesFor } from "@/content/sample-wishes";
 import { localizeJob, maskCompany, maskEmail, maskPhone, pickDiverse, roleFor, seedOf, shortForm, type Part } from "@/lib/examples";
+import { Icon as LineIcon } from "@/app/icons";
 
 
 const SHOW_SAMPLE_TILES = false;
@@ -361,7 +362,7 @@ export async function Landing({ params, sp: search, rand }: { params: LandingPar
     </div>
   );
   const Fine = () => <div className="fine"><span>{L.free.replace(/\.$/, "")}</span><span>{L.noObl.replace(/\.$/, "")}</span></div>;
-  const Start = ({ label }: { label: string }) => <a className="btn gold big" href={stepHref} data-cta>{label} <span className="ar">→</span></a>;
+  const Start = ({ label }: { label: string }) => <a className="btn gold big" href={stepHref} data-cta>{label} <span className="ar"><LineIcon name="pfeil" size={18} /></span></a>;
   const Head = ({ eyebrow, title }: { eyebrow: string; title: string }) => (
     <div data-rv><div className="rule" /><h2 className="rvw" data-rv><Words text={title} /></h2></div>
   );

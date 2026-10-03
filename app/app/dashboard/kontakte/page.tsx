@@ -6,6 +6,7 @@ import { STAGES, board, isStage, type Card } from "@/lib/dashboard-board";
 import { requireOwner } from "../actions";
 import { COUNTRY_OPTS, Chips, Crumbs, ago2 } from "../v2";
 import { readParams, withQuery, type SP } from "../params";
+import { Icon } from "@/app/icons";
 
 function CardRow({ c, now }: { c: Card; now: Date }) {
   const inner = (
@@ -80,7 +81,7 @@ export default async function Kontakte({ searchParams }: { searchParams: SP }) {
             <div className="kc">
               {col.cards.slice(0, 8).map((c) => <CardRow key={c.key} c={c} now={now} />)}
               {col.count > Math.min(8, col.cards.length) && (
-                <Link href={withQuery("/dashboard/kontakte", { ...prm, stufe: col.id })} className="kmore">alle {compact(col.count)} ansehen ›</Link>
+                <Link href={withQuery("/dashboard/kontakte", { ...prm, stufe: col.id })} className="kmore">alle {compact(col.count)} ansehen <Icon name="weiter" size={14} /></Link>
               )}
             </div>
           </section>

@@ -9,6 +9,8 @@ import { pickVariant } from "@/lib/variants";
 import { BrandShell, SiteFooter, SiteHeader } from "../../../chrome";
 import { basePlan, PER_WEEK } from "@/lib/custom-price";
 import { CustomPlan } from "./custom";
+import { Icon } from "@/app/icons";
+import { CHECK_PATH, maskIcon } from "@/lib/brand-css";
 
 export const dynamic = "force-dynamic";
 // Verkaufsseite aus dem PDF-Report: nicht in Suchmaschinen, nicht in der Navigation
@@ -149,7 +151,7 @@ const CSS = `
 .bx .plan2 .price{font-size:44px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;font-variant-numeric:tabular-nums}
 .bx .plan2.cu .price{font-size:clamp(30px,2.9vw,40px)}
 .bx .plan2.cu .price .amt{display:inline-block;min-width:7.6ch}.bx .plan2 .price small{font-size:15px;font-weight:600;color:var(--soft);margin-left:6px}
-.bx .plan2 ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}.bx .plan2 li{font-size:15.5px;display:flex;gap:10px}.bx .plan2 li:before{content:"✓";color:var(--gold);font-weight:800;flex:none}
+.bx .plan2 ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}.bx .plan2 li{font-size:15.5px;display:flex;gap:10px}.bx .plan2 li:before{${maskIcon(CHECK_PATH, 2.8)};width:1em;height:1em;margin-top:.2em;color:var(--gold)}
 .bx .plan2 .pl{font-size:13.5px;font-weight:700;color:#8a6a33;padding-top:12px;border-top:1px solid var(--line)}
 .bx .plan2 form,.bx .plan2 .go{margin-top:auto}.bx .plan2 .btn{width:100%;justify-content:center}
 .bx .sx-how{margin-top:56px;max-width:1080px}
@@ -231,10 +233,10 @@ export default async function StartPage({ params, searchParams }: { params: Para
                   <input type="hidden" name="billing" value={isoOf(page.country)} />
                   {preview && <input type="hidden" name="vorschau" value="1" />}
                   {sp.r && <input type="hidden" name="r" value={sp.r} />}
-                  <button className={`btn ${hi ? "gold" : "line"} big`} type="submit">{T.pick} {p.name} <span className="ar">→</span></button>
+                  <button className={`btn ${hi ? "gold" : "line"} big`} type="submit">{T.pick} {p.name} <span className="ar"><Icon name="pfeil" size={18} /></span></button>
                 </form>
               ) : (
-                <div className="go"><a className={`btn ${hi ? "gold" : "line"} big`} href={mail}>{T.mail}: {p.name} <span className="ar">→</span></a></div>
+                <div className="go"><a className={`btn ${hi ? "gold" : "line"} big`} href={mail}>{T.mail}: {p.name} <span className="ar"><Icon name="pfeil" size={18} /></span></a></div>
               )}
             </section>);
         })}
@@ -247,7 +249,7 @@ export default async function StartPage({ params, searchParams }: { params: Para
             <div className="price">{T.customP}</div>
             <ul>{T.customL.map((x) => <li key={x}>{x}</li>)}</ul>
             <div className="pl">{T.perLeadC}</div>
-            <div className="go"><a className="btn line big" href={offerMail(lang, country.toLowerCase(), segment.toLowerCase(), who?.firma)}>{T.customBtn} <span className="ar">→</span></a></div>
+            <div className="go"><a className="btn line big" href={offerMail(lang, country.toLowerCase(), segment.toLowerCase(), who?.firma)}>{T.customBtn} <span className="ar"><Icon name="pfeil" size={18} /></span></a></div>
           </section>)}
         </div>
 

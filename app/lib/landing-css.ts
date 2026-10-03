@@ -3,6 +3,8 @@
  * (scripts/assets/report/lead-report-vorlage.html), damit Kaltmail, Seite und Probe gleich aussehen.
  * Alles unter .lp2, ergänzt BRAND_CSS (Kopf, Fuß, Knöpfe, Formular).
  */
+import { CHECK_PATH, maskIcon } from "./brand-css";
+
 export const LANDING_CSS = `
 .bx .lp2{--navy:#0B1530;--navy2:#122247;--navy3:#1A2C55;--pink:#0E1A33;--muted:#566079;--faint:#8C94A6;--pline:#E8E1D3;--cream:#F6F3ED;
   --pgold:#C9A465;--pgold-d:#A98447;--pgold-l:#EBD7AE;--gtext:#8E6C30;--gink:#E2C68F;--coral:#C2412D;--coral-bg:#FBEAE6;--green:#1E7A4C;--green-bg:#E3F3EA}
@@ -43,7 +45,7 @@ export const LANDING_CSS = `
 .bx .lp2 .ctabox{display:inline-flex;flex-direction:column;align-items:center;gap:12px}
 .bx .lp2 .btn{white-space:nowrap}
 .bx .lp2 .free2{display:flex;flex-wrap:wrap;justify-content:center;gap:14px;font-size:13px;color:#9aa6ba}
-.bx .lp2 .free2 span:before{content:"✓ ";color:var(--gink)}
+.bx .lp2 .free2 span:before{${maskIcon(CHECK_PATH, 3)};margin-right:5px;color:var(--gink)}
 .bx .lp2 .for{display:inline-block;margin-left:12px;font-size:13px;color:#cfd6e4}
 .bx .lp2 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding-bottom:12px;position:relative}
 .bx .lp2 .kpi{border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:18px 20px;background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.015))}

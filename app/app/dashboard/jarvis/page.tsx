@@ -20,6 +20,7 @@ import { Pult } from "./pult";
 import { AgentDrawer, AgentRow } from "./agents";
 import { DragTip } from "./dnd";
 import { Clock, Voice } from "./voice";
+import { Icon, type IconName } from "@/app/icons";
 
 export const metadata = { title: "JARVIS" };
 const REG = LANES as unknown as LaneRegistry;
@@ -109,15 +110,15 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     return x.live ? "live" : x.cls === "t-red" ? "bad" : "idle";
   };
   const stations: Station[] = ([
-    { id: "lead", label: "Lead-Werk", icon: "⛏", value: compact(leads24), sub: `${busy} läuft · ${Object.values(plan).reduce((a, b) => a + b, 0)} geplant`, state: state("lead-werk", "lead-werk", 4), tip: "neue Leads in 24 h · belegte Plätze" },
-    { id: "gate", label: "Freigabe", icon: "⛨", value: gatePct === null ? "–" : `${gatePct}`, unit: gatePct === null ? "" : "%", sub: `${compact(gateOk)} frei/h`, state: act.last_gate_at && t - Date.parse(act.last_gate_at) < 15 * 60_000 ? "live" : "idle", tip: "Stichprobe bestanden · letzte Stunde freigegeben" },
-    { id: "bestand", label: "Bestand", icon: "▤", value: compact(Object.values(leadsNew).reduce((a, b) => a + b, 0)), sub: "Leads", state: "idle", tip: "lieferbare Leads US/UK/FR" },
-    { id: "proben", label: "Proben", icon: "✉", value: `${ready}/${target}`, sub: "bereit", state: state("proben-vorrat", "proben-vorrat", 26), tip: "fertige, geprüfte Proben / Soll" },
-    { id: "kwerk", label: "Kunden-Werk", icon: "⌕", value: compact(newBuyers24), sub: "neu 24 h", state: state("kunden-werk", "kunden-werk", 5), tip: "neue mail-fähige Webagenturen in 24 h" },
-    { id: "kaeufer", label: "Käufer", icon: "◎", value: compact(Object.values(freeBuyers).reduce((a, b) => a + b, 0)), sub: "frei", state: "idle", tip: "mail-fähige Käufer ohne Mail" },
-    { id: "versand", label: "Versand", icon: "➤", value: `${sentToday}`, unit: `/${cap}`, sub: "heute", state: own.send_paused ? "off" : isLive(act, "versand", now) ? "live" : "idle", tip: "Mails heute / Kapazität" },
-    { id: "antworten", label: "Antworten", icon: "↩", value: `${w.replies}`, sub: `${w.positive} positiv`, state: state("antworten", "antworten", 30), tip: "echte Antworten 7 Tage (ohne Abwesenheit)" },
-    { id: "kunden", label: "Kunden", icon: "€", value: `${subs.length}`, sub: `${revenue}/Mon.`, state: subs.length ? "live" : "idle", tip: "zahlende Kunden · Umsatz pro Monat" },
+    { id: "lead", label: "Lead-Werk", icon: "lead-werk", value: compact(leads24), sub: `${busy} läuft · ${Object.values(plan).reduce((a, b) => a + b, 0)} geplant`, state: state("lead-werk", "lead-werk", 4), tip: "neue Leads in 24 h · belegte Plätze" },
+    { id: "gate", label: "Freigabe", icon: "freigabe", value: gatePct === null ? "–" : `${gatePct}`, unit: gatePct === null ? "" : "%", sub: `${compact(gateOk)} frei/h`, state: act.last_gate_at && t - Date.parse(act.last_gate_at) < 15 * 60_000 ? "live" : "idle", tip: "Stichprobe bestanden · letzte Stunde freigegeben" },
+    { id: "bestand", label: "Bestand", icon: "bestand", value: compact(Object.values(leadsNew).reduce((a, b) => a + b, 0)), sub: "Leads", state: "idle", tip: "lieferbare Leads US/UK/FR" },
+    { id: "proben", label: "Proben", icon: "proben", value: `${ready}/${target}`, sub: "bereit", state: state("proben-vorrat", "proben-vorrat", 26), tip: "fertige, geprüfte Proben / Soll" },
+    { id: "kwerk", label: "Kunden-Werk", icon: "kunden-werk", value: compact(newBuyers24), sub: "neu 24 h", state: state("kunden-werk", "kunden-werk", 5), tip: "neue mail-fähige Webagenturen in 24 h" },
+    { id: "kaeufer", label: "Käufer", icon: "kaeufer", value: compact(Object.values(freeBuyers).reduce((a, b) => a + b, 0)), sub: "frei", state: "idle", tip: "mail-fähige Käufer ohne Mail" },
+    { id: "versand", label: "Versand", icon: "versand", value: `${sentToday}`, unit: `/${cap}`, sub: "heute", state: own.send_paused ? "off" : isLive(act, "versand", now) ? "live" : "idle", tip: "Mails heute / Kapazität" },
+    { id: "antworten", label: "Antworten", icon: "antworten", value: `${w.replies}`, sub: `${w.positive} positiv`, state: state("antworten", "antworten", 30), tip: "echte Antworten 7 Tage (ohne Abwesenheit)" },
+    { id: "kunden", label: "Kunden", icon: "kunden", value: `${subs.length}`, sub: `${revenue}/Mon.`, state: subs.length ? "live" : "idle", tip: "zahlende Kunden · Umsatz pro Monat" },
   ] as Station[]).map((x) => ({ ...x, neck: x.id === neck }));
   const edges: Edge[] = [
     { from: "lead", to: "gate", perHour: act.leads_60m, label: "neue Leads" },
@@ -146,15 +147,15 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     { label: "Engpass", value: neck ? stations.find((x) => x.id === neck)!.label : "keiner", sub: "hier ansetzen", tone: neck ? "red" : "green", href: neck ? base(neck) : "/dashboard/jarvis", task: neck ? neckTask(stations.find((x) => x.id === neck)!.label) : undefined },
   ] as { label: string; value: string; sub: string; tone: "green" | "gold" | "red" | "cyan" | "grey"; href: string }[];
   const items: TickerItem[] = [
-    ...sent.map((m) => ({ at: m.sent_at, icon: "✉", text: `${m.prospects?.company_name ?? "?"} ${m.prospects?.country ?? ""}`, tone: "cyan" as const, href: m.prospects ? `/dashboard/kontakte/${m.prospects.id}` : undefined })),
+    ...sent.map((m) => ({ at: m.sent_at, icon: "mail" as IconName, text: `${m.prospects?.company_name ?? "?"} ${m.prospects?.country ?? ""}`, tone: "cyan" as const, href: m.prospects ? `/dashboard/kontakte/${m.prospects.id}` : undefined })),
     ...live.events.filter((e) => ["reply", "reply_positive", "reply_negative", "sample_requested", "unsubscribed", "bounced"].includes(e.type)).slice(0, 10).map((e) => ({
-      at: e.occurred_at, icon: ({ reply: "↩", reply_positive: "★", reply_negative: "↩", sample_requested: "◫", unsubscribed: "⊘", bounced: "⚠" } as Record<string, string>)[e.type] ?? "•",
+      at: e.occurred_at, icon: ({ reply: "antwort", reply_positive: "stern", reply_negative: "antwort", sample_requested: "proben", unsubscribed: "abmeldung", bounced: "bounce" } as Record<string, IconName>)[e.type] ?? "info",
       text: `${e.company_name ?? "?"}${e.type === "unsubscribed" ? " abgemeldet" : e.type === "bounced" ? " Bounce" : e.type === "sample_requested" ? " Probe" : ""}`,
       tone: (e.type === "reply_positive" || e.type === "sample_requested" ? "green" : e.type === "bounced" || e.type === "unsubscribed" ? "red" : "gold") as TickerItem["tone"],
       href: e.prospect_id ? `/dashboard/kontakte/${e.prospect_id}` : undefined })),
     // Werke im Ticker: nur Teile mit Ergebnis (grüne Leads/Käufer) oder Abbruch – „0 grün“ wäre nur Rauschen
     ...beats.filter((b) => b.started_at && t - Date.parse(b.started_at) < 3 * 3_600_000 && (b.green > 0 || /^abgebrochen/.test(b.note ?? ""))).slice(0, 8).map((b) => ({
-      at: /^(fertig|abgebrochen)/.test(b.note ?? "") ? b.beat_at : b.started_at!, icon: /^abgebrochen/.test(b.note ?? "") ? "✕" : /^fertig/.test(b.note ?? "") ? "■" : "▶",
+      at: /^(fertig|abgebrochen)/.test(b.note ?? "") ? b.beat_at : b.started_at!, icon: (/^abgebrochen/.test(b.note ?? "") ? "fehler" : /^fertig/.test(b.note ?? "") ? "stopp" : "start") as IconName,
       text: `${b.werk === "lead-werk" ? "Lead" : b.werk === "kunden-werk" ? "Kunden" : b.werk} ${b.part.split(" ")[0]}${/^fertig/.test(b.note ?? "") ? ` ${compact(b.green)} grün` : ""}`,
       tone: (/^abgebrochen/.test(b.note ?? "") ? "red" : "grey") as TickerItem["tone"] })),
   ];
@@ -170,7 +171,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     const st = startState(starts, wf, now);
     return (<>
       <form action={requestStart} className="row-go"><Back to={back} /><input type="hidden" name="wf" value={wf} />
-        <button disabled={paused} title={paused ? "pausiert – erst einschalten" : dispatch ? "startet sofort" : "Wachhund startet spätestens in 15 min"}>▶ Jetzt starten</button></form>
+        <button disabled={paused} title={paused ? "pausiert – erst einschalten" : dispatch ? "startet sofort" : "Wachhund startet spätestens in 15 min"}><Icon name="start" size={16} /> Jetzt starten</button></form>
       {st && <span className={st.tone === "bad" ? "warn" : "lock"} aria-live="polite">{st.text}</span>}
     </>);
   };
@@ -187,7 +188,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     <ul className="chk">
       {checks.map((c, i) => (
         <li key={i} className={c.result === "released" ? "ok" : "bad"} title={c.leads?.event_summary ?? ""}>
-          <i aria-hidden>{c.result === "released" ? "✓" : "✕"}</i>
+          <i aria-hidden><Icon name={c.result === "released" ? "ok" : "fehler"} size={16} /></i>
           <b>{c.leads?.watch_companies?.name ?? "?"}</b><span>{c.leads?.country} · {c.leads?.signal_type?.replace(/_/g, " ")}</span>
           <em>{c.result === "released" ? "frei" : `Stufe ${c.failed_stage}: ${(c.reasons ?? [])[0] ?? ""}`}</em>
         </li>
@@ -195,7 +196,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
       {!checks.length && <li className="none">noch keine Prüfungen</li>}
     </ul>
   );
-  const lnk = (to: string, label: string) => <Link href={to} className="more2">{label} ›</Link>;
+  const lnk = (to: string, label: string) => <Link href={to} className="more2">{label} <Icon name="weiter" size={16} /></Link>;
   const countryToggles = (list: string[], action: (f: FormData) => Promise<void>) => (
     <div className="tog2">{countries.map((c) => { const off = list.includes(c); return (
       <form key={c} action={action}><Back to={back} /><input type="hidden" name="country" value={c} /><button className={off ? "off" : "on"} title={off ? "aus" : "an"}><i style={{ background: COUNTRY_COLOR[c] }} />{c}</button></form>); })}</div>
@@ -223,7 +224,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     </>) : (<>
       <Big items={[[gatePct === null ? "–" : `${gatePct} %`, "Stichprobe"], [compact(gateOk), "frei / h"], [`${gateBad}`, "raus / h"]]} />
       <MiniBars unit=" %" rows={sp7.map((r) => ({ key: r.country, label: r.country, n: r.candidates ? Math.round((r.green / r.candidates) * 1000) / 10 : 0, color: COUNTRY_COLOR[r.country] }))} />
-      <p className="lock">🔒 3 Stufen · immer an</p>
+      <p className="lock"><Icon name="schloss" size={14} /> 3 Stufen · immer an</p>
     </>);
     if (s === "bestand") body = tab === "check" ? lnk("/dashboard/bestand", "Bestand im Detail") : (<>
       <Big items={[[compact(Object.values(leadsNew).reduce((a, b) => a + b, 0)), "lieferbar"], [`+${compact(leads24)}`, "24 h"]]} />
@@ -255,7 +256,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     </>);
     if (s === "versand") body = tab === "set" ? (<>
       <form action={setPaused} className="row-sw2"><Back to={back} />
-        <button name="paused" value="0" className={!own.send_paused ? "on go" : ""}>▶ läuft</button><button name="paused" value="1" className={own.send_paused ? "on stop" : ""}>❚❚ Pause</button></form>
+        <button name="paused" value="0" className={!own.send_paused ? "on go" : ""}><Icon name="start" size={16} /> läuft</button><button name="paused" value="1" className={own.send_paused ? "on stop" : ""}><Icon name="pause" size={16} /> Pause</button></form>
       {countryToggles(own.send_countries_off, toggleSendCountry)}
       <form action={saveCountryLimits} className="frm"><Back to={back} />
         {countries.map((c) => <label key={c}><span>{c}</span><input name={`limit_${c}`} inputMode="numeric" defaultValue={own.send_country_limits[c] ?? ""} placeholder={String(CONFIG.countries[c]?.daily_limit ?? "")} /><em>/Tag · max {CONFIG.countries[c]?.daily_limit}</em></label>)}
@@ -266,7 +267,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
         <button className="go">Speichern</button></form>
     </>) : tab === "check" ? (<>
       <ul className="chk">{sent.map((m, i) => (
-        <li key={i} className="ok"><i aria-hidden>✉</i><b>{m.prospects ? <Link href={`/dashboard/kontakte/${m.prospects.id}`}>{m.prospects.company_name}</Link> : "?"}</b>
+        <li key={i} className="ok"><i aria-hidden><Icon name="mail" size={16} /></i><b>{m.prospects ? <Link href={`/dashboard/kontakte/${m.prospects.id}`}>{m.prospects.company_name}</Link> : "?"}</b>
           <span>{m.prospects?.country} · {berlin(m.sent_at)}</span><em>{m.kind === "initial" ? "Erstmail" : "Nachfass"}</em></li>))}</ul>
       {lnk("/dashboard/versand", "Versand im Detail")}
     </>) : (<>
@@ -275,10 +276,10 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     </>);
     if (s === "antworten") body = tab === "set" ? (<>
       <div className="row-sw"><WerkSwitch werk="antworten" on={sw("antworten").on} back={back} label="Antwort-Assistent" note="Abmeldungen werden immer gesperrt" /></div>
-      <p className="lock">🔒 Abmeldungen immer gesperrt</p>
+      <p className="lock"><Icon name="schloss" size={14} /> Abmeldungen immer gesperrt</p>
     </>) : tab === "check" ? (<>
       <ul className="chk">{live.events.filter((e) => ["reply", "reply_positive", "reply_negative", "sample_requested"].includes(e.type)).slice(0, 12).map((e) => (
-        <li key={e.id} className={e.type === "reply_negative" ? "bad" : "ok"} title={e.note ?? ""}><i aria-hidden>{e.type === "reply_positive" ? "★" : "↩"}</i>
+        <li key={e.id} className={e.type === "reply_negative" ? "bad" : "ok"} title={e.note ?? ""}><i aria-hidden><Icon name={e.type === "reply_positive" ? "stern" : "antwort"} size={16} /></i>
           <b>{e.prospect_id ? <Link href={`/dashboard/kontakte/${e.prospect_id}`}>{e.company_name ?? "?"}</Link> : e.company_name ?? "?"}</b>
           <span>{e.country} · {berlin(e.occurred_at)}</span><em>{(e.note ?? "").slice(0, 60)}</em></li>))}</ul>
       {lnk("/dashboard/liste?m=replies&z=jahr", "alle Antworten")}
@@ -286,7 +287,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
       <Big items={[[`${w.replies}`, "Antworten 7 T"], [`${w.positive}`, "positiv"], [`${w.samples_requested}`, "Proben angefragt"]]} />
     );
     if (s === "kunden") body = tab === "set" ? lnk("/dashboard/kunden", "Kunden anlegen & freigeben") : tab === "check" ? (
-      <ul className="chk">{subs.map((x) => <li key={x.id} className="ok"><i aria-hidden>€</i><b>{x.customer?.company_name}</b><span>{x.customer?.country}</span><em>{compact(monthly(x))} {currencySign(x.currency, x.customer?.country)}</em></li>)}
+      <ul className="chk">{subs.map((x) => <li key={x.id} className="ok"><i aria-hidden><Icon name="kunde" size={16} /></i><b>{x.customer?.company_name}</b><span>{x.customer?.country}</span><em>{compact(monthly(x))} {currencySign(x.currency, x.customer?.country)}</em></li>)}
         {!subs.length && <li className="none">noch keine Kunden</li>}</ul>
     ) : <Big items={[[`${subs.length}`, "Kunden"], [revenue, "pro Monat"], [nx("kundenlieferung.yml"), "nächste Lieferung"]]} />;
     drawer = <Drawer title={stn.label} icon={stn.icon} tab={tab} base={base(s)} close="/dashboard/jarvis" tabs={tabsOn} state={stn.state}>{body}</Drawer>;

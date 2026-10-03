@@ -15,6 +15,7 @@ import { AmpelRow, Back, Bars, COUNTRY_OPTS, Chips, Columns, Ctrl, Fill, Kpi, Le
 import { dispatchWorkflow, setPaused, toggleSendCountry } from "./control-actions";
 import { WORKFLOWS } from "@/lib/owner-settings";
 import { readParams, withQuery, type SP } from "./params";
+import { Icon } from "@/app/icons";
 
 const LOG: Record<string, string> = {
   "setting:send_paused": "Versand-Schalter", "setting:send_countries_off": "Länder Versand", "setting:send_country_limits": "Mails/Tag je Land",
@@ -116,10 +117,10 @@ export default async function Overview({ searchParams }: { searchParams: SP }) {
         <Chips base="/dashboard" param="land" value={land} options={COUNTRY_OPTS} params={raw} dots />
       </div>
 
-      <div className="th2"><span>Ablauf</span><Link href={withQuery("/dashboard/kontakte", q())} className="more">Wer ist wo ›</Link></div>
+      <div className="th2"><span>Ablauf</span><Link href={withQuery("/dashboard/kontakte", q())} className="more">Wer ist wo <Icon name="weiter" size={14} /></Link></div>
       <Pipeline steps={steps.map((s) => ({ ...s, perHour: perHour[s.id] ?? 0, neck: s.id === neck, n: nums[s.id] }))} flow={flowSeconds} at={stock?.at ?? now.toISOString()} scope={land ?? "alle"} />
 
-      <div className="th2"><span>Werke</span><Link href={withQuery("/dashboard/werke", q())} className="more">Werke ›</Link></div>
+      <div className="th2"><span>Werke</span><Link href={withQuery("/dashboard/werke", q())} className="more">Werke <Icon name="weiter" size={14} /></Link></div>
       <div className="werkrow">
         {MINI.map(([key, werk, maxH]) => {
           const sw = werkOn(own, key);
@@ -177,8 +178,8 @@ export default async function Overview({ searchParams }: { searchParams: SP }) {
         <Ctrl title="Versand" tip="Hauptschalter: Pause hält alle Kalt- und Nachfassmails sofort an. Weiter nur per Klick. Länder einzeln aus-/einschalten.">
           <form action={setPaused} className="sw">
             <Back to={here} />
-            <button name="paused" value="0" className={!own.send_paused ? "on go" : ""}>▶ Läuft</button>
-            <button name="paused" value="1" className={own.send_paused ? "on stop" : ""}>❚❚ Pause</button>
+            <button name="paused" value="0" className={!own.send_paused ? "on go" : ""}><Icon name="start" size={16} /> Läuft</button>
+            <button name="paused" value="1" className={own.send_paused ? "on stop" : ""}><Icon name="pause" size={16} /> Pause</button>
           </form>
           <div className="tog">
             {COUNTRIES.map((c) => {

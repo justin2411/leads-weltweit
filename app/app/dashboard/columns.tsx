@@ -9,6 +9,7 @@
  */
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Icon } from "@/app/icons";
 
 export type Series = { key: string; label: string; color: string };
 export type ColRow = { day: string; label: string; parts: Record<string, number>; total: number; href?: string; tipTitle?: string };
@@ -67,7 +68,7 @@ export function Columns({ rows, series, title, height = 180, sumLabel = "Summe",
                     <span key={x.key} className="tr"><i style={{ background: x.color }} />{x.label}<em>{fmt(r.parts[x.key] ?? 0)}</em></span>
                   ))}
                   {showSum && series.length > 1 && <span className="tr sum">{sumLabel}<em>{fmt(r.total)}</em></span>}
-                  {r.href && <a href={r.href} className="tl" onPointerUp={(e) => e.stopPropagation()}>Firmen ansehen ›</a>}
+                  {r.href && <a href={r.href} className="tl" onPointerUp={(e) => e.stopPropagation()}>Firmen ansehen <Icon name="weiter" size={14} /></a>}
                 </div>
               )}
             </div>

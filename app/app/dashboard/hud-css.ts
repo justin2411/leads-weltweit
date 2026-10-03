@@ -418,4 +418,7 @@ export const HUD_CSS = `
 @media (max-width:720px){.ag,.ag-drop{flex:0 0 150px}.ag-drop>.ag{flex:1}}
 /* Linien-Icons (app/icons.tsx): Textgröße, auf der Grundlinie */
 .ico{display:inline-block;vertical-align:-0.18em;flex:none}
+/* Icon-Knöpfe und -Marken mittig (statt Glyphen) */
+.ln-ctl button,.ag-orb b,.drw-ic,.jt-grip,.chk i,.tk i{display:inline-grid;place-items:center}
+.ln-ctl button{display:grid}
 `;

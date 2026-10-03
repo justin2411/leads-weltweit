@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import type { ContactText } from "./contact-i18n";
+import { Icon } from "@/app/icons";
 
 /**
  * Kontaktformular (Inhaber 03.10.2026): Name, Firma, E-Mail, Telefon, Branche, Land, gewünschte Leads, Nachricht,
@@ -105,7 +106,7 @@ export function ContactForm({ T, lang, industries, countries, privacyHref }: {
       {err && <p className="pf-err" role="alert">{err}</p>}
       <div className="pf-go">
         <button className="btn gold big" type="submit" disabled={state === "busy"}>
-          {state === "busy" ? f.sending : f.send} <span className="ar">→</span></button>
+          {state === "busy" ? f.sending : f.send} <span className="ar"><Icon name="pfeil" size={18} /></span></button>
         <span className="pf-fine">{f.fine}</span>
       </div>
     </form>

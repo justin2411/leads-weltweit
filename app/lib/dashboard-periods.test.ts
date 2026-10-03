@@ -32,8 +32,8 @@ test("Summen, Umsatz je Währung, Veränderung, Eimer", () => {
   assert.equal(t.sent, 70);
   assert.equal(t.replies, 2);
   assert.deepEqual(revenueByCurrency(rows, "2026-10-01", "2026-10-03", ["US", "UK"]), { $: 129, "£": 129 });
-  assert.deepEqual(delta(70, 10), { text: "▲ 600 %", dir: "up" });
-  assert.deepEqual(delta(5, 10), { text: "▼ 50 %", dir: "down" });
+  assert.deepEqual(delta(70, 10), { text: "600 %", dir: "up" });
+  assert.deepEqual(delta(5, 10), { text: "50 %", dir: "down" });
   assert.equal(delta(3, 0).text, "+3");
   assert.deepEqual(delta(0, 1), { text: "−1", dir: "down" });
   assert.equal(delta(2, 2).text, "±0");

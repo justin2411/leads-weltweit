@@ -17,7 +17,7 @@ export const REGLER_CSS = `
 .rg-card.dirty{border-color:rgba(226,198,143,.7);box-shadow:0 0 0 1px rgba(226,198,143,.25),0 0 26px -8px rgba(226,198,143,.5)}
 .rg-card.off .rg-knobs{opacity:.5}
 .rg-h{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:12px;align-items:center}
-.rg-ic{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;font-size:22px;background:radial-gradient(circle at 50% 35%,#1d4a7a,#06101f 70%);border:1px solid rgba(95,212,255,.35)}
+.rg-ic{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;font-size:22px;color:var(--cy2);background:radial-gradient(circle at 50% 35%,#1d4a7a,#06101f 70%);border:1px solid rgba(95,212,255,.35)}
 .rg-card.off .rg-ic{filter:grayscale(1);opacity:.6}
 .rg-h h2{margin:0;font-family:var(--sans);font-size:18px;font-weight:700;letter-spacing:0;color:#fff}
 .rg-eff{display:block;margin-top:2px;font-size:13.5px;color:var(--cy2);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -38,7 +38,7 @@ export const REGLER_CSS = `
 .rg-k>.rg-st{justify-self:start}
 .rg-k .rg-note{grid-column:2;margin:-4px 0 0;font-size:13px;color:var(--soft)}
 .rg-st{display:inline-grid;grid-template-columns:44px minmax(74px,auto) 44px;align-items:center;gap:6px}
-.rg-st button{height:44px;width:44px;padding:0;border-radius:10px;font-size:24px;line-height:1;color:var(--cy);cursor:pointer;border:1px solid rgba(95,212,255,.35)}
+.rg-st button{display:grid;place-items:center;height:44px;width:44px;padding:0;border-radius:10px;font-size:24px;line-height:1;color:var(--cy);cursor:pointer;border:1px solid rgba(95,212,255,.35)}
 .rg-st button:disabled{opacity:.3;cursor:default}
 .rg-st output{text-align:center;font-size:28px;font-weight:700;color:#fff;line-height:1;text-shadow:0 0 14px rgba(95,212,255,.45);white-space:nowrap}
 .rg-st output small{font-size:13px;font-weight:600;color:var(--soft);margin-left:3px;text-shadow:none}
@@ -58,7 +58,7 @@ export const REGLER_CSS = `
 .rg-soll{display:grid;justify-items:center;gap:2px}.rg-soll>span{font-size:13px;font-weight:600;color:var(--soft)}
 .rg-page .rg-st{grid-template-columns:40px minmax(54px,auto) 40px}.rg-page .rg-st button{width:40px;height:40px}
 .rg-lock{margin:0;font-size:13px;color:var(--soft)}
-.rg-fine{display:inline-flex;align-items:center;min-height:40px;font-size:13.5px;font-weight:600;color:var(--gold2)!important;text-decoration:none;justify-self:start}
+.rg-fine{display:inline-flex;align-items:center;gap:4px;min-height:40px;font-size:13.5px;font-weight:600;color:var(--gold2)!important;text-decoration:none;justify-self:start}
 
 .rg-rail{list-style:none;margin:auto 0 0;padding:10px 0 0;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;align-items:start}
 .rg-rail li{position:relative;display:grid;grid-template-columns:22px minmax(0,1fr);gap:0 7px;align-items:start;align-content:start;font-size:13px;color:var(--soft);min-width:0}
@@ -72,7 +72,7 @@ export const REGLER_CSS = `
 .rg-rail li.now>i{border-color:var(--now);background:rgba(226,198,143,.2);color:var(--now)}
 .rg-rail li.now b{color:var(--now)}
 .rg-rail li.todo b,.rg-rail li.todo span{color:#8ba6c9}.rg-rail li.todo>i{opacity:.6}
-.rg-go{grid-column:2;justify-self:start;margin-top:5px;min-height:40px;padding:0 14px;border-radius:8px;font:700 12.5px var(--sans);cursor:pointer;color:#02060f!important;background:linear-gradient(180deg,#a8ecff,#5fd4ff)!important;border:0!important}
+.rg-go{grid-column:2;justify-self:start;display:inline-flex;align-items:center;gap:6px;margin-top:5px;min-height:40px;padding:0 14px;border-radius:8px;font:700 12.5px var(--sans);cursor:pointer;color:#02060f!important;background:linear-gradient(180deg,#a8ecff,#5fd4ff)!important;border:0!important}
 .rg-go:disabled{opacity:.5;cursor:default}
 .rg-calm{margin:auto 0 0;padding:10px 0 0;border-top:1px solid var(--line);display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ok);font-variant-numeric:tabular-nums}
 .rg-calm>i{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:12px;font-weight:700;border:1px solid var(--ok);background:rgba(61,220,151,.18)}
@@ -93,7 +93,7 @@ export const REGLER_CSS = `
 .rg-bar .in{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:10px 14px}
 .rg-n{flex:none;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 10px 0 4px;border-radius:10px;font:700 15px var(--sans);color:#fff;cursor:pointer;background:transparent!important;border:1px solid transparent!important}
 .rg-n:hover,.rg-n[aria-expanded=true]{border-color:rgba(226,198,143,.45)!important}
-.rg-n i{font-style:normal;font-size:12px;color:var(--gold2)}
+.rg-n i{display:inline-flex;font-style:normal;font-size:12px;color:var(--gold2)}
 .rg-pop{list-style:none;max-width:1240px;margin:0 auto 10px;padding:6px 12px;max-height:40vh;overflow:auto;border:1px solid rgba(226,198,143,.35);border-radius:10px;background:rgba(2,8,18,.6);display:grid;gap:2px}
 .rg-pop li{display:flex;gap:10px;align-items:baseline;padding:5px 0;font-size:14px;color:#e6f6ff;border-top:1px solid rgba(95,212,255,.08)}
 .rg-pop li:first-child{border-top:0}
@@ -111,8 +111,9 @@ export const REGLER_CSS = `
 .rg-toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:70;width:min(440px,calc(100vw - 24px));padding:12px 14px 12px 16px;border-radius:14px;border:1px solid rgba(61,220,151,.55);background:rgba(6,26,22,.96);box-shadow:0 20px 50px -14px rgba(0,0,0,.9),0 0 30px -10px rgba(61,220,151,.6);animation:rg-down .2s ease-out}
 .rg-toast.bad{border-color:rgba(255,94,115,.6);background:rgba(36,8,14,.96)}
 .rg-toast header{display:flex;align-items:center;gap:10px}
-.rg-toast header b{flex:1;font-size:16px;color:#fff}
-.rg-toast button{width:32px;height:32px;padding:0;border-radius:50%;cursor:pointer;flex:none}
+.rg-toast header b{flex:1;display:flex;align-items:center;gap:8px;font-size:16px;color:#fff}
+.rg-toast header b .ico{color:var(--ok)}.rg-toast.bad header b .ico{color:#ff5e73}
+.rg-toast button{display:grid;place-items:center;width:32px;height:32px;padding:0;border-radius:50%;cursor:pointer;flex:none}
 .rg-toast ul{margin:8px 0 0;padding:0 0 0 18px;font-size:13.5px;color:#cfe3f7;display:grid;gap:2px}
 .rg-toast p{margin:8px 0 0;font-size:13px;color:var(--cy2)}
 
@@ -124,7 +125,7 @@ export const REGLER_CSS = `
 @media (max-width:640px){
   .rg-head h1{font-size:21px}
   .rg-card{padding:14px 12px 12px}
-  .rg-h{grid-template-columns:42px minmax(0,1fr) auto;gap:10px}.rg-ic{width:42px;height:42px;font-size:19px}
+  .rg-h{grid-template-columns:42px minmax(0,1fr) auto;gap:10px}.rg-ic{width:42px;height:42px;font-size:19px}.rg-ic .ico{width:19px;height:19px}
   .rg-sw .lb{display:none}
   .rg-k{grid-template-columns:1fr;gap:6px}.rg-k .rg-note{grid-column:1}
   .rg-st{grid-template-columns:52px minmax(0,1fr) 52px;width:100%}.rg-st button{width:52px}

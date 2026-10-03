@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
+import { Icon } from "@/app/icons";
 
 /** Kurze Rückmeldung nach einer Aktion („gespeichert“ bzw. Fehler), verschwindet nach 4 s. */
 export function Flash() {
@@ -21,5 +22,5 @@ export function Flash() {
     return () => clearTimeout(t);
   }, [ok, err, sp, path, router]);
   if (!ok && !err) return null;
-  return <div className={`flash ${err ? "bad" : "good"}`} role="status">{err ? `✕ ${err}` : `✓ ${ok}`}</div>;
+  return <div className={`flash ${err ? "bad" : "good"}`} role="status">{err ? <><Icon name="fehler" size={16} /> {err}</> : <><Icon name="ok" size={16} /> {ok}</>}</div>;
 }

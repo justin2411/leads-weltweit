@@ -4,14 +4,17 @@
  * Claude-Sitzung „Agenten“ (docs/AGENTEN.md) – immer innerhalb von CLAUDE.md (kein Versand, keine Kosten,
  * keine Regeln aufweichen).
  */
+import type { IconName } from "../app/icons";
+
 export const AGENT_COUNT = 4;
+/** icon = Name eines Linien-Icons (app/icons.tsx), gerendert mit <Icon name=…/> – keine Emojis/Glyphen. */
 export const KINDS = {
-  leads: { label: "Leads holen", icon: "⛏", hint: "mehr Leads für einen Markt" },
-  kaeufer: { label: "Käufer finden", icon: "◎", hint: "mehr mail-fähige Webagenturen" },
-  quelle: { label: "Neue Quelle", icon: "✦", hint: "neue kostenlose Quelle suchen und testen" },
-  pruefen: { label: "Prüfen", icon: "✓", hint: "Stichprobe/Qualität kontrollieren" },
-  frage: { label: "Frage", icon: "?", hint: "Auswertung oder Antwort" },
-} as const;
+  leads: { label: "Leads holen", icon: "lead-werk", hint: "mehr Leads für einen Markt" },
+  kaeufer: { label: "Käufer finden", icon: "kaeufer", hint: "mehr mail-fähige Webagenturen" },
+  quelle: { label: "Neue Quelle", icon: "neu", hint: "neue kostenlose Quelle suchen und testen" },
+  pruefen: { label: "Prüfen", icon: "tagescheck", hint: "Stichprobe/Qualität kontrollieren" },
+  frage: { label: "Frage", icon: "frage", hint: "Auswertung oder Antwort" },
+} as const satisfies Record<string, { label: string; icon: IconName; hint: string }>;
 export type Kind = keyof typeof KINDS;
 export const MARKETS = ["US", "UK", "FR", "IE", "NL", "BE", "SE"] as const;
 

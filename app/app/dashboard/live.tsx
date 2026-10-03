@@ -8,6 +8,7 @@ import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { COUNTRY_COLOR, OTHER_COLOR, compact } from "@/lib/dashboard-logic";
 import { PipeDelta } from "./pipe-delta";
+import { Icon } from "@/app/icons";
 
 type V = CSSProperties & Record<`--${string}`, string | number>;
 
@@ -89,7 +90,7 @@ export function Pipeline({ steps, flow, at, scope }: { steps: PipeStep[]; flow: 
         return (
           <li key={s.id} className={`${s.neck ? "neck" : ""} ${s.perHour > 0 ? "busy" : ""}`}>
             <Link href={s.href} title={`${s.tip}${s.perHour ? ` · letzte Stunde: ${s.perHour.toLocaleString("de-DE")}` : ""}${s.neck ? " · ENGPASS" : ""} · Klick: Details`}>
-              {s.neck && <span className="neck-tag">✕ Engpass</span>}
+              {s.neck && <span className="neck-tag"><Icon name="warnung" size={12} /> Engpass</span>}
               <span className="v">{s.value}</span>
               <span className="l">{s.label}</span>
               <span className="s">{s.sub}</span>

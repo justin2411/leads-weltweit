@@ -8,6 +8,7 @@ import { requireOwner } from "../actions";
 import { saveCountryLimits, saveFollowups, setPaused, toggleSendCountry } from "../control-actions";
 import { Back, COUNTRY_OPTS, Chips, Columns, Crumbs, Ctrl, Kpi, Legend, countrySeries } from "../v2";
 import { readParams, withQuery, type SP } from "../params";
+import { Icon } from "@/app/icons";
 
 /** Versand & Ergebnisse je Zeitraum mit Vergleich, Klick auf Zahl/Balken → Firmen; darunter die Steuerung. */
 export default async function Versand({ searchParams }: { searchParams: SP }) {
@@ -83,8 +84,8 @@ export default async function Versand({ searchParams }: { searchParams: SP }) {
         <Ctrl title="Versand" tip="Pause hält alle Kalt- und Nachfassmails sofort an. Weiter nur per Klick.">
           <form action={setPaused} className="sw">
             <Back to={here} />
-            <button name="paused" value="0" className={!own.send_paused ? "on go" : ""} title="Versand läuft">▶ Läuft</button>
-            <button name="paused" value="1" className={own.send_paused ? "on stop" : ""} title="Alle Kaltmails anhalten">❚❚ Pause</button>
+            <button name="paused" value="0" className={!own.send_paused ? "on go" : ""} title="Versand läuft"><Icon name="start" size={16} /> Läuft</button>
+            <button name="paused" value="1" className={own.send_paused ? "on stop" : ""} title="Alle Kaltmails anhalten"><Icon name="pause" size={16} /> Pause</button>
           </form>
           <div className="tog">
             {COUNTRIES.map((c) => {

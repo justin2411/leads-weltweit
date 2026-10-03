@@ -10,13 +10,15 @@ import {
   type Lane, type LaneRegistry, type OwnerSettings, type SettingKey, type WerkKey,
 } from "./owner-settings.ts";
 import { START_MAX_AGE_MIN, fmtBerlin, nextPickup, type StartKey, type StartRequest } from "./start-queue.ts";
+import type { IconName } from "../app/icons.tsx";
 
 export { fmtBerlin };
 
 // ------------------------------------------------------------------------------------------------ Karten
 export type CardKey = WerkKey;
 export type Card = {
-  key: CardKey; icon: string; name: string;
+  /** Linien-Icon (Name aus app/icons.tsx), gerendert in der Komponente – keine Emojis */
+  key: CardKey; icon: IconName; name: string;
   /** owner_settings-Schlüssel, die diese Karte stellt (und die das Werk quittiert) */
   keys: SettingKey[];
   /** Werk-Name in signalwerk.settings_ack */
@@ -29,14 +31,14 @@ export type Card = {
 };
 
 export const CARDS: readonly Card[] = [
-  { key: "lead-werk", icon: "⛏", name: "Lead-Werk", keys: ["werke_paused", "slot_plan"], werk: "lead-werk", start: "lead-werk", cron: "23 */3 * * *", file: "lead-werk.yml" },
-  { key: "kunden-werk", icon: "🧲", name: "Kunden-Werk", keys: ["werke_paused", "slot_plan", "buyer_countries_off"], werk: "kunden-werk", start: "kunden-werk", cron: "41 */2 * * *", file: "kunden-werk.yml" },
-  { key: "proben-vorrat", icon: "🎁", name: "Proben-Vorrat", keys: ["werke_paused", "sample_targets", "sample_max_age_hours"], werk: "proben-vorrat", start: "proben-vorrat", cron: "23 * * * *", file: "proben-vorrat.yml" },
-  { key: "antworten", icon: "💬", name: "Antwort-Assistent", keys: ["werke_paused"], werk: "antworten", start: null, cron: "7 6-21 * * *", file: "antworten.yml", note: WERK_SWITCHES.antworten.note },
-  { key: "nachfass", icon: "↻", name: "Nachfassmails", keys: ["followup_enabled", "followup_days"], werk: "nachfass", start: null, cron: "17 12 * * *", file: "taeglich.yml" },
-  { key: "versand", icon: "✉", name: "Versand", keys: ["send_paused"], werk: "versand", start: null, cron: "23 14 * * *", file: "send.yml" },
-  { key: "kundenlieferung", icon: "📦", name: "Kundenlieferung", keys: ["werke_paused"], werk: "kundenlieferung", start: null, cron: "53 4 * * 1", file: "kundenlieferung.yml" },
-  { key: "tagescheck", icon: "✓", name: "Tagescheck", keys: ["werke_paused"], werk: "tagescheck", start: null, cron: "37 17 * * *", file: "tagescheck.yml" },
+  { key: "lead-werk", icon: "lead-werk", name: "Lead-Werk", keys: ["werke_paused", "slot_plan"], werk: "lead-werk", start: "lead-werk", cron: "23 */3 * * *", file: "lead-werk.yml" },
+  { key: "kunden-werk", icon: "kunden-werk", name: "Kunden-Werk", keys: ["werke_paused", "slot_plan", "buyer_countries_off"], werk: "kunden-werk", start: "kunden-werk", cron: "41 */2 * * *", file: "kunden-werk.yml" },
+  { key: "proben-vorrat", icon: "proben", name: "Proben-Vorrat", keys: ["werke_paused", "sample_targets", "sample_max_age_hours"], werk: "proben-vorrat", start: "proben-vorrat", cron: "23 * * * *", file: "proben-vorrat.yml" },
+  { key: "antworten", icon: "antworten", name: "Antwort-Assistent", keys: ["werke_paused"], werk: "antworten", start: null, cron: "7 6-21 * * *", file: "antworten.yml", note: WERK_SWITCHES.antworten.note },
+  { key: "nachfass", icon: "nachfass", name: "Nachfassmails", keys: ["followup_enabled", "followup_days"], werk: "nachfass", start: null, cron: "17 12 * * *", file: "taeglich.yml" },
+  { key: "versand", icon: "versand", name: "Versand", keys: ["send_paused"], werk: "versand", start: null, cron: "23 14 * * *", file: "send.yml" },
+  { key: "kundenlieferung", icon: "lieferung", name: "Kundenlieferung", keys: ["werke_paused"], werk: "kundenlieferung", start: null, cron: "53 4 * * 1", file: "kundenlieferung.yml" },
+  { key: "tagescheck", icon: "tagescheck", name: "Tagescheck", keys: ["werke_paused"], werk: "tagescheck", start: null, cron: "37 17 * * *", file: "tagescheck.yml" },
 ];
 export const cardOf = (k: CardKey): Card => CARDS.find((c) => c.key === k)!;
 export const isCardKey = (x: unknown): x is CardKey => typeof x === "string" && CARDS.some((c) => c.key === x);

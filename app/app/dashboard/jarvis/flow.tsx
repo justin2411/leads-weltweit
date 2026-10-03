@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 import { ASPECT, POS, edgePath, flow, type Edge, type Station, type StationId, type TickerItem } from "@/lib/fluss";
 import type { TipTask } from "@/lib/leitstand";
 import { DragBox } from "./dnd";
+import { Icon, type IconName } from "@/app/icons";
 
 const fmtRate = (n: number) => (n >= 1000 ? `${(n / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Tsd./h` : `${n.toLocaleString("de-DE")}/h`);
 
@@ -90,18 +91,18 @@ export function Ampeln({ items }: { items: { label: string; value: string; sub: 
 
 /** Seitenfenster einer Station mit drei Reitern: Info · Einstellen · Prüfen. */
 export function Drawer({ title, icon, tab, base, close, tabs, children, state }: {
-  title: string; icon: string; tab: "info" | "set" | "check"; base: string; close: string; tabs: { set: boolean; check: boolean }; children: ReactNode; state: string;
+  title: string; icon: IconName; tab: "info" | "set" | "check"; base: string; close: string; tabs: { set: boolean; check: boolean }; children: ReactNode; state: string;
 }) {
-  const t = (k: "info" | "set" | "check", label: string, sym: string, on = true) => on && (
-    <Link key={k} href={`${base}&t=${k}`} scroll={false} className={tab === k ? "on" : ""} aria-current={tab === k ? "page" : undefined}><span aria-hidden>{sym}</span>{label}</Link>
+  const t = (k: "info" | "set" | "check", label: string, sym: IconName, on = true) => on && (
+    <Link key={k} href={`${base}&t=${k}`} scroll={false} className={tab === k ? "on" : ""} aria-current={tab === k ? "page" : undefined}><Icon name={sym} size={16} />{label}</Link>
   );
   return (
     <aside className={`drw st-${state}`} aria-label={title}>
       <header>
-        <span className="drw-ic" aria-hidden>{icon}</span><h2>{title}</h2>
-        <Link href={close} scroll={false} className="drw-x" aria-label="Schließen">✕</Link>
+        <span className="drw-ic" aria-hidden><Icon name={icon} size={20} /></span><h2>{title}</h2>
+        <Link href={close} scroll={false} className="drw-x" aria-label="Schließen"><Icon name="schliessen" size={16} /></Link>
       </header>
-      <nav className="drw-tabs">{[t("info", "Info", "◉"), t("set", "Einstellen", "⚙", tabs.set), t("check", "Prüfen", "✓", tabs.check)]}</nav>
+      <nav className="drw-tabs">{[t("info", "Info", "info"), t("set", "Einstellen", "einstellungen", tabs.set), t("check", "Prüfen", "ok", tabs.check)]}</nav>
       <div className="drw-body">{children}</div>
     </aside>
   );
@@ -113,7 +114,7 @@ export function Ticker({ items }: { items: TickerItem[] }) {
   const hh = (iso: string) => new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
   const row = items.map((x, i) => (
     <span key={i} className={`tk t-${x.tone}`}>
-      <time>{hh(x.at)}</time><i aria-hidden>{x.icon}</i>{x.href ? <Link href={x.href}>{x.text}</Link> : x.text}
+      <time>{hh(x.at)}</time><i aria-hidden><Icon name={x.icon} size={16} /></i>{x.href ? <Link href={x.href}>{x.text}</Link> : x.text}
     </span>
   ));
   return (

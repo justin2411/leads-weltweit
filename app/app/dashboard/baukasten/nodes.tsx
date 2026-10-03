@@ -7,6 +7,7 @@
  */
 import { createContext, memo, useContext, type CSSProperties } from "react";
 import { BaseEdge, EdgeLabelRenderer, Handle, Position, getBezierPath, type Edge, type EdgeProps, type Node, type NodeProps } from "@xyflow/react";
+import { Icon } from "@/app/icons";
 import { NODE_META, describeNode, fieldDef, type FlowNode, type NodeRows, type Port, type Problem } from "@/lib/flow";
 
 export type BkData = { cfg: FlowNode };
@@ -58,15 +59,15 @@ function NodeCard({ id, data, selected }: NodeProps<BkNode>) {
     <div className={cls} style={{ "--nc": meta.color } as CSSProperties}>
       {meta.input && <Handle type="target" position={Position.Left} id="in" className="in" />}
       <header>
-        <span className="bkn-ic" aria-hidden>{meta.icon}</span>
+        <span className="bkn-ic" aria-hidden><Icon name={meta.icon} size={16} /></span>
         <span className="bkn-t"><small>{meta.label}</small><b>{n.title || (n.kind === "pipeline" ? n.name : meta.label)}</b></span>
         {probs.length > 0 && (
           <span className="bkn-badges" title={tip}>
-            {errs > 0 && <span className="bkn-badge e" aria-label={`${errs} Fehler`}>!</span>}
+            {errs > 0 && <span className="bkn-badge e" aria-label={`${errs} Fehler`}><Icon name="achtung" size={13} /></span>}
             {warns > 0 && <span className="bkn-badge w" aria-label={`${warns} Hinweise`}>{warns}</span>}
           </span>
         )}
-        <button type="button" className="bkn-x nodrag" onClick={(e) => { e.stopPropagation(); live.remove(id); }} aria-label="Baustein löschen" title="Löschen (Rücktaste)">✕</button>
+        <button type="button" className="bkn-x nodrag" onClick={(e) => { e.stopPropagation(); live.remove(id); }} aria-label="Baustein löschen" title="Löschen (Rücktaste)"><Icon name="schliessen" size={12} /></button>
       </header>
       <p className="bkn-d">{describeNode(n)}</p>
       <div className="bkn-v">
@@ -135,7 +136,7 @@ function EdgeView({ id, source, sourceHandleId, sourceX, sourceY, targetX, targe
         <div className={`bke-l nodrag nopan ${selected ? "" : "nox"} ${n ? "" : "zero"}`} style={{ transform: `translate(-50%,-50%) translate(${lx}px,${ly}px)`, "--ec": ec } as CSSProperties}
           title={port === "out" ? "Menge auf dieser Verbindung" : `Menge auf „${port}“`}>
           {live?.pending ? "…" : n === null ? "–" : fmt(n)}
-          {selected && live && <button type="button" onClick={() => live.removeEdge(id)} aria-label="Verbindung löschen">✕</button>}
+          {selected && live && <button type="button" onClick={() => live.removeEdge(id)} aria-label="Verbindung löschen"><Icon name="schliessen" size={11} /></button>}
         </div>
       </EdgeLabelRenderer>
     </g>
