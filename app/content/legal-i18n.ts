@@ -8,8 +8,8 @@ import type { LegalDoc } from "./legal";
 export type LegalLang = "en" | "fr";
 export type LegalKey = "impressum" | "datenschutz" | "agb";
 
-const ADDRESS = "Hauptstraße 14a, 06333 Hettstedt, Germany";
-const ADRESSE = "Hauptstraße 14a, 06333 Hettstedt, Allemagne";
+const ADDRESS = "Nikolaistraße 3-7, 04109 Leipzig, Germany";
+const ADRESSE = "Nikolaistraße 3-7, 04109 Leipzig, Allemagne";
 const CONTACT_EN = "Phone: +49 151 59115014\nEmail: info@nextgen-profit.de";
 const CONTACT_FR = "Téléphone : +49 151 59115014\nE-mail : info@nextgen-profit.de";
 
@@ -71,7 +71,7 @@ Our leads contain company data from publicly available sources (official registe
 We contact companies in selected countries by email at general business addresses. Every message contains a simple way to opt out; opt-outs are blocked permanently.
 
 10. Storage period and your rights
-Data is deleted as soon as the purpose ceases to apply, unless statutory retention periods (e.g. 10 years for tax records) prevent this. You have the right of access, rectification, erasure, restriction, data portability, objection and withdrawal of consent given, as well as the right to lodge a complaint with a data protection supervisory authority (for Saxony-Anhalt: the State Commissioner for Data Protection of Saxony-Anhalt).`,
+Data is deleted as soon as the purpose ceases to apply, unless statutory retention periods (e.g. 10 years for tax records) prevent this. You have the right of access, rectification, erasure, restriction, data portability, objection and withdrawal of consent given, as well as the right to lodge a complaint with a data protection supervisory authority (for Saxony: the Saxon Data Protection and Transparency Commissioner).`,
     },
     agb: {
       title: "Terms and conditions",
@@ -153,7 +153,7 @@ Nos pistes contiennent des données d'entreprise issues de sources accessibles a
 Nous contactons des entreprises dans des pays sélectionnés par e-mail à des adresses professionnelles générales. Chaque message contient un moyen simple de se désinscrire ; les désinscriptions sont bloquées définitivement.
 
 10. Durée de conservation et vos droits
-Les données sont supprimées dès que la finalité disparaît, sauf obligation légale de conservation (par exemple 10 ans pour les documents fiscaux). Vous disposez d'un droit d'accès, de rectification, d'effacement, de limitation, de portabilité, d'opposition et de retrait du consentement donné, ainsi que du droit d'introduire une réclamation auprès d'une autorité de contrôle de la protection des données (pour la Saxe-Anhalt : le commissaire à la protection des données de Saxe-Anhalt).`,
+Les données sont supprimées dès que la finalité disparaît, sauf obligation légale de conservation (par exemple 10 ans pour les documents fiscaux). Vous disposez d'un droit d'accès, de rectification, d'effacement, de limitation, de portabilité, d'opposition et de retrait du consentement donné, ainsi que du droit d'introduire une réclamation auprès d'une autorité de contrôle de la protection des données (pour la Saxe : la commissaire saxonne à la protection des données et à la transparence).`,
     },
     agb: {
       title: "Conditions générales de vente",

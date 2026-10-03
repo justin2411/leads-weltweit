@@ -126,7 +126,7 @@ export async function receiptPdf(r: Receipt): Promise<Uint8Array> {
   // Fuß
   const host = siteUrl().replace(/^https?:\/\//, "");
   page.drawLine({ start: { x: M, y: 74 }, end: { x: W - M, y: 74 }, thickness: 0.8, color: LINE });
-  text(`${LEGAL_NAME} · Hauptstraße 14a, 06333 Hettstedt, Germany`, M, 56, 9, reg, SOFT);
+  text(`${LEGAL_NAME} · Nikolaistraße 3-7, 04109 Leipzig, Germany`, M, 56, 9, reg, SOFT);
   text(`${host} · ${CONTACT}`, M, 42, 9, reg, SOFT);
   return doc.save();
 }

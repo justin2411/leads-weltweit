@@ -247,7 +247,7 @@ def lint_draft(subject: str, body: str, language: str = "en", min_words: int = 7
 # Pflichtangaben stehen hier fest im Code statt in Secrets (öffentlich im Impressum). Inhaber 03.10.2026: noch keine
 # GmbH, Einzelunternehmen Justin Koch; neue Anschrift. Alte Secrets (GmbH, Hamburg) dürfen nicht mehr greifen.
 LEGAL_NAME = "NextGen Profit, Inhaber Justin Koch"
-POSTAL_ADDRESS = "Hauptstraße 14a, 06333 Hettstedt, Germany"
+POSTAL_ADDRESS = "Nikolaistraße 3-7, 04109 Leipzig, Germany"
 
 
 def legal_name() -> str:

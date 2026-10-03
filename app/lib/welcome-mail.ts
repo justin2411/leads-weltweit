@@ -54,7 +54,7 @@ export function welcomeMail(w: W): { subject: string; text: string; html: string
   const signer = [fr ? `L'équipe ${BRAND}` : `The ${BRAND} Team`,
     fr ? "Pistes exclusives au bon moment pour les prestataires B2B" : "Exclusive trigger leads for B2B service firms",
     siteUrl().replace(/^https?:\/\//, ""), CONTACT].join("\n");
-  const footer = `${LEGAL_NAME} · Hauptstraße 14a, 06333 Hettstedt, Germany\n${siteUrl().replace(/^https?:\/\//, "")}`;
+  const footer = `${LEGAL_NAME} · Nikolaistraße 3-7, 04109 Leipzig, Germany\n${siteUrl().replace(/^https?:\/\//, "")}`;
   const text = mailText(blocks) + `\n\n${closing}\n${signer}\n\n${footer}`;
   return { subject, text, html: renderMail({ lang: w.lang, brand: BRAND, blocks, closing, signer, footer }) };
 }

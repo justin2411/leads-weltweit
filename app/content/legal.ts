@@ -4,11 +4,11 @@
  * Vom Inhaber bestätigt am 26.09.2026 (Anschrift Hamburg, alle Prüfpunkte).
  * 27.09.2026 (Inhaber): Anbieter ist die NextGen Profit GmbH, sonst alles gleich.
  * 03.10.2026 (Inhaber): noch keine GmbH (Bescheid fehlt) -> Einzelunternehmen Justin Koch, Handelsname NextGen Profit,
- *   Anschrift Hauptstraße 14a, 06333 Hettstedt (Sachsen-Anhalt).
+ *   Anschrift Nikolaistraße 3-7, 04109 Leipzig (Inhaber 03.10.2026: Büro Leipzig gilt für alles).
  */
 export type LegalDoc = { title: string; placeholder: boolean; body: string };
 
-const ANSCHRIFT = "Hauptstraße 14a, 06333 Hettstedt";
+const ANSCHRIFT = "Nikolaistraße 3-7, 04109 Leipzig";
 const KONTAKT = "Telefon: +49 151 59115014\nE-Mail: info@nextgen-profit.de";
 
 export const LEGAL: Record<"impressum" | "datenschutz" | "agb", LegalDoc> = {
@@ -63,7 +63,7 @@ Unsere Leads enthalten Unternehmensdaten aus öffentlich zugänglichen Quellen (
 Wir sprechen Unternehmen in ausgewählten Ländern per E-Mail an allgemeine Geschäftsadressen an. Jede Nachricht enthält eine einfache Abmeldemöglichkeit; Abmeldungen werden dauerhaft gesperrt.
 
 10. Speicherdauer und Ihre Rechte
-Daten werden gelöscht, sobald der Zweck entfällt, soweit keine gesetzlichen Aufbewahrungsfristen (z. B. 10 Jahre für steuerliche Unterlagen) entgegenstehen. Sie haben das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit, Widerspruch und Widerruf erteilter Einwilligungen sowie ein Beschwerderecht bei einer Datenschutz-Aufsichtsbehörde (für Sachsen-Anhalt: Der Landesbeauftragte für den Datenschutz Sachsen-Anhalt).`,
+Daten werden gelöscht, sobald der Zweck entfällt, soweit keine gesetzlichen Aufbewahrungsfristen (z. B. 10 Jahre für steuerliche Unterlagen) entgegenstehen. Sie haben das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit, Widerspruch und Widerruf erteilter Einwilligungen sowie ein Beschwerderecht bei einer Datenschutz-Aufsichtsbehörde (für Sachsen: Die Sächsische Datenschutz- und Transparenzbeauftragte).`,
   },
   agb: {
     title: "Allgemeine Geschäftsbedingungen",
