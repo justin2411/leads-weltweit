@@ -92,7 +92,7 @@ export async function Home({ lang }: { lang: HomeLang }) {
     }));
   const ld = {
     "@context": "https://schema.org", "@type": "Organization", name: BRAND, legalName: LEGAL_NAME, url: siteUrl(), email: CONTACT,
-    description: t.desc, address: { "@type": "PostalAddress", streetAddress: "Poststraße 14-16", postalCode: "20354", addressLocality: "Hamburg", addressCountry: "DE" },
+    description: t.desc, address: { "@type": "PostalAddress", streetAddress: "Hauptstraße 14a", postalCode: "06333", addressLocality: "Hettstedt", addressCountry: "DE" },
   };
 
   return (

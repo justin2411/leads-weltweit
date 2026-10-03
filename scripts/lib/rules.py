@@ -244,10 +244,20 @@ def lint_draft(subject: str, body: str, language: str = "en", min_words: int = 7
     return CheckResult(ok=not errors, errors=errors, warnings=warnings)
 
 
+# Pflichtangaben stehen hier fest im Code statt in Secrets (öffentlich im Impressum). Inhaber 03.10.2026: noch keine
+# GmbH, Einzelunternehmen Justin Koch; neue Anschrift. Alte Secrets (GmbH, Hamburg) dürfen nicht mehr greifen.
+LEGAL_NAME = "NextGen Profit, Inhaber Justin Koch"
+POSTAL_ADDRESS = "Hauptstraße 14a, 06333 Hettstedt, Germany"
+
+
 def legal_name() -> str:
-    """Rechtsträger für Pflichtangaben in Mails (Inhaber 27.09.2026: NextGen Profit GmbH)."""
-    import os
-    return os.environ.get("SENDER_LEGAL_NAME") or "NextGen Profit GmbH"
+    """Rechtsträger für Pflichtangaben in Mails."""
+    return LEGAL_NAME
+
+
+def postal_address() -> str:
+    """Postanschrift für Pflichtangaben in Mails."""
+    return POSTAL_ADDRESS
 
 
 def brand() -> str:

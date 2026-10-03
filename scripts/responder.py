@@ -36,7 +36,7 @@ import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from lib.rules import FREEMAIL_DOMAINS, brand, legal_name, normalize_domain, suppress  # noqa: E402
+from lib.rules import FREEMAIL_DOMAINS, brand, legal_name, normalize_domain, postal_address, suppress  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 INTENTS = ["buy", "sample", "question", "not_interested", "unsubscribe", "out_of_office", "other"]
@@ -278,7 +278,7 @@ def send_reply(to: str, subject: str, text: str, in_reply_to: str | None, lang: 
     from lib.html_email import render
     from lib.rules import render_footer
     company = brand()
-    footer = render_footer(lang, sender_name=legal_name(), postal_address=os.environ.get("SENDER_POSTAL_ADDRESS", ""),
+    footer = render_footer(lang, sender_name=legal_name(), postal_address=postal_address(),
                            company=normalize_domain(to.split("@")[-1]), unsubscribe_url=None, requested=requested)
     full = text.rstrip() + "\n\n" + footer
     headers = {}

@@ -8,8 +8,8 @@ import type { LegalDoc } from "./legal";
 export type LegalLang = "en" | "fr";
 export type LegalKey = "impressum" | "datenschutz" | "agb";
 
-const ADDRESS = "Poststraße 14-16, 20354 Hamburg, Germany";
-const ADRESSE = "Poststraße 14-16, 20354 Hambourg, Allemagne";
+const ADDRESS = "Hauptstraße 14a, 06333 Hettstedt, Germany";
+const ADRESSE = "Hauptstraße 14a, 06333 Hettstedt, Allemagne";
 const CONTACT_EN = "Phone: +49 151 59115014\nEmail: info@nextgen-profit.de";
 const CONTACT_FR = "Téléphone : +49 151 59115014\nE-mail : info@nextgen-profit.de";
 
@@ -25,9 +25,9 @@ export const LEGAL_I18N: Record<LegalLang, Record<LegalKey, LegalDoc>> = {
       placeholder: false,
       body: `Information pursuant to § 5 DDG (German Digital Services Act)
 
-NextGen Profit GmbH
+Justin Koch
+NextGen Profit (sole proprietorship)
 ${ADDRESS}
-Represented by the managing director: Justin Koch
 
 ${CONTACT_EN}
 
@@ -44,7 +44,7 @@ We are neither willing nor obliged to participate in dispute resolution proceedi
 The following information provides an overview of what happens to your personal data when you visit this website or use our services. Personal data is any data by which you can be personally identified.
 
 2. Controller
-NextGen Profit GmbH, represented by the managing director Justin Koch
+Justin Koch, NextGen Profit (sole proprietorship)
 ${ADDRESS}
 ${CONTACT_EN}
 
@@ -71,13 +71,13 @@ Our leads contain company data from publicly available sources (official registe
 We contact companies in selected countries by email at general business addresses. Every message contains a simple way to opt out; opt-outs are blocked permanently.
 
 10. Storage period and your rights
-Data is deleted as soon as the purpose ceases to apply, unless statutory retention periods (e.g. 10 years for tax records) prevent this. You have the right of access, rectification, erasure, restriction, data portability, objection and withdrawal of consent given, as well as the right to lodge a complaint with a data protection supervisory authority (for Hamburg: the Hamburg Commissioner for Data Protection and Freedom of Information).`,
+Data is deleted as soon as the purpose ceases to apply, unless statutory retention periods (e.g. 10 years for tax records) prevent this. You have the right of access, rectification, erasure, restriction, data portability, objection and withdrawal of consent given, as well as the right to lodge a complaint with a data protection supervisory authority (for Saxony-Anhalt: the State Commissioner for Data Protection of Saxony-Anhalt).`,
     },
     agb: {
       title: "Terms and conditions",
       placeholder: false,
       body: `1. Scope
-These terms and conditions apply to all contracts between NextGen Profit GmbH, ${ADDRESS}, represented by the managing director Justin Koch ("Provider"), and its customers for the supply of company leads ("lead subscription"). The offer is aimed exclusively at businesses within the meaning of § 14 of the German Civil Code (BGB), not at consumers. Deviating terms of the customer apply only if the Provider expressly agrees to them in writing.
+These terms and conditions apply to all contracts between Justin Koch, trading as NextGen Profit (sole proprietorship), ${ADDRESS} ("Provider"), and its customers for the supply of company leads ("lead subscription"). The offer is aimed exclusively at businesses within the meaning of § 14 of the German Civil Code (BGB), not at consumers. Deviating terms of the customer apply only if the Provider expressly agrees to them in writing.
 
 2. Conclusion of contract
 The presentation on the website is not a binding offer. The contract is concluded when the customer completes the ordering process (Stripe Checkout) and authorises the payment, or by written order confirmation from the Provider.
@@ -98,7 +98,7 @@ The subscription runs monthly and is extended by one month at a time unless it i
 The Provider is liable without limitation for intent, gross negligence and injury to life, body or health. In the case of slight negligence, the Provider is only liable for breach of essential contractual obligations, limited to the foreseeable damage typical for the contract and at most to the fees of the last three months.
 
 8. Final provisions
-The law of the Federal Republic of Germany applies, excluding the UN Convention on Contracts for the International Sale of Goods. The place of jurisdiction, where permissible, is Hamburg. Should individual provisions be invalid, the remainder of the contract remains valid.`,
+The law of the Federal Republic of Germany applies, excluding the UN Convention on Contracts for the International Sale of Goods. The place of jurisdiction, where permissible, is the Provider's registered place of business. Should individual provisions be invalid, the remainder of the contract remains valid.`,
     },
   },
   fr: {
@@ -107,9 +107,9 @@ The law of the Federal Republic of Germany applies, excluding the UN Convention 
       placeholder: false,
       body: `Informations conformément au § 5 DDG (loi allemande sur les services numériques)
 
-NextGen Profit GmbH
+Justin Koch
+NextGen Profit (entreprise individuelle)
 ${ADRESSE}
-Représentée par son gérant : Justin Koch
 
 ${CONTACT_FR}
 
@@ -126,7 +126,7 @@ Nous ne sommes ni disposés ni tenus de participer à une procédure de règleme
 Les informations suivantes donnent un aperçu de ce qu'il advient de vos données personnelles lorsque vous consultez ce site ou utilisez nos services. Les données personnelles sont toutes les données permettant de vous identifier personnellement.
 
 2. Responsable du traitement
-NextGen Profit GmbH, représentée par son gérant Justin Koch
+Justin Koch, NextGen Profit (entreprise individuelle)
 ${ADRESSE}
 ${CONTACT_FR}
 
@@ -153,13 +153,13 @@ Nos pistes contiennent des données d'entreprise issues de sources accessibles a
 Nous contactons des entreprises dans des pays sélectionnés par e-mail à des adresses professionnelles générales. Chaque message contient un moyen simple de se désinscrire ; les désinscriptions sont bloquées définitivement.
 
 10. Durée de conservation et vos droits
-Les données sont supprimées dès que la finalité disparaît, sauf obligation légale de conservation (par exemple 10 ans pour les documents fiscaux). Vous disposez d'un droit d'accès, de rectification, d'effacement, de limitation, de portabilité, d'opposition et de retrait du consentement donné, ainsi que du droit d'introduire une réclamation auprès d'une autorité de contrôle de la protection des données (pour Hambourg : le commissaire hambourgeois à la protection des données et à la liberté d'information).`,
+Les données sont supprimées dès que la finalité disparaît, sauf obligation légale de conservation (par exemple 10 ans pour les documents fiscaux). Vous disposez d'un droit d'accès, de rectification, d'effacement, de limitation, de portabilité, d'opposition et de retrait du consentement donné, ainsi que du droit d'introduire une réclamation auprès d'une autorité de contrôle de la protection des données (pour la Saxe-Anhalt : le commissaire à la protection des données de Saxe-Anhalt).`,
     },
     agb: {
       title: "Conditions générales de vente",
       placeholder: false,
       body: `1. Champ d'application
-Les présentes conditions générales s'appliquent à tous les contrats conclus entre NextGen Profit GmbH, ${ADRESSE}, représentée par son gérant Justin Koch (« le Prestataire »), et ses clients pour la fourniture de pistes d'entreprises (« abonnement de pistes »). L'offre s'adresse exclusivement aux professionnels au sens du § 14 du Code civil allemand (BGB), et non aux consommateurs. Les conditions divergentes du client ne s'appliquent que si le Prestataire les accepte expressément par écrit.
+Les présentes conditions générales s'appliquent à tous les contrats conclus entre Justin Koch, exerçant sous le nom NextGen Profit (entreprise individuelle), ${ADRESSE} (« le Prestataire »), et ses clients pour la fourniture de pistes d'entreprises (« abonnement de pistes »). L'offre s'adresse exclusivement aux professionnels au sens du § 14 du Code civil allemand (BGB), et non aux consommateurs. Les conditions divergentes du client ne s'appliquent que si le Prestataire les accepte expressément par écrit.
 
 2. Conclusion du contrat
 La présentation sur le site ne constitue pas une offre ferme. Le contrat est conclu lorsque le client finalise la commande (Stripe Checkout) et autorise le paiement, ou par confirmation écrite de commande du Prestataire.
@@ -180,7 +180,7 @@ L'abonnement est mensuel et se prolonge d'un mois à chaque échéance s'il n'es
 Le Prestataire est responsable sans limitation en cas de faute intentionnelle, de négligence grave ainsi qu'en cas d'atteinte à la vie, à l'intégrité physique ou à la santé. En cas de négligence légère, il n'est responsable qu'en cas de manquement à des obligations contractuelles essentielles, dans la limite du dommage prévisible et typique du contrat, et au maximum à hauteur de la rémunération des trois derniers mois.
 
 8. Dispositions finales
-Le droit de la République fédérale d'Allemagne s'applique, à l'exclusion de la Convention des Nations unies sur les contrats de vente internationale de marchandises. Le tribunal compétent est, dans la mesure où cela est permis, celui de Hambourg. Si certaines dispositions devaient être invalides, le reste du contrat demeure valable.`,
+Le droit de la République fédérale d'Allemagne s'applique, à l'exclusion de la Convention des Nations unies sur les contrats de vente internationale de marchandises. Le tribunal compétent est, dans la mesure où cela est permis, celui du siège du Prestataire. Si certaines dispositions devaient être invalides, le reste du contrat demeure valable.`,
     },
   },
 };

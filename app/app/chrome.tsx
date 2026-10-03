@@ -71,7 +71,7 @@ export function SiteFooter({ lang = "en" }: { lang?: string }) {
     <footer><div className="wrap">
       <div>
         <Mark />
-        <address>Poststraße 14-16 · 20354 Hamburg · Germany<br /><a href={`mailto:${CONTACT}`}>{CONTACT}</a></address>
+        <address>Hauptstraße 14a · 06333 Hettstedt · Germany<br /><a href={`mailto:${CONTACT}`}>{CONTACT}</a></address>
       </div>
       <nav aria-label="Legal"><a href={paths.impressum}>{labels[0]}</a><a href={paths.datenschutz}>{labels[1]}</a><a href={paths.agb}>{labels[2]}</a></nav>
       <div style={{ width: "100%", marginTop: 8 }}>© {new Date().getFullYear()} {LEGAL_NAME}</div>
