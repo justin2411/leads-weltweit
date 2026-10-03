@@ -4,8 +4,9 @@ import { useEffect } from "react";
 
 /**
  * Effekte der Startseite nach der Vorlage des Inhabers (03.10.2026, „nextgen-profit-startseite-v2.html“):
- * Hero-Einblendung und Lichtstrahl, Film-Zoom, Zeitstrahl, Einblenden beim Scrollen, Zahlen-Walzen, 3D-Karte im Hero,
- * rotierende Signale, magnetische Knöpfe, Länder-Reiter, Lichtschein auf Branchenkarten, geführte Tour im Beispiel-Lead,
+ * Hero-Einblendung und Lichtstrahl, Film-Zoom, Methode mit mitlaufender Grafik (v4), Einblenden beim Scrollen, Zahlen-Walzen, 3D-Karte im Hero,
+ * rotierende Signale, magnetische Knöpfe, Länder-Reiter, Lichtschein auf Branchenkarten, geführte Tour mit Stempel im Beispiel-Lead,
+ * Beispielwochen beim Ansprechpartner (v4),
  * Play-Knopf des Films, weiches Auf- und Zuklappen der Fragen. Ohne JavaScript bleibt alles sichtbar.
  */
 export function HomeFx() {
@@ -32,15 +33,19 @@ export function HomeFx() {
     // 2 · Beim Scrollen: Film-Zoom, Methode mit mitlaufender Grafik, Statement Wort für Wort
     const desktop = () => matchMedia("(min-width: 1061px)").matches;
     const film = $("[data-scale]");
-    const story = $("[data-story]"), rail = $(".hp-story__rail"), railFill = $(".hp-story__fill");
-    const ssteps = $$(".hp-sstep"), vizs = $$(".hp-viz"), sdots = $$(".hp-story__dots span");
+    // Methode nach Vorlage v4: Schritt-Leiste unten, Lichtlauf um den Rahmen beim Schrittwechsel
+    const story = $("[data-story]"), rail = $(".hp-story__rail");
+    const ssteps = $$(".hp-sstep"), vizs = $$(".hp-story__stage .hp-viz"), track = $$(".hp-story__track li");
+    const sstage = $(".hp-story__stage"), sbeam = $(".hp-story__beam");
     const statement = $(".hp-statement"), words = $$(".hp-sw");
     let active = -1;
     const setStep = (i: number) => {
-      if (i === active) return; active = i;
+      if (i === active) return; const first = active < 0; active = i;
       ssteps.forEach((s, k) => { s.classList.toggle("is-active", k === i); s.classList.toggle("is-done", k <= i); });
-      vizs.forEach((v, k) => v.classList.toggle("is-active", k === i));
-      sdots.forEach((s, k) => s.classList.toggle("is-on", k <= i));
+      vizs.forEach((v, k) => { v.classList.toggle("is-active", k === i); v.classList.toggle("is-past", k < i); });
+      track.forEach((t, k) => { t.classList.toggle("is-on", k <= i); t.classList.toggle("is-cur", k === i); });
+      if (sstage) sstage.dataset.step = String(i);
+      if (sbeam && !first && !reduce && desktop()) { sbeam.classList.remove("is-on"); void sbeam.offsetWidth; sbeam.classList.add("is-on"); }
     };
     const measure = () => {
       if (!rail || !ssteps.length || !rail.parentElement) return;
@@ -57,7 +62,7 @@ export function HomeFx() {
         let i = 0;
         ssteps.forEach((s, k) => { const r = $(".hp-step__icon", s)!.getBoundingClientRect(); if (r.top + r.height / 2 < vh * 0.58) i = k; });
         setStep(i);
-        if (railFill && rail && !reduce) { const r = rail.getBoundingClientRect(); railFill.style.setProperty("--p", clamp((vh * 0.58 - r.top) / Math.max(1, r.height), 0, 1).toFixed(4)); }
+        if (rail && !reduce) { const r = rail.getBoundingClientRect(); rail.style.setProperty("--p", clamp((vh * 0.58 - r.top) / Math.max(1, r.height), 0, 1).toFixed(4)); }
       }
       if (reduce) return;
       if (film) { const r = film.getBoundingClientRect(); const p = clamp((vh - r.top) / (vh * 0.75), 0, 1); film.style.setProperty("--s", (0.88 + 0.12 * p).toFixed(4)); film.style.setProperty("--p", p.toFixed(3)); }
@@ -200,18 +205,22 @@ export function HomeFx() {
       on(grid, "pointerleave", () => grid.classList.remove("is-pointer"));
     }
 
-    // 10 · Beispiel-Lead: geführte Tour 1-2-3, Einstiegssatz tippt sich selbst
-    const notes = $$("[data-note]"), example = $("[data-example-lead]");
+    // 10 · Beispiel-Lead (Vorlage v4): geführter Fokus 1-2-3 (der Rest der Karte tritt zurück), der Quellen-Stempel landet
+    //      bei „Beleg“, der Einstiegssatz tippt sich selbst. Die Tour läuft dauerhaft weiter (Inhaber 03.10.2026).
+    const notes = $$("[data-note]"), example = $("[data-example-lead]"), lead = $(".hp-lead"), stamp = $(".hp-stamp"), notesList = $(".hp-notes");
     let touring = true;
     const light = (k: number | string) => {
+      k = +k || 0;
       $$(".hp-lit").forEach((m) => m.classList.remove("hp-lit"));
       notes.forEach((n) => n.classList.toggle("is-active", n.dataset.note === String(k)));
+      lead?.classList.toggle("is-focus", k > 0);
       if (k) $$(`[data-mark="${k}"]`).forEach((m) => m.classList.add("hp-lit"));
+      if (k === 2) stamp?.classList.add("is-on");
     };
     // Hover auf einen Punkt hält die Tour an und zeigt diesen Punkt; danach läuft sie weiter
     notes.forEach((n) => {
-      on(n, "mouseenter", () => { touring = false; light(n.dataset.note ?? 0); });
-      on(n, "mouseleave", () => { touring = true; });
+      on(n, "mouseenter", () => { touring = false; notesList?.classList.remove("is-touring"); light(n.dataset.note ?? 0); });
+      on(n, "mouseleave", () => { touring = true; notesList?.classList.add("is-touring"); });
     });
     const typewrite = (el: HTMLElement, speed: number) => new Promise<void>((done) => {
       type Part = { text: string; node: ChildNode } | { node: HTMLElement };
@@ -231,22 +240,21 @@ export function HomeFx() {
       step();
     });
     let io2: IntersectionObserver | null = null;
-    if (example && !reduce && "IntersectionObserver" in window) {
+    if (example && lead && !reduce && "IntersectionObserver" in window) {
       const quote = $(".hp-opening blockquote", example);
       io2 = new IntersectionObserver((es) => es.forEach((e) => {
         if (!e.isIntersecting) return; io2!.disconnect();
         timers.push(window.setTimeout(() => {
           if (quote) typewrite(quote, 13);
-          // Tour 1 → 2 → 3 läuft dauerhaft weiter (Inhaber 03.10.2026: „der lead zwischen 1,2,3 automatisch wechselt“)
+          notesList?.classList.add("is-touring");
           let k = 0;
           const step = () => { if (!touring || d.hidden) return; k = k % 3 + 1; light(k); };
           step();
-          timers.push(window.setInterval(step, 2400));
+          timers.push(window.setInterval(step, 2200));
         }, 500));
-      }), { threshold: 0.3 });
-      const lead = $(".hp-lead", example);
-      if (lead) io2.observe(lead);
-    }
+      }), { threshold: 0.45 });
+      io2.observe(lead);
+    } else stamp?.classList.add("is-on");
 
     // 11 · Film: ein goldener Play-Knopf über dem Vorschaubild, danach die normale Steuerung
     const video = $<HTMLVideoElement>(".hp-video video"), play = $<HTMLButtonElement>(".hp-video__play");
@@ -274,7 +282,69 @@ export function HomeFx() {
       }) as EventListener);
     });
 
-    return () => { offs.forEach((f) => f()); timers.forEach((t) => { clearTimeout(t); clearInterval(t); }); io?.disconnect(); io2?.disconnect(); };
+    // 14 · Ansprechpartner (Vorlage v4): vier Beispielwochen, die Filter werden enger und mehr Punkte rücken in den
+    //      Passungsring. Spielt einmal ab, sobald sichtbar; die Wochen-Reiter zeigen jede Woche erneut.
+    const tune = $("[data-tune]");
+    let io3: IntersectionObserver | null = null;
+    if (tune) {
+      const weeks = $$<HTMLButtonElement>(".hp-week", tune), texts = $$(".hp-tune__texts p", tune), rows = $$(".hp-filters > div", tune), dots = $$<SVGCircleElement>(".hp-target .dot", tune);
+      const RR = [[88, 62, 75, 45, 92, 55, 70, 33, 84, 50], [72, 48, 60, 34, 76, 42, 54, 24, 68, 40], [54, 30, 44, 22, 58, 34, 41, 14, 47, 28], [32, 16, 27, 12, 46, 22, 29, 8, 35, 19]];
+      const J = [8, -5, 12, -10, 4, -7, 9, -3, 6, -12], TURN = 9;
+      let timer = 0;
+      const go = (n: number) => {
+        weeks.forEach((b, k) => { b.setAttribute("aria-selected", String(k === n)); b.tabIndex = k === n ? 0 : -1; b.classList.toggle("is-past", k < n); });
+        texts.forEach((p) => { const sel = +(p.dataset.w ?? -1) === n; p.classList.toggle("is-on", sel); p.setAttribute("aria-hidden", String(!sel)); });
+        rows.forEach((r) => {
+          const spans = $$("dd span", r); let cur = 0;
+          spans.forEach((sp, k) => { if (+(sp.dataset.from ?? 0) <= n) cur = k; });
+          spans.forEach((sp, k) => { sp.classList.toggle("is-on", k === cur); sp.setAttribute("aria-hidden", String(k !== cur)); });
+          r.classList.toggle("is-changed", n > 0 && +(spans[cur]?.dataset.from ?? 0) === n);
+        });
+        dots.forEach((c, i) => {
+          const a = (i * 36 + J[i] + n * TURN) * Math.PI / 180, r = RR[n][i];
+          c.style.transform = `translate(${(Math.sin(a) * r).toFixed(1)}px,${(-Math.cos(a) * r).toFixed(1)}px)`;
+          c.classList.toggle("is-fit", r < 38);
+        });
+      };
+      const stop = () => { clearInterval(timer); tune.classList.remove("is-playing"); };
+      weeks.forEach((b, k) => {
+        on(b, "click", () => { stop(); go(k); });
+        on(b, "keydown", ((e: KeyboardEvent) => {
+          const m = ({ ArrowRight: 1, ArrowLeft: -1 } as Record<string, number>)[e.key];
+          if (!m) return; e.preventDefault(); const n = (k + m + weeks.length) % weeks.length; stop(); go(n); weeks[n].focus();
+        }) as EventListener);
+      });
+      if (!reduce && "IntersectionObserver" in window) {
+        go(0);
+        io3 = new IntersectionObserver((es) => es.forEach((e) => {
+          if (!e.isIntersecting) return; io3!.disconnect();
+          let n = 0; tune.classList.add("is-playing"); go(0);
+          timer = window.setInterval(() => { n += 1; if (n > 3) return stop(); go(n); }, 3600);
+          timers.push(timer);
+        }), { threshold: 0.5 });
+        io3.observe(tune);
+      } else go(3);
+    }
+
+    // 15 · Methode auf Handy und Tablet: jeder Schritt bekommt eine eigene Kopie der Grafik, die abspielt, solange sie sichtbar ist
+    const mqStory = matchMedia("(max-width: 1060px)");
+    let inlineBuilt = false, io4: IntersectionObserver | null = null;
+    const buildInline = () => {
+      if (inlineBuilt || !mqStory.matches || !vizs.length) return; inlineBuilt = true;
+      const boxes = ssteps.map((s, k) => {
+        const box = d.createElement("div"); box.className = "hp-sstep__stage"; box.setAttribute("aria-hidden", "true");
+        const v = vizs[k].cloneNode(true) as HTMLElement; v.classList.remove("is-active", "is-past"); box.appendChild(v); s.appendChild(box); return box;
+      });
+      if (!reduce && "IntersectionObserver" in window) {
+        io4 = new IntersectionObserver((es) => es.forEach((e) => e.target.firstElementChild?.classList.toggle("is-active", e.isIntersecting)), { threshold: 0.4 });
+        boxes.forEach((b) => io4!.observe(b));
+      } else boxes.forEach((b) => b.firstElementChild?.classList.add("is-active"));
+      measure();
+    };
+    buildInline();
+    on(mqStory, "change", buildInline);
+
+    return () => { offs.forEach((f) => f()); timers.forEach((t) => { clearTimeout(t); clearInterval(t); }); io?.disconnect(); io2?.disconnect(); io3?.disconnect(); io4?.disconnect(); $$(".hp-sstep__stage").forEach((b) => b.remove()); };
   }, []);
   return null;
 }

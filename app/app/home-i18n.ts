@@ -12,17 +12,19 @@ type Row = [string, string, string];
 export type HomeText = {
   title: string; desc: string; nav: [string, string][]; cta: string; contact: string;
   pill: string; h1: string; h1gold: string[]; sub: string; subShort: string; every: string; chips: [string, string][];
-  btn: string; film: string; fine: string[]; vtag: (s: number) => string; monday: string;
+  btn: string; film: string; vtag: (s: number) => string; monday: string;
   statsH: string; stats: [string, string, string, string]; statsNote: string;
   ticker: [string, string[]]; filmH: (s: number) => string; filmSub: string;
   methH: string; methSub: string; steps: [string, string, string][];
-  ex: { label: string; tag: string; win: string; pick: string; pills: [string, string]; phonePrefix: string };
+  ex: { label: string; tag: string; win: string; pick: string; pills: [string, string]; phonePrefix: string; stamp: string; stampDay: [string, string] };
   revenue: [string, string]; reasons: Row[]; radar: [string, string][]; // [Symbol, Signal] – bewusst ohne Länder (Inhaber 03.10.2026)
   ctaCard: [string, string]; askMore: string; feedTitle: string; feedNote: string; howTitle: string;
   statement: [string, string];
   story: { v0: string; v1: string; moments: [string, string][]; stamp: string; v2: string; ex: string; rateLead: string; pass: string;
     rows: [string, number][]; min: string; fail: string; mailSub: string; mon: string; mailSubject: string; files: [string, string];
-    mailLeads: string[]; excl: string };
+    mailLeads: string[]; excl: string;
+    /** Quellen-Liste in der Methode: [Symbol, Name, Länder], ohne Flaggen (Inhaber 03.10.2026) */
+    src: [string, string, string][]; track: [string, string, string, string] };
   callH: string; callSub: string; call: {
     city: string; prio: string; event: string; eventText: string; date: string; dateText: string; source: string; sourceText: string;
     phone: string; email: string; opening: string; openingText: [string, string]; ready: string; hidden: string;
@@ -33,6 +35,10 @@ export type HomeText = {
   pcKick: string; pcH: [string, string]; pcLede: string; pcList: Row[]; pcWho: [string, string]; pcFit: string;
   pcGfx: { say: string; who: string; loop: string; rows: [string, string, string] };
   pcRows: [string, string, string]; pcChat: [string, string]; pcNote: string; pcBtn: string;
+  /** Ansprechpartner-Grafik (Vorlage v4): vier Beispielwochen, Filter [Name, Werte, ab Woche] */
+  tune: { cap: string; who: string; ex: string; texts: [string, string, string, string]; fit: string; notYet: string;
+    rows: [string, string[], number[]][]; upd: string; week: string; weeks: string };
+  docs: { brief: string; company: string; seal: string };
   pcCard: { reply: string; tl: [string, string, string][]; fTitle: string; filters: [string, string][]; quote: string };
   trustH: string; trustSub: string; facts: Row[];
   sampleTitle: [string, string]; sampleSub: string; how: string[]; mailHint: string;
@@ -51,7 +57,7 @@ export const HOME: Record<HomeLang, HomeText> = {
     subShort: "Every week: businesses with a real reason to buy, each with its date, source and an opening line.",
     every: "In every lead",
     chips: [["bolt", "Event"], ["cal", "Date"], ["doc", "Source"], ["phone", "Phone & email"], ["bulb", "Sales tip"], ["chat", "Opening line"]],
-    btn: "Get 10 free sample leads", film: "Watch the film", fine: ["Free of charge", "No card", "No subscription"],
+    btn: "Get 10 free sample leads", film: "Watch the film",
     vtag: (s) => `The film · ${s} seconds`, monday: "New list every Monday",
     statsH: "Built on public record, checked every day",
     stats: ["companies in the official registers of our markets", "new companies a year within our view", "dated signals recorded", "free leads in every sample"],
@@ -63,7 +69,7 @@ export const HOME: Record<HomeLang, HomeText> = {
       ["target", "We spot the moment", "A new registration, a role open for weeks, several hires at once. Each event is recorded with its date and source."],
       ["filter", "We filter and rate", "Only relevant signals for your industry, from across the country. Every lead is rated for freshness and relevance, weak ones are left out."],
       ["inbox", "You get the list", "Every Monday: company, phone and email, a short profile, event, date, source, a sales tip and an opening line. Each lead goes to only one firm in your industry."]],
-    ex: { label: "Example from a real sample", tag: "Public contract", win: "How to win them", pick: "Pick up the phone", pills: ["One firm per industry", "Monday delivery"], phonePrefix: "+44 20" },
+    ex: { label: "Example from a real sample", tag: "Public contract", win: "How to win them", pick: "Pick up the phone", pills: ["One firm per industry", "Monday delivery"], phonePrefix: "+44 20", stamp: "OFFICIAL SOURCE", stampDay: ["2 OCT", "2026"] },
     revenue: ["Why these leads turn into ", "revenue"],
     reasons: [["target", "A real reason to buy", "Every company has a concrete event that creates demand for you."],
       ["zap", "You call first", "New leads every week, found while the need is still open."],
@@ -78,7 +84,11 @@ export const HOME: Record<HomeLang, HomeText> = {
       rateLead: "Public contract · 2 Oct 2026", pass: "Passes", rows: [["Freshness", 92], ["Clarity of the signal", 86], ["Company data", 95]],
       min: "Minimum", fail: "Below the minimum, left out", mailSub: "Every Monday morning", mon: "MON", mailSubject: "Your leads this week",
       files: ["PDF briefing", "Spreadsheet"], mailLeads: ["London · Public contract", "Wolverhampton · Public contract", "Wakefield · Public contract"],
-      excl: "Each lead goes to only one firm in your industry." },
+      excl: "Each lead goes to only one firm in your industry.",
+      src: [["landmark", "Companies House", "United Kingdom"], ["landmark", "State business registers & SEC filings", "United States"],
+        ["doc", "BODACC France", "France"], ["users", "Company careers pages", "UK, US and France"],
+        ["doc", "Official public notices", "UK, US and France"]],
+      track: ["Sources", "The moment", "Rating", "Your list"] },
     callH: "Everything you need for the first call",
     callSub: "Example from a real sample. Select a point to see where it sits on the lead.",
     call: {
@@ -115,6 +125,12 @@ export const HOME: Record<HomeLang, HomeText> = {
     pcRows: ["Week 1", "Month 1", "Month 3"],
     pcChat: ["Fewer sole traders, more firms with staff, please.", "Done. From Monday your list only shows firms with staff."],
     pcNote: "Illustration of how your leads are refined over time.", pcBtn: "Talk to your contact",
+    tune: { cap: "Example: how a contact tunes the weekly list for a recruitment agency over four weeks", who: "Your contact", ex: "Example: recruitment agency",
+      texts: ["Your first list is broad on purpose. Tell me which leads you called and how it went.", "Hospitality and logistics answered best. From Monday you get more of those.",
+        "Small firms rarely hire through an agency. From now on: 10+ staff only.", "Several hires at once worked best for you. That is now your main signal."],
+      fit: "Fits your firm", notYet: "Not yet", upd: "Updated", week: "Week", weeks: "Example weeks",
+      rows: [["Industry", ["All industries", "Hospitality, logistics"], [0, 1]], ["Company size", ["Any size", "10+ staff"], [0, 2]], ["Signals", ["All signals", "Several hires at once"], [0, 3]]] },
+    docs: { brief: "Lead briefing", company: "Company", seal: "FREE SAMPLE • 10 CURRENT LEADS •" },
     pcCard: { reply: "Replies personally", tl: [["inbox", "Week 1", "Your first list arrives"], ["chat", "Week 2", "You tell us what fits"], ["filter", "Week 3 onwards", "Your list is tuned to you"]],
       fTitle: "Your filters", filters: [["on", "Firms with staff"], ["on", "Outdated website"], ["off", "Sole traders"], ["new", "Hospitality"]],
       quote: "I have adjusted your filters. From Monday you only get firms with staff." },
@@ -154,7 +170,7 @@ export const HOME: Record<HomeLang, HomeText> = {
     subShort: "Chaque semaine : des entreprises avec une vraie raison d'acheter, avec date, source et phrase d'accroche.",
     every: "Dans chaque prospect",
     chips: [["bolt", "Événement"], ["cal", "Date"], ["doc", "Source"], ["phone", "Téléphone et e-mail"], ["bulb", "Conseil de vente"], ["chat", "Phrase d'accroche"]],
-    btn: "Recevoir 10 prospects gratuits", film: "Voir le film", fine: ["Gratuit", "Sans carte", "Sans abonnement"],
+    btn: "Recevoir 10 prospects gratuits", film: "Voir le film",
     vtag: (s) => `Le film · ${s} secondes`, monday: "Nouvelle liste chaque lundi",
     statsH: "Fondé sur des données publiques, vérifié chaque jour",
     stats: ["entreprises dans les registres officiels de nos marchés", "nouvelles entreprises par an dans notre champ", "signaux datés enregistrés", "prospects gratuits dans chaque échantillon"],
@@ -166,7 +182,7 @@ export const HOME: Record<HomeLang, HomeText> = {
       ["target", "Nous repérons le moment", "Une création, un poste ouvert depuis des semaines, plusieurs recrutements à la fois. Chaque événement est enregistré avec sa date et sa source."],
       ["filter", "Nous filtrons et évaluons", "Uniquement les signaux pertinents pour votre métier, dans tout le pays. Chaque prospect est noté selon sa fraîcheur et sa pertinence, les plus faibles sont écartés."],
       ["inbox", "Vous recevez la liste", "Chaque lundi : entreprise, téléphone et e-mail, court profil, événement, date, source, conseil de vente et phrase d'accroche. Chaque prospect ne va qu'à une seule entreprise de votre secteur."]],
-    ex: { label: "Exemple issu d'un échantillon réel", tag: "Marché public", win: "Comment les convaincre", pick: "Appelez maintenant", pills: ["Une entreprise par secteur", "Livraison le lundi"], phonePrefix: "+44 20" },
+    ex: { label: "Exemple issu d'un échantillon réel", tag: "Marché public", win: "Comment les convaincre", pick: "Appelez maintenant", pills: ["Une entreprise par secteur", "Livraison le lundi"], phonePrefix: "+44 20", stamp: "SOURCE OFFICIELLE", stampDay: ["2 OCT.", "2026"] },
     revenue: ["Pourquoi ces prospects génèrent du ", "chiffre d'affaires"],
     reasons: [["target", "Une vraie raison d'acheter", "Chaque entreprise a un événement concret qui crée un besoin."],
       ["zap", "Vous appelez en premier", "De nouveaux prospects chaque semaine, tant que le besoin est ouvert."],
@@ -181,7 +197,11 @@ export const HOME: Record<HomeLang, HomeText> = {
       rateLead: "Marché public · 2 oct. 2026", pass: "Retenu", rows: [["Fraîcheur", 92], ["Clarté du signal", 86], ["Données d'entreprise", 95]],
       min: "Minimum", fail: "Sous le minimum, écarté", mailSub: "Chaque lundi matin", mon: "LUN", mailSubject: "Vos prospects de la semaine",
       files: ["Rapport PDF", "Tableur"], mailLeads: ["Londres · Marché public", "Wolverhampton · Marché public", "Wakefield · Marché public"],
-      excl: "Chaque prospect ne va qu'à une seule entreprise de votre secteur." },
+      excl: "Chaque prospect ne va qu'à une seule entreprise de votre secteur.",
+      src: [["landmark", "Companies House", "Royaume-Uni"], ["landmark", "Registres des États & déclarations SEC", "États-Unis"],
+        ["doc", "BODACC", "France"], ["users", "Pages carrières des entreprises", "Royaume-Uni, États-Unis et France"],
+        ["doc", "Annonces officielles", "Royaume-Uni, États-Unis et France"]],
+      track: ["Sources", "Le moment", "Évaluation", "Votre liste"] },
     callH: "Tout ce qu'il faut pour le premier appel",
     callSub: "Exemple issu d'un échantillon réel. Choisissez un point pour voir où il figure sur le prospect.",
     call: {
@@ -218,6 +238,12 @@ export const HOME: Record<HomeLang, HomeText> = {
     pcRows: ["Semaine 1", "Mois 1", "Mois 3"],
     pcChat: ["Moins d'auto-entrepreneurs, plus d'entreprises avec salariés, svp.", "C'est fait. Dès lundi, votre liste ne montre que des entreprises avec salariés."],
     pcNote: "Illustration de l'affinage de vos prospects au fil du temps.", pcBtn: "Écrire à votre interlocuteur",
+    tune: { cap: "Exemple : comment un interlocuteur ajuste sur quatre semaines la liste hebdomadaire d'un cabinet de recrutement", who: "Votre interlocuteur", ex: "Exemple : cabinet de recrutement",
+      texts: ["Votre première liste est volontairement large. Dites-moi quels prospects vous avez appelés et comment cela s'est passé.", "La restauration et la logistique ont le mieux répondu. Dès lundi, vous en recevez davantage.",
+        "Les petites entreprises passent rarement par un cabinet. Désormais : 10 salariés et plus uniquement.", "Plusieurs recrutements à la fois ont le mieux marché pour vous. C'est désormais votre signal principal."],
+      fit: "Correspond à votre entreprise", notYet: "Pas encore", upd: "Mis à jour", week: "Semaine", weeks: "Semaines d'exemple",
+      rows: [["Secteur", ["Tous les secteurs", "Restauration, logistique"], [0, 1]], ["Taille", ["Toutes tailles", "10 salariés et plus"], [0, 2]], ["Signaux", ["Tous les signaux", "Plusieurs recrutements à la fois"], [0, 3]]] },
+    docs: { brief: "Rapport de prospects", company: "Entreprise", seal: "ÉCHANTILLON GRATUIT • 10 PROSPECTS •" },
     pcCard: { reply: "Répond personnellement", tl: [["inbox", "Semaine 1", "Votre première liste arrive"], ["chat", "Semaine 2", "Vous nous dites ce qui convient"], ["filter", "Dès la semaine 3", "Votre liste est ajustée pour vous"]],
       fTitle: "Vos filtres", filters: [["on", "Entreprises avec salariés"], ["on", "Site web vieillissant"], ["off", "Auto-entrepreneurs"], ["new", "Restauration"]],
       quote: "J'ai ajusté vos filtres. Dès lundi, vous ne recevez que des entreprises avec salariés." },
@@ -257,7 +283,7 @@ export const HOME: Record<HomeLang, HomeText> = {
     subShort: "Jede Woche: Firmen mit echtem Kaufanlass, jeweils mit Datum, Quelle und Einstiegssatz.",
     every: "In jedem Lead",
     chips: [["bolt", "Ereignis"], ["cal", "Datum"], ["doc", "Quelle"], ["phone", "Telefon & E-Mail"], ["bulb", "Vertriebstipp"], ["chat", "Einstiegssatz"]],
-    btn: "10 kostenlose Probe-Leads", film: "Film ansehen", fine: ["Kostenlos", "Ohne Karte", "Ohne Abo"],
+    btn: "10 kostenlose Probe-Leads", film: "Film ansehen",
     vtag: (s) => `Der Film · ${s} Sekunden`, monday: "Jeden Montag eine neue Liste",
     statsH: "Auf öffentlichen Daten gebaut, jeden Tag geprüft",
     stats: ["Unternehmen in den amtlichen Registern unserer Märkte", "neue Unternehmen pro Jahr in unserem Blick", "datierte Signale erfasst", "kostenlose Leads in jeder Probe"],
@@ -269,7 +295,7 @@ export const HOME: Record<HomeLang, HomeText> = {
       ["target", "Wir erkennen den Moment", "Eine Neugründung, eine seit Wochen offene Stelle, mehrere Einstellungen gleichzeitig. Jedes Ereignis wird mit Datum und Quelle erfasst."],
       ["filter", "Wir filtern und bewerten", "Nur Signale, die zu Ihrer Branche passen, aus dem ganzen Land. Jeder Lead wird nach Aktualität und Relevanz bewertet, schwache fallen heraus."],
       ["inbox", "Sie erhalten die Liste", "Jeden Montag: Unternehmen mit Telefon und E-Mail, Kurzprofil, Ereignis, Datum, Quelle, Vertriebstipp und Einstiegssatz. Jeder Lead geht nur an ein Unternehmen Ihrer Branche."]],
-    ex: { label: "Beispiel aus einer echten Probe", tag: "Öffentlicher Auftrag", win: "So gewinnen Sie sie", pick: "Jetzt anrufen", pills: ["Ein Unternehmen je Branche", "Lieferung montags"], phonePrefix: "+44 20" },
+    ex: { label: "Beispiel aus einer echten Probe", tag: "Öffentlicher Auftrag", win: "So gewinnen Sie sie", pick: "Jetzt anrufen", pills: ["Ein Unternehmen je Branche", "Lieferung montags"], phonePrefix: "+44 20", stamp: "AMTLICHE QUELLE", stampDay: ["2. OKT.", "2026"] },
     revenue: ["Warum aus diesen Leads ", "Umsatz wird"],
     reasons: [["target", "Ein echter Kaufanlass", "Jedes Unternehmen hat ein konkretes Ereignis, das Bedarf schafft."],
       ["zap", "Sie rufen zuerst an", "Jede Woche neue Leads, gefunden solange der Bedarf offen ist."],
@@ -284,7 +310,11 @@ export const HOME: Record<HomeLang, HomeText> = {
       rateLead: "Öffentlicher Auftrag · 2. Okt. 2026", pass: "Bestanden", rows: [["Aktualität", 92], ["Klarheit des Signals", 86], ["Firmendaten", 95]],
       min: "Mindestwert", fail: "Unter dem Mindestwert, aussortiert", mailSub: "Jeden Montagmorgen", mon: "MO", mailSubject: "Ihre Leads dieser Woche",
       files: ["PDF-Briefing", "Tabelle"], mailLeads: ["London · Öffentlicher Auftrag", "Wolverhampton · Öffentlicher Auftrag", "Wakefield · Öffentlicher Auftrag"],
-      excl: "Jeder Lead geht nur an ein Unternehmen Ihrer Branche." },
+      excl: "Jeder Lead geht nur an ein Unternehmen Ihrer Branche.",
+      src: [["landmark", "Companies House", "Großbritannien"], ["landmark", "Handelsregister der Bundesstaaten & SEC-Meldungen", "USA"],
+        ["doc", "BODACC", "Frankreich"], ["users", "Karriereseiten der Unternehmen", "Großbritannien, USA und Frankreich"],
+        ["doc", "Amtliche Bekanntmachungen", "Großbritannien, USA und Frankreich"]],
+      track: ["Quellen", "Der Moment", "Bewertung", "Ihre Liste"] },
     callH: "Alles, was Sie für den ersten Anruf brauchen",
     callSub: "Beispiel aus einer echten Probe. Wählen Sie einen Punkt, um zu sehen, wo er im Lead steht.",
     call: {
@@ -321,6 +351,12 @@ export const HOME: Record<HomeLang, HomeText> = {
     pcRows: ["Woche 1", "Monat 1", "Monat 3"],
     pcChat: ["Bitte weniger Einzelunternehmer, mehr Firmen mit Personal.", "Erledigt. Ab Montag zeigt Ihre Liste nur Firmen mit Personal."],
     pcNote: "Illustration, wie Ihre Leads mit der Zeit verfeinert werden.", pcBtn: "Ansprechpartner kontaktieren",
+    tune: { cap: "Beispiel: wie ein Ansprechpartner die Wochenliste einer Personalvermittlung über vier Wochen anpasst", who: "Ihr Ansprechpartner", ex: "Beispiel: Personalvermittlung",
+      texts: ["Ihre erste Liste ist bewusst breit. Sagen Sie mir, welche Leads Sie angerufen haben und wie es lief.", "Gastronomie und Logistik haben am besten reagiert. Ab Montag bekommen Sie mehr davon.",
+        "Kleine Firmen stellen selten über eine Agentur ein. Ab jetzt: nur noch ab 10 Beschäftigten.", "Mehrere Einstellungen gleichzeitig haben bei Ihnen am besten funktioniert. Das ist jetzt Ihr Hauptsignal."],
+      fit: "Passt zu Ihrem Unternehmen", notYet: "Noch nicht", upd: "Aktualisiert", week: "Woche", weeks: "Beispielwochen",
+      rows: [["Branche", ["Alle Branchen", "Gastronomie, Logistik"], [0, 1]], ["Firmengröße", ["Jede Größe", "ab 10 Beschäftigten"], [0, 2]], ["Signale", ["Alle Signale", "Mehrere Einstellungen gleichzeitig"], [0, 3]]] },
+    docs: { brief: "Lead-Briefing", company: "Unternehmen", seal: "KOSTENLOSE PROBE • 10 AKTUELLE LEADS •" },
     pcCard: { reply: "Antwortet persönlich", tl: [["inbox", "Woche 1", "Ihre erste Liste kommt"], ["chat", "Woche 2", "Sie sagen uns, was passt"], ["filter", "Ab Woche 3", "Ihre Liste ist auf Sie abgestimmt"]],
       fTitle: "Ihre Filter", filters: [["on", "Firmen mit Personal"], ["on", "Veraltete Website"], ["off", "Einzelunternehmer"], ["new", "Gastronomie"]],
       quote: "Ich habe Ihre Filter angepasst. Ab Montag erhalten Sie nur noch Firmen mit Personal." },
