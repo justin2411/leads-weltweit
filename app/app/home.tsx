@@ -6,13 +6,13 @@ import { consentText } from "@/lib/consent";
 import { wishesFor } from "@/content/sample-wishes";
 import { LANDING_CSS } from "@/lib/landing-css";
 import { HOME_CSS } from "@/lib/home-css";
+import { HOME_SPRITE, HOME_V2_CSS } from "@/lib/home-v2-css";
 import { SampleForm, type FormOption } from "./sample-form";
-import { homeStats, publicPages, type PublicPage } from "@/lib/site-pages";
-import { BrandShell, SiteFooter, SiteHeader, Words } from "./chrome";
+import { homeFeed, homeStats, publicPages, type PublicPage } from "@/lib/site-pages";
+import { BrandShell, SiteFooter, SiteHeader } from "./chrome";
 import { HOME, HOME_LANGS, HOME_PATH, type HomeLang } from "./home-i18n";
 import { CONTACT_PATH } from "./contact/contact-i18n";
-import { HeroNet } from "./motion";
-import { Icon } from "./[country]/[segment]/v2";
+import { HomeFx } from "./home-fx";
 import { COUNTRIES, segKey, type CountryCode } from "@/lib/country";
 
 // Register (Inhaber 27.09.2026 „über 18 Millionen“): Companies House 4.930.634 (effektives Register, März 2026,
@@ -33,15 +33,27 @@ export function homeMetadata(lang: HomeLang): Metadata {
   };
 }
 
-/** Gleiche Reihenfolge der Branchen in jedem Land; Webagenturen zuerst (Fokus 02.10.2026). */
-const ORDER = ["web-agencies", "recruitment", "accountants", "insurance-brokers", "financial-advisers", "it-services"];
+/** Gleiche Reihenfolge der Branchen in jedem Land (Vorlage Inhaber 03.10.2026). */
+const ORDER = ["accountants", "financial-advisers", "insurance-brokers", "recruitment", "web-agencies", "it-services"];
 const IND_ICON: Record<string, string> = {
-  "web-agencies": "globe", recruitment: "user", accountants: "table", "insurance-brokers": "lock", "financial-advisers": "target", "it-services": "bolt",
+  accountants: "calc", "financial-advisers": "trend", "insurance-brokers": "umbrella", recruitment: "users", "web-agencies": "globe", "it-services": "zap",
 };
+const CC: CountryCode[] = ["UK", "US", "FR"];
+const FLAG: Record<string, string> = { UK: "f-uk", US: "f-us", FR: "f-fr" };
 
+/** Symbol aus dem Sprite der Vorlage. */
+const I = ({ n, c = "hp-ico" }: { n: string; c?: string }) => <svg className={c} aria-hidden="true"><use href={`#${n.startsWith("f-") ? n : "i-" + n}`} /></svg>;
+const R = ({ t }: { t: string }) => <span className="hp-redact" aria-hidden="true">{t}</span>;
 const i = (n: number) => ({ "--i": n }) as CSSProperties;
 
-/** Radar: Signale aus drei Ländern leuchten auf, wenn der Strahl sie erreicht (Strahl 6 s je Umdrehung). */
+/** Beispiele für „Recently detected“, falls die Datenbank nichts liefert (echte Probe, Firmenname verdeckt). */
+const FALLBACK = [
+  { place: "London", date: "2 Oct 2026", source: "Find a Tender", event: "Won a public contract, published on Find a Tender on 2 October 2026: “London Borough of Richmond” for Sutton, Achieving for Children and Kingston" },
+  { place: "Wolverhampton", date: "2 Oct 2026", source: "Find a Tender", event: "Won a public contract, published on Find a Tender on 2 October 2026: “FP&A Tool Consultancy” for Agriculture and Horticulture Development Board" },
+  { place: "Wakefield", date: "2 Oct 2026", source: "Find a Tender", event: "Won a public contract, published on Find a Tender on 2 October 2026: “Cleaning Services” for Inspire Learning Trust" },
+];
+
+/** Radar: Signale aus drei Ländern leuchten auf, wenn der Strahl sie erreicht (Inhaber 03.10.2026: „das radar auf jeden fall drin“). */
 function Radar({ labels }: { labels: [string, string][] }) {
   const C = 200;
   const pt = (deg: number, r: number) => [C + r * Math.cos((deg * Math.PI) / 180), C + r * Math.sin((deg * Math.PI) / 180)];
@@ -83,27 +95,34 @@ function Radar({ labels }: { labels: [string, string][] }) {
   );
 }
 
+
 export async function Home({ lang }: { lang: HomeLang }) {
   const t = HOME[lang];
   const loc = { en: "en-GB", fr: "fr-FR", de: "de-DE" }[lang];
   const mio = { en: "M+", fr: " M+", de: " Mio.+" }[lang];
-  const [pages, stats] = await Promise.all([
+  const [pages, stats, feed] = await Promise.all([
     publicPages().catch(() => [] as PublicPage[]),
     homeStats().catch(() => ({ companies: 0, signals: 0 })),
+    homeFeed(lang).catch(() => []),
   ]);
   const V = VIDEOS as Record<string, { src: string; poster: string; seconds: number }>;
   const video = V[`${lang}:home`] ?? V["en:home"];
-  const indName = (p: PublicPage) => t.industries[segKey(p.slug)] ?? p.name;
-  // Länder mit öffentlichen Seiten; Startland je Sprache
-  const countries = (["US", "UK", "FR"] as CountryCode[]).filter((c) => pages.some((p) => p.country === c));
-  const pref: CountryCode = lang === "fr" ? "FR" : lang === "de" ? "UK" : "US";
-  const defCountry = countries.includes(pref) ? pref : countries[0];
+  const signals = (feed.length >= 3 ? feed.slice(0, 3).map((f) => ({ place: f.place, date: f.date, source: f.source, event: f.event })) : FALLBACK);
+  // Branchen je Land: Schlüssel -> Seite je Land
+  const bySeg = new Map<string, Partial<Record<CountryCode, string>>>();
+  for (const p of pages) {
+    const k = segKey(p.slug);
+    bySeg.set(k, { ...(bySeg.get(k) ?? {}), [p.country as CountryCode]: "/" + p.slug });
+  }
+  const segs = [...bySeg.keys()].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
+  const countries = CC.filter((c) => pages.some((p) => p.country === c));
+  const defCountry: CountryCode = lang === "fr" && countries.includes("FR") ? "FR" : countries.includes("UK") ? "UK" : countries[0] ?? "UK";
   const formOptions: FormOption[] = [...pages]
     .sort((a, b) => Number(b.country === defCountry) - Number(a.country === defCountry) || a.country.localeCompare(b.country)
       || ORDER.indexOf(segKey(a.slug)) - ORDER.indexOf(segKey(b.slug)))
     .map((p) => ({
       value: p.slug,
-      label: `${indName(p)} · ${COUNTRIES[p.country as CountryCode]?.name[lang] ?? p.country}`,
+      label: `${t.industries[segKey(p.slug)]?.[0] ?? p.name} · ${COUNTRIES[p.country as CountryCode]?.name[lang] ?? p.country}`,
       wishes: wishesFor(segKey(p.slug)).map((w) => ({ key: w.key, label: w[lang] })),
     }));
   const contactHref = CONTACT_PATH[lang];
@@ -111,109 +130,247 @@ export async function Home({ lang }: { lang: HomeLang }) {
     "@context": "https://schema.org", "@type": "Organization", name: BRAND, legalName: LEGAL_NAME, url: siteUrl(), email: CONTACT,
     description: t.desc, address: { "@type": "PostalAddress", streetAddress: "Nikolaistraße 3-7", postalCode: "04109", addressLocality: "Leipzig", addressCountry: "DE" },
   };
-  const kpis: [number, string, string][] = [[18, mio, t.kpi[0]], [YEARLY, "+", t.kpi[1]], [stats.signals, "", t.kpi[2]], [10, "", t.kpi[3]]];
+  const nums: [string, string, boolean][] = [
+    [`18${mio}`, t.stats[0], false], [`${YEARLY.toLocaleString(loc)}+`, t.stats[1], false],
+    [stats.signals.toLocaleString(loc), t.stats[2], true], ["10", t.stats[3], false],
+  ];
+  const words = t.h1.split(/\s+/);
+  const gold = new Set(t.h1gold.map((g) => g.toLowerCase()));
+  const c = t.call;
 
   return (
-    <BrandShell lang={lang} extraCss={LANDING_CSS + HOME_CSS}>
+    <BrandShell lang={lang} extraCss={LANDING_CSS + HOME_CSS + HOME_V2_CSS}>
+      {/* Effekte der Vorlage nur mit JavaScript (sonst bleibt alles sichtbar) */}
+      <script dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('js')" }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
-      <SiteHeader links={[...t.nav, [contactHref, t.contact]]} cta={["#sample", t.cta]}
+      <div dangerouslySetInnerHTML={{ __html: HOME_SPRITE }} />
+      <SiteHeader links={[["#film", "Film"], ["#industries", t.nav[1][1]], ["#contact-person", t.nav[2][1]], [contactHref, t.contact]]} cta={["#sample", t.cta]}
         langs={HOME_LANGS.map((l) => [l.toUpperCase(), HOME_PATH[l], l === lang])} />
-      <div className="lp2 hm">
+      <HomeFx />
+      <div className="lp2 hm hpz">
 
-        <section className="h2o" id="top">
-          <HeroNet />
-          <div className="wrap">
-            <span className="pill"><Icon name="star" />{t.pill}</span>
-            <h1><Words text={t.h1} gold={t.h1gold} /></h1>
-            <p className="sub">{t.sub}</p>
-            <div className="every"><span className="cap">{t.every}</span>
-              {/* zwei Zeilen wie auf den Landingpages */}
-              {[t.chips.slice(0, 4), t.chips.slice(4)].map((row, r) => (
-                <span className="chiprow" key={r}>{row.map(([ic, txt]) => <span className="chip" key={txt}><Icon name={ic} />{txt}</span>)}</span>))}
+        <section className="hp-hero hp-grain" aria-labelledby="hero-title">
+          <div className="hp-hero__fx" aria-hidden="true">
+            <span className="hp-aurora hp-aurora--blue" /><span className="hp-aurora hp-aurora--gold" /><span className="hp-aurora hp-aurora--deep" />
+            <span className="hp-dots" /><span className="hp-dots hp-dots--lit" /><span className="hp-beam" />
+          </div>
+          <div className="hp-hero__stage">
+            <div className="hp-wrap hp-hero__grid">
+              <div>
+                <p className="hp-badge hp-in" style={{ "--d": ".05s" } as CSSProperties}><I n="star" />{t.pill}</p>
+                <h1 className="hp-h1" id="hero-title">
+                  {words.map((w, k) => <span key={k}><span className={`hp-w${gold.has(w.toLowerCase().replace(/[.,!?]/g, "")) ? " hp-gold" : ""}`} style={i(k)}>{w}</span>{k < words.length - 1 ? " " : ""}</span>)}
+                </h1>
+                <p className="hp-lede hp-in" style={{ "--d": ".6s" } as CSSProperties}>{t.sub}</p>
+                <div className="hp-inlead hp-in" style={{ "--d": ".75s" } as CSSProperties}>
+                  <span className="hp-label">{t.every}</span>
+                  <ul className="hp-chips">{t.chips.map(([ic, txt]) => <li className="hp-chip" key={txt}><I n={{ bolt: "zap", cal: "calendar" }[ic] ?? ic} />{txt}</li>)}</ul>
+                </div>
+                <div className="hp-cta hp-in" style={{ "--d": ".9s" } as CSSProperties}>
+                  <a className="hp-btn hp-btn--gold" href="#sample" data-magnetic=""><span>{t.btn}</span><I n="arrow" c="hp-ico hp-btn__arrow" /></a>
+                  {video && <a className="hp-btn hp-btn--line" href="#film"><span className="hp-play-dot" aria-hidden="true"><svg><use href="#i-play" /></svg></span><span>{t.film}</span></a>}
+                </div>
+                <ul className="hp-assure hp-in" style={{ "--d": "1s" } as CSSProperties}>{t.fine.map((f) => <li key={f}><I n="check" />{f}</li>)}</ul>
+              </div>
+              <div className="hp-feed-wrap">
+                <aside className="hp-feed" aria-labelledby="feed-title">
+                  <div className="hp-feed__head"><p className="hp-feed__title" id="feed-title"><span className="hp-live" aria-hidden="true" />{t.feedTitle}</p></div>
+                  <ol className="hp-feed__list">
+                    {signals.map((s, k) => (
+                      <li className="hp-signal" style={i(k)} key={k}>
+                        <span className="hp-signal__node" aria-hidden="true" />
+                        <p className="hp-signal__meta"><time>{s.date}</time><span className="hp-src"><I n="doc" />{s.source}</span></p>
+                        <p className="hp-signal__who"><R t={"x".repeat(10 + (k * 3) % 7)} /><span className="hp-sr">{c.hidden},</span>{s.place && <span className="hp-signal__place"><I n="pin" />{s.place}</span>}</p>
+                        <p className="hp-signal__event">{s.event}</p>
+                      </li>))}
+                  </ol>
+                  <p className="hp-feed__note"><I n="info" />{t.feedNote}</p>
+                  <span className="hp-feed__glare" aria-hidden="true" />
+                </aside>
+              </div>
             </div>
+            <div className="hp-sources">
+              <div className="hp-wrap hp-sources__in">
+                <span className="hp-sources__label">{t.ticker[0]}</span>
+                <div className="hp-ticker"><div className="hp-ticker__track">
+                  <ul>{t.ticker[1].map((x) => <li key={x}>{x}</li>)}</ul>
+                  <ul aria-hidden="true">{t.ticker[1].map((x) => <li key={x}>{x}</li>)}</ul>
+                </div></div>
+              </div>
+            </div>
+          </div>
+          <div className="hp-wrap hp-proof">
+            <h2 className="hp-proof__title" data-reveal="">{t.statsH}</h2>
+            <ul className="hp-statbar" data-reveal="" style={{ "--d": ".1s" } as CSSProperties}>
+              {nums.map(([n, label, live]) => (
+                <li className={`hp-stat${live ? " hp-stat--live" : ""}`} key={label}>
+                  {live ? <p className="hp-stat__num"><span data-odo="">{n}</span><span className="hp-live" aria-hidden="true" /></p>
+                    : <p className="hp-stat__num" data-odo="">{n}</p>}
+                  <p className="hp-stat__label">{label}</p>
+                </li>))}
+            </ul>
+            <p className="hp-footnote" data-reveal="" style={{ "--d": ".2s" } as CSSProperties}>{t.statsNote}</p>
           </div>
         </section>
 
-        {/* Video ist das wichtigste Element: groß, gleich unter dem Hero, ragt in den hellen Teil */}
         {video && (
-          <div className="vbase" id="film">
-            <div className="stage" data-rv>
-              <span className="vtag"><i />{t.vtag(video.seconds)}</span>
-              {/* Eigenes Video, keine Drittanbieter, lädt erst beim Abspielen */}
-              <div className="frame"><video controls playsInline preload="none" poster={video.poster} src={video.src} /></div>
-            </div>
-          </div>
+          <section className="hp-film hp-grain" id="film" aria-labelledby="film-title">
+            <div className="hp-wrap"><div className="hp-film__in">
+              <h2 className="hp-rule" id="film-title" data-reveal="">{t.filmH(video.seconds)}</h2>
+              <p className="hp-film__sub" data-reveal="" style={{ "--d": ".1s" } as CSSProperties}>{t.filmSub}</p>
+              <div className="hp-video" data-scale="">
+                {/* Eigenes Video, keine Drittanbieter, lädt erst beim Abspielen */}
+                <video controls preload="none" playsInline poster={video.poster} src={video.src} />
+                <button className="hp-video__play" type="button" aria-label={t.film} hidden>
+                  <span className="hp-video__btn"><svg aria-hidden="true"><use href="#i-play" /></svg></span>
+                  <span className="hp-video__len">0:{String(video.seconds).padStart(2, "0")}</span>
+                </button>
+              </div>
+            </div></div>
+          </section>
         )}
-        {/* Button unter dem Video (Inhaber 03.10.2026) */}
-        <div className="aftervid">
-          <div className="ctabox">
-            <a className="btn gold big" href="#sample" data-cta>{t.btn} <span className="ar">→</span></a>
-            <span className="free2">{t.fine.map((f) => <span key={f}>{f}</span>)}</span>
-          </div>
-        </div>
 
-        <section className="sec">
-          <div className="wrap">
-            <div className="kpis lite">
-              {kpis.map(([n, suf, label], k) => (
-                <div className="kpi" key={label} data-rv style={i(k)}>
-                  <b data-count={n} data-suffix={suf} data-loc={loc}>{n.toLocaleString(loc)}{suf}</b><span>{label}</span>
-                </div>))}
+        <section className="hp-sec hp-cream" id="method" aria-labelledby="method-title">
+          <div className="hp-wrap">
+            <div className="hp-intro" data-reveal=""><h2 className="hp-h2" id="method-title">{t.methH}</h2><p>{t.methSub}</p></div>
+            <div className="hp-steps-wrap" data-steps="">
+              <div className="hp-track" aria-hidden="true"><span className="hp-track__fill" /></div>
+              <ol className="hp-steps">
+                {t.steps.map(([ic, h, d], k) => (
+                  <li className="hp-step is-on" key={h}>
+                    <span className="hp-step__icon"><I n={ic} /></span><span className="hp-step__num">{String(k + 1).padStart(2, "0")}</span>
+                    <div><h3>{h}</h3><p>{d}</p></div>
+                  </li>))}
+              </ol>
             </div>
-            <p className="kpinote" style={{ color: "var(--faint)" }}>{t.kpiNote}</p>
+
+            <div className="hp-example" data-example-lead="">
+              <p className="hp-rule hp-rule--cream" data-reveal="">{t.ex.label}</p>
+              <div className="hp-example__grid">
+                <article className="hp-lead" aria-label={t.ex.label} data-reveal="" style={{ "--d": ".1s" } as CSSProperties}>
+                  <div className="hp-lead__main">
+                    <header className="hp-lead__head">
+                      <span className="hp-lead__icon"><I n="building" /></span>
+                      <div><p className="hp-lead__name"><R t="xxxxxxxxxxxxxxxx" /><span className="hp-sr">{c.hidden}</span></p>
+                        <p className="hp-lead__place"><I n="pin" />{c.city}</p></div>
+                    </header>
+                    <dl className="hp-lead__facts">
+                      <div className="hp-fact hp-fact--wide hp-fact--event" data-mark="1"><dt>{c.event} <span className="hp-mark" aria-hidden="true">1</span></dt><dd>{c.eventText}</dd></div>
+                      <div className="hp-fact" data-mark="2"><dt>{c.date} <span className="hp-mark" aria-hidden="true">2</span></dt><dd>{c.dateText}</dd></div>
+                      <div className="hp-fact" data-mark="2"><dt>{c.source} <span className="hp-mark" aria-hidden="true">2</span></dt><dd>{c.sourceText}</dd></div>
+                      <div className="hp-fact hp-fact--wide"><dt>{c.phone}</dt><dd>{t.ex.phonePrefix} <R t="xxxx xxxx" /><span className="hp-sr">{c.hidden}</span></dd></div>
+                      <div className="hp-fact hp-fact--wide"><dt>{c.email}</dt><dd className="hp-nowrap"><R t="xxxxx" />@<R t="xxxxxxxx" />.co.uk<span className="hp-sr">{c.hidden}</span></dd></div>
+                    </dl>
+                    <div className="hp-lead__foot">
+                      <span className="hp-pill"><I n="lock" />{t.ex.pills[0]}</span>
+                      <span className="hp-pill"><I n="calendar" />{t.ex.pills[1]}</span>
+                    </div>
+                  </div>
+                  <div className="hp-lead__side">
+                    <div className="hp-tags">
+                      <span className="hp-tag"><I n="doc" />{t.ex.tag}</span>
+                      <span className="hp-tag"><I n="bars" />{c.prio}</span>
+                    </div>
+                    <p className="hp-side-label"><I n="target" />{t.ex.win}</p>
+                    <figure className="hp-opening" data-mark="3">
+                      <figcaption>{c.opening} <span className="hp-mark" aria-hidden="true">3</span></figcaption>
+                      <blockquote>{c.openingText[0]}<R t="xxxxxxxxx" />{c.openingText[1]}</blockquote>
+                    </figure>
+                    <div className="hp-call">
+                      <span className="hp-call__dot"><I n="phone" /></span>
+                      <div><small>{t.ex.pick}</small><strong>{t.ex.phonePrefix} <R t="xxxx xxxx" /></strong></div>
+                    </div>
+                  </div>
+                </article>
+                <div data-reveal="" style={{ "--d": ".2s" } as CSSProperties}>
+                  <h2 className="hp-h2">{t.callH}</h2>
+                  <ol className="hp-notes">
+                    {c.points.map(([h, d], k) => (
+                      <li className="hp-note" data-note={k + 1} key={h}><span className="hp-mark" aria-hidden="true">{k + 1}</span><div><h3>{h}</h3><p>{d}</p></div></li>))}
+                  </ol>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
-        <section className="sec dark"><div className="wrap">
+        <section className="hp-sec hp-dark hp-grain" id="industries" aria-labelledby="ind-title">
+          <div className="hp-wrap">
+            <div className="hp-ind__top">
+              <div className="hp-intro" data-reveal=""><h2 className="hp-h2" id="ind-title">{t.indH}</h2><p>{t.indSub}</p></div>
+              {countries.length > 1 && (
+                <div className="hp-tabs" role="tablist" aria-label={t.countryPick} data-reveal="" style={{ "--d": ".1s" } as CSSProperties}>
+                  <span className="hp-tabs__ind" aria-hidden="true" />
+                  {countries.map((cc) => (
+                    <button className="hp-tab" role="tab" type="button" key={cc} aria-selected={cc === defCountry} tabIndex={cc === defCountry ? 0 : -1}
+                      aria-controls="ind-list" data-country={cc.toLowerCase()} id={`tab-${cc.toLowerCase()}`}>
+                      <I n={FLAG[cc]} c="hp-flag" /><span className="hp-tab__long">{COUNTRIES[cc].name[lang]}</span><span className="hp-tab__short">{cc}</span>
+                    </button>))}
+                </div>)}
+            </div>
+            <ul className="hp-ind" id="ind-list" role="tabpanel" aria-labelledby={`tab-${defCountry.toLowerCase()}`} data-country={defCountry.toLowerCase()}>
+              {segs.map((k, n) => {
+                const links = bySeg.get(k) ?? {};
+                const [name, desc] = t.industries[k] ?? [k, ""];
+                return (
+                  <li className="hp-ind__card" data-reveal="" style={{ "--d": `${(n * 0.08).toFixed(2)}s` } as CSSProperties} key={k} hidden={!links[defCountry]}>
+                    <div className="hp-ind__top-row"><span className="hp-ind__icon"><I n={IND_ICON[k] ?? "target"} /></span>
+                      <span className="hp-cc" aria-hidden="true"><span className="hp-cc__strip" style={{ "--d": `${n * 60}ms` } as CSSProperties}>
+                        {CC.map((cc) => <span key={cc}><I n={FLAG[cc]} c="hp-flag" />{cc}</span>)}
+                      </span></span></div>
+                    <h3>{name}</h3>
+                    {desc && <p>{desc}</p>}
+                    <a className="hp-ind__link" href={links[defCountry] ?? "#sample"} data-uk={links.UK} data-us={links.US} data-fr={links.FR}>{t.indGo}<I n="arrow" /></a>
+                  </li>);
+              })}
+              <li className="hp-ind__card hp-ind__card--cta" data-reveal="" style={{ "--d": ".4s" } as CSSProperties}>
+                <h3>{t.ctaCard[0]}</h3><p>{t.ctaCard[1]}</p>
+                <a className="hp-btn hp-btn--gold" href="#sample" data-magnetic=""><span>{t.btn}</span><I n="arrow" c="hp-ico hp-btn__arrow" /></a>
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <section className="hp-sec hp-cream" id="trust" aria-labelledby="trust-title">
+          <div className="hp-wrap">
+            <div className="hp-intro" data-reveal=""><h2 className="hp-h2" id="trust-title">{t.trustH}</h2><p>{t.trustSub}</p></div>
+            <ul className="hp-trust" data-reveal="" style={{ "--d": ".1s" } as CSSProperties}>
+              {t.facts.map(([ic, h, d], k) => (
+                <li style={{ "--d": `${(k * 0.12).toFixed(2)}s` } as CSSProperties} key={h}>
+                  <span className="hp-trust__icon"><I n={ic} /></span><h3>{h}</h3><p>{d.replace("{LEGAL}", LEGAL_NAME)}</p>
+                </li>))}
+            </ul>
+          </div>
+        </section>
+
+        <section className="sec dark" id="revenue"><div className="wrap">
           <div className="pc2">
             <div>
               <h2>{t.revenue[0]}<i>{t.revenue[1]}</i></h2>
               <div className="rs" style={{ gridTemplateColumns: "1fr", margin: "22px 0 0", gap: 12 }}>
                 {t.reasons.map(([ic, h, d], k) => (
                   <div className="rcard" key={h} data-rv style={{ ...i(k), display: "flex", gap: 14, alignItems: "flex-start", padding: 18 }}>
-                    <span className="gi" style={{ margin: 0, flex: "none" }}><Icon name={ic} /></span><span><h3>{h}</h3><p>{d}</p></span>
+                    <span className="gi" style={{ margin: 0, flex: "none" }}><I n={ic} /></span><span><h3>{h}</h3><p>{d}</p></span>
                   </div>))}
               </div>
             </div>
             <Radar labels={t.radar} />
           </div>
-          <div className="kick" style={{ marginTop: 54 }}><span className="cap" style={{ color: "var(--gink)" }}>{t.howTitle}</span></div>
-          <div className="steps">{t.steps.map(([ic, h], k) => (
-            <div className="step" key={h} data-rv style={i(k)}><div className="no"><b>{String(k + 1).padStart(2, "0")}</b><span className="ring"><Icon name={ic} /></span></div><h3>{h}</h3></div>))}</div>
         </div></section>
 
-        <section className="sec" id="industries"><div className="wrap">
-          <h2 style={{ marginBottom: 20 }}>{t.indH}</h2>
-          {/* Länder-Umschalter ohne JavaScript: Radio + CSS */}
-          {countries.map((c) => <input key={c} type="radio" name="cc" id={`cc-${c}`} className="cc-in" defaultChecked={c === defCountry} />)}
-          {countries.length > 1 && (
-            <div className="cswitch2" role="group" aria-label={t.countryPick}>
-              {countries.map((c) => <label key={c} htmlFor={`cc-${c}`}><span aria-hidden="true">{COUNTRIES[c].flag}</span>{COUNTRIES[c].name[lang]}</label>)}
-            </div>)}
-          <div className="icards">
-            {[...pages].sort((a, b) => ORDER.indexOf(segKey(a.slug)) - ORDER.indexOf(segKey(b.slug))).map((p, k) => (
-              <a className="icard" href={`/${p.slug}`} key={p.slug} data-cc={p.country} data-rv style={i(k % 6)}>
-                <span className="gi"><Icon name={IND_ICON[segKey(p.slug)] ?? "target"} /></span>
-                <h3>{indName(p)}</h3>
-                <span className="go">{t.indGo} <i>→</i></span>
-              </a>))}
-            {pages.length === 0 && <div className="icard"><h3>{t.soon}</h3></div>}
-          </div>
-        </div></section>
-
-        <section className="sec dark" id="contact-person"><div className="wrap pc2">
+        <section className="sec pcl" id="contact-person"><div className="wrap pc2">
           <div>
-            <div className="kick"><span className="cap" style={{ color: "var(--gink)" }}>{t.pcKick}</span></div>
+            <div className="kick"><span className="cap gold">{t.pcKick}</span></div>
             <h2>{t.pcH[0]}<i>{t.pcH[1]}</i></h2>
             <p className="lede2">{t.pcLede}</p>
             <ul className="plist">
               {t.pcList.map(([ic, h, d], k) => (
-                <li key={h} data-rv style={i(k)}><span className="gi"><Icon name={ic} /></span><span><b>{h}</b><span>{d}</span></span></li>))}
+                <li key={h} data-rv style={i(k)}><span className="gi"><I n={{ user: "users", focus: "filter" }[ic] ?? ic} /></span><span><b>{h}</b><span>{d}</span></span></li>))}
             </ul>
-            <a className="btn gold" href={contactHref}>{t.pcBtn} <span className="ar">→</span></a>
+            <a className="hp-btn hp-btn--gold" href={contactHref} data-magnetic=""><span>{t.pcBtn}</span><I n="arrow" c="hp-ico hp-btn__arrow" /></a>
           </div>
           <div className="fitcard" data-rv>
-            <div className="who"><span className="av"><Icon name="user" /></span><span><b>{t.pcWho[0]}</b><span>{t.pcWho[1]}</span></span></div>
+            <div className="who"><span className="av"><I n="users" /></span><span><b>{t.pcWho[0]}</b><span>{t.pcWho[1]}</span></span></div>
             <div className="fitrows">
               <span className="cap" style={{ color: "#97a2bd" }}>{t.pcFit}</span>
               {t.pcRows.map((r, k) => (
@@ -228,30 +385,48 @@ export async function Home({ lang }: { lang: HomeLang }) {
           </div>
         </div></section>
 
-        <section className="sec cream" id="sample"><div className="wrap formwrap">
-          <div className="formcard" id="probe">
-            <h2>{t.sampleTitle[0]} <span className="gold-h">{t.sampleTitle[1]}</span></h2>
-            <p className="lede2" style={{ color: "#aab4ca" }}>{t.sampleSub}</p>
-            {formOptions.length > 0 && (
-              <SampleForm lang={lang} field="slug" options={formOptions} consent={consentText(lang)}
-                privacyHref={{ en: "/privacy", fr: "/confidentialite", de: "/datenschutz" }[lang]} />
-            )}
+        <section className="hp-sec hp-cream hp-sample" id="sample" aria-labelledby="sample-title">
+          <div className="hp-wrap hp-sample__grid">
+            <div className="hp-formcard hp-grain" id="probe" data-reveal="">
+              <h2 className="hp-h2" id="sample-title">{t.sampleTitle[0]}<br /><span className="hp-gold">{t.sampleTitle[1]}</span></h2>
+              <p className="hp-formcard__intro">{t.sampleSub}</p>
+              {formOptions.length > 0 && (
+                <SampleForm lang={lang} field="slug" options={formOptions} consent={consentText(lang)}
+                  privacyHref={{ en: "/privacy", fr: "/confidentialite", de: "/datenschutz" }[lang]} />
+              )}
+            </div>
+            <div className="hp-side">
+              <div className="hp-panel" data-reveal="" style={{ "--d": ".1s" } as CSSProperties}>
+                <h3 className="hp-panel__title">{t.howTitle}</h3>
+                <ol className="hp-how">{t.how.map((h) => <li key={h}><span>{h}</span></li>)}</ol>
+              </div>
+              <div className="hp-panel" data-reveal="" style={{ "--d": ".2s" } as CSSProperties}>
+                <h3 className="hp-panel__title">{t.receive.title}</h3>
+                <ul className="hp-receive">
+                  <li><span className="hp-receive__icon"><I n="doc" /></span><p><strong>{t.receive.pdf[0]}</strong><span>{t.receive.pdf[1]}</span></p></li>
+                  <li><span className="hp-receive__icon"><I n="table" /></span><p><strong>{t.receive.csv[0]}</strong><span>{t.receive.csv[1]}</span></p></li>
+                </ul>
+              </div>
+              <p className="hp-side__note" data-reveal="" style={{ "--d": ".3s" } as CSSProperties}><I n="mail" /><span>{t.mailHint}</span></p>
+              <a className="hp-panel hp-talk" href={contactHref} data-reveal="" style={{ "--d": ".35s" } as CSSProperties}>
+                <span className="hp-receive__icon"><I n="users" /></span><span><small>{t.talk[0]}</small><strong>{t.talk[1]} →</strong></span>
+              </a>
+            </div>
           </div>
-          <div className="side2">
-            <ul className="ticks2">
-              {t.ticks.map(([h, d]) => <li key={h}><Icon name="check" /><span><b>{h}.</b> {d}</span></li>)}
-            </ul>
-            <a className="getcard" href={contactHref} style={{ textDecoration: "none", flex: "none" }}>
-              <span className="cap gold">{t.talk[0]}</span>
-              <span className="gf"><span className="ci"><Icon name="user" /></span><span><b>{t.talk[1]} →</b><em>{CONTACT}</em></span></span>
-            </a>
-          </div>
-        </div></section>
+        </section>
 
-        <section className="sec"><div className="wrap faq2" style={{ maxWidth: 820 }}>
-          <h2>{t.faqH}</h2>
-          {t.faq.map((f) => <details key={f.q}><summary>{f.q}</summary><p>{f.a}</p></details>)}
-        </div></section>
+        <section className="hp-sec hp-cream hp-faq" id="faq" aria-labelledby="faq-title">
+          <div className="hp-wrap hp-faq__grid">
+            <div className="hp-faq__aside" data-reveal="">
+              <h2 className="hp-h2" id="faq-title">{t.faqH}</h2>
+              <p>{t.askMore} <a href={`mailto:${CONTACT}`}>{CONTACT}</a></p>
+            </div>
+            <div className="hp-qa" data-reveal="" style={{ "--d": ".1s" } as CSSProperties}>
+              {t.faq.map((f) => (
+                <details key={f.q}><summary>{f.q}<span className="hp-plus" aria-hidden="true" /></summary><div className="hp-qa__a"><p>{f.a}</p></div></details>))}
+            </div>
+          </div>
+        </section>
       </div>
       <SiteFooter lang={lang} />
     </BrandShell>
