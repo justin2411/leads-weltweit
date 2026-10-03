@@ -65,10 +65,10 @@ p{margin:0 0 1em}
 .btn svg{width:18px;height:18px;flex:none;transition:transform .4s var(--ease)}
 .btn:hover svg.arrow{transform:translateX(4px)}
 .btn--lime{--bg:var(--lime);--fg:var(--navy-950)}
-.btn--lime::before{background:#fff}
+.btn--lime::before{background:#9fd45f}
 .btn--ghost{--bg:rgba(255,255,255,.08);--fg:#fff;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35);backdrop-filter:blur(10px)}
-.btn--ghost::before{background:#fff}
-.btn--ghost:hover{--fg:var(--navy)}
+.btn--ghost::before{background:rgba(255,255,255,.16)}
+.btn--ghost:hover{--fg:#fff;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.6)}
 .btn--light{--bg:#fff;--fg:var(--navy);box-shadow:var(--shadow-sm),inset 0 0 0 1.5px var(--line)}
 .btn--light:hover{--fg:#fff}
 .btn--lg{padding:19px 34px;font-size:1.05rem}
@@ -95,7 +95,7 @@ p{margin:0 0 1em}
 .hdr--solid .nav a:hover,.hdr--light .nav a:hover,.hdr--solid .nav button.nav__drop:hover,.hdr--light .nav button.nav__drop:hover{background:var(--cyan-50)}
 .nav a[aria-current="page"]{box-shadow:inset 0 -2px 0 var(--lime)}
 .nav .btn{margin-left:10px;padding:13px 22px;--bg:var(--lime);--fg:var(--navy-950);color:var(--fg)}
-.nav .btn::before{background:#fff}
+.nav .btn::before{background:#9fd45f}
 .hdr--solid .nav .btn,.hdr--light .nav .btn{--bg:var(--navy);--fg:#fff}
 .hdr--solid .nav .btn::before,.hdr--light .nav .btn::before{background:var(--grad)}
 .nav a.btn,.hdr--solid .nav a.btn,.hdr--light .nav a.btn{color:var(--fg);background:var(--bg)}
@@ -431,8 +431,6 @@ a.ccard:hover{background:rgba(255,255,255,.12);color:#fff;transform:translateX(6
 .fab svg{width:26px;height:26px}
 .fab .wa{background:#25d366}.fab .tel{background:var(--navy)}
 
-.cursor{position:fixed;left:0;top:0;width:340px;height:340px;margin:-170px 0 0 -170px;border-radius:50%;pointer-events:none;z-index:1;background:radial-gradient(circle,rgba(70,178,208,.16),transparent 65%);opacity:0;transition:opacity .4s}
-.hero:hover~.cursor{opacity:1}
 
 /* ---------- Responsive ---------- */
 @media (max-width:1080px){
