@@ -1,0 +1,152 @@
+{
+  "versand": {
+    "aktiv": true,
+    "notbremse_ab": "2026-10-03T06:52:00Z",
+    "tagesziel": 90,
+    "tagesziel_ab": "2026-10-03",
+    "tagesziel_schritt": 15,
+    "tagesziel_max": 150,
+    "anbieter_tageslimit": 160,
+    "postfach_start": 60,
+    "postfach_schritt": 15,
+    "postfach_tageslimit": 150,
+    "gesamtgrenze": 5000
+  },
+  "proben": {
+    "fokus_je_seite": 6,
+    "andere_je_seite": 3,
+    "max_alter_stunden": 48
+  },
+  "fokus": [
+    "S2/US",
+    "S2/UK",
+    "S2/FR"
+  ],
+  "nur_fokus": true,
+  "lead_suche": true,
+  "kunden_suche": true,
+  "countries": {
+    "US": {
+      "allowed": true,
+      "daily_limit": 110
+    },
+    "UK": {
+      "allowed": true,
+      "daily_limit": 100
+    },
+    "IE": {
+      "allowed": true,
+      "daily_limit": 30
+    },
+    "NL": {
+      "allowed": true,
+      "daily_limit": 30
+    },
+    "SE": {
+      "allowed": true,
+      "daily_limit": 20
+    },
+    "BE": {
+      "allowed": true,
+      "daily_limit": 15
+    },
+    "FR": {
+      "allowed": true,
+      "daily_limit": 60
+    },
+    "DE": {
+      "allowed": false,
+      "daily_limit": 20
+    },
+    "AT": {
+      "allowed": false,
+      "daily_limit": 20
+    },
+    "CH": {
+      "allowed": false,
+      "daily_limit": 20
+    },
+    "IT": {
+      "allowed": false,
+      "daily_limit": 20
+    },
+    "ES": {
+      "allowed": false,
+      "daily_limit": 20
+    },
+    "PL": {
+      "allowed": false,
+      "daily_limit": 20
+    },
+    "DK": {
+      "allowed": false,
+      "daily_limit": 20
+    }
+  },
+  "workflows": [
+    {
+      "file": "send.yml",
+      "name": "Versand Kaltmails",
+      "crons": [
+        "23 14 * * *"
+      ]
+    },
+    {
+      "file": "lead-werk.yml",
+      "name": "Lead-Werk",
+      "crons": [
+        "23 */3 * * *"
+      ]
+    },
+    {
+      "file": "kunden-werk.yml",
+      "name": "Kunden-Werk",
+      "crons": [
+        "41 */2 * * *"
+      ]
+    },
+    {
+      "file": "proben-vorrat.yml",
+      "name": "Proben-Vorrat",
+      "crons": [
+        "23 * * * *"
+      ]
+    },
+    {
+      "file": "antworten.yml",
+      "name": "Antwort-Assistent",
+      "crons": [
+        "7 6-21 * * *"
+      ]
+    },
+    {
+      "file": "taeglich.yml",
+      "name": "Automatiklauf (Nachfass, Entwürfe)",
+      "crons": [
+        "17 12 * * *"
+      ]
+    },
+    {
+      "file": "kundenlieferung.yml",
+      "name": "Kundenlieferung",
+      "crons": [
+        "53 4 * * 1"
+      ]
+    },
+    {
+      "file": "tagescheck.yml",
+      "name": "Tagescheck",
+      "crons": [
+        "37 17 * * *"
+      ]
+    },
+    {
+      "file": "wachhund.yml",
+      "name": "Wachhund",
+      "crons": [
+        "11,41 * * * *",
+        "26,56 * * * *"
+      ]
+    }
+  ]
+}

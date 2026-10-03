@@ -1,0 +1,121 @@
+#!/usr/bin/env node
+/**
+ * Betriebswerte für das Inhaber-Dashboard aus den Konfigurationsdateien des Repos (config/*.yaml, countries.yaml,
+ * Zeitpläne der GitHub-Workflows) → lib/ops-config.json.
+ *
+ * Läuft vor jedem `npm run build`. Die Vercel-App liegt in app/; liegen die Dateien eine Ebene höher nicht vor
+ * (Build ohne Dateien außerhalb des Root-Verzeichnisses), bleibt die eingecheckte JSON-Datei unverändert.
+ * Nur einfache Schlüssel/Wert-Zeilen werden gelesen – keine YAML-Abhängigkeit.
+ */
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const APP = join(dirname(fileURLToPath(import.meta.url)), "..");
+const ROOT = join(APP, "..");
+const OUT = join(APP, "lib", "ops-config.json");
+
+const read = (p) => (existsSync(join(ROOT, p)) ? readFileSync(join(ROOT, p), "utf8") : null);
+
+/** Wert einer Zeile `schluessel: wert` (ohne Kommentar, ohne Anführungszeichen). */
+function val(text, key) {
+  const m = text?.match(new RegExp(`^${key}:\\s*([^#\\n]+)`, "m"));
+  return m ? m[1].trim().replace(/^["']|["']$/g, "") : null;
+}
+const num = (text, key, dflt) => {
+  const v = Number(val(text, key));
+  return Number.isFinite(v) && val(text, key) !== null ? v : dflt;
+};
+const bool = (text, key, dflt) => (val(text, key) === null ? dflt : val(text, key) === "true");
+
+/** Länder aus countries.yaml: Blockform (`  US:` + eingerückte Felder) und Kurzform (`  DE: { allowed: false … }`). */
+export function parseCountries(text) {
+  const out = {};
+  if (!text) return out;
+  const defLimit = Number(text.match(/^defaults:\s*\n(?:\s+.*\n)*?\s+daily_limit:\s*(\d+)/m)?.[1] ?? 20);
+  const body = text.split(/^countries:\s*$/m)[1] ?? "";
+  let cur = null;
+  for (const line of body.split("\n")) {
+    const inline = line.match(/^ {2}([A-Z]{2}):\s*\{(.*)\}/);
+    if (inline) {
+      out[inline[1]] = { allowed: /allowed:\s*true/.test(inline[2]), daily_limit: Number(inline[2].match(/daily_limit:\s*(\d+)/)?.[1] ?? defLimit) };
+      cur = null;
+      continue;
+    }
+    const head = line.match(/^ {2}([A-Z]{2}):\s*$/);
+    if (head) {
+      cur = head[1];
+      out[cur] = { allowed: false, daily_limit: defLimit };
+      continue;
+    }
+    if (!cur) continue;
+    const f = line.match(/^ {4}(allowed|daily_limit):\s*([^#\s]+)/);
+    if (f) out[cur][f[1]] = f[1] === "allowed" ? f[2] === "true" : Number(f[2]);
+    else if (/^\S/.test(line)) cur = null;
+  }
+  return out;
+}
+
+/** Cron-Ausdrücke eines Workflows (nur aktive Zeilen, keine auskommentierten). */
+export function parseCrons(text) {
+  if (!text) return [];
+  return [...text.matchAll(/^[^#\n]*cron:\s*"([^"]+)"/gm)].map((m) => m[1]);
+}
+
+const WORKFLOWS = {
+  "send.yml": "Versand Kaltmails",
+  "lead-werk.yml": "Lead-Werk",
+  "kunden-werk.yml": "Kunden-Werk",
+  "proben-vorrat.yml": "Proben-Vorrat",
+  "antworten.yml": "Antwort-Assistent",
+  "taeglich.yml": "Automatiklauf (Nachfass, Entwürfe)",
+  "kundenlieferung.yml": "Kundenlieferung",
+  "tagescheck.yml": "Tagescheck",
+  "wachhund.yml": "Wachhund",
+};
+
+function build() {
+  const versand = read("config/versand.yaml");
+  if (versand === null) return null;
+  const proben = read("config/proben.yaml");
+  const fokus = read("config/fokus.yaml");
+  const pipeline = read("config/pipeline.yaml");
+  return {
+    versand: {
+      aktiv: bool(versand, "aktiv", false),
+      notbremse_ab: val(versand, "notbremse_ab"),
+      tagesziel: num(versand, "tagesziel", 100),
+      tagesziel_ab: val(versand, "tagesziel_ab"),
+      tagesziel_schritt: num(versand, "tagesziel_schritt", 0),
+      tagesziel_max: num(versand, "tagesziel_max", num(versand, "tagesziel", 100)),
+      anbieter_tageslimit: num(versand, "anbieter_tageslimit", 100),
+      postfach_start: num(versand, "postfach_start", 60),
+      postfach_schritt: num(versand, "postfach_schritt", 15),
+      postfach_tageslimit: num(versand, "postfach_tageslimit", 100),
+      gesamtgrenze: num(versand, "gesamtgrenze", 1000),
+    },
+    proben: {
+      fokus_je_seite: num(proben, "fokus_je_seite", 6),
+      andere_je_seite: num(proben, "andere_je_seite", 3),
+      max_alter_stunden: num(proben, "max_alter_stunden", 48),
+    },
+    fokus: [...(fokus ?? "").matchAll(/^\s*-\s*(S\d+)\/([A-Z]{2})\s*$/gm)].map((m) => `${m[1]}/${m[2]}`),
+    nur_fokus: bool(fokus, "nur_fokus", false),
+    lead_suche: bool(pipeline, "lead_suche", true),
+    kunden_suche: bool(pipeline, "kunden_suche", true),
+    countries: parseCountries(read("countries.yaml")),
+    workflows: Object.entries(WORKFLOWS).map(([file, name]) => ({ file, name, crons: parseCrons(read(`.github/workflows/${file}`)) })),
+  };
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  const cfg = build();
+  if (!cfg) {
+    console.log("ops-config: config/ nicht gefunden – eingecheckte lib/ops-config.json bleibt");
+  } else {
+    const next = JSON.stringify(cfg, null, 2) + "\n";
+    const prev = existsSync(OUT) ? readFileSync(OUT, "utf8") : "";
+    if (next !== prev) writeFileSync(OUT, next);
+    console.log(`ops-config: ${next === prev ? "unverändert" : "aktualisiert"} (${OUT})`);
+  }
+}
