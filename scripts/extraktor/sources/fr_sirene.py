@@ -59,6 +59,28 @@ def lookup(name: str, postcode: str | None, session: requests.Session | None = N
             "form": form_of(h.get("nature_juridique"))}
 
 
+def by_siren(siren: str, session: requests.Session | None = None) -> dict | None:
+    """SIREN (z. B. aus den Mentions légales der eigenen Website) -> {siren, name, active, nature_juridique, form}.
+    Quellen-Scout R20 (03.10.2026): nur der exakte Treffer zählt."""
+    s = session or requests
+    for attempt in range(3):
+        r = s.get(API, params={"q": siren, "per_page": 5}, timeout=30)
+        if r.status_code == 429:
+            time.sleep(2 * (attempt + 1))
+            continue
+        if r.status_code >= 400:
+            return None
+        break
+    else:
+        return None
+    for h in r.json().get("results") or []:
+        if h.get("siren") == siren:
+            return {"siren": siren, "name": h.get("nom_complet") or h.get("nom_raison_sociale"),
+                    "active": h.get("etat_administratif") == "A",
+                    "nature_juridique": h.get("nature_juridique"), "form": form_of(h.get("nature_juridique"))}
+    return None
+
+
 def match_by_name(firms: dict[str, tuple[str, str | None]], log=print, pause: float = 1.0,
                   limit: int = 800) -> dict[str, dict]:
     """{Domain: (Name, PLZ)} -> {Domain: Treffer}. Höchstens `limit` Abfragen, `pause` Sekunden Abstand

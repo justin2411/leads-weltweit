@@ -195,6 +195,32 @@ def match_by_name(names: dict[str, str], log=print) -> dict[str, str]:
     return out
 
 
+# Rechtsformen, die als „corporate subscriber“ gelten (PECR) und in lib.rules als Kapitalgesellschaft zählen
+CATEGORY_FORM = {"Private Limited Company": "Ltd", "Public Limited Company": "PLC",
+                 "Limited Liability Partnership": "LLP"}
+
+
+def by_number(numbers: set[str], log=print) -> dict[str, dict]:
+    """Firmennummern (z. B. von der eigenen Website) -> {name, status, category, form} aus den Massendaten.
+    Quellen-Scout R20 (03.10.2026): die Nummer auf der Website zählt erst, wenn das Register sie bestätigt."""
+    out: dict[str, dict] = {}
+    if not numbers:
+        return out
+    name = _latest("en_output.html", r'BasicCompanyDataAsOneFile-\d{4}-\d{2}-\d{2}\.zip')
+    with zipfile.ZipFile(_download(name)) as z, z.open(z.namelist()[0]) as f:
+        reader = csv.reader(io.TextIOWrapper(f, encoding="utf-8"))
+        head = [h.strip() for h in next(reader)]
+        ix = {h: i for i, h in enumerate(head)}
+        for row in reader:
+            if len(row) < len(head) or row[ix["CompanyNumber"]] not in numbers:
+                continue
+            cat = row[ix["CompanyCategory"]]
+            out[row[ix["CompanyNumber"]]] = {"name": row[ix["CompanyName"]], "status": row[ix["CompanyStatus"]],
+                                             "category": cat, "form": CATEGORY_FORM.get(cat)}
+    log(f"UK: {len(out)} von {len(numbers)} Firmennummern im Register")
+    return out
+
+
 def details(numbers: set[str], log=print) -> dict[str, dict]:
     """Registrierter Name und Sitz je Firmennummer (aktive Firmen) aus den Massendaten."""
     from extraktor.model import title_case

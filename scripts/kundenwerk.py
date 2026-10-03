@@ -439,6 +439,142 @@ def cmd_run(args) -> int:
     return 0
 
 
+# ---------------------------------------------------------------------------
+# Nachprüfung über die Registernummer (Quellen-Scout R20, 03.10.2026)
+# ---------------------------------------------------------------------------
+RECHECK_MARK = "Registernummer-Nachprüfung"
+RECHECK_PAIRS = "S2:UK,S2:FR,S1:UK"  # FR bleibt für S1-Mail aus (Inhaber)
+
+
+def recheck_rows(db, pairs: list[tuple[str, str]], limit: int) -> list[dict]:
+    """„Nur Anruf/Brief“-Käufer mit Firmen-E-Mail, die nur an der fehlenden Rechtsform scheitern und noch nicht
+    nachgeprüft sind."""
+    out: list[dict] = []
+    for k, (seg, co) in enumerate(pairs):
+        share = (limit - len(out)) // (len(pairs) - k)  # gleichmäßig; was ein Paar nicht braucht, bekommen die übrigen
+        q = {"select": "id,segment_id,country,company_name,website,domain,email,source_url,check_reason",
+             "segment_id": f"eq.{seg}", "country": f"eq.{co}", "check_status": "eq.call_only",
+             "email": "not.is.null", "legal_form": "is.null",
+             "and": f"(check_reason.like.*Rechtsform*,check_reason.not.like.*{RECHECK_MARK[:18]}*)",
+             "order": "id.asc", "limit": str(share)}
+        if share > 0:
+            out += db.select("prospects", q)
+    return out
+
+
+def reg_numbers(d: dict, fetcher) -> list[str]:
+    """Registernummern von der eigenen Website: Startseite + Kontakt/Impressum/AGB; FR zusätzlich /mentions-legales."""
+    from lib import regnum
+    res = site_scan(d["website"], fetcher)
+    html = res["html"]
+    if d["country"] == "FR" and res["pages"] and not any(re.search(r"mentions|legal", p, re.I) for p in res["pages"]):
+        got = fetcher.get(res["pages"][0].rstrip("/") + "/mentions-legales")
+        if got:
+            html += "\n" + got[1]
+    text = regnum.plain_text(html)
+    return regnum.fr_sirens(text) if d["country"] == "FR" else regnum.uk_numbers(text)
+
+
+def verify_numbers(found: dict[int, list[str]], rows: dict[int, dict], fetcher, log=print) -> dict[int, dict]:
+    """{Zeilen-ID: Nummern} -> {Zeilen-ID: Registertreffer} – nur aktive Kapitalgesellschaften."""
+    out: dict[int, dict] = {}
+    uk = {n for i, ns in found.items() if rows[i]["country"] == "UK" for n in ns}
+    if uk:
+        from extraktor.sources import uk_ch
+        reg = uk_ch.by_number(uk, log=log)
+        for i, ns in found.items():
+            if rows[i]["country"] != "UK":
+                continue
+            for n in ns:
+                h = reg.get(n)
+                if h and h["status"] == "Active" and h["form"]:
+                    out[i] = {"form": h["form"], "note": f"Company No. {n} (Website + Companies House: {h['name'][:80]})"}
+                    break
+    from extraktor.sources import fr_sirene
+    session = requests.Session()
+    for i, ns in found.items():
+        if rows[i]["country"] != "FR":
+            continue
+        for n in ns[:2]:
+            h = fetcher.api("recherche-entreprises.api.gouv.fr", 0.3, fr_sirene.by_siren, n, session)
+            if h and h["active"] and h["form"]:
+                out[i] = {"form": h["form"], "note": f"SIREN {n} (Mentions légales + Annuaire des entreprises: {(h['name'] or '')[:80]})"}
+                break
+    return out
+
+
+def cmd_recheck(args) -> int:
+    """Käufer „nur Anruf/Brief“ wegen fehlender Rechtsform erneut prüfen: Registernummer auf der eigenen Website,
+    vom Register bestätigt (aktive Ltd/PLC/LLP bzw. SAS/SASU/SARL/EURL/SA) -> dieselbe Prüfregel wie immer
+    (lib.rules.check_prospect). Ändert nur den Prüfstand dieser Zeilen, löscht nichts, sendet nie."""
+    from lib.db import DB
+    from enrich import Fetcher
+    db = DB()
+    cfg = load_countries()
+    pairs = [tuple(p.split(":")) for p in args.pairs.split(",") if ":" in p]
+    rows = {r["id"]: r for r in recheck_rows(db, pairs, args.max)}
+    log(f"Nachprüfung Registernummer: {len(rows)} Käufer ({args.pairs})")
+    if not rows:
+        return 0
+    blocked = {r["value"].lower() for r in db.select_all("suppression", {"select": "value"}) if r.get("value")}
+    fetcher = Fetcher()
+    deadline = time.monotonic() + args.deadline_min * 60 if args.deadline_min else 0
+    found: dict[int, list[str]] = {}
+    done: set[int] = set()
+    lock = threading.Lock()
+
+    def work(i):
+        if deadline and time.monotonic() >= deadline:
+            return
+        try:
+            ns = reg_numbers(rows[i], fetcher)
+        except Exception as exc:  # noqa: BLE001 - eine Firma darf den Lauf nicht beenden
+            log(f"Fehler {rows[i]['domain']}: {type(exc).__name__}")
+            return
+        with lock:
+            done.add(i)
+            if ns:
+                found[i] = ns
+
+    with ThreadPoolExecutor(max_workers=args.workers) as ex:
+        list(ex.map(work, list(rows)))
+    hits = verify_numbers(found, rows, fetcher, log=log)
+    stats = Counter()
+    today = dt.date.today().strftime("%d.%m.%Y")
+    for i in sorted(done):
+        r = rows[i]
+        h = hits.get(i)
+        chk = None
+        if h:
+            sup = r["domain"] in blocked or (r["email"] or "").lower() in blocked
+            chk = check_prospect(email=r["email"], country=r["country"], website=r["website"], legal_form=h["form"],
+                                 source_url=r["source_url"], size_note=h["note"], suppressed=sup, cfg=cfg)
+        if chk and chk.ok:
+            vals = {"check_status": "ok", "legal_form": h["form"], "size_note": h["note"][:300],
+                    "check_reason": f"{chk.summary()} | {RECHECK_MARK} {today}"[:500],
+                    "checked_at": dt.datetime.now(dt.timezone.utc).isoformat()}
+            stats[f"{r['segment_id']}/{r['country']}:ok"] += 1
+        else:
+            why = ("Register bestätigt, Prüfung: " + chk.summary()) if chk else (
+                f"Nummer {', '.join(found[i][:2])} nicht als aktive Kapitalgesellschaft bestätigt" if i in found
+                else "keine Nummer auf der Website")
+            tail = f" | {RECHECK_MARK} {today}: {why}"
+            vals = {"check_reason": ((r["check_reason"] or "")[:max(0, 500 - len(tail))] + tail)[:500]}
+            stats[f"{r['segment_id']}/{r['country']}:bleibt"] += 1
+        if args.dry_run:
+            continue
+        try:
+            db.update("prospects", {"id": i}, vals)
+        except RuntimeError as exc:  # eine Zeile darf den Lauf nicht beenden; sie kommt im nächsten Lauf wieder
+            stats["Speicherfehler"] += 1
+            log(f"Speicherfehler {r['domain']}: {str(exc)[:80]}")
+    log(f"fertig: {len(done)} geprüft, {len(found)} mit Registernummer, {len(hits)} vom Register bestätigt"
+        f"{' (Probelauf, nichts gespeichert)' if args.dry_run else ''}")
+    for k, v in sorted(stats.items()):
+        log(f"  {k} {v}")
+    return 0
+
+
 def cmd_stand(args) -> int:
     from lib.db import DB
     db = DB()
@@ -465,12 +601,20 @@ def main(argv=None) -> int:
                    help="nach N Minuten keine neuen Firmen mehr anfangen, Ergebnisse speichern (0 = aus)")
     sub.add_parser("stand")
     sub.add_parser("known")
+    n = sub.add_parser("nachpruefen", help="nur Anruf/Brief wegen Rechtsform: Registernummer der Website prüfen")
+    n.add_argument("--pairs", default=RECHECK_PAIRS, help="Zielgruppe:Land, z. B. S2:UK,S2:FR")
+    n.add_argument("--max", type=int, default=2000)
+    n.add_argument("--workers", type=int, default=16)
+    n.add_argument("--deadline-min", type=float, default=0)
+    n.add_argument("--dry-run", action="store_true", help="nur zählen, nichts speichern")
     args = ap.parse_args(argv)
     if args.cmd == "pool":
         build_pool()
         return 0
     if args.cmd == "known":
         return cmd_known(args)
+    if args.cmd == "nachpruefen":
+        return cmd_recheck(args)
     return cmd_run(args) if args.cmd == "run" else cmd_stand(args)
 
 
