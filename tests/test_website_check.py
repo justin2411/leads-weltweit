@@ -307,7 +307,12 @@ class LeadTests(unittest.TestCase):
                 self.assertIn("--fmcsa-days 0", e["args"])  # US-Teil lädt keine fremden Quellen
         # Website-Teile zuerst (starten bei max-parallel sofort), US ohne Website nicht gekürzt
         self.assertTrue(all(e["name"].startswith("web-") for e in include[:len(web)]))
-        self.assertEqual(sum(e["name"].startswith("s2-us-") for e in include), 18)
+        self.assertGreaterEqual(sum(e["name"].startswith(("s2-us-", "web-us-")) for e in include), 18)
+        self.assertGreaterEqual(sum(e["name"].startswith("s2-us-") for e in include), 1)  # Neuzugänge im Monatsauszug
+        # Gedächtnis aller Teile eines Landes wird geladen (sonst prüft ein Teil Seiten erneut)
+        loads = sum("Gedächtnis der Website-Prüfung laden" in (s.get("name") or "") for s in jobs["holen"]["steps"])
+        for co in ("us", "uk", "fr"):
+            self.assertLessEqual(sum(e["name"].startswith(f"web-{co}-") for e in web), loads, co)
         run = next(s["run"] for s in jobs["holen"]["steps"] if s.get("name") == "Leads holen, prüfen, speichern")
         self.assertIn("--workers ${{ matrix.workers || 16 }}", run)
 

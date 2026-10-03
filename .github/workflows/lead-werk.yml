@@ -78,47 +78,50 @@ jobs:
       matrix:
         include:
           # Website-Prüfung S2 im großen Stil (Inhaber 02.10.2026: „mach das jetzt bitte im ganz großen stil und hol viele
-          # leads rein“): 9 Teile mit je 40 gleichzeitigen Abrufen (verschiedene Domains, je Domain weiter 1/s, robots.txt).
+          # leads rein“): 26 Teile (seit R16) mit je 40 gleichzeitigen Abrufen (verschiedene Domains, je Domain weiter 1/s, robots.txt).
           # Zuerst in der Liste, damit sie immer sofort starten. Plätze von S2 ohne Website in FR (3 -> 1),
           # UK (1 -> 0) und IE/NL/BE/SE (4 -> 1 gemeinsamer Teil): dort liegen schon ~130.000 Leads bei wenigen Käufern.
-          - { name: web-us-0, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 0/5" }
-          - { name: web-us-1, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 1/5" }
-          - { name: web-us-2, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 2/5" }
-          - { name: web-us-3, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 3/5" }
-          - { name: web-us-4, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 4/5" }
-          - { name: web-uk-0, workers: 40, args: "--segments S2 --countries UK --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 0/2" }
-          - { name: web-uk-1, workers: 40, args: "--segments S2 --countries UK --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 1/2" }
-          - { name: web-fr-0, workers: 40, args: "--segments S2 --countries FR --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 0/2" }
-          - { name: web-fr-1, workers: 40, args: "--segments S2 --countries FR --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 1/2" }
+          - { name: web-us-0, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 0/16" }
+          - { name: web-us-1, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 1/16" }
+          - { name: web-us-2, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 2/16" }
+          - { name: web-us-3, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 3/16" }
+          - { name: web-us-4, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 4/16" }
+          - { name: web-us-5, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 5/16" }
+          - { name: web-us-6, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 6/16" }
+          - { name: web-us-7, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 7/16" }
+          - { name: web-us-8, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 8/16" }
+          - { name: web-us-9, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 9/16" }
+          - { name: web-us-10, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 10/16" }
+          - { name: web-us-11, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 11/16" }
+          - { name: web-us-12, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 12/16" }
+          - { name: web-us-13, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 13/16" }
+          - { name: web-us-14, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 14/16" }
+          - { name: web-us-15, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 15/16" }
+          - { name: web-uk-0, workers: 40, args: "--segments S2 --countries UK --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 0/5" }
+          - { name: web-uk-1, workers: 40, args: "--segments S2 --countries UK --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 1/5" }
+          - { name: web-uk-2, workers: 40, args: "--segments S2 --countries UK --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 2/5" }
+          - { name: web-uk-3, workers: 40, args: "--segments S2 --countries UK --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 3/5" }
+          - { name: web-uk-4, workers: 40, args: "--segments S2 --countries UK --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 4/5" }
+          - { name: web-fr-0, workers: 40, args: "--segments S2 --countries FR --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 0/5" }
+          - { name: web-fr-1, workers: 40, args: "--segments S2 --countries FR --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 1/5" }
+          - { name: web-fr-2, workers: 40, args: "--segments S2 --countries FR --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 2/5" }
+          - { name: web-fr-3, workers: 40, args: "--segments S2 --countries FR --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 3/5" }
+          - { name: web-fr-4, workers: 40, args: "--segments S2 --countries FR --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 4/5" }
           # Quellen-Scout S1 (Inhaber 02.10.2026: „recruiting kunden und leads … darauf fokussieren“): US-Arbeitgeber mit
           # Fachkräfte-Bedarf aus den DOL-LCA-Daten, Test 50 -> 26 grün
           - { name: s1-us-lca, args: "--segments S1 --countries US --fmcsa-days 0 --formd-days 0 --s1-probe 0 --lca --per 4000 --max-tries 4000" }
-          # S2 ohne Website: IE/NL/BE/SE ein Teil (FR ruht seit R15, Platz an s1-uk-tender). UK ohne Website ruht (Lauf 19: 5 grüne aus 3.792, Vorrat
-          # erschöpft, nur noch Rohbestand, Speichern lief in Zeitüberschreitung); der Platz ging an web-us-4
+          # S2 ohne Website: IE/NL/BE/SE ruht seit R16 (03.10.2026: 0 grüne je Lauf, BE nur noch ohne E-Mail, IE/NL leer,
+          # schrieb nur Rohbestand). FR ruht seit R15 (Platz an s1-uk-tender). UK ohne Website ruht (Lauf 19: 5 grüne aus 3.792)
           # Quellen-Scout R15 (02.10.2026): S1 UK aus Find a Tender (KMU mit gewonnenem öffentlichem Auftrag, OGL v3),
           # Test 300 -> 82 grün. Platz von s2-fr-0 (S2 FR ohne Website: ~47.500 Leads im Bestand, FR-Website-Prüfung
           # läuft weiter mit 2 Teilen). Schnittstelle und Companies-House-Daten höchstens einmal am Tag (Zwischenspeicher)
           - { name: s1-uk-tender, workers: 32, args: "--segments S1 --countries UK --s1-probe 0 --tender-days 45 --tender-pages 25 --per 4000 --max-tries 4000" }
-          - { name: s2-north-0, args: "--segments S2 --countries IE,NL,BE,SE --s2-limit 20000 --per 4000 --max-tries 4000" }
-          # Fokus Webagenturen (Inhaber 02.10.2026): US-Firmen ohne Website aus Overture, ~390.000 mit E-Mail, Test 95 % grün
-          - { name: s2-us-0, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 0/18" }
-          - { name: s2-us-1, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 1/18" }
-          - { name: s2-us-2, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 2/18" }
-          - { name: s2-us-3, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 3/18" }
-          - { name: s2-us-4, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 4/18" }
-          - { name: s2-us-5, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 5/18" }
-          - { name: s2-us-6, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 6/18" }
-          - { name: s2-us-7, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 7/18" }
-          - { name: s2-us-8, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 8/18" }
-          - { name: s2-us-9, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 9/18" }
-          - { name: s2-us-10, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 10/18" }
-          - { name: s2-us-11, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 11/18" }
-          - { name: s2-us-12, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 12/18" }
-          - { name: s2-us-13, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 13/18" }
-          - { name: s2-us-14, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 14/18" }
-          - { name: s2-us-15, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 15/18" }
-          - { name: s2-us-16, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 16/18" }
-          - { name: s2-us-17, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 17/18" }
+          # Fokus Webagenturen (Inhaber 02.10.2026): US-Firmen ohne Website aus Overture, ~390.000 mit E-Mail, Test 95 % grün.
+          # Scout R16 (03.10.2026): Vorrat abgearbeitet (je Teil 1 Kandidat, 0 grün; S2 US 257.755 Leads) -> 18 -> 2 Teile
+          # für Neuzugänge im Monatsauszug; die 16 Plätze und der von s2-north-0 gehen an die Website-Prüfung (US 5 -> 16, UK 2 -> 5,
+          # FR 2 -> 5); US-S2 hat damit 18 statt 23 Teile, aber alle mit Ertrag
+          - { name: s2-us-0, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 0/2" }
+          - { name: s2-us-1, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 1/2" }
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -229,6 +232,116 @@ jobs:
       - name: Gedächtnis Teil 5 ablegen
         if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
         run: '[ -f out/cache/webcheck_seen.json ] && mv out/cache/webcheck_seen.json out/cache/webcheck_seen_5.json || true'
+      - name: Gedächtnis der Website-Prüfung laden (Teil 6)
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/webcheck_seen.json
+          key: webcheck-${{ steps.wc.outputs.land }}-6-none
+          restore-keys: |
+            webcheck-${{ steps.wc.outputs.land }}-6-
+      - name: Gedächtnis Teil 6 ablegen
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        run: '[ -f out/cache/webcheck_seen.json ] && mv out/cache/webcheck_seen.json out/cache/webcheck_seen_6.json || true'
+      - name: Gedächtnis der Website-Prüfung laden (Teil 7)
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/webcheck_seen.json
+          key: webcheck-${{ steps.wc.outputs.land }}-7-none
+          restore-keys: |
+            webcheck-${{ steps.wc.outputs.land }}-7-
+      - name: Gedächtnis Teil 7 ablegen
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        run: '[ -f out/cache/webcheck_seen.json ] && mv out/cache/webcheck_seen.json out/cache/webcheck_seen_7.json || true'
+      - name: Gedächtnis der Website-Prüfung laden (Teil 8)
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/webcheck_seen.json
+          key: webcheck-${{ steps.wc.outputs.land }}-8-none
+          restore-keys: |
+            webcheck-${{ steps.wc.outputs.land }}-8-
+      - name: Gedächtnis Teil 8 ablegen
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        run: '[ -f out/cache/webcheck_seen.json ] && mv out/cache/webcheck_seen.json out/cache/webcheck_seen_8.json || true'
+      - name: Gedächtnis der Website-Prüfung laden (Teil 9)
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/webcheck_seen.json
+          key: webcheck-${{ steps.wc.outputs.land }}-9-none
+          restore-keys: |
+            webcheck-${{ steps.wc.outputs.land }}-9-
+      - name: Gedächtnis Teil 9 ablegen
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        run: '[ -f out/cache/webcheck_seen.json ] && mv out/cache/webcheck_seen.json out/cache/webcheck_seen_9.json || true'
+      - name: Gedächtnis der Website-Prüfung laden (Teil 10)
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/webcheck_seen.json
+          key: webcheck-${{ steps.wc.outputs.land }}-10-none
+          restore-keys: |
+            webcheck-${{ steps.wc.outputs.land }}-10-
+      - name: Gedächtnis Teil 10 ablegen
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        run: '[ -f out/cache/webcheck_seen.json ] && mv out/cache/webcheck_seen.json out/cache/webcheck_seen_10.json || true'
+      - name: Gedächtnis der Website-Prüfung laden (Teil 11)
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/webcheck_seen.json
+          key: webcheck-${{ steps.wc.outputs.land }}-11-none
+          restore-keys: |
+            webcheck-${{ steps.wc.outputs.land }}-11-
+      - name: Gedächtnis Teil 11 ablegen
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        run: '[ -f out/cache/webcheck_seen.json ] && mv out/cache/webcheck_seen.json out/cache/webcheck_seen_11.json || true'
+      - name: Gedächtnis der Website-Prüfung laden (Teil 12)
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/webcheck_seen.json
+          key: webcheck-${{ steps.wc.outputs.land }}-12-none
+          restore-keys: |
+            webcheck-${{ steps.wc.outputs.land }}-12-
+      - name: Gedächtnis Teil 12 ablegen
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        run: '[ -f out/cache/webcheck_seen.json ] && mv out/cache/webcheck_seen.json out/cache/webcheck_seen_12.json || true'
+      - name: Gedächtnis der Website-Prüfung laden (Teil 13)
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/webcheck_seen.json
+          key: webcheck-${{ steps.wc.outputs.land }}-13-none
+          restore-keys: |
+            webcheck-${{ steps.wc.outputs.land }}-13-
+      - name: Gedächtnis Teil 13 ablegen
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        run: '[ -f out/cache/webcheck_seen.json ] && mv out/cache/webcheck_seen.json out/cache/webcheck_seen_13.json || true'
+      - name: Gedächtnis der Website-Prüfung laden (Teil 14)
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/webcheck_seen.json
+          key: webcheck-${{ steps.wc.outputs.land }}-14-none
+          restore-keys: |
+            webcheck-${{ steps.wc.outputs.land }}-14-
+      - name: Gedächtnis Teil 14 ablegen
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        run: '[ -f out/cache/webcheck_seen.json ] && mv out/cache/webcheck_seen.json out/cache/webcheck_seen_14.json || true'
+      - name: Gedächtnis der Website-Prüfung laden (Teil 15)
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/webcheck_seen.json
+          key: webcheck-${{ steps.wc.outputs.land }}-15-none
+          restore-keys: |
+            webcheck-${{ steps.wc.outputs.land }}-15-
+      - name: Gedächtnis Teil 15 ablegen
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
+        run: '[ -f out/cache/webcheck_seen.json ] && mv out/cache/webcheck_seen.json out/cache/webcheck_seen_15.json || true'
       - name: US-Auszug laden
         if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 's2-us-')
         uses: actions/cache/restore@v4
