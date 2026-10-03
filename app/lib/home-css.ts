@@ -548,5 +548,7 @@ export const HOME_CSS = `
 .hpz .hp-formcard::before{inset:-1px;padding:1px;background:conic-gradient(from var(--beam),transparent 0 72%,rgba(226,198,143,0) 72%,#E2C68F 90%,#fff 97%,rgba(255,255,255,0) 100%);animation:none}
 .hpz.hp-motion .hp-formcard::before{animation:hp-beam-spin 8s linear infinite;animation-play-state:paused}
 .hpz.hp-motion .hp-formcard.is-live::before{animation-play-state:running;will-change:transform}
+/* Kennzahlen-Überschrift wie „How it works in 51 seconds“ (Inhaber 03.10.2026) */
+.hpz .hp-proof__rule{margin:0 0 18px}
 `;
 
