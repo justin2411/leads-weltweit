@@ -21,6 +21,8 @@ import { LANDING_V2_CSS } from "@/lib/landing-v2-css";
 import { HOME } from "../../home-i18n";
 import { CONTACT } from "@/lib/site";
 import { LandingFx } from "./landing-fx";
+import { ContactPersonSec } from "../../contact-person";
+import { CONTACT_PATH } from "../../contact/contact-i18n";
 import { Common, Faq, HeroStage, Method, SampleSec, type ExampleLead } from "./landing-parts";
 import { HERO_SIGNALS, LZ, METHOD, SOURCES, ccOf, segOf } from "./landing-i18n";
 import S2_US from "@/content/maps/s2-us.json";
@@ -546,6 +548,9 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
             intro={known ? L.sendsTo(CW.land, personal!.email!) : lz.formIntro} form={form} place={cname}
             how={lz.howForm.map((x) => x.replace("{across}", lz.across[cc]))} />
         )}
+
+        {/* Persönlicher Ansprechpartner wie auf der Startseite, nach dem Formular (Inhaber 03.10.2026) */}
+        <div className="hpz"><ContactPersonSec t={H} contactHref={CONTACT_PATH[wl]} /></div>
 
         <Faq t={H} contact={CONTACT} />
       </div>
