@@ -4,14 +4,10 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
 export const SECTIONS: [string, string, string][] = [
+  // Inhaber 03.10.2026: wenige Reiter – alles Weitere öffnet sich über die Stationen der Fluss-Karte in JARVIS
   ["/dashboard/jarvis", "JARVIS", "◎"],
-  ["/dashboard", "Übersicht", "◉"],
-  ["/dashboard/versand", "Versand", "✉"],
   ["/dashboard/kontakte", "Kontakte", "☰"],
-  ["/dashboard/proben", "Proben", "◫"],
-  ["/dashboard/bestand", "Bestand", "▤"],
   ["/dashboard/kunden", "Kunden", "€"],
-  ["/dashboard/werke", "Werke", "⚙"],
 ];
 
 /** Bereiche des Dashboards: oben als Tabs, am Handy als Leiste unten. Land- und Zeitraum-Auswahl bleiben erhalten. */

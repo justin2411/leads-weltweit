@@ -1,172 +1,288 @@
 import Link from "next/link";
-import { CONFIG, SEGMENT, canDispatch, loadActivity, loadLive, loadOwnerSettings, loadRunRows, loadStock } from "@/lib/dashboard-data";
-import { berlin, compact, mailboxes, nextRun, onlySegment, stockSegment } from "@/lib/dashboard-logic";
-import { coach, hall, laneStats, running, utilization, laneOf, type Beat } from "@/lib/leitstand";
-import { WERK_SWITCHES, WORKFLOWS, slotCounts, werkOn, type LaneRegistry, type WerkKey } from "@/lib/owner-settings";
-import { werkStatus, isLive, type WerkId } from "@/lib/werke-live";
+import type { ReactNode } from "react";
+import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadDaily, loadGateChecks, loadLive, loadOwnerSettings, loadRecentSent, loadRunRows, loadStock } from "@/lib/dashboard-data";
+import { berlin, berlinDay, chain, compact, currencySign, mailboxes, monthly, nextRun, onlySegment, realSubscriptions, sampleStock, stockSegment, COUNTRY_COLOR } from "@/lib/dashboard-logic";
+import { totals } from "@/lib/dashboard-periods";
+import { coach, hall, laneOf, laneStats, running, utilization, type Beat } from "@/lib/leitstand";
+import { NECK_TO_STATION, ticker, type Edge, type Station, type StationId, type TickerItem } from "@/lib/fluss";
+import { WORKFLOWS, effectiveLimit, slotCounts, werkOn, type LaneRegistry } from "@/lib/owner-settings";
+import { isLive, werkStatus } from "@/lib/werke-live";
 import LANES from "@/lib/werk-linien.json";
 import { requireOwner } from "../actions";
-import { dispatchWorkflow, saveSlotPlan } from "../control-actions";
+import { dispatchWorkflow, saveCountryLimits, saveFollowups, saveSampleTargets, saveSlotPlan, setPaused, toggleBuyerCountry, toggleSendCountry } from "../control-actions";
 import { WerkSwitch } from "../werk-switch";
 import { Back } from "../v2";
-import { Bays, Gauge, LANE_COLOR, Panel, Reactor, UtilChart, laneColor } from "./hud";
+import { Ampeln, Drawer, FlowMap, MiniBars, Ticker } from "./flow";
+import { Bays, LANE_COLOR, Reactor, UtilChart, laneColor } from "./hud";
 import { Pult } from "./pult";
+import { AgentDrawer, AgentRow } from "./agents";
 import { Clock, Voice } from "./voice";
 
 export const metadata = { title: "JARVIS" };
-
 const REG = LANES as unknown as LaneRegistry;
-
-/** Maschinen: Schalter, Status, nächster Start, Start-Knopf (wo es einen Ablauf gibt). */
-const MACHINES: { key: WerkKey; werk?: WerkId; maxH: number; wf?: keyof typeof WORKFLOWS; file: string; what: string }[] = [
-  { key: "lead-werk", werk: "lead-werk", maxH: 4, wf: "lead-werk", file: "lead-werk.yml", what: "Leads holen, prüfen, speichern" },
-  { key: "kunden-werk", werk: "kunden-werk", maxH: 5, wf: "kunden-werk", file: "kunden-werk.yml", what: "Webagenturen als Käufer prüfen" },
-  { key: "proben-vorrat", werk: "proben-vorrat", maxH: 26, wf: "proben-vorrat", file: "proben-vorrat.yml", what: "fertige, geprüfte Proben bereithalten" },
-  { key: "versand", werk: "versand", maxH: 26, wf: "versand", file: "send.yml", what: "Kaltmails im Rahmen der Limits" },
-  { key: "nachfass", maxH: 26, file: "taeglich.yml", what: "Nachfassmail nach 4 Tagen ohne Antwort" },
-  { key: "antworten", werk: "antworten", maxH: 30, file: "antworten.yml", what: "Antworten lesen, Proben senden, Abmeldungen sperren" },
-  { key: "kundenlieferung", maxH: 170, file: "kundenlieferung.yml", what: "Lieferungen an zahlende Kunden (montags)" },
-  { key: "tagescheck", maxH: 26, file: "tagescheck.yml", what: "täglicher Gesamtcheck per Mail" },
-];
+type SP = Promise<Record<string, string | string[] | undefined>>;
+const IDS: StationId[] = ["lead", "gate", "bestand", "proben", "kwerk", "kaeufer", "versand", "antworten", "kunden"];
 
 /**
- * JARVIS – Leitstand der Werke (Inhaber 03.10.2026: „das ganze dashboard als wirklich industrie leitung … die werke
- * und alles daran wie maschinen steuern … futuristisch … wie bei tony stark … nenne es auch jarvis“).
+ * JARVIS – Fluss-Karte des ganzen Geschäfts (Inhaber 03.10.2026: „besser strukturieren … informiert werden,
+ * einstellen und überprüfen … wenig text … grafiken die anklickbar sind … sehen was läuft und was wohin läuft“).
+ * Oben 4 Ampeln, in der Mitte der Fluss (Ware oben, Käufer unten, Kunden rechts), unten der Live-Ticker.
+ * Klick auf eine Station öffnet ihr Seitenfenster: Info · Einstellen · Prüfen.
  */
-export default async function Jarvis() {
+export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   await requireOwner();
+  const sp = await searchParams;
+  const s = (typeof sp.s === "string" && IDS.includes(sp.s as StationId) ? sp.s : null) as StationId | null;
+  const tab = (sp.t === "set" || sp.t === "check" ? sp.t : "info") as "info" | "set" | "check";
+  // Agenten: ?a=1…4 oder ?a=neu öffnet das Agenten-Fenster (statt einer Station)
+  const ag = typeof sp.a === "string" && /^([1-9]|neu)$/.test(sp.a) ? sp.a : null;
   const stockP = loadStock();
   stockP.catch(() => {});
-  const [liveAll, own, act, rows, stockAll] = await Promise.all([
+  const today = berlinDay(new Date());
+  const from7 = new Date(Date.parse(`${today}T12:00:00Z`) - 6 * 86_400_000).toISOString().slice(0, 10);
+  const [liveAll, own, act, rows, stockAll, daily, sent, checks, agentTasks] = await Promise.all([
     loadLive(), loadOwnerSettings(), loadActivity(), loadRunRows(24),
     Promise.race([stockP.catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 2500))]),
+    loadDaily(from7, today), loadRecentSent(12), s === "lead" || s === "gate" ? loadGateChecks(14, s === "gate" && tab === "check" && sp.f === "rot") : Promise.resolve([]),
+    loadAgentTasks(),
   ]);
   const live = onlySegment(liveAll, SEGMENT);
   const stock = stockSegment(stockAll, SEGMENT);
   const now = new Date(live.now);
   const t = now.getTime();
-  const plan = slotCounts(REG, own.slot_plan);
-  const custom = Object.keys(own.slot_plan ?? {}).length > 0;
+  const countries = COUNTRIES;
+  const cfg = { ...CONFIG, sample_overrides: own.sample_targets };
+
+  // ---------------------------------------------------------------- Zahlen
   const beats = act.heartbeats as Beat[];
+  const plan = slotCounts(REG, own.slot_plan);
   const bays = hall(REG, plan, beats, t);
-  const run = bays.filter((b) => b.state === "run").length;
   const busy = bays.filter((b) => b.state === "run" || b.state === "other").length;
   const stats = laneStats(REG, rows, t);
   const firstRun = rows.reduce<number | null>((a, r) => (r.started_at && (a === null || Date.parse(r.started_at) < a) ? Date.parse(r.started_at) : a), null);
   const util = utilization(rows, beats, t, REG.total_slots, 24, 30, firstRun);
-  const countedNote = firstRun && firstRun > t - 24 * 3_600_000 ? `gezählt seit ${berlin(new Date(firstRun))}` : "letzte 24 h";
-  const cap = REG.total_slots - REG.reserve;
-
-  // Kennzahlen (echte Zählungen)
-  const countries = ["US", "UK", "FR"];
-  const queue = Object.fromEntries(countries.map((c) => [c, live.msg.filter((m) => m.country === c && m.kind === "initial" && m.status === "approved").reduce((a, m) => a + Number(m.n), 0)]));
-  const freeBuyers = Object.fromEntries(countries.map((c) => [c, Number(stock?.prospects.find((p) => p.country === c && p.check_status === "ok")?.unused ?? 0)]));
-  const leads = Object.fromEntries(countries.map((c) => [c, stock ? stock.leads.filter((l) => l.country === c && l.status === "new").reduce((a, l) => a + Number(l.n), 0) : 0]));
+  const n = (x: number | string | null | undefined) => Number(x ?? 0);
+  const leadsNew = Object.fromEntries(countries.map((c) => [c, stock ? stock.leads.filter((l) => l.country === c && l.status === "new").reduce((a, l) => a + n(l.n), 0) : 0]));
+  const leads24 = stockAll ? stockAll.leads_24h.filter((l) => l.segment_id === SEGMENT).reduce((a, l) => a + n(l.n), 0) : 0;
+  const ok = (c: string) => stock?.prospects.find((p) => p.country === c && p.check_status === "ok");
+  const freeBuyers = Object.fromEntries(countries.map((c) => [c, n(ok(c)?.unused)]));
+  const queue = Object.fromEntries(countries.map((c) => [c, live.msg.filter((m) => m.country === c && m.kind === "initial" && m.status === "approved").reduce((a, m) => a + n(m.n), 0)]));
   const boxes = mailboxes(liveAll, CONFIG);
-  const capPerDay = boxes.reduce((a, b) => a + b.cap, 0);
-  const sentToday = boxes.reduce((a, b) => a + b.today, 0);
-  const kundenNew24h = stockAll ? stockAll.prospects_24h.filter((p) => p.check_status === "ok").reduce((a, p) => a + Number(p.n), 0) : null;
-  const leads24h = stockAll ? stockAll.leads_24h.reduce((a, l) => a + Number(l.n), 0) : 0;
-  const failed = beats.filter((b) => /^abgebrochen/.test(b.note ?? "") && t - Date.parse(b.beat_at) < 6 * 3_600_000)
-    .map((b) => `${b.werk} ${b.part} um ${berlin(b.beat_at)}: ${b.note}`);
-  const tips = coach({ reg: REG, plan, stats, util: util.rate, queue, freeBuyers, leads, capPerDay, kundenNew24h, failed, countedHours: firstRun ? Math.min(24, (t - firstRun) / 3_600_000) : 0 });
-  const sp = act.stichprobe ?? [];
-  const spChecked = sp.reduce((a, r) => a + r.candidates, 0), spGreen = sp.reduce((a, r) => a + r.green, 0);
-  const gatePct = spChecked ? Math.round((spGreen / spChecked) * 1000) / 10 : null;
+  const cap = boxes.reduce((a, b) => a + b.cap, 0), sentToday = boxes.reduce((a, b) => a + b.today, 0);
+  const newBuyers24 = stockAll ? stockAll.prospects_24h.filter((p) => p.check_status === "ok" && p.segment_id === SEGMENT).reduce((a, p) => a + n(p.n), 0) : 0;
+  const w = totals(daily, from7, today, countries);
+  const subs = realSubscriptions(live).filter((x) => countries.includes(x.customer?.country ?? ""));
+  const rev = new Map<string, number>();
+  for (const x of subs) rev.set(currencySign(x.currency, x.customer?.country), (rev.get(currencySign(x.currency, x.customer?.country)) ?? 0) + monthly(x));
+  const revenue = [...rev].map(([c, v]) => `${compact(v)} ${c}`).join(" + ") || "0";
+  const st = sampleStock(live, cfg, now).filter((r) => countries.some((c) => r.key.endsWith(`/${c}`)));
+  const ready = st.reduce((a, r) => a + r.ready, 0), target = st.reduce((a, r) => a + r.target, 0);
+  const sp7 = act.stichprobe ?? [];
+  const spC = sp7.reduce((a, r) => a + r.candidates, 0), spG = sp7.reduce((a, r) => a + r.green, 0);
+  const gatePct = spC ? Math.round((spG / spC) * 1000) / 10 : null;
+  const gateOk = n(act.gate_60m?.released), gateBad = n(act.gate_60m?.failed);
+  const neck = NECK_TO_STATION[chain(live, stock, cfg, countries).bottleneck ?? ""] ?? null;
 
-  // nächster Start je Werk (deutsche Zeit): Werke starten sich nach jedem Lauf selbst neu, Zeitplan als Rückfall
-  const nx = (file: string) => { const w = CONFIG.workflows.find((x) => x.file === file); const d = w ? nextRun(w.crons, now) : null; return d ? berlin(d, false) : "–"; };
-  const leadRunning = beats.some((b) => b.werk === "lead-werk" && running(b, t));
-  const kundenRunning = beats.some((b) => b.werk === "kunden-werk" && running(b, t));
-  const nextStart = { "lead-werk": leadRunning ? "nach diesem Lauf" : `spätestens ${nx("lead-werk.yml")}`, "kunden-werk": kundenRunning ? "nach diesem Lauf" : `spätestens ${nx("kunden-werk.yml")}` };
-  const liveByLane: Record<string, number> = {};
-  for (const b of beats) if (running(b, t)) { const l = laneOf(b.werk, b.part); if (l) liveByLane[l] = (liveByLane[l] ?? 0) + 1; }
+  // ---------------------------------------------------------------- Stationen
+  const sw = (k: Parameters<typeof werkOn>[1]) => werkOn(own, k);
+  const state = (key: Parameters<typeof werkOn>[1], werk: Parameters<typeof isLive>[1] | null, maxH: number): Station["state"] => {
+    const o = sw(key);
+    if (!o.on) return "off";
+    if (!werk) return "idle";
+    const x = werkStatus({ werk, a: act, now, maxH, pausedSince: o.since });
+    return x.live ? "live" : x.cls === "t-red" ? "bad" : "idle";
+  };
+  const stations: Station[] = ([
+    { id: "lead", label: "Lead-Werk", icon: "⛏", value: compact(leads24), sub: `${busy}/${REG.total_slots} Plätze`, state: state("lead-werk", "lead-werk", 4), tip: "neue Leads in 24 h · belegte Plätze" },
+    { id: "gate", label: "Freigabe", icon: "⛨", value: gatePct === null ? "–" : `${gatePct}`, unit: gatePct === null ? "" : "%", sub: `${compact(gateOk)} frei/h`, state: act.last_gate_at && t - Date.parse(act.last_gate_at) < 15 * 60_000 ? "live" : "idle", tip: "Stichprobe bestanden · letzte Stunde freigegeben" },
+    { id: "bestand", label: "Bestand", icon: "▤", value: compact(Object.values(leadsNew).reduce((a, b) => a + b, 0)), sub: "Leads", state: "idle", tip: "lieferbare Leads US/UK/FR" },
+    { id: "proben", label: "Proben", icon: "✉", value: `${ready}/${target}`, sub: "bereit", state: state("proben-vorrat", "proben-vorrat", 26), tip: "fertige, geprüfte Proben / Soll" },
+    { id: "kwerk", label: "Kunden-Werk", icon: "⌕", value: compact(newBuyers24), sub: "neu 24 h", state: state("kunden-werk", "kunden-werk", 5), tip: "neue mail-fähige Webagenturen in 24 h" },
+    { id: "kaeufer", label: "Käufer", icon: "◎", value: compact(Object.values(freeBuyers).reduce((a, b) => a + b, 0)), sub: "frei", state: "idle", tip: "mail-fähige Käufer ohne Mail" },
+    { id: "versand", label: "Versand", icon: "➤", value: `${sentToday}`, unit: `/${cap}`, sub: "heute", state: own.send_paused ? "off" : isLive(act, "versand", now) ? "live" : "idle", tip: "Mails heute / Kapazität" },
+    { id: "antworten", label: "Antworten", icon: "↩", value: `${w.replies}`, sub: `${w.positive} positiv`, state: state("antworten", "antworten", 30), tip: "echte Antworten 7 Tage (ohne Abwesenheit)" },
+    { id: "kunden", label: "Kunden", icon: "€", value: `${subs.length}`, sub: `${revenue}/Mon.`, state: subs.length ? "live" : "idle", tip: "zahlende Kunden · Umsatz pro Monat" },
+  ] as Station[]).map((x) => ({ ...x, neck: x.id === neck }));
+  const edges: Edge[] = [
+    { from: "lead", to: "gate", perHour: act.leads_60m, label: "neue Leads" },
+    { from: "gate", to: "bestand", perHour: gateOk, label: "freigegeben" },
+    { from: "bestand", to: "proben", perHour: act.stock_built_60m, label: "Proben gebaut" },
+    { from: "proben", to: "kunden", perHour: act.stock_sent_60m, label: "Proben raus" },
+    { from: "kwerk", to: "kaeufer", perHour: act.buyers_ok_60m, label: "Käufer geprüft" },
+    { from: "kaeufer", to: "versand", perHour: act.sent_60m, label: "Mails" },
+    { from: "versand", to: "antworten", perHour: act.replies_60m, label: "Antworten" },
+    { from: "antworten", to: "kunden", perHour: 0, label: "Kunden" },
+  ];
 
+  // ---------------------------------------------------------------- JARVIS, Ampeln, Ticker
+  const tips = coach({ reg: REG, plan, stats, util: util.rate, queue, freeBuyers, leads: leadsNew, capPerDay: cap, kundenNew24h: stockAll ? newBuyers24 : null,
+    failed: beats.filter((b) => /^abgebrochen/.test(b.note ?? "") && t - Date.parse(b.beat_at) < 6 * 3_600_000).map((b) => `${b.werk} ${b.part} · ${berlin(b.beat_at)}`),
+    countedHours: firstRun ? Math.min(24, (t - firstRun) / 3_600_000) : 0 });
+  const tipStation = (href?: string): StationId => (href === "#pult" ? "lead" : href?.includes("bestand") ? "kaeufer" : href?.includes("versand") ? "versand" : "lead");
+  const base = (id: StationId) => `/dashboard/jarvis?s=${id}`;
+  const href = (id: StationId) => (s === id ? "/dashboard/jarvis" : base(id));
   const h = Number(new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "numeric" }).format(now));
   const hello = h < 5 ? "Gute Nacht, Justin." : h < 11 ? "Guten Morgen, Justin." : h < 18 ? "Guten Tag, Justin." : "Guten Abend, Justin.";
-  const voice = [hello, `${busy} von ${REG.total_slots} Plätzen arbeiten gerade`, tips[0] ? tips[0].title : "alle Systeme im grünen Bereich"];
-  const labels: Record<string, string> = Object.fromEntries(REG.lanes.flatMap((l) => [[l.id, l.label], [`short:${l.id}`, l.short]]));
+  const amps = [
+    { label: "Umsatz / Monat", value: revenue, sub: `${subs.length} Kunden`, tone: subs.length ? "green" : "grey", href: base("kunden") },
+    { label: "Antworten 7 T", value: `${w.replies}`, sub: `${w.positive} positiv`, tone: w.positive ? "green" : w.replies ? "gold" : "grey", href: base("antworten") },
+    { label: "Mails heute", value: `${sentToday}/${cap}`, sub: own.send_paused ? "pausiert" : "Versand", tone: own.send_paused ? "red" : sentToday ? "cyan" : "grey", href: base("versand") },
+    { label: "Engpass", value: neck ? stations.find((x) => x.id === neck)!.label : "keiner", sub: "hier ansetzen", tone: neck ? "red" : "green", href: neck ? base(neck) : "/dashboard/jarvis" },
+  ] as { label: string; value: string; sub: string; tone: "green" | "gold" | "red" | "cyan" | "grey"; href: string }[];
+  const items: TickerItem[] = [
+    ...sent.map((m) => ({ at: m.sent_at, icon: "✉", text: `${m.prospects?.company_name ?? "?"} ${m.prospects?.country ?? ""}`, tone: "cyan" as const, href: m.prospects ? `/dashboard/kontakte/${m.prospects.id}` : undefined })),
+    ...live.events.filter((e) => ["reply", "reply_positive", "reply_negative", "sample_requested", "unsubscribed", "bounced"].includes(e.type)).slice(0, 10).map((e) => ({
+      at: e.occurred_at, icon: ({ reply: "↩", reply_positive: "★", reply_negative: "↩", sample_requested: "◫", unsubscribed: "⊘", bounced: "⚠" } as Record<string, string>)[e.type] ?? "•",
+      text: `${e.company_name ?? "?"}${e.type === "unsubscribed" ? " abgemeldet" : e.type === "bounced" ? " Bounce" : e.type === "sample_requested" ? " Probe" : ""}`,
+      tone: (e.type === "reply_positive" || e.type === "sample_requested" ? "green" : e.type === "bounced" || e.type === "unsubscribed" ? "red" : "gold") as TickerItem["tone"],
+      href: e.prospect_id ? `/dashboard/kontakte/${e.prospect_id}` : undefined })),
+    // Werke im Ticker: nur Teile mit Ergebnis (grüne Leads/Käufer) oder Abbruch – „0 grün“ wäre nur Rauschen
+    ...beats.filter((b) => b.started_at && t - Date.parse(b.started_at) < 3 * 3_600_000 && (b.green > 0 || /^abgebrochen/.test(b.note ?? ""))).slice(0, 8).map((b) => ({
+      at: /^(fertig|abgebrochen)/.test(b.note ?? "") ? b.beat_at : b.started_at!, icon: /^abgebrochen/.test(b.note ?? "") ? "✕" : /^fertig/.test(b.note ?? "") ? "■" : "▶",
+      text: `${b.werk === "lead-werk" ? "Lead" : b.werk === "kunden-werk" ? "Kunden" : b.werk} ${b.part.split(" ")[0]}${/^fertig/.test(b.note ?? "") ? ` ${compact(b.green)} grün` : ""}`,
+      tone: (/^abgebrochen/.test(b.note ?? "") ? "red" : "grey") as TickerItem["tone"] })),
+  ];
+
+  // ---------------------------------------------------------------- Seitenfenster
+  const back = s ? `/dashboard/jarvis?s=${s}&t=${tab}` : "/dashboard/jarvis";
+  const nx = (file: string) => { const x = CONFIG.workflows.find((y) => y.file === file); const d = x ? nextRun(x.crons, now) : null; return d ? berlin(d, false) : "–"; };
   const dispatch = canDispatch();
-  const here = "/dashboard/jarvis";
+  const Start = ({ wf }: { wf: keyof typeof WORKFLOWS }) => (
+    <form action={dispatchWorkflow} className="row-go"><Back to={back} /><input type="hidden" name="wf" value={wf} />
+      <button disabled={!dispatch} title={dispatch ? "jetzt starten" : "braucht GitHub-Token in Vercel"}>▶ Jetzt starten</button></form>
+  );
+  const Big = ({ items: k }: { items: [string, string][] }) => <div className="bigs">{k.map(([v, l]) => <div key={l}><b>{v}</b><span>{l}</span></div>)}</div>;
+  const byCountry = (o: Record<string, number>) => countries.map((c) => ({ key: c, label: c, n: o[c] ?? 0, color: COUNTRY_COLOR[c] }));
+  const liveByLane: Record<string, number> = {};
+  for (const b of beats) if (running(b, t)) { const l = laneOf(b.werk, b.part); if (l) liveByLane[l] = (liveByLane[l] ?? 0) + 1; }
+  const pultLanes = REG.lanes.map((l) => ({ id: l.id, werk: l.werk, label: l.label, short: l.short, what: l.what, max: l.max, def: l.default, cur: plan[l.id] ?? 0, color: laneColor(l.id),
+    stat: { runs: stats[l.id].runs, green: stats[l.id].green, perSlotH: stats[l.id].perSlotH, avgRunMin: stats[l.id].avgRunMin, perRun: stats[l.id].perRun, exhausted: stats[l.id].exhausted, live: liveByLane[l.id] ?? 0 } }));
+  const nextStart = { "lead-werk": `spätestens ${nx("lead-werk.yml")}`, "kunden-werk": `spätestens ${nx("kunden-werk.yml")}` };
+  const custom = Object.keys(own.slot_plan ?? {}).length > 0;
+  const checkList = (
+    <ul className="chk">
+      {checks.map((c, i) => (
+        <li key={i} className={c.result === "released" ? "ok" : "bad"} title={c.leads?.event_summary ?? ""}>
+          <i aria-hidden>{c.result === "released" ? "✓" : "✕"}</i>
+          <b>{c.leads?.watch_companies?.name ?? "?"}</b><span>{c.leads?.country} · {c.leads?.signal_type?.replace(/_/g, " ")}</span>
+          <em>{c.result === "released" ? "frei" : `Stufe ${c.failed_stage}: ${(c.reasons ?? [])[0] ?? ""}`}</em>
+        </li>
+      ))}
+      {!checks.length && <li className="none">noch keine Prüfungen</li>}
+    </ul>
+  );
+  const lnk = (to: string, label: string) => <Link href={to} className="more2">{label} ›</Link>;
+  const countryToggles = (list: string[], action: (f: FormData) => Promise<void>) => (
+    <div className="tog2">{countries.map((c) => { const off = list.includes(c); return (
+      <form key={c} action={action}><Back to={back} /><input type="hidden" name="country" value={c} /><button className={off ? "off" : "on"} title={off ? "aus" : "an"}><i style={{ background: COUNTRY_COLOR[c] }} />{c}</button></form>); })}</div>
+  );
+
+  let drawer: ReactNode = ag ? <AgentDrawer which={ag} tasks={agentTasks} /> : null;
+  if (s && !ag) {
+    const stn = stations.find((x) => x.id === s)!;
+    const tabsOn = { set: !["bestand", "gate"].includes(s), check: true };
+    let body: ReactNode = null;
+    if (s === "lead") body = tab === "set" ? (<>
+      <div className="row-sw"><WerkSwitch werk="lead-werk" on={sw("lead-werk").on} back={back} label="Lead-Werk" />{Start({ wf: "lead-werk" })}</div>
+      <Pult lanes={pultLanes} only={REG.lanes.filter((l) => l.werk === "lead-werk").map((l) => l.id)} cap={REG.total_slots - REG.reserve} total={REG.total_slots} back={back} action={saveSlotPlan} nextStart={nextStart} custom={custom} />
+    </>) : tab === "check" ? <>{checkList}{lnk("/dashboard/werke", "alle Prüfstufen")}</> : (<>
+      <Reactor bays={bays} running={busy} util={util.rate} center={`${busy}/${REG.total_slots}`} sub={`Auslastung ${Math.round(util.rate * 100)} %`} />
+      <MiniBars rows={REG.lanes.filter((l) => l.werk === "lead-werk" && (plan[l.id] || stats[l.id].runs)).map((l) => ({ key: l.id, label: l.short, n: stats[l.id].green, color: LANE_COLOR[l.id], href: `${base("lead")}&t=set`, tip: `${l.label}: ${plan[l.id]} Plätze · grün in 24 h` }))} />
+      <UtilChart buckets={util.buckets} total={REG.total_slots} cap={REG.total_slots - REG.reserve} />
+      <Bays bays={bays} labels={Object.fromEntries(REG.lanes.flatMap((l) => [[l.id, l.label], [`short:${l.id}`, l.short]]))} />
+    </>);
+    if (s === "gate") body = tab === "check" ? (<>
+      <div className="seg"><Link href={`${base("gate")}&t=check`} scroll={false} className={sp.f !== "rot" ? "on" : ""}>alle</Link><Link href={`${base("gate")}&t=check&f=rot`} scroll={false} className={sp.f === "rot" ? "on" : ""}>aussortiert</Link></div>{checkList}
+    </>) : (<>
+      <Big items={[[gatePct === null ? "–" : `${gatePct} %`, "Stichprobe"], [compact(gateOk), "frei / h"], [`${gateBad}`, "raus / h"]]} />
+      <MiniBars unit=" %" rows={sp7.map((r) => ({ key: r.country, label: r.country, n: r.candidates ? Math.round((r.green / r.candidates) * 1000) / 10 : 0, color: COUNTRY_COLOR[r.country] }))} />
+      <p className="lock">🔒 3 Stufen · immer an</p>
+    </>);
+    if (s === "bestand") body = tab === "check" ? lnk("/dashboard/bestand", "Bestand im Detail") : (<>
+      <Big items={[[compact(Object.values(leadsNew).reduce((a, b) => a + b, 0)), "lieferbar"], [`+${compact(leads24)}`, "24 h"]]} />
+      <MiniBars rows={byCountry(leadsNew)} />
+    </>);
+    if (s === "proben") body = tab === "set" ? (
+      <form action={saveSampleTargets} className="frm"><Back to={back} />
+        {countries.map((c) => <label key={c}><span>{c}</span><input name={`target_${SEGMENT}/${c}`} inputMode="numeric" defaultValue={own.sample_targets[`${SEGMENT}/${c}`] ?? ""} placeholder={String(st.find((r) => r.key.endsWith(`/${c}`))?.target ?? "")} /><em>Soll</em></label>)}
+        <button className="go">Speichern</button></form>
+    ) : tab === "check" ? lnk("/dashboard/proben", "Proben im Detail") : (<>
+      <Big items={[[`${ready}/${target}`, "bereit"], [`${st.reduce((a, r) => a + r.sent24, 0)}`, "raus 24 h"]]} />
+      <MiniBars rows={st.map((r) => ({ key: r.key, label: r.key.split("/")[1], n: r.ready, color: COUNTRY_COLOR[r.key.split("/")[1]], href: `${base("proben")}&t=set`, tip: `Soll ${r.target}` }))} />
+    </>);
+    if (s === "kwerk") body = tab === "set" ? (<>
+      <div className="row-sw"><WerkSwitch werk="kunden-werk" on={sw("kunden-werk").on} back={back} label="Kunden-Werk" />{Start({ wf: "kunden-werk" })}</div>
+      {countryToggles(own.buyer_countries_off, toggleBuyerCountry)}
+      <Pult lanes={pultLanes} only={["kunden"]} cap={REG.total_slots - REG.reserve} total={REG.total_slots} back={back} action={saveSlotPlan} nextStart={nextStart} custom={custom} />
+    </>) : tab === "check" ? lnk("/dashboard/kontakte", "Käufer ansehen") : (<>
+      <Big items={[[compact(newBuyers24), "neu 24 h"], [`${act.buyers_ok_60m}`, "geprüft / h"], [`${plan.kunden}`, "Plätze"]]} />
+      {newBuyers24 === 0 && <p className="warn">Quelle durchgeprüft – neue nötig</p>}
+    </>);
+    if (s === "kaeufer") body = tab === "set" ? (<>{countryToggles(own.buyer_countries_off, toggleBuyerCountry)}<p className="lock">Käufersuche je Land</p></>) : tab === "check" ? lnk("/dashboard/kontakte", "Käufer & Kontakte") : (<>
+      <Big items={[[compact(Object.values(freeBuyers).reduce((a, b) => a + b, 0)), "frei"], [compact(countries.reduce((a, c) => a + n(ok(c)?.n), 0)), "mail-fähig"]]} />
+      <MiniBars rows={byCountry(freeBuyers)} />
+      {countries.filter((c) => (queue[c] ?? 0) > (freeBuyers[c] ?? 0)).map((c) => <p key={c} className="warn">{c}: Käufer knapp</p>)}
+    </>);
+    if (s === "versand") body = tab === "set" ? (<>
+      <form action={setPaused} className="row-sw2"><Back to={back} />
+        <button name="paused" value="0" className={!own.send_paused ? "on go" : ""}>▶ läuft</button><button name="paused" value="1" className={own.send_paused ? "on stop" : ""}>❚❚ Pause</button></form>
+      {countryToggles(own.send_countries_off, toggleSendCountry)}
+      <form action={saveCountryLimits} className="frm"><Back to={back} />
+        {countries.map((c) => <label key={c}><span>{c}</span><input name={`limit_${c}`} inputMode="numeric" defaultValue={own.send_country_limits[c] ?? ""} placeholder={String(CONFIG.countries[c]?.daily_limit ?? "")} /><em>/Tag · max {CONFIG.countries[c]?.daily_limit}</em></label>)}
+        <button className="go">Speichern</button></form>
+      <form action={saveFollowups} className="frm"><Back to={back} />
+        <label><span>Nachfass</span><select name="enabled" defaultValue={own.followup_enabled ? "1" : "0"}><option value="1">an</option><option value="0">aus</option></select></label>
+        <label><span>nach</span><input name="days" inputMode="numeric" defaultValue={own.followup_days ?? ""} placeholder="4" /><em>Tagen</em></label>
+        <button className="go">Speichern</button></form>
+    </>) : tab === "check" ? (<>
+      <ul className="chk">{sent.map((m, i) => (
+        <li key={i} className="ok"><i aria-hidden>✉</i><b>{m.prospects ? <Link href={`/dashboard/kontakte/${m.prospects.id}`}>{m.prospects.company_name}</Link> : "?"}</b>
+          <span>{m.prospects?.country} · {berlin(m.sent_at)}</span><em>{m.kind === "initial" ? "Erstmail" : "Nachfass"}</em></li>))}</ul>
+      {lnk("/dashboard/versand", "Versand im Detail")}
+    </>) : (<>
+      <Big items={[[`${sentToday}/${cap}`, "heute"], [compact(Object.values(queue).reduce((a, b) => a + b, 0)), "warten"], [nx("send.yml"), "nächster Lauf"]]} />
+      <MiniBars rows={countries.map((c) => ({ key: c, label: c, n: effectiveLimit(CONFIG.countries[c]?.daily_limit ?? 0, own, c), color: COUNTRY_COLOR[c], href: `${base("versand")}&t=set`, tip: "Mails/Tag (Limit)" }))} unit="/Tag" />
+    </>);
+    if (s === "antworten") body = tab === "set" ? (<>
+      <div className="row-sw"><WerkSwitch werk="antworten" on={sw("antworten").on} back={back} label="Antwort-Assistent" note="Abmeldungen werden immer gesperrt" /></div>
+      <p className="lock">🔒 Abmeldungen immer gesperrt</p>
+    </>) : tab === "check" ? (<>
+      <ul className="chk">{live.events.filter((e) => ["reply", "reply_positive", "reply_negative", "sample_requested"].includes(e.type)).slice(0, 12).map((e) => (
+        <li key={e.id} className={e.type === "reply_negative" ? "bad" : "ok"} title={e.note ?? ""}><i aria-hidden>{e.type === "reply_positive" ? "★" : "↩"}</i>
+          <b>{e.prospect_id ? <Link href={`/dashboard/kontakte/${e.prospect_id}`}>{e.company_name ?? "?"}</Link> : e.company_name ?? "?"}</b>
+          <span>{e.country} · {berlin(e.occurred_at)}</span><em>{(e.note ?? "").slice(0, 60)}</em></li>))}</ul>
+      {lnk("/dashboard/liste?m=replies&z=jahr", "alle Antworten")}
+    </>) : (
+      <Big items={[[`${w.replies}`, "Antworten 7 T"], [`${w.positive}`, "positiv"], [`${w.samples_requested}`, "Proben angefragt"]]} />
+    );
+    if (s === "kunden") body = tab === "set" ? lnk("/dashboard/kunden", "Kunden anlegen & freigeben") : tab === "check" ? (
+      <ul className="chk">{subs.map((x) => <li key={x.id} className="ok"><i aria-hidden>€</i><b>{x.customer?.company_name}</b><span>{x.customer?.country}</span><em>{compact(monthly(x))} {currencySign(x.currency, x.customer?.country)}</em></li>)}
+        {!subs.length && <li className="none">noch keine Kunden</li>}</ul>
+    ) : <Big items={[[`${subs.length}`, "Kunden"], [revenue, "pro Monat"], [nx("kundenlieferung.yml"), "nächste Lieferung"]]} />;
+    drawer = <Drawer title={stn.label} icon={stn.icon} tab={tab} base={base(s)} close="/dashboard/jarvis" tabs={tabsOn} state={stn.state}>{body}</Drawer>;
+  }
 
   return (
-    <div className="jv">
+    <div className={`jv jv2 ${s || ag ? "has-drw" : ""}`}>
       <div className="jv-head">
-        <div className="jv-brand"><span className="jv-logo" aria-hidden><i /><i /><i /></span><div><h1>J.A.R.V.I.S.</h1><span>Leitstand der Werke · Webagenturen</span></div></div>
+        <div className="jv-brand"><span className="jv-logo" aria-hidden><i /><i /><i /></span><h1>JARVIS</h1></div>
         <Clock />
       </div>
-      <Voice lines={voice} />
-
-      <div className="jv-hero">
-        <div className="jv-col">
-          <Gauge value={act.leads_60m} max={Math.max(act.leads_60m, Math.round((leads24h / 24) * 2), 1)} label="Leads · letzte Stunde" tone="cyan" tip="neue grüne Leads in den letzten 60 Minuten; Skala = doppelter Stundenschnitt der letzten 24 h" sub={`Ø ${compact(Math.round(leads24h / 24))}/h · 24 h ${compact(leads24h)}`} />
-          <Gauge value={act.buyers_ok_60m} max={Math.max(act.buyers_ok_60m, 50)} label="Käufer geprüft · 60 min" tone="gold" tip="Käufer, die in der letzten Stunde als mail-fähig geprüft wurden" sub={kundenNew24h === null ? "…" : `neu in 24 h: ${compact(kundenNew24h)}`} />
+      <Voice lines={[hello, tips[0]?.title ?? "alles im grünen Bereich"]} />
+      {tips.length > 0 && (
+        <div className="jtips2">
+          {tips.slice(0, 4).map((x, i) => (
+            <Link key={i} href={`${base(tipStation(x.href))}${x.href === "#pult" ? "&t=set" : ""}`} scroll={false} className={`jt ${x.level}`} title={x.text}>{x.title}</Link>
+          ))}
         </div>
-        <Reactor bays={bays} running={busy} util={util.rate} center={`${busy}/${REG.total_slots}`} sub={`Plätze aktiv · Auslastung ${Math.round(util.rate * 100)} %`} />
-        <div className="jv-col">
-          <Gauge value={sentToday} max={Math.max(capPerDay, sentToday, 1)} label="Mails heute" tone="green" tip="gesendete Kaltmails heute (alle Postfächer) gegen die Tageskapazität" sub={`Kapazität ${capPerDay}/Tag`} />
-          <Gauge value={gatePct ?? 0} max={100} unit="%" label="Freigabe-Stichprobe" tone={gatePct === null ? "amber" : gatePct >= 98 ? "green" : gatePct >= 95 ? "amber" : "red"} tip="Anteil der Leads, die in der täglichen Stichprobe alle drei Prüfstufen bestehen (Ziel ≥ 98 %)" sub={gatePct === null ? "noch keine Stichprobe" : `${spGreen}/${spChecked} bestanden`} />
-        </div>
+      )}
+      <Ampeln items={amps} />
+      <AgentRow tasks={agentTasks} active={ag} />
+      <div className="jv-stage">
+        <FlowMap stations={stations} edges={edges} active={ag ? null : s} href={href} />
+        {drawer}
       </div>
-
-      <div className="jv-grid">
-        <Panel title="Empfehlungen" code="JARVIS" className="jv-coach" right={<span className="jv-n">{tips.length}</span>}>
-          <ul className="jtips">
-            {tips.map((x, i) => (
-              <li key={i} className={`jtip ${x.level}`}>
-                <b>{x.title}</b><span>{x.text}</span>
-                {x.href && <Link href={x.href} className="jtip-go">{x.href.startsWith("#") ? "zum Steuerpult ›" : "ansehen ›"}</Link>}
-              </li>
-            ))}
-          </ul>
-        </Panel>
-        <Panel title="Auslastung der Plätze · 24 h" code="SYS-01" right={<span className="jv-n">{Math.round(util.rate * 100)} %</span>}>
-          <UtilChart buckets={util.buckets} total={REG.total_slots} cap={cap} />
-          <p className="jv-note">Belegte Plätze im Mittel je 30 Minuten (Lead- und Kunden-Werk) · Auslastung {countedNote}. Graue Balken: Zeit vor Beginn der Zählung (keine Daten, nicht leer).</p>
-        </Panel>
-      </div>
-
-      <Panel title="Werkhalle · 40 Plätze" code="BAY" right={<span className="jv-legend">{REG.lanes.filter((l) => plan[l.id] > 0 || liveByLane[l.id]).map((l) => <span key={l.id}><i style={{ background: LANE_COLOR[l.id] }} />{l.short}</span>)}<span><i className="lg-plan" />eingeplant</span><span><i className="lg-free" />frei</span></span>}>
-        <Bays bays={bays} labels={labels} />
-        <p className="jv-note">{run} Teile laufen · {bays.filter((b) => b.state === "plan").length} eingeplant und gerade leer · {bays.filter((b) => b.state === "free").length} frei · {REG.reserve} reserviert für Versand, Tagescheck, Wachhund. Live aus den Herzschlägen der Werke (alle ~2 min).</p>
-      </Panel>
-
-      <Panel title="Steuerpult · Plätze je Linie" code="CTRL" id="pult" className="jv-pult" right={<span className="jv-n">{custom ? "deine Belegung" : "Standard"}</span>}>
-        <Pult
-          lanes={REG.lanes.map((l) => ({ id: l.id, werk: l.werk, label: l.label, short: l.short, what: l.what, max: l.max, def: l.default, cur: plan[l.id] ?? 0, color: laneColor(l.id),
-            stat: { runs: stats[l.id].runs, green: stats[l.id].green, perSlotH: stats[l.id].perSlotH, avgRunMin: stats[l.id].avgRunMin, perRun: stats[l.id].perRun, exhausted: stats[l.id].exhausted, live: liveByLane[l.id] ?? 0 } }))}
-          cap={cap} total={REG.total_slots} back={here} action={saveSlotPlan} nextStart={nextStart} custom={custom}
-        />
-      </Panel>
-
-      <Panel title="Maschinen" code="MCH" right={!dispatch ? <Link href="/dashboard/hilfe" className="jv-n">Sofortstart einrichten ›</Link> : undefined}>
-        <div className="machines">
-          {MACHINES.map((m) => {
-            const sw = werkOn(own, m.key);
-            const st = m.werk ? werkStatus({ werk: m.werk, a: act, now, maxH: m.maxH, pausedSince: sw.since, off: !sw.on }) : null;
-            const liveNow = m.werk ? isLive(act, m.werk, now) && sw.on : false;
-            const parts = m.werk ? beats.filter((b) => b.werk === m.werk && running(b, t)).length : 0;
-            return (
-              <article key={m.key} className={`mc ${!sw.on ? "off" : liveNow ? "live" : st?.cls === "t-red" ? "bad" : ""}`}>
-                <div className="mc-top"><span className="mc-lamp" aria-hidden /><b>{WERK_SWITCHES[m.key].label}</b>
-                  <WerkSwitch werk={m.key} on={sw.on} back={here} label={WERK_SWITCHES[m.key].label} note={"note" in WERK_SWITCHES[m.key] ? (WERK_SWITCHES[m.key] as { note?: string }).note : undefined} /></div>
-                <span className="mc-what">{m.what}</span>
-                <dl>
-                  <div><dt>Status</dt><dd>{!sw.on ? "pausiert" : st ? st.label : "nach Plan"}{parts ? ` · ${parts} Teile` : ""}</dd></div>
-                  <div><dt>Plan</dt><dd>{nx(m.file)}</dd></div>
-                  {st?.why && <div className="wide"><dt>Info</dt><dd>{st.why}</dd></div>}
-                </dl>
-                {m.wf && (
-                  <form action={dispatchWorkflow} className="mc-go"><Back to={here} /><input type="hidden" name="wf" value={m.wf} />
-                    <button disabled={!dispatch || !sw.on} title={dispatch ? "jetzt zusätzlich starten" : "Sofortstart braucht den GitHub-Token in Vercel (Hilfe)"}>▶ Jetzt starten</button>
-                  </form>
-                )}
-              </article>
-            );
-          })}
-        </div>
-        <p className="jv-note">Nie abschaltbar (Sicherheit): Abmelde-Link, Bounce- und Beschwerde-Sperren, Sperrliste, Notbremse, Drei-Stufen-Freigabe, Abmelde-Erkennung.</p>
-      </Panel>
+      <Ticker items={ticker(items)} />
     </div>
   );
 }
