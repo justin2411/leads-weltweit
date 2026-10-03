@@ -103,9 +103,29 @@ jobs:
       - name: Käufer prüfen und speichern
         run: python scripts/kundenwerk.py run --shard ${{ matrix.shard }}/8 --max 15000 --workers 16 --deadline-min 90 --segments S2,S1 | tee -a "$GITHUB_STEP_SUMMARY"
 
+  nachpruefen:
+    # Quellen-Scout R20 (03.10.2026): „nur Anruf/Brief“-Käufer mit Firmen-E-Mail, die nur an der fehlenden Rechtsform
+    # scheitern -> Registernummer auf der eigenen Website (UK Company No., FR SIREN aus den Mentions légales), vom
+    # Register bestätigt (Companies House Massendaten / Annuaire des entreprises), dann unveränderte Prüfregel.
+    # Test 360 Firmen: S2 UK 16/160, S2 FR 23/100, S1 UK 11/100 neu mail-fähig. Ein Job (2 Plätze frei).
+    needs: pool
+    if: needs.pool.outputs.an == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - name: Registernummer nachprüfen (S2 UK/FR, S1 UK)
+        run: python scripts/kundenwerk.py nachpruefen --max 3000 --workers 16 --deadline-min 80 | tee -a "$GITHUB_STEP_SUMMARY"
+
   weiter:
     # sofort den nächsten Lauf starten (nur bei Schalter an und echter Laufzeit, sonst Cron/Wachhund)
-    needs: [pool, pruefen]
+    needs: [pool, pruefen, nachpruefen]
     if: always() && needs.pool.outputs.an == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5

@@ -15,15 +15,18 @@ class SitePhysioTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             subprocess.run([sys.executable, str(SITE / "build.py")], check=True, capture_output=True,
                            env={**os.environ, "SITE_OUT": tmp})
-            for f in Path(tmp).iterdir():
-                committed = SITE / "public" / f.name
-                self.assertTrue(committed.exists(), f"{f.name} fehlt in public/ – build.py ausführen")
+            for f in Path(tmp).rglob("*"):
+                if f.is_dir():
+                    continue
+                rel = f.relative_to(tmp)
+                committed = SITE / "public" / rel
+                self.assertTrue(committed.exists(), f"{rel} fehlt in public/ – build.py ausführen")
                 self.assertEqual(f.read_text(encoding="utf-8"), committed.read_text(encoding="utf-8"),
-                                 f"{f.name} veraltet – build.py ausführen und public/ committen")
+                                 f"{rel} veraltet – build.py ausführen und public/ committen")
 
     def test_internal_links_resolve(self):
         pub = SITE / "public"
-        for page in pub.glob("*.html"):
+        for page in pub.rglob("*.html"):
             for href in re.findall(r'(?:href|src)="(/[^"#?]*)', page.read_text(encoding="utf-8")):
                 if href == "/":
                     continue
