@@ -206,7 +206,7 @@ export function HomeFx() {
     }
 
     // 10 · Beispiel-Lead (Vorlage v4): geführter Fokus 1-2-3 (der Rest der Karte tritt zurück), der Quellen-Stempel landet
-    //      bei „Beleg“, der Einstiegssatz tippt sich selbst. Die Tour läuft dauerhaft weiter (Inhaber 03.10.2026).
+    //      bei „Beleg“, der Einstiegssatz tippt sich selbst. Die Tour läuft einmal (je Punkt 3,2 s) und startet nicht neu (Inhaber 03.10.2026).
     const notes = $$("[data-note]"), example = $("[data-example-lead]"), lead = $(".hp-lead"), stamp = $(".hp-stamp"), notesList = $(".hp-notes");
     let touring = true;
     const light = (k: number | string) => {
@@ -217,10 +217,11 @@ export function HomeFx() {
       if (k) $$(`[data-mark="${k}"]`).forEach((m) => m.classList.add("hp-lit"));
       if (k === 2) stamp?.classList.add("is-on");
     };
-    // Hover auf einen Punkt hält die Tour an und zeigt diesen Punkt; danach läuft sie weiter
+    // Hover auf einen Punkt hält die Tour an und zeigt diesen Punkt; nach dem Durchlauf nur noch per Hover
+    let toured = false;
     notes.forEach((n) => {
       on(n, "mouseenter", () => { touring = false; notesList?.classList.remove("is-touring"); light(n.dataset.note ?? 0); });
-      on(n, "mouseleave", () => { touring = true; notesList?.classList.add("is-touring"); });
+      on(n, "mouseleave", () => { if (toured) { light(0); return; } touring = true; notesList?.classList.add("is-touring"); });
     });
     const typewrite = (el: HTMLElement, speed: number) => new Promise<void>((done) => {
       type Part = { text: string; node: ChildNode } | { node: HTMLElement };
@@ -248,9 +249,13 @@ export function HomeFx() {
           if (quote) typewrite(quote, 13);
           notesList?.classList.add("is-touring");
           let k = 0;
-          const step = () => { if (!touring || d.hidden) return; k = k % 3 + 1; light(k); };
+          const step = () => {
+            if (toured) return;
+            if (!touring || d.hidden) { timers.push(window.setTimeout(step, 3200)); return; }
+            if (k >= 3) { toured = true; notesList?.classList.remove("is-touring"); light(0); return; }
+            k += 1; light(k); timers.push(window.setTimeout(step, 3200));
+          };
           step();
-          timers.push(window.setInterval(step, 2200));
         }, 500));
       }), { threshold: 0.45 });
       io2.observe(lead);
@@ -283,7 +288,7 @@ export function HomeFx() {
     });
 
     // 14 · Ansprechpartner (Vorlage v4): vier Beispielwochen, die Filter werden enger und mehr Punkte rücken in den
-    //      Passungsring. Spielt einmal ab, sobald sichtbar; die Wochen-Reiter zeigen jede Woche erneut.
+    //      Passungsring. Läuft ab Sichtbarkeit in Schleife (je Woche 4,6 s, Inhaber 03.10.2026); ein Klick auf eine Woche hält an.
     const tune = $("[data-tune]");
     let io3: IntersectionObserver | null = null;
     if (tune) {
@@ -319,7 +324,7 @@ export function HomeFx() {
         io3 = new IntersectionObserver((es) => es.forEach((e) => {
           if (!e.isIntersecting) return; io3!.disconnect();
           let n = 0; tune.classList.add("is-playing"); go(0);
-          timer = window.setInterval(() => { n += 1; if (n > 3) return stop(); go(n); }, 3600);
+          timer = window.setInterval(() => { n = (n + 1) % 4; if (!d.hidden) go(n); }, 4600);
           timers.push(timer);
         }), { threshold: 0.5 });
         io3.observe(tune);
