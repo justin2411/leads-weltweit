@@ -32,7 +32,7 @@ SOURCE_NAME = {
     "overture": "Overture Maps (business listing)", "careers": "Careers page (company website)",
     "ats_jobs": "Careers page (applicant tracking system)",
     "overture_web": "Website check (company homepage)",
-    "find_tender": "Find a Tender (UK public contract award notice)",
+    "find_tender": "UK public contract award notice (Find a Tender / Contracts Finder)",
 }
 EVENT_KEY = {"fmcsa": "fmcsa_registration", "sec_form_d": "form_d", "companies_house": "incorporation",
              "bodacc": "immatriculation", "overture": "no_website", "careers": "open_roles", "ats_jobs": "open_roles",

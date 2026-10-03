@@ -115,7 +115,7 @@ jobs:
           # Quellen-Scout R15 (02.10.2026): S1 UK aus Find a Tender (KMU mit gewonnenem öffentlichem Auftrag, OGL v3),
           # Test 300 -> 82 grün. Platz von s2-fr-0 (S2 FR ohne Website: ~47.500 Leads im Bestand, FR-Website-Prüfung
           # läuft weiter mit 2 Teilen). Schnittstelle und Companies-House-Daten höchstens einmal am Tag (Zwischenspeicher)
-          - { name: s1-uk-tender, workers: 32, args: "--segments S1 --countries UK --s1-probe 0 --tender-days 45 --tender-pages 25 --per 4000 --max-tries 4000" }
+          - { name: s1-uk-tender, workers: 32, args: "--segments S1 --countries UK --s1-probe 0 --tender-days 45 --tender-pages 25 --cf-pages 25 --per 4000 --max-tries 4000" }
           # Fokus Webagenturen (Inhaber 02.10.2026): US-Firmen ohne Website aus Overture, ~390.000 mit E-Mail, Test 95 % grün.
           # Scout R16 (03.10.2026): Vorrat abgearbeitet (je Teil 1 Kandidat, 0 grün; S2 US 257.755 Leads) -> 18 -> 2 Teile
           # für Neuzugänge im Monatsauszug; die 16 Plätze und der von s2-north-0 gehen an die Website-Prüfung (US 5 -> 16, UK 2 -> 5,
@@ -155,6 +155,7 @@ jobs:
             out/cache/wdc_job_domains.csv
             out/cache/find_tender.json
             out/cache/find_tender_ch.json
+            out/cache/contracts_finder.json
           key: lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-${{ github.run_id }}
           restore-keys: |
             lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-
@@ -376,6 +377,7 @@ jobs:
             out/cache/wdc_job_domains.csv
             out/cache/find_tender.json
             out/cache/find_tender_ch.json
+            out/cache/contracts_finder.json
           key: lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-${{ github.run_id }}
       - name: Gedächtnis der Website-Prüfung sichern
         if: always() && steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')

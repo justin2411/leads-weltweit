@@ -1,5 +1,7 @@
 """UK: kleine und mittlere Firmen (KMU), die einen öffentlichen Auftrag gewonnen haben – Find a Tender (OCDS).
-Quellen-Scout 02.10.2026 (S1 Personalvermittlung UK).
+Quellen-Scout 02.10.2026 (S1 Personalvermittlung UK). Seit 03.10.2026 zusätzlich Contracts Finder (kleinere
+Aufträge unterhalb der Find-a-Tender-Schwelle, gleiche OCDS-Form, ohne Schlüssel, höchstens 12 Abrufe je 2 Minuten):
+https://www.contractsfinder.service.gov.uk/Published/Notices/OCDS/Search?stages=award
 
 Amtliche Schnittstelle des Cabinet Office, ohne Schlüssel, Open Government Licence v3.0, kein Scraping:
 https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages?stages=award (100 Meldungen je Seite, Cursor)
@@ -29,6 +31,10 @@ API = "https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages"
 NOTICE = "https://www.find-tender.service.gov.uk/Notice/"
 UA = {"User-Agent": "NextGenProfitBot/0.1 (+company-signal research)", "Accept": "application/json"}
 SOURCE_NAME = "Find a Tender (UK Cabinet Office), Open Government Licence v3.0"
+CF_API = "https://www.contractsfinder.service.gov.uk/Published/Notices/OCDS/Search"
+CF_CACHE = Path("out/cache/contracts_finder.json")
+# Contracts Finder liefert die Adresse als eine Zeile ohne Land: Postleitzahl erkennen = Sitz in Großbritannien
+UK_POSTCODE = re.compile(r"\b([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})\b")
 UK_NAMES = {"united kingdom", "uk", "gb", "england", "scotland", "wales", "northern ireland", "great britain"}
 # Wettbewerber unserer Käufer (Vermittler) und keine KMU-Käufer von Personaldiensten (öffentliche Stellen, Vereine)
 SKIP_NAME = re.compile(r"\b(recruit\w*|staffing|personnel|employment agency|locums?|talent|workforce solutions|"
@@ -55,6 +61,49 @@ def fetch(since: dt.date, max_pages: int = 10, log=print, session=None, pause: f
         url = (d.get("links") or {}).get("next")
     log(f"Find a Tender: {len(out)} Zuschlagsmeldungen seit {since} ({pages} Abrufe)")
     return out
+
+
+def fetch_cf(since: dt.date, max_pages: int = 10, log=print, session=None, pause: float = 11.0) -> list[dict]:
+    """Contracts Finder: Zuschlagsmeldungen seit `since`, höchstens `max_pages` Abrufe (Grenze der Schnittstelle:
+    12 Abrufe je 2 Minuten, daher ~11 s Pause; bei 429 einmal 2 Minuten warten)."""
+    s = session or requests.Session()
+    url = f"{CF_API}?stages=award&limit=100&publishedFrom={since.isoformat()}T00:00:00"
+    out, pages = [], 0
+    while url and pages < max_pages:
+        if pages:
+            time.sleep(pause)
+        r = s.get(url, headers=UA, timeout=90)
+        if r.status_code == 429:
+            time.sleep(125)
+            r = s.get(url, headers=UA, timeout=90)
+        r.raise_for_status()
+        d = r.json()
+        out += [normalize_cf(x) for x in d.get("releases") or []]
+        pages += 1
+        url = (d.get("links") or {}).get("next")
+    log(f"Contracts Finder: {len(out)} Zuschlagsmeldungen seit {since} ({pages} Abrufe)")
+    return out
+
+
+def normalize_cf(rel: dict) -> dict:
+    """Contracts-Finder-Meldung in die Form von Find a Tender bringen: Adresse ist eine Zeile ohne Land ->
+    Postleitzahl herauslösen und Land setzen, wenn sie britisch ist; Link zur Meldung aus den Award-Dokumenten."""
+    for p in rel.get("parties") or []:
+        a = p.get("address") or {}
+        line = _clean(a.get("streetAddress"))
+        m = UK_POSTCODE.search(line.upper())
+        if m and not a.get("postalCode"):
+            pc = re.sub(r"\s+", "", m.group(1))
+            a["postalCode"] = pc[:-3] + " " + pc[-3:]
+            a["countryName"] = a.get("countryName") or "United Kingdom"
+            # Rest der Zeile ohne Postleitzahl und Ländernamen als Straße (Ort bleibt leer, Register ergänzt)
+            a["streetAddress"] = re.sub(r"(,?\s*(united kingdom[^,]*|england|scotland|wales|uk)\.?)+\s*$", "",
+                                        line[:m.start()] + line[m.end():], flags=re.I).strip(" ,.")
+        p["address"] = a
+    urls = [d.get("url") for aw in rel.get("awards") or [] for d in aw.get("documents") or [] if d.get("url")]
+    rel["_portal"] = "Contracts Finder"
+    rel["_notice_url"] = _clean(urls[0]) if urls else CF_API + "?stages=award"
+    return rel
 
 
 def _day(v) -> dt.date | None:
@@ -146,13 +195,16 @@ def select(releases: list[dict], since: dt.date | None = None, log=print) -> lis
                     "zip": _clean(addr.get("postalCode")).upper(), "phone": _clean(cp.get("telephone")),
                     "email": _clean(cp.get("email")).lower(), "person": _clean(cp.get("name")),
                     "website": _clean(det.get("url")), "awards": (old["awards"] + 1) if old else 1,
+                    "portal": rel.get("_portal") or "Find a Tender", "notice_url": rel.get("_notice_url") or "",
                 }
     out = sorted(sup.values(), key=lambda x: x["date"], reverse=True)
-    log(f"Find a Tender: {len(out)} KMU-Lieferanten in UK; ausgeschlossen {dict(why)}")
+    log(f"Vergabemeldungen: {len(out)} KMU-Lieferanten in UK; ausgeschlossen {dict(why)}")
     return out
 
 
 def _notice_url(e: dict) -> str:
+    if e.get("notice_url"):
+        return e["notice_url"]
     m = re.match(r"^(\d{6}-\d{4})", e.get("notice") or "")
     return NOTICE + m.group(1) if m else API + "?stages=award"
 
@@ -169,26 +221,34 @@ def to_candidate(e: dict) -> dict:
         person_name=e["person"] if len(e["person"].split()) >= 2 else "",
         person_role="Contact named in the contract award notice" if len(e["person"].split()) >= 2 else "",
         facts={"contract_title": e["title"], "buyer": e["buyer"], "awarded_on": d, "awards_in_window": e["awards"],
+               "portal": e.get("portal") or "Find a Tender",
                "company_number": e["company_number"], "ocid": e["ocid"], "listed_website": web},
     )
 
 
-def cached_fetch(since: dt.date, max_pages: int, log=print, path: Path = CACHE) -> list[dict]:
+def cached_fetch(since: dt.date, max_pages: int, log=print, path: Path = CACHE, fetcher=None, name="Find a Tender") -> list[dict]:
     """Wie fetch(), aber höchstens einmal am Tag: Meldungen von heute aus dem Zwischenspeicher."""
     today = dt.date.today().isoformat()
     try:
         d = json.loads(path.read_text(encoding="utf-8"))
         if d.get("day") == today and d.get("since") == since.isoformat() and d.get("pages", 0) >= max_pages:
-            log(f"Find a Tender: {len(d['releases'])} Meldungen aus dem Tages-Zwischenspeicher")
+            log(f"{name}: {len(d['releases'])} Meldungen aus dem Tages-Zwischenspeicher")
             return d["releases"]
     except (OSError, ValueError, KeyError):
         pass
-    rel = fetch(since, max_pages, log=log)
+    rel = (fetcher or fetch)(since, max_pages, log=log)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({"day": today, "since": since.isoformat(), "pages": max_pages, "releases": rel}),
                     encoding="utf-8")
     return rel
 
 
-def load(since: dt.date, max_pages: int = 10, log=print) -> list[dict]:
-    return [to_candidate(e) for e in select(cached_fetch(since, max_pages, log=log), since, log=log)]
+def load(since: dt.date, max_pages: int = 10, log=print, cf_pages: int = 0) -> list[dict]:
+    """Find a Tender und (mit cf_pages > 0) Contracts Finder; je Firma der neueste Zuschlag aus beiden Portalen."""
+    rel = cached_fetch(since, max_pages, log=log)
+    if cf_pages:
+        try:
+            rel += cached_fetch(since, cf_pages, log=log, path=CF_CACHE, fetcher=fetch_cf, name="Contracts Finder")
+        except requests.RequestException as e:  # zweites Portal fällt aus: Find a Tender trotzdem liefern
+            log(f"Contracts Finder nicht erreichbar: {e}")
+    return [to_candidate(e) for e in select(rel, since, log=log)]

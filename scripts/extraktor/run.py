@@ -273,11 +273,11 @@ def load_careers(country: str, probe_limit: int, workers: int, fetcher, stats: C
     return cands
 
 
-def load_tender(days: int, max_pages: int, stats: Counter) -> list[dict]:
+def load_tender(days: int, max_pages: int, stats: Counter, cf_pages: int = 0) -> list[dict]:
     """S1/UK: KMU mit gewonnenem öffentlichem Auftrag (Find a Tender). Companies-House-Nummer aus der Meldung ->
     fehlende Sitzadresse aus dem Register, Eigentümer (PSC) als Ansprechperson."""
     from extraktor.sources import uk_find_tender
-    cands = uk_find_tender.load(dt.date.today() - dt.timedelta(days=days), max_pages, log=log)
+    cands = uk_find_tender.load(dt.date.today() - dt.timedelta(days=days), max_pages, log=log, cf_pages=cf_pages)
     cands = filters.dedupe([c for c in cands if not filters.pre_filter(c)])
     nums = {c["facts"]["company_number"] for c in cands if c["facts"]["company_number"]}
     if nums:
@@ -287,7 +287,8 @@ def load_tender(days: int, max_pages: int, stats: Counter) -> list[dict]:
             if num not in info:
                 continue
             c["legal_name"] = info[num]["legal_name"]
-            if not (c.get("street") and c.get("zip")):
+            # Contracts Finder nennt keinen Ort (Adresse als eine Zeile): dann die Sitzadresse aus dem Register
+            if not (c.get("street") and c.get("zip") and c.get("city")):
                 c.update(street=info[num]["street"], city=info[num]["city"], zip=info[num]["zip"])
             if not c.get("person_name") and owners.get(num):
                 c["person_name"], c["person_role"] = owners[num]["name"], owners[num]["role"]
@@ -543,6 +544,7 @@ def main(argv=None) -> int:
     ap.add_argument("--tender-days", type=int, default=0,
                     help="S1 UK: KMU mit gewonnenem öffentlichem Auftrag (Find a Tender), letzte N Tage (0 = aus)")
     ap.add_argument("--tender-pages", type=int, default=30, help="Find a Tender: höchstens so viele Abrufe (je 100)")
+    ap.add_argument("--cf-pages", type=int, default=0, help="Contracts Finder dazu: höchstens so viele Abrufe (je 100, 0 = aus)")
     ap.add_argument("--web-check", action="store_true",
                     help="S2: Firmen MIT Website prüfen (unsicher, nicht handytauglich, veraltet, kaputt) statt ohne Website")
     ap.add_argument("--deadline-min", type=float, default=0,
@@ -597,7 +599,7 @@ def main(argv=None) -> int:
     if "UK" in countries and args.tender_days > 0 and "S1" in segs:
         # S1/UK: KMU mit gewonnenem öffentlichem Auftrag (Find a Tender, Quellen-Scout 02.10.2026)
         try:
-            got = [c for c in load_tender(args.tender_days, args.tender_pages, stats) if segments.fits("S1", c)[0]]
+            got = [c for c in load_tender(args.tender_days, args.tender_pages, stats, args.cf_pages) if segments.fits("S1", c)[0]]
         except Exception as e:  # noqa: BLE001 - eine ausgefallene Quelle darf die anderen nicht stoppen
             log(f"S1/UK: Find a Tender übersprungen ({type(e).__name__}: {str(e)[:200]})")
             got = []

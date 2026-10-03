@@ -127,6 +127,46 @@ class FindTenderTests(unittest.TestCase):
         self.assertLessEqual(len(t), ft.TITLE_MAX + 1)
         self.assertTrue(t.endswith("…"))
 
+    def test_contracts_finder_release_normalized(self):
+        # Contracts Finder (03.10.2026): Adresse als eine Zeile ohne Land, Lieferant ohne Kontaktdaten
+        rel = {"ocid": "ocds-b5fd17-1", "id": "abc-1", "date": "2026-10-02T21:29:58+01:00",
+               "tender": {"title": "Theatre renovation works – out of hours"},
+               "buyer": {"id": "GB-CFS-1", "name": "Example Hospital Trust"},
+               "parties": [{"id": "GB-CFS-1", "name": "Example Hospital Trust", "roles": ["buyer"]},
+                           {"id": "GB-CFS-2", "name": "ACME BUILD LTD", "roles": ["supplier"], "details": {"scale": "sme"},
+                            "identifier": {"legalName": "ACME BUILD LTD", "scheme": "GB-COH", "id": "1234567"},
+                            "address": {"streetAddress": "3rd Floor Nexus House, CRAWLEY, West Sussex, RH10 9BG, UNITED KINGDOM OF GREAT BRITAIN AND NORTHERN IRELAND"}},
+                           {"id": "GB-CFS-3", "name": "Abroad SARL", "roles": ["supplier"], "details": {"scale": "sme"},
+                            "address": {"streetAddress": "1 rue de Paris, 75001 Paris"}}],
+               "awards": [{"status": "active", "suppliers": [{"id": "GB-CFS-2"}, {"id": "GB-CFS-3"}],
+                           "documents": [{"url": "https://www.contractsfinder.service.gov.uk/Notice/abc"}]}]}
+        e = ft.select([ft.normalize_cf(rel)], SINCE, log=lambda *_: None)
+        self.assertEqual(len(e), 1)  # ausländischer Lieferant ohne britische Postleitzahl fällt heraus
+        self.assertEqual((e[0]["zip"], e[0]["company_number"], e[0]["portal"]), ("RH10 9BG", "01234567", "Contracts Finder"))
+        self.assertEqual(e[0]["street"], "3rd Floor Nexus House, CRAWLEY, West Sussex")
+        c = ft.to_candidate(e[0])
+        self.assertEqual(c["source_url"], "https://www.contractsfinder.service.gov.uk/Notice/abc")
+        self.assertIn("published on Contracts Finder", segments.texts("S1", c)["signal"])
+
+    def test_fetch_cf_waits_once_on_rate_limit(self):
+        class R429(Resp):
+            status_code = 429
+        class R200(Resp):
+            status_code = 200
+        class S:
+            def __init__(self):
+                self.pages = [R429({}), R200({"releases": [{"id": "x", "parties": []}], "links": {}})]
+            def get(self, url, headers=None, timeout=None):
+                return self.pages.pop(0)
+        orig = ft.time.sleep
+        ft.time.sleep = lambda *_: None
+        try:
+            rel = ft.fetch_cf(SINCE, 3, log=lambda *_: None, session=S())
+        finally:
+            ft.time.sleep = orig
+        self.assertEqual(len(rel), 1)
+        self.assertEqual(rel[0]["_portal"], "Contracts Finder")
+
 
 if __name__ == "__main__":
     unittest.main()
