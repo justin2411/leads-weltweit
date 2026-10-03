@@ -225,7 +225,6 @@ export async function Home({ lang }: { lang: HomeLang }) {
                   <p className="hp-stat__label">{label}</p>
                 </li>))}
             </ul>
-            <p className="hp-footnote" data-reveal="" style={{ "--d": ".2s" } as CSSProperties}>{t.statsNote}</p>
           </div>
         </section>
 
