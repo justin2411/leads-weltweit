@@ -11,7 +11,7 @@ type Row = [string, string, string];
 
 export type HomeText = {
   title: string; desc: string; nav: [string, string][]; cta: string; contact: string;
-  pill: string; h1: string; h1gold: string[]; sub: string; every: string; chips: [string, string][];
+  pill: string; h1: string; h1gold: string[]; sub: string; subShort: string; every: string; chips: [string, string][];
   btn: string; film: string; fine: string[]; vtag: (s: number) => string; monday: string;
   statsH: string; stats: [string, string, string, string]; statsNote: string;
   ticker: [string, string[]]; filmH: (s: number) => string; filmSub: string;
@@ -47,6 +47,7 @@ export const HOME: Record<HomeLang, HomeText> = {
     pill: "Trigger leads for B2B service firms",
     h1: "Reach companies at the moment they need you", h1gold: ["need", "you"],
     sub: "Every week we read official registers and company careers pages, find the businesses across the country with a real reason to buy, and send you a short list. Each lead with its date, its source and an opening line.",
+    subShort: "Every week: businesses with a real reason to buy, each with its date, source and an opening line.",
     every: "In every lead",
     chips: [["bolt", "Event"], ["cal", "Date"], ["doc", "Source"], ["phone", "Phone & email"], ["bulb", "Sales tip"], ["chat", "Opening line"]],
     btn: "Get 10 free sample leads", film: "Watch the film", fine: ["Free of charge", "No card", "No subscription"],
@@ -148,6 +149,7 @@ export const HOME: Record<HomeLang, HomeText> = {
     pill: "Prospects à déclencheur pour les prestataires B2B",
     h1: "Touchez les entreprises au moment où elles ont besoin de vous", h1gold: ["besoin", "de", "vous"],
     sub: "Chaque semaine, nous lisons les registres officiels et les pages carrières des entreprises, repérons celles qui, partout dans le pays, ont une vraie raison d'acheter, et vous envoyons une courte liste. Chaque prospect avec sa date, sa source et une phrase d'accroche.",
+    subShort: "Chaque semaine : des entreprises avec une vraie raison d'acheter, avec date, source et phrase d'accroche.",
     every: "Dans chaque prospect",
     chips: [["bolt", "Événement"], ["cal", "Date"], ["doc", "Source"], ["phone", "Téléphone et e-mail"], ["bulb", "Conseil de vente"], ["chat", "Phrase d'accroche"]],
     btn: "Recevoir 10 prospects gratuits", film: "Voir le film", fine: ["Gratuit", "Sans carte", "Sans abonnement"],
@@ -249,6 +251,7 @@ export const HOME: Record<HomeLang, HomeText> = {
     pill: "Leads mit Anlass für B2B-Dienstleister",
     h1: "Erreichen Sie Unternehmen genau dann, wenn sie Sie brauchen", h1gold: ["brauchen"],
     sub: "Jede Woche lesen wir amtliche Register und Karriereseiten von Unternehmen, finden landesweit die Firmen mit echtem Kaufanlass und schicken Ihnen eine kurze Liste. Jeder Lead mit Datum, Quelle und Einstiegssatz.",
+    subShort: "Jede Woche: Firmen mit echtem Kaufanlass, jeweils mit Datum, Quelle und Einstiegssatz.",
     every: "In jedem Lead",
     chips: [["bolt", "Ereignis"], ["cal", "Datum"], ["doc", "Quelle"], ["phone", "Telefon & E-Mail"], ["bulb", "Vertriebstipp"], ["chat", "Einstiegssatz"]],
     btn: "10 kostenlose Probe-Leads", film: "Film ansehen", fine: ["Kostenlos", "Ohne Karte", "Ohne Abo"],

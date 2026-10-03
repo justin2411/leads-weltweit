@@ -98,15 +98,17 @@ export function HomeFx() {
       }
     });
 
-    // 5 · Karte im Hero: Signale wechseln, die Stadt pulsiert, eine goldene Linie verbindet Karte und Stadt
+    // 5 · Karte im Hero: Signale wechseln automatisch durch UK, US und FR (Inhaber 03.10.2026), die Karte des Landes
+    //     blendet über, die Stadt pulsiert, eine goldene Linie verbindet Signal und Stadt. Kein Mitbewegen mit der Maus.
     const stage = $(".hp-stage");
     let linkLater = () => {};
     if (stage) {
-      const sigs = $$(".hp-sig", stage), pins = $$<SVGGElement>(".hp-pin", stage), wave = $<SVGCircleElement>(".hp-wave", stage);
-      const list = $(".hp-sigs", stage), cities = $(".hp-stage__cities", stage);
+      const sigs = $$(".hp-sig", stage), maps = $$(".hp-map", stage), chips = $$<HTMLButtonElement>(".hp-city", stage);
+      const list = $(".hp-sigs", stage);
       const linkPath = $<SVGPathElement>(".hp-link path", stage), linkDot = $<SVGCircleElement>(".hp-link circle", stage);
       let idx = Math.max(0, sigs.findIndex((s) => s.classList.contains("is-active"))), hold = 0;
-      const pinOf = (s: HTMLElement) => pins.find((p) => p.dataset.city === s.dataset.city);
+      const mapOf = (s: HTMLElement) => maps.find((m) => m.dataset.cc === s.dataset.cc);
+      const pinOf = (s: HTMLElement) => mapOf(s)?.querySelector<SVGGElement>(`.hp-pin[data-city="${s.dataset.city}"]`) ?? undefined;
       const drawLink = (animate: boolean) => {
         if (!linkPath || !linkDot) return;
         const pin = pinOf(sigs[idx]);
@@ -119,30 +121,29 @@ export function HomeFx() {
       };
       let lraf = 0, lend = 0;
       linkLater = () => { lend = performance.now() + 1400; if (!lraf) { const loop = (tm: number) => { drawLink(false); lraf = tm < lend ? requestAnimationFrame(loop) : 0; }; lraf = requestAnimationFrame(loop); } };
-      const chips: HTMLButtonElement[] = [];
       const show = (i: number) => {
         const prev = sigs[idx]; idx = (i + sigs.length) % sigs.length; const cur = sigs[idx];
         if (prev !== cur) { prev.classList.remove("is-active"); prev.classList.add("is-leaving"); timers.push(window.setTimeout(() => prev.classList.remove("is-leaving"), 650)); }
         cur.classList.add("is-active");
         if (list) list.style.height = cur.offsetHeight + "px";
-        chips.forEach((c, k) => c.setAttribute("aria-selected", String(k === idx)));
-        const pin = pinOf(cur); pins.forEach((p) => p.classList.toggle("is-active", p === pin));
+        const map = mapOf(cur);
+        maps.forEach((m) => m.classList.toggle("is-on", m === map));
+        chips.forEach((c) => c.setAttribute("aria-selected", String(c.dataset.cc === cur.dataset.cc)));
+        const pin = pinOf(cur);
+        map?.querySelectorAll(".hp-pin").forEach((p) => p.classList.toggle("is-active", p === pin));
+        const wave = map?.querySelector<SVGCircleElement>(".hp-wave");
         if (pin && wave && !reduce) { wave.setAttribute("cx", pin.dataset.x ?? "0"); wave.setAttribute("cy", pin.dataset.y ?? "0"); wave.classList.remove("is-on"); wave.getBoundingClientRect(); wave.classList.add("is-on"); }
-        requestAnimationFrame(() => { drawLink(true); linkLater(); });
+        // Karte blendet über: Linie erst nach dem Überblenden neu zeichnen
+        timers.push(window.setTimeout(() => { drawLink(true); linkLater(); }, prev.dataset.cc !== cur.dataset.cc ? 450 : 0));
       };
-      if (cities && !cities.children.length) sigs.forEach((s, i) => {
-        const b = d.createElement("button"); b.type = "button"; b.className = "hp-city"; b.setAttribute("role", "tab"); b.textContent = s.dataset.city ?? "";
-        on(b, "click", () => { hold = Date.now() + 14000; show(i); });
-        cities.appendChild(b); chips.push(b);
-      });
+      chips.forEach((c) => on(c, "click", () => { hold = Date.now() + 14000; show(sigs.findIndex((s) => s.dataset.cc === c.dataset.cc)); }));
       show(idx);
       fonts.then(() => timers.push(window.setTimeout(() => { if (list) list.style.height = sigs[idx].offsetHeight + "px"; drawLink(true); linkLater(); }, 1500)));
       on(window, "resize", () => { if (list) list.style.height = sigs[idx].offsetHeight + "px"; drawLink(false); }, { passive: true });
       if (!reduce) timers.push(window.setInterval(() => { if (Date.now() < hold || d.hidden || !hero || hero.getBoundingClientRect().bottom < 0) return; show(idx + 1); }, 5600));
     }
 
-    // 6 · Hero: Lichtkegel auf dem Punkteraster, goldene Kartenpunkte unter dem Mauszeiger, Tiefe
-    const mapSvg = $<SVGSVGElement>(".hp-map svg"), litC = $<SVGCircleElement>("#hp-lit-c");
+    // 6 · Hero: Lichtkegel auf dem Punkteraster im Hintergrund (die Karte selbst bewegt sich nicht mit der Maus)
     if (fine && !reduce && hero) {
       let raf = 0, px = 0, py = 0;
       on(hero, "pointermove", ((e: PointerEvent) => {
@@ -151,19 +152,9 @@ export function HomeFx() {
         raf = requestAnimationFrame(() => {
           raf = 0; const h = hero.getBoundingClientRect();
           hero.style.setProperty("--mx", (px - h.left) + "px"); hero.style.setProperty("--my", (py - h.top) + "px"); hero.classList.add("is-pointer");
-          if (mapSvg && litC) { const m = mapSvg.getScreenCTM(); if (m) { const pt = new DOMPoint(px, py).matrixTransform(m.inverse()); litC.setAttribute("cx", pt.x.toFixed(1)); litC.setAttribute("cy", pt.y.toFixed(1)); } }
-          if (stage && desktop()) {
-            const nx = (px - h.left) / h.width - 0.5, ny = (py - h.top) / h.height - 0.5;
-            stage.style.setProperty("--mpx", (-nx * 16).toFixed(1) + "px"); stage.style.setProperty("--mpy", (-ny * 12).toFixed(1) + "px");
-            stage.style.setProperty("--cpx", (nx * 18).toFixed(1) + "px"); stage.style.setProperty("--cpy", (ny * 14).toFixed(1) + "px");
-            linkLater();
-          }
         });
       }) as EventListener);
-      on(hero, "pointerleave", () => {
-        hero.classList.remove("is-pointer"); litC?.setAttribute("cx", "-999");
-        if (stage) { ["--mpx", "--mpy", "--cpx", "--cpy"].forEach((v) => stage.style.setProperty(v, "0px")); linkLater(); }
-      });
+      on(hero, "pointerleave", () => hero.classList.remove("is-pointer"));
     }
 
     // 7 · Magnetische Gold-Knöpfe
@@ -217,9 +208,10 @@ export function HomeFx() {
       notes.forEach((n) => n.classList.toggle("is-active", n.dataset.note === String(k)));
       if (k) $$(`[data-mark="${k}"]`).forEach((m) => m.classList.add("hp-lit"));
     };
+    // Hover auf einen Punkt hält die Tour an und zeigt diesen Punkt; danach läuft sie weiter
     notes.forEach((n) => {
       on(n, "mouseenter", () => { touring = false; light(n.dataset.note ?? 0); });
-      on(n, "mouseleave", () => light(0));
+      on(n, "mouseleave", () => { touring = true; });
     });
     const typewrite = (el: HTMLElement, speed: number) => new Promise<void>((done) => {
       type Part = { text: string; node: ChildNode } | { node: HTMLElement };
@@ -245,10 +237,13 @@ export function HomeFx() {
         if (!e.isIntersecting) return; io2!.disconnect();
         timers.push(window.setTimeout(() => {
           if (quote) typewrite(quote, 13);
-          [1, 2, 3].forEach((k, j) => timers.push(window.setTimeout(() => { if (touring) light(k); }, j * 1500)));
-          timers.push(window.setTimeout(() => { if (touring) light(0); touring = false; }, 3 * 1500 + 1800));
+          // Tour 1 → 2 → 3 läuft dauerhaft weiter (Inhaber 03.10.2026: „der lead zwischen 1,2,3 automatisch wechselt“)
+          let k = 0;
+          const step = () => { if (!touring || d.hidden) return; k = k % 3 + 1; light(k); };
+          step();
+          timers.push(window.setInterval(step, 2400));
         }, 500));
-      }), { threshold: 0.45 });
+      }), { threshold: 0.3 });
       const lead = $(".hp-lead", example);
       if (lead) io2.observe(lead);
     }
