@@ -17,7 +17,7 @@ export type HomeText = {
   ticker: [string, string[]]; filmH: (s: number) => string; filmSub: string;
   methH: string; methSub: string; steps: [string, string, string][];
   ex: { label: string; tag: string; win: string; pick: string; pills: [string, string]; phonePrefix: string };
-  revenue: [string, string]; reasons: Row[]; radar: [string, string][];
+  revenue: [string, string]; reasons: Row[]; radar: [string, string][]; // [Symbol, Signal] – bewusst ohne Länder (Inhaber 03.10.2026)
   ctaCard: [string, string]; askMore: string; feedTitle: string; feedNote: string; howTitle: string;
   callH: string; callSub: string; call: {
     city: string; prio: string; event: string; eventText: string; date: string; dateText: string; source: string; sourceText: string;
@@ -61,7 +61,7 @@ export const HOME: Record<HomeLang, HomeText> = {
     reasons: [["target", "A real reason to buy", "Every company has a concrete event that creates demand for you."],
       ["zap", "You call first", "New leads every week, found while the need is still open."],
       ["lock", "Only for your firm", "Each lead goes to one firm in your field only."]],
-    radar: [["US", "No website"], ["UK", "Role open 30+ days"], ["FR", "Newly registered"]],
+    radar: [["globe", "Outdated website"], ["users", "Hiring right now"], ["zap", "New company"]],
     ctaCard: ["Try it with 10 free leads", "Pick your industry and country in the form below."],
     askMore: "Another question? Write to", feedTitle: "Recently detected", feedNote: "Real examples from our current sample set. Company data only.", howTitle: "How the sample works",
     callH: "Everything you need for the first call",
@@ -151,7 +151,7 @@ export const HOME: Record<HomeLang, HomeText> = {
     reasons: [["target", "Une vraie raison d'acheter", "Chaque entreprise a un événement concret qui crée un besoin."],
       ["zap", "Vous appelez en premier", "De nouveaux prospects chaque semaine, tant que le besoin est ouvert."],
       ["lock", "Réservé à votre entreprise", "Chaque prospect ne va qu'à une seule entreprise de votre secteur."]],
-    radar: [["US", "Sans site web"], ["UK", "Poste ouvert 30+ jours"], ["FR", "Création récente"]],
+    radar: [["globe", "Site web vieillissant"], ["users", "Recrute en ce moment"], ["zap", "Nouvelle entreprise"]],
     ctaCard: ["Essayez avec 10 prospects gratuits", "Choisissez votre secteur et votre pays dans le formulaire ci-dessous."],
     askMore: "Une autre question ? Écrivez à", feedTitle: "Détectés récemment", feedNote: "Exemples réels issus de notre échantillon actuel. Données d'entreprise uniquement.", howTitle: "Comment fonctionne l'échantillon",
     callH: "Tout ce qu'il faut pour le premier appel",
@@ -241,7 +241,7 @@ export const HOME: Record<HomeLang, HomeText> = {
     reasons: [["target", "Ein echter Kaufanlass", "Jedes Unternehmen hat ein konkretes Ereignis, das Bedarf schafft."],
       ["zap", "Sie rufen zuerst an", "Jede Woche neue Leads, gefunden solange der Bedarf offen ist."],
       ["lock", "Nur für Ihr Unternehmen", "Jeder Lead geht nur an ein Unternehmen Ihrer Branche."]],
-    radar: [["US", "Ohne Website"], ["UK", "Stelle 30+ Tage offen"], ["FR", "Neu gegründet"]],
+    radar: [["globe", "Veraltete Website"], ["users", "Stellt gerade ein"], ["zap", "Neu gegründet"]],
     ctaCard: ["Testen Sie es mit 10 kostenlosen Leads", "Wählen Sie Branche und Land im Formular unten."],
     askMore: "Noch eine Frage? Schreiben Sie an", feedTitle: "Gerade erkannt", feedNote: "Echte Beispiele aus unserer aktuellen Probe. Nur Firmendaten.", howTitle: "So funktioniert die Probe",
     callH: "Alles, was Sie für den ersten Anruf brauchen",
