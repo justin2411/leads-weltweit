@@ -6,6 +6,7 @@ import {
   scaleTop, ticks, type LayerKey, type ProbeRow,
 } from "@/lib/storage";
 import { loadProben, loadStorage, type Storage } from "@/lib/storage-data";
+import { loadPlanLog } from "@/lib/dashboard-data";
 import { requireOwner } from "../actions";
 import { Icon } from "@/app/icons";
 import { SPEICHER_CSS } from "./css";
@@ -65,13 +66,17 @@ export default async function Speicher({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
   const raw = typeof sp.seg === "string" ? sp.seg : "S2";
   const seg = raw === ALL || /^S\d{1,2}$/.test(raw) ? raw : "S2";
-  const [st, pr] = await Promise.all([
+  const [st, pr, plans] = await Promise.all([
     loadStorage().then((d) => ({ ok: true as const, d }), (e: unknown) => {
       console.error("speicher:", e); // Details nur im Server-Protokoll, nie im Browser
       return { ok: false as const };
     }),
     loadProben().catch(() => null as ProbeRow[] | null),
+    loadPlanLog(),
   ]);
+  // Speicher-Bremse (Nachtschicht 04.10.2026): Stufe aus der letzten Verteilung eines Werks (werk_plan_log)
+  const lastPlan = [plans["lead-werk"], plans["kunden-werk"]].filter(Boolean).sort((a, b) => b!.at.localeCompare(a!.at))[0];
+  const brake = lastPlan ? { level: lastPlan.bremse as string, at: lastPlan.at } : null;
 
   const chips = (
     <nav className="sp-chips" aria-label="Zielgruppe">
@@ -89,14 +94,17 @@ export default async function Speicher({ searchParams }: { searchParams: SP }) {
         {chips}
         <span className="sp-at">{st.ok ? `Stand ${berlin(st.d.at, false)}` : ""}</span>
       </div>
-      {st.ok ? <Body d={st.d} seg={seg} proben={pr} /> : (
+      {st.ok ? <Body d={st.d} seg={seg} proben={pr} brake={brake} /> : (
         <section className="sp-card sp-err"><p className="sp-none">Speicher-Zahlen gerade nicht erreichbar – gleich noch einmal laden.</p></section>
       )}
     </div>
   );
 }
 
-function Body({ d, seg, proben }: { d: Storage; seg: string; proben: ProbeRow[] | null }) {
+const BREMSE: Record<string, string> = { aus: "aus", hinweis: "Hinweis (ab 5,5 GB)", drossel: "Drossel: höchstens 8 Lead-Plätze (ab 6 GB)",
+  "ohne-rohbestand": "nur noch grüne Leads, kein Rohbestand (ab 7 GB)" };
+
+function Body({ d, seg, proben, brake }: { d: Storage; seg: string; proben: ProbeRow[] | null; brake: { level: string; at: string } | null }) {
   // ------------------------------------------------------------- Kunden-Leads
   const lt = leadTanks(d, seg);
   const lTop = scaleTop(Math.max(0, ...lt.map((t) => t.total)));
@@ -166,6 +174,9 @@ function Body({ d, seg, proben }: { d: Storage; seg: string; proben: ProbeRow[] 
             </div>
           </div>
           <p className="sp-cost"><b>Supabase Pro: 8 GB inklusive</b>, darüber kostet es extra.</p>
+          <p className="sp-cost" title="Stufen: ab 5,5 GB Hinweis · ab 6 GB höchstens 8 Lead-Plätze · ab 7 GB kein Rohbestand mehr · zurück erst 0,2 GB darunter">
+            <Icon name="speicher" size={14} /> Speicher-Bremse: <b>{brake ? BREMSE[brake.level] ?? brake.level : "noch keine Messung"}</b>
+            {brake && <> · geprüft {berlin(brake.at)}</>}</p>
         </section>
 
         <section className="sp-card">
