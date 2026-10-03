@@ -104,6 +104,10 @@ function build() {
     lead_suche: bool(pipeline, "lead_suche", true),
     kunden_suche: bool(pipeline, "kunden_suche", true),
     countries: parseCountries(read("countries.yaml")),
+    rules: {
+      signal_max_age_days: Number(read("scripts/extraktor/sc.py")?.match(/^MAX_AGE_DAYS\s*=\s*(\d+)/m)?.[1] ?? 0) || null,
+      sample_size: Number(read("scripts/lib/leadreport.py")?.match(/^SAMPLE_SIZE\s*=\s*(\d+)/m)?.[1] ?? 0) || null,
+    },
     workflows: Object.entries(WORKFLOWS).map(([file, name]) => ({ file, name, crons: parseCrons(read(`.github/workflows/${file}`)) })),
   };
 }

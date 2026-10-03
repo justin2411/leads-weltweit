@@ -9,6 +9,7 @@ import { readParams, withQuery, type SP } from "../params";
 const LIST_METRICS: [string, string][] = [
   ["sent", "Mails"], ["followups", "Nachfass"], ["bounced", "Bounces"], ["replies", "Antworten"], ["positive", "Positiv"],
   ["declined", "Abgesagt"], ["samples_requested", "Proben angefragt"], ["samples_sent", "Proben gesendet"], ["customers", "Kunden"],
+  ["leads_new", "Leads neu"], ["buyers_new", "Käufer neu"], ["buyers_call_only", "nur Anruf/Brief"],
 ];
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -32,7 +33,7 @@ export default async function Liste({ searchParams }: { searchParams: SP }) {
 
   return (
     <div className="v2">
-      <Crumbs items={[["Übersicht", withQuery("/dashboard", raw)], ["Versand", withQuery("/dashboard/versand", raw)], [label, ""]]} />
+      <Crumbs items={[["Übersicht", withQuery("/dashboard", raw)], m.startsWith("leads") || m.startsWith("buyers") ? ["Werke", withQuery("/dashboard/werke", raw)] : ["Versand", withQuery("/dashboard/versand", raw)], [label, ""]]} />
       <div className="head2">
         <Chips base="/dashboard/liste" param="m" value={m} options={LIST_METRICS.map(([k, l]) => [k, l])} params={base} />
         <Chips base="/dashboard/liste" param="land" value={land} options={COUNTRY_OPTS} params={base} dots />

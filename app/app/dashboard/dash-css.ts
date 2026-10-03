@@ -99,6 +99,16 @@ export const DASH_V2_CSS = `
 .dash .ctrl textarea,.dash .ctrl input:not([type=checkbox]):not([type=number]),.dash .ctrl select{width:100%;font:inherit;font-size:14px}
 .dash .ctrl .acts2 select{width:auto;flex:1}
 .dash i.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.dash .werke{display:grid;gap:12px;grid-template-columns:repeat(5,minmax(0,1fr))}
+.dash .werk{padding:14px;display:grid;gap:8px;align-content:start}
+.dash .werk .th{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:14px;gap:6px}
+.dash .funnel{display:grid;gap:8px}
+.dash .fstep{display:grid;grid-template-columns:130px 1fr 70px;gap:10px;align-items:center;font-size:13px;cursor:default}
+.dash .fb{height:14px;background:#efe6d6;border-radius:4px;overflow:hidden}.dash .fb i{display:block;height:100%;background:var(--ink2);border-radius:0 4px 4px 0}
+.dash .fn{text-align:right;font-weight:700}
+.dash .bar.wide{grid-template-columns:minmax(0,200px) 1fr 64px}.dash .bar.wide .bk{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:1000px){.dash .werke{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){.dash .werke{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.dash .werk{padding:10px;gap:4px}.dash .werk .facts{font-size:11px}.dash .werk .th{font-size:13px;flex-wrap:wrap}.dash .fstep{grid-template-columns:96px 1fr 56px}.dash .bar.wide{grid-template-columns:minmax(0,120px) 1fr 56px}}
 .dash .more-btn{justify-self:center;font-weight:600;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:99px;padding:8px 18px;text-decoration:none}
 .dash .flash{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:60;padding:10px 18px;border-radius:99px;font-weight:600;font-size:14px;box-shadow:0 10px 30px -10px rgba(0,0,0,.35)}
 .dash .flash.good{background:#e9f4ed;color:#1d5e33;border:1px solid #bfe0c6}.dash .flash.bad{background:#fbeceb;color:#8f1f18;border:1px solid #efc6c4}
@@ -194,7 +204,7 @@ export const DASH_V2_CSS = `
 .dash .viz figcaption{font-weight:700;font-size:15px;margin-bottom:4px;cursor:default}
 .dash .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--soft)}
 .dash .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
-.dash .cols{position:relative;margin:6px 0 4px 34px}
+.dash .cols{position:relative;margin:6px 0 4px 52px}
 .dash .cols-grid{position:absolute;inset:0 0 20px 0;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}
 .dash .cols-grid div{border-top:1px solid #ece6da;height:0;position:relative}.dash .cols-grid div.base{border-top-color:#cfc6b6}
 .dash .cols-grid span{position:absolute;right:calc(100% + 6px);top:-8px;font-size:11px;color:#8a8479;white-space:nowrap}
@@ -251,7 +261,7 @@ export const DASH_V2_CSS = `
 }
 @media (max-width:640px){
   .dash .tabs-wrap{display:none}
-  .dash .bnav{display:grid;grid-template-columns:repeat(6,1fr);position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--ink);border-top:1px solid rgba(216,189,138,.3);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+  .dash .bnav{display:grid;grid-template-columns:repeat(7,1fr);position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--ink);border-top:1px solid rgba(216,189,138,.3);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
   .dash .bnav a{display:flex;flex-direction:column;align-items:center;gap:1px;color:#c9d0db;text-decoration:none;font-size:10px;padding:4px 0}
   .dash .bnav a .bi{font-size:17px;line-height:1.1}
   .dash .bnav a.on{color:var(--gold2)}

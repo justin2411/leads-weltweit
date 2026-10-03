@@ -143,3 +143,23 @@ export async function loadCompany(id: string) {
   return { prospect: p, messages: msgs ?? [], events: ev.data ?? [], web: web.data ?? [], customers: cust.data ?? [],
     notes: (notes.data ?? []) as { note: string; created_at: string }[], suppressed: (sup.data ?? [])[0] ?? null };
 }
+
+export type Production = {
+  leads: { day: string; country: string; source: string; n: number }[];
+  prospects: { day: string; country: string; status: string; n: number }[];
+  buyer_reasons: { status: string; reason: string; n: number }[];
+  runs: { werk: string; segment_id: string | null; country: string | null; candidates: number; processed: number; green: number; yellow: number; red: number; parts: number; last_at: string }[];
+  run_reasons: { werk: string; reason: string; n: number }[];
+  last_run: Record<string, string>;
+};
+
+/** Produktion der Werke im Zeitraum (Leads/Käufer je Tag, Land, Quelle/Status, Prüfgründe, Zähler je Lauf).
+ *  Zwischengespeichert: laufender Zeitraum 10 min, abgeschlossene Zeiträume 1 h (große Zählung, schont die DB). */
+export function loadProduction(from: string, to: string, today: string): Promise<Production> {
+  const fn = unstable_cache(
+    () => rpc<Production>("dashboard_production", { p_segment: SEGMENT, p_from: from, p_to: to }, 30_000),
+    ["dashboard-production-v2", SEGMENT, from, to],
+    { revalidate: to >= today ? 600 : 3600 },
+  );
+  return fn();
+}
