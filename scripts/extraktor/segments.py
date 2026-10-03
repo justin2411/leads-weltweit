@@ -477,7 +477,7 @@ def texts_tender(c: dict) -> dict:
     """S1/UK aus Find a Tender: ehrlich als gewonnener öffentlicher Auftrag, keine offene Stelle behauptet."""
     f, name = c["facts"], c["name"]
     won = uk_day(f["awarded_on"])
-    signal = (f"{name} won a public contract, published on Find a Tender on {won}: "
+    signal = (f"{name} won a public contract, published on {f.get('portal') or 'Find a Tender'} on {won}: "
               f"\u201c{f['contract_title']}\u201d for {f['buyer']}.")
     info = (f"{name}" + (f", based in {c['city']}," if c.get("city") else "")
             + f" is a small or medium-sized UK supplier that was awarded a public contract by {f['buyer']} on {won}.")
