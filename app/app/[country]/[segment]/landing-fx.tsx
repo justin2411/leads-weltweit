@@ -29,6 +29,20 @@ export function LandingFx() {
     const sweep = () => { if (reduce || !beam) return; beam.classList.remove("is-on"); void beam.offsetWidth; beam.classList.add("is-on"); };
     fonts.then(() => requestAnimationFrame(() => { root.classList.add("is-ready"); timers.push(window.setTimeout(sweep, 250)); }));
     if (!reduce) timers.push(window.setInterval(() => { if (!d.hidden && hero && hero.getBoundingClientRect().bottom > 0) sweep(); }, 15000));
+    // Lichtkegel auf dem Punkteraster wie auf der Startseite
+    const fx = $(".lz-beam");
+    if (fx && hero && !reduce && matchMedia("(pointer: fine)").matches) {
+      let raf = 0, px = 0, py = 0;
+      on(hero, "pointermove", ((e: PointerEvent) => {
+        px = e.clientX; py = e.clientY;
+        if (raf) return;
+        raf = requestAnimationFrame(() => {
+          raf = 0; const h = hero.getBoundingClientRect();
+          fx.style.setProperty("--mx", (px - h.left) + "px"); fx.style.setProperty("--my", (py - h.top) + "px"); fx.classList.add("is-pointer");
+        });
+      }) as EventListener);
+      on(hero, "pointerleave", () => fx.classList.remove("is-pointer"));
+    }
     const desktop = () => matchMedia("(min-width: 1061px)").matches;
 
     // 1 · Methode: Schritt-Leiste, mitlaufende Grafik
