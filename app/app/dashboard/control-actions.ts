@@ -12,9 +12,10 @@ import { db, suppressEmail } from "@/lib/supabase";
 import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadOwnerSettings } from "@/lib/dashboard-data";
 import {
   InputError, PACKAGES, WORKFLOWS, toggleIn, validateCountryLimits, validateCustomer, validateFollowupDays, validateMaxAge,
-  validateNote, validateReplyKind, validateSampleTargets, WERK_SWITCHES, toggleWerkPaused, type SettingKey, type WerkKey,
-  type WorkflowKey,
+  validateNote, validateReplyKind, validateSampleTargets, validateSlotPlan, WERK_SWITCHES, toggleWerkPaused, type LaneRegistry,
+  type SettingKey, type WerkKey, type WorkflowKey,
 } from "@/lib/owner-settings";
+import LANES from "@/lib/werk-linien.json";
 import { requireOwner } from "./actions";
 
 const BY = "Inhaber Dashboard";
@@ -122,6 +123,17 @@ export async function toggleWerk(f: FormData) {
     const cur = s.werke_paused ?? {};
     if (!!cur[key] === !want) return; // schon so
     await setSetting("werke_paused", toggleWerkPaused(cur, key, new Date().toISOString()));
+  });
+}
+
+// ------------------------------------------------------------------------------------------- Belegungsplan
+/** Plätze je Linie (Inhaber 03.10.2026: „wv plätze werden belegt … wie maschinen steuern“). Wirkt beim nächsten Start
+ *  des Werks (Job plan in lead-werk.yml/kunden-werk.yml). Grenzen je Linie und Summe prüft validateSlotPlan. */
+export async function saveSlotPlan(f: FormData) {
+  await run(f, "Belegung gespeichert – wirkt beim nächsten Start der Werke", async () => {
+    const reg = LANES as unknown as LaneRegistry;
+    const input = Object.fromEntries(reg.lanes.map((l) => [l.id, f.get(`slot_${l.id}`)]));
+    await setSetting("slot_plan", f.get("reset") === "1" ? {} : validateSlotPlan(input, reg));
   });
 }
 

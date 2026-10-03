@@ -642,20 +642,27 @@ class GithubProTests(unittest.TestCase):
     def test_werke_fill_github_pro_slots(self):
         import yaml
         wf = ROOT / ".github" / "workflows"
+        import werk_plan
         lead = yaml.safe_load((wf / "lead-werk.yml").read_text())["jobs"]
         kunden = yaml.safe_load((wf / "kunden-werk.yml").read_text())["jobs"]
-        n_lead = len(lead["holen"]["strategy"]["matrix"]["include"])
-        n_kunden = len(kunden["pruefen"]["strategy"]["matrix"]["shard"])
-        # alle Teile gleichzeitig, höchstens 30 (Inhaber 02.10.2026: „Mach 30“; vorher 25 wegen Disk-IO)
-        self.assertLessEqual(lead["holen"]["strategy"]["max-parallel"], min(n_lead, 30))
-        self.assertEqual(kunden["pruefen"]["strategy"]["max-parallel"], n_kunden)
-        self.assertLessEqual(n_lead + n_kunden, 38)  # GitHub Pro: 40 gleichzeitig, 2 frei für die übrigen Abläufe
-        for e in lead["holen"]["strategy"]["matrix"]["include"]:
+        # Belegung aus dem Plan (Leitstand, Inhaber 03.10.2026) – Workflows lesen die Matrix aus dem Job plan
+        self.assertIn("needs.plan.outputs.matrix", str(lead["holen"]["strategy"]["matrix"]))
+        self.assertIn("needs.plan.outputs.matrix", str(kunden["pruefen"]["strategy"]["matrix"]))
+        reg = werk_plan.load_lines()
+        cap = reg["total_slots"] - reg["reserve"]
+        self.assertEqual(cap, 38)  # GitHub Pro: 40 gleichzeitig, 2 frei für die übrigen Abläufe
+        self.assertGreaterEqual(lead["holen"]["strategy"]["max-parallel"], cap)
+        self.assertGreaterEqual(kunden["pruefen"]["strategy"]["max-parallel"], max(l["max"] for l in reg["lanes"] if l["werk"] == "kunden-werk"))
+        n, _ = werk_plan.counts(reg, None)
+        include = werk_plan.matrix(reg, "lead-werk", n)
+        n_kunden = len(werk_plan.matrix(reg, "kunden-werk", n))
+        self.assertLessEqual(len(include), 30)  # Standard wie bisher: 30 Lead-Teile (Inhaber 02.10.2026: „Mach 30“)
+        self.assertLessEqual(len(include) + n_kunden, cap)
+        for e in include:
             if "--shard" in e["args"]:
-                i, n = e["args"].split("--shard ")[1].split()[0].split("/")
-                same = [x for x in lead["holen"]["strategy"]["matrix"]["include"]
-                        if x["name"].rsplit("-", 1)[0] == e["name"].rsplit("-", 1)[0]]
-                self.assertEqual(int(n), len(same), e["name"])  # jeder Teil einer Quelle genau einmal
+                i, k = e["args"].split("--shard ")[1].split()[0].split("/")
+                same = [x for x in include if x["name"].rsplit("-", 1)[0] == e["name"].rsplit("-", 1)[0]]
+                self.assertEqual(int(k), len(same), e["name"])  # jeder Teil einer Quelle genau einmal
         for jobs, name in ((lead, "lead-werk.yml"), (kunden, "kunden-werk.yml")):
             self.assertIn(f"gh workflow run {name}", jobs["weiter"]["steps"][-1]["run"])
             self.assertEqual(jobs["weiter"]["permissions"]["actions"], "write")
@@ -728,16 +735,18 @@ class WebAgencyFocusTests(unittest.TestCase):
 
     def test_lead_werk_is_all_web_agencies(self):
         import yaml
-        jobs = yaml.safe_load((ROOT / ".github" / "workflows" / "lead-werk.yml").read_text())["jobs"]
-        for e in jobs["holen"]["strategy"]["matrix"]["include"]:
-            if e["name"] in ("s1-us-lca", "s1-uk-tender"):  # S1-Teile (Quellen-Scout 02.10.2026, R15)
+        import werk_plan
+        reg = werk_plan.load_lines()
+        include = werk_plan.matrix(reg, "lead-werk", werk_plan.counts(reg, None)[0])  # Standardbelegung
+        for e in include:
+            if e["name"].startswith(("s1-us-lca", "s1-uk-tender")):  # S1-Teile (Quellen-Scout 02.10.2026, R15)
                 continue
             self.assertIn("--segments S2 ", e["args"] + " ", e["name"])
         # US-S2 wird für S1 nicht gekürzt: ohne Website + Website-Prüfung zusammen mindestens 18 Teile
         # (Scout R16: Vorrat ohne Website abgearbeitet, Plätze an die Website-Prüfung)
-        us = [e for e in jobs["holen"]["strategy"]["matrix"]["include"] if e["name"].startswith(("s2-us-", "web-us-"))]
+        us = [e for e in include if e["name"].startswith(("s2-us-", "web-us-"))]
         self.assertGreaterEqual(len(us), 18)
-        self.assertLessEqual(len(jobs["holen"]["strategy"]["matrix"]["include"]), 30)  # 30 + 8 Kunden-Werk = 38
+        self.assertLessEqual(len(include), 30)  # 30 + 8 Kunden-Werk = 38
 
 
 class DolLcaTests(unittest.TestCase):

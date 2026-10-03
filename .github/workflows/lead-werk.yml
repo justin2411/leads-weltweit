@@ -64,8 +64,28 @@ jobs:
           pip install -r requirements.txt
           python -c "import sys; sys.path.insert(0, 'scripts'); from extraktor.sources import us_dol_lca as l; l.build()"
 
+  plan:
+    # Belegungsplan (Inhaber 03.10.2026: Plätze je Linie im Leitstand einstellen): app/lib/werk-linien.json +
+    # owner_settings.slot_plan -> Matrix. Ohne Einstellung/Datenbank: Standardbelegung (wie bisher fest eingetragen).
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.p.outputs.matrix }}
+      teile: ${{ steps.p.outputs.teile }}
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install requests
+      - id: p
+        run: python scripts/werk_plan.py lead-werk
+
   holen:
-    needs: us-auszug
+    needs: [us-auszug, plan]
+    if: needs.plan.outputs.teile != '0'
     runs-on: ubuntu-latest
     timeout-minutes: 130
     strategy:
@@ -74,45 +94,16 @@ jobs:
       # gleichzeitig; 8 für das Kunden-Werk, 2 frei). --shard verteilt fest nach Quell-ID.
       # Zwischendurch 25 (Inhaber 02.10.2026: „senke nur auf 25“, Supabase Disk-IO); wieder 30 (Inhaber 02.10.2026
       # abends: „Mach 30“): bei 25 warteten 5 Teile, ein Durchgang dauerte ~2,5 h statt ~80 min. 30 + 8 Kunden-Werk = 38.
-      max-parallel: 30
-      matrix:
-        include:
+      # Plätze je Linie kommen aus dem Belegungsplan (Job plan, app/lib/werk-linien.json, Leitstand im Dashboard).
+      # Verlauf der früher fest eingetragenen Belegung:
           # Website-Prüfung S2 im großen Stil (Inhaber 02.10.2026: „mach das jetzt bitte im ganz großen stil und hol viele
           # leads rein“): 26 Teile (seit R16) mit je 40 gleichzeitigen Abrufen (verschiedene Domains, je Domain weiter 1/s, robots.txt).
           # Zuerst in der Liste, damit sie immer sofort starten. Plätze von S2 ohne Website in FR (3 -> 1),
           # UK (1 -> 0) und IE/NL/BE/SE (4 -> 1 gemeinsamer Teil): dort liegen schon ~130.000 Leads bei wenigen Käufern.
-          - { name: web-us-0, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 0/21" }
-          - { name: web-us-1, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 1/21" }
-          - { name: web-us-2, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 2/21" }
-          - { name: web-us-3, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 3/21" }
-          - { name: web-us-4, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 4/21" }
-          - { name: web-us-5, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 5/21" }
-          - { name: web-us-6, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 6/21" }
-          - { name: web-us-7, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 7/21" }
-          - { name: web-us-8, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 8/21" }
-          - { name: web-us-9, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 9/21" }
-          - { name: web-us-10, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 10/21" }
-          - { name: web-us-11, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 11/21" }
-          - { name: web-us-12, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 12/21" }
-          - { name: web-us-13, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 13/21" }
-          - { name: web-us-14, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 14/21" }
-          - { name: web-us-15, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 15/21" }
-          - { name: web-us-16, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 16/21" }
-          - { name: web-us-17, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 17/21" }
-          - { name: web-us-18, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 18/21" }
-          - { name: web-us-19, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 19/21" }
-          - { name: web-us-20, workers: 40, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 20/21" }
-          - { name: web-uk-0, workers: 40, args: "--segments S2 --countries UK --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 0/5" }
-          - { name: web-uk-1, workers: 40, args: "--segments S2 --countries UK --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 1/5" }
-          - { name: web-uk-2, workers: 40, args: "--segments S2 --countries UK --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 2/5" }
-          - { name: web-uk-3, workers: 40, args: "--segments S2 --countries UK --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 3/5" }
-          - { name: web-uk-4, workers: 40, args: "--segments S2 --countries UK --web-check --s2-limit 60000 --per 60000 --max-tries 60000 --shard 4/5" }
           # Quellen-Scout R19 (03.10.2026): FR-Vorrat abgearbeitet (Lauf 10:40: 218 Firmen, 0 neu, je Teil 1 min), 120 Tage
           # Pause je Firma -> 1 FR-Teil ohne Aufteilung für Neuzugänge; die 4 Plätze an die Website-Prüfung IE/NL/BE/SE
           # (Overture mit Website: NL 565.448, BE 324.377, SE 264.896, IE 97.337; Test 895 Seiten -> 70 grün:
           # NL 18/150, BE 14/150, SE 22/298, IE 16/297). Je Land 2.500 je Teil und Lauf, damit alle vier Länder drankommen
-          - { name: web-fr-0, workers: 40, args: "--segments S2 --countries FR --web-check --s2-limit 60000 --per 60000 --max-tries 60000" }
-          - { name: web-north-0, workers: 40, args: "--segments S2 --countries IE,NL,BE,SE --web-check --s2-limit 2500 --per 60000 --max-tries 60000" }
           # Quellen-Scout S1 (Inhaber 02.10.2026: „recruiting kunden und leads … darauf fokussieren“): US-Arbeitgeber mit
           # Fachkräfte-Bedarf aus den DOL-LCA-Daten, Test 50 -> 26 grün
           # - { name: s1-us-lca, args: "--segments S1 --countries US --fmcsa-days 0 --formd-days 0 --s1-probe 0 --lca --per 4000 --max-tries 4000" }
@@ -131,8 +122,8 @@ jobs:
           # Scout R16 (03.10.2026): Vorrat abgearbeitet (je Teil 1 Kandidat, 0 grün; S2 US 257.755 Leads) -> 18 -> 2 Teile
           # für Neuzugänge im Monatsauszug; die 16 Plätze und der von s2-north-0 gehen an die Website-Prüfung (US 5 -> 16, UK 2 -> 5,
           # FR 2 -> 5); US-S2 hat damit 18 statt 23 Teile, aber alle mit Ertrag
-          - { name: s2-us-0, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 0/2" }
-          - { name: s2-us-1, args: "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000 --shard 1/2" }
+      max-parallel: 38
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -423,7 +414,7 @@ jobs:
           path: out/cache/overture_us_web.parquet
           key: overture-us-web2-${{ needs.us-auszug.outputs.monat }}
       - name: DOL-LCA-Auszug laden
-        if: steps.gate.outputs.an == 'true' && matrix.name == 's1-us-lca'
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 's1-us-lca')
         uses: actions/cache/restore@v4
         with:
           path: out/cache/dol_lca.json

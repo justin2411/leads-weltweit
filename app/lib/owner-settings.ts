@@ -19,12 +19,14 @@ export type OwnerSettings = {
   buyer_countries_off: string[];
   /** Werke an/aus per Klick (Inhaber 03.10.2026): Werk -> pausiert seit (ISO). */
   werke_paused: Record<string, string>;
+  /** Belegungsplan (Inhaber 03.10.2026): Plätze je Linie (app/lib/werk-linien.json), leer = Standard. */
+  slot_plan: Record<string, number>;
 };
 export type SettingKey = keyof OwnerSettings;
 
 export const DEFAULTS: OwnerSettings = {
   send_paused: false, send_countries_off: [], send_country_limits: {}, followup_enabled: true, followup_days: null,
-  sample_targets: {}, sample_max_age_hours: null, buyer_countries_off: [], werke_paused: {},
+  sample_targets: {}, sample_max_age_hours: null, buyer_countries_off: [], werke_paused: {}, slot_plan: {},
 };
 
 /**
@@ -115,6 +117,37 @@ export function effectiveLimit(yamlLimit: number, s: OwnerSettings, country: str
   if (s.send_countries_off.includes(country)) return 0;
   const v = s.send_country_limits[country];
   return v === undefined ? yamlLimit : Math.max(0, Math.min(v, yamlLimit));
+}
+
+export type Lane = { id: string; werk: "lead-werk" | "kunden-werk"; label: string; short: string; segment: string; country: string; default: number; max: number; workers?: number; what: string; args?: string };
+export type LaneRegistry = { total_slots: number; reserve: number; lanes: Lane[] };
+
+/** Wirksame Plätze je Linie (wie scripts/werk_plan.py counts): Einstellung, sonst Standard; ungültig -> Standard. */
+export function slotCounts(reg: LaneRegistry, plan: Record<string, number> | null | undefined): Record<string, number> {
+  const def = Object.fromEntries(reg.lanes.map((l) => [l.id, l.default]));
+  if (!plan || !Object.keys(plan).length) return def;
+  const out: Record<string, number> = { ...def };
+  for (const l of reg.lanes) {
+    const v = plan[l.id];
+    if (v === undefined || v === null) continue;
+    if (!Number.isInteger(Number(v))) return def;
+    out[l.id] = Math.max(0, Math.min(Number(v), l.max));
+  }
+  const sum = Object.values(out).reduce((a, b) => a + b, 0);
+  return sum > reg.total_slots - reg.reserve ? def : out;
+}
+
+/** Belegungsplan aus dem Formular: je Linie 0 … max, Summe höchstens total_slots - reserve. */
+export function validateSlotPlan(input: Record<string, unknown>, reg: LaneRegistry): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const l of reg.lanes) {
+    const raw = String(input[l.id] ?? "").trim();
+    out[l.id] = raw === "" ? l.default : int(raw, 0, l.max, l.label);
+  }
+  const cap = reg.total_slots - reg.reserve;
+  const sum = Object.values(out).reduce((a, b) => a + b, 0);
+  if (sum > cap) throw new InputError(`zusammen ${sum} Plätze – höchstens ${cap} (${reg.reserve} bleiben frei für Versand, Tagescheck, Wachhund)`);
+  return out;
 }
 
 export const PACKAGES = { starter: { label: "Starter", price: 129, perWeek: 15 }, pro: { label: "Pro", price: 249, perWeek: 50 } } as const;

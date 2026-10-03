@@ -159,17 +159,19 @@ export type Production = {
 };
 
 /** Live-Zustand der Werke (Lebenszeichen, letzte Aktivität), ~50 ms, 20 s zwischengespeichert. */
-export const loadActivity = unstable_cache(
-  async (): Promise<Activity> => {
-    try {
-      return { ...EMPTY_ACTIVITY, ...(await rpc<Activity>("dashboard_activity", {}, 8000)) };
-    } catch {
-      return { ...EMPTY_ACTIVITY, now: new Date().toISOString() };
-    }
-  },
-  ["dashboard-activity-v1"],
+// Fehler werden NICHT zwischengespeichert (sonst zeigte das Dashboard bis zu 20 s „keine Daten“ nach einem Aussetzer)
+const activityCached = unstable_cache(
+  async (): Promise<Activity> => ({ ...EMPTY_ACTIVITY, ...(await rpc<Activity>("dashboard_activity", {}, 8000)) }),
+  ["dashboard-activity-v2"],
   { revalidate: 20 },
 );
+export async function loadActivity(): Promise<Activity> {
+  try {
+    return await activityCached();
+  } catch {
+    return { ...EMPTY_ACTIVITY, now: new Date().toISOString() };
+  }
+}
 
 /** Produktion der Werke im Zeitraum (Leads/Käufer je Tag, Land, Quelle/Status, Prüfgründe, Zähler je Lauf).
  *  Zwischengespeichert: laufender Zeitraum 10 min, abgeschlossene Zeiträume 1 h (große Zählung, schont die DB). */
@@ -180,4 +182,28 @@ export function loadProduction(from: string, to: string, today: string): Promise
     { revalidate: to >= today ? 600 : 3600 },
   );
   return fn();
+}
+
+/** Zähler je Lauf und Teil der letzten Stunden (Leitstand: Ertrag je Linie, Auslastung). Kleine Tabelle, 60 s zwischengespeichert. */
+const runRowsCached = unstable_cache(
+  async (hours: number = 24): Promise<import("@/lib/leitstand").RunRow[]> => {
+    {
+      const since = new Date(Date.now() - hours * 3_600_000).toISOString();
+      const { data, error } = await db().from("run_stats")
+        .select("werk, part, country, started_at, finished_at, processed, green, yellow, red")
+        .in("werk", ["lead-werk", "kunden-werk"]).gte("finished_at", since).order("finished_at", { ascending: false }).limit(5000)
+        .abortSignal(AbortSignal.timeout(6000));
+      if (error) throw new Error(error.message);
+      return (data ?? []) as import("@/lib/leitstand").RunRow[];
+    }
+  },
+  ["dashboard-run-rows-v1"],
+  { revalidate: 60 },
+);
+export async function loadRunRows(hours = 24) {
+  try {
+    return await runRowsCached(hours);
+  } catch {
+    return [];
+  }
 }

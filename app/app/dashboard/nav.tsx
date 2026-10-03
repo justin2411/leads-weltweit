@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
 export const SECTIONS: [string, string, string][] = [
+  ["/dashboard/jarvis", "JARVIS", "◎"],
   ["/dashboard", "Übersicht", "◉"],
   ["/dashboard/versand", "Versand", "✉"],
   ["/dashboard/kontakte", "Kontakte", "☰"],
@@ -28,7 +29,7 @@ export function Nav({ bottom = false }: { bottom?: boolean }) {
       {SECTIONS.map(([href, label, icon]) => {
         const on = href === "/dashboard" ? path === href : path.startsWith(href);
         return (
-          <Link key={href} href={href + q} className={on ? "on" : ""} aria-current={on ? "page" : undefined}>
+          <Link key={href} href={href + q} className={`${on ? "on" : ""}${href.endsWith("/jarvis") ? " jv-tab" : ""}`.trim() || undefined} aria-current={on ? "page" : undefined}>
             {bottom && <span className="bi" aria-hidden>{icon}</span>}
             {label}
           </Link>

@@ -25,7 +25,7 @@ async function login(formData: FormData) {
     path: "/",
     maxAge: sessionMaxAge,
   });
-  redirect("/dashboard");
+  redirect("/dashboard/jarvis");
 }
 
 const CSS = `
@@ -43,7 +43,7 @@ const CSS = `
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ e?: string }> }) {
   const { e } = await searchParams;
   // Schon angemeldet: direkt zur Übersicht
-  if (verifySession((await cookies()).get(SESSION_COOKIE)?.value, process.env.SESSION_SECRET?.trim())) redirect("/dashboard");
+  if (verifySession((await cookies()).get(SESSION_COOKIE)?.value, process.env.SESSION_SECRET?.trim())) redirect("/dashboard/jarvis");
   return (
     <div className={`lg ${sans.variable}`}>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
