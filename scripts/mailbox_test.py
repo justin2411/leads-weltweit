@@ -5,6 +5,8 @@
 2. SMTP: Anmeldung und Testmail vom Postfach an OWNER_EMAIL (Versand)
 3. Empfang: Testmail von außen (Resend) an das Postfach, danach per IMAP suchen (prüft den MX-Eintrag)
 4. DKIM: Testmail vom Postfach an sich selbst, per IMAP holen und die Signatur (d=Domain) mit dkimpy prüfen
+5. Weitere Versand-Postfächer (SMTP_USER_2 …, lib/mailboxes.py): Anmeldung, Testmail an OWNER_EMAIL und
+   DKIM-Prüfung über das eigene IMAP-Postfach (gleiche Zugangsdaten), Inhaber 03.10.2026: „teste jedes postfach“
 """
 from __future__ import annotations
 
@@ -21,18 +23,21 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 
-def smtp_send(to: str, subject: str, body: str) -> None:
-    port = int(os.environ.get("SMTP_PORT") or "465")
+def smtp_send(to: str, subject: str, body: str, box: dict | None = None) -> None:
+    box = box or {"host": os.environ["SMTP_HOST"], "port": int(os.environ.get("SMTP_PORT") or "465"),
+                  "user": os.environ["SMTP_USER"], "password": os.environ["SMTP_PASSWORD"],
+                  "from": os.environ["SMTP_FROM"]}
+    port = int(box["port"])
     cls = smtplib.SMTP_SSL if port == 465 else smtplib.SMTP
     msg = EmailMessage()
-    sender = os.environ["SMTP_FROM"]
+    sender = box["from"]
     msg["From"], msg["To"], msg["Subject"] = sender, to, subject
     msg["Message-ID"] = make_msgid(domain=sender.split("@")[-1].strip(">"))
     msg.set_content(body)
-    with cls(os.environ["SMTP_HOST"], port, timeout=30) as s:
+    with cls(box["host"], port, timeout=30) as s:
         if port != 465:
             s.starttls()
-        s.login(os.environ["SMTP_USER"], os.environ["SMTP_PASSWORD"])
+        s.login(box["user"], box["password"])
         s.send_message(msg)
 
 
@@ -44,15 +49,15 @@ def resend_send(to: str, subject: str, body: str) -> None:
     r.raise_for_status()
 
 
-def imap_fetch(token: str, wait: int = 180) -> bytes | None:
+def imap_fetch(token: str, wait: int = 180, user: str | None = None, password: str | None = None) -> bytes | None:
     """Rohe Mail mit dem Token im Betreff aus dem Postfach holen (Posteingang oder Spam)."""
     end = time.time() + wait
     while time.time() < end:
         with imaplib.IMAP4_SSL(os.environ["IMAP_HOST"]) as m:
-            m.login(os.environ["IMAP_USER"], os.environ["IMAP_PASSWORD"])
+            m.login(user or os.environ["IMAP_USER"], password or os.environ["IMAP_PASSWORD"])
             for box in ("INBOX", "Spam", "Junk"):
                 if m.select(box, readonly=True)[0] == "OK":
-                    typ, data = m.search(None, "SUBJECT", token)
+                    typ, data = m.search(None, "SUBJECT", f'"{token}"')
                     if typ == "OK" and data[0].split():
                         typ, msg = m.fetch(data[0].split()[-1], "(BODY.PEEK[])")
                         if typ == "OK":
@@ -85,7 +90,7 @@ def imap_find(token: str, wait: int = 180) -> bool:
             m.login(os.environ["IMAP_USER"], os.environ["IMAP_PASSWORD"])
             for box in ("INBOX", "Spam", "Junk"):
                 if m.select(box, readonly=True)[0] == "OK":
-                    typ, data = m.search(None, "SUBJECT", token)
+                    typ, data = m.search(None, "SUBJECT", f'"{token}"')
                     if typ == "OK" and data[0].split():
                         print(f"   gefunden in {box}")
                         return True
@@ -138,6 +143,30 @@ def main() -> int:
     except Exception as exc:  # noqa: BLE001
         print(f"FEHLER DKIM: {type(exc).__name__}: {exc}")
         ok = False
+
+    print("5. Weitere Versand-Postfächer")
+    from lib.mailboxes import address, mailboxes
+    extra = [b for b in mailboxes() if b["n"] > 1]
+    if not extra:
+        print("       keine (SMTP_USER_2 … nicht gesetzt)")
+    for b in extra:
+        addr = address(b["from"])
+        try:
+            smtp_send(os.environ["OWNER_EMAIL"], f"[TEST] Postfach {b['n']} sendet {token}",
+                      f"Testmail aus Versand-Postfach {b['n']} ({addr}). Bitte prüfen: Posteingang oder Spam?", box=b)
+            print(f"OK     Postfach {b['n']} ({addr}): Anmeldung und Versand an den Inhaber")
+        except Exception as exc:  # noqa: BLE001
+            print(f"FEHLER Postfach {b['n']} ({addr}) SMTP: {type(exc).__name__}: {exc}")
+            ok = False
+            continue
+        try:
+            smtp_send(addr, f"[TEST] DKIM {b['n']} {token}", "DKIM-Test für dieses Postfach", box=b)
+            good = dkim_check(imap_fetch(f"DKIM {b['n']} {token}", user=b["user"], password=b["password"]), domain)
+            print(f"{'OK    ' if good else 'FEHLT '} Postfach {b['n']}: DKIM für {domain} {'gültig' if good else 'fehlt oder ungültig'}")
+            ok &= good
+        except Exception as exc:  # noqa: BLE001
+            print(f"FEHLER Postfach {b['n']} DKIM/IMAP: {type(exc).__name__}: {exc}")
+            ok = False
     return 0 if ok else 1
 
 
