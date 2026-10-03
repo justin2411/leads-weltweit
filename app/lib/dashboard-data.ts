@@ -207,3 +207,43 @@ export async function loadRunRows(hours = 24) {
     return [];
   }
 }
+
+export type GateCheck = { result: "released" | "failed"; failed_stage: number | null; reasons: string[]; context: string | null; checked_at: string;
+  leads: { segment_id: string | null; country: string; signal_type: string; event_summary: string; watch_companies: { name: string } | null } | null };
+/** Letzte Ergebnisse der Drei-Stufen-Freigabe (Prüfen-Reiter in JARVIS): je Lead Ergebnis, Stufe, Gründe. */
+export async function loadGateChecks(limit = 12, failedOnly = false): Promise<GateCheck[]> {
+  try {
+    let q = db().from("lead_checks").select("result, failed_stage, reasons, context, checked_at, leads(segment_id, country, signal_type, event_summary, watch_companies(name))")
+      .order("checked_at", { ascending: false }).limit(limit);
+    if (failedOnly) q = q.eq("result", "failed");
+    const { data, error } = await q.abortSignal(AbortSignal.timeout(5000));
+    if (error) throw new Error(error.message);
+    return (data ?? []) as unknown as GateCheck[];
+  } catch {
+    return [];
+  }
+}
+
+export type SentMail = { sent_at: string; subject: string | null; kind: string; prospects: { id: string; company_name: string; country: string } | null };
+/** Zuletzt gesendete Mails (Prüfen-Reiter Versand, Live-Ticker). */
+export async function loadRecentSent(limit = 10): Promise<SentMail[]> {
+  try {
+    const { data, error } = await db().from("messages").select("sent_at, subject, kind, prospects(id, company_name, country)")
+      .eq("status", "sent").order("sent_at", { ascending: false }).limit(limit).abortSignal(AbortSignal.timeout(5000));
+    if (error) throw new Error(error.message);
+    return (data ?? []) as unknown as SentMail[];
+  } catch {
+    return [];
+  }
+}
+
+/** Agenten-Aufträge (neueste 40). */
+export async function loadAgentTasks(): Promise<import("@/lib/agents").AgentTask[]> {
+  try {
+    const { data, error } = await db().from("agent_tasks").select("*").order("created_at", { ascending: false }).limit(40).abortSignal(AbortSignal.timeout(5000));
+    if (error) throw new Error(error.message);
+    return (data ?? []) as import("@/lib/agents").AgentTask[];
+  } catch {
+    return [];
+  }
+}

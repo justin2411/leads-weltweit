@@ -12,10 +12,11 @@ export type PultLane = {
   stat: { runs: number; green: number; perSlotH: number | null; avgRunMin: number | null; perRun: number | null; exhausted: boolean; live: number };
 };
 
-export function Pult({ lanes, cap, total, back, action, nextStart, custom }: {
+export function Pult({ lanes, cap, total, back, action, nextStart, custom, only }: {
   lanes: PultLane[]; cap: number; total: number; back: string; action: (f: FormData) => void | Promise<void>;
-  nextStart: Record<string, string>; custom: boolean;
+  nextStart: Record<string, string>; custom: boolean; only?: string[];
 }) {
+  const shown = only ? lanes.filter((l) => only.includes(l.id)) : lanes;
   const [v, setV] = useState<Record<string, number>>(() => Object.fromEntries(lanes.map((l) => [l.id, l.cur])));
   const sum = useMemo(() => Object.values(v).reduce((a, b) => a + b, 0), [v]);
   const dirty = lanes.some((l) => v[l.id] !== l.cur);
@@ -42,8 +43,9 @@ export function Pult({ lanes, cap, total, back, action, nextStart, custom }: {
           {!over && sum < cap && <em>{cap - sum} frei</em>}
         </div>
       </div>
+      {lanes.filter((l) => !shown.includes(l)).map((l) => <input key={l.id} type="hidden" name={`slot_${l.id}`} value={v[l.id]} />)}
       <ul className="lanes">
-        {lanes.map((l) => {
+        {shown.map((l) => {
           const s = l.stat;
           const state = s.live > 0 ? "läuft" : s.runs === 0 ? "keine Daten" : s.exhausted ? "Vorrat erschöpft" : "ergiebig";
           return (

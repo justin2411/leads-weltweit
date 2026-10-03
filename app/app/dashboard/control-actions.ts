@@ -274,3 +274,33 @@ export async function setSubscriptionPaused(f: FormData) {
     await log("customer:subscription_status", sub, null, { status });
   });
 }
+
+// ------------------------------------------------------------------------------------------- Agenten
+/** Auftrag an einen Agenten (Inhaber 03.10.2026). Ausgeführt von der stündlichen Claude-Sitzung „Agenten“. */
+export async function createAgentTask(f: FormData) {
+  await run(f, "Auftrag erteilt – Agent startet spätestens zur nächsten vollen Stunde", async () => {
+    const { validateTask, TaskError } = await import("@/lib/agents");
+    let t;
+    try {
+      t = validateTask({ agent: f.get("agent"), kind: f.get("kind"), market: f.get("market"), brief: f.get("brief") });
+    } catch (e) {
+      if (e instanceof TaskError) throw new InputError(e.message);
+      throw e;
+    }
+    const { error } = await db().from("agent_tasks").insert({ ...t, created_by: BY });
+    if (error) throw new Error(error.message);
+    await log("agent:create", `Agent ${t.agent}`, null, t);
+  });
+}
+
+/** Offenen Auftrag zurückziehen (laufende arbeiten zu Ende). */
+export async function cancelAgentTask(f: FormData) {
+  await run(f, "Auftrag zurückgezogen", async () => {
+    const id = String(f.get("id") ?? "");
+    if (!/^[0-9a-f-]{36}$/i.test(id)) throw new InputError("Auftrag unbekannt");
+    const { data, error } = await db().from("agent_tasks").update({ status: "abgebrochen", finished_at: new Date().toISOString() }).eq("id", id).eq("status", "offen").select("id");
+    if (error) throw new Error(error.message);
+    if (!data?.length) throw new InputError("nur offene Aufträge lassen sich zurückziehen");
+    await log("agent:cancel", id, null, null);
+  });
+}
