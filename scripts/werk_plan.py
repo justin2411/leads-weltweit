@@ -115,9 +115,13 @@ def lane_stats(rows: list[dict], werk: str, runs: int = 2) -> dict[str, dict]:
         work = (lambda x: x["cand"]) if werk == "lead-werk" else (lambda x: x["proc"])
         slot_h = sum(mins) / 60
         green = sum(x["green"] for x in ps)
-        out[lane] = {"parts_last": len(rs[order[0]]), "parts": len(ps), "empty": sum(1 for x in ps if work(x) == 0),
+        lp = rs[order[0]]  # letzter Lauf allein (frisch aufgefüllte Quelle soll nicht an alten Leerläufen scheitern)
+        lmins = [(x["end"] - x["start"]).total_seconds() / 60 for x in lp]
+        out[lane] = {"parts_last": len(lp), "parts": len(ps), "empty": sum(1 for x in ps if work(x) == 0),
                      "avg_min": sum(mins) / len(mins), "max_min": max(mins), "green": green,
-                     "per_slot_h": green / slot_h if slot_h > 0 else 0.0, "cand_last": sum(work(x) for x in rs[order[0]])}
+                     "per_slot_h": green / slot_h if slot_h > 0 else 0.0, "cand_last": sum(work(x) for x in lp),
+                     "empty_last": sum(1 for x in lp if work(x) == 0), "avg_last": sum(lmins) / len(lmins),
+                     "max_last": max(lmins)}
     return out
 
 
@@ -163,7 +167,18 @@ def autopilot(reg: dict, werk: str, base: dict[str, int], stats: dict[str, dict]
             continue
         last = max(1, int(s["parts_last"]))
         share = s["empty"] / max(1, s["parts"])
-        if share >= 0.5 or (s["avg_min"] < 10 and s["max_min"] < 30):
+        dry_all = share >= 0.5 or (s["avg_min"] < 10 and s["max_min"] < 30)
+        # Erschöpft nur, wenn auch der letzte Lauf allein leer war (Nachtschicht 04.10.2026: nach Auffüllen der
+        # US-Quelle wären sonst 21 ergiebige Teile wegen zweier alter Leerläufe auf 1 Platz gekürzt worden)
+        if "empty_last" in s:
+            dry_last = s["empty_last"] / last >= 0.5 or (s["avg_last"] < 10 and s["max_last"] < 30)
+        else:
+            dry_last = dry_all
+        if dry_all and not dry_last:
+            plan[lid] = min(last, mx)
+            why[lid] = (f"letzter Lauf ergiebig ({last - s['empty_last']}/{last} Teile mit Kandidaten, "
+                        f"Ø {round(s['avg_last'])} min) – unverändert")
+        elif dry_all:
             plan[lid] = 1
             why[lid] = f"Vorrat erschöpft ({s['empty']}/{s['parts']} Teile leer, Ø {round(s['avg_min'])} min) – 1 Wachplatz"
         elif s["empty"] == 0 and s["avg_min"] >= FULL_MIN:

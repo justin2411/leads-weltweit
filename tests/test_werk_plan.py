@@ -114,6 +114,22 @@ class AutopilotTests(unittest.TestCase):
         self.assertEqual(plan["web-us"], 1)
         self.assertIn("Wachplatz", why["web-us"])
 
+    def test_refilled_source_is_not_cut_by_old_empty_runs(self):
+        # Nachtschicht 04.10.2026: zwei alte Leerläufe (42 Teile, 1 min, 0 Kandidaten), dann ein ergiebiger Lauf
+        # (21 Teile, 75 min) nach Auffüllen der US-Quelle -> nicht auf 1 kürzen
+        old = _rows("web-us", "r0", 42, 1, 0, start="2026-10-03T16:00:00+00:00")
+        new = _rows("web-us", "r1", 21, 75, 5000, 300)
+        stats = W.lane_stats(old + new, "lead-werk")["web-us"]
+        self.assertGreaterEqual(stats["empty"] / stats["parts"], 0.5)  # zusammen sähe es erschöpft aus
+        plan, why = W.autopilot(self.reg, "lead-werk", {**self.lead, "web-us": 21}, {"web-us": stats}, other={"kunden": 1})
+        self.assertEqual(plan["web-us"], 21)
+        self.assertIn("letzter Lauf ergiebig", why["web-us"])
+        # umgekehrt: letzter Lauf leer -> Wachplatz wie bisher
+        stats = W.lane_stats(_rows("web-us", "r0", 21, 75, 5000, 300, start="2026-10-03T16:00:00+00:00")
+                             + _rows("web-us", "r1", 21, 1, 0), "lead-werk")
+        plan, _ = W.autopilot(self.reg, "lead-werk", {**self.lead, "web-us": 21}, stats, other={"kunden": 1})
+        self.assertEqual(plan["web-us"], 1)
+
     def test_full_lane_grows_toward_30_minute_parts(self):
         # alle anderen Linien erschöpft (je 1 Wachplatz) -> genug freie Plätze
         empty = [r for l in self.lead if l != "web-north" for r in _rows(l, "r1", 2, 1, 0)]
