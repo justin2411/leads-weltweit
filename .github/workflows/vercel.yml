@@ -1,14 +1,14 @@
-# Vercel verwalten (eingeschränkt): Status, Variable für Preview freigeben, neu deployen.
+# Vercel verwalten (eingeschränkt): Status, Variable für Preview freigeben, neu deployen, Website-Subdomain einrichten.
 # Braucht das GitHub-Secret VERCEL_TOKEN. Zeigt nie Werte von Variablen.
 name: vercel
 on:
   workflow_dispatch:
     inputs:
       befehl:
-        description: "status | preview-add | redeploy"
+        description: "status | preview-add | redeploy | site-setup"
         default: status
       arg:
-        description: "preview-add: Namen mit Komma; redeploy: Branch (z. B. main)"
+        description: "preview-add: Namen mit Komma; redeploy: Branch (z. B. main); site-setup: Website (z. B. physiotherapie-oehlke)"
         default: ""
 jobs:
   vercel:
