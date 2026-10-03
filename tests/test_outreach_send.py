@@ -127,3 +127,41 @@ class CountryWideButtonTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BounceCountTests(unittest.TestCase):
+    """Inhaber 03.10.2026 (Punkt 3): je Adresse zählen, vorübergehende Abweisung erst bei Wiederholung."""
+
+    def test_duplicate_and_transient(self):
+        from lib.deliverability import count_bounces
+        ev = [
+            {"type": "bounced", "to_email": "a@x.com", "payload": {}},
+            {"type": "bounced", "to_email": "a@x.com", "payload": {}},  # dieselbe Adresse doppelt
+            {"type": "bounced", "to_email": "b@y.com", "payload": {"bounce": {"type": "Transient"}}},
+            {"type": "bounced", "to_email": "c@z.com", "payload": {"bounce": {"type": "Transient"}}},
+            {"type": "bounced", "to_email": "c@z.com", "payload": {"bounce": {"type": "Transient"}}},
+            {"type": "complained", "to_email": "d@w.com", "payload": {}},
+        ]
+        self.assertEqual(count_bounces(ev), (2, 1))  # a (hart), c (zweimal vorübergehend)
+
+
+class FreshnessTests(unittest.TestCase):
+    """Inhaber 03.10.2026 (Punkte 1+2): Adresse muss frisch auf der eigenen Website stehen."""
+
+    def test_needs_rescan(self):
+        import datetime as dt
+        from lib import freshness as F
+        now = dt.datetime(2026, 10, 3, tzinfo=dt.timezone.utc)
+        site = {"source_url": "https://firma.example/kontakt", "checked_at": "2026-09-20T00:00:00+00:00"}
+        self.assertFalse(F.needs_rescan(site, now))
+        self.assertTrue(F.needs_rescan({**site, "checked_at": "2026-08-01T00:00:00+00:00"}, now))
+        self.assertTrue(F.needs_rescan({**site, "source_url": "https://overturemaps.org (Firmeneintrag 1)"}, now))
+        self.assertTrue(F.needs_rescan({**site, "checked_at": None}, now))
+
+    def test_confirm_on_website(self):
+        from lib import freshness as F
+        scan = lambda w, f: {"emails": {"info@firma.example": "https://firma.example/impressum"}}
+        self.assertEqual(F.confirm_on_website("Info@firma.example", "firma.example", None, scan),
+                         (True, "https://firma.example/impressum"))
+        self.assertEqual(F.confirm_on_website("hallo@firma.example", "firma.example", None, scan), (False, None))
+        self.assertEqual(F.confirm_on_website("x@y.z", "", None, scan), (False, None))

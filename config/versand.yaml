@@ -2,14 +2,15 @@
 # Gesendet werden nur freigegebene Entwürfe, mit Aufwärmphase (Ziel 100/Tag: 90 Kaltmails + 10 Reserve für Antworten), Notbremse
 # (Bounces über 5 %, bewertet ab 100 gesendeten Mails, oder 1 Spam-Beschwerde; scripts/lib/deliverability.py)
 # und Tagesgrenzen aus countries.yaml.
-aktiv: false   # 28.09.2026: Inhaber im Chat: „bitte schick noch keine Mails raus, stoppe das noch“ – kein Kalt- und Nachfassversand bis zur Freigabe
+aktiv: true    # 03.10.2026: Inhaber im Chat: „1 bis 3 genauso umsetzen 4. wir starten mit 90 mails pro tag“ (vorher 28.09. gestoppt)
 # Inhaber 26.09.2026: „sende jeden Tag, auch heute 100“ -> keine Aufwärmphase, Tagesziel 100
 # (tatsächlich höchstens anbieter_tageslimit - 10 = 90 Kaltmails, Rest für Antworten/Berichte)
 # Inhaber 27.09.2026 (Chat): „lass mit 150 pro tag über strato starten“ -> keine Aufwärmphase, Tagesziel 150
 # (Tagesmenge = min(tagesziel, anbieter_tageslimit - 10) = 150). Notbremse und Spam-Stopp gelten weiter.
 aufwaermphase: false
-tagesziel: 150
-freigabe: "Justin Koch, Chat 27.09.2026: 'ja gebe ich frei' / 'lass mit 150 pro tag über strato starten'"
+# Inhaber 03.10.2026: „wir starten mit 90 mails pro tag“; vor jeder Erstmail Frischeprüfung der Adresse (lib/freshness.py)
+tagesziel: 90
+freigabe: "Justin Koch, Chat 03.10.2026: '1 bis 3 genauso umsetzen 4. wir starten mit 90 mails pro tag'"
 gesamtgrenze: 1000
 # Tagesgrenze des Mail-Postfachs für Kaltmails (SMTP, Strato). 10 Reserve für Antworten.
 anbieter_tageslimit: 160

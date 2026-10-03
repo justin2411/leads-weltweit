@@ -60,6 +60,29 @@ def emergency_stop(sent: int, bounced: int, complained: int) -> str | None:
     return None
 
 
+def count_bounces(events: list[dict]) -> tuple[int, int]:
+    """(Bounces, Beschwerden) für die Notbremse, je Empfängeradresse gezählt (Inhaber 03.10.2026, Punkt 3):
+    dieselbe Adresse zählt nur einmal, eine vorübergehende Abweisung („Transient“, Postfach existiert)
+    erst, wenn sie bei derselben Adresse wiederholt auftritt. Ereignisse: type, payload, to_email (oder message_id)."""
+    hard: set[str] = set()
+    soft: dict[str, int] = {}
+    complained: set[str] = set()
+    for e in events:
+        who = (e.get("to_email") or e.get("message_id") or "").lower()
+        if e.get("type") == "complained":
+            complained.add(who)
+            continue
+        if e.get("type") != "bounced":
+            continue
+        bounce = ((e.get("payload") or {}).get("bounce") or {}) if isinstance(e.get("payload"), dict) else {}
+        if str(bounce.get("type", "")).lower() == "transient":
+            soft[who] = soft.get(who, 0) + 1
+        else:
+            hard.add(who)
+    hard |= {w for w, n in soft.items() if n >= 2}
+    return len(hard), len(complained)
+
+
 def interleave(messages: list[dict], key: str = "experiment_id") -> list[dict]:
     """Abwechselnd aus jedem Experiment, damit alle Zielgruppen gleichmäßig vorankommen."""
     buckets: dict[str, list[dict]] = {}

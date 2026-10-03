@@ -110,7 +110,7 @@ def check_workflows(c: Check) -> None:
 
 
 def check_sending(c: Check, db) -> None:
-    from lib.deliverability import BOUNCE_STOP, MIN_SAMPLE, emergency_stop
+    from lib.deliverability import BOUNCE_STOP, MIN_SAMPLE, count_bounces, emergency_stop
     aktiv = cfg("versand.yaml", "aktiv") == "true"
     since26 = (NOW - dt.timedelta(hours=26)).isoformat()
     since30 = (NOW - dt.timedelta(days=30)).isoformat()
@@ -118,9 +118,10 @@ def check_sending(c: Check, db) -> None:
     queue = db.select("messages", {"status": "eq.approved", "select": "id,kind"})
     sent30 = db.select_all("messages", {"status": "eq.sent", "sent_at": f"gte.{since30}", "select": "id"})
     ev = db.select_all("email_events", {"created_at": f"gte.{since30}", "type": "in.(bounced,complained)",
-                                        "select": "message_id,type"})
-    bounced = len({e["message_id"] for e in ev if e["type"] == "bounced"})
-    complained = len([e for e in ev if e["type"] == "complained"])
+                                        "select": "message_id,type,payload,messages(to_email)"})
+    for e in ev:
+        e["to_email"] = (e.get("messages") or {}).get("to_email")
+    bounced, complained = count_bounces(ev)  # gleiche Zählung wie der Versand (je Adresse, Inhaber 03.10.2026)
     stop = emergency_stop(len(sent30), bounced, complained)
     kinds = {}
     for m in sent_day:
