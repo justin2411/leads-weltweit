@@ -103,4 +103,11 @@ export const LANDING_V2_CSS = `
 .bx .lp2 .h2o:before{display:none}
 .lp2 .lz-beam .hp-dots--lit{opacity:0;transition:opacity .4s}
 .lp2 .lz-beam.is-pointer .hp-dots--lit{opacity:1}
+/* Hero-Karte: Land größer (Inhaber 03.10.2026), Notiz-Karte bleibt gleich. Breite Länder (US, FR) füllen die Spaltenbreite. */
+@media (min-width:1061px){
+  .lp2 .lz-hero .hp-map[data-cc="US"],.lp2 .lz-hero .hp-map[data-cc="FR"]{top:150px;bottom:auto;left:-70px;right:-60px;height:auto;aspect-ratio:auto}
+  .lp2 .lz-hero .hp-map[data-cc="FR"]{left:30px;right:-30px;top:130px}
+  .lp2 .lz-hero .hp-map[data-cc="US"] svg,.lp2 .lz-hero .hp-map[data-cc="FR"] svg{height:auto}
+  .lp2 .lz-hero .hp-map[data-cc="UK"]{top:-20px;bottom:-40px;right:-70px}
+}
 `;
