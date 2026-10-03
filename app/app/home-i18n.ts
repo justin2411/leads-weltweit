@@ -11,7 +11,7 @@ type Row = [string, string, string];
 
 export type HomeText = {
   title: string; desc: string; nav: [string, string][]; cta: string; contact: string;
-  pill: string; h1: string; h1gold: string[]; sub: string; btn: string; film: string; fine: string[]; vtag: (s: number) => string;
+  pill: string; h1: string; h1gold: string[]; sub: string; every: string; chips: [string, string][]; btn: string; film: string; fine: string[]; vtag: (s: number) => string;
   kpi: [string, string, string, string]; kpiNote: string;
   revenue: [string, string]; reasons: Row[]; radar: [string, string][]; howTitle: string; steps: Row[];
   indH: string; indGo: string; industries: Record<string, string>; soon: string; countryPick: string;
@@ -27,8 +27,10 @@ export const HOME: Record<HomeLang, HomeText> = {
     desc: "Every Monday: companies with a real reason to buy, with phone, email and an opening line. For web agencies, recruiters, accountants, insurance brokers and other B2B service firms.",
     nav: [["#film", "Film"], ["#industries", "Industries"], ["#contact-person", "Personal contact"]], cta: "Free sample", contact: "Contact",
     pill: "Trigger leads for B2B service firms",
-    h1: "Reach companies the moment they need you", h1gold: ["need", "you"],
-    sub: "Every Monday: companies with a real reason to buy. With phone, email and an opening line.",
+    h1: "Reach companies at the moment they need you", h1gold: ["need", "you"],
+    sub: "Every week we read official registers and company careers pages, find the businesses across the country with a real reason to buy, and send you a short list. Each lead with its date, its source and an opening line.",
+    every: "In every lead",
+    chips: [["bolt", "Event"], ["cal", "Date"], ["doc", "Source"], ["phone", "Phone & email"], ["bulb", "Sales tip"], ["chat", "Opening line"]],
     btn: "Get 10 free leads", film: "Watch the film", fine: ["Free", "No card", "No obligation"],
     vtag: (s) => `The film · ${s} seconds`,
     kpi: ["Companies in view", "New companies a year", "Dated signals", "Free sample leads"],
@@ -75,8 +77,10 @@ export const HOME: Record<HomeLang, HomeText> = {
     desc: "Chaque lundi : des entreprises avec une vraie raison d'acheter, avec téléphone, e-mail et une phrase d'accroche. Pour agences web, cabinets de recrutement, experts-comptables, courtiers et autres prestataires B2B.",
     nav: [["#film", "Film"], ["#industries", "Secteurs"], ["#contact-person", "Interlocuteur"]], cta: "Échantillon gratuit", contact: "Contact",
     pill: "Prospects à déclencheur pour les prestataires B2B",
-    h1: "Les bonnes entreprises, au bon moment", h1gold: ["bon", "moment"],
-    sub: "Chaque lundi : des entreprises avec une vraie raison d'acheter. Avec téléphone, e-mail et phrase d'accroche.",
+    h1: "Touchez les entreprises au moment où elles ont besoin de vous", h1gold: ["besoin", "de", "vous"],
+    sub: "Chaque semaine, nous lisons les registres officiels et les pages carrières des entreprises, repérons celles qui, partout dans le pays, ont une vraie raison d'acheter, et vous envoyons une courte liste. Chaque prospect avec sa date, sa source et une phrase d'accroche.",
+    every: "Dans chaque prospect",
+    chips: [["bolt", "Événement"], ["cal", "Date"], ["doc", "Source"], ["phone", "Téléphone et e-mail"], ["bulb", "Conseil de vente"], ["chat", "Phrase d'accroche"]],
     btn: "Recevoir 10 prospects gratuits", film: "Voir le film", fine: ["Gratuit", "Sans carte", "Sans engagement"],
     vtag: (s) => `Le film · ${s} secondes`,
     kpi: ["Entreprises suivies", "Créations par an", "Signaux datés", "Prospects offerts"],
@@ -123,8 +127,10 @@ export const HOME: Record<HomeLang, HomeText> = {
     desc: "Jeden Montag: Unternehmen mit einem echten Kaufanlass, mit Telefon, E-Mail und Einstiegssatz. Für Webagenturen, Personalvermittler, Steuerberater, Versicherungsmakler und andere B2B-Dienstleister.",
     nav: [["#film", "Film"], ["#industries", "Branchen"], ["#contact-person", "Ansprechpartner"]], cta: "Kostenlose Probe", contact: "Kontakt",
     pill: "Leads mit Anlass für B2B-Dienstleister",
-    h1: "Die richtigen Unternehmen im richtigen Moment", h1gold: ["Moment"],
-    sub: "Jeden Montag: Unternehmen mit echtem Kaufanlass. Mit Telefon, E-Mail und Einstiegssatz.",
+    h1: "Erreichen Sie Unternehmen genau dann, wenn sie Sie brauchen", h1gold: ["brauchen"],
+    sub: "Jede Woche lesen wir amtliche Register und Karriereseiten von Unternehmen, finden landesweit die Firmen mit echtem Kaufanlass und schicken Ihnen eine kurze Liste. Jeder Lead mit Datum, Quelle und Einstiegssatz.",
+    every: "In jedem Lead",
+    chips: [["bolt", "Ereignis"], ["cal", "Datum"], ["doc", "Quelle"], ["phone", "Telefon & E-Mail"], ["bulb", "Vertriebstipp"], ["chat", "Einstiegssatz"]],
     btn: "10 kostenlose Leads", film: "Film ansehen", fine: ["Kostenlos", "Ohne Karte", "Unverbindlich"],
     vtag: (s) => `Der Film · ${s} Sekunden`,
     kpi: ["Unternehmen im Blick", "Neugründungen pro Jahr", "Datierte Signale", "Kostenlose Probe-Leads"],

@@ -126,11 +126,10 @@ export async function Home({ lang }: { lang: HomeLang }) {
             <span className="pill"><Icon name="star" />{t.pill}</span>
             <h1><Words text={t.h1} gold={t.h1gold} /></h1>
             <p className="sub">{t.sub}</p>
-            <div className="ctaline">
-              <div className="ctabox">
-                <a className="btn gold big" href="#sample" data-cta>{t.btn} <span className="ar">→</span></a>
-                <span className="free2">{t.fine.map((f) => <span key={f}>{f}</span>)}</span>
-              </div>
+            <div className="every"><span className="cap">{t.every}</span>
+              {/* zwei Zeilen wie auf den Landingpages */}
+              {[t.chips.slice(0, 4), t.chips.slice(4)].map((row, r) => (
+                <span className="chiprow" key={r}>{row.map(([ic, txt]) => <span className="chip" key={txt}><Icon name={ic} />{txt}</span>)}</span>))}
             </div>
           </div>
         </section>
@@ -145,6 +144,13 @@ export async function Home({ lang }: { lang: HomeLang }) {
             </div>
           </div>
         )}
+        {/* Button unter dem Video (Inhaber 03.10.2026) */}
+        <div className="aftervid">
+          <div className="ctabox">
+            <a className="btn gold big" href="#sample" data-cta>{t.btn} <span className="ar">→</span></a>
+            <span className="free2">{t.fine.map((f) => <span key={f}>{f}</span>)}</span>
+          </div>
+        </div>
 
         <section className="sec">
           <div className="wrap">
