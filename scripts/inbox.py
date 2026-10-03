@@ -103,14 +103,19 @@ def handle_reply(db, msg: EmailMessage, dedupe: str, apply: bool) -> str | None:
         return "optout"
     body = _text(msg)
     optout = bool(OPTOUT.search(body.split("\n>")[0][:2000]) or subject_is_optout(subject))
-    print(f"ANTWORT von {sender} auf {ours[0]['to_email']}{' (Abmeldewunsch)' if optout else ''}: {subject}")
+    # Abwesenheitsnotizen und andere Autoresponder sind keine Antwort (Inhaber 03.10.2026: „Automatic reply“ zählte
+    # im Dashboard als „Geantwortet“) – gleiche Erkennung wie der Antwort-Assistent (Kopfzeilen + Betreff)
+    from responder import is_auto_reply
+    auto = not optout and is_auto_reply(msg)
+    kind = "auto_reply" if auto else "reply"
+    print(f"{'AUTOMATISCHE ANTWORT' if auto else 'ANTWORT'} von {sender} auf {ours[0]['to_email']}{' (Abmeldewunsch)' if optout else ''}: {subject}")
     if apply:
-        db.insert("email_events", {"message_id": ours[0]["id"], "type": "reply", "dedupe_key": dedupe,
-                                   "note": ("Abmeldewunsch. " if optout else "") + subject})
+        db.insert("email_events", {"message_id": ours[0]["id"], "type": kind, "dedupe_key": dedupe,
+                                   "note": ("Abmeldewunsch. " if optout else "Automatische Antwort: " if auto else "") + subject})
         if optout:
             for addr in {sender, ours[0]["to_email"]} - {""}:
                 suppress(db, addr, "reply_optout", "imap-reply")
-    return "optout" if optout else "reply"
+    return "optout" if optout else kind
 
 
 def main(argv=None) -> int:

@@ -21,6 +21,18 @@ READ_ONLY_RPC = {"is_suppressed"}
 RETRY_WAIT = (2, 5, 15)  # Sekunden; danach gibt der Aufruf den Fehler weiter
 
 
+def clean(v: Any) -> Any:
+    """Nullzeichen (\\u0000) entfernen: Postgres-Text kann sie nicht speichern, ein einziges in einer Firmen-Website
+    ließ sonst das ganze Paket scheitern (Kunden-Werk Teil 2/8, 03.10.2026: „unsupported Unicode escape sequence“)."""
+    if isinstance(v, str):
+        return v.replace("\x00", "") if "\x00" in v else v
+    if isinstance(v, dict):
+        return {k: clean(x) for k, x in v.items()}
+    if isinstance(v, list):
+        return [clean(x) for x in v]
+    return v
+
+
 class DB:
     def __init__(self, url: str | None = None, key: str | None = None, timeout: int = 60):
         url = url or os.environ.get("SUPABASE_URL")
@@ -82,16 +94,16 @@ class DB:
             res = "ignore-duplicates" if ignore_duplicates else "merge-duplicates"
             headers["Prefer"] += f",resolution={res}"
             params["on_conflict"] = upsert_on
-        return self._check(self._send("POST", f"{self.base}/{table}", safe=False, json=rows, params=params,
+        return self._check(self._send("POST", f"{self.base}/{table}", safe=False, json=clean(rows), params=params,
                                       headers=headers))
 
     def update(self, table: str, match: dict, values: dict) -> list[dict]:
         params = {k: f"eq.{v}" for k, v in match.items()}
-        return self._check(self._send("PATCH", f"{self.base}/{table}", safe=True, params=params, json=values,
+        return self._check(self._send("PATCH", f"{self.base}/{table}", safe=True, params=params, json=clean(values),
                                       headers={"Prefer": "return=representation"}))
 
     def rpc(self, fn: str, args: dict) -> Any:
-        return self._check(self._send("POST", f"{self.base}/rpc/{fn}", safe=fn in READ_ONLY_RPC, json=args))
+        return self._check(self._send("POST", f"{self.base}/rpc/{fn}", safe=fn in READ_ONLY_RPC, json=clean(args)))
 
     def is_suppressed(self, email: str) -> bool:
         return bool(self.rpc("is_suppressed", {"p_email": email}))
