@@ -40,6 +40,29 @@ class MailboxTest(unittest.TestCase):
         self.assertTrue(mb.is_bounce(msg))
         self.assertEqual(mb.parse_bounce(msg), ["info@gone-company.co.uk"])
 
+    def test_bounce_details_status_and_diagnostic_without_addresses(self):
+        dsn = DSN.replace("Status: 5.1.1\n", "Status: 5.1.1\nDiagnostic-Code: smtp; 550 5.1.1 <info@gone-company.co.uk>:\n"
+                                                "  Recipient address rejected: User unknown\n")
+        msg = message_from_string(dsn, policy=policy.default)
+        d = mb.bounce_details(msg)["info@gone-company.co.uk"]
+        self.assertEqual((d["type"], d["status"]), ("Permanent", "5.1.1"))
+        self.assertIn("User unknown", d["diagnostic"])
+        self.assertNotIn("gone-company", d["diagnostic"])  # keine Adressen im gespeicherten Text
+        db = mock.Mock()
+        db.select.return_value = [{"id": "m1"}]
+        with mock.patch.object(mb, "suppress"):
+            mb.handle_bounce(db, msg, "imap:<x>", True)
+        payload = db.insert.call_args[0][1]["payload"]
+        self.assertEqual(payload["bounce"]["status"], "5.1.1")
+
+    def test_failed_with_4xx_status_stays_hard_bounce(self):
+        # z. B. 4.4.7 Zustellzeit abgelaufen: endgültig gescheitert -> zählt für die Notbremse wie bisher voll
+        msg = message_from_string(DSN.replace("Status: 5.1.1", "Status: 4.4.7"), policy=policy.default)
+        d = mb.bounce_details(msg)["info@gone-company.co.uk"]
+        self.assertEqual((d["type"], d["status"]), ("Permanent", "4.4.7"))
+        from lib.deliverability import count_bounces
+        self.assertEqual(count_bounces([{"type": "bounced", "to_email": "a@b.c", "payload": {"bounce": d}}]), (1, 0))
+
     def test_optout(self):
         self.assertTrue(mb.OPTOUT.search("Please remove us from your list"))
         self.assertTrue(mb.OPTOUT.search("Merci de ne plus nous contacter"))
