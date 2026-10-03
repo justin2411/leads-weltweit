@@ -31,7 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lib.rules import (  # noqa: E402
-    brand, check_prospect, legal_name, country_rules, lint_draft, load_countries, render_footer, suppress,
+    brand, check_prospect, legal_name, postal_address, country_rules, lint_draft, load_countries, render_footer, suppress,
 )
 
 RESEND_URL = "https://api.resend.com/emails"
@@ -291,7 +291,7 @@ def cmd_send(args) -> int:
         if transport == "resend":
             raise SystemExit("Kaltmails über Resend sind verboten (Resend-Bedingungen, Inhaber 26.09.2026) – "
                              "MAIL_TRANSPORT=smtp mit eigenem Postfach verwenden")
-        needed = ["MAIL_FROM", "SENDER_NAME", "SENDER_POSTAL_ADDRESS"]
+        needed = ["MAIL_FROM", "SENDER_NAME"]  # Anschrift fest in lib.rules (03.10.2026)
         needed += ["APP_BASE_URL"] if os.environ.get("UNSUBSCRIBE_MODE", "reply") == "link" else ["REPLY_TO"]
         needed += ["SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD"] if transport == "smtp" else ["RESEND_API_KEY"]
         for var in needed:
@@ -408,7 +408,7 @@ def cmd_send(args) -> int:
         unsub = unsubscribe_target(m["unsubscribe_token"])
         footer = render_footer(m.get("language") or "en",
                                sender_name=legal_name(),
-                               postal_address=os.environ.get("SENDER_POSTAL_ADDRESS", "<Postanschrift>"),
+                               postal_address=postal_address(),
                                company=p["company_name"], unsubscribe_url=unsub)
         body = m["body"].rstrip()
         # Nachfassmail: derselbe Knopf zur Landingpage wie die Erstmail (Inhaber 02.10.2026, Schritt 3)
@@ -487,7 +487,7 @@ def cmd_test(args) -> int:
     subject, body, lang = build(p, example=ex)
     lint = lint_draft(subject, body, lang)
     footer = render_footer(lang, sender_name=legal_name(),
-                           postal_address=os.environ.get("SENDER_POSTAL_ADDRESS", ""), company=name,
+                           postal_address=postal_address(), company=name,
                            unsubscribe_url=unsubscribe_target("test"))
     from lib.db import DB
     link = landing_link(DB(), {}, args.segment, args.country, "test")
@@ -520,7 +520,7 @@ def _test_followup(args, name: str) -> int:
         body = sample_followup_text(p, lang, plan_url)
     lint = lint_draft(subject, body, lang, min_words=30, max_words=120, require_sample=False)
     footer = render_footer(lang, sender_name=legal_name(),
-                           postal_address=os.environ.get("SENDER_POSTAL_ADDRESS", ""), company=name,
+                           postal_address=postal_address(), company=name,
                            unsubscribe_url=unsubscribe_target("test"))
     text = body.rstrip() + "\n\n" + footer
     print(f"Prüfung: {lint.summary()}\n\nBetreff: [TEST] {subject}\n\n{text}\n")

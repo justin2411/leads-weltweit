@@ -3,11 +3,12 @@
  * (Hosting Vercel/Supabase, Zahlung Stripe, Mails Resend/eigenes Postfach, Landingpages ohne Cookies).
  * Vom Inhaber bestätigt am 26.09.2026 (Anschrift Hamburg, alle Prüfpunkte).
  * 27.09.2026 (Inhaber): Anbieter ist die NextGen Profit GmbH, sonst alles gleich.
- * 03.10.2026 (Inhaber): noch keine GmbH (Bescheid fehlt) -> Einzelunternehmen Justin Koch, Handelsname NextGen Profit.
+ * 03.10.2026 (Inhaber): noch keine GmbH (Bescheid fehlt) -> Einzelunternehmen Justin Koch, Handelsname NextGen Profit,
+ *   Anschrift Hauptstraße 14a, 06333 Hettstedt (Sachsen-Anhalt).
  */
 export type LegalDoc = { title: string; placeholder: boolean; body: string };
 
-const ANSCHRIFT = "Poststraße 14-16, 20354 Hamburg";
+const ANSCHRIFT = "Hauptstraße 14a, 06333 Hettstedt";
 const KONTAKT = "Telefon: +49 151 59115014\nE-Mail: info@nextgen-profit.de";
 
 export const LEGAL: Record<"impressum" | "datenschutz" | "agb", LegalDoc> = {
@@ -62,7 +63,7 @@ Unsere Leads enthalten Unternehmensdaten aus öffentlich zugänglichen Quellen (
 Wir sprechen Unternehmen in ausgewählten Ländern per E-Mail an allgemeine Geschäftsadressen an. Jede Nachricht enthält eine einfache Abmeldemöglichkeit; Abmeldungen werden dauerhaft gesperrt.
 
 10. Speicherdauer und Ihre Rechte
-Daten werden gelöscht, sobald der Zweck entfällt, soweit keine gesetzlichen Aufbewahrungsfristen (z. B. 10 Jahre für steuerliche Unterlagen) entgegenstehen. Sie haben das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit, Widerspruch und Widerruf erteilter Einwilligungen sowie ein Beschwerderecht bei einer Datenschutz-Aufsichtsbehörde (für Hamburg: Der Hamburgische Beauftragte für Datenschutz und Informationsfreiheit).`,
+Daten werden gelöscht, sobald der Zweck entfällt, soweit keine gesetzlichen Aufbewahrungsfristen (z. B. 10 Jahre für steuerliche Unterlagen) entgegenstehen. Sie haben das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit, Widerspruch und Widerruf erteilter Einwilligungen sowie ein Beschwerderecht bei einer Datenschutz-Aufsichtsbehörde (für Sachsen-Anhalt: Der Landesbeauftragte für den Datenschutz Sachsen-Anhalt).`,
   },
   agb: {
     title: "Allgemeine Geschäftsbedingungen",
@@ -89,6 +90,6 @@ Das Abo läuft monatlich und verlängert sich jeweils um einen Monat, wenn es ni
 Der Anbieter haftet unbeschränkt bei Vorsatz, grober Fahrlässigkeit sowie bei Verletzung von Leben, Körper oder Gesundheit. Bei leichter Fahrlässigkeit haftet er nur bei Verletzung wesentlicher Vertragspflichten, begrenzt auf den vorhersehbaren, vertragstypischen Schaden, höchstens auf die Vergütung der letzten drei Monate.
 
 8. Schlussbestimmungen
-Es gilt das Recht der Bundesrepublik Deutschland unter Ausschluss des UN-Kaufrechts. Gerichtsstand ist, soweit zulässig, Hamburg. Sollten einzelne Bestimmungen unwirksam sein, bleibt der Vertrag im Übrigen wirksam.`,
+Es gilt das Recht der Bundesrepublik Deutschland unter Ausschluss des UN-Kaufrechts. Gerichtsstand ist, soweit zulässig, der Sitz des Anbieters. Sollten einzelne Bestimmungen unwirksam sein, bleibt der Vertrag im Übrigen wirksam.`,
   },
 };

@@ -8,8 +8,8 @@ import type { LegalDoc } from "./legal";
 export type LegalLang = "en" | "fr";
 export type LegalKey = "impressum" | "datenschutz" | "agb";
 
-const ADDRESS = "Poststraße 14-16, 20354 Hamburg, Germany";
-const ADRESSE = "Poststraße 14-16, 20354 Hambourg, Allemagne";
+const ADDRESS = "Hauptstraße 14a, 06333 Hettstedt, Germany";
+const ADRESSE = "Hauptstraße 14a, 06333 Hettstedt, Allemagne";
 const CONTACT_EN = "Phone: +49 151 59115014\nEmail: info@nextgen-profit.de";
 const CONTACT_FR = "Téléphone : +49 151 59115014\nE-mail : info@nextgen-profit.de";
 
@@ -71,7 +71,7 @@ Our leads contain company data from publicly available sources (official registe
 We contact companies in selected countries by email at general business addresses. Every message contains a simple way to opt out; opt-outs are blocked permanently.
 
 10. Storage period and your rights
-Data is deleted as soon as the purpose ceases to apply, unless statutory retention periods (e.g. 10 years for tax records) prevent this. You have the right of access, rectification, erasure, restriction, data portability, objection and withdrawal of consent given, as well as the right to lodge a complaint with a data protection supervisory authority (for Hamburg: the Hamburg Commissioner for Data Protection and Freedom of Information).`,
+Data is deleted as soon as the purpose ceases to apply, unless statutory retention periods (e.g. 10 years for tax records) prevent this. You have the right of access, rectification, erasure, restriction, data portability, objection and withdrawal of consent given, as well as the right to lodge a complaint with a data protection supervisory authority (for Saxony-Anhalt: the State Commissioner for Data Protection of Saxony-Anhalt).`,
     },
     agb: {
       title: "Terms and conditions",
@@ -98,7 +98,7 @@ The subscription runs monthly and is extended by one month at a time unless it i
 The Provider is liable without limitation for intent, gross negligence and injury to life, body or health. In the case of slight negligence, the Provider is only liable for breach of essential contractual obligations, limited to the foreseeable damage typical for the contract and at most to the fees of the last three months.
 
 8. Final provisions
-The law of the Federal Republic of Germany applies, excluding the UN Convention on Contracts for the International Sale of Goods. The place of jurisdiction, where permissible, is Hamburg. Should individual provisions be invalid, the remainder of the contract remains valid.`,
+The law of the Federal Republic of Germany applies, excluding the UN Convention on Contracts for the International Sale of Goods. The place of jurisdiction, where permissible, is the Provider's registered place of business. Should individual provisions be invalid, the remainder of the contract remains valid.`,
     },
   },
   fr: {
@@ -153,7 +153,7 @@ Nos pistes contiennent des données d'entreprise issues de sources accessibles a
 Nous contactons des entreprises dans des pays sélectionnés par e-mail à des adresses professionnelles générales. Chaque message contient un moyen simple de se désinscrire ; les désinscriptions sont bloquées définitivement.
 
 10. Durée de conservation et vos droits
-Les données sont supprimées dès que la finalité disparaît, sauf obligation légale de conservation (par exemple 10 ans pour les documents fiscaux). Vous disposez d'un droit d'accès, de rectification, d'effacement, de limitation, de portabilité, d'opposition et de retrait du consentement donné, ainsi que du droit d'introduire une réclamation auprès d'une autorité de contrôle de la protection des données (pour Hambourg : le commissaire hambourgeois à la protection des données et à la liberté d'information).`,
+Les données sont supprimées dès que la finalité disparaît, sauf obligation légale de conservation (par exemple 10 ans pour les documents fiscaux). Vous disposez d'un droit d'accès, de rectification, d'effacement, de limitation, de portabilité, d'opposition et de retrait du consentement donné, ainsi que du droit d'introduire une réclamation auprès d'une autorité de contrôle de la protection des données (pour la Saxe-Anhalt : le commissaire à la protection des données de Saxe-Anhalt).`,
     },
     agb: {
       title: "Conditions générales de vente",
@@ -180,7 +180,7 @@ L'abonnement est mensuel et se prolonge d'un mois à chaque échéance s'il n'es
 Le Prestataire est responsable sans limitation en cas de faute intentionnelle, de négligence grave ainsi qu'en cas d'atteinte à la vie, à l'intégrité physique ou à la santé. En cas de négligence légère, il n'est responsable qu'en cas de manquement à des obligations contractuelles essentielles, dans la limite du dommage prévisible et typique du contrat, et au maximum à hauteur de la rémunération des trois derniers mois.
 
 8. Dispositions finales
-Le droit de la République fédérale d'Allemagne s'applique, à l'exclusion de la Convention des Nations unies sur les contrats de vente internationale de marchandises. Le tribunal compétent est, dans la mesure où cela est permis, celui de Hambourg. Si certaines dispositions devaient être invalides, le reste du contrat demeure valable.`,
+Le droit de la République fédérale d'Allemagne s'applique, à l'exclusion de la Convention des Nations unies sur les contrats de vente internationale de marchandises. Le tribunal compétent est, dans la mesure où cela est permis, celui du siège du Prestataire. Si certaines dispositions devaient être invalides, le reste du contrat demeure valable.`,
     },
   },
 };

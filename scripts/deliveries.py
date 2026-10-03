@@ -27,7 +27,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from lib.rules import brand  # noqa: E402
+from lib.rules import brand, postal_address  # noqa: E402
 
 FRESH_DAYS = 14          # nur Leads, die höchstens so alt sind
 DEFAULT_MAX = 15         # Leads pro Woche, falls im Abo nichts steht
@@ -540,7 +540,7 @@ def send_delivery(db, d: dict, live: bool) -> str:
     period = dt.date.fromisoformat(d["period_start"])
     areas = s["filters"].get("areas") or []
     subject, body = delivery_text(lang, len(leads), period, areas, c["country"])
-    footer = f"{brand()} · {os.environ.get('SENDER_POSTAL_ADDRESS', '')}".strip(" ·")
+    footer = f"{brand()} · {postal_address()}".strip(" ·")
     files = attachments(to_csv(leads, lang), lang, ", ".join(areas) or None,
                         c["company_name"], period, name=f"leads-{period.isoformat()}",
                         segment=s.get("segment_id"), country=c["country"]) if leads else None
@@ -590,7 +590,7 @@ def cmd_test_mail(args) -> int:
     lang = _lang(args.country)
     period = week_start() + dt.timedelta(days=7)
     subject, body = delivery_text(lang, len(leads), period, [], args.country)
-    footer = f"{brand()} · {os.environ.get('SENDER_POSTAL_ADDRESS', '')}".strip(" ·")
+    footer = f"{brand()} · {postal_address()}".strip(" ·")
     files = attachments(to_csv(leads, lang), lang, None, "Example Studio", period, name=f"leads-{period.isoformat()}",
                         segment=args.segment, country=args.country)
     if not files:

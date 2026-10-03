@@ -132,7 +132,7 @@ function confirmationMail(lang: "en" | "fr", country: string, consent: string) {
   ];
   const closing = fr ? "Bien cordialement," : "Kind regards,";
   const signer = `${BRAND}`;
-  const footer = `${LEGAL_NAME} · Poststraße 14-16, 20354 Hamburg, Germany\n${siteUrl().replace(/^https?:\/\//, "")}`;
+  const footer = `${LEGAL_NAME} · Hauptstraße 14a, 06333 Hettstedt, Germany\n${siteUrl().replace(/^https?:\/\//, "")}`;
   const text = mailText(blocks) + `\n\n${closing}\n${signer}\n\n${footer}`;
   return { subject, text, html: renderMail({ lang, brand: BRAND, blocks, closing, signer, footer }) };
 }
