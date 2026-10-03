@@ -344,5 +344,35 @@ export const HOME_CSS = `
 .hpz .hp-belt__legend .hp-belt__no .hp-ico{width:14px;height:14px}
 @media (max-width:720px){.hpz .hp-qs__row{font-size:12.5px;gap:8px}.hpz .hp-belt{height:104px}.hpz .hp-belt__card{height:64px;padding:10px}.hpz .hp-belt__score{font-size:18px}.hpz .hp-belt__l2{top:36px}.hpz .hp-belt__l3{top:46px}}
 @media (prefers-reduced-motion:reduce){.hpz .hp-belt__scan i{animation:none}}
+/* Schritt 4 „Your list“ als Postfach-Fenster (Inhaber 03.10.2026: hochwertiger) */
+.hpz .hp-mail{padding:0;border-radius:18px;background:linear-gradient(180deg,#FCFAF5,#F3EDE1);box-shadow:0 0 0 1px rgba(226,200,148,.55),0 1px 0 rgba(255,255,255,.8) inset,0 44px 80px -36px rgba(0,0,0,.85),0 0 60px -20px rgba(216,189,138,.35)}
+.hpz .hp-mail__bar{display:flex;align-items:center;gap:12px;height:30px;padding:0 14px;background:linear-gradient(180deg,#14214A,#0F1A3B);color:var(--on-dark-2);font-size:12px;font-weight:600}
+.hpz .hp-mail__dots{display:inline-flex;gap:6px}
+.hpz .hp-mail__dots i{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.16)}
+.hpz .hp-mail__dots i:first-child{background:#E2C894}
+.hpz .hp-mail__inbox{display:inline-flex;align-items:center;gap:6px;margin-left:6px;color:#fff}
+.hpz .hp-mail__inbox .hp-ico{width:14px;height:14px;color:var(--gold-hi)}
+.hpz .hp-mail__bar em{margin-left:auto;font-style:normal;font-variant-numeric:tabular-nums;letter-spacing:.02em;color:var(--gold-hi)}
+.hpz .hp-mail__body{padding:12px 14px 12px}
+.hpz .hp-mail__logo{width:34px;height:34px}
+.hpz .hp-mail__new{display:inline-flex;align-items:center;gap:6px;margin-left:auto;padding:5px 11px;border-radius:999px;background:var(--navy-900);font-size:11.5px;font-weight:700;letter-spacing:.04em;color:var(--gold-hi);text-transform:uppercase}
+.hpz .hp-mail__new i{width:7px;height:7px;border-radius:50%;background:var(--live);box-shadow:0 0 0 3px rgba(59,209,138,.25)}
+.hpz .hp-mail__subject{margin-top:9px;font-size:17px}
+.hpz .hp-mail__files{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.hpz .hp-mail__files>span>span{padding:0;border:0;border-radius:0;background:none;box-shadow:none}
+.hpz .hp-mail__files>span{display:flex;align-items:center;gap:10px;padding:6px 10px 6px 6px;border:1px solid rgba(14,26,51,.08);border-radius:12px;background:#fff;box-shadow:0 6px 14px -12px rgba(14,26,51,.5)}
+.hpz .hp-mail__files>span>span{display:grid;min-width:0}
+.hpz .hp-mail__files strong{font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hpz .hp-mail__files small{font-size:11.5px;font-weight:500;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hpz .hp-mail__leads{gap:6px;margin-top:8px}
+.hpz .hp-mail__leads li>.hp-mail__ic{grid-column:1;grid-row:1}.hpz .hp-mail__leads li>.hp-mail__who{grid-column:2;grid-row:1}.hpz .hp-mail__leads li>.hp-mail__sc{grid-column:3;grid-row:1}.hpz .hp-mail__leads li>.hp-lock{grid-column:4;grid-row:1}
+.hpz .hp-mail__leads li{grid-template-columns:30px minmax(0,1fr) auto auto;gap:0 12px;padding:6px 12px 6px 6px;border-color:rgba(14,26,51,.07);box-shadow:0 6px 14px -12px rgba(14,26,51,.45)}
+.hpz .hp-mail__ic{display:grid;place-items:center;width:30px;height:30px;border-radius:10px;background:linear-gradient(135deg,#F4E9D2,#E8D4AB);color:var(--gold-deep)}
+.hpz .hp-mail__ic .hp-ico{width:16px;height:16px}
+.hpz .hp-mail__who{display:grid;min-width:0}
+.hpz .hp-mail__who small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hpz .hp-mail__sc{display:grid;place-items:center;min-width:36px;height:26px;padding:0 8px;border-radius:999px;background:rgba(59,209,138,.12);box-shadow:inset 0 0 0 1px rgba(59,209,138,.4);font-size:12.5px;font-weight:800;color:#13945A;font-variant-numeric:tabular-nums}
+.hpz .hp-mail__excl{justify-content:center;margin-top:12px}
+@media (max-width:720px){.hpz .hp-mail__files{grid-template-columns:1fr}.hpz .hp-mail__leads li{grid-template-columns:28px minmax(0,1fr) auto auto;gap:0 9px}.hpz .hp-mail__ic{width:28px;height:28px}.hpz .hp-mail__inbox{display:none}}
 `;
 

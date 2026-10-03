@@ -22,7 +22,7 @@ export type HomeText = {
   statement: [string, string];
   story: { v0: string; v1: string; moments: [string, string][]; stamp: string; v2: string; ex: string; rateLead: string; pass: string;
     rows: [string, number][]; min: string; fail: string; qs: string; minPill: string; mailSub: string; mon: string; mailSubject: string; files: [string, string];
-    mailLeads: string[]; excl: string;
+    mailLeads: [string, string, number][]; excl: string; inbox: string; isNew: string; fileSub: [string, string];
     /** Quellen-Liste in der Methode: [Symbol, Name, Länder], ohne Flaggen (Inhaber 03.10.2026) */
     src: [string, string, string][]; track: [string, string, string, string] };
   callH: string; callSub: string; call: {
@@ -82,7 +82,8 @@ export const HOME: Record<HomeLang, HomeText> = {
       stamp: "Each event is recorded with its date and source.", v2: "Rated before you see it", ex: "Example",
       rateLead: "Public contract · 2 Oct 2026", pass: "Passes", rows: [["Freshness", 92], ["Clarity of the signal", 86], ["Company data", 95]],
       min: "Minimum", fail: "Below the minimum, left out", qs: "Quality score", minPill: "minimum 60", mailSub: "Every Monday morning", mon: "MON", mailSubject: "Your leads this week",
-      files: ["PDF briefing", "Spreadsheet"], mailLeads: ["London · Public contract", "Wolverhampton · Public contract", "Wakefield · Public contract"],
+      files: ["PDF briefing", "Spreadsheet"], mailLeads: [["doc", "London · Public contract", 91], ["building", "Wolverhampton · New company", 86], ["globe", "Wakefield · No website", 78]],
+      inbox: "Inbox", isNew: "New", fileSub: ["Sales tip and opening line", "Ready for your CRM"],
       excl: "Each lead goes to only one firm in your industry.",
       src: [["landmark", "Companies House", "United Kingdom"], ["landmark", "State business registers & SEC filings", "United States"],
         ["doc", "BODACC France", "France"], ["users", "Company careers pages", "UK, US and France"],
@@ -194,7 +195,8 @@ export const HOME: Record<HomeLang, HomeText> = {
       stamp: "Chaque événement est enregistré avec sa date et sa source.", v2: "Évalué avant de vous parvenir", ex: "Exemple",
       rateLead: "Marché public · 2 oct. 2026", pass: "Retenu", rows: [["Fraîcheur", 92], ["Clarté du signal", 86], ["Données d'entreprise", 95]],
       min: "Minimum", fail: "Sous le minimum, écarté", qs: "Score de qualité", minPill: "minimum 60", mailSub: "Chaque lundi matin", mon: "LUN", mailSubject: "Vos prospects de la semaine",
-      files: ["Rapport PDF", "Tableur"], mailLeads: ["Londres · Marché public", "Wolverhampton · Marché public", "Wakefield · Marché public"],
+      files: ["Rapport PDF", "Tableur"], mailLeads: [["doc", "Londres · Marché public", 91], ["building", "Wolverhampton · Nouvelle entreprise", 86], ["globe", "Wakefield · Sans site web", 78]],
+      inbox: "Boîte de réception", isNew: "Nouveau", fileSub: ["Conseil et phrase d'accroche", "Prêt pour votre CRM"],
       excl: "Chaque prospect ne va qu'à une seule entreprise de votre secteur.",
       src: [["landmark", "Companies House", "Royaume-Uni"], ["landmark", "Registres des États & déclarations SEC", "États-Unis"],
         ["doc", "BODACC", "France"], ["users", "Pages carrières des entreprises", "Royaume-Uni, États-Unis et France"],
@@ -306,7 +308,8 @@ export const HOME: Record<HomeLang, HomeText> = {
       stamp: "Jedes Ereignis wird mit Datum und Quelle erfasst.", v2: "Bewertet, bevor Sie es sehen", ex: "Beispiel",
       rateLead: "Öffentlicher Auftrag · 2. Okt. 2026", pass: "Bestanden", rows: [["Aktualität", 92], ["Klarheit des Signals", 86], ["Firmendaten", 95]],
       min: "Mindestwert", fail: "Unter dem Mindestwert, aussortiert", qs: "Qualitätswert", minPill: "Mindestwert 60", mailSub: "Jeden Montagmorgen", mon: "MO", mailSubject: "Ihre Leads dieser Woche",
-      files: ["PDF-Briefing", "Tabelle"], mailLeads: ["London · Öffentlicher Auftrag", "Wolverhampton · Öffentlicher Auftrag", "Wakefield · Öffentlicher Auftrag"],
+      files: ["PDF-Briefing", "Tabelle"], mailLeads: [["doc", "London · Öffentlicher Auftrag", 91], ["building", "Wolverhampton · Neugründung", 86], ["globe", "Wakefield · Keine Website", 78]],
+      inbox: "Posteingang", isNew: "Neu", fileSub: ["Verkaufstipp und Einstiegssatz", "Bereit für Ihr CRM"],
       excl: "Jeder Lead geht nur an ein Unternehmen Ihrer Branche.",
       src: [["landmark", "Companies House", "Großbritannien"], ["landmark", "Handelsregister der Bundesstaaten & SEC-Meldungen", "USA"],
         ["doc", "BODACC", "Frankreich"], ["users", "Karriereseiten der Unternehmen", "Großbritannien, USA und Frankreich"],
