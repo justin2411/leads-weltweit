@@ -91,4 +91,8 @@ export const LANDING_V2_CSS = `
   .lp2 .lz-sample__grid{grid-template-columns:minmax(0,1fr);grid-template-areas:"recv" "form" "how";gap:40px}
   .lp2 .lz-sample__recv,.lp2 .lz-sample__how{padding:0}
 }
+/* Lichtstrahl im Hero wie auf der Startseite */
+.lp2 .h2o{position:relative;isolation:isolate}
+.lp2 .h2o > .wrap{position:relative;z-index:1}
+.lp2 .lz-beam{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;-webkit-mask-image:linear-gradient(180deg,#000 72%,transparent);mask-image:linear-gradient(180deg,#000 72%,transparent)}
 `;
