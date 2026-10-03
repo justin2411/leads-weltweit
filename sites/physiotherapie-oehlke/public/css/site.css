@@ -186,9 +186,6 @@ p{margin:0 0 1em}
 @keyframes pop{from{opacity:0;transform:translateY(20px) scale(.9)}to{opacity:1;transform:none}}
 .float{animation:pop 1s var(--ease) forwards,bob 6s ease-in-out 2.4s infinite}
 @keyframes bob{50%{translate:0 -10px}}
-.scroll-hint{position:absolute;left:50%;bottom:28px;transform:translateX(-50%);width:26px;height:42px;border-radius:20px;border:1.5px solid rgba(255,255,255,.35)}
-.scroll-hint::after{content:"";position:absolute;left:50%;top:8px;width:4px;height:8px;margin-left:-2px;border-radius:2px;background:#fff;animation:wheel 2s infinite}
-@keyframes wheel{to{transform:translateY(14px);opacity:0}}
 
 /* ---------- Marquee ---------- */
 .marquee{background:var(--navy);color:#fff;overflow:hidden;padding:22px 0;transform:rotate(-1.4deg) scale(1.03);margin:-24px 0 0;position:relative;z-index:3;box-shadow:var(--shadow)}

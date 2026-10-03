@@ -609,7 +609,6 @@ def home() -> str:
       <div class="chip chip--3 float" data-depth="18" style="animation-delay:1.7s,3.2s"><span class="ico">{icon('home')}</span><span><b>Zu Hause</b><small>in Ihrem Umfeld</small></span></div>
     </div>
   </div>
-  <a class="scroll-hint" href="#ueber-mich" aria-label="Weiter nach unten"></a>
 </section>
 <div class="cursor" aria-hidden="true"></div>
 <div class="marquee" aria-hidden="true"><div class="marquee__track">{marquee}{marquee}</div></div>
