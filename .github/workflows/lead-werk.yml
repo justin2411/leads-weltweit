@@ -20,20 +20,27 @@ permissions:
   contents: read
 jobs:
   us-auszug:
-    # US-Auszug (Overture, Firmen ohne Website, ~250 MB) einmal im Monat bauen und allen US-Teilen geben
+    # US-Auszüge (Overture, ohne Website ~250 MB, mit Website ~1 GB) je Overture-Veröffentlichung einmal bauen und allen US-Teilen geben
     runs-on: ubuntu-latest
     timeout-minutes: 45
     outputs:
       monat: ${{ steps.m.outputs.monat }}
+      release: ${{ steps.m.outputs.release }}
     steps:
       - uses: actions/checkout@v4
       - id: m
-        run: echo "monat=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+        # Overture-Veröffentlichung im Schlüssel: eine neue Veröffentlichung (etwa monatlich) baut die US-Auszüge sofort
+        # neu statt erst im Folgemonat (Neuzugänge für s2-us-* und web-us-*); ohne Antwort zählt nur der Monat
+        run: |
+          echo "monat=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+          rel=$(curl -fsS --max-time 30 "https://overturemaps-us-west-2.s3.us-west-2.amazonaws.com/?list-type=2&prefix=release/&delimiter=/" \
+                | grep -oE 'release/[0-9]{4}-[0-9]{2}-[0-9]{2}\.[0-9]+/' | sort | tail -1 | cut -d/ -f2 || true)
+          echo "release=${rel:-$(date -u +%Y-%m)}" >> "$GITHUB_OUTPUT"
       - id: cache
         uses: actions/cache@v4
         with:
           path: out/cache/overture_us_s2.parquet
-          key: overture-us-s2-${{ steps.m.outputs.monat }}
+          key: overture-us-s2-${{ steps.m.outputs.release }}
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
       - name: US-Auszug bauen
@@ -45,8 +52,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: out/cache/overture_us_web.parquet
-          key: overture-us-web2-${{ steps.m.outputs.monat }}
-      - name: US-Auszug mit Website bauen (Website-Prüfung S2, je Monat die andere Hälfte)
+          key: overture-us-web3-${{ steps.m.outputs.release }}
+      - name: US-Auszug mit Website bauen (Website-Prüfung S2, ganzer Bestand)
         if: steps.web.outputs.cache-hit != 'true'
         continue-on-error: true  # fehlt er, baut ihn jeder Teil web-us-* selbst
         run: |
@@ -406,13 +413,13 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: out/cache/overture_us_s2.parquet
-          key: overture-us-s2-${{ needs.us-auszug.outputs.monat }}
+          key: overture-us-s2-${{ needs.us-auszug.outputs.release }}
       - name: US-Auszug mit Website laden (Website-Prüfung)
         if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-us-')
         uses: actions/cache/restore@v4
         with:
           path: out/cache/overture_us_web.parquet
-          key: overture-us-web2-${{ needs.us-auszug.outputs.monat }}
+          key: overture-us-web3-${{ needs.us-auszug.outputs.release }}
       - name: DOL-LCA-Auszug laden
         if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 's1-us-lca')
         uses: actions/cache/restore@v4
