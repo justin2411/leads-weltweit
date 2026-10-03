@@ -26,6 +26,19 @@ const PATHS: Record<string, string> = {
   doc: "M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7",
   table: "M3 5h18v14H3zM3 10h18M3 15h18M9 5v14",
   chat: "M4 5h16v11H9l-5 4zM8 9h8M8 12h5",
+  landmark: "M3 21h18M5 21V10m4 11V10m6 11V10m4 11V10M2 10l10-6 10 6z",
+  shieldcheck: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4",
+  ban: "M12 3a9 9 0 110 18 9 9 0 010-18zM5.6 5.6l12.8 12.8",
+  gift: "M4 10h16v10H4zM3 7h18v3H3zM12 7v13M12 7c-1.5-3-5-3-5-1s5 1 5 1zm0 0c1.5-3 5-3 5-1s-5 1-5 1z",
+  building: "M4 21V5l8-2v18M12 7l8 2v12M7 8h2M7 12h2M7 16h2M15 12h2M15 16h2M2 21h20",
+  play: "M8 5l11 7-11 7z",
+  trend: "M3 17l6-6 4 4 8-8M15 7h6v6",
+  calc: "M6 3h12v18H6zM9 7h6M9 11h.01M12 11h.01M15 11h.01M9 15h.01M12 15h.01M15 15h.01",
+  shield: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z",
+  users: "M9 4a4 4 0 110 8 4 4 0 010-8zM2 21a7 7 0 0114 0M16 4a4 4 0 010 8M18 14a6 6 0 014 7",
+  plus: "M12 5v14M5 12h14",
+  arrow: "M5 12h14M13 6l6 6-6 6",
+
   star: "M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.5 6.7 19.4l1.2-6L3.4 9.3l6-.7z",
 };
 

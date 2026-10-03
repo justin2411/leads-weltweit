@@ -121,6 +121,23 @@ export const HOME_CSS = `
 .bx .hm .mailbox a{color:var(--gtext);font-weight:700;overflow-wrap:anywhere}
 .bx .hm .mailbox address{font-style:normal;font-size:13.5px;color:var(--muted)}
 
+
+/* Ansprechpartner auf hellem Grund (Startseite nach Vorlage 03.10.2026), Karte rechts bleibt dunkel */
+.bx .hm .pcl{background:var(--cream)}
+.bx .hm .pcl h2{color:var(--pink)}.bx .hm .pcl h2 i{font-style:normal;color:var(--gtext)}
+.bx .hm .pcl .lede2{color:var(--muted)}
+.bx .hm .pcl .plist li b{color:var(--pink)}
+.bx .hm .pcl .plist li span:not(.gi){color:var(--muted)}
+.bx .hm .pcl .fitcard{background:linear-gradient(170deg,#13265a,#0B1530);border:0;box-shadow:0 40px 80px -45px rgba(11,21,48,.7)}
+.bx .hm .gi .hp-ico{width:20px;height:20px}
+.bx .hm .fitcard .av .hp-ico{width:24px;height:24px}
+.hpz .hp-talk{display:flex;align-items:center;gap:14px;text-decoration:none;color:var(--ink)}
+.hpz .hp-talk small{display:block;font-size:12.5px;color:var(--muted)}
+.hpz .hp-talk strong{display:block;font-size:15.5px;color:var(--gold-deep)}
+.hpz .hp-formcard .pf{max-width:none}
+.hpz .hp-qa summary::after{content:none;display:none}
+@media (max-width:440px){.hpz .hp-stat__num{font-size:clamp(28px,8.4vw,36px)}}
+
 @media (max-width:980px){
   .bx .hm .pc2{grid-template-columns:1fr;gap:28px}
   .bx .hm .icards{grid-template-columns:1fr 1fr}
