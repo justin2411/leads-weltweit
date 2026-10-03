@@ -8,7 +8,7 @@ export function LegalPage({ doc, lang = "de" }: { doc: LegalKey; lang?: "de" | L
   const langs: [string, string, boolean][] = (["de", "en", "fr"] as const).map((l) => [l.toUpperCase(), LEGAL_PATHS[l][doc], l === lang]);
   const cta: [string, string] = lang === "fr" ? ["/fr#sample", "Échantillon gratuit"] : lang === "de" ? ["/de#sample", "Kostenlose Probe"] : ["/#sample", "Free sample"];
   return (
-    <BrandShell lang={lang}>
+    <BrandShell lang={lang} css="brand">
       <SiteHeader cta={cta} langs={langs} />
       <PageHead eyebrow="" title={d.title} />
       <div className="wrap" style={{ paddingBottom: 96 }}>

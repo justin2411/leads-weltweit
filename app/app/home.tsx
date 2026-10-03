@@ -3,9 +3,7 @@ import type { Metadata } from "next";
 import VIDEOS from "@/content/videos.json";
 import { BRAND, CONTACT, LEGAL_NAME, siteUrl } from "@/lib/site";
 import { consentText } from "@/lib/consent";
-import { LANDING_CSS } from "@/lib/landing-css";
-import { HOME_CSS } from "@/lib/home-css";
-import { HOME_SPRITE, HOME_STAT_ART, HOME_V2_CSS } from "@/lib/home-v2-css";
+import { HOME_SPRITE, HOME_STAT_ART } from "@/lib/home-v2-css";
 import { SampleForm } from "./sample-form";
 import { industryOptions } from "./industry-options";
 import { homeStats, publicPages, type PublicPage } from "@/lib/site-pages";
@@ -92,9 +90,12 @@ export async function Home({ lang }: { lang: HomeLang }) {
   const t = HOME[lang];
   const loc = { en: "en-GB", fr: "fr-FR", de: "de-DE" }[lang];
   const mio = { en: "M+", fr: " M+", de: " Mio.+" }[lang];
+  // Statische Seite (revalidate): fällt die Datenbank beim Neu-Rendern im Hintergrund aus, Fehler werfen –
+  // dann bleibt die zuletzt gespeicherte Fassung stehen statt leerer Branchen und Zahl 0. Beim Build wie bisher.
+  const building = process.env.NEXT_PHASE === "phase-production-build";
   const [pages, stats] = await Promise.all([
-    publicPages().catch(() => [] as PublicPage[]),
-    homeStats().catch(() => ({ companies: 0, signals: 0 })),
+    publicPages().catch((e) => { if (!building) throw e; return [] as PublicPage[]; }),
+    homeStats().catch((e) => { if (!building) throw e; return { companies: 0, signals: 0 }; }),
   ]);
   const V = VIDEOS as Record<string, { src: string; poster: string; seconds: number }>;
   const video = V[`${lang}:home`] ?? V["en:home"];
@@ -115,7 +116,7 @@ export async function Home({ lang }: { lang: HomeLang }) {
   const c = t.call;
 
   return (
-    <BrandShell lang={lang} extraCss={LANDING_CSS + HOME_V2_CSS + HOME_CSS}>
+    <BrandShell lang={lang} css="home">
       {/* Effekte der Vorlage nur mit JavaScript (sonst bleibt alles sichtbar) */}
       <script dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('js')" }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />

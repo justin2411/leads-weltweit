@@ -1,6 +1,7 @@
 import { Home, homeMetadata } from "./home";
 
-export const dynamic = "force-dynamic";
+// Statisch, alle 5 Minuten im Hintergrund neu (Kennzahlen, Branchen aus der Datenbank) – Ladezeit
+export const revalidate = 300;
 export const metadata = homeMetadata("en");
 
 export default function Page() {

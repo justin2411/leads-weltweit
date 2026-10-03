@@ -1,11 +1,9 @@
 import { ContactPage, contactMetadata } from "./contact-page";
 
-export const dynamic = "force-dynamic";
+// Statisch und alle 5 Minuten neu (Ladezeit); mit ?gesendet= oder ?fehler= rendert proxy.ts /contact/q/en.
+export const revalidate = 300;
 export const metadata = contactMetadata("en");
 
-type Search = Promise<{ gesendet?: string; fehler?: string }>;
-
-export default async function Page({ searchParams }: { searchParams: Search }) {
-  const sp = await searchParams;
-  return <ContactPage lang="en" sent={sp.gesendet === "1"} error={sp.fehler?.replace(/[^a-z]/g, "").slice(0, 20)} />;
+export default function Page() {
+  return <ContactPage lang="en" />;
 }
