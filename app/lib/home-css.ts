@@ -51,6 +51,7 @@ export const HOME_CSS = `
 .bx .hm .radar .lbl{position:absolute;display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:#e9edf6;background:rgba(11,21,48,.8);border:1px solid rgba(255,255,255,.16);border-radius:99px;padding:6px 11px;backdrop-filter:blur(4px);white-space:nowrap}
 .bx .hm .radar .lbl b{color:var(--gink)}
 .bx .hm .radar .lbl em{font-style:normal}
+.bx .hm .radar .lbl .hp-ico{width:15px;height:15px;color:var(--gink)}
 .motion .bx .hm .radar .lbl{animation:hmfloat 5s ease-in-out infinite;animation-delay:var(--d)}
 @keyframes hmfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
 
@@ -150,7 +151,7 @@ export const HOME_CSS = `
   .bx .hm .cswitch2 label{padding:7px 11px;font-size:13px}
   .bx .hm .fitrow{grid-template-columns:80px 1fr}
   .bx .hm .radar{max-width:300px}
-  .bx .hm .radar .lbl em{display:none}
+  .bx .hm .radar .lbl{font-size:10.5px;padding:4px 8px;gap:5px}
   .bx .hm .radar .lbl{font-size:11px;padding:4px 9px}
 }
 @media (prefers-reduced-motion:reduce){.bx .hm *{animation:none!important}}

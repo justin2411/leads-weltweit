@@ -58,7 +58,6 @@ function Radar({ labels }: { labels: [string, string][] }) {
   const C = 200;
   const pt = (deg: number, r: number) => [C + r * Math.cos((deg * Math.PI) / 180), C + r * Math.sin((deg * Math.PI) / 180)];
   const blips: [number, number][] = [[30, 130], [150, 120], [260, 150], [75, 70], [200, 165], [320, 95], [115, 175], [345, 160], [230, 60]];
-  const flag: Record<string, string> = { US: "🇺🇸", UK: "🇬🇧", FR: "🇫🇷" };
   return (
     <div className="radar" aria-hidden="true">
       <svg viewBox="0 0 400 400">
@@ -88,7 +87,7 @@ function Radar({ labels }: { labels: [string, string][] }) {
         if (k === 1) pos.right = `calc(${(100 - x / 4).toFixed(1)}% + 12px)`; else pos.left = left;
         return (
           <span className="lbl" key={cc} style={pos as CSSProperties}>
-            <span>{flag[cc]}</span><b>{cc}</b><em>{txt}</em>
+            <I n={cc} /><em>{txt}</em>
           </span>);
       })}
     </div>
