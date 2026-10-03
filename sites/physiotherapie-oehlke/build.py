@@ -23,7 +23,18 @@ LIVE_URL = "https://physiotherapie-oehlke.de"
 ROOT = Path(__file__).resolve().parent
 OUT = Path(os.environ.get("SITE_OUT", ROOT / "public"))
 PAGES = json.loads((ROOT / "content" / "pages.json").read_text(encoding="utf-8"))
-VERSION = "1"
+
+
+def _version() -> str:
+    """Cache-Schlüssel aus dem Inhalt von CSS/JS: jede Änderung lädt sofort neu."""
+    import hashlib
+    h = hashlib.sha1()
+    for f in ("css/site.css", "js/site.js", "assets/fonts/fonts.css"):
+        h.update((ROOT / "public" / f).read_bytes())
+    return h.hexdigest()[:10]
+
+
+VERSION = _version()
 
 PHONE = "0176 43630803"
 TEL = "tel:+4917643630803"
@@ -220,7 +231,7 @@ GOOGLE_URL = "https://www.google.com/search?q=mobile+physiotherapie+oehlke"
 
 def google_badge() -> str:
     """Link zu den Google-Bewertungen: Google-Schriftzug, darunter fünf Sterne."""
-    star = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>'
+    star = '<svg viewBox="0 0 24 24" width="15" height="15" fill="#FBBC05" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>'
     word = "".join(f'<span style="color:{c}">{ch}</span>' for ch, c in zip("Google", ("#4285F4", "#EA4335", "#FBBC05", "#4285F4", "#34A853", "#EA4335")))
     return (f'<a class="gbadge" href="{GOOGLE_URL}" target="_blank" rel="noopener" aria-label="Unsere Bewertungen auf Google ansehen">'
             f'<span class="gbadge__word">{word}</span><span class="gbadge__stars">{star * 5}</span>'
