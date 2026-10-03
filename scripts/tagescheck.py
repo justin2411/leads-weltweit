@@ -247,6 +247,33 @@ def check_replies(c: Check, db) -> None:
           detail + (" – bitte persönlich antworten" if status == WARN else ""))
 
 
+SCANNER_S = 60  # Abmeldung so kurz nach dem Versand: vermutlich ein Link-Scanner, kein Mensch
+
+
+def scanner_suspects(events: list[dict], limit_s: int = SCANNER_S) -> int:
+    """Abmeldungen über den Link, die weniger als limit_s Sekunden nach dem Versand kamen (Nachtschicht 04.10.2026,
+    Entscheidung E12 offen). Nur gezählt – die Sperre bleibt in jedem Fall bestehen."""
+    n = 0
+    for e in events:
+        sent = (e.get("messages") or {}).get("sent_at")
+        if not sent or not e.get("occurred_at"):
+            continue
+        d = (dt.datetime.fromisoformat(e["occurred_at"].replace("Z", "+00:00"))
+             - dt.datetime.fromisoformat(sent.replace("Z", "+00:00"))).total_seconds()
+        n += 0 <= d < limit_s
+    return n
+
+
+def check_unsubscribes(c: Check, db) -> None:
+    since = (NOW - dt.timedelta(days=7)).isoformat()
+    ev = db.select("email_events", {"type": "eq.unsubscribed", "created_at": f"gte.{since}",
+                                    "select": "occurred_at,message_id,messages(sent_at)"})
+    fast = scanner_suspects(ev)
+    detail = (f"davon {fast} weniger als {SCANNER_S} s nach dem Versand (Verdacht Link-Scanner, gesperrt bleibt "
+              "trotzdem; Entscheidung E12)") if fast else "keine verdächtig schnelle"
+    c.add("Antworten", OK, f"Abmeldungen in 7 Tagen: {len(ev)}", detail)
+
+
 def check_web_samples(c: Check, db) -> None:
     old = (NOW - dt.timedelta(hours=2)).isoformat()
     waiting = db.select("sample_requests", {"status": "eq.new", "created_at": f"lte.{old}",
@@ -561,6 +588,7 @@ def main(argv=None) -> int:
     c.guard("Postfach", lambda: check_mailboxes(c, db))
     c.guard("Nachfass", lambda: check_followups(c, db))
     c.guard("Antworten", lambda: check_replies(c, db))
+    c.guard("Antworten", lambda: check_unsubscribes(c, db))
     c.guard("Proben", lambda: check_web_samples(c, db))
     c.guard("Proben", lambda: check_sample_supply(c, db))
     c.guard("Proben", lambda: check_sample_stock(c, db))

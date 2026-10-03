@@ -133,3 +133,15 @@ test("Coach mit Autopilot: Platz-Hinweise nur zur Info, kein Auftrag zum Umstell
   assert.doesNotMatch(ex.task!.brief, /Plätze dieser Linie/);
   assert.equal(on.find((t) => t.title.startsWith("Ergiebigste"))?.task, undefined);
 });
+
+test("Alarme: offene Antworten und leerer Proben-Vorrat zuerst, nie aus fehlenden Zahlen", async () => {
+  const { alarmTips, rankTips } = await import("./leitstand.ts");
+  assert.deepEqual(alarmTips({ openReplies: null, samplesReady: null, samplesTarget: 6 }), []);
+  assert.deepEqual(alarmTips({ openReplies: 0, samplesReady: 3, samplesTarget: 6 }), []);
+  const a = alarmTips({ openReplies: 2, samplesReady: 0, samplesTarget: 6 });
+  assert.deepEqual(a.map((t) => t.title), ["2 Antworten offen", "Proben-Vorrat leer"]);
+  assert.equal(alarmTips({ openReplies: 1, samplesReady: 1, samplesTarget: 6 })[0].title, "1 Antwort offen");
+  // Reihenfolge: rot vor gelb vor grün vor Info, sonst stabil
+  const ranked = rankTips([{ level: "info", title: "i" }, { level: "gelb", title: "g1" }, { level: "rot", title: "r" }, { level: "gelb", title: "g2" }, { level: "gruen", title: "gr" }]);
+  assert.deepEqual(ranked.map((t) => t.title), ["r", "g1", "g2", "gr", "i"]);
+});

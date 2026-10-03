@@ -136,6 +136,27 @@ export type Tip = { level: "rot" | "gelb" | "gruen" | "info"; title: string; tex
 const MARKET = new Set(["US", "UK", "FR", "IE", "NL", "BE", "SE"]);
 const marketOf = (c: string | null | undefined) => (c && MARKET.has(c) ? c : null);
 
+/** Alarme vor den Werk-Hinweisen (Nachtschicht 04.10.2026, Plan Paket 5 „Alarmleiste“): offene Antworten von
+ *  Interessenten und ein leerer Proben-Vorrat. null/unbekannt = kein Alarm (nie aus fehlenden Zahlen warnen). */
+export function alarmTips(o: { openReplies: number | null; samplesReady: number | null; samplesTarget: number }): Tip[] {
+  const tips: Tip[] = [];
+  if (o.openReplies && o.openReplies > 0) {
+    const n = o.openReplies;
+    tips.push({ level: "gelb", title: n === 1 ? "1 Antwort offen" : `${n} Antworten offen`, text: "Interessenten haben geantwortet – im Antworten-Cockpit lesen und mit einem Klick antworten.", href: "/dashboard/antworten" });
+  }
+  if (o.samplesReady === 0 && o.samplesTarget > 0) {
+    tips.push({ level: "gelb", title: "Proben-Vorrat leer", text: `0 von ${o.samplesTarget} Proben bereit. Eine Probe-Anfrage wartet dann bis zum nächsten Bau (stündlich) – oder Station Proben → Jetzt starten.`, href: "/dashboard/proben" });
+  }
+  return tips;
+}
+
+const LEVEL_RANK: Record<Tip["level"], number> = { rot: 0, gelb: 1, gruen: 2, info: 3 };
+
+/** Wichtigstes zuerst: rot vor gelb vor grün vor Info, bei gleicher Stufe in der gegebenen Reihenfolge. */
+export function rankTips<T extends Pick<Tip, "level">>(tips: T[]): T[] {
+  return tips.map((x, i) => ({ x, i })).sort((a, b) => LEVEL_RANK[a.x.level] - LEVEL_RANK[b.x.level] || a.i - b.i).map(({ x }) => x);
+}
+
 /** Auftrag zum Engpass der Kette (Ampel „Engpass“): nur auswerten und vorschlagen, nie senden. */
 export function neckTask(label: string): TipTask {
   return { kind: "frage", market: null, brief: `Engpass „${label}“: Ursachen aus echten Zahlen finden und 2–3 konkrete Verbesserungen vorschlagen, die nichts kosten. Nichts senden, keine Prüfregeln ändern.` };
