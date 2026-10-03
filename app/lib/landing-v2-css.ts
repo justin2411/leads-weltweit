@@ -95,4 +95,7 @@ export const LANDING_V2_CSS = `
 .lp2 .h2o{position:relative;isolation:isolate}
 .lp2 .h2o > .wrap{position:relative;z-index:1}
 .lp2 .lz-beam{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;-webkit-mask-image:linear-gradient(180deg,#000 72%,transparent);mask-image:linear-gradient(180deg,#000 72%,transparent)}
+/* Hero: mehr Abstand zwischen Button und den vier Kennzahl-Kästchen (Inhaber 03.10.2026) */
+.lp2 .h2o .kpis{margin-top:64px}
+@media (max-width:720px){.lp2 .h2o .kpis{margin-top:40px}}
 `;

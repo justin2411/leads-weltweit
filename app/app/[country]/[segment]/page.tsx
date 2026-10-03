@@ -478,8 +478,7 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
               {sp.angefragt ? <p className="ok">{known ? L.thanksTo(personal!.email!) : L.thanks}</p>
                 : sp.fehler ? <p className="err">{L.error}</p> : null}
               {step ? <Probe /> : !sp.angefragt && (
-                <div className="ctaline"><div className="ctabox"><Start label={known ? L.send : cta} />
-                  <span className="free2"><span>{L.free.replace(/\.$/, "")}</span><span>{L.noObl.replace(/\.$/, "")}</span><span>{T2.byMail}</span></span></div>
+                <div className="ctaline"><div className="ctabox"><Start label={known ? L.send : cta} /></div>
                   {canBuy && <a className="btn ghost" href="#plans" data-cta>{L.subscribe}</a>}</div>
               )}
             </div>
