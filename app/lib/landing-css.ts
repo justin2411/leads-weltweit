@@ -150,6 +150,9 @@ export const LANDING_CSS = `
 /* Probe-Formular */
 .bx .lp2 .formwrap{display:grid;grid-template-columns:1.1fr .9fr;gap:30px;align-items:stretch}
 .bx .lp2 .formcard{background:linear-gradient(170deg,#13265a,#0B1530);color:#fff;border-radius:24px;padding:30px;box-shadow:0 40px 80px -45px rgba(11,21,48,.8)}
+.bx .lp2 .formcard{border:1px solid rgba(255,255,255,.14);animation:fcglow 3.6s ease-in-out infinite}
+@keyframes fcglow{0%,100%{border-color:rgba(255,255,255,.12);box-shadow:0 40px 80px -45px rgba(11,21,48,.8),0 0 0 0 rgba(255,255,255,0)}50%{border-color:rgba(255,255,255,.38);box-shadow:0 40px 80px -45px rgba(11,21,48,.8),0 0 22px 2px rgba(255,255,255,.14)}}
+@media (prefers-reduced-motion:reduce){.bx .lp2 .formcard{animation:none}}
 .bx .lp2 .formcard h2{color:#fff}
 .bx .lp2 .formcard .gold-h{color:var(--gold,#E2C58C);background:linear-gradient(90deg,#E9D3A2,#C9A363);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .bx .lp2 .side2{display:flex;flex-direction:column;gap:14px}
