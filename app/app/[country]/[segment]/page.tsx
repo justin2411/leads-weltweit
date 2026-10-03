@@ -453,7 +453,7 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
             <div className="rcard" key={h} data-rv style={i(k)}><span className="gi"><Icon name={ic} /></span><h3>{h}</h3><p>{d}</p></div>))}</div>
           <div className="kick"><span className="cap" style={{ color: "var(--gink)" }}>{T2.howTitle}</span></div>
           <div className="steps">{T2.steps.map(([ic, h, d], k) => (
-            <div className="step" key={h} data-rv style={i(k)}><div className="no"><b>{String(k + 1).padStart(2, "0")}</b><span className="ring"><Icon name={ic} /></span></div><h3>{h}</h3>{d && <p>{d}</p>}</div>))}</div>
+            <div className="step" key={h} data-rv style={i(k)}><div className="no"><b>{String(k + 1).padStart(2, "0")}</b><span className="ring"><Icon name={ic} /></span></div><h3>{h.split("|").map((t, j) => <span key={j}>{j > 0 && <br />}{t}</span>)}</h3>{d && <p>{d}</p>}</div>))}</div>
         </div></section>
 
         {canBuy && (
