@@ -374,6 +374,13 @@ def cmd_run(args) -> int:
 
     pool = mine(candidates(segs))
     pool = fill_up(pool, keep, lambda: mine(candidates(all_segs)))
+    # Dashboard (Inhaber 03.10.2026): Kunden-Werk je Land abschaltbar
+    from lib.owner_settings import load as load_owner_settings
+    off = set(load_owner_settings(db)["buyer_countries_off"])
+    if off:
+        before = len(pool)
+        pool = [d for d in pool if d["country"] not in off]
+        log(f"Im Dashboard ausgeschaltet: {', '.join(sorted(off))} ({before - len(pool)} Kandidaten ausgelassen)")
     pool = pool[:args.max]
     if cached and pool:
         pool = drop_stored(db, pool, known)

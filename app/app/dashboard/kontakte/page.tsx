@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SEGMENT, loadContacts, loadLive } from "@/lib/dashboard-data";
-import { COUNTRY_COLOR, compact, onlySegment } from "@/lib/dashboard-logic";
+import { COUNTRY_COLOR, berlinDay, compact, onlySegment } from "@/lib/dashboard-logic";
+import { PERIODS, isPeriod, period } from "@/lib/dashboard-periods";
 import { STAGES, board, isStage, type Card } from "@/lib/dashboard-board";
 import { requireOwner } from "../actions";
 import { COUNTRY_OPTS, Chips, Crumbs, ago2 } from "../v2";
@@ -27,27 +28,41 @@ export default async function Kontakte({ searchParams }: { searchParams: SP }) {
   const { land, countries, raw, one } = await readParams(searchParams);
   const stufe = one("stufe");
   const focus = isStage(stufe) ? stufe : null;
-  const [liveAll, contacts] = await Promise.all([loadLive(), loadContacts(focus ? 200 : 8)]);
+  // Zeitraum: Firmen, deren erste Mail im Zeitraum lag; Standard „Alle“
+  const zRaw = one("z");
+  const zk = isPeriod(zRaw) ? zRaw : null;
+  const today = berlinDay(new Date());
+  const p = zk ? period(zk, today) : null;
+  const n = Math.min(1000, Math.max(50, Number(one("n")) || 100));
+  const [liveAll, contacts] = await Promise.all([loadLive(), loadContacts(focus ? n : 8, p?.from ?? null, p?.to ?? null)]);
   const live = onlySegment(liveAll, SEGMENT);
-  const cols = board(contacts, live.sample_requests, live.customers, countries);
+  const inP = (ts: string | null) => !p || (!!ts && berlinDay(new Date(ts)) >= p.from && berlinDay(new Date(ts)) <= p.to);
+  const cols = board(contacts, live.sample_requests.filter((r) => inP(r.created_at)), live.customers.filter((c) => inP(c.created_at)), countries);
   const now = new Date(live.now);
-  const base = { ...raw, stufe: focus ?? undefined };
+  const prm = { ...raw, z: zk ?? undefined };
+  const base = { ...prm, stufe: focus ?? undefined };
+  const zChips = (b: string, params: Record<string, string | undefined>) => (
+    <Chips base={b} param="z" value={zk} options={[[null, "Alle"], ...PERIODS.map(([k, l]) => [k, l] as [string, string])]} params={params} />
+  );
 
   if (focus) {
     const col = cols.find((c) => c.id === focus)!;
     return (
       <div className="v2">
-        <Crumbs items={[["Übersicht", withQuery("/dashboard", raw)], ["Kontakte", withQuery("/dashboard/kontakte", raw)], [col.label, ""]]} />
+        <Crumbs items={[["Übersicht", withQuery("/dashboard", raw)], ["Kontakte", withQuery("/dashboard/kontakte", prm)], [col.label, ""]]} />
         <div className="head2">
           <Chips base="/dashboard/kontakte" param="stufe" value={focus} options={STAGES.map(([k, l]) => [k, l])} params={base} />
           <Chips base="/dashboard/kontakte" param="land" value={land} options={COUNTRY_OPTS} params={base} dots />
         </div>
-        <div className="big1"><b>{compact(col.count)}</b> {col.label}</div>
+        {zChips("/dashboard/kontakte", base)}
+        <div className="big1"><b>{compact(col.count)}</b> {col.label} · {col.cards.length < col.count ? `neueste ${compact(col.cards.length)} von ${compact(col.count)}` : "alle"}</div>
         <div className="klist card">
           {col.cards.map((c) => <CardRow key={c.key} c={c} now={now} />)}
           {col.cards.length === 0 && <div className="muted">keine</div>}
-          {col.count > col.cards.length && <div className="muted small">neueste {col.cards.length} von {compact(col.count)}</div>}
         </div>
+        {col.count > col.cards.length && n < 1000 && (
+          <Link className="more-btn" href={withQuery("/dashboard/kontakte", { ...base, n: String(Math.min(1000, n + 200)) })}>mehr laden ({compact(col.count - col.cards.length)} weitere)</Link>
+        )}
       </div>
     );
   }
@@ -55,17 +70,17 @@ export default async function Kontakte({ searchParams }: { searchParams: SP }) {
   return (
     <div className="v2">
       <Crumbs items={[["Übersicht", withQuery("/dashboard", raw)], ["Kontakte", ""]]} />
-      <div className="head2"><span /><Chips base="/dashboard/kontakte" param="land" value={land} options={COUNTRY_OPTS} params={raw} dots /></div>
+      <div className="head2">{zChips("/dashboard/kontakte", prm)}<Chips base="/dashboard/kontakte" param="land" value={land} options={COUNTRY_OPTS} params={prm} dots /></div>
       <div className="kanban">
         {cols.map((col) => (
           <section key={col.id} className={`kcol ${col.id === "out" ? "out" : ""}`}>
-            <Link href={withQuery("/dashboard/kontakte", { ...raw, stufe: col.id })} className="kh" title="ganze Liste">
+            <Link href={withQuery("/dashboard/kontakte", { ...prm, stufe: col.id })} className="kh" title="ganze Liste">
               <b>{compact(col.count)}</b><span>{col.label}</span>
             </Link>
             <div className="kc">
               {col.cards.slice(0, 8).map((c) => <CardRow key={c.key} c={c} now={now} />)}
               {col.count > Math.min(8, col.cards.length) && (
-                <Link href={withQuery("/dashboard/kontakte", { ...raw, stufe: col.id })} className="kmore">+{compact(col.count - Math.min(8, col.cards.length))}</Link>
+                <Link href={withQuery("/dashboard/kontakte", { ...prm, stufe: col.id })} className="kmore">alle {compact(col.count)} ansehen ›</Link>
               )}
             </div>
           </section>

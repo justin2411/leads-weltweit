@@ -240,7 +240,8 @@ def check_sample_stock(c: Check, db) -> None:
     from sample_stock import inventory, live_pages, settings, targets
     from lib.fokus import focus_pairs
     inv = inventory(db)
-    want = targets(live_pages(db), settings(), focus_pairs())
+    from lib.owner_settings import load as load_owner_settings
+    want = targets(live_pages(db), settings(), focus_pairs(), load_owner_settings(db)["sample_targets"])
     rows = [f"{s}/{cc} {inv.get(f'{s}/{cc}', 0)}/{t}" for (s, cc), t in want.items()]
     empty = [f"{s}/{cc}" for (s, cc) in want if not inv.get(f"{s}/{cc}")]
     since = (NOW - dt.timedelta(hours=24)).isoformat()

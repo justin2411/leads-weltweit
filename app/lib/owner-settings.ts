@@ -1,0 +1,120 @@
+/**
+ * Steuerung aus dem Dashboard (Inhaber 03.10.2026): Schlüssel, Standardwerte und Prüfung jeder Eingabe.
+ * Gleiche Grenzen wie scripts/lib/owner_settings.py. Harte Grenzen sind hier NICHT einstellbar: Mail-Länder,
+ * countries.yaml-Limits nach oben, Notbremse, Sperrliste, Frischeprüfung, Probe genau 10, keine Kaltmails über Resend.
+ * Reine Funktionen (ohne Next/Supabase), damit testbar.
+ */
+export const MAX_SAMPLE_TARGET = 100;
+export const MAX_AGE_RANGE = [24, 96] as const;
+export const FOLLOWUP_DAYS_RANGE = [3, 10] as const;
+
+export type OwnerSettings = {
+  send_paused: boolean;
+  send_countries_off: string[];
+  send_country_limits: Record<string, number>;
+  followup_enabled: boolean;
+  followup_days: number | null;
+  sample_targets: Record<string, number>;
+  sample_max_age_hours: number | null;
+  buyer_countries_off: string[];
+};
+export type SettingKey = keyof OwnerSettings;
+
+export const DEFAULTS: OwnerSettings = {
+  send_paused: false, send_countries_off: [], send_country_limits: {}, followup_enabled: true, followup_days: null,
+  sample_targets: {}, sample_max_age_hours: null, buyer_countries_off: [],
+};
+
+export function merge(rows: { key: string; value: unknown }[]): OwnerSettings {
+  const out: any = { ...DEFAULTS };
+  for (const r of rows) if (r.key in DEFAULTS && r.value !== null && r.value !== undefined) out[r.key] = r.value;
+  return out as OwnerSettings;
+}
+
+export class InputError extends Error {}
+
+function int(raw: unknown, lo: number, hi: number, what: string): number {
+  const s = String(raw ?? "").trim();
+  if (!/^\d{1,5}$/.test(s)) throw new InputError(`${what}: ganze Zahl ${lo}–${hi}`);
+  const n = Number(s);
+  if (n < lo || n > hi) throw new InputError(`${what}: ${lo}–${hi}`);
+  return n;
+}
+
+/** Mails pro Tag je Land: 0 … countries.yaml daily_limit (mehr greift nie). Leeres Feld = Standard (Limit aus yaml). */
+export function validateCountryLimits(input: Record<string, unknown>, yaml: Record<string, { allowed: boolean; daily_limit: number }>, countries: string[]) {
+  const out: Record<string, number> = {};
+  for (const c of countries) {
+    const raw = String(input[c] ?? "").trim();
+    if (raw === "") continue;
+    const rule = yaml[c];
+    if (!rule?.allowed) throw new InputError(`${c}: kein Mail-Land`);
+    out[c] = int(raw, 0, rule.daily_limit, `${c} Mails/Tag`);
+  }
+  return out;
+}
+
+/** Proben-Soll je Seite (Schlüssel „S2/US“): 0–100. Leeres Feld = Standard aus config/proben.yaml. */
+export function validateSampleTargets(input: Record<string, unknown>, keys: string[]) {
+  const out: Record<string, number> = {};
+  for (const k of keys) {
+    const raw = String(input[k] ?? "").trim();
+    if (raw === "") continue;
+    out[k] = int(raw, 0, MAX_SAMPLE_TARGET, `${k} Soll`);
+  }
+  return out;
+}
+
+export const validateMaxAge = (raw: unknown) => int(raw, MAX_AGE_RANGE[0], MAX_AGE_RANGE[1], "Verfall (h)");
+export const validateFollowupDays = (raw: unknown) => int(raw, FOLLOWUP_DAYS_RANGE[0], FOLLOWUP_DAYS_RANGE[1], "Tage bis Nachfass");
+
+/** Land in einer An/Aus-Liste umschalten – nur bekannte Länder (Abschalten ist immer erlaubt, Freischalten nie). */
+export function toggleIn(list: string[], country: string, allowed: string[]): string[] {
+  if (!allowed.includes(country)) throw new InputError("unbekanntes Land");
+  return list.includes(country) ? list.filter((c) => c !== country) : [...list, country].sort();
+}
+
+/** Wirksames Tageslimit je Land (wie country_limit in Python). */
+export function effectiveLimit(yamlLimit: number, s: OwnerSettings, country: string): number {
+  if (s.send_countries_off.includes(country)) return 0;
+  const v = s.send_country_limits[country];
+  return v === undefined ? yamlLimit : Math.max(0, Math.min(v, yamlLimit));
+}
+
+export const PACKAGES = { starter: { label: "Starter", price: 129, perWeek: 15 }, pro: { label: "Pro", price: 249, perWeek: 50 } } as const;
+export type PackageKey = keyof typeof PACKAGES;
+
+/** Neuer Kunde aus dem Formular: Firma, geschäftliche E-Mail, Land (eines der Dashboard-Länder), Paket. */
+export function validateCustomer(f: { company?: unknown; email?: unknown; country?: unknown; pkg?: unknown }, countries: string[]) {
+  const company = String(f.company ?? "").trim();
+  const email = String(f.email ?? "").trim().toLowerCase();
+  const country = String(f.country ?? "").trim().toUpperCase();
+  const pkg = String(f.pkg ?? "") as PackageKey;
+  if (company.length < 2 || company.length > 200) throw new InputError("Firma fehlt");
+  if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email) || email.length > 200) throw new InputError("E-Mail ungültig");
+  if (!countries.includes(country)) throw new InputError("Land ungültig");
+  if (!(pkg in PACKAGES)) throw new InputError("Paket ungültig");
+  const currency = country === "US" ? "usd" : country === "UK" ? "gbp" : "eur";
+  return { company, email, country, pkg, currency, amount_cents: PACKAGES[pkg].price * 100 };
+}
+
+export const REPLY_KINDS = { reply_positive: "positiv", reply_negative: "negativ", reply: "Frage" } as const;
+export function validateReplyKind(raw: unknown): keyof typeof REPLY_KINDS {
+  const k = String(raw ?? "");
+  if (!(k in REPLY_KINDS)) throw new InputError("Art der Antwort ungültig");
+  return k as keyof typeof REPLY_KINDS;
+}
+
+export function validateNote(raw: unknown): string {
+  const s = String(raw ?? "").trim();
+  if (!s || s.length > 2000) throw new InputError("Notiz: 1–2000 Zeichen");
+  return s;
+}
+
+export const WORKFLOWS = {
+  "lead-werk": { file: "lead-werk.yml", label: "Lead-Werk", inputs: {} as Record<string, string> },
+  "kunden-werk": { file: "kunden-werk.yml", label: "Kunden-Werk", inputs: {} as Record<string, string> },
+  "proben-vorrat": { file: "proben-vorrat.yml", label: "Proben-Vorrat", inputs: { befehl: "run", probelauf: "false" } as Record<string, string> },
+  versand: { file: "send.yml", label: "Versand", inputs: { probelauf: "false" } as Record<string, string> },
+} as const;
+export type WorkflowKey = keyof typeof WORKFLOWS;

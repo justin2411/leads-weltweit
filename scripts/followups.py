@@ -81,17 +81,24 @@ def sample_followup_text(p: dict, lang: str, plan_url: str | None = None) -> str
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--apply", action="store_true")
-    ap.add_argument("--days", type=int, default=4)
+    ap.add_argument("--days", type=int, default=None, help="Tage bis zur Nachfassmail (Standard: Dashboard, sonst 4)")
     args = ap.parse_args(argv)
     from lib.db import DB
     db = DB()
     now = dt.datetime.now(dt.timezone.utc)
-    cutoff = (now - dt.timedelta(days=args.days)).isoformat()
+    # Dashboard (Inhaber 03.10.2026): Nachfassmail an/aus und Tage bis zur Nachfassmail (3–10)
+    from lib.owner_settings import followup_days, load as load_owner_settings
+    owner = load_owner_settings(db)
+    days = args.days if args.days is not None else followup_days(4, owner["followup_days"])
+    cutoff = (now - dt.timedelta(days=days)).isoformat()
     note = "Inhaber 26.09.2026: Nachfassmails freigegeben ('stell alles ein')"
     n1 = n2 = 0
 
     initial = db.select("messages", {"status": "eq.sent", "kind": "eq.initial", "sent_at": f"lte.{cutoff}",
                                      "select": "*,prospects(*)", "limit": "2000"})
+    if not owner["followup_enabled"]:
+        print("Nachfassmails im Dashboard ausgeschaltet (Inhaber) – keine neuen Nachfassmails")
+        initial = []
     for m in initial:
         p = m["prospects"]
         if db.select("messages", {"prospect_id": f"eq.{p['id']}", "kind": "neq.initial", "select": "id"}):

@@ -286,6 +286,12 @@ def cmd_send(args) -> int:
     cfg = load_countries()
     db = DB()
     live = args.live
+    # Hauptschalter im Dashboard (Inhaber 03.10.2026): „Pause“ hält alle Kaltmails und Nachfassmails sofort an;
+    # weiter geht es nur, wenn der Inhaber im Dashboard wieder auf „Läuft“ stellt.
+    from lib.owner_settings import country_limit, load as load_owner_settings
+    if load_owner_settings(db)["send_paused"]:
+        print("PAUSE: Versand im Dashboard angehalten (Inhaber) – nichts gesendet")
+        return 0
     if live:
         transport = os.environ.get("MAIL_TRANSPORT", "smtp")
         if transport == "resend":
@@ -321,6 +327,14 @@ def cmd_send(args) -> int:
         firsts.setdefault(box_of(row.get("sent_from"), boxes), dt.date.fromisoformat(row["sent_at"][:10]))
     caps = {b["n"]: box_cap(b, firsts.get(b["n"]), dt.date.today()) for b in boxes}
     cap = sum(caps.values())
+
+    # Dashboard (Inhaber 03.10.2026): Mails pro Tag je Land (nie über countries.yaml daily_limit), Länder aus
+    owner = load_owner_settings(db)
+    owner_limits, owner_off = owner["send_country_limits"], owner["send_countries_off"]
+    if owner_limits:
+        print("Tageslimit je Land (Dashboard): " + ", ".join(f"{k} {v}" for k, v in sorted(owner_limits.items())))
+    if owner_off:
+        print("Im Dashboard ausgeschaltet: " + ", ".join(sorted(owner_off)))
 
     today = dt.date.today().isoformat()
     sent_today: dict[str, int] = {}
@@ -413,7 +427,7 @@ def cmd_send(args) -> int:
             if live:
                 db.update("messages", {"id": m["id"]}, {"status": "blocked", "blocked_reason": "kein MX-Eintrag"})
             continue
-        limit = int(rules.get("daily_limit", cfg["defaults"]["daily_limit"]))
+        limit = country_limit(int(rules.get("daily_limit", cfg["defaults"]["daily_limit"])), owner_limits, country, owner_off)
         if sent_today.get(country, 0) >= limit:
             print(f"Tageslimit {country} ({limit}) erreicht, Rest morgen")
             continue
