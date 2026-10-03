@@ -96,37 +96,79 @@ export function countByStatus(rows: { status: string }[]): Record<ReplyStatus, n
 // ------------------------------------------------------------------------------------------- Antwort des Inhabers
 export const ANSWER_MAX = 5000;
 
+/** Zahl (Ziffern) direkt vor einer Zeitangabe für Abo-Preise: „129 per month“, „249/mo“, „129 pro Monat“, „par mois“. */
+const PERIOD = String.raw`(\/\s*(mo|mon|month|mth|yr|year|mois|an|monat|jahr)\b|(per|a|an|each|every|pro|par|im|je|al)\s+(month|year|monat|jahr|mois|an|année|annee|mes)\b|monthly|yearly|annually|mensuel|monatlich|jährlich)`;
+
 const BANNED: [RegExp, string][] = [
-  [/[€$£¥]/, "Währungszeichen"],
-  [/\b\d[\d.,\s]*\s?(eur|euros?|usd|dollars?|gbp|pounds?|chf)\b/i, "Betrag"],
-  [/\b(eur|usd|gbp|chf)\s?\d/i, "Betrag"],
+  [/\p{Sc}/u, "Währungszeichen"], // alle Währungszeichen ($ € £ ¥ ¢ ₹ ₩ ₽ ฿ … inkl. U+20A0–20CF)
+  [/\d[\d.,\s]*\s?(eur|euros?|usd|dollars?|bucks|gbp|pounds?|quid|chf|sek|nok|dkk|cad|aud|inr|cents?)\b/i, "Betrag"],
+  [/\b(eur|usd|gbp|chf|sek|nok|dkk|cad|aud|inr)\s?\d/i, "Betrag"],
+  [new RegExp(String.raw`\d[\d.,]*\s*` + PERIOD, "iu"), "Betrag pro Zeitraum"],
   [/preis/i, "„Preis“"],
-  [/\bpric(e|es|ed|ing)\b/i, "„price“"],
+  [/\bpric(e|es|ed|ing|ey)\b/i, "„price“"],
   [/\bprix\b/i, "„prix“"],
   [/\btarif/i, "„Tarif“"],
   [/guarant/i, "„guarantee“"],
   [/garanti/i, "„Garantie“"],
 ];
 
+/** Wörter, die auch mit Leerzeichen, Punkten oder Bindestrichen zwischen den Buchstaben gefunden werden („p r i c e“). */
+const BANNED_COMPACT: [RegExp, string][] = [
+  [/preis/, "„Preis“"],
+  [/price|pricing/, "„price“"],
+  [/prix/, "„prix“"],
+  [/guarant/, "„guarantee“"],
+  [/garanti/, "„Garantie“"],
+];
+
+/** Häufige Doppelgänger-Buchstaben (kyrillisch/griechisch) für die Prüfung auf lateinische Buchstaben abbilden. */
+const LOOKALIKE: Record<string, string> = {
+  "а": "a", "в": "b", "е": "e", "ё": "e", "к": "k", "м": "m", "н": "h", "о": "o", "р": "p", "с": "c", "т": "t", "у": "y",
+  "х": "x", "і": "i", "ї": "i", "ј": "j", "ѕ": "s", "ԁ": "d", "ɡ": "g", "А": "A", "В": "B", "Е": "E", "К": "K", "М": "M",
+  "Н": "H", "О": "O", "Р": "P", "С": "C", "Т": "T", "Х": "X", "І": "I", "Ј": "J", "Ѕ": "S", "α": "a", "ε": "e", "ι": "i",
+  "κ": "k", "ν": "v", "ο": "o", "ρ": "p", "τ": "t", "υ": "u", "χ": "x", "Α": "A", "Β": "B", "Ε": "E", "Ι": "I", "Κ": "K",
+  "Μ": "M", "Ν": "N", "Ο": "O", "Ρ": "P", "Τ": "T", "Χ": "X", "Υ": "Y",
+};
+
+/** Unsichtbare Formatzeichen (Zero-Width, weiches Trennzeichen, BOM, Richtungsmarken; Unicode-Kategorie Cf). */
+const FORMAT_CHARS = /\p{Cf}/gu;
+
+/** Prüf-Kopie: NFKC (Vollbreite → normal), Formatzeichen weg, Akzente weg, Doppelgänger → lateinisch. */
+function lintCopy(text: string): string {
+  return text.normalize("NFKD").replace(/\p{M}/gu, "").normalize("NFKC").replace(FORMAT_CHARS, "")
+    .replace(/[\u0370-\u03ff\u0400-\u04ff\u0500-\u052f\u0261]/g, (c) => LOOKALIKE[c] ?? c);
+}
+
 /**
  * Prüft die Antwort des Inhabers vor dem Versand. Rückgabe: Fehler (leer = in Ordnung). Preise, Beträge und Garantien
  * gehören nicht in eine schnelle Antwort (Regel wie bei den automatischen Antworten); dafür telefonieren oder die
- * Buchungsseite nennen.
+ * Buchungsseite nennen. Geprüft wird eine normalisierte Kopie (Tarnung mit Unicode-Zeichen fällt auf) und zusätzlich
+ * eine Kopie ohne Leer- und Satzzeichen (auseinandergezogene Wörter).
  */
 export function lintAnswer(text: string): string[] {
-  const t = String(text ?? "");
+  const raw = String(text ?? "");
+  const t = lintCopy(raw);
+  const compact = t.toLowerCase().replace(/[\s\p{P}\p{Z}_]+/gu, "");
   const errs: string[] = [];
+  const add = (what: string) => { if (!errs.includes(`kein ${what}`)) errs.push(`kein ${what}`); };
   if (!t.trim()) errs.push("Text fehlt");
-  if (t.length > ANSWER_MAX) errs.push(`höchstens ${ANSWER_MAX} Zeichen`);
-  for (const [re, what] of BANNED) if (re.test(t) && !errs.includes(`kein ${what}`)) errs.push(`kein ${what}`);
+  if (raw.length > ANSWER_MAX) errs.push(`höchstens ${ANSWER_MAX} Zeichen`);
+  for (const [re, what] of BANNED) if (re.test(t) || re.test(raw)) add(what);
+  for (const [re, what] of BANNED_COMPACT) if (re.test(compact)) add(what);
   return errs;
 }
 
-/** Zeilenenden vereinheitlichen, Steuerzeichen und überlange Leerzeilen entfernen. */
+/**
+ * Zeilenenden vereinheitlichen, Unicode normalisieren (NFKC: Vollbreite-Zeichen → normale), unsichtbare Formatzeichen
+ * (Zero-Width, weiches Trennzeichen, BOM, Richtungsmarken), Steuerzeichen und überlange Leerzeilen entfernen.
+ * Gesendet wird genau dieser gesäuberte Text.
+ */
 export function cleanAnswer(text: unknown): string {
   return String(text ?? "")
+    .normalize("NFKC")
     .replace(/\r\n?/g, "\n")
-    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "")
+    .replace(FORMAT_CHARS, "")
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/g, "")
     .replace(/\n{4,}/g, "\n\n\n")
     .trim();
 }
