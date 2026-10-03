@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadDaily, loadGateChecks, loadLive, loadOwnerSettings, loadRecentSent, loadRunRows, loadStock } from "@/lib/dashboard-data";
+import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadDaily, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock } from "@/lib/dashboard-data";
 import { berlin, berlinDay, chain, compact, currencySign, mailboxes, monthly, nextRun, onlySegment, realSubscriptions, sampleStock, stockSegment, COUNTRY_COLOR } from "@/lib/dashboard-logic";
 import { totals } from "@/lib/dashboard-periods";
 import { coach, hall, laneOf, laneStats, neckTask, running, utilization, type Beat } from "@/lib/leitstand";
@@ -18,8 +18,10 @@ import { Ampeln, Drawer, FlowMap, MiniBars, Ticker } from "./flow";
 import { Bays, LANE_COLOR, Reactor, UtilChart, laneColor } from "./hud";
 import { Pult } from "./pult";
 import { AgentDrawer, AgentRow } from "./agents";
+import { AutopilotPanel } from "./autopilot";
 import { DragTip } from "./dnd";
 import { Clock, Voice } from "./voice";
+import { Icon, type IconName } from "@/app/icons";
 
 export const metadata = { title: "JARVIS" };
 const REG = LANES as unknown as LaneRegistry;
@@ -56,11 +58,13 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   stockP.catch(() => {});
   const today = berlinDay(new Date());
   const from7 = new Date(Date.parse(`${today}T12:00:00Z`) - 6 * 86_400_000).toISOString().slice(0, 10);
-  const [liveAll, own, act, rows, stockAll, daily, sent, checks, agentTasks, starts] = await Promise.all([
+  const [liveAll, own, act, rows, stockAll, daily, sent, checks, agentTasks, starts, planLog] = await Promise.all([
     loadLive(), loadOwnerSettings(), loadActivity(), loadRunRows(24),
-    Promise.race([stockP.catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 2500))]),
+    // Bestand: höchstens 5 s warten (Abfrage ~3,5 s, 10 min zwischengespeichert); sonst „…“ statt falscher Nullen
+    Promise.race([stockP.catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 5000))]),
     loadDaily(from7, today), loadRecentSent(12), s === "lead" || s === "gate" ? loadGateChecks(14, s === "gate" && tab === "check" && sp.f === "rot") : Promise.resolve([]),
     loadAgentTasks(), s === "lead" || s === "kwerk" || s === "proben" ? loadStarts() : Promise.resolve([] as StartRequest[]),
+    loadPlanLog(),
   ]);
   const live = onlySegment(liveAll, SEGMENT);
   const stock = stockSegment(stockAll, SEGMENT);
@@ -71,7 +75,10 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
 
   // ---------------------------------------------------------------- Zahlen
   const beats = act.heartbeats as Beat[];
-  const plan = slotCounts(REG, own.slot_plan);
+  // Belegung: die zuletzt wirklich gestartete (Autopilot/Inhaber, werk_plan_log), sonst die Einstellung des Inhabers
+  const plan = { ...slotCounts(REG, own.slot_plan), ...(planLog["lead-werk"]?.plan ?? {}), ...(planLog["kunden-werk"]?.plan ?? {}) };
+  const autopilotOn = own.slot_autopilot?.on !== false;
+  const leadPlanned = REG.lanes.filter((l) => l.werk === "lead-werk").reduce((a, l) => a + (plan[l.id] ?? 0), 0);
   const bays = hall(REG, plan, beats, t);
   const busy = bays.filter((b) => b.state === "run" || b.state === "other").length;
   const stats = laneStats(REG, rows, t);
@@ -109,15 +116,15 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     return x.live ? "live" : x.cls === "t-red" ? "bad" : "idle";
   };
   const stations: Station[] = ([
-    { id: "lead", label: "Lead-Werk", icon: "⛏", value: compact(leads24), sub: `${busy} läuft · ${Object.values(plan).reduce((a, b) => a + b, 0)} geplant`, state: state("lead-werk", "lead-werk", 4), tip: "neue Leads in 24 h · belegte Plätze" },
-    { id: "gate", label: "Freigabe", icon: "⛨", value: gatePct === null ? "–" : `${gatePct}`, unit: gatePct === null ? "" : "%", sub: `${compact(gateOk)} frei/h`, state: act.last_gate_at && t - Date.parse(act.last_gate_at) < 15 * 60_000 ? "live" : "idle", tip: "Stichprobe bestanden · letzte Stunde freigegeben" },
-    { id: "bestand", label: "Bestand", icon: "▤", value: compact(Object.values(leadsNew).reduce((a, b) => a + b, 0)), sub: "Leads", state: "idle", tip: "lieferbare Leads US/UK/FR" },
-    { id: "proben", label: "Proben", icon: "✉", value: `${ready}/${target}`, sub: "bereit", state: state("proben-vorrat", "proben-vorrat", 26), tip: "fertige, geprüfte Proben / Soll" },
-    { id: "kwerk", label: "Kunden-Werk", icon: "⌕", value: compact(newBuyers24), sub: "neu 24 h", state: state("kunden-werk", "kunden-werk", 5), tip: "neue mail-fähige Webagenturen in 24 h" },
-    { id: "kaeufer", label: "Käufer", icon: "◎", value: compact(Object.values(freeBuyers).reduce((a, b) => a + b, 0)), sub: "frei", state: "idle", tip: "mail-fähige Käufer ohne Mail" },
-    { id: "versand", label: "Versand", icon: "➤", value: `${sentToday}`, unit: `/${cap}`, sub: "heute", state: own.send_paused ? "off" : isLive(act, "versand", now) ? "live" : "idle", tip: "Mails heute / Kapazität" },
-    { id: "antworten", label: "Antworten", icon: "↩", value: `${w.replies}`, sub: `${w.positive} positiv`, state: state("antworten", "antworten", 30), tip: "echte Antworten 7 Tage (ohne Abwesenheit)" },
-    { id: "kunden", label: "Kunden", icon: "€", value: `${subs.length}`, sub: `${revenue}/Mon.`, state: subs.length ? "live" : "idle", tip: "zahlende Kunden · Umsatz pro Monat" },
+    { id: "lead", label: "Lead-Werk", icon: "lead-werk", value: stockAll ? compact(leads24) : "…", sub: `${busy} läuft · ${leadPlanned} geplant${autopilotOn ? " · Auto" : ""}`, state: state("lead-werk", "lead-werk", 4), tip: "neue Leads in 24 h · belegte Plätze" },
+    { id: "gate", label: "Freigabe", icon: "freigabe", value: gatePct === null ? "–" : `${gatePct}`, unit: gatePct === null ? "" : "%", sub: `${compact(gateOk)} frei/h`, state: act.last_gate_at && t - Date.parse(act.last_gate_at) < 15 * 60_000 ? "live" : "idle", tip: "Stichprobe bestanden · letzte Stunde freigegeben" },
+    { id: "bestand", label: "Bestand", icon: "bestand", value: stock ? compact(Object.values(leadsNew).reduce((a, b) => a + b, 0)) : "…", sub: stock ? "Leads" : "lädt", state: "idle", tip: "lieferbare Leads US/UK/FR" },
+    { id: "proben", label: "Proben", icon: "proben", value: `${ready}/${target}`, sub: "bereit", state: state("proben-vorrat", "proben-vorrat", 26), tip: "fertige, geprüfte Proben / Soll" },
+    { id: "kwerk", label: "Kunden-Werk", icon: "kunden-werk", value: stockAll ? compact(newBuyers24) : "…", sub: "neu 24 h", state: state("kunden-werk", "kunden-werk", 5), tip: "neue mail-fähige Webagenturen in 24 h" },
+    { id: "kaeufer", label: "Käufer", icon: "kaeufer", value: stock ? compact(Object.values(freeBuyers).reduce((a, b) => a + b, 0)) : "…", sub: stock ? "frei" : "lädt", state: "idle", tip: "mail-fähige Käufer ohne Mail" },
+    { id: "versand", label: "Versand", icon: "versand", value: `${sentToday}`, unit: `/${cap}`, sub: "heute", state: own.send_paused ? "off" : isLive(act, "versand", now) ? "live" : "idle", tip: "Mails heute / Kapazität" },
+    { id: "antworten", label: "Antworten", icon: "antworten", value: `${w.replies}`, sub: `${w.positive} positiv`, state: state("antworten", "antworten", 30), tip: "echte Antworten 7 Tage (ohne Abwesenheit)" },
+    { id: "kunden", label: "Kunden", icon: "kunden", value: `${subs.length}`, sub: `${revenue}/Mon.`, state: subs.length ? "live" : "idle", tip: "zahlende Kunden · Umsatz pro Monat" },
   ] as Station[]).map((x) => ({ ...x, neck: x.id === neck }));
   const edges: Edge[] = [
     { from: "lead", to: "gate", perHour: act.leads_60m, label: "neue Leads" },
@@ -131,7 +138,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   ];
 
   // ---------------------------------------------------------------- JARVIS, Ampeln, Ticker
-  const tips = coach({ reg: REG, plan, stats, util: util.rate, queue, freeBuyers, leads: leadsNew, capPerDay: cap, kundenNew24h: stockAll ? newBuyers24 : null,
+  const tips = coach({ reg: REG, plan, stats, util: util.rate, queue, freeBuyers, leads: leadsNew, capPerDay: cap, kundenNew24h: stockAll ? newBuyers24 : null, stockKnown: !!stock,
     failed: beats.filter((b) => /^abgebrochen/.test(b.note ?? "") && t - Date.parse(b.beat_at) < 6 * 3_600_000).map((b) => `${b.werk} ${b.part} · ${berlin(b.beat_at)}`),
     countedHours: firstRun ? Math.min(24, (t - firstRun) / 3_600_000) : 0 });
   const tipStation = (href?: string): StationId => (href === "#pult" ? "lead" : href?.includes("bestand") ? "kaeufer" : href?.includes("versand") ? "versand" : "lead");
@@ -146,15 +153,15 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     { label: "Engpass", value: neck ? stations.find((x) => x.id === neck)!.label : "keiner", sub: "hier ansetzen", tone: neck ? "red" : "green", href: neck ? base(neck) : "/dashboard/jarvis", task: neck ? neckTask(stations.find((x) => x.id === neck)!.label) : undefined },
   ] as { label: string; value: string; sub: string; tone: "green" | "gold" | "red" | "cyan" | "grey"; href: string }[];
   const items: TickerItem[] = [
-    ...sent.map((m) => ({ at: m.sent_at, icon: "✉", text: `${m.prospects?.company_name ?? "?"} ${m.prospects?.country ?? ""}`, tone: "cyan" as const, href: m.prospects ? `/dashboard/kontakte/${m.prospects.id}` : undefined })),
+    ...sent.map((m) => ({ at: m.sent_at, icon: "mail" as IconName, text: `${m.prospects?.company_name ?? "?"} ${m.prospects?.country ?? ""}`, tone: "cyan" as const, href: m.prospects ? `/dashboard/kontakte/${m.prospects.id}` : undefined })),
     ...live.events.filter((e) => ["reply", "reply_positive", "reply_negative", "sample_requested", "unsubscribed", "bounced"].includes(e.type)).slice(0, 10).map((e) => ({
-      at: e.occurred_at, icon: ({ reply: "↩", reply_positive: "★", reply_negative: "↩", sample_requested: "◫", unsubscribed: "⊘", bounced: "⚠" } as Record<string, string>)[e.type] ?? "•",
+      at: e.occurred_at, icon: ({ reply: "antwort", reply_positive: "stern", reply_negative: "antwort", sample_requested: "proben", unsubscribed: "abmeldung", bounced: "bounce" } as Record<string, IconName>)[e.type] ?? "info",
       text: `${e.company_name ?? "?"}${e.type === "unsubscribed" ? " abgemeldet" : e.type === "bounced" ? " Bounce" : e.type === "sample_requested" ? " Probe" : ""}`,
       tone: (e.type === "reply_positive" || e.type === "sample_requested" ? "green" : e.type === "bounced" || e.type === "unsubscribed" ? "red" : "gold") as TickerItem["tone"],
       href: e.prospect_id ? `/dashboard/kontakte/${e.prospect_id}` : undefined })),
     // Werke im Ticker: nur Teile mit Ergebnis (grüne Leads/Käufer) oder Abbruch – „0 grün“ wäre nur Rauschen
     ...beats.filter((b) => b.started_at && t - Date.parse(b.started_at) < 3 * 3_600_000 && (b.green > 0 || /^abgebrochen/.test(b.note ?? ""))).slice(0, 8).map((b) => ({
-      at: /^(fertig|abgebrochen)/.test(b.note ?? "") ? b.beat_at : b.started_at!, icon: /^abgebrochen/.test(b.note ?? "") ? "✕" : /^fertig/.test(b.note ?? "") ? "■" : "▶",
+      at: /^(fertig|abgebrochen)/.test(b.note ?? "") ? b.beat_at : b.started_at!, icon: (/^abgebrochen/.test(b.note ?? "") ? "fehler" : /^fertig/.test(b.note ?? "") ? "stopp" : "start") as IconName,
       text: `${b.werk === "lead-werk" ? "Lead" : b.werk === "kunden-werk" ? "Kunden" : b.werk} ${b.part.split(" ")[0]}${/^fertig/.test(b.note ?? "") ? ` ${compact(b.green)} grün` : ""}`,
       tone: (/^abgebrochen/.test(b.note ?? "") ? "red" : "grey") as TickerItem["tone"] })),
   ];
@@ -170,7 +177,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     const st = startState(starts, wf, now);
     return (<>
       <form action={requestStart} className="row-go"><Back to={back} /><input type="hidden" name="wf" value={wf} />
-        <button disabled={paused} title={paused ? "pausiert – erst einschalten" : dispatch ? "startet sofort" : "Wachhund startet spätestens in 15 min"}>▶ Jetzt starten</button></form>
+        <button disabled={paused} title={paused ? "pausiert – erst einschalten" : dispatch ? "startet sofort" : "Wachhund startet spätestens in 15 min"}><Icon name="start" size={16} /> Jetzt starten</button></form>
       {st && <span className={st.tone === "bad" ? "warn" : "lock"} aria-live="polite">{st.text}</span>}
     </>);
   };
@@ -187,7 +194,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     <ul className="chk">
       {checks.map((c, i) => (
         <li key={i} className={c.result === "released" ? "ok" : "bad"} title={c.leads?.event_summary ?? ""}>
-          <i aria-hidden>{c.result === "released" ? "✓" : "✕"}</i>
+          <i aria-hidden><Icon name={c.result === "released" ? "ok" : "fehler"} size={16} /></i>
           <b>{c.leads?.watch_companies?.name ?? "?"}</b><span>{c.leads?.country} · {c.leads?.signal_type?.replace(/_/g, " ")}</span>
           <em>{c.result === "released" ? "frei" : `Stufe ${c.failed_stage}: ${(c.reasons ?? [])[0] ?? ""}`}</em>
         </li>
@@ -195,7 +202,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
       {!checks.length && <li className="none">noch keine Prüfungen</li>}
     </ul>
   );
-  const lnk = (to: string, label: string) => <Link href={to} className="more2">{label} ›</Link>;
+  const lnk = (to: string, label: string) => <Link href={to} className="more2">{label} <Icon name="weiter" size={16} /></Link>;
   const countryToggles = (list: string[], action: (f: FormData) => Promise<void>) => (
     <div className="tog2">{countries.map((c) => { const off = list.includes(c); return (
       <form key={c} action={action}><Back to={back} /><input type="hidden" name="country" value={c} /><button className={off ? "off" : "on"} title={off ? "aus" : "an"}><i style={{ background: COUNTRY_COLOR[c] }} />{c}</button></form>); })}</div>
@@ -209,11 +216,12 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     if (s === "lead") body = tab === "set" ? (<>
       <div className="row-sw"><WerkSwitch werk="lead-werk" on={sw("lead-werk").on} back={back} label="Lead-Werk" />{Start({ wf: "lead-werk" })}</div>
       {tokenHint}
+      <AutopilotPanel on={autopilotOn} log={planLog["lead-werk"]} reg={REG} werk="lead-werk" back={back} />
       <Pult lanes={pultLanes} only={REG.lanes.filter((l) => l.werk === "lead-werk").map((l) => l.id)} cap={REG.total_slots - REG.reserve} total={REG.total_slots} back={back} action={saveSlotPlan} nextStart={nextStart} custom={custom} />
     </>) : tab === "check" ? <>{checkList}{lnk("/dashboard/werke", "alle Prüfstufen")}</> : (<>
       <div className="row-sw">{Start({ wf: "lead-werk" })}</div>
       {tokenHint}
-      <Reactor bays={bays} running={busy} util={util.rate} center={`${busy}`} sub={`von ${REG.total_slots} Plätzen arbeiten gerade · ${Object.values(plan).reduce((a, b) => a + b, 0)} geplant`} />
+      <Reactor bays={bays} running={busy} util={util.rate} center={`${busy}`} sub={`von ${REG.total_slots} Plätzen arbeiten gerade · ${Object.values(plan).reduce((a, b) => a + b, 0)} geplant${autopilotOn ? " (Autopilot)" : ""}`} />
       <MiniBars rows={REG.lanes.filter((l) => l.werk === "lead-werk" && (plan[l.id] || stats[l.id].runs)).map((l) => ({ key: l.id, label: l.short, n: stats[l.id].green, color: LANE_COLOR[l.id], href: `${base("lead")}&t=set`, tip: `${l.label}: ${plan[l.id]} Plätze · grün in 24 h` }))} />
       <UtilChart buckets={util.buckets} total={REG.total_slots} cap={REG.total_slots - REG.reserve} />
       <Bays bays={bays} labels={Object.fromEntries(REG.lanes.flatMap((l) => [[l.id, l.label], [`short:${l.id}`, l.short]]))} />
@@ -223,7 +231,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     </>) : (<>
       <Big items={[[gatePct === null ? "–" : `${gatePct} %`, "Stichprobe"], [compact(gateOk), "frei / h"], [`${gateBad}`, "raus / h"]]} />
       <MiniBars unit=" %" rows={sp7.map((r) => ({ key: r.country, label: r.country, n: r.candidates ? Math.round((r.green / r.candidates) * 1000) / 10 : 0, color: COUNTRY_COLOR[r.country] }))} />
-      <p className="lock">🔒 3 Stufen · immer an</p>
+      <p className="lock"><Icon name="schloss" size={14} /> 3 Stufen · immer an</p>
     </>);
     if (s === "bestand") body = tab === "check" ? lnk("/dashboard/bestand", "Bestand im Detail") : (<>
       <Big items={[[compact(Object.values(leadsNew).reduce((a, b) => a + b, 0)), "lieferbar"], [`+${compact(leads24)}`, "24 h"]]} />
@@ -242,6 +250,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     if (s === "kwerk") body = tab === "set" ? (<>
       <div className="row-sw"><WerkSwitch werk="kunden-werk" on={sw("kunden-werk").on} back={back} label="Kunden-Werk" />{Start({ wf: "kunden-werk" })}</div>
       {countryToggles(own.buyer_countries_off, toggleBuyerCountry)}
+      <AutopilotPanel on={autopilotOn} log={planLog["kunden-werk"]} reg={REG} werk="kunden-werk" back={back} />
       <Pult lanes={pultLanes} only={["kunden"]} cap={REG.total_slots - REG.reserve} total={REG.total_slots} back={back} action={saveSlotPlan} nextStart={nextStart} custom={custom} />
     </>) : tab === "check" ? lnk("/dashboard/kontakte", "Käufer ansehen") : (<>
       <div className="row-sw">{Start({ wf: "kunden-werk" })}</div>
@@ -255,7 +264,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     </>);
     if (s === "versand") body = tab === "set" ? (<>
       <form action={setPaused} className="row-sw2"><Back to={back} />
-        <button name="paused" value="0" className={!own.send_paused ? "on go" : ""}>▶ läuft</button><button name="paused" value="1" className={own.send_paused ? "on stop" : ""}>❚❚ Pause</button></form>
+        <button name="paused" value="0" className={!own.send_paused ? "on go" : ""}><Icon name="start" size={16} /> läuft</button><button name="paused" value="1" className={own.send_paused ? "on stop" : ""}><Icon name="pause" size={16} /> Pause</button></form>
       {countryToggles(own.send_countries_off, toggleSendCountry)}
       <form action={saveCountryLimits} className="frm"><Back to={back} />
         {countries.map((c) => <label key={c}><span>{c}</span><input name={`limit_${c}`} inputMode="numeric" defaultValue={own.send_country_limits[c] ?? ""} placeholder={String(CONFIG.countries[c]?.daily_limit ?? "")} /><em>/Tag · max {CONFIG.countries[c]?.daily_limit}</em></label>)}
@@ -266,7 +275,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
         <button className="go">Speichern</button></form>
     </>) : tab === "check" ? (<>
       <ul className="chk">{sent.map((m, i) => (
-        <li key={i} className="ok"><i aria-hidden>✉</i><b>{m.prospects ? <Link href={`/dashboard/kontakte/${m.prospects.id}`}>{m.prospects.company_name}</Link> : "?"}</b>
+        <li key={i} className="ok"><i aria-hidden><Icon name="mail" size={16} /></i><b>{m.prospects ? <Link href={`/dashboard/kontakte/${m.prospects.id}`}>{m.prospects.company_name}</Link> : "?"}</b>
           <span>{m.prospects?.country} · {berlin(m.sent_at)}</span><em>{m.kind === "initial" ? "Erstmail" : "Nachfass"}</em></li>))}</ul>
       {lnk("/dashboard/versand", "Versand im Detail")}
     </>) : (<>
@@ -275,10 +284,10 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     </>);
     if (s === "antworten") body = tab === "set" ? (<>
       <div className="row-sw"><WerkSwitch werk="antworten" on={sw("antworten").on} back={back} label="Antwort-Assistent" note="Abmeldungen werden immer gesperrt" /></div>
-      <p className="lock">🔒 Abmeldungen immer gesperrt</p>
+      <p className="lock"><Icon name="schloss" size={14} /> Abmeldungen immer gesperrt</p>
     </>) : tab === "check" ? (<>
       <ul className="chk">{live.events.filter((e) => ["reply", "reply_positive", "reply_negative", "sample_requested"].includes(e.type)).slice(0, 12).map((e) => (
-        <li key={e.id} className={e.type === "reply_negative" ? "bad" : "ok"} title={e.note ?? ""}><i aria-hidden>{e.type === "reply_positive" ? "★" : "↩"}</i>
+        <li key={e.id} className={e.type === "reply_negative" ? "bad" : "ok"} title={e.note ?? ""}><i aria-hidden><Icon name={e.type === "reply_positive" ? "stern" : "antwort"} size={16} /></i>
           <b>{e.prospect_id ? <Link href={`/dashboard/kontakte/${e.prospect_id}`}>{e.company_name ?? "?"}</Link> : e.company_name ?? "?"}</b>
           <span>{e.country} · {berlin(e.occurred_at)}</span><em>{(e.note ?? "").slice(0, 60)}</em></li>))}</ul>
       {lnk("/dashboard/liste?m=replies&z=jahr", "alle Antworten")}
@@ -286,7 +295,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
       <Big items={[[`${w.replies}`, "Antworten 7 T"], [`${w.positive}`, "positiv"], [`${w.samples_requested}`, "Proben angefragt"]]} />
     );
     if (s === "kunden") body = tab === "set" ? lnk("/dashboard/kunden", "Kunden anlegen & freigeben") : tab === "check" ? (
-      <ul className="chk">{subs.map((x) => <li key={x.id} className="ok"><i aria-hidden>€</i><b>{x.customer?.company_name}</b><span>{x.customer?.country}</span><em>{compact(monthly(x))} {currencySign(x.currency, x.customer?.country)}</em></li>)}
+      <ul className="chk">{subs.map((x) => <li key={x.id} className="ok"><i aria-hidden><Icon name="kunde" size={16} /></i><b>{x.customer?.company_name}</b><span>{x.customer?.country}</span><em>{compact(monthly(x))} {currencySign(x.currency, x.customer?.country)}</em></li>)}
         {!subs.length && <li className="none">noch keine Kunden</li>}</ul>
     ) : <Big items={[[`${subs.length}`, "Kunden"], [revenue, "pro Monat"], [nx("kundenlieferung.yml"), "nächste Lieferung"]]} />;
     drawer = <Drawer title={stn.label} icon={stn.icon} tab={tab} base={base(s)} close="/dashboard/jarvis" tabs={tabsOn} state={stn.state}>{body}</Drawer>;

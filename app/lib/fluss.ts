@@ -3,9 +3,11 @@
  * grafiken die anklickbar sind … sehen was läuft und was wohin läuft“). Reine Funktionen: Stationen, Leitungen,
  * Positionen für Desktop (quer) und Handy (hoch). Werte kommen immer aus echten Zählungen.
  */
+import type { IconName } from "../app/icons";
+
 export type StationId = "lead" | "gate" | "bestand" | "proben" | "kwerk" | "kaeufer" | "versand" | "antworten" | "kunden";
 export type StationState = "live" | "idle" | "off" | "bad";
-export type Station = { id: StationId; label: string; icon: string; value: string; unit?: string; sub: string; state: StationState; neck?: boolean; tip: string };
+export type Station = { id: StationId; label: string; icon: IconName; value: string; unit?: string; sub: string; state: StationState; neck?: boolean; tip: string };
 export type Edge = { from: StationId; to: StationId; perHour: number; label: string };
 
 export const ORDER: StationId[] = ["lead", "gate", "bestand", "proben", "kwerk", "kaeufer", "versand", "antworten", "kunden"];
@@ -48,7 +50,7 @@ export const NECK_TO_STATION: Record<string, StationId> = {
   leads: "bestand", kaeufer: "kaeufer", mails: "versand", antworten: "antworten", proben: "proben", kunden: "kunden", umsatz: "kunden",
 };
 
-export type TickerItem = { at: string; icon: string; text: string; tone: "cyan" | "gold" | "green" | "red" | "grey"; href?: string };
+export type TickerItem = { at: string; icon: IconName; text: string; tone: "cyan" | "gold" | "green" | "red" | "grey"; href?: string };
 
 /** Live-Ticker: Ereignisse verschiedener Quellen, neueste zuerst, höchstens n. */
 export function ticker(items: TickerItem[], n = 14): TickerItem[] {

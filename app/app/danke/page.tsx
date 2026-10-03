@@ -7,6 +7,7 @@ import { PER_WEEK, perMonth } from "@/lib/custom-price";
 import { firstDelivery } from "@/lib/welcome-mail";
 import { BrandShell, SiteFooter, SiteHeader } from "../chrome";
 import { FilterForm, FORM_CSS } from "../kunde/filter/form";
+import { Icon } from "@/app/icons";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: `Welcome | ${BRAND}`, robots: { index: false, follow: false } };
@@ -123,7 +124,7 @@ export default async function Danke({ searchParams }: { searchParams: Promise<{ 
       {retry && <meta httpEquiv="refresh" content={`3;url=${retry}`} />}
       <SiteHeader />
       <main className="wl"><div className="wrap">
-        <div className="eyebrow"><i>✓</i>{T.eyebrow}{found?.mode === "test" ? " · TEST" : ""}</div>
+        <div className="eyebrow"><i><Icon name="ok" size={13} /></i>{T.eyebrow}{found?.mode === "test" ? " · TEST" : ""}</div>
         <h1>{firm ? T.helloFirm.replace("{b}", BRAND).replace("{f}", firm) : T.hello.replace("{b}", BRAND) + "."}</h1>
         <p className="lede">{found ? T.lede : T.generic}</p>
 
@@ -138,9 +139,9 @@ export default async function Danke({ searchParams }: { searchParams: Promise<{ 
 
         <div className="wl-next"><div className="hd">{T.next}</div>
           <ol className="wl-steps">
-            <li className={found ? "done" : ""}><div className="n"><span>01</span><i />{found && <em>✓</em>}</div><b>{T.s1[0]}</b><p>{T.s1[1]}</p></li>
+            <li className={found ? "done" : ""}><div className="n"><span>01</span><i />{found && <em><Icon name="ok" size={12} title="erledigt" /></em>}</div><b>{T.s1[0]}</b><p>{T.s1[1]}</p></li>
             <li><div className="n"><span>02</span><i /></div><b>{T.s2[0]}</b><p>{token ? T.s2[1] : T.s2mail}</p>
-              {token && <a className="btn gold big" href="#focus">{T.btn} <span className="ar">↓</span></a>}</li>
+              {token && <a className="btn gold big" href="#focus">{T.btn} <span className="ar"><Icon name="pfeil-runter" size={18} /></span></a>}</li>
             <li><div className="n"><span>03</span><i /></div><b>{T.s3[0]}</b><p>{T.s3[1].replace("{d}", first)}</p></li>
           </ol>
         </div>

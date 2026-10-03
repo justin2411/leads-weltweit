@@ -8,26 +8,27 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { COUNTRY_COLOR, OTHER_COLOR, compact, type Alert } from "@/lib/dashboard-logic";
 import { delta } from "@/lib/dashboard-periods";
+import { Icon, type IconName } from "@/app/icons";
 
 export function Crumbs({ items }: { items: [string, string][] }) {
   return (
     <nav className="crumbs" aria-label="Pfad">
       {items.map(([l, h], i) => (
-        <span key={i}>{i > 0 && <b aria-hidden> › </b>}{h ? <Link href={h}>{l}</Link> : <span aria-current="page">{l}</span>}</span>
+        <span key={i}>{i > 0 && <b aria-hidden> <Icon name="weiter" size={14} /> </b>}{h ? <Link href={h}>{l}</Link> : <span aria-current="page">{l}</span>}</span>
       ))}
     </nav>
   );
 }
 
-const ICON = { rot: "✕", gelb: "!", gruen: "✓" } as const;
+const ICON: Record<"rot" | "gelb" | "gruen", IconName> = { rot: "fehler", gelb: "achtung", gruen: "ok" };
 
 export function AmpelRow({ alerts }: { alerts: Alert[] }) {
-  if (!alerts.length) return <div className="amp"><span className="amp-i gruen" title="Keine Engpässe erkannt"><b>{ICON.gruen}</b>Alles läuft</span></div>;
+  if (!alerts.length) return <div className="amp"><span className="amp-i gruen" title="Keine Engpässe erkannt"><b><Icon name={ICON.gruen} size={14} /></b>Alles läuft</span></div>;
   return (
     <div className="amp">
       {alerts.map((a, i) => (
         <span key={i} className={`amp-i ${a.level}`} title={[a.title, a.detail].filter(Boolean).join(" – ")}>
-          <b aria-label={a.level === "rot" ? "Engpass" : "Achtung"}>{ICON[a.level]}</b>{a.short ?? a.title}
+          <b aria-label={a.level === "rot" ? "Engpass" : "Achtung"}><Icon name={ICON[a.level]} size={14} /></b>{a.short ?? a.title}
         </span>
       ))}
     </div>
@@ -67,8 +68,8 @@ export function Kpi({ value, label, cur, prev, tip, goodDown, href }: {
     <>
       <span className="kv">{value}</span>
       <span className="kl">{label}</span>
-      {d && <span className={`kd ${good === null ? "" : good ? "up" : "down"}`} title={`Vorzeitraum: ${prev}`}>{d.text}</span>}
-      {href && <span className="kgo" aria-hidden>›</span>}
+      {d && <span className={`kd ${good === null ? "" : good ? "up" : "down"}`} title={`Vorzeitraum: ${prev}`}>{d.dir !== "flat" && <Icon name={d.dir === "up" ? "trend-hoch" : "trend-runter"} size={14} />} {d.text}</span>}
+      {href && <span className="kgo" aria-hidden><Icon name="weiter" size={16} /></span>}
     </>
   );
   return href ? <Link href={href} className="kpi2 link" title={tip ? `${tip} · Klick: Firmen ansehen` : "Klick: Firmen ansehen"}>{body}</Link> : <div className="kpi2" title={tip}>{body}</div>;
@@ -79,7 +80,7 @@ export function Tile({ title, href, children, wide, tip }: { title: string; href
     <section className={`card tile ${wide ? "wide" : ""}`}>
       <header className="th">
         <span title={tip}>{title}</span>
-        {href && <Link href={href} className="more" aria-label={`${title} – Details`}>Details ›</Link>}
+        {href && <Link href={href} className="more" aria-label={`${title} – Details`}>Details <Icon name="weiter" size={14} /></Link>}
       </header>
       {children}
     </section>
@@ -105,7 +106,7 @@ export function Fill({ label, ready, target, tip }: { label: string; ready: numb
     <div className="fill" title={tip}>
       <span className="fk">{label}</span>
       <span className="ft"><i className={lvl} style={{ width: `${Math.max(share * 100, ready ? 4 : 0)}%` }} /></span>
-      <span className="fv">{lvl === "rot" && <b className="st rot" aria-label="leer">✕</b>}{ready}/{target}</span>
+      <span className="fv">{lvl === "rot" && <b className="st rot" aria-label="leer"><Icon name="fehler" size={12} /></b>}{ready}/{target}</span>
     </div>
   );
 }
@@ -139,7 +140,7 @@ export function ago2(ts: string | null | undefined, now: Date): string {
 export function Ctrl({ title, tip, children, locked }: { title: string; tip: string; children: ReactNode; locked?: string }) {
   return (
     <section className="card ctrl">
-      <header className="th"><span title={tip}>{title}</span>{locked && <span className="lock" title={locked}>🔒 fest</span>}</header>
+      <header className="th"><span title={tip}>{title}</span>{locked && <span className="lock" title={locked}><Icon name="schloss" size={14} /> fest</span>}</header>
       {children}
     </section>
   );

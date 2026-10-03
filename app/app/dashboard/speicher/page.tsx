@@ -7,6 +7,7 @@ import {
 } from "@/lib/storage";
 import { loadProben, loadStorage, type Storage } from "@/lib/storage-data";
 import { requireOwner } from "../actions";
+import { Icon } from "@/app/icons";
 import { SPEICHER_CSS } from "./css";
 
 export const metadata = { title: "Speicher" };
@@ -145,7 +146,7 @@ function Body({ d, seg, proben }: { d: Storage; seg: string; proben: ProbeRow[] 
               layers={[{ c: "var(--b-sent)", n: t.sent, title: "angeschrieben" }, { c: "var(--b-frei)", n: t.free, title: "noch frei" }]}
               n={t.mailCountry ? big(t.mail) : "–"} label={t.country}
               sub={t.mailCountry ? <><span><b>{big(t.free)}</b> frei</span><span className="dot"> · </span><span>{big(t.sent)} angeschr.</span></> : "kein Mail-Land"}
-              call={t.callOnly > 0 ? <span className="tk-call" title="zählt nicht als Käufer">☎ {big(t.callOnly)} <span>nur Anruf/Brief</span></span> : undefined}
+              call={t.callOnly > 0 ? <span className="tk-call" title="zählt nicht als Käufer"><Icon name="telefon" size={13} /> {big(t.callOnly)} <span>nur Anruf/Brief</span></span> : undefined}
               title={t.mailCountry ? `mail-fähig ${t.mail.toLocaleString("de-DE")} · angeschrieben ${t.sent.toLocaleString("de-DE")} · noch frei ${t.free.toLocaleString("de-DE")} · nur Anruf/Brief ${t.callOnly.toLocaleString("de-DE")}` : `kein Mail-Land dieser Zielgruppe · nur Anruf/Brief ${t.callOnly.toLocaleString("de-DE")}`} />
           ))}
         </div>
@@ -190,7 +191,7 @@ function Body({ d, seg, proben }: { d: Storage; seg: string; proben: ProbeRow[] 
                 <Link key={g.country} href={baukastenHref(g.country, seg)} title={`${g.released.toLocaleString("de-DE")} freigegeben · ${g.failed.toLocaleString("de-DE")} zurückgehalten`}>
                   <span className="c">{g.country}</span>
                   <span className="bar"><i className="ok" style={{ width: `${(g.released / gMax) * 100}%` }} /><i className="bad" style={{ width: `${g.failed ? Math.max(1.5, (g.failed / gMax) * 100) : 0}%` }} /></span>
-                  <span className="v"><b>{big(g.released)}</b> ✓ · <span className={g.failed ? "r" : undefined}>{g.failed} ✗ ({(g.failPct * 100).toLocaleString("de-DE", { maximumFractionDigits: 1 })} %)</span></span>
+                  <span className="v"><b>{big(g.released)}</b> <Icon name="ok" size={13} title="freigegeben" /> · <span className={g.failed ? "r" : undefined}>{g.failed} <Icon name="fehler" size={13} title="zurückgehalten" /> ({(g.failPct * 100).toLocaleString("de-DE", { maximumFractionDigits: 1 })} %)</span></span>
                 </Link>
               ))}
             </div>

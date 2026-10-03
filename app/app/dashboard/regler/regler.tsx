@@ -14,6 +14,7 @@ import {
   maxAgeMatters, presetChips, presetPlan, scalePlan, setCountry, setLane, switchPreview, type CardKey, type Draft, type ReglerCtx, type StatusKind,
 } from "@/lib/regler";
 import type { Entry } from "@/lib/regler-verlauf";
+import { Icon, type IconName } from "@/app/icons";
 import { applySettings, startNow, undoChange } from "./actions";
 
 export type CardView = {
@@ -23,7 +24,7 @@ export type CardView = {
   effect: { text: string; tone?: "bad" | "off" } | null;
 };
 type HistoryView = Entry & { when: string };
-type Toast = { ok: boolean; title: string; lines: string[]; note?: string } | null;
+type Toast = { ok: boolean; title: string; lines: string[]; note?: string; icon?: IconName } | null;
 
 const FAST_MS = 20_000, SLOW_MS = 60_000, FAST_FOR_MS = 3 * 60_000;
 
@@ -45,9 +46,9 @@ function Stepper({ value, min, max, step = 1, unit, label, changed, disabled, mi
   const up = Math.min(max, step > 1 ? Math.floor(value / step) * step + step : value + 1);
   return (
     <div className={`rg-st${changed ? " chg" : ""}`}>
-      <button type="button" aria-label={`${label}: weniger`} title={value <= min ? minHint : undefined} onClick={() => onChange(down)} disabled={disabled || value <= min}>−</button>
+      <button type="button" aria-label={`${label}: weniger`} title={value <= min ? minHint : undefined} onClick={() => onChange(down)} disabled={disabled || value <= min}><Icon name="weniger" size={20} /></button>
       <output aria-label={label} aria-live="polite">{value}{unit && <small>{unit}</small>}</output>
-      <button type="button" aria-label={`${label}: mehr`} title={value >= max ? maxHint : undefined} onClick={() => onChange(up)} disabled={disabled || value >= max}>+</button>
+      <button type="button" aria-label={`${label}: mehr`} title={value >= max ? maxHint : undefined} onClick={() => onChange(up)} disabled={disabled || value >= max}><Icon name="mehr" size={20} /></button>
     </div>
   );
 }
@@ -60,22 +61,22 @@ function Chip({ on, onClick, children, title, pre, disabled }: { on: boolean; on
 function Rail({ v, dirty, startable, on, busy, onGo }: { v: CardView; dirty: boolean; startable: boolean; on: boolean; busy: boolean; onGo: () => void }) {
   if (!dirty && (v.kind === "noch nie geändert" || v.kind === "angewandt" || v.kind === "erreicht")) {
     const what = v.kind === "angewandt" ? `angewandt ${v.at}` : v.kind === "erreicht" ? "erreicht" : on ? "aktiv" : "aus";
-    return <p className="rg-calm"><i aria-hidden>✓</i><span>{what}{v.kind === "angewandt" && <small> ({cardOf(v.key).name})</small>}{on && ` · nächster Lauf ${v.next}`}</span></p>;
+    return <p className="rg-calm"><i aria-hidden><Icon name="ok" size={14} /></i><span>{what}{v.kind === "angewandt" && <small> ({cardOf(v.key).name})</small>}{on && ` · nächster Lauf ${v.next}`}</span></p>;
   }
   type Step = { cls: "ok" | "now" | "wait" | "todo"; b: string; s?: string };
-  const s1: Step = dirty ? { cls: "now", b: "geändert", s: "noch nicht übernommen" } : { cls: "ok", b: "eingestellt ✓" };
-  const s2: Step = dirty ? { cls: "todo", b: "übernehmen", s: "Leiste unten" } : v.saved ? { cls: "ok", b: `übernommen ✓ ${v.saved}` } : { cls: "ok", b: "Standard", s: "nie geändert" };
+  const s1: Step = dirty ? { cls: "now", b: "geändert", s: "noch nicht übernommen" } : { cls: "ok", b: "eingestellt" };
+  const s2: Step = dirty ? { cls: "todo", b: "übernehmen", s: "Leiste unten" } : v.saved ? { cls: "ok", b: `übernommen ${v.saved}` } : { cls: "ok", b: "Standard", s: "nie geändert" };
   const s3: Step = dirty ? { cls: "todo", b: "angewandt", s: "nach dem Übernehmen" }
-    : v.kind === "angewandt" ? { cls: "ok", b: `angewandt ✓ ${v.at}`, s: "vom Werk bestätigt" }
+    : v.kind === "angewandt" ? { cls: "ok", b: `angewandt ${v.at}`, s: "vom Werk bestätigt" }
     : v.kind === "noch nie geändert" ? { cls: "ok", b: "aktiv", s: `nächster Lauf ${v.next}` }
-    : { cls: "wait", b: v.kind === "start angefordert" ? "⏳ angefordert" : "⏳ wartet", s: v.text };
+    : { cls: "wait", b: v.kind === "start angefordert" ? "angefordert" : "wartet", s: v.text };
   const canGo = startable && !dirty && on && v.kind === "wartet" && !/^(gestartet|pausiert)/.test(v.text);
   return (
     <ol className="rg-rail" aria-label="Stand">
       {[s1, s2, s3].map((s, i) => (
         <li key={i} className={s.cls}>
-          <i aria-hidden>{s.cls === "ok" ? "✓" : i + 1}</i><b>{s.b}</b>{s.s && <span>{s.s}</span>}
-          {i === 2 && canGo && <button type="button" className="rg-go" onClick={onGo} disabled={busy} title="Werk jetzt starten statt beim nächsten Zeitplan">▶ Jetzt anwenden</button>}
+          <i aria-hidden>{s.cls === "ok" ? <Icon name="ok" size={13} /> : s.cls === "wait" ? <Icon name="warten" size={13} /> : i + 1}</i><b>{s.b}</b>{s.s && <span>{s.s}</span>}
+          {i === 2 && canGo && <button type="button" className="rg-go" onClick={onGo} disabled={busy} title="Werk jetzt starten statt beim nächsten Zeitplan"><Icon name="start" size={14} />Jetzt anwenden</button>}
         </li>
       ))}
     </ol>
@@ -175,12 +176,12 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
     }
     setHold(JSON.stringify(sent));
     setBoost(Date.now() + FAST_FOR_MS);
-    setToast({ ok: true, title: `✓ Übernommen ${fmtBerlin(r.at)}`, lines: r.applied.map((a) => a.text), note: r.started.join(" · ") || undefined });
+    setToast({ ok: true, icon: "ok", title: `Übernommen ${fmtBerlin(r.at)}`, lines: r.applied.map((a) => a.text), note: r.started.join(" · ") || undefined });
     router.refresh();
   });
   const go = (k: CardKey) => startT(async () => {
     const r = await startNow(k);
-    setToast(r.ok ? { ok: true, title: `▶ ${r.text}`, lines: [] } : { ok: false, title: r.error, lines: [] });
+    setToast(r.ok ? { ok: true, icon: "start", title: r.text, lines: [] } : { ok: false, title: r.error, lines: [] });
     if (r.ok) setBoost(Date.now() + FAST_FOR_MS);
     router.refresh();
   });
@@ -188,7 +189,7 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
     const r = await undoChange(id);
     if (!r.ok) return setToast({ ok: false, title: r.error, lines: [] });
     setBoost(Date.now() + FAST_FOR_MS);
-    setToast({ ok: true, title: `↶ Zurückgenommen ${fmtBerlin(r.at)}`, lines: r.applied.map((a) => a.text) });
+    setToast({ ok: true, icon: "rueckgaengig", title: `Zurückgenommen ${fmtBerlin(r.at)}`, lines: r.applied.map((a) => a.text) });
     router.refresh();
   });
 
@@ -202,6 +203,13 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
       const min = Math.min(countriesOn(plan, reg), max);
       const full = tot >= max ? capHint(plan, reg, "lead-werk") : null;
       return (<>
+        <div className="rg-k"><span>Autopilot</span>
+          <div className="rg-chips">
+            <Chip on={draft.autopilot} disabled={locked} title="verteilt die Plätze bei jedem Start dorthin, wo Ertrag ist – innerhalb deiner Einstellung" onClick={() => set({ autopilot: true })}>an</Chip>
+            <Chip on={!draft.autopilot} disabled={locked} title="es gilt genau deine Belegung" onClick={() => set({ autopilot: false })}>aus</Chip>
+          </div>
+          {draft.autopilot && <p className="rg-note">Tempo und Länder = Rahmen · Land aus bleibt aus</p>}
+        </div>
         <div className="rg-k"><span>Tempo</span>
           <div className="rg-row">
             <Stepper label="Tempo (Plätze)" value={tot} min={min} max={max} unit="Plätze" changed={changedPart(k, "tempo")} disabled={locked}
@@ -218,7 +226,7 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
             return <Chip key={c.id} on={on} title={c.title} disabled={locked} onClick={() => set({ slot_plan: setCountry(plan, reg, c.id, !on) })}>{c.label}</Chip>;
           })}</div>
         </div>
-        <Link href="/dashboard/jarvis?s=lead&t=set" className="rg-fine">Feinsteuerung je Linie ›</Link>
+        <Link href="/dashboard/jarvis?s=lead&t=set" className="rg-fine">Feinsteuerung je Linie<Icon name="weiter" size={16} /></Link>
       </>);
     }
     if (k === "kunden-werk") {
@@ -260,8 +268,8 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
           onChange={(n) => set({ followup_days: n })} />
       </div>
     );
-    if (k === "antworten") return <p className="rg-lock">🔒 Abmeldungen werden immer gesperrt</p>;
-    if (k === "versand") return <Link href="/dashboard/jarvis?s=versand&t=set" className="rg-fine">Mails pro Tag & Länder ›</Link>;
+    if (k === "antworten") return <p className="rg-lock"><Icon name="schloss" size={14} /> Abmeldungen werden immer gesperrt</p>;
+    if (k === "versand") return <Link href="/dashboard/jarvis?s=versand&t=set" className="rg-fine">Mails pro Tag & Länder<Icon name="weiter" size={16} /></Link>;
     return null;
   };
 
@@ -283,7 +291,7 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
           return (
             <section key={c.key} className={`rg-card${on ? "" : " off"}${dirty ? " dirty" : ""}`} aria-label={c.name}>
               <div className="rg-h">
-                <span className="rg-ic" aria-hidden>{c.icon}</span>
+                <span className="rg-ic" aria-hidden><Icon name={c.icon} size={22} /></span>
                 <div style={{ minWidth: 0 }}>
                   <h2>{c.name}</h2>
                   {eff && <span className={`rg-eff${eff.tone ? ` ${eff.tone}` : ""}`} title={eff.text}>{eff.text}</span>}
@@ -303,7 +311,7 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
           <ul>{history.map((h) => (
             <li key={h.id}>
               <time dateTime={h.at}>{h.when}</time>
-              <span>{h.texts.join(" · ")}{h.undone && <em>↶ zurückgenommen</em>}</span>
+              <span>{h.texts.join(" · ")}{h.undone && <em><Icon name="rueckgaengig" size={13} /> zurückgenommen</em>}</span>
               {h.undo ? <button type="button" onClick={() => undo(h.id)} disabled={locked} title="alten Wert wieder einstellen">Rückgängig</button> : <span />}
             </li>))}
           </ul>
@@ -320,7 +328,7 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
           )}
           <div className="in">
             <button type="button" className="rg-n" aria-expanded={list} aria-controls="rg-pop" onClick={() => setList((x) => !x)} title="Liste der Änderungen ein-/ausblenden">
-              <b>{changes.length}</b>{changes.length === 1 ? "Änderung" : "Änderungen"}<i aria-hidden>{list ? "▾" : "▴"}</i>
+              <b>{changes.length}</b>{changes.length === 1 ? "Änderung" : "Änderungen"}<i aria-hidden><Icon name={list ? "runter" : "hoch"} size={16} /></i>
             </button>
             <span className="rg-list" title={changes.map((c) => c.text).join("\n")}>{changes.map((c) => c.text).join(" · ")}</span>
             <button type="button" className="rg-x" onClick={() => setDraft(base)} disabled={busy}>Verwerfen</button>
@@ -334,7 +342,7 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
 
       {toast && (
         <div className={`rg-toast${toast.ok ? "" : " bad"}`} role="status" aria-live="polite">
-          <header><b>{toast.ok ? toast.title : `✕ ${toast.title}`}</b><button type="button" onClick={() => setToast(null)} aria-label="schließen">×</button></header>
+          <header><b><Icon name={toast.ok ? toast.icon ?? "ok" : "fehler"} size={18} /><span>{toast.title}</span></b><button type="button" onClick={() => setToast(null)} aria-label="schließen"><Icon name="schliessen" size={16} /></button></header>
           {toast.lines.length > 0 && <ul>{toast.lines.map((l, i) => <li key={i}>{l}</li>)}</ul>}
           {toast.note && <p>{toast.note}</p>}
         </div>

@@ -10,13 +10,15 @@ import {
   type Lane, type LaneRegistry, type OwnerSettings, type SettingKey, type WerkKey,
 } from "./owner-settings.ts";
 import { START_MAX_AGE_MIN, fmtBerlin, nextPickup, type StartKey, type StartRequest } from "./start-queue.ts";
+import type { IconName } from "../app/icons.tsx";
 
 export { fmtBerlin };
 
 // ------------------------------------------------------------------------------------------------ Karten
 export type CardKey = WerkKey;
 export type Card = {
-  key: CardKey; icon: string; name: string;
+  /** Linien-Icon (Name aus app/icons.tsx), gerendert in der Komponente – keine Emojis */
+  key: CardKey; icon: IconName; name: string;
   /** owner_settings-Schlüssel, die diese Karte stellt (und die das Werk quittiert) */
   keys: SettingKey[];
   /** Werk-Name in signalwerk.settings_ack */
@@ -29,14 +31,14 @@ export type Card = {
 };
 
 export const CARDS: readonly Card[] = [
-  { key: "lead-werk", icon: "⛏", name: "Lead-Werk", keys: ["werke_paused", "slot_plan"], werk: "lead-werk", start: "lead-werk", cron: "23 */3 * * *", file: "lead-werk.yml" },
-  { key: "kunden-werk", icon: "🧲", name: "Kunden-Werk", keys: ["werke_paused", "slot_plan", "buyer_countries_off"], werk: "kunden-werk", start: "kunden-werk", cron: "41 */2 * * *", file: "kunden-werk.yml" },
-  { key: "proben-vorrat", icon: "🎁", name: "Proben-Vorrat", keys: ["werke_paused", "sample_targets", "sample_max_age_hours"], werk: "proben-vorrat", start: "proben-vorrat", cron: "23 * * * *", file: "proben-vorrat.yml" },
-  { key: "antworten", icon: "💬", name: "Antwort-Assistent", keys: ["werke_paused"], werk: "antworten", start: null, cron: "7 6-21 * * *", file: "antworten.yml", note: WERK_SWITCHES.antworten.note },
-  { key: "nachfass", icon: "↻", name: "Nachfassmails", keys: ["followup_enabled", "followup_days"], werk: "nachfass", start: null, cron: "17 12 * * *", file: "taeglich.yml" },
-  { key: "versand", icon: "✉", name: "Versand", keys: ["send_paused"], werk: "versand", start: null, cron: "23 14 * * *", file: "send.yml" },
-  { key: "kundenlieferung", icon: "📦", name: "Kundenlieferung", keys: ["werke_paused"], werk: "kundenlieferung", start: null, cron: "53 4 * * 1", file: "kundenlieferung.yml" },
-  { key: "tagescheck", icon: "✓", name: "Tagescheck", keys: ["werke_paused"], werk: "tagescheck", start: null, cron: "37 17 * * *", file: "tagescheck.yml" },
+  { key: "lead-werk", icon: "lead-werk", name: "Lead-Werk", keys: ["werke_paused", "slot_plan", "slot_autopilot"], werk: "lead-werk", start: "lead-werk", cron: "23 */3 * * *", file: "lead-werk.yml" },
+  { key: "kunden-werk", icon: "kunden-werk", name: "Kunden-Werk", keys: ["werke_paused", "slot_plan", "buyer_countries_off"], werk: "kunden-werk", start: "kunden-werk", cron: "41 */2 * * *", file: "kunden-werk.yml" },
+  { key: "proben-vorrat", icon: "proben", name: "Proben-Vorrat", keys: ["werke_paused", "sample_targets", "sample_max_age_hours"], werk: "proben-vorrat", start: "proben-vorrat", cron: "23 * * * *", file: "proben-vorrat.yml" },
+  { key: "antworten", icon: "antworten", name: "Antwort-Assistent", keys: ["werke_paused"], werk: "antworten", start: null, cron: "7 6-21 * * *", file: "antworten.yml", note: WERK_SWITCHES.antworten.note },
+  { key: "nachfass", icon: "nachfass", name: "Nachfassmails", keys: ["followup_enabled", "followup_days"], werk: "nachfass", start: null, cron: "17 12 * * *", file: "taeglich.yml" },
+  { key: "versand", icon: "versand", name: "Versand", keys: ["send_paused"], werk: "versand", start: null, cron: "23 14 * * *", file: "send.yml" },
+  { key: "kundenlieferung", icon: "lieferung", name: "Kundenlieferung", keys: ["werke_paused"], werk: "kundenlieferung", start: null, cron: "53 4 * * 1", file: "kundenlieferung.yml" },
+  { key: "tagescheck", icon: "tagescheck", name: "Tagescheck", keys: ["werke_paused"], werk: "tagescheck", start: null, cron: "37 17 * * *", file: "tagescheck.yml" },
 ];
 export const cardOf = (k: CardKey): Card => CARDS.find((c) => c.key === k)!;
 export const isCardKey = (x: unknown): x is CardKey => typeof x === "string" && CARDS.some((c) => c.key === x);
@@ -298,6 +300,8 @@ export type ReglerCtx = {
 };
 export type Draft = {
   on: Record<CardKey, boolean>;
+  /** Autopilot der Plätze (Inhaber 03.10.2026: an): verteilt bei jedem Start innerhalb der Grundbelegung um */
+  autopilot: boolean;
   slot_plan: Record<string, number>;
   buyer_countries_off: string[];
   sample_targets: Record<string, number>;
@@ -311,6 +315,7 @@ export const sampleDefault = (key: string, ctx: ReglerCtx) => (ctx.fokus.include
 export function draftFrom(s: OwnerSettings, ctx: ReglerCtx): Draft {
   return {
     on: Object.fromEntries(CARDS.map((c) => [c.key, werkOn(s, c.key).on])) as Record<CardKey, boolean>,
+    autopilot: s.slot_autopilot?.on !== false,
     slot_plan: slotCounts(ctx.reg, s.slot_plan),
     buyer_countries_off: [...(s.buyer_countries_off ?? [])].sort(),
     sample_targets: Object.fromEntries(ctx.pages.map((k) => [k, s.sample_targets?.[k] ?? sampleDefault(k, ctx)])),
@@ -344,6 +349,10 @@ export function diff(saved: OwnerSettings, draft: Draft, ctx: ReglerCtx): Change
       const via = viaKey(c.key);
       const value = via === "send_paused" ? !draft.on[c.key] : via === "followup_enabled" ? draft.on[c.key] : null;
       add({ card: c.key, key: via, part: "an", label: c.name, from: base.on[c.key], to: draft.on[c.key], text: `${c.name} ${onOff(base.on[c.key])} → ${onOff(draft.on[c.key])}`, value });
+    }
+    if (c.key === "lead-werk" && base.autopilot !== draft.autopilot) {
+      add({ card: c.key, key: "slot_autopilot", part: "autopilot", label: "Autopilot", from: base.autopilot, to: draft.autopilot,
+        text: `Autopilot ${onOff(base.autopilot)} → ${onOff(draft.autopilot)}`, value: { on: draft.autopilot, locks: saved.slot_autopilot?.locks ?? {} } });
     }
     if (c.key === "lead-werk" && planChanged(leadLanes(reg))) {
       const n0 = leadTotal(base.slot_plan, reg), n1 = leadTotal(draft.slot_plan, reg);
@@ -419,6 +428,18 @@ export function validateValue(key: SettingKey, value: unknown, ctx: ReglerCtx, s
       return v;
     }
     case "slot_plan": return validateSlotPlan(obj(value), ctx.reg);
+    case "slot_autopilot": {
+      const v = obj(value);
+      if (typeof v.on !== "boolean") throw new InputError("Autopilot: an/aus");
+      const locks = v.locks === undefined ? {} : obj(v.locks);
+      const out: Record<string, number> = {};
+      for (const [k, n] of Object.entries(locks)) {
+        const lane = ctx.reg.lanes.find((l) => l.id === k);
+        if (!lane || typeof n !== "number" || !Number.isInteger(n) || n < 0 || n > lane.max) throw new InputError(`Autopilot: ${k} ungültig`);
+        out[k] = n;
+      }
+      return { on: v.on, locks: out };
+    }
     case "sample_targets": {
       const v = obj(value), old = saved?.sample_targets ?? {};
       const rest = Object.keys(v).filter((k) => !ctx.pages.includes(k));

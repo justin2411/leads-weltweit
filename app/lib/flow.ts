@@ -6,6 +6,7 @@
  * Inhaber-Regeln machen die Freigabe nur strenger: ein Lead im Geltungsbereich muss den Pipeline-Baustein erreichen.
  */
 import { KINDS } from "./agents.ts";
+import type { IconName } from "../app/icons.tsx";
 
 export type Source = "leads" | "kaeufer";
 export type FieldType = "enum" | "text" | "num" | "bool";
@@ -98,18 +99,18 @@ export type Port = "out" | "ja" | "nein";
 export type FlowEdge = { id: string; from: string; port: Port; to: string };
 export type Flow = { v: 1; nodes: FlowNode[]; edges: FlowEdge[] };
 
-export const NODE_META: Record<NodeKind, { label: string; icon: string; color: string; group: "quelle" | "schritt" | "ziel";
+export const NODE_META: Record<NodeKind, { label: string; icon: IconName; color: string; group: "quelle" | "schritt" | "ziel";
   hint: string; ports: Port[]; input: boolean }> = {
-  quelle: { label: "Quelle", icon: "⛁", color: "#5fd4ff", group: "quelle", hint: "Leads oder Käufer aus der Datenbank", ports: ["out"], input: false },
-  filter: { label: "Filter", icon: "▽", color: "#a8ecff", group: "schritt", hint: "lässt nur passende durch", ports: ["out"], input: true },
-  weiche: { label: "Weiche", icon: "⑂", color: "#ffb547", group: "schritt", hint: "teilt in ja und nein", ports: ["ja", "nein"], input: true },
-  punkte: { label: "Punkte", icon: "★", color: "#e2c68f", group: "schritt", hint: "vergibt Punkte, optional Mindestwert", ports: ["out"], input: true },
-  top: { label: "Top", icon: "⇡", color: "#f2dcae", group: "schritt", hint: "sortiert und nimmt die ersten", ports: ["out"], input: true },
-  dubletten: { label: "Dubletten", icon: "◫", color: "#a8ecff", group: "schritt", hint: "je Firma nur einmal", ports: ["out"], input: true },
-  statistik: { label: "Statistik", icon: "∑", color: "#5fd4ff", group: "schritt", hint: "zählt nach einem Feld, lässt alles durch", ports: ["out"], input: true },
-  pipeline: { label: "Pipeline", icon: "⇶", color: "#3ddc97", group: "ziel", hint: "Regel für alle neuen Leads (nur strenger)", ports: [], input: true },
-  export: { label: "Export", icon: "⇩", color: "#5fd4ff", group: "ziel", hint: "als CSV herunterladen", ports: [], input: true },
-  agent: { label: "Agent", icon: "◈", color: "#e2c68f", group: "ziel", hint: "Auftrag an Agent 1–4", ports: [], input: true },
+  quelle: { label: "Quelle", icon: "quelle", color: "#5fd4ff", group: "quelle", hint: "Leads oder Käufer aus der Datenbank", ports: ["out"], input: false },
+  filter: { label: "Filter", icon: "filter", color: "#a8ecff", group: "schritt", hint: "lässt nur passende durch", ports: ["out"], input: true },
+  weiche: { label: "Weiche", icon: "weiche", color: "#ffb547", group: "schritt", hint: "teilt in ja und nein", ports: ["ja", "nein"], input: true },
+  punkte: { label: "Punkte", icon: "punkte", color: "#e2c68f", group: "schritt", hint: "vergibt Punkte, optional Mindestwert", ports: ["out"], input: true },
+  top: { label: "Top", icon: "top", color: "#f2dcae", group: "schritt", hint: "sortiert und nimmt die ersten", ports: ["out"], input: true },
+  dubletten: { label: "Dubletten", icon: "dubletten", color: "#a8ecff", group: "schritt", hint: "je Firma nur einmal", ports: ["out"], input: true },
+  statistik: { label: "Statistik", icon: "statistik", color: "#5fd4ff", group: "schritt", hint: "zählt nach einem Feld, lässt alles durch", ports: ["out"], input: true },
+  pipeline: { label: "Pipeline", icon: "pipeline", color: "#3ddc97", group: "ziel", hint: "Regel für alle neuen Leads (nur strenger)", ports: [], input: true },
+  export: { label: "Export", icon: "export", color: "#5fd4ff", group: "ziel", hint: "als CSV herunterladen", ports: [], input: true },
+  agent: { label: "Agent", icon: "agent", color: "#e2c68f", group: "ziel", hint: "Auftrag an Agent 1–4", ports: [], input: true },
 };
 export const NODE_KINDS = Object.keys(NODE_META) as NodeKind[];
 export const SORT_LABELS: Record<TopSort, string> = { neueste: "neueste zuerst", aelteste: "älteste zuerst", punkte: "meiste Punkte", dringlichkeit: "dringendste zuerst" };

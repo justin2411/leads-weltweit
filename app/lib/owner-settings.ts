@@ -21,12 +21,15 @@ export type OwnerSettings = {
   werke_paused: Record<string, string>;
   /** Belegungsplan (Inhaber 03.10.2026): Plätze je Linie (app/lib/werk-linien.json), leer = Standard. */
   slot_plan: Record<string, number>;
+  /** Autopilot der Plätze (Inhaber 03.10.2026: „Ja, Autopilot an“): scripts/werk_plan.py verteilt bei jedem Start um. */
+  slot_autopilot: { on: boolean; locks: Record<string, number> };
 };
 export type SettingKey = keyof OwnerSettings;
 
 export const DEFAULTS: OwnerSettings = {
   send_paused: false, send_countries_off: [], send_country_limits: {}, followup_enabled: true, followup_days: null,
   sample_targets: {}, sample_max_age_hours: null, buyer_countries_off: [], werke_paused: {}, slot_plan: {},
+  slot_autopilot: { on: true, locks: {} },
 };
 
 /**

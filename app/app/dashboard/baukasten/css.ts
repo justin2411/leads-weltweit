@@ -108,7 +108,7 @@ export const BAUKASTEN_CSS = `
 .bkn-t{flex:1;min-width:0;display:grid}
 .bkn-t b{font-size:15px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bkn-t small{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:color-mix(in srgb,var(--nc) 75%,#8ba6c9)}
-.bk .bkn-x{flex:none;width:24px;height:24px;padding:0;border-radius:50%;border:1px solid var(--line);background:rgba(2,8,18,.8);color:#8ba6c9;font-size:11px;line-height:1;opacity:0;transition:opacity .15s}
+.bk .bkn-x{flex:none;display:grid;place-items:center;width:24px;height:24px;padding:0;border-radius:50%;border:1px solid var(--line);background:rgba(2,8,18,.8);color:#8ba6c9;font-size:11px;line-height:1;opacity:0;transition:opacity .15s}
 .bk .bkn:hover .bkn-x,.bk .bkn.sel .bkn-x{opacity:1}
 .bk .bkn-x:hover{border-color:#ff5e73!important;color:#ff5e73;box-shadow:0 0 10px rgba(255,94,115,.5)!important}
 .bkn-badges{display:flex;gap:3px}
@@ -163,19 +163,19 @@ export const BAUKASTEN_CSS = `
   background:#06101f;border:1px solid color-mix(in srgb,var(--ec) 60%,transparent);box-shadow:0 0 12px -2px color-mix(in srgb,var(--ec) 60%,transparent)}
 .bke-l.nox{padding-right:9px}
 .bke-l.zero{color:#6e8db3}
-.bk .bke-l button{width:20px;height:20px;padding:0;border-radius:50%;border:1px solid rgba(255,94,115,.5);background:transparent;color:#ff8a9a;font-size:10px;line-height:1}
+.bk .bke-l button{display:inline-grid;place-items:center;vertical-align:middle;width:20px;height:20px;padding:0;border-radius:50%;border:1px solid rgba(255,94,115,.5);background:transparent;color:#ff8a9a;font-size:10px;line-height:1}
 .bk .bke-l button:hover{background:rgba(255,94,115,.2)}
 
 /* ---------- Prüfer (rechts) ---------- */
 .bk-ins{padding:12px;display:grid;grid-template-columns:minmax(0,1fr);align-content:start;gap:14px;overflow-x:hidden}
 .bk-ins>*,.bk-sec>*{min-width:0}
 .bk-ins>header{display:flex;align-items:center;gap:10px}
-.bk-ins>header .bkn-ic{width:34px;height:34px;font-size:19px}
+.bk-ins>header .bkn-ic{width:34px;height:34px;font-size:19px}.bk-ins>header .bkn-ic .ico{width:19px;height:19px}
 .bk-ins>header div{flex:1;min-width:0}
 .bk-ins>header small{display:block;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--nc)}
 .bk-ins>header input{width:100%;padding:5px 8px;border-radius:7px;font:700 15px var(--sans);background:rgba(2,8,18,.5);border:1px solid transparent}
 .bk-ins>header input:hover,.bk-ins>header input:focus{border-color:rgba(95,212,255,.35)}
-.bk .bk-x{width:30px;height:30px;padding:0;border-radius:50%;border:1px solid var(--line);background:rgba(2,8,18,.7);color:#a9c3e3;font-size:12px}
+.bk .bk-x{display:grid;place-items:center;width:30px;height:30px;padding:0;border-radius:50%;border:1px solid var(--line);background:rgba(2,8,18,.7);color:#a9c3e3;font-size:12px}
 .bk .bk-x.bk-del{color:#ff8a9a;border-color:rgba(255,94,115,.4)}
 .bk-hint{margin:0;font-size:13px;color:var(--soft);line-height:1.4}
 .bk-bigs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
@@ -237,7 +237,7 @@ export const BAUKASTEN_CSS = `
 .bk-ov{list-style:none;margin:0;padding:0;display:grid;gap:4px}
 .bk .bk-ov button{width:100%;display:grid;grid-template-columns:24px 1fr auto;gap:8px;align-items:center;padding:6px 8px;border-radius:8px;border:1px solid rgba(95,212,255,.1);background:rgba(2,8,18,.45);color:var(--text);text-align:left;font-size:13px}
 .bk .bk-ov button:hover{border-color:var(--cy)}
-.bk-ov i{font-style:normal;color:var(--nc);text-align:center}
+.bk-ov i{font-style:normal;color:var(--nc);display:grid;place-items:center}
 .bk-ov b{font-variant-numeric:tabular-nums}
 .bk-lock{margin:0;font-size:13px;color:var(--soft)}
 .bk-shade{display:none}

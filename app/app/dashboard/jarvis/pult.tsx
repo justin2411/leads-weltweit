@@ -7,6 +7,7 @@
  * „Übernehmen & jetzt starten“ (start=1) speichert und startet die gezeigten Werke sofort (Direktstart, 03.10.2026).
  */
 import { useMemo, useState } from "react";
+import { Icon } from "@/app/icons";
 
 export type PultLane = {
   id: string; werk: string; label: string; short: string; what: string; max: number; def: number; cur: number; color: string;
@@ -63,9 +64,9 @@ export function Pult({ lanes, cap, total, back, action, nextStart, custom, only 
                 </div>
               </div>
               <div className="ln-ctl">
-                <button type="button" onClick={() => set(l.id, v[l.id] - 1, l.max)} aria-label={`${l.label}: einen Platz weniger`} disabled={v[l.id] <= 0}>−</button>
+                <button type="button" onClick={() => set(l.id, v[l.id] - 1, l.max)} aria-label={`${l.label}: einen Platz weniger`} disabled={v[l.id] <= 0}><Icon name="weniger" size={18} /></button>
                 <output aria-label={`${l.label}: Plätze`}>{v[l.id]}</output>
-                <button type="button" onClick={() => set(l.id, v[l.id] + 1, l.max)} aria-label={`${l.label}: einen Platz mehr`} disabled={v[l.id] >= l.max}>+</button>
+                <button type="button" onClick={() => set(l.id, v[l.id] + 1, l.max)} aria-label={`${l.label}: einen Platz mehr`} disabled={v[l.id] >= l.max}><Icon name="mehr" size={18} /></button>
                 <input type="range" min={0} max={l.max} value={v[l.id]} onChange={(e) => set(l.id, Number(e.target.value), l.max)} aria-label={`${l.label}: Plätze 0 bis ${l.max}`} />
                 <input type="hidden" name={`slot_${l.id}`} value={v[l.id]} />
                 <span className="ln-max">max {l.max} · Std. {l.def}</span>
@@ -79,7 +80,7 @@ export function Pult({ lanes, cap, total, back, action, nextStart, custom, only 
       <div className="pult-go">
         <button type="submit" className="go" disabled={!dirty || over}>{over ? "Zu viele Plätze" : dirty ? "Belegung übernehmen" : "Keine Änderung"}</button>
         <button type="submit" name="start" value="1" className="go" disabled={over} title="Belegung speichern (falls geändert) und das Werk sofort starten statt beim nächsten Zeitplan">
-          {dirty ? "Übernehmen & jetzt starten" : "▶ Jetzt starten"}</button>
+          {dirty ? "Übernehmen & jetzt starten" : <><Icon name="start" size={16} /> Jetzt starten</>}</button>
         {dirty && <button type="button" className="ghost" onClick={() => setV(Object.fromEntries(lanes.map((l) => [l.id, l.cur])))}>Zurücksetzen</button>}
         {custom && <button type="submit" name="reset" value="1" className="ghost" formNoValidate>Standard wiederherstellen</button>}
         <span className="hint">Wirkt beim nächsten Start des Werks – oder sofort mit „jetzt starten“. Laufende Teile arbeiten zu Ende.</span>

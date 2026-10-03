@@ -3,6 +3,20 @@
  * Ein Stil für Wiedererkennung: Nachtblau, Papier, Gold, Inter. Alles unter der Klasse .bx.
  * Animationen nur mit JavaScript aktiv (Klasse .motion auf <html>) und nie bei "Bewegung reduzieren".
  */
+/**
+ * Linien-Icon für CSS-Pseudo-Elemente (::before, kein React möglich): gleiche Linie wie app/icons.tsx (lucide-Pfad,
+ * runde Enden, keine Füllung), Farbe über `background:currentColor` + Maske. `sw` = Strichstärke im 24er-Raster.
+ */
+export const maskUrl = (d: string, sw = 2.6): string =>
+  `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='${sw}' stroke-linecap='round' stroke-linejoin='round'><path d='${d}'/></svg>`)}")`;
+export const maskIcon = (d: string, sw = 2.6): string => {
+  const url = maskUrl(d, sw);
+  return `content:"";display:inline-block;flex:none;width:.95em;height:.95em;vertical-align:-0.12em;background:currentColor;-webkit-mask:${url} center/contain no-repeat;mask:${url} center/contain no-repeat`;
+};
+/** Haken (lucide „check“) und Plus (lucide „plus“) */
+export const CHECK_PATH = "M20 6 9 17l-5-5";
+export const PLUS_PATH = "M5 12h14M12 5v14";
+
 export const BRAND_CSS = `
 @property --a{syntax:"<angle>";inherits:false;initial-value:0deg}
 .bx{--ink:#0b1320;--ink2:#121c2e;--paper:#f7f4ee;--card:#fffdf9;--text:#161b24;--soft:#5b6372;--line:#e4ddd0;--gold:#b08d57;--gold2:#d8bd8a;--night-soft:#9aa6ba;
@@ -73,7 +87,7 @@ export const BRAND_CSS = `
 .bx .btn.gold:hover{box-shadow:0 18px 44px -12px rgba(216,189,138,.8)}
 .bx .btn.ghost{border:1px solid rgba(255,255,255,.22);color:#eef1f6;background:transparent}.bx .btn.ghost:hover{background:rgba(255,255,255,.07)}
 .bx .btn.line{border:1px solid var(--line);color:var(--text);background:var(--card)}.bx .btn.line:hover{border-color:var(--gold)}
-.bx .btn .ar{transition:transform .25s}.bx .btn:hover .ar{transform:translateX(4px)}
+.bx .btn .ar{display:inline-flex;transition:transform .25s}.bx .btn:hover .ar{transform:translateX(4px)}
 .bx .btn.big{font-size:17px;padding:17px 30px}
 
 /* Live-Feed */
@@ -302,7 +316,7 @@ export const BRAND_CSS = `
 .bx summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:24px;font-size:19px;font-weight:600;transition:color .3s}
 .bx summary:hover{color:var(--gold)}
 .bx summary::-webkit-details-marker{display:none}
-.bx summary:after{content:"+";color:var(--gold);font-size:24px;font-weight:400;line-height:1;transition:transform .35s}
+.bx summary:after{content:"";flex:none;width:20px;height:20px;margin-top:2px;background:var(--gold);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M5 12h14M12 5v14'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M5 12h14M12 5v14'/%3E%3C/svg%3E") center/contain no-repeat;transition:transform .35s}
 .bx details[open] summary:after{transform:rotate(45deg)}
 .bx details p{color:var(--soft);margin:12px 0 0;max-width:720px}
 .bx details[open] p{animation:fade .5s both}
@@ -382,7 +396,7 @@ export const BRAND_CSS = `
 .bx .leadx.lux .tagw{background:rgba(95,211,163,.12);border-color:rgba(95,211,163,.35);color:#9be6c4}
 .bx .leadx .incl{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
 .bx .leadx .incl li{font-size:12px;font-weight:600;padding:4px 10px;border-radius:99px;background:rgba(95,211,163,.1);border:1px solid rgba(95,211,163,.3);color:#9be6c4}
-.bx .leadx .incl li:before{content:"✓ ";color:#5fd3a3}
+.bx .leadx .incl li:before{${maskIcon(CHECK_PATH, 3)};margin-right:5px;color:#5fd3a3}
 @media (max-width:640px){.bx section.tight{padding:52px 0}}
 
 /* Beispiel-Leads: hochwertige Karte, Name und Kontakte verdeckt */
@@ -431,10 +445,10 @@ export const BRAND_CSS = `
 .bx .pf-chips{display:flex;flex-wrap:wrap;gap:8px}
 .bx .pf-chip{position:relative;display:inline-flex;align-items:center;gap:8px;cursor:pointer;padding:9px 15px;border-radius:99px;border:1px solid rgba(216,189,138,.45);color:#eef1f6;font-size:14.5px;font-weight:550;line-height:1.2;transition:background .2s,border-color .2s,color .2s,opacity .2s;user-select:none}
 .bx .pf-chip input{position:absolute;opacity:0;width:1px;height:1px}
-.bx .pf-chip span:before{content:"+";display:inline-block;width:12px;margin-right:6px;color:var(--gold2);font-weight:700}
+.bx .pf-chip span:before{${maskIcon(PLUS_PATH, 3.4)};width:12px;height:12px;margin-right:6px;color:var(--gold2)}
 .bx .pf-chip:hover{border-color:var(--gold2);background:rgba(216,189,138,.1)}
 .bx .pf-chip.pf-on{background:linear-gradient(135deg,#ecd6a6,#b08d57);border-color:transparent;color:#141008}
-.bx .pf-chip.pf-on span:before{content:"✓";color:#141008}
+.bx .pf-chip.pf-on span:before{-webkit-mask-image:${maskUrl(CHECK_PATH, 3.4)};mask-image:${maskUrl(CHECK_PATH, 3.4)};color:#141008}
 .bx .pf-chip:has(input:focus-visible){outline:2px solid var(--gold2);outline-offset:2px}
 .bx .pf-chip:has(input:checked){background:linear-gradient(135deg,#ecd6a6,#b08d57);border-color:transparent;color:#141008}
 .bx .pf-chip.pf-off{opacity:.45;cursor:not-allowed}
@@ -454,5 +468,7 @@ export const BRAND_CSS = `
 .bx .leadp .nw{white-space:nowrap}
 .bx .leadp .lock dt{white-space:nowrap;flex:none}
 .bx .leadp .lock dd.gold{color:var(--gold2);font-weight:600}
-@media (max-width:640px){.bx .pf-chip{font-size:13.5px;padding:8px 12px;gap:6px}.bx .pf-chip span:before{width:10px;margin-right:4px}.bx .pf-row{grid-template-columns:1fr}.bx .pf-go{flex-direction:column;align-items:stretch;text-align:center}.bx .pf-go .btn{width:100%;justify-content:center}}
+@media (max-width:640px){.bx .pf-chip{font-size:13.5px;padding:8px 12px;gap:6px}.bx .pf-chip span:before{width:10px;height:10px;margin-right:4px}.bx .pf-row{grid-template-columns:1fr}.bx .pf-go{flex-direction:column;align-items:stretch;text-align:center}.bx .pf-go .btn{width:100%;justify-content:center}}
+/* Linien-Icons (app/icons.tsx): Textgröße, auf der Grundlinie */
+.ico{display:inline-block;vertical-align:-0.18em;flex:none}
 `;

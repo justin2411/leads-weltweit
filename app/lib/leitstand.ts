@@ -5,7 +5,26 @@
  */
 import type { LaneRegistry } from "./owner-settings";
 
-export type RunRow = { werk: string; part: string | null; country: string | null; started_at: string | null; finished_at: string; processed: number; green: number; yellow?: number; red?: number };
+export type RunRow = { werk: string; part: string | null; country: string | null; started_at: string | null; finished_at: string; processed: number; green: number; yellow?: number; red?: number; run_id?: string | null; candidates?: number };
+
+/**
+ * Ein Eintrag je Teil und Lauf: Werke schreiben mehrere run_stats-Zeilen je Teil (eine je Zielgruppe/Land – Lead-Werk
+ * 4, Kunden-Werk bis ~25). Ohne Zusammenfassen zählten Laufzeit und Auslastung mehrfach (Nachtschicht 04.10.2026).
+ */
+export function partRuns(rows: RunRow[]): RunRow[] {
+  const by = new Map<string, RunRow>();
+  for (const r of rows) {
+    const k = `${r.werk}|${r.run_id ?? r.started_at ?? ""}|${r.part ?? ""}`;
+    const o = by.get(k);
+    if (!o) { by.set(k, { ...r, processed: r.processed || 0, green: r.green || 0, candidates: r.candidates ?? undefined }); continue; }
+    o.processed += r.processed || 0;
+    o.green += r.green || 0;
+    if (r.candidates !== undefined) o.candidates = (o.candidates ?? 0) + (r.candidates || 0);
+    if (r.started_at && (!o.started_at || r.started_at < o.started_at)) o.started_at = r.started_at;
+    if (r.finished_at > o.finished_at) o.finished_at = r.finished_at;
+  }
+  return [...by.values()];
+}
 export type Beat = { werk: string; part: string; started_at: string | null; beat_at: string; processed: number; green: number; note: string | null };
 
 const MIN = 60_000;
@@ -60,7 +79,7 @@ export type LaneStat = { id: string; runs: number; processed: number; green: num
 export function laneStats(reg: LaneRegistry, rows: RunRow[], now: number, hours = 24): Record<string, LaneStat> {
   const out: Record<string, LaneStat> = {};
   for (const l of reg.lanes) out[l.id] = { id: l.id, runs: 0, processed: 0, green: 0, slotMin: 0, perSlotH: null, avgRunMin: null, perRun: null, last: null, exhausted: false };
-  for (const r of rows) {
+  for (const r of partRuns(rows)) {
     if (mins(r.finished_at, now) > hours * 60) continue;
     const id = laneOf(r.werk, r.part);
     const s = id ? out[id] : null;
@@ -93,7 +112,7 @@ export function utilization(rows: RunRow[], beats: Beat[], now: number, total: n
   const n = Math.round((hours * 60) / stepMin);
   const buckets = Array.from({ length: n }, (_, i) => ({ from: new Date(t0 + i * stepMin * MIN).toISOString(), slots: 0 }));
   const iv: [number, number][] = [];
-  for (const r of rows) if (r.started_at && (r.werk === "lead-werk" || r.werk === "kunden-werk")) iv.push([Date.parse(r.started_at), Date.parse(r.finished_at)]);
+  for (const r of partRuns(rows)) if (r.started_at && (r.werk === "lead-werk" || r.werk === "kunden-werk")) iv.push([Date.parse(r.started_at), Date.parse(r.finished_at)]);
   for (const b of beats) if (b.started_at && running(b, now)) iv.push([Date.parse(b.started_at), now]);
   let used = 0;
   for (const [a, b] of iv) {
@@ -130,6 +149,8 @@ export function coach(o: {
   reg: LaneRegistry; plan: Record<string, number>; stats: Record<string, LaneStat>; util: number;
   queue: Record<string, number>; freeBuyers: Record<string, number>; leads: Record<string, number>; capPerDay: number;
   kundenNew24h: number | null; failed: string[]; countedHours?: number;
+  /** false, solange der Bestand (Leads/Käufer) noch nicht geladen ist – dann keine Hinweise aus fehlenden Zahlen */
+  stockKnown?: boolean;
 }): Tip[] {
   const tips: Tip[] = [];
   const pct = Math.round(o.util * 100);
@@ -152,7 +173,7 @@ export function coach(o: {
     if ((o.plan[best.id] ?? 0) < lane.max) tips.push({ level: "gruen", title: `Ergiebigste Linie: ${lane.label}`, text: `${Math.round(best.perSlotH ?? 0)} grüne je Platz-Stunde in den letzten 24 h. Freie Plätze bringen hier am meisten (${o.plan[best.id] ?? 0} von max. ${lane.max} belegt).`, href: "#pult",
       task: { kind: "leads", market: marketOf(lane.country), brief: `Ergiebigste Linie ${lane.label}: mehr Plätze geben (bis max. ${lane.max}), dafür aus erschöpften Linien abziehen, Lead-Werk starten. Ergebnis: grüne Leads je Stunde vorher/nachher.` } });
   }
-  for (const [c, q] of Object.entries(o.queue)) {
+  for (const [c, q] of Object.entries(o.stockKnown === false ? {} : o.queue)) {
     const free = o.freeBuyers[c] ?? 0;
     if (q > 0 && free < q) tips.push({ level: "gelb", title: `${c}: Käufer werden knapp`, text: `${q.toLocaleString("de-DE")} Mails warten, aber nur ${free.toLocaleString("de-DE")} mail-fähige Käufer sind noch ohne Mail. Nachschub kommt nur noch aus der Nachprüfung – neue Käuferquelle für ${c} nötig.`, href: "/dashboard/bestand",
       task: { kind: "kaeufer", market: marketOf(c), brief: `${c}: Käufer werden knapp (${q.toLocaleString("de-DE")} Mails warten, ${free.toLocaleString("de-DE")} freie Käufer). Neue kostenlose Käuferquelle für Webagenturen in ${c} finden, testen und ins Kunden-Werk einbauen.` } });
@@ -165,7 +186,7 @@ export function coach(o: {
   }
   const leadsAll = Object.values(o.leads).reduce((a, b) => a + b, 0);
   const freeAll = Object.values(o.freeBuyers).reduce((a, b) => a + b, 0);
-  if (leadsAll > 0 && freeAll > 0 && leadsAll / freeAll > 10) {
+  if (o.stockKnown !== false && leadsAll > 0 && freeAll > 0 && leadsAll / freeAll > 10) {
     tips.push({ level: "info", title: "Leads reichen weit, Käufer sind der Hebel", text: `${leadsAll.toLocaleString("de-DE")} lieferbare Leads stehen ${freeAll.toLocaleString("de-DE")} freien Käufern gegenüber. Mehr Leads bringen gerade keinen Umsatz – Umsatz entsteht über Antworten der Käufer.`,
       task: { kind: "kaeufer", market: null, brief: "Leads reichen weit, Käufer sind der Hebel: neue kostenlose Käuferquellen für Webagenturen in den Mail-Ländern finden, testen und ins Kunden-Werk einbauen." } });
   }

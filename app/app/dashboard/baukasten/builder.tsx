@@ -21,6 +21,7 @@ import {
 import { activateFlow, archiveFlow, deactivateFlow, flowToAgent, previewSource, saveFlow } from "./actions";
 import { BkEdgeView, BkNodeView, LiveCtx, fmt, outRows, type BkEdge, type BkNode, type Live } from "./nodes";
 import { Inspector, type InsCtx } from "./inspector";
+import { Icon } from "@/app/icons";
 
 export type SavedFlow = { id: string; name: string; status: string; updated_at: string | null };
 export type BuilderInit = { id: string | null; name: string; flow: Flow };
@@ -457,18 +458,18 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
     <LiveCtx.Provider value={live}>
       <div className="bk">
         <div className="bk-top">
-          <span className="bk-brand"><i aria-hidden>⧉</i><span>Baukasten</span></span>
+          <span className="bk-brand"><i aria-hidden><Icon name="baukasten" size={16} /></i><span>Baukasten</span></span>
           <input className="bk-name" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} aria-label="Name des Flows" placeholder="Name des Flows" />
           {status}
           {dirty ? <span className="bk-dirty">ungespeichert</span> : flowId ? <span className="bk-saved">gespeichert</span> : null}
           <span className="bk-sp" />
           <select className="bk-sel" value={flowId ?? ""} onChange={(e) => openFlow(e.target.value)} aria-label="Gespeicherte Flows">
             <option value="">{`Flows (${flows.length})`}</option>
-            {flows.map((f) => <option key={f.id} value={f.id}>{f.status === "aktiv" ? "⇶ " : ""}{f.name}</option>)}
+            {flows.map((f) => <option key={f.id} value={f.id}>{f.status === "aktiv" ? "aktiv · " : ""}{f.name}</option>)}
           </select>
           <select className="bk-sel" value="" onChange={(e) => (e.target.value === "_neu" ? blank() : loadTemplate(e.target.value))} aria-label="Vorlagen">
             <option value="">Vorlagen</option>
-            <option value="_neu">＋ Leer (nur Quelle)</option>
+            <option value="_neu">Neu: leer (nur Quelle)</option>
             {TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
           </select>
           {quelle && (
@@ -480,7 +481,7 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
           )}
           <span className="bk-prob">
             <button type="button" className="bk-pb" onClick={() => setShowProbs((v) => !v)} aria-expanded={showProbs} title="Prüfung des Flows">
-              {errors ? <b className="e">{errors}</b> : null}{warns ? <b className="w">{warns}</b> : null}{!probs.length && <b className="ok">✓</b>}
+              {errors ? <b className="e">{errors}</b> : null}{warns ? <b className="w">{warns}</b> : null}{!probs.length && <b className="ok"><Icon name="ok" size={13} /></b>}
               <span className="t">{errors ? "Fehler" : warns ? "Hinweise" : "alles gut"}</span>
             </button>
             {showProbs && probs.length > 0 && (
@@ -489,7 +490,7 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
               </div>
             )}
           </span>
-          <button type="button" className="bk-btn bk-undo" onClick={undo} disabled={!undoN} title="Rückgängig (Strg+Z)" aria-label="Rückgängig">↶</button>
+          <button type="button" className="bk-btn bk-undo" onClick={undo} disabled={!undoN} title="Rückgängig (Strg+Z)" aria-label="Rückgängig"><Icon name="rueckgaengig" size={16} /></button>
           <button type="button" className={`bk-btn go${dirty ? " dot" : ""}`} onClick={save} disabled={busy || !dirty || (active && errors > 0)}
             title={active && errors ? "Läuft in der Pipeline – erst Fehler beheben" : "Speichern (nie automatisch)"}>
             {busy ? "…" : "Speichern"}
@@ -499,7 +500,7 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
 
         <div className="bk-main">
           <aside className={`bk-pal${sheet === "pal" ? " open" : ""}`} aria-label="Bausteine">
-            <div className="bk-sheet-h"><h4>Baustein hinzufügen</h4><button type="button" className="bk-x" onClick={() => setSheet(null)} aria-label="Schließen">✕</button></div>
+            <div className="bk-sheet-h"><h4>Baustein hinzufügen</h4><button type="button" className="bk-x" onClick={() => setSheet(null)} aria-label="Schließen"><Icon name="schliessen" size={14} /></button></div>
             {GROUPS.map(([label, kinds]) => (
               <div key={label}>
                 <h4>{label}</h4>
@@ -512,7 +513,7 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
                         <button type="button" className="bk-tile" style={{ "--nc": m.color } as CSSProperties} draggable={!taken} disabled={taken}
                           onDragStart={(e) => { e.dataTransfer.setData(DND, k); e.dataTransfer.effectAllowed = "copy"; }}
                           onClick={() => addNode(k)} title={taken ? "nur einmal pro Flow" : `${m.hint} – ziehen oder antippen`}>
-                          <i aria-hidden>{m.icon}</i><b>{m.label}</b><span>{m.hint}</span>
+                          <i aria-hidden><Icon name={m.icon} size={16} /></i><b>{m.label}</b><span>{m.hint}</span>
                         </button>
                       </li>
                     );
@@ -544,8 +545,8 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
                 maskColor="rgba(2,6,15,.72)" style={{ width: 150, height: 100 }} className="bk-mm" />
             </ReactFlow>
             <div className="bk-fab">
-              <button type="button" className="bk-add" onClick={() => setSheet("pal")}>＋ Baustein</button>
-              <button type="button" className="bk-btn" onClick={() => setSheet("ins")}>{selected ? "⚙ Einstellen" : "Übersicht"}</button>
+              <button type="button" className="bk-add" onClick={() => setSheet("pal")}><Icon name="mehr" size={16} />Baustein</button>
+              <button type="button" className="bk-btn" onClick={() => setSheet("ins")}>{selected ? <><Icon name="einstellungen" size={15} />Einstellen</> : "Übersicht"}</button>
             </div>
           </div>
 
@@ -561,7 +562,7 @@ function Editor({ initial, flows, onNav, notice }: { initial: BuilderInit; flows
           </aside>
           <div className={`bk-shade${sheet ? " open" : ""}`} onClick={() => setSheet(null)} aria-hidden />
         </div>
-        <p className="bk-lock">🔒 Regeln machen die Freigabe nur strenger. Versand, Sperrliste und die drei Prüfstufen bleiben immer an.</p>
+        <p className="bk-lock"><Icon name="schloss" size={14} /> Regeln machen die Freigabe nur strenger. Versand, Sperrliste und die drei Prüfstufen bleiben immer an.</p>
       </div>
     </LiveCtx.Provider>
   );
@@ -592,7 +593,7 @@ function Overview({ nodes, res, probs, ctx, source, focus, close, archive }: {
   const t = ctx.at ? new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit" }).format(new Date(ctx.at)) : "–";
   return (
     <>
-      <div className="bk-sheet-h"><h4>Übersicht</h4><button type="button" className="bk-x" onClick={close} aria-label="Schließen">✕</button></div>
+      <div className="bk-sheet-h"><h4>Übersicht</h4><button type="button" className="bk-x" onClick={close} aria-label="Schließen"><Icon name="schliessen" size={14} /></button></div>
       <div className="bk-bigs" style={{ "--nc": "#5fd4ff" } as CSSProperties}>
         <div className="hi"><b>{ctx.loading ? "…" : fmt(ctx.sample)}</b><span>Stichprobe</span></div>
         <div><b>{ctx.total === null ? "–" : fmt(ctx.total)}</b><span>{source === "leads" ? "Leads" : "Käufer"} gesamt</span></div>
@@ -607,7 +608,7 @@ function Overview({ nodes, res, probs, ctx, source, focus, close, archive }: {
             return (
               <li key={n.id}>
                 <button type="button" onClick={() => focus(n.id)} style={{ "--nc": m.color } as CSSProperties}>
-                  <i aria-hidden>{m.icon}</i><span>{n.title || (n.kind === "pipeline" ? n.name : m.label)}</span>
+                  <i aria-hidden><Icon name={m.icon} size={16} /></i><span>{n.title || (n.kind === "pipeline" ? n.name : m.label)}</span>
                   <b>{r?.connected || n.kind === "quelle" ? fmt(outRows(n, r).length) : "–"}</b>
                 </button>
               </li>
@@ -621,11 +622,11 @@ function Overview({ nodes, res, probs, ctx, source, focus, close, archive }: {
       <section className="bk-sec">
         <h4>So geht’s</h4>
         <ul className="bk-howto">
-          <li><i>⇢</i>Baustein aus der Palette auf die Fläche ziehen</li>
-          <li><i>◉</i>Vom rechten Punkt zum linken Punkt ziehen = verbinden</li>
-          <li><i>⚙</i>Baustein antippen = einstellen, Zahlen sofort sehen</li>
-          <li><i>⌫</i>Rücktaste oder ✕ = löschen</li>
-          <li><i>⇶</i>Gefällt’s? Pipeline-Baustein anhängen und anschließen</li>
+          <li><i aria-hidden><Icon name="ziehen" size={16} /></i>Baustein aus der Palette auf die Fläche ziehen</li>
+          <li><i aria-hidden><Icon name="verbinden" size={16} /></i>Vom rechten Punkt zum linken Punkt ziehen = verbinden</li>
+          <li><i aria-hidden><Icon name="antippen" size={16} /></i>Baustein antippen = einstellen, Zahlen sofort sehen</li>
+          <li><i aria-hidden><Icon name="ruecktaste" size={16} /></i><span>Rücktaste oder <Icon name="schliessen" size={13} title="Kreuz" /> = löschen</span></li>
+          <li><i aria-hidden><Icon name="pipeline" size={16} /></i>Gefällt’s? Pipeline-Baustein anhängen und anschließen</li>
         </ul>
       </section>
       {archive && <button type="button" className="bk-btn red" onClick={archive} disabled={ctx.busy} style={{ justifySelf: "start" }}>Archivieren</button>}

@@ -106,6 +106,9 @@ export async function POST(req: Request) {
   return Response.redirect(session.url, 303);
 }
 
+/** Linien-Pfeil (lucide „arrow-right“, wie app/icons.tsx) für die reine HTML-Seite ohne React */
+const ARROW = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-0.2em;margin-left:8px"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>`;
+
 function failPage(lang: "en" | "fr", pkg: string, slug: string, back: string): Response {
   const T = lang === "fr"
     ? { t: "Le paiement en ligne est momentanément indisponible", p: "Aucun montant n'a été débité. Écrivez-nous et nous démarrons votre abonnement par e-mail avec une facture.", b: "Démarrer par e-mail", r: "Retour" }
@@ -114,6 +117,6 @@ function failPage(lang: "en" | "fr", pkg: string, slug: string, back: string): R
   const esc = (x: string) => x.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
   const html = `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${BRAND}</title>
 <style>body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#faf8f4;color:#1a1712}main{max-width:560px;margin:12vh auto;padding:0 20px}h1{font-size:28px;letter-spacing:-.02em;line-height:1.15}p{color:#5b554b;font-size:17px;line-height:1.55}a.b{display:inline-block;margin-top:14px;padding:14px 22px;border-radius:12px;background:linear-gradient(135deg,#e2c894,#b08d57);color:#141008;font-weight:700;text-decoration:none}a.r{display:inline-block;margin:14px 0 0 18px;color:#5b554b}</style></head>
-<body><main><h1>${T.t}</h1><p>${T.p}</p><a class="b" href="${esc(mail)}">${T.b} →</a><a class="r" href="${esc(back)}">${T.r}</a><p style="font-size:14px;margin-top:28px">${CONTACT}</p></main></body></html>`;
+<body><main><h1>${T.t}</h1><p>${T.p}</p><a class="b" href="${esc(mail)}">${T.b}${ARROW}</a><a class="r" href="${esc(back)}">${T.r}</a><p style="font-size:14px;margin-top:28px">${CONTACT}</p></main></body></html>`;
   return new Response(html, { status: 503, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
 }

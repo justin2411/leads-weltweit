@@ -12,6 +12,7 @@ import {
   type Cond, type FieldType, type FlowNode, type NodeRows, type Op, type Problem, type Row, type Source, type TopSort, type AgentTaskKind,
 } from "@/lib/flow";
 import { fmt, outRows, valLabel } from "./nodes";
+import { Icon, type IconName } from "@/app/icons";
 
 export type InsCtx = {
   flowId: string | null; dirty: boolean; active: boolean; errors: number; busy: boolean;
@@ -90,8 +91,8 @@ export function CondEdit({ c, source, input, pipe, onChange, onRemove, extra }: 
             </optgroup>
           ))}
         </select>
-        <span className="bk-hit" title="so viele der ankommenden erfüllen diese Bedingung">✓ {fmt(hits)}</span>
-        {onRemove && <button type="button" className="bk-x" onClick={onRemove} aria-label="Bedingung entfernen">✕</button>}
+        <span className="bk-hit" title="so viele der ankommenden erfüllen diese Bedingung"><Icon name="ok" size={13} /> {fmt(hits)}</span>
+        {onRemove && <button type="button" className="bk-x" onClick={onRemove} aria-label="Bedingung entfernen"><Icon name="schliessen" size={13} /></button>}
       </div>
       {type === "bool" ? (
         <div className="bk-chips">
@@ -167,19 +168,18 @@ const toggle = (list: string[], v: string) => (list.includes(v) ? list.filter((x
 /** Beispielzeilen (höchstens 8) mit den wichtigsten Merkmalen. */
 function Rows({ rows, source }: { rows: Row[]; source: Source }) {
   if (!rows.length) return <ul className="bk-rows"><li className="none">keine Zeilen</li></ul>;
-  const flag = (x: unknown, t: string, title: string) => <i className={x === true ? "y" : ""} title={`${title}: ${x === true ? "ja" : "nein"}`}>{t}</i>;
+  const flag = (x: unknown, icon: IconName, title: string) => <i className={x === true ? "y" : ""} title={`${title}: ${x === true ? "ja" : "nein"}`}><Icon name={icon} size={13} /></i>;
   return (
     <ul className="bk-rows">
       {rows.slice(0, 8).map((r) => {
         const bits = source === "leads"
           ? [r.ort, r.land, r.signal ? valLabel("signal", String(r.signal)) : null, typeof r.alter_tage === "number" ? `${r.alter_tage} T` : null]
           : [r.region, r.land, r.pruefung ? valLabel("pruefung", String(r.pruefung)) : null, r.angeschrieben === true ? "angeschrieben" : null];
-        if (typeof r.punkte === "number") bits.push(`★ ${r.punkte}`);
         return (
           <li key={r.id}>
             <b>{String(r.firma ?? "–")}</b>
-            <span>{bits.filter((b) => b !== null && b !== undefined && b !== "").join(" · ")}</span>
-            <em>{flag(r.hat_telefon, "☎", "Telefon")}{flag(r.hat_email, "@", "E-Mail")}{flag(r.hat_website, "www", "Website")}{source === "leads" && flag(r.hat_person, "P", "Ansprechperson")}</em>
+            <span>{bits.filter((b) => b !== null && b !== undefined && b !== "").join(" · ")}{typeof r.punkte === "number" && <> · <Icon name="stern" size={12} title="Punkte" /> {r.punkte}</>}</span>
+            <em>{flag(r.hat_telefon, "telefon", "Telefon")}{flag(r.hat_email, "mail", "E-Mail")}{flag(r.hat_website, "land", "Website")}{source === "leads" && flag(r.hat_person, "kunde", "Ansprechperson")}</em>
           </li>
         );
       })}
@@ -369,12 +369,12 @@ export function Inspector({ cfg, rows, source, pipe, probs, ctx, set, remove, cl
                 <button type="button" className="bk-btn red" disabled={ctx.busy} onClick={act.deactivate}>Von der Pipeline lösen</button>
               </>
             ) : (
-              <button type="button" className="bk-btn green" disabled={ctx.busy || !saved || ctx.errors > 0 || source !== "leads"} onClick={act.activate}>⇶ An Pipeline anschließen</button>
+              <button type="button" className="bk-btn green" disabled={ctx.busy || !saved || ctx.errors > 0 || source !== "leads"} onClick={act.activate}><Icon name="pipeline" size={15} />An Pipeline anschließen</button>
             )}
             {!saved && <p className="bk-hint">Erst speichern – angeschlossen wird die gespeicherte Fassung.</p>}
             {ctx.errors > 0 && <p className="bk-err">Erst die Fehler beheben ({ctx.errors}).</p>}
           </div>
-          <p className="bk-lock">🔒 Regeln machen die Freigabe nur strenger. Zurückgehaltene Leads kommen beim Lösen zurück.</p>
+          <p className="bk-lock"><Icon name="schloss" size={14} /> Regeln machen die Freigabe nur strenger. Zurückgehaltene Leads kommen beim Lösen zurück.</p>
         </>
       );
       break;
@@ -384,7 +384,7 @@ export function Inspector({ cfg, rows, source, pipe, probs, ctx, set, remove, cl
       form = (
         <>
           {sec("Menge", <Chips opts={[1000, 2000, 5000].map((n) => ({ v: n, label: `bis ${fmt(n)}` }))} on={(v) => exportSize === v} pick={setExportSize} />)}
-          {saved && href ? <a className="bk-btn go" href={href} download>⇩ CSV herunterladen</a> : <button type="button" className="bk-btn go" disabled>⇩ CSV herunterladen</button>}
+          {saved && href ? <a className="bk-btn go" href={href} download><Icon name="export" size={15} />CSV herunterladen</a> : <button type="button" className="bk-btn go" disabled><Icon name="export" size={15} />CSV herunterladen</button>}
           <p className="bk-hint">{saved ? "Mit allen Kontaktdaten, frisch aus der Datenbank." : "Erst speichern – heruntergeladen wird die gespeicherte Fassung."}</p>
         </>
       );
@@ -395,7 +395,7 @@ export function Inspector({ cfg, rows, source, pipe, probs, ctx, set, remove, cl
         <>
           {sec("Agent", <Chips opts={[1, 2, 3, 4].map((n) => ({ v: n, label: `A${n}` }))} on={(v) => cfg.agent === v} pick={(v) => set({ ...cfg, agent: v })} />)}
           {sec("Auftrag", <Chips opts={(Object.keys(KINDS) as AgentTaskKind[]).map((k) => ({ v: k, label: KINDS[k].label }))} on={(v) => cfg.task === v} pick={(v) => set({ ...cfg, task: v })} />)}
-          <button type="button" className="bk-btn gold" disabled={ctx.busy || !saved || !on} onClick={() => act.toAgent(cfg.id)}>◈ Auftrag erteilen</button>
+          <button type="button" className="bk-btn gold" disabled={ctx.busy || !saved || !on} onClick={() => act.toAgent(cfg.id)}><Icon name="an-agent" size={15} />Auftrag erteilen</button>
           <p className="bk-hint">{!saved ? "Erst speichern." : !on ? "Erst einen Eingang verbinden." : `Agent ${cfg.agent} bekommt den Weg und ${fmt(input.length)} Treffer als Auftrag.`}</p>
         </>
       );
@@ -405,14 +405,14 @@ export function Inspector({ cfg, rows, source, pipe, probs, ctx, set, remove, cl
   return (
     <>
       <header style={{ "--nc": meta.color } as CSSProperties}>
-        <span className="bkn-ic" aria-hidden>{meta.icon}</span>
+        <span className="bkn-ic" aria-hidden><Icon name={meta.icon} size={16} /></span>
         <div>
           <small>{meta.label}</small>
           <input value={cfg.title ?? ""} maxLength={LIMITS.title} placeholder={cfg.kind === "pipeline" ? cfg.name : meta.label} aria-label="Name des Bausteins"
             onChange={(e) => set({ ...cfg, title: e.target.value || undefined })} />
         </div>
-        <button type="button" className="bk-x bk-del" onClick={remove} aria-label="Baustein löschen" title="Löschen">🗑</button>
-        <button type="button" className="bk-x" onClick={close} aria-label="Schließen">✕</button>
+        <button type="button" className="bk-x bk-del" onClick={remove} aria-label="Baustein löschen" title="Löschen"><Icon name="loeschen" size={14} /></button>
+        <button type="button" className="bk-x" onClick={close} aria-label="Schließen"><Icon name="schliessen" size={14} /></button>
       </header>
       <div className="bk-bigs" style={{ "--nc": meta.color } as CSSProperties}>
         {bigs.map(([v, l, hi]) => <div key={l} className={hi ? "hi" : undefined}><b>{v}</b><span>{l}</span></div>)}

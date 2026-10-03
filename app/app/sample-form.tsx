@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { Icon } from "@/app/icons";
 
 /**
  * Probe-Formular (Inhaber 28.09.2026): kurz, eine Seite, höchstens 5 Felder – Firma, E-Mail, welche Leads
@@ -162,7 +163,7 @@ export function SampleForm({ lang, options, field, consent, privacyHref, hidden 
       {err && <p className="pf-err" role="alert">{err}</p>}
       <div className="pf-go">
         <button className="btn gold big" type="submit" data-cta disabled={state === "busy"}>
-          {state === "busy" ? T.sending : T.send} <span className="ar">→</span></button>
+          {state === "busy" ? T.sending : T.send} <span className="ar"><Icon name="pfeil" size={18} /></span></button>
         <span className="pf-fine">{T.fine1} · {T.fine2}</span>
       </div>
     </form>

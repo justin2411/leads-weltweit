@@ -10,6 +10,7 @@ import { COUNTRY_OPTS, Chips, Columns, Crumbs, Kpi, Legend, countrySeries } from
 import { FunnelViz, LiveDot, type FunnelStage } from "../live";
 import { WerkSwitch } from "../werk-switch";
 import { readParams, withQuery, type SP } from "../params";
+import { Icon } from "@/app/icons";
 
 type Card = { key: WerkKey | "freigabe"; file?: string; maxH: number; what: string; werk?: WerkId; lastLabel: string };
 
@@ -114,7 +115,7 @@ function WerkCard({ c, act, runs, own, now, here }: { c: Card; act: Activity; ru
       </div>
       {c.key !== "freigabe"
         ? <WerkSwitch werk={c.key} on={sw.on} back={here} label={label} note={"note" in WERK_SWITCHES[c.key as WerkKey] ? (WERK_SWITCHES[c.key as WerkKey] as { note: string }).note : undefined} />
-        : <span className="lock" title="Sicherheitsfunktion: nicht abschaltbar">🔒 immer an</span>}
+        : <span className="lock" title="Sicherheitsfunktion: nicht abschaltbar"><Icon name="schloss" size={14} /> immer an</span>}
     </section>
   );
 }
@@ -122,7 +123,7 @@ function WerkCard({ c, act, runs, own, now, here }: { c: Card; act: Activity; ru
 function Rules({ title, rules }: { title: string; rules: [string, string][] }) {
   return (
     <section className="card ctrl">
-      <header className="th"><span>{title}</span><span className="lock" title="Prüfregeln stehen im Code und werden nur vom Inhaber/Claude geändert">🔒 fest</span></header>
+      <header className="th"><span>{title}</span><span className="lock" title="Prüfregeln stehen im Code und werden nur vom Inhaber/Claude geändert"><Icon name="schloss" size={14} /> fest</span></header>
       <div className="facts">{rules.map(([r, tip]) => <span key={r} title={tip}><b>{r}</b> <span className="muted">· {tip}</span></span>)}</div>
     </section>
   );
