@@ -10,12 +10,12 @@ _INBOUND = re.compile(r"^(imap|reply|unknown):(.+)$")
 
 
 def delivered(s: dict) -> int:
-    """Zugestellt laut Resend-Ereignissen. Beim Versand über das eigene Postfach (SMTP) gibt es keine
-    'delivered'-Ereignisse – dann gilt gesendet minus Bounces."""
+    """Zugestellt: gesendet minus Bounces. Beim Versand über das eigene Postfach (SMTP) gibt es keine
+    'delivered'-Ereignisse; nur frühe Resend-Mails haben welche. Früher galten, sobald es überhaupt ein solches
+    Ereignis gab, nur diese – ein Experiment mit 115 Mails stand so bei „15 zugestellt“ (Nachtschicht 04.10.2026).
+    Darum der größere Wert aus Zustell-Ereignissen und gesendet minus Bounces."""
     d = int(s.get("delivered") or 0)
-    if d:
-        return d
-    return max(int(s.get("sent") or 0) - int(s.get("bounced") or 0), 0)
+    return max(d, int(s.get("sent") or 0) - int(s.get("bounced") or 0), 0)
 
 
 def _key(e: dict) -> tuple:

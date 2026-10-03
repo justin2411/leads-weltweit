@@ -280,3 +280,19 @@ test("Bounces je Postfach: Zählung wie die Notbremse, Ampel erst ab 30 Mails", 
     ["webagency@nextgen-profit.de", 40, 2, "red"], // 2/40 = 5 %
   ]);
 });
+
+test("Trichter je Land: zugestellt = gesendet − Bounces ohne Zustell-Ereignisse, fehlende Länder mit Nullen", async () => {
+  const { funnelByCountry } = await import("./dashboard-logic.ts");
+  const rows = [
+    { segment_id: "S2", country: "US", sent: 100, delivered: 0, bounced: 3, replies: 2, positive: 1, samples: 1, customers: 0 },
+    { segment_id: "S2", country: "US", sent: 50, delivered: 0, bounced: 1, replies: 0, positive: 0, samples: 0, customers: 0 },
+    { segment_id: "S2", country: "UK", sent: 40, delivered: 5, bounced: 2, replies: 1, positive: 0, samples: 0, customers: 1 }, // gemischt
+    { segment_id: "S4", country: "US", sent: 999, delivered: 0, bounced: 0, replies: 9, positive: 9, samples: 9, customers: 9 },
+    { segment_id: "S2", country: "DE", sent: 5, delivered: 0, bounced: 0, replies: 0, positive: 0, samples: 0, customers: 0 },
+  ];
+  assert.deepEqual(funnelByCountry(rows, "S2", ["US", "UK", "FR"]), [
+    { country: "US", sent: 150, delivered: 146, replies: 2, positive: 1, samples: 1, customers: 0 },
+    { country: "UK", sent: 40, delivered: 38, replies: 1, positive: 0, samples: 0, customers: 1 },
+    { country: "FR", sent: 0, delivered: 0, replies: 0, positive: 0, samples: 0, customers: 0 },
+  ]);
+});

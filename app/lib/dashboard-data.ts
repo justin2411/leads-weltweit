@@ -1,7 +1,7 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
 import { db } from "@/lib/supabase";
-import { boxHealth, type BoxHealth, type Days, type Live, type OpsConfig, type RawStock, type RunInfo, type Stock } from "@/lib/dashboard-logic";
+import { boxHealth, funnelByCountry, type BoxHealth, type Days, type FunnelRow, type Live, type OpsConfig, type RawStock, type RunInfo, type Stock } from "@/lib/dashboard-logic";
 import type { DailyRow } from "@/lib/dashboard-periods";
 import { merge, type OwnerSettings } from "@/lib/owner-settings";
 import { EMPTY_ACTIVITY, type Activity } from "@/lib/werke-live";
@@ -253,6 +253,19 @@ export async function loadBoxHealth(days = 14): Promise<BoxHealth[] | null> {
       to_email: (Array.isArray(x.messages) ? x.messages[0] : x.messages)?.to_email ?? null,
     }));
     return boxHealth((m.data ?? []) as { id: string; sent_from: string | null }[], events);
+  } catch {
+    return null;
+  }
+}
+
+/** Trichter je Land für die Zielgruppe (experiment_stats, ~50 ms); Fehler -> null (Anzeige „…“ statt falscher Nullen). */
+export async function loadFunnel(segment = SEGMENT): Promise<FunnelRow[] | null> {
+  try {
+    const { data, error } = await db().from("experiment_stats")
+      .select("segment_id, country, sent, delivered, bounced, replies, positive, samples, customers")
+      .eq("segment_id", segment).abortSignal(AbortSignal.timeout(5000));
+    if (error) throw new Error(error.message);
+    return funnelByCountry(data ?? [], segment, COUNTRIES);
   } catch {
     return null;
   }

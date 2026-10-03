@@ -73,7 +73,7 @@ def build(d: dict) -> tuple[str, str]:
     lines.append(f"- Antworten (24 h): {replies_24}  |  Proben angefordert (24 h): {samples_24}  |  "
                  f"Kaufinteresse (24 h): {len(buy_24)}")
     lines.append(f"- Aufträge / zahlende Kunden: {active_customers}")
-    estimated = any(int(s.get("sent") or 0) and not int(s.get("delivered") or 0) for s in d["stats"])
+    estimated = any(int(s.get("sent") or 0) > int(s.get("delivered") or 0) for s in d["stats"])  # Postfach ohne Ereignisse
     lines.append(f"- Gesamt: {tot['sent']} gesendet, {tot['delivered']} zugestellt ({pct(tot['delivered'], tot['sent'])}"
                  + ("; über das Postfach gesendet: gesendet minus Bounces" if estimated else "") + "), "
                  f"{tot['bounced']} Bounces ({pct(tot['bounced'], tot['sent'])}), {tot['complained']} Spam-Beschwerden")

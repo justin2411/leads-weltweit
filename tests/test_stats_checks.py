@@ -23,7 +23,9 @@ class DeliveredTest(unittest.TestCase):
 
     def test_fallback(self):
         self.assertEqual(delivered(stat(sent=60, bounced=4)), 56)
-        self.assertEqual(delivered(stat(sent=60, delivered=50, bounced=4)), 50)  # Resend-Zahlen bleiben
+        self.assertEqual(delivered(stat(sent=60, delivered=58, bounced=1)), 59)
+        # gemischt: wenige frühe Resend-Ereignisse, Rest per SMTP (04.10.2026: 115 Mails standen bei „15 zugestellt“)
+        self.assertEqual(delivered(stat(sent=115, delivered=15, bounced=3)), 112)
         self.assertEqual(delivered(stat()), 0)
 
     def test_report_uses_fallback_and_real_threshold(self):
