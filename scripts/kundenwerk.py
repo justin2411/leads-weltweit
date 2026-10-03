@@ -314,6 +314,21 @@ def cmd_known(args) -> int:
     return 0
 
 
+def drop_stored(db, pool: list[dict], known: set[str]) -> list[dict]:
+    """Gegenprobe vor dem Prüfen: Domains, die schon in prospects stehen, aber im Zwischenspeicher fehlen
+    (Scout R17, 03.10.2026: 512.049 bekannt vs. 512.426 Zeilen), raus. Sonst wurden sie jeden Lauf neu geprüft,
+    beim Speichern still verworfen (ignore_duplicates) und trotzdem als „neue Käufer“ gezählt."""
+    try:
+        stored = known_domains(db, [d["domain"] for d in pool])
+    except RuntimeError as exc:  # Gegenprobe ist Kür: lieber weiterprüfen als stillstehen
+        log(f"Gegenprobe bekannte Käufer übersprungen: {str(exc)[:80]}")
+        return pool
+    if stored:
+        known.update(stored)
+        log(f"Gegenprobe: {len(stored)} Domains standen schon in prospects (fehlten im Zwischenspeicher)")
+    return [d for d in pool if d["domain"] not in stored]
+
+
 FALLBACK_MIN = 500  # weniger neue Fokus-Käufer als das: Werk nimmt die übrigen Zielgruppen dazu
 
 
@@ -360,6 +375,8 @@ def cmd_run(args) -> int:
     pool = mine(candidates(segs))
     pool = fill_up(pool, keep, lambda: mine(candidates(all_segs)))
     pool = pool[:args.max]
+    if cached and pool:
+        pool = drop_stored(db, pool, known)
     deadline = time.monotonic() + args.deadline_min * 60 if args.deadline_min else 0
     uk = {d["domain"]: d["name"] for d in pool if d["country"] == "UK"}
     if uk:

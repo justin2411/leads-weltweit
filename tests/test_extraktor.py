@@ -805,6 +805,19 @@ class KundenWerkNieStillTests(unittest.TestCase):
         self.assertIs(K.fill_up(few, set(), lambda: rest), few)
 
 
+    def test_drop_stored_removes_domains_already_in_prospects(self):
+        import kundenwerk as K
+        from unittest import mock
+        pool = [{"domain": "a.com"}, {"domain": "b.com"}]
+        known: set[str] = set()
+        with mock.patch.object(K, "known_domains", return_value={"a.com"}):
+            out = K.drop_stored(None, pool, known)
+        self.assertEqual([d["domain"] for d in out], ["b.com"])
+        self.assertIn("a.com", known)
+        with mock.patch.object(K, "known_domains", side_effect=RuntimeError("57014")):
+            self.assertIs(K.drop_stored(None, pool, set()), pool)  # Gegenprobe darf das Werk nie anhalten
+
+
 class CategoryTldTests(unittest.TestCase):
     """Inhaber 02.10.2026: „202 Main Coffee“ hatte 202main.coffee, wir lieferten sie als „ohne Website“."""
 
