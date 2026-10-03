@@ -226,7 +226,7 @@ export function Method({ t, m, sources, across, example, hidden }: {
 function Example({ t, ex, hidden }: { t: HomeText; ex: ExampleLead; hidden: string }) {
   const c = t.call;
   return (
-    <div className="hp-example" data-example-lead="">
+    <div className="hp-example hp-example--off" data-example-lead="">
       <p className="hp-rule hp-rule--cream" data-reveal="">{t.ex.label}</p>
       <div className="hp-example__grid">
         <div className="hp-lead-wrap" data-reveal="" style={css({ "--d": ".1s" })}>

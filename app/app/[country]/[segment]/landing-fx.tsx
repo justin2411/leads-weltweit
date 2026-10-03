@@ -22,8 +22,12 @@ export function LandingFx() {
     const on = (t: EventTarget, ev: string, f: EventListener, o?: AddEventListenerOptions) => { t.addEventListener(ev, f, o); offs.push(() => t.removeEventListener(ev, f)); };
     const timers: number[] = [];
     const fonts = d.fonts?.ready ? Promise.race([d.fonts.ready, new Promise((r) => setTimeout(r, 1200))]) : Promise.resolve();
-    fonts.then(() => requestAnimationFrame(() => root.classList.add("is-ready")));
     const hero = $(".h2o");
+    // Lichtstrahl beim Laden wie auf der Startseite (Inhaber 03.10.2026), danach alle 15 s
+    const beam = $(".lz-beam .hp-beam");
+    const sweep = () => { if (reduce || !beam) return; beam.classList.remove("is-on"); void beam.offsetWidth; beam.classList.add("is-on"); };
+    fonts.then(() => requestAnimationFrame(() => { root.classList.add("is-ready"); timers.push(window.setTimeout(sweep, 250)); }));
+    if (!reduce) timers.push(window.setInterval(() => { if (!d.hidden && hero && hero.getBoundingClientRect().bottom > 0) sweep(); }, 15000));
     const desktop = () => matchMedia("(min-width: 1061px)").matches;
 
     // 1 · Methode: Schritt-Leiste, mitlaufende Grafik

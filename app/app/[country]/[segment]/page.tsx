@@ -42,6 +42,8 @@ import { SampleForm } from "../../sample-form";
 import { wishesFor } from "@/content/sample-wishes";
 import { localizeJob, maskCompany, maskEmail, maskPhone, pickDiverse, roleFor, seedOf, shortForm, type Part } from "@/lib/examples";
 
+
+const SHOW_SAMPLE_TILES = false;
 export const dynamic = "force-dynamic";
 
 type Params = Promise<{ country: string; segment: string }>;
@@ -460,6 +462,7 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
       <div className="lp2">
 
         <section className="h2o" id="top">
+          <div className="hpz lz-beam" aria-hidden="true"><span className="hp-beam" /></div>
           <div className="wrap">
             <div>
               <span className="pill"><Icon name="star" className="ic" />{T2.pill.replace("{country}", cname)}</span>
@@ -508,7 +511,8 @@ export default async function LandingPage({ params, searchParams }: { params: Pa
 
         <Method t={H} m={METHOD[wl][seg]} sources={SOURCES[seg][cc]} across={lz.across[cc]} example={example} hidden={lz.hidden} />
 
-        {samples.length > 0 && (
+        {/* Probe-Kacheln ausgeblendet (Inhaber 03.10.2026), Beispiel-Lead ebenso (hp-example--off) */}
+        {SHOW_SAMPLE_TILES && samples.length > 0 && (
           <section className="sec"><div className="wrap">
             <div className="kick"><span className="cap gold">{st ? T2.examples : (fr ? L.examples : F("Example leads from across {land}"))}</span></div>
             <div className="tiles">{(samples.length >= 3 ? samples.slice(1, 3) : samples.slice(0, 2)).map(tile)}</div>
