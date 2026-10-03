@@ -215,6 +215,18 @@ def header(current: str, light: bool) -> str:
 </div>"""
 
 
+GOOGLE_URL = "https://www.google.com/search?q=mobile+physiotherapie+oehlke"
+
+
+def google_badge() -> str:
+    """Link zu den Google-Bewertungen: Google-Schriftzug, darunter fünf Sterne."""
+    star = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>'
+    word = "".join(f'<span style="color:{c}">{ch}</span>' for ch, c in zip("Google", ("#4285F4", "#EA4335", "#FBBC05", "#4285F4", "#34A853", "#EA4335")))
+    return (f'<a class="gbadge" href="{GOOGLE_URL}" target="_blank" rel="noopener" aria-label="Unsere Bewertungen auf Google ansehen">'
+            f'<span class="gbadge__word">{word}</span><span class="gbadge__stars">{star * 5}</span>'
+            f'<span class="gbadge__txt">Bewertungen ansehen</span></a>')
+
+
 def footer() -> str:
     svc = "".join(f'<li><a href="/{s[0]}">{e(s[2])}</a></li>' for s in SERVICES[:6])
     towns = "".join(f'<li><a href="/physiotherapie-{t[0]}">{e(t[1])}</a></li>' for t in TOWNS[:6])
@@ -231,7 +243,7 @@ def footer() -> str:
       </div>
       <div><h4>Leistungen</h4><ul>{svc}<li><a href="/#leistungen">Alle Leistungen</a></li></ul></div>
       <div><h4>Einsatzgebiet</h4><ul>{towns}<li><a href="/#einsatzgebiet">Alle Orte</a></li></ul></div>
-      <div><h4>Praxis</h4><ul><li><a href="/#ueber-mich">Über mich</a></li><li><a href="/#ablauf">Ablauf</a></li><li><a href="/karriere">Karriere</a></li><li><a href="/#kontakt">Kontakt</a></li></ul></div>
+      <div><h4>Praxis</h4><ul><li><a href="/#ueber-mich">Über mich</a></li><li><a href="/#ablauf">Ablauf</a></li><li><a href="/karriere">Karriere</a></li><li><a href="/#kontakt">Kontakt</a></li></ul>{google_badge()}</div>
     </div>
     <div class="ftr__bottom"><span>© 2026 Mobile Physiotherapie Oehlke · Ramon Oehlke</span><span><a href="/impressum">Impressum</a> · <a href="/datenschutz">Datenschutz</a> · <a href="/agb">AGB</a></span></div>
   </div>
