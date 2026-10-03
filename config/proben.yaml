@@ -1,0 +1,10 @@
+# Proben-Vorrat (Inhaber 03.10.2026: „es sollen proben in der hinterhand sein ca. 50 proben immer die bereits fertig
+# und geprüft sind und wirklich durch alle sicherheitsmechanismen und qualitätsprüfer gegangen sind“).
+# scripts/sample_stock.py hält je öffentlich live geschalteter Landingpage (Zielgruppe/Land) so viele fertige Proben
+# bereit; die Fokus-Tests aus config/fokus.yaml bekommen mehr. 3 Fokus-Seiten x 6 (je Wunsch des Formulars eine) + 12 weitere x 3 = 54.
+fokus_je_seite: 6
+andere_je_seite: 3
+# Signale altern: Proben, die älter sind, werden verworfen, ihre Leads wieder freigegeben und neu gebaut.
+max_alter_stunden: 48
+# Höchstdauer eines Bau-Laufs in Minuten (der Rest folgt im nächsten Lauf).
+laufzeit_minuten: 40

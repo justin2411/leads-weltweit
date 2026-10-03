@@ -7,9 +7,13 @@ import { BRAND, LEGAL_NAME, siteUrl } from "@/lib/site";
 import { db } from "@/lib/supabase";
 import { personalFor } from "@/lib/recipient";
 import { leadCountry, segKey } from "@/lib/country";
-import { validEmail, wishNote } from "@/content/sample-wishes";
+import { cleanText, validEmail, wishKeys, wishNote } from "@/content/sample-wishes";
+import { after } from "next/server";
+import { dispatchSampleWorkflow, previewFromStock, sendFromStock, STOCK_BUCKET, type StockDeps } from "@/lib/sample-stock";
 
 export const dynamic = "force-dynamic";
+// Sofortversand nach dem Klick läuft per after() nach der Antwort: Vorrat abrufen + Resend (wenige Sekunden)
+export const maxDuration = 60;
 
 function back(slug: string, q: string, preview = "") {
   return Response.redirect(`${siteUrl()}/${slug}?${preview}${q}#probe`, 303);
@@ -87,23 +91,115 @@ export async function POST(req: Request) {
   // Wunsch immer zuletzt ("wunsch:signals=…;text=…"), damit der Freitext nichts anderes überdeckt.
   const note = [suppressed ? "Adresse/Domain gesperrt – keine Mail" : "", test ? "TEST (Inhaber-Vorschau)" : "", wish]
     .filter(Boolean).join("; ") || null;
-  const { error } = await db().from("sample_requests").insert({
+  // Sofortversand (Inhaber 03.10.2026): nur, wenn web_samples.py die Anfrage auch beantworten würde – also nicht,
+  // wenn diese Adresse schon eine Probe bekam (dann entscheidet wie bisher die Warteschlange: „doppelt“).
+  const instant = !suppressed && !test && !(await hadSample(email));
+  const { data: row, error } = await db().from("sample_requests").insert({
     variant_id: ownPage ? v.id : null, company_name: company, email, segment_id: page.segment_id, country,
     region: region || null, consent_text: consent, consent_at: new Date().toISOString(),
     status: suppressed || test ? "rejected" : "new", note,
-  });
+    // Sperre: die App bedient diese Anfrage gerade selbst, web_samples.py lässt sie 15 Minuten in Ruhe
+    claimed_at: instant ? new Date().toISOString() : null,
+  }).select("id").single();
   if (error) return json ? Response.json({ ok: false, error: "server" }, { status: 500 }) : new Response("Fehler", { status: 500 });
   if (!test && ownPage) await recordEvent(v.id, "sample_request");
 
   const m = confirmationMail((ownPage ? page.language : formLang) === "fr" ? "fr" : "en", country, consent);
+  const keys = wishKeys(segKey(page.slug), f.getAll("signals").map(String));
+  const wishText = cleanText(String(f.get("text") ?? ""));
+  const clicked = Date.now();
   if (test) {
-    // Vorschau: Bestätigung nur an den Inhaber (falls hinterlegt), nie an die Adresse aus dem Mail-Link
+    // Vorschau: nur an den Inhaber (falls hinterlegt), nie an die Adresse aus dem Mail-Link. Eine fertige Probe
+    // aus dem Vorrat zeigt, was der Kunde bekäme – ohne sie zu verbrauchen (nichts wird vergeben oder reserviert).
     const owner = process.env.SALE_NOTIFY_EMAIL?.trim() || process.env.OWNER_EMAIL?.trim();
-    if (owner) await sendConsentMail(owner, `[TEST] ${m.subject}`, m.text, m.html).catch(() => null);
+    if (owner) after(async () => {
+      const r = await previewFromStock({ ...stockDeps(), peek }, owner, page.segment_id, country)
+        .catch((e) => ({ status: "error" as const, detail: String(e), ms: undefined }));
+      console.log(`Vorschau-Probe ${page.segment_id}/${country}: ${r.status} ${r.detail ?? ""} `
+        + `(${Date.now() - clicked} ms vom Klick bis Resend)`);
+      if (r.status !== "sent") await sendConsentMail(owner, `[TEST] ${m.subject}`, m.text, m.html).catch(() => null);
+    });
+  } else if (instant) {
+    after(() => deliverNow({ id: row.id, email, company, segment: page.segment_id, country, wish: keys, wishText, m,
+                             clicked }));
   } else if (!suppressed) {
     await sendConsentMail(email, m.subject, m.text, m.html).catch(() => null); // Anfrage ist gespeichert; Bestätigung ist optional
   }
   return answer(true, "", page.slug, pv);
+}
+
+function stockDeps(): StockDeps {
+  return {
+    rpc: async (fn, args) => {
+      const { data, error } = await db().rpc(fn, args);
+      return { data, error: error ? { message: error.message } : null };
+    },
+    download: async (path) => {
+      const { data, error } = await db().storage.from(STOCK_BUCKET).download(path);
+      if (error || !data) throw new Error(error?.message ?? "leer");
+      return data.text();
+    },
+    fetch,
+    env: { RESEND_API_KEY: process.env.RESEND_API_KEY, MAIL_FROM: process.env.MAIL_FROM, REPLY_TO: process.env.REPLY_TO },
+  };
+}
+
+/** Beste fertige Probe der Zielgruppe/des Landes ansehen, ohne sie zu nehmen (nur Inhaber-Vorschau). */
+async function peek(segment: string, country: string): Promise<string | null> {
+  const { data } = await db().from("sample_stock").select("storage_path").eq("segment_id", segment).eq("country", country)
+    .eq("status", "ready").order("score", { ascending: false }).order("built_at", { ascending: false }).limit(1);
+  return data?.[0]?.storage_path ?? null;
+}
+
+/** Hat diese Adresse schon eine Probe bekommen (Website oder Antwort auf die Kaltmail)? Wie web_samples.skip_reason. */
+async function hadSample(email: string): Promise<boolean> {
+  const { data: sent } = await db().from("sample_requests").select("id").eq("email", email).eq("status", "sent").limit(1);
+  if (sent?.length) return true;
+  const msg = await initialMessage(email);
+  if (!msg) return false;
+  const { data: ev } = await db().from("email_events").select("id").eq("message_id", msg).eq("type", "sample_requested").limit(1);
+  return !!ev?.length;
+}
+
+async function initialMessage(email: string): Promise<string | null> {
+  const { data } = await db().from("messages").select("id").eq("to_email", email).eq("kind", "initial").eq("status", "sent")
+    .order("sent_at", { ascending: false }).limit(1);
+  return data?.[0]?.id ?? null;
+}
+
+/**
+ * Nach der Antwort an den Browser: fertige Probe aus dem Vorrat sofort senden. Passt keine, geht die Anfrage wie bisher
+ * in die Warteschlange (Bestätigungsmail, web_samples.py) und der Probe-Lauf wird – falls eingerichtet – sofort angestoßen.
+ */
+async function deliverNow(r: { id: string; email: string; company: string; segment: string; country: string; wish: string[];
+                               wishText: string; m: { subject: string; text: string; html: string }; clicked: number }) {
+  const res = await sendFromStock(stockDeps(), { id: r.id, segment: r.segment, country: r.country, email: r.email, wish: r.wish })
+    .catch((e) => ({ status: "error" as const, detail: String(e).slice(0, 200) }));
+  console.log(`Probe ${r.segment}/${r.country}: ${res.status} ${"detail" in res && res.detail ? res.detail : ""} `
+    + `(${Date.now() - r.clicked} ms vom Klick bis Resend)`);
+  if (res.status === "sent") {
+    // wie web_samples.py: Erstmail vermerken (keine Nachfassmail „Soll ich sie schicken?“ mehr)
+    const msg = await initialMessage(r.email).catch(() => null);
+    if (msg) {
+      const { data: ev } = await db().from("email_events").select("id").eq("message_id", msg).eq("type", "sample_requested").limit(1);
+      if (!ev?.length) await db().from("email_events").insert({ message_id: msg, type: "sample_requested",
+        note: "Probe über Landingpage angefordert und sofort gesendet" });
+    }
+    const owner = process.env.SALE_NOTIFY_EMAIL?.trim() || process.env.OWNER_EMAIL?.trim();
+    if (r.wishText && owner) {
+      // Freitext (z. B. Branche, Größe) wird nicht automatisch ausgewertet: Inhaber kurz informieren
+      await sendConsentMail(owner, `[Leads] Probe gesendet, Hinweis des Kunden: ${r.company}`,
+        `${r.company} (${r.email}, ${r.segment}/${r.country}) hat die Probe sofort bekommen. Gewünschte Signale: `
+        + `${r.wish.join(", ") || "-"}.\nHinweis im Formular (nicht automatisch berücksichtigt): ${r.wishText}`).catch(() => null);
+    }
+    return;
+  }
+  if (res.status === "none") {
+    // keine Sperre mehr: Warteschlange übernimmt sofort
+    await db().from("sample_requests").update({ claimed_at: null }).eq("id", r.id).eq("status", "new");
+  } // bei "error" bleibt die Sperre 15 Minuten (finish_sample_stock gibt sie frei, wenn Resend sicher ablehnte)
+  await sendConsentMail(r.email, r.m.subject, r.m.text, r.m.html).catch(() => null);
+  await dispatchSampleWorkflow(fetch, process.env.GH_DISPATCH_TOKEN).catch(() => false);
 }
 
 /** Bestätigung der Probe-Anfrage: Text- und HTML-Version, ohne Preise und ohne Zeitversprechen.

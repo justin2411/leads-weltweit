@@ -1,0 +1,384 @@
+#!/usr/bin/env python3
+"""Proben-Vorrat: fertige, geprüfte Proben für den Sofortversand nach dem Klick (Inhaber 03.10.2026).
+
+„es soll direkt nach dem button klick die probe rausgehen auch immer mit den aktuell besten leads“ und
+„es sollen proben in der hinterhand sein ca. 50 proben immer die bereits fertig und geprüft sind und wirklich durch
+alle sicherheitsmechanismen und qualitätsprüfer gegangen sind“.
+
+Ablauf (stündlich über .github/workflows/proben-vorrat.yml, zusätzlich vom Wachhund nachgestartet):
+  1. Verfall: Proben älter als max_alter_stunden (config/proben.yaml) verwerfen, ihre Leads freigeben
+     (expire_sample_stock); Dateien verworfener Proben aus dem Storage löschen.
+  2. Je öffentlich live geschalteter Landingpage bis zum Ziel auffüllen (Fokus-Seiten aus config/fokus.yaml mehr).
+     Jede Probe entsteht über responder.regional_sample – dieselbe Auswahl und dieselben Prüfungen wie jede andere
+     Probe: nur vollständige Firmen (Telefon, E-Mail, Adresse, Ansprechperson, Website außer S2), keine Firma mit
+     widersprüchlichen Daten (Qualitätsprüfung blocking), „ohne Website“ frisch nachgeprüft, nur Leads mit Status new
+     (exklusiv, nie zuvor ausgegeben), genau 10 verschiedene Firmen (leadreport.SAMPLE_SIZE, complete_only).
+  3. Die fertige Mail (Betreff, Text, HTML, PDF + CSV + Erklär-PDF) – exakt wie web_samples.py sie sendet – liegt
+     als JSON im privaten Storage-Bucket „sample-stock“; die 10 Leads werden atomar reserviert (add_sample_stock).
+
+Die App (app/app/api/sample-request/route.ts) nimmt nach dem Klick per claim_sample_stock eine passende Probe,
+setzt die Empfänger-Domain in die Fußzeile ein und sendet über Resend. Der Inhaber-Testmodus verbraucht nie Vorrat.
+
+  python scripts/sample_stock.py status              # Bestand je Zielgruppe/Land
+  python scripts/sample_stock.py run                 # Probelauf: zeigt, was gebaut würde
+  python scripts/sample_stock.py run --apply         # verwerfen + auffüllen
+  python scripts/sample_stock.py test-send --apply   # Inhaber-Test: eine fertige Probe an OWNER_EMAIL (ohne Verbrauch)
+"""
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import json
+import os
+import re
+import sys
+import time
+import uuid
+from pathlib import Path
+
+import requests
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+ROOT = Path(__file__).resolve().parents[1]
+BUCKET = "sample-stock"
+# Platzhalter für die Domain des Empfängers in der Pflichtfußzeile („… we will not contact {company} again“);
+# die App bzw. send_stock() ersetzt ihn beim Versand.
+PLACEHOLDER = "__EMPFAENGER_DOMAIN__"
+URG_POINTS = {"high": 3, "medium": 2, "low": 1}
+WISH_FILE = ROOT / "app" / "content" / "sample-wishes.ts"
+
+
+# ---------------------------------------------------------------------------- Einstellungen
+def settings(path: Path = ROOT / "config" / "proben.yaml") -> dict:
+    out = {"fokus_je_seite": 5, "andere_je_seite": 3, "max_alter_stunden": 48, "laufzeit_minuten": 40}
+    try:
+        for k, v in re.findall(r"^([a-z_]+):\s*(\d+)\s*$", path.read_text(encoding="utf-8"), re.M):
+            out[k] = int(v)
+    except OSError:
+        pass
+    return out
+
+
+def targets(pages: list[dict], cfg: dict, focus: list[tuple[str, str]]) -> dict[tuple[str, str], int]:
+    """Soll-Bestand je (Segment, Land) der Live-Seiten; Fokus-Tests zuerst."""
+    out: dict[tuple[str, str], int] = {}
+    for p in sorted(pages, key=lambda p: ((p["segment_id"], p["country"]) not in focus, p["segment_id"], p["country"])):
+        key = (p["segment_id"], p["country"])
+        out[key] = cfg["fokus_je_seite"] if key in focus else cfg["andere_je_seite"]
+    return out
+
+
+def wish_keys(slug: str, text: str | None = None) -> list[str]:
+    """Wunsch-Schlüssel des Formulars für diese Seite (gleiche Quelle wie das Formular: sample-wishes.ts)."""
+    if text is None:
+        try:
+            text = WISH_FILE.read_text(encoding="utf-8")
+        except OSError:
+            return []
+    seg = slug.split("/")[-1]
+    m = re.search(rf'^\s*"?{re.escape(seg)}"?:\s*\[(.*?)^\s*\],', text, re.M | re.S)
+    return re.findall(r'key:\s*"([a-z_0-9]+)"', m.group(1)) if m else []
+
+
+def plan(have: int, target: int, keys: list[str]) -> list[list[str]]:
+    """Welche Proben fehlen: die erste ohne Wunsch (beste Leads allgemein), danach je ein Wunsch-Schlüssel im
+    Wechsel, damit auch Anfragen mit Wunsch („ohne Website“, „kaputte Website“ …) sofort passend bedient werden."""
+    cycle = [[]] + [[k] for k in keys]
+    return [cycle[i % len(cycle)] for i in range(have, target)]
+
+
+# ---------------------------------------------------------------------------- Storage (privater Bucket)
+def _storage(db) -> tuple[str, dict]:
+    base = db.base[: -len("/rest/v1")] + "/storage/v1"
+    h = {k: v for k, v in db.s.headers.items() if k in ("apikey", "Authorization")}
+    return base, h
+
+
+def upload(db, path: str, data: bytes) -> None:
+    base, h = _storage(db)
+    r = requests.post(f"{base}/object/{BUCKET}/{path}", data=data, timeout=60,
+                      headers={**h, "Content-Type": "application/json", "x-upsert": "true"})
+    if r.status_code >= 400:
+        raise RuntimeError(f"Storage-Upload {r.status_code}: {r.text[:200]}")
+
+
+def download(db, path: str) -> bytes:
+    base, h = _storage(db)
+    r = requests.get(f"{base}/object/{BUCKET}/{path}", headers=h, timeout=60)
+    if r.status_code >= 400:
+        raise RuntimeError(f"Storage-Download {r.status_code}: {r.text[:200]}")
+    return r.content
+
+
+def remove(db, paths: list[str]) -> None:
+    if not paths:
+        return
+    base, h = _storage(db)
+    r = requests.delete(f"{base}/object/{BUCKET}", json={"prefixes": paths}, headers=h, timeout=60)
+    if r.status_code >= 400:
+        raise RuntimeError(f"Storage-Löschen {r.status_code}: {r.text[:200]}")
+
+
+# ---------------------------------------------------------------------------- Bauen
+def score(leads: list[dict], today: dt.date | None = None) -> float:
+    """Dringlichkeit (hoch 3, mittel 2, niedrig 1) je Lead, abzüglich Alter der Ereignisse (frischer = besser)."""
+    today = today or dt.date.today()
+    ages = []
+    for l in leads:
+        try:
+            ages.append((today - dt.date.fromisoformat(str(l.get("event_date"))[:10])).days)
+        except ValueError:
+            ages.append(60)
+    pts = sum(URG_POINTS.get(l.get("urgency") or "", 0) for l in leads)
+    return round(pts * 10 - (sum(ages) / len(ages) if ages else 0) * 0.1, 2)
+
+
+def wish_match(db, seg: str, leads: list[dict]) -> dict[str, int]:
+    """Je Wunsch-Schlüssel: wie viele der 10 Leads passen (für die Auswahl nach dem Klick)."""
+    from lib.wishes import KEYS, matches
+    sic_of = None
+    if seg == "S4":  # „Fuhrpark oder Lager“ braucht den SIC-Code
+        from responder import _sic_lookup
+        sic_of = _sic_lookup(db, leads)
+    out = {}
+    for k in sorted(KEYS):
+        n = sum(matches(k, l, sic_of(l) if sic_of and k == "fleet_warehouse" else None) for l in leads)
+        if n:
+            out[k] = n
+    return out
+
+
+def build_payload(seg: str, country: str, files: list[tuple[str, bytes]]) -> dict | None:
+    """Fertige Probe-Mail ohne Empfänger – gleiche Funktionen und Inhalte wie web_samples.py."""
+    from responder import reply_content, sample_mail, sample_subject
+    lang = "fr" if country == "FR" else "en"
+    body, blocks = sample_mail(lang, None, files, True, seg, country)
+    if not body:
+        return None
+    content = reply_content(PLACEHOLDER, sample_subject(lang, None, country), body, None, lang, files, blocks,
+                            requested=True)
+    return {"version": 1, "placeholder": PLACEHOLDER, "lang": lang, **content}
+
+
+def build_one(db, seg: str, country: str, wish: list[str], exclude: set[str], hours: int, apply: bool,
+              log=print) -> dict | None:
+    """Eine Probe bauen, hochladen und ihre 10 Leads reservieren. None, wenn keine 10 vollständigen Leads."""
+    from lib.leadreport import SAMPLE_SIZE
+    from responder import regional_sample
+    picked: list[dict] = []
+    files, _ = regional_sample(db, seg, country, None, wish=wish or None, mark=False, picked_out=picked,
+                               exclude_companies=exclude)
+    if files and not any(n.endswith(".pdf") for n, _ in files):
+        # ohne Lead-Report (PDF) keine fertige Probe – die Mail verspricht ihn (Leads bleiben frei)
+        raise RuntimeError("PDF-Report nicht erstellt")
+    ids = [l["id"] for l in picked]
+    cos = [l["company_id"] for l in picked]
+    if not files or len(set(ids)) != SAMPLE_SIZE or len(set(cos)) != SAMPLE_SIZE:
+        return None
+    payload = build_payload(seg, country, files)
+    if not payload:
+        return None
+    dates = sorted(str(l.get("event_date") or "")[:10] for l in picked if l.get("event_date"))
+    row = {"segment_id": seg, "country": country, "lang": payload["lang"], "wish": wish,
+           "wish_match": wish_match(db, seg, picked), "signal_types": sorted({l.get("signal_type") or "" for l in picked} - {""}),
+           "lead_ids": ids, "company_ids": cos, "score": score(picked),
+           "newest_event": dates[-1] if dates else None, "oldest_event": dates[0] if dates else None,
+           "subject": payload["subject"],
+           "expires_at": (dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=hours)).isoformat()}
+    if not apply:
+        log(f"  würde bauen: {seg}/{country} Wunsch {','.join(wish) or '-'} Score {row['score']}")
+        exclude.update(cos)
+        return row
+    path = f"{seg}/{country}/{dt.datetime.now(dt.timezone.utc):%Y%m%dT%H%M%S}-{uuid.uuid4().hex[:8]}.json"
+    upload(db, path, json.dumps(payload).encode())
+    try:
+        row["id"] = db.rpc("add_sample_stock", {"p": {**row, "storage_path": path}})
+    except Exception:
+        remove(db, [path])  # Leads inzwischen anderweitig vergeben: Datei wieder weg, nichts reserviert
+        raise
+    exclude.update(cos)
+    log(f"  gebaut: {seg}/{country} Wunsch {','.join(wish) or '-'} Score {row['score']} ({path})")
+    return row
+
+
+def stock_rows(db, statuses: str = "ready") -> list[dict]:
+    return db.select_all("sample_stock", {"status": f"in.({statuses})", "order": "built_at.desc",
+                                          "select": "id,segment_id,country,status,wish,wish_match,company_ids,score,"
+                                                    "built_at,expires_at,storage_path,files_removed_at,sent_at"})
+
+
+def cleanup_files(db, log=print) -> int:
+    """Dateien verworfener Proben sofort, gesendeter nach 30 Tagen aus dem Storage löschen."""
+    old = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=30)).isoformat()
+    rows = [r for r in stock_rows(db, "expired,failed,sent") if not r.get("files_removed_at")
+            and (r["status"] != "sent" or (r.get("sent_at") or "") < old)]
+    for i in range(0, len(rows), 100):
+        part = rows[i:i + 100]
+        remove(db, [r["storage_path"] for r in part])
+        now = dt.datetime.now(dt.timezone.utc).isoformat()
+        for r in part:
+            db.update("sample_stock", {"id": r["id"]}, {"files_removed_at": now})
+    if rows:
+        log(f"{len(rows)} Dateien alter Proben gelöscht")
+    return len(rows)
+
+
+def live_pages(db) -> list[dict]:
+    """Öffentlich live geschaltete Landingpages (wie pageIsPublic: Seite live und Rechtstexte fertig)."""
+    st = (db.select("settings", {"select": "legal_ready"}) or [{}])[0]
+    if not st.get("legal_ready"):
+        return []
+    return db.select("landing_pages", {"status": "eq.live", "select": "segment_id,country,slug"})
+
+
+def run(db, apply: bool, log=print) -> dict:
+    from lib.fokus import focus_pairs
+    cfg = settings()
+    t0 = time.monotonic()
+    if apply:
+        n = db.rpc("expire_sample_stock", {"p_hours": cfg["max_alter_stunden"]})
+        if n:
+            log(f"{n} Proben verfallen (älter als {cfg['max_alter_stunden']} h) – Leads freigegeben")
+        cleanup_files(db, log)
+    pages = live_pages(db)
+    slug_of = {}
+    for p in pages:  # Wunsch-Schlüssel stehen unter dem englischen Seitennamen (FR-Seiten: gleiche Branche)
+        if p["country"] != "FR" or p["segment_id"] not in slug_of:
+            slug_of[p["segment_id"]] = p["slug"]
+    want = targets(pages, cfg, focus_pairs())
+    ready = stock_rows(db, "ready,claimed")
+    have = {k: sum(r["segment_id"] == k[0] and r["country"] == k[1] and r["status"] == "ready" for r in ready)
+            for k in want}
+    built, missing = {}, {}
+    for (seg, cc), target in want.items():
+        exclude = {c for r in ready if r["segment_id"] == seg and r["country"] == cc for c in (r["company_ids"] or [])}
+        for wish in plan(have[(seg, cc)], target, wish_keys(slug_of.get(seg, ""))):
+            if (time.monotonic() - t0) / 60 > cfg["laufzeit_minuten"]:
+                log("Laufzeit erreicht – Rest im nächsten Lauf")
+                missing[(seg, cc)] = missing.get((seg, cc), 0) + 1
+                continue
+            try:
+                row = build_one(db, seg, cc, wish, exclude, cfg["max_alter_stunden"], apply, log)
+            except Exception as exc:  # noqa: BLE001 – eine Zielgruppe darf die anderen nicht aufhalten
+                log(f"  FEHLER {seg}/{cc}: {type(exc).__name__}: {str(exc)[:200]}")
+                row = None
+            if row is None:
+                log(f"  {seg}/{cc}: keine weiteren 10 vollständigen Leads – Rest folgt, sobald es mehr gibt")
+                missing[(seg, cc)] = target - have[(seg, cc)] - built.get((seg, cc), 0)
+                break
+            built[(seg, cc)] = built.get((seg, cc), 0) + 1
+    summary = {f"{s}/{c}": {"soll": t, "vorher": have[(s, c)], "neu": built.get((s, c), 0)} for (s, c), t in want.items()}
+    log(json.dumps(summary, ensure_ascii=False))
+    return {"built": sum(built.values()), "missing": missing, "summary": summary}
+
+
+def inventory(db) -> dict[str, int]:
+    """Bestand fertiger Proben je Zielgruppe/Land (für Tagescheck und Bericht)."""
+    out: dict[str, int] = {}
+    for r in stock_rows(db, "ready"):
+        k = f"{r['segment_id']}/{r['country']}"
+        out[k] = out.get(k, 0) + 1
+    return out
+
+
+# ---------------------------------------------------------------------------- Versand aus dem Vorrat
+def personalize(payload: dict, email: str) -> dict:
+    """Empfänger-Domain in die Fußzeile (wie send_reply: normalize_domain der Adresse)."""
+    from lib.rules import normalize_domain
+    dom = normalize_domain(email.split("@")[-1])
+    ph = payload.get("placeholder") or PLACEHOLDER
+    return {k: (v.replace(ph, dom) if isinstance(v, str) and k in ("text", "html") else v)
+            for k, v in payload.items() if k not in ("version", "placeholder", "lang")}
+
+
+def send_stock(db, request: dict, email: str, wish: list[str], log=print) -> str | None:
+    """Fertige Probe aus dem Vorrat an den Anfragenden. Rückgabe: 'sent', 'none' (kein Vorrat) oder 'error'.
+    Die Anfrage muss vorher gesperrt sein (lock_sample_request)."""
+    got = db.rpc("claim_sample_stock", {"p_segment": request["segment_id"], "p_country": request["country"],
+                                         "p_wish": wish or [], "p_request": request["id"]}) or []
+    if not got:
+        return "none"
+    s = got[0]
+    try:
+        payload = personalize(json.loads(download(db, s["storage_path"])), email)
+    except Exception as exc:  # noqa: BLE001 – Datei fehlt: sicher nicht gesendet, Probe nicht wieder vergeben
+        db.rpc("finish_sample_stock", {"p_stock": s["id"], "p_ok": False, "p_release": False,
+                                       "p_note": f"Datei: {str(exc)[:150]}"})
+        log(f"  Vorrat-Datei fehlt: {exc}")
+        return "error"
+    from responder import resend_post
+    mail = {"from": os.environ["MAIL_FROM"], "to": [email], **payload,
+            "reply_to": os.environ.get("REPLY_TO") or os.environ["MAIL_FROM"]}
+    try:
+        rid = resend_post(mail, idempotency_key=f"sample-{request['id']}")
+    except RuntimeError as exc:  # Resend hat abgelehnt: sicher nicht gesendet -> Probe wieder bereit
+        db.rpc("finish_sample_stock", {"p_stock": s["id"], "p_ok": False, "p_release": True, "p_note": str(exc)[:200]})
+        log(f"  Resend lehnte ab: {exc}")
+        return "error"
+    except requests.RequestException as exc:  # unklar, ob gesendet -> Leads vorsichtshalber vergeben
+        db.rpc("finish_sample_stock", {"p_stock": s["id"], "p_ok": False, "p_release": False, "p_note": str(exc)[:200]})
+        log(f"  Versand unklar: {exc}")
+        return "error"
+    db.rpc("finish_sample_stock", {"p_stock": s["id"], "p_ok": True, "p_resend_id": rid,
+                                   "p_note": "über web_samples.py"})
+    return "sent"
+
+
+def test_send(db, apply: bool, seg: str | None, cc: str | None, log=print) -> int:
+    """Inhaber-Test: eine fertige Probe an OWNER_EMAIL schicken, OHNE sie zu verbrauchen (nichts wird reserviert,
+    vergeben oder als gesendet markiert). Misst die Zeit für Abruf + Versand – dasselbe, was die App nach dem Klick tut."""
+    owner = os.environ.get("OWNER_EMAIL")
+    rows = [r for r in stock_rows(db, "ready") if (not seg or r["segment_id"] == seg) and (not cc or r["country"] == cc)]
+    if not rows:
+        log("Kein fertiger Vorrat für den Test")
+        return 1
+    r = rows[0]
+    t0 = time.monotonic()
+    payload = personalize(json.loads(download(db, r["storage_path"])), owner or "owner@example.com")
+    t1 = time.monotonic()
+    log(f"Probe {r['segment_id']}/{r['country']} geladen in {(t1 - t0) * 1000:.0f} ms, "
+        f"{len(payload.get('attachments') or [])} Anhänge, Betreff: {payload['subject']}")
+    if not (apply and owner and os.environ.get("RESEND_API_KEY") and os.environ.get("MAIL_FROM")):
+        log("Probelauf – keine Mail (mit --apply und OWNER_EMAIL/RESEND_API_KEY/MAIL_FROM senden)")
+        return 0
+    from responder import resend_post
+    rid = resend_post({"from": os.environ["MAIL_FROM"], "to": [owner], **payload,
+                       "subject": "[TEST Vorrat] " + payload["subject"]})
+    t2 = time.monotonic()
+    log(f"Test-Mail an den Inhaber gesendet (Resend {rid}) – Abruf {(t1 - t0) * 1000:.0f} ms, "
+        f"Versand {(t2 - t1) * 1000:.0f} ms, gesamt {(t2 - t0) * 1000:.0f} ms. Vorrat unverändert.")
+    return 0
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("befehl", choices=["status", "run", "test-send"])
+    ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--segment")
+    ap.add_argument("--country")
+    args = ap.parse_args(argv)
+    from lib.db import DB
+    db = DB()
+    if args.befehl == "status":
+        inv = inventory(db)
+        for k in sorted(inv):
+            print(f"{k:<8} {inv[k]}")
+        print(f"gesamt   {sum(inv.values())}")
+        return 0
+    if args.befehl == "test-send":
+        return test_send(db, args.apply, args.segment, args.country)
+    res = run(db, args.apply)
+    print(f"\n{res['built']} Proben gebaut" + ("" if args.apply else " (Probelauf)"))
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary:
+        inv = inventory(db) if args.apply else {}
+        lines = ["### Proben-Vorrat", "", "| Zielgruppe/Land | Soll | vorher | neu | jetzt |", "|---|---|---|---|---|"]
+        for k, v in res["summary"].items():
+            lines.append(f"| {k} | {v['soll']} | {v['vorher']} | {v['neu']} | {inv.get(k, '-')} |")
+        Path(summary).write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
