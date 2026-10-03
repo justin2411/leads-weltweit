@@ -31,7 +31,7 @@ export async function publicPages(): Promise<PublicPage[]> {
   });
 }
 
-export type HomeStats = { companies: number; signals: number };
+export type HomeStats = { companies: number; signals: number; signals24h: number };
 export type HomeFeedItem = { company: string; place: string; event: string; date: string; source: string; opener: string; urgency: string };
 
 let statsCache: { at: number; stats: HomeStats } | null = null;
@@ -42,12 +42,15 @@ export async function homeStats(): Promise<HomeStats> {
   // dazwischen den letzten Stand zeigen; antwortet die Datenbank nicht, ebenfalls den letzten Stand.
   if (statsCache && Date.now() - statsCache.at < 10 * 60_000) return statsCache.stats;
   try {
-    const [c, l] = await Promise.all([
+    const since = new Date(Date.now() - 86_400_000).toISOString();
+    const [c, l, d] = await Promise.all([
       db().from("watch_companies").select("id", { count: "exact", head: true }),
       db().from("leads").select("id", { count: "exact", head: true }),
+      db().from("leads").select("id", { count: "exact", head: true }).gte("created_at", since),
     ]);
     if (c.error || l.error) throw new Error((c.error ?? l.error)!.message);
-    statsCache = { at: Date.now(), stats: { companies: c.count ?? 0, signals: l.count ?? 0 } };
+    // Zuwachs der letzten 24 h: Grundlage für den Live-Zähler (fehlt er, steht der Zähler still statt zu schätzen)
+    statsCache = { at: Date.now(), stats: { companies: c.count ?? 0, signals: l.count ?? 0, signals24h: d.error ? 0 : d.count ?? 0 } };
     return statsCache.stats;
   } catch (e) {
     if (statsCache) return statsCache.stats;

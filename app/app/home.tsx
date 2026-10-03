@@ -6,6 +6,7 @@ import { consentText } from "@/lib/consent";
 import { HOME_SPRITE, HOME_STAT_ART } from "@/lib/home-v2-css";
 import { SampleForm } from "./sample-form";
 import { industryOptions } from "./industry-options";
+import { LiveCount } from "./live-count";
 import { homeStats, publicPages, type PublicPage } from "@/lib/site-pages";
 import { BrandShell, SiteFooter, SiteHeader } from "./chrome";
 import { HOME, HOME_LANGS, HOME_PATH, type HomeLang } from "./home-i18n";
@@ -95,7 +96,7 @@ export async function Home({ lang }: { lang: HomeLang }) {
   const building = process.env.NEXT_PHASE === "phase-production-build";
   const [pages, stats] = await Promise.all([
     publicPages().catch((e) => { if (!building) throw e; return [] as PublicPage[]; }),
-    homeStats().catch((e) => { if (!building) throw e; return { companies: 0, signals: 0 }; }),
+    homeStats().catch((e) => { if (!building) throw e; return { companies: 0, signals: 0, signals24h: 0 }; }),
   ]);
   const V = VIDEOS as Record<string, { src: string; poster: string; seconds: number }>;
   const video = V[`${lang}:home`] ?? V["en:home"];
@@ -109,7 +110,7 @@ export async function Home({ lang }: { lang: HomeLang }) {
   };
   const nums: [string, string, boolean][] = [
     [`18${mio}`, t.stats[0], false], [`${YEARLY.toLocaleString(loc)}+`, t.stats[1], false],
-    [stats.signals.toLocaleString(loc), t.stats[2], true], ["10", t.stats[3], false],
+    [stats.companies.toLocaleString(loc), t.watched, true], ["10", t.stats[3], false],
   ];
   const words = t.h1.split(/\s+/);
   const gold = new Set(t.h1gold.map((g) => g.toLowerCase()));
@@ -178,6 +179,8 @@ export async function Home({ lang }: { lang: HomeLang }) {
                 </div></div>
               </div>
             </div>
+            {/* großer Live-Zähler (Inhaber 03.10.2026): echte Zählung, wächst mit der Arbeit der Werke */}
+            <div className="hp-wrap"><LiveCount initial={stats.signals} perDay={stats.signals24h} locale={loc} label={t.stats[2]} live={t.live} art={HOME_STAT_ART[2]} /></div>
           </div>
         </section>
 
