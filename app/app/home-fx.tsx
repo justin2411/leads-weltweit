@@ -357,7 +357,7 @@ export function HomeFx() {
     });
 
     // 14 · Ansprechpartner (Vorlage v4): vier Beispielwochen, die Filter werden enger und mehr Punkte rücken in den
-    //      Passungsring. Läuft ab Sichtbarkeit in Schleife (je Woche 4,6 s, Inhaber 03.10.2026); ein Klick auf eine Woche hält an.
+    //      Passungsring. Läuft ab Sichtbarkeit in Schleife (je Woche 3,6 s, Inhaber 03.10.2026); ein Klick auf eine Woche hält an.
     const tune = $("[data-tune]");
     let io3: IntersectionObserver | null = null;
     if (tune) {
@@ -393,7 +393,7 @@ export function HomeFx() {
         io3 = new IntersectionObserver((es) => es.forEach((e) => {
           if (!e.isIntersecting) return; io3!.disconnect();
           let n = 0; tune.classList.add("is-playing"); go(0);
-          timer = window.setInterval(() => { n = (n + 1) % 4; if (!d.hidden) go(n); }, 4600);
+          timer = window.setInterval(() => { n = (n + 1) % 4; if (!d.hidden) go(n); }, 3600);
           timers.push(timer);
         }), { threshold: 0.5 });
         io3.observe(tune);
