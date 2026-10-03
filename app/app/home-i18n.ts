@@ -13,7 +13,7 @@ export type HomeText = {
   title: string; desc: string; nav: [string, string][]; cta: string; contact: string;
   pill: string; h1: string; h1gold: string[]; sub: string; subShort: string; every: string; chips: [string, string][];
   btn: string; film: string; vtag: (s: number) => string; monday: string;
-  statsH: string; stats: [string, string, string, string]; statsNote: string;
+  statsH: string; stats: [string, string, string, string];
   ticker: [string, string[]]; filmH: (s: number) => string; filmSub: string;
   methH: string; methSub: string; steps: [string, string, string][];
   ex: { label: string; tag: string; win: string; pick: string; pills: [string, string]; phonePrefix: string; stamp: string; stampDay: [string, string] };
@@ -61,7 +61,6 @@ export const HOME: Record<HomeLang, HomeText> = {
     vtag: (s) => `The film · ${s} seconds`, monday: "New list every Monday",
     statsH: "Built on public record, checked every day",
     stats: ["companies in the official registers of our markets", "new companies a year within our view", "dated signals recorded", "free leads in every sample"],
-    statsNote: "Registers: 4.93 million companies on the UK Companies House register (March 2026) and 13.7 million active legal units in the French SIRENE register (INSEE). Signals are counted live from our database. The yearly figure is projected from the new registrations we currently record per day in the UK, US and France.",
     ticker: ["Read daily from", ["Official business registers", "Official public notices", "Public contract notices", "Company careers pages", "Company websites"]],
     filmH: (s) => `How it works in ${s} seconds`, filmSub: "Exclusive leads, delivered every Monday, for any industry that sells to businesses.",
     methH: "From public record to your next client", methSub: "We do the watching. You receive a short list you can act on the same morning.",
@@ -174,7 +173,6 @@ export const HOME: Record<HomeLang, HomeText> = {
     vtag: (s) => `Le film · ${s} secondes`, monday: "Nouvelle liste chaque lundi",
     statsH: "Fondé sur des données publiques, vérifié chaque jour",
     stats: ["entreprises dans les registres officiels de nos marchés", "nouvelles entreprises par an dans notre champ", "signaux datés enregistrés", "prospects gratuits dans chaque échantillon"],
-    statsNote: "Registres : 4,93 millions d'entreprises au registre britannique Companies House (mars 2026) et 13,7 millions d'unités légales actives au répertoire SIRENE (INSEE). Les signaux sont comptés en direct dans notre base. Le chiffre annuel est une projection à partir des créations que nous enregistrons chaque jour au Royaume-Uni, aux États-Unis et en France.",
     ticker: ["Lu chaque jour", ["Registres officiels des entreprises", "Annonces officielles", "Avis de marchés publics", "Pages carrières des entreprises", "Sites des entreprises"]],
     filmH: (s) => `Comment ça marche en ${s} secondes`, filmSub: "Des prospects exclusifs, livrés chaque lundi, pour tout secteur qui vend aux entreprises.",
     methH: "Des données publiques à votre prochain client", methSub: "Nous surveillons pour vous. Vous recevez une courte liste exploitable dès le matin.",
@@ -287,7 +285,6 @@ export const HOME: Record<HomeLang, HomeText> = {
     vtag: (s) => `Der Film · ${s} Sekunden`, monday: "Jeden Montag eine neue Liste",
     statsH: "Auf öffentlichen Daten gebaut, jeden Tag geprüft",
     stats: ["Unternehmen in den amtlichen Registern unserer Märkte", "neue Unternehmen pro Jahr in unserem Blick", "datierte Signale erfasst", "kostenlose Leads in jeder Probe"],
-    statsNote: "Register: 4,93 Millionen Unternehmen im britischen Companies House (März 2026) und 13,7 Millionen aktive Rechtseinheiten im französischen SIRENE-Register (INSEE). Signale werden live aus unserer Datenbank gezählt. Die Jahreszahl ist hochgerechnet aus den Neugründungen, die wir derzeit pro Tag in Großbritannien, den USA und Frankreich erfassen.",
     ticker: ["Täglich gelesen", ["Amtliche Unternehmensregister", "Amtliche Bekanntmachungen", "Öffentliche Ausschreibungen", "Karriereseiten der Unternehmen", "Websites der Unternehmen"]],
     filmH: (s) => `So funktioniert es in ${s} Sekunden`, filmSub: "Exklusive Leads, jeden Montag geliefert, für jede Branche, die an Unternehmen verkauft.",
     methH: "Von öffentlichen Daten zu Ihrem nächsten Kunden", methSub: "Wir beobachten für Sie. Sie erhalten eine kurze Liste, mit der Sie noch am selben Morgen arbeiten können.",
