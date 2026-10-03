@@ -58,8 +58,9 @@ When you access the website, our host processes technically necessary data (incl
 5. Audience measurement without cookies
 Our landing pages do not set cookies and do not store IP addresses. We only count anonymously how often a page variant was viewed or a button was clicked (page variant, event type, time). No link to any individual is made.
 
-6. Requesting a free sample
+6. Requesting a free sample and contact form
 If you request a sample via the form, we process the company name, business email address, requested region and the wording and time of your consent in order to send you the sample and one follow-up message about it (Art. 6(1)(a) and (b) GDPR). You can withdraw your consent at any time, for example by replying "unsubscribe"; your address will then be permanently blocked.
+If you write to us via the contact form, we process your name (optional), company name, business email address, phone number (optional), industry, requested country and leads, your message and the wording and time of your consent in order to answer your enquiry (Art. 6(1)(a) and (b) GDPR). You can withdraw your consent at any time, for example by replying "unsubscribe".
 
 7. Customers and payments
 For subscriptions we process the company name, billing and contact details and your delivery preferences (regions, signals). Stripe does not pass payment data on to us. Legal basis: Art. 6(1)(b) and (c) GDPR (contract, retention for tax purposes).
@@ -140,8 +141,9 @@ Lors de la consultation, notre hébergeur traite des données techniquement néc
 5. Mesure d'audience sans cookies
 Nos pages d'atterrissage ne déposent aucun cookie et n'enregistrent aucune adresse IP. Nous comptons uniquement, de manière anonyme, combien de fois une variante de page a été consultée ou un bouton cliqué (variante de page, type d'événement, horodatage). Aucun lien avec une personne n'est établi.
 
-6. Demande d'un échantillon gratuit
+6. Demande d'un échantillon gratuit et formulaire de contact
 Si vous demandez un échantillon via le formulaire, nous traitons le nom de l'entreprise, l'adresse e-mail professionnelle, la région souhaitée ainsi que le libellé et l'horodatage de votre consentement, afin de vous envoyer l'échantillon et un message de suivi à ce sujet (art. 6, par. 1, points a) et b) du RGPD). Vous pouvez retirer votre consentement à tout moment, par exemple en répondant « unsubscribe » ou « désinscription » ; votre adresse est alors bloquée définitivement.
+Si vous nous écrivez via le formulaire de contact, nous traitons votre nom (facultatif), le nom de l'entreprise, l'adresse e-mail professionnelle, le téléphone (facultatif), le secteur, le pays et les prospects souhaités, votre message ainsi que le libellé et l'horodatage de votre consentement, afin de répondre à votre demande (art. 6, par. 1, points a) et b) du RGPD). Vous pouvez retirer votre consentement à tout moment, par exemple en répondant « désinscription ».
 
 7. Clients et paiements
 Pour les abonnements, nous traitons le nom de l'entreprise, les coordonnées de facturation et de contact ainsi que vos préférences de livraison (régions, signaux). Stripe ne nous transmet pas les données de paiement. Base juridique : art. 6, par. 1, points b) et c) du RGPD (contrat, conservation fiscale).

@@ -4,11 +4,15 @@ import VIDEOS from "@/content/videos.json";
 import { BRAND, CONTACT, LEGAL_NAME, siteUrl } from "@/lib/site";
 import { consentText } from "@/lib/consent";
 import { wishesFor } from "@/content/sample-wishes";
+import { LANDING_CSS } from "@/lib/landing-css";
+import { HOME_CSS } from "@/lib/home-css";
 import { SampleForm, type FormOption } from "./sample-form";
-import { homeFeed, homeStats, MASK, publicPages, type PublicPage } from "@/lib/site-pages";
+import { homeStats, publicPages, type PublicPage } from "@/lib/site-pages";
 import { BrandShell, SiteFooter, SiteHeader, Words } from "./chrome";
 import { HOME, HOME_LANGS, HOME_PATH, type HomeLang } from "./home-i18n";
-import { HeroNet, SignalFeed } from "./motion";
+import { CONTACT_PATH } from "./contact/contact-i18n";
+import { HeroNet } from "./motion";
+import { Icon } from "./[country]/[segment]/v2";
 import { COUNTRIES, segKey, type CountryCode } from "@/lib/country";
 
 // Register (Inhaber 27.09.2026 „über 18 Millionen“): Companies House 4.930.634 (effektives Register, März 2026,
@@ -29,34 +33,52 @@ export function homeMetadata(lang: HomeLang): Metadata {
   };
 }
 
-const ICONS: Record<string, string> = {
-  register: "M4 20h16M6 20V9m4 11V9m4 11V9m4 11V9M3 9l9-5 9 5",
-  check: "M4 12.5l5 5L20 6.5",
-  shield: "M12 3l8 3v6c0 4.5-3.3 8.3-8 9-4.7-.7-8-4.5-8-9V6l8-3z",
-  eye: "M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12zm10 3a3 3 0 100-6 3 3 0 000 6z",
-  gift: "M4 10h16v10H4zM3 7h18v3H3zM12 7v13M12 7c-1.5-3-5-3-5-1s5 1 5 1zm0 0c1.5-3 5-3 5-1s-5 1-5 1z",
-  pin: "M12 21s7-6.2 7-11.5A7 7 0 005 9.5C5 14.8 12 21 12 21zm0-9a2.5 2.5 0 100-5 2.5 2.5 0 000 5z",
+/** Gleiche Reihenfolge der Branchen in jedem Land; Webagenturen zuerst (Fokus 02.10.2026). */
+const ORDER = ["web-agencies", "recruitment", "accountants", "insurance-brokers", "financial-advisers", "it-services"];
+const IND_ICON: Record<string, string> = {
+  "web-agencies": "globe", recruitment: "user", accountants: "table", "insurance-brokers": "lock", "financial-advisers": "target", "it-services": "bolt",
 };
-
-function Icon({ d }: { d: string }) {
-  return <svg viewBox="0 0 24 24" aria-hidden="true" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>;
-}
-
-/** Firmenname in Texten (MASK) verwischt darstellen. */
-const masked = (v: string) => v.split(MASK).flatMap((part, j) => j ? [<span className="mask" key={j}>xxxxxxxxxx</span>, part] : [part]);
-
-/** Gleiche Reihenfolge der Branchen in jedem Land. */
-const ORDER = ["accountants", "financial-advisers", "insurance-brokers", "recruitment", "web-agencies", "it-services"];
 
 const i = (n: number) => ({ "--i": n }) as CSSProperties;
 
-/** Abschnittskopf: Linie, Überschrift Wort für Wort (ohne Punkt), optional Einleitung. */
-function Head({ title, gold, intro }: { title: string; gold?: string[]; intro?: string }) {
+/** Radar: Signale aus drei Ländern leuchten auf, wenn der Strahl sie erreicht (Strahl 6 s je Umdrehung). */
+function Radar({ labels }: { labels: [string, string][] }) {
+  const C = 200;
+  const pt = (deg: number, r: number) => [C + r * Math.cos((deg * Math.PI) / 180), C + r * Math.sin((deg * Math.PI) / 180)];
+  const blips: [number, number][] = [[30, 130], [150, 120], [260, 150], [75, 70], [200, 165], [320, 95], [115, 175], [345, 160], [230, 60]];
+  const flag: Record<string, string> = { US: "🇺🇸", UK: "🇬🇧", FR: "🇫🇷" };
   return (
-    <div data-rv>
-      <div className="rule" />
-      <h2 className="rvw" data-rv><Words text={title} gold={gold} /></h2>
-      {intro && <p className="intro">{intro}</p>}
+    <div className="radar" aria-hidden="true">
+      <svg viewBox="0 0 400 400">
+        <defs>
+          <radialGradient id="hmsw" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(200 200) scale(195)">
+            <stop offset="0" stopColor="#C9A465" stopOpacity=".05" /><stop offset="1" stopColor="#EBD7AE" stopOpacity=".35" />
+          </radialGradient>
+        </defs>
+        {[60, 110, 160, 195].map((r) => <circle key={r} className="ring" cx={C} cy={C} r={r} />)}
+        <path className="axis" d="M5 200H395M200 5V395" />
+        <g className="sweep">
+          {/* Keil hinter dem Strahl (gegen den Uhrzeigersinn), Strahl zeigt bei 0° nach rechts */}
+          <path d={`M200 200L395 200A195 195 0 0 0 ${pt(-50, 195).join(" ")}Z`} fill="url(#hmsw)" />
+          <path d="M200 200H395" stroke="#EBD7AE" strokeWidth="1.5" strokeOpacity=".8" />
+        </g>
+        {blips.map(([deg, r], k) => {
+          const [x, y] = pt(deg, r);
+          return <circle key={k} className="blip" cx={x} cy={y} r={k < 3 ? 7 : 4.5} fill={k < 3 ? "#EBD7AE" : "#C9A465"}
+            style={{ "--d": `${(deg / 60).toFixed(2)}s` } as CSSProperties} />;
+        })}
+        <circle className="core" cx={C} cy={C} r="12" />
+      </svg>
+      {labels.map(([cc, txt], k) => {
+        const [x, y] = pt(blips[k][0], blips[k][1]);
+        const left = `calc(${(x / 4).toFixed(1)}% + 12px)`;
+        const pos: Record<string, string> = { top: `calc(${(y / 4).toFixed(1)}% - 14px)`, "--d": `${k * 0.8}s` };
+        if (k === 1) pos.right = `calc(${(100 - x / 4).toFixed(1)}% + 12px)`; else pos.left = left;
+        return (
+          <span className="lbl" key={cc} style={pos as CSSProperties}>
+            <span>{flag[cc]}</span><b>{cc}</b><em>{txt}</em>
+          </span>);
+      })}
     </div>
   );
 }
@@ -64,172 +86,167 @@ function Head({ title, gold, intro }: { title: string; gold?: string[]; intro?: 
 export async function Home({ lang }: { lang: HomeLang }) {
   const t = HOME[lang];
   const loc = { en: "en-GB", fr: "fr-FR", de: "de-DE" }[lang];
-  const mio = { en: "M+", fr: "\u00a0M+", de: "\u00a0Mio.+" }[lang];
-  const [pages, stats, feed] = await Promise.all([
-    publicPages().catch(() => []),
+  const mio = { en: "M+", fr: " M+", de: " Mio.+" }[lang];
+  const [pages, stats] = await Promise.all([
+    publicPages().catch(() => [] as PublicPage[]),
     homeStats().catch(() => ({ companies: 0, signals: 0 })),
-    homeFeed(lang).catch(() => []),
   ]);
   const V = VIDEOS as Record<string, { src: string; poster: string; seconds: number }>;
-  const video = V[`${lang}:home`] ?? V["uk/accountants"];
-  const example = feed.find((f) => f.opener) ?? feed[0];
-  const ind = (p: PublicPage): [string, string] => {
-    const seg = segKey(p.slug);
-    return t.industries[seg] ?? [p.name, p.blurb];
-  };
+  const video = V[`${lang}:home`] ?? V["en:home"];
+  const indName = (p: PublicPage) => t.industries[segKey(p.slug)] ?? p.name;
   // Länder mit öffentlichen Seiten; Startland je Sprache
-  const countries = (["UK", "US", "FR"] as CountryCode[]).filter((c) => pages.some((p) => p.country === c));
-  const pref: CountryCode = lang === "fr" ? "FR" : "UK";
+  const countries = (["US", "UK", "FR"] as CountryCode[]).filter((c) => pages.some((p) => p.country === c));
+  const pref: CountryCode = lang === "fr" ? "FR" : lang === "de" ? "UK" : "US";
   const defCountry = countries.includes(pref) ? pref : countries[0];
-  // Probe-Formular statt Mail-Knopf (Inhaber 28.09.2026): Branche und Land wählen, dann wie auf der Landingpage
-  const formLang: "en" | "fr" | "de" = lang;
   const formOptions: FormOption[] = [...pages]
-    .sort((a, b) => Number(b.country === defCountry) - Number(a.country === defCountry) || a.country.localeCompare(b.country))
+    .sort((a, b) => Number(b.country === defCountry) - Number(a.country === defCountry) || a.country.localeCompare(b.country)
+      || ORDER.indexOf(segKey(a.slug)) - ORDER.indexOf(segKey(b.slug)))
     .map((p) => ({
       value: p.slug,
-      label: `${ind(p)[0]} · ${COUNTRIES[p.country as CountryCode]?.name[lang] ?? p.country}`,
-      wishes: wishesFor(segKey(p.slug)).map((w) => ({ key: w.key, label: w[formLang] })),
+      label: `${indName(p)} · ${COUNTRIES[p.country as CountryCode]?.name[lang] ?? p.country}`,
+      wishes: wishesFor(segKey(p.slug)).map((w) => ({ key: w.key, label: w[lang] })),
     }));
+  const contactHref = CONTACT_PATH[lang];
   const ld = {
     "@context": "https://schema.org", "@type": "Organization", name: BRAND, legalName: LEGAL_NAME, url: siteUrl(), email: CONTACT,
     description: t.desc, address: { "@type": "PostalAddress", streetAddress: "Nikolaistraße 3-7", postalCode: "04109", addressLocality: "Leipzig", addressCountry: "DE" },
   };
+  const kpis: [number, string, string][] = [[18, mio, t.kpi[0]], [YEARLY, "+", t.kpi[1]], [stats.signals, "", t.kpi[2]], [10, "", t.kpi[3]]];
 
   return (
-    <BrandShell lang={lang}>
+    <BrandShell lang={lang} extraCss={LANDING_CSS + HOME_CSS}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
-      <SiteHeader links={t.nav} cta={["#sample", t.cta]} langs={HOME_LANGS.map((l) => [l.toUpperCase(), HOME_PATH[l], l === lang])} />
+      <SiteHeader links={[...t.nav, [contactHref, t.contact]]} cta={["#sample", t.cta]}
+        langs={HOME_LANGS.map((l) => [l.toUpperCase(), HOME_PATH[l], l === lang])} />
+      <div className="lp2 hm">
 
-      <div className="hero" id="top">
-        <HeroNet />
-        <div className="wrap">
-          <div>
-            <div className="eyebrow later" style={{ "--d": ".05s" } as CSSProperties}>{t.eyebrow}</div>
-            <h1 className={t.h1.length > 44 ? "long" : undefined}><Words text={t.h1} gold={t.h1gold} /></h1>
-            <p className="lede later" style={{ "--d": ".75s" } as CSSProperties}>{t.lede}</p>
-            <div className="cta-row later" style={{ "--d": ".95s", alignItems: "flex-start" } as CSSProperties}>
-              <div className="cta-stack">
-                <a className="btn gold" href="#sample">{t.btn} <span className="ar">→</span></a>
-                <div className="fine">{t.fine.map((f) => <span key={f}>{f}</span>)}</div>
+        <section className="h2o" id="top">
+          <HeroNet />
+          <div className="wrap">
+            <span className="pill"><Icon name="star" />{t.pill}</span>
+            <h1><Words text={t.h1} gold={t.h1gold} /></h1>
+            <p className="sub">{t.sub}</p>
+            <div className="ctaline">
+              <div className="ctabox">
+                <a className="btn gold big" href="#sample" data-cta>{t.btn} <span className="ar">→</span></a>
+                <span className="free2">{t.fine.map((f) => <span key={f}>{f}</span>)}</span>
               </div>
-              {video && <a className="btn ghost" href="#film">{t.film}</a>}
             </div>
           </div>
-          <div className="feed-wrap">
-            <SignalFeed items={feed} label={t.feedLabel} />
-            {feed.length > 0 && <p className="feed-note">{t.feedNote}</p>}
+        </section>
+
+        {/* Video ist das wichtigste Element: groß, gleich unter dem Hero, ragt in den hellen Teil */}
+        {video && (
+          <div className="vbase" id="film">
+            <div className="stage" data-rv>
+              <span className="vtag"><i />{t.vtag(video.seconds)}</span>
+              {/* Eigenes Video, keine Drittanbieter, lädt erst beim Abspielen */}
+              <div className="frame"><video controls playsInline preload="none" poster={video.poster} src={video.src} /></div>
+            </div>
           </div>
-        </div>
-      </div>
+        )}
 
-      <div className="band"><div className="wrap row">
-        <div className="lbl">{t.readFrom}</div>
-        <div className="marquee" aria-label={t.sources.join(", ")}>
-          <div className="track" aria-hidden="true">{[...t.sources, ...t.sources].map((s, k) => <span key={k}>{s}</span>)}</div>
-        </div>
-      </div></div>
+        <section className="sec">
+          <div className="wrap">
+            <div className="kpis lite">
+              {kpis.map(([n, suf, label], k) => (
+                <div className="kpi" key={label} data-rv style={i(k)}>
+                  <b data-count={n} data-suffix={suf} data-loc={loc}>{n.toLocaleString(loc)}{suf}</b><span>{label}</span>
+                </div>))}
+            </div>
+            <p className="kpinote" style={{ color: "var(--faint)" }}>{t.kpiNote}</p>
+          </div>
+        </section>
 
-      <section><div className="wrap">
-        <Head title={t.covH} gold={t.covGold} />
-        <div className="stats" data-rv>
-          <div className="stat" style={i(0)}><b data-count={18} data-suffix={mio} data-loc={loc}>18{mio}</b><span>{t.stat[0]}</span></div>
-          <div className="stat" style={i(1)}><b data-count={YEARLY} data-suffix="+" data-loc={loc}>{YEARLY.toLocaleString(loc)}+</b><span>{t.stat[1]}</span></div>
-          <div className="stat" style={i(2)}><b data-count={stats.signals} data-loc={loc}>{stats.signals.toLocaleString(loc)}</b><span>{t.stat[2]}</span></div>
-          <div className="stat" style={i(3)}><b data-count={10}>10</b><span>{t.stat[3]}</span></div>
-        </div>
-        <p className="stats-note">{t.statsNote}</p>
-      </div></section>
-
-      {video && (
-        <section className="dark" id="film"><div className="wrap">
-          <Head title={t.filmH(video.seconds)} gold={t.filmGold(video.seconds)} intro={t.filmIntro} />
-          {/* Eigenes Video, keine Drittanbieter, lädt erst beim Abspielen */}
-          <div className="frame" data-rv><video controls playsInline preload="none" poster={video.poster} src={video.src} /></div>
+        <section className="sec dark"><div className="wrap">
+          <div className="pc2">
+            <div>
+              <h2>{t.revenue[0]}<i>{t.revenue[1]}</i></h2>
+              <div className="rs" style={{ gridTemplateColumns: "1fr", margin: "22px 0 0", gap: 12 }}>
+                {t.reasons.map(([ic, h, d], k) => (
+                  <div className="rcard" key={h} data-rv style={{ ...i(k), display: "flex", gap: 14, alignItems: "flex-start", padding: 18 }}>
+                    <span className="gi" style={{ margin: 0, flex: "none" }}><Icon name={ic} /></span><span><h3>{h}</h3><p>{d}</p></span>
+                  </div>))}
+              </div>
+            </div>
+            <Radar labels={t.radar} />
+          </div>
+          <div className="kick" style={{ marginTop: 54 }}><span className="cap" style={{ color: "var(--gink)" }}>{t.howTitle}</span></div>
+          <div className="steps">{t.steps.map(([ic, h], k) => (
+            <div className="step" key={h} data-rv style={i(k)}><div className="no"><b>{String(k + 1).padStart(2, "0")}</b><span className="ring"><Icon name={ic} /></span></div><h3>{h}</h3></div>))}</div>
         </div></section>
-      )}
 
-      <section id="method"><div className="wrap">
-        <Head title={t.methH} gold={t.methGold} intro={t.methIntro} />
-        <div className="steps" data-rv>
-          {t.steps
-            .map(([h, d], k) => <div className="step" key={h} style={i(k)}><div className="n">{k + 1}</div><h3>{h}</h3><p>{d}</p></div>)}
-        </div>
-      </div></section>
-
-      {example && (
-        <section style={{ paddingTop: 0 }}><div className="wrap anat">
-          <div className="lead-card" data-rv>
-            <span className="tagx">{t.exTag}</span>
-            <dl>
-              {([[t.exRows[0], example.company, "big"], [t.exRows[1], example.place], [t.exRows[2], example.event], [t.exRows[3], example.date],
-                [t.exRows[4], example.source], [t.exRows[5], example.urgency ? ({ en: { high: "High", medium: "Medium", low: "Low" }, fr: { high: "Haute", medium: "Moyenne", low: "Basse" }, de: { high: "Hoch", medium: "Mittel", low: "Niedrig" } }[lang] as Record<string, string>)[example.urgency] ?? example.urgency : "", "prio"],
-                [t.exRows[6], example.opener ? `“${example.opener}”` : "", "quote"]] as [string, string, string?][])
-                .filter(([, v]) => v).flatMap(([k, v, cls], n) => [
-                  <dt key={k + "t"} style={i(n)}>{k}</dt>, <dd key={k + "d"} className={cls} style={i(n)}>{cls === "prio" ? <span>{v}</span>
-                    : n === 0 ? <span className="mask">{v}</span> : masked(v)}</dd>])}
-            </dl>
+        <section className="sec" id="industries"><div className="wrap">
+          <h2 style={{ marginBottom: 20 }}>{t.indH}</h2>
+          {/* Länder-Umschalter ohne JavaScript: Radio + CSS */}
+          {countries.map((c) => <input key={c} type="radio" name="cc" id={`cc-${c}`} className="cc-in" defaultChecked={c === defCountry} />)}
+          {countries.length > 1 && (
+            <div className="cswitch2" role="group" aria-label={t.countryPick}>
+              {countries.map((c) => <label key={c} htmlFor={`cc-${c}`}><span aria-hidden="true">{COUNTRIES[c].flag}</span>{COUNTRIES[c].name[lang]}</label>)}
+            </div>)}
+          <div className="icards">
+            {[...pages].sort((a, b) => ORDER.indexOf(segKey(a.slug)) - ORDER.indexOf(segKey(b.slug))).map((p, k) => (
+              <a className="icard" href={`/${p.slug}`} key={p.slug} data-cc={p.country} data-rv style={i(k % 6)}>
+                <span className="gi"><Icon name={IND_ICON[segKey(p.slug)] ?? "target"} /></span>
+                <h3>{indName(p)}</h3>
+                <span className="go">{t.indGo} <i>→</i></span>
+              </a>))}
+            {pages.length === 0 && <div className="icard"><h3>{t.soon}</h3></div>}
           </div>
+        </div></section>
+
+        <section className="sec dark" id="contact-person"><div className="wrap pc2">
           <div>
-            <Head title={t.anatH} gold={t.anatGold} />
-            <ul className="points" data-rv>
-              {t.points.map(([h, d]) => <li key={h}><b>{h}</b><span>{d}</span></li>)}
+            <div className="kick"><span className="cap" style={{ color: "var(--gink)" }}>{t.pcKick}</span></div>
+            <h2>{t.pcH[0]}<i>{t.pcH[1]}</i></h2>
+            <p className="lede2">{t.pcLede}</p>
+            <ul className="plist">
+              {t.pcList.map(([ic, h, d], k) => (
+                <li key={h} data-rv style={i(k)}><span className="gi"><Icon name={ic} /></span><span><b>{h}</b><span>{d}</span></span></li>))}
             </ul>
+            <a className="btn gold" href={contactHref}>{t.pcBtn} <span className="ar">→</span></a>
+          </div>
+          <div className="fitcard" data-rv>
+            <div className="who"><span className="av"><Icon name="user" /></span><span><b>{t.pcWho[0]}</b><span>{t.pcWho[1]}</span></span></div>
+            <div className="fitrows">
+              <span className="cap" style={{ color: "#97a2bd" }}>{t.pcFit}</span>
+              {t.pcRows.map((r, k) => (
+                <div className="fitrow" key={r}><span>{r}</span>
+                  <span className="fitbar"><i style={{ "--w": ["48%", "74%", "96%"][k], ...i(k) } as CSSProperties} /></span></div>))}
+            </div>
+            <div className="chat">
+              <span className="bubble me" style={i(0)}>{t.pcChat[0]}</span>
+              <span className="bubble them" style={i(1)}>{t.pcChat[1]}</span>
+            </div>
+            <p className="fnote">{t.pcNote}</p>
           </div>
         </div></section>
-      )}
 
-      <section id="industries" style={{ paddingTop: example ? 32 : undefined }}><div className="wrap">
-        <Head title={t.indH} gold={t.indGold} intro={t.indIntro} />
-        {/* Länder-Umschalter ohne JavaScript: Radio + CSS; Standard je Sprache */}
-        {countries.map((c) => <input key={c} type="radio" name="cc" id={`cc-${c}`} className="cc-in" defaultChecked={c === defCountry} />)}
-        {countries.length > 1 && (
-          <div className="cswitch" data-rv role="group" aria-label={t.countryPick}>
-            {countries.map((c) => <label key={c} htmlFor={`cc-${c}`}><span aria-hidden="true">{COUNTRIES[c].flag}</span><b>{COUNTRIES[c].name[lang]}</b><em>{c === "UK" ? "UK" : c === "US" ? (lang === "fr" ? "É.-U." : "US") : COUNTRIES[c].name[lang]}</em></label>)}
-          </div>)}
-        <div className="cards">
-          {[...pages].sort((a, b) => ORDER.indexOf(segKey(a.slug)) - ORDER.indexOf(segKey(b.slug))).map((p, k) => (
-            <a className="card glow" href={`/${p.slug}`} key={p.slug} data-cc={p.country} data-rv style={i(k % 5)}>
-              <h3>{ind(p)[0]}</h3>{ind(p)[1] && <p>{ind(p)[1]}</p>}
-              <span className="go">{t.indGo} <i>→</i></span>
-            </a>))}
-          {pages.length === 0 && <div className="card"><h3>{t.soon[0]}</h3><p>{t.soon[1]}</p></div>}
-        </div>
-      </div></section>
-
-      <section className="tinted" id="trust"><div className="wrap">
-        <Head title={t.trustH} gold={t.trustGold} intro={t.trustIntro} />
-        <div className="facts">
-          {t.facts
-            .map(([ic, h, d], k) => (
-              <div className="fact glow" key={h} data-rv style={i(k)}>
-                <div className="seal"><Icon d={ICONS[ic]} /></div><h3>{h}</h3><p>{d.replace("{LEGAL}", LEGAL_NAME)}</p>
-              </div>))}
-        </div>
-      </div></section>
-
-      <section className="offer" id="sample"><div className="wrap">
-        <div>
-          <Head title={t.offerH} gold={t.offerGold} intro={t.offerIntro} />
-          <div data-rv>
+        <section className="sec cream" id="sample"><div className="wrap formwrap">
+          <div className="formcard" id="probe">
+            <h2>{t.sampleTitle[0]} <span className="gold-h">{t.sampleTitle[1]}</span></h2>
+            <p className="lede2" style={{ color: "#aab4ca" }}>{t.sampleSub}</p>
             {formOptions.length > 0 && (
-              <SampleForm lang={formLang} field="slug" options={formOptions} consent={consentText(lang)}
-                privacyHref={{ en: "/privacy", fr: "/confidentialite", de: "/datenschutz" }[lang]} id="probe" />
+              <SampleForm lang={lang} field="slug" options={formOptions} consent={consentText(lang)}
+                privacyHref={{ en: "/privacy", fr: "/confidentialite", de: "/datenschutz" }[lang]} />
             )}
           </div>
-        </div>
-        <div data-rv>
-          <ol className="olist">
-            {t.offerSteps.map((o) => <li key={o}>{o}</li>)}
-          </ol>
-          <p className="feed-note" style={{ marginTop: 22 }}>{t.offerNote}</p>
-        </div>
-      </div></section>
+          <div className="side2">
+            <ul className="ticks2">
+              {t.ticks.map(([h, d]) => <li key={h}><Icon name="check" /><span><b>{h}.</b> {d}</span></li>)}
+            </ul>
+            <a className="getcard" href={contactHref} style={{ textDecoration: "none", flex: "none" }}>
+              <span className="cap gold">{t.talk[0]}</span>
+              <span className="gf"><span className="ci"><Icon name="user" /></span><span><b>{t.talk[1]} →</b><em>{CONTACT}</em></span></span>
+            </a>
+          </div>
+        </div></section>
 
-      <section><div className="wrap faq">
-        <Head title={t.faqH} />
-        {t.faq.map((f, k) => <details key={f.q} data-rv style={i(k)}><summary>{f.q}</summary><p>{f.a}</p></details>)}
-      </div></section>
-
+        <section className="sec"><div className="wrap faq2" style={{ maxWidth: 820 }}>
+          <h2>{t.faqH}</h2>
+          {t.faq.map((f) => <details key={f.q}><summary>{f.q}</summary><p>{f.a}</p></details>)}
+        </div></section>
+      </div>
       <SiteFooter lang={lang} />
     </BrandShell>
   );
