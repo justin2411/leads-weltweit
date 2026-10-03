@@ -714,6 +714,18 @@ class WebAgencyFocusTests(unittest.TestCase):
                     "internet_marketing_service"):
             self.assertEqual(K.CATEGORIES[cat], "S2", cat)
 
+    def test_kundenwerk_marketing_agencies_s2_outside_s12_countries(self):
+        import kundenwerk as K
+        segs = {"S2": {"US", "UK", "FR", "NL"}, "S12": {"US", "UK"}, "S1": {"US"}}
+        self.assertEqual(K.segment_for("advertising_agency", "UK", segs), ("S12", "UK"))  # eigener Test bleibt
+        self.assertEqual(K.segment_for("marketing_agency", "FR", segs), ("S2", "FR"))
+        self.assertEqual(K.segment_for("advertising_agency", "NL", segs), ("S2", "NL"))
+        self.assertEqual(K.segment_for("advertising_agency", "SE", segs), (None, None))  # S2 dort nicht erlaubt
+        self.assertEqual(K.segment_for("employment_agency", "FR", segs), (None, None))  # keine zweite Zielgruppe
+        self.assertEqual(K.segment_for("web_designer", None, segs), (None, None))
+        # Fokuslauf --segments S2,S1 (ohne S12): Werbeagenturen in UK/US werden nicht zu S2
+        self.assertEqual(K.segment_for("advertising_agency", "US", {"S2": {"US"}}), (None, None))
+
     def test_lead_werk_is_all_web_agencies(self):
         import yaml
         jobs = yaml.safe_load((ROOT / ".github" / "workflows" / "lead-werk.yml").read_text())["jobs"]
