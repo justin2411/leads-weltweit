@@ -1,14 +1,20 @@
-import { SEGMENT, loadStock } from "@/lib/dashboard-data";
-import { berlin, compact, stockSegment } from "@/lib/dashboard-logic";
+import { COUNTRIES, CONFIG, SEGMENT, canDispatch, loadOwnerSettings, loadStock } from "@/lib/dashboard-data";
+import { WORKFLOWS } from "@/lib/owner-settings";
+import { dispatchWorkflow, toggleBuyerCountry } from "../control-actions";
+import { COUNTRY_COLOR, berlin, compact, nextRun, stockSegment } from "@/lib/dashboard-logic";
 import { requireOwner } from "../actions";
-import { Bars, COUNTRY_OPTS, Chips, Crumbs, Kpi } from "../v2";
-import { readParams, type SP } from "../params";
+import { Back, Bars, COUNTRY_OPTS, Chips, Crumbs, Ctrl, Kpi } from "../v2";
+import { readParams, withQuery, type SP } from "../params";
 
 /** Bestand der Webagenturen je Land: Leads (lieferbar, reserviert, in Proben, geliefert) und mail-fähige Käufer. */
 export default async function Bestand({ searchParams }: { searchParams: SP }) {
   await requireOwner();
   const { land, countries, raw } = await readParams(searchParams);
-  const stock = stockSegment(await loadStock(), SEGMENT)!;
+  const [stockAll, own] = await Promise.all([loadStock(), loadOwnerSettings()]);
+  const stock = stockSegment(stockAll, SEGMENT)!;
+  const here = withQuery("/dashboard/bestand", raw);
+  const now = new Date();
+  const nx = (file: string) => { const w = CONFIG.workflows.find((x) => x.file === file); const d = w ? nextRun(w.crons, now) : null; return d ? berlin(d) : "–"; };
   const L = (c: string, s: string) => stock.leads.filter((l) => l.country === c && l.status === s).reduce((a, l) => a + Number(l.n), 0);
   const L24 = (c: string) => stock.leads_24h.filter((l) => l.country === c).reduce((a, l) => a + Number(l.n), 0);
   const P = (c: string, s: string, f: "n" | "unused" = "n") => Number(stock.prospects.find((p) => p.country === c && p.check_status === s)?.[f] ?? 0);
@@ -43,6 +49,43 @@ export default async function Bestand({ searchParams }: { searchParams: SP }) {
         <section className="card tile"><header className="th"><span>Käufer frei je Land</span></header>
           <Bars rows={countries.map((c) => ({ key: c, n: P(c, "ok", "unused"), tip: `${c}: ${P(c, "ok", "unused").toLocaleString("de-DE")} frei von ${P(c, "ok").toLocaleString("de-DE")} mail-fähig` }))} />
         </section>
+      </div>
+
+      <h2 className="h2s">Steuerung</h2>
+      <div className="ctrls">
+        <Ctrl title="Kunden-Werk je Land" tip="Sucht und prüft neue Käufer (Webagenturen). Ausgeschaltete Länder werden übersprungen.">
+          <div className="tog">
+            {COUNTRIES.map((c) => {
+              const off = own.buyer_countries_off.includes(c);
+              return (
+                <form key={c} action={toggleBuyerCountry}><Back to={here} /><input type="hidden" name="country" value={c} />
+                  <button className={off ? "off" : ""} title={off ? `${c} aus – Klick: einschalten` : `${c} an – Klick: ausschalten`}><i style={{ background: COUNTRY_COLOR[c] }} />{c}</button>
+                </form>
+              );
+            })}
+          </div>
+          <span className="hint">nächster Lauf {nx("kunden-werk.yml")}</span>
+        </Ctrl>
+        <Ctrl title="Jetzt starten" tip={canDispatch() ? "Startet das Werk sofort (zusätzlich zum Zeitplan)." : "Braucht GH_DISPATCH_TOKEN in Vercel – bis dahin nach Zeitplan."}>
+          <div className="acts2">
+            {(["lead-werk", "kunden-werk"] as const).map((k) => (
+              <form key={k} action={dispatchWorkflow}><Back to={here} /><input type="hidden" name="wf" value={k} />
+                <button disabled={!canDispatch()} title={`nächster Lauf ${nx(WORKFLOWS[k].file)}`}>{WORKFLOWS[k].label}</button>
+              </form>
+            ))}
+          </div>
+          <span className="hint">Lead-Werk {nx("lead-werk.yml")} · Kunden-Werk {nx("kunden-werk.yml")}</span>
+        </Ctrl>
+        <Ctrl title="Kapazität" tip="Wie lange der Bestand reicht – bei heutiger Versandmenge." locked="nur Anzeige">
+          <div className="facts">
+            {countries.map((c) => {
+              const lim = CONFIG.countries[c]?.daily_limit ?? 0;
+              const perDay = own.send_countries_off.includes(c) ? 0 : Math.min(lim, own.send_country_limits[c] ?? lim);
+              return <span key={c}>{c}: Käufer frei für <b>{perDay ? `~${compact(Math.floor(P(c, "ok", "unused") / perDay))} Tage` : "–"}</b> bei {perDay}/Tag</span>;
+            })}
+            <span>Lead-Werk-Gewichtung je Land: <b>fest im Workflow</b></span>
+          </div>
+        </Ctrl>
       </div>
     </div>
   );

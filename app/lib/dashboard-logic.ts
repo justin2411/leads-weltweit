@@ -24,6 +24,8 @@ export type OpsConfig = {
   kunden_suche: boolean;
   countries: Record<string, { allowed: boolean; daily_limit: number }>;
   workflows: { file: string; name: string; crons: string[] }[];
+  /** Proben-Soll aus dem Dashboard (owner_settings.sample_targets), überschreibt proben.yaml */
+  sample_overrides?: Record<string, number>;
 };
 
 export type Ev = {
@@ -428,7 +430,7 @@ export function sampleStock(live: Live, cfg: OpsConfig, now: Date): StockRow[] {
       const focus = cfg.fokus.includes(key);
       const s = live.stock.find((x) => x.segment_id === p.segment_id && x.country === p.country);
       return {
-        key, slug: p.slug, focus, target: focus ? cfg.proben.fokus_je_seite : cfg.proben.andere_je_seite,
+        key, slug: p.slug, focus, target: cfg.sample_overrides?.[key] ?? (focus ? cfg.proben.fokus_je_seite : cfg.proben.andere_je_seite),
         ready: Number(s?.ready ?? 0), oldestH: s?.oldest ? hoursSince(s.oldest, now) : null, sent24: Number(s?.sent24 ?? 0),
       };
     })

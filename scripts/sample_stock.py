@@ -60,12 +60,16 @@ def settings(path: Path = ROOT / "config" / "proben.yaml") -> dict:
     return out
 
 
-def targets(pages: list[dict], cfg: dict, focus: list[tuple[str, str]]) -> dict[tuple[str, str], int]:
-    """Soll-Bestand je (Segment, Land) der Live-Seiten; Fokus-Tests zuerst."""
+def targets(pages: list[dict], cfg: dict, focus: list[tuple[str, str]],
+            overrides: dict | None = None) -> dict[tuple[str, str], int]:
+    """Soll-Bestand je (Segment, Land) der Live-Seiten; Fokus-Tests zuerst. `overrides` = Soll aus dem Dashboard
+    ({"S2/US": 20}, Inhaber 03.10.2026), sonst config/proben.yaml."""
+    from lib.owner_settings import sample_target
     out: dict[tuple[str, str], int] = {}
     for p in sorted(pages, key=lambda p: ((p["segment_id"], p["country"]) not in focus, p["segment_id"], p["country"])):
         key = (p["segment_id"], p["country"])
-        out[key] = cfg["fokus_je_seite"] if key in focus else cfg["andere_je_seite"]
+        default = cfg["fokus_je_seite"] if key in focus else cfg["andere_je_seite"]
+        out[key] = sample_target(default, overrides or {}, *key)
     return out
 
 
@@ -234,7 +238,10 @@ def live_pages(db) -> list[dict]:
 
 def run(db, apply: bool, log=print) -> dict:
     from lib.fokus import focus_pairs
+    from lib.owner_settings import load as load_owner_settings, max_age_hours
+    owner = load_owner_settings(db)
     cfg = settings()
+    cfg["max_alter_stunden"] = max_age_hours(cfg["max_alter_stunden"], owner["sample_max_age_hours"])
     t0 = time.monotonic()
     if apply:
         n = db.rpc("expire_sample_stock", {"p_hours": cfg["max_alter_stunden"]})
@@ -246,7 +253,7 @@ def run(db, apply: bool, log=print) -> dict:
     for p in pages:  # Wunsch-Schlüssel stehen unter dem englischen Seitennamen (FR-Seiten: gleiche Branche)
         if p["country"] != "FR" or p["segment_id"] not in slug_of:
             slug_of[p["segment_id"]] = p["slug"]
-    want = targets(pages, cfg, focus_pairs())
+    want = targets(pages, cfg, focus_pairs(), owner["sample_targets"])
     ready = stock_rows(db, "ready,claimed")
     have = {k: sum(r["segment_id"] == k[0] and r["country"] == k[1] and r["status"] == "ready" for r in ready)
             for k in want}

@@ -34,7 +34,10 @@ test("Summen, Umsatz je Währung, Veränderung, Eimer", () => {
   assert.deepEqual(revenueByCurrency(rows, "2026-10-01", "2026-10-03", ["US", "UK"]), { $: 129, "£": 129 });
   assert.deepEqual(delta(70, 10), { text: "▲ 600 %", dir: "up" });
   assert.deepEqual(delta(5, 10), { text: "▼ 50 %", dir: "down" });
-  assert.equal(delta(3, 0).text, "neu");
+  assert.equal(delta(3, 0).text, "+3");
+  assert.deepEqual(delta(0, 1), { text: "−1", dir: "down" });
+  assert.equal(delta(2, 2).text, "±0");
+  assert.equal(delta(7, 0).text, "neu");
   assert.equal(delta(0, 0).text, "–");
   assert.deepEqual(buckets("2026-09-30", "2026-10-03", "week").map((b) => [b.from, b.to]), [["2026-09-30", "2026-10-03"]]);
   assert.deepEqual(buckets("2026-01-01", "2026-03-10", "month").map((b) => b.label), ["Jan", "Feb", "Mär"]);
@@ -74,4 +77,13 @@ test("Wer ist wo: jede Firma in ihrer weitesten Stufe, Land-Filter, Website-Prob
   assert.deepEqual(by.customer.cards.map((c) => c.company), ["Echt"]);
   assert.equal(by.out.count, 1);
   assert.equal(by.contacted.cards[0].href, "/dashboard/kontakte/a");
+});
+
+import { multiSeries } from "./dashboard-periods.ts";
+test("Kombiniertes Diagramm: mehrere Kennzahlen je Tag", () => {
+  const z = { followups: 0, bounced: 0, positive: 0, samples_requested: 0, samples_sent: 0, customers: 0, revenue_cents: 0 };
+  const rows = [{ ...z, day: "2026-10-03", country: "US", sent: 40, replies: 2, positive: 1 }, { ...z, day: "2026-10-03", country: "UK", sent: 10, replies: 0 }];
+  const r = multiSeries(rows as any, "2026-10-03", "2026-10-03", "day", ["sent", "replies", "positive"], ["US", "UK"]);
+  assert.deepEqual(r[0].parts, { sent: 50, replies: 2, positive: 1 });
+  assert.equal(r[0].from, "2026-10-03");
 });

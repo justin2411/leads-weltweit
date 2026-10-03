@@ -34,7 +34,7 @@ export function AutoRefresh() {
       type="button"
       className="ib"
       aria-label={on ? "Auto-Aktualisierung an" : "Auto-Aktualisierung aus"}
-      title={on ? "Aktualisiert alle 60 s – klicken zum Ausschalten" : "Auto-Aktualisierung aus – klicken zum Einschalten"}
+      title={on ? "Automatisch aktualisieren (an, alle 60 s)" : "Automatisch aktualisieren (aus)"}
       style={on ? undefined : { opacity: 0.5 }}
       onClick={() => {
         const next = !on;
@@ -44,7 +44,10 @@ export function AutoRefresh() {
         } catch {}
       }}
     >
-      ⟳
+      <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20 12a8 8 0 1 1-2.34-5.66" />
+        <path d="M20 4v5h-5" />
+      </svg>
     </button>
   );
 }

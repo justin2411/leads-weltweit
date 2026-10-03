@@ -62,10 +62,10 @@ export function period(key: PeriodKey, today: string): Period {
 }
 
 export type DailyRow = {
-  day: string; country: string | null; sent: number; followups: number; bounced: number; replies: number; positive: number;
+  day: string; country: string | null; sent: number; followups: number; bounced: number; replies: number; declined?: number; positive: number;
   samples_requested: number; samples_sent: number; customers: number; revenue_cents: number;
 };
-export const METRICS = ["sent", "followups", "bounced", "replies", "positive", "samples_requested", "samples_sent", "customers", "revenue_cents"] as const;
+export const METRICS = ["sent", "followups", "bounced", "replies", "declined", "positive", "samples_requested", "samples_sent", "customers", "revenue_cents"] as const;
 export type Metric = (typeof METRICS)[number];
 export type Totals = Record<Metric, number>;
 
@@ -92,6 +92,11 @@ export function revenueByCurrency(rows: DailyRow[], from: string, to: string, co
 /** Veränderung zum Vorzeitraum: ▲ 12 %, ▼ 30 %, „neu“, „±0“ oder „–“ (beide 0). */
 export function delta(cur: number, prev: number): { text: string; dir: "up" | "down" | "flat" } {
   if (!cur && !prev) return { text: "–", dir: "flat" };
+  // kleine Zahlen: absolute Änderung statt Prozent (Inhaber 03.10.2026: „▼ 100 %“ bei 1 → 0 wirkt dramatisch)
+  if (Math.max(cur, prev) < 5) {
+    const d = cur - prev;
+    return d === 0 ? { text: "±0", dir: "flat" } : { text: d > 0 ? `+${d}` : `−${-d}`, dir: d > 0 ? "up" : "down" };
+  }
   if (!prev) return { text: "neu", dir: "up" };
   const p = Math.round((100 * (cur - prev)) / prev);
   if (p === 0) return { text: "±0 %", dir: "flat" };
@@ -126,6 +131,15 @@ export function series(rows: DailyRow[], from: string, to: string, bucket: Bucke
   return buckets(from, to, bucket).map((b) => {
     const parts: Record<string, number> = Object.fromEntries(countries.map((c) => [c, 0]));
     for (const r of rows) if (inRange(r, b.from, b.to, countries)) parts[r.country!] += Number(r[metric] ?? 0);
-    return { day: b.key, label: b.label, parts, total: Object.values(parts).reduce((a, x) => a + x, 0) };
+    return { day: b.key, from: b.from, to: b.to, label: b.label, parts, total: Object.values(parts).reduce((a, x) => a + x, 0) };
+  });
+}
+
+/** Mehrere Kennzahlen je Eimer (über alle gezeigten Länder) – für das kombinierte Diagramm der Übersicht. */
+export function multiSeries(rows: DailyRow[], from: string, to: string, bucket: Bucket, metrics: Metric[], countries: string[]) {
+  return buckets(from, to, bucket).map((b) => {
+    const t = totals(rows, b.from, b.to, countries);
+    const parts = Object.fromEntries(metrics.map((m) => [m, t[m]]));
+    return { day: b.key, from: b.from, to: b.to, label: b.label, parts, total: metrics.reduce((a, m) => a + t[m], 0) };
   });
 }

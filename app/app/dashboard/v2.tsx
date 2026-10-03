@@ -68,9 +68,10 @@ export function Kpi({ value, label, cur, prev, tip, goodDown, href }: {
       <span className="kv">{value}</span>
       <span className="kl">{label}</span>
       {d && <span className={`kd ${good === null ? "" : good ? "up" : "down"}`} title={`Vorzeitraum: ${prev}`}>{d.text}</span>}
+      {href && <span className="kgo" aria-hidden>›</span>}
     </>
   );
-  return href ? <Link href={href} className="kpi2" title={tip}>{body}</Link> : <div className="kpi2" title={tip}>{body}</div>;
+  return href ? <Link href={href} className="kpi2 link" title={tip ? `${tip} · Klick: Firmen ansehen` : "Klick: Firmen ansehen"}>{body}</Link> : <div className="kpi2" title={tip}>{body}</div>;
 }
 
 export function Tile({ title, href, children, wide, tip }: { title: string; href?: string; children: ReactNode; wide?: boolean; tip?: string }) {
@@ -86,53 +87,15 @@ export function Tile({ title, href, children, wide, tip }: { title: string; href
 }
 
 // ---------------------------------------------------------------------------------------------- Säulen
-export type Series = { key: string; label: string; color: string };
+export { Columns, Legend, type Series } from "./columns";
+import type { Series } from "./columns";
 export const countrySeries = (cs: string[]): Series[] => cs.map((c) => ({ key: c, label: c, color: COUNTRY_COLOR[c] ?? OTHER_COLOR }));
-
-function niceMax(v: number): number {
-  if (v <= 4) return 4;
-  if (v <= 10) return 10;
-  const p = 10 ** Math.floor(Math.log10(v));
-  return [1, 2, 2.5, 5, 10].map((m) => m * p).find((m) => m >= v) ?? v;
-}
-
-/**
- * Gestapelte Säulen in HTML (Text bleibt an jedem Bildschirm gleich groß): eine Achse, Haarlinien-Raster,
- * Säulen ≤ 24 px mit 4 px runden Enden und 2 px Lücken, Wert nur an der letzten Säule, Tooltip je Säule.
- */
-export function Columns({ rows, series, title, height = 180, compactLabels }: {
-  rows: { day: string; label: string; parts: Record<string, number>; total: number }[]; series: Series[]; title: string; height?: number; compactLabels?: boolean;
-}) {
-  const max = niceMax(Math.max(1, ...rows.map((r) => r.total)));
-  const every = Math.max(1, Math.ceil(rows.length / (compactLabels ? 6 : 8)));
-  return (
-    <div className="cols" role="img" aria-label={title} style={{ height }}>
-      <div className="cols-grid" aria-hidden>
-        {[max, max / 2, 0].map((t) => <div key={t} className={t === 0 ? "base" : ""}><span>{compact(t)}</span></div>)}
-      </div>
-      <div className="cols-plot">
-        {rows.map((r, i) => {
-          const segs = series.filter((x) => (r.parts[x.key] ?? 0) > 0);
-          const last = i === rows.length - 1;
-          return (
-            <div key={r.day} className="col" title={`${r.label}: ${r.total}` + (series.length > 1 ? " · " + series.map((x) => `${x.label} ${r.parts[x.key] ?? 0}`).join(" · ") : "")}>
-              <div className="stack" style={{ height: `${(100 * r.total) / max}%` }}>
-                {last && r.total > 0 && <span className="cv">{compact(r.total)}</span>}
-                {[...segs].reverse().map((x) => <i key={x.key} style={{ flexGrow: r.parts[x.key], background: x.color }} />)}
-              </div>
-              <span className="cl">{i % every === (rows.length - 1) % every ? r.label : ""}</span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-export function Legend({ series }: { series: Series[] }) {
-  if (series.length < 2) return null;
-  return <div className="legend">{series.map((s) => <span key={s.key}><i style={{ background: s.color }} />{s.label}</span>)}</div>;
-}
+/** Kennzahlen-Farben für das kombinierte Diagramm (validiert, Reihenfolge = Ablauf). */
+export const METRIC_SERIES: Series[] = [
+  { key: "sent", label: "Mails", color: "#3560a8" }, { key: "replies", label: "Antworten", color: "#c9973a" },
+  { key: "positive", label: "Positiv", color: "#2a9d8f" }, { key: "samples_sent", label: "Proben", color: "#6a51a3" },
+  { key: "customers", label: "Kunden", color: "#d0603f" },
+];
 
 /** Füllstand (Ist/Soll) mit Statusfarbe + Symbol. */
 export function Fill({ label, ready, target, tip }: { label: string; ready: number; target: number; tip?: string }) {
@@ -170,4 +133,19 @@ export function ago2(ts: string | null | undefined, now: Date): string {
   if (h < 1) return `${Math.max(1, Math.round(h * 60))} min`;
   if (h < 48) return `${Math.round(h)} h`;
   return `${Math.round(h / 24)} T`;
+}
+
+/** Steuer-Karte: Titel mit Tooltip, Inhalt (Formulare). */
+export function Ctrl({ title, tip, children, locked }: { title: string; tip: string; children: ReactNode; locked?: string }) {
+  return (
+    <section className="card ctrl">
+      <header className="th"><span title={tip}>{title}</span>{locked && <span className="lock" title={locked}>🔒 fest</span>}</header>
+      {children}
+    </section>
+  );
+}
+
+/** Verstecktes Feld „zurück zu“ (aktuelle Seite mit Filtern) für die Server-Aktionen. */
+export function Back({ to }: { to: string }) {
+  return <input type="hidden" name="back" value={to} />;
 }

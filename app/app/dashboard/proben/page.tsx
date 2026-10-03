@@ -1,16 +1,27 @@
-import { CONFIG, SEGMENT, loadLive } from "@/lib/dashboard-data";
-import { COUNTRY_COLOR, berlin, compact, distinctReplies, durationS, onlySegment, sampleStock } from "@/lib/dashboard-logic";
+import { COUNTRIES, CONFIG, SEGMENT, canDispatch, loadLive, loadOwnerSettings, loadStock } from "@/lib/dashboard-data";
+import { MAX_AGE_RANGE, MAX_SAMPLE_TARGET } from "@/lib/owner-settings";
+import { dispatchWorkflow, saveMaxAge, saveSampleTargets } from "../control-actions";
+import { COUNTRY_COLOR, berlin, compact, distinctReplies, durationS, nextRun, onlySegment, sampleStock, stockSegment } from "@/lib/dashboard-logic";
 import { requireOwner } from "../actions";
-import { COUNTRY_OPTS, Chips, Crumbs, Fill, Kpi, ago2 } from "../v2";
-import { readParams, type SP } from "../params";
+import { Back, COUNTRY_OPTS, Chips, Crumbs, Ctrl, Fill, Kpi, ago2 } from "../v2";
+import { readParams, withQuery, type SP } from "../params";
 
 /** Proben: Vorrat je Seite und alle Anfragen (Website + Mail-Antwort) mit Zeit bis zur Probe. */
 export default async function Proben({ searchParams }: { searchParams: SP }) {
   await requireOwner();
   const { land, countries, raw } = await readParams(searchParams);
-  const live = onlySegment(await loadLive(), SEGMENT);
+  const [liveAll, own, stockAll] = await Promise.all([loadLive(), loadOwnerSettings(), loadStock().catch(() => null)]);
+  const live = onlySegment(liveAll, SEGMENT);
+  const stock = stockSegment(stockAll, SEGMENT);
   const now = new Date(live.now);
-  const st = sampleStock(live, CONFIG, now).filter((r) => countries.some((c) => r.key.endsWith(`/${c}`)));
+  // Soll aus dem Dashboard (owner_settings), sonst config/proben.yaml
+  const cfg = { ...CONFIG, sample_overrides: own.sample_targets, proben: { ...CONFIG.proben, max_alter_stunden: own.sample_max_age_hours ?? CONFIG.proben.max_alter_stunden } };
+  const st = sampleStock(live, cfg, now).filter((r) => countries.some((c) => r.key.endsWith(`/${c}`)));
+  const here = withQuery("/dashboard/proben", raw);
+  const wf = CONFIG.workflows.find((w) => w.file === "proben-vorrat.yml");
+  const nextFill = wf ? nextRun(wf.crons, now) : null;
+  const L = (c: string) => stock?.leads.filter((l) => l.country === c && l.status === "new").reduce((a, l) => a + Number(l.n), 0) ?? 0;
+  const P = (c: string, f: "n" | "unused") => Number(stock?.prospects.find((x) => x.country === c && x.check_status === "ok")?.[f] ?? 0);
   const web = live.sample_requests.filter((r) => countries.includes(r.country ?? ""));
   const mail = distinctReplies(live.events).filter((e) => e.type === "sample_requested" && countries.includes(e.country ?? ""));
   const rows = [
@@ -24,7 +35,7 @@ export default async function Proben({ searchParams }: { searchParams: SP }) {
       <Crumbs items={[["Übersicht", "/dashboard"], ["Proben", ""]]} />
       <div className="head2"><span /><Chips base="/dashboard/proben" param="land" value={land} options={COUNTRY_OPTS} params={raw} dots /></div>
       <div className="kpis2 four">
-        <Kpi value={`${ready}/${target}`} label="Vorrat fertig" tip={`Verfall nach ${CONFIG.proben.max_alter_stunden} h`} />
+        <Kpi value={`${ready}/${target}`} label="Vorrat fertig" tip={`Verfall nach ${cfg.proben.max_alter_stunden} h`} />
         <Kpi value={compact(web.filter((r) => r.status === "new").length)} label="offen" />
         <Kpi value={compact(rows.filter((r) => r.status === "gesendet").length)} label="gesendet" />
         <Kpi value={compact(st.reduce((a, r) => a + r.sent24, 0))} label="24 h sofort" tip="aus dem Vorrat direkt nach dem Klick" />
@@ -33,6 +44,60 @@ export default async function Proben({ searchParams }: { searchParams: SP }) {
         <header className="th"><span>Vorrat je Seite</span></header>
         <div className="fills">{st.map((r) => <Fill key={r.key} label={r.slug} ready={r.ready} target={r.target} tip={r.oldestH !== null ? `älteste ${Math.round(r.oldestH)} h` : "leer"} />)}</div>
       </section>
+      <section className="card tile">
+        <header className="th"><span title="Kunden-Leads = lieferbare Leads für Webagentur-Kunden · Käufer = mail-fähige Webagenturen">Je Land</span></header>
+        <div className="tbl"><table>
+          <thead><tr><th>Land</th><th className="num">Kunden-Leads</th><th className="num">Käufer mail-fähig</th><th className="num">frei</th><th className="num">angeschrieben</th></tr></thead>
+          <tbody>{countries.map((c) => (
+            <tr key={c}><td><i className="dot" style={{ background: COUNTRY_COLOR[c] }} />{c}</td><td className="num">{stock ? compact(L(c)) : "…"}</td>
+              <td className="num">{stock ? compact(P(c, "n")) : "…"}</td><td className="num">{stock ? compact(P(c, "unused")) : "…"}</td>
+              <td className="num">{stock ? compact(P(c, "n") - P(c, "unused")) : "…"}</td></tr>
+          ))}</tbody>
+        </table></div>
+      </section>
+
+      <h2 className="h2s">Steuerung</h2>
+      <div className="ctrls">
+        <Ctrl title="Soll je Seite" tip={`Wie viele fertige Proben je Land bereitliegen (0–${MAX_SAMPLE_TARGET}). Leer = Standard aus config/proben.yaml. Jede Probe reserviert 10 Leads.`}>
+          <form action={saveSampleTargets}>
+            <Back to={here} />
+            {COUNTRIES.map((c) => {
+              const k = `${SEGMENT}/${c}`;
+              return (
+                <label key={k} className="frow"><b>{c}</b>
+                  <input type="number" name={`target_${k}`} min={0} max={MAX_SAMPLE_TARGET} defaultValue={own.sample_targets[k] ?? ""} placeholder={String(CONFIG.proben.fokus_je_seite)} />
+                  <span className="hint">Ist {st.find((r) => r.key === k)?.ready ?? 0}</span>
+                </label>
+              );
+            })}
+            <button className="primary">Speichern</button>
+          </form>
+        </Ctrl>
+        <Ctrl title="Verfall" tip={`Proben älter als das werden verworfen und neu gebaut (Signale altern). ${MAX_AGE_RANGE[0]}–${MAX_AGE_RANGE[1]} h.`}>
+          <form action={saveMaxAge}>
+            <Back to={here} />
+            <label className="frow"><b>h</b>
+              <input type="number" name="hours" min={MAX_AGE_RANGE[0]} max={MAX_AGE_RANGE[1]} defaultValue={own.sample_max_age_hours ?? ""} placeholder={String(CONFIG.proben.max_alter_stunden)} />
+              <span className="hint">Stunden</span>
+            </label>
+            <button className="primary">Speichern</button>
+          </form>
+        </Ctrl>
+        <Ctrl title="Auffüllen" tip="Baut fehlende Proben sofort (sonst stündlich nach Zeitplan).">
+          <form action={dispatchWorkflow}>
+            <Back to={here} /><input type="hidden" name="wf" value="proben-vorrat" />
+            <button disabled={!canDispatch()}>Jetzt auffüllen</button>
+          </form>
+          <span className="hint">nächster Lauf {nextFill ? berlin(nextFill) : "–"}{canDispatch() ? "" : " · Sofortstart braucht GH_DISPATCH_TOKEN"}</span>
+        </Ctrl>
+        <Ctrl title="Feste Regeln" tip="Nicht änderbar." locked="nur Anzeige">
+          <div className="facts">
+            <span>Probe = <b>genau 10</b> verschiedene Firmen</span>
+            <span>nur Leads mit <b>allen Prüfungen</b> (keine widersprüchlichen Daten)</span>
+            <span>„Probe senden“ nur an Firmen, die <b>selbst angefragt</b> haben (automatisch)</span>
+          </div>
+        </Ctrl>
+      </div>
       <div className="klist card">
         {rows.map((r) => (
           <div key={r.key} className="kcard static">
