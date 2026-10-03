@@ -20,7 +20,7 @@ jobs:
   send:
     if: ${{ vars.SENDEN_AKTIV != 'nein' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 340   # Versand über mehrere Stunden verteilt (Pause ~1 min je Mail), GitHub-Maximum 360
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -88,4 +88,4 @@ jobs:
         run: python scripts/outreach.py send
       - name: Senden
         if: ${{ steps.gate.outputs.ok == 'true' && ((github.event_name == 'workflow_dispatch' && !inputs.probelauf) || github.event_name == 'schedule') }}
-        run: python scripts/outreach.py send --live --owner-ok "$FREIGABE" --pause 20
+        run: python scripts/outreach.py send --live --owner-ok "$FREIGABE" --pause 60  # Inhaber 03.10.2026: zeitversetzt, Postfächer abwechselnd, ~1 Mail pro Minute insgesamt
