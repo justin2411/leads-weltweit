@@ -21,7 +21,7 @@ export type HomeText = {
   ctaCard: [string, string]; askMore: string; feedTitle: string; feedNote: string; howTitle: string;
   statement: [string, string];
   story: { v0: string; v1: string; moments: [string, string][]; stamp: string; v2: string; ex: string; rateLead: string; pass: string;
-    rows: [string, number][]; min: string; fail: string; mailSub: string; mon: string; mailSubject: string; files: [string, string];
+    rows: [string, number][]; min: string; fail: string; qs: string; minPill: string; mailSub: string; mon: string; mailSubject: string; files: [string, string];
     mailLeads: string[]; excl: string;
     /** Quellen-Liste in der Methode: [Symbol, Name, Länder], ohne Flaggen (Inhaber 03.10.2026) */
     src: [string, string, string][]; track: [string, string, string, string] };
@@ -82,7 +82,7 @@ export const HOME: Record<HomeLang, HomeText> = {
       moments: [["building", "A new registration"], ["calendar", "A role open for weeks"], ["users", "Several hires at once"]],
       stamp: "Each event is recorded with its date and source.", v2: "Rated before you see it", ex: "Example",
       rateLead: "Public contract · 2 Oct 2026", pass: "Passes", rows: [["Freshness", 92], ["Clarity of the signal", 86], ["Company data", 95]],
-      min: "Minimum", fail: "Below the minimum, left out", mailSub: "Every Monday morning", mon: "MON", mailSubject: "Your leads this week",
+      min: "Minimum", fail: "Below the minimum, left out", qs: "Quality score", minPill: "minimum 60", mailSub: "Every Monday morning", mon: "MON", mailSubject: "Your leads this week",
       files: ["PDF briefing", "Spreadsheet"], mailLeads: ["London · Public contract", "Wolverhampton · Public contract", "Wakefield · Public contract"],
       excl: "Each lead goes to only one firm in your industry.",
       src: [["landmark", "Companies House", "United Kingdom"], ["landmark", "State business registers & SEC filings", "United States"],
@@ -195,7 +195,7 @@ export const HOME: Record<HomeLang, HomeText> = {
       moments: [["building", "Une création d'entreprise"], ["calendar", "Un poste ouvert depuis des semaines"], ["users", "Plusieurs recrutements à la fois"]],
       stamp: "Chaque événement est enregistré avec sa date et sa source.", v2: "Évalué avant de vous parvenir", ex: "Exemple",
       rateLead: "Marché public · 2 oct. 2026", pass: "Retenu", rows: [["Fraîcheur", 92], ["Clarté du signal", 86], ["Données d'entreprise", 95]],
-      min: "Minimum", fail: "Sous le minimum, écarté", mailSub: "Chaque lundi matin", mon: "LUN", mailSubject: "Vos prospects de la semaine",
+      min: "Minimum", fail: "Sous le minimum, écarté", qs: "Score de qualité", minPill: "minimum 60", mailSub: "Chaque lundi matin", mon: "LUN", mailSubject: "Vos prospects de la semaine",
       files: ["Rapport PDF", "Tableur"], mailLeads: ["Londres · Marché public", "Wolverhampton · Marché public", "Wakefield · Marché public"],
       excl: "Chaque prospect ne va qu'à une seule entreprise de votre secteur.",
       src: [["landmark", "Companies House", "Royaume-Uni"], ["landmark", "Registres des États & déclarations SEC", "États-Unis"],
@@ -308,7 +308,7 @@ export const HOME: Record<HomeLang, HomeText> = {
       moments: [["building", "Eine Neugründung"], ["calendar", "Eine seit Wochen offene Stelle"], ["users", "Mehrere Einstellungen gleichzeitig"]],
       stamp: "Jedes Ereignis wird mit Datum und Quelle erfasst.", v2: "Bewertet, bevor Sie es sehen", ex: "Beispiel",
       rateLead: "Öffentlicher Auftrag · 2. Okt. 2026", pass: "Bestanden", rows: [["Aktualität", 92], ["Klarheit des Signals", 86], ["Firmendaten", 95]],
-      min: "Mindestwert", fail: "Unter dem Mindestwert, aussortiert", mailSub: "Jeden Montagmorgen", mon: "MO", mailSubject: "Ihre Leads dieser Woche",
+      min: "Mindestwert", fail: "Unter dem Mindestwert, aussortiert", qs: "Qualitätswert", minPill: "Mindestwert 60", mailSub: "Jeden Montagmorgen", mon: "MO", mailSubject: "Ihre Leads dieser Woche",
       files: ["PDF-Briefing", "Tabelle"], mailLeads: ["London · Öffentlicher Auftrag", "Wolverhampton · Öffentlicher Auftrag", "Wakefield · Öffentlicher Auftrag"],
       excl: "Jeder Lead geht nur an ein Unternehmen Ihrer Branche.",
       src: [["landmark", "Companies House", "Großbritannien"], ["landmark", "Handelsregister der Bundesstaaten & SEC-Meldungen", "USA"],
