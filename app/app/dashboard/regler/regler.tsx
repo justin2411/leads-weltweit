@@ -90,6 +90,7 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
   const [toast, setToast] = useState<Toast>(null);
   const [boost, setBoost] = useState(0);
   const [busy, startT] = useTransition();
+  const root = useRef<HTMLDivElement>(null);
 
   // neuer gespeicherter Stand (Aktualisierung): unveränderten Entwurf mitziehen, eigene Änderungen behalten
   useEffect(() => {
@@ -131,6 +132,18 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
     tick();
     return () => clearTimeout(t);
   }, [boost, router]);
+
+  // Leiste über der Handy-Navigation (Höhe je nach Zahl der Reiter)
+  useEffect(() => {
+    const fit = () => {
+      const nav = document.querySelector<HTMLElement>(".bnav");
+      const h = nav && getComputedStyle(nav).display !== "none" ? nav.offsetHeight : 0;
+      root.current?.style.setProperty("--bnav", `${h}px`);
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [pending]);
 
   useEffect(() => {
     if (!toast?.ok) return;
@@ -233,7 +246,7 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
   };
 
   return (
-    <div className="rg">
+    <div className={`rg${pending ? " has-bar" : ""}`} ref={root}>
       <div className="rg-head">
         <h1>Regler</h1>
         <div className="rg-steps" aria-label="So wirkt eine Änderung"><span><b>1</b>einstellen</span><i>→</i><span><b>2</b>übernehmen</span><i>→</i><span><b>3</b>Werk wendet an</span></div>
@@ -281,8 +294,8 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
           <div className="in">
             <span className="rg-n"><b>{changes.length}</b>{changes.length === 1 ? "Änderung" : "Änderungen"}</span>
             <span className="rg-list" title={changes.map((c) => c.text).join("\n")}>{changes.map((c) => c.text).join(" · ")}</span>
+            <button type="button" className="rg-x" onClick={() => setDraft(base)} disabled={busy}>Verwerfen</button>
             <div className="rg-btns">
-              <button type="button" className="gh" onClick={() => setDraft(base)} disabled={busy}>Verwerfen</button>
               <button type="button" className="pri" onClick={() => apply(false)} disabled={locked}>{busy ? "…" : "Übernehmen"}</button>
               {startable && <button type="button" className="now" onClick={() => apply(true)} disabled={locked} title="speichern und betroffene Werke sofort starten">Übernehmen & sofort anwenden</button>}
             </div>
