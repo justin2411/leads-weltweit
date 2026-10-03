@@ -250,7 +250,7 @@ export async function Home({ lang }: { lang: HomeLang }) {
 
         <section className="hp-proofsec" aria-labelledby="proof-title">
           <div className="hp-wrap hp-proof">
-            <h2 className="hp-proof__title" id="proof-title" data-reveal="">{t.statsH}</h2>
+            <h2 className="hp-rule hp-proof__rule" id="proof-title" data-reveal="">{t.statsH}</h2>
             {/* Kennzahlen als Glas-Band nach Vorlage v2: je Karte eine kleine Grafik (Punktraster, Balken, Puls mit Live-Punkt, zehn Punkte) */}
             <ul className="hp-band" data-reveal="" data-live="" style={{ "--d": ".1s" } as CSSProperties}>
               {nums.map(([n, label], k) => (
