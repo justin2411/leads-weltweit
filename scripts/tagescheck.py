@@ -163,7 +163,11 @@ def check_mailboxes(c: Check, db) -> None:
     sent = db.select_all("messages", {"status": "eq.sent", "sent_at": f"gte.{since}", "select": "id,sent_from"})
     if not sent:
         return
-    box = {m["id"]: address(m.get("sent_from") or "") or "Postfach 1 (vor Mehrfach-Versand)" for m in sent}
+    def box_name(sent_from: str | None) -> str:
+        # Mails ohne Absender-Eintrag kamen vor dem Mehrfach-Versand aus dem Hauptpostfach (wie Dashboard isMainBox)
+        a = address(sent_from or "")
+        return "info@ (Hauptpostfach)" if not a or a.startswith("info@") else a
+    box = {m["id"]: box_name(m.get("sent_from")) for m in sent}
     ev = db.select_all("email_events", {"created_at": f"gte.{since}", "type": "in.(bounced,complained)",
                                         "select": "message_id,type,payload,messages(to_email)"})
     per: dict[str, list[dict]] = {}
@@ -458,9 +462,43 @@ def check_werke(c: Check, db) -> None:
     call = _count(db, "prospects", {"check_status": "eq.call_only"})
     new = _count(db, "prospects", {"check_status": "in.(ok,call_only)", "checked_at": f"gte.{since}"})
     if cfg("pipeline.yaml", "kunden_suche") == "true":
+        # Käufer = nur mail-fähige (Inhaber 02.10.2026); „nur Anruf/Brief“ getrennt und so benannt
         c.add("Kunden-Werk", OK if new or ok + call >= 1_000_000 else WARN,
-              f"{ok + call} Käufer im Bestand (Ziel 1.000.000)",
-              f"E-Mail erlaubt {ok}, nur Anruf/Brief {call}; neu in 24 h: {new}")
+              f"{ok} mail-fähige Käufer",
+              f"getrennt: nur Anruf/Brief {call}; Bestand gesamt {ok + call} von 1.000.000; neu in 24 h: {new}")
+
+
+def _berlin(ts: str) -> str:
+    """Uhrzeit für den Inhaber in deutscher Zeit (Inhaber 03.10.2026), z. B. „04.10. 02:26“."""
+    from zoneinfo import ZoneInfo
+    t = dt.datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(ZoneInfo("Europe/Berlin"))
+    return t.strftime("%d.%m. %H:%M")
+
+
+def check_plan(c: Check, db) -> None:
+    """Autopilot und Speicher-Bremse (werk_plan_log, Nachtschicht 04.10.2026): letzte Verteilung je Werk und
+    Datenbankgröße. Gelb ab Bremsstufe „drossel“ (6 GB) oder wenn ein Werk seit 12 h keinen Plan-Job hatte."""
+    rows = db.select("werk_plan_log", {"select": "werk,at,mode,bremse,db_bytes,plan", "order": "at.desc", "limit": "40"})
+    if not rows:
+        c.add("Werke", WARN, "Noch keine Belegung protokolliert", "werk_plan_log leer – Plan-Job prüfen")
+        return
+    last = rows[0]
+    gb = (last.get("db_bytes") or 0) / 1e9
+    level = last.get("bremse") or "aus"
+    text = {"aus": "aus", "hinweis": "Hinweis ab 5,5 GB", "drossel": "Drossel: höchstens 8 Lead-Plätze",
+            "ohne-rohbestand": "nur grüne Leads, kein Rohbestand"}.get(level, level)
+    c.add("Speicher", WARN if level in ("drossel", "ohne-rohbestand") else OK,
+          f"Datenbank {gb:.2f} GB von 8 GB" if gb else "Datenbankgröße unbekannt", f"Speicher-Bremse: {text}")
+    now = dt.datetime.now(dt.timezone.utc)
+    for werk in ("lead-werk", "kunden-werk"):
+        r = next((x for x in rows if x["werk"] == werk), None)
+        if not r:
+            continue
+        age_h = (now - dt.datetime.fromisoformat(r["at"].replace("Z", "+00:00"))).total_seconds() / 3600
+        slots = sum(int(v or 0) for v in (r.get("plan") or {}).values())
+        mode = {"autopilot": "Autopilot", "inhaber": "deine Belegung", "standard": "Standard"}.get(r["mode"], r["mode"])
+        c.add("Werke", WARN if age_h > 12 else OK, f"{werk}: {slots} Plätze ({mode})",
+              f"zuletzt verteilt {_berlin(r['at'])}" + (f" – seit {age_h:.0f} h kein Start" if age_h > 12 else ""))
 
 
 def kpi_line(db, seg: str, country: str) -> dict:
@@ -522,6 +560,7 @@ def main(argv=None) -> int:
     c.guard("Website", lambda: check_website(c, db))
     c.guard("Kunden", lambda: check_customers(c, db))
     c.guard("Werke", lambda: check_werke(c, db))
+    c.guard("Werke", lambda: check_plan(c, db))
     c.guard("Kennzahl", lambda: check_kpi(c, db))
     subject, body = mail(c)
     print("\n" + subject)

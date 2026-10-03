@@ -1,5 +1,6 @@
 import sys
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
@@ -27,6 +28,32 @@ class TagescheckTest(unittest.TestCase):
         c.guard("Kunden", lambda: 1 / 0)
         self.assertEqual(c.rows[0][1], t.FAIL)
 
+    def test_plan_and_brake(self):
+        import datetime as dt
+        now = dt.datetime.now(dt.timezone.utc)
+        old = (now - dt.timedelta(hours=13)).isoformat()
+        rows = [{"werk": "kunden-werk", "at": now.isoformat(), "mode": "autopilot", "bremse": "drossel",
+                 "db_bytes": 6_100_000_000, "plan": {"kunden": 2}},
+                {"werk": "lead-werk", "at": old, "mode": "inhaber", "bremse": "aus", "db_bytes": 5_000_000_000,
+                 "plan": {"web-us": 3, "web-uk": 1}}]
+        c = t.Check()
+        t.check_plan(c, FakeDB({"werk_plan_log": rows}))
+        got = {(r[0], r[2]): r[1] for r in c.rows}
+        self.assertEqual(got[("Speicher", "Datenbank 6.10 GB von 8 GB")], t.WARN)
+        self.assertEqual(got[("Werke", "kunden-werk: 2 Plätze (Autopilot)")], t.OK)
+        self.assertEqual(got[("Werke", "lead-werk: 4 Plätze (deine Belegung)")], t.WARN)  # 13 h ohne Start
+
+    def test_buyers_count_only_mail_ready(self):
+        db = FakeDB({"prospects": [{"id": "a", "check_status": "ok"}, {"id": "b", "check_status": "call_only"},
+                                   {"id": "c", "check_status": "call_only"}], "leads": []})
+        c = t.Check()
+        count = lambda db_, table, params: len(db_.select(table, params))  # noqa: E731 - wie _count (exakte Zahl)
+        with mock.patch.object(t, "cfg", return_value="true"), mock.patch.object(t, "_count", side_effect=count):
+            t.check_werke(c, db)
+        row = next(r for r in c.rows if r[0] == "Kunden-Werk")
+        self.assertEqual(row[2], "1 mail-fähige Käufer")
+        self.assertIn("nur Anruf/Brief 2", row[3])
+
     def test_mailbox_lamps(self):
         recent = (t.NOW).isoformat()
         msgs = [{"id": f"a{i}", "status": "sent", "sent_at": recent, "sent_from": "NextGen <info@nextgen-profit.de>"}
@@ -35,6 +62,7 @@ class TagescheckTest(unittest.TestCase):
                  for i in range(40)]
         msgs += [{"id": f"c{i}", "status": "sent", "sent_at": recent, "sent_from": "leads@nextgen-profit.de"}
                  for i in range(10)]
+        msgs += [{"id": f"d{i}", "status": "sent", "sent_at": recent, "sent_from": None} for i in range(5)]  # alt: info@
         ev = [{"id": f"e{i}", "type": "bounced", "created_at": recent, "message_id": f"b{i}",
                "messages": {"to_email": f"x{i}@y.com"}} for i in range(3)]          # 3/40 = 7,5 % -> rot
         ev += [{"id": "e9", "type": "bounced", "created_at": recent, "message_id": "c1",
@@ -42,8 +70,9 @@ class TagescheckTest(unittest.TestCase):
         c = t.Check()
         t.check_mailboxes(c, FakeDB({"messages": msgs, "email_events": ev}))
         rows = {r[2].split(":")[0]: r[1] for r in c.rows}
-        self.assertEqual(rows, {"info@nextgen-profit.de": t.OK, "webagency@nextgen-profit.de": t.FAIL,
+        self.assertEqual(rows, {"info@ (Hauptpostfach)": t.OK, "webagency@nextgen-profit.de": t.FAIL,
                                 "leads@nextgen-profit.de": t.OK})
+        self.assertIn("bei 45 Mails", next(r[3] for r in c.rows if r[2].startswith("info@")))
 
     def test_kpi_line_counts_funnel_of_one_test(self):
         db = FakeDB({
