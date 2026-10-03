@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { coach, hall, laneOf, laneStats, neckTask, partRuns, utilization, type Beat, type RunRow } from "./leitstand.ts";
 import { validateTask } from "./agents.ts";
+import type { LaneRegistry } from "./owner-settings.ts";
 import { slotCounts } from "./owner-settings.ts";
 
 const reg = JSON.parse(readFileSync(new URL("./werk-linien.json", import.meta.url), "utf8"));
@@ -106,4 +107,29 @@ test("partRuns: mehrere Zeilen je Teil (je Zielgruppe/Land) zählen als ein Teil
   const u = utilization(rows, [], NOW, 40, 2, 30);
   const used = u.rate * 120 * 40;  // belegte Platz-Minuten im Fenster
   assert.ok(Math.abs(used - 31) < 0.5, `belegt ${used}`);
+});
+
+test("Coach mit Autopilot: Platz-Hinweise nur zur Info, kein Auftrag zum Umstellen", () => {
+  const reg = { total_slots: 40, reserve: 2, lanes: [
+    { id: "a", werk: "lead-werk", label: "Linie A", short: "A", what: "", max: 20, default: 2, country: "US" },
+    { id: "b", werk: "lead-werk", label: "Linie B", short: "B", what: "", max: 20, default: 2, country: "UK" },
+  ] } as unknown as LaneRegistry;
+  const stats = {
+    a: { id: "a", runs: 2, processed: 100, green: 10, slotMin: 40, perSlotH: 15, avgRunMin: 2, perRun: 5, last: null, exhausted: true },
+    b: { id: "b", runs: 2, processed: 500, green: 300, slotMin: 120, perSlotH: 150, avgRunMin: 60, perRun: 150, last: null, exhausted: false },
+  };
+  const base = { reg, plan: { a: 6, b: 1 }, stats, util: 0.1, queue: {}, freeBuyers: {}, leads: {}, capPerDay: 100, kundenNew24h: 5, failed: [] };
+  const off = coach(base);
+  const on = coach({ ...base, autopilot: true });
+  assert.equal(off.find((t) => t.title.startsWith("Plätze"))?.level, "gelb");
+  assert.ok(off.find((t) => t.title.startsWith("Plätze"))?.task);
+  const util = on.find((t) => t.title.startsWith("Plätze"))!;
+  assert.equal(util.level, "info");
+  assert.equal(util.task, undefined);
+  assert.match(util.text, /Autopilot/);
+  const ex = on.find((t) => t.title === "Linie A: Vorrat erschöpft")!;
+  assert.equal(ex.level, "info");
+  assert.equal(ex.task?.kind, "quelle"); // neue Quelle suchen bleibt ein sinnvoller Auftrag
+  assert.doesNotMatch(ex.task!.brief, /Plätze dieser Linie/);
+  assert.equal(on.find((t) => t.title.startsWith("Ergiebigste"))?.task, undefined);
 });

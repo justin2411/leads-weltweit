@@ -146,7 +146,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   ];
 
   // ---------------------------------------------------------------- JARVIS, Ampeln, Ticker
-  const tips = coach({ reg: REG, plan, stats, util: util.rate, queue, freeBuyers, leads: leadsNew, capPerDay: cap, kundenNew24h: stockAll ? newBuyers24 : null, stockKnown: !!stock,
+  const tips = coach({ reg: REG, plan, stats, util: util.rate, queue, freeBuyers, leads: leadsNew, capPerDay: cap, kundenNew24h: stockAll ? newBuyers24 : null, stockKnown: !!stock, autopilot: autopilotOn,
     failed: beats.filter((b) => /^abgebrochen/.test(b.note ?? "") && t - Date.parse(b.beat_at) < 6 * 3_600_000).map((b) => `${b.werk} ${b.part} · ${berlin(b.beat_at)}`),
     countedHours: firstRun ? Math.min(24, (t - firstRun) / 3_600_000) : 0 });
   const tipStation = (href?: string): StationId => (href === "#pult" ? "lead" : href?.includes("bestand") ? "kaeufer" : href?.includes("versand") ? "versand" : "lead");
