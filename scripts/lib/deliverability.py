@@ -51,6 +51,19 @@ def warmup_cap(first_sent: dt.date | None, today: dt.date, schedule=None) -> int
     return max(0, min(cap, HARD_MAX_PER_DAY, provider_cap() - 10))
 
 
+def window_start(now: dt.datetime, days: int = 30) -> dt.datetime:
+    """Beginn des Notbremse-Fensters: letzte `days` Tage, aber nicht vor `notbremse_ab` aus config/versand.yaml
+    (Inhaber 03.10.2026: „pass die notbremse an, das sie ab jetzt neu zählt“). Schwelle und Mindestmenge bleiben."""
+    start = now - dt.timedelta(days=days)
+    raw = _cfg("notbremse_ab")
+    if raw:
+        reset = dt.datetime.fromisoformat(raw.strip('"').replace("Z", "+00:00"))
+        if reset.tzinfo is None:
+            reset = reset.replace(tzinfo=dt.timezone.utc)
+        start = max(start, reset)
+    return start
+
+
 def emergency_stop(sent: int, bounced: int, complained: int) -> str | None:
     """Grund für einen Versandstopp oder None."""
     if complained >= COMPLAINT_STOP:

@@ -298,10 +298,10 @@ def cmd_send(args) -> int:
             if not os.environ.get(var):
                 raise SystemExit(f"{var} fehlt")
 
-    from lib.deliverability import count_bounces, domain_accepts_mail, emergency_stop, interleave
+    from lib.deliverability import count_bounces, domain_accepts_mail, emergency_stop, interleave, window_start
 
     # Notbremse über die letzten 30 Tage, über alle Experimente; je Adresse gezählt (Inhaber 03.10.2026)
-    since = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=30)).isoformat()
+    since = window_start(dt.datetime.now(dt.timezone.utc)).isoformat()
     recent = db.select("messages", {"status": "eq.sent", "sent_at": f"gte.{since}", "select": "id"})
     ev = db.select("email_events", {"created_at": f"gte.{since}", "type": "in.(bounced,complained)",
                                     "select": "message_id,type,payload,messages(to_email)"})

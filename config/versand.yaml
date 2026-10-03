@@ -8,6 +8,9 @@ aktiv: true    # 03.10.2026: Inhaber im Chat: „1 bis 3 genauso umsetzen 4. wir
 # Inhaber 27.09.2026 (Chat): „lass mit 150 pro tag über strato starten“ -> keine Aufwärmphase, Tagesziel 150
 # (Tagesmenge = min(tagesziel, anbieter_tageslimit - 10) = 150). Notbremse und Spam-Stopp gelten weiter.
 aufwaermphase: false
+# Notbremse zählt ab diesem Zeitpunkt neu (Inhaber 03.10.2026: „pass die notbremse an, das sie ab jetzt neu zählt“);
+# Schwelle 5 %, Mindestmenge 100 und Sofort-Stopp bei Spam-Beschwerde bleiben unverändert.
+notbremse_ab: 2026-10-03T06:52:00Z
 # Inhaber 03.10.2026: „wir starten mit 90 mails pro tag“; vor jeder Erstmail Frischeprüfung der Adresse (lib/freshness.py)
 tagesziel: 90
 freigabe: "Justin Koch, Chat 03.10.2026: '1 bis 3 genauso umsetzen 4. wir starten mit 90 mails pro tag'"

@@ -110,10 +110,10 @@ def check_workflows(c: Check) -> None:
 
 
 def check_sending(c: Check, db) -> None:
-    from lib.deliverability import BOUNCE_STOP, MIN_SAMPLE, count_bounces, emergency_stop
+    from lib.deliverability import BOUNCE_STOP, MIN_SAMPLE, count_bounces, emergency_stop, window_start
     aktiv = cfg("versand.yaml", "aktiv") == "true"
     since26 = (NOW - dt.timedelta(hours=26)).isoformat()
-    since30 = (NOW - dt.timedelta(days=30)).isoformat()
+    since30 = window_start(NOW).isoformat()  # Notbremse-Fenster wie beim Versand (notbremse_ab)
     sent_day = db.select("messages", {"status": "eq.sent", "sent_at": f"gte.{since26}", "select": "id,kind"})
     queue = db.select("messages", {"status": "eq.approved", "select": "id,kind"})
     sent30 = db.select_all("messages", {"status": "eq.sent", "sent_at": f"gte.{since30}", "select": "id"})

@@ -165,3 +165,18 @@ class FreshnessTests(unittest.TestCase):
                          (True, "https://firma.example/impressum"))
         self.assertEqual(F.confirm_on_website("hallo@firma.example", "firma.example", None, scan), (False, None))
         self.assertEqual(F.confirm_on_website("x@y.z", "", None, scan), (False, None))
+
+
+class NotbremseFensterTests(unittest.TestCase):
+    """Inhaber 03.10.2026: Notbremse zählt ab `notbremse_ab` neu, sonst die letzten 30 Tage."""
+
+    def test_window_start(self):
+        import datetime as dt
+        from lib import deliverability as D
+        now = dt.datetime(2026, 10, 10, tzinfo=dt.timezone.utc)
+        with mock.patch.object(D, "_cfg", return_value="2026-10-03T06:52:00Z"):
+            self.assertEqual(D.window_start(now), dt.datetime(2026, 10, 3, 6, 52, tzinfo=dt.timezone.utc))
+        with mock.patch.object(D, "_cfg", return_value="2026-01-01T00:00:00Z"):
+            self.assertEqual(D.window_start(now), now - dt.timedelta(days=30))
+        with mock.patch.object(D, "_cfg", return_value=None):
+            self.assertEqual(D.window_start(now), now - dt.timedelta(days=30))
