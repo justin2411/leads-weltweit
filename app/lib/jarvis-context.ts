@@ -179,6 +179,18 @@ async function trend7(now: Date): Promise<string> {
   }
 }
 
+/** Letzter täglicher Zustellbarkeits-Check (scripts/zustellbarkeit.py; Tabelle darf fehlen). */
+async function zustellbarkeit() {
+  try {
+    const { data, error } = await db().from("deliverability_daily").select("day, status, gruende").order("day", { ascending: false }).limit(1).abortSignal(T());
+    if (error) throw new Error(error.message);
+    const r = data?.[0];
+    return r ? { tag: r.day, status: r.status, gruende: r.gruende ?? [] } : "noch kein Check";
+  } catch {
+    return NA;
+  }
+}
+
 /** Ein Bereich für das Werkzeug „kennzahlen“. */
 export async function area(b: Bereich, s: Sources): Promise<unknown> {
   switch (b) {
@@ -231,10 +243,10 @@ const line = (k: string, v: unknown) => `${k}: ${typeof v === "string" ? v : JSO
 /** Kompakter Kontext (wenige hundert Tokens): Uhrzeit, Kennzahlen, Thema der Sitzung. */
 export async function buildContext(session: ChatSession, s: Sources): Promise<string> {
   const now = s.now;
-  const [fg, en, an, top, api, wt, wh, tr] = await Promise.all([freigabe(), engpass(), antworten(), topic(session), loadLlmState(s.own),
+  const [fg, en, an, top, api, wt, wh, zu, tr] = await Promise.all([freigabe(), engpass(), antworten(), topic(session), loadLlmState(s.own),
     loadFunnelCache(5 * 60_000).then(funnelBrief, () => ({ fehler: NA })),
     Promise.all([loadAnalyticsCache(10 * 60_000), loadFunnelCache(5 * 60_000)]).then(([a, f]) => webHints(a, f, "7d").map((h) => `${h.title}: ${h.grund}`), () => NA),
-    trend7(now)]);
+    zustellbarkeit(), trend7(now)]);
   const v = versand(s) as Record<string, unknown>;
   const p = proben(s) as Record<string, unknown>;
   const k = kunden(s);
@@ -244,6 +256,7 @@ export async function buildContext(session: ChatSession, s: Sources): Promise<st
     `Jetzt: ${new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", dateStyle: "full", timeStyle: "short" }).format(now)} (deutsche Zeit). Nächster Agenten-Lauf: ${nextRunAt(now)}.`,
     line("Versand", v.fehler ? v : { aktiv: v.aktiv, heute: `${v.heute_gesendet}/${v.tagesgrenze}`, naechster_lauf: v.naechster_lauf, notbremse: v.notbremse, nachfass: v.nachfass }),
     line("Proben", p.fehler ? p : { bereit: `${p.bereit_gesamt}/${p.soll_gesamt}`, seiten: p.seiten }),
+    line("Zustellbarkeit", zu),
     line("Freigabe", fg),
     line("Kunden", k),
     line("Antworten", { offen: an.offen_im_cockpit }),

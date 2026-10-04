@@ -1,0 +1,31 @@
+# Täglicher Zustellbarkeits-Check (JARVIS-Plan Gruppe E): DNS (SPF/DKIM/DMARC/MX), kostenlose DNS-Blocklisten
+# (Spamhaus ZEN/DBL, SpamCop, Barracuda, SURBL – nur DNS-Abfragen), Bounce-Quote und Gründe 7 Tage, Kontrolladressen,
+# Zustell-Lücke „gesendet vs. delivered“. Ergebnis in signalwerk.deliverability_daily (Tagescheck, JARVIS); bei Rot
+# Gehirn-Chat + decisions. Ändert nie den Versand, die Notbremse oder die Sperrliste. Kostet nichts.
+name: zustellbarkeit
+on:
+  schedule:
+    - cron: "10 4 * * *"   # 06:10 MESZ (Sommerzeit)
+    - cron: "10 5 * * *"   # 06:10 MEZ (Winterzeit); der Lauf der anderen Jahreszeit endet ohne Arbeit (--geplant)
+  workflow_dispatch:
+concurrency: { group: zustellbarkeit, cancel-in-progress: false }
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SMTP_HOST: ${{ secrets.SMTP_HOST }}
+      SMTP_HOST_2: ${{ secrets.SMTP_HOST_2 }}
+      SMTP_HOST_3: ${{ secrets.SMTP_HOST_3 }}
+      SEED_INBOXES: ${{ secrets.SEED_INBOXES }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install requests dnspython
+      - name: Zustellbarkeit prüfen
+        run: python scripts/zustellbarkeit.py ${{ github.event_name == 'schedule' && '--geplant' || '' }}

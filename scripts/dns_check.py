@@ -22,24 +22,29 @@ def records(name: str, rtype: str) -> list[str]:
         return []
 
 
-def main(argv=None) -> int:
-    domain = (argv or sys.argv[1:] or ["nextgen-profit.de"])[0]
-    mx = records(domain, "MX")
-    spf = [t for t in records(domain, "TXT") if t.startswith("v=spf1")]
-    dmarc = [t for t in records(f"_dmarc.{domain}", "TXT") if t.startswith("v=DMARC1")]
+def checks(domain: str, rec=records) -> list[tuple[str, bool, list[str]]]:
+    """Alle Prüfungen als (Bezeichnung, bestanden, gefundene Einträge); rec(name, rtype) ist austauschbar (Tests)."""
+    mx = rec(domain, "MX")
+    spf = [t for t in rec(domain, "TXT") if t.startswith("v=spf1")]
+    dmarc = [t for t in rec(f"_dmarc.{domain}", "TXT") if t.startswith("v=DMARC1")]
     # Strato-DKIM (eingerichtet 02.10.2026): Selektoren zeigen per CNAME auf Strato, dort liegt der Schlüssel
-    dkim = [c for sel in STRATO_DKIM for c in records(f"{sel}._domainkey.{domain}", "CNAME") if "strato.de" in c]
-    checks = [
+    dkim = [c for sel in STRATO_DKIM for c in rec(f"{sel}._domainkey.{domain}", "CNAME") if "strato.de" in c]
+    return [
         ("MX zeigt auf Strato (smtpin.rzone.de)", any("rzone.de" in m for m in mx), mx),
         ("SPF erlaubt Strato (smtp.rzone.de)", any("rzone.de" in t for t in spf), spf),
         ("genau ein SPF-Eintrag", len(spf) == 1, spf),
         ("DMARC vorhanden", bool(dmarc), dmarc),
         ("Strato-DKIM (CNAME auf strato.de)", bool(dkim), dkim),
-        ("Resend-DKIM unverändert", bool(records(f"resend._domainkey.{domain}", "TXT")), []),
-        ("Resend-Rückläufer (send) unverändert", bool(records(f"send.{domain}", "MX")), []),
+        ("Resend-DKIM unverändert", bool(rec(f"resend._domainkey.{domain}", "TXT")), []),
+        ("Resend-Rückläufer (send) unverändert", bool(rec(f"send.{domain}", "MX")), []),
     ]
+
+
+def main(argv=None) -> int:
+    domain = (argv or sys.argv[1:] or ["nextgen-profit.de"])[0]
+    checks_ = checks(domain)
     ok = True
-    for label, passed, found in checks:
+    for label, passed, found in checks_:
         ok &= passed
         print(f"{'OK ' if passed else 'FEHLT'}  {label}  {found if found else ''}")
     print("Hinweis: ob die Signatur wirklich gültig ist, prüft postfach-test (Schritt 4) an einer echten Mail.")
