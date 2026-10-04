@@ -22,6 +22,30 @@ Nachtblau + Gold, viel Luft, wenig Text, ehrlich.
 
 Gold nur für Akzente (Wortmarke, Buttons, Zahlen, Icons, Hervorhebungen), nie für Fließtext.
 
+### 2a. Dashboard (HUD): feste Skala und Farbbedeutung (04.10.2026)
+
+Tokens in `app/app/dashboard/hud-css.ts` (`:root,.dash`). Neue Dashboard-CSS nutzt nur diese Werte, keine freien px-Größen.
+
+| Token | Wert | Wofür |
+|---|---|---|
+| `--fs-xs` | 12 px | Kleinstes: Zeitstempel, Einheiten, Badges, Leisten-Beschriftung |
+| `--fs-s` | 13 px | Zweitext, Listen, Tabellen |
+| `--fs-m` | 15 px | Grundtext, Kastentitel |
+| `--fs-l` | 18 px | Zwischenüberschrift, Kennzahl im Kasten |
+| `--fs-xl` | 24 px | Seitentitel, große Kennzahl |
+| `--fs-num` | 28 px | nur einzelne Großanzeigen (Ringe, Messuhren) |
+| `--hud-soft` | `#8ba6c9` | leiser Text, 8,1:1 auf `#02060f` (= `--soft`) |
+| `--hud-mute` | `#8095b2` | noch leiser, ≥ 5:1, nur ab 13 px und für Punkte/Linien |
+| `--gold` / `--gold-hi` | `#e2c68f` / `#f2dcae` | Gold genau 2 Töne (Verläufe nur zwischen diesen beiden) |
+
+Farbbedeutung überall gleich: **Gold** = Geld/Inhaber · **Cyan** = Info/Fluss · **Grün** = ok · **Gelb** = Achtung ·
+**Rot** = Alarm. Text nie unter 4,5:1. Jede `var(--sans)` mit Rückfall `,system-ui,sans-serif`.
+
+**Bewegung:** höchstens 3 Dauer-Bewegungen je Seite; Puls/Blinken nur bei Engpass oder Alarm; alles in
+`@media (prefers-reduced-motion:no-preference)`. Gehirn: Kern atmet, Signal fließt nur bei Aktivität (`.hot`), Ping nur am
+nächsten Lauf. **Handy (≤ 640 px):** Orbit aus, einspaltig, Karten `align-items:stretch`; untere Leiste ≤ 480 px nur
+Symbole, das aktive Wort doppelt breit.
+
 ## 3. Schrift und Form
 
 - **Schrift:** Inter (Web), Systemschrift als Fallback; Mails mit Web-sicherem Font-Stack.
