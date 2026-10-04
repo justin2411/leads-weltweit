@@ -6,16 +6,16 @@ export const DASH_CSS = `
 .dash *{box-sizing:border-box}
 .dash a{color:var(--blue)}
 .dash .top{background:var(--ink);color:#f4efe6;position:sticky;top:0;z-index:20;border-bottom:1px solid rgba(216,189,138,.25)}
-.dash .top .in{max-width:1240px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.dash .top .in{max-width:var(--wmax,1240px);margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .dash .mark{font-weight:700;font-size:18px;letter-spacing:-.01em}.dash .mark i{font-style:normal;color:var(--gold2)}
 .dash .top .stamp{color:#9aa6ba;font-size:13px}
 .dash .top .sp{flex:1}
 .dash .top button,.dash .top .btn{background:transparent;color:#f4efe6;border:1px solid rgba(216,189,138,.5);border-radius:99px;padding:5px 14px;font:inherit;font-size:13px;cursor:pointer}
 .dash .top button:hover{background:rgba(216,189,138,.14)}
-.dash .tabs{max-width:1240px;margin:0 auto;padding:0 16px 10px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.dash .tabs{max-width:var(--wmax,1240px);margin:0 auto;padding:0 16px 10px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
 .dash .tabs a{color:#d5dbe5;text-decoration:none;font-size:13px;padding:4px 12px;border-radius:99px;white-space:nowrap;border:1px solid rgba(255,255,255,.08)}
 .dash .tabs a:hover{border-color:var(--gold2);color:var(--gold2)}
-.dash main{max-width:1240px;margin:0 auto;padding:20px 16px 80px}
+.dash main{max-width:var(--wmax,1240px);margin:0 auto;padding:20px 16px 80px}
 .dash section{scroll-margin-top:110px;margin-top:34px}
 .dash h1{font-size:24px;margin:4px 0 2px;letter-spacing:-.01em}
 .dash h2{font-size:19px;margin:0 0 4px;letter-spacing:-.01em;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
@@ -138,7 +138,7 @@ export const DASH_V2_CSS = `
 .dash .lrow:last-child{border-bottom:0}
 .dash .lrow .lt{color:var(--soft);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 @media (max-width:640px){.dash .lrow{grid-template-columns:minmax(0,1fr) auto;row-gap:2px}.dash .lrow .lt{grid-column:1/-1}}
-.dash .tabs-wrap .tabs{max-width:1240px;margin:0 auto;padding:0 16px 10px}
+.dash .tabs-wrap .tabs{max-width:var(--wmax,1240px);margin:0 auto;padding:0 16px 10px}
 .dash .tabs a.on{background:var(--gold2);color:var(--ink);border-color:var(--gold2);font-weight:600}
 .dash .bnav{display:none}
 .dash .v2{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}

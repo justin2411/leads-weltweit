@@ -183,6 +183,8 @@ export function makeFixtures(nowMs = Date.now()) {
       agent_tasks: [
         ...tasks,
         { id: "t1", created_at: iso(200), finished_at: iso(120), agent: 2, kind: "leads", market: "UK", brief: "Neue Leads für UK holen", status: "fertig", result: "380 neue grüne Leads aus zwei Quellen.", progress: 100, step: null, numbers: {} },
+        // vom Gehirn beauftragt, läuft: Abzeichen „vom Gehirn“ darf am Handy den Kugel-Text nicht überdecken
+        { id: "t2", created_at: iso(30), finished_at: null, agent: 1, kind: "leads", market: "US", brief: "Leads US nachfüllen", started_at: iso(20), status: "laeuft", result: null, progress: 40, step: "Quellen prüfen", numbers: {}, created_by: "Gehirn", grund: "Vorrat US knapp" },
       ],
       owner_log: [{ id: 7, action: "setting:followup_enabled", target: null, new_value: true, created_at: iso(300), created_by: "Inhaber Dashboard" }],
     },

@@ -7,6 +7,7 @@ import { requireOwner } from "../actions";
 import { Age } from "./age";
 import { ANTWORTEN_CSS } from "./css";
 import { PushAlarm } from "./push-alarm";
+import { PageHead } from "../v2";
 
 /**
  * Antworten-Cockpit (Nachtschicht 03./04.10.2026): jede menschliche Antwort auf unsere Mails an einem Ort. Offene
@@ -26,10 +27,9 @@ export default async function Antworten({ searchParams }: { searchParams: Promis
   return (
     <div className="v2 aw">
       <style dangerouslySetInnerHTML={{ __html: ANTWORTEN_CSS }} />
-      <div className="aw-head">
-        <h1><Icon name="antworten" size={22} /> Antworten</h1>
+      <PageHead title="Antworten" icon="antworten">
         {hot > 0 && status === "offen" && <span className="aw-age late"><Icon name="warnung" size={14} /> {hot} warten</span>}
-      </div>
+      </PageHead>
       <PushAlarm />
       {error && <div className="aw-err" role="alert"><Icon name="fehler" size={16} /> Antworten nicht lesbar: {error.slice(0, 160)}</div>}
 

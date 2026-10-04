@@ -5,7 +5,7 @@ import { avatarHue, fullName, goalChips, initials, kpiOf, roleDe, statusLabel } 
 import { COUNTRY_COLOR, berlin } from "@/lib/dashboard-logic";
 import { Icon, type IconName } from "@/app/icons";
 import { requireOwner } from "../actions";
-import { Crumbs } from "../v2";
+import { PageHead } from "../v2";
 import { KA_CSS } from "./css";
 
 type V = CSSProperties & Record<`--${string}`, string | number>;
@@ -26,12 +26,9 @@ export default async function KundenAgenten() {
   return (
     <div className="v2 aw ka">
       <style dangerouslySetInnerHTML={{ __html: KA_CSS }} />
-      <Crumbs items={[["JARVIS", "/dashboard/jarvis"], ["Kunden-Agenten", ""]]} />
-      <div className="ka-head">
-        <h1><Icon name="ansprechpartner" size={22} /> Kunden-Agenten</h1>
+      <PageHead title="Kunden-Agenten" icon="ansprechpartner" sub="Ab Pro · KI-Ansprechpartner je Kunde · Ziel: bessere Leads und Umsatz für den Kunden">
         {agents.length > 0 && <span className="ka-chip st-aktiv">{active} aktiv</span>}
-      </div>
-      <p className="ka-sub">Ab Pro · KI-Ansprechpartner je Kunde · Ziel: bessere Leads und Umsatz für den Kunden</p>
+      </PageHead>
       {error && <div className="ka-err" role="alert"><Icon name="fehler" size={16} /> Nicht lesbar: {error.slice(0, 160)}</div>}
 
       <div className="ka-grid">

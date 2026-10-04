@@ -5,7 +5,7 @@ import { approveFirstDelivery, createCustomer, setSubscriptionPaused } from "../
 import { COUNTRY_COLOR, berlin, compact, currencySign, isTestCustomer, monthly, nextRun, onlySegment, realSubscriptions } from "@/lib/dashboard-logic";
 import { requireOwner } from "../actions";
 import { Icon } from "@/app/icons";
-import { Back, COUNTRY_OPTS, Chips, Crumbs, Ctrl, Kpi } from "../v2";
+import { Back, COUNTRY_OPTS, Chips, Ctrl, Kpi, PageHead } from "../v2";
 import { readParams, withQuery, type SP } from "../params";
 
 /** Kunden & Umsatz der Webagenturen: Abos, Umsatz pro Monat, Lieferungen. Testkäufe zählen nicht. */
@@ -28,9 +28,10 @@ export default async function Kunden({ searchParams }: { searchParams: SP }) {
 
   return (
     <div className="v2">
-      <Crumbs items={[["JARVIS", "/dashboard/jarvis"], ["Kunden & Umsatz", ""]]} />
-      <p style={{ margin: "0 0 10px" }}><a href="/dashboard/kunden-agenten" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="ansprechpartner" size={16} /> Kunden-Agenten (KI-Ansprechpartner ab Pro)</a></p>
-      <div className="head2"><span /><Chips base="/dashboard/kunden" param="land" value={land} options={COUNTRY_OPTS} params={raw} dots /></div>
+      <PageHead title="Kunden" icon="kunden">
+        <a className="pg-link" href="/dashboard/kunden-agenten"><Icon name="ansprechpartner" size={14} />Kunden-Agenten</a>
+        <Chips base="/dashboard/kunden" param="land" value={land} options={COUNTRY_OPTS} params={raw} dots />
+      </PageHead>
       <div className="kpis2 four">
         <Kpi value={compact(subs.length)} label="Kunden" tip="aktive Abos ohne Testkäufe" />
         <Kpi value={[...rev].map(([c, v]) => `${compact(v)} ${c}`).join(" + ") || "0"} label="pro Monat" />

@@ -4,7 +4,7 @@ import { COUNTRY_COLOR, berlinDay, compact, onlySegment } from "@/lib/dashboard-
 import { PERIODS, isPeriod, period } from "@/lib/dashboard-periods";
 import { STAGES, board, isStage, type Card } from "@/lib/dashboard-board";
 import { requireOwner } from "../actions";
-import { COUNTRY_OPTS, Chips, Crumbs, ago2 } from "../v2";
+import { COUNTRY_OPTS, Chips, Crumbs, PageHead, ago2 } from "../v2";
 import { readParams, withQuery, type SP } from "../params";
 import { Icon } from "@/app/icons";
 
@@ -70,7 +70,7 @@ export default async function Kontakte({ searchParams }: { searchParams: SP }) {
 
   return (
     <div className="v2">
-      <Crumbs items={[["JARVIS", withQuery("/dashboard/jarvis", raw)], ["Kontakte", ""]]} />
+      <PageHead title="Kontakte" icon="kontakte" crumbs={[["JARVIS", withQuery("/dashboard/jarvis", raw)], ["Kontakte", ""]]} />
       <div className="head2">{zChips("/dashboard/kontakte", prm)}<Chips base="/dashboard/kontakte" param="land" value={land} options={COUNTRY_OPTS} params={prm} dots /></div>
       <div className="kanban">
         {cols.map((col) => (

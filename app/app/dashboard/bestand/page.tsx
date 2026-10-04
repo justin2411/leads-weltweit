@@ -4,7 +4,7 @@ import { WORKFLOWS } from "@/lib/owner-settings";
 import { dispatchWorkflow, toggleBuyerCountry } from "../control-actions";
 import { COUNTRY_COLOR, berlin, compact, nextRun, stockSegment } from "@/lib/dashboard-logic";
 import { requireOwner } from "../actions";
-import { Back, Bars, COUNTRY_OPTS, Chips, Crumbs, Ctrl, Kpi } from "../v2";
+import { Back, Bars, COUNTRY_OPTS, Chips, Ctrl, Kpi, PageHead } from "../v2";
 import { readParams, withQuery, type SP } from "../params";
 
 /** Bestand der Webagenturen je Land: Leads (lieferbar, reserviert, in Proben, geliefert) und mail-fähige Käufer. */
@@ -27,11 +27,9 @@ export default async function Bestand({ searchParams }: { searchParams: SP }) {
 
   return (
     <div className="v2">
-      <Crumbs items={[["JARVIS", "/dashboard/jarvis"], ["Bestand", ""]]} />
-      <div className="head2">
-        <span className="sub2" title="alle 10 min neu gezählt">Stand {berlin(stock.at)}</span>
+      <PageHead title="Bestand" icon="bestand" at={`Stand ${berlin(stock.at)}`}>
         <Chips base="/dashboard/bestand" param="land" value={land} options={COUNTRY_OPTS} params={raw} dots />
-      </div>
+      </PageHead>
       <h2 className="h2s">Leads</h2>
       <div className="kpis2 four">
         <Kpi value={compact(sum((c) => L(c, "new")))} label="lieferbar" />
