@@ -4,7 +4,7 @@ import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, 
 import { berlin, berlinDay, brake, chain, compact, currencySign, greeting, mailboxes, monthly, nextRun, onlySegment, realSubscriptions, sampleStock, stockSegment, BOX_MIN, COUNTRY_COLOR } from "@/lib/dashboard-logic";
 import { totals } from "@/lib/dashboard-periods";
 import { alarmTips, coach, hall, laneOf, laneStats, neckTask, rankTips, recommend, running, utilization, type Beat, type Tip } from "@/lib/leitstand";
-import { freeAgent } from "@/lib/agents";
+import { freeAgent, nextAgentRound } from "@/lib/agents";
 import { NECK_TO_STATION, ticker, type Edge, type Station, type StationId, type TickerItem } from "@/lib/fluss";
 import { effectiveLimit, slotCounts, werkOn, type LaneRegistry, type WerkKey } from "@/lib/owner-settings";
 import { START_WORKFLOWS, startState, type StartKey, type StartRequest } from "@/lib/start-queue";
@@ -15,14 +15,13 @@ import { requireOwner } from "../actions";
 import { requestStart, saveCountryLimits, saveFollowups, saveSampleTargets, saveSlotPlan, setPaused, toggleBuyerCountry, toggleSendCountry } from "../control-actions";
 import { WerkSwitch } from "../werk-switch";
 import { Back } from "../v2";
-import { Ampeln, Drawer, FlowMap, MiniBars, Ticker } from "./flow";
+import { Drawer, MiniBars, type Kpi } from "./flow";
 import { Bays, LANE_COLOR, Reactor, UtilChart, laneColor } from "./hud";
 import { Pult } from "./pult";
 import { AgentDrawer, AgentRow } from "./agents";
-import { Empfiehlt, JarvisChat } from "./empfiehlt";
 import { AutopilotPanel } from "./autopilot";
-import { DragTip } from "./dnd";
-import { Clock, Voice } from "./voice";
+import { GateRings, GateSteps, Reasons, type GateView } from "./freigabe";
+import { JarvisView } from "./view";
 import { Icon, type IconName } from "@/app/icons";
 import type { FunnelRow } from "@/lib/dashboard-logic";
 
@@ -178,14 +177,21 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const neckTip: Tip[] = neck && neckLabel ? [{ level: "gelb", title: `Engpass: ${neckLabel}`, text: "Hier verliert die Kette am meisten – Ursachen finden und kostenlose Verbesserungen vorschlagen.", href: base(neck), task: neckTask(neckLabel) }] : [];
   const { recs, rest } = recommend([...tips, ...neckTip]);
   const say = tips[0]?.level === "rot" ? tips[0].title : recs[0] ? `Mein Vorschlag: ${recs[0].title}` : tips[0]?.title ?? "alles im grünen Bereich";
-  const amps = [
-    { label: "Umsatz / Monat", value: revenue, sub: `${subs.length} Kunden`, tone: subs.length ? "green" : "grey", href: base("kunden") },
+  // Kern-Kennzahlen (Inhaber 04.10.2026: Kopf mit Umsatz, Kunden, Proben, Antworten); Versand und Engpass zeigt die Fluss-Karte
+  const sent24 = st.reduce((a, r) => a + r.sent24, 0);
+  const kpis: Kpi[] = [
+    { label: "Umsatz / Monat", value: revenue, sub: "netto aus Abos", tone: subs.length ? "green" : "grey", href: base("kunden"), icon: "trend-hoch" },
+    { label: "Kunden", value: `${subs.length}`, sub: subs.length ? "zahlend" : "noch keine", tone: subs.length ? "green" : "grey", href: base("kunden"), icon: "kunden" },
+    { label: "Proben bereit", value: `${ready}/${target}`, sub: `${sent24} raus in 24 h`, tone: !target ? "grey" : ready >= target ? "green" : ready ? "gold" : "red", href: base("proben"), icon: "proben" },
     openReplies
-      ? { label: "Antworten offen", value: `${openReplies}`, sub: "jetzt beantworten", tone: "gold", href: "/dashboard/antworten" }
-      : { label: "Antworten 7 T", value: `${w.replies}`, sub: `${w.positive} positiv`, tone: w.positive ? "green" : w.replies ? "gold" : "grey", href: base("antworten") },
-    { label: "Mails heute", value: `${sentToday}/${cap}`, sub: nb.stop ? "Notbremse" : own.send_paused ? "pausiert" : "Versand", tone: nb.stop || own.send_paused ? "red" : sentToday ? "cyan" : "grey", href: base("versand") },
-    { label: "Engpass", value: neck ? stations.find((x) => x.id === neck)!.label : "keiner", sub: "hier ansetzen", tone: neck ? "red" : "green", href: neck ? base(neck) : "/dashboard/jarvis", task: neck ? neckTask(stations.find((x) => x.id === neck)!.label) : undefined },
-  ] as { label: string; value: string; sub: string; tone: "green" | "gold" | "red" | "cyan" | "grey"; href: string }[];
+      ? { label: "Antworten offen", value: `${openReplies}`, sub: "jetzt beantworten", tone: "gold", href: "/dashboard/antworten", icon: "antworten" }
+      : { label: "Antworten 7 Tage", value: `${w.replies}`, sub: `${w.positive} positiv`, tone: w.positive ? "green" : w.replies ? "cyan" : "grey", href: base("antworten"), icon: "antworten" },
+  ];
+  const startAt = berlin(nextAgentRound(now), false);
+  const gateView: GateView = {
+    pct: gatePct, ok: gateOk, bad: gateBad, href: base("gate"), reasonsHref: `${base("gate")}&t=check&f=rot`,
+    countries: countries.map((c) => { const r = sp7.find((x) => x.country === c); return { c, pct: r && r.candidates ? Math.round((r.green / r.candidates) * 1000) / 10 : null }; }),
+  };
   const items: TickerItem[] = [
     // Probe-Anfragen der Website live (Inhaber 04.10.2026: „muss immer auch live eingetragen werden im dashboard“) –
     // alle Zielgruppen und Länder, nicht nur der gewählte Fokus
@@ -249,7 +255,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   );
 
   const pre = { k: sp.k, m: sp.m, b: sp.b };
-  let drawer: ReactNode = ag ? <AgentDrawer which={ag} tasks={agentTasks} pre={pre} /> : null;
+  let drawer: ReactNode = ag ? <AgentDrawer which={ag} tasks={agentTasks} pre={pre} startAt={startAt} /> : null;
   if (s && !ag) {
     const stn = stations.find((x) => x.id === s)!;
     const tabsOn = { set: !["bestand", "gate"].includes(s), check: true };
@@ -268,11 +274,14 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
       <Bays bays={bays} labels={Object.fromEntries(REG.lanes.flatMap((l) => [[l.id, l.label], [`short:${l.id}`, l.short]]))} />
     </>);
     if (s === "gate") body = tab === "check" ? (<>
-      <div className="seg"><Link href={`${base("gate")}&t=check`} scroll={false} className={sp.f !== "rot" ? "on" : ""}>alle</Link><Link href={`${base("gate")}&t=check&f=rot`} scroll={false} className={sp.f === "rot" ? "on" : ""}>aussortiert</Link></div>{checkList}
+      <div className="seg"><Link href={`${base("gate")}&t=check`} scroll={false} className={sp.f !== "rot" ? "on" : ""}>alle</Link><Link href={`${base("gate")}&t=check&f=rot`} scroll={false} className={sp.f === "rot" ? "on" : ""}>aussortiert</Link></div>
+      {sp.f === "rot" && <Reasons rows={reasonRows(checks)} />}
+      {checkList}
     </>) : (<>
-      <Big items={[[gatePct === null ? "–" : `${gatePct} %`, "Stichprobe"], [compact(gateOk), "frei / h"], [`${gateBad}`, "raus / h"]]} />
-      <MiniBars unit=" %" rows={sp7.map((r) => ({ key: r.country, label: r.country, n: r.candidates ? Math.round((r.green / r.candidates) * 1000) / 10 : 0, color: COUNTRY_COLOR[r.country] }))} />
-      <p className="lock"><Icon name="schloss" size={14} /> 3 Stufen · immer an</p>
+      <p className="jfg-what">Jeder Lead wird vor Probe und Lieferung in 3 Stufen geprüft. Nur wer alle besteht, geht raus.</p>
+      <GateRings g={gateView} />
+      <GateSteps />
+      <p className="lock"><Icon name="schloss" size={14} /> immer an · nie abschaltbar</p>
     </>);
     if (s === "bestand") body = tab === "check" ? lnk("/dashboard/bestand", "Bestand im Detail") : (<>
       <Big items={[[compact(Object.values(leadsNew).reduce((a, b) => a + b, 0)), "lieferbar"], [`+${compact(leads24)}`, "24 h"]]} />
@@ -355,30 +364,24 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   }
 
   return (
-    <div className={`jv jv2 ${s || ag ? "has-drw" : ""}`}>
-      <div className="jv-head">
-        <div className="jv-brand"><span className="jv-logo" aria-hidden><i /><i /><i /></span><h1>JARVIS</h1></div>
-        <Clock />
-      </div>
-      <Voice lines={[hello, say]} />
-      <Empfiehlt recs={recs} href={tipHref} agent={freeAgent(agentTasks)} />
-      {rest.length > 0 && (
-        <div className="jtips2">
-          {rest.slice(0, 4).map((x, i) => (
-            <DragTip key={i} task={x.task} title={x.title} href={tipHref(x)} level={x.level} tip={x.text} />
-          ))}
-        </div>
-      )}
-      <JarvisChat tasks={agentTasks} open={sp.c === "1"} />
-      <Ampeln items={amps} />
-      <AgentRow tasks={agentTasks} active={ag} />
-      <div className="jv-stage">
-        <FlowMap stations={stations} edges={edges} active={ag ? null : s} href={href} />
-        {drawer}
-      </div>
-      <Ticker items={ticker(items)} />
-    </div>
+    <JarvisView hello={hello} say={say} kpis={kpis} recs={recs} rest={rest} tipHref={tipHref} agent={freeAgent(agentTasks)}
+      tasks={agentTasks} startAt={startAt} activeAgent={ag} stations={stations} edges={edges} activeStation={s} stationHref={href}
+      drawer={drawer} gate={gateView} ticker={ticker(items)} />
   );
+}
+
+/** Häufigste Gründe der aussortierten Prüfungen (erster Grund je Lead), höchstens 6. */
+function reasonRows(checks: { result: string; failed_stage?: number | null; reasons?: string[] | null }[]) {
+  const m = new Map<string, { stage: number | null; reason: string; n: number }>();
+  for (const c of checks) {
+    if (c.result === "released") continue;
+    const reason = (c.reasons ?? [])[0] ?? "ohne Grund";
+    const k = `${c.failed_stage ?? ""}|${reason}`;
+    const x = m.get(k) ?? { stage: c.failed_stage ?? null, reason, n: 0 };
+    x.n++;
+    m.set(k, x);
+  }
+  return [...m.values()].sort((a, b) => b.n - a.n).slice(0, 6);
 }
 
 /** Trichter je Land seit Start (alle Experimente der Zielgruppe): wo klappt was? Quote = Antworten je zugestellter Mail. */
