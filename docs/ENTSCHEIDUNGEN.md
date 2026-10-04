@@ -16,7 +16,7 @@ Laufende Entscheidungen des Gehirns (Preise, Seitenvarianten) stehen zusätzlich
 | Versand wieder starten | wann und mit welcher Tagesmenge | nach dem Neuaufbau der Lead-Suche, wenn Proben lieferbar sind |
 | Nach-dem-Kauf-Mails | Zahlung fehlgeschlagen, Kündigung, Formular-Erinnerung, Feedback nach 4 Wochen | bauen |
 | Erste Lieferung | Freigabe im Dashboard statt GitHub, oder automatisch, wenn bis Montag 12 Uhr nichts kommt | Dashboard-Knopf |
-| Meldungen bündeln | Kaufinteresse an horbach.de, Verkäufe an gmail, Berichte an OWNER_EMAIL | eine Adresse |
+| Meldungen bündeln | Kaufinteresse an KAUFINTERESSE_AN, Verkäufe an SALE_NOTIFY_EMAIL, Berichte an OWNER_EMAIL | eine Adresse |
 
 ## 01.10.2026
 
@@ -111,7 +111,7 @@ Laufende Entscheidungen des Gehirns (Preise, Seitenvarianten) stehen zusätzlich
   - Datenbankgrenze für Wochenmenge auf 10.000 angehoben („ja“).
 - **Nach dem Kauf:**
   - Eigene Danke-Seite mit Formular für die gewünschten Leads; Demo unter `/danke?demo=1`.
-  - Verkaufsmeldung an **deinetop5@gmail.com** („schick die mail an deinetop5“).
+  - Verkaufsmeldung an die private Adresse des Inhabers (GitHub/Vercel-Variable `SALE_NOTIFY_EMAIL`).
   - Willkommensmail ausführlicher, professionell, mit Glückwunsch, Link zu den Zielgruppen-Wünschen und Signatur,
     „in unserem Design mit Blau und Gold“.
 - **Mergen:** Nach grüner CI darf Claude selbst nach `main` mergen („merge dann direkt“).

@@ -29,7 +29,8 @@ ICON = {OK: "✓", WARN: "!", FAIL: "✗"}
 WORKFLOWS = {
     "send.yml": ("Versand Kaltmails", 27),
     "taeglich.yml": ("Automatiklauf (Nachfassmails, Entwürfe)", 27),
-    "antworten.yml": ("Antwort-Assistent + Web-Proben (24/7)", 2),  # läuft rund um die Uhr alle 10 min
+    # läuft rund um die Uhr alle 10 min, Wachhund startet nach 20 min nach -> 1 h Toleranz (Prüfung 04.10.2026)
+    "antworten.yml": ("Antwort-Assistent + Web-Proben (24/7)", 1),
     "proben-vorrat.yml": ("Proben-Vorrat + Web-Proben (24/7)", 3),
     "morgenbericht.yml": ("Morgenbericht", 27),
     "sync.yml": ("Bounces/Ereignisse", 27),
@@ -317,21 +318,23 @@ def check_release_gate(c: Check, db) -> None:
         c.add("Werke", WARN, f"{k} pausiert durch Inhaber", f"seit {v}")
 
 
+SUPPLY_POOL = 300  # je Live-Seite geprüfte Firmen (wie der Block in responder.regional_sample)
+
+
 def check_sample_supply(c: Check, db) -> None:
-    # gleiche Auswahl wie responder.regional_sample (10 vollständige Leads, je Firma einer), ohne PDF zu bauen
+    # gleiche Auswahl wie responder.regional_sample (10 vollständige Leads, je Firma einer), ohne PDF zu bauen.
+    # Nur die neuesten Firmen je Seite prüfen – contact_companies ohne only blätterte alle Beobachtungen
+    # (Millionen Zeilen) und lief jeden Tag in den Timeout 57014 (Prüfung 04.10.2026).
     from deliveries import contact_companies
     pages = db.select("landing_pages", {"status": "eq.live", "select": "segment_id,country,slug"})
-    known = {False: set(contact_companies(db)), True: set(contact_companies(db, website_optional=True))}
     ready, not_ready = [], []
     for p in pages:
-        ok = known[p["segment_id"] == "S2"]
-        companies = set()
-        for i in range(0, len(sorted(ok)), 100):
-            ids = sorted(ok)[i:i + 100]
-            for l in db.select("leads", {"segment_id": f"eq.{p['segment_id']}", "country": f"eq.{p['country']}",
-                                         "status": "in.(new,sample)", "company_id": f"in.({','.join(ids)})",
-                                         "select": "company_id"}):
-                companies.add(l["company_id"])
+        seg = p["segment_id"]
+        rows = db.select("leads", {"segment_id": f"eq.{seg}", "country": f"eq.{p['country']}",
+                                   "status": "in.(new,sample)", "company_id": "not.is.null",
+                                   "order": "created_at.desc,id", "limit": str(SUPPLY_POOL), "select": "company_id"})
+        ids = sorted({r["company_id"] for r in rows if r.get("company_id")})
+        companies = set(contact_companies(db, website_optional=(seg == "S2"), only=ids)) if ids else set()
         (ready if len(companies) >= 10 else not_ready).append(p["slug"])
     if not pages:
         c.add("Proben", WARN, "Keine Live-Seiten")
@@ -411,13 +414,18 @@ def check_customers(c: Check, db) -> None:
     if past_due:
         c.add("Kunden", FAIL, f"{len(past_due)} Abo(s) mit fehlgeschlagener Zahlung",
               ", ".join((s.get("customers") or {}).get("company_name") or "?" for s in past_due))
-    waiting = db.select("deliveries", {"status": "eq.prepared", "select": "id,subscription_id,created_at"})
+    # Lieferungen an Stripe-Testkäufe sind keine echten Freigaben/Rückstände (Prüfung 04.10.2026)
+    test_ids = {s["id"] for s in tests}
+    waiting = [d for d in db.select("deliveries", {"status": "eq.prepared", "select": "id,subscription_id,created_at"})
+               if d.get("subscription_id") not in test_ids]
     if waiting:
         c.add("Kunden", WARN, f"{len(waiting)} erste Lieferung(en) warten auf deine Freigabe",
               "GitHub → Actions → kundenlieferung → approve")
     # freigegeben, aber seit über einem Tag nicht gesendet (Versandfehler, fehlender Anhang, Lauf ausgefallen)
-    stuck = db.select("deliveries", {"status": "eq.approved", "approved_at": f"lte.{(NOW - dt.timedelta(days=1)).isoformat()}",
-                                     "select": "id,subscription_id,approved_at"})
+    stuck = [d for d in db.select("deliveries", {"status": "eq.approved",
+                                                 "approved_at": f"lte.{(NOW - dt.timedelta(days=1)).isoformat()}",
+                                                 "select": "id,subscription_id,approved_at"})
+             if d.get("subscription_id") not in test_ids]
     if stuck:
         c.add("Kunden", FAIL, f"{len(stuck)} freigegebene Lieferung(en) seit über einem Tag nicht gesendet",
               "kundenlieferung-Lauf und Meldungen prüfen")
@@ -480,27 +488,84 @@ def _count(db, table: str, params: dict) -> int:
     return int((r.headers.get("content-range") or "*/0").split("/")[-1] or 0)
 
 
+def _safe_count(db, table: str, params: dict) -> int | None:
+    """Wie _count, aber eine Zeitüberschreitung (57014) macht nur diese Zahl „nicht messbar“ statt den ganzen
+    Check abzubrechen (Prüfung 04.10.2026)."""
+    try:
+        return _count(db, table, params)
+    except (requests.RequestException, RuntimeError) as e:
+        print(f"Zählung {table} {params} nicht messbar: {type(e).__name__}: {str(e)[:120]}")
+        return None
+
+
+def _fmt(n: int | None) -> str:
+    return "nicht messbar" if n is None else str(n)
+
+
+BUYERS_NEW_MIN = 50  # neue mail-fähige Fokus-Käufer je 24 h, darunter gelb (Prüfung 04.10.2026)
+
+
 def check_werke(c: Check, db) -> None:
     """Lead-Werk und Kunden-Werk: was in 24 h dazukam (Zahlen für die Tagesmail)."""
+    from lib.fokus import focus_pairs
     since = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=24)).isoformat()
-    per = []
-    for seg in ("S1", "S2", "S4", "S5", "S9"):
-        for co in ("US", "UK", "FR"):
-            n = _count(db, "leads", {"segment_id": f"eq.{seg}", "country": f"eq.{co}", "created_at": f"gte.{since}"})
-            if n:
-                per.append(f"{seg}/{co} {n}")
-    total = _count(db, "leads", {"status": "eq.new"})
+    focus = focus_pairs()
     if cfg("pipeline.yaml", "lead_suche") == "true":
-        c.add("Lead-Werk", OK if per else WARN, f"{total} lieferbare Leads im Bestand",
-              ("neu in 24 h: " + ", ".join(per)) if per else "in 24 h keine neuen Leads")
-    ok = _count(db, "prospects", {"check_status": "eq.ok"})
-    call = _count(db, "prospects", {"check_status": "eq.call_only"})
-    new = _count(db, "prospects", {"check_status": "in.(ok,call_only)", "checked_at": f"gte.{since}"})
-    if cfg("pipeline.yaml", "kunden_suche") == "true":
-        # Käufer = nur mail-fähige (Inhaber 02.10.2026); „nur Anruf/Brief“ getrennt und so benannt
-        c.add("Kunden-Werk", OK if new or ok + call >= 1_000_000 else WARN,
-              f"{ok} mail-fähige Käufer",
-              f"getrennt: nur Anruf/Brief {call}; Bestand gesamt {ok + call} von 1.000.000; neu in 24 h: {new}")
+        per, unknown = [], []
+        for seg in ("S1", "S2", "S4", "S5", "S9"):
+            for co in ("US", "UK", "FR"):
+                n = _safe_count(db, "leads", {"segment_id": f"eq.{seg}", "country": f"eq.{co}",
+                                              "created_at": f"gte.{since}"})
+                if n is None:
+                    unknown.append(f"{seg}/{co}")
+                elif n:
+                    per.append(f"{seg}/{co} {n}")
+        # Bestand nur im Fokus und ausdrücklich vor der Drei-Stufen-Freigabe – nicht „lieferbar“ (Prüfung 04.10.2026)
+        stock = [_safe_count(db, "leads", {"segment_id": f"eq.{s}", "country": f"eq.{co}", "status": "eq.new"})
+                 for s, co in focus]
+        total = None if None in stock else sum(stock)
+        label = ", ".join(f"{s}/{co}" for s, co in focus) or "alle"
+        detail = ("neu in 24 h: " + ", ".join(per)) if per else "in 24 h keine neuen Leads"
+        if unknown:
+            detail += "; nicht messbar: " + ", ".join(unknown)
+        c.add("Lead-Werk", OK if per else WARN, f"{_fmt(total)} Leads im Bestand (vor Freigabe), Fokus {label}", detail)
+    if cfg("pipeline.yaml", "kunden_suche") != "true":
+        return
+    # Käufer = nur mail-fähige: check_status ok in den Mail-Ländern der Zielgruppe (Inhaber 02.10.2026, wie
+    # app/lib/storage.ts); „nur Anruf/Brief“ getrennt und so benannt
+    segs = {r["id"]: sorted(r.get("email_countries") or []) for r in db.select("segments",
+                                                                                {"select": "id,email_countries"})}
+    mail, unknown = 0, []
+    for seg, countries in sorted(segs.items()):
+        if not countries:
+            continue
+        n = _safe_count(db, "prospects", {"check_status": "eq.ok", "segment_id": f"eq.{seg}",
+                                          "country": f"in.({','.join(countries)})"})
+        if n is None:
+            unknown.append(seg)
+        else:
+            mail += n
+    ok_all = _safe_count(db, "prospects", {"check_status": "eq.ok"})
+    call = _safe_count(db, "prospects", {"check_status": "eq.call_only"})
+    new = _safe_count(db, "prospects", {"check_status": "in.(ok,call_only)", "checked_at": f"gte.{since}"})
+    call_total = None if call is None or ok_all is None or unknown else call + ok_all - mail
+    stock = None if call is None or ok_all is None else ok_all + call
+    detail = (f"getrennt: nur Anruf/Brief {_fmt(call_total)}; Bestand gesamt {_fmt(stock)} von 1.000.000; "
+              f"neu in 24 h: {_fmt(new)}")
+    if unknown:
+        detail += "; nicht messbar: " + ", ".join(unknown)
+    title = f"{mail} mail-fähige Käufer" + (" (unvollständig)" if unknown else "")
+    c.add("Kunden-Werk", OK if new or (stock or 0) >= 1_000_000 else WARN, title, detail)
+    # Nachschub im Fokus: neue mail-fähige Käufer je Fokus-Zielgruppe in 24 h (Prüfung 04.10.2026)
+    for seg in sorted({s for s, _ in focus}):
+        countries = segs.get(seg) or []
+        if not countries:
+            continue
+        n = _safe_count(db, "prospects", {"check_status": "eq.ok", "segment_id": f"eq.{seg}",
+                                          "country": f"in.({','.join(countries)})", "checked_at": f"gte.{since}"})
+        if n is not None and n < BUYERS_NEW_MIN:
+            c.add("Kunden-Werk", WARN, f"{seg}-Käufer: < {BUYERS_NEW_MIN} neu in 24 h",
+                  f"{n} neue mail-fähige Käufer ({', '.join(countries)}) – Kunden-Werk/Quellen prüfen")
 
 
 def _berlin(ts: str) -> str:
@@ -512,18 +577,23 @@ def _berlin(ts: str) -> str:
 
 def check_plan(c: Check, db) -> None:
     """Autopilot und Speicher-Bremse (werk_plan_log, Nachtschicht 04.10.2026): letzte Verteilung je Werk und
-    Datenbankgröße. Gelb ab Bremsstufe „drossel“ (6 GB) oder wenn ein Werk seit 12 h keinen Plan-Job hatte."""
+    Datenbankgröße. Rot ab Bremsstufe „drossel“ (6 GB; Prüfung 04.10.2026: die Datenbank wächst ~1,3 GB/Tag, 8 GB
+    kosten extra), gelb bei „hinweis“ oder wenn ein Werk seit 12 h keinen Plan-Job hatte. GB = 1024³ Byte wie
+    werk_plan.py und die Speicher-Seite."""
+    from werk_plan import GB
     rows = db.select("werk_plan_log", {"select": "werk,at,mode,bremse,db_bytes,plan", "order": "at.desc", "limit": "40"})
     if not rows:
         c.add("Werke", WARN, "Noch keine Belegung protokolliert", "werk_plan_log leer – Plan-Job prüfen")
         return
     last = rows[0]
-    gb = (last.get("db_bytes") or 0) / 1e9
+    gb = (last.get("db_bytes") or 0) / GB
     level = last.get("bremse") or "aus"
-    text = {"aus": "aus", "hinweis": "Hinweis ab 5,5 GB", "drossel": "Drossel: höchstens 8 Lead-Plätze",
-            "ohne-rohbestand": "nur grüne Leads, kein Rohbestand"}.get(level, level)
-    c.add("Speicher", WARN if level in ("drossel", "ohne-rohbestand") else OK,
-          f"Datenbank {gb:.2f} GB von 8 GB" if gb else "Datenbankgröße unbekannt", f"Speicher-Bremse: {text}")
+    text = {"aus": "aus", "hinweis": "Hinweis (ab 5,5 GB)", "drossel": "Drossel: höchstens 8 Lead-Plätze (ab 6 GB)",
+            "ohne-rohbestand": "nur grüne Leads, kein Rohbestand (ab 7 GB)",
+            "stopp": "Lead-Werk gestoppt (ab 7,5 GB) – bitte über Aufräumen entscheiden"}.get(level, level)
+    status = FAIL if level in ("drossel", "ohne-rohbestand", "stopp") else WARN if level == "hinweis" else OK
+    c.add("Speicher", status, f"Datenbank {gb:.2f} GB von 8 GB" if gb else "Datenbankgröße unbekannt",
+          f"Speicher-Bremse: {text}")
     now = dt.datetime.now(dt.timezone.utc)
     for werk in ("lead-werk", "kunden-werk"):
         r = next((x for x in rows if x["werk"] == werk), None)
@@ -542,17 +612,23 @@ def kpi_line(db, seg: str, country: str) -> dict:
     from lib.stats import distinct_replies
     exps = [e["id"] for e in db.select("experiments", {"segment_id": f"eq.{seg}", "country": f"eq.{country}",
                                                         "select": "id"})]
-    msgs = set()
+    sent_msgs = []
     if exps:
-        msgs = {m["id"] for m in db.select_all("messages", {"experiment_id": f"in.({','.join(exps)})",
-                                                            "status": "eq.sent", "select": "id,kind"})}
-    sent = len(msgs)
+        sent_msgs = db.select_all("messages", {"experiment_id": f"in.({','.join(exps)})", "status": "eq.sent",
+                                               "select": "id,kind"})
+    # Antworten über alle gesendeten Mails zuordnen, gezählt werden aber nur Erstmails (Prüfung 04.10.2026)
+    msgs = {m["id"] for m in sent_msgs}
+    sent = sum((m.get("kind") or "initial") == "initial" for m in sent_msgs)
     events = db.select_all("email_events", {"type": "in.(reply,reply_positive,sample_requested,reply_negative,"
                                                     "unsubscribed,auto_reply)",
                                             "select": "id,type,dedupe_key,message_id"})
     replies = [e for e in distinct_replies(events) if e.get("message_id") in msgs and e["type"] != "auto_reply"]
     positive = sum(e["type"] in ("reply_positive", "sample_requested") for e in replies)
-    samples = len(db.select("sample_requests", {"segment_id": f"eq.{seg}", "country": f"eq.{country}", "select": "id"}))
+    # Proben-Anfragen des Inhabers selbst (Test der Seite) zählen nicht (Prüfung 04.10.2026)
+    owner = (os.environ.get("OWNER_EMAIL") or "").strip().lower()
+    samples = sum((r.get("email") or "").strip().lower() != owner or not owner
+                  for r in db.select("sample_requests", {"segment_id": f"eq.{seg}", "country": f"eq.{country}",
+                                                         "select": "id,email"}))
     subs = [s for s in db.select("subscriptions", {"segment_id": f"eq.{seg}", "status": "eq.active",
                                                    "select": "id,amount_cents,price_eur_month,currency,"
                                                              "customers(country,status,stripe_customer_id,notes)"})

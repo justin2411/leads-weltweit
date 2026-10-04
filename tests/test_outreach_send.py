@@ -15,7 +15,8 @@ import outreach  # noqa: E402
 from fakedb import FakeDB  # noqa: E402
 from followups import followup_text  # noqa: E402
 
-P = {"id": "p1", "company_name": "Acme Recruitment Ltd", "segment_id": "S1", "country": "UK", "region": None}
+P = {"id": "p1", "company_name": "Acme Recruitment Ltd", "segment_id": "S1", "country": "UK", "region": None,
+     "legal_form": "Ltd"}
 E = {"id": "e1", "segment_id": "S1", "variant": "A"}
 
 
@@ -47,22 +48,22 @@ class TotalLimitTest(unittest.TestCase):
     """Fix 8: config/versand.yaml gesamtgrenze gilt für Erstmails; Nachfassmails laufen weiter."""
 
     def test_limit_stops_initial_but_not_followups(self):
-        db = FakeDB({"messages": [msg("s1", "initial", "sent", to="a@x.co.uk"), msg("s2", "initial", "sent", to="b@y.co.uk"),
-                                  msg("a1", "initial", "approved", to="c@z.co.uk"),
-                                  msg("f1", "followup", "approved", parent_id="s1", to="a@x.co.uk")]})
+        db = FakeDB({"messages": [msg("s1", "initial", "sent", to="info@x.co.uk"), msg("s2", "initial", "sent", to="hello@y.co.uk"),
+                                  msg("a1", "initial", "approved", to="contact@z.co.uk"),
+                                  msg("f1", "followup", "approved", parent_id="s1", to="info@x.co.uk")]})
         out = run_send(db, limit=2)
-        self.assertIn("würde senden an a@x.co.uk", out)
-        self.assertNotIn("würde senden an c@z.co.uk", out)
+        self.assertIn("würde senden an info@x.co.uk", out)
+        self.assertNotIn("würde senden an contact@z.co.uk", out)
         self.assertIn("Gesamtgrenze erreicht", out)
 
     def test_late_followup_blocked(self):
         # Nachfassmail mehr als 11 Tage nach der Erstmail: nicht mehr senden (Audit 02.10.2026)
         old = (_dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(days=20)).isoformat()
-        db = FakeDB({"messages": [msg("s1", "initial", "sent", to="a@x.co.uk", sent_at=old),
-                                  msg("f1", "followup", "approved", parent_id="s1", to="a@x.co.uk")]})
+        db = FakeDB({"messages": [msg("s1", "initial", "sent", to="info@x.co.uk", sent_at=old),
+                                  msg("f1", "followup", "approved", parent_id="s1", to="info@x.co.uk")]})
         out = run_send(db, limit=1000)
         self.assertIn("Nachfassmail zu spät", out)
-        self.assertNotIn("würde senden an a@x.co.uk", out)
+        self.assertNotIn("würde senden an info@x.co.uk", out)
 
     def test_role_address_blocked(self):
         # Funktionsadressen ohne Vertriebsbezug nicht anschreiben (Audit 02.10.2026)
@@ -74,8 +75,8 @@ class TotalLimitTest(unittest.TestCase):
         self.assertIn("BLOCKIERT privacy@z.co.uk", out)
 
     def test_below_limit_sends(self):
-        db = FakeDB({"messages": [msg("a1", "initial", "approved", to="c@z.co.uk")]})
-        self.assertIn("würde senden an c@z.co.uk", run_send(db, limit=1000))
+        db = FakeDB({"messages": [msg("a1", "initial", "approved", to="contact@z.co.uk")]})
+        self.assertIn("würde senden an contact@z.co.uk", run_send(db, limit=1000))
 
     def test_config_value(self):
         self.assertEqual(outreach.total_limit(), 5000)  # Inhaber 03.10.2026: von 1000 auf 5000
@@ -110,12 +111,12 @@ class FollowupRecheckTest(unittest.TestCase):
         self.assertIsNone(outreach.followup_block_reason(FakeDB(), msg("a1", "initial", "approved")))
 
     def test_blocked_in_send_loop(self):
-        db = FakeDB({"messages": [msg("s1", "initial", "sent", to="a@x.co.uk"),
-                                  msg("f1", "followup", "approved", parent_id="s1", to="a@x.co.uk")],
+        db = FakeDB({"messages": [msg("s1", "initial", "sent", to="info@x.co.uk"),
+                                  msg("f1", "followup", "approved", parent_id="s1", to="info@x.co.uk")],
                      "email_events": [{"message_id": "s1", "type": "reply_positive", "created_at": "2026-09-27"}]})
         out = run_send(db)
-        self.assertIn("BLOCKIERT a@x.co.uk", out)
-        self.assertNotIn("würde senden an a@x.co.uk", out)
+        self.assertIn("BLOCKIERT info@x.co.uk", out)
+        self.assertNotIn("würde senden an info@x.co.uk", out)
 
 
 class CountryWideButtonTest(unittest.TestCase):

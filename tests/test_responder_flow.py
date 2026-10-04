@@ -64,7 +64,9 @@ class OrderTest(unittest.TestCase):
     def test_owner_notice_failing_after_reply_still_records_event(self):
         db = db_with_prospect()
         msg = mail("info@acme.co.uk", "Re: Leads", "How much does this cost per month?")
-        with mock.patch.object(r, "notify_owner"), mock.patch.object(r, "send_reply", side_effect=RuntimeError("x")):
+        claude = {"intent": "buy", "faq": ["none"], "needs_owner": True, "summary_de": "Kauf", "by": "claude"}
+        with mock.patch.object(r, "classify", return_value=claude), mock.patch.object(r, "notify_owner"), \
+                mock.patch.object(r, "send_reply", side_effect=RuntimeError("x")):
             self.assertEqual(r.handle_message(db, msg, "<m2@x>", True, OWN), "error")
         self.assertEqual(db.rows("email_events"), [])
 

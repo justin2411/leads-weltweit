@@ -33,6 +33,15 @@ def clean(v: Any) -> Any:
     return v
 
 
+def stable_order(order: str | None) -> str | None:
+    """Sortierung fürs Blättern eindeutig machen: ohne `id` als letzten Schlüssel können Zeilen mit gleichem Wert
+    (z. B. created_at) zwischen zwei Seiten springen – doppelt oder gar nicht geliefert (Prüfung 04.10.2026)."""
+    if not order:
+        return order
+    cols = [c.strip().split(".")[0] for c in order.split(",") if c.strip()]
+    return order if "id" in cols else f"{order},id"
+
+
 class DB:
     def __init__(self, url: str | None = None, key: str | None = None, timeout: int = 60):
         url = url or os.environ.get("SUPABASE_URL")
@@ -79,6 +88,9 @@ class DB:
         """Alle Zeilen (PostgREST liefert standardmäßig höchstens 1000 pro Abfrage)."""
         out, offset = [], 0
         base = {k: v for k, v in (params or {}).items() if k != "limit"}
+        base["order"] = stable_order(base.get("order"))
+        if base["order"] is None:
+            del base["order"]
         while True:
             rows = self.select(table, {**base, "limit": str(page), "offset": str(offset)})
             out += rows

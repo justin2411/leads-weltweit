@@ -6,7 +6,7 @@ import re
 # Antwort-Ereignisse; bei mehreren Ereignissen zu derselben eingehenden Mail zählt das aussagekräftigste
 REPLY_PRIORITY = {"reply_positive": 5, "sample_requested": 4, "reply_negative": 3, "unsubscribed": 2,
                   "auto_reply": 1, "reply": 0}
-_INBOUND = re.compile(r"^(imap|reply|unknown):(.+)$")
+_INBOUND = re.compile(r"^(imap|reply|unknown|owner):(.+)$")  # owner: Kaufinteresse aus dem Cockpit (Prüfung 04.10.2026)
 
 
 def delivered(s: dict) -> int:

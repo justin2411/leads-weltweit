@@ -88,7 +88,7 @@ test("Lead-Tanks: Status → Schichten, Zielgruppe, Länder", () => {
 test("Käufer: nur ok im Mail-Land zählt, Anruf/Brief getrennt", () => {
   const s2 = buyerTanks(D, SEGS, "S2");
   const us = s2.find((t) => t.country === "US")!;
-  assert.deepEqual(us, { country: "US", mail: 100, sent: 30, free: 70, callOnly: 40, mailCountry: true });
+  assert.deepEqual(us, { country: "US", mail: 100, sent: 30, queued: 0, free: 70, callOnly: 40, mailCountry: true });   // ohne used: wie bisher
   const de = s2.find((t) => t.country === "DE")!;
   assert.equal(de.mail, 0);
   assert.equal(de.callOnly, 11);
@@ -101,6 +101,21 @@ test("Käufer: nur ok im Mail-Land zählt, Anruf/Brief getrennt", () => {
   assert.equal(usAll.callOnly, 110);
   const fr = all.find((t) => t.country === "FR")!;
   assert.deepEqual([fr.mail, fr.sent, fr.free], [8, 8, 0]);
+});
+
+test("Käufer frei = mail-fähig − Käufer mit Mail (wie JARVIS, Prüfung 04.10.2026)", () => {
+  const d: StorageData = { ...D, buyers: [
+    { segment: "S2", country: "UK", check_status: "ok", n: 3000, sent: 600, used: 2241 },
+    { segment: "S2", country: "US", check_status: "ok", n: 10, sent: 4, used: 50 },   // used > n wird gekappt
+    { segment: "S2", country: "FR", check_status: "ok", n: 10, sent: 4, used: 2 },    // used < sent: nie negativ
+  ] };
+  const t = buyerTanks(d, SEGS, "S2");
+  const uk = t.find((x) => x.country === "UK")!;
+  assert.deepEqual([uk.mail, uk.sent, uk.queued, uk.free], [3000, 600, 1641, 759]);
+  const us = t.find((x) => x.country === "US")!;
+  assert.deepEqual([us.sent, us.queued, us.free], [4, 6, 0]);
+  const fr = t.find((x) => x.country === "FR")!;
+  assert.deepEqual([fr.sent, fr.queued, fr.free], [4, 0, 6]);
 });
 
 test("Proben, Freigabe, Datenbank", () => {

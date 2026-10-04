@@ -24,5 +24,27 @@ class CleanTests(unittest.TestCase):
         self.assertEqual(sent[2], {"p": "y"})
 
 
+class StableOrderTests(unittest.TestCase):
+    """Blättern mit eindeutiger Sortierung (Prüfung 04.10.2026: drafts.py brach mit 409 Duplicate Key ab, weil bei
+    gleichem created_at ein Käufer auf zwei Seiten erschien)."""
+
+    def test_stable_order(self):
+        self.assertEqual(dbmod.stable_order("created_at"), "created_at,id")
+        self.assertEqual(dbmod.stable_order("sent_at.asc"), "sent_at.asc,id")
+        self.assertEqual(dbmod.stable_order("event_date.desc,id"), "event_date.desc,id")
+        self.assertEqual(dbmod.stable_order("id"), "id")
+        self.assertEqual(dbmod.stable_order("id.desc"), "id.desc")
+        self.assertIsNone(dbmod.stable_order(None))
+
+    def test_select_all_pages_with_id_tiebreak(self):
+        d = dbmod.DB(url="https://x.supabase.co", key="k")
+        seen = []
+        with mock.patch.object(d, "select", side_effect=lambda t, p: (seen.append(p), [])[1]):
+            d.select_all("prospects", {"order": "created_at", "limit": "5"})
+            d.select_all("prospects", {"select": "id"})
+        self.assertEqual(seen[0]["order"], "created_at,id")
+        self.assertNotIn("order", seen[1])  # ohne Sortierung bleibt es wie bisher
+
+
 if __name__ == "__main__":
     unittest.main()

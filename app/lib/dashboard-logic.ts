@@ -45,7 +45,7 @@ export type Live = {
   last_sent_at: string | null; window_sent: number;
   events: Ev[];
   followups_due: { n: number; rows: { prospect_id: string; segment_id: string; country: string; sent_at: string; to_email: string; company_name: string; domain: string }[] };
-  sample_requests: { id: string; company_name: string; domain: string; segment_id: string | null; country: string | null; status: string; created_at: string; sent_at: string | null; claimed_at: string | null; note: string | null }[];
+  sample_requests: { id: string; company_name: string; domain: string; segment_id: string | null; country: string | null; status: string; created_at: string; sent_at: string | null; claimed_at: string | null; note: string | null; is_test?: boolean }[];
   stock: { segment_id: string; country: string; ready: number; oldest: string | null; newest: string | null; sent24: number; failed24: number }[];
   stock_last_built: string | null;
   pages: { slug: string; segment_id: string; country: string; status: string; views: number; clicks: number; requests: number; checkouts: number; purchases: number }[];
@@ -295,7 +295,14 @@ export function brake(live: Live, cfg: OpsConfig) {
 
 // --------------------------------------------------------------------------------------------- Antworten
 const REPLY_PRIORITY: Record<string, number> = { reply_positive: 5, sample_requested: 4, reply_negative: 3, unsubscribed: 2, auto_reply: 1, reply: 0 };
-const INBOUND = /^(imap|reply|unknown):(.+)$/;
+// owner: Kaufinteresse aus dem Antworten-Cockpit zur selben Mail (Prüfung 04.10.2026)
+const INBOUND = /^(imap|reply|unknown|owner):(.+)$/;
+
+/** dedupe_key für „Kaufinteresse“ aus dem Cockpit: zählt als dieselbe eingehende Mail wie inbox.py/responder.py. */
+export function ownerReplyKey(imapMessageId: string | null | undefined): string | null {
+  const mid = String(imapMessageId ?? "").trim();
+  return mid ? `owner:${mid}` : null;
+}
 
 /** Je eingehender Mail ein Ereignis, das aussagekräftigste (stats.distinct_replies). */
 export function distinctReplies<T extends Pick<Ev, "id" | "type" | "dedupe_key" | "message_id">>(events: T[]): T[] {
@@ -360,7 +367,8 @@ export function funnel(live: Live, stock: Stock | null, segment: string, country
   const evs = live.events.filter((e) => e.segment_id === segment && e.country === country);
   const replies = distinctReplies(evs).filter((e) => e.type !== "auto_reply");
   const mailSamples = new Set(evs.filter((e) => e.type === "sample_requested").map((e) => e.prospect_id ?? e.id));
-  const web = live.sample_requests.filter((r) => r.segment_id === segment && r.country === country);
+  // Testproben des Inhabers zählen nicht als echte Proben (Prüfung 04.10.2026)
+  const web = live.sample_requests.filter((r) => r.segment_id === segment && r.country === country && !r.is_test);
   const subs = realSubscriptions(live).filter((s) => s.segment_id === segment && s.customer?.country === country);
   const sentInitial = sum((m) => m.status === "sent" && m.kind === "initial");
   const { bounced } = countBounces(evs);
@@ -485,6 +493,9 @@ export function durationS(ms: number): string {
 }
 
 // --------------------------------------------------------------------------------------------- Proben-Vorrat
+/** Zielgruppen ohne Verfall nach Alter (Inhaber 03.10.2026, wie NO_EXPIRY in scripts/sample_stock.py). */
+export const NO_EXPIRY_SEGMENTS = ["S2"];
+
 export type StockRow = { key: string; slug: string; focus: boolean; target: number; ready: number; oldestH: number | null; sent24: number };
 
 export function sampleStock(live: Live, cfg: OpsConfig, now: Date): StockRow[] {
@@ -568,7 +579,9 @@ export function alerts(live: Live, stock: Stock | null, cfg: OpsConfig, now: Dat
   const low = st.filter((r) => r.ready > 0 && r.ready < Math.ceil(r.target / 2));
   if (empty.length) add(empty.some((r) => r.focus) ? "rot" : "gelb", "Proben", `Proben-Vorrat leer: ${empty.map((r) => r.key).join(", ")}`, "Klick auf „Probe anfordern“ landet in der Warteschlange", `Proben leer: ${empty.map((r) => r.key).join(", ")}`);
   if (low.length) add("gelb", "Proben", `Proben-Vorrat niedrig: ${low.map((r) => `${r.key} ${r.ready}/${r.target}`).join(", ")}`, undefined, "Proben-Vorrat niedrig");
-  const aging = st.filter((r) => r.oldestH !== null && r.oldestH > cfg.proben.max_alter_stunden - 6);
+  // S2 verfällt nicht nach Alter – kein „verfallen bald“ (Prüfung 04.10.2026)
+  const aging = st.filter((r) => r.oldestH !== null && r.oldestH > cfg.proben.max_alter_stunden - 6
+    && !NO_EXPIRY_SEGMENTS.includes(r.key.split("/")[0]));
   if (aging.length) add("gelb", "Proben", `Proben verfallen bald (> ${cfg.proben.max_alter_stunden - 6} h alt): ${aging.map((r) => r.key).join(", ")}`, undefined, "Proben verfallen bald");
   const below = st.some((r) => r.ready < r.target);
   if (below && hoursSince(live.stock_last_built, now) > 3) add("gelb", "Proben", `Proben-Vorrat seit ${ago(live.stock_last_built, now).replace("vor ", "")} nicht nachgebaut`, "proben-vorrat.yml läuft stündlich", "Proben-Vorrat baut nicht nach");
@@ -716,7 +729,7 @@ export function chain(live: Live, stock: Stock | null, cfg: OpsConfig, countries
   };
   const pos = m.delivered ? pctS(m.positive / m.delivered) : "–";
   const stages: ChainStage[] = [
-    { key: "leads", label: "Leads", value: leads === null ? "…" : compact(leads), sub: `+${compact(leads24)} heute`, tip: "lieferbare Leads (Status neu) · neu in 24 h" },
+    { key: "leads", label: "Leads", value: leads === null ? "…" : compact(leads), sub: `+${compact(leads24)} in 24 h`, tip: "lieferbare Leads (Status neu) · neu in 24 h" },
     { key: "kaeufer", label: "Käufer", value: stock ? compact(sum((x) => x.buyersOk)) : "…", sub: stock ? `${compact(m.buyersUnused ?? 0)} frei` : "", tip: "mail-fähige Käufer (Prüfung ok, Mail-Land) · davon noch ohne Mail. Nur Anruf/Brief zählt nicht." },
     { key: "mails", label: "Mails", value: compact(sum((x) => x.sent)), sub: `${compact(sum((x) => x.sentToday))} heute`, tip: `gesendete Erstmails · heute · ${fmt(m.queue)} freigegeben in der Warteschlange` },
     { key: "antworten", label: "Antworten", value: compact(sum((x) => x.replies)), sub: `${m.positive} positiv`, tip: `Antworten ohne Abwesenheitsnotizen · positiv ${pos} der zugestellten (Ziel ≥ 2 %)` },

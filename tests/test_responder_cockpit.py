@@ -35,6 +35,12 @@ def mail(frm, subject, body="", mid="<m1@x>", when=None, **headers):
     return m
 
 
+def claude_buy():
+    """Kaufinteresse, von Claude eingeordnet (nur dann geht eine Eingangsbestätigung raus, Prüfung 04.10.2026)."""
+    return mock.patch.object(r, "classify", return_value={"intent": "buy", "faq": ["none"], "needs_owner": True,
+                                                          "summary_de": "Kaufinteresse", "by": "claude"})
+
+
 def two_prospects():
     """Zwei Käufer: die Antwort kommt von der Domain von B, verweist aber auf unsere Mail an A."""
     return FakeDB({
@@ -90,7 +96,8 @@ class InboundRowTest(unittest.TestCase):
                     mock.patch.dict(os.environ, {"OWNER_EMAIL": "owner@example.org", "RESEND_API_KEY": "k",
                                                  "MAIL_FROM": "a@nextgen-profit.de", "SITE_URL": "https://site.test"}):
                 self.assertEqual(r.handle_message(db, msg, "<b1@x>", True, OWN), "owner")
-        send.assert_called_once()  # kurze Eingangsbestätigung wie bisher
+        send.assert_not_called()  # nur per Regel erkannt: keine Eingangsbestätigung, nur Inhaber (Prüfung 04.10.2026)
+        post.assert_called_once()  # Mail an den Inhaber
         rows = db.rows("inbound_replies")
         self.assertEqual(len(rows), 1)
         row = rows[0]
@@ -158,11 +165,15 @@ class InboundRowTest(unittest.TestCase):
         msg = mail("info@alpha-web.com", "Re: x", "How much per month?", mid="<p1@x>")
         with mock.patch.object(r, "auto_replies_paused", return_value=True), \
                 mock.patch.object(r, "push", return_value=True) as push, \
+                mock.patch.object(r, "notify_owner") as note, \
                 mock.patch.object(r, "send_reply") as send:
             self.assertEqual(r.handle_message(db, msg, "<p1@x>", True, OWN), "paused")
             self.assertEqual(r.handle_message(db, msg, "<p1@x>", True, OWN), "paused")
         send.assert_not_called()
-        push.assert_called_once()
+        # Kaufinteresse in der Pause: Mail + Push über notify_owner, genau einmal (Prüfung 04.10.2026)
+        note.assert_called_once()
+        self.assertEqual(note.call_args.kwargs["kind"], "buy")
+        push.assert_not_called()
         self.assertEqual(len(db.rows("inbound_replies")), 1)
         self.assertEqual(db.rows("email_events"), [])  # Mail bleibt offen wie bisher
 
@@ -238,12 +249,12 @@ class InboundRowTest(unittest.TestCase):
         # Review 04.10.2026: Meldung ging raus, Zwischenantwort scheitert -> nächster Lauf (10 min) meldet nicht erneut
         db = two_prospects()
         msg = mail("info@alpha-web.com", "Re: x", "How much per month?", mid="<rf@x>")
-        with mock.patch.object(r, "notify_owner") as note, \
+        with claude_buy(), mock.patch.object(r, "notify_owner") as note, \
                 mock.patch.object(r, "send_reply", side_effect=RuntimeError("Resend 500")):
             self.assertEqual(r.handle_message(db, msg, "<rf@x>", True, OWN), "error")
             self.assertEqual(r.handle_message(db, msg, "<rf@x>", True, OWN), "error")
         self.assertEqual(note.call_count, 1)
-        with mock.patch.object(r, "notify_owner") as note, mock.patch.object(r, "send_reply") as send:
+        with claude_buy(), mock.patch.object(r, "notify_owner") as note, mock.patch.object(r, "send_reply") as send:
             self.assertEqual(r.handle_message(db, msg, "<rf@x>", True, OWN), "owner")
         note.assert_not_called()
         send.assert_called_once()
@@ -251,11 +262,11 @@ class InboundRowTest(unittest.TestCase):
     def test_unpause_after_pause_push_no_second_alert(self):
         db = two_prospects()
         msg = mail("info@alpha-web.com", "Re: x", "How much per month?", mid="<pp@x>")
-        with mock.patch.object(r, "auto_replies_paused", return_value=True), \
-                mock.patch.object(r, "push", return_value=True) as push:
+        with claude_buy(), mock.patch.object(r, "auto_replies_paused", return_value=True), \
+                mock.patch.object(r, "notify_owner") as note:
             r.handle_message(db, msg, "<pp@x>", True, OWN)
-        push.assert_called_once()
-        with mock.patch.object(r, "notify_owner") as note, mock.patch.object(r, "send_reply") as send:
+        note.assert_called_once()
+        with claude_buy(), mock.patch.object(r, "notify_owner") as note, mock.patch.object(r, "send_reply") as send:
             self.assertEqual(r.handle_message(db, msg, "<pp@x>", True, OWN), "owner")
         note.assert_not_called()
         send.assert_called_once()  # Zwischenantwort an den Absender geht wie bisher raus

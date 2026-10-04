@@ -12,6 +12,7 @@ import { Back } from "../v2";
 const BREMSE: Record<PlanLog["bremse"], string> = {
   aus: "", hinweis: "Speicher ab 5,5 GB – noch keine Bremse", drossel: "Speicher-Bremse: höchstens 8 Lead-Plätze",
   "ohne-rohbestand": "Speicher-Bremse: nur grüne Leads, kein Rohbestand",
+  stopp: "Speicher-Bremse: Lead-Werk gestoppt (ab 7,5 GB) – du entscheidest über Aufräumen",
 };
 const hhmm = (iso: string) => new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 

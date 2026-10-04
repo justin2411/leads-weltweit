@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   alerts, berlin, greeting, brake, countBounces, distinctReplies, extraBoxCap, funnel, mailboxes, mainBoxCap, nextCron, nextRun,
   pipeline, sampleStock, type Live, type OpsConfig, type Stock,
-  bottleneckOf, chain, compact, lastDays, nextChip, openActions, sentPerDay, topAlerts,
+  bottleneckOf, chain, compact, lastDays, nextChip, openActions, ownerReplyKey, sentPerDay, topAlerts,
 } from "./dashboard-logic.ts";
 
 const cfg: OpsConfig = {
@@ -123,6 +123,17 @@ test("Antworten: je eingehender Mail nur das aussagekräftigste Ereignis", () =>
     { id: "4", type: "bounced", dedupe_key: null, message_id: "m" },
   ]);
   assert.deepEqual(r.map((e) => e.type).sort(), ["reply", "reply_positive"]);
+});
+
+test("Kaufinteresse aus dem Cockpit zählt nicht doppelt (Prüfung 04.10.2026)", () => {
+  assert.equal(ownerReplyKey(" <m1@x> "), "owner:<m1@x>");
+  assert.equal(ownerReplyKey(null), null);
+  const r = distinctReplies([
+    { id: "1", type: "reply", dedupe_key: "imap:<m1@x>", message_id: "m" },
+    { id: "2", type: "reply", dedupe_key: "reply:<m1@x>", message_id: "m" },
+    { id: "3", type: "reply_positive", dedupe_key: ownerReplyKey("<m1@x>"), message_id: "m" },
+  ]);
+  assert.deepEqual(r.map((e) => e.id), ["3"]);
 });
 
 test("Trichter: Käufer nur mail-fähig, call_only getrennt, zugestellt = gesendet − Bounces, Testkäufe zählen nicht", () => {
@@ -306,4 +317,31 @@ test("Begrüßung nach deutscher Uhrzeit (vorher immer „Guten Abend“)", () =
   assert.equal(greeting(new Date("2026-10-04T12:00:00Z")), "Guten Tag, Justin.");    // 14:00
   assert.equal(greeting(new Date("2026-10-04T18:00:00Z")), "Guten Abend, Justin.");  // 20:00
   assert.equal(greeting(new Date("2026-12-04T03:30:00Z")), "Gute Nacht, Justin.");   // 04:30 MEZ
+});
+
+test("Prüfung 04.10.2026: S2 verfällt nicht nach Alter, Testproben des Inhabers zählen nicht, Leads „in 24 h“", () => {
+  const now = new Date("2026-10-03T16:00:00Z");
+  const old = "2026-10-01T10:00:00Z"; // 54 h alt
+  const l = live({
+    segments: [{ id: "S2", name: "W", email_countries: ["US", "UK"], status: "testing" }, { id: "S4", name: "V", email_countries: ["US"], status: "testing" }],
+    pages: [
+      { slug: "us/web-agencies", segment_id: "S2", country: "US", status: "live", views: 0, clicks: 0, requests: 0, checkouts: 0, purchases: 0 },
+      { slug: "us/insurance", segment_id: "S4", country: "US", status: "live", views: 0, clicks: 0, requests: 0, checkouts: 0, purchases: 0 },
+    ],
+    stock: [
+      { segment_id: "S2", country: "US", ready: 6, oldest: old, newest: old, sent24: 0, failed24: 0 },
+      { segment_id: "S4", country: "US", ready: 3, oldest: old, newest: old, sent24: 0, failed24: 0 },
+    ],
+  });
+  const aging = alerts(l, stock, cfg, now, null).filter((a) => a.title.startsWith("Proben verfallen bald"));
+  assert.equal(aging.length, 1);
+  assert.ok(aging[0].title.endsWith(": S4/US"), aging[0].title);
+
+  const req = (id: string, is_test?: boolean) => ({ id, company_name: id, domain: "x.co", segment_id: "S2", country: "US", status: "sent", created_at: "2026-10-03T10:00:00Z", sent_at: "2026-10-03T10:01:00Z", claimed_at: null, note: null, is_test });
+  const f = funnel(live({ sample_requests: [req("echt"), req("alt"), req("inhaber", true)] }), stock, "S2", "US");
+  assert.equal(f.samplesRequested, 2);
+  assert.equal(f.samplesSent, 2);
+
+  const c = chain(live(), { ...stock, leads_24h: [{ segment_id: "S2", country: "US", n: 42 }] }, cfg, ["US"]);
+  assert.equal(c.stages[0].sub, "+42 in 24 h");
 });

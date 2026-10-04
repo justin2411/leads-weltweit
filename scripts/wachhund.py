@@ -38,8 +38,9 @@ ROOT = Path(__file__).resolve().parents[1]
 #   hourly: (start_h, end_h) UTC-Fenster, Minuten ohne Lauf bis überfällig
 #   daily:  "HH:MM" UTC, Wochentage (0=Mo) oder None
 JOBS = [
-    # Antworten rund um die Uhr alle 10 min (Nachtschicht 04.10.2026: US-Antworten kommen in unserer Nacht)
-    {"wf": "antworten.yml", "kind": "hourly", "window": (0, 23), "max_min": 45, "inputs": {"probelauf": "false"}},
+    # Antworten rund um die Uhr alle 10 min (Nachtschicht 04.10.2026: US-Antworten kommen in unserer Nacht);
+    # nach 20 statt 45 min nachstarten (Prüfung 04.10.2026: GitHub ließ geplante Läufe stundenlang aus)
+    {"wf": "antworten.yml", "kind": "hourly", "window": (0, 23), "max_min": 20, "inputs": {"probelauf": "false"}},
     # Proben-Vorrat + Web-Proben rund um die Uhr (03.10.2026: Anfrage 18:30 wartete 5 h, weil GitHub Läufe ausließ)
     {"wf": "proben-vorrat.yml", "kind": "hourly", "window": (0, 23), "max_min": 75, "inputs": {"befehl": "run"}},
     {"wf": "morgenbericht.yml", "kind": "daily", "at": "04:47", "grace": 45},

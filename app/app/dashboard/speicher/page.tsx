@@ -102,7 +102,7 @@ export default async function Speicher({ searchParams }: { searchParams: SP }) {
 }
 
 const BREMSE: Record<string, string> = { aus: "aus", hinweis: "Hinweis (ab 5,5 GB)", drossel: "Drossel: höchstens 8 Lead-Plätze (ab 6 GB)",
-  "ohne-rohbestand": "nur noch grüne Leads, kein Rohbestand (ab 7 GB)" };
+  "ohne-rohbestand": "nur noch grüne Leads, kein Rohbestand (ab 7 GB)", stopp: "Lead-Werk gestoppt (ab 7,5 GB)" };
 
 function Body({ d, seg, proben, brake }: { d: Storage; seg: string; proben: ProbeRow[] | null; brake: { level: string; at: string } | null }) {
   // ------------------------------------------------------------- Kunden-Leads
@@ -151,14 +151,14 @@ function Body({ d, seg, proben, brake }: { d: Storage; seg: string; proben: Prob
         <div className="tk-row gold" style={{ "--n": bt.length } as CSSProperties}>
           {bt.map((t) => (
             <Tank key={t.country} href={baukastenHref(t.country, seg, "kaeufer")} h={logHeight(t.mail, bTop)} tk={bTicks} off={!t.mailCountry}
-              layers={[{ c: "var(--b-sent)", n: t.sent, title: "angeschrieben" }, { c: "var(--b-frei)", n: t.free, title: "noch frei" }]}
+              layers={[{ c: "var(--b-sent)", n: t.sent, title: "angeschrieben" }, { c: "var(--b-queued)", n: t.queued, title: "in Arbeit" }, { c: "var(--b-frei)", n: t.free, title: "noch frei" }]}
               n={t.mailCountry ? big(t.mail) : "–"} label={t.country}
               sub={t.mailCountry ? <><span><b>{big(t.free)}</b> frei</span><span className="dot"> · </span><span>{big(t.sent)} angeschr.</span></> : "kein Mail-Land"}
               call={t.callOnly > 0 ? <span className="tk-call" title="zählt nicht als Käufer"><Icon name="telefon" size={13} /> {big(t.callOnly)} <span>nur Anruf/Brief</span></span> : undefined}
-              title={t.mailCountry ? `mail-fähig ${t.mail.toLocaleString("de-DE")} · angeschrieben ${t.sent.toLocaleString("de-DE")} · noch frei ${t.free.toLocaleString("de-DE")} · nur Anruf/Brief ${t.callOnly.toLocaleString("de-DE")}` : `kein Mail-Land dieser Zielgruppe · nur Anruf/Brief ${t.callOnly.toLocaleString("de-DE")}`} />
+              title={t.mailCountry ? `mail-fähig ${t.mail.toLocaleString("de-DE")} · angeschrieben ${t.sent.toLocaleString("de-DE")} · in Arbeit ${t.queued.toLocaleString("de-DE")} · noch frei ${t.free.toLocaleString("de-DE")} · nur Anruf/Brief ${t.callOnly.toLocaleString("de-DE")}` : `kein Mail-Land dieser Zielgruppe · nur Anruf/Brief ${t.callOnly.toLocaleString("de-DE")}`} />
           ))}
         </div>
-        <Legend items={[{ c: "var(--b-frei)", label: "noch frei" }, { c: "var(--b-sent)", label: "angeschrieben" }]} />
+        <Legend items={[{ c: "var(--b-frei)", label: "noch frei" }, { c: "var(--b-queued)", label: "in Arbeit" }, { c: "var(--b-sent)", label: "angeschrieben" }]} />
       </section>
 
       <div className="sp-row3">
@@ -174,7 +174,7 @@ function Body({ d, seg, proben, brake }: { d: Storage; seg: string; proben: Prob
             </div>
           </div>
           <p className="sp-cost"><b>Supabase Pro: 8 GB inklusive</b>, darüber kostet es extra.</p>
-          <p className="sp-cost" title="Stufen: ab 5,5 GB Hinweis · ab 6 GB höchstens 8 Lead-Plätze · ab 7 GB kein Rohbestand mehr · zurück erst 0,2 GB darunter">
+          <p className="sp-cost" title="Stufen: ab 5,5 GB Hinweis · ab 6 GB höchstens 8 Lead-Plätze · ab 7 GB kein Rohbestand mehr · ab 7,5 GB Lead-Werk gestoppt · zurück erst 0,2 GB darunter">
             <Icon name="speicher" size={14} /> Speicher-Bremse: <b>{brake ? BREMSE[brake.level] ?? brake.level : "noch keine Messung"}</b>
             {brake && <> · geprüft {berlin(brake.at)}</>}</p>
         </section>

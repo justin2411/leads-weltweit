@@ -7,3 +7,6 @@ __pycache__/
 node_modules/
 .next/
 out/
+# Lead-Inhalte nie ins öffentliche Repo (Prüfung 04.10.2026): Proben entstehen nur lokal/in der Datenbank
+samples/**/leads*.csv
+samples/**/probe-*.html

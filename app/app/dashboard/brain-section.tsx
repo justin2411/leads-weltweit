@@ -1,3 +1,4 @@
+import { berlin } from "@/lib/dashboard-logic";
 import { envStatus } from "@/lib/env";
 import { legalTextsReady } from "@/lib/legal";
 import { stripeEnabled } from "@/lib/stripe";
@@ -98,7 +99,7 @@ export async function BrainSection() {
         <thead><tr><th>Wann</th><th>Firma</th><th>E-Mail</th><th>Segment/Land</th><th>Region</th><th>Status</th></tr></thead>
         <tbody>
           {(requests.data ?? []).map((r: any) => (
-            <tr key={r.id}><td>{new Date(r.created_at).toLocaleString("de-DE")}</td><td>{r.company_name}</td><td>{r.email}</td>
+            <tr key={r.id}><td>{berlin(r.created_at)}</td><td>{r.company_name}</td><td>{r.email}</td>
               <td>{r.segment_id}/{r.country}</td><td>{r.region ?? ""}</td><td>{r.status}</td></tr>
           ))}
           {(requests.data ?? []).length === 0 && <tr><td colSpan={6} className="muted">Noch keine.</td></tr>}
@@ -108,7 +109,7 @@ export async function BrainSection() {
       <h2>Entscheidungen</h2>
       {(decisions.data ?? []).map((d: any) => (
         <div className="card" key={d.id}>
-          <div className="muted">{new Date(d.created_at).toLocaleString("de-DE")} · {d.type} · {d.status}</div>
+          <div className="muted">{berlin(d.created_at)} · {d.type} · {d.status}</div>
           <strong>{d.subject}</strong>
           <pre>{d.reasoning}</pre>
           {d.action && <p>Aktion: {d.action}</p>}

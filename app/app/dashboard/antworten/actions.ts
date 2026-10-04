@@ -21,6 +21,7 @@ import {
   answerLang, cleanAnswer, domainOf, isStatus, isUuid, lintAnswer, replyFooter, replySubject, shortHash, STATUS_LABEL,
   suppressTargets, threadHeaders,
 } from "@/lib/antworten";
+import { ownerReplyKey } from "@/lib/dashboard-logic";
 import { requireOwner } from "../actions";
 
 const BY = "Inhaber Dashboard";
@@ -120,8 +121,14 @@ export async function markBuyInterest(f: FormData) {
     if (r.owner_action === "kaufinteresse") throw new InputError("schon als Kaufinteresse erfasst");
     const m = await ourMessage(r);
     if (!m) throw new InputError("an diese Firma wurde noch nichts gesendet");
-    const { error } = await db().from("email_events").insert({ message_id: m.id, resend_id: m.resend_id ?? null, type: "reply_positive",
-      note: `${BY}: Kaufinteresse (Antworten-Cockpit)` });
+    // dedupe_key owner:<Message-ID>: zählt mit dem Ereignis von inbox.py/responder.py als EINE Antwort (distinctReplies),
+    // nie doppelt gespeichert (Prüfung 04.10.2026)
+    const key = ownerReplyKey(r.imap_message_id);
+    const row = { message_id: m.id, resend_id: m.resend_id ?? null, type: "reply_positive", dedupe_key: key,
+      note: `${BY}: Kaufinteresse (Antworten-Cockpit)` };
+    const { error } = key
+      ? await db().from("email_events").upsert(row, { onConflict: "dedupe_key", ignoreDuplicates: true })
+      : await db().from("email_events").insert(row);
     if (error) throw new Error(error.message);
     await mark(r, "kaufinteresse");
     await log("antwort:kaufinteresse", r.id, { prospect: r.prospect_id, message: m.id });
