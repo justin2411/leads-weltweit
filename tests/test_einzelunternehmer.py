@@ -106,7 +106,8 @@ class RulesRecheckTest(unittest.TestCase):
     REASON = "nur Anruf/Brief – FEHLER: Rechtsform '?' ist keine Kapitalgesellschaft in FR; Hinweis: keine Größenangabe"
 
     def row(self, i, **kw):
-        base = {"id": i, "segment_id": "S2", "country": "FR", "email": f"contact@firma{i}.fr", "website": f"firma{i}.fr",
+        # S5: S2/FR wartet seit 04.10.2026 zusätzlich auf die Webdesign-Prüfung (tests/test_fr_webfit.py)
+        base = {"id": i, "segment_id": "S5", "country": "FR", "email": f"contact@firma{i}.fr", "website": f"firma{i}.fr",
                 "domain": f"firma{i}.fr", "legal_form": None, "source_url": f"https://firma{i}.fr/contact",
                 "size_note": None, "check_status": "call_only", "check_reason": self.REASON}
         return {**base, **kw}
@@ -125,8 +126,8 @@ class RulesRecheckTest(unittest.TestCase):
         st = {r["id"]: r for r in db.rows("prospects")}
         self.assertEqual([st[i]["check_status"] for i in range(1, 9)],
                          ["ok", "ok", "ok", "call_only", "call_only", "call_only", "call_only", "call_only"])
-        self.assertEqual(stats["S2/FR:ok"], 3)
-        self.assertEqual(stats["S2/FR:bleibt"], 2)
+        self.assertEqual(stats["S5/FR:ok"], 3)
+        self.assertEqual(stats["S5/FR:bleibt"], 2)
         self.assertIn("Freemail", st[4]["check_reason"])
         self.assertTrue(st[4]["check_reason"].startswith("nur Anruf/Brief"))
         self.assertIn("Sperrliste", st[5]["check_reason"])

@@ -28,6 +28,8 @@ def prospect(country, name="Pixel Studio", spec="web designer", pid="p1"):
 class CountriesTest(unittest.TestCase):
     def test_new_countries_allowed_carefully(self):
         for co in NEW:
+            if co == "HK":  # Inhaber 05.10.2026: „nimm hk raus“
+                continue
             r = country_rules(CFG, co)
             self.assertTrue(r["allowed"], co)
             self.assertTrue(r["generic_only"], co)
@@ -38,7 +40,7 @@ class CountriesTest(unittest.TestCase):
         self.assertEqual(country_rules(CFG, "SG")["subject_prefix"], "<ADV> ")
 
     def test_high_risk_and_conditional_countries_stay_closed(self):
-        for co in NEVER + ("NZ", "JP", "DE", "AT", "CH", "PL", "DK", "NL", "ZA"):
+        for co in NEVER + ("NZ", "JP", "DE", "AT", "CH", "PL", "DK", "NL", "ZA", "HK"):
             self.assertFalse(country_rules(CFG, co)["allowed"], co)
 
     def test_mail_language_matches_countries_yaml(self):

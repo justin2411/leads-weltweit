@@ -219,7 +219,8 @@ def from_text(msg: EmailMessage, own: set[str] | None = None) -> dict[str, dict]
 
 
 def details(msg: EmailMessage, own: set[str] | None = None) -> dict[str, dict]:
-    """Je gescheitertem Empfänger: type (immer Permanent – Notbremse zählt voll, nie lockern), status, diagnostic
+    """Je gescheitertem Empfänger: type (Permanent; nur bei Status 4.x.x Transient – zählt dann erst beim zweiten
+    Mal je Adresse, deliverability.count_bounces), status, diagnostic
     (ohne Adressen), remote_mta, klasse, quelle (dsn/text). DSN-Felder zuerst, fehlende aus dem lesbaren Text."""
     dsn = from_dsn(msg)
     text = from_text(msg, own) if (not dsn or any(not v["status"] or not v["diagnostic"] for v in dsn.values())) \
@@ -233,7 +234,9 @@ def details(msg: EmailMessage, own: set[str] | None = None) -> dict[str, dict]:
             t = {"status": status_from(line), "diagnostic": " ".join(line.split()), "remote_mta": _remote_mta(plain)}
         status = d.get("status") or t.get("status") or ""
         diag = d.get("diagnostic") or t.get("diagnostic") or ""
-        out[rcpt] = {"type": "Permanent", "status": status, "diagnostic": _clean(diag),
+        # 4.x.x = vorübergehend (RFC 3463, Bounce-Analyse 05.10.2026); alles andere bleibt „Permanent“ und zählt voll
+        kind = "Transient" if re.match(r"^4\.\d{1,3}\.\d{1,3}$", status) else "Permanent"
+        out[rcpt] = {"type": kind, "status": status, "diagnostic": _clean(diag),
                      "remote_mta": d.get("remote_mta") or t.get("remote_mta") or "",
                      "klasse": klasse(status, diag), "quelle": "dsn" if dsn else "text"}
     return out
