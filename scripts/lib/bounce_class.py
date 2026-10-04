@@ -36,6 +36,10 @@ WEICH = re.compile(r"mailbox (is )?full|quota|insufficient (system )?storage|tim
                    r"temporar|expired|deferred|connection (refused|reset|lost)|failed to establish|"
                    r"unable to deliver in|too many (connections|messages)|rate limit|greylist", re.I)
 
+# x.7.x mit Grund beim Empfänger (manche Server melden „Postfach voll“ oder „unbekannt“ als 5.7.1)
+QUOTA = re.compile(r"mailbox (is )?full|over ?quota|quota exceeded|insufficient (system )?storage", re.I)
+UNBEKANNT_ADR = re.compile(r"user unknown|unknown user|no such (user|recipient|mailbox)|does not exist|doesn'?t exist|"
+                           r"recipient not found|recipientnotfound|unknown recipient", re.I)
 HARD_STATUS = re.compile(r"^5\.(1\.\d+|4\.1|4\.4|4\.310|2\.1)$")
 WEICH_STATUS = re.compile(r"^(4\.\d+\.\d+|5\.2\.2|5\.4\.7|5\.3\.\d+)$")
 
@@ -56,6 +60,10 @@ def klasse(status: str | None, diagnostic: str | None) -> str:
     if HARD_STATUS.match(st):
         return "hart"
     if re.match(r"^[45]\.7\.", st):
+        if QUOTA.search(diag) and not RICHTLINIE.search(diag):
+            return "weich"
+        if UNBEKANNT_ADR.search(diag) and not RICHTLINIE.search(diag):
+            return "hart"
         return "richtlinie"
     if WEICH_STATUS.match(st):
         return "richtlinie" if RICHTLINIE.search(diag) else "weich"

@@ -128,6 +128,8 @@ class Klasse(unittest.TestCase):
         self.assertEqual(B.klasse("5.7.1", "554 5.7.1 blocked using Spamhaus"), "richtlinie")
         self.assertEqual(B.klasse("", "550 Message rejected as spam"), "richtlinie")
         self.assertEqual(B.klasse(None, "550 5.1.10 RESOLVER.ADR.RecipientNotFound"), "hart")
+        self.assertEqual(B.klasse("5.7.1", "554 5.7.1 Recipient address rejected: mailbox is over quota"), "weich")
+        self.assertEqual(B.klasse("5.7.1", "550 5.7.1 User unknown"), "hart")
         self.assertEqual(B.klasse(None, None), "unbekannt")
         self.assertEqual(B.klasse("5.0.0", "something odd"), "unbekannt")
 

@@ -11,6 +11,7 @@ begin
   if signalwerk.bounce_klasse('5.7.1', '554 5.7.1 Service unavailable; blocked using Spamhaus') <> 'richtlinie' then raise exception 'Spamhaus'; end if;
   if signalwerk.bounce_klasse('', '550 Message rejected as spam') <> 'richtlinie' then raise exception 'Spam ohne Code'; end if;
   if signalwerk.bounce_klasse(null, '550 5.1.10 RESOLVER.ADR.RecipientNotFound') <> 'hart' then raise exception 'Outlook'; end if;
+  if signalwerk.bounce_klasse('5.7.1', '554 5.7.1 Recipient address rejected: Sorry, my mailbox is over quota') <> 'weich' then raise exception '5.7.1 voll'; end if;
   if signalwerk.bounce_klasse(null, null) <> 'unbekannt' then raise exception 'leer'; end if;
   if signalwerk.bounce_klasse_aus('{"bounce":{"type":"Transient","diagnosticCode":["smtp; 550 4.4.7 Message expired"]}}') <> 'weich' then
     raise exception 'Resend'; end if;
