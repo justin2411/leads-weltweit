@@ -349,33 +349,51 @@
 
   // ------------------------------------------------------------ Router und Rahmen
   P.V = {};
-  P.NAV = [
-    ["Praxis", [["heute", "Heute", "home"], ["touren", "Touren", "route"], ["patienten", "Anfragen & Warteliste", "inbox"], ["verordnungen", "Verordnungen", "file"], ["rechnungen", "Rechnungen", "euro"], ["team", "Team", "users"], ["aufgaben", "Aufgaben", "check"], ["abwesenheit", "Urlaub & Vertretung", "cal"]]],
-    ["Website & SEO", [["beitraege", "Beiträge mit KI", "spark"], ["analyse", "SEO-Analyse", "gauge"], ["rankings", "Rankings", "trend"], ["besucher", "Besucher", "chart"], ["werkzeuge", "SEO-Werkzeuge", "tool"]]]
+  /* Module nach geschäftlicher Aufgabe (Oehlke Business OS). phase = Entwicklungsphase laut Konzept */
+  P.MODULES = [
+    { id: "dashboard", nr: "01", name: "Dashboard", icon: "home", phase: 1, views: [["dashboard", "Übersicht"]] },
+    { id: "nachfrage", nr: "02", name: "Patienten & Nachfrage", icon: "inbox", phase: 3, views: [["patienten", "Anfragen & Warteliste"], ["verordnungen", "Verordnungen"]] },
+    { id: "personal", nr: "03", name: "Personal & Kapazitäten", icon: "users", phase: 3, views: [["kapazitaet", "Kapazität & Einstellungen"], ["team", "Team"], ["abwesenheit", "Urlaub & Vertretung"]] },
+    { id: "touren", nr: "04", name: "Touren & Einsatzplanung", icon: "route", phase: 4, views: [["touren", "Touren"]] },
+    { id: "finanzen", nr: "05", name: "Controlling & Finanzen", icon: "euro", phase: 2, views: [["controlling", "Controlling"], ["rechnungen", "Rechnungen & Zahlungen"]] },
+    { id: "marketing", nr: "06", name: "Marketing & Wachstum", icon: "trend", phase: 5, views: [["marketing", "Kanäle & Ergebnisse"], ["beitraege", "Beiträge mit KI"], ["analyse", "SEO-Analyse"], ["rankings", "Rankings"], ["besucher", "Besucher"], ["werkzeuge", "Werkzeuge"]] },
+    { id: "partner", nr: "07", name: "Partner & Zuweiser", icon: "star", phase: 5, views: [["partner", "Partner-CRM"]] },
+    { id: "auto", nr: "08", name: "Aufgaben & Automationen", icon: "bolt", phase: 1, views: [["automationen", "Automationen"], ["freigaben", "Freigaben"], ["aufgaben", "Aufgaben"]] },
+    { id: "berichte", nr: "09", name: "Berichte & Prognosen", icon: "chart", phase: 6, views: [["prognosen", "Prognosen & Szenarien"]] },
+    { id: "system", nr: "10", name: "System & Einstellungen", icon: "gear", phase: 1, views: [["datenquellen", "Datenquellen & Sync"], ["rechte", "Rollen & Rechte"], ["protokoll", "Protokoll"], ["einstellungen", "Praxisdaten & Preise"]] }
   ];
+  P.moduleOf = function (view) { return P.MODULES.filter(function (m) { return m.views.some(function (v) { return v[0] === view; }); })[0]; };
   P.TITLES = {};
   P.badges = {};
+  P.can = function () { return true; };
   function nav(cur) {
-    return P.NAV.map(function (g) {
-      return "<h6>" + g[0] + "</h6>" + g[1].map(function (n) {
-        var b = P.badges[n[0]] ? P.badges[n[0]]() : 0;
-        return '<a href="#' + n[0] + '" class="' + (n[0] === cur ? "on" : "") + '">' + P.icon(n[2]) + n[1] + (b ? '<span class="cnt">' + b + "</span>" : "") + "</a>";
-      }).join("");
+    var mod = P.moduleOf(cur) || P.MODULES[0];
+    return '<h6>Oehlke Business OS</h6>' + P.MODULES.filter(function (m) { return P.can(m.id) !== "kein"; }).map(function (m) {
+      var b = m.views.reduce(function (s, v) { return s + (P.badges[v[0]] ? P.badges[v[0]]() : 0); }, 0);
+      var first = m.views.filter(function (v) { return P.V[v[0]]; })[0] || m.views[0];
+      return '<a href="#' + first[0] + '" class="' + (m === mod ? "on" : "") + '">' + P.icon(m.icon) + '<span class="nav-nr">' + m.nr + "</span>" + m.name + (b ? '<span class="cnt">' + b + "</span>" : "") + "</a>";
     }).join("");
   }
-  P.route = function () { var h = (location.hash || "#heute").slice(1).split("/"); return { view: h[0], arg: h[1] }; };
+  function tabs(cur) {
+    var m = P.moduleOf(cur); if (!m || m.views.length < 2) return "";
+    return '<nav class="mtabs" aria-label="' + esc(m.name) + '">' + m.views.map(function (v) { var b = P.badges[v[0]] ? P.badges[v[0]]() : 0; return '<a href="#' + v[0] + '" class="' + (v[0] === cur ? "on" : "") + '">' + v[1] + (b ? ' <span class="cnt">' + b + "</span>" : "") + "</a>"; }).join("") + "</nav>";
+  }
+  P.route = function () { var h = (location.hash || "#dashboard").slice(1).split("/"); return { view: h[0] === "heute" ? "dashboard" : h[0], arg: h[1] }; };
   P.render = function () {
-    var r = P.route(), cur = P.V[r.view] ? r.view : "heute";
-    $("#nav").innerHTML = nav(P.TITLES[cur] && P.TITLES[cur].nav || cur);
+    var r = P.route(), cur = P.V[r.view] ? r.view : "dashboard";
+    var navKey = P.TITLES[cur] && P.TITLES[cur].nav || cur, mod = P.moduleOf(navKey);
+    $("#nav").innerHTML = nav(navKey);
     var t = P.TITLES[cur] || ["", ""];
     $("#vTitle").textContent = typeof t[0] === "function" ? t[0](r.arg) : t[0];
     $("#vSub").textContent = typeof t[1] === "function" ? t[1](r.arg) : t[1];
-    $("#view").innerHTML = P.V[cur](r.arg);
-    if (P.V[cur].after) P.V[cur].after(r.arg);
+    var allowed = !mod || P.can(mod.id) !== "kein";
+    $("#view").innerHTML = allowed ? tabs(navKey) + P.V[cur](r.arg) : P.empty("Keine Berechtigung", "Dieser Bereich ist für die gewählte Rolle nicht freigegeben.");
+    if (allowed && P.V[cur].after) P.V[cur].after(r.arg);
     document.body.classList.remove("menu-open");
-    document.title = $("#vTitle").textContent + " · Praxis-Cockpit";
+    document.title = $("#vTitle").textContent + " · Oehlke Business OS";
     document.body.classList.toggle("has-foot", !!$(".studio__foot"));
     $$("[data-go]").forEach(function (b) { b.addEventListener("click", function () { location.hash = b.dataset.go; }); });
+    if (P.afterRender) P.afterRender();
   };
   P.rerender = function () { var y = window.scrollY; P.render(); window.scrollTo(0, y); };
 
@@ -397,7 +415,7 @@
       e.preventDefault();
       if (!confirm("Alle Beispieldaten und Änderungen in diesem Browser zurücksetzen?")) return;
       Object.keys(localStorage).forEach(function (k) { if (k.indexOf("po_") === 0) P.store.del(k.slice(3)); });
-      location.hash = "heute"; location.reload();
+      location.hash = "dashboard"; location.reload();
     };
     if (P.onStart) P.onStart.forEach(function (f) { f(); });
     window.addEventListener("hashchange", P.render);

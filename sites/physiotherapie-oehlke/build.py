@@ -29,7 +29,7 @@ def _version() -> str:
     """Cache-Schlüssel aus dem Inhalt von CSS/JS: jede Änderung lädt sofort neu."""
     import hashlib
     h = hashlib.sha1()
-    for f in ("css/site.css", "js/site.js", "assets/fonts/fonts.css", "css/dash.css", "js/dash-core.js", "js/dash-praxis.js", "js/dash-topics.js", "js/dash-seo.js", "js/ratgeber.js", "favicon.svg"):
+    for f in ("css/site.css", "js/site.js", "assets/fonts/fonts.css", "css/dash.css", "js/dash-core.js", "js/dash-praxis.js", "js/dash-topics.js", "js/dash-seo.js", "js/dash-os.js", "js/ratgeber.js", "favicon.svg"):
         h.update((ROOT / "public" / f).read_bytes())
     return h.hexdigest()[:10]
 
@@ -760,6 +760,7 @@ def cockpit_head(title: str) -> str:
 <script src="/js/dash-praxis.js?v={VERSION}" defer></script>
 <script src="/js/dash-topics.js?v={VERSION}" defer></script>
 <script src="/js/dash-seo.js?v={VERSION}" defer></script>
+<script src="/js/dash-os.js?v={VERSION}" defer></script>
 </head>"""
 
 
@@ -799,14 +800,13 @@ def login_page() -> str:
 
 
 def dashboard_page() -> str:
-    return cockpit_head("Praxis-Cockpit · Mobile Physiotherapie Oehlke") + """
+    return cockpit_head("Oehlke Business OS") + """
 <body>
 <div class="app">
   <aside class="side">
     <div class="side__logo"><img src="/assets/img/logo-white.png" alt="Mobile Physiotherapie Oehlke" width="105" height="40"></div>
     <nav id="nav" aria-label="Cockpit"></nav>
     <div class="side__foot">
-      <a href="#einstellungen">Einstellungen</a>
       <a href="/">Zur Website</a>
       <a href="#" id="reset">Beispieldaten zurücksetzen</a>
       <a href="#" id="logout">Abmelden</a>
