@@ -8,7 +8,7 @@ import { berlin, berlinDay, brake, chain, compact, currencySign, greeting, mailb
 import { totals } from "@/lib/dashboard-periods";
 import { stationSparks } from "@/lib/spark";
 import { addDays } from "@/lib/trend";
-import { alarmTips, coach, hall, laneOf, laneStats, neckTask, rankTips, recommend, running, utilization, type Beat, type Tip } from "@/lib/leitstand";
+import { alarmTips, coach, hall, laneOf, laneStats, markEmpty, neckTask, rankTips, recommend, running, utilization, type Beat, type Tip } from "@/lib/leitstand";
 import { agentStartLabel, freeAgent } from "@/lib/agents";
 import { visibleTips } from "@/lib/tips";
 import { NECK_TO_STATION, WEB_STATIONS, ticker, type Edge, type Station, type StationId, type TickerItem } from "@/lib/fluss";
@@ -119,7 +119,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   // Plätze je Werk für die Kreis-Zeile: arbeitend (Herzschlag) / eingeplant (Belegung) – nur dieses Werk
   const leadRun = bays.filter((b) => b.state === "run" && b.werk === "lead-werk").length;
   const leadPaused = !werkOn(own, "lead-werk").on;
-  const stats = laneStats(REG, rows, t);
+  const stats = markEmpty(laneStats(REG, rows, t), [planLog["lead-werk"]?.reasons, planLog["kunden-werk"]?.reasons]);
   const firstRun = rows.reduce<number | null>((a, r) => (r.started_at && (a === null || Date.parse(r.started_at) < a) ? Date.parse(r.started_at) : a), null);
   const util = utilization(rows, beats, t, REG.total_slots, 24, 30, firstRun);
   const n = (x: number | string | null | undefined) => Number(x ?? 0);
@@ -308,7 +308,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const liveByLane: Record<string, number> = {};
   for (const b of beats) if (running(b, t)) { const l = laneOf(b.werk, b.part); if (l) liveByLane[l] = (liveByLane[l] ?? 0) + 1; }
   const pultLanes = REG.lanes.map((l) => ({ id: l.id, werk: l.werk, label: l.label, short: l.short, what: l.what, max: l.max, def: l.default, cur: plan[l.id] ?? 0, color: laneColor(l.id),
-    stat: { runs: stats[l.id].runs, green: stats[l.id].green, perSlotH: stats[l.id].perSlotH, avgRunMin: stats[l.id].avgRunMin, perRun: stats[l.id].perRun, exhausted: stats[l.id].exhausted, live: liveByLane[l.id] ?? 0 } }));
+    stat: { runs: stats[l.id].runs, green: stats[l.id].green, perSlotH: stats[l.id].perSlotH, avgRunMin: stats[l.id].avgRunMin, perRun: stats[l.id].perRun, exhausted: stats[l.id].exhausted, empty: !!stats[l.id].empty, live: liveByLane[l.id] ?? 0 } }));
   const nextStart = { "lead-werk": `spätestens ${nx("lead-werk.yml")}`, "kunden-werk": `spätestens ${nx("kunden-werk.yml")}` };
   const custom = Object.keys(own.slot_plan ?? {}).length > 0;
   const checkList = (

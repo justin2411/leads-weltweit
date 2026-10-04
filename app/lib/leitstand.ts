@@ -74,7 +74,19 @@ export function hall(reg: LaneRegistry, plan: Record<string, number>, beats: Bea
   return bays.slice(0, reg.total_slots).map((b, i) => ({ ...b, n: i + 1 }));
 }
 
-export type LaneStat = { id: string; runs: number; processed: number; green: number; slotMin: number; perSlotH: number | null; avgRunMin: number | null; perRun: number | null; last: string | null; exhausted: boolean };
+export type LaneStat = { id: string; runs: number; processed: number; green: number; slotMin: number; perSlotH: number | null; avgRunMin: number | null; perRun: number | null; last: string | null; exhausted: boolean; empty?: boolean };
+
+/** Anfang des Autopilot-Grundes für Linien ohne Kandidaten-Vorrat (scripts/werk_plan.py EMPTY_WHY). */
+export const EMPTY_WHY = "Vorrat leer";
+
+/**
+ * Linien, die der Autopilot zuletzt als „Vorrat leer“ geführt hat (Scout 04.10.2026: web-uk/web-fr liefen mit
+ * 0 Kandidaten): markiert sie in den Ertragszahlen (empty = true). Gründe aus werk_plan_log je Werk.
+ */
+export function markEmpty(stats: Record<string, LaneStat>, reasons: (Record<string, string> | null | undefined)[]): Record<string, LaneStat> {
+  for (const r of reasons) for (const [id, why] of Object.entries(r ?? {})) if (stats[id] && String(why ?? "").startsWith(EMPTY_WHY)) stats[id].empty = true;
+  return stats;
+}
 
 /** Ertrag je Linie im Fenster (Standard 24 h): grüne Leads bzw. Käufer je Platz-Stunde, Laufzeit je Teil. */
 export function laneStats(reg: LaneRegistry, rows: RunRow[], now: number, hours = 24): Record<string, LaneStat> {
@@ -186,8 +198,15 @@ export function coach(o: {
     tips.push({ level: "gelb", title: `Plätze ${100 - pct} % der Zeit leer`, text: `In den letzten ${span >= 23.5 ? "24 h" : `${Math.round(span)} h (seit Beginn der Zählung)`} waren im Schnitt nur ${pct} % der ${o.reg.total_slots} Plätze belegt. Ein Werk startet erst neu, wenn sein langsamster Teil fertig ist – kurze Teile warten so auf lange. Plätze aus erschöpften Linien abziehen und an ergiebige geben.`, href: "#pult",
       task: { kind: "leads", market: null, brief: `Plätze ${100 - pct} % der Zeit leer: Belegung umstellen – erschöpfte Linien auf 1–2 Plätze, freie Plätze an die ergiebigsten Linien, dann Lead-Werk starten. Ergebnis: Auslastung und grüne Leads vorher/nachher.` } });
   }
+  for (const s of Object.values(o.stats).filter((x) => x.empty)) {
+    const lane = o.reg.lanes.find((l) => l.id === s.id);
+    if (!lane) continue;
+    tips.push({ level: "info", title: `${lane.label}: Vorrat leer`, text: "Keine Kandidaten mehr. Der Autopilot gibt die Plätze an ertragreiche Linien und prüft alle 4 h mit einem Platz nach.", href: "#pult",
+      task: { kind: "quelle", market: marketOf(lane.country), brief: `${lane.label}: Vorrat leer. Neue kostenlose, erlaubte Quelle für diese Linie finden, mit mindestens 10 grünen Leads testen und ins Lead-Werk einbauen.` } });
+  }
   for (const s of measured) {
     const lane = o.reg.lanes.find((l) => l.id === s.id)!;
+    if (s.empty) continue;
     if (s.exhausted && (o.plan[s.id] ?? 0) > 1 && o.autopilot) {
       tips.push({ level: "info", title: `${lane.label}: Vorrat erschöpft`, text: `Teile sind im Schnitt nach ${Math.round(s.avgRunMin ?? 0)} min fertig, ${Math.round(s.perRun ?? 0)} grüne je Teil. Der Autopilot lässt der Linie beim nächsten Start einen Wachplatz. Mehr Leads gibt es hier nur mit einer neuen Quelle.`, href: "#pult",
         task: { kind: "quelle", market: marketOf(lane.country), brief: `${lane.label}: Vorrat erschöpft. Neue kostenlose, erlaubte Quelle oder mehr Kandidaten für diese Linie finden, mit mindestens 10 grünen Leads testen und ins Lead-Werk einbauen.` } });
@@ -196,7 +215,7 @@ export function coach(o: {
         task: { kind: "quelle", market: marketOf(lane.country), brief: `${lane.label}: Vorrat erschöpft. Neue kostenlose, erlaubte Quelle oder mehr Kandidaten für diese Linie finden, mit mindestens 10 grünen Leads testen und ins Lead-Werk einbauen; Plätze dieser Linie bis dahin auf 1–2 setzen.` } });
     }
   }
-  const best = measured.filter((s) => s.perSlotH !== null && !s.exhausted).sort((a, b) => (b.perSlotH ?? 0) - (a.perSlotH ?? 0))[0];
+  const best = measured.filter((s) => s.perSlotH !== null && !s.exhausted && !s.empty).sort((a, b) => (b.perSlotH ?? 0) - (a.perSlotH ?? 0))[0];
   if (best) {
     const lane = o.reg.lanes.find((l) => l.id === best.id)!;
     if ((o.plan[best.id] ?? 0) < lane.max && o.autopilot) tips.push({ level: "gruen", title: `Ergiebigste Linie: ${lane.label}`, text: `${Math.round(best.perSlotH ?? 0)} grüne je Platz-Stunde in den letzten 24 h (${o.plan[best.id] ?? 0} von max. ${lane.max} Plätzen). Der Autopilot gibt ihr freie Plätze.`, href: "#pult" });

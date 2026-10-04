@@ -362,5 +362,89 @@ class LeadTests(unittest.TestCase):
                 wc._seen.clear()
 
 
+class WiderPoolTests(unittest.TestCase):
+    """UK/FR zweite Stufe (Scout 04.10.2026): Konfidenz 0,4–0,6 und Einträge ohne Telefon."""
+
+    def write(self, path, rows):
+        import duckdb
+        con = duckdb.connect()
+        con.execute("CREATE TABLE t (id VARCHAR, name VARCHAR, phones VARCHAR[], emails VARCHAR[], socials VARCHAR[], "
+                    "websites VARCHAR[], street VARCHAR, city VARCHAR, postcode VARCHAR, region VARCHAR, country VARCHAR, "
+                    "category VARCHAR, cat2 VARCHAR, confidence DOUBLE, operating_status VARCHAR, datasets VARCHAR[], "
+                    "updated VARCHAR[])")
+        for r in rows:
+            con.execute("INSERT INTO t VALUES (?, ?, ?, [], [], ?, '1 High St', 'Leeds', 'LS1 1AA', '', 'GB', "
+                        "'plumber', '', ?, 'open', ['meta'], [])", r)
+        con.execute(f"COPY t TO '{path}' (FORMAT parquet)")
+
+    def test_pool_order_and_tiers(self):
+        import tempfile
+        from extraktor.sources import overture
+        with tempfile.TemporaryDirectory() as d:
+            main, nophone = Path(d) / "main.parquet", Path(d) / "nophone.parquet"
+            self.write(main, [("hi", "Alpha Plumbing", ["+44 113 496 0000"], ["https://alphaplumbing.co.uk"], 0.9),
+                              ("mid", "Beta Joinery", ["+44 113 496 0001"], ["https://betajoinery.co.uk"], 0.5),
+                              ("low", "Gamma Roofing", ["+44 113 496 0002"], ["https://gammaroofing.co.uk"], 0.3)])
+            self.write(nophone, [("np", "Delta Tiling", None, ["https://deltatiling.co.uk"], 0.8)])
+            orig = overture.CACHE_WEB_NOPHONE
+            try:
+                overture.CACHE_WEB_NOPHONE = nophone
+                ids = lambda **k: [r["id"] for r in wc.with_website("UK", 10, log=lambda *_: None, path=main, **k)]  # noqa: E731
+                self.assertEqual(ids(), ["hi"])                                  # Standard wie bisher
+                self.assertEqual(ids(min_conf=0.4), ["hi", "mid"])               # sichere zuerst
+                self.assertEqual(ids(min_conf=0.4, no_phone=True), ["hi", "np", "mid"])
+                self.assertEqual(ids(min_conf=0.4, no_phone=True, exclude={"hi"}), ["np", "mid"])
+                self.assertEqual(ids(min_conf=0.1), ["hi", "mid"])               # nie unter 0,4
+            finally:
+                overture.CACHE_WEB_NOPHONE = orig
+
+    def test_low_confidence_needs_a_confirmed_page(self):
+        d = {"id": "x", "name": "Beta Joinery", "phones": ["+44 113 496 0001"], "emails": [], "socials": [],
+             "websites": ["https://betajoinery.co.uk"], "street": "1 High St", "city": "Leeds", "postcode": "LS1 1AA",
+             "category": "carpenter", "datasets": ["meta"], "updated": [], "confidence": 0.5, "region": ""}
+        c = wc.to_candidate(d, "UK")
+        self.assertEqual(c["facts"]["low_confidence"], 0.5)
+        broken = {"findings": [{"type": "website_broken", "detail": "parked"}], "html": "", "belongs": ["name_in_domain"],
+                  "note": "", "final_url": ""}
+        self.assertEqual(wc.confirmed_only(c, broken)["findings"], [])
+        page = {"findings": [{"type": "website_not_mobile", "detail": "no_viewport"}], "html": "<html>", "note": "",
+                "belongs": ["name_in_domain"], "final_url": ""}
+        self.assertEqual(wc.confirmed_only(c, page)["note"], "low_confidence_unconfirmed")
+        page["belongs"] = ["name_on_site", "name_in_domain"]
+        self.assertEqual(len(wc.confirmed_only(c, page)["findings"]), 1)
+        sure = wc.to_candidate({**d, "confidence": 0.9}, "UK")
+        self.assertEqual(wc.confirmed_only(sure, broken), broken)  # sichere Einträge unverändert
+
+    def test_phone_from_own_site_when_listing_has_none(self):
+        from collections import Counter
+        from extraktor import filters, run
+        import enrich
+        d = {"id": "np", "name": "Suzys Pizza", "phones": None, "emails": [], "socials": [],
+             "websites": ["http://suzyspizza.com"], "street": "1 Main St", "city": "Plano", "postcode": "75074",
+             "category": "pizza_restaurant", "datasets": ["meta"], "updated": [], "confidence": 0.9, "region": "TX"}
+        c = wc.to_candidate(d, "US")
+        self.assertEqual(c["phone"], "")
+        orig_inspect, orig_mx = wc.inspect, enrich.mx_ok
+        try:
+            wc.inspect = lambda c, f, today=None: {
+                "findings": [{"type": "no_https", "detail": "no_https", "value": "", "evidence": "x"}], "note": "",
+                "final_url": "http://suzyspizza.com/", "html": MOBILE_HTML.replace("</footer>", " info@suzyspizza.com</footer>"),
+                "belongs": ["name_on_site"], "checked_on": TODAY.isoformat()}
+            enrich.mx_ok = lambda d: True
+            l = run.process(c, "S2", None, Counter(), filters.Guard(None))
+            self.assertTrue(l["phone"].endswith("2145550142"))
+            self.assertEqual(l["evidence"]["phone_from"], "website")
+            self.assertEqual(run.ampel(l), "green")
+        finally:
+            wc.inspect, enrich.mx_ok = orig_inspect, orig_mx
+
+    def test_uk_fr_lanes_use_wider_pool(self):
+        import werk_plan
+        reg = werk_plan.load_lines()
+        for lane in reg["lanes"]:
+            wide = "--web-min-conf 0.4 --web-no-phone" in lane.get("args", "")
+            self.assertEqual(wide, lane["id"] in ("web-uk", "web-fr"), lane["id"])
+
+
 if __name__ == "__main__":
     unittest.main()

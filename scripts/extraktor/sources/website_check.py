@@ -35,6 +35,13 @@ from lib.fetch import BLOCKED_HOSTS, USER_AGENT, capped_get, host_blocked
 SOURCE = "overture_web"
 SEEN = Path(os.environ.get("EXTRAKTOR_WEBCHECK_SEEN", "out/cache/webcheck_seen.json"))
 RECHECK_DAYS = 120
+# Overture-Konfidenz: Standard ab 0,6. UK/FR (Scout 04.10.2026: Vorrat ab 0,6 abgearbeitet, alle Firmen 120 Tage
+# geprüft) zusätzlich 0,4–0,6 über `--web-min-conf 0.4` – dort zählen nur Befunde auf einer geladenen Seite, die die
+# Firma per Telefon oder Namen belegt (kein „kaputt/geparkt“: bei unsicherem Eintrag könnte die Firma geschlossen sein)
+HIGH_CONF = 0.6
+LOW_CONF = 0.4  # tiefer nie (Einträge unter 0,4 sind zu oft geschlossene oder falsch zugeordnete Firmen)
+# Firmen ohne Telefon im Overture-Eintrag (`--web-no-phone`): nur hier, Nummer von der eigenen Website
+NO_PHONE_COUNTRIES = {"UK", "FR"}
 OUTDATED_YEAR = 2018
 PRIORITY = ("website_broken", "no_https", "website_not_mobile", "website_outdated")
 # Websites, die keine eigene Firmenseite sind (Plattformen, Link-Sammlungen, Buchungs-/Liefer-Portale, Baukasten-
@@ -138,13 +145,20 @@ def in_part(source_id: str, part: tuple[int, int] | None) -> bool:
 
 
 def with_website(country: str, limit: int, log=print, exclude: set[str] | None = None,
-                 path: Path | None = None, part: tuple[int, int] | None = None) -> list[dict]:
+                 path: Path | None = None, part: tuple[int, int] | None = None, min_conf: float = HIGH_CONF,
+                 no_phone: bool = False) -> list[dict]:
     """Firmen mit eingetragener Website und Telefon, ohne Ketten (Name oder Domain mehrfach) und ohne Behörden.
-    part = (i, n): nur der eigene Anteil dieses Teils, damit `limit` eigene Firmen zählt."""
+    part = (i, n): nur der eigene Anteil dieses Teils, damit `limit` eigene Firmen zählt.
+    min_conf < HIGH_CONF: sichere Einträge zuerst, danach die unsicheren (siehe HIGH_CONF).
+    no_phone (nur UK/FR): zusätzlich Firmen mit Website, aber ohne Telefon im Eintrag (Nummer dann von der Website)."""
+    min_conf = max(LOW_CONF, min(float(min_conf), HIGH_CONF))
     import duckdb
     path = path or web_cache_for(country)
-    if not path.exists():
-        overture.build_cache(log, path)
+    paths = [path] + ([overture.CACHE_WEB_NOPHONE] if no_phone and country in NO_PHONE_COUNTRIES else [])
+    for p in paths:
+        if not p.exists():
+            overture.build_cache(log, p)
+    src = "read_parquet([" + ", ".join(f"'{p}'" for p in paths) + "], union_by_name=true)"
     exclude = exclude or set()
     cc = overture.code(country)
     con = duckdb.connect()
@@ -159,7 +173,7 @@ def with_website(country: str, limit: int, log=print, exclude: set[str] | None =
     con.execute(f"""
         CREATE TEMP TABLE pool AS
         WITH base AS (SELECT *, lower(regexp_extract(websites[1], '^(?:[a-zA-Z]+://)?(?:www\\.)?([^/:?#]+)', 1)) AS dom
-                      FROM '{path}' WHERE country = ? AND websites IS NOT NULL AND len(websites) > 0),
+                      FROM {src} WHERE country = ? AND websites IS NOT NULL AND len(websites) > 0),
              chains AS (SELECT lower(name) n FROM base GROUP BY 1 HAVING count(*) > 3),
              shared AS (SELECT dom FROM base GROUP BY 1 HAVING count(*) > 1)
         SELECT id, name, phones, emails, socials, websites, street, city, postcode, category, datasets, updated,
@@ -168,10 +182,11 @@ def with_website(country: str, limit: int, log=print, exclude: set[str] | None =
         WHERE coalesce(operating_status, 'open') NOT IN ('permanently_closed', 'temporarily_closed')
           AND name IS NOT NULL AND lower(name) NOT IN (SELECT n FROM chains)
           AND dom <> '' AND dom NOT IN (SELECT dom FROM shared)
-          AND coalesce(confidence, 0) >= 0.6
+          AND coalesce(confidence, 0) >= ?
           AND street IS NOT NULL AND postcode IS NOT NULL
           AND id NOT IN (SELECT id FROM seen)
-        ORDER BY md5(id)""", [cc])
+        ORDER BY (coalesce(confidence, 0) >= {HIGH_CONF}) DESC, (coalesce(len(phones), 0) > 0) DESC, md5(id)""",
+                [cc, min_conf])
     cols = ["id", "name", "phones", "emails", "socials", "websites", "street", "city", "postcode", "category",
             "datasets", "updated", "confidence", "region"]
     out, offset, page = [], 0, max(1000, limit * 2)
@@ -191,7 +206,11 @@ def with_website(country: str, limit: int, log=print, exclude: set[str] | None =
             out.append(d)
             if len(out) >= limit:
                 break
-    log(f"Overture {country}: {len(out)} Firmen mit Website (Telefon vorhanden) zur Website-Prüfung ausgewählt")
+    low = sum(1 for d in out if (d["confidence"] or 0) < HIGH_CONF)
+    tel = sum(1 for d in out if not d["phones"])
+    log(f"Overture {country}: {len(out)} Firmen mit Website zur Website-Prüfung ausgewählt"
+        + (f", davon {low} mit Konfidenz {min_conf:g}–{HIGH_CONF:g}" if low else "")
+        + (f", {tel} ohne Telefon im Eintrag" if tel else ""))
     return out
 
 
@@ -206,7 +225,21 @@ def to_candidate(d: dict, country: str) -> dict:
     c.update(source=SOURCE, website="")  # Website wird erst nach der Prüfung gesetzt (qc vergleicht E-Mail-Domain)
     c["facts"]["listed_website"] = url if "//" in url else "http://" + url
     c["facts"]["domain"] = W.site_domain(c["facts"]["listed_website"])
+    if (d.get("confidence") or 0) < HIGH_CONF:
+        c["facts"]["low_confidence"] = round(float(d.get("confidence") or 0), 2)
     return c
+
+
+def confirmed_only(c: dict, res: dict) -> dict:
+    """Unsicherer Overture-Eintrag (Konfidenz < HIGH_CONF): nur Befunde auf einer geladenen Seite, die die Firma per
+    Telefon oder Namen auf der Seite belegt; „kaputt/geparkt“ und Zertifikatsbefunde ohne Seite fallen weg."""
+    if not c["facts"].get("low_confidence") or not res["findings"]:
+        return res
+    ok = res["html"] and {"phone_on_site", "name_on_site"} & set(res["belongs"])
+    keep = [f for f in res["findings"] if ok and f["type"] != "website_broken"]
+    if not keep:
+        return {**res, "findings": [], "note": "low_confidence_unconfirmed"}
+    return {**res, "findings": keep}
 
 
 # ---------------------------------------------------------------------------

@@ -110,7 +110,9 @@ class AutopilotTests(unittest.TestCase):
         self.assertAlmostEqual(s["avg_min"], 2)
 
     def test_exhausted_lane_keeps_one_watch_slot(self):
-        stats = W.lane_stats(_rows("web-us", "r1", 21, 2, 0) + _rows("web-us", "r0", 21, 2, 0, start="2026-10-03T18:00:00+00:00"), "lead-werk")
+        # vorher ergiebig, die letzten beiden Läufe leer -> erschöpft (nicht „Vorrat leer“: das Fenster hatte Kandidaten)
+        stats = W.lane_stats(_rows("web-us", "r1", 21, 2, 0) + _rows("web-us", "r0", 21, 2, 0, start="2026-10-03T18:00:00+00:00")
+                             + _rows("web-us", "rx", 21, 75, 5000, 300, start="2026-10-03T16:00:00+00:00"), "lead-werk")
         plan, why = W.autopilot(self.reg, "lead-werk", self.lead, stats, other={"kunden": 8})
         self.assertEqual(plan["web-us"], 1)
         self.assertIn("Wachplatz", why["web-us"])
@@ -136,10 +138,12 @@ class AutopilotTests(unittest.TestCase):
         empty = [r for l in self.lead if l != "web-north" for r in _rows(l, "r1", 2, 1, 0)]
         stats = W.lane_stats(empty + _rows("web-north", "r1", 1, 75, 7000, 500), "lead-werk")
         plan, why = W.autopilot(self.reg, "lead-werk", self.lead, stats, other={"kunden": 8})
-        self.assertEqual(plan["web-north"], 3)  # ceil(75 * 1 / 30) = 3, höchstens 2 * 1 + 2 = 4
+        # ceil(75 * 1 / 30) = 3, dazu Plätze der leeren Linien bis 2 * 1 + 2 = 4
+        self.assertEqual(plan["web-north"], 4)
         self.assertIn("voll ausgelastet", why["web-north"])
+        self.assertIn("+1 aus leeren Linien", why["web-north"])
         stats = W.lane_stats(empty + _rows("web-north", "r1", 3, 70, 7000, 500), "lead-werk")
-        self.assertEqual(W.autopilot(self.reg, "lead-werk", self.lead, stats, other={"kunden": 8})[0]["web-north"], 7)
+        self.assertEqual(W.autopilot(self.reg, "lead-werk", self.lead, stats, other={"kunden": 8})[0]["web-north"], 8)
         # ohne freie Plätze (andere Linien laufen gut) wächst nichts über die Summe
         busy = [r for l in self.lead if l != "web-north" for r in _rows(l, "r1", self.lead[l] or 1, 40, 100)]
         plan, _ = W.autopilot(self.reg, "lead-werk", self.lead, W.lane_stats(busy + _rows("web-north", "r1", 1, 75, 7000, 500), "lead-werk"), other={"kunden": 8})
@@ -242,3 +246,69 @@ class StorageStopTests(unittest.TestCase):
         self.assertEqual(plan["web-uk"], 1)
         self.assertIn("Quelle durchgeprüft (Ø 3 min, kaum neue Kandidaten)", why["web-uk"])
         self.assertNotIn("erschöpft", why["web-uk"])
+
+
+class EmptyLaneTests(unittest.TestCase):
+    """Leere Linien (Scout 04.10.2026: web-uk/web-fr liefen mit 8/10 Plätzen und 0 Kandidaten)."""
+
+    def setUp(self):
+        import datetime as dt
+        self.reg = W.load_lines()
+        self.lead = {"web-us": 3, "web-uk": 8, "web-fr": 10, "web-north": 1, "s2-us": 3, "s2-neu": 1,
+                     "s1-us-lca": 0, "s1-uk-tender": 0}
+        self.now = dt.datetime(2026, 10, 3, 21, 0, tzinfo=dt.timezone.utc)
+
+    def stats(self, last="2026-10-03T20:00:00+00:00"):
+        rows = []
+        for lane in ("web-uk", "web-fr", "s2-us"):
+            rows += _rows(lane, "r1", 1, 1, 0, start=last) + _rows(lane, "r0", 1, 1, 0, start="2026-10-03T15:00:00+00:00")
+        rows += _rows("web-us", "r1", 3, 40, 900, 60) + _rows("web-north", "r1", 2, 46, 7000, 480)
+        rows += _rows("s2-neu", "r1", 1, 37, 2000, 1900)
+        return W.lane_stats(rows, "lead-werk")
+
+    def test_empty_lane_gets_zero_and_slots_go_to_productive_lanes(self):
+        plan, why = W.autopilot(self.reg, "lead-werk", self.lead, self.stats(), other={"kunden": 8}, now=self.now)
+        for lane in ("web-uk", "web-fr", "s2-us"):
+            self.assertEqual(plan[lane], 0, lane)
+            self.assertTrue(why[lane].startswith(W.EMPTY_WHY), why[lane])
+        # 21 freie Plätze, verteilt auf grüne Linien bis 2 × Teile + 2 (web-north 2 -> 6, web-us 3 -> 8, s2-neu max 4)
+        self.assertEqual((plan["web-north"], plan["web-us"], plan["s2-neu"]), (6, 8, 4))
+        self.assertIn("aus leeren Linien", why["web-north"])
+        self.assertLessEqual(sum(plan.values()), 38 - 8)
+
+    def test_probe_slot_every_four_hours_and_recovery(self):
+        st = self.stats(last="2026-10-03T16:00:00+00:00")
+        plan, why = W.autopilot(self.reg, "lead-werk", self.lead, st, other={"kunden": 8}, now=self.now)
+        self.assertEqual(plan["web-uk"], 1)
+        self.assertIn("Prüfplatz", why["web-uk"])
+        # nach einer Leer-Meldung reicht ein leerer Prüflauf
+        one = W.lane_stats(_rows("web-uk", "p1", 1, 1, 0, start="2026-10-03T20:30:00+00:00"), "lead-werk")
+        plan, why = W.autopilot(self.reg, "lead-werk", self.lead, one, other={"kunden": 8}, now=self.now,
+                                prev={"web-uk": W.EMPTY_WHY + " (2 Läufe ohne Kandidaten) – 1 Prüfplatz alle 4 h"})
+        self.assertEqual(plan["web-uk"], 0)
+        # ohne Laufzahlen im Fenster, aber zuletzt leer -> Prüfplatz statt der vollen Belegung
+        plan, why = W.autopilot(self.reg, "lead-werk", self.lead, {}, other={"kunden": 8}, now=self.now,
+                                prev={"web-uk": W.EMPTY_WHY + " (2 Läufe ohne Kandidaten)"})
+        self.assertEqual(plan["web-uk"], 1)
+        # Prüfplatz findet Kandidaten -> sofort wieder die Belegung des Inhabers
+        back = W.lane_stats(_rows("web-uk", "p2", 1, 70, 3000, 120, start="2026-10-03T19:00:00+00:00"), "lead-werk")
+        plan, why = W.autopilot(self.reg, "lead-werk", self.lead, back, other={"kunden": 8}, now=self.now,
+                                prev={"web-uk": W.EMPTY_WHY + " (2 Läufe ohne Kandidaten)"})
+        self.assertEqual(plan["web-uk"], 8)
+        self.assertIn("wieder da", why["web-uk"])
+
+    def test_locks_owner_zero_and_brake_win(self):
+        plan, why = W.autopilot(self.reg, "lead-werk", {**self.lead, "web-uk": 0}, self.stats(), locks={"web-fr": 5},
+                                other={"kunden": 8}, now=self.now)
+        self.assertEqual((plan["web-uk"], plan["web-fr"]), (0, 5))
+        plan, _ = W.autopilot(self.reg, "lead-werk", self.lead, self.stats(), other={"kunden": 8}, brake="drossel",
+                              now=self.now)
+        self.assertLessEqual(sum(plan.values()), W.BRAKE_LEAD_MAX)
+        plan, _ = W.autopilot(self.reg, "lead-werk", self.lead, self.stats(), other={"kunden": 28}, now=self.now)
+        self.assertLessEqual(sum(plan.values()), 38 - 28)
+
+    def test_decide_reads_previous_reasons(self):
+        res = W.decide(self.reg, "lead-werk", {"settings": {"slot_plan": dict(self.lead, kunden=8)}, "rows": [],
+                                               "prev_reasons": {"web-fr": W.EMPTY_WHY + " (3 Läufe ohne Kandidaten)"}})
+        self.assertEqual(res["plan"]["web-fr"], 1)
+        self.assertTrue(res["reasons"]["web-fr"].startswith(W.EMPTY_WHY))

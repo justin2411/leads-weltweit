@@ -17,7 +17,7 @@ function FoldIf({ long, id, title, sum, children }: { long: boolean; id: string;
 
 export type PultLane = {
   id: string; werk: string; label: string; short: string; what: string; max: number; def: number; cur: number; color: string;
-  stat: { runs: number; green: number; perSlotH: number | null; avgRunMin: number | null; perRun: number | null; exhausted: boolean; live: number };
+  stat: { runs: number; green: number; perSlotH: number | null; avgRunMin: number | null; perRun: number | null; exhausted: boolean; empty?: boolean; live: number };
 };
 
 export function Pult({ lanes, cap, total, back, action, nextStart, custom, only }: {
@@ -57,7 +57,7 @@ export function Pult({ lanes, cap, total, back, action, nextStart, custom, only 
       <ul className="lanes">
         {shown.map((l) => {
           const s = l.stat;
-          const state = s.live > 0 ? "läuft" : s.runs === 0 ? "keine Daten" : s.exhausted ? "Vorrat erschöpft" : "ergiebig";
+          const state = s.live > 0 ? "läuft" : s.empty ? "Vorrat leer" : s.runs === 0 ? "keine Daten" : s.exhausted ? "Vorrat erschöpft" : "ergiebig";
           return (
             <li key={l.id} className={`lane ${v[l.id] === 0 ? "off" : ""} ${s.live ? "live" : ""}`} style={{ "--c": l.color } as React.CSSProperties}>
               <div className="ln-id"><span className="hex">{l.short}</span><i className="ln-led" title={state} /></div>
@@ -68,7 +68,7 @@ export function Pult({ lanes, cap, total, back, action, nextStart, custom, only 
                   <span title="grüne Leads bzw. mail-fähige Käufer in den letzten 24 h"><em>24h</em>{s.green.toLocaleString("de-DE")}<small>grün</small></span>
                   <span title="grüne je belegter Platz-Stunde"><em>je Platz·h</em>{s.perSlotH === null ? "–" : Math.round(s.perSlotH).toLocaleString("de-DE")}</span>
                   <span title="Laufzeit eines Teils im Schnitt (Zeitfenster 75 min)"><em>Ø Teil</em>{s.avgRunMin === null ? "–" : `${Math.round(s.avgRunMin)} min`}</span>
-                  <span className={`st ${state === "Vorrat erschöpft" ? "warn" : state === "läuft" ? "run" : ""}`}>{state}{s.live ? ` · ${s.live}` : ""}</span>
+                  <span className={`st ${state === "Vorrat erschöpft" || state === "Vorrat leer" ? "warn" : state === "läuft" ? "run" : ""}`}>{state}{s.live ? ` · ${s.live}` : ""}</span>
                 </div>
               </div>
               <div className="ln-ctl">
