@@ -171,8 +171,10 @@ def probe_ab(abx, seg: str, country: str, unit: str) -> dict:
     return out
 
 
-def build_payload(seg: str, country: str, files: list[tuple[str, bytes]], abx=None) -> dict | None:
-    """Fertige Probe-Mail ohne Empfänger – gleiche Funktionen und Inhalte wie web_samples.py."""
+def build_payload(seg: str, country: str, files: list[tuple[str, bytes]], abx=None,
+                  feedback_token: str | None = None) -> dict | None:
+    """Fertige Probe-Mail ohne Empfänger – gleiche Funktionen und Inhalte wie web_samples.py.
+    feedback_token: freiwilliger Bewertungs-Link (Feedback-Werk, lib/feedback.py) vor dem Gruß."""
     import uuid
     from responder import reply_content, sample_mail, sample_subject
     lang = "fr" if country == "FR" else "en"
@@ -180,6 +182,8 @@ def build_payload(seg: str, country: str, files: list[tuple[str, bytes]], abx=No
     body, blocks = sample_mail(lang, None, files, True, seg, country, ab=ab)
     if not body:
         return None
+    from lib import feedback
+    body, blocks = feedback.add_to_mail(body, lang, feedback_token, blocks)
     content = reply_content(PLACEHOLDER, sample_subject(lang, None, country), body, None, lang, files, blocks,
                             requested=True)
     return {"version": 1, "placeholder": PLACEHOLDER, "lang": lang, **content,
@@ -202,7 +206,9 @@ def build_one(db, seg: str, country: str, wish: list[str], exclude: set[str], ho
     if not files or len(set(ids)) != SAMPLE_SIZE or len(set(cos)) != SAMPLE_SIZE:
         return None
     from lib import ab as ablib
-    payload = build_payload(seg, country, files, ablib.Ctx(db))
+    from lib import feedback
+    fb = feedback.create_link(db, "probe", ids, country, seg) if apply else None
+    payload = build_payload(seg, country, files, ablib.Ctx(db), feedback_token=fb)
     if not payload:
         return None
     dates = sorted(str(l.get("event_date") or "")[:10] for l in picked if l.get("event_date"))

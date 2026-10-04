@@ -73,7 +73,8 @@ def week_start(today: dt.date | None = None) -> dt.date:
 
 
 def select_leads(leads: list[dict], sub: dict, already: set[str], details: dict[str, dict],
-                 match=None, tags: dict[str, dict] | None = None, cfilter: dict | None = None) -> list[dict]:
+                 match=None, tags: dict[str, dict] | None = None, cfilter: dict | None = None,
+                 fb_weights: dict[str, float] | None = None) -> list[dict]:
     """Passende, noch nicht gelieferte Leads für ein Abo, höchstens max_per_week, max. 3 je Firma.
 
     tags/cfilter (BRAIN.md 5.3): Qualitätswert ab 60 und Abgleich mit customer_filters, falls vorhanden.
@@ -93,7 +94,8 @@ def select_leads(leads: list[dict], sub: dict, already: set[str], details: dict[
     from lib.quality import sort_key
     leads = sorted(leads, key=sort_key)
     # Premium zuerst (Inhaber 05.10.2026, lib/premium.py) – nur Reihenfolge, schließt nichts aus
-    from lib.premium import sort_key as premium_key
+    from lib.premium import key_with
+    premium_key = key_with(fb_weights)  # Kunden-Feedback je Anlass: nur Umgewichtung (lib/feedback.py)
     leads = sorted(leads, key=premium_key)
     if prefs:
         from customer_agents import lead_priority
@@ -445,8 +447,10 @@ def cmd_prepare(args) -> int:
     db = DB()
     if stop_if_paused(db, "kundenlieferung"):
         return 0
+    from lib.feedback import load_weights
+    fb_weights = load_weights(db)  # Kunden-Feedback je Anlass (Feedback-Werk): nur Reihenfolge
     period = week_start()
-    subs = db.select("subscriptions", {"status": "eq.active",
+    subs =db.select("subscriptions", {"status": "eq.active",
                                        "select": "*,customers(company_name,country,billing_email,status,"
                                                  "stripe_customer_id,notes)"})
     for s in subs:
@@ -499,7 +503,8 @@ def cmd_prepare(args) -> int:
         already = already_delivered(db.select_all("deliveries", {"subscription_id": f"in.({','.join(sub_ids)})",
                                                                  "select": "lead_ids,status,period_start"}), period)
         cf = db.select("customer_filters", {"customer_id": f"eq.{s['customer_id']}"})
-        picked = select_leads(leads, s, already, details, tags=tags, cfilter=cf[0] if cf else None)
+        picked = select_leads(leads, s, already, details, tags=tags, cfilter=cf[0] if cf else None,
+                              fb_weights=fb_weights)
         # „ohne Website“ vor der Lieferung nachprüfen (Inhaber 02.10.2026) und jeden Lead durch die Drei-Stufen-Freigabe
         # (Inhaber 03.10.2026); Durchgefallene raus, Lücke neu auffüllen – geliefert wird nur, was freigegeben ist
         from lib import release_gate
@@ -515,7 +520,8 @@ def cmd_prepare(args) -> int:
             if not bad:
                 break
             leads = [l for l in leads if l["id"] not in bad]
-            picked = select_leads(leads, s, already, details, tags=tags, cfilter=cf[0] if cf else None)
+            picked = select_leads(leads, s, already, details, tags=tags, cfilter=cf[0] if cf else None,
+                              fb_weights=fb_weights)
         picked = [l for l in picked if l["id"] in released]
         enrich(db, picked, known)
         if len(picked) < 5:
@@ -577,7 +583,7 @@ def cmd_send(args) -> int:
     if stop_if_paused(db, "kundenlieferung"):
         return 0
     todo = db.select("deliveries", {"status": "eq.approved", "select": "*,subscriptions(segment_id,filters,status,"
-                                                                       "customers(company_name,country,billing_email,"
+                                                                       "customers(id,company_name,country,billing_email,"
                                                                        "status,stripe_customer_id,notes))"})
     for d in todo:
         c = ((d.get("subscriptions") or {}).get("customers")) or {}
@@ -654,7 +660,12 @@ def send_delivery(db, d: dict, live: bool) -> str:
     if not live:
         print(f"[Probelauf] {c['company_name']} <{c['billing_email']}>: {len(leads)} Leads, Betreff „{subject}“")
         return "dry"
-    _resend([c["billing_email"]], subject, body + "\n\n" + footer, render(body, footer, lang), files)
+    # Feedback-Werk (Inhaber 05.10.2026): freiwilliger Bewertungs-Link, kein Pixel, keine Öffnungsmessung
+    from lib import feedback
+    token = feedback.create_link(db, "lieferung", [l["id"] for l in leads], c["country"], s.get("segment_id"),
+                                 c.get("id"), d["id"]) if leads else None
+    body, blocks = feedback.add_to_mail(body, lang, token)
+    _resend([c["billing_email"]], subject, body + "\n\n" + footer, render(body, footer, lang, blocks=blocks), files)
     db.update("deliveries", {"id": d["id"]}, {"status": "sent", "sent_at": dt.datetime.now(dt.timezone.utc).isoformat()})
     # Exklusiv: gelieferte Leads erscheinen nicht mehr in Proben, Landingpages oder Kaltmail-Beispielen
     for l in leads:

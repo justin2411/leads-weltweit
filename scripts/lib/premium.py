@@ -136,8 +136,21 @@ def count(rows: list[dict], today: dt.date | None = None) -> int:
     return sum(tier_now(r, today) == "premium" for r in rows)
 
 
-def sort_key(row: dict, today: dt.date | None = None) -> tuple:
+def sort_key(row: dict, today: dt.date | None = None, weights: dict[str, float] | None = None) -> tuple:
     """Premium zuerst (nur Reihenfolge, schließt nichts aus): Stufe heute, dann Punktzahl; ohne Wert zuletzt.
-    Standard-Leads füllen nur auf, wenn es keine 10 Premium-Leads gibt (Inhaber 05.10.2026, Übergang)."""
+    Standard-Leads füllen nur auf, wenn es keine 10 Premium-Leads gibt (Inhaber 05.10.2026, Übergang).
+
+    weights: Kunden-Feedback je Anlass (lib/feedback.py, Feedback-Werk 05.10.2026) – Umgewichtung der Punktzahl
+    innerhalb derselben Stufe (0,8–1,25). Ändert nie die Stufe und nie, ob ein Lead rausgeht."""
     v = row.get("premium_score")
-    return (0 if tier_now(row, today) == "premium" else 1, -int(v) if isinstance(v, (int, float)) else 1)
+    if not isinstance(v, (int, float)):
+        return (0 if tier_now(row, today) == "premium" else 1, 1)
+    if weights:
+        from lib.feedback import weight_for
+        v = v * weight_for(row, weights)
+    return (0 if tier_now(row, today) == "premium" else 1, -round(v, 3))
+
+
+def key_with(weights: dict[str, float] | None, today: dt.date | None = None):
+    """sort_key mit festen Feedback-Gewichten (für sorted(key=…))."""
+    return lambda row: sort_key(row, today, weights)
