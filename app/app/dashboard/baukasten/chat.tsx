@@ -12,14 +12,17 @@ import { parseFlow, type Flow, type FlowKind } from "@/lib/flow";
 import { sessionState, type ChatMessage } from "@/lib/jarvis-chat";
 import { Icon } from "@/app/icons";
 import { Composer, Thread } from "../jarvis/chat/chat-ui";
-import { clearFlowChat, flowChatState, sendFlowChat } from "./chat-actions";
+import { sendToJarvis } from "@/lib/jarvis-send";
+import { clearFlowChat, flowChatState } from "./chat-actions";
 
 export type Remote = { version: string; name: string; def: Flow | null; pending: Flow | null; note: string | null };
 const KEY = "bk-chat-open";
 const POLL = 20_000;
 
-export function FlowChat({ flowId, kind, proposal, stale, onRemote, onReload }: {
+export function FlowChat({ flowId, kind, proposal, stale, onRemote, onReload, instant = true }: {
   flowId: string | null; kind: FlowKind;
+  /** Sofort-Antwort eingerichtet (sonst Hinweis: Routine antwortet) */
+  instant?: boolean;
   /** Flow gilt schon für neue Leads (Master, angeschlossen): JARVIS baut nur Vorschläge */
   proposal: boolean;
   /** Chat hat geändert, eigene Änderungen ungespeichert → Hinweis mit „neu laden“ */
@@ -63,11 +66,13 @@ export function FlowChat({ flowId, kind, proposal, stale, onRemote, onReload }: 
     return () => { clearInterval(id); document.removeEventListener("visibilitychange", vis); };
   }, [flowId, load]);
 
+  // Sofort-Antwort über /api/jarvis/ask (gleiche Sende-Funktion wie alle Chats); danach Verlauf und Flow neu laden
   const send = async (text: string) => {
     if (!flowId) return { ok: false as const, error: "erst speichern" };
-    const r = await sendFlowChat(flowId, text);
-    if (r.ok) void load();
-    return r.ok ? { ok: true as const } : { ok: false as const, error: r.error };
+    const r = await sendToJarvis({ flowId, text });
+    if (!r.ok) return r;
+    await load();
+    return { ok: true as const, hint: r.fallback?.hint ?? null };
   };
   const clear = () => {
     if (!flowId || !window.confirm("Chat leeren? Der Verlauf wird abgelegt, der Flow bleibt genau so, wie er ist.")) return;
@@ -104,7 +109,7 @@ export function FlowChat({ flowId, kind, proposal, stale, onRemote, onReload }: 
               ? "Schreib, was die Master-Pipeline tun soll – JARVIS baut es als Vorschlag, du übernimmst mit einem Klick."
               : "Schreib, was gebaut werden soll, z. B. „nur Leads mit Telefon, dann Top 100“."} />
             {err && <p className="jc-err" role="alert"><Icon name="achtung" size={15} />{err}</p>}
-            <Composer sessionId={null} now={now} onError={setErr} send={send} placeholder="Was soll JARVIS hier bauen? (Enter sendet)" />
+            <Composer sessionId={null} now={now} onError={setErr} send={send} instant={instant} placeholder="Was soll JARVIS hier bauen? (Enter sendet)" />
             <div className="bk-chat-f">
               <span><Icon name="schloss" size={13} />{kind === "master" ? "Master: JARVIS schlägt vor – aktiv erst nach „Übernehmen“."
                 : proposal ? "Läuft in der Pipeline: JARVIS schlägt vor – gilt erst nach „Speichern“." : "Gebaute Bausteine bleiben, bis du sie löschst."}</span>

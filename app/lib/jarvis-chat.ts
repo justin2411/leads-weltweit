@@ -9,7 +9,8 @@
  */
 import { CHAT_BY, nextAgentRound, type AgentTask } from "./agents.ts";
 
-export type SessionKind = "chat" | "bericht" | "baukasten";
+/** website = Sitzung der Seite /dashboard/website (eigene Art, Kontext = letzter Website-Check). */
+export type SessionKind = "chat" | "bericht" | "baukasten" | "website";
 export type MsgStatus = "offen" | "in_arbeit" | "fertig";
 export type ChatLink = { label: string; url: string };
 export type ChatSession = {
@@ -21,6 +22,8 @@ export type ChatSession = {
 export type ChatMessage = {
   id: string; session_id: string; created_at: string; role: "inhaber" | "jarvis"; body: string; status: MsgStatus | null;
   links: ChatLink[];
+  /** Sofort-Antwort über die Claude-API: Modell und Kosten in Euro (null = Antwort der Routine) */
+  model?: "haiku" | "opus" | null; cost_eur?: number | null;
 };
 
 export const BODY_MAX = 8000;
@@ -149,12 +152,14 @@ export function toMessage(x: Record<string, unknown>): ChatMessage {
   return {
     id: String(x.id), session_id: String(x.session_id), created_at: String(x.created_at ?? ""), role, body: String(x.body ?? ""),
     status: role === "inhaber" ? st ?? "offen" : null, links: safeLinks(x.links),
+    model: x.model === "haiku" || x.model === "opus" ? x.model : null,
+    cost_eur: x.cost_eur === null || x.cost_eur === undefined || !Number.isFinite(Number(x.cost_eur)) ? null : Number(x.cost_eur),
   };
 }
 
 /** Datenbank-Zeile → Sitzung. */
 export function toSession(x: Record<string, unknown>): ChatSession {
-  const kind: SessionKind = x.kind === "bericht" || x.kind === "baukasten" ? x.kind : "chat";
+  const kind: SessionKind = x.kind === "bericht" || x.kind === "baukasten" || x.kind === "website" ? x.kind : "chat";
   return {
     id: String(x.id), title: String(x.title ?? "") || "Sitzung", kind, flow_id: (x.flow_id as string | null) ?? null,
     created_at: String(x.created_at ?? ""), updated_at: String(x.updated_at ?? ""), read_at: (x.read_at as string | null) ?? null,

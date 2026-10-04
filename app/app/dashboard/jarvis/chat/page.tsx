@@ -2,8 +2,10 @@ import { loadAgentTasks } from "@/lib/dashboard-data";
 import { LEGACY_ID, hasNew, isSessionId, lastUsed, legacyMessages, orderSessions, type ChatMessage, type ChatSession } from "@/lib/jarvis-chat";
 import { ChatMissing, loadMessages, loadSession, loadSessions, markRead } from "@/lib/jarvis-chat-data";
 import { requireOwner } from "../../actions";
+import { instantEnabled } from "@/lib/jarvis-ask";
+import { loadLlmState } from "@/lib/jarvis-context";
 import { ChatApp } from "./chat-ui";
-import { JCHAT_CSS } from "./css";
+import { JCHAT_CSS, SOFORT_CSS } from "./css";
 
 export const metadata = { title: "JARVIS Chat" };
 type SP = Promise<Record<string, string | string[] | undefined>>;
@@ -21,7 +23,7 @@ export default async function JarvisChatPage({ searchParams }: { searchParams: S
   const sParam = typeof sp.s === "string" ? sp.s : "";
   const showArchive = sp.archiv === "1";
   const now = new Date();
-  const css = <style dangerouslySetInnerHTML={{ __html: JCHAT_CSS }} />;
+  const css = <style dangerouslySetInnerHTML={{ __html: JCHAT_CSS + SOFORT_CSS }} />;
 
   let sessions: ChatSession[] = [], archived: ChatSession[] = [];
   try {
@@ -39,7 +41,7 @@ export default async function JarvisChatPage({ searchParams }: { searchParams: S
       </>
     );
   }
-  const tasks = await loadAgentTasks();
+  const [tasks, llm] = await Promise.all([loadAgentTasks(), loadLlmState()]);
   const legacy = legacyMessages(tasks);
   const list = orderSessions(sessions);
 
@@ -64,7 +66,7 @@ export default async function JarvisChatPage({ searchParams }: { searchParams: S
     <>
       {css}
       <ChatApp now={now.toISOString()} sessions={list} archived={showArchive ? archived : null} selected={selected} messages={messages}
-        mode={mode} legacyCount={legacy.length} />
+        mode={mode} legacyCount={legacy.length} instant={instantEnabled()} llm={llm ? { text: llm.text, budget: llm.budget, pct: llm.pct, ok: llm.ok } : null} />
     </>
   );
 }

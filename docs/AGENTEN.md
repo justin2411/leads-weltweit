@@ -25,6 +25,14 @@ auswerten und bei anhaltendem Engpass selbst starten).
    (alle paar Minuten), am Ende `fertig <id> "<Ergebnis in 1–3 Sätzen>" '<Kennzahlen als JSON>'` oder `fehler`.
 3. Ergebnis-Sätze: kurz, Deutsch, echte Zahlen, keine Fachbegriffe. Kennzahlen nur gemessene Werte
    (z. B. `{"neue Leads": 420, "grün %": 94}`).
+4. **Vorschläge** (Inhaber 04.10.2026: „verbesserungsvorschläge mit haken annehmen oder kreuz ablehnen“): Ergibt ein
+   Auftrag einen Vorschlag, der eine Inhaber-Entscheidung braucht (Geld, ausdrückliche Inhaber-Regel, rechtlich unklar,
+   unsicher), schreibt der Agent ihn als Zeile in `signalwerk.decisions`: `type` `note`, `status` `proposed`,
+   `subject` „Vorschlag: <Titel, höchstens 60 Zeichen>“, `reasoning` = Begründung (erster Satz = Kurzgrund),
+   `metrics` = gemessene Zahlen. Er erscheint in JARVIS unter „Vorschläge“ mit Haken (→ `done` + Auftrag „Vorschlag
+   umsetzen: …“ an den ersten freien Agenten) und Kreuz (→ `rejected`, Grund in `metrics.inhaber_grund`; nicht erneut
+   vorschlagen, solange sich die Lage nicht deutlich ändert). Selbst Umgesetztes: `status` `done`, `subject`
+   „umgesetzt: …“ – steht 7 Tage unter „JARVIS hat umgesetzt“.
 
 ## JARVIS-Chat (Inhaber 04.10.2026)
 
@@ -51,6 +59,17 @@ Nachricht sieht der Inhaber „startet um HH:MM“ (nächster dieser Zeitpunkte)
    `--zwischenstand` (Nachricht bleibt „in Arbeit“), im nächsten Lauf weiter.
 5. Stil: Deutsch, du-Form, einfache Worte, kurz (meist 2–6 Sätze), echte Zahlen, Uhrzeiten in deutscher Zeit; was
    getan wurde und was offen ist. Links nur `https://…` oder `/dashboard…`. Nie erfundene Zahlen.
+
+**Sofort-Antworten** (Inhaber 04.10.2026: „alle chats sollen direkt antworten“): Jede Chat-Oberfläche (JARVIS-Chat,
+Mini-Chats, Baukasten, Website-Seite) schickt über eine Sende-Funktion (`app/lib/jarvis-send.ts` → `POST /api/jarvis/ask`,
+`app/lib/jarvis-ask.ts`). Haiku (`claude-haiku-4-5-20251001`) beantwortet einfache Fragen aus einem kompakten Kontext;
+braucht es Daten oder eine Änderung, übernimmt Opus (`claude-opus-5-5`) mit festen sicheren Werkzeugen (Kennzahlen,
+Regler wie im Dashboard, Werk an/aus – Mail-Werke nur aus –, Auftrag an A1–A8, Baukasten-Flow – Master/Pipeline nur
+als Vorschlag –, Werk-Start ohne Versand), höchstens 6 Runden. Diese Nachrichten stehen danach auf „fertig“; die
+Antwort trägt `model` und `cost_eur`. **Code, Website, neue Funktionen/Quellen, Merges, Migrationen** macht nie die API:
+sie antwortet „Übernimmt die Routine, startet um HH:MM“ und lässt die Nachricht **offen** – die Routine erledigt sie
+wie bisher. Ohne `ANTHROPIC_API_KEY`, bei Fehlern oder erreichter Monatsgrenze (`owner_settings.llm_budget_eur`,
+Standard 30 €, Kosten je Aufruf in `signalwerk.llm_usage`) bleibt die Nachricht ebenfalls offen für die Routine.
 
 Frühere Chat-Aufträge (`agent_tasks` mit `created_by = "JARVIS-Chat"`) bleiben im Chat unter „Frühere Aufträge“ lesbar;
 noch offene davon wie bisher mit `agent_tasks.py` fertig machen. Neue Nachrichten kommen nur noch über `jarvis_messages`.

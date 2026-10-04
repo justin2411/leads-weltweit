@@ -13,7 +13,7 @@ import {
   Reply, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Split, Square, Star, Target, TrendingDown,
   TrendingUp, Trash2, TriangleAlert, Undo2, UserRound, Users, Workflow, X,
 } from "lucide-react";
-import { CircleQuestionMark } from "lucide-react";
+import { CircleQuestionMark, Maximize2 } from "lucide-react";
 
 const ICONS = {
   // Werke und Stationen
@@ -102,6 +102,7 @@ const ICONS = {
   flagge: Flag,
   suche: Search,
   frage: CircleQuestionMark,
+  vergroessern: Maximize2,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

@@ -10,7 +10,8 @@ import { BERICHT_TITLE, flowSessionTitle, toMessage, toSession, type ChatMessage
 export class ChatMissing extends Error {}
 
 const SESSION_COLS = "id, title, kind, flow_id, created_at, updated_at, read_at, archived";
-const MSG_COLS = "id, session_id, created_at, role, body, status, links";
+// "*": model/cost_eur kommen erst mit Migration 20261004160500 – so klappt das Laden auch davor
+const MSG_COLS = "*";
 const T = () => AbortSignal.timeout(6000);
 
 function fail(what: string, e: { message: string; code?: string }): never {

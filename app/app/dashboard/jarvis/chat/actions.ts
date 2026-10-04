@@ -6,10 +6,12 @@
  * protokollieren (owner_log). Nichts wird gelöscht: „Archivieren“ legt eine Sitzung ab. Beantwortet werden die
  * Nachrichten von der JARVIS-Routine (scripts/jarvis_chat.py, viermal pro Stunde) – hier wird nichts ausgeführt.
  */
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/supabase";
-import { ChatInputError, checkBody, checkTitle, isSessionId, titleFrom } from "@/lib/jarvis-chat";
-import { loadSession } from "@/lib/jarvis-chat-data";
+import { ChatInputError, checkBody, checkTitle, isSessionId, titleFrom, type ChatMessage, type ChatSession } from "@/lib/jarvis-chat";
+import { loadMessages, loadSession } from "@/lib/jarvis-chat-data";
+import { InputError, validateLlmBudget } from "@/lib/owner-settings";
 import { requireOwner } from "../../actions";
 
 const BY = "Inhaber Dashboard";
@@ -97,4 +99,33 @@ export async function sendFromJarvis(f: FormData) {
     redirect(`/dashboard/jarvis?fehler=${encodeURIComponent(msg)}#chat`);
   }
   redirect(`/dashboard/jarvis/chat?s=${target}`);
+}
+
+/** Monatsgrenze der Sofort-Antworten (Claude-API) in Euro: 0–500 (0 = aus). Regler in der Chat-Kopfzeile. */
+export async function setLlmBudget(raw: string): Promise<ChatResult> {
+  await requireOwner();
+  try {
+    const value = validateLlmBudget(raw);
+    const { data: old } = await db().from("owner_settings").select("value").eq("key", "llm_budget_eur").maybeSingle();
+    const { error } = await db().from("owner_settings").upsert({ key: "llm_budget_eur", value, updated_at: new Date().toISOString(), updated_by: BY });
+    if (error) throw new Error(error.message);
+    await db().from("owner_log").insert({ action: "setting:llm_budget_eur", target: null, old_value: old?.value ?? null, new_value: value, created_by: BY });
+    revalidatePath("/dashboard", "layout");
+    return { ok: true };
+  } catch (e) {
+    if (e instanceof InputError) return { ok: false, error: e.message };
+    const ref = Math.random().toString(36).slice(2, 8);
+    console.error(`llm-budget [${ref}]:`, e instanceof Error ? e.message.slice(0, 160) : "Fehler");
+    return { ok: false, error: `nicht gespeichert (Fehler ${ref})` };
+  }
+}
+
+/** Verlauf einer Sitzung für die Mini-Chats und das große Chat-Fenster (Vergrößern). */
+export async function chatSessionView(id: string): Promise<ChatResult<{ session: ChatSession; messages: ChatMessage[]; now: string }>> {
+  return guard("Laden", async () => {
+    if (!isSessionId(id)) throw new ChatInputError("Sitzung unbekannt");
+    const s = await loadSession(id.toLowerCase());
+    if (!s) throw new ChatInputError("Sitzung unbekannt");
+    return { session: s, messages: await loadMessages(s.id, 60), now: new Date().toISOString() };
+  });
 }
