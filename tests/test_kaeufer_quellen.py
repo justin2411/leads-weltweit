@@ -1,4 +1,4 @@
-"""Kunden-Werk: offene Register als Käuferquellen für Webagenturen (MX DENUE, FI YTJ; 04.10.2026)."""
+"""Kunden-Werk: offene Register als Käuferquellen für Webagenturen (MX DENUE, FI YTJ, FR France Num; 04.10.2026)."""
 import sys
 import tempfile
 import unittest
@@ -8,7 +8,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 import kundenwerk as K  # noqa: E402
-from extraktor.sources import fi_ytj, mx_denue  # noqa: E402
+from extraktor.sources import fi_ytj, fr_francenum, mx_denue  # noqa: E402
 from lib.rules import is_company_form, is_freemail, load_countries, normalize_domain  # noqa: E402
 
 SEGS = {"S2": {"US", "UK", "FR", "SE", "FI", "SG", "HK", "MX", "BR"}, "S12": {"UK", "US"}}
@@ -67,6 +67,76 @@ class YtjTests(unittest.TestCase):
         for line, cat in (("62100", "software_development"), ("74120", "graphic_designer"), ("63100", "web_hosting_service")):
             self.assertEqual(self.row(line=line)["category"], cat)
             self.assertEqual(K.segment_for(cat, "FI", SEGS), ("S2", "FI"))
+
+
+def activateur(**kw):
+    base = {"identifiant_de_la_structure": "abc-1", "nom_de_la_structure": "PIXEL COM", "type": "Agence de communication, marketing",
+            "categorie": "Privée", "adresse": "1 RUE DE LA PAIX", "code_postal": "75002", "ville": "Paris",
+            "region": "Île-de-France", "lien_url_site_france_num": "https://www.francenum.gouv.fr/activateurs/pixel-com"}
+    return {**base, **kw}
+
+
+PAGE_HTML = ('<p><a class="fr-link" title="PIXEL COM, https://www.pixel-com.fr/ - Nouvelle fenêtre" target="_blank" '
+             'href="https://www.pixel-com.fr/">Site internet</a></p><a target="_blank" '
+             'href="https://www.linkedin.com/company/pixel">Page linkedin</a>')
+
+
+class FranceNumTests(unittest.TestCase):
+    def fr(self, x=None, web="https://www.pixel-com.fr/"):
+        return fr_francenum.row_of(x or activateur(), web, K.NOT_OWN_SITE, normalize_domain, is_freemail)
+
+    def test_website_from_activateur_page(self):
+        self.assertEqual(fr_francenum.website_of(PAGE_HTML), "https://www.pixel-com.fr/")
+        self.assertIsNone(fr_francenum.website_of('<a href="https://www.linkedin.com/x">Page linkedin</a>'))
+
+    def test_row_lands_on_s2_fr_with_source(self):
+        r = self.fr()
+        self.assertEqual((r["country"], r["category"], r["postcode"]), ("FR", "marketing_agency", "75002"))
+        self.assertIn("francenum.gouv.fr/activateurs/pixel-com", r["quelle"])
+        for cat in fr_francenum.TYPES.values():
+            self.assertEqual(K.segment_for(cat, "FR", SEGS), ("S2", "FR"), cat)
+        # in UK/US bleiben Marketingagenturen eigener Test S12 – France Num liefert ohnehin nur FR
+        self.assertNotEqual(K.segment_for("marketing_agency", "UK", SEGS)[0], "S2")
+
+    def test_public_bodies_other_types_platforms_skipped(self):
+        self.assertIsNone(self.fr(activateur(categorie="Publique")))
+        self.assertIsNone(self.fr(activateur(type="Organisme de formation")))
+        self.assertIsNone(self.fr(activateur(type="Cabinet d’avocat, expertise-comptable")))
+        self.assertIsNone(self.fr(web="https://www.facebook.com/pixel"))
+        self.assertIsNone(self.fr(web=None))
+        self.assertIsNone(self.fr(activateur(lien_url_site_france_num="https://example.com/x")))
+
+    def test_pool_rows_fetches_pages_politely_and_dedups(self):
+        items = [activateur(), activateur(identifiant_de_la_structure="abc-2"),
+                 activateur(identifiant_de_la_structure="abc-3", type="Organisme public", categorie="Publique")]
+
+        class F:
+            urls = []
+
+            def get(self, url):
+                self.urls.append(url)
+                return (url, PAGE_HTML)
+        f = F()
+        with mock.patch.object(fr_francenum, "_download", return_value=items):
+            rows = fr_francenum.pool_rows(log=lambda *_: None, fetcher=f)
+        self.assertEqual(len(rows), 1)          # gleiche Website nur einmal
+        self.assertEqual(len(f.urls), 2)        # Behörde wird gar nicht abgerufen
+        with mock.patch.object(fr_francenum, "_download", return_value=items):
+            self.assertEqual(fr_francenum.pool_rows(log=lambda *_: None, fetcher=f, budget_s=0), [])
+
+    def test_check_one_fr_activateur_with_generic_address(self):
+        d = {**self.fr(), "segment": "S2", "website": "https://www.pixel-com.fr/", "domain": "pixel-com.fr"}
+        cfg = load_countries()
+        generic = {g.lower() for g in cfg.get("generic_local_parts") or []}
+        with mock.patch.object(K, "site_scan", return_value={"emails": {"contact@pixel-com.fr": "https://www.pixel-com.fr/contact"},
+                                                              "text": "PIXEL COM SAS au capital de 1000 €", "pages": [],
+                                                              "final_domain": "", "html": ""}):
+            row = K.check_one(d, None, cfg, generic, set())
+        self.assertEqual(row["email"], "contact@pixel-com.fr")
+        with mock.patch.object(K, "site_scan", return_value={"emails": {"contact@pixel-com.fr": "https://x"}, "text": "",
+                                                              "pages": [], "final_domain": "", "html": ""}):
+            row = K.check_one(d, None, cfg, generic, {"pixel-com.fr"})
+        self.assertNotEqual(row["check_status"], "ok")  # Sperrliste gilt unverändert
 
 
 class CheckOneTests(unittest.TestCase):
@@ -132,7 +202,8 @@ class PoolTests(unittest.TestCase):
 
     def test_failing_source_does_not_stop_pool(self):
         with mock.patch.object(mx_denue, "pool_rows", side_effect=RuntimeError("weg")), \
-                mock.patch.object(fi_ytj, "pool_rows", return_value=[{"id": "x"}]):
+                mock.patch.object(fi_ytj, "pool_rows", return_value=[{"id": "x"}]), \
+                mock.patch.object(fr_francenum, "pool_rows", side_effect=RuntimeError("weg")):
             self.assertEqual(K.register_rows(log=lambda *_: None), [{"id": "x"}])
 
     def test_old_pool_without_register_columns_still_works(self):
@@ -147,8 +218,8 @@ class PoolTests(unittest.TestCase):
 
     def test_workflow_pool_key_bumped(self):
         wf = (Path(__file__).resolve().parents[1] / ".github" / "workflows" / "kunden-werk.yml").read_text()
-        self.assertNotIn("kunden-pool-v7-", wf)
-        self.assertEqual(wf.count("kunden-pool-v8-"), 2)
+        self.assertNotIn("kunden-pool-v8-", wf)
+        self.assertEqual(wf.count("kunden-pool-v9-"), 2)
 
 
 if __name__ == "__main__":
