@@ -39,6 +39,7 @@ WORKFLOWS = {
     "kundenlieferung.yml": ("Kundenlieferung (montags)", 24 * 7 + 3),
     "wachhund.yml": ("Wachhund (startet ausgefallene Läufe nach)", 3),
     "agenten-werk.yml": ("Agenten-Werk (Speicher + eigene Agenten)", 3),
+    "zustellbarkeit.yml": ("Zustellbarkeits-Check (06:10)", 27),
 }
 
 
@@ -435,6 +436,22 @@ def check_website(c: Check, db) -> None:
         c.add("Kasse", FAIL, "/api/health nicht lesbar", type(e).__name__)
 
 
+def check_zustellbarkeit(c: Check, db) -> None:
+    """Ergebnis des täglichen Zustellbarkeits-Checks (scripts/zustellbarkeit.py, 06:10 deutscher Zeit)."""
+    rows = db.select("deliverability_daily", {"select": "day,status,gruende", "order": "day.desc", "limit": "1"})
+    if not rows:
+        c.add("Zustellung", WARN, "Noch kein Zustellbarkeits-Check", "zustellbarkeit.yml läuft täglich 06:10")
+        return
+    r = rows[0]
+    old = r["day"] < (NOW - dt.timedelta(hours=30)).date().isoformat()
+    status = {"gruen": OK, "gelb": WARN, "rot": FAIL}.get(r["status"], WARN)
+    if old and status == OK:
+        status = WARN
+    word = {"gruen": "grün", "gelb": "gelb", "rot": "rot"}.get(r["status"], r["status"])
+    c.add("Zustellung", status, f"Zustellbarkeit {word} ({r['day']})" + (" – veraltet" if old else ""),
+          "; ".join(r.get("gruende") or [])[:200])
+
+
 def check_customers(c: Check, db) -> None:
     from deliveries import is_test_customer
     subs = db.select("subscriptions", {"select": "id,customer_id,status,first_delivery_approved,created_at,"
@@ -703,6 +720,7 @@ def main(argv=None) -> int:
     c.guard("Speicher", lambda: check_pools(c, db))
     c.guard("Freigabe", lambda: check_release_gate(c, db))
     c.guard("Website", lambda: check_website(c, db))
+    c.guard("Zustellung", lambda: check_zustellbarkeit(c, db))
     c.guard("Kunden", lambda: check_customers(c, db))
     c.guard("Werke", lambda: check_werke(c, db))
     c.guard("Werke", lambda: check_plan(c, db))
