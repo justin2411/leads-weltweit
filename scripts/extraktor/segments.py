@@ -111,6 +111,15 @@ def fits(seg: str, c: dict) -> tuple[bool, str]:
         if c.get("email") and not is_freemail(c["email"]):
             return False, "uses an own email domain (likely has a site)"
         return True, "established local business without a website"
+    if c["source"] == "rge":
+        # FR: RGE-Verzeichnis der ADEME ohne Website (Quellen-Scout 04.10.2026), gleiche Regel wie Overture
+        if seg != "S2":
+            return False, "source only carries the no-website signal"
+        if c.get("website"):
+            return False, "a verified website exists"
+        if c.get("email") and not is_freemail(c["email"]):
+            return False, "uses an own email domain (likely has a site)"
+        return True, "RGE-certified tradesperson without a website"
     if c["source"] == "overture_web":
         if seg != "S2":
             return False, "source only carries the website quality signal"
@@ -337,6 +346,24 @@ def texts_overture(c: dict) -> dict:
             "urgency_reason": why}
 
 
+def texts_rge(c: dict) -> dict:
+    """FR: Firma aus dem offiziellen RGE-Verzeichnis (ADEME) ohne Website – nur Französisch (Lieferland FR)."""
+    f, name = c["facts"], c["name"]
+    today = f["checked_on"]
+    metier = (f.get("category") or "").split(",")[0].strip().lower()
+    signal = (f"Aucun site web trouvé pour {name} : l'entreprise figure dans l'annuaire officiel des professionnels "
+              f"RGE (ADEME) avec un numéro de téléphone" + (" et une adresse e-mail" if c.get("email") else "")
+              + f", mais nous n'avons trouvé aucun site propre (vérifié le {jour(today)}).")
+    info = (f"{name} : entreprise qualifiée RGE" + (f" ({metier})" if metier else "")
+            + f" à {c['city']} ({c['zip']}).")
+    opener = (f"Bonjour, je n'ai pas trouvé de site web pour {name} – un site simple pour être trouvé par les "
+              f"particuliers qui cherchent un professionnel RGE vous intéresserait-il ?")
+    why = ("Les particuliers cherchent leur artisan RGE en ligne : sans site web, l'entreprise est peu visible pour "
+           "ces demandes.")
+    return {"signal": signal, "signal_date": today, "company_info": info, "opener": opener, "urgency": "medium",
+            "urgency_reason": why}
+
+
 WEB_EN = {
     "no_https": "Chrome shows \u2018Not secure\u2019 on its website {domain}, because the site has no HTTPS encryption",
     "redirects_to_http": "Chrome shows \u2018Not secure\u2019 on its website {domain}, because the site has no HTTPS encryption",
@@ -519,6 +546,8 @@ def texts(seg: str, c: dict) -> dict:
         return texts_ct(seg, c)
     if c["source"] == "overture":
         return texts_overture(c)
+    if c["source"] == "rge":
+        return texts_rge(c)
     if c["source"] == "overture_web":
         return texts_website(c)
     if c["source"] == "companies_house":

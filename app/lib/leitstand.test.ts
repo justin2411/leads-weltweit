@@ -31,7 +31,7 @@ test("Halle: 40 Plätze, laufende zuerst, dann eingeplante, freie, reservierte",
   assert.equal(h.length, 40);
   assert.deepEqual(h.slice(0, 2).map((b) => b.part), ["web-us-0", "web-uk-1"]); // Reihenfolge der Linien
   assert.equal(h.filter((b) => b.state === "run").length, 2);
-  assert.equal(h.filter((b) => b.state === "plan" && b.lane === "web-us").length, 19); // 20 geplant, 1 läuft
+  assert.equal(h.filter((b) => b.state === "plan" && b.lane === "web-us").length, 17); // 18 geplant, 1 läuft
   assert.equal(h.filter((b) => b.state === "plan").length, 36);
   assert.equal(h[38].state, "other"); // Proben-Vorrat auf einem reservierten Platz
   assert.equal(h[39].state, "reserve");

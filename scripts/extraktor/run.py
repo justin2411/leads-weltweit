@@ -123,10 +123,11 @@ def load_fr(days: int, stats: Counter) -> list[dict]:
     return cands
 
 
-def load_overture_s2(country: str, limit: int, stats: Counter, exclude: set[str] | None = None) -> list[dict]:
+def load_overture_s2(country: str, limit: int, stats: Counter, exclude: set[str] | None = None,
+                     min_conf: float = overture.S2_HIGH_CONF) -> list[dict]:
     """S2 UK/FR: Firmen ohne Website aus Overture; UK: Inhaber über Firmenregister + PSC, wo eindeutig.
     exclude: schon gespeicherte Overture-IDs (das Lead-Werk arbeitet sich so durch den ganzen Bestand)."""
-    rows = overture.no_website(country, limit, log=log, exclude=exclude)
+    rows = overture.no_website(country, limit, log=log, exclude=exclude, min_conf=min_conf)
     cands = [overture.to_candidate(d, country) for d in rows]
     cands = filters.dedupe([c for c in cands if not filters.pre_filter(c)])
     if country == "UK":
@@ -142,6 +143,17 @@ def load_overture_s2(country: str, limit: int, stats: Counter, exclude: set[str]
                 if o:
                     c["person_name"], c["person_role"] = o["name"], o["role"]
     stats[f"overture_{country}"] = len(cands)
+    return cands
+
+
+def load_rge(limit: int, stats: Counter, exclude: set[str] | None = None) -> list[dict]:
+    """S2 FR: Firmen aus dem RGE-Verzeichnis der ADEME ohne Website (Quellen-Scout 04.10.2026). Firmen, deren Telefon
+    schon in Overture FR steht, bleiben draußen: mit Website dort = hat doch eine Website, ohne = bearbeitet s2-fr.
+    exclude: schon gespeicherte SIRETs. Erst filtern, dann begrenzen (sonst verdrängen unpassende Firmen die übrigen)."""
+    from extraktor.sources import fr_rge
+    cands = fr_rge.load(None, log=log, exclude=exclude, skip_phones=overture.phones("FR"))
+    cands = filters.dedupe([c for c in cands if not filters.pre_filter(c) and segments.fits("S2", c)[0]])[:limit]
+    stats["rge_FR"] = len(cands)
     return cands
 
 
@@ -587,6 +599,10 @@ def main(argv=None) -> int:
     ap.add_argument("--eu-pool", type=int, default=15000, help="UK: höchstens so viele Neugründungen vorab auswählen")
     ap.add_argument("--s1-probe", type=int, default=3000, help="S1 UK/US: so viele Karriereseiten prüfen")
     ap.add_argument("--s2-limit", type=int, default=3000, help="S2 UK/FR: so viele Overture-Firmen ohne Website laden")
+    ap.add_argument("--s2-min-conf", type=float, default=0.6,
+                    help="S2 ohne Website: Overture-Konfidenz ab (UK/FR zweite Stufe 0.4, nie tiefer)")
+    ap.add_argument("--rge", type=int, default=0,
+                    help="S2 FR: so viele Firmen ohne Website aus dem RGE-Verzeichnis (ADEME) laden (0 = aus)")
     ap.add_argument("--store", action="store_true", help="grüne Leads direkt in die Datenbank schreiben (mit --db)")
     ap.add_argument("--no-raw", action="store_true",
                     help="Speicher-Bremse ab 7 GB (werk_plan.py): nur grüne Leads speichern, keinen Rohbestand")
@@ -628,7 +644,7 @@ def main(argv=None) -> int:
             return 0
         if args.store:  # Lebenszeichen fürs Dashboard (läuft/steht)
             hb = Heartbeat(db0, "lead-werk", os.environ.get("RUN_PART") or args.shard or ",".join(countries)).__enter__()
-        guard = filters.Guard(DB())
+        guard = filters.Guard(DB(), preload=("overture",) + (("rge",) if args.rge else ()))
         log(f"Datenbank: {len(guard.known)} Firmen schon bekannt")
     us = "US" in countries
     # --fmcsa-days 0 / --formd-days 0 = Quelle aus (Teile anderer Quellen laden sie nicht mit: spart Zeit und
@@ -695,7 +711,11 @@ def main(argv=None) -> int:
         if co in countries and "S2" in segs and not args.web_check:
             known = {i for s_, i in guard.known if s_ == "overture"}
             # mehr laden als bearbeitet wird: der Abgleich mit der Datenbank (unten) wirft Gespeicherte noch raus
-            p[f"S2/{co}"] = [c for c in load_overture_s2(co, args.s2_limit * 4, stats, known) if segments.fits("S2", c)[0]]
+            p[f"S2/{co}"] = [c for c in load_overture_s2(co, args.s2_limit * 4, stats, known, args.s2_min_conf)
+                             if segments.fits("S2", c)[0]]
+    if "FR" in countries and "S2" in segs and args.rge > 0:
+        # nach Overture anhängen: im gemeinsamen Teil zuerst die Overture-Firmen, dann RGE
+        p["S2/FR"] = p.get("S2/FR", []) + load_rge(args.rge, stats, {i for s_, i in guard.known if s_ == "rge"})
     if guard.known:
         p = {k: [c for c in v if (c["source"], c["source_id"]) not in guard.known] for k, v in p.items()}
     if args.shard:
