@@ -57,6 +57,21 @@ class RegelnTest(unittest.TestCase):
             self.assertNotIn("NL", i["schluessel"])
             self.assertNotIn("s2-neu", i["schluessel"])
 
+    def test_satt_meldet_ruhig(self):
+        r = {i["schluessel"] for i in U.regeln(LAGE, C, T, LANES, satt={"US"})}
+        self.assertNotIn("vorrat_leer:s2-us:2026-10-04", r)
+        self.assertIn("proben_leer:UK:2026-10-04", r)
+
+    def test_satte_laender(self):
+        class DB:
+            def __init__(self, rows): self.rows = rows
+            def select(self, *a, **k): return self.rows
+        rows = [{"country": "US", "value": 446000}, {"country": "UK", "value": 94000}, {"country": "FR", "value": 70000}]
+        self.assertEqual(U.satte_laender(DB(rows), "S2"), {"US"})
+        rows[0]["value"] = 200000
+        self.assertEqual(U.satte_laender(DB(rows), "S2"), set())
+        self.assertEqual(U.satte_laender(None, "S2"), set())
+
     def test_leere_lage(self):
         self.assertEqual(U.regeln({}, C, T, LANES), [])
         self.assertEqual(U.regeln(None, C, T, LANES), [])

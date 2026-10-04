@@ -87,8 +87,10 @@ def _task(kind: str, brief: str, rolle: str | None = None, market: str | None = 
 
 
 def regeln(lage: dict, countries: list[str], t: dt.datetime, lanes: list[dict] | None = None,
-           segment: str = "S2") -> list[dict]:
-    """Übergaben aus der Lage (firma_lage). Reine Funktion; Schlüssel machen jede Übergabe einmalig."""
+           segment: str = "S2", satt: set[str] | None = None) -> list[dict]:
+    """Übergaben aus der Lage (firma_lage). Reine Funktion; Schlüssel machen jede Übergabe einmalig.
+    satt = Länder mit genug Leads laut Länder-Vorrang (config/fokus.yaml): deren leere Linien melden ruhig (kein
+    Scout-Auftrag; Agent 4, 04.10.2026: s2-us „Vorrat leer“ bei ~446.000 US-Leads = neue Quelle ohne Wert)."""
     lage = lage or {}
     day = t.astimezone(BERLIN).date()
     tag, woche = day.isoformat(), day.strftime("%G-W%V")
@@ -142,7 +144,7 @@ def regeln(lage: dict, countries: list[str], t: dt.datetime, lanes: list[dict] |
     lc = _lane_countries(lanes if lanes is not None else load_lanes())
     for lane in lage.get("leer") or []:
         cs = sorted(lc.get(str(lane), set()) & set(focus))
-        if not cs:
+        if not cs or set(cs) <= set(satt or ()):
             continue
         out.append(_h("vorrat_leer", "produktion", "strategie", f"vorrat_leer:{lane}:{tag}",
                       f"Vorrat leer: Linie {lane}",
@@ -226,6 +228,27 @@ def vergeben(db, t: dt.datetime, specs: dict[str, dict], paused: bool = False) -
     return done
 
 
+def satte_laender(db, segment: str) -> set[str]:
+    """Nachrang-Länder des Länder-Vorrangs, solange er greift (gleiche Rechnung wie werk_plan.py). Fehler = leer."""
+    try:
+        from lib.fokus import laender_vorrang
+        from werk_plan import vorrang_active
+        rule = laender_vorrang()
+        if not rule or str(rule.get("segment") or "").upper() != str(segment).upper():
+            return set()
+        cs = sorted(set(rule["vor"]) | set(rule["nach"]))
+        rows = db.select("kpi_daily", {"select": "day,country,value", "metric": "eq.leads_lieferbar",
+                                       "segment_id": f"eq.{rule['segment']}", "country": f"in.({','.join(cs)})",
+                                       "order": "day.desc", "limit": "50"}) or []
+        stock: dict[str, float] = {}
+        for r in rows:  # neuester Tag je Land
+            stock.setdefault(r["country"], float(r["value"] or 0))
+        return set(rule["nach"]) if vorrang_active(rule, stock)[0] else set()
+    except BaseException as e:  # noqa: BLE001 - ohne Vorrang wie bisher melden
+        print(f"Länder-Vorrang nicht lesbar ({type(e).__name__}) – leere Linien melden wie bisher", file=sys.stderr)
+        return set()
+
+
 def pruefen(db, t: dt.datetime, apply: bool, lage: dict | None = None, countries: list[str] | None = None,
             segment: str | None = None, lanes: list[dict] | None = None, notify=None) -> dict:
     if countries is None or segment is None:
@@ -234,7 +257,7 @@ def pruefen(db, t: dt.datetime, apply: bool, lage: dict | None = None, countries
         segment, countries = segment or (segs[0] if segs else "S2"), countries or cs
     if lage is None:
         lage = db.rpc("firma_lage", {"p_segment": segment, "p_countries": countries}) or {}
-    items = regeln(lage, countries, t, lanes, segment)
+    items = regeln(lage, countries, t, lanes, segment, satte_laender(db, segment))
     specs = {i["schluessel"]: i["task"] for i in items if i.get("task")}
     out = {"regeln": [{k: i[k] for k in ("regel", "von", "an", "titel", "schluessel")} for i in items], "neu": [],
            "auftraege": [], "push": []}
