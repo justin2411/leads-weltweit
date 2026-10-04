@@ -40,12 +40,12 @@ countries:
     daily_limit: 30
     notes: "S.I. 336/2011: B2B-Direktmarketing per Mail an Unternehmen mit Opt-out zulässig; Einzelpersonen brauchen Einwilligung."
   NL:
-    allowed: true
+    allowed: false
     language: en
     generic_only: true
     company_forms_only: true
     daily_limit: 30
-    notes: "Telecommunicatiewet 11.7: juristische Personen (B.V., N.V.) Opt-out; Einzelunternehmer (eenmanszaak, vof) brauchen Einwilligung."
+    notes: "Inhaber 04.10.2026 (Rechts-Tabelle nach Anwaltsberatung): keine Kaltmails – weder Einzelunternehmer noch B.V./N.V. ohne Einwilligung (Telecommunicatiewet 11.7, ACM-Bußgeld). Nur Anrufliste/Brief."
   SE:
     allowed: true
     language: en
