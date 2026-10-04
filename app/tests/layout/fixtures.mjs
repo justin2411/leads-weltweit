@@ -69,15 +69,38 @@ export function makeFixtures(nowMs = Date.now()) {
         leads: C.map((c) => ({ segment: "S2", country: c, status: "new", n: 14000 })), buyers: C.map((c) => ({ segment: "S2", country: c, check_status: "ok", n: 5000, sent: 400 })),
         stock: C.map((c) => ({ segment: "S2", country: c, status: "ready", n: 4 })), checks: C.map((c) => ({ segment: "S2", country: c, released: 900, failed: 20 })) },
       pool_counts: [],
+      datenfluss_stand: [
+        { station: "leads", last_at: iso(5), active_hours: 140, extra: null }, { station: "kaeufer", last_at: iso(30), active_hours: 90, extra: null },
+        { station: "proben", last_at: iso(600), active_hours: 20, extra: 0 }, { station: "mails", last_at: iso(10), active_hours: 40, extra: null },
+        { station: "antworten", last_at: iso(90), active_hours: 30, extra: null },
+      ],
       website_refresh: website, dashboard_raw_stock: { at: iso(10), by_country: { US: 90000, UK: 40000, FR: 52000 } },
     },
     tables: {
       dashboard_cache: [{ name: "stock", value: stock, updated_at: iso(1) }, { name: "website", value: website, updated_at: iso(1) }],
       kpi_daily: kpi, experiment_stats: expStats,
-      decisions: [{ kurz_titel: "Routine „Markt-Recherche Webagenturen“ seltener", subject: "Meta: Routine Takt" },
-        { kurz_titel: "Gelernt: Aufträge der Art Leads wirken (5/6).", subject: "Meta: Muster art-leads" },
-        { kurz_titel: "Routine „KPI-Diagnose mit Engpass“ öfter", subject: "Meta: Routine Takt" }],
+      // Abteilungs-Seiten Recht, Betrieb, Protokoll (Kommandozentrale 04.10.2026)
+      suppression: [
+        ...Array.from({ length: 12 }, (_, i) => ({ reason: "bounce", created_at: iso(60 * 24 * i + 30) })),
+        ...Array.from({ length: 5 }, (_, i) => ({ reason: "unsubscribe", created_at: iso(60 * 30 * i + 90) })),
+      ],
+      settings: [{ id: 1, legal_ready: true }],
+      website_checks: [{ at: iso(60 * 5), site: "https://www.example.com", scores: { technik: 92, inhalt: 84, recht: 100 }, funde: [], seiten: 12 }],
+      werk_plan_log: [
+        { id: 3, werk: "lead-werk", at: iso(40), mode: "autopilot", bremse: "aus", db_bytes: 3.2e9, plan: { "web-us": 4, "web-uk": 3, "web-fr": 3 }, reasons: { "web-us": "mehr grüne Leads je Lauf" } },
+        { id: 2, werk: "kunden-werk", at: iso(100), mode: "autopilot", bremse: "aus", db_bytes: 3.2e9, plan: { kunden: 1 }, reasons: {} },
+        { id: 1, werk: "lead-werk", at: iso(220), mode: "autopilot", bremse: "aus", db_bytes: 3.2e9, plan: { "web-us": 2, "web-uk": 4, "web-fr": 4 }, reasons: {} },
+      ],
+      decisions: [
+        { id: 11, created_at: iso(50), type: "note", status: "done", subject: "Betreff-Test UK gestartet", reasoning: "Antwortquote stagniert seit drei Tagen. Variante B mit kürzerem Betreff.", action: "experiment B", kurz_titel: "Betreff-Test UK gestartet", kurz_grund: "Antwortquote stagniert seit drei Tagen." },
+        { id: 12, created_at: iso(30), type: "note", status: "done", subject: "Meta: Routine Takt", reasoning: "0 von 5 Läufen mit Wirkung; jetzt jeden 2. Tag.", action: null, kurz_titel: "Routine „Markt-Recherche Webagenturen“ seltener", kurz_grund: "0 von 5 Läufen mit Wirkung; jetzt jeden 2. Tag." },
+        { id: 10, created_at: iso(60 * 26), type: "daily_note", status: "done", subject: "Tagesnotiz", reasoning: "Alles im Plan.", action: null, kurz_titel: null, kurz_grund: null },
+      ],
       brain_improvements: [{ id: "i1", status: "offen" }, { id: "i2", status: "offen" }],
+      agent_tasks: [
+        { id: "t1", created_at: iso(200), finished_at: iso(120), agent: 2, kind: "leads", market: "UK", brief: "Neue Leads für UK holen", status: "fertig", result: "380 neue grüne Leads aus zwei Quellen.", progress: 100, step: null, numbers: {} },
+      ],
+      owner_log: [{ id: 7, action: "setting:followup_enabled", target: null, new_value: true, created_at: iso(300), created_by: "Inhaber Dashboard" }],
     },
   };
 }
