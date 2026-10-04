@@ -22,6 +22,8 @@ Preise (nach `docs/GEHIRN-SITZUNG.md`), Tagesmengen innerhalb von Notbremse und 
    Freigabe-Stichprobe, Engpass-Ampel aus JARVIS (`app/lib/leitstand.ts`). Nichts schönen.
 2. **Engpass protokollieren**: ein Eintrag `signalwerk.decisions` (type `note`, subject `Engpass: <Station>`,
    `metrics` = Kennzahlen der Station, status `done`). Nur einmal pro Lauf.
+   Automatisch im Wachhund: `python scripts/ab.py engpass-log` (höchstens 1×/h; anhaltend → genau ein Agenten-Auftrag
+   „Test vorschlagen und anlegen“). Tageswerte aller Stationen: `signalwerk.kpi_daily` (`scripts/kpi_snapshot.py`).
 3. **Laufende Tests auswerten** (siehe unten). Gewinner übernehmen, Verlierer beenden.
 4. **Anhaltender Engpass → A/B-Test starten**: Ist dieselbe Station in mindestens 6 der letzten 8 Läufe
    **und** seit mindestens 24 h der Engpass und läuft für sie noch kein Test, startet JARVIS selbst einen A/B-Test –

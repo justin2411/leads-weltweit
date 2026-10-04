@@ -14,6 +14,8 @@ ende mehr kunden bei rauskommen“). Regeln und Statistik: scripts/lib/ab.py, Sc
   python scripts/ab.py beenden <test_id> --grund "<≤ 160 Zeichen>"   # gestoppt, A bleibt
   python scripts/ab.py auswerten [--apply]       # Gewinner (≥ 95 % + Mindestmenge) übernehmen, 21 Tage → gestoppt
                                                  # (läuft im Wachhund); jede Entscheidung in decisions + Gehirn-Chat
+  python scripts/ab.py engpass-log [--zeigen]    # Engpass höchstens 1×/h nach decisions; ≥ 6 der letzten 8 und
+                                                 # ≥ 24 h, kein laufender Test → genau ein Agenten-Auftrag (Wachhund)
 
 Schritte: mail_betreff, mail_einstieg, mail_zeit, nachfass, antwort, landing, probe_mail, probe_nachfrage, tarif,
 checkout. Nie Teil eines Tests: Drei-Stufen-Freigabe, Sperrliste, Abmeldelink/Pflichtfußzeile, Notbremse, Länder- und
@@ -230,6 +232,135 @@ def vorschlag(db) -> dict:
     return {"engpass": tr["engpass"], "segmente": segs, "frei": frei[:12]}
 
 
+# ------------------------------------------------------------------------------------------- Engpass-Protokoll
+ENGPASS_PREFIX = "Engpass: "
+ENGPASS_EVERY = dt.timedelta(hours=1)    # höchstens ein Eintrag je Stunde
+ENGPASS_WINDOW = 8                       # docs/JARVIS.md: 6 der letzten 8 Läufe
+ENGPASS_SAME = 6
+ENGPASS_HOLD = dt.timedelta(hours=24)    # und seit mindestens 24 h
+ENGPASS_LOOKBACK = 72                    # so viele Einträge (≈ 3 Tage) für „seit wann“
+ENGPASS_GRUND = "Engpass seit 24 h"
+
+
+def _station_of(d: dict) -> str | None:
+    m = d.get("metrics") or {}
+    if isinstance(m, dict) and m.get("station"):
+        return str(m["station"])
+    subj = str(d.get("subject") or "")
+    if not subj.startswith(ENGPASS_PREFIX):
+        return None
+    return subj[len(ENGPASS_PREFIX):].strip() or None
+
+
+def engpass_streak(entries: list[dict]) -> dict | None:
+    """Anhaltender Engpass aus Protokoll-Einträgen (neueste zuerst): dieselbe Station in ≥ 6 der letzten 8, „seit“ =
+    ältester Eintrag dieser Station, solange jedes 8er-Fenster zurück die Regel noch erfüllt. None ohne Mehrheit."""
+    st = [(_station_of(e), ab._ts(e.get("created_at"))) for e in entries]
+    if len(st) < ENGPASS_WINDOW:
+        return None
+    first = st[:ENGPASS_WINDOW]
+    counts: dict[str, int] = {}
+    for s, _ in first:
+        if s:
+            counts[s] = counts.get(s, 0) + 1
+    station = max(counts, key=counts.get) if counts else None
+    if not station or counts[station] < ENGPASS_SAME:
+        return None
+    since = None
+    for i in range(0, len(st) - ENGPASS_WINDOW + 1):
+        win = st[i:i + ENGPASS_WINDOW]
+        if sum(1 for s, _ in win if s == station) < ENGPASS_SAME:
+            break
+        for s, ts in win:
+            if s == station and ts and (since is None or ts < since):
+                since = ts
+    return {"station": station, "anzahl": counts[station], "seit": since}
+
+
+def _running_for(db, station: str) -> list[dict]:
+    steps = [s["key"] for s in ab.registry()["schritte"] if s.get("station") == station]
+    if not steps:
+        return []
+    return db.select("ab_tests", {"status": "eq.laeuft", "step": f"in.({','.join(steps)})", "select": "id,step,country"}) or []
+
+
+def _task_exists(db, titel: str, t: dt.datetime) -> bool:
+    """Schon ein Engpass-Auftrag für diese Station: offen/laufend oder in den letzten 24 h angelegt."""
+    rows = db.select("agent_tasks", {"grund": f"like.{ENGPASS_GRUND}*", "select": "id,status,grund,created_at"}) or []
+    for r in rows:
+        if titel not in str(r.get("grund") or ""):
+            continue
+        if r.get("status") in ("offen", "laeuft") or (ab._ts(r.get("created_at")) or t) >= t - ENGPASS_HOLD:
+            return True
+    return False
+
+
+def engpass_log(db, t: dt.datetime | None = None, apply: bool = True, beauftragen=None) -> dict:
+    """JARVIS-Plan W1-2: Engpass höchstens 1×/h nach decisions (Kurzfassung); hält dieselbe Station ≥ 6 der letzten 8
+    Einträge und ≥ 24 h und läuft für sie kein Test (nur Test-Freigabe S2 US/UK/FR), genau ein Agenten-Auftrag
+    „Test vorschlagen und anlegen“ (brain_routines.auftrag, gleiche Regeln wie checkBrainTask). Sendet nichts."""
+    from lib.fokus import test_scope
+    from lib.kurz import insert_decisions, kuerzen
+    t = t or now()
+    out: dict = {"protokoll": None, "anhaltend": None, "auftrag": None}
+    params = {"subject": f"like.{ENGPASS_PREFIX}*", "type": "eq.note", "order": "created_at.desc",
+              "limit": str(ENGPASS_LOOKBACK), "select": "id,subject,metrics,created_at"}
+    entries = db.select("decisions", params) or []
+    last = ab._ts(entries[0].get("created_at")) if entries else None
+    if last and t - last < ENGPASS_EVERY:
+        out["protokoll"] = "schon in dieser Stunde"
+    else:
+        tr = trichter(db)
+        e = next((s for s in tr["stationen"] if s["station"] == tr["engpass"]), None)
+        if not e:
+            out["protokoll"] = "zu wenig Daten"
+        else:
+            titel = f"Engpass: {e['titel']}"
+            grund = (f"{e['titel']} {ab._pct(e['quote'])} statt Richtwert {ab._pct(e['richtwert'])} bei n={e['n']} "
+                     f"(30 Tage, Webagenturen US/UK/FR).")
+            row = {"type": "note", "subject": f"{ENGPASS_PREFIX}{e['station']}", "reasoning": grund,
+                   "metrics": {"station": e["station"], "quote": e["quote"], "richtwert": e["richtwert"],
+                               "n": e["n"], "k": e["k"], "tage": tr["tage"]},
+                   "status": "done", "kurz_titel": kuerzen(titel, 60), "kurz_grund": kuerzen(grund, ab.GRUND_MAX)}
+            out["protokoll"] = e["station"]
+            if apply:
+                insert_decisions(db, row)
+            entries = [{**row, "created_at": t.isoformat()}] + entries
+    streak = engpass_streak(entries[:ENGPASS_LOOKBACK])
+    if not streak or not streak["seit"] or t - streak["seit"] < ENGPASS_HOLD:
+        return out
+    station = streak["station"]
+    st = ab.station(station) or {}
+    titel = st.get("titel", station)
+    out["anhaltend"] = {"station": station, "anzahl": streak["anzahl"], "seit": streak["seit"].isoformat()}
+    segs, countries = test_scope()
+    if "S2" not in segs or not countries:
+        out["auftrag"] = "keine Test-Freigabe"
+        return out
+    if _running_for(db, station):
+        out["auftrag"] = "Test läuft schon"
+        return out
+    if _task_exists(db, titel, t):
+        out["auftrag"] = "Auftrag besteht schon"
+        return out
+    grund = f"{ENGPASS_GRUND}: {titel}"
+    brief = (f"Anhaltender Engpass {titel} ({streak['anzahl']} von {ENGPASS_WINDOW} Läufen, seit ≥ 24 h). "
+             f"Test vorschlagen und anlegen: python scripts/ab.py vorschlag, dann für einen freien Schritt dieser "
+             f"Station ab.py anlegen … --starten (nur Webagenturen {'/'.join(countries)}, genau eine Änderung je Test, "
+             f"Texte nach §7). Ergebnis kurz in den Gehirn-Chat.")
+    if not apply:
+        out["auftrag"] = {"grund": grund, "brief": brief}
+        return out
+    if beauftragen is None:
+        import brain_routines
+        beauftragen = lambda b, g: brain_routines.auftrag(db, "frage", b, g, t=t)  # noqa: E731
+    try:
+        out["auftrag"] = beauftragen(brief, grund)
+    except ValueError as exc:  # TaskError: Agenten belegt, Stundenlimit …
+        out["auftrag"] = f"abgelehnt: {exc}"
+    return out
+
+
 def main(argv: list[str]) -> int:
     if not argv or argv[0] in ("-h", "--help"):
         print(__doc__)
@@ -258,6 +389,8 @@ def main(argv: list[str]) -> int:
             print(f"beenden: {t['id']} gestoppt")
         elif cmd == "auswerten":
             print(json.dumps(auswerten(db, "--apply" in argv), ensure_ascii=False, indent=1, default=str))
+        elif cmd == "engpass-log":
+            print(json.dumps(engpass_log(db, apply="--zeigen" not in argv), ensure_ascii=False, indent=1, default=str))
         else:
             print(__doc__)
             return 1
