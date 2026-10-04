@@ -78,7 +78,7 @@ jobs:
         run: |
           python scripts/watch.py careers
           python scripts/watch.py ny-incorporations --days 10 --limit 2000
-          python scripts/watch.py fr-incorporations --departement 69,75,92,59 --days 10 --limit 200
+          # FR BODACC abgeschaltet (05.10.2026): robots.txt sperrt /api/ (CLAUDE.md §2), docs/QUELLEN-SCOUT.md
       - name: Neugründungen UK (Companies House, montags)
         if: ${{ !cancelled() && steps.gate.outputs.suche == 'true' }}
         # Prüfung 04.10.2026: höchstens 40 min, außerhalb des Montags nur mit Eingabe uk_bulk (nicht bei jedem Nachstart)

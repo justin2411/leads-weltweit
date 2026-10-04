@@ -36,5 +36,22 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
       - run: pip install -r requirements.txt
-      - name: Probe
-        run: python scripts/tmp_probe/probe.py
+      - name: Extraktor
+        run: |
+          DB=""; [ "${{ inputs.datenbank }}" = "true" ] && DB="--db"
+          python scripts/extraktor/run.py --segments "${{ inputs.branchen }}" --per "${{ inputs.je_branche }}" \
+            --fmcsa-days "${{ inputs.fmcsa_tage }}" --formd-days "${{ inputs.formd_tage }}" $DB --out out/extraktor
+      - name: Zusammenfassung
+        if: always()
+        run: |
+          [ -f out/extraktor/bericht.json ] && python -c "
+          import json; r=json.load(open('out/extraktor/bericht.json'))
+          print('| Branche | Vorrat | bearbeitet | grün | gelb | rot |'); print('|---|---|---|---|---|---|')
+          for s,v in r['segments'].items(): print(f\"| {s} | {v['pool']} | {v['processed']} | {v.get('green',0)} | {v.get('yellow',0)} | {v.get('red',0)} |\")
+          " >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: extraktor-bericht
+          path: out/extraktor/bericht.json   # keine Lead-Dateien: das Repo ist öffentlich
+          retention-days: 14
