@@ -100,6 +100,34 @@ class Bewertung(unittest.TestCase):
         self.assertEqual(row["status"], "gruen")
 
 
+class BounceKlassen(unittest.TestCase):
+    STATS = {"klassen": {"hart": 3, "weich": 1, "richtlinie": 1, "unbekannt": 0},
+             "postfaecher": [{"box": "info@", "gesendet": 100, "bounces": 5}],
+             "quellen": [{"country": "US", "quelle": "Overture", "gesendet": 40, "hart": 3},
+                         {"country": "UK", "quelle": "Website", "gesendet": 10, "hart": 2},
+                         {"country": "FR", "quelle": "Website", "gesendet": 50, "hart": 1}]}
+
+    def test_richtlinie_gelb_und_vorschlag_je_schlechter_quelle(self):
+        db = db_with()
+        db.rpc_handlers["bounce_stats"] = lambda a, p: self.STATS
+        row = Z.run(db, env={}, resolve=resolver(), rec=rec(GOOD_DNS))
+        self.assertEqual(row["status"], "gelb")
+        self.assertTrue(any("Richtlinien-Bounces" in g for g in row["gruende"]))
+        self.assertEqual(row["bounces"]["klassen"]["hart"], 3)
+        d = db.rows("decisions")
+        self.assertEqual(len(d), 1)  # nur US/Overture: 7,5 % bei 40 Mails; UK zu wenig Mails, FR 2 %
+        self.assertEqual(d[0]["status"], "proposed")
+        self.assertIn("US · Overture", d[0]["kurz_titel"])
+        self.assertLessEqual(len(d[0]["kurz_titel"]), 60)
+        self.assertLessEqual(len(d[0]["kurz_grund"]), 160)
+        Z.run(db, env={}, resolve=resolver(), rec=rec(GOOD_DNS))
+        self.assertEqual(len(db.rows("decisions")), 1)  # höchstens einmal je Woche
+
+    def test_ohne_funktion_wie_bisher(self):
+        row = Z.run(db_with(), env={}, resolve=resolver(), rec=rec(GOOD_DNS), apply=False)
+        self.assertNotIn("klassen", row["bounces"])
+
+
 class Teile(unittest.TestCase):
     def test_classify(self):
         self.assertEqual(Z.classify([]), "frei")

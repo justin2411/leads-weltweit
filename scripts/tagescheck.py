@@ -452,6 +452,21 @@ def check_zustellbarkeit(c: Check, db) -> None:
           "; ".join(r.get("gruende") or [])[:200])
 
 
+def check_bounce_klassen(c: Check, db) -> None:
+    """Bounce-Klassen der letzten 7 Tage (signalwerk.bounce_stats, 04.10.2026). Richtlinien-Bounces (Spam,
+    Blockliste, Absender abgelehnt) zeigen ein Ruf-Problem des Absenders -> gelb. Nur Anzeige, Versand unverändert."""
+    st = db.rpc("bounce_stats", {"p_days": 7})
+    if not isinstance(st, dict) or not st.get("gesendet"):
+        return
+    k = st.get("klassen") or {}
+    detail = (f"{st.get('bounces', 0)} von {st['gesendet']} Mails · hart {k.get('hart', 0)}, weich {k.get('weich', 0)}, "
+              f"Richtlinie {k.get('richtlinie', 0)}, unbekannt {k.get('unbekannt', 0)} (7 Tage)")
+    if k.get("richtlinie"):
+        c.add("Zustellung", WARN, f"{k['richtlinie']} Richtlinien-Bounces (Spam/Blockliste)", detail)
+    else:
+        c.add("Zustellung", OK, "Keine Richtlinien-Bounces", detail)
+
+
 def check_customers(c: Check, db) -> None:
     from deliveries import is_test_customer
     subs = db.select("subscriptions", {"select": "id,customer_id,status,first_delivery_approved,created_at,"
@@ -735,6 +750,7 @@ def main(argv=None) -> int:
     c.guard("Freigabe", lambda: check_release_gate(c, db))
     c.guard("Website", lambda: check_website(c, db))
     c.guard("Zustellung", lambda: check_zustellbarkeit(c, db))
+    c.guard("Zustellung", lambda: check_bounce_klassen(c, db))
     c.guard("Kunden", lambda: check_customers(c, db))
     c.guard("Werke", lambda: check_werke(c, db))
     c.guard("Werke", lambda: check_plan(c, db))

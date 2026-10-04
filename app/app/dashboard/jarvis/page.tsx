@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadBoxHealth, loadDaily, loadFunnel, loadKpiDaily, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock, loadWebsite, loadFunnelCache } from "@/lib/dashboard-data";
+import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadBoxHealth, loadBounceStats, loadDaily, loadFunnel, loadKpiDaily, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock, loadWebsite, loadFunnelCache } from "@/lib/dashboard-data";
 import { webLine, webNeck } from "@/lib/website-stats";
 import { startLive } from "@/lib/website-funnel";
 import { werkLine, werkTip } from "@/lib/werk-zeile";
@@ -35,6 +35,7 @@ import { loadUeberblick } from "@/lib/ueberblick-data";
 import { bar, dayShare, heuteWichtig, judgeFlow, leadZiel, stillTip, switchedOff, zeitleiste } from "@/lib/ueberblick";
 import { Icon, type IconName } from "@/app/icons";
 import type { FunnelRow } from "@/lib/dashboard-logic";
+import { KLASSEN, KLASSE_COLOR, KLASSE_LABEL, KLASSE_TIP, badSources } from "@/lib/bounce-stats";
 
 export const metadata = { title: "JARVIS" };
 const REG = LANES as unknown as LaneRegistry;
@@ -81,7 +82,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   // Sparklines und Trend (7 T vs. Vor-7 T): 15 Tage bis heute, kpi_daily parallel (Fehler → leer)
   const from15 = addDays(today, -14);
   const kpiP = loadKpiDaily(from15, today);
-  const [liveAll, own, act, rows, stockAll, daily, sent, checks, agentTasks, starts, planLog, openReplies, health, funnel] = await Promise.all([
+  const [liveAll, own, act, rows, stockAll, daily, sent, checks, agentTasks, starts, planLog, openReplies, health, funnel, bounceSt] = await Promise.all([
     loadLive(), loadOwnerSettings(), loadActivity(), loadRunRows(24),
     // Bestand: höchstens 5 s warten (Abfrage ~3,5 s, 10 min zwischengespeichert); sonst „…“ statt falscher Nullen
     Promise.race([stockP.catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 5000))]),
@@ -95,6 +96,8 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     s === "versand" ? loadBoxHealth(14) : Promise.resolve(null),
     // Trichter je Land (US/UK/FR im Vergleich) nur für die Station Antworten
     s === "antworten" ? loadFunnel() : Promise.resolve(null),
+    // Bounce-Klassen 7 Tage (hart/weich/Richtlinie/unbekannt) nur für die Station Versand
+    s === "versand" ? loadBounceStats(7) : Promise.resolve(null),
   ]);
   const live = onlySegment(liveAll, SEGMENT);
   const stock = stockSegment(stockAll, SEGMENT);
@@ -411,6 +414,11 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
             <em>{h.bounced} von {h.sent} · 14 Tage{h.complained ? ` · ${h.complained} Beschwerde` : ""}
               {Object.keys(h.codes).length > 0 && <span title="5.1.x = Adresse unbekannt, 5.7.x = abgelehnt/blockiert"> · {Object.entries(h.codes).sort((a, b) => b[1] - a[1]).map(([c, k]) => `${c}×${k}`).join(" ")}</span>}</em></li>))}</ul>
       )}
+      {bounceSt && bounceSt.bounces > 0 && (<>
+        <p className="lock" title="Bounces je Klasse, 7 Tage">Bounces 7 T · {(bounceSt.bounces / Math.max(1, bounceSt.gesendet) * 100).toFixed(1).replace(".", ",")} %</p>
+        <MiniBars rows={KLASSEN.map((k) => ({ key: k, label: KLASSE_LABEL[k], n: bounceSt.klassen[k], color: KLASSE_COLOR[k], tip: KLASSE_TIP[k] }))} />
+        {badSources(bounceSt).slice(0, 2).map((q) => <p key={`${q.country}${q.quelle}`} className="warn" title={`${q.hart} von ${q.gesendet} Mails hart zurück (7 Tage)`}>{q.country} · {q.quelle}: {(q.quote_hart * 100).toFixed(1).replace(".", ",")} % hart</p>)}
+      </>)}
     </>);
     if (s === "antworten") body = tab === "set" ? (<>
       <div className="row-sw"><WerkSwitch werk="antworten" on={sw("antworten").on} back={back} label="Antwort-Assistent" note="Abmeldungen werden immer gesperrt" /></div>
