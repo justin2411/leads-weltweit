@@ -1,0 +1,327 @@
+"""Nachfüller der Werke: Belegung lückenlos ≥ MIN_BELEGT (Inhaber 05.10.2026: „mind. 30 gleichzeitig“).
+
+Problem (gemessen 05.10.2026, 01:15 MESZ): nur 12 von 40 GitHub-Jobs belegt. Das Lead-Werk lief als EIN Lauf mit
+allen Linien; fertige Teile warteten auf die Nachzügler, erst dann startete der nächste Lauf (Job „weiter“).
+
+Lösung: jede Linie des Lead-Werks läuft als eigener Lauf (lead-werk.yml mit Eingabe `linien`/`teile`) und startet
+sofort neu, wenn sie fertig ist – unabhängig von den anderen Linien. Dieser Nachfüller (werk-nachfuellen.yml, von
+jedem fertigen Werk-Lauf, vom Wachhund und per Zeitplan angestoßen) startet jede eingeplante Linie, die gerade
+nicht läuft. Liegt die Belegung (alle laufenden/wartenden Jobs) danach unter MIN_BELEGT, bekommen die neu
+gestarteten Linien mehr Teile (werk_plan.fill_minimum: Premium/Website US/UK/FR, Kunden, Prüfer, Linien mit Vorrat).
+
+Grenzen (nie gelockert): Plätze je Linie höchstens max, alle Jobs zusammen höchstens total_slots - reserve,
+Speicher-Bremse aus dem Belegungsplan (stopp = keine Lead-Linie), Schalter config/pipeline.yaml lead_suche und
+Pause im Dashboard (owner_settings.werke_paused „lead-werk“; nicht lesbar = nichts starten). Keine doppelte
+Bearbeitung: eine Linie läuft nie in zwei Läufen gleichzeitig (Aufteilung --shard i/k bleibt je Lauf konsistent);
+das prüft auch der Plan-Job jedes Lead-Werk-Laufs (`lanes_taken_by_others`). Sendet nie, startet nie den Versand.
+
+  python scripts/werk_belegung.py zaehlen            # belegte Jobs anzeigen
+  python scripts/werk_belegung.py nachfuellen        # nur anzeigen
+  python scripts/werk_belegung.py nachfuellen --apply
+"""
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import os
+import re
+import sys
+import time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+
+import werk_plan as W  # noqa: E402
+
+ACTIVE_RUN = ("queued", "in_progress", "waiting", "requested", "pending")
+ACTIVE_JOB = ("queued", "in_progress", "waiting", "pending")
+LEAD_WF = "lead-werk.yml"
+NACHFUELLER_WF = "werk-nachfuellen.yml"
+TITLE_RE = re.compile(r"Linien?\s+([a-z0-9,\-]+)", re.I)  # run-name „lead-werk · Linie web-us“
+
+
+# ---------------------------------------------------------------------------------------------- reine Logik
+def job_lane(name: str) -> str | None:
+    """Linie eines Lead-Werk-Jobs aus seinem Namen („holen (web-us-3, 40, --segments …)“)."""
+    m = re.match(r"^holen \(([a-z0-9\-]+?-\d+)[,)]", name or "")
+    return W.lane_of("lead-werk", m.group(1)) if m else None
+
+
+def title_lanes(title: str | None) -> set[str] | None:
+    """Linien aus dem Lauf-Titel eines Linien-Laufs, None = Lauf für alle Linien (ohne Eingabe)."""
+    m = TITLE_RE.search(title or "")
+    return {x for x in m.group(1).split(",") if x} if m else None
+
+
+def run_claim(run: dict, jobs: list[dict] | None, all_lanes: set[str]) -> tuple[set[str], bool]:
+    """Welche Linien belegt ein aktiver Lead-Werk-Lauf? (Linien, geklärt). Linien-Lauf: die Linien im Titel.
+    Lauf für alle: die Linien seiner aktiven holen-Jobs; ist sein Plan noch offen, ist er ungeklärt (alle Linien)."""
+    lanes = title_lanes(run.get("display_title"))
+    if lanes is not None:
+        return lanes & all_lanes, True
+    if jobs is None:
+        return set(all_lanes), False
+    plan = next((j for j in jobs if j.get("name") == "plan"), None)
+    active = {job_lane(j.get("name", "")) for j in jobs if j.get("status") in ACTIVE_JOB}
+    active.discard(None)
+    holen = [j for j in jobs if job_lane(j.get("name", ""))]
+    if holen or (plan and plan.get("status") == "completed"):
+        return active, True
+    return set(all_lanes), False
+
+
+def lanes_taken_by_others(self_id: int, runs: list[dict], jobs_of, all_lanes: set[str]) -> tuple[set[str], bool]:
+    """Linien, die ein ANDERER aktiver Lauf belegt (für den Plan-Job eines Laufs). Ältere Läufe gewinnen: ihre
+    Ansprüche (Titel, offener Plan) zählen immer; jüngere nur mit schon gestarteten Jobs. (belegt, alles geklärt)."""
+    taken, clear = set(), True
+    for r in runs:
+        rid = int(r.get("id") or 0)
+        if rid == int(self_id) or r.get("status") not in ACTIVE_RUN:
+            continue
+        jobs = jobs_of(rid)
+        if rid < int(self_id):
+            lanes, ok = run_claim(r, jobs, all_lanes)
+            taken |= lanes
+            clear = clear and ok
+        else:
+            taken |= {job_lane(j.get("name", "")) for j in (jobs or []) if j.get("status") in ACTIVE_JOB} - {None}
+    return taken, clear
+
+
+def busy_jobs(runs: list[dict], jobs_of) -> int:
+    """Belegte Jobs: laufende und wartende Jobs aller aktiven Läufe des Repos."""
+    n = 0
+    for r in runs:
+        if r.get("status") in ACTIVE_RUN:
+            n += sum(1 for j in (jobs_of(int(r["id"])) or []) if j.get("status") in ACTIVE_JOB)
+    return n
+
+
+PAUSE_LEER_MIN = 60   # Linie ohne Ertrag (letzter Lauf < KURZ_MIN, 0 grün): frühestens nach 60 min wieder (wie früher je Welle)
+KURZ_MIN = 15
+
+
+def resting(s: dict | None, now) -> bool:
+    """Kurz gelaufen ohne grüne Leads und vor weniger als PAUSE_LEER_MIN beendet -> noch nicht neu starten
+    (sonst liefe eine erschöpfte Linie alle paar Minuten gegen dieselben Quellen)."""
+    if not s or s.get("max_last") is None:
+        return False
+    return (float(s["max_last"]) < KURZ_MIN and not s.get("green_last")
+            and W._hours_since(s.get("last_end"), now) * 60 < PAUSE_LEER_MIN)
+
+
+NEUSTART_MIN = 20     # Linien-Lauf kürzer als 10 min (Absturz, Linie belegt): dieselbe Linie frühestens 20 min nach Start
+KURZLAUF_MIN = 10
+
+
+def _iso(x):
+    try:
+        return dt.datetime.fromisoformat(str(x).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+
+
+def recently_short(lane: str, recent: list[dict], now) -> bool:
+    """Lief diese Linie zuletzt als Linien-Lauf nur kurz (< KURZLAUF_MIN) und begann vor < NEUSTART_MIN? Dann nicht
+    sofort wieder starten (keine Kette aus Fehlstarts – wie der Schutz im Job „weiter“)."""
+    mine = [r for r in recent if lane in (title_lanes(r.get("display_title")) or set())]
+    if not mine:
+        return False
+    r = max(mine, key=lambda x: str(x.get("created_at") or ""))
+    st, en = _iso(r.get("run_started_at") or r.get("created_at")), _iso(r.get("updated_at"))
+    if st is None or (now - st).total_seconds() / 60 >= NEUSTART_MIN:
+        return False
+    return r.get("status") == "completed" and en is not None and (en - st).total_seconds() / 60 < KURZLAUF_MIN
+
+
+def fill_plan(reg: dict, res: dict, stats: dict, busy_lanes: set[str], busy: int,
+              min_belegt: int = W.MIN_BELEGT, now=None, recent: list[dict] | None = None
+              ) -> tuple[dict[str, int], dict[str, str]]:
+    """Welche Linien jetzt mit wie vielen Teilen starten. res = werk_plan.decide(…) für das Lead-Werk.
+    Alle eingeplanten Linien, die nicht laufen (Rang wie die Mindestbelegung, dann mehr Plätze zuerst); passt nicht
+    alles unter total_slots - reserve, werden die letzten gekürzt. Linien, die eben kurz und ohne Ertrag liefen, ruhen
+    PAUSE_LEER_MIN. Danach bis min_belegt auffüllen – nur die neu
+    gestarteten Linien, nie über max, nie gesperrte/leere/erschöpfte/Nachrang-Linien, nie bei Speicher-Bremse."""
+    cap = int(reg["total_slots"]) - int(reg["reserve"]) - busy
+    lanes = {l["id"]: l for l in reg["lanes"] if l["werk"] == "lead-werk"}
+    why = dict(res.get("reasons") or {})
+    now = now or dt.datetime.now(dt.timezone.utc)
+    cand = [k for k, v in (res.get("plan") or {}).items() if v > 0 and k in lanes and k not in busy_lanes
+            and not resting(stats.get(k), now) and not recently_short(k, recent or [], now)]
+    tier = lambda k: W._min_tier(lanes[k], stats.get(k)) or 9  # noqa: E731
+    cand.sort(key=lambda k: (tier(k), -int(res["plan"][k]), k))
+    start: dict[str, int] = {}
+    room = cap
+    for k in cand:
+        n = min(int(res["plan"][k]), int(lanes[k]["max"]), room)
+        if n <= 0:
+            break
+        start[k], room = n, room - n
+    if start and res.get("brake", "aus") not in ("drossel", "ohne-rohbestand", "stopp"):
+        nach = set(res.get("nach") or ())  # Länder-Vorrang: Nachrang-Linien bekommen keine Zusatzplätze
+        W.fill_minimum([lanes[k] for k in start], start, why, stats,
+                       (res.get("autopilot") or {}).get("locks") or {}, cap, busy, min_belegt, nach)
+    return start, {k: why.get(k, "") for k in start}
+
+
+def parse_teile(s: str | None) -> dict[str, int]:
+    """„web-us:3,s2-ukfr:6“ -> {Linie: Teile}; ungültige Einträge fallen weg."""
+    out: dict[str, int] = {}
+    for part in (s or "").split(","):
+        m = re.fullmatch(r"\s*([a-z0-9\-]+)\s*:\s*(\d+)\s*", part)
+        if m:
+            out[m.group(1)] = int(m.group(2))
+    return out
+
+
+# ---------------------------------------------------------------------------------------------- GitHub
+class GitHub:
+    def __init__(self, repo: str | None = None, token: str | None = None):
+        import requests
+        self.s = requests.Session()
+        self.repo = repo or os.environ["GITHUB_REPOSITORY"]
+        tok = token or os.environ.get("GH_TOKEN") or os.environ["GITHUB_TOKEN"]
+        self.s.headers.update({"Authorization": f"Bearer {tok}", "Accept": "application/vnd.github+json"})
+        self._jobs: dict[int, list[dict]] = {}
+
+    def _get(self, path: str, params: dict | None = None) -> dict:
+        last = None
+        for i in range(3):  # GitHub antwortet unter Last gelegentlich 5xx
+            try:
+                r = self.s.get(f"https://api.github.com/repos/{self.repo}/{path}", params=params, timeout=30)
+                if r.status_code < 500:
+                    r.raise_for_status()
+                    return r.json()
+                last = RuntimeError(f"GitHub {r.status_code}")
+            except Exception as e:  # noqa: BLE001
+                last = e
+            time.sleep(5 * (i + 1))
+        raise last  # type: ignore[misc]
+
+    def active_runs(self, workflow: str | None = None) -> list[dict]:
+        base = f"actions/workflows/{workflow}/runs" if workflow else "actions/runs"
+        out, seen = [], set()
+        for st in ("in_progress", "queued", "waiting", "requested", "pending"):
+            for r in self._get(base, {"status": st, "per_page": 100}).get("workflow_runs", []):
+                if r["id"] not in seen:
+                    seen.add(r["id"])
+                    out.append(r)
+        return out
+
+    def jobs(self, run_id: int, fresh: bool = False) -> list[dict]:
+        if fresh or run_id not in self._jobs:
+            js: list[dict] = []
+            for page in range(1, 4):
+                got = self._get(f"actions/runs/{run_id}/jobs", {"per_page": 100, "filter": "latest", "page": page})
+                js += got.get("jobs", [])
+                if len(js) >= int(got.get("total_count", 0)):
+                    break
+            self._jobs[run_id] = js
+        return self._jobs[run_id]
+
+    def dispatch(self, workflow: str, inputs: dict, ref: str = "main") -> None:
+        r = self.s.post(f"https://api.github.com/repos/{self.repo}/actions/workflows/{workflow}/dispatches",
+                        json={"ref": ref, "inputs": inputs}, timeout=30)
+        if r.status_code >= 300:
+            raise RuntimeError(f"GitHub {r.status_code} {r.text[:200]}")
+
+
+def wait_for_claims(gh: GitHub, self_id: int, all_lanes: set[str], wait_s: int = 150) -> tuple[set[str], bool]:
+    """Plan-Job: Linien anderer Läufe; wartet bis zu wait_s, bis ältere Läufe ihren Plan gemacht haben."""
+    deadline = time.time() + wait_s
+    while True:
+        runs = gh.active_runs(LEAD_WF)
+        taken, clear = lanes_taken_by_others(self_id, runs, lambda rid: gh.jobs(rid, fresh=True), all_lanes)
+        if clear or time.time() >= deadline:
+            return taken, clear
+        time.sleep(15)
+
+
+# ---------------------------------------------------------------------------------------------- Ablauf
+def lead_allowed(settings: dict | None) -> tuple[bool, str]:
+    txt = (ROOT / "config" / "pipeline.yaml").read_text(encoding="utf-8")
+    if not re.search(r"^lead_suche:\s*true", txt, re.M):
+        return False, "Lead-Suche aus (config/pipeline.yaml)"
+    if settings is None:
+        return False, "Pause-Schalter nicht lesbar – nichts gestartet"
+    if (settings.get("werke_paused") or {}).get("lead-werk"):
+        return False, "Lead-Werk pausiert durch Inhaber"
+    return True, ""
+
+
+def read_pause(db) -> dict | None:
+    if db is None:
+        return None
+    try:
+        rows = db.select("owner_settings", {"select": "key,value", "key": "eq.werke_paused"}) or []
+    except BaseException as e:  # noqa: BLE001
+        print(f"Pause-Schalter nicht lesbar ({type(e).__name__})", file=sys.stderr)
+        return None
+    v = next((r.get("value") for r in rows if r.get("key") == "werke_paused"), None)
+    return {"werke_paused": v if isinstance(v, dict) else {}}
+
+
+def cmd_zaehlen(gh: GitHub) -> int:
+    runs = gh.active_runs()
+    n = busy_jobs(runs, gh.jobs)
+    by: dict[str, int] = {}
+    for r in runs:
+        k = sum(1 for j in gh.jobs(int(r["id"])) if j.get("status") in ACTIVE_JOB)
+        if k:
+            by[r.get("name", "?")] = by.get(r.get("name", "?"), 0) + k
+    print(f"belegt {n} Jobs – " + ", ".join(f"{k} {v}" for k, v in sorted(by.items())))
+    return n
+
+
+def cmd_nachfuellen(gh: GitHub, apply: bool, ref: str = "main") -> int:
+    reg = W.load_lines()
+    inp = W.read_inputs("lead-werk")
+    ok, why = lead_allowed(read_pause(inp.get("db")))
+    runs = gh.active_runs()
+    busy = busy_jobs(runs, gh.jobs)
+    if not ok:
+        print(f"belegt {busy} – {why}")
+        return 0
+    res = W.decide(reg, "lead-werk", inp)
+    all_lanes = {l["id"] for l in reg["lanes"] if l["werk"] == "lead-werk"}
+    taken: set[str] = set()
+    for r in runs:
+        if r.get("path", "").endswith(LEAD_WF) or r.get("name") == "lead-werk":
+            lanes, _ = run_claim(r, gh.jobs(int(r["id"])), all_lanes)
+            taken |= lanes
+    recent = gh._get(f"actions/workflows/{LEAD_WF}/runs", {"per_page": 50}).get("workflow_runs", [])
+    start, reasons = fill_plan(reg, res, res.get("stats") or {}, taken, busy, recent=recent)
+    print(f"belegt {busy} Jobs, Linien laufen: {', '.join(sorted(taken)) or '–'} (Bremse {res['brake']})")
+    if not start:
+        print("nichts nachzufüllen")
+    for k, n in start.items():
+        print(f"  starte {k}: {n} Teile – {reasons.get(k, '')}")
+        if apply:
+            try:
+                gh.dispatch(LEAD_WF, {"linien": k, "teile": f"{k}:{n}"}, ref=ref)
+            except Exception as e:  # noqa: BLE001
+                print(f"  Start {k} fehlgeschlagen: {e}")
+    summ = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summ:
+        with open(summ, "a", encoding="utf-8") as f:
+            f.write(f"Nachfüller: belegt {busy}, gestartet " +
+                    (", ".join(f"{k} {n}" for k, n in start.items()) or "nichts") + "\n")
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("befehl", choices=["zaehlen", "nachfuellen"])
+    ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--ref", default=os.environ.get("GITHUB_REF_NAME") or "main")
+    a = ap.parse_args(argv)
+    gh = GitHub()
+    if a.befehl == "zaehlen":
+        cmd_zaehlen(gh)
+        return 0
+    return cmd_nachfuellen(gh, a.apply, a.ref)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

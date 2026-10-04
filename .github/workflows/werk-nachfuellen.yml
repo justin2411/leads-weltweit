@@ -1,0 +1,32 @@
+# Nachfüller der Werke (Inhaber 05.10.2026: „Werke immer laufen lassen, mind. 30 gleichzeitig“).
+# Startet jede eingeplante Lead-Werk-Linie, die gerade nicht läuft, als eigenen Lauf (lead-werk.yml mit linien/teile)
+# und füllt bis 30 belegte Jobs auf (scripts/werk_belegung.py). Angestoßen von jedem fertigen Werk-Lauf (Job „weiter“),
+# vom Wachhund und alle 10 min per Zeitplan. Grenzen unverändert: max je Linie, total_slots - reserve, Speicher-Bremse,
+# lead_suche (config/pipeline.yaml), Pause im Dashboard. Sendet nie, startet nie den Versand, lädt keine Lead-Daten hoch.
+name: werk-nachfuellen
+on:
+  schedule:
+    - cron: "4,14,24,34,44,54 * * * *"
+  workflow_dispatch:
+concurrency: { group: werk-nachfuellen, cancel-in-progress: false }
+permissions:
+  actions: write
+  contents: read
+jobs:
+  nachfuellen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install requests pyyaml
+      - name: Freie Linien starten (Mindestbelegung 30)
+        run: python scripts/werk_belegung.py nachfuellen --apply --ref "${{ github.ref_name }}"
+      - name: Belegte Jobs
+        if: always()
+        run: python scripts/werk_belegung.py zaehlen | tee -a "$GITHUB_STEP_SUMMARY" || true
