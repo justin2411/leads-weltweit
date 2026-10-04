@@ -1,8 +1,14 @@
-"""Temporärer Test (wird vor dem PR entfernt). Gibt keine Lead-Daten aus. Ausgabe als Annotation."""
-import subprocess
+"""Temporärer Test (wird vor dem PR entfernt). Gibt keine Lead-Daten aus (nur Datumsverteilungen). Ausgabe als Annotation."""
+import collections
 import sys
+import time
+import traceback
 
+import requests
+
+H = {"User-Agent": "signalwerk-probe/1.0 (+https://www.nextgen-profit.de)"}
 OUT = []
+API = "https://recherche-entreprises.api.gouv.fr/search"
 
 
 def p(*a):
@@ -17,18 +23,22 @@ def flush():
 
 
 try:
-  for args in (["--http1.1"], ["--http1.0"], ["--http2"],
-             ["--http1.1", "-H", "Accept: text/html,*/*", "-H", "Accept-Language: fr-FR,fr", "-A",
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129 Safari/537.36"]):
-    for u in ("https://echanges.dila.gouv.fr/robots.txt", "http://echanges.dila.gouv.fr/robots.txt"):
-        r = subprocess.run(["curl", "-sS", "-m", "30", "-o", "/tmp/o.txt", "-w", "%{http_code}", *args, u],
-                           capture_output=True, text=True)
-        body = open("/tmp/o.txt", errors="replace").read()[:500] if r.returncode == 0 else ""
-        p(args[0], u, r.returncode, r.stdout, r.stderr[:150], body.replace("\n", " | "))
-  r = subprocess.run(["curl", "-sv", "-m", "30", "-o", "/dev/null", "https://echanges.dila.gouv.fr/OPENDATA/BODACC/"],
-                   capture_output=True, text=True)
-  p("VERBOSE", r.stderr[-1500:])
-except Exception as e:  # noqa: BLE001
-  import traceback
-  p("FEHLER", traceback.format_exc()[-800:])
+    for params in ({"departement": "75", "nature_juridique": "5710"},
+                   {"departement": "75", "nature_juridique": "5710", "etat_administratif": "A"},
+                   {"code_postal": "69003", "etat_administratif": "A", "sort_by_size": "false"},
+                   {"q": "2026", "departement": "75"}):
+        dates = []
+        tot = None
+        for page in (1, 2, 400, 401):
+            r = requests.get(API, params={**params, "per_page": 25, "page": page, "minimal": "true"}, headers=H, timeout=60)
+            if not r.ok:
+                p(params, page, r.status_code, r.text[:200])
+                continue
+            j = r.json()
+            tot = j.get("total_results"), j.get("total_pages")
+            dates += [(x.get("date_creation") or "")[:7] for x in j.get("results", [])]
+            time.sleep(0.3)
+        p(params, "total", tot, "Monate:", collections.Counter(dates).most_common(8))
+except Exception:  # noqa: BLE001
+    p("FEHLER", traceback.format_exc()[-800:])
 flush()
