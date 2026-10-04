@@ -5,6 +5,8 @@ kurz_titel(text)  -> worum es geht, ≤ 60 Zeichen
 kurz_grund(text)  -> ein klarer Satz, ≤ 160 Zeichen
 insert_decisions  -> schreibt signalwerk.decisions mit kurz_titel/kurz_grund; fehlen die Spalten noch
                      (PostgREST PGRST204), wird ohne sie geschrieben – Schreiben scheitert nie daran.
+                     Optional `erwartung` (Lernschleife, lib/lernen.py): Kennzahl, Richtung/Zielwert, Prüftag ->
+                     Spalten erwartung + pruefen_am; scripts/brain_learn.py pruefen misst später nach.
 
 Gleiche Regeln wie app/lib/kurz-schreiben.ts (gemeinsame Fälle: tests/fixtures/kurz_cases.json).
 """
@@ -15,6 +17,8 @@ import re
 TITEL_MAX = 60
 GRUND_MAX = 160
 KURZ_SPALTEN = ("kurz_titel", "kurz_grund")
+LERN_SPALTEN = ("erwartung", "pruefen_am")
+OPTIONAL_SPALTEN = KURZ_SPALTEN + LERN_SPALTEN
 
 _ZEIT = r"\d{1,2}:\d{2}(?::\d{2})?"
 _ZONE = r"(?:UTC|MESZ|MEZ|CEST|CET)"
@@ -132,16 +136,24 @@ def mit_kurz(row: dict) -> dict:
     grund = out.get("kurz_grund") or kurz_grund(out.get("reasoning"))
     out["kurz_titel"] = kuerzen(titel, TITEL_MAX) or None
     out["kurz_grund"] = kuerzen(grund, GRUND_MAX) or None
+    if out.get("erwartung"):
+        from lib.lernen import normal
+        e, when = normal(out["erwartung"])
+        out["erwartung"] = e
+        out["pruefen_am"] = out.get("pruefen_am") or when
+    else:
+        out.pop("erwartung", None)
     return out
 
 
 def _fehlende_spalte(err: Exception) -> bool:
     msg = str(err)
-    return "PGRST204" in msg or any(c in msg and ("column" in msg or "Spalte" in msg) for c in KURZ_SPALTEN)
+    return "PGRST204" in msg or any(c in msg and ("column" in msg or "Spalte" in msg) for c in OPTIONAL_SPALTEN)
 
 
 def insert_decisions(db, rows: list[dict] | dict) -> list[dict]:
-    """decisions schreiben – mit Kurzfassung; fehlen die Spalten (Migration noch nicht angewandt), ohne sie."""
+    """decisions schreiben – mit Kurzfassung und optionaler Erwartung; fehlen die Spalten (Migration noch nicht
+    angewandt), ohne sie. Ungültige Erwartung -> ValueError (nie still verworfen)."""
     many = isinstance(rows, list)
     voll = [mit_kurz(r) for r in (rows if many else [rows])]
     if not voll:
@@ -151,5 +163,5 @@ def insert_decisions(db, rows: list[dict] | dict) -> list[dict]:
     except RuntimeError as e:
         if not _fehlende_spalte(e):
             raise
-        alt = [{k: v for k, v in r.items() if k not in KURZ_SPALTEN} for r in voll]
+        alt = [{k: v for k, v in r.items() if k not in OPTIONAL_SPALTEN} for r in voll]
         return db.insert("decisions", alt if many else alt[0])
