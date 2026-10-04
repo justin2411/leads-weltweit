@@ -73,9 +73,9 @@ test("Tempo: Summe ≤ Obergrenze, je Linie ≤ max, ganze Zahlen, anteilig, abg
   }
   const half = scalePlan(d, reg, 15);
   assert.ok(half["web-us"] > half["web-uk"] && half["web-uk"] >= half["web-fr"]);
-  // max greift: alles auf UK -> höchstens 21
+  // max greift: alles auf UK -> höchstens 21 (web-uk) + 6 (s2-ukfr, Scout 04.10.2026)
   const ukOnly = setCountry(setCountry(setCountry(setCountry(d, reg, "US", false), reg, "FR", false), reg, "Nord", false), reg, "Neu", false);
-  assert.equal(leadMax(ukOnly, reg), 21);
+  assert.equal(leadMax(ukOnly, reg), 27);
   assert.equal(scalePlan(ukOnly, reg, 30)["web-uk"], 21);
   assert.equal(countryOn(scalePlan(ukOnly, reg, 30), reg, "US"), false);
   // von 0 wieder hoch -> Standardgewichte
@@ -109,7 +109,7 @@ test("Länder-Chips: aus -> 0, an -> Standard, andere rücken bei Enge zusammen"
   check(full);
   const back = setCountry(full, reg, "US", true);
   check(back);
-  assert.equal(back["web-us"], 20);
+  assert.equal(back["web-us"], 18);
   assert.equal(back["s2-us"], 2);
   assert.ok(countryOn(back, reg, "UK") && countryOn(back, reg, "Nord"));
   assert.equal(leadTotal(back, reg), 30);
@@ -175,7 +175,7 @@ test("diff und toSettings: Hin- und Rückweg", () => {
 
 test("diff: Umverteilung ohne Summen-/Länderänderung wird trotzdem erkannt", () => {
   const d = draftFrom(DEFAULTS, ctx);
-  const p = { ...d.slot_plan, "web-us": 19, "web-uk": 5 };
+  const p = { ...d.slot_plan, "web-us": 17, "web-uk": 5 };
   const ch = diff(DEFAULTS, { ...d, slot_plan: p }, ctx);
   assert.deepEqual(ch.map((c) => c.part), ["belegung"]);
   assert.deepEqual(toSettings(ch, DEFAULTS, "x").slot_plan, p);
@@ -238,7 +238,7 @@ test("Zustand: noch nie geändert, wartet, start angefordert, angewandt, pausier
 
 test("Lead-Linien je Land wie werk-linien.json", () => {
   const by = Object.fromEntries(LEAD_COUNTRIES.map((c) => [c.id, leadLanes(reg).filter((l) => countryOf(l) === c.id).map((l) => l.id)]));
-  assert.deepEqual(by, { US: ["web-us", "s2-us", "s1-us-lca"], UK: ["web-uk", "s1-uk-tender"], FR: ["web-fr"], Nord: ["web-north"], Neu: ["s2-neu"] });
+  assert.deepEqual(by, { US: ["web-us", "s2-us", "s1-us-lca"], UK: ["web-uk", "s2-ukfr", "s1-uk-tender"], FR: ["web-fr"], Nord: ["web-north"], Neu: ["s2-neu"] });
 });
 
 test("Tempo: langsamer schaltet nie ein Land ab; Standard bringt die Standardbelegung zurück", () => {
