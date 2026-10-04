@@ -419,7 +419,7 @@ def check_website(c: Check, db) -> None:
         c.add("Website", OK, f"Alle {len(urls)} Seiten erreichbar")
     try:
         h = s.get(base + "/api/health?stripe=1", timeout=40).json()
-        missing = [k for k, v in (h.get("variablen") or {}).items() if v != "gesetzt"]
+        missing = [k for k, v in (h.get("variablen") or {}).items() if v == "FEHLT"]  # „optional“ = kein Fehlen
         live = ((h.get("stripe") or {}).get("live")) or {}
         if isinstance(live, dict) and live.get("fehler"):
             c.add("Kasse", FAIL, "Stripe live meldet einen Fehler", live["fehler"][:200])
