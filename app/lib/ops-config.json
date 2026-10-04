@@ -105,7 +105,7 @@
       "daily_limit": 15
     },
     "HK": {
-      "allowed": true,
+      "allowed": false,
       "daily_limit": 15
     },
     "BR": {
@@ -285,7 +285,7 @@
         "open_question": null
       },
       "HK": {
-        "allowed": true,
+        "allowed": false,
         "never": false,
         "generic_only": true,
         "company_forms_only": false,

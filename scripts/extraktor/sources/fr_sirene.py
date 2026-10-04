@@ -32,8 +32,19 @@ def form_of(code: str | None) -> str | None:
     return None
 
 
-def lookup(name: str, postcode: str | None, session: requests.Session | None = None) -> dict | None:
-    """Eindeutiger aktiver Treffer {siren, nature_juridique, form} oder None."""
+class RegisterUnavailable(RuntimeError):
+    """Schnittstelle antwortet nicht (429/5xx nach Wiederholungen) – nicht dasselbe wie „kein Treffer“."""
+
+
+def _fail(strict: bool, status: int | None) -> None:
+    if strict:
+        raise RegisterUnavailable(f"recherche-entreprises: {status or 'keine Antwort'}")
+
+
+def lookup(name: str, postcode: str | None, session: requests.Session | None = None,
+           strict: bool = False) -> dict | None:
+    """Eindeutiger aktiver Treffer {siren, nature_juridique, form, naf} oder None.
+    strict: bei gestörter Schnittstelle RegisterUnavailable statt None."""
     s = session or requests
     params = {"q": name, "per_page": 5, "etat_administratif": "A"}
     if postcode:
@@ -43,10 +54,14 @@ def lookup(name: str, postcode: str | None, session: requests.Session | None = N
         if r.status_code == 429:
             time.sleep(2 * (attempt + 1))
             continue
+        if r.status_code >= 500:
+            _fail(strict, r.status_code)
+            return None
         if r.status_code >= 400:
             return None
         break
     else:
+        _fail(strict, 429)
         return None
     want = _key(name)
     hits = [x for x in r.json().get("results") or []
@@ -56,10 +71,56 @@ def lookup(name: str, postcode: str | None, session: requests.Session | None = N
         return None
     h = hits[0]
     return {"siren": h.get("siren"), "nature_juridique": h.get("nature_juridique"),
-            "form": form_of(h.get("nature_juridique"))}
+            "form": form_of(h.get("nature_juridique")), "naf": h.get("activite_principale")}
 
 
-def by_siren(siren: str, session: requests.Session | None = None) -> dict | None:
+GENERIC = {"agence", "groupe", "group", "cabinet", "the", "le", "la", "les", "l"}
+
+
+def _tokens(name: str) -> frozenset[str]:
+    """Namensvergleich ohne Reihenfolge und ohne allgemeine Vorsätze („Agence Kalikado“ = „KALIKADO“,
+    „GROGNET CELINE“ = „CELINE GROGNET“)."""
+    return frozenset(t for t in _key(name).split() if t not in GENERIC)
+
+
+def naf_lookup(name: str, postcode: str, session: requests.Session | None = None, strict: bool = False) -> dict | None:
+    """Nur für den Code NAF (FR-Webdesign-Prüfung): wie lookup, zählt aber auch den Handelsnamen (Enseigne/Sigle)
+    eines Betriebs mit dieser Postleitzahl – viele Agenturen treten unter einem anderen Namen auf als die Firma.
+    Eindeutiger Treffer -> {siren, naf}, sonst None. Ändert nichts an der Rechtsform-Erkennung (lookup)."""
+    s = session or requests
+    params = {"q": name, "per_page": 5, "etat_administratif": "A", "code_postal": postcode}
+    for attempt in range(3):
+        r = s.get(API, params=params, timeout=30)
+        if r.status_code == 429:
+            time.sleep(2 * (attempt + 1))
+            continue
+        if r.status_code >= 500:
+            _fail(strict, r.status_code)
+            return None
+        if r.status_code >= 400:
+            return None
+        break
+    else:
+        _fail(strict, 429)
+        return None
+    want = _tokens(name)
+    hits = []
+    for x in r.json().get("results") or []:
+        names = {x.get("nom_raison_sociale"), x.get("nom_complet"), x.get("sigle")}
+        for e in x.get("matching_etablissements") or []:
+            if e.get("code_postal") == postcode:
+                names.update(e.get("liste_enseignes") or [])
+                names.add(e.get("nom_commercial"))
+        full = x.get("nom_complet") or ""
+        names.update(re.findall(r"\(([^)]+)\)", full))
+        if want and any(n and _tokens(n) == want for n in names):
+            hits.append(x)
+    if len(hits) != 1:
+        return None
+    return {"siren": hits[0].get("siren"), "naf": hits[0].get("activite_principale")}
+
+
+def by_siren(siren: str, session: requests.Session | None = None, strict: bool = False) -> dict | None:
     """SIREN (z. B. aus den Mentions légales der eigenen Website) -> {siren, name, active, nature_juridique, form}.
     Quellen-Scout R20 (03.10.2026): nur der exakte Treffer zählt."""
     s = session or requests
@@ -68,16 +129,21 @@ def by_siren(siren: str, session: requests.Session | None = None) -> dict | None
         if r.status_code == 429:
             time.sleep(2 * (attempt + 1))
             continue
+        if r.status_code >= 500:
+            _fail(strict, r.status_code)
+            return None
         if r.status_code >= 400:
             return None
         break
     else:
+        _fail(strict, 429)
         return None
     for h in r.json().get("results") or []:
         if h.get("siren") == siren:
             return {"siren": siren, "name": h.get("nom_complet") or h.get("nom_raison_sociale"),
                     "active": h.get("etat_administratif") == "A",
-                    "nature_juridique": h.get("nature_juridique"), "form": form_of(h.get("nature_juridique"))}
+                    "nature_juridique": h.get("nature_juridique"), "form": form_of(h.get("nature_juridique")),
+                    "naf": h.get("activite_principale")}
     return None
 
 

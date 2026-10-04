@@ -23,7 +23,7 @@ const check = (p: Record<string, number>) => {
 };
 
 test("Karten: zehn Werke, Direktstart nur Lead-/Kunden-Werk und Proben-Vorrat, Zeitpläne aus den Workflows", () => {
-  assert.deepEqual(CARDS.map((c) => c.key), ["lead-werk", "kunden-werk", "proben-vorrat", "antworten", "nachfass", "versand", "kundenlieferung", "tagescheck", "agenten", "dauerpruefung"]);
+  assert.deepEqual(CARDS.map((c) => c.key), ["lead-werk", "kunden-werk", "proben-vorrat", "antworten", "nachfass", "versand", "kundenlieferung", "tagescheck", "agenten", "dauerpruefung", "pruefer-werk"]);
   assert.deepEqual(CARDS.filter((c) => c.start).map((c) => c.start), ["lead-werk", "kunden-werk", "proben-vorrat"]);
   for (const c of CARDS) {
     const yml = readFileSync(new URL(`../../.github/workflows/${c.file}`, import.meta.url), "utf8");
@@ -84,7 +84,7 @@ test("Tempo: Summe ≤ Obergrenze, je Linie ≤ max, ganze Zahlen, anteilig, abg
   // Kunden-Werk voll -> weniger Platz für Leads
   const k16 = setLane(scalePlan(d, reg, 10), reg, "kunden", 16);
   assert.equal(k16.kunden, 16);
-  assert.equal(leadMax(k16, reg), 22);
+  assert.equal(leadMax(k16, reg), 18); // 38 − 16 Kunden − 4 Prüfer (05.10.2026)
   check(scalePlan(k16, reg, 99));
 });
 
@@ -94,8 +94,8 @@ test("Vorgaben Sparsam / Standard / Voll", () => {
   assert.deepEqual(p.map((x) => x.id), ["sparsam", "standard", "voll"]);
   assert.deepEqual(p.map((x) => x.total), [10, 30, 30]);
   for (const x of p) check(scalePlan(d, reg, x.total));
-  const k4 = setLane(d, reg, "kunden", 4);
-  assert.deepEqual(presets(k4, reg).map((x) => x.total), [10, 30, 34]);
+  const k0 = setLane(d, reg, "kunden", 0); // Standard Kunden 4 + Prüfer 4 (05.10.2026) -> 0 Kunden macht 4 frei
+  assert.deepEqual(presets(k0, reg).map((x) => x.total), [10, 30, 34]);
 });
 
 test("Länder-Chips: aus -> 0, an -> Standard, andere rücken bei Enge zusammen", () => {
@@ -120,8 +120,8 @@ test("Länder-Chips: aus -> 0, an -> Standard, andere rücken bei Enge zusammen"
 
 test("Kunden-Plätze: 0 … min(max, frei)", () => {
   const d = defaults();
-  assert.equal(laneRoom(d, reg, "kunden"), 8);
-  assert.equal(setLane(d, reg, "kunden", 12).kunden, 8);
+  assert.equal(laneRoom(d, reg, "kunden"), 4); // Standard: 30 Lead + 4 Prüfer + 4 Kunden = 38
+  assert.equal(setLane(d, reg, "kunden", 12).kunden, 4);
   const small = scalePlan(d, reg, 10);
   assert.equal(laneRoom(small, reg, "kunden"), 16);
   assert.equal(setLane(small, reg, "kunden", 20).kunden, 16);
@@ -154,7 +154,7 @@ test("diff und toSettings: Hin- und Rückweg", () => {
   d.followup_days = 6;
   const ch = diff(saved, d, ctx);
   assert.deepEqual(ch.map((c) => c.text), [
-    "Lead-Werk an → aus", "Tempo 30 → 19 Plätze", "Leads Nord an → aus", "Plätze 8 → 12", "Käufer FR an → aus",
+    "Lead-Werk an → aus", "Tempo 30 → 19 Plätze", "Leads Nord an → aus", "Plätze 4 → 12", "Käufer FR an → aus",
     "Soll S2/US 50 → 40", "Verfall 48 → 72 h", "Nachfassmails an → aus", "Nachfass nach 4 → 6 Tagen", "Versand an → aus", "Tagescheck aus → an",
   ]);
   const NOW_ISO = "2026-10-03T19:43:00.000Z";
@@ -276,11 +276,11 @@ test("Tempo: langsamer schaltet nie ein Land ab; Standard bringt die Standardbel
 test("Vorgaben-Chips und Anschlag-Hinweis", () => {
   const d = defaults();
   assert.deepEqual(presetChips(d, reg).map((p) => [p.label, p.total]), [["Sparsam", 10], ["Standard = Voll", 30]]);
-  const k4 = setLane(d, reg, "kunden", 4);
-  assert.deepEqual(presetChips(k4, reg).map((p) => p.label), ["Sparsam", "Standard", "Voll"]);
+  const k0 = setLane(d, reg, "kunden", 0);
+  assert.deepEqual(presetChips(k0, reg).map((p) => p.label), ["Sparsam", "Standard", "Voll"]);
   assert.equal(capHint(d, reg, "lead-werk"), "Maximum – alle 38 Plätze belegt. Mehr hier = Kunden-Werk senken");
   assert.equal(capHint(d, reg, "kunden-werk"), "Maximum – alle 38 Plätze belegt. Mehr hier = Lead-Werk-Tempo senken");
-  assert.equal(capHint(k4, reg, "lead-werk"), null);
+  assert.equal(capHint(k0, reg, "lead-werk"), null);
 });
 
 test("Schalter-Vorschau und Verfall nur außerhalb von S2", () => {

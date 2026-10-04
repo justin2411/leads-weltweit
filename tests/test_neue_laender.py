@@ -28,6 +28,8 @@ def prospect(country, name="Pixel Studio", spec="web designer", pid="p1"):
 class CountriesTest(unittest.TestCase):
     def test_new_countries_allowed_carefully(self):
         for co in NEW:
+            if co == "HK":  # Inhaber 05.10.2026: „nimm hk raus“
+                continue
             r = country_rules(CFG, co)
             self.assertTrue(r["allowed"], co)
             self.assertTrue(r["generic_only"], co)
@@ -38,7 +40,7 @@ class CountriesTest(unittest.TestCase):
         self.assertEqual(country_rules(CFG, "SG")["subject_prefix"], "<ADV> ")
 
     def test_high_risk_and_conditional_countries_stay_closed(self):
-        for co in NEVER + ("NZ", "JP", "DE", "AT", "CH", "PL", "DK", "NL", "ZA"):
+        for co in NEVER + ("NZ", "JP", "DE", "AT", "CH", "PL", "DK", "NL", "ZA", "HK"):
             self.assertFalse(country_rules(CFG, co)["allowed"], co)
 
     def test_mail_language_matches_countries_yaml(self):
@@ -140,9 +142,17 @@ class FooterTest(unittest.TestCase):
         from lib.html_email import page_button, process_strip, render
         html = render("Olá,\n\nTexto.\n\nAtenciosamente,\nJustin", self.footer("pt", "BR"), "pt",
                       page_button("https://www.nextgen-profit.de/br/x", "pt"), extra=process_strip("pt"))
-        for w in ("Ver meus 10 leads gratuitos", "Link seguro", "ENCONTRAMOS", "Certificado"):
+        for w in ("Ver meus 10 leads gratuitos", "Link seguro", "ENCONTRAMOS"):
             self.assertIn(w, html)
         self.assertIn("ENCONTRAMOS", process_strip("es"))
+
+    def test_html_kein_siegel_ohne_aussteller(self):
+        # §7: kein „✓ Certified“ ohne Aussteller (Inhaber 05.10.2026)
+        from lib.html_email import render
+        for lang, cc in (("en", "US"), ("fr", "FR"), ("pt", "BR"), ("es", "MX")):
+            out = render("Hi,\n\nText.\n\nBest,\nJustin", self.footer(lang, cc), lang).lower()
+            for w in ("certified", "certifié", "certificado"):
+                self.assertNotIn(w, out)
 
 
 class PipelineTest(unittest.TestCase):

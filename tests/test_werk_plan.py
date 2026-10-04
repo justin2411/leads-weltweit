@@ -22,7 +22,7 @@ class WerkPlanTests(unittest.TestCase):
         cap = self.reg["total_slots"] - self.reg["reserve"]
         self.assertLessEqual(sum(l["default"] for l in self.reg["lanes"]), cap)
         for l in self.reg["lanes"]:
-            self.assertIn(l["werk"], ("lead-werk", "kunden-werk"))
+            self.assertIn(l["werk"], ("lead-werk", "kunden-werk", "pruefer-werk"))
             self.assertTrue(0 <= l["default"] <= l["max"] <= 21, l["id"])
             if l["werk"] == "lead-werk":
                 self.assertNotIn("--shard", l["args"])  # Aufteilung macht der Plan
@@ -35,10 +35,11 @@ class WerkPlanTests(unittest.TestCase):
         self.assertEqual(n["s2-ukfr"], 2)
         self.assertEqual(n["s2-neu"], 1)
         self.assertEqual(len(W.matrix(self.reg, "lead-werk", n)), 30)
-        self.assertEqual(len(W.matrix(self.reg, "kunden-werk", n)), 8)
+        self.assertEqual(len(W.matrix(self.reg, "kunden-werk", n)), 4)  # 8 -> 4: Platz für 4 Prüfer (05.10.2026)
+        self.assertEqual(W.matrix(self.reg, "pruefer-werk", n), [{"name": f"pruefer-{i}", "shard": i, "of": 4} for i in range(4)])
 
     def test_owner_plan_is_clamped_and_used(self):
-        n, why = W.counts(self.reg, {"web-us": 5, "web-uk": 99, "kunden": 4, "unbekannt": 5})
+        n, why = W.counts(self.reg, {"web-us": 5, "web-uk": 99, "kunden": 4, "pruefer": 0, "unbekannt": 5})
         self.assertEqual(why, "Belegung des Inhabers")
         self.assertEqual(n["web-us"], 5)
         self.assertEqual(n["web-uk"], 21)  # höchstens max je Linie
@@ -74,8 +75,85 @@ class WerkPlanTests(unittest.TestCase):
             finally:
                 os.environ.clear(); os.environ.update(old)
             lines = dict(l.split("=", 1) for l in out.read_text().splitlines())
-            self.assertEqual(lines["teile"], "8")
-            self.assertEqual(len(json.loads(lines["matrix"])["include"]), 8)
+            self.assertEqual(lines["teile"], "4")
+            self.assertEqual(len(json.loads(lines["matrix"])["include"]), 4)
+
+
+
+class PrueferLaneTests(unittest.TestCase):
+    def test_lane_of_and_other_werke_merge(self):
+        self.assertEqual(W.lane_of("pruefer-werk", "pruefer-2"), "pruefer")
+        self.assertEqual(W.lane_of("pruefer-werk", "run --shard 1/4 --deadline-min 80"), "pruefer")
+        self.assertIsNone(W.lane_of("pruefer-werk", "kpi"))
+        reg = W.load_lines()
+        # andere Werke: fehlende Linien zählen mit ihrer Basis (Prüfer 4), gemeldete mit dem letzten Plan
+        res = W.decide(reg, "lead-werk", {"settings": {"slot_autopilot": {"on": True}}, "rows": [], "other": {"kunden": 16}})
+        self.assertLessEqual(sum(res["plan"].values()) + 16 + 4, reg["total_slots"] - reg["reserve"])
+        res = W.decide(reg, "pruefer-werk", {"settings": {"slot_plan": {"pruefer": 6, "web-us": 0}, "slot_autopilot": {"on": False}}, "rows": []})
+        self.assertEqual(res["plan"], {"pruefer": 6})
+
+
+class MinBelegtTests(unittest.TestCase):
+    """Werke immer ausgelastet (Inhaber 05.10.2026: „mind. 30 gleichzeitig“)."""
+
+    def setUp(self):
+        import datetime as dt
+        self.reg = W.load_lines()
+        self.now = dt.datetime(2026, 10, 3, 21, 0, tzinfo=dt.timezone.utc)
+        self.lead = {"web-us": 3, "web-uk": 8, "web-fr": 10, "web-north": 1, "s2-us": 3, "s2-neu": 1,
+                     "s1-us-lca": 0, "s1-uk-tender": 0}
+
+    def stats(self):
+        rows = []
+        for lane in ("web-uk", "web-fr", "s2-us"):
+            rows += _rows(lane, "r1", 1, 1, 0) + _rows(lane, "r0", 1, 1, 0, start="2026-10-03T15:00:00+00:00")
+        rows += _rows("web-us", "r1", 3, 40, 900, 60) + _rows("web-north", "r1", 2, 46, 7000, 480)
+        rows += _rows("s2-neu", "r1", 1, 37, 2000, 1900)
+        return W.lane_stats(rows, "lead-werk")
+
+    def test_constant(self):
+        self.assertEqual(W.MIN_BELEGT, 30)
+
+    def test_fills_up_to_30_website_lanes_first(self):
+        # ohne Minimum: 18 Lead-Plätze + 8 Kunden = 26 -> mit Minimum 30, Zusatz an web-us (Website US/UK/FR)
+        p0, _ = W.autopilot(self.reg, "lead-werk", self.lead, self.stats(), other={"kunden": 8}, now=self.now,
+                            min_belegt=0)
+        plan, why = W.autopilot(self.reg, "lead-werk", self.lead, self.stats(), other={"kunden": 8}, now=self.now)
+        self.assertLess(sum(p0.values()) + 8, 30)
+        self.assertEqual(sum(plan.values()) + 8, 30)
+        self.assertGreater(plan["web-us"], p0["web-us"])
+        self.assertIn(W.MIN_WHY, why["web-us"])
+        for lane in ("web-uk", "web-fr", "s2-us"):  # leere Linien bekommen nichts
+            self.assertEqual(plan[lane], 0, lane)
+        self.assertEqual(plan["s1-us-lca"], 0)  # vom Inhaber auf 0
+
+    def test_kunden_werk_fills_when_lead_werk_low(self):
+        rows = _rows("kunden", "k1", 4, 40, 500, werk="kunden-werk")
+        plan, why = W.autopilot(self.reg, "kunden-werk", {"kunden": 4}, W.lane_stats(rows, "kunden-werk"),
+                                other={"web-us": 10})
+        self.assertEqual(plan["kunden"], 16)  # max der Linie (10 + 16 = 26, mehr geht nicht)
+        self.assertIn(W.MIN_WHY, why["kunden"])
+        plan, _ = W.autopilot(self.reg, "kunden-werk", {"kunden": 4}, W.lane_stats(rows, "kunden-werk"),
+                              other={"web-us": 24})
+        self.assertEqual(plan["kunden"], 6)
+
+    def test_brake_and_locks_win(self):
+        for brake in ("drossel", "ohne-rohbestand", "stopp"):
+            plan, _ = W.autopilot(self.reg, "lead-werk", self.lead, self.stats(), other={"kunden": 8},
+                                  now=self.now, brake=brake)
+            self.assertLessEqual(sum(plan.values()), 0 if brake == "stopp" else W.BRAKE_LEAD_MAX, brake)
+        plan, _ = W.autopilot(self.reg, "lead-werk", self.lead, self.stats(), other={"kunden": 8}, now=self.now,
+                              locks={"web-us": 3})
+        self.assertEqual(plan["web-us"], 3)
+
+    def test_never_over_cap_or_max(self):
+        cap = self.reg["total_slots"] - self.reg["reserve"]
+        lanes = {l["id"]: l for l in self.reg["lanes"] if l["werk"] == "lead-werk"}
+        plan, _ = W.autopilot(self.reg, "lead-werk", self.lead, self.stats(), other={"kunden": 0}, now=self.now,
+                              min_belegt=500)
+        self.assertLessEqual(sum(plan.values()), cap)
+        for k, v in plan.items():
+            self.assertLessEqual(v, lanes[k]["max"])
 
 
 if __name__ == "__main__":
@@ -103,7 +181,7 @@ class AutopilotTests(unittest.TestCase):
     def setUp(self):
         self.reg = W.load_lines()
         self.base = W.counts(self.reg, None)[0]
-        self.lead = {k: v for k, v in self.base.items() if k != "kunden"}
+        self.lead = {k: v for k, v in self.base.items() if k not in ("kunden", "pruefer")}
 
     def test_stats_count_each_part_once(self):
         s = W.lane_stats(_rows("web-us", "r1", 3, 2, 0), "lead-werk")["web-us"]
@@ -138,13 +216,14 @@ class AutopilotTests(unittest.TestCase):
         # alle anderen Linien erschöpft (je 1 Wachplatz) -> genug freie Plätze
         empty = [r for l in self.lead if l != "web-north" for r in _rows(l, "r1", 2, 1, 0)]
         stats = W.lane_stats(empty + _rows("web-north", "r1", 1, 75, 7000, 500), "lead-werk")
-        plan, why = W.autopilot(self.reg, "lead-werk", self.lead, stats, other={"kunden": 8})
+        plan, why = W.autopilot(self.reg, "lead-werk", self.lead, stats, other={"kunden": 8}, min_belegt=0)
         # ceil(75 * 1 / 30) = 3, dazu Plätze der leeren Linien bis 2 * 1 + 2 = 4
         self.assertEqual(plan["web-north"], 4)
         self.assertIn("voll ausgelastet", why["web-north"])
         self.assertIn("+1 aus leeren Linien", why["web-north"])
         stats = W.lane_stats(empty + _rows("web-north", "r1", 3, 70, 7000, 500), "lead-werk")
-        self.assertEqual(W.autopilot(self.reg, "lead-werk", self.lead, stats, other={"kunden": 8})[0]["web-north"], 8)
+        self.assertEqual(W.autopilot(self.reg, "lead-werk", self.lead, stats, other={"kunden": 8},
+                                     min_belegt=0)[0]["web-north"], 8)
         # ohne freie Plätze (andere Linien laufen gut) wächst nichts über die Summe
         busy = [r for l in self.lead if l != "web-north" for r in _rows(l, "r1", self.lead[l] or 1, 40, 100)]
         plan, _ = W.autopilot(self.reg, "lead-werk", self.lead, W.lane_stats(busy + _rows("web-north", "r1", 1, 75, 7000, 500), "lead-werk"), other={"kunden": 8})
@@ -268,7 +347,8 @@ class EmptyLaneTests(unittest.TestCase):
         return W.lane_stats(rows, "lead-werk")
 
     def test_empty_lane_gets_zero_and_slots_go_to_productive_lanes(self):
-        plan, why = W.autopilot(self.reg, "lead-werk", self.lead, self.stats(), other={"kunden": 8}, now=self.now)
+        plan, why = W.autopilot(self.reg, "lead-werk", self.lead, self.stats(), other={"kunden": 8}, now=self.now,
+                                min_belegt=0)
         for lane in ("web-uk", "web-fr", "s2-us"):
             self.assertEqual(plan[lane], 0, lane)
             self.assertTrue(why[lane].startswith(W.EMPTY_WHY), why[lane])
