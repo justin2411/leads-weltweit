@@ -28,10 +28,21 @@ def config() -> dict:
         return {}
 
 
+_FAKTOR = {"intervall": 1.0}
+
+
+def set_interval_factor(f: float) -> float:
+    """Selbstoptimierung (scripts/selbstopt.py, nur Dauerprüfung): Prüfabstände × 0,5 … 1,0 – nur öfter prüfen."""
+    _FAKTOR["intervall"] = max(0.5, min(1.0, float(f)))
+    return _FAKTOR["intervall"]
+
+
 def intervals(cfg: dict | None = None) -> list[int]:
     raw = (cfg if cfg is not None else config()).get("intervalle_tage") or DEFAULT_INTERVALS
     out = [max(1, int(x)) for x in raw if str(x).strip().lstrip("-").isdigit()]
-    return out or list(DEFAULT_INTERVALS)
+    out = out or list(DEFAULT_INTERVALS)
+    f = _FAKTOR["intervall"]
+    return out if f >= 1 else [max(1, round(x * f)) for x in out]
 
 
 def next_interval(passed: int, steps: list[int] | None = None) -> int:

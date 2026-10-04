@@ -78,6 +78,13 @@ in `signalwerk.decisions`. Ziel: **möglichst viele zahlende Kunden und maximale
    worum es geht, kein „Sitzung …:“, keine Uhrzeit) und `kurz_grund` (1 Satz ≤ 160 Zeichen). Bei SQL selbst formulieren,
    in Skripten `lib.kurz.insert_decisions`. `subject`/`reasoning` nur für Details; keine Sitzungsprotokolle als Vorschlag.
 
+## Selbstoptimierung des Systems
+`scripts/selbstopt.py` (Wachhund, alle 30 min) führt Stellschrauben nach Wirkung nach: Versand-Tagesmenge (nur senken
+oder zurück bis zum Ziel), Budget/Abstände der Dauerprüfung, Reihenfolge der Käufer-Kategorien, nächster A/B-Entwurf.
+- **Sitzung:** `python scripts/selbstopt.py stand` ansehen; Stellschrauben nie per Hand gegen den Kreislauf drehen.
+  Für A/B: fertige Entwürfe anlegen (`ab.py anlegen` ohne `--starten`) – der Kreislauf startet sie, sobald frei.
+- **Grenzen:** wie unten „Nie“; nichts ohne Mindestdaten, ohne Wirkung zurück, alles in `decisions` („Selbstopt: …“).
+
 ## Selbstverbesserung
 Das Meta-Review legt höchstens 3 offene Vorschläge für diese Anleitung in `signalwerk.brain_improvements` ab (mit Beleg).
 - **Wann:** höchstens einmal je Tag, in der ersten Sitzung nach dem Meta-Review, wenn `python scripts/brain_meta.py
