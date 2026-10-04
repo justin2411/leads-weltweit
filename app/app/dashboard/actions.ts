@@ -29,7 +29,7 @@ export async function approveDraft(formData: FormData) {
     .eq("status", "draft")
     .eq("check_errors", "{}");
   if (error) throw new Error(error.message);
-  revalidatePath("/dashboard");
+  revalidatePath("/dashboard", "layout");
 }
 
 export async function rejectDraft(formData: FormData) {
@@ -42,7 +42,7 @@ export async function rejectDraft(formData: FormData) {
     .eq("id", id)
     .in("status", ["draft", "approved"]);
   if (error) throw new Error(error.message);
-  revalidatePath("/dashboard");
+  revalidatePath("/dashboard", "layout");
 }
 
 const REPLY_TYPES = new Set(["reply", "reply_positive", "reply_negative", "sample_requested"]);
@@ -73,5 +73,5 @@ export async function logReply(formData: FormData) {
   });
   if (error) throw new Error(error.message);
   if (optout) await suppressEmail(email, "reply_optout", "dashboard");
-  revalidatePath("/dashboard");
+  revalidatePath("/dashboard", "layout");
 }

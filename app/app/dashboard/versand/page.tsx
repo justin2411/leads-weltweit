@@ -1,7 +1,9 @@
-import { COUNTRIES, CONFIG, loadActivity, loadDaily, loadLive, loadOwnerSettings } from "@/lib/dashboard-data";
+import { COUNTRIES, CONFIG, SEGMENT, loadActivity, loadDaily, loadLive, loadOwnerSettings } from "@/lib/dashboard-data";
 import { isLive } from "@/lib/werke-live";
 import { MailFlight } from "../live";
-import { COUNTRY_COLOR, berlin, berlinDay, brake, compact, mailboxes, nextRun, pctS } from "@/lib/dashboard-logic";
+import { Suspense } from "react";
+import { COUNTRY_COLOR, ago, berlin, berlinDay, brake, compact, funnel, mailboxes, nextRun, pctS, type Funnel } from "@/lib/dashboard-logic";
+import { Freigaben } from "./freigaben";
 import { PERIODS, period, revenueByCurrency, series, totals, type Metric } from "@/lib/dashboard-periods";
 import { effectiveLimit, FOLLOWUP_DAYS_RANGE } from "@/lib/owner-settings";
 import { requireOwner } from "../actions";
@@ -79,6 +81,40 @@ export default async function Versand({ searchParams }: { searchParams: SP }) {
         <Kpi value={next ? berlin(next) : "–"} label="nächster Lauf" tip="send.yml (deutsche Zeit)" />
       </div>
 
+      <div className="vizgrid">
+        <section className="card tile">
+          <header className="th"><span title="Regel §5: bewertet ab 50 zugestellten Mails, entschieden 14 Tage nach der letzten Mail">Tests nach Regel §5</span></header>
+          <div className="klist">
+            {countries.map((c) => {
+              const f = funnel(live, null, SEGMENT, c);
+              const [verdict, cls] = rule5(f);
+              return (
+                <div key={c} className="kcard">
+                  <span className="cn"><i className="dot" style={{ background: COUNTRY_COLOR[c] }} />{c}</span>
+                  <span className={`pill ${cls}`} title={`${f.delivered} zugestellt · ${f.positive} positiv · ${f.customers} Kunden`}>{verdict}</span>
+                  <span className="cm">{compact(f.delivered)} zugestellt · {f.delivered ? pctS(f.positive / f.delivered) : "–"} positiv · {compact(f.samplesSent)} Proben · {compact(f.customers)} Kunden</span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+        <section className="card tile">
+          <header className="th"><span title="Kapazität wächst je Postfach ab der ersten Mail">Postfächer</span></header>
+          <div className="klist">
+            {boxes.map((x) => (
+              <div key={x.box} className="kcard">
+                <span className="cn">{x.label}</span>
+                <span className="pill t-next" title="heute / Kapazität">{compact(x.today)}/{compact(x.cap)}</span>
+                <span className="cm">7 Tage {compact(x.d7)} · gesamt {compact(x.total)} · zuletzt {ago(x.last_sent, now)}</span>
+              </div>
+            ))}
+          </div>
+          <div className="facts" title="Adressen; die Domain wird jeweils mitgesperrt. Sperren werden nie aufgehoben.">
+            <span>Gesperrt <b>{Object.entries(live.suppression).map(([r, n]) => `${SUP[r] ?? r} ${compact(Number(n))}`).join(" · ") || "keine"}</b></span>
+          </div>
+        </section>
+      </div>
+
       <h2 className="h2s">Steuerung</h2>
       <div className="ctrls">
         <Ctrl title="Versand" tip="Pause hält alle Kalt- und Nachfassmails sofort an. Weiter nur per Klick.">
@@ -142,6 +178,21 @@ export default async function Versand({ searchParams }: { searchParams: SP }) {
           </div>
         </Ctrl>
       </div>
+
+      <Suspense fallback={<p className="muted">Entwürfe laden …</p>}><Freigaben /></Suspense>
     </div>
   );
+}
+
+const SUP: Record<string, string> = { bounce: "Bounce", unsubscribe: "Abmeldelink", complaint: "Beschwerde", reply_optout: "per Antwort", manual: "manuell" };
+
+/** Regel §5 (CLAUDE.md): < 2 % positiv nach 50 zugestellten = stoppen, 2–5 % = neue Botschaft, > 5 % oder Kunde = ausbauen.
+ *  Solange noch gesendet wird, nur Zwischenstand – entschieden wird 14 Tage nach der letzten Mail. */
+function rule5(f: Funnel): [string, string] {
+  if (f.customers > 0) return ["ausbauen", "t-green"];
+  if (f.delivered < 50) return [`noch ${50 - f.delivered} bis Bewertung`, "t-grey"];
+  const r = f.positive / f.delivered;
+  const v = r > 0.05 ? "ausbauen" : r >= 0.02 ? "neue Botschaft" : "stoppen";
+  if (f.sent7 > 0) return [`Zwischenstand: ${v}`, "t-gold"];
+  return [v, r > 0.05 ? "t-green" : r >= 0.02 ? "t-gold" : "t-red"];
 }

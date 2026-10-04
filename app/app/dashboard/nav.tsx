@@ -14,6 +14,8 @@ export const SECTIONS: [string, string, IconName][] = [
   ["/dashboard/speicher", "Speicher", "speicher"],
   ["/dashboard/kontakte", "Kontakte", "kontakte"],
   ["/dashboard/kunden", "Kunden", "kunden"],
+  // Inhaber 04.10.2026: alte Ansicht raus – Gehirn (Schalter, Seiten, Entscheidungen) hat eine eigene Seite
+  ["/dashboard/gehirn", "Gehirn", "gehirn"],
 ];
 
 /** Bereiche des Dashboards: oben als Tabs, am Handy als Leiste unten. Land- und Zeitraum-Auswahl bleiben erhalten.
