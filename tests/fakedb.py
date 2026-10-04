@@ -1,4 +1,4 @@
-"""Kleine Attrappe für lib.db.DB (PostgREST-Filter eq./neq./in./gte./lte./is.null) für Unit-Tests."""
+"""Kleine Attrappe für lib.db.DB (PostgREST-Filter eq./neq./in./gte./lte./like./is.null) für Unit-Tests."""
 from __future__ import annotations
 
 import copy
@@ -31,6 +31,9 @@ def _match(row: dict, key: str, cond) -> bool:
         ok = val is not None and str(val) > arg
     elif op == "lt":
         ok = val is not None and str(val) < arg
+    elif op == "like":  # PostgREST: * = beliebige Zeichen
+        import fnmatch
+        ok = val is not None and fnmatch.fnmatchcase(str(val), arg)
     elif op == "is":
         ok = val is None if arg == "null" else str(val).lower() == arg
     else:

@@ -123,10 +123,17 @@ FOLLOWUP_MAX_DAYS = 11  # Nachfassmail spätestens 11 Tage nach der Erstmail (ge
 def followup_block_reason(db, m: dict) -> str | None:
     """Nachfassmails beim Versand erneut prüfen: seit dem Anlegen kann eine Antwort, Probe-Anfrage oder ein Bounce
     eingegangen sein. Grund zum Blockieren oder None."""
-    from followups import NEGATIVE, answered
+    from followups import NEGATIVE, answered, needs_reply_first
     kind = m.get("kind") or "initial"
     if kind == "initial":
         return None
+    if kind == "followup":
+        p = m.get("prospects")
+        if p is None:
+            rows = db.select("prospects", {"id": f"eq.{m['prospect_id']}", "select": "country,legal_form"})
+            p = rows[0] if rows else {}
+        if needs_reply_first(p):  # Inhaber 04.10.2026: Einzelunternehmer nur nach eigener Antwort nachfassen
+            return "Nachfassmail nur nach eigener Antwort: keine Kapitalgesellschaft (Einzelunternehmer)"
     parent_id = m.get("parent_id")
     if not parent_id:
         rows = db.select("messages", {"prospect_id": f"eq.{m['prospect_id']}", "experiment_id": f"eq.{m['experiment_id']}",
