@@ -4,6 +4,7 @@
  * Auslastung über die Zeit und ehrliche Empfehlungen aus echten Zahlen (keine Schätzungen ohne Hinweis).
  */
 import type { LaneRegistry } from "./owner-settings";
+import { inferTask, mailMarkets, marketsIn } from "./agents.ts";
 
 export type RunRow = { werk: string; part: string | null; country: string | null; started_at: string | null; finished_at: string; processed: number; green: number; yellow?: number; red?: number; run_id?: string | null; candidates?: number };
 
@@ -247,4 +248,39 @@ export function recommend<T extends Tip>(tips: T[], max = 3): { recs: Rec[]; res
   const pick = [...ranked.filter((x) => x.task), ...ranked.filter((x) => !x.task && x.href)].slice(0, max);
   const recs: Rec[] = ranked.filter((x) => pick.includes(x)).map((x) => ({ level: x.level, title: x.title, short: shortText(x.text), href: x.href, task: x.task }));
   return { recs, rest: ranked.filter((x) => !pick.includes(x)) };
+}
+
+/** Ziel je Art für Hinweise ohne eigenen Auftrag (kurz, nie senden/kaufen). */
+const TIP_GOAL: Record<TipTask["kind"], string> = {
+  leads: "Prüfen und umsetzen, was hier mehr grüne Leads bringt; Ergebnis vorher/nachher.",
+  kaeufer: "Mehr mail-fähige Käufer daraus machen; Ergebnis vorher/nachher.",
+  quelle: "Neue kostenlose, erlaubte Quelle finden, mit mindestens 10 grünen Leads testen und einbauen.",
+  pruefen: "Ursache prüfen und beheben, mit Test.",
+  frage: "Aus echten Zahlen auswerten und 2–3 kostenlose Verbesserungen vorschlagen. Nichts senden, nichts kaufen.",
+};
+const TIP_KINDS = new Set<string>(["leads", "kaeufer", "quelle", "pruefen", "frage"]);
+/** Art aus dem Ziel des Hinweises (Station), wenn der Text nichts verrät. */
+function kindOfHref(href: string | undefined, level: Tip["level"]): TipTask["kind"] {
+  if (href === "#pult" || href?.includes("s=lead")) return "leads";
+  if (href?.includes("bestand") || href?.includes("kaeufer")) return "kaeufer";
+  if (href?.includes("proben") || href?.includes("gate")) return "pruefen";
+  return level === "rot" ? "pruefen" : "frage";
+}
+
+/**
+ * Jeder Hinweis unter „JARVIS empfiehlt“ als fertiger Auftrag (Inhaber 04.10.2026: „wieso kann ich das grüne element
+ * nicht per drag und drop … einem agenten geben“): eigener Auftrag, sonst Art aus Titel/Ziel/Text. Markt aus dem Auftrag,
+ * sonst aus Titel und Text (mehrere Länder als Liste, z. B. „FI·SG·HK“ → „FI,SG,HK“); IE/NL/BE nie.
+ */
+export function tipTask(t: { level: Tip["level"]; title: string; text?: string; short?: string; href?: string; task?: TipTask }): TipTask {
+  const about = `${t.title}. ${t.text ?? t.short ?? ""}`;
+  if (t.task) return { ...t.task, market: mailMarkets(t.task.market) ?? marketsIn(t.title) };
+  const said = inferTask(t.title).kind;
+  const kind = (said && TIP_KINDS.has(said) ? said : null) as TipTask["kind"] | null;
+  const k = kind ?? (t.href ? kindOfHref(t.href, t.level) : (inferTask(about).kind as TipTask["kind"] | null) ?? kindOfHref(undefined, t.level));
+  // ganzer Hinweistext (shortText schneidet an Abkürzungen wie „max.“), höchstens 400 Zeichen
+  const raw = (t.text ?? t.short ?? "").replace(/\s+/g, " ").trim();
+  const text = raw.length > 400 ? `${raw.slice(0, 399).replace(/\s+\S*$/, "")}…` : raw;
+  const brief = `${t.title}: ${text} ${TIP_GOAL[k]}`.replace(/\s+/g, " ").trim();
+  return { kind: k, market: marketsIn(about), brief: brief.slice(0, 1000) };
 }

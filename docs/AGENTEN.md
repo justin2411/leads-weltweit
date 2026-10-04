@@ -1,7 +1,7 @@
 # Agenten – Aufträge aus dem Dashboard
 
 Inhaber 03.10.2026: „einzelne agenten nutzen die sachen für mich machen, z.b. ich beauftrage agent 1 neue leads zu
-holen für den markt“. Der Inhaber erteilt Aufträge in JARVIS (Agenten-Leiste, „+ Auftrag“, oder einen gelben Hinweis bzw. den Engpass auf A1–A8 ziehen – dann steht der Auftragstext schon fertig drin). Eine Claude-Sitzung
+holen für den markt“. Der Inhaber erteilt Aufträge in JARVIS (Agenten-Leiste, „+ Auftrag“, oder jeden Hinweis unter „JARVIS empfiehlt“ bzw. den Engpass auf A1–A8 ziehen – Maus überall, Finger am Griff ⠿; Chip antippen → „an A…“ – dann steht der Auftragstext schon fertig drin; Hinweise ohne eigenen Auftrag bekommen Art und Markt aus `tipTask`, IE/NL/BE nie). Eine Claude-Sitzung
 (Routine „JARVIS-Agenten“, viermal pro Stunde) bearbeitet sie nach dieser Anleitung. CLAUDE.md gilt immer zuerst.
 
 **Acht Agenten** (Inhaber 04.10.2026: „nicht nur 4 freie agenten … sondern 8“): A1–A8 gehören dem Inhaber

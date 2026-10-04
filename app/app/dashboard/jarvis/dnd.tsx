@@ -1,154 +1,209 @@
 "use client";
 
 /**
- * Hinweise an Agenten geben (Inhaber 03.10.2026: „die gelben sachen … ziehen können und dieses problem agents geben, das
- * die das ausführen“). Ein Hinweis mit fertigem Auftrag lässt sich auf A1–A8 ziehen; am Handy (kein Ziehen) per Tippen
- * auf den Weitergeben-Knopf (Linien-Icon „an-agent“) und Agent wählen. Erteilt wird über die bestehende Server Action createAgentTask (gleiche Prüfung wie das
- * Formular „Neuer Auftrag“) – danach öffnet sich der Agent mit dem neuen Auftrag.
+ * Hinweise an Agenten geben (Inhaber 03.10.2026: „die gelben sachen … ziehen können und dieses problem agents geben“;
+ * 04.10.2026: „wieso kann ich das grüne element nicht per drag und drop bewegen und es einem agenten geben oder daneben
+ * das blaue?“). Jede Karte und jeder Chip unter „JARVIS empfiehlt“ lässt sich auf A1–A8 ziehen und wird dort zum
+ * fertigen Auftrag (Server Action createAgentTask, gleiche Prüfung wie „Neuer Auftrag“); danach öffnet sich der Agent.
+ *
+ * Ziehen über Pointer-Events statt HTML5-Drag-and-Drop: dieselbe Logik für Maus, Finger und Stift. HTML5-Ziehen ging am
+ * Handy/Tablet gar nicht, startete auf einem Link oft als Klick (Seite sprang zur Station) und hing an Browser-Eigenheiten
+ * (eigener Datentyp in dataTransfer). Maus: überall auf dem Element ziehen. Finger: am Griff (⠿) ziehen – sonst scrollt die
+ * Seite wie gewohnt. Ohne Ziehen: Klick/Enter auf einen Chip öffnet das Menü „an A…“, Karten haben den Knopf „an A…“.
  */
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import type { TipTask } from "@/lib/leitstand";
 import { createAgentTask } from "../control-actions";
 import { Icon } from "@/app/icons";
-import { AGENT_COUNT } from "@/lib/agents";
+import { marketList } from "@/lib/agents";
 import { TipX } from "./dismiss";
 
-const MIME = "application/x-jarvis-task";
-const AGENTS = Array.from({ length: AGENT_COUNT }, (_, i) => i + 1);
 type Payload = TipTask & { title: string };
+/** Agent für das Menü: Nummer, frei (kein laufender/offener Auftrag), Zustand in Worten. */
+export type AgentPick = { n: number; free: boolean; state: string };
+
+const DROP = "jarvis-agent-drop";
+type DropDetail = { n: number; payload: Payload };
 
 function give(agent: number, t: Payload) {
   const f = new FormData();
   f.set("agent", String(agent));
   f.set("kind", t.kind);
-  f.set("market", t.market ?? "");
+  // mehrere Länder als einzelne Felder (wie die Häkchen im Formular)
+  for (const m of marketList(t.market)) f.append("market", m);
   f.set("brief", t.brief);
-  f.set("back", `/dashboard/jarvis?a=${agent}`);
+  f.set("back", `${location.pathname.startsWith("/dashboard") ? location.pathname : "/dashboard/jarvis"}?a=${agent}`);
   return createAgentTask(f);
 }
 
-/** Gerade gezogener Auftrag (dieselbe Seite). Sicherheitsnetz, falls ein Browser den eigenen Datentyp beim Ziehen
- *  nicht in dataTransfer.types zeigt oder getData beim Ablegen leer bleibt. */
-let current: Payload | null = null;
+// ------------------------------------------------------------------------------------------- Ziehen (Pointer-Events)
+const MOVE_MOUSE = 6; // px, ab hier ist es Ziehen statt Klick
+const MOVE_TOUCH = 4;
+const EDGE = 64; // px am Fensterrand: Seite scrollt beim Ziehen mit
 
-const dragging = (on: boolean) => document.documentElement.classList.toggle("jv-dragging", on);
+/** Ziehen beginnen. Maus: überall außer auf Knöpfen; Finger/Stift: nur am Griff (.drag-grip). */
+function beginDrag(e: React.PointerEvent<HTMLElement>, payload: Payload) {
+  if (e.button !== 0 || !e.isPrimary) return;
+  const target = e.target as Element;
+  const mouse = e.pointerType === "mouse";
+  if (target.closest("button:not([data-drag]), .tip-x, .jt-pick, .jrec-give")) return;
+  if (!mouse && !target.closest(".drag-grip")) return;
+  const source = e.currentTarget;
+  const x0 = e.clientX, y0 = e.clientY, id = e.pointerId;
+  let started = false, x = x0, y = y0, raf = 0;
+  let ghost: HTMLElement | null = null, over: HTMLElement | null = null;
 
-/** Ziehen beginnen: Auftrag in dataTransfer und als Sicherheitsnetz merken. Die Klasse jv-dragging (Agenten leuchten,
- *  Kinder der Agenten-Karten ohne Trefferfläche) erst nach dem Start setzen – DOM-Änderungen in dragstart können das
- *  Ziehen in Chrome abbrechen. */
-function startDrag(e: React.DragEvent, payload: Payload) {
-  e.dataTransfer.setData(MIME, JSON.stringify(payload));
-  e.dataTransfer.setData("text/plain", payload.title);
-  e.dataTransfer.effectAllowed = "copy";
-  current = payload;
-  setTimeout(() => { if (current === payload) dragging(true); }, 0);
+  const hit = () => {
+    const el = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-agent-drop]") ?? null;
+    if (el === over) return;
+    over?.removeAttribute("data-over");
+    over = el;
+    over?.setAttribute("data-over", "");
+  };
+  const scroll = () => {
+    const dy = y < EDGE ? -Math.ceil((EDGE - y) / 4) : y > innerHeight - EDGE ? Math.ceil((y - innerHeight + EDGE) / 4) : 0;
+    if (dy) { scrollBy(0, dy); hit(); }
+    raf = requestAnimationFrame(scroll);
+  };
+  const start = () => {
+    started = true;
+    document.documentElement.classList.add("jv-dragging");
+    source.classList.add("is-dragged");
+    ghost = document.createElement("div");
+    ghost.className = "jv-ghost";
+    ghost.setAttribute("aria-hidden", "true");
+    ghost.textContent = payload.title;
+    (source.closest(".dash") ?? document.body).appendChild(ghost);
+    try { source.setPointerCapture(id); } catch { /* Element evtl. schon neu gerendert */ }
+    raf = requestAnimationFrame(scroll);
+  };
+  // Vorschau neben dem Zeiger, nie über den Fensterrand hinaus
+  const place = () => { if (ghost) ghost.style.transform = `translate(${Math.max(8, Math.min(x + 14, innerWidth - ghost.offsetWidth - 8))}px, ${y + 14}px)`; };
+  const cleanup = () => {
+    removeEventListener("pointermove", move, true);
+    removeEventListener("pointerup", up, true);
+    removeEventListener("pointercancel", cancel, true);
+    removeEventListener("keydown", key, true);
+    cancelAnimationFrame(raf);
+    ghost?.remove();
+    over?.removeAttribute("data-over");
+    source.classList.remove("is-dragged");
+    document.documentElement.classList.remove("jv-dragging");
+  };
+  const move = (ev: PointerEvent) => {
+    if (ev.pointerId !== id) return;
+    x = ev.clientX; y = ev.clientY;
+    if (!started && Math.hypot(x - x0, y - y0) >= (mouse ? MOVE_MOUSE : MOVE_TOUCH)) start();
+    if (!started) return;
+    ev.preventDefault();
+    place();
+    hit();
+  };
+  const up = (ev: PointerEvent) => {
+    if (ev.pointerId !== id) return;
+    const n = started && over ? Number(over.dataset.agentDrop) : 0;
+    const was = started;
+    cleanup();
+    if (!was) return;
+    // der Klick nach dem Loslassen öffnet sonst den Link/das Menü unter dem Zeiger
+    const stop = (c: Event) => { c.preventDefault(); c.stopPropagation(); };
+    addEventListener("click", stop, { capture: true, once: true });
+    setTimeout(() => removeEventListener("click", stop, { capture: true }), 0);
+    if (n) dispatchEvent(new CustomEvent<DropDetail>(DROP, { detail: { n, payload } }));
+  };
+  const cancel = (ev: PointerEvent) => { if (ev.pointerId === id) cleanup(); };
+  const key = (ev: KeyboardEvent) => { if (ev.key === "Escape") { over?.removeAttribute("data-over"); over = null; cleanup(); } };
+  addEventListener("pointermove", move, { capture: true, passive: false });
+  addEventListener("pointerup", up, true);
+  addEventListener("pointercancel", cancel, true);
+  addEventListener("keydown", key, true);
 }
-function endDrag() {
-  current = null;
-  dragging(false);
+
+/** Props für ein ziehbares Element; natives HTML5-Ziehen (Link-Bild) aus. */
+const dragProps = (payload: Payload) => ({
+  onPointerDown: (e: React.PointerEvent<HTMLElement>) => beginDrag(e, payload),
+  onDragStart: (e: React.DragEvent) => e.preventDefault(),
+  draggable: false,
+});
+
+/** Griff (⠿): sichtbar, am Handy die Stelle zum Ziehen. */
+export function Grip({ className = "" }: { className?: string }) {
+  return <i className={`drag-grip ${className}`} aria-hidden><Icon name="griff" size={14} /></i>;
 }
 
-/** Ziehbarer Hinweis (Link bleibt klickbar) mit Weitergeben-Knopf für Handys; dkey = Schlüssel zum Ausblenden (X). */
-export function DragTip({ task, title, href, level, tip, dkey }: { task?: TipTask; title: string; href: string; level: string; tip: string; dkey?: string }) {
+// ------------------------------------------------------------------------------------------- Chips
+/** Ziehbarer Chip. Klick/Enter öffnet „an A…“ (freie Agenten zuerst markiert, Vorschlag golden) und „Details“ (Station).
+ *  dkey = Schlüssel zum Ausblenden (X). */
+export function DragTip({ task, title, href, level, tip, dkey, agents, suggest }: { task: TipTask; title: string; href: string; level: string; tip: string; dkey?: string; agents: AgentPick[]; suggest: number }) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const box = useRef<HTMLSpanElement>(null);
+  const btn = useRef<HTMLButtonElement>(null);
+  const payload: Payload = { ...task, title };
   useEffect(() => {
     if (!open) return;
     const off = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") { setOpen(false); btn.current?.focus(); } };
     document.addEventListener("pointerdown", off);
-    return () => document.removeEventListener("pointerdown", off);
+    document.addEventListener("keydown", esc);
+    // Menü nie über den rechten Rand hinaus (Handy: kein seitliches Scrollen)
+    const menu = box.current?.querySelector<HTMLElement>(".jt-pick");
+    const r = menu?.getBoundingClientRect();
+    if (menu && r && r.right > innerWidth - 16) menu.style.left = `${Math.round(innerWidth - 16 - r.right)}px`;
+    box.current?.querySelector<HTMLButtonElement>(".jt-pick .sug")?.focus();
+    return () => { document.removeEventListener("pointerdown", off); document.removeEventListener("keydown", esc); };
   }, [open]);
-  const x = dkey ? <TipX k={dkey} level={level} title={title} /> : null;
-  if (!task) {
-    const pill = <Link href={href} scroll={false} className={`jt ${level}`} title={tip}>{title}</Link>;
-    return x ? <span className="jt-wrap" data-tip="">{pill}{x}</span> : pill;
-  }
-  const payload: Payload = { ...task, title };
   return (
     <span ref={box} className={`jt-wrap ${open ? "open" : ""}`} data-tip="">
-      <Link href={href} scroll={false} className={`jt ${level} jt-drag`} title={`${tip}\n\nAuf einen Agenten ziehen, um es zu beauftragen.`} draggable
-        onDragStart={(e) => startDrag(e, payload)} onDragEnd={endDrag}>
-        <i className="jt-grip" aria-hidden><Icon name="griff" size={14} /></i>{title}
-      </Link>
-      <button type="button" className="jt-give" aria-label={`„${title}“ an einen Agenten geben`} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        <Icon name="an-agent" size={16} />
+      <button ref={btn} type="button" data-drag="" className={`jt ${level} jt-drag`} title={`${tip}\n\nAuf A1–A8 ziehen oder klicken.`}
+        aria-haspopup="menu" aria-expanded={open} {...dragProps(payload)} onClick={() => setOpen((o) => !o)}>
+        <Grip className="jt-grip" />{title}
       </button>
-      {x}
+      {dkey ? <TipX k={dkey} level={level} title={title} /> : null}
       {open && (
-        <span className="jt-pick" role="menu">
-          <em>an</em>
-          {AGENTS.map((n) => (
-            <button key={n} type="button" role="menuitem" disabled={pending} onClick={() => start(async () => { await give(n, payload); })}>A{n}</button>
+        <span className="jt-pick" role="menu" aria-label={`„${title}“ an Agent geben`}>
+          <em>an Agent{pending ? " …" : ""}</em>
+          {agents.map((a) => (
+            <button key={a.n} type="button" role="menuitem" disabled={pending} className={`${a.n === suggest ? "sug" : ""} ${a.free ? "" : "busy"}`}
+              title={`A${a.n}: ${a.state}`} onClick={() => start(async () => { await give(a.n, payload); })}>A{a.n}</button>
           ))}
+          <Link href={href} scroll={false} className="jt-more" role="menuitem">Details <Icon name="weiter" size={14} /></Link>
         </span>
       )}
     </span>
   );
 }
 
-/** Auftrag aus dem Ziehen lesen (eigener Datentyp, sonst der gemerkte Auftrag dieser Seite). */
-function readPayload(e: React.DragEvent): Payload | null {
-  try {
-    const raw = e.dataTransfer.getData(MIME);
-    if (raw) return JSON.parse(raw) as Payload;
-  } catch { /* unten: gemerkter Auftrag */ }
-  return current;
-}
-
-/** Ablagefläche um eine Agenten-Karte: leuchtet beim Ziehen, erteilt beim Loslassen den Auftrag.
- *  dragenter UND dragover werden angenommen: Chrome entscheidet beim Wechsel auf ein anderes Element (Kugel, Ring,
- *  Text der Karte) allein nach dragenter – wer nur dragover annimmt, verliert das Ablegen, sobald die Maus beim
- *  Loslassen auf ein Kind der Karte rutscht (Fehler 04.10.2026, nachgewiesen mit echtem Ziehen in Chromium).
- *  dragleave zählt nur beim Verlassen der ganzen Fläche (kein Flackern zwischen den Kindern). */
+// ------------------------------------------------------------------------------------------- Ablegen
+/** Ablagefläche um eine Agenten-Karte: leuchtet beim Ziehen (html.jv-dragging, [data-over] über der Karte), erteilt beim
+ *  Loslassen den Auftrag und zeigt „wird beauftragt …“ bis der Agent ihn anzeigt. */
 export function AgentDrop({ n, children }: { n: number; children: ReactNode }) {
-  const [over, setOver] = useState(false);
   const [pending, start] = useTransition();
-  const accepts = (e: React.DragEvent) => current !== null || Array.from(e.dataTransfer.types).includes(MIME);
-  const take = (e: React.DragEvent) => {
-    if (!accepts(e)) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "copy";
-    setOver(true);
-  };
+  useEffect(() => {
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<DropDetail>).detail;
+      if (d?.n !== n) return;
+      start(async () => { await give(n, d.payload); });
+    };
+    addEventListener(DROP, on);
+    return () => removeEventListener(DROP, on);
+  }, [n]);
   return (
-    <div className={`ag-drop ${over ? "over" : ""} ${pending ? "busy" : ""}`}
-      onDragEnter={take}
-      onDragOver={take}
-      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(false); }}
-      onDrop={(e) => {
-        if (!accepts(e)) return;
-        e.preventDefault();
-        setOver(false);
-        const t = readPayload(e);
-        endDrag();
-        if (!t) return;
-        start(async () => { await give(n, t); });
-      }}>
+    <div className={`ag-drop ${pending ? "busy" : ""}`} data-agent-drop={n}>
       {children}
-      <span className="ag-hint" aria-hidden>{pending ? "wird beauftragt …" : "hier ablegen"}</span>
+      <span className="ag-hint" aria-live="polite">{pending ? `an A${n} – wird beauftragt …` : `an A${n} geben`}</span>
     </div>
   );
 }
 
-/** Beliebige Kachel ziehbar machen (z. B. Ampel „Engpass“, Karten unter „JARVIS empfiehlt“); der Klick auf den Inhalt
- *  bleibt wie er ist. Die Hülle ist selbst ziehbar (draggable, eigene Box) – nicht nur die Links darin –, sodass die
- *  ganze Karte greift; vom X (Ausblenden) oder anderen Knöpfen aus startet kein Ziehen. */
+// ------------------------------------------------------------------------------------------- Karten
+/** Beliebige Kachel ziehbar machen (Karten unter „JARVIS empfiehlt“, Ampel „Engpass“); Klick auf den Inhalt bleibt wie er
+ *  ist, Knöpfe (X, „an A…“) starten kein Ziehen. */
 export function DragBox({ task, title, children, tip }: { task: TipTask; title: string; children: ReactNode; tip?: boolean }) {
   const payload: Payload = { ...task, title };
-  const fromButton = useRef(false);
   return (
-    <div className="drag-box" draggable data-tip={tip ? "" : undefined} title="Auf einen Agenten ziehen, um es zu beauftragen"
-      onPointerDown={(e) => { fromButton.current = !!(e.target as Element).closest?.("button"); }}
-      onDragStart={(e) => {
-        // dragstart meldet die Hülle bzw. den Link als Ziel, nie den Knopf – daher der Blick auf pointerdown
-        if (fromButton.current) { e.preventDefault(); return; }
-        const r = e.currentTarget.getBoundingClientRect();
-        e.dataTransfer.setDragImage(e.currentTarget, Math.max(0, e.clientX - r.left), Math.max(0, e.clientY - r.top));
-        startDrag(e, payload);
-      }}
-      onDragEnd={endDrag}>
+    <div className="drag-box" data-tip={tip ? "" : undefined} title="Auf A1–A8 ziehen, um es zu beauftragen" {...dragProps(payload)}>
       {children}
     </div>
   );

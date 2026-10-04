@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { CHAT_BY, TaskError, agentBoard, chatTask, chatThread, formDefaults, freeAgent, inferTask, agentStartLabel, nextAgentRun, nextAgentRound, validateTask, AGENT_COUNT, type AgentTask } from "./agents.ts";
+import { CHAT_BY, TaskError, agentBoard, chatTask, chatThread, formDefaults, freeAgent, inferTask, mailMarkets, marketsIn, agentStartLabel, nextAgentRun, nextAgentRound, validateTask, AGENT_COUNT, type AgentTask } from "./agents.ts";
 
 test("Auftrag prüfen", () => {
   assert.deepEqual(validateTask({ agent: "1", kind: "leads", market: "uk", brief: "  mehr  Leads " }), { agent: 1, kind: "leads", market: "UK", brief: "mehr Leads" });
@@ -95,7 +95,12 @@ test("Formular schlau vorbelegen", () => {
 
 test("Chat: freier Agent, Auftrag, Verlauf", () => {
   assert.equal(freeAgent([]), 1);
-  assert.equal(freeAgent([mk({ agent: 1, status: "laeuft" }), mk({ agent: 2, status: "offen" }), mk({ agent: 3, status: "fertig" })]), 3);
+  // zuerst ein Agent ganz ohne Auftrag („frei“), erst dann ein fertiger (Inhaber 04.10.2026: „an A2“ obwohl A6–A8 frei)
+  assert.equal(freeAgent([mk({ agent: 1, status: "laeuft" }), mk({ agent: 2, status: "offen" }), mk({ agent: 3, status: "fertig" })]), 4);
+  assert.equal(freeAgent([mk({ agent: 1, status: "laeuft" }), mk({ agent: 2, status: "fertig" }), ...[3, 4, 5].map((a) => mk({ agent: a, status: "laeuft" }))]), 6);
+  const used = [1, 2, 3, 4, 5, 6, 7, 8].map((a) => mk({ id: String(a), agent: a, status: a === 5 ? "fertig" : "laeuft" }));
+  assert.equal(freeAgent(used), 5); // alle hatten schon Aufträge: erster ohne laufenden/offenen
+  assert.equal(freeAgent([mk({ agent: 1, status: "abgebrochen" })]), 1); // zurückgezogen zählt als frei
   assert.equal(freeAgent([1, 2, 3, 4].map((a) => mk({ agent: a }))), 5); // A5–A8 frei
   assert.equal(freeAgent([1, 2, 3, 4, 5, 6, 7, 8].map((a) => mk({ agent: a }))), 1); // alle belegt -> A1
   assert.deepEqual(chatTask("  Warum  keine Antworten in UK? ", []), { agent: 1, kind: "frage", market: "UK", brief: "Warum keine Antworten in UK?" });
@@ -172,4 +177,14 @@ test("Gehirn-Auftrag: frei, Fokus-Märkte, Grund, nie Verbotenes, höchstens 3 j
   assert.equal(sats[2].brain, true);
   assert.equal(sats[2].grund, "Umsatz-Hebel");
   assert.equal(sats[3].brain, false);
+});
+
+test("marketsIn/mailMarkets: alle genannten Länder, IE/NL/BE nie", () => {
+  assert.equal(marketsIn("Ohne Website FI·SG·HK·MX·BR (Overture)"), "FI,SG,HK,MX,BR");
+  assert.equal(marketsIn("Käufer in Frankreich und UK"), "UK,FR");
+  assert.equal(marketsIn("Leads reichen weit, Käufer sind der Hebel"), null);
+  assert.equal(marketsIn("Irland, NL und Belgien"), null);
+  assert.equal(mailMarkets("US,IE,FR"), "US,FR");
+  assert.equal(mailMarkets("BE"), null);
+  assert.equal(mailMarkets(null), null);
 });

@@ -6,12 +6,12 @@
  */
 import type { ReactNode } from "react";
 import type { Edge, Station, StationId, TickerItem } from "@/lib/fluss";
-import type { Rec, Tip } from "@/lib/leitstand";
+import { tipTask, type Rec, type Tip } from "@/lib/leitstand";
 import type { AgentTask } from "@/lib/agents";
 import { Ampeln, FlowMap, Ticker, type Kpi } from "./flow";
 import { AgentRow } from "./agents";
 import { LivePoll } from "../live-poll";
-import { Empfiehlt, JarvisChat } from "./empfiehlt";
+import { Empfiehlt, JarvisChat, agentPicks } from "./empfiehlt";
 import type { StartChat } from "./chat/start";
 import { GatePanel, type GateView } from "./freigabe";
 import { DragTip } from "./dnd";
@@ -55,7 +55,7 @@ export function JarvisView(p: JarvisProps) {
       <Empfiehlt recs={p.recs} href={p.tipHref} agent={p.agent}>
         {p.rest.length > 0 && (
           <div className="jtips2">
-            {p.rest.slice(0, 4).map((x, i, all) => <DragTip key={tipReactKeys(all)[i]} task={x.task} title={x.title} href={p.tipHref(x)} level={x.level} tip={x.text} dkey={tipKey(x)} />)}
+            {p.rest.slice(0, 4).map((x, i, all) => <DragTip key={tipReactKeys(all)[i]} task={tipTask(x)} title={x.title} href={p.tipHref(x)} level={x.level} tip={x.text} dkey={tipKey(x)} agents={agentPicks(p.tasks)} suggest={p.agent} />)}
           </div>
         )}
       </Empfiehlt>

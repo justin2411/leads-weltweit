@@ -89,15 +89,18 @@ export function checkBrainTask(f: { agent?: unknown; kind?: unknown; market?: un
 
 export class TaskError extends Error {}
 
-/** Länder in der Auftrags-Auswahl (IE/NL/BE ohne Kaltmail-Erlaubnis ausgeblendet, Inhaber 04.10.2026). */
-export const FORM_MARKETS = MARKETS.filter((m) => !["IE", "NL", "BE"].includes(m));
+/** Länder ohne Kaltmail-Erlaubnis (Inhaber 04.10.2026): nie in der Auftrags-Auswahl, nie aus Hinweisen übernommen. */
+export const NO_MAIL_MARKETS: readonly string[] = ["IE", "NL", "BE"];
+/** Länder in der Auftrags-Auswahl (IE/NL/BE ausgeblendet). */
+export const FORM_MARKETS = MARKETS.filter((m) => !NO_MAIL_MARKETS.includes(m));
 
 /**
  * Märkte eines Auftrags: einer oder mehrere (Inhaber 04.10.2026: „ich will hier auch mehrere anklicken können … also
  * mehrere länder“). Eingabe Liste oder „US,UK“; leer/„alle“ = alle Märkte (null). Gespeichert als „US,UK“ in Listen-Reihenfolge.
  */
 export function parseMarkets(v: unknown): string | null {
-  const raw = (Array.isArray(v) ? v : String(v ?? "").split(",")).map((x) => String(x).trim().toUpperCase()).filter(Boolean);
+  // Listen-Einträge dürfen selbst „US,UK“ sein (FormData mit einem Feld je Auftrag, Fehler 04.10.2026: „Markt unbekannt“)
+  const raw = (Array.isArray(v) ? v : [v]).flatMap((x) => String(x ?? "").split(",")).map((x) => x.trim().toUpperCase()).filter(Boolean);
   if (!raw.length || raw.includes("ALLE")) return null;
   for (const m of raw) if (!(MARKETS as readonly string[]).includes(m)) throw new TaskError("Markt unbekannt");
   const set = new Set(raw);
@@ -235,10 +238,30 @@ export function agentStartLabel(now: Date): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-/** Erster Agent ohne laufenden oder offenen Auftrag, sonst Agent 1. */
+/** Agent ist frei: kein laufender oder offener Auftrag. */
+export const isIdle = (a: ReturnType<typeof agentBoard>[number]) => !a.current || (a.current.status !== "offen" && a.current.status !== "laeuft");
+
+/**
+ * Erster FREIER Agent laut Agenten-Leiste (agentBoard; Inhaber 04.10.2026: „an A2“ obwohl A2 fertig und A6–A8 frei):
+ * zuerst ohne Auftrag („frei“), dann ohne laufenden/offenen Auftrag (fertig, Fehler), sonst Agent 1.
+ */
 export function freeAgent(tasks: AgentTask[]): number {
-  for (let n = 1; n <= AGENT_COUNT; n++) if (!tasks.some((t) => t.agent === n && (t.status === "offen" || t.status === "laeuft"))) return n;
-  return 1;
+  const board = agentBoard(tasks);
+  return (board.find((a) => !a.current) ?? board.find(isIdle) ?? board[0]).n;
+}
+
+/** Alle genannten Märkte (Kürzel oder Ländernamen, z. B. „Ohne Website FI·SG·HK“) in Listen-Reihenfolge, ohne IE/NL/BE;
+ *  keiner erkannt = null (alle). */
+export function marketsIn(text: string): string | null {
+  const t = String(text ?? "");
+  const hit = MARKET_RX.filter(({ m, code, words }) => !NO_MAIL_MARKETS.includes(m) && (code.test(t) || words.test(t))).map((x) => x.m);
+  return hit.length ? parseMarkets(hit) : null;
+}
+
+/** Markt eines fertigen Auftrags ohne IE/NL/BE und Unbekanntes; nichts übrig = null (alle). */
+export function mailMarkets(m: string | null | undefined): string | null {
+  const list = marketList(m).map((x) => x.trim().toUpperCase()).filter((x) => (MARKETS as readonly string[]).includes(x) && !NO_MAIL_MARKETS.includes(x));
+  return list.length ? parseMarkets(list) : null;
 }
 
 /** Chat-Nachricht → fertiger Auftrag (für validateTask): Art/Markt erkannt, sonst „Frage“ (nur auswerten, nichts ändern). */
