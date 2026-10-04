@@ -33,6 +33,7 @@ import time
 from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from urllib.parse import urlparse
 
 import requests
 
@@ -79,18 +80,37 @@ def mx_ok(domain: str) -> bool | None:
 class Fetcher:
     """polite_get (robots.txt, gesperrte Plattformen) + 1 Anfrage/Sekunde je Domain + Zwischenspeicher im Lauf."""
 
-    def __init__(self):
+    def __init__(self, per_ip: float = 0.0):
         self.session = requests.Session()
         self.cache: dict[str, tuple[str, str] | None] = {}
         self.last: dict[str, float] = {}
         self.lock = threading.Lock()
         self.requests = 0
+        # Zusätzlich Abstand je Server-IP (0 = aus). Geparkte Domains liegen zu Hunderten auf wenigen IPs eines
+        # Parkdienstes (z. B. Above.com 103.224.182.x); viele parallele Abrufe dorthin laufen in Zeitüberschreitungen.
+        self.per_ip = float(per_ip or 0.0)
+        self.ips: dict[str, str] = {}
+
+    def _ip(self, url: str) -> str:
+        host = (urlparse(url).hostname or "").lower()
+        if not host:
+            return ""
+        if host not in self.ips:
+            try:
+                self.ips[host] = socket.getaddrinfo(host, None)[0][4][0]
+            except (OSError, UnicodeError, IndexError):
+                self.ips[host] = ""
+        return self.ips[host]
 
     def _throttle(self, url: str) -> None:
         dom = W.site_domain(url)
+        ip = self._ip(url) if self.per_ip > 0 else ""
         with self.lock:
             now = time.monotonic()
             at = max(now, self.last.get(dom, 0.0) + 1.0)
+            if ip:
+                at = max(at, self.last.get("ip:" + ip, 0.0) + self.per_ip)
+                self.last["ip:" + ip] = at
             self.last[dom] = at
         if at > time.monotonic():
             time.sleep(at - time.monotonic())
