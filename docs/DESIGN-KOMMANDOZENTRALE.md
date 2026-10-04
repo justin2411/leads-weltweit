@@ -26,7 +26,7 @@ Stand 04.10.2026. Ergänzt `docs/DESIGN.md` (Farben, Schriftskala) für `/dashbo
 ## Handy-Übersicht (umgesetzt 04.10.2026, Inhaber: „übersichtlicher“)
 
 - Untere Leiste: 5 feste Ziele nach Nutzung (JARVIS, Antworten mit Zähler, Versand, Kunden, Website) + „Mehr“-Blatt mit den übrigen Bereichen (`BottomNav` in `nav.tsx`, X = `x-btn`, 44 px). Desktop-Reiter unverändert.
-- JARVIS ≤ 760 px: Kohorten, Entscheidungen und Chat eingeklappt (`MobileFold` in `mobile-fold.tsx`, Kennzahl im Kopf, Zustand im Browser). Desktop unverändert offen.
+- JARVIS (seit 04.10.2026 abends): nur Puls, Braucht dich, Firma-Kacheln, Werke & Agenten; Details in den Bereichs-Offices `/dashboard/firma/<bereich>` und unter `?teil=mehr` (docs/JARVIS.md). Chat als schwebender Knopf über der unteren Leiste.
 - Kontakte ≤ 760 px: Stufen als Reiter (`MobileTabs` in `mobile-tabs.tsx`) statt sechs gestapelter Kästen.
 - Leer-Zustand: `Leer` in `v2.tsx` (Symbol + 1 Satz), auf allen Seiten mit leeren Listen.
 - CSS der Handy-Bausteine in `mobile-css.ts` (Konstanten aus „use client“-Dateien sind auf dem Server nur Verweise).

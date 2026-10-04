@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadBoxHealth, loadBounceStats, loadDaily, loadFunnel, loadKpiDaily, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock, loadWebsite, loadFunnelCache, loadKohorten } from "@/lib/dashboard-data";
+import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadBoxHealth, loadBounceStats, loadDaily, loadFunnel, loadKpiDaily, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock, loadWebsite, loadFunnelCache } from "@/lib/dashboard-data";
 import { webLine, webNeck } from "@/lib/website-stats";
 import { startLive } from "@/lib/website-funnel";
 import { werkLine, werkTip } from "@/lib/werk-zeile";
@@ -29,21 +29,20 @@ import { Pult } from "./pult";
 import { AgentDrawer, AgentRow } from "./agents";
 import { countCustomerAgents } from "@/lib/customer-agents-data";
 import { loadStartChat } from "./chat/start";
-import { loadProposals } from "@/lib/vorschlaege-data";
 import { AutopilotPanel } from "./autopilot";
 import { GateRings, GateSteps, Reasons, type GateView } from "./freigabe";
 import { JarvisView } from "./view";
-import { loadAbteilungen } from "@/lib/abteilungen-data";
-import { ABTEILUNGEN, antwortenKz, gehirnKz, kachel, marketingKz, produktionKz, teamKz, type AbteilungKey, type Kz } from "@/lib/abteilungen";
-import { speicher as speicherLage } from "@/lib/zentrale/betrieb";
+import type { FirmaKachel } from "./kopf";
+import { stroeme } from "@/lib/puls";
+import { bilder } from "@/lib/firma";
+import { loadFirma } from "@/lib/firma-data";
+import { bereichPrefix, kachelWert } from "@/lib/office";
+import { sicher } from "@/lib/abteilungen";
 import { loadBrauchtDich } from "@/lib/braucht-dich-data";
-import { loadTeam } from "@/lib/fach-agenten-data";
-import { karten } from "@/lib/fach-agenten";
 import { loadUeberblick } from "@/lib/ueberblick-data";
-import { bar, dayShare, heuteWichtig, judgeFlow, leadZiel, stillTip, switchedOff, zeitleiste } from "@/lib/ueberblick";
+import { bar, dayShare, heuteWichtig, judgeFlow, leadZiel, stillTip, switchedOff } from "@/lib/ueberblick";
 import { Icon, type IconName } from "@/app/icons";
 import type { FunnelRow } from "@/lib/dashboard-logic";
-import { anpassungen, gehirnScore, type MetaRow, type SelbstoptRow } from "@/lib/gehirn-lernt";
 import { KLASSEN, KLASSE_COLOR, KLASSE_LABEL, KLASSE_TIP, badSources } from "@/lib/bounce-stats";
 
 export const metadata = { title: "JARVIS" };
@@ -77,9 +76,11 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const tab = (sp.t === "set" || sp.t === "check" ? sp.t : "info") as "info" | "set" | "check";
   // Agenten: ?a=1…8 oder ?a=neu öffnet das Agenten-Fenster (statt einer Station)
   const ag = typeof sp.a === "string" && /^([1-9]|neu)$/.test(sp.a) ? sp.a : null;
+  // ?teil=mehr: Details (Empfehlungen, Kennzahlen, Ticker); mit Station oder Agent immer die Startseite
+  const teil: "start" | "mehr" = sp.teil === "mehr" && !s && !ag ? "mehr" : "start";
+  const firmaP = sicher(loadFirma(), 8000);
   const kaP = countCustomerAgents();
   const chatP = loadStartChat();
-  const propP = loadProposals();
   const bdP = loadBrauchtDich();
   // Station „Startseite“ aus dem Website-Trichter (web_funnel_refresh); fehlt die Messung, bleibt sie bei 0
   const webP = Promise.all([loadWebsite(), loadFunnelCache(5 * 60_000)]).then(([w, f]) => ({ ...w, ...startLive(f) }));
@@ -89,25 +90,11 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const from7 = new Date(Date.parse(`${today}T12:00:00Z`) - 6 * 86_400_000).toISOString().slice(0, 10);
   // Überblick (Heute wichtig, Ziel-vs-Ist, Entscheidungen, Datenfluss-Alarm): parallel, jede Quelle einzeln fehlertolerant
   const ubP = loadUeberblick(SEGMENT, COUNTRIES, today);
-  // Kohorten-Trichter je Versandwoche × Land (cohort_funnel, ~0,5 s; Fehler → null = „nicht lesbar“)
-  const khP = loadKohorten(8);
-  // Team: Fach-Agenten mit Kennzahl, Trend, letztem Auftrag (agent_roles, agent_role_kpi; Fehler → Abschnitt aus)
-  const teamP = loadTeam().catch(() => null);
-  // Abteilungen (Finanzen, Vertrieb, Ziele, Recht, Betrieb, Protokoll): je Quelle Zeitlimit, Ausfall → Kachel „–“
-  const abtP = loadAbteilungen();
   // Sparklines und Trend (7 T vs. Vor-7 T): 15 Tage bis heute, kpi_daily parallel (Fehler → leer)
   const from15 = addDays(today, -14);
   const kpiP = loadKpiDaily(from15, today);
   // Prognose 30 Tage (lib/prognose.ts): Trichter-Hochrechnung je Land, ohne Antworten „keine Basis“; Fehler → null
   const progP = loadPrognose(new Date()).catch(() => null);
-  // Optimiert sich selbst: automatische Änderungen (selbstopt_changes mit Wirkung + Meta-Review „Meta: …“), offene
-  // Verbesserungsvorschläge; Fehler → null (fehlt nur selbstopt_changes, bleiben die Meta-Änderungen)
-  const soP = db().from("selbstopt_changes").select("created_at, kurz_titel, kurz_grund, status").order("created_at", { ascending: false }).limit(10)
-    .then((r) => (r.error ? [] : (r.data ?? []) as SelbstoptRow[]), () => [] as SelbstoptRow[]);
-  const metaP = db().from("decisions").select("created_at, kurz_titel, kurz_grund, subject").like("subject", "Meta: %").order("created_at", { ascending: false }).limit(10)
-    .then(async (r) => (r.error ? null : anpassungen(await soP, (r.data ?? []) as MetaRow[])), () => null);
-  const impP = db().from("brain_improvements").select("id", { count: "exact", head: true }).eq("status", "offen")
-    .then((r) => (r.error ? null : r.count ?? 0), () => null);
   const [liveAll, own, act, rows, stockAll, daily, sent, checks, agentTasks, starts, planLog, openReplies, health, funnel, bounceSt] = await Promise.all([
     loadLive(), loadOwnerSettings(), loadActivity(), loadRunRows(24),
     // Bestand: höchstens 5 s warten (Abfrage ~3,5 s, 10 min zwischengespeichert); sonst „…“ statt falscher Nullen
@@ -291,7 +278,6 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const mailBars = countries.map((c) => bar(c, sentBy(c), limSum ? Math.min(lim[c], Math.round((cap * lim[c]) / limSum)) : 0, share));
   // Grüne Leads: Ist = kpi_daily leads_neu heute (Stand der letzten Messung), Ziel = Ø der Vortage
   const leadBars = ub.leads ? countries.map((c) => bar(c, ub.leads!.find((r) => r.country === c && r.day === today)?.value ?? 0, leadZiel(ub.leads!, c, today), share)) : null;
-  const zeit = ub.decisions ? zeitleiste(ub.decisions, 20) : null;
   const gateView: GateView = {
     pct: gatePct, ok: gateOk, bad: gateBad, href: base("gate"), reasonsHref: `${base("gate")}&t=check&f=rot`,
     countries: countries.map((c) => { const r = sp7.find((x) => x.country === c); return { c, pct: r && r.candidates ? Math.round((r.green / r.candidates) * 1000) / 10 : null }; }),
@@ -472,32 +458,25 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     drawer = <Drawer title={stn.label} icon={stn.icon} tab={tab} base={base(s)} close="/dashboard/jarvis" tabs={tabsOn} state={stn.state}>{body}</Drawer>;
   }
 
-  const teamCards = await teamP.then(async (d) => (d ? karten({ ...d, kohorten: await khP, today, now }) : null), () => null);
-  const gScore = gehirnScore(await kpiP, today);
-  // Abteilungs-Kacheln: Zentrale-Kennzahlen + Werte dieser Seite; jede Kachel einzeln abgesichert („–“ statt Absturz)
-  const abt = await abtP;
-  const lastPlan = [planLog["lead-werk"], planLog["kunden-werk"]].filter((x) => !!x).sort((a, b) => b!.at.localeCompare(a!.at))[0] ?? null;
-  const stOf = (id: StationId) => stations.find((x) => x.id === id)?.state ?? "idle";
-  const probier = (f: () => Kz): Kz => { try { return f(); } catch { return null; } };
-  const kzs: Record<AbteilungKey, Kz> = {
-    ...abt,
-    team: probier(() => teamKz(teamCards)),
-    gehirn: probier(() => gehirnKz(gScore)),
-    produktion: probier(() => produktionKz({ leads24: stockAll ? leads24 : null, kaeufer24: stockAll ? newBuyers24 : null, werke: [stOf("lead"), stOf("kwerk")],
-      speicher: speicherLage(lastPlan?.db_bytes ?? (liveAll.db_size || null), lastPlan?.bremse ?? null).ampel })),
-    marketing: probier(() => marketingKz(web, wNeck)),
-    antworten: probier(() => antwortenKz(openReplies, { replies: w.replies, positive: w.positive })),
-  };
-  const abteilungen = ABTEILUNGEN.map((x) => kachel(x.key, kzs[x.key]));
+  // Status-Kopf: fünf Kernströme (lib/puls.ts) – gleiche Zahlen wie die Stationen der Fluss-Karte
+  const stOf = (id: StationId) => stations.find((x) => x.id === id)?.state ?? null;
+  const puls = stroeme({
+    leads24: stockAll ? leads24 : null, leadState: stOf("lead"), kaeufer24: stockAll ? newBuyers24 : null, kaeuferState: stOf("kwerk"),
+    sentToday, cap, versandState: stOf("versand"), versandAus: sendOff,
+    replies7: w.replies, offen: openReplies, antwortState: stOf("antworten"), umsatz: revenue, kunden: subs.length,
+  });
+  // Firma: 8 Bereiche mit Ampel und einer Zahl (departments, firma_lage); Ausfall → Kacheln „–“
+  const firma = await firmaP;
+  const firmaKacheln: FirmaKachel[] | null = firma ? bilder(firma.bereiche, firma.lage, firma.ziele, firma.uebergaben).map((b) => ({
+    slug: b.slug, name: b.name, icon: b.icon, wert: kachelWert(b), ampel: b.ziel.ampel, titel: b.ziel_titel,
+    aktiv: agentTasks.filter((t) => t.status === "laeuft" && (t.rolle ? b.mitglieder.some((m) => m.art === "rolle" && m.ref === t.rolle) || b.leitung_rolle === t.rolle : t.brief.startsWith(bereichPrefix(b.name)))).length,
+  })) : null;
 
   return (
-    <JarvisView hello={hello} say={say} kpis={kpis} recs={recs} rest={rest} tipHref={tipHref} agent={freeAgent(agentTasks)}
+    <JarvisView teil={teil} puls={puls} firma={firmaKacheln} hello={hello} say={say} kpis={kpis} recs={recs} rest={rest} tipHref={tipHref} agent={freeAgent(agentTasks)}
       tasks={agentTasks} startAt={startAt} activeAgent={ag} stations={stations} edges={edges} activeStation={s} stationHref={href}
-      drawer={drawer} gate={gateView}
-      heute={heute} ziel={{ mails: mailBars, leads: leadBars }} zeit={zeit} ticker={ticker(items)} customerAgents={await kaP} chat={await chatP} proposals={await propP} brauchtDich={await bdP}
-      kohorten={{ rows: await khP, countries, today }}
-      team={teamCards} abteilungen={abteilungen}
-      gehirn={{ score: gScore, anpassungen: await metaP, offen: await impP }} />
+      drawer={drawer}
+      heute={heute} ziel={{ mails: mailBars, leads: leadBars }} ticker={ticker(items)} customerAgents={await kaP} chat={await chatP} brauchtDich={await bdP} />
   );
 }
 

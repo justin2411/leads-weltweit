@@ -522,3 +522,29 @@ export async function assignRole(f: FormData) {
     await log("agent:rolle", slug, null, { agent });
   });
 }
+
+/**
+ * „Auftrag geben“ im Bereichs-Office (Inhaber 04.10.2026): Auftrag an den ersten freien Agenten A1–A8, Text mit Präfix
+ * „Bereich <Name>:“ (lib/office.ts bereichPrefix), Leitung als Fach-Agent, wenn der Bereich eine hat. Ohne Text: Ziel
+ * des Bereichs verbessern. Wie createAgentTask, ausgeführt von der stündlichen Agenten-Routine (docs/AGENTEN.md).
+ */
+export async function assignBereich(f: FormData) {
+  const { agentStartLabel, freeAgent } = await import("@/lib/agents");
+  await run(f, () => `Auftrag erteilt – Agent startet um ${agentStartLabel(new Date())}`, async () => {
+    const slug = String(f.get("bereich") ?? "");
+    if (!/^[a-z][a-z_]{1,30}$/.test(slug)) throw new InputError("Bereich unbekannt");
+    const { data: b } = await db().from("departments").select("slug, name, leitung_rolle, ziel_titel, aktiv").eq("slug", slug).maybeSingle();
+    if (!b || b.aktiv === false) throw new InputError("Bereich unbekannt");
+    const { bereichPrefix } = await import("@/lib/office");
+    const text = String(f.get("text") ?? "").trim().replace(/\s+/g, " ");
+    if (text.length > 900) throw new InputError("Auftrag: höchstens 900 Zeichen");
+    const brief = `${bereichPrefix(String(b.name))} ${text.length >= 3 ? text : `Ziel „${String(b.ziel_titel ?? "")}“ prüfen und kostenlos verbessern`}`;
+    const { loadAgentTasks } = await import("@/lib/dashboard-data");
+    const agent = freeAgent(await loadAgentTasks());
+    const row = { agent, kind: "frage", market: null, brief, created_by: BY, grund: `Inhaber: Bereich ${String(b.name)}`.slice(0, 160),
+      ...(b.leitung_rolle ? { rolle: String(b.leitung_rolle) } : {}) };
+    const { error } = await db().from("agent_tasks").insert(row);
+    if (error) throw new Error(error.message);
+    await log("agent:bereich", slug, null, { agent });
+  });
+}
