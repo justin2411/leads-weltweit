@@ -23,7 +23,7 @@ const check = (p: Record<string, number>) => {
 };
 
 test("Karten: zehn Werke, Direktstart nur Lead-/Kunden-Werk und Proben-Vorrat, Zeitpläne aus den Workflows", () => {
-  assert.deepEqual(CARDS.map((c) => c.key), ["lead-werk", "kunden-werk", "proben-vorrat", "antworten", "nachfass", "versand", "kundenlieferung", "tagescheck", "agenten", "dauerpruefung", "pruefer-werk"]);
+  assert.deepEqual(CARDS.map((c) => c.key), ["lead-werk", "kunden-werk", "proben-vorrat", "antworten", "nachfass", "versand", "kundenlieferung", "tagescheck", "agenten", "dauerpruefung", "pruefer-werk", "kontakt-werk"]);
   assert.deepEqual(CARDS.filter((c) => c.start).map((c) => c.start), ["lead-werk", "kunden-werk", "proben-vorrat"]);
   for (const c of CARDS) {
     const yml = readFileSync(new URL(`../../.github/workflows/${c.file}`, import.meta.url), "utf8");

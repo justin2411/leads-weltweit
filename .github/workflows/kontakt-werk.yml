@@ -1,0 +1,108 @@
+# Kontakt-Werk (Inhaber 05.10.2026, Plan docs/GEHIRN-AUFBAU.md: „Register + Firmenwebsite zusammenführen und
+# gegenprüfen“). Rund um die Uhr: Teile nach Plätzen der Linie „kontakt“ (app/lib/werk-linien.json, Leitstand
+# owner_settings.slot_plan, Autopilot nach Ertrag, scripts/werk_plan.py). Jeder Teil gleicht in seinem ID-Ausschnitt
+# der lieferbaren S2-Leads US/UK/FR die Ansprechperson aus dem Register (Companies House, Registre national,
+# NY DOS) mit Telefon/E-Mail der eigenen Firmenwebsite ab (scripts/kontaktwerk.py, lib/kontakt.py): Premium zuerst.
+# Nur erlaubte Quellen, robots.txt, je Website höchstens ein Abruf in 20 h, keine erratenen Adressen. Ergebnis am
+# Lead (leads.kontakt). Sendet nichts, ändert keine Sperrliste, lockert keine Freigabe, lädt keine Lead-Daten hoch.
+# Pause im Dashboard (werke_paused „kontakt-werk“): Plan-Job beendet sich sauber, kein Neustart.
+name: kontakt-werk
+on:
+  schedule:
+    - cron: "23 * * * *"   # Rückfall; normalerweise startet sich das Werk nach jedem Lauf selbst neu (Job „weiter“)
+  workflow_dispatch:
+concurrency: { group: kontakt-werk, cancel-in-progress: false }
+permissions:
+  contents: read
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.p.outputs.matrix }}
+      teile: ${{ steps.p.outputs.teile }}
+      an: ${{ steps.gate.outputs.an }}
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install requests pyyaml
+      - name: Pause-Schalter (Dashboard)
+        id: gate
+        run: |
+          python - <<'EOF'
+          import os, sys
+          sys.path.insert(0, "scripts")
+          from lib.db import DB
+          from lib.owner_settings import stop_if_paused
+          an = "true"
+          try:
+              if stop_if_paused(DB(timeout=15), "kontakt-werk"):
+                  an = "false"
+          except BaseException as e:  # Lesefehler = nicht pausiert
+              print(f"Schalter nicht lesbar ({type(e).__name__})")
+          open(os.environ["GITHUB_OUTPUT"], "a").write(f"an={an}\n")
+          EOF
+      - id: p
+        if: steps.gate.outputs.an == 'true'
+        run: python scripts/werk_plan.py kontakt-werk
+
+  gegenpruefen:
+    needs: plan
+    if: needs.plan.outputs.an == 'true' && needs.plan.outputs.teile != '0' && needs.plan.outputs.teile != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    name: ${{ matrix.name }}
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      COMPANIES_HOUSE_API_KEY: ${{ secrets.COMPANIES_HOUSE_API_KEY }}
+      RUN_PART: ${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - name: Kontakte gegenprüfen (Teil ${{ matrix.shard }}/${{ matrix.of }})
+        run: python scripts/kontaktwerk.py run --shard ${{ matrix.shard }}/${{ matrix.of }} --deadline-min 80 --batch 60 | tail -n 40
+
+  weiter:
+    needs: [plan, gegenpruefen]
+    if: always() && needs.plan.outputs.an == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: read
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install requests pyyaml
+      - name: Kennzahlen (gegengeprüft, bestätigt, Personen neu – 24 h)
+        run: python scripts/kontaktwerk.py kpi | tee -a "$GITHUB_STEP_SUMMARY" || true
+      - name: Nächsten Lauf starten
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          retry() { for i in 1 2 3; do "$@" && return 0; [ "$i" -lt 3 ] && sleep 20; done; return 1; }
+          start=$(retry gh run view ${{ github.run_id }} --json createdAt -q .createdAt || true)
+          if [ -n "$start" ]; then
+            mins=$(( ( $(date -u +%s) - $(date -u -d "$start" +%s) ) / 60 ))
+          else
+            mins=0
+          fi
+          # kurze Läufe (nichts zu tun, Fehler) nicht sofort wiederholen – Cron und Wachhund übernehmen
+          if [ "$mins" -lt 10 ]; then echo "Lauf nur $mins Minuten – kein Sofort-Neustart"; exit 0; fi
+          retry gh workflow run kontakt-werk.yml --ref "${{ github.ref_name }}"
+          echo "Nächster Lauf gestartet (dieser lief $mins Minuten)" | tee -a "$GITHUB_STEP_SUMMARY"

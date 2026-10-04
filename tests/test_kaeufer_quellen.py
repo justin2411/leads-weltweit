@@ -300,7 +300,10 @@ class PoolTests(unittest.TestCase):
     def test_workflow_pool_key_bumped(self):
         wf = (Path(__file__).resolve().parents[1] / ".github" / "workflows" / "kunden-werk.yml").read_text()
         self.assertNotIn("kunden-pool-v9-", wf)
-        self.assertEqual(wf.count("kunden-pool-v10-"), 2)
+        self.assertEqual(wf.count("kunden-pool-v10-"), 4)  # Schlüssel, Rückfall, Sichern, Neubau-Vergleich (05.10.2026)
+        bau = (Path(__file__).resolve().parents[1] / ".github" / "workflows" / "kunden-pool.yml").read_text()
+        import re
+        self.assertEqual(set(re.findall(r"kunden-pool-v\d+-", wf + bau)), {"kunden-pool-v10-"})  # Neubau gleiche Version
 
 
 if __name__ == "__main__":

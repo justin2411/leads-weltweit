@@ -18,9 +18,13 @@ jobs:
   pool:
     runs-on: ubuntu-latest
     timeout-minutes: 150  # France-Num-Seiten: bis 50 min (1 Abruf/s)
+    permissions:
+      actions: write   # Neubau der Käufer-Liste im Hintergrund anstoßen (kunden-pool.yml)
+      contents: read
     outputs:
       an: ${{ steps.gate.outputs.an }}
       monat: ${{ steps.m.outputs.monat }}
+      pool_key: ${{ steps.key.outputs.pool_key }}
     steps:
       - uses: actions/checkout@v4
       - name: Schalter Kunden-Suche (config/pipeline.yaml)
@@ -33,22 +37,45 @@ jobs:
           fi
       - id: m
         run: echo "monat=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+      # Belegung lückenlos (05.10.2026): die Teile warteten bis 60 min mit 1 Job auf den Neubau der Käufer-Liste.
+      # Jetzt: gibt es keine Liste dieses Monats, nimmt der Lauf sofort die neueste vorhandene (gleiche Version) und
+      # baut die neue im Hintergrund (kunden-pool.yml); nur ganz ohne Liste baut er sie hier selbst.
       - id: cache
         if: steps.gate.outputs.an == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: out/cache/kunden_pool.parquet
           key: kunden-pool-v10-${{ steps.m.outputs.monat }}  # v10: France Num wieder an, Abruf über tabular-api.data.gouv.fr (04.10.2026); v9: Activateurs France Num (04.10.2026); v8: offene Register MX DENUE + FI YTJ (04.10.2026); v7: Namens-Pool auch US/IE (04.10.2026); v6: neue Länder FI/SG/HK/MX/BR (04.10.2026); v5: Namens-Pool Webagenturen UK/FR (04.10.2026); v4: weitere Käufer-Kategorien
+          restore-keys: kunden-pool-v10-
       - uses: actions/setup-python@v5
-        if: steps.gate.outputs.an == 'true' && steps.cache.outputs.cache-hit != 'true'
+        if: steps.gate.outputs.an == 'true' && steps.cache.outputs.cache-matched-key == ''
         with: { python-version: "3.11" }
-      - name: Käufer-Liste aus Overture (einmal im Monat)
-        if: steps.gate.outputs.an == 'true' && steps.cache.outputs.cache-hit != 'true'
+      - name: Käufer-Liste aus Overture (nur wenn gar keine vorhanden ist)
+        if: steps.gate.outputs.an == 'true' && steps.cache.outputs.cache-matched-key == ''
         run: pip install -r requirements.txt && python scripts/kundenwerk.py pool
+      - name: Käufer-Liste sichern
+        if: steps.gate.outputs.an == 'true' && steps.cache.outputs.cache-matched-key == ''
+        uses: actions/cache/save@v4
+        with:
+          path: out/cache/kunden_pool.parquet
+          key: kunden-pool-v10-${{ steps.m.outputs.monat }}
+      - name: Käufer-Liste für die Teile
+        id: key
+        if: steps.gate.outputs.an == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MATCHED: ${{ steps.cache.outputs.cache-matched-key }}
+          EXACT: kunden-pool-v10-${{ steps.m.outputs.monat }}
+        run: |
+          echo "pool_key=${MATCHED:-$EXACT}" >> "$GITHUB_OUTPUT"
+          if [ -n "$MATCHED" ] && [ "$MATCHED" != "$EXACT" ]; then
+            echo "Käufer-Liste $MATCHED genutzt, $EXACT wird im Hintergrund gebaut" | tee -a "$GITHUB_STEP_SUMMARY"
+            gh workflow run kunden-pool.yml --ref "${{ github.ref_name }}" || echo "::warning::Neubau nicht anstoßbar"
+          fi
       # Bekannte Käufer-Domains einmal je Lauf aktualisieren (nur neue seit dem letzten Lauf) und allen Teilen geben:
       # alle ~190.000 in jedem Teil zu laden brach unter Last ab (02.10.2026)
       - uses: actions/setup-python@v5
-        if: steps.gate.outputs.an == 'true' && steps.cache.outputs.cache-hit == 'true'
+        if: steps.gate.outputs.an == 'true' && steps.cache.outputs.cache-matched-key != ''
         with: { python-version: "3.11" }
       - name: Bekannte Käufer laden
         if: steps.gate.outputs.an == 'true'
@@ -113,7 +140,7 @@ jobs:
       - uses: actions/cache/restore@v4
         with:
           path: out/cache/kunden_pool.parquet
-          key: kunden-pool-v10-${{ needs.pool.outputs.monat }}
+          key: ${{ needs.pool.outputs.pool_key }}
           fail-on-cache-miss: true
       - uses: actions/cache/restore@v4
         with:
@@ -205,6 +232,12 @@ jobs:
           else
             echo "Wachhund lief vor $mins min – nichts zu tun"
           fi
+      - name: Nachfüller anstoßen (Mindestbelegung 30)
+        # 05.10.2026: freie Plätze sofort mit freien Lead-Linien füllen, nicht erst beim nächsten Zeitplan
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run werk-nachfuellen.yml --ref "${{ github.ref_name }}" || echo "::warning::Nachfüller nicht anstoßbar"
       - name: Nächsten Lauf starten
         env:
           GH_TOKEN: ${{ github.token }}

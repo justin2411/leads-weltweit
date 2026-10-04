@@ -48,6 +48,9 @@ import { localizeJob, maskCompany, maskEmail, maskPhone, pickDiverse, roleFor, s
 import { Icon as LineIcon } from "@/app/icons";
 import { agentEligible } from "@/lib/customer-agents";
 import { PlanAgentLine } from "./plan-agent";
+import { WertBlock } from "./wert-block";
+import { wertBlockAn } from "@/lib/premium-wert";
+import { testAllowed } from "@/lib/test-scope";
 
 
 const SHOW_SAMPLE_TILES = false;
@@ -534,6 +537,10 @@ export async function Landing({ params, sp: search, rand }: { params: LandingPar
                 <div className="ctaline"><div className="ctabox"><Start label={known ? L.send : cta} /></div>
                   {canBuy && <a className="btn ghost" href="#plans" data-cta>{L.subscribe}</a>}</div>
               )}
+              {/* Werkzeug „Firmen ohne Website“ (nur Webagenturen US/UK/FR) */}
+              {page.segment_id === "S2" && (
+                <p className="finder-link"><a href={`/finder/${cc.toLowerCase()}`}>{fr ? "Voir les entreprises sans site web cette semaine" : "See this week's companies without a website"}</a></p>
+              )}
             </div>
             <HeroStage cc={cc} sigs={HERO_SIGNALS[seg][cc]} note={lz.heroNote} hidden={lz.hidden} />
           </div>
@@ -594,6 +601,11 @@ export async function Landing({ params, sp: search, rand }: { params: LandingPar
                 <button className="btn gold" type="submit" data-cta>{L.subscribe}</button>
               </form>))}</div>
           </div></section>
+        )}
+
+        {/* Wertrechnung nur als A/B-Variante (value_block = an) und nur Webagenturen US/UK/FR (config/fokus.yaml tests) */}
+        {wertBlockAn(v) && testAllowed(TEST_SCOPE, page.segment_id, page.country) && (
+          <WertBlock segment={page.segment_id} country={page.country} lang={lang} plans={(v.pricing ?? settings.pricing ?? []) as Plan[]} />
         )}
 
         {!step && !sp.angefragt && (

@@ -98,6 +98,8 @@ def lane_of(werk: str, part: str | None) -> str | None:
         return "kunden" if re.match(r"^(pruefen\b|run --shard)", part) else None
     if werk == "pruefer-werk":  # Prüfer-Werk (Inhaber 05.10.2026): Teile „pruefer-0“ … bzw. „run --shard …“
         return "pruefer" if re.match(r"^(pruefer\b|pruefer-\d+|run --shard)", part) else None
+    if werk == "kontakt-werk":  # Kontakt-Werk (Inhaber 05.10.2026): Teile „kontakt-0“ … bzw. „run --shard …“
+        return "kontakt" if re.match(r"^(kontakt\b|kontakt-\d+|run --shard)", part) else None
     return None
 
 
@@ -258,6 +260,17 @@ def vorrang_active(rule: dict | None, stock: dict[str, float] | None) -> tuple[b
     txt = (f"Länder-Vorrang {'/'.join(vor)} vor {'/'.join(nach)} "
            f"({', '.join(f'{c} {int(stock[c]):,}'.replace(',', '.') for c in nach + vor)}; ≥ {f:g}×)")
     return on, txt
+
+
+def nach_lanes(reg: dict, vorrang: dict | None, stock: dict[str, float] | None) -> set[str]:
+    """Linien der Nachrang-Länder, solange der Länder-Vorrang an ist (bekommen keine Zusatzplätze)."""
+    on, _ = vorrang_active(vorrang, stock)
+    if not on:
+        return set()
+    seg = str((vorrang or {}).get("segment") or "").upper()
+    nach = set(vorrang.get("nach") or [])
+    return {l["id"] for l in reg["lanes"] if l["werk"] == "lead-werk" and (not seg or seg in lane_segments(l))
+            and lane_countries(l) and lane_countries(l) <= nach}
 
 
 def autopilot(reg: dict, werk: str, base: dict[str, int], stats: dict[str, dict], locks: dict | None = None,
@@ -508,7 +521,7 @@ def matrix(reg: dict, werk: str, n: dict[str, int], extra_args: str = "") -> lis
             if werk == "kunden-werk":
                 rows.append({"shard": i, "of": k})
                 continue
-            if werk == "pruefer-werk":
+            if werk in ("pruefer-werk", "kontakt-werk"):
                 rows.append({"name": f"{l['id']}-{i}", "shard": i, "of": k})
                 continue
             args = l["args"] + (f" --shard {i}/{k}" if k > 1 else "") + extra_args
@@ -607,6 +620,7 @@ def decide(reg: dict, werk: str, inp: dict) -> dict:
     reasons = {k: why for k in own}
     mode = "standard" if why == "Standardbelegung" else "inhaber"
     plan = dict(own)
+    stats: dict[str, dict] = {}
     # Prüfer-Werk: feste Belegung (Inhaber 05.10.2026: „4 dauerhafte Prüfer“) – jeder Teil nutzt sein Zeitfenster immer
     # voll, der Autopilot würde ihn sonst als „voll ausgelastet“ ständig vergrößern; seine Plätze zählt er bei den anderen
     if settings is not None and ap.get("on") is not False and werk != "pruefer-werk":
@@ -636,7 +650,29 @@ def decide(reg: dict, werk: str, inp: dict) -> dict:
         reasons = {k: BRAKE_STOP_WHY for k in plan}
     extra = " --no-raw" if werk == "lead-werk" and brake in ("ohne-rohbestand", "stopp") else ""
     return {"plan": plan, "reasons": reasons, "mode": mode, "brake": brake, "extra": extra, "base": own,
-            "autopilot": ap}
+            "autopilot": ap, "stats": stats, "nach": nach_lanes(reg, inp.get("vorrang"), inp.get("stock"))}
+
+
+def run_counts(reg: dict, res: dict, teile: dict[str, int] | None, taken: set[str]) -> tuple[dict[str, int], dict[str, str]]:
+    """Plätze, die DIESER Lauf startet (Linien-Läufe, scripts/werk_belegung.py). teile = {Linie: Teile} aus der
+    Eingabe (None = alle Linien laut Plan); taken = Linien, die ein anderer Lauf belegt (nie doppelt bearbeiten).
+    Je Linie höchstens max; bei Speicher-Bremse höchstens die gebremste Belegung des Plans (stopp = 0)."""
+    lanes = {l["id"]: l for l in reg["lanes"] if l["werk"] == "lead-werk"}
+    brake = res.get("brake", "aus")
+    out, note = {}, {}
+    for k in lanes:
+        want = res["plan"].get(k, 0) if teile is None else teile.get(k, 0)
+        n = max(0, min(int(want), int(lanes[k]["max"])))
+        if brake in ("drossel", "ohne-rohbestand", "stopp"):
+            n = min(n, int(res["plan"].get(k, 0)))
+        if n and k in taken:
+            n, note[k] = 0, "läuft schon in einem anderen Lauf"
+        out[k] = n
+    if brake in ("drossel", "ohne-rohbestand") and sum(out.values()) > BRAKE_LEAD_MAX:
+        while sum(out.values()) > BRAKE_LEAD_MAX and any(v > 0 for v in out.values()):
+            k = max(out, key=lambda x: out[x])
+            out[k] -= 1
+    return out, note
 
 
 def log_plan(db, werk: str, res: dict, db_bytes: int | None) -> None:
@@ -653,12 +689,33 @@ def log_plan(db, werk: str, res: dict, db_bytes: int | None) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("werk", choices=["lead-werk", "kunden-werk", "pruefer-werk"])
+    ap.add_argument("werk", choices=["lead-werk", "kunden-werk", "pruefer-werk", "kontakt-werk"])
     ap.add_argument("--dry", action="store_true", help="nur anzeigen (nichts protokollieren, nichts quittieren)")
+    ap.add_argument("--teile", default=None, help="Linien-Lauf (Lead-Werk): „web-us:3,s2-ukfr:6“ – nur diese Linien")
+    ap.add_argument("--github", action="store_true",
+                    help="Lead-Werk: Linien, die ein anderer aktiver Lauf belegt, auslassen (GitHub-API)")
     a = ap.parse_args(argv)
     reg = load_lines()
     inp = read_inputs(a.werk) if (os.environ.get("SUPABASE_URL") or not a.dry) else {"settings": {}, "rows": []}
     res = decide(reg, a.werk, inp)
+    run_plan = res["plan"]
+    if a.werk == "lead-werk" and (a.teile is not None or a.github):
+        # Linien-Läufe (Nachfüller, 05.10.2026): protokolliert wird die ganze Belegung, gestartet nur der eigene Teil
+        import werk_belegung as B
+        teile = B.parse_teile(a.teile) if a.teile is not None else None
+        taken: set[str] = set()
+        if a.github:
+            try:
+                all_lanes = {l["id"] for l in reg["lanes"] if l["werk"] == "lead-werk"}
+                taken, clear = B.wait_for_claims(B.GitHub(), int(os.environ["GITHUB_RUN_ID"]), all_lanes)
+                if not clear:
+                    print("älterer Lauf ohne fertigen Plan – seine Linien gelten als belegt", file=sys.stderr)
+            except BaseException as e:  # noqa: BLE001 – lieber nichts starten als eine Linie doppelt bearbeiten
+                print(f"Andere Läufe nicht lesbar ({type(e).__name__}) – keine Linie gestartet", file=sys.stderr)
+                taken = set(res["plan"])
+        run_plan, note = run_counts(reg, res, teile, taken)
+        for k, v in note.items():
+            print(f"  {k}: {v}")
     db = inp.get("db")
     if db is not None and not a.dry and inp.get("settings") is not None:
         # Quittung (settings_ack): dieses Werk hat Belegungsplan und Autopilot-Schalter gelesen
@@ -670,10 +727,12 @@ def main(argv: list[str] | None = None) -> int:
                 seen_at=inp.get("settings_seen"))
         except BaseException as e:  # noqa: BLE001
             print(f"Quittung nicht geschrieben ({type(e).__name__})", file=sys.stderr)
-    rows = matrix(reg, a.werk, res["plan"], res["extra"])
+    rows = matrix(reg, a.werk, run_plan, res["extra"])
     summary = ", ".join(f"{k} {v}" for k, v in res["plan"].items())
     gb = f", DB {inp['db_bytes'] / GB:.2f} GB" if inp.get("db_bytes") else ""
     print(f"{a.werk}: {len(rows)} Teile ({res['mode']}, Bremse {res['brake']}{gb}) – {summary}")
+    if run_plan is not res["plan"]:
+        print("dieser Lauf: " + (", ".join(f"{k} {v}" for k, v in run_plan.items() if v) or "keine Linie frei"))
     for k, v in res["reasons"].items():
         print(f"  {k}: {res['plan'].get(k)} – {v}")
     if not a.dry:

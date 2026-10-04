@@ -1,0 +1,36 @@
+# Käufer-Liste des Kunden-Werks im Hintergrund neu bauen (05.10.2026, Belegung lückenlos): das Kunden-Werk nimmt
+# sofort die neueste vorhandene Liste und stößt diesen Lauf an, statt bis 60 min mit 1 Job zu warten.
+# Gleicher Bau wie bisher (scripts/kundenwerk.py pool, Overture + offene Register, robots.txt, 1 Abruf/s).
+# Sendet nichts, lädt keine Dateien hoch (nur GitHub-Cache).
+name: kunden-pool
+on:
+  workflow_dispatch:
+concurrency: { group: kunden-pool, cancel-in-progress: false }
+permissions:
+  contents: read
+jobs:
+  bauen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - id: m
+        run: echo "monat=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+      - id: cache
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/kunden_pool.parquet
+          key: kunden-pool-v10-${{ steps.m.outputs.monat }}  # gleiche Version wie kunden-werk.yml
+          lookup-only: true
+      - uses: actions/setup-python@v5
+        if: steps.cache.outputs.cache-hit != 'true'
+        with: { python-version: "3.11" }
+      - name: Käufer-Liste aus Overture
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: pip install -r requirements.txt && python scripts/kundenwerk.py pool
+      - name: Käufer-Liste sichern
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: out/cache/kunden_pool.parquet
+          key: kunden-pool-v10-${{ steps.m.outputs.monat }}

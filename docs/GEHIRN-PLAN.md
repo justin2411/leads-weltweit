@@ -6,6 +6,17 @@
 > **Seit 04.10.2026 gilt:** Tests nur Webagenturen US/UK/FR (`config/fokus.yaml` `tests`, Inhaber: „beim gehirn bei a/b tests soll er das nur für webagencys usa, fr, und uk machen nichts mehr erst wenn ich ihm das freigebe das soll überall so sein, wir brauchen erstmal nichts anderes“).
 > Preis-Tests, neue Zielgruppen und Länder unten ruhen, bis der Inhaber sie freigibt.
 
+## Lagebild (05.10.2026, 01:30 Berliner Zeit)
+- **Engpass: Antworten.** Webagenturen US/UK/FR seit 03.10.: ~340 Kaltmails, 0 menschliche Antworten, 0 Proben, 0 € MRR.
+- Opt-outs 3 % (6 von 10 Link-Scanner), Bounces 4,4 % → Versand gedrosselt, Adressprüfung läuft.
+- Mails liefen fast nur am Wochenende; Betreff-Test je Land ~50 von 200 Mails.
+- Landingpages (2 Tage): 164 Aufrufe, 1 Klick, 0 Proben. Leads reichen (>600.000 lieferbar), Käufer 36.559 geprüft.
+
+## Nächster Schritt
+- Werktags-Welle Mo–Mi messen, keinen zweiten Mail-Test daneben starten.
+- **Prüfpunkt Mi 07.10., 20:00:** Erwartung Antwortquote ≥ 0,3 %. Bei 0 Antworten Betreff-Test beenden und
+  Wert-Einstieg-Test (Entwurf liegt bereit) starten – Auftrag an Agent 7.
+
 ## Nordstern
 Wiederkehrender Umsatz aus Lead-Abos. Kennzahl: **neuer Monatsumsatz (MRR) pro Woche**. Kosten nahe null.
 

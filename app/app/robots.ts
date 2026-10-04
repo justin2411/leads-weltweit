@@ -5,7 +5,7 @@ import { siteUrl } from "@/lib/site";
 // Adressen verraten. Beide Seiten tragen stattdessen noindex/nofollow per Meta-Tag und X-Robots-Tag (next.config.mjs).
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: { userAgent: "*", allow: "/", disallow: ["/api/", "/kunde/", "/danke"] },
+    rules: { userAgent: "*", allow: "/", disallow: ["/api/", "/kunde/", "/danke", "/bewerten"] },
     sitemap: `${siteUrl()}/sitemap.xml`,
   };
 }

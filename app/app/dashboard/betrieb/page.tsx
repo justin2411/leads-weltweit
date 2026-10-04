@@ -84,6 +84,18 @@ function Body({ d }: { d: BetriebDaten }) {
               ))}
             </ul>
           )}
+          {!!d.domains?.length && (
+            <ul className="zx-rows" style={{ marginTop: 8 }}>
+              {d.domains.map((x) => (
+                <li key={x.box} className="zx-row" title={`${x.bounced} Bounces, ${x.complained} Beschwerden bei ${x.sent} Mails (14 Tage)`}>
+                  <Dot a={x.tone} />
+                  <span className="n">Domain {x.box}</span>
+                  <span className="m">{x.complained ? `${x.complained} Beschwerde` : `Bounce ${pct(x.rate)}`} · 14 Tage</span>
+                  <span className="v">{n(x.sent)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </Card>
         <Card title="Speicher & Website" icon="speicher">
           <div className="zx-check"><Dot a={d.speicher.ampel} /><div>

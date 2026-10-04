@@ -17,6 +17,9 @@ jobs:
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       MAIL_FROM: ${{ secrets.MAIL_FROM }}
       OWNER_EMAIL: ${{ secrets.OWNER_EMAIL }}
+      # Ergebnis je Postfach nach signalwerk.mailbox_checks (Freischaltung neuer Domains)
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       # weitere Versand-Postfächer (lib/mailboxes.py), Inhaber 03.10.2026: „teste jedes postfach“
       SMTP_USER_2: ${{ secrets.SMTP_USER_2 }}
       SMTP_PASSWORD_2: ${{ secrets.SMTP_PASSWORD_2 }}
@@ -24,6 +27,14 @@ jobs:
       SMTP_USER_3: ${{ secrets.SMTP_USER_3 }}
       SMTP_PASSWORD_3: ${{ secrets.SMTP_PASSWORD_3 }}
       SMTP_FROM_3: ${{ secrets.SMTP_FROM_3 }}
+      SMTP_USER_4: ${{ secrets.SMTP_USER_4 }}
+      SMTP_PASSWORD_4: ${{ secrets.SMTP_PASSWORD_4 }}
+      SMTP_FROM_4: ${{ secrets.SMTP_FROM_4 }}
+      SMTP_USER_5: ${{ secrets.SMTP_USER_5 }}
+      SMTP_PASSWORD_5: ${{ secrets.SMTP_PASSWORD_5 }}
+      SMTP_FROM_5: ${{ secrets.SMTP_FROM_5 }}
+      # beliebig viele weitere Postfächer/Domains als JSON-Liste (lib/mailboxes.py, Auftrag 05.10.2026)
+      SMTP_BOXES: ${{ secrets.SMTP_BOXES }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

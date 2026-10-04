@@ -22,7 +22,7 @@ class WerkPlanTests(unittest.TestCase):
         cap = self.reg["total_slots"] - self.reg["reserve"]
         self.assertLessEqual(sum(l["default"] for l in self.reg["lanes"]), cap)
         for l in self.reg["lanes"]:
-            self.assertIn(l["werk"], ("lead-werk", "kunden-werk", "pruefer-werk"))
+            self.assertIn(l["werk"], ("lead-werk", "kunden-werk", "pruefer-werk", "kontakt-werk"))
             self.assertTrue(0 <= l["default"] <= l["max"] <= 21, l["id"])
             if l["werk"] == "lead-werk":
                 self.assertNotIn("--shard", l["args"])  # Aufteilung macht der Plan
@@ -37,9 +37,12 @@ class WerkPlanTests(unittest.TestCase):
         self.assertEqual(len(W.matrix(self.reg, "lead-werk", n)), 30)
         self.assertEqual(len(W.matrix(self.reg, "kunden-werk", n)), 4)  # 8 -> 4: Platz für 4 Prüfer (05.10.2026)
         self.assertEqual(W.matrix(self.reg, "pruefer-werk", n), [{"name": f"pruefer-{i}", "shard": i, "of": 4} for i in range(4)])
+        self.assertEqual(W.matrix(self.reg, "kontakt-werk", n), [])  # Standard 0: Plätze aus der Inhaber-Belegung
+        self.assertEqual(W.matrix(self.reg, "kontakt-werk", {"kontakt": 4}),
+                         [{"name": f"kontakt-{i}", "shard": i, "of": 4} for i in range(4)])
 
     def test_owner_plan_is_clamped_and_used(self):
-        n, why = W.counts(self.reg, {"web-us": 5, "web-uk": 99, "kunden": 4, "pruefer": 0, "unbekannt": 5})
+        n, why = W.counts(self.reg, {"web-us": 5, "web-uk": 99, "kunden": 4, "pruefer": 0, "kontakt": 0, "unbekannt": 5})
         self.assertEqual(why, "Belegung des Inhabers")
         self.assertEqual(n["web-us"], 5)
         self.assertEqual(n["web-uk"], 21)  # höchstens max je Linie
@@ -85,6 +88,9 @@ class PrueferLaneTests(unittest.TestCase):
         self.assertEqual(W.lane_of("pruefer-werk", "pruefer-2"), "pruefer")
         self.assertEqual(W.lane_of("pruefer-werk", "run --shard 1/4 --deadline-min 80"), "pruefer")
         self.assertIsNone(W.lane_of("pruefer-werk", "kpi"))
+        self.assertEqual(W.lane_of("kontakt-werk", "kontakt-1"), "kontakt")
+        self.assertEqual(W.lane_of("kontakt-werk", "run --shard 0/3 --deadline-min 80"), "kontakt")
+        self.assertIsNone(W.lane_of("kontakt-werk", "kpi"))
         reg = W.load_lines()
         # andere Werke: fehlende Linien zählen mit ihrer Basis (Prüfer 4), gemeldete mit dem letzten Plan
         res = W.decide(reg, "lead-werk", {"settings": {"slot_autopilot": {"on": True}}, "rows": [], "other": {"kunden": 16}})
@@ -181,7 +187,7 @@ class AutopilotTests(unittest.TestCase):
     def setUp(self):
         self.reg = W.load_lines()
         self.base = W.counts(self.reg, None)[0]
-        self.lead = {k: v for k, v in self.base.items() if k not in ("kunden", "pruefer")}
+        self.lead = {k: v for k, v in self.base.items() if k not in ("kunden", "pruefer", "kontakt")}
 
     def test_stats_count_each_part_once(self):
         s = W.lane_stats(_rows("web-us", "r1", 3, 2, 0), "lead-werk")["web-us"]

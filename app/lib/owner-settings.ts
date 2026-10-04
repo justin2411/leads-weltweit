@@ -61,6 +61,8 @@ export const WERK_SWITCHES = {
   dauerpruefung: { label: "Dauerprüfung", via: "werke_paused" },
   /** 4 dauerhafte Prüfer der lieferbaren Leads (scripts/pruefer.py, pruefer-werk.yml, Inhaber 05.10.2026) */
   "pruefer-werk": { label: "Prüfer-Werk", via: "werke_paused" },
+  /** Register + Firmenwebsite gegenprüfen (scripts/kontaktwerk.py, kontakt-werk.yml, Inhaber 05.10.2026) */
+  "kontakt-werk": { label: "Kontakt-Werk", via: "werke_paused" },
 } as const;
 export type WerkKey = keyof typeof WERK_SWITCHES;
 
@@ -147,7 +149,7 @@ export function effectiveLimit(yamlLimit: number, s: OwnerSettings, country: str
   return v === undefined ? yamlLimit : Math.max(0, Math.min(v, yamlLimit));
 }
 
-export type Lane = { id: string; werk: "lead-werk" | "kunden-werk" | "pruefer-werk"; label: string; short: string; segment: string; country: string; default: number; max: number; workers?: number; what: string; args?: string };
+export type Lane = { id: string; werk: "lead-werk" | "kunden-werk" | "pruefer-werk" | "kontakt-werk"; label: string; short: string; segment: string; country: string; default: number; max: number; workers?: number; what: string; args?: string };
 export type LaneRegistry = { total_slots: number; reserve: number; lanes: Lane[] };
 
 /** Wirksame Plätze je Linie (wie scripts/werk_plan.py counts): Einstellung, sonst Standard; ungültig -> Standard. */

@@ -481,7 +481,7 @@ def with_checked(db, params: dict, rows: list[dict], n: int = QUALITY_POOL) -> l
     return rows + [r for r in prem if r["id"] not in have]
 
 
-def best_first(rows: list[dict]) -> list[dict]:
+def best_first(rows: list[dict], fb_weights: dict[str, float] | None = None) -> list[dict]:
     """Aktuell beste Leads zuerst (Inhaber 03.10.2026): höchster Qualitätswert der Dauerprüfung, dann höchste
     Dringlichkeit, dann frischestes Ereignis."""
     from lib.leadreport import URG
@@ -493,8 +493,8 @@ def best_first(rows: list[dict]) -> list[dict]:
     rows.sort(key=sort_key)
     # Premium zuerst (Inhaber 05.10.2026, lib/premium.py): frische, kombinierte, belegte Anlässe – nur Reihenfolge,
     # die Drei-Stufen-Freigabe prüft danach jeden Lead unverändert
-    from lib.premium import sort_key as premium_key
-    rows.sort(key=premium_key)
+    from lib.premium import key_with
+    rows.sort(key=key_with(fb_weights))  # Kunden-Feedback je Anlass (lib/feedback.py): nur Umgewichtung
     return rows
 
 
@@ -526,7 +526,9 @@ def regional_sample(db, seg: str, country: str, region: str | None,
     # NUR aus ihm – reicht er nicht für 10 verschiedene Firmen, gibt es keine Probe (kein Ausweichen, Tagescheck meldet)
     from lib.pools import pool_for, restrict, strip
     params = restrict(params, pool_for(db, seg, country))
-    rows = best_first(with_checked(db, params, strip(_newest(db, params, SAMPLE_POOL))))
+    from lib.feedback import load_weights
+    fbw = load_weights(db)
+    rows = best_first(with_checked(db, params, strip(_newest(db, params, SAMPLE_POOL))), fbw)
     if exclude_companies:
         rows = [r for r in rows if r.get("company_id") not in exclude_companies]
     if wish:
@@ -535,7 +537,7 @@ def regional_sample(db, seg: str, country: str, region: str | None,
         if types:  # seltene Wunsch-Signale stehen evtl. nicht unter den neuesten Leads: gezielt nachladen
             have = {r["id"] for r in rows}
             extra = strip(_newest(db, {**params, "signal_type": f"in.({','.join(types)})"}, SAMPLE_POOL // 2))
-            rows = [r for r in best_first(extra) if r["id"] not in have
+            rows = [r for r in best_first(extra, fbw) if r["id"] not in have
                     and r.get("company_id") not in (exclude_companies or ())] + rows
         rows = prefer(rows, wish, _sic_lookup(db, rows) if "fleet_warehouse" in wish else None)
     # Vollständigkeit nur blockweise für die nächsten Kandidaten prüfen (bei 90.000+ Leads war die Prüfung aller

@@ -44,7 +44,8 @@ def accounts(env=None) -> list[dict]:
 
     add(0, env.get("IMAP_USER"), env.get("IMAP_PASSWORD"), env.get("IMAP_HOST"))
     for b in mailboxes(env):
-        add(b["n"], b["user"], b["password"], env.get(f"IMAP_HOST_{b['n']}") or env.get("IMAP_HOST"))
+        add(b["n"], b["user"], b["password"],
+            b.get("imap_host") or env.get(f"IMAP_HOST_{b['n']}") or env.get("IMAP_HOST"))
     return out
 
 
@@ -57,6 +58,7 @@ def own_domains(env=None) -> set[str]:
         addr = parseaddr(env.get(var) or "")[1].lower()
         if "@" in addr:
             out.add(addr.rsplit("@", 1)[1])
+    out |= {b["domain"] for b in mailboxes(env) if b.get("domain")}  # auch Postfächer aus SMTP_BOXES
     return out
 
 

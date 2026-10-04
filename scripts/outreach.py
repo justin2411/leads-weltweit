@@ -119,7 +119,9 @@ def total_limit() -> int | None:
 ROLE_BLOCK = {"privacy", "gdpr", "dpo", "dataprotection", "legal", "compliance", "abuse", "security", "postmaster",
               "hostmaster", "noreply", "no-reply", "donotreply", "do-not-reply", "support", "help", "helpdesk",
               "billing", "invoices", "invoice", "accounts", "payments", "careers", "jobs", "hr", "recruiting",
-              "press", "media", "unsubscribe", "bounce", "bounces", "mailer-daemon"}
+              "press", "media", "unsubscribe", "bounce", "bounces", "mailer-daemon",
+              # Technik-Adressen (Rückläufer-Analyse 05.10.2026: webmaster@ 1 von 2 zurück)
+              "webmaster", "root", "noc", "dns", "domains", "sysadmin", "devnull", "nobody"}
 
 
 def role_address(email: str) -> bool:
@@ -233,6 +235,42 @@ def notbremse(db) -> str | None:
         e["to_email"] = (e.get("messages") or {}).get("to_email")
     bounced, complained = count_bounces(ev)
     return emergency_stop(len(recent), bounced, complained)
+
+
+def box_stops(db, boxes: list[dict]) -> dict[int, str]:
+    """Zusätzliche Notbremse je Postfach und je Domain (lib.deliverability.scoped_stops, Auftrag 05.10.2026):
+    {Postfach-Nummer: Grund} für jedes Postfach, das selbst oder dessen Domain gestoppt ist. Gleiches Fenster wie die
+    globale Notbremse (notbremse_ab). Die globale Notbremse bleibt unverändert und wird vorher geprüft."""
+    from lib.deliverability import scoped_stops, window_start
+    from lib.mailboxes import box_of, domain_of
+    since = window_start(dt.datetime.now(dt.timezone.utc)).isoformat()
+    sent = db.select_all("messages", {"status": "eq.sent", "sent_at": f"gte.{since}", "select": "id,sent_from"})
+    ev = db.select_all("email_events", {"created_at": f"gte.{since}", "type": "in.(bounced,complained)",
+                                        "select": "message_id,type,payload,messages(to_email)"})
+    for e in ev:
+        e["to_email"] = (e.get("messages") or {}).get("to_email")
+    dom = {b["n"]: b.get("domain") or domain_of(b.get("from")) for b in boxes}
+    by_box, by_dom = scoped_stops(sent, ev, lambda f: box_of(f, boxes), lambda f: dom.get(box_of(f, boxes), ""))
+    out: dict[int, str] = {}
+    for b in boxes:
+        d = dom[b["n"]]
+        if d and d in by_dom:
+            out[b["n"]] = f"Domain {d}: {by_dom[d]}"
+        elif b["n"] in by_box:
+            out[b["n"]] = f"Postfach {b['n']}: {by_box[b['n']]}"
+    return out
+
+
+def apply_box_rules(db, boxes: list[dict], caps: dict[int, int], checks: dict | None = None) -> dict[int, str]:
+    """Postfächer, die heute nicht senden dürfen (nicht freigeschaltet oder gestoppt), bekommen Tagesmenge 0.
+    Rückgabe {Nummer: Grund}. Ändert nie die Mengen der übrigen Postfächer."""
+    from lib.mailboxes import active_boxes, load_checks, main_domain
+    _, off = active_boxes(boxes, load_checks(db) if checks is None else checks, main_domain())
+    for n, why in box_stops(db, boxes).items():
+        off.setdefault(n, why)
+    for n in off:
+        caps[n] = 0
+    return off
 
 
 NOTBREMSE_EVERY = 20  # Notbremse während des Versands alle 20 gesendeten Mails erneut prüfen (Prüfung 04.10.2026)
@@ -506,6 +544,7 @@ def cmd_send(args) -> int:
                 raise SystemExit(f"{var} fehlt")
 
     from lib.deliverability import domain_accepts_mail, interleave, is_m365, mx_hosts
+    from lib import address_risk
     from drafts import subject_variant  # Betreff-Variante für den Mail-Link (?sv=), falls die Spalte fehlt
 
     stop = notbremse(db)
@@ -520,6 +559,20 @@ def cmd_send(args) -> int:
     for row in db.select_all("messages", {"status": "eq.sent", "select": "sent_at,sent_from", "order": "sent_at.asc"}):
         firsts.setdefault(box_of(row.get("sent_from"), boxes), dt.date.fromisoformat(row["sent_at"][:10]))
     caps = {b["n"]: box_cap(b, firsts.get(b["n"]), dt.date.today()) for b in boxes}
+    # Freischaltung neuer Domains (postfach-test grün) und Notbremse je Postfach/Domain (Auftrag 05.10.2026)
+    box_checks = None
+    try:
+        from lib.mailboxes import load_checks
+        box_checks = load_checks(db)
+        off = apply_box_rules(db, boxes, caps, box_checks)
+    except Exception as exc:  # noqa: BLE001 - Prüfung nicht möglich: nur Hauptdomain, keine Lockerung
+        from lib.mailboxes import main_domain
+        off = {b["n"]: f"Prüfung nicht möglich ({type(exc).__name__})" for b in boxes
+               if (b.get("domain") or main_domain()) != main_domain()}
+        for n in off:
+            caps[n] = 0
+    for n, why in sorted(off.items()):
+        print(f"POSTFACH AUS {n}: {why}")
     cap = sum(caps.values())
     # Selbstoptimierung (scripts/selbstopt.py): bei hoher Bounce-Quote weniger Mails (Faktor 0,5 … 1,0) – nie mehr
     # als config/versand.yaml erlaubt; Notbremse bleibt unverändert
@@ -703,6 +756,18 @@ def cmd_send(args) -> int:
             if live:
                 db.update("messages", {"id": m["id"]}, {"status": "blocked", "blocked_reason": "kein MX-Eintrag"})
             continue
+        if kind == "initial":
+            # Adressprüfung aus frischem DNS (lib/address_risk.py, Rückläufer-Analyse 05.10.2026, nur strenger)
+            risk = address_risk.check(m["to_email"])
+            if risk == [address_risk.UNKLAR]:
+                print(f"NICHT GESENDET {m['to_email']}: DNS nicht eindeutig, nächster Lauf prüft erneut")
+                continue
+            if risk:
+                print(f"BLOCKIERT {m['to_email']}: {'; '.join(risk)}")
+                if live:
+                    db.update("messages", {"id": m["id"]}, {"status": "blocked",
+                              "blocked_reason": "Adressprüfung: " + "; ".join(risk)})
+                continue
         limit = country_limit(int(rules.get("daily_limit", cfg["defaults"]["daily_limit"])), owner_limits, country, owner_off)
         if sent_today.get(country, 0) >= limit:
             print(f"Tageslimit {country} ({limit}) erreicht, Rest morgen")
@@ -812,6 +877,10 @@ def cmd_send(args) -> int:
             if stop:
                 print(f"NOTBREMSE während des Versands nach {n_sent} Mails: {stop}")
                 return 2
+            for n, why in apply_box_rules(db, boxes, caps, box_checks).items():
+                if n not in off:
+                    off[n] = why
+                    print(f"POSTFACH AUS {n} während des Versands: {why}")
         if args.pause:
             import random
             import time

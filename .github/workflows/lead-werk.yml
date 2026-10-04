@@ -10,12 +10,29 @@
 # + 8 Kunden-Werk + 2 frei für Tagesablauf/Tagescheck/Wachhund. Jeder Teil hört nach 75 Minuten auf, neue Firmen
 # anzufangen, und speichert (--deadline-min), damit kein Nachzügler die übrigen Plätze blockiert; danach startet sich
 # das Werk selbst neu (Job „weiter“). Cron und Wachhund bleiben als Rückfall.
+# Linien-Läufe (05.10.2026, Inhaber: „mind. 30 gleichzeitig“): der Nachfüller (werk-nachfuellen.yml,
+# scripts/werk_belegung.py) startet jede Linie als eigenen Lauf (Eingaben linien/teile) und neu, sobald sie fertig ist –
+# fertige Linien warten nicht mehr auf Nachzügler anderer Linien. Ohne Eingabe (Zeitplan, Wachhund, Dashboard) plant
+# der Lauf alle Linien wie bisher. Der Plan-Job lässt Linien aus, die ein anderer Lauf belegt (nie doppelt).
 name: lead-werk
+run-name: ${{ inputs.linien && format('lead-werk · Linie {0}', inputs.linien) || 'lead-werk' }}
 on:
   schedule:
     - cron: "23 */3 * * *"
   workflow_dispatch:
-concurrency: { group: lead-werk, cancel-in-progress: false }
+    inputs:
+      linien:
+        description: "Linien-Lauf: Linie(n), z. B. web-us (leer = alle Linien laut Plan)"
+        required: false
+        default: ""
+      teile:
+        description: "Teile je Linie, z. B. web-us:3 (vom Nachfüller)"
+        required: false
+        default: ""
+# Linien-Läufe nebeneinander (Doppelbelegung verhindert der Plan-Job), Läufe für alle Linien nacheinander wie bisher
+concurrency:
+  group: ${{ inputs.linien && format('lead-werk-linie-{0}', github.run_id) || 'lead-werk' }}
+  cancel-in-progress: false
 permissions:
   contents: read
 jobs:
@@ -101,16 +118,27 @@ jobs:
     outputs:
       matrix: ${{ steps.p.outputs.matrix }}
       teile: ${{ steps.p.outputs.teile }}
+    permissions:
+      actions: read
+      contents: read
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      GH_TOKEN: ${{ github.token }}
+      TEILE: ${{ inputs.teile }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
       - run: pip install requests
       - id: p
-        run: python scripts/werk_plan.py lead-werk
+        # --github: Linien, die ein anderer aktiver Lauf belegt, auslassen; --teile: nur die Linien des Nachfüllers
+        run: |
+          if [ -n "$TEILE" ]; then
+            python scripts/werk_plan.py lead-werk --github --teile "$TEILE"
+          else
+            python scripts/werk_plan.py lead-werk --github
+          fi
 
   holen:
     needs: [us-auszug, plan]
@@ -559,6 +587,12 @@ jobs:
             mins=$(( ( $(date -u +%s) - $(date -u -d "$start" +%s) ) / 60 ))
           else
             mins=0
+          fi
+          # Nachfüller (05.10.2026): startet diese und jede andere freie Linie sofort neu (Mindestbelegung 30);
+          # kurze Läufe ohne Ertrag ruhen dort 60 min. Nur wenn er nicht startbar ist: alter Weg (ganzer Lauf).
+          if retry gh workflow run werk-nachfuellen.yml --ref "${{ github.ref_name }}"; then
+            echo "Nachfüller angestoßen (dieser Lauf lief $mins Minuten)" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
           fi
           if [ "$mins" -lt 10 ]; then echo "Lauf nur $mins Minuten – kein Sofort-Neustart"; exit 0; fi
           retry gh workflow run lead-werk.yml --ref "${{ github.ref_name }}"

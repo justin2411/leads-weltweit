@@ -45,6 +45,7 @@ WORKFLOWS = {
     "agenten-werk.yml": ("Agenten-Werk (Speicher + eigene Agenten)", 3),
     "dauerpruefung.yml": ("Dauerprüfung (Prüf-Agenten ohne Tokens)", 3),
     "pruefer-werk.yml": ("Prüfer-Werk (4 Prüfer, 24/7)", 3),
+    "kontakt-werk.yml": ("Kontakt-Werk (Register + Website, 24/7)", 3),
     "zustellbarkeit.yml": ("Zustellbarkeits-Check (06:10)", 27),
 }
 
@@ -232,6 +233,34 @@ def check_mailboxes(c: Check, db) -> None:
             c.add("Postfach", WARN, f"{b}: Bounce-Quote {rate:.1%}", detail)
         else:
             c.add("Postfach", OK, f"{b}: Bounce-Quote {rate:.1%}", detail)
+    check_domains(c, sent, ev)
+
+
+def check_domains(c: Check, sent: list[dict], ev: list[dict]) -> None:
+    """Je Versand-Domain (Auftrag 05.10.2026): gesendet, Bounces, Beschwerden der letzten 14 Tage. Gleiche Schwellen
+    wie die Notbremse je Domain (lib.deliverability.scoped_stops): Beschwerde rot, über 5 % ab 100 Mails rot."""
+    from lib.deliverability import BOUNCE_STOP, MIN_SAMPLE, count_bounces
+    from lib.mailboxes import domain_of
+    dom = {m["id"]: domain_of(m.get("sent_from")) or "nextgen-profit.de" for m in sent}
+    counts: dict[str, int] = {}
+    for d in dom.values():
+        counts[d] = counts.get(d, 0) + 1
+    per: dict[str, list[dict]] = {}
+    for e in ev:
+        if e.get("message_id") in dom:
+            per.setdefault(dom[e["message_id"]], []).append(e)
+    for d, n in sorted(counts.items(), key=lambda x: -x[1]):
+        bounced, complained = count_bounces(per.get(d, []))
+        rate = bounced / n
+        detail = f"{n} gesendet, {bounced} Bounces, {complained} Beschwerden (14 Tage)"
+        if complained:
+            c.add("Domain", FAIL, f"{d}: Spam-Beschwerde", detail)
+        elif n >= MIN_SAMPLE and rate > BOUNCE_STOP:
+            c.add("Domain", FAIL, f"{d}: Bounce-Quote {rate:.1%}", detail)
+        elif n >= BOX_MIN and rate >= BOX_WARN:
+            c.add("Domain", WARN, f"{d}: Bounce-Quote {rate:.1%}", detail)
+        else:
+            c.add("Domain", OK, f"{d}: {n} gesendet, Bounce {rate:.1%}", detail)
 
 
 def _resting(m: dict, pairs: set) -> bool:
@@ -932,6 +961,17 @@ def kurz_pruefung(kpi: dict | None) -> str:
     return _cut("Dauerprüfung heute: " + ("; ".join(parts) or "nichts geprüft") + tail)
 
 
+def kurz_kontakt(rows: list[dict] | None) -> str:
+    """Kontakt-Werk der letzten 24 h (View signalwerk.kontakt_kpi): gegengeprüft, bestätigt, Personen neu."""
+    rows = [r for r in (rows or []) if int(r.get("geprueft_24h") or 0) > 0]
+    if not rows:
+        return "Kontakt-Werk: in 24 h nichts gegengeprüft"
+    n = sum(int(r["geprueft_24h"]) for r in rows)
+    ok = sum(int(r.get("bestaetigt_24h") or 0) for r in rows)
+    neu = sum(int(r.get("personen_neu_24h") or 0) for r in rows)
+    return _cut(f"Kontakt-Werk 24 h: {n} gegengeprüft, {ok} bestätigt, {neu} Ansprechpersonen neu")
+
+
 def kurz_pruefer(rows: list[dict] | None) -> str:
     """Prüfer-Werk der letzten 24 h (View signalwerk.pruefer_kpi): geprüft, Qualität lieferbar %, gehalten je Land."""
     rows = [r for r in (rows or []) if int(r.get("geprueft_24h") or 0) > 0]
@@ -1016,6 +1056,7 @@ def collect_kurz(c: Check, db) -> None:
     line("Gehirn", gehirn)
     line("Dauerprüfung", lambda: kurz_pruefung(db.rpc("pruef_kpi", {"p_days": 1})))
     line("Prüfer-Werk", lambda: kurz_pruefer(db.select("pruefer_kpi", {"select": "*"})))
+    line("Kontakt-Werk", lambda: kurz_kontakt(db.select("kontakt_kpi", {"select": "*"})))
 
 
 def collect_geschaeft(c: Check, db) -> None:

@@ -1,0 +1,87 @@
+{
+  "_info": "Wertrechnung für Webagenturen (S2) US/UK/FR. Nur Zahlen aus docs/PREMIUM-WERT.md (geprüft 04.10.2026). 'belegt' = mit Quelle, 'beispiel' = Annahme, nur als Rechenbeispiel zeigen. Genutzt von app/lib/premium-wert.ts (Landingpage) und scripts/lib/premium_wert.py (Probe-PDF).",
+  "geprueft": "2026-10-04",
+  "pro_woche": { "starter": 15, "pro": 40 },
+  "laender": {
+    "US": {
+      "lang": "en", "sym": "$",
+      "belegt": [
+        { "text": "Most web design projects cost under $10,000.", "quelle": "Clutch", "url": "https://clutch.co/web-designers/pricing" },
+        { "text": "Website maintenance for small businesses: $300–1,000 per month.", "quelle": "WebFX", "url": "https://www.webfx.com/web-development/pricing/website-maintenance/" }
+      ],
+      "beispiel": { "projekt": 3500, "monat": 150, "jahr1": 5300 }
+    },
+    "UK": {
+      "lang": "en", "sym": "£",
+      "belegt": [],
+      "beispiel": { "projekt": 3000, "monat": 100, "jahr1": 4200 }
+    },
+    "FR": {
+      "lang": "fr", "sym": "€",
+      "belegt": [
+        { "text": "Site internet par une agence : 2 000 à 10 000 €, par un freelance : 500 à 2 000 €.", "quelle": "Codeur", "url": "https://www.codeur.com/pages/prix-site-internet" }
+      ],
+      "beispiel": { "projekt": 3000, "monat": 80, "jahr1": 3960 }
+    }
+  },
+  "vergleich": [
+    { "key": "ads", "wert": 70.11, "sym": "$", "quelle": "WordStream 2025", "url": "https://www.wordstream.com/blog/2025-google-ads-benchmarks" },
+    { "key": "ads_bs", "wert": 103.54, "sym": "$", "quelle": "WordStream 2025", "url": "https://www.wordstream.com/blog/2025-google-ads-benchmarks" }
+  ],
+  "texte": {
+    "en": {
+      "landing_titel": "Is it worth it?",
+      "landing_lede": "What one lead costs, compared with paid search.",
+      "ads": "Google Ads, average cost per lead",
+      "ads_bs": "Google Ads, business services",
+      "us_daten": "US data",
+      "wir": "NextGen Profit, per lead",
+      "wir_wert": "about {starter} (Starter) · {pro} (Pro)",
+      "quelle": "Source:",
+      "geprueft": "checked {date}",
+      "beispiel_titel": "Worked example, not a promise",
+      "beispiel": "Say you win one client with a {projekt} website plus {monat} a month for upkeep, about {jahr1} in year one. That covers Starter for about {m_starter} months, or Pro for about {m_pro}.",
+      "eigene": "Use your own figures. Results differ from firm to firm.",
+      "pdf_titel": "What one client is worth",
+      "pdf_lede": "Published figures, and a worked example you can redo with your own numbers.",
+      "pdf_belegt": "Published figures",
+      "pdf_ohne_beleg": "We have no checked UK price range yet, so we show only the worked example.",
+      "pdf_kosten": "Your cost per lead",
+      "pdf_kosten_text": "Starter: about {n_starter} leads a month, about {starter} each. Pro: about {n_pro} leads a month, about {pro} each.",
+      "karte_alter_0": "today",
+      "karte_alter_1": "1 day ago",
+      "karte_alter_n": "{n} days ago",
+      "karte_beleg": "Evidence",
+      "karte_abruf": "checked {date}",
+      "karte_quelle_person": "Source",
+      "karte_einstieg": "Opening line"
+    },
+    "fr": {
+      "landing_titel": "Est-ce rentable ?",
+      "landing_lede": "Ce que coûte une piste, comparé à la publicité sur les moteurs de recherche.",
+      "ads": "Google Ads, coût moyen par contact",
+      "ads_bs": "Google Ads, services aux entreprises",
+      "us_daten": "données US",
+      "wir": "NextGen Profit, par piste",
+      "wir_wert": "environ {starter} (Starter) · {pro} (Pro)",
+      "quelle": "Source :",
+      "geprueft": "vérifié le {date}",
+      "beispiel_titel": "Exemple de calcul, pas une promesse",
+      "beispiel": "Imaginons que vous gagniez un client avec un site à {projekt} et une maintenance à {monat} par mois, soit environ {jahr1} la première année. Cela couvre Starter pendant environ {m_starter} mois, ou Pro pendant environ {m_pro} mois.",
+      "eigene": "Faites le calcul avec vos propres chiffres. Les résultats varient d'une agence à l'autre.",
+      "pdf_titel": "Ce que vaut un client",
+      "pdf_lede": "Les prix publiés pour un site internet, et un exemple de calcul à refaire avec vos chiffres.",
+      "pdf_belegt": "Chiffres publiés",
+      "pdf_ohne_beleg": "",
+      "pdf_kosten": "Votre coût par piste",
+      "pdf_kosten_text": "Starter : environ {n_starter} pistes par mois, environ {starter} chacune. Pro : environ {n_pro} pistes par mois, environ {pro} chacune.",
+      "karte_alter_0": "aujourd'hui",
+      "karte_alter_1": "il y a 1 jour",
+      "karte_alter_n": "il y a {n} jours",
+      "karte_beleg": "Preuve",
+      "karte_abruf": "vérifié le {date}",
+      "karte_quelle_person": "Source",
+      "karte_einstieg": "Phrase d'accroche"
+    }
+  }
+}

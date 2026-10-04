@@ -20,6 +20,7 @@ from pathlib import Path
 
 from lib.leadreport import PER_WEEK, T, T2, _day, _money, _per_lead, _short_why, briefing, group_rows, real_role
 from lib.report_regions import region_of
+from lib import premium_wert
 
 ASSETS = Path(__file__).resolve().parents[1] / "assets" / "report"
 TEMPLATE = ASSETS / "lead-report-vorlage.html"
@@ -99,6 +100,18 @@ def report_data(data: bytes, country: str = "US", plans: list[dict] | None = Non
             "why": _bold_gap(_short_why(bf["why"], g["company"], city), tx["gap"].get(kind, "")),
             "needs": bf["needs"][:4], "offer": bf["offer"], "ask": f"“{bf['ask']}”",
         }
+        # Lead-Karte (Wertrechnung, Inhaber 04.10.2026): Alter des Anlasses, Beleg-Link mit Abrufdatum,
+        # Quelle der Ansprechperson, Einstiegssatz – nur, was die Daten wirklich hergeben
+        age = premium_wert.alter(r.get("event_date", ""), period or dt.date.today(), lang)
+        if age:
+            lead["detectedAge"] = age
+        ev = premium_wert.beleg(sig, r.get("website") or "", r.get("source_url") or "", r.get("checked_on") or "", lang)
+        if ev:
+            lead["evidence"] = ev
+        if lead["contact"] and (r.get("contact_source") or "").strip():
+            lead["contactSource"] = r["contact_source"].strip()
+        if (r.get("opening_line") or "").strip():
+            lead["opener"] = r["opening_line"].strip()
         if cc == "US":
             lead["state"] = rest.strip()[:2]
         else:
@@ -133,6 +146,13 @@ def report_data(data: bytes, country: str = "US", plans: list[dict] | None = Non
         closing["plans"] = cards + ([custom] if custom else [])
     closing["cta"]["url"] = cta_url or f"mailto:{os.environ.get('REPLY_TO') or 'info@nextgen-profit.de'}"
     d["leads"] = leads
+    wt = premium_wert.daten()["texte"][lang]
+    d["cardLabels"] = {"evidence": wt["karte_beleg"], "contactSource": wt["karte_quelle_person"],
+                       "opener": wt["karte_einstieg"]}
+    # Seite „Was ein Kunde wert ist“: nur Proben (Pakete bekannt) für Webagenturen US/UK/FR
+    value = premium_wert.seite(segment, cc, plans) if sample else None
+    if value:
+        d["value"] = value
     return d
 
 

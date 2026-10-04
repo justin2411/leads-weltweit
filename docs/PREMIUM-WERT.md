@@ -67,6 +67,8 @@ Frische zählt: Wer bei eingehenden Anfragen in 1 h reagiert, qualifiziert etwa 
 
 Grundregeln: keine Garantien, keine erfundenen Zahlen, nur belegte Spannen mit Quelle und Datum. Annahmen heißen „Rechenbeispiel“. Fremde Antwortquoten nie als unsere ausgeben.
 
+**Umgesetzt (05.10.2026):** Zahlen und Texte in `app/content/premium-wert.json` (Rechnung `app/lib/premium-wert.ts` = `scripts/lib/premium_wert.py`). Probe-PDF S2 US/UK/FR: Lead-Karte mit Alter, Beleg-Link und Abrufdatum, Quelle der Ansprechperson, Einstiegssatz; Seite „Was ein Kunde wert ist“ (UK ohne Projektspanne, da ungeprüft). Landingpage: Block „Lohnt sich das?“ nur als A/B-Variante (`page_variants.value_block = an`, Schritt `landing`, Element `value_block`).
+
 ### Probe-PDF
 
 - Pro Lead eine **Lead-Karte**: Anlass, Datum mit Alter („vor 6 Tagen“), Beleg-Link mit Abrufdatum, Ansprechperson mit Quelle, geprüfter Kontakt, Einstiegssatz.

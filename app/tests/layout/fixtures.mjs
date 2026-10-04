@@ -164,6 +164,12 @@ export function makeFixtures(nowMs = Date.now()) {
       dashboard_cache: [{ name: "stock", value: stock, updated_at: iso(1) }, { name: "website", value: website, updated_at: iso(1) }],
       kpi_daily: kpi, experiment_stats: expStats, company_goals: goals, customers, subscriptions, inbound_replies: replies,
       agent_roles: roles,
+      // Feedback-Werk (Büro Qualität): erfundene Testzahlen
+      lead_feedback_stats: [
+        { signal_type: "no_website", country: "US", bewertungen: 9, gut: 7, schlecht: 2, gewonnen: 1, gut_pct: 77.8 },
+        { signal_type: "no_website", country: "UK", bewertungen: 3, gut: 1, schlecht: 2, gewonnen: 0, gut_pct: 33.3 },
+        { signal_type: "relocation", country: "FR", bewertungen: 6, gut: 1, schlecht: 5, gewonnen: 0, gut_pct: 16.7 },
+      ],
       departments: [
         { slug: "vertrieb", name: "Vertrieb", icon: "versand", zweck: "Zweck Vertrieb", leitung_rolle: null, leitung_name: "Trichter-Agent", leitung_takt: "täglich 07:40", aktiv: true,
           mitglieder: [{ art: "rolle", ref: "test", name: "Trichter-Agent", takt: "täglich 07:40" }, { art: "workflow", ref: "x.yml", name: "Werk Vertrieb", takt: "stündlich" }, { art: "routine", ref: "A/B-Prüfung", name: "Routine", takt: "18:20" }],

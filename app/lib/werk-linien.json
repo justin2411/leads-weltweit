@@ -36,6 +36,8 @@
     { "id": "kunden", "werk": "kunden-werk", "label": "Käufer prüfen (Kunden-Werk)", "short": "KÄUFER", "segment": "S2", "country": "US,UK,FR", "default": 4, "max": 16, "workers": 16,
       "what": "Webagenturen und Recruiter aus Overture auf ihrer Website prüfen und als Käufer speichern" },
     { "id": "pruefer", "werk": "pruefer-werk", "label": "Prüfer (lieferbare Leads US·UK·FR)", "short": "PRÜFER", "segment": "S2", "country": "US,UK,FR", "default": 4, "max": 8, "workers": 8,
-      "what": "Lieferbare S2-Leads rund um die Uhr nachprüfen: Freigabe, Vollständigkeit, Anlass aktuell, Dubletten, Schreibweise – Premium zuerst (Inhaber 05.10.2026)" }
+      "what": "Lieferbare S2-Leads rund um die Uhr nachprüfen: Freigabe, Vollständigkeit, Anlass aktuell, Dubletten, Schreibweise – Premium zuerst (Inhaber 05.10.2026)" },
+    { "id": "kontakt", "werk": "kontakt-werk", "label": "Kontakt-Werk (Register + Website gegenprüfen)", "short": "KONTAKT", "segment": "S2", "country": "US,UK,FR", "default": 0, "max": 6, "workers": 6,
+      "what": "Ansprechperson aus dem Register (Officers, Dirigeants, NY DOS) und Telefon/E-Mail der eigenen Website zusammenführen und gegenprüfen (Name, Nummer, PLZ) – Premium zuerst (Inhaber 05.10.2026). Standard 0 (Standardsumme bleibt 38), Plätze kommen aus der Belegung des Inhabers (Zielbild: Premium veredeln 6)" }
   ]
 }
