@@ -146,11 +146,13 @@ export function noteBrief(agentId: string, name: string, company: string, note: 
 /** Kurzlabel für den JARVIS-Link: „Kunden-Agenten (3)“, ohne Zahl wenn unbekannt. */
 export const jarvisLabel = (n: number | null) => (n == null ? "Kunden-Agenten" : `Kunden-Agenten (${n})`);
 
-/** Zeile auf der Tarifseite bei Pro und individuell ab 50/Woche (docs/KUNDEN-AGENTEN.md „Tarifseite“). */
+/** Zeile auf der Tarifseite bei Pro und individuell ab 50/Woche (docs/KUNDEN-AGENTEN.md „Tarifseite“). Inhaber 04.10.2026:
+ *  „individueller ansprechpartner, nichts mit ai oder ki“ – neutral benannt; die KI-Kennzeichnung steht in jeder Mail des
+ *  Ansprechpartners (Signatur, erste Mail), wo das Gespräch stattfindet (EU-KI-Verordnung Art. 50). */
 export const PLAN_AGENT_LINE: Record<"en" | "fr" | "de", { title: string; text: string }> = {
-  en: { title: "Personal AI account manager", text: "learns your goals and picks your leads for you" },
-  fr: { title: "Interlocuteur dédié (IA)", text: "apprend vos objectifs et choisit vos pistes pour vous" },
-  de: { title: "Persönlicher Ansprechpartner (KI)", text: "lernt Ihre Ziele und wählt Ihre Leads gezielt aus" },
+  en: { title: "Personal account manager", text: "learns your goals and picks your leads for you" },
+  fr: { title: "Interlocuteur dédié", text: "apprend vos objectifs et choisit vos pistes pour vous" },
+  de: { title: "Persönlicher Ansprechpartner", text: "lernt Ihre Ziele und wählt Ihre Leads gezielt aus" },
 };
 export const planAgentLine = (lang: unknown) => PLAN_AGENT_LINE[lang === "fr" || lang === "de" ? lang : "en"];
 
