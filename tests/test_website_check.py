@@ -365,7 +365,7 @@ class LeadTests(unittest.TestCase):
 class WiderPoolTests(unittest.TestCase):
     """UK/FR zweite Stufe (Scout 04.10.2026): Konfidenz 0,4–0,6 und Einträge ohne Telefon."""
 
-    def write(self, path, rows):
+    def write(self, path, rows, country="GB"):
         import duckdb
         con = duckdb.connect()
         con.execute("CREATE TABLE t (id VARCHAR, name VARCHAR, phones VARCHAR[], emails VARCHAR[], socials VARCHAR[], "
@@ -373,8 +373,8 @@ class WiderPoolTests(unittest.TestCase):
                     "category VARCHAR, cat2 VARCHAR, confidence DOUBLE, operating_status VARCHAR, datasets VARCHAR[], "
                     "updated VARCHAR[])")
         for r in rows:
-            con.execute("INSERT INTO t VALUES (?, ?, ?, [], [], ?, '1 High St', 'Leeds', 'LS1 1AA', '', 'GB', "
-                        "'plumber', '', ?, 'open', ['meta'], [])", r)
+            con.execute("INSERT INTO t VALUES (?, ?, ?, [], [], ?, '1 High St', 'Leeds', 'LS1 1AA', '', ?, "
+                        "'plumber', '', ?, 'open', ['meta'], [])", (*r[:4], country, r[4]))
         con.execute(f"COPY t TO '{path}' (FORMAT parquet)")
 
     def test_pool_order_and_tiers(self):
@@ -397,6 +397,36 @@ class WiderPoolTests(unittest.TestCase):
                 self.assertEqual(ids(min_conf=0.1), ["hi", "mid"])               # nie unter 0,4
             finally:
                 overture.CACHE_WEB_NOPHONE = orig
+
+    def test_us_second_stage(self):
+        """US (Scout 04.10.2026): erster Auszug nur ab 0,6 mit Telefon, zweiter Auszug = Konfidenz 0,4–0,6 oder ohne Telefon."""
+        import tempfile
+        from extraktor.sources import overture
+        with tempfile.TemporaryDirectory() as d:
+            main, second = Path(d) / "us.parquet", Path(d) / "us2.parquet"
+            self.write(main, [("hi", "Alpha Plumbing", ["+1 214 555 0100"], ["https://alphaplumbing.com"], 0.9)], "US")
+            self.write(second, [("mid", "Beta Joinery", ["+1 214 555 0101"], ["https://betajoinery.com"], 0.5),
+                                ("np", "Delta Tiling", None, ["https://deltatiling.com"], 0.8),
+                                ("npmid", "Echo Roofing", None, ["https://echoroofing.com"], 0.45)], "US")
+            orig = overture.CACHE_US_WEB2
+            try:
+                overture.CACHE_US_WEB2 = second
+                ids = lambda **k: [r["id"] for r in wc.with_website("US", 10, log=lambda *_: None, path=main, **k)]  # noqa: E731
+                self.assertEqual(ids(), ["hi"])                                   # Standard wie bisher
+                self.assertEqual(ids(min_conf=0.4), ["hi", "mid"])                # ohne --web-no-phone nur mit Telefon
+                self.assertEqual(ids(no_phone=True), ["hi", "np"])                # ab 0,6, auch ohne Telefon
+                self.assertEqual(ids(min_conf=0.4, no_phone=True), ["hi", "np", "mid", "npmid"])
+            finally:
+                overture.CACHE_US_WEB2 = orig
+
+    def test_us_second_extract_is_the_complement(self):
+        from extraktor.sources import overture
+        self.assertIn(overture.CACHE_US_WEB2, overture.ANY_PHONE)
+        self.assertIn(">= 0.6", overture.EXTRA_WHERE[overture.CACHE_US_WEB])
+        w = overture.EXTRA_WHERE[overture.CACHE_US_WEB2]
+        self.assertIn(">= 0.4", w)
+        self.assertIn("< 0.6 OR phones IS NULL", w)
+        self.assertEqual(overture.cache_for("US"), overture.CACHE_US)
 
     def test_low_confidence_needs_a_confirmed_page(self):
         d = {"id": "x", "name": "Beta Joinery", "phones": ["+44 113 496 0001"], "emails": [], "socials": [],
@@ -443,7 +473,7 @@ class WiderPoolTests(unittest.TestCase):
         reg = werk_plan.load_lines()
         for lane in reg["lanes"]:
             wide = "--web-min-conf 0.4 --web-no-phone" in lane.get("args", "")
-            self.assertEqual(wide, lane["id"] in ("web-uk", "web-fr"), lane["id"])
+            self.assertEqual(wide, lane["id"] in ("web-uk", "web-fr", "web-us"), lane["id"])
 
 
 if __name__ == "__main__":

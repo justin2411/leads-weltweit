@@ -59,6 +59,17 @@ jobs:
         run: |
           pip install -r requirements.txt
           python -c "import sys; sys.path.insert(0, 'scripts'); from extraktor.sources import overture as o; o.build_cache(path=o.CACHE_US_WEB)"
+      - id: web2
+        uses: actions/cache@v4
+        with:
+          path: out/cache/overture_us_web_zweite.parquet
+          key: overture-us-web-zweite-${{ steps.m.outputs.release }}
+      - name: US-Auszug mit Website, zweite Stufe bauen (Konfidenz 0,4–0,6 oder ohne Telefon, Scout 04.10.2026)
+        if: steps.web2.outputs.cache-hit != 'true'
+        continue-on-error: true  # fehlt er, baut ihn jeder Teil web-us-* selbst
+        run: |
+          pip install -r requirements.txt
+          python -c "import sys; sys.path.insert(0, 'scripts'); from extraktor.sources import overture as o; o.build_cache(path=o.CACHE_US_WEB2)"
       - id: webtel
         uses: actions/cache@v4
         with:
@@ -435,6 +446,12 @@ jobs:
         with:
           path: out/cache/overture_us_web.parquet
           key: overture-us-web3-${{ needs.us-auszug.outputs.release }}
+      - name: US-Auszug mit Website, zweite Stufe laden (Website-Prüfung, Scout 04.10.2026)
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-us-')
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/overture_us_web_zweite.parquet
+          key: overture-us-web-zweite-${{ needs.us-auszug.outputs.release }}
       - name: UK/FR-Auszug mit Website ohne Telefon laden (Website-Prüfung, Scout 04.10.2026)
         if: steps.gate.outputs.an == 'true' && (startsWith(matrix.name, 'web-uk-') || startsWith(matrix.name, 'web-fr-'))
         uses: actions/cache/restore@v4

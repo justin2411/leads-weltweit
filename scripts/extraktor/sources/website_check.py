@@ -41,7 +41,15 @@ RECHECK_DAYS = 120
 HIGH_CONF = 0.6
 LOW_CONF = 0.4  # tiefer nie (Einträge unter 0,4 sind zu oft geschlossene oder falsch zugeordnete Firmen)
 # Firmen ohne Telefon im Overture-Eintrag (`--web-no-phone`): nur hier, Nummer von der eigenen Website
-NO_PHONE_COUNTRIES = {"UK", "FR"}
+NO_PHONE_COUNTRIES = {"UK", "FR", "US"}
+
+
+def second_stage(country: str) -> Path | None:
+    """Zweiter Auszug der Website-Prüfung je Land (UK/FR: ohne Telefon; US: Konfidenz 0,4–0,6 und ohne Telefon,
+    weil der erste US-Auszug nur Einträge ab 0,6 mit Telefon enthält)."""
+    if country == "US":
+        return overture.CACHE_US_WEB2
+    return overture.CACHE_WEB_NOPHONE if country in NO_PHONE_COUNTRIES else None
 OUTDATED_YEAR = 2018
 PRIORITY = ("website_broken", "no_https", "website_not_mobile", "website_outdated")
 # Websites, die keine eigene Firmenseite sind (Plattformen, Link-Sammlungen, Buchungs-/Liefer-Portale, Baukasten-
@@ -150,11 +158,14 @@ def with_website(country: str, limit: int, log=print, exclude: set[str] | None =
     """Firmen mit eingetragener Website und Telefon, ohne Ketten (Name oder Domain mehrfach) und ohne Behörden.
     part = (i, n): nur der eigene Anteil dieses Teils, damit `limit` eigene Firmen zählt.
     min_conf < HIGH_CONF: sichere Einträge zuerst, danach die unsicheren (siehe HIGH_CONF).
-    no_phone (nur UK/FR): zusätzlich Firmen mit Website, aber ohne Telefon im Eintrag (Nummer dann von der Website)."""
+    no_phone (UK/FR/US): zusätzlich Firmen mit Website, aber ohne Telefon im Eintrag (Nummer dann von der Website).
+    US: Einträge unter 0,6 oder ohne Telefon stehen im zweiten Auszug (overture.CACHE_US_WEB2)."""
     min_conf = max(LOW_CONF, min(float(min_conf), HIGH_CONF))
     import duckdb
     path = path or web_cache_for(country)
-    paths = [path] + ([overture.CACHE_WEB_NOPHONE] if no_phone and country in NO_PHONE_COUNTRIES else [])
+    second = second_stage(country)
+    wide = no_phone or (country == "US" and min_conf < HIGH_CONF)
+    paths = [path] + ([second] if second and wide and second != path else [])
     for p in paths:
         if not p.exists():
             overture.build_cache(log, p)
@@ -183,10 +194,11 @@ def with_website(country: str, limit: int, log=print, exclude: set[str] | None =
           AND name IS NOT NULL AND lower(name) NOT IN (SELECT n FROM chains)
           AND dom <> '' AND dom NOT IN (SELECT dom FROM shared)
           AND coalesce(confidence, 0) >= ?
+          AND (? OR coalesce(len(phones), 0) > 0)
           AND street IS NOT NULL AND postcode IS NOT NULL
           AND id NOT IN (SELECT id FROM seen)
         ORDER BY (coalesce(confidence, 0) >= {HIGH_CONF}) DESC, (coalesce(len(phones), 0) > 0) DESC, md5(id)""",
-                [cc, min_conf])
+                [cc, min_conf, bool(no_phone)])
     cols = ["id", "name", "phones", "emails", "socials", "websites", "street", "city", "postcode", "category",
             "datasets", "updated", "confidence", "region"]
     out, offset, page = [], 0, max(1000, limit * 2)
