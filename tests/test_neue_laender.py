@@ -252,7 +252,11 @@ class FairShareTest(unittest.TestCase):
         def fake_pool(co, limit, stats, known):
             return [{"source": "overture", "source_id": f"{co}{i}", "country": co} for i in range(3)]
 
+        import types
+        fake_enrich = types.SimpleNamespace(Fetcher=lambda: types.SimpleNamespace(requests=0))
+        # sys.modules unverändert lassen: „enrich“ gibt es zweimal (scripts/ und scripts/extraktor/)
         with tempfile.TemporaryDirectory() as d, \
+                mock.patch.dict(sys.modules, {"enrich": fake_enrich}), \
                 mock.patch.object(run.time, "monotonic", lambda: clock["t"]), \
                 mock.patch.object(run, "load_overture_s2", fake_pool), \
                 mock.patch.object(run.segments, "fits", lambda seg, c: (True, "")), \
