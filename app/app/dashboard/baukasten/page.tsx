@@ -6,7 +6,7 @@ import { requireOwner } from "../actions";
 import { Builder, type BuilderInit, type SavedFlow } from "./builder";
 import { AgentList } from "./agents";
 import { BAUKASTEN_CSS } from "./css";
-import { JCHAT_CSS } from "../jarvis/chat/css";
+import { JCHAT_CSS, SOFORT_CSS } from "../jarvis/chat/css";
 
 export const metadata = { title: "Baukasten" };
 // Server-Actions (Stichprobe bis 5000 Zeilen in 1000er-Seiten) erben das Zeitlimit der Seite
@@ -75,7 +75,7 @@ export default async function Baukasten({ searchParams }: { searchParams: SP }) 
   ]);
   const flows: SavedFlow[] = rows.filter((r) => r.kind === "test").map((r) => ({ id: r.id, name: r.name, status: r.status, updated_at: r.updated_at }));
   const activeAgents = agents ? agents.filter((a) => a.enabled && !a.archived).length : null;
-  const css = <style dangerouslySetInnerHTML={{ __html: BAUKASTEN_CSS + JCHAT_CSS }} />;
+  const css = <style dangerouslySetInnerHTML={{ __html: BAUKASTEN_CSS + JCHAT_CSS + SOFORT_CSS }} />;
 
   if (opened?.kind === "master") bereich = "master";
   if (agentParam) bereich = "agenten";

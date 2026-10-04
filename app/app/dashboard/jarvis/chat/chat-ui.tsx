@@ -9,13 +9,17 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type KeyboardEvent, type ReactNode } from "react";
 import { BODY_MAX, LEGACY_ID, chatTime, hasNew, nextRunAt, sessionState, statusText, type ChatMessage, type ChatSession } from "@/lib/jarvis-chat";
 import { Icon } from "@/app/icons";
-import { archiveChatSession, renameChatSession, sendChat } from "./actions";
+import { sendToJarvis, modelLabel } from "@/lib/jarvis-send";
+import { archiveChatSession, renameChatSession } from "./actions";
+import { LlmBudget, type LlmView } from "./budget";
 
 type Mode = "session" | "neu" | "legacy";
 
-export function ChatApp({ now: nowIso, sessions, archived, selected, messages, mode, legacyCount }: {
+export function ChatApp({ now: nowIso, sessions, archived, selected, messages, mode, legacyCount, instant = false, llm = null }: {
   now: string; sessions: ChatSession[]; archived: ChatSession[] | null; selected: ChatSession | null; messages: ChatMessage[];
   mode: Mode; legacyCount: number;
+  /** Sofort-Antwort eingerichtet (Schlüssel gesetzt) und Kosten des Monats („API diesen Monat: x,xx € von 30 €“) */
+  instant?: boolean; llm?: LlmView | null;
 }) {
   const router = useRouter();
   const now = new Date(nowIso);
@@ -103,6 +107,7 @@ export function ChatApp({ now: nowIso, sessions, archived, selected, messages, m
           )}
           {state && <em className="jc-state"><Icon name={state.startsWith("startet") ? "uhr" : "werk"} size={14} />{state}</em>}
           <span className="jc-sp" />
+          <LlmBudget llm={llm} />
           {selected?.kind === "chat" && !selected.archived && !renaming && (
             <>
               <button type="button" className="jc-ib" onClick={() => setRenaming(true)} aria-label="Umbenennen" title="Umbenennen"><Icon name="einstellungen" size={16} /></button>
@@ -119,7 +124,7 @@ export function ChatApp({ now: nowIso, sessions, archived, selected, messages, m
         {readOnly ? (
           <p className="jc-ro"><Icon name="schloss" size={14} />{mode === "legacy" ? "Ältere Chat-Aufträge – nur lesbar. Neue Nachrichten gehen in die Sitzungen." : "Archiviert – nur lesbar."}</p>
         ) : (
-          <Composer sessionId={sid} now={now} onError={setErr} />
+          <Composer sessionId={sid} now={now} onError={setErr} instant={instant && (llm?.ok ?? true)} />
         )}
       </section>
     </div>
@@ -140,7 +145,7 @@ export function Thread({ messages, now, empty, compact = false }: { messages: Ch
         return (
           <li key={m.id} className={m.role === "jarvis" ? "bot" : "me"}>
             <div className="b">
-              {m.role === "jarvis" && <b className="who">JARVIS</b>}
+              {m.role === "jarvis" && <b className="who">JARVIS{modelLabel(m.model) && <em className="jc-model" title="Sofort-Antwort über die Claude-API">{modelLabel(m.model)}</em>}</b>}
               <p>{m.body}</p>
               {m.links.length > 0 && (
                 <span className="lk">{m.links.map((l, i) => l.url.startsWith("/")
@@ -159,32 +164,49 @@ export function Thread({ messages, now, empty, compact = false }: { messages: Ch
   );
 }
 
-/** Eingabe: Enter sendet, Shift+Enter neue Zeile. Ohne Sitzung entsteht beim Senden eine neue (Titel aus dem Text). */
-export function Composer({ sessionId, now, onError, send, placeholder }: {
+/** Eingabe: Enter sendet, Shift+Enter neue Zeile. Ohne Sitzung entsteht beim Senden eine neue (Titel aus dem Text).
+ *  Sofort-Antwort über /api/jarvis/ask (lib/jarvis-send.ts): während des Wartens „JARVIS denkt …“, danach lädt der
+ *  Verlauf neu. Ohne Schlüssel/bei erreichter Grenze bleibt die Nachricht offen und die Routine antwortet (Hinweis). */
+export function Composer({ sessionId, now, onError, send, placeholder, instant = true, onDone }: {
   sessionId: string | null; now: Date; onError: (e: string | null) => void;
-  /** eigener Versand (Baukasten-Chat); ohne = JARVIS-Chat */
-  send?: (text: string) => Promise<{ ok: true } | { ok: false; error: string }>; placeholder?: string;
+  /** eigener Versand (Baukasten-Chat, Mini-Chats); ohne = JARVIS-Chat-Seite */
+  send?: (text: string) => Promise<{ ok: true; hint?: string | null } | { ok: false; error: string }>; placeholder?: string;
+  /** Sofort-Antwort eingerichtet (ANTHROPIC_API_KEY gesetzt) */
+  instant?: boolean;
+  /** nach erfolgreichem Senden (eigener Versand) */
+  onDone?: () => void;
 }) {
   const router = useRouter();
   const [text, setText] = useState("");
+  const [pending, setPending] = useState<string | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
   const [busy, start] = useTransition();
   const submit = () => {
     const t = text.trim();
     if (!t || busy) return;
+    setPending(t);
+    setHint(null);
     start(async () => {
-      if (send) {
-        const r = await send(t);
+      try {
+        if (send) {
+          const r = await send(t);
+          if (!r.ok) { onError(r.error); return; }
+          onError(null);
+          setText("");
+          setHint(r.hint ?? null);
+          onDone?.();
+          return;
+        }
+        const r = await sendToJarvis({ sessionId, text: t });
         if (!r.ok) { onError(r.error); return; }
         onError(null);
         setText("");
-        return;
+        setHint(r.fallback?.hint ?? null);
+        if (r.sessionId !== sessionId) router.push(`/dashboard/jarvis/chat?s=${r.sessionId}`);
+        else router.refresh();
+      } finally {
+        setPending(null);
       }
-      const r = await sendChat(sessionId, t);
-      if (!r.ok) { onError(r.error); return; }
-      onError(null);
-      setText("");
-      if (r.sessionId !== sessionId) router.push(`/dashboard/jarvis/chat?s=${r.sessionId}`);
-      else router.refresh();
     });
   };
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -192,10 +214,17 @@ export function Composer({ sessionId, now, onError, send, placeholder }: {
   };
   return (
     <form className="jc-comp" onSubmit={(e) => { e.preventDefault(); submit(); }}>
+      {pending && (
+        <ol className="jc-log jc-pend" aria-live="polite">
+          <li className="me"><div className="b"><p>{pending}</p></div></li>
+          <li className="bot"><div className="b"><b className="who">JARVIS</b><p className="jc-think">{instant ? "JARVIS denkt …" : "wird gespeichert …"}</p></div></li>
+        </ol>
+      )}
+      {hint && <p className="jc-hint2" role="status"><Icon name="uhr" size={13} />{hint}</p>}
       <textarea value={text} onChange={(e) => setText(e.target.value)} onKeyDown={onKey} rows={2} maxLength={BODY_MAX} disabled={busy}
         aria-label="Nachricht an JARVIS" placeholder={placeholder ?? "Nachricht an JARVIS … (Enter sendet, Shift+Enter neue Zeile)"} />
       <button type="submit" className="go" disabled={busy || !text.trim()} aria-label="Senden"><Icon name="weiter" size={17} /><span>Senden</span></button>
-      <small className="jc-hint"><Icon name="uhr" size={12} />Antwort im nächsten Lauf · startet um {nextRunAt(now)}</small>
+      <small className="jc-hint"><Icon name={instant ? "jarvis" : "uhr"} size={12} />{instant ? "Antwort sofort · einfache Fragen Haiku, Systemzugriff Opus" : `Sofort-Antwort aus – Schlüssel fehlt, Routine antwortet um ${nextRunAt(now)}`}</small>
     </form>
   );
 }
