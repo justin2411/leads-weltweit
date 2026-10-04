@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/lib/supabase";
 import { toMessage, toSession, type ChatMessage, type ChatSession } from "@/lib/jarvis-chat";
-import { WEBSITE_SESSION_TITLE, toAgent, toCheck, type SiteCheck, type TaskStatus, type WebsiteAgent } from "@/lib/website";
+import { WEBSITE_SESSION_TITLE, toAgent, toCheck, toFix, type SiteCheck, type TaskStatus, type WebsiteAgent, type WebsiteFix } from "@/lib/website";
 
 /**
  * Daten des Themenfelds „Website“ (Migration 20261004170000): letzter Website-Check und Verlauf, Website-Agenten mit
@@ -17,14 +17,21 @@ export type AgentTaskLite = { id: string; status: TaskStatus; agent: number; pro
 export type WebsiteData = {
   check: SiteCheck | null; history: { at: string; total: number | null }[]; agents: WebsiteAgent[];
   tasks: Record<string, AgentTaskLite>; missing: boolean; error: string | null;
+  /** Fix-Aufträge der letzten 14 Tage (Knopf „Beheben“ und Auto-Fix); deren Aufträge stehen mit in `tasks`. */
+  fixes: WebsiteFix[];
 };
+const FIX_COLS = "id, created_at, task_id, pfad, keys, quelle, behoben_at";
 
 export async function loadWebsite(): Promise<WebsiteData> {
-  const out: WebsiteData = { check: null, history: [], agents: [], tasks: {}, missing: false, error: null };
-  const [c, a] = await Promise.all([
+  const out: WebsiteData = { check: null, history: [], agents: [], tasks: {}, missing: false, error: null, fixes: [] };
+  const since = new Date(Date.now() - 14 * 24 * 3_600_000).toISOString();
+  const [c, a, fx] = await Promise.all([
     db().from("website_checks").select("at, site, scores, funde, seiten").order("at", { ascending: false }).limit(14).abortSignal(T()),
     db().from("website_agents").select(AGENT_COLS).order("created_at", { ascending: true }).limit(60).abortSignal(T()),
+    db().from("website_fixes").select(FIX_COLS).gte("created_at", since).order("created_at", { ascending: false }).limit(100).abortSignal(T()),
   ]);
+  // Fixes sind ein Zusatz: fehlt die Tabelle noch, bleibt der Rest der Seite normal
+  if (!fx.error) out.fixes = ((fx.data ?? []) as Record<string, unknown>[]).map(toFix);
   for (const r of [c, a]) {
     if (r.error) {
       if (missing(r.error.code)) out.missing = true;
@@ -38,7 +45,7 @@ export async function loadWebsite(): Promise<WebsiteData> {
     return { at: x.at, total: v.length ? Math.round(v.reduce((p, q) => p + q, 0) / v.length) : null };
   });
   out.agents = ((a.data ?? []) as Record<string, unknown>[]).map(toAgent);
-  const ids = out.agents.map((x) => x.last_task_id).filter((x): x is string => !!x);
+  const ids = [...new Set([...out.agents.map((x) => x.last_task_id), ...out.fixes.map((x) => x.task_id)].filter((x): x is string => !!x))];
   if (ids.length) {
     const t = await db().from("agent_tasks").select("id, status, agent, progress, step").in("id", ids).abortSignal(T());
     for (const r of t.data ?? []) out.tasks[String(r.id)] = { id: String(r.id), status: r.status as TaskStatus, agent: Number(r.agent), progress: Number(r.progress) || 0, step: (r.step as string | null) ?? null };

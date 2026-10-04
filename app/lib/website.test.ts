@@ -1,9 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  AREAS, TEMPLATES, WebsiteInputError, agentState, areaTone, countLevels, findingsFor, isDue, nextDue, ringDash, shortTime, toAgent,
-  toCheck, toneOf, totalScore, validateAgent, type WebsiteAgent,
+  AREAS, IGNORE_MAX, TEMPLATES, WebsiteInputError, addIgnore, agentState, areaTone, canFixFinding, countLevels, findingKey, findingsFor,
+  fixBrief, fixState, isDue, isFindingKey, isIgnored, nextDue, recentlyFixed, ringDash, shortTime, suggestionLine, toAgent, toCheck, toFix,
+  toneOf, totalScore, validateAgent, visibleFindings, type Finding, type WebsiteAgent, type WebsiteFix,
 } from "./website.ts";
+import { fitTitle } from "./site.ts";
 import { KINDS, OWNER_KINDS } from "./agents.ts";
 import { orderSessions, toSession } from "./jarvis-chat.ts";
 
@@ -106,4 +108,85 @@ test("Arten: website ist Agenten-Art, aber nicht im Auftragsformular; Website-Si
   const s = toSession({ id: "w", title: "Website", kind: "website", created_at: "2026-10-04T10:00:00Z" });
   assert.equal(s.kind, "website");
   assert.deepEqual(orderSessions([s]), []);
+});
+
+// ------------------------------------------------------------------------------------------------- Funde beheben
+const F_TITLE: Finding = { bereich: "texte", stufe: "gelb", text: "Titel zu lang (90 Zeichen)", pfad: "/fr/agences-web", key: "texte:titel:/fr/agences-web",
+  vorschlag: { text: "Titel kürzen auf ≤ 60 Zeichen", alt: "Des entreprises … | NextGen Profit", neu: "Des entreprises partout en France sans site web à jour", auto: true } };
+const F_LEGAL: Finding = { bereich: "recht", stufe: "rot", text: "Platzhalter im Rechtstext", pfad: "/impressum", key: "recht:platzhalter:/impressum" };
+const fixOf = (o: Partial<WebsiteFix>): WebsiteFix => ({ id: "f1", created_at: ago(1), task_id: "t1", pfad: "/fr/agences-web", keys: [F_TITLE.key], quelle: "inhaber", behoben_at: null, ...o });
+
+test("Check: Fund-Schlüssel und Vorschlag aus der Datenbank, alte Checks bekommen einen Ersatz-Schlüssel", () => {
+  const c = toCheck({ at: NOW.toISOString(), site: "x", funde: [
+    { bereich: "texte", stufe: "gelb", text: "Titel zu lang (90 Zeichen)", pfad: "/fr/a", key: "texte:titel:/fr/a",
+      vorschlag: { text: "  Titel kürzen ", neu: "Kurz", auto: true, böse: "<script>" } },
+    { bereich: "texte", stufe: "gelb", text: "Gedankenstrich im Text (1×)", pfad: "/uk/x", key: "kaputt key" },
+  ] })!;
+  assert.deepEqual(c.funde[0].vorschlag, { text: "Titel kürzen", neu: "Kurz", auto: true });
+  assert.equal(c.funde[0].key, "texte:titel:/fr/a");
+  assert.equal(c.funde[1].key, "texte:gedankenstrich_im_text:/uk/x");
+  assert.equal(c.funde[1].vorschlag, undefined);
+  assert.ok(isFindingKey(findingKey("fehler", "kaputter Link (404)", "/a")));
+  assert.equal(isFindingKey("texte:titel:/a b"), false);
+  assert.equal(isFindingKey("erreichbar:variable:/api/health"), true);
+});
+
+test("Vorschlag in einer Zeile, Rechtstexte nur melden", () => {
+  assert.equal(suggestionLine(F_TITLE), "„Des entreprises partout en France sans site web à jour“");
+  assert.equal(suggestionLine({ ...F_TITLE, vorschlag: { text: "Link korrigieren", auto: true } }), "Link korrigieren");
+  assert.equal(suggestionLine(F_LEGAL), "Nur der Inhaber ändert Rechtstexte");
+  assert.equal(canFixFinding(F_TITLE), true);
+  assert.equal(canFixFinding(F_LEGAL), false);
+  assert.equal(canFixFinding({ ...F_TITLE, bereich: "texte", pfad: "/agb" }), false);
+});
+
+test("Fix-Stand: wartet, in Arbeit, erledigt bis zum nächsten Check, sonst erneut beheben", () => {
+  const checkAt = ago(3);
+  assert.equal(fixState(F_TITLE, [], {}, checkAt, "12:08"), null);
+  assert.deepEqual(fixState(F_TITLE, [fixOf({})], { t1: { status: "offen" } }, checkAt, "12:08"), { text: "JARVIS behebt · startet um 12:08", tone: "wait", canFix: false });
+  assert.equal(fixState(F_TITLE, [fixOf({})], { t1: { status: "laeuft" } }, checkAt, "12:08")!.text, "in Arbeit");
+  assert.equal(fixState(F_TITLE, [fixOf({})], { t1: { status: "fertig" } }, checkAt, "12:08")!.text, "erledigt · Check folgt");
+  const again = fixState(F_TITLE, [fixOf({ created_at: ago(5) })], { t1: { status: "fertig" } }, checkAt, "12:08")!;
+  assert.deepEqual([again.tone, again.canFix], ["bad", true]);
+  assert.equal(fixState(F_TITLE, [fixOf({})], { t1: { status: "fehler" } }, checkAt, "12:08")!.text, "Fehler · erneut beheben");
+  // neuester Fix zählt
+  const two = [fixOf({ id: "a", created_at: ago(10), task_id: "x" }), fixOf({ id: "b", created_at: ago(1), task_id: "y" })];
+  assert.equal(fixState(F_TITLE, two, { x: { status: "fehler" }, y: { status: "laeuft" } }, checkAt, "12:08")!.text, "in Arbeit");
+});
+
+test("Ignorieren: 30 Tage, Abgelaufenes fällt weg, nur gültige Schlüssel", () => {
+  const cur = { "texte:titel:/alt": ago(1), "texte:titel:/x": new Date(NOW.getTime() + 3_600_000).toISOString() };
+  const next = addIgnore(cur, F_TITLE.key, NOW);
+  assert.deepEqual(Object.keys(next).sort(), ["texte:titel:/fr/agences-web", "texte:titel:/x"]);
+  assert.equal(next[F_TITLE.key], new Date(NOW.getTime() + 30 * 24 * 3_600_000).toISOString());
+  assert.equal(isIgnored(F_TITLE.key, next, NOW), true);
+  assert.equal(isIgnored(F_TITLE.key, next, new Date(NOW.getTime() + 31 * 24 * 3_600_000)), false);
+  assert.throws(() => addIgnore({}, "nicht gültig", NOW), WebsiteInputError);
+  const many = Object.fromEntries(Array.from({ length: 250 }, (_, i) => [`texte:titel:/p${i}`, new Date(NOW.getTime() + (i + 1) * 60_000).toISOString()]));
+  assert.equal(Object.keys(addIgnore(many, "texte:titel:/neu", NOW)).length, IGNORE_MAX);
+  const v = visibleFindings([F_TITLE, F_LEGAL], next, NOW);
+  assert.deepEqual([v.shown.map((f) => f.key), v.hidden], [[F_LEGAL.key], 1]);
+});
+
+test("Auftragstext wie scripts/website_agents.py fix_brief, höchstens 1000 Zeichen", () => {
+  const b = fixBrief("/fr/agences-web", [F_TITLE], true);
+  assert.ok(b.startsWith("Website-Fix /fr/agences-web (Inhaber): Titel zu lang (90 Zeichen) → „Des entreprises partout en France sans site web à jour“ | "));
+  assert.ok(b.includes("Nie Rechtstexte oder Preise"));
+  const long = fixBrief(null, Array.from({ length: 30 }, () => F_TITLE));
+  assert.ok(long.length <= 1000 && long.startsWith("Website-Fix Website: "));
+});
+
+test("Behoben-Liste je Bereich und Fix aus der Datenbank", () => {
+  const fixes = [fixOf({ behoben_at: ago(2) }), fixOf({ id: "f2", behoben_at: ago(24 * 5) }), fixOf({ id: "f3", keys: ["tempo:langsam:/"], behoben_at: ago(1) })];
+  assert.deepEqual(recentlyFixed(fixes, "texte", NOW).map((f) => f.id), ["f1"]);
+  assert.deepEqual(toFix({ id: 1, created_at: "x", keys: ["texte:titel:/a", "böse"], quelle: "auto" }),
+    { id: "1", created_at: "x", task_id: null, pfad: null, keys: ["texte:titel:/a"], quelle: "auto", behoben_at: null });
+});
+
+test("Seitentitel ≤ 60: Marke nur, wenn sie passt, sonst kürzen", () => {
+  assert.equal(fitTitle("B2B leads with a reason to call", "NextGen Profit", true), "NextGen Profit | B2B leads with a reason to call");
+  assert.equal(fitTitle("New companies across the UK that still need an accountant", "NextGen Profit"), "New companies across the UK that still need an accountant");
+  const t = fitTitle("Des entreprises nouvelles et en croissance, partout en France, qui doivent s'assurer", "NextGen Profit");
+  assert.ok(t.length <= 60 && t.endsWith("…"));
+  assert.equal(fitTitle("", "NextGen Profit"), "NextGen Profit");
 });

@@ -53,6 +53,21 @@ export const WS_CSS = `
 .ws-funde li span{overflow-wrap:anywhere}
 .ws-funde li a{font-family:var(--mono);font-size:12px;color:var(--cy2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ws-clean{display:flex;gap:6px;align-items:center;color:var(--green);margin:0;font-size:14px}
+.ws-ftext{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ws-sug{display:flex;gap:5px;align-items:center;color:var(--soft);font-size:12.5px;overflow-wrap:anywhere}
+.ws-sug .ico{flex:none;color:var(--cy2)}
+.ws-fact{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.ws .ws-fix,.ws .ws-ign,.ws .ws-auto{display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:none;color:var(--cy2);font-size:13px;cursor:pointer}
+.ws .ws-fix{border-color:rgba(64,200,255,.45)}
+.ws .ws-ign{width:34px;padding:0;justify-content:center;color:var(--soft)}
+.ws .ws-fix:disabled,.ws .ws-ign:disabled,.ws .ws-auto:disabled{opacity:.55;cursor:wait}
+.ws .ws-auto{color:var(--soft);align-self:flex-start}
+.ws .ws-auto.on{color:var(--green);border-color:rgba(60,200,140,.45)}
+.ws-fst{font-style:normal;font-size:12px;padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.06);color:var(--soft);white-space:nowrap}
+.ws-fst.t-wait{color:var(--amber)}.ws-fst.t-work{color:var(--cy2)}.ws-fst.t-ok{color:var(--green)}.ws-fst.t-bad{color:var(--red)}
+.ws-ferr{display:flex;gap:6px;align-items:center;color:var(--red);margin:0 0 8px;font-size:13px}
+.ws-fdone{display:flex;gap:5px;align-items:center;color:var(--soft);margin:8px 0 0;font-size:12.5px}
+.ws-fdone .ico{color:var(--green)}
 
 /* Chat + Agenten */
 .ws-cols{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
@@ -120,6 +135,7 @@ export const WS_CSS = `
   .ws-main .ws-ring{transform:scale(.86);transform-origin:left center;margin-right:-18px}
   .ws-funde li{grid-template-columns:auto minmax(0,1fr)}
   .ws-funde li a{grid-column:2;max-width:100%}
+  .ws-fact{grid-column:2;justify-content:flex-start}
 }
 @media (prefers-reduced-motion:no-preference){
   .ws-ring .fg{animation:ws-draw 1.1s cubic-bezier(.3,.7,.2,1) both;animation-delay:var(--d,0ms)}
