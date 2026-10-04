@@ -7,6 +7,7 @@ import { STUFEN, kpiAus } from "@/lib/zentrale/vertrieb";
 import { kurzZahl, prozent } from "@/lib/zentrale/kpi";
 import { Icon } from "@/app/icons";
 import { requireOwner } from "../actions";
+import { Leer } from "../v2";
 import { ZtAmpel, ZtHead, ZtKpi } from "../zentrale/zt";
 
 export const metadata = { title: "Vertrieb" };
@@ -87,7 +88,7 @@ export default async function Vertrieb() {
         </div>
         <div className="zt-card">
           <div className="zt-h"><h2>Heiße Kontakte</h2><span className="zt-sp" /><Link href="/dashboard/antworten" className="zt-note">Cockpit <Icon name="weiter" size={13} /></Link></div>
-          {!hot ? <p className="zt-none">Antworten gerade nicht lesbar.</p> : !hot.length ? <p className="zt-none">Keine offenen Kaufinteressen, Fragen oder Proben.</p> : (
+          {!hot ? <p className="zt-none">Antworten gerade nicht lesbar.</p> : !hot.length ? <Leer icon="ok-kreis" text="Nichts offen." /> : (
             <ul className="zt-list">
               {hot.map((r) => {
                 const m = intentMeta(r.intent);

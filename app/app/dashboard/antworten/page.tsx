@@ -7,7 +7,7 @@ import { requireOwner } from "../actions";
 import { Age } from "./age";
 import { ANTWORTEN_CSS } from "./css";
 import { PushAlarm } from "./push-alarm";
-import { PageHead } from "../v2";
+import { Leer, PageHead } from "../v2";
 
 /**
  * Antworten-Cockpit (Nachtschicht 03./04.10.2026): jede menschliche Antwort auf unsere Mails an einem Ort. Offene
@@ -63,7 +63,7 @@ export default async function Antworten({ searchParams }: { searchParams: Promis
           );
         })}
         {!error && rows.length === 0 && (
-          <div className="aw-empty"><Icon name="ok-kreis" size={28} />{status === "offen" ? "Alles beantwortet" : "Keine"}</div>
+          <Leer icon="ok-kreis" text={status === "offen" ? "Alles beantwortet." : "Keine Antworten."} />
         )}
       </div>
     </div>
