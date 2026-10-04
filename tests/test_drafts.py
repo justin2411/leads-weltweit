@@ -153,6 +153,40 @@ class IndividualOpenerTest(unittest.TestCase):
                             self.assertIn(drafts.opener(p, lang2), body)
 
 
+class TemplateOpenerTest(unittest.TestCase):
+    """Diagnose 04.10.2026: 214 von 238 gesendeten S2-Erstmails begannen mit „I'm Justin, founder…“ – alle vor dem
+    Einstiegssatz (Baustein 4a, KALTMAIL-VORLAGE) geschrieben und gesendet. Jede neue und jede offene Erstmail muss
+    nach Anrede mit dem individuellen Einstiegssatz beginnen, auch mit voller Signatur (Titel, Telefon)."""
+    ENV = {"SENDER_NAME": "Justin Koch", "SENDER_TITLE": "Founder", "SENDER_PHONE": "+49 170 1234567",
+           "SENDER_WEBSITE": "https://www.nextgen-profit.de"}
+
+    def test_s2_us_uk_fr_start_with_opener(self):
+        with mock.patch.dict("os.environ", self.ENV):
+            for country in ("US", "UK", "FR"):
+                lang = "fr" if country == "FR" else "en"
+                for spec in list(drafts.SPEC_PLURAL[lang]) + [""]:
+                    for name in ("Pixel Forge", "Bright Pixel Web Design Studio Ltd", "Archimaine SAS"):
+                        p = {"id": name + spec, "segment_id": "S2", "country": country, "company_name": name,
+                             "specialization": spec}
+                        subject, body, lang2 = drafts.build(p)
+                        para = body.split("\n\n")[1]
+                        self.assertTrue(para.startswith(drafts.opener(p, lang2)), (country, spec, name, para))
+                        self.assertIn("NextGen Profit", para)  # Satz 1 (wer + was) folgt dem Einstieg
+                        self.assertTrue(drafts.lint_draft(subject, body, lang2).ok)
+
+    def test_refresh_brings_old_founder_first_draft_to_template(self):
+        old = ("Hi Pixel Forge team,\n\nI'm Justin, founder of NextGen Profit. We find local businesses across "
+               "the UK that still have no website, a clear reason for them to talk to a web agency.")
+        p = {"id": "p-old", "segment_id": "S2", "country": "UK", "company_name": "Pixel Forge Ltd",
+             "specialization": "web designer"}
+        db = FakeDB([{"id": "m1", "status": "approved", "subject": "alt", "body": old, "prospects": p}])
+        with mock.patch.dict("os.environ", self.ENV), mock.patch.object(drafts, "has_variant_column", return_value=False):
+            drafts.refresh(db)
+        body = db.updates[0][2]["body"]
+        self.assertTrue(body.split("\n\n")[1].startswith("I came across Pixel Forge while looking at web design studios."))
+        self.assertNotIn("status", db.updates[0][2])  # bleibt freigegeben
+
+
 class SubjectABTest(unittest.TestCase):
     def test_deterministic_and_balanced(self):
         ids = [f"00000000-0000-0000-0000-{i:012d}" for i in range(2000)]

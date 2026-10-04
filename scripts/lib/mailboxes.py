@@ -6,6 +6,7 @@ Weitere Postfächer (2 bis 10) kommen nur über Umgebungsvariablen dazu, ohne Co
   SMTP_USER_2, SMTP_PASSWORD_2      Pflicht
   SMTP_FROM_2                       Absender (Standard: SMTP_USER_2)
   SMTP_HOST_2, SMTP_PORT_2          Standard: wie Postfach 1 (gleicher Anbieter, gleiche Domain)
+Alle Postfächer senden mit demselben Anzeigenamen wie das Hauptpostfach (display_name()).
 Antworten und Abmeldungen gehen bei allen Postfächern über REPLY_TO an das Hauptpostfach.
 
 Jedes neue Postfach fährt mit eigener Aufwärmphase hoch (ab der ersten Mail aus diesem Postfach) bis
@@ -16,6 +17,7 @@ from __future__ import annotations
 
 import datetime as dt
 import os
+from email.utils import formataddr, parseaddr
 
 from lib.deliverability import HARD_MAX_PER_DAY, _cfg, warmup_cap
 
@@ -26,20 +28,38 @@ NEW_BOX_START = 60
 NEW_BOX_STEP = 15
 
 
+def display_name(env=None) -> str:
+    """Einheitlicher Anzeigename aller Versand-Postfächer: der des Hauptpostfachs (MAIL_FROM „Name <adresse>“),
+    sonst die Marke (SENDER_COMPANY, Standard NextGen Profit). Prüfung 04.10.2026: Postfach 2/3 gingen ohne Namen raus."""
+    env = os.environ if env is None else env
+    name = parseaddr(env.get("MAIL_FROM") or "")[0].strip()
+    return name or (env.get("SENDER_COMPANY") or "NextGen Profit").strip()
+
+
+def with_name(sender: str, name: str) -> str:
+    """„Name <adresse>“; ein schon gesetzter Anzeigename bleibt unverändert."""
+    s = (sender or "").strip()
+    shown, addr = parseaddr(s)
+    if shown or not addr or not name:
+        return s
+    return formataddr((name, addr))
+
+
 def mailboxes(env=None) -> list[dict]:
     env = os.environ if env is None else env
     boxes = []
+    name = display_name(env)
     if env.get("SMTP_USER"):
         boxes.append({"n": 1, "host": env.get("SMTP_HOST"), "port": int(env.get("SMTP_PORT") or 465),
                       "user": env["SMTP_USER"], "password": env.get("SMTP_PASSWORD"),
-                      "from": env.get("MAIL_FROM") or env["SMTP_USER"]})
+                      "from": with_name(env.get("MAIL_FROM") or env["SMTP_USER"], name)})
     for n in range(2, MAX_BOXES + 1):
         user, pw = env.get(f"SMTP_USER_{n}"), env.get(f"SMTP_PASSWORD_{n}")
         if not (user and pw):
             continue
         boxes.append({"n": n, "host": env.get(f"SMTP_HOST_{n}") or env.get("SMTP_HOST"),
                       "port": int(env.get(f"SMTP_PORT_{n}") or env.get("SMTP_PORT") or 465),
-                      "user": user, "password": pw, "from": env.get(f"SMTP_FROM_{n}") or user})
+                      "user": user, "password": pw, "from": with_name(env.get(f"SMTP_FROM_{n}") or user, name)})
     return boxes
 
 

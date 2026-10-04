@@ -20,8 +20,26 @@ class MailboxTests(unittest.TestCase):
         boxes = mb.mailboxes(ENV)
         self.assertEqual([b["n"] for b in boxes], [1, 2])  # Postfach 3 ohne Passwort zählt nicht
         self.assertEqual(boxes[1]["host"], "smtp.strato.de")
-        self.assertEqual(boxes[1]["from"], "team@nextgen-profit.de")
+        self.assertEqual(boxes[1]["from"], "Justin Koch <team@nextgen-profit.de>")
         self.assertEqual(mb.address(boxes[0]["from"]), "info@nextgen-profit.de")
+
+    def test_all_boxes_send_with_main_display_name(self):
+        # Prüfung 04.10.2026: Postfach 2/3 gingen ohne Anzeigenamen raus; jetzt alle wie das Hauptpostfach
+        env = {**ENV, "MAIL_FROM": "NextGen Profit <info@nextgen-profit.de>",
+               "SMTP_FROM_2": "leads@nextgen-profit.de", "SMTP_USER_3": "webagency@nextgen-profit.de",
+               "SMTP_PASSWORD_3": "z"}
+        boxes = mb.mailboxes(env)
+        self.assertEqual([b["from"] for b in boxes], ["NextGen Profit <info@nextgen-profit.de>",
+                                                      "NextGen Profit <leads@nextgen-profit.de>",
+                                                      "NextGen Profit <webagency@nextgen-profit.de>"])
+        # Adresse und Zuordnung gesendeter Mails bleiben gleich (auch alte sent_from ohne Namen)
+        self.assertEqual(mb.box_of("leads@nextgen-profit.de", boxes), 2)
+        self.assertEqual(mb.box_of("NextGen Profit <webagency@nextgen-profit.de>", boxes), 3)
+        # eigener Name bleibt; ohne Namen im Hauptpostfach: Marke
+        env2 = {**env, "SMTP_FROM_2": "Team <leads@nextgen-profit.de>", "MAIL_FROM": "info@nextgen-profit.de"}
+        boxes = mb.mailboxes(env2)
+        self.assertEqual(boxes[0]["from"], "NextGen Profit <info@nextgen-profit.de>")
+        self.assertEqual(boxes[1]["from"], "Team <leads@nextgen-profit.de>")
 
     def test_new_box_warms_up_main_box_keeps_cap(self):
         boxes = mb.mailboxes(ENV)
