@@ -562,7 +562,7 @@ export const HUD_CSS = `
 .jfg-body{display:grid;gap:12px}
 .jfg-rings{display:flex;align-items:center;gap:16px}
 .jfg-main{flex:none;display:block;text-decoration:none;border-radius:50%}
-.jfg-cs{flex:1;min-width:0;display:flex;justify-content:space-around;gap:8px}
+.jfg-cs{flex:1;min-width:0;display:flex;flex-wrap:wrap;justify-content:space-around;gap:8px}
 .jfg-cs a{text-decoration:none;border-radius:12px;padding:4px}
 .jfg-cs a:hover,.jfg-main:hover{background:rgba(95,212,255,.06)}
 .dash .jring.jring{position:relative;display:inline-grid;justify-items:center;gap:4px;width:var(--s);background:none;color:inherit;--rc:#5d7ca3}
