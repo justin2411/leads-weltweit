@@ -16,7 +16,8 @@ wurde (veraltet, nicht handytauglich, keine Website laut Overture), hat kein Ere
 nicht als Frische. Premium = mindestens PREMIUM_MIN Punkte UND ein frisches datiertes Ereignis.
 
 Der Wert ändert nie, OB ein Lead rausgeht – das entscheidet allein die Drei-Stufen-Freigabe (lib/release_gate.py).
-Er ändert nur die Reihenfolge (Proben-Vorrat, Lieferungen: premium zuerst).
+Er ändert nur die Reihenfolge (Proben-Vorrat, Lieferungen, Landingpage-Beispiele: premium zuerst, Standard nur als
+Auffüllung, solange es keine 10 Premium-Leads gibt – Inhaber 05.10.2026 „nur noch premium leads“).
 """
 from __future__ import annotations
 
@@ -117,9 +118,26 @@ def columns(lead: dict, today: dt.date | None = None) -> dict:
                                                      "on": (today or dt.date.today()).isoformat()}}
 
 
-def sort_key(row: dict) -> tuple:
-    """Premium zuerst (nur Reihenfolge, schließt nichts aus): Stufe, dann Punktzahl; ohne Wert zuletzt."""
+def tier_now(row: dict, today: dt.date | None = None) -> str:
+    """Stufe eines gespeicherten Leads heute: „premium“ nur, solange das Ereignis höchstens FRESH_MID Tage alt ist
+    (die Stufe wird beim Speichern berechnet und veraltet sonst unbemerkt)."""
     p = row.get("premium") or {}
-    tier = p.get("tier") if isinstance(p, dict) else None
+    if not isinstance(p, dict) or p.get("tier") != "premium":
+        return "standard"
+    ev = _date(row.get("event_date"))
+    # -1: Ereignisdatum aus einer anderen Zeitzone (Lauf kurz nach Mitternacht UTC) gilt als heute
+    if ev is None or not -1 <= ((today or dt.date.today()) - ev).days <= FRESH_MID:
+        return "standard"
+    return "premium"
+
+
+def count(rows: list[dict], today: dt.date | None = None) -> int:
+    """Wie viele dieser Leads heute Premium sind."""
+    return sum(tier_now(r, today) == "premium" for r in rows)
+
+
+def sort_key(row: dict, today: dt.date | None = None) -> tuple:
+    """Premium zuerst (nur Reihenfolge, schließt nichts aus): Stufe heute, dann Punktzahl; ohne Wert zuletzt.
+    Standard-Leads füllen nur auf, wenn es keine 10 Premium-Leads gibt (Inhaber 05.10.2026, Übergang)."""
     v = row.get("premium_score")
-    return (0 if tier == "premium" else 1, -int(v) if isinstance(v, (int, float)) else 1)
+    return (0 if tier_now(row, today) == "premium" else 1, -int(v) if isinstance(v, (int, float)) else 1)

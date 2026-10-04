@@ -796,8 +796,9 @@ def main(argv=None) -> int:
         from lib import radar
         rc = [x.strip().upper() for x in args.radar_countries.split(",") if x.strip()]
         # Radar bekommt seinen Anteil am Zeitfenster wie eine weitere Branche
+        shard = tuple(int(x) for x in args.shard.split("/")) if args.shard else (0, 1)
         radar_rep = radar.run(guard.db, rc, args.radar, fetcher, deadline=fair_deadline(deadline, len(keys) + 1),
-                              workers=args.workers, log=log, apply=args.store)
+                              workers=args.workers, log=log, apply=args.store, shard=shard)
         stats["radar"] = radar_rep
     for n, key in enumerate(keys):
         if deadline and time.monotonic() >= deadline:

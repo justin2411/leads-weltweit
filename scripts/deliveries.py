@@ -98,6 +98,8 @@ def select_leads(leads: list[dict], sub: dict, already: set[str], details: dict[
     if prefs:
         from customer_agents import lead_priority
         leads = sorted(leads, key=lambda l: -lead_priority(l, prefs, (tags or {}).get(l["id"])))  # stabil
+        # Premium bleibt vorn: die Kundenwünsche sortieren nur innerhalb von Premium bzw. Standard (Inhaber 05.10.2026)
+        leads = sorted(leads, key=lambda l: premium_key(l)[0])
     picked, per = [], {}
     for l in leads:
         if l["id"] in already or l["segment_id"] != sub["segment_id"] or l["country"] != country:

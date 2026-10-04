@@ -28,9 +28,10 @@ SOURCE = "bodacc_move"
 
 def fetch(since: dt.date, until: dt.date | None = None, log=print) -> list[dict]:
     where = (f'familleavis="modification" and dateparution>="{since}" and listepersonnes like "%\\"pm\\"%" and '
-             f'(modificationsgenerales like "%ransfert%" or modificationsgenerales like "%ouveau si%" or '
-             f'modificationsgenerales like "%ouvel établissement principal%" or '
-             f'modificationsgenerales like "%adresse du si%")')
+             # ODSQL „like“ vergleicht ganze Wörter (ohne Groß/klein): „%ransfert%“ fand 0, „transfert“ 4.613 in 30 Tagen
+             f'(modificationsgenerales like "transfert" or modificationsgenerales like "nouveau siège" or '
+             f'modificationsgenerales like "nouvel établissement principal" or '
+             f'modificationsgenerales like "adresse du siège")')
     if until:
         where += f' and dateparution<="{until}"'
     r = requests.get(EXPORT, params={"where": where, "select": FIELDS}, timeout=300)

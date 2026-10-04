@@ -208,8 +208,11 @@ def radar_details(row: dict, out: dict, today: dt.date) -> dict:
 
 
 # ---------------------------------------------------------------------------- Lauf (Datenbank)
-def candidates(db, country: str, limit: int, min_days: int = RECHECK_DAYS) -> list[dict]:
-    return db.rpc("radar_candidates", {"p_country": country, "p_limit": int(limit), "p_min_days": int(min_days)}) or []
+def candidates(db, country: str, limit: int, min_days: int = RECHECK_DAYS, part: int = 0,
+               parts: int = 1) -> list[dict]:
+    # immer alle fünf Argumente: es gibt noch die erste Fassung mit drei (nicht gelöscht), PostgREST wählt so eindeutig
+    return db.rpc("radar_candidates", {"p_country": country, "p_limit": int(limit), "p_min_days": int(min_days),
+                                       "p_part": int(part), "p_parts": max(1, int(parts))}) or []
 
 
 def lead_row(row: dict, ev: dict, out: dict, today: dt.date) -> tuple[dict, dict]:
@@ -300,7 +303,8 @@ def _check_rows(rows: list[dict], fetcher, today: dt.date, workers: int, until: 
 
 
 def run(db, countries: list[str], limit: int, fetcher, deadline: float = 0, workers: int = 16, log=print,
-        today: dt.date | None = None, apply: bool = True, min_days: int = RECHECK_DAYS) -> dict:
+        today: dt.date | None = None, apply: bool = True, min_days: int = RECHECK_DAYS,
+        shard: tuple[int, int] = (0, 1)) -> dict:
     """Radar je Land (gerechter Anteil am Zeitfenster). Ergebnis je Land: Kandidaten, geprüft, Zustände,
     Ereignisse je Art, neue Leads, davon premium. apply=False: nur prüfen, nichts speichern (Test)."""
     today = today or dt.date.today()
@@ -314,7 +318,8 @@ def run(db, countries: list[str], limit: int, fetcher, deadline: float = 0, work
         seen: set[str] = set()
         while stats["geprueft"] < limit and not (until and time.monotonic() >= until):
             try:
-                rows = candidates(db, co, min(CHUNK, limit - stats["geprueft"]), min_days)
+                # parallele Teile prüfen getrennte Firmen (Aufteilung in der Datenbank-Funktion): nie zwei Abrufe je Seite
+                rows = candidates(db, co, min(CHUNK, limit - stats["geprueft"]), min_days, shard[0], shard[1])
             except Exception as exc:  # noqa: BLE001 - ein Land darf die anderen nicht stoppen
                 log(f"Radar {co}: Kandidaten nicht ladbar ({type(exc).__name__}: {str(exc)[:160]})")
                 stats["fehler_kandidaten"] += 1

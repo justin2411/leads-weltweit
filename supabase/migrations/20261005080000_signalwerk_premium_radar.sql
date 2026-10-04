@@ -19,7 +19,8 @@ create index if not exists leads_radar on signalwerk.leads (country, event_date,
 -- ging, prüft lib/radar.py vor jedem neuen Lead – als Teil dieser Abfrage war das bei kaltem Cache zu langsam),
 -- Radar-Prüfung älter als p_min_days Tage (oder nie), Lead selbst mindestens p_min_days alt (sonst gerade erst geprüft).
 -- Älteste Prüfungen zuerst (Index segment_id, country, status, event_date).
-drop function if exists signalwerk.radar_candidates(text, int, int);  -- erste Fassung von heute (ohne Aufteilung)
+-- Die erste Fassung (text, int, int) bleibt bestehen (kein Löschen); lib/radar.py ruft immer mit allen fünf
+-- Argumenten auf, damit PostgREST eindeutig diese Fassung wählt.
 create or replace function signalwerk.radar_candidates(p_country text, p_limit int, p_min_days int default 7,
                                                        p_part int default 0, p_parts int default 1)
 returns table (company_id uuid, name text, country text, website text, phone_main text, lead_id uuid,

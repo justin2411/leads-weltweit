@@ -62,7 +62,7 @@ class PremiumTest(unittest.TestCase):
     def test_sort_key_premium_first(self):
         rows = [{"id": "a", "premium_score": 40, "premium": {"tier": "standard"}},
                 {"id": "b"},
-                {"id": "c", "premium_score": 85, "premium": {"tier": "premium"}}]
+                {"id": "c", "premium_score": 85, "premium": {"tier": "premium"}, "event_date": dt.date.today().isoformat()}]
         self.assertEqual([r["id"] for r in sorted(rows, key=premium.sort_key)], ["c", "a", "b"])
 
 
