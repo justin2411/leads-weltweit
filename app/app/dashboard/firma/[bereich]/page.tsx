@@ -24,6 +24,7 @@ import { KOHORTEN_CSS, Kohorten } from "../../jarvis/kohorten";
 import { GEHIRN_LERNT_CSS, GehirnLernt } from "../../jarvis/gehirn-lernt";
 import { Vorschlaege } from "../../jarvis/vorschlaege";
 import { GatePanel, type GateView } from "../../jarvis/freigabe";
+import { FEEDBACK_CSS, FeedbackPanel, loadFeedback } from "./feedback";
 
 export const metadata = { title: "Office" };
 type P = Promise<{ bereich: string }>;
@@ -54,7 +55,7 @@ export default async function OfficePage({ params, searchParams }: { params: P; 
   if (d && !b) notFound();
   return (
     <div className="v2 zx fa of">
-      <style dangerouslySetInnerHTML={{ __html: ZX_CSS + FIRMA_CSS + OFFICE_CSS + TEAM_CSS + KOHORTEN_CSS + GEHIRN_LERNT_CSS }} />
+      <style dangerouslySetInnerHTML={{ __html: ZX_CSS + FIRMA_CSS + OFFICE_CSS + TEAM_CSS + KOHORTEN_CSS + GEHIRN_LERNT_CSS + FEEDBACK_CSS }} />
       <PageHead title={b ? b.name : "Office"} icon={b && isIconName(b.icon) ? b.icon : "agent"} at={d ? `Stand ${berlin(new Date(), false)}` : undefined}
         crumbs={[["JARVIS", "/dashboard/jarvis"], ["Firma", "/dashboard/firma"], [b ? b.name : "Office", ""]]} />
       {d && b ? <Body d={d} b={b} sel={sel} /> : <div className="zx-err" role="alert">Office gerade nicht lesbar – gleich noch einmal laden.</div>}
@@ -228,8 +229,9 @@ async function Extras({ b, d, pl }: { b: BereichBild; d: OfficeDaten; pl: Platz[
       countries: COUNTRIES.map((k) => { const r = sp7.filter((x) => x.country === k); const cc = r.reduce((a, x) => a + x.candidates, 0); return { c: k, pct: cc ? Math.round((r.reduce((a, x) => a + x.green, 0) / cc) * 1000) / 10 : null }; }),
     };
   }
+  const fb = b.slug === "qualitaet" ? await sicher(loadFeedback()) : null;
   const fluss = b.slug === "produktion" || b.slug === "vertrieb";
-  if (!team?.length && !gl && !vs && !gate && !fluss && !(b.slug === "vertrieb")) return null;
+  if (!team?.length && !gl && !vs && !gate && !fb && !fluss && !(b.slug === "vertrieb")) return null;
   return (
     <div className="jv of-extra">
       {fluss && (
@@ -239,6 +241,7 @@ async function Extras({ b, d, pl }: { b: BereichBild; d: OfficeDaten; pl: Platz[
         </Link>
       )}
       {gate && <GatePanel g={gate} />}
+      {fb && <FeedbackPanel rows={fb} />}
       {b.slug === "vertrieb" && <Kohorten rows={kh} countries={COUNTRIES} today={today} />}
       {gl && <GehirnLernt d={gl} />}
       {vs && <Vorschlaege open={vs.open} done={vs.done} />}

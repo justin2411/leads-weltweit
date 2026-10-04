@@ -79,7 +79,7 @@ Ziel: die besten, einzigartigen, frischen Anlässe (Premium-Leads) für S2 Webag
 | Radar-Werk: Website kaputt seit Datum, Zertifikat abgelaufen/läuft ab (TLS), Umzug FR (BODACC) – Linie `radar` im Lead-Werk | läuft (05.10.2026); Domain-Ablauf (RDAP) bewusst weggelassen, siehe QUELLEN-SCOUT |
 | Bewertungs-Werk: `scripts/lib/premium.py` beim Speichern, `scripts/premium_score.py` stündlich (Bestand nachtragen, nach 30 Tagen zurückstufen) | läuft (05.10.2026) |
 | Kontakt-Werk: Register + Firmenwebsite zusammenführen und gegenprüfen | Auftrag an Agent 3 |
-| Feedback-Werk: Kunden bewerten Leads, die Bewertung lernt | Auftrag an Agent 4 |
+| Feedback-Werk: Kunden bewerten Leads (Link `/bewerten` in Lieferung und Probe, `lib/feedback.py`), Gewicht je Anlass 0,8–1,25 ab 5 Bewertungen nur für die Premium-Reihenfolge, Anzeige Büro Qualität | fertig |
 
 Proben-Vorrat und Kundenlieferung nehmen Premium zuerst; später gibt es neben der Montags-Lieferung einen Sofort-Alarm bei frischem Anlass.
 
