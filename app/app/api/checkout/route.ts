@@ -104,7 +104,8 @@ export async function POST(req: Request) {
       text: `checkout_error ${mode} ${page.slug} ${pkg}: ${msg}` }).then(() => null, () => null);
     return failPage(lang, pkg, page.slug, back);
   }
-  if (mode === "live") await recordEvent(v.id, "checkout_started");
+  // JARVIS-Station „Stripe“: gestartete Checkouts serverseitig zählen – Inhaber (Login-Cookie) nie mitzählen
+  if (mode === "live" && !(await isOwner().catch(() => false))) await recordEvent(v.id, "checkout_started");
   // Sofort-Alarm aufs Handy (Web-Push, feuern und vergessen; ändert nichts am Checkout)
   if (mode === "live") after(() => pushAlarmSafe("Checkout gestartet", `${page.slug} · ${pkg}`, "/dashboard/kunden", "checkout"));
   return Response.redirect(session.url, 303);

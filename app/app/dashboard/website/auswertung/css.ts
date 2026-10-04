@@ -9,7 +9,7 @@ export const AUSWERTUNG_CSS = `
 .wa-cl{font-size:12px;color:var(--soft);width:64px;flex:0 0 64px}
 .wa-chips a{padding:5px 12px;border:1px solid rgba(95,212,255,.28);border-radius:999px;font-size:13px;font-weight:600;color:#a9c3e3;text-decoration:none;background:rgba(4,14,30,.6);min-height:32px;display:inline-flex;align-items:center}
 .wa-chips a.on{background:linear-gradient(180deg,rgba(95,212,255,.35),rgba(95,212,255,.12));color:#fff;border-color:var(--cy);box-shadow:var(--glow)}
-.wa-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.wa-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
 .wa-kpi{position:relative;display:grid;gap:2px;padding:12px 14px 12px 46px;border:1px solid var(--line);border-radius:10px;background:linear-gradient(180deg,rgba(9,24,48,.7),rgba(4,12,26,.5));min-width:0}
 .wa-ki{position:absolute;left:14px;top:15px;color:var(--cy2)}
 .wa-kpi b{font-size:24px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;line-height:1.1}

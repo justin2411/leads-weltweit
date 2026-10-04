@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadBoxHealth, loadDaily, loadFunnel, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock, loadWebsite } from "@/lib/dashboard-data";
-import { webNeck } from "@/lib/website-stats";
+import { webLine, webNeck } from "@/lib/website-stats";
 import { berlin, berlinDay, brake, chain, compact, currencySign, greeting, mailboxes, monthly, nextWorkflowRun, onlySegment, realSubscriptions, sampleStock, stockSegment, BOX_MIN, COUNTRY_COLOR } from "@/lib/dashboard-logic";
 import { totals } from "@/lib/dashboard-periods";
 import { alarmTips, coach, hall, laneOf, laneStats, neckTask, rankTips, recommend, running, utilization, type Beat, type Tip } from "@/lib/leitstand";
@@ -124,6 +124,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   // Linie „Website“ (Inhaber 04.10.2026): Zahlen aus dashboard_cache, eigener Engpass nach festen Schwellen (webNeck)
   const web = await webP;
   const wNeck = webNeck(web);
+  const wLine = webLine(web, compact);
 
   // ---------------------------------------------------------------- Stationen
   const sw = (k: Parameters<typeof werkOn>[1]) => werkOn(own, k);
@@ -144,10 +145,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     { id: "versand", label: "Versand", icon: "versand", value: `${sentToday}`, unit: `/${cap}`, sub: "heute", state: own.send_paused ? "off" : isLive(act, "versand", now) ? "live" : "idle", tip: "Mails heute / Kapazität" },
     { id: "antworten", label: "Antworten", icon: "antworten", value: `${w.replies}`, sub: `${w.positive} positiv`, state: state("antworten", "antworten", 30), tip: "echte Antworten 7 Tage (ohne Abwesenheit)" },
     { id: "kunden", label: "Kunden", icon: "kunden", value: `${subs.length}`, sub: `${revenue}/Mon.`, state: subs.length ? "live" : "idle", tip: "zahlende Kunden · Umsatz pro Monat" },
-    { id: "web", label: "Aufrufe", icon: "land", value: compact(web.views_24h), sub: "24 h", state: web.views_60m ? "live" : "idle", tip: "Aufrufe der Landingpages in 24 h (ohne Bots)" },
-    { id: "wklick", label: "Probe-Klick", icon: "antippen", value: compact(web.cta_24h), sub: "24 h", state: web.cta_60m ? "live" : "idle", tip: "Klicks auf „10 kostenlose Leads“ in 24 h" },
-    { id: "wprobe", label: "Anfrage", icon: "proben", value: compact(web.req_24h), sub: "Proben 24 h", state: web.req_60m ? "live" : "idle", tip: "Probe-Anfragen über die Website in 24 h" },
-    { id: "wkauf", label: "Kauf", icon: "kunde", value: compact(web.buy_24h), sub: `${compact(web.buy_30d)} in 30 T`, state: web.buy_60m ? "live" : "idle", tip: "Käufe über die Website in 24 h · 30 Tage" },
+    ...wLine.stations,
   ] as Station[]).map((x) => ({ ...x, neck: x.id === neck || x.id === wNeck }));
   const edges: Edge[] = [
     { from: "lead", to: "gate", perHour: act.leads_60m, label: "neue Leads" },
@@ -158,10 +156,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     { from: "kaeufer", to: "versand", perHour: act.sent_60m, label: "Mails" },
     { from: "versand", to: "antworten", perHour: act.replies_60m, label: "Antworten" },
     { from: "antworten", to: "kunden", perHour: 0, label: "Kunden" },
-    { from: "web", to: "wklick", perHour: web.cta_60m, label: "Probe-Klicks" },
-    { from: "wklick", to: "wprobe", perHour: web.req_60m, label: "Probe-Anfragen" },
-    { from: "wprobe", to: "wkauf", perHour: web.buy_60m, label: "Käufe" },
-    { from: "wkauf", to: "kunden", perHour: web.buy_60m, label: "neue Kunden" },
+    ...(wLine.edges as Edge[]),
   ];
 
   // ---------------------------------------------------------------- JARVIS, Ampeln, Ticker

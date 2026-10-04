@@ -18,6 +18,15 @@ function viewId(): string {
   }
 }
 
+/** Vorschau-Aufruf (?vorschau=1) zählt nie – zusätzlich zur Prüfung auf dem Server. */
+function isPreview(): boolean {
+  try {
+    return new URLSearchParams(location.search).get("vorschau") === "1";
+  } catch {
+    return false;
+  }
+}
+
 /** Art des angeklickten Elements; Formularfelder nur als „feld“ ohne Inhalt. */
 function elementOf(t: Element | null): { el: ElKind; node: Element | null } {
   if (!t) return { el: "flaeche", node: null };
@@ -39,11 +48,12 @@ function elementOf(t: Element | null): { el: ElKind; node: Element | null } {
 /**
  * Anonyme Messung der Landingpage (Datenschutz Abschnitt 5): Aufruf mit Herkunftsart (Mail/Direkt/Suche/andere, nur
  * aus ?src= bzw. der Referrer-Domain), Gerät, größte Scrolltiefe, Verweildauer-Stufe und ungefähre Klickposition mit
- * Knopf-/Link-Beschriftung. Ohne Cookies, ohne Speicher im Browser, ohne IP, ohne Formulareingaben.
+ * Knopf-/Link-Beschriftung. Ohne Cookies, ohne Speicher im Browser, ohne Formulareingaben; die IP wird nicht gespeichert
+ * (der Server bildet für eindeutige Besucher nur einen täglich wechselnden Hash, lib/visitor.ts).
  */
 export function Tracker({ variantId, enabled }: { variantId: string; enabled: boolean }) {
   useEffect(() => {
-    if (!enabled || navigator.webdriver) return;
+    if (!enabled || navigator.webdriver || isPreview()) return;
     const pv = viewId();
     if (!pv) return;
     const send = (data: Record<string, unknown>) => {
@@ -53,7 +63,7 @@ export function Tracker({ variantId, enabled }: { variantId: string; enabled: bo
       } catch {
         /* Fallback unten */
       }
-      fetch("/api/events", { method: "POST", body, headers: { "Content-Type": "application/json" }, keepalive: true, credentials: "omit" }).catch(() => {});
+      fetch("/api/events", { method: "POST", body, headers: { "Content-Type": "application/json" }, keepalive: true, credentials: "same-origin" }).catch(() => {});
     };
     const q = new URLSearchParams(location.search);
     const src = sourceOf(q.get("src"), refHost(document.referrer), location.host);
@@ -100,5 +110,24 @@ export function Tracker({ variantId, enabled }: { variantId: string; enabled: bo
       if (!sentEnd) end();
     };
   }, [variantId, enabled]);
+  return null;
+}
+
+/**
+ * Aufruf der Tarifseite (/[country]/[segment]/start) für die eindeutigen Besucher der JARVIS-Linie „Tarif“. Sendet nur
+ * Variante und Seitenart; den Tages-Besucher-Schlüssel bildet der Server (Hash, ohne Cookies, IP nicht gespeichert).
+ * Das Login-Cookie des Inhabers geht mit (same-origin), damit der Server ihn ausblenden kann.
+ */
+export function VisitBeacon({ variantId, page, enabled }: { variantId: string; page: "tarif"; enabled: boolean }) {
+  useEffect(() => {
+    if (!enabled || navigator.webdriver || isPreview()) return;
+    const body = JSON.stringify({ variant_id: variantId, type: "visit", pg: page });
+    try {
+      if (navigator.sendBeacon?.("/api/events", new Blob([body], { type: "application/json" }))) return;
+    } catch {
+      /* Fallback unten */
+    }
+    fetch("/api/events", { method: "POST", body, headers: { "Content-Type": "application/json" }, keepalive: true, credentials: "same-origin" }).catch(() => {});
+  }, [variantId, page, enabled]);
   return null;
 }
