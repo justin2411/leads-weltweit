@@ -296,7 +296,7 @@ class KurzzeilenTest(unittest.TestCase):
                 mock.patch("lib.fokus.test_scope", return_value=(["S2"], ["US", "UK", "FR"])), \
                 mock.patch("prognose.load", return_value=[{"country": "US", "basis": "keine"}]):
             t.collect_kurz(c, db)
-        self.assertEqual(len(c.kurz), 7)
+        self.assertEqual(len(c.kurz), 8)  # + Prüfer-Werk (05.10.2026)
         self.assertEqual(c.kurz[6], "Dauerprüfung: noch kein Lauf")
         self.assertEqual(c.kurz[3], "Trichter: nicht messbar")
         self.assertTrue(all(len(k) <= t.KURZ_MAX and "\n" not in k for k in c.kurz))

@@ -44,6 +44,7 @@ WORKFLOWS = {
     "wachhund.yml": ("Wachhund (startet ausgefallene Läufe nach)", 3),
     "agenten-werk.yml": ("Agenten-Werk (Speicher + eigene Agenten)", 3),
     "dauerpruefung.yml": ("Dauerprüfung (Prüf-Agenten ohne Tokens)", 3),
+    "pruefer-werk.yml": ("Prüfer-Werk (4 Prüfer, 24/7)", 3),
     "zustellbarkeit.yml": ("Zustellbarkeits-Check (06:10)", 27),
 }
 
@@ -908,6 +909,20 @@ def kurz_pruefung(kpi: dict | None) -> str:
     return _cut("Dauerprüfung heute: " + ("; ".join(parts) or "nichts geprüft") + tail)
 
 
+def kurz_pruefer(rows: list[dict] | None) -> str:
+    """Prüfer-Werk der letzten 24 h (View signalwerk.pruefer_kpi): geprüft, Qualität lieferbar %, gehalten je Land."""
+    rows = [r for r in (rows or []) if int(r.get("geprueft_24h") or 0) > 0]
+    if not rows:
+        return "Prüfer-Werk: in 24 h nichts geprüft"
+    n = sum(int(r["geprueft_24h"]) for r in rows)
+    ok = sum(int(r.get("bestanden_24h") or 0) for r in rows)
+    held = sum(int(r.get("gehalten_24h") or 0) for r in rows)
+    per = ", ".join(f"{r['country']} {float(r['qualitaet_pct']):.0f} %" for r in sorted(rows, key=lambda x: x["country"])
+                    if r.get("qualitaet_pct") is not None)
+    return _cut(f"Prüfer-Werk 24 h: {n} geprüft, Qualität lieferbar {100 * ok / n:.1f} %, {held} gehalten"
+                + (f" ({per})" if per else ""))
+
+
 def collect_kurz(c: Check, db) -> None:
     """Füllt c.kurz in fester Reihenfolge (Wichtigstes oben). Jede Zeile einzeln abgesichert, nie ein Status."""
     from zoneinfo import ZoneInfo
@@ -977,6 +992,7 @@ def collect_kurz(c: Check, db) -> None:
     line("Prognose 30 T", prognose)
     line("Gehirn", gehirn)
     line("Dauerprüfung", lambda: kurz_pruefung(db.rpc("pruef_kpi", {"p_days": 1})))
+    line("Prüfer-Werk", lambda: kurz_pruefer(db.select("pruefer_kpi", {"select": "*"})))
 
 
 def collect_geschaeft(c: Check, db) -> None:
