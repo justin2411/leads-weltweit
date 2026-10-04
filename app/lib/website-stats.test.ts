@@ -152,6 +152,11 @@ test("Auswertung: Tage, Länder, Trichter, Herkunft, Treppe, Mail A/B", () => {
   assert.deepEqual(v.countries, ["US", "UK"]);
   assert.deepEqual(v.funnel, { views: 35, cta: 4, req: 2, buy: 1, checkout: 0, land: 0, tarif: 0, tarifViews: 0 });
   assert.equal(v.tracked, 20);
+  // Probe-Weg je Land: Summe = Gesamt, Reihenfolge US, UK
+  assert.deepEqual(v.byCountry.map((c) => c.country), ["US", "UK"]);
+  assert.equal(v.byCountry.reduce((a, c) => a + c.views, 0), 35);
+  assert.equal(v.byCountry.reduce((a, c) => a + c.cta, 0), 4);
+  assert.equal(v.byCountry.reduce((a, c) => a + c.req, 0), 2);
   assert.equal(v.sources.mail, 12);
   assert.equal(v.devices.mobil, 15);
   assert.deepEqual(v.depth.map((d) => d.n), [18, 10, 10, 4]);
@@ -167,6 +172,8 @@ test("Auswertung: Tage, Länder, Trichter, Herkunft, Treppe, Mail A/B", () => {
 test("Filter Land/Seite", () => {
   const v = buildView(ST, { country: "UK", page: null, device: "mobil" });
   assert.equal(v.funnel.views, 15);
+  assert.deepEqual(v.byCountry.map((c) => c.country), ["UK"]);
+  assert.equal(v.byCountry[0].views, 15);
   assert.equal(v.tracked, 0);
   assert.deepEqual(v.mail.map((m) => m.country), ["UK"]);
   const p = buildView(ST, { country: null, page: "us/web-agencies", device: "desktop" });

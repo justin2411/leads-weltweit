@@ -92,13 +92,27 @@ export const AUSWERTUNG_CSS = `
 .wa-hl{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--soft)}
 .wa-hl i{width:120px;height:8px;border-radius:4px;background:linear-gradient(90deg,rgba(95,212,255,.3),#7fe3ff,#ffcf7a,#fff6dc)}
 .wa-tgf{min-width:0}
+.wa-hmr{display:grid;gap:20px;align-content:start;min-width:0}
+.wa-dw,.dash .wa-dw{display:grid;min-width:0;margin:0;padding:16px 0 0;border:0;border-top:1px solid rgba(95,212,255,.12);background:none;box-shadow:none}
+.wa-dw .wa-h{margin:0 0 10px}
 .wa-tg li{display:grid;grid-template-columns:22px minmax(0,1.3fr) minmax(0,1fr) auto;gap:8px;align-items:center;font-size:13px}
 .wa-tn{color:var(--soft);font-variant-numeric:tabular-nums;text-align:right}
 .wa-tt{display:grid;min-width:0}.wa-tt b{color:#fff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.wa-tt em{font-style:normal;font-size:12px;color:var(--soft)}
 .wa-tv{text-align:right;color:#fff;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}.wa-tv small{display:block;font-weight:400;color:var(--soft);font-size:11.5px}
+/* Je Land */
+.wa-lt{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.wa-lt li{display:grid;grid-template-columns:minmax(0,1.4fr) repeat(4,minmax(0,.8fr));gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid rgba(95,212,255,.08);font-size:13px;font-variant-numeric:tabular-nums}
+.wa-lt li>span:not(:first-child){display:grid;text-align:right;color:#fff;font-weight:600}
+.wa-lt li>span em{font-style:normal;font-weight:400;font-size:11.5px;color:var(--soft)}
+li.wa-lth{border-bottom:1px solid rgba(95,212,255,.2);padding-bottom:4px}
+li.wa-lth span{font-size:11.5px;color:var(--soft)!important;font-weight:500!important}
+li.wa-lth span:first-child{text-align:left}
+.wa-ltl{display:grid;gap:5px;min-width:0}.wa-ltl b{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--text)}
+.wa-ltl b i{width:9px;height:9px;border-radius:2px}.wa-ltl .wa-bb{height:6px}
+.wa-g{color:var(--gold2)!important}
 .wa-priv{display:flex;gap:6px;align-items:center;font-size:12.5px;color:var(--soft);margin:0}
 
-@media (max-width:1100px){.wa-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.wa-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:1100px){.wa-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.wa-card.fill2{grid-column:1/-1}.wa-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:720px){
   .wa-head h1{font-size:22px;letter-spacing:.2em}
   .wa-grid{grid-template-columns:minmax(0,1fr)}
@@ -161,7 +175,7 @@ export const AUSWERTUNG_CSS = `
 .wt-rate{position:relative;display:inline-flex;align-items:center;gap:5px;margin-left:96px;padding:3px 10px;border:1px solid rgba(226,198,143,.4);border-radius:999px;background:rgba(20,16,8,.75);
   font-size:13px;font-weight:700;color:var(--gold2);font-variant-numeric:tabular-nums;white-space:nowrap}
 .wt-rate small{font-size:11px;font-weight:500;color:var(--soft)}
-.wt-det{display:grid;gap:14px;padding:14px;border:1px solid var(--line);border-radius:8px;background:rgba(4,12,26,.6);min-width:0;align-self:start}
+.wt-det{display:grid;gap:14px;align-content:start;padding:14px;border:1px solid var(--line);border-radius:8px;background:rgba(4,12,26,.6);min-width:0;align-self:stretch}
 .wt-det header{display:flex;align-items:center;gap:8px;min-width:0}
 .wt-di{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;border:1px solid rgba(226,198,143,.5);color:var(--gold2)}
 .wt-det h3,.dash .wt-det h3{margin:0;font-family:var(--hud);font-size:15px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#fff}
@@ -269,4 +283,5 @@ li.an-chh span:first-child{text-align:left}
   .an-ab li{grid-template-columns:minmax(0,1.6fr) repeat(5,minmax(0,.7fr));gap:4px;font-size:12px}
   .an-wh{grid-template-columns:22px repeat(24,minmax(0,1fr));gap:1px}.an-whx{font-size:8.5px}
 }
+@media (prefers-reduced-motion:reduce){.an-tile,.dash .an-tile,.dash .an-tile:hover:not(:disabled){animation:none}}
 `;
