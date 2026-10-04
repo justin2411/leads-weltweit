@@ -9,6 +9,7 @@ import { prospectIdFor } from "@/lib/recipient";
 import { chargesGermanVat, normalizeBilling } from "@/lib/billing";
 import { pushAlarmSafe } from "@/lib/push";
 import { after } from "next/server";
+import { abPick, recordAb, unitKey, validMark } from "@/lib/ab-data";
 
 export const dynamic = "force-dynamic";
 
@@ -70,9 +71,14 @@ export async function POST(req: Request) {
   // Kauf der Kaltmail zuordnen (?r=<Token der Mail>): der Webhook speichert customers.prospect_id
   const prospectId = await prospectIdFor(r, page).catch(() => null);
   const billing = normalizeBilling(f.get("billing"), page.country);
+  // A/B je Schritt (Inhaber 04.10.2026): Stripe-Kasse nur Darstellung (Hinweis unter dem Bezahlknopf), nie Preise.
+  // Zuweisung fest je Besucher (?r= bzw. Hash der Anfrage, kein Cookie); Inhaber-Vorschau sieht immer den Standard.
+  const ck = ownerPreview ? null : await abPick("checkout", "hinweis", page.segment_id, page.country, unitKey(r, req.headers));
+  const welcome = typeof ck?.value === "string" && ck.value.trim() ? ck.value : T.welcome;
   const meta = { segment_id: page.segment_id, country: page.country, variant_id: v.id, package: pkg, mode, billing,
                  amount_cents: String(plan?.amount_cents ?? ""), currency: plan?.currency ?? "", weekly: String(week ?? ""),
-                 ...(prospectId ? { prospect_id: prospectId } : {}) };
+                 ...(prospectId ? { prospect_id: prospectId } : {}),
+                 ...(ck?.mark ? { ab: `${ck.mark.testId}.${ck.mark.variant}` } : {}) };
   // Zurück aus Stripe: auf die Pläne-Seite (/start), nicht auf die Landingpage
   const q = new URLSearchParams();
   if (ownerPreview) { q.set("vorschau", "1"); q.set("v", v.variant_key); }
@@ -94,7 +100,7 @@ export async function POST(req: Request) {
     metadata: meta,
     subscription_data: { metadata: meta },
     locale: lang,
-    custom_text: { submit: { message: T.welcome } },
+    custom_text: { submit: { message: welcome } },
   }, mode);
   } catch (e) {
     // Nie eine nackte 500: Fehler protokollieren, Kunde bekommt eine Seite mit E-Mail-Weg
@@ -111,6 +117,12 @@ export async function POST(req: Request) {
     // Website-Trichter, Stufe „Stripe“: derselbe Tages-Hash wie im Browser (IP + User-Agent, nur Hash gespeichert)
     const key = await visitorKey(req.headers).catch(() => null);
     if (key) await recordHit({ key, stage: "stripe", country: String(page.country ?? "").toUpperCase().slice(0, 2) || "XX", slug: page.slug });
+    // A/B: Stripe-Start zählt für die Tarifseiten-Variante (Einheit = derselbe Tages-Hash wie beim Aufruf) und die
+    // Kassen-Variante wurde gesehen (Einheit = Checkout-ID; der Kauf zählt im Stripe-Webhook)
+    await Promise.all([
+      validMark(f.get("ab"), "tarif").then((m) => recordAb(m, key?.vh, "conversion")),
+      recordAb(ck?.mark ?? null, session?.id, "exposure"),
+    ]);
   }
   // Sofort-Alarm aufs Handy (Web-Push, feuern und vergessen; ändert nichts am Checkout)
   if (mode === "live") after(() => pushAlarmSafe("Checkout gestartet", `${page.slug} · ${pkg}`, "/dashboard/kunden", "checkout"));

@@ -12,6 +12,7 @@ import { nextRunAt, type ChatLink, type ChatMode } from "./jarvis-chat.ts";
 import { RoutineError, TAGE, normDays, normTime, validateRoutine, type RoutineInput, type Tage } from "./brain-routines.ts";
 import { WERK_SWITCHES, type SettingKey, type WerkKey } from "./owner-settings.ts";
 import { START_WORKFLOWS, isStartKey, type StartKey } from "./start-queue.ts";
+import { AB_COUNTRIES, AB_STEP_KEYS } from "./ab.ts";
 
 // ------------------------------------------------------------------------------------------- Modelle und Preise
 /** Modell-IDs (Konfiguration). Haiku = schnelle einfache Antworten, Opus = Systemzugriff über sichere Werkzeuge. */
@@ -180,6 +181,7 @@ ${context}`;
 
 const TOOLS_HINT = `Du hast Werkzeuge: lesende Abfragen und sichere Änderungen (Regler, Werk an/aus, Auftrag an Agent 1–8, Baukasten-Flow speichern, Werk-Start, Gehirn-Routinen anlegen/ändern/pausieren, Wissen notieren). Nutze sie statt zu raten.
 „Gib das Agent 3“ → auftrag_anlegen mit agent 3. „Jeden Tag um 14 Uhr …“ → routine_anlegen (Uhrzeit deutsche Zeit).
+„Teste einen anderen Betreff/Titel …“ → ab_test (anlegen, dann starten); Quoten und Engpass → ab_lesen.
 Baukasten-Flow ändern (Bausteine, Filter, Bedingungen): selbst mit flow_lesen und flow_speichern erledigen – nie an einen Agenten geben.
 Code, Website, Seiten, neue Funktionen, neue Quellen, Merges, Migrationen oder alles, was kein Werkzeug kann: rufe an_routine_uebergeben auf (ein Agent macht das im nächsten Lauf).
 Lehnt ein Werkzeug ab, sag den Grund kurz. Nach einer Änderung: was geändert wurde, in einem Satz.`;
@@ -200,6 +202,7 @@ export function gehirnSystem(context: string, knowledge: string): string {
 ${GOALS_LINE}
 Du denkst selbst: Was ist gerade der Engpass? Welcher Hebel bringt am meisten Umsatz? Was hast du schon gelernt (WISSEN unten)? Dann handelst du mit den Werkzeugen (Agenten beauftragen, Regler, Werke, Routinen, Wissen notieren) oder übergibst Code-Arbeit mit an_routine_uebergeben an einen Agenten. Neue Erkenntnisse aus dem Gespräch notierst du mit wissen_notieren.
 Du nutzt die Agenten A1–A8 selbst für deine Ziele: siehst du einen Hebel, beauftragst du einen freien Agenten mit auftrag_anlegen und grund (≤ 160 Zeichen, Ziel-Bezug; nur Fokus-Märkte US/UK/FR, höchstens 3 je Stunde). Ergebnisse fertiger Aufträge (Kontext „Letzte Aufträge“) wertest du aus und notierst Gelerntes. Aufträge auf Wunsch des Inhabers ohne grund.
+A/B je Schritt: mit ab_lesen siehst du den Trichter (Quote je Station, Engpass) und alle Tests. Engpass zuerst: für den Schritt mit dem größten Abfall legst du mit ab_test einen Test an und startest ihn (eine Sache pro Test, A = heutiger Stand, Texte in der Landessprache, ohne Garantien/Preise/Zahlen außer 10; nur Webagenturen US/UK/FR; höchstens 1 laufender Test je Schritt und Land). Gewinner übernimmt die Auswertung selbst (≥ 95 % Sicherheit und Mindestmenge).
 Selbst umsetzen, wenn es die Ziele voranbringt, nichts kostet, in den Grenzen bleibt und rückgängig zu machen ist. Fragen nur bei Geld, Rechtsfragen oder echter Unsicherheit.
 Grenzen (CLAUDE.md, gelten immer): kein Geld ausgeben; Kaltmails nur in erlaubte Länder (nie DE/AT/CH/IT/ES/PL/DK, nie über Resend); Abmeldelink, Sperrliste, Notbremse, Spam-Stopp und Drei-Stufen-Freigabe nie lockern oder umgehen; keine erfundenen Zahlen, Garantien oder Dringlichkeit; Probe immer genau 10 Firmen; nichts löschen; keine Lead-Daten ins öffentliche Repo.
 ${STYLE.join("\n")}
@@ -293,6 +296,12 @@ export const TOOL_DEFS: ToolDef[] = [
   { name: "wissen_lesen", description: "Eine Wissens-Notiz ganz lesen (Markdown).", input_schema: obj({ slug: { type: "string" } }, ["slug"]) },
   { name: "wissen_notieren", description: "Erkenntnis als Wissen speichern (Markdown, kurz, mit Zahlen und Quellen). Gleicher slug = Notiz ergänzen/ersetzen (alte Fassung bleibt als Version).",
     input_schema: obj({ titel: { type: "string", minLength: 2, maxLength: 120 }, markdown: { type: "string", minLength: 1, maxLength: 20000 }, slug: { type: "string", description: "a-z, 0-9, Bindestrich (optional)" } }, ["titel", "markdown"]) },
+  { name: "ab_lesen", description: "A/B je Schritt: Trichter der letzten 30 Tage (Quote je Station, Engpass = größter Abfall gegenüber Richtwert) und Tests (Entwurf, laufend, beendet) mit n, Quote und Sicherheit je Variante.", input_schema: obj({}) },
+  { name: "ab_test", description: `A/B-Test je Schritt anlegen, starten oder stoppen (nur Webagenturen US/UK/FR). Schritte: ${AB_STEP_KEYS.join(", ")}. Elemente: mail_betreff betreff; mail_einstieg einstieg|frage ({firma} = Firmenname); mail_zeit fenster (frueh|spaet); nachfass tage (3–10)|frage; antwort faq_frage; landing headline|subheadline|cta_label; probe_mail tipp|schluss; probe_nachfrage tage (2–7)|frage; tarif titel|lede; checkout hinweis. Genau EIN Element, B = neuer Wert (A leer = heutiger Stand). Texte in der Sprache des Landes (FR Französisch), ohne Garantien, Druck, Preise oder Zahlen außer 10; Fragen enden mit „?“. Nie Preise, Freigabe, Sperrliste, Abmeldung, Notbremse oder Länderregeln.`,
+    input_schema: obj({ aktion: { type: "string", enum: ["anlegen", "starten", "beenden"] }, schritt: { type: "string", enum: [...AB_STEP_KEYS] },
+      land: { type: "string", enum: [...AB_COUNTRIES] }, element: { type: "string" }, wert_b: { description: "Variante B (Text, Zahl oder Wahl)" },
+      wert_a: { description: "nur wenn A ausdrücklich ein Wert sein soll (sonst heutiger Stand)" }, hypothese: { type: "string", maxLength: 160 },
+      id: uuidProp, grund: { type: "string", maxLength: 160 } }, ["aktion"]) },
   { name: ROUTINE_TOOL, description: "Aufgabe an einen Agenten geben (Code, Website, neue Funktion, neue Quelle, Merge, Migration oder alles ohne passendes Werkzeug). Nie für Baukasten-Flows (dafür flow_lesen/flow_speichern). Die Nachricht bleibt offen, der Agent startet beim nächsten Lauf.",
     input_schema: obj({ grund: { type: "string", minLength: 3, maxLength: 300 } }, ["grund"]) },
 ];
@@ -314,7 +323,11 @@ export type ToolInput =
   | { name: "routine_aendern"; id: string; patch: Partial<RoutineInput> & { aktiv?: boolean } }
   | { name: "wissen_lesen"; slug: string }
   | { name: "wissen_notieren"; titel: string; markdown: string; slug: string }
-  | { name: "an_routine_uebergeben"; grund: string };
+  | { name: "an_routine_uebergeben"; grund: string }
+  | { name: "ab_lesen" }
+  | { name: "ab_test"; aktion: "anlegen"; step: string; country: string; element: string; b: unknown; a: unknown; hypothese: string }
+  | { name: "ab_test"; aktion: "starten"; id: string }
+  | { name: "ab_test"; aktion: "beenden"; id: string; grund: string };
 
 export type Checked = { ok: true; input: ToolInput } | { ok: false; error: string };
 /** Slug einer Wissens-Notiz (wie die Datenbank-Prüfung). */
@@ -419,6 +432,31 @@ export function checkTool(name: unknown, input: unknown): Checked {
       const slug = x.slug === undefined || x.slug === null || x.slug === "" ? slugify(titel) : String(x.slug).trim().toLowerCase();
       if (!SLUG_RE.test(slug)) return bad("slug: a-z, 0-9, Bindestrich (2–80)");
       return { ok: true, input: { name, titel, markdown, slug } };
+    }
+    case "ab_lesen":
+      return { ok: true, input: { name } };
+    case "ab_test": {
+      // Nur die Form hier; Inhalt (Freigabe-Liste, Element, Texte, ein laufender Test) prüft lib/ab-actions.ts
+      const clean = (v: unknown) => String(v ?? "").replace(/\s+/g, " ").trim();
+      if (x.aktion === "anlegen") {
+        const step = clean(x.schritt), country = clean(x.land).toUpperCase(), element = clean(x.element).toLowerCase();
+        if (!(AB_STEP_KEYS as readonly string[]).includes(step)) return bad("schritt unbekannt");
+        if (!(AB_COUNTRIES as readonly string[]).includes(country)) return bad("land: nur US, UK oder FR");
+        if (!/^[a-z_]{2,30}$/.test(element)) return bad("element fehlt");
+        if (x.wert_b === undefined || x.wert_b === null || x.wert_b === "") return bad("wert_b fehlt");
+        if (typeof x.wert_b === "object" || (x.wert_a !== undefined && x.wert_a !== null && typeof x.wert_a === "object")) return bad("Werte: Text, Zahl oder Wahl");
+        const hypothese = clean(x.hypothese);
+        if (hypothese.length < 5 || hypothese.length > 160) return bad("hypothese: 5–160 Zeichen");
+        return { ok: true, input: { name, aktion: "anlegen", step, country, element, b: x.wert_b, a: x.wert_a ?? null, hypothese } };
+      }
+      if (x.aktion === "starten" || x.aktion === "beenden") {
+        if (typeof x.id !== "string" || !UUID_RE.test(x.id)) return bad("id ungültig");
+        if (x.aktion === "starten") return { ok: true, input: { name, aktion: "starten", id: x.id.toLowerCase() } };
+        const grund = clean(x.grund);
+        if (grund.length < 3 || grund.length > 160) return bad("grund: 3–160 Zeichen");
+        return { ok: true, input: { name, aktion: "beenden", id: x.id.toLowerCase(), grund } };
+      }
+      return bad("aktion: anlegen, starten oder beenden");
     }
     case "an_routine_uebergeben": {
       const g = String(x.grund ?? "").replace(/\s+/g, " ").trim();

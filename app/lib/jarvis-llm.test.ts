@@ -228,3 +228,19 @@ test("Baukasten-Flow kompakt im Kontext (ohne Positionen, mit Bedingungen)", () 
   assert.match(c, /→/);
   assert.equal(compactFlow(null), '{"bausteine":[],"kanten":[]}');
 });
+
+test("ab_test: Form geprüft – Schritt, Land US/UK/FR, Element, Wert, Hypothese ≤ 160; starten/beenden nur mit id", async () => {
+  const { checkTool: ct } = await import("./jarvis-llm.ts");
+  const ok = ct("ab_test", { aktion: "anlegen", schritt: "tarif", land: "uk", element: "titel", wert_b: "Your weekly leads", hypothese: "Klarer Titel hilft" });
+  assert.equal(ok.ok, true);
+  assert.deepEqual(ok.ok && ok.input, { name: "ab_test", aktion: "anlegen", step: "tarif", country: "UK", element: "titel", b: "Your weekly leads", a: null, hypothese: "Klarer Titel hilft" });
+  assert.equal(ct("ab_test", { aktion: "anlegen", schritt: "tarif", land: "DE", element: "titel", wert_b: "x", hypothese: "Test in DE" }).ok, false);
+  assert.equal(ct("ab_test", { aktion: "anlegen", schritt: "preis", land: "US", element: "x", wert_b: "x", hypothese: "Preistest" }).ok, false);
+  assert.equal(ct("ab_test", { aktion: "anlegen", schritt: "tarif", land: "US", element: "titel", wert_b: { x: 1 }, hypothese: "Objekt" }).ok, false);
+  assert.equal(ct("ab_test", { aktion: "anlegen", schritt: "tarif", land: "US", element: "titel", wert_b: "x", hypothese: "y".repeat(161) }).ok, false);
+  assert.equal(ct("ab_test", { aktion: "starten", id: "kein-uuid" }).ok, false);
+  assert.equal(ct("ab_test", { aktion: "beenden", id: "4f0c3a8e-1b2d-4c5e-9f00-112233445566", grund: "" }).ok, false);
+  assert.equal(ct("ab_test", { aktion: "beenden", id: "4f0c3a8e-1b2d-4c5e-9f00-112233445566", grund: "kein Effekt" }).ok, true);
+  assert.equal(ct("ab_test", { aktion: "loeschen", id: "4f0c3a8e-1b2d-4c5e-9f00-112233445566" }).ok, false);
+  assert.equal(ct("ab_lesen", {}).ok, true);
+});

@@ -149,7 +149,11 @@ export function PageSignals({ stage, variantId = null, enabled = true }: { stage
  * (Stufen 25 %). Ohne Cookies, ohne Speicher im Browser; den Tages-Besucher-Hash bildet der Server (lib/web-hits.ts).
  * Vorschau (?vorschau=1) und automatisierte Browser senden nichts.
  */
-export function HitBeacon({ stage, variantId = null, enabled = true }: { stage: HitStage; variantId?: string | null; enabled?: boolean }) {
+export function HitBeacon({ stage, variantId = null, enabled = true, ab, abFrom }: {
+  stage: HitStage; variantId?: string | null; enabled?: boolean;
+  /** A/B je Schritt (Tarifseite): Marke der gezeigten Variante und Klick aus der Probe-Mail („<test>.<A|B>“, keine Person) */
+  ab?: string; abFrom?: string;
+}) {
   useSignals(stage, variantId, enabled);
   useEffect(() => {
     if (!enabled || navigator.webdriver) return;
@@ -162,7 +166,8 @@ export function HitBeacon({ stage, variantId = null, enabled = true }: { stage: 
     if (!pv) return;
     const { src, ref, um, uc } = origin();
     const dev = deviceOf(window.innerWidth, window.matchMedia?.("(pointer:coarse)").matches ?? false);
-    beacon({ type: "hit", st: stage, pv, dev, src, ref, um, uc, ...(variantId ? { variant_id: variantId } : {}) });
+    beacon({ type: "hit", st: stage, pv, dev, src, ref, um, uc, ...(variantId ? { variant_id: variantId } : {}),
+             ...(ab ? { ab } : {}), ...(abFrom ? { abc: abFrom } : {}) });
 
     const doc = document.documentElement;
     let depth: 0 | 25 | 50 | 75 | 100 = 0;
@@ -193,6 +198,6 @@ export function HitBeacon({ stage, variantId = null, enabled = true }: { stage: 
       window.removeEventListener("pagehide", end);
       if (!sentEnd) end();
     };
-  }, [stage, variantId, enabled]);
+  }, [stage, variantId, enabled, ab, abFrom]);
   return null;
 }

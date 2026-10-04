@@ -215,6 +215,56 @@ def window_pause(pause: float, left_s: float | None, rest: int) -> float:
     return max(MIN_PAUSE, min(pause, left_s / max(1, rest)))
 
 
+def ab_send_order(abx, rows: list[dict], until: dt.datetime | None,
+                  start: dt.datetime | None = None) -> tuple[list[dict], dict, dt.datetime | None]:
+    """Versandzeit-Test (A/B, Schritt mail_zeit): Erstmails mit Variante „spät“ ans Ende, Mitte des Fensters als
+    Grenze. Ohne Fensterende (--bis) kein Versandzeit-Test. (Reihenfolge, {message_id: (fenster, marke)}, Mitte)."""
+    if until is None:
+        return rows, {}, None
+    zeit = {}
+    for m in rows:
+        if (m.get("kind") or "initial") != "initial":
+            continue
+        p, e = m.get("prospects") or {}, m.get("experiments") or {}
+        w, mark = abx.send_window(e.get("segment_id"), p.get("country"), p.get("id"))
+        if w:
+            zeit[m["id"]] = (w, mark)
+    if not zeit:
+        return rows, {}, None
+    start = start or dt.datetime.now(dt.timezone.utc)
+    mid = start + (until - start) / 2
+    late = [m for m in rows if zeit.get(m["id"], ("",))[0] == "spaet"]
+    return [m for m in rows if zeit.get(m["id"], ("",))[0] != "spaet"] + late, zeit, mid
+
+
+def ab_subject_variant(abx, marks: dict) -> str | None:
+    """Betreff-Variante (A/B) einer Mail aus den Marken: für messages.subject_variant und den Seitenlink (?sv=)."""
+    for tid, v in (marks or {}).items():
+        t = next((x for x in abx.tests if str(x.get("id")) == str(tid)), None)
+        if t and t.get("step") == "mail_betreff":
+            return v
+    return None
+
+
+def ab_after_send(db, m: dict, p: dict, orig: tuple[str, str], marks: dict, sv: str | None) -> None:
+    """Nach dem Versand: geänderten Betreff/Text und Marken an der Mail speichern, Kontakt je Test zählen
+    (ab_events). Fehler hier stoppen nie den Versand."""
+    from lib import ab as ablib
+    upd = {}
+    if (m["subject"], m["body"]) != orig:
+        upd.update(subject=m["subject"], body=m["body"])
+    if marks:
+        upd["ab"] = marks
+    if sv:
+        upd["subject_variant"] = sv
+    if upd:
+        try:
+            db.update("messages", {"id": m["id"]}, upd)
+        except Exception as exc:  # noqa: BLE001
+            print(f"A/B-Marken nicht gespeichert ({exc.__class__.__name__})")
+    ablib.record(db, marks, p.get("id"))
+
+
 def seed_inboxes() -> list[str]:
     """Kontrolladressen des Inhabers (Secret SEED_INBOXES, kommagetrennt) für den Posteingangstest."""
     return [a.strip() for a in os.environ.get("SEED_INBOXES", "").split(",") if "@" in a]
@@ -488,6 +538,10 @@ def cmd_send(args) -> int:
         from lib import versandzeit
         until = versandzeit.parse_until(args.bis, dt.datetime.now(dt.timezone.utc))
         print(f"Versandfenster bis {args.bis} deutscher Zeit")
+    # A/B je Schritt (scripts/lib/ab.py): laufende Tests und übernommene Gewinner einmal je Lauf laden
+    from lib import ab as ablib
+    abx = ablib.Ctx(db)
+    rows, zeit, mid = ab_send_order(abx, rows, until)
     seeded: set[str] = set()
     already = sum(sent_today.values())
     print(f"Aufwärmphase: heute max. {cap} Mails insgesamt, bereits gesendet: {already}")
@@ -506,6 +560,19 @@ def cmd_send(args) -> int:
             break
         p, e = m["prospects"], m["experiments"]
         country = p["country"]
+        # Versandzeit-Test: „früh“ nur in der ersten, „spät“ nur in der zweiten Hälfte des Fensters
+        zw = zeit.get(m["id"])
+        if zw and mid is not None:
+            t_now = dt.datetime.now(dt.timezone.utc)
+            if zw[0] == "frueh" and t_now >= mid:
+                print(f"A/B Versandzeit: {m['to_email']} (früh) folgt am nächsten Versandtag")
+                continue
+            if zw[0] == "spaet" and t_now < mid:
+                wait = (mid - t_now).total_seconds()
+                print(f"A/B Versandzeit: zweite Hälfte ab {mid.isoformat(timespec='minutes')} – warte {int(wait)} s")
+                if live:
+                    import time
+                    time.sleep(max(0.0, wait))
         rules = country_rules(cfg, country)
         problems = []
         if not rules.get("allowed"):
@@ -528,8 +595,17 @@ def cmd_send(args) -> int:
         if want in ("pt", "es") and (m.get("language") or "en") != want:
             problems.append(f"Mail-Sprache {m.get('language') or 'en'} statt {want} für {country}")
         kind = m.get("kind") or "initial"
-        lint = lint_draft(m["subject"], m["body"], m.get("language") or "en",
-                          **({} if kind == "initial" else {"min_words": 30, "max_words": 120, "require_sample": False}))
+        lint_opts = {} if kind == "initial" else {"min_words": 30, "max_words": 120, "require_sample": False}
+        # A/B: Gewinner und laufende Variante anwenden; besteht B die Schreibregeln nicht, bleibt die Mail unverändert
+        orig = (m["subject"], m["body"])
+        m["subject"], m["body"], marks = abx.prepare_message(
+            m, p, e.get("segment_id"), kind,
+            lambda s, b, _l=m.get("language") or "en", _o=lint_opts: lint_draft(s, b, _l, **_o).ok)
+        marks = {**(m.get("ab") or {}), **marks, **(zw[1] if zw else {})}
+        sv = ab_subject_variant(abx, marks)
+        if sv:
+            m["subject_variant"] = sv
+        lint = lint_draft(m["subject"], m["body"], m.get("language") or "en", **lint_opts)
         problems += lint.errors
         stale = followup_block_reason(db, m)
         if stale:
@@ -626,6 +702,7 @@ def cmd_send(args) -> int:
         })
         db.insert("email_events", {"message_id": m["id"], "resend_id": provider_fields.get("resend_id"), "type": "sent",
                                    "note": f"Freigabe: {args.owner_ok or 'Dauerfreigabe'}"})
+        ab_after_send(db, m, p, orig, marks, sv)
         if not e.get("started_on"):
             db.update("experiments", {"id": e["id"]}, {"started_on": today, "status": "running"})
         db.update("experiments", {"id": e["id"]}, {"last_sent_on": today})

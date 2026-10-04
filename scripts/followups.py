@@ -175,6 +175,19 @@ def refresh_open(db, dry_run: bool = False) -> int:
     return 0
 
 
+def due_after(abx, step_key: str, p: dict, since, default: int, now: dt.datetime) -> tuple[bool, dict]:
+    """Ist die Nachfassmail (nachfass) bzw. Probe-Nachfrage (probe_nachfrage) für diesen Käufer fällig? Tage aus dem
+    A/B-Test (Element tage) bzw. dem übernommenen Gewinner, sonst default. Zweites Ergebnis = Marke für messages.ab."""
+    d, mark = abx.days(step_key, p.get("segment_id"), p.get("country"), p.get("id"), default)
+    try:
+        t = dt.datetime.fromisoformat(str(since).replace("Z", "+00:00"))
+    except ValueError:
+        return True, mark
+    if t.tzinfo is None:
+        t = t.replace(tzinfo=dt.timezone.utc)
+    return t <= now - dt.timedelta(days=d), mark
+
+
 def needs_reply_first(p: dict) -> bool:
     """Keine juristische Person (Einzelunternehmer/Personengesellschaft/unbekannt): Nachfassen nur nach eigener
     Antwort (Inhaber 04.10.2026)."""
@@ -209,7 +222,10 @@ def main(argv=None) -> int:
     if args.apply:  # Quittung fürs Dashboard (nur echte Läufe)
         ack(db, "nachfass", ["followup_enabled", "followup_days"], owner)
     days = args.days if args.days is not None else followup_days(4, owner["followup_days"])
-    cutoff = (now - dt.timedelta(days=days)).isoformat()
+    # A/B je Schritt: Abstand der Nachfassmail/Probe-Nachfrage kann getestet werden (scripts/lib/ab.py, Element tage)
+    from lib import ab as ablib
+    abx = ablib.Ctx(db)
+    cutoff = (now - dt.timedelta(days=abx.min_days("nachfass", days))).isoformat()
     note = "Inhaber 26.09.2026: Nachfassmails freigegeben ('stell alles ein')"
     n1 = n2 = 0
 
@@ -231,6 +247,9 @@ def main(argv=None) -> int:
             continue
         if answered(db, p["id"]):
             continue
+        due, mark = due_after(abx, "nachfass", p, m.get("sent_at"), days, now)
+        if not due:
+            continue
         lang = m.get("language") or "en"
         body, _ = followup_text(p, lang)
         subj, var = followup_subject(p, m["subject"], lang)
@@ -241,9 +260,9 @@ def main(argv=None) -> int:
             db.insert("messages", {"prospect_id": p["id"], "experiment_id": m["experiment_id"], "to_email": m["to_email"],
                                    "subject": subj, "body": body, "language": lang, "kind": "followup",
                                    **_variant_field(m, var), "parent_id": m["id"], "status": "approved",
-                                   "approved_at": now.isoformat(), "approved_by": note})
+                                   "approved_at": now.isoformat(), "approved_by": note, **({"ab": mark} if mark else {})})
 
-    s_cut = (now - dt.timedelta(days=3)).isoformat()
+    s_cut = (now - dt.timedelta(days=abx.min_days("probe_nachfrage", 3))).isoformat()
     sent_samples = db.select("email_events", {"type": "eq.sample_requested", "created_at": f"lte.{s_cut}",
                                               "select": "message_id,created_at,messages(*,prospects(*))"})
     for ev in sent_samples:
@@ -258,6 +277,9 @@ def main(argv=None) -> int:
                                            "select": "id"})
         if later or db.rpc("is_suppressed", {"p_email": m["to_email"]}) or answered(db, p["id"], ev["created_at"]):
             continue
+        due, mark = due_after(abx, "probe_nachfrage", p, ev.get("created_at"), 3, now)
+        if not due:
+            continue
         lang = m.get("language") or "en"
         from responder import booking_url
         body = sample_followup_text(p, lang, booking_url(p["segment_id"], p.get("country")))
@@ -268,7 +290,7 @@ def main(argv=None) -> int:
             db.insert("messages", {"prospect_id": p["id"], "experiment_id": m["experiment_id"], "to_email": m["to_email"],
                                    "subject": subj, "body": body, "language": lang, "kind": "sample_followup",
                                    **_variant_field(m, var), "parent_id": m["id"], "status": "approved",
-                                   "approved_at": now.isoformat(), "approved_by": note})
+                                   "approved_at": now.isoformat(), "approved_by": note, **({"ab": mark} if mark else {})})
     if n_sole:
         print(f"{n_sole} Erstmails an Einzelunternehmer/ohne erkannte Kapitalgesellschaft: keine automatische "
               f"Nachfassmail (nur nach eigener Antwort, Inhaber 04.10.2026)")

@@ -19,6 +19,8 @@ import { GH_ROUT_CSS, Routinen, Wissen } from "./routinen";
 import { LivePoll } from "../live-poll";
 import type { BrainRoutine } from "@/lib/brain-routines";
 import type { KnowledgeDoc } from "@/lib/jarvis-llm";
+import type { AbData } from "@/lib/ab-data";
+import { AbMini, AbSection, GH_AB_CSS } from "./ab-section";
 
 /**
  * Ansicht der Gehirn-Seite (Daten aus page.tsx). Inhaber 04.10.2026: „denk beim gehirn bitte dran wenig text und gute
@@ -119,10 +121,12 @@ export type GehirnProps = {
   legalFiles: boolean; stripe: { live: boolean; test: boolean };
   /** Gehirn-Routinen (#routinen), Wissen (#wissen), Fehler beim Speichern, geöffnete Notiz, Gehirn-Chat */
   routines?: BrainRoutine[]; knowledge?: (KnowledgeDoc & { id: string })[]; routineError?: string | null; openDoc?: string | null; chatId?: string | null;
+  /** A/B je Schritt: Trichter und Tests (lib/ab-data.ts loadAb) */
+  ab?: AbData | null;
 };
 
 export function GehirnView({ now, settings: s, pages: pg, decisions: rawDec, report, error: err, tasks, workflows, env, legalFiles, stripe,
-  routines = [], knowledge = [], routineError = null, openDoc = null, chatId = null }: GehirnProps) {
+  routines = [], knowledge = [], routineError = null, openDoc = null, chatId = null, ab = null }: GehirnProps) {
   const envMissing = env.filter((e) => e.required && !e.set);
   const canLive = legalFiles && !!s.legal_ready;
   const flag = (k: string) => !!(s as Record<string, unknown>)[k];
@@ -138,6 +142,9 @@ export function GehirnView({ now, settings: s, pages: pg, decisions: rawDec, rep
   const otherPages = pagesByPage(scoped.other);
   const livePages = [...groups, ...otherPages].filter((g) => g.page_status === "live").length;
   const tests = abTests(scoped.tested);
+  // Seiten-Tests stehen jetzt als Schritt „Landingpage“ in ab_tests; alte Seiten mit zwei Varianten ohne Eintrag bleiben sichtbar
+  const abRunning = (ab?.tests ?? []).filter((t) => t.status === "laeuft").length;
+  const pageOnly = tests.filter((t) => !(ab?.tests ?? []).some((x) => x.step === "landing" && x.status === "laeuft" && t.slug.startsWith(`${x.country.toLowerCase()}/`)));
   const brain = brainNow({ settings: s, tasks, decisions: rawDec, now });
   const sats = satellites(tasks);
   const marks = clockMarks(upcoming(workflows, now, 10));
@@ -150,7 +157,7 @@ export function GehirnView({ now, settings: s, pages: pg, decisions: rawDec, rep
   return (
     <TipHost>
       <div className="v2 gh">
-        <style dangerouslySetInnerHTML={{ __html: GH_CSS + GH_ROUT_CSS }} />
+        <style dangerouslySetInnerHTML={{ __html: GH_CSS + GH_ROUT_CSS + GH_AB_CSS }} />
         <LivePoll active={tasks.some((t) => t.status === "offen" || t.status === "laeuft")} />
         <div className="gh-topbar">
           <Crumbs items={[["JARVIS", "/dashboard/jarvis"], ["Gehirn", ""]]} />
@@ -179,8 +186,9 @@ export function GehirnView({ now, settings: s, pages: pg, decisions: rawDec, rep
             </div>
 
             <div className="gh-col l">
-              <Inst icon="weiche" title="A/B" href="#seiten" value={tests.length || undefined}>
-                {tests.length ? tests.map((t) => {
+              <Inst icon="weiche" title="A/B" href="#ab" value={abRunning + pageOnly.length || undefined}>
+                {(abRunning > 0 || !pageOnly.length) && <AbMini data={ab} />}
+                {pageOnly.map((t) => {
                   const w = splitShares(t.variants.map((v) => v.rate));
                   return (
                     <div key={t.slug} className="gh-ab">
@@ -196,7 +204,7 @@ export function GehirnView({ now, settings: s, pages: pg, decisions: rawDec, rep
                       </Tip>
                     </div>
                   );
-                }) : <span className="gh-none" title="keine Seite mit zwei aktiven Varianten"><span className="gh-seg ghost" /></span>}
+                })}
               </Inst>
             </div>
 
@@ -224,6 +232,9 @@ export function GehirnView({ now, settings: s, pages: pg, decisions: rawDec, rep
             </div>
           </div>
         </Fold>
+
+        {/* ---------------------------------------------------------------- A/B je Schritt */}
+        <AbSection data={ab} />
 
         {/* ---------------------------------------------------------------- Vorschläge */}
         <Fold name="vorschlaege" aliases={["entscheidungen"]} open={open > 0} title="Vorschläge" icon={<Icon name="freigabe" size={16} />}

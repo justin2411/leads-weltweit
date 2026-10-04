@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/lib/supabase";
+import { loadAb } from "@/lib/ab-data";
 import { CONFIG, SEGMENT, loadAnalyticsCache, loadFunnel, loadFunnelCache, loadLive, loadOwnerSettings, loadStock } from "@/lib/dashboard-data";
 import { analyticsBrief, hints as webHints } from "@/lib/website-analytics";
 import { funnelBrief } from "@/lib/website-funnel";
@@ -274,7 +275,7 @@ export async function brainContext(s: Sources): Promise<string> {
   const [an, proposed, tests, done, routines, tasks, wa] = await Promise.all([
     antworten(),
     rows(db().from("decisions").select("*").eq("status", "proposed").gte("created_at", since7).order("created_at", { ascending: false }).limit(8).abortSignal(T())),
-    rows(db().from("decisions").select("*").like("subject", "Test:%").order("created_at", { ascending: false }).limit(5).abortSignal(T())),
+    loadAb(s.now).then((d) => (d.error ? null : d), () => null),
     rows(db().from("decisions").select("*").eq("status", "done").gte("created_at", since7).order("created_at", { ascending: false }).limit(8).abortSignal(T())),
     loadRoutines(),
     rows(db().from("agent_tasks").select("*").order("created_at", { ascending: false }).limit(10).abortSignal(T())),
@@ -286,7 +287,12 @@ export async function brainContext(s: Sources): Promise<string> {
     // Website-Analyse wie GA4 (7 Tage vs. Vorwoche, Kanäle, Einstieg/Ausstieg, Hinweise) – dashboard_cache 'website_analytics'
     line("Website-Analyse", wa),
     line("Offene Vorschläge (7 Tage)", proposed ? proposed.map(short) : NA),
-    line("A/B-Tests (letzte)", tests ? tests.map((d) => ({ ...short(d), status: d.status })) : NA),
+    line("A/B je Schritt (Trichter 30 Tage, Tests)", tests ? {
+      engpass: tests.funnel.find((f) => f.engpass)?.key ?? null,
+      trichter: tests.funnel.map((f) => `${f.key} ${f.k}/${f.n}`),
+      tests: tests.tests.filter((x) => x.status === "laeuft" || x.status === "entwurf").slice(0, 8)
+        .map((x) => ({ id: x.id, schritt: x.step, land: x.country, element: x.element, status: x.status, A: `${x.variants[0].k}/${x.variants[0].n}`, B: `${x.variants[1].k}/${x.variants[1].n}`, sicherheit: x.eval?.sicherheit ?? null })),
+    } : NA),
     line("JARVIS hat umgesetzt (7 Tage)", done ? done.map(short) : NA),
     line("Gehirn-Routinen", routines.length ? routines.map((r) => ({ id: r.id, name: r.name, plan: scheduleLabel(r), aktiv: r.aktiv, naechster: whenLabel(nextRun(r, s.now), s.now), ergebnis: r.last_result })) : "keine"),
     line("Letzte Aufträge", tasks ? tasks.map((t) => ({ agent: t.agent, art: t.kind, status: t.status, von: fromBrain(t as { created_by?: string | null }) ? "Gehirn" : t.created_by ?? null,

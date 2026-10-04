@@ -12,12 +12,14 @@ const PRESETS = [250, 500, 1000, 2500];
 type Props = {
   base: { key: string; amount_cents?: number; currency?: string };
   variantId: string; preview: boolean; r?: string; online: boolean; offerHref: string;
+  /** A/B-Marke der Tarifseite („<test>.<A|B>“, nur Variante), damit der Stripe-Start der Variante zählt */
+  ab?: string;
   T: { title: string; perWeek: string; perMonthL: string; perLeadL: string; per: string; pay: string; mail: string; more: string };
   lang: "en" | "fr";
 };
 
 /** Eigenes Volumen per Regler (150–10.000 Leads/Woche), Preis live; bezahlt wird mit dem auf dem Server neu berechneten Preis. */
-export function CustomPlan({ base, variantId, preview, r, online, offerHref, T, lang }: Props) {
+export function CustomPlan({ base, variantId, preview, r, online, offerHref, T, lang, ab }: Props) {
   const [weekly, setWeekly] = useState(500);
   const [typed, setTyped] = useState("500");
   const cur = (base.currency ?? "gbp").toUpperCase();
@@ -64,6 +66,7 @@ export function CustomPlan({ base, variantId, preview, r, online, offerHref, T, 
           <input type="hidden" name="weekly" value={weekly} />
           {preview && <input type="hidden" name="vorschau" value="1" />}
           {r && <input type="hidden" name="r" value={r} />}
+          {ab && <input type="hidden" name="ab" value={ab} />}
           <button className="btn gold big" type="submit">{T.pay.replace("{n}", num(weekly))} <span className="ar"><Icon name="pfeil" size={18} /></span></button>
         </form>
       ) : (

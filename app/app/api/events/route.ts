@@ -4,6 +4,7 @@ import { isOwner } from "@/lib/pages";
 import { RateLimiter, browserOf, countryOfSlug, isBot, parseBeacon } from "@/lib/website-stats";
 import { countable, isPreviewRef } from "@/lib/visitor";
 import { countryFromHeaders, endHit, recordHit, recordSignal, visitorKey, type VisitorKey } from "@/lib/web-hits";
+import { recordAb, validMark } from "@/lib/ab-data";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,18 @@ async function variantInfo(id: string): Promise<{ live: boolean; slug: string | 
 }
 
 const done = () => new Response(null, { status: 204 });
+
+/**
+ * A/B je Schritt auf der Tarifseite (Einheit = Tages-Besucher-Hash): ab = Variante der Tarifseite gesehen (exposure),
+ * abc = Klick aus der Probe-Mail (conversion des Probe-Mail-Tests). Nur laufende Tests des passenden Schritts.
+ */
+async function abVisit(vh: string | null, ab?: string, abc?: string) {
+  if (!vh) return;
+  await Promise.all([
+    ab ? validMark(ab, "tarif").then((m) => recordAb(m, vh, "exposure")) : null,
+    abc ? validMark(abc, "probe_mail").then((m) => recordAb(m, vh, "conversion")) : null,
+  ]);
+}
 
 /** Eindeutigen Besucher vermerken (nur Hash, JARVIS-Linie „Website“). Ohne Schlüssel wird nichts gezählt. */
 async function visit(key: VisitorKey | null, page: "landing" | "tarif", slug: string) {
@@ -110,6 +123,7 @@ export async function POST(req: Request) {
         b.stage === "tarif" ? visit(key, "tarif", v.slug) : null,
         key && recordHit({ key, stage: b.stage, country: countryOfSlug(v.slug), slug: v.slug, pv: b.pv, device: b.device, src: b.src, ref: b.ref,
                            browser: browserOf(req.headers.get("user-agent")), um: b.um, uc: b.uc }),
+        b.stage === "tarif" ? abVisit(key?.vh ?? null, b.ab, b.abc) : null,
       ]);
     } else if (b.kind === "click") {
       await Promise.all([

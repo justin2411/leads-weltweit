@@ -10,6 +10,7 @@ import { leadCountry, segKey } from "@/lib/country";
 import { cleanText, validEmail, wishKeys, wishNote } from "@/content/sample-wishes";
 import { after } from "next/server";
 import { dispatchSampleWorkflow, previewFromStock, sendFromStock, STOCK_BUCKET, type StockDeps } from "@/lib/sample-stock";
+import { recordAbMarks } from "@/lib/ab-data";
 import { pushAlarmSafe } from "@/lib/push";
 import { isOwnerAddress } from "@/lib/owner-address";
 
@@ -213,6 +214,8 @@ async function deliverNow(r: { id: string; email: string; company: string; segme
   console.log(`Probe ${r.segment}/${r.country}: ${res.status} ${"detail" in res && res.detail ? res.detail : ""} `
     + `(${Date.now() - r.clicked} ms vom Klick bis Resend)`);
   if (res.status === "sent") {
+    // A/B „Probe-Mail“: Kontakt je Variante (Einheit = Probe-Anfrage), Ziel = Klick zur Tarifseite
+    await recordAbMarks("ab" in res ? res.ab : undefined, r.id, "exposure");
     // wie web_samples.py: Erstmail vermerken (keine Nachfassmail „Soll ich sie schicken?“ mehr)
     const msg = await initialMessage(r.email).catch(() => null);
     if (msg) {
