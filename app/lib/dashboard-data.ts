@@ -316,3 +316,28 @@ export async function loadPlanLog(): Promise<Partial<Record<PlanLog["werk"], Pla
     return {};
   }
 }
+
+/** Gehirn-Seite: Schalter, Seiten-Varianten mit Kennzahlen, letzte 30 Entscheidungen und die neueste Tagesnotiz/Wochenbericht.
+ *  Fehler einzelner Abfragen landen in `error` (Seite zeigt den Hinweis statt zu brechen). */
+export type BrainData = {
+  settings: import("@/lib/gehirn").BrainSettings; pages: import("@/lib/gehirn").PageStat[]; decisions: import("@/lib/gehirn").Decision[];
+  report: import("@/lib/gehirn").Decision | null; error: string | null;
+};
+export async function loadBrain(): Promise<BrainData> {
+  const sb = db();
+  const t = () => AbortSignal.timeout(6000);
+  const [settings, pages, decisions, report] = await Promise.all([
+    sb.from("settings").select("*").eq("id", 1).abortSignal(t()).maybeSingle(),
+    sb.from("page_stats").select("*").order("slug").order("variant_key").abortSignal(t()),
+    sb.from("decisions").select("*").order("created_at", { ascending: false }).limit(30).abortSignal(t()),
+    sb.from("decisions").select("*").in("type", ["daily_note", "weekly_report"]).order("created_at", { ascending: false }).limit(1).abortSignal(t()),
+  ]);
+  const err = [settings, pages, decisions, report].find((r) => r.error)?.error;
+  return {
+    settings: (settings.data ?? {}) as BrainData["settings"],
+    pages: (pages.data ?? []) as BrainData["pages"],
+    decisions: (decisions.data ?? []) as BrainData["decisions"],
+    report: ((report.data ?? [])[0] ?? null) as BrainData["report"],
+    error: err?.message ?? null,
+  };
+}
