@@ -35,7 +35,7 @@ export default async function Proben({ searchParams }: { searchParams: SP }) {
 
   return (
     <div className="v2">
-      <Crumbs items={[["Übersicht", "/dashboard"], ["Proben", ""]]} />
+      <Crumbs items={[["JARVIS", "/dashboard/jarvis"], ["Proben", ""]]} />
       <div className="head2"><span /><Chips base="/dashboard/proben" param="land" value={land} options={COUNTRY_OPTS} params={raw} dots /></div>
       <div className="kpis2 four">
         <Kpi value={`${ready}/${target}`} label="Vorrat fertig" tip={SEGMENT === "S2" ? "Webagenturen: kein Verfall – Freigabe aller 10 Leads wird alle 20 h erneuert" : `Verfall nach ${cfg.proben.max_alter_stunden} h`} />

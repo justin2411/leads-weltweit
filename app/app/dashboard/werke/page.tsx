@@ -38,7 +38,7 @@ export default async function Werke({ searchParams }: { searchParams: SP }) {
 
   return (
     <div className="v2">
-      <Crumbs items={[["Übersicht", withQuery("/dashboard", raw)], ["Werke", ""]]} />
+      <Crumbs items={[["JARVIS", withQuery("/dashboard/jarvis", raw)], ["Werke", ""]]} />
       <div className="werke2">
         {CARDS.map((c) => <WerkCard key={c.key} c={c} act={act} runs={runs} own={own} now={now} here={here} />)}
       </div>

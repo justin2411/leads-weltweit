@@ -1,4 +1,4 @@
-import { COUNTRIES, CONFIG, SEGMENT, canDispatch, loadOwnerSettings, loadStock } from "@/lib/dashboard-data";
+import { COUNTRIES, CONFIG, SEGMENT, canDispatch, loadOwnerSettings, loadRawStock, loadStock } from "@/lib/dashboard-data";
 import { WORKFLOWS } from "@/lib/owner-settings";
 import { dispatchWorkflow, toggleBuyerCountry } from "../control-actions";
 import { COUNTRY_COLOR, berlin, compact, nextRun, stockSegment } from "@/lib/dashboard-logic";
@@ -10,7 +10,10 @@ import { readParams, withQuery, type SP } from "../params";
 export default async function Bestand({ searchParams }: { searchParams: SP }) {
   await requireOwner();
   const { land, countries, raw } = await readParams(searchParams);
-  const [stockAll, own] = await Promise.all([loadStock(), loadOwnerSettings()]);
+  // Rohbestand (aus der alten Ansicht, Inhaber 04.10.2026): 1 h zwischengespeichert; ist er kalt, lädt die Seite ohne ihn
+  const rawP = loadRawStock().catch(() => null);
+  const [stockAll, own, rawStock] = await Promise.all([loadStock(), loadOwnerSettings(),
+    Promise.race([rawP, new Promise<null>((r) => setTimeout(() => r(null), 1500))])]);
   const stock = stockSegment(stockAll, SEGMENT)!;
   const here = withQuery("/dashboard/bestand", raw);
   const now = new Date();
@@ -23,7 +26,7 @@ export default async function Bestand({ searchParams }: { searchParams: SP }) {
 
   return (
     <div className="v2">
-      <Crumbs items={[["Übersicht", "/dashboard"], ["Bestand", ""]]} />
+      <Crumbs items={[["JARVIS", "/dashboard/jarvis"], ["Bestand", ""]]} />
       <div className="head2">
         <span className="sub2" title="alle 10 min neu gezählt">Stand {berlin(stock.at)}</span>
         <Chips base="/dashboard/bestand" param="land" value={land} options={COUNTRY_OPTS} params={raw} dots />
@@ -34,6 +37,9 @@ export default async function Bestand({ searchParams }: { searchParams: SP }) {
         <Kpi value={`+${compact(sum(L24))}`} label="neu 24 h" />
         <Kpi value={compact(sum((c) => L(c, "reserved") + L(c, "sample")))} label="in Proben" tip="reserviert im Vorrat + in gesendeten Proben" />
         <Kpi value={compact(sum((c) => L(c, "delivered")))} label="geliefert" />
+      </div>
+      <div className="sub2" title={rawStock ? `Firmen ohne Lead (unvollständig oder widersprüchlich), alle Zielgruppen – zum späteren Nachanreichern · Stand ${berlin(rawStock.at)}` : "wird stündlich gezählt"}>
+        Rohbestand ohne Lead: {rawStock ? countries.map((c) => `${c} ${compact(rawStock.by_country[c] ?? 0)}`).join(" · ") : "wird gezählt …"}
       </div>
       <h2 className="h2s">Käufer</h2>
       <div className="kpis2 four">
