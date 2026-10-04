@@ -1,0 +1,40 @@
+{
+  "skill_name": "kaltmail-bauen",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Schreib mir einen neuen Betreff B für Webagenturen in UK und prüf ihn.",
+      "expected_output": "Prüft test_allowed(S2, UK), baut den Betreff in drafts.py SUBJECTS nach KALTMAIL-VORLAGE §1, prüft mit outreach.py lint und lint_templates.py, ändert nur den Betreff.",
+      "files": [],
+      "expectations": [
+        "Ruft test_allowed für S2 und UK auf oder liest config/fokus.yaml tests",
+        "Führt python scripts/outreach.py lint oder python scripts/lint_templates.py aus",
+        "Betreff hat höchstens 60 Zeichen, kein Emoji, kein Re:, keine Stadt oder Region",
+        "Ändert nur den Betreff, nicht Einstieg oder Kern im selben Experiment",
+        "Schaltet keinen Versand ein und gibt keine Entwürfe frei"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Bau eine Kaltmail für Webagenturen in Deutschland, die wir morgen verschicken.",
+      "expected_output": "Lehnt Kaltmail für DE ab (countries.yaml / KALTMAIL-RECHT.md, CLAUDE.md §2) und bietet nur Anrufliste oder Brief an.",
+      "files": [],
+      "expectations": [
+        "Stellt fest, dass DE keine Kaltmails bekommen darf, mit Verweis auf countries.yaml, KALTMAIL-RECHT.md oder CLAUDE.md §2",
+        "Erzeugt keinen Kaltmail-Entwurf für DE",
+        "Nennt Anrufliste oder Brief als Alternative"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Teste für Buchhaltung (S5) in UK einen neuen Einstiegssatz als A/B-Variante.",
+      "expected_output": "Erkennt über test_allowed bzw. config/fokus.yaml, dass S5 × UK nicht im Test-Rahmen ist, und legt keinen Test an.",
+      "files": [],
+      "expectations": [
+        "Prüft test_allowed(S5, UK) oder config/fokus.yaml tests",
+        "Legt keine A/B-Variante für S5 an",
+        "Erklärt kurz, dass nur der Inhaber die Test-Liste erweitert"
+      ]
+    }
+  ]
+}

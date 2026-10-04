@@ -6,7 +6,7 @@ from __future__ import annotations
 import os
 import sys
 
-WERKE = {"lead-werk", "kunden-werk", "proben-vorrat", "freigabe", "stichprobe", "dauerpruefung"}
+WERKE = {"lead-werk", "kunden-werk", "proben-vorrat", "freigabe", "stichprobe", "dauerpruefung", "pruefer-werk"}
 
 
 def _part() -> str:
@@ -22,7 +22,8 @@ def rows_from_lead_report(segments: dict) -> list[dict]:
                     "processed": int(r.get("processed") or 0), "green": int(r.get("green") or 0),
                     "yellow": int(r.get("yellow") or 0), "red": int(r.get("red") or 0),
                     "reasons": {str(k): int(v) for k, v in (r.get("top_reasons") or [])},
-                    "extra": {"stufen": r["stufen"]} if r.get("stufen") else {}})
+                    "extra": {**({"stufen": r["stufen"]} if r.get("stufen") else {}),
+                              **({"premium": int(r["premium"])} if r.get("premium") else {})}})
     return out
 
 
@@ -56,7 +57,8 @@ def rows_from_stock_summary(summary: dict) -> list[dict]:
     for key, r in (summary or {}).items():
         seg, _, country = key.partition("/")
         out.append({"segment_id": seg, "country": country, "candidates": int(r.get("soll") or 0),
-                    "processed": int(r.get("vorher") or 0), "green": int(r.get("neu") or 0), "reasons": {}})
+                    "processed": int(r.get("vorher") or 0), "green": int(r.get("neu") or 0), "reasons": {},
+                    "extra": {"premium": int(r.get("premium_leads_neu") or 0)} if r.get("neu") else {}})
     return out
 
 

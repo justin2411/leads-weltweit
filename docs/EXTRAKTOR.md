@@ -13,7 +13,7 @@ Quelle (amtlich, kostenlos) ─► Sicherheitsfilter ─► Branche zuordnen ─
 
 | Schritt | Datei | Was passiert |
 |---|---|---|
-| Quellen | `sources/fmcsa.py`, `sources/formd.py`, `sources/uk_ch.py`, `sources/fr_bodacc.py` | US: FMCSA-Neuzugänge (Transport/Fuhrpark), SEC-Form-D-Kapitalmeldungen; UK: Companies-House-Neugründungen + PSC-Eigentümer; FR: BODACC-Gründungen |
+| Quellen | `sources/fmcsa.py`, `sources/formd.py`, `sources/uk_ch.py`, `sources/fr_bodacc.py` | US: FMCSA-Neuzugänge (Transport/Fuhrpark), SEC-Form-D-Kapitalmeldungen; UK: Companies-House-Neugründungen + PSC-Eigentümer; FR: BODACC-Gründungen (abgeschaltet 05.10.2026: robots.txt sperrt `/api/`) |
 | Sicherheitsfilter | `filters.py`, `qc.py` | Behörden/Vereine raus, Platzhalter raus, Dubletten raus, Sammel-Kontakte (dieselbe Nummer/E-Mail bei ≥ 3 Firmen in 120 Tagen = Anmelde-Dienstleister), FMCSA-Stilllegungen (Out-of-Service) und unzustellbare Adressen, unplausible Flottenzahlen, Sperrliste und vorhandene Leads (mit `--db`) |
 | Branche | `segments.fits` | feste Regel je Branche (siehe unten), mit Begründung |
 | Anreicherung | `enrich.py` | Website aus der eigenen E-Mail-Domain oder aus dem Firmennamen, nur wenn die Seite die Firma belegt (Name, Ort, Telefon aus der Quelle, PLZ, Ansprechperson); E-Mail/Telefon von der eigenen Website; MX-Prüfung |

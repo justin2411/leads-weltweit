@@ -1,6 +1,6 @@
 import { Fold } from "../fold";
 import Link from "next/link";
-import { COUNTRIES, CONFIG, SEGMENT, canDispatch, loadActivity, loadLive, loadOwnerSettings, loadStock } from "@/lib/dashboard-data";
+import { COUNTRIES, CONFIG, SEGMENT, canDispatch, loadActivity, loadLive, loadOwnerSettings, loadPremium, loadStock } from "@/lib/dashboard-data";
 import { isLive } from "@/lib/werke-live";
 import { SampleFactory } from "../live";
 import { MAX_AGE_RANGE, MAX_SAMPLE_TARGET } from "@/lib/owner-settings";
@@ -14,7 +14,7 @@ import { readParams, withQuery, type SP } from "../params";
 export default async function Proben({ searchParams }: { searchParams: SP }) {
   await requireOwner();
   const { land, countries, raw } = await readParams(searchParams);
-  const [liveAll, own, stockAll, act] = await Promise.all([loadLive(), loadOwnerSettings(), loadStock().catch(() => null), loadActivity()]);
+  const [liveAll, own, stockAll, act, prem] = await Promise.all([loadLive(), loadOwnerSettings(), loadStock().catch(() => null), loadActivity(), loadPremium()]);
   const live = onlySegment(liveAll, SEGMENT);
   const stock = stockSegment(stockAll, SEGMENT);
   const now = new Date(live.now);
@@ -33,6 +33,9 @@ export default async function Proben({ searchParams }: { searchParams: SP }) {
     ...mail.map((e) => ({ key: e.id, company: e.company_name ?? "?", country: e.country ?? null, at: e.occurred_at, status: "gesendet", wait: "sofort", via: "Mail" })),
   ].sort((a, b) => (a.at < b.at ? 1 : -1));
   const ready = st.reduce((a, r) => a + r.ready, 0), target = st.reduce((a, r) => a + r.target, 0);
+  // Nur noch Premium (Inhaber 05.10.2026): reine Premium-Proben je Land, sonst mit Standard aufgefüllt
+  const PR = (c: string) => prem?.find((x) => x.segment_id === SEGMENT && x.country === c);
+  const small = countries.filter((c) => PR(c) && PR(c)!.zu_klein);
 
   return (
     <div className="v2">
@@ -51,13 +54,15 @@ export default async function Proben({ searchParams }: { searchParams: SP }) {
       </section>
       <Fold id="proben-je-land" className="card tile" head="th" title={<span title="Kunden-Leads = lieferbare Leads für Webagentur-Kunden · Käufer = mail-fähige Webagenturen">Je Land</span>} sum={`${countries.length} Länder`}>
         <div className="tbl"><table>
-          <thead><tr><th>Land</th><th className="num">Kunden-Leads</th><th className="num">Käufer mail-fähig</th><th className="num" title="noch ohne Mail">frei</th><th className="num" title="Mail geschrieben und geprüft, wartet auf Versand">Mail bereit</th><th className="num" title="Mail wirklich gesendet">gesendet</th></tr></thead>
+          <thead><tr><th>Land</th><th className="num">Kunden-Leads</th><th className="num">Käufer mail-fähig</th><th className="num" title="noch ohne Mail">frei</th><th className="num" title="Mail geschrieben und geprüft, wartet auf Versand">Mail bereit</th><th className="num" title="Mail wirklich gesendet">gesendet</th><th className="num" title="freie Premium-Leads (frisch ≤ 30 Tage) · Proben nur aus Premium (10/10) von allen Proben">Premium</th></tr></thead>
           <tbody>{countries.map((c) => (
             <tr key={c}><td><i className="dot" style={{ background: COUNTRY_COLOR[c] }} />{c}</td><td className="num">{stock ? compact(L(c)) : "…"}</td>
               <td className="num">{stock ? compact(P(c, "n")) : "…"}</td><td className="num">{stock ? compact(P(c, "unused")) : "…"}</td>
-              <td className="num">{stock ? compact(P(c, "queued")) : "…"}</td><td className="num">{stock ? compact(P(c, "sent")) : "…"}</td></tr>
+              <td className="num">{stock ? compact(P(c, "queued")) : "…"}</td><td className="num">{stock ? compact(P(c, "sent")) : "…"}</td>
+              <td className="num">{PR(c) ? `${compact(PR(c)!.premium_frei)} · ${PR(c)!.proben_premium}/${PR(c)!.proben}` : "…"}</td></tr>
           ))}</tbody>
         </table></div>
+        {small.length > 0 && <p className="hint" title="Proben brauchen genau 10 Leads – bis genug Premium da ist, füllen Standard-Leads auf">Premium-Vorrat zu klein: {small.join(", ")}</p>}
       </Fold>
 
       <h2 className="h2s">Steuerung</h2>

@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { CONFIG, SEGMENT, loadActivity, loadOwnerSettings, loadProduction, loadRuns, type Production } from "@/lib/dashboard-data";
+import { CONFIG, SEGMENT, loadActivity, loadOwnerSettings, loadPrueferKpi, loadProduction, loadRuns, type Production, type PrueferKpi } from "@/lib/dashboard-data";
 import { ago, berlin, berlinDay, compact, nextWorkflowRun, type RunInfo } from "@/lib/dashboard-logic";
 import { PERIODS, buckets, period } from "@/lib/dashboard-periods";
 import { WERK_SWITCHES, werkOn, type OwnerSettings, type WerkKey } from "@/lib/owner-settings";
@@ -18,6 +18,7 @@ const CARDS: Card[] = [
   { key: "lead-werk", file: "lead-werk.yml", werk: "lead-werk", maxH: 4, lastLabel: "letzte Aktivität", what: "Firmen ohne/mit veralteter Website finden, prüfen, grün speichern" },
   { key: "kunden-werk", file: "kunden-werk.yml", werk: "kunden-werk", maxH: 5, lastLabel: "letzte Aktivität", what: "Webagenturen finden und prüfen, „nur Anruf/Brief“ über die Registernummer nachprüfen" },
   { key: "proben-vorrat", file: "proben-vorrat.yml", werk: "proben-vorrat", maxH: 26, lastLabel: "letzte Probe gebaut", what: "fertige, freigegebene Proben bereithalten (baut nur, wenn etwas fehlt)" },
+  { key: "pruefer-werk", file: "pruefer-werk.yml", maxH: 3, lastLabel: "", what: "4 Prüfer prüfen lieferbare Leads rund um die Uhr nach (Freigabe, Vollständigkeit, Anlass, Dubletten)" },
   { key: "freigabe", werk: "freigabe", maxH: 26, lastLabel: "letzte Prüfung", what: "Drei-Stufen-Freigabe jedes Leads vor Probe und Lieferung (nicht abschaltbar)" },
   { key: "versand", file: "send.yml", werk: "versand", maxH: 26, lastLabel: "letzte Mail", what: "freigegebene Kaltmails senden (Notbremse, Sperrliste immer aktiv)" },
   { key: "nachfass", file: "taeglich.yml", maxH: 30, lastLabel: "", what: "eine Nachfassmail nach 4 Tagen ohne Antwort" },
@@ -30,7 +31,7 @@ const CARDS: Card[] = [
 export default async function Werke({ searchParams }: { searchParams: SP }) {
   await requireOwner();
   const { land, countries, z, raw } = await readParams(searchParams);
-  const [act, runs, own] = await Promise.all([loadActivity(), loadRuns().catch(() => null), loadOwnerSettings()]);
+  const [act, runs, own, pk] = await Promise.all([loadActivity(), loadRuns().catch(() => null), loadOwnerSettings(), loadPrueferKpi()]);
   const now = new Date(act.now && act.now > "2000" ? act.now : Date.now());
   const today = berlinDay(now);
   const p = period(z, today);
@@ -40,7 +41,7 @@ export default async function Werke({ searchParams }: { searchParams: SP }) {
     <div className="v2">
       <PageHead title="Werke" icon="werk" crumbs={[["JARVIS", withQuery("/dashboard/jarvis", raw)], ["Werke", ""]]} />
       <div className="werke2">
-        {CARDS.map((c) => <WerkCard key={c.key} c={c} act={act} runs={runs} own={own} now={now} here={here} />)}
+        {CARDS.map((c) => <WerkCard key={c.key} c={c} act={act} runs={runs} own={own} now={now} here={here} pk={pk} />)}
       </div>
 
       <div className="head2">
@@ -87,7 +88,7 @@ export default async function Werke({ searchParams }: { searchParams: SP }) {
   );
 }
 
-function WerkCard({ c, act, runs, own, now, here }: { c: Card; act: Activity; runs: RunInfo[] | null; own: OwnerSettings; now: Date; here: string }) {
+function WerkCard({ c, act, runs, own, now, here, pk }: { c: Card; act: Activity; runs: RunInfo[] | null; own: OwnerSettings; now: Date; here: string; pk: PrueferKpi[] }) {
   const sw = c.key !== "freigabe" ? werkOn(own, c.key as WerkKey) : { on: true, since: null };
   const run = c.file ? runs?.find((r) => r.file === c.file) : undefined;
   const wf = c.file ? CONFIG.workflows.find((x) => x.file === c.file) : undefined;
@@ -109,6 +110,7 @@ function WerkCard({ c, act, runs, own, now, here }: { c: Card; act: Activity; ru
         {c.lastLabel && <span>{c.lastLabel} <b>{ago(last, now)}</b></span>}
         {parts.length > 0 && <span>aktive Teile <b>{parts.length}</b> · bearbeitet <b>{compact(parts.reduce((a, x) => a + x.processed, 0))}</b></span>}
         {c.key === "kunden-werk" && <span title="Käufer, die in der letzten Stunde (u. a. per Registernummer-Nachprüfung) mail-fähig wurden">mail-fähig letzte h <b>{compact(act.buyers_ok_60m)}</b> · letzter neuer Käufer <b>{ago(act.last_prospect_at, now)}</b></span>}
+        {c.key === "pruefer-werk" && <PrueferFacts pk={pk} />}
         {c.key === "freigabe" && <span>letzte h: <b>{compact(act.gate_60m.released ?? 0)}</b> freigegeben · <b>{compact(act.gate_60m.failed ?? 0)}</b> aussortiert</span>}
         {run ? <span>GitHub: <b>{run.status === "completed" ? run.conclusion : "läuft"}</b> {berlin(run.updated_at)}</span> : null}
         {nx && <span>nächster Lauf <b>{berlin(nx)}</b></span>}
@@ -117,6 +119,20 @@ function WerkCard({ c, act, runs, own, now, here }: { c: Card; act: Activity; ru
         ? <WerkSwitch werk={c.key} on={sw.on} back={here} label={label} note={"note" in WERK_SWITCHES[c.key as WerkKey] ? (WERK_SWITCHES[c.key as WerkKey] as { note: string }).note : undefined} />
         : <span className="lock" title="Sicherheitsfunktion: nicht abschaltbar"><Icon name="schloss" size={14} /> immer an</span>}
     </section>
+  );
+}
+
+/** Prüfer-Werk: geprüft 24 h und Qualität lieferbar % (bestanden / geprüft) aus signalwerk.pruefer_kpi. */
+function PrueferFacts({ pk }: { pk: PrueferKpi[] }) {
+  const n = pk.reduce((a, r) => a + (r.geprueft_24h ?? 0), 0);
+  const ok = pk.reduce((a, r) => a + (r.bestanden_24h ?? 0), 0);
+  const held = pk.reduce((a, r) => a + (r.gehalten_24h ?? 0), 0);
+  if (!n) return <span>geprüft 24 h <b>0</b></span>;
+  return (
+    <>
+      <span title="lieferbare Leads, die der Prüfer in 24 h geprüft hat">geprüft 24 h <b>{compact(n)}</b> · gehalten <b>{compact(held)}</b></span>
+      <span title="Anteil bestandener Prüfungen (Freigabe + Zusatzprüfungen)">Qualität lieferbar <b>{(100 * ok / n).toFixed(1)} %</b></span>
+    </>
   );
 }
 

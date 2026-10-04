@@ -23,7 +23,9 @@ Das Modell lernt nicht selbst. Klüger wird es nur durch **besseres Gedächtnis*
 | Wissensspeicher | `signalwerk.brain_knowledge` | eine Erkenntnis je Zeile, mit Beleg, Datum und Vertrauen | gefiltert nach Thema |
 | Lernjournal | `signalwerk.decisions` | Entscheidung, Erwartung, Ergebnis | fällige und letzte |
 
-Grundsatz: wenig laden, das Richtige laden. Eine lange CLAUDE.md verwässert die Regeln.
+Grundsatz: wenig laden, das Richtige laden. Eine lange CLAUDE.md senkt die Befolgung (Doku: unter 200 Zeilen).
+
+Weiter: Skill-Katalog, Abo- und API-Bausteine in `docs/GEHIRN-LERNEN.md`; Wert eines Premium-Leads je Land in `docs/PREMIUM-WERT.md`.
 
 ## 2. Lernschleife
 
@@ -60,7 +62,7 @@ Kein Geld ohne Inhaber. Kaltmail-Recht, Sperrliste, Abmeldung, Notbremse, Drei-S
 | Baustein | Status |
 |---|---|
 | 1 Gedächtnis | in Arbeit (Agent A) |
-| 2 Lernschleife, 3 Rückschau, 4 Prüffälle | in Arbeit (Agent B) |
+| 2 Lernschleife, 3 Rückschau, 4 Prüffälle | läuft (Wachhund: nachmessen, montags Rückschau, täglich Prüffälle) |
 | 5 Abteilungs-Motor und Büros | in Arbeit (Agent C) |
 
 ## Premium-Ausbau (Inhaber 05.10.2026: „setz deinen Vorschlag und alles, was wir besprochen haben, um … gib es an das Gehirn weiter, damit JARVIS das umsetzen kann und direkt einbaut“)
@@ -74,12 +76,25 @@ Ziel: die besten, einzigartigen, frischen Anlässe (Premium-Leads) für S2 Webag
 | Werk | Stand |
 |---|---|
 | Lead-, Kunden-Werk, Versand, Antworten, Proben-Vorrat, Kundenlieferung, Freigabe-Stichprobe, Wachhund/Tagescheck | laufen |
-| Radar-Werk: Website, Zertifikat und Domain täglich, Veränderung mit Datum | in Arbeit (Premium-Radar) |
-| Bewertungs-Werk: `scripts/lib/premium.py`, Premium zuerst in Proben und Lieferungen | in Arbeit (Premium-Radar) |
+| Radar-Werk: Website kaputt seit Datum, Zertifikat abgelaufen/läuft ab (TLS), Umzug FR (BODACC) – Linie `radar` im Lead-Werk | läuft (05.10.2026); Domain-Ablauf (RDAP) bewusst weggelassen, siehe QUELLEN-SCOUT |
+| Bewertungs-Werk: `scripts/lib/premium.py` beim Speichern, `scripts/premium_score.py` stündlich (Bestand nachtragen, nach 30 Tagen zurückstufen) | läuft (05.10.2026) |
 | Kontakt-Werk: Register + Firmenwebsite zusammenführen und gegenprüfen | Auftrag an Agent 3 |
 | Feedback-Werk: Kunden bewerten Leads, die Bewertung lernt | Auftrag an Agent 4 |
 
 Proben-Vorrat und Kundenlieferung nehmen Premium zuerst; später gibt es neben der Montags-Lieferung einen Sofort-Alarm bei frischem Anlass.
+
+### Nur noch Premium (Inhaber 05.10.2026: „wir brauchen keine normalen leads mehr nur noch premium leads“)
+
+| Stelle | Regel |
+|---|---|
+| Proben-Vorrat | Premium zuerst, genau 10 bleibt Pflicht; fehlen Premium-Leads, füllen Standard-Leads auf. `sample_stock.premium_n` zählt Premium je Probe, der Abruf nach dem Klick nimmt die Probe mit den meisten Premium-Leads zuerst |
+| Kundenlieferung | Premium zuerst, Kundenwünsche sortieren nur innerhalb von Premium bzw. Standard |
+| Landingpage-Beispiele | nur Premium, sobald ≥ 3 frische da sind, sonst wie bisher |
+| Meldung | `signalwerk.premium_status()`: Tagescheck gelb „Premium-Vorrat zu klein“, Dashboard Proben (Spalte Premium) |
+| Lead-Werk-Autopilot | Gewicht nach Premium-Ertrag je Platz·h statt Lead-Menge, reine Standard-Linien wachsen nicht und geben Plätze ab (je 1 bleibt); Summe Lead + Kunden ≤ 38 |
+| Nie | Standard-Leads löschen, Drei-Stufen-Freigabe ändern (Premium ist nur Reihenfolge) |
+
+Premium-Stufe: ≥ 70 Punkte und datiertes Ereignis ≤ 30 Tage (35 Punkte nur ≤ 14 Tage). Website-Zustände ohne Ereignisdatum (veraltet, nicht handytauglich, Overture ohne Website) sind nie Premium – deshalb das Radar: es macht aus einem Zustand eine Veränderung mit Datum.
 
 ### Länder (nur Mail-Länder aus `countries.yaml`)
 

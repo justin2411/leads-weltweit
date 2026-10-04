@@ -78,9 +78,11 @@ const SIGNAL_LABEL: Record<"en" | "fr", Record<string, string>> = {
 const WEB_SIGNALS = ["no_website", "website_outdated", "website_not_mobile", "no_https", "website_broken"];
 const WEB_TITLE: Record<"en" | "fr", Record<string, string>> = {
   en: { no_website: "{x} with no website", website_outdated: "{x} with an outdated website", website_not_mobile: "{x} whose website fails on phones",
-    no_https: "{x} whose website is not secure", website_broken: "{x} whose website is down" },
+    no_https: "{x} whose website is not secure", website_broken: "{x} whose website is down",
+    cert_expiring: "{x} whose security certificate runs out", relocation: "{x} that just moved" },
   fr: { no_website: "{x} sans site web", website_outdated: "{x} au site vieillissant", website_not_mobile: "{x} au site non adapté au mobile",
-    no_https: "{x} au site non sécurisé", website_broken: "{x} au site hors service" },
+    no_https: "{x} au site non sécurisé", website_broken: "{x} au site hors service",
+    cert_expiring: "{x} au certificat bientôt expiré", relocation: "{x} qui vient de déménager" },
 };
 const PRIO: Record<"en" | "fr", Record<string, string>> = {
   en: { high: "High priority", medium: "Medium priority", low: "Low priority" },
@@ -153,6 +155,14 @@ function cleanEvent(ev: string, company: string): string {
   return e ? e[0].toUpperCase() + e.slice(1) : "";
 }
 
+/** Premium heute (wie scripts/lib/premium.py tier_now): gespeicherte Stufe premium und Ereignis höchstens 30 Tage alt. */
+const PREMIUM_FRESH_DAYS = 30;
+function isPremiumNow(l: { premium?: { tier?: string } | null; event_date?: string | null }, now: number): boolean {
+  if (l.premium?.tier !== "premium" || !l.event_date) return false;
+  const age = (now - Date.parse(String(l.event_date).slice(0, 10) + "T12:00:00Z")) / 864e5;
+  return age >= -1 && age <= PREMIUM_FRESH_DAYS;
+}
+
 type Sample = {
   company: string; companyId?: string; location?: string; district?: string; industry?: string; sicCode?: string; noWebsite?: boolean;
   web?: "none" | "found"; legalForm?: string; role?: string; personKnown?: boolean; phone?: string; email?: string;
@@ -185,7 +195,7 @@ function countrySamplesRaw(page: { segment_id: string; country: string }): Promi
 }
 
 async function countrySamplesFetch(page: { segment_id: string; country: string }, ck: string): Promise<Sample[]> {
-  const sel = "event_summary, event_date, source_name, signal_type, urgency, opener, company_id, observation_ids, watch_companies!inner(name, legal_form, website, website_checked_at, industry)";
+  const sel = "event_summary, event_date, source_name, signal_type, urgency, opener, company_id, observation_ids, premium, premium_score, watch_companies!inner(name, legal_form, website, website_checked_at, industry)";
   const base = () => db().from("leads").select(sel).eq("segment_id", page.segment_id).eq("country", page.country)
     .in("status", ["sample", "new"]).order("event_date", { ascending: false });
   const ago = (d: number) => new Date(Date.now() - d * 864e5).toISOString().slice(0, 10);
@@ -201,6 +211,10 @@ async function countrySamplesFetch(page: { segment_id: string; country: string }
     base().lte("event_date", before(8)).limit(40),
     base().lte("event_date", ago(20)).limit(30),
     base().eq("urgency", "medium").limit(30),
+    // Nur noch Premium (Inhaber 05.10.2026): Premium-Leads zuerst als Beispiele
+    db().from("leads").select(sel).eq("segment_id", page.segment_id).eq("country", page.country)
+      .in("status", ["sample", "new"]).gte("premium_score", 70).gte("event_date", ago(PREMIUM_FRESH_DAYS))
+      .order("premium_score", { ascending: false }).limit(60),
     ...(page.segment_id === "S2" ? [base().in("signal_type", WEB_SIGNALS.slice(1)).limit(60),
       base().eq("signal_type", "no_website").ilike("source_name", "Overture%").limit(60)] : []),
   ])];
@@ -210,7 +224,9 @@ async function countrySamplesFetch(page: { segment_id: string; country: string }
   // (ohne Verkehrsregister FMCSA: dort liefern wir für Webagenturen keine Proben)
   const webOnly = page.segment_id === "S2"
     ? all.filter((l) => WEB_SIGNALS.includes(l.signal_type) && !/FMCSA/i.test(String(l.source_name))) : [];
-  const rows = (webOnly.length >= 3 ? webOnly : all).filter((l) => {
+  // Premium zuerst: reichen die frischen Premium-Leads für die Beispiele, nur sie; sonst wie bisher (Übergang)
+  const premiumOnly = all.filter((l) => isPremiumNow(l, Date.now()) && !(page.segment_id === "S2" && /FMCSA/i.test(String(l.source_name))));
+  const rows = (premiumOnly.length >= 3 ? premiumOnly : webOnly.length >= 3 ? webOnly : all).filter((l) => {
     const k = `${l.company_id}|${l.signal_type}|${l.event_date}`;
     if (seen.has(k)) return false;
     seen.add(k);

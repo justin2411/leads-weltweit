@@ -12,7 +12,10 @@ bekommen mehr Teile (Ziel ~30 min je Teil), Linien auf 0 und festgesetzte Linien
 total_slots - reserve. Leere Linien (Scout 04.10.2026: web-uk/web-fr liefen mit 0 Kandidaten weiter): kommen in
 allen Läufen des Fensters (mind. 2) im Schnitt höchstens 1 Kandidat je Teil und kein grüner Lead, gilt die Linie als
 „Vorrat leer“ – sie bekommt 0 Plätze und nur alle PROBE_H Stunden einen Prüfplatz; findet der wieder Kandidaten, gilt
-sofort wieder die Belegung des Inhabers. Die freien Plätze leerer und erschöpfter Linien gehen an Linien, deren
+sofort wieder die Belegung des Inhabers. Mindestbelegung (Inhaber 05.10.2026: „mind. 30 gleichzeitig“): liegen beide
+Werke zusammen unter MIN_BELEGT Plätzen, füllt der Autopilot auf – zuerst Premium-/Website-Linien US/UK/FR, dann
+Kunden, Prüfer, andere Linien mit Vorrat (fill_minimum); nie über max je Linie oder total_slots - reserve, die
+Speicher-Bremse geht vor. Die freien Plätze leerer und erschöpfter Linien gehen an Linien, deren
 letzter Lauf grüne Leads brachte (nach grünen je Platz-Stunde, je Start höchstens 2 × Teile + 2, nie über max der
 Linie oder die Summe). Speicher-Bremse (Inhaber 03.10.2026): ab 5,5 GB Hinweis, ab 6 GB höchstens 8 Lead-Plätze,
 ab 7 GB zusätzlich ohne Rohbestand (--no-raw), ab 7,5 GB Lead-Werk gestoppt (alle Lead-Plätze 0, Kunden-Werk
@@ -81,6 +84,8 @@ TARGET_MIN = 30       # Ziel-Laufzeit je Teil (min): ein langsamer Teil soll das
 FULL_MIN = 55         # ab dieser Ø-Laufzeit gilt ein Teil als voll ausgelastet (Zeitfenster 75 min)
 EMPTY_WHY = "Vorrat leer"  # Anfang des Grundes leerer Linien (Dashboard erkennt die Linie daran, app/lib/leitstand.ts)
 PROBE_H = 4           # leere Linie: alle 4 h ein Prüfplatz (findet er Kandidaten, gilt wieder die Belegung)
+MIN_BELEGT = 30       # Inhaber 05.10.2026: „Werke immer laufen lassen, mind. 30 gleichzeitig“ (beide Werke zusammen)
+MIN_WHY = "Mindestbelegung 30"
 
 
 def lane_of(werk: str, part: str | None) -> str | None:
@@ -91,6 +96,8 @@ def lane_of(werk: str, part: str | None) -> str | None:
         return re.sub(r"-\d+$", "", part)
     if werk == "kunden-werk":
         return "kunden" if re.match(r"^(pruefen\b|run --shard)", part) else None
+    if werk == "pruefer-werk":  # Prüfer-Werk (Inhaber 05.10.2026): Teile „pruefer-0“ … bzw. „run --shard …“
+        return "pruefer" if re.match(r"^(pruefer\b|pruefer-\d+|run --shard)", part) else None
     return None
 
 
@@ -118,7 +125,8 @@ def lane_stats(rows: list[dict], werk: str, runs: int = 2, reset: dict | None = 
             if st0 is None or st0 < cut[lane]:
                 continue
         k = (str(r.get("run_id") or r.get("started_at")), str(r.get("part")))
-        p = parts.setdefault(k, {"lane": lane, "run": k[0], "start": None, "end": None, "cand": 0, "proc": 0, "green": 0})
+        p = parts.setdefault(k, {"lane": lane, "run": k[0], "start": None, "end": None, "cand": 0, "proc": 0, "green": 0,
+                                 "premium": 0})
         st, en = _ts(r.get("started_at")), _ts(r.get("finished_at"))
         if st and (p["start"] is None or st < p["start"]):
             p["start"] = st
@@ -127,6 +135,8 @@ def lane_stats(rows: list[dict], werk: str, runs: int = 2, reset: dict | None = 
         p["cand"] += int(r.get("candidates") or 0)
         p["proc"] += int(r.get("processed") or 0)
         p["green"] += int(r.get("green") or 0)
+        ex = r.get("extra") if isinstance(r.get("extra"), dict) else {}
+        p["premium"] += int(ex.get("premium") or 0)
     by_lane: dict[str, dict[str, list[dict]]] = {}
     for p in parts.values():
         if p["start"] and p["end"]:
@@ -149,8 +159,50 @@ def lane_stats(rows: list[dict], werk: str, runs: int = 2, reset: dict | None = 
                      "avg_min": sum(mins) / len(mins), "max_min": max(mins), "green": green,
                      "per_slot_h": green / slot_h if slot_h > 0 else 0.0, "cand_last": sum(work(x) for x in lp),
                      "empty_last": sum(1 for x in lp if work(x) == 0), "avg_last": sum(lmins) / len(lmins),
-                     "max_last": max(lmins)}
+                     "max_last": max(lmins), "premium_all": sum(x["premium"] for x in every),
+                     "premium_last": sum(x["premium"] for x in lp),
+                     "premium_per_slot_h": sum(x["premium"] for x in ps) / slot_h if slot_h > 0 else 0.0}
     return out
+
+
+# ------------------------------------------------------------------------------------------- Premium
+# Inhaber 05.10.2026: „wir brauchen keine normalen leads mehr nur noch premium leads“. Sobald eine Linie des
+# Lead-Werks im Fenster Premium-Leads (lib/premium.py) gebracht hat, zählt für den Autopilot der Premium-Ertrag statt
+# der Lead-Menge: Linien ohne Premium wachsen nicht mehr und bekommen keine frei gewordenen Plätze, und
+# premium_shift() gibt Plätze reiner Standard-Linien (jede behält 1) an Premium-Linien mit Platz bis zu deren max.
+def premium_weight(stats: dict[str, dict]) -> bool:
+    """Gewicht nach Premium-Ertrag umstellen (in place). True, wenn Premium-Zahlen vorliegen."""
+    if not any(s.get("premium_all") for s in stats.values()):
+        return False
+    for s in stats.values():
+        s["per_slot_h_leads"] = s.get("per_slot_h", 0.0)
+        s["per_slot_h"] = s.get("premium_per_slot_h", 0.0)
+        s["green_last"] = s.get("premium_last", 0)
+        s["standard_only"] = not s.get("premium_all")
+    return True
+
+
+def premium_shift(reg: dict, werk: str, plan: dict[str, int], reasons: dict[str, str], stats: dict[str, dict],
+                  locks: dict | None = None) -> int:
+    """Plätze von reinen Standard-Linien an Premium-Linien (höchster Premium-Ertrag je Platz zuerst, bis max).
+    Festgesetzte Linien bleiben; jede aktive Standard-Linie behält 1 Platz. Gibt die Zahl verschobener Plätze."""
+    locks = locks if isinstance(locks, dict) else {}
+    lanes = {l["id"]: l for l in reg["lanes"] if l["werk"] == werk}
+    prem = [k for k in plan if k in lanes and k not in locks and (stats.get(k) or {}).get("premium_last")]
+    std = [k for k in plan if k in lanes and k not in locks and (stats.get(k) or {}).get("standard_only")]
+    moved = 0
+    while True:
+        room = [k for k in prem if plan[k] > 0 and plan[k] < int(lanes[k]["max"])]
+        give = [k for k in std if plan[k] > 1]
+        if not room or not give:
+            return moved
+        g = max(give, key=lambda k: (plan[k], k))
+        r = max(room, key=lambda k: (stats[k].get("premium_per_slot_h", 0.0) / (plan[k] + 1), k))
+        plan[g] -= 1
+        plan[r] += 1
+        moved += 1
+        reasons[g] = "nur Standard-Leads – Platz an Premium-Linien (Inhaber 05.10.2026)"
+        reasons[r] = f"Premium-Ertrag ({round(stats[r].get('premium_per_slot_h', 0.0))} je Platz·h) – +Platz von Standard-Linien"
 
 
 def brake_level(db_bytes: int | None, last: str = "aus") -> str:
@@ -211,7 +263,7 @@ def vorrang_active(rule: dict | None, stock: dict[str, float] | None) -> tuple[b
 def autopilot(reg: dict, werk: str, base: dict[str, int], stats: dict[str, dict], locks: dict | None = None,
               other: dict[str, int] | None = None, brake: str = "aus", prev: dict | None = None,
               now: dt.datetime | None = None, reset: dict | None = None, vorrang: dict | None = None,
-              stock: dict[str, float] | None = None) -> tuple[dict[str, int], dict[str, str]]:
+              stock: dict[str, float] | None = None, min_belegt: int = MIN_BELEGT) -> tuple[dict[str, int], dict[str, str]]:
     """Belegung der Linien von `werk` nach Ertrag. base = Belegung des Inhabers bzw. Standard; other = aktuelle
     Belegung des anderen Werks (für die Summe); prev = Gründe der letzten Belegung dieses Werks (leere Linien);
     reset = zurückgesetzte Linien {Linie: Zeitpunkt}; vorrang/stock = Länder-Vorrang (config/fokus.yaml) und
@@ -288,7 +340,8 @@ def autopilot(reg: dict, werk: str, base: dict[str, int], stats: dict[str, dict]
         elif s["empty"] == 0 and s["avg_min"] >= FULL_MIN:
             target = min(mx, math.ceil(s["avg_min"] * last / TARGET_MIN), last * 2 + 2)
             plan[lid] = min(last, mx)
-            want[lid] = max(0, target - plan[lid])
+            # Premium-Gewicht (05.10.2026): reine Standard-Linien wachsen nicht mehr
+            want[lid] = 0 if s.get("standard_only") else max(0, target - plan[lid])
             weight[lid] = max(s["per_slot_h"], 1.0)
             why[lid] = f"voll ausgelastet (Ø {round(s['avg_min'])} min je Teil, {round(s['per_slot_h'])} grün/Platz·h)"
         else:
@@ -384,7 +437,64 @@ def autopilot(reg: dict, werk: str, base: dict[str, int], stats: dict[str, dict]
             del room[k]
     for k, n in gain.items():
         why[k] += f" – +{n} aus leeren Linien"
+    if not (werk == "lead-werk" and brake in ("drossel", "ohne-rohbestand", "stopp")):  # Speicher-Bremse geht vor
+        fill_minimum(lanes, plan, why, stats, locks, cap, sum((other or {}).values()), min_belegt, nach_ids)
     return plan, why
+
+
+def _min_tier(l: dict, s: dict | None) -> int | None:
+    """Rang einer Linie für die Mindestbelegung (kleiner = zuerst), None = nicht auffüllen.
+    1 Premium-/Website-Linien US/UK/FR, 2 Kunden, 3 Prüfer, 4 andere Linien mit Vorrat im letzten Lauf."""
+    lid = l["id"]
+    if (s or {}).get("premium_last") or "premium" in lid or \
+            (lid.startswith("web-") and lane_countries(l) and lane_countries(l) <= {"US", "UK", "FR"}):
+        return 1
+    if lid == "kunden":
+        return 2
+    if "pruefer" in lid:
+        return 3
+    if s and (s.get("cand_last") or s.get("green_last")):
+        return 4
+    return None
+
+
+def fill_minimum(lanes: list[dict], plan: dict[str, int], why: dict[str, str], stats: dict[str, dict],
+                 locks: dict, cap: int, other_sum: int, min_belegt: int = MIN_BELEGT,
+                 skip: set[str] | None = None) -> int:
+    """Werke immer ausgelastet (Inhaber 05.10.2026): liegen beide Werke zusammen unter `min_belegt` Plätzen, gehen
+    die fehlenden Plätze an Linien mit Ertrag/Vorrat (Rang siehe _min_tier, im Rang reihum), je Linie bis max, nie
+    über `cap` (total_slots - reserve - anderes Werk, bei Bremse kleiner). Nie: festgesetzte Linien, vom Inhaber auf
+    0 gesetzte, leere, erschöpfte (Wachplatz) und Nachrang-Linien des Länder-Vorrangs. Gibt die Zahl neuer Plätze."""
+    skip = skip or set()
+    need = min(min_belegt - other_sum - sum(plan.values()), cap - sum(plan.values()))
+    if need <= 0:
+        return 0
+    tiers: dict[int, list[dict]] = {}
+    for l in lanes:
+        k = l["id"]
+        r = str(why.get(k) or "")
+        if k in locks or k in skip or plan.get(k, 0) <= 0 or r.startswith(EMPTY_WHY) or "Wachplatz" in r \
+                or "durchgeprüft" in r or plan[k] >= int(l["max"]):
+            continue
+        t = _min_tier(l, stats.get(k))
+        if t is not None:
+            tiers.setdefault(t, []).append(l)
+    added: dict[str, int] = {}
+    for t in sorted(tiers):
+        group = tiers[t]
+        while need > 0:
+            open_ = [l for l in group if plan[l["id"]] < int(l["max"])]
+            if not open_:
+                break
+            for l in open_:
+                if need <= 0:
+                    break
+                plan[l["id"]] += 1
+                added[l["id"]] = added.get(l["id"], 0) + 1
+                need -= 1
+    for k, n in added.items():
+        why[k] += f" – +{n} {MIN_WHY}"
+    return sum(added.values())
 
 
 def matrix(reg: dict, werk: str, n: dict[str, int], extra_args: str = "") -> list[dict]:
@@ -397,6 +507,9 @@ def matrix(reg: dict, werk: str, n: dict[str, int], extra_args: str = "") -> lis
         for i in range(k):
             if werk == "kunden-werk":
                 rows.append({"shard": i, "of": k})
+                continue
+            if werk == "pruefer-werk":
+                rows.append({"name": f"{l['id']}-{i}", "shard": i, "of": k})
                 continue
             args = l["args"] + (f" --shard {i}/{k}" if k > 1 else "") + extra_args
             rows.append({"name": f"{l['id']}-{i}", "workers": int(l.get("workers", 16)), "args": args})
@@ -444,7 +557,7 @@ def read_inputs(werk: str, hours: int = 8) -> dict:
     since = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=hours)).isoformat()
     try:
         out["rows"] = db.select("run_stats", {"werk": f"eq.{werk}", "finished_at": f"gte.{since}", "limit": "5000",
-                                              "select": "werk,part,run_id,started_at,finished_at,candidates,processed,green"}) or []
+                                              "select": "werk,part,run_id,started_at,finished_at,candidates,processed,green,extra"}) or []
     except BaseException as e:  # noqa: BLE001
         print(f"Laufzahlen nicht lesbar ({type(e).__name__}) – ohne Autopilot", file=sys.stderr)
     try:
@@ -470,8 +583,10 @@ def read_inputs(werk: str, hours: int = 8) -> dict:
             if r["werk"] == werk and out["last_brake"] == "aus" and not out.get("_brake_seen"):
                 out["last_brake"], out["_brake_seen"] = r.get("bremse") or "aus", True
                 out["prev_reasons"] = r.get("reasons") if isinstance(r.get("reasons"), dict) else {}
-            if r["werk"] != werk and out["other"] is None and isinstance(r.get("plan"), dict):
-                out["other"] = {k: int(v) for k, v in r["plan"].items()}
+            # letzte Belegung JEDES anderen Werks (seit dem Prüfer-Werk gibt es drei)
+            if r["werk"] != werk and r["werk"] not in out.setdefault("_other_seen", set()) and isinstance(r.get("plan"), dict):
+                out["_other_seen"].add(r["werk"])
+                out["other"] = {**(out["other"] or {}), **{k: int(v) for k, v in r["plan"].items()}}
     except BaseException as e:  # noqa: BLE001
         print(f"Letzte Belegung nicht lesbar ({type(e).__name__})", file=sys.stderr)
     return out
@@ -483,21 +598,28 @@ def decide(reg: dict, werk: str, inp: dict) -> dict:
     base, why = counts(reg, (settings or {}).get("slot_plan"))
     own = {l["id"]: base[l["id"]] for l in reg["lanes"] if l["werk"] == werk}
     other_ids = [l["id"] for l in reg["lanes"] if l["werk"] != werk]
-    other = inp.get("other") or {k: base[k] for k in other_ids}
-    other = {k: v for k, v in other.items() if k in other_ids}
+    # andere Werke: letzte gestartete Belegung, fehlende Linien mit ihrer Basis (Inhaber/Standard)
+    other = {k: base[k] for k in other_ids}
+    other.update({k: v for k, v in (inp.get("other") or {}).items() if k in other_ids})
     ap = (settings or {}).get("slot_autopilot")
     ap = ap if isinstance(ap, dict) else {"on": True, "locks": {}}  # Inhaber 03.10.2026: Autopilot an
     brake = brake_level(inp.get("db_bytes"), inp.get("last_brake") or "aus")
     reasons = {k: why for k in own}
     mode = "standard" if why == "Standardbelegung" else "inhaber"
     plan = dict(own)
-    if settings is not None and ap.get("on") is not False:
+    # Prüfer-Werk: feste Belegung (Inhaber 05.10.2026: „4 dauerhafte Prüfer“) – jeder Teil nutzt sein Zeitfenster immer
+    # voll, der Autopilot würde ihn sonst als „voll ausgelastet“ ständig vergrößern; seine Plätze zählt er bei den anderen
+    if settings is not None and ap.get("on") is not False and werk != "pruefer-werk":
         try:
             reset = (settings or {}).get("lane_reset")
             reset = reset if isinstance(reset, dict) else {}
-            plan, reasons = autopilot(reg, werk, own, lane_stats(inp.get("rows") or [], werk, reset=reset),
+            stats = lane_stats(inp.get("rows") or [], werk, reset=reset)
+            premium_on = werk == "lead-werk" and premium_weight(stats)
+            plan, reasons = autopilot(reg, werk, own, stats,
                                       ap.get("locks"), other, brake, prev=inp.get("prev_reasons"), reset=reset,
                                       vorrang=inp.get("vorrang"), stock=inp.get("stock"))
+            if premium_on:
+                premium_shift(reg, werk, plan, reasons, stats, ap.get("locks"))
             mode = "autopilot"
         except Exception as e:  # noqa: BLE001 – Autopilot darf nie einen Lauf verhindern
             print(f"Autopilot-Fehler ({type(e).__name__}: {e}) – Belegung wie eingestellt", file=sys.stderr)
@@ -531,7 +653,7 @@ def log_plan(db, werk: str, res: dict, db_bytes: int | None) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("werk", choices=["lead-werk", "kunden-werk"])
+    ap.add_argument("werk", choices=["lead-werk", "kunden-werk", "pruefer-werk"])
     ap.add_argument("--dry", action="store_true", help="nur anzeigen (nichts protokollieren, nichts quittieren)")
     a = ap.parse_args(argv)
     reg = load_lines()

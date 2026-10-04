@@ -43,6 +43,8 @@ export const CARDS: readonly Card[] = [
   { key: "tagescheck", icon: "tagescheck", name: "Tagescheck", keys: ["werke_paused"], werk: "tagescheck", start: null, cron: "37 17 * * *", file: "tagescheck.yml" },
   { key: "agenten", icon: "agent", name: "Agenten-Werk", keys: ["werke_paused"], werk: "agenten", start: null, cron: "29 * * * *", file: "agenten-werk.yml" },
   { key: "dauerpruefung", icon: "freigabe", name: "Dauerprüfung", keys: ["werke_paused"], werk: "dauerpruefung", start: null, cron: "47 * * * *", file: "dauerpruefung.yml" },
+  // Prüfer-Werk (Inhaber 05.10.2026: „4 dauerhafte Prüfer der Leads“): Plätze der Linie „pruefer“, rund um die Uhr
+  { key: "pruefer-werk", icon: "freigabe", name: "Prüfer-Werk", keys: ["werke_paused", "slot_plan"], werk: "pruefer-werk", start: null, cron: "11 * * * *", file: "pruefer-werk.yml" },
 ];
 export const cardOf = (k: CardKey): Card => CARDS.find((c) => c.key === k)!;
 export const isCardKey = (x: unknown): x is CardKey => typeof x === "string" && CARDS.some((c) => c.key === x);
@@ -144,7 +146,7 @@ export const LEAD_COUNTRIES: { id: LeadCountry; label: string; title: string }[]
   { id: "Neu", label: "Neu", title: "FI · SG · HK · MX · BR" },
 ];
 /** Land-Chip einer Lead-Linie: mehrere Länder (IE,NL,BE,SE) = „Nord“, neue Mail-Länder (FI,SG,HK,MX,BR, 04.10.2026) = „Neu“,
- *  UK und FR gemeinsam (s2-ukfr, Scout 04.10.2026) = „UK“ (erstes Land). */
+ *  UK und FR gemeinsam (s2-ukfr, Scout 04.10.2026) = „UK“ (erstes Land); Radar US·UK·FR (05.10.2026) = „US“. */
 const CORE = ["US", "UK", "FR"];
 export const countryOf = (l: Lane): LeadCountry => {
   const cs = l.country.split(",");
@@ -381,6 +383,12 @@ export function diff(saved: OwnerSettings, draft: Draft, ctx: ReglerCtx): Change
         if (a !== b) add({ card: c.key, key: "slot_plan", part: `land:${lc.id}`, label: `Leads ${lc.label}`, from: a, to: b, text: `Leads ${lc.label} ${onOff(a)} → ${onOff(b)}`, value: plan });
       }
       if (out.length === before) add({ card: c.key, key: "slot_plan", part: "belegung", label: "Belegung", from: null, to: null, text: "Belegung der Linien angepasst", value: plan });
+    }
+    if (c.key === "pruefer-werk") {
+      for (const l of reg.lanes.filter((x) => x.werk === "pruefer-werk")) {
+        const a = at(base.slot_plan, l.id), b = at(draft.slot_plan, l.id);
+        if (a !== b) add({ card: c.key, key: "slot_plan", part: `linie:${l.id}`, label: "Prüfer", from: a, to: b, text: `Prüfer ${a} → ${b}`, value: plan });
+      }
     }
     if (c.key === "kunden-werk") {
       for (const l of reg.lanes.filter((x) => x.werk === "kunden-werk")) {

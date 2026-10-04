@@ -15,6 +15,9 @@
     { "id": "web-north", "werk": "lead-werk", "label": "Website-Prüfung IE·NL·BE·SE", "short": "WEB·NORD", "segment": "S2", "country": "IE,NL,BE,SE", "default": 1, "max": 21, "workers": 40,
       "what": "Firmen mit Website in Irland, Niederlande, Belgien, Schweden (je Land 2.500 je Teil und Lauf)",
       "args": "--segments S2 --countries IE,NL,BE,SE --web-check --s2-limit 2500 --per 60000 --max-tries 60000" },
+    { "id": "radar", "werk": "lead-werk", "label": "Veränderungs-Radar + Umzüge FR", "short": "RADAR", "segment": "S2", "country": "US,UK,FR", "default": 1, "max": 2, "workers": 32,
+      "what": "Bekannte Firmen mit Website neu prüfen: Website seit Datum kaputt, Zertifikat abgelaufen oder läuft bald ab; dazu Umzüge aus dem BODACC (Frankreich)",
+      "args": "--segments S2 --countries FR --fmcsa-days 0 --formd-days 0 --s2-limit 0 --radar 8000 --radar-countries US,UK,FR --fr-moves-days 30 --per 40000 --max-tries 40000" },
     { "id": "s2-us", "werk": "lead-werk", "label": "Ohne Website USA (Overture)", "short": "OHNE·US", "segment": "S2", "country": "US", "default": 2, "max": 21, "workers": 16,
       "what": "US-Firmen ohne Website mit E-Mail aus Overture (Neuzugänge im Monatsauszug)",
       "args": "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000" },
@@ -24,13 +27,15 @@
     { "id": "s2-neu", "werk": "lead-werk", "label": "Ohne Website FI·SG·HK·MX·BR (Overture)", "short": "OHNE·NEU", "segment": "S2", "country": "FI,SG,HK,MX,BR", "default": 1, "max": 4, "workers": 16,
       "what": "Firmen ohne Website mit E-Mail in Finnland, Singapur, Hongkong, Mexiko, Brasilien (neue Mail-Länder 04.10.2026, je Land 1.200 je Teil und Lauf)",
       "args": "--segments S2 --countries FI,SG,HK,MX,BR --fmcsa-days 0 --formd-days 0 --s2-limit 1200 --per 20000 --max-tries 20000" },
-    { "id": "s1-us-lca", "werk": "lead-werk", "label": "Recruiting USA (DOL LCA + Bundesaufträge)", "short": "S1·US", "segment": "S1", "country": "US", "default": 1, "max": 4, "workers": 16,
+    { "id": "s1-us-lca", "werk": "lead-werk", "label": "Recruiting USA (DOL LCA + Bundesaufträge)", "short": "S1·US", "segment": "S1", "country": "US", "default": 0, "max": 4, "workers": 16,
       "what": "US-Arbeitgeber mit Fachkräfte-Bedarf (DOL LCA) und kleine US-Firmen mit neuem Bundesauftrag (USAspending.gov, Scout 04.10.2026)",
       "args": "--segments S1 --countries US --fmcsa-days 0 --formd-days 0 --s1-probe 0 --lca --award-days 30 --award-pages 60 --per 4000 --max-tries 4000" },
     { "id": "s1-uk-tender", "werk": "lead-werk", "label": "Recruiting UK (Find a Tender)", "short": "S1·UK", "segment": "S1", "country": "UK", "default": 0, "max": 4, "workers": 32,
       "what": "UK-KMU mit gewonnenem öffentlichem Auftrag (Personalvermittlung, ruht im Webagentur-Fokus)",
       "args": "--segments S1 --countries UK --s1-probe 0 --tender-days 45 --tender-pages 25 --cf-pages 25 --per 4000 --max-tries 4000" },
-    { "id": "kunden", "werk": "kunden-werk", "label": "Käufer prüfen (Kunden-Werk)", "short": "KÄUFER", "segment": "S2", "country": "US,UK,FR", "default": 8, "max": 16, "workers": 16,
-      "what": "Webagenturen und Recruiter aus Overture auf ihrer Website prüfen und als Käufer speichern" }
+    { "id": "kunden", "werk": "kunden-werk", "label": "Käufer prüfen (Kunden-Werk)", "short": "KÄUFER", "segment": "S2", "country": "US,UK,FR", "default": 4, "max": 16, "workers": 16,
+      "what": "Webagenturen und Recruiter aus Overture auf ihrer Website prüfen und als Käufer speichern" },
+    { "id": "pruefer", "werk": "pruefer-werk", "label": "Prüfer (lieferbare Leads US·UK·FR)", "short": "PRÜFER", "segment": "S2", "country": "US,UK,FR", "default": 4, "max": 8, "workers": 8,
+      "what": "Lieferbare S2-Leads rund um die Uhr nachprüfen: Freigabe, Vollständigkeit, Anlass aktuell, Dubletten, Schreibweise – Premium zuerst (Inhaber 05.10.2026)" }
   ]
 }
