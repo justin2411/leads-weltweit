@@ -10,7 +10,7 @@ import { PERIODS, period, revenueByCurrency, series, totals, type Metric } from 
 import { effectiveLimit, FOLLOWUP_DAYS_RANGE } from "@/lib/owner-settings";
 import { requireOwner } from "../actions";
 import { saveCountryLimits, saveFollowups, setPaused, toggleSendCountry } from "../control-actions";
-import { Back, COUNTRY_OPTS, Chips, Columns, Crumbs, Ctrl, Kpi, Legend, countrySeries } from "../v2";
+import { Back, COUNTRY_OPTS, Chips, Columns, Ctrl, Kpi, Legend, PageHead, countrySeries } from "../v2";
 import { readParams, withQuery, type SP } from "../params";
 import { Icon } from "@/app/icons";
 
@@ -47,7 +47,7 @@ export default async function Versand({ searchParams }: { searchParams: SP }) {
 
   return (
     <div className="v2">
-      <Crumbs items={[["JARVIS", withQuery("/dashboard/jarvis", raw)], ["Versand & Ergebnisse", ""]]} />
+      <PageHead title="Versand" icon="versand" crumbs={[["JARVIS", withQuery("/dashboard/jarvis", raw)], ["Versand", ""]]} />
       <div className="head2">
         <Chips base="/dashboard/versand" param="z" value={z} options={PERIODS.map(([k, l]) => [k, l])} params={raw} />
         <Chips base="/dashboard/versand" param="land" value={land} options={COUNTRY_OPTS} params={raw} dots />

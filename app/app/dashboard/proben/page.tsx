@@ -7,7 +7,7 @@ import { MAX_AGE_RANGE, MAX_SAMPLE_TARGET } from "@/lib/owner-settings";
 import { dispatchWorkflow, saveMaxAge, saveSampleTargets } from "../control-actions";
 import { COUNTRY_COLOR, berlin, compact, distinctReplies, durationS, nextRun, onlySegment, sampleStock, stockSegment } from "@/lib/dashboard-logic";
 import { requireOwner } from "../actions";
-import { Back, COUNTRY_OPTS, Chips, Crumbs, Ctrl, Fill, Kpi, ago2 } from "../v2";
+import { Back, COUNTRY_OPTS, Chips, Ctrl, Fill, PageHead, Kpi, ago2 } from "../v2";
 import { readParams, withQuery, type SP } from "../params";
 
 /** Proben: Vorrat je Seite und alle Anfragen (Website + Mail-Antwort) mit Zeit bis zur Probe. */
@@ -36,8 +36,7 @@ export default async function Proben({ searchParams }: { searchParams: SP }) {
 
   return (
     <div className="v2">
-      <Crumbs items={[["JARVIS", "/dashboard/jarvis"], ["Proben", ""]]} />
-      <div className="head2"><span /><Chips base="/dashboard/proben" param="land" value={land} options={COUNTRY_OPTS} params={raw} dots /></div>
+      <PageHead title="Proben" icon="proben"><Chips base="/dashboard/proben" param="land" value={land} options={COUNTRY_OPTS} params={raw} dots /></PageHead>
       <div className="kpis2 four">
         <Kpi value={`${ready}/${target}`} label="Vorrat fertig" tip={SEGMENT === "S2" ? "Webagenturen: kein Verfall – Freigabe aller 10 Leads wird alle 20 h erneuert" : `Verfall nach ${cfg.proben.max_alter_stunden} h`} />
         <Kpi value={compact(web.filter((r) => r.status === "new").length)} label="offen" />

@@ -826,4 +826,40 @@ a.ub-pt:hover{background:color-mix(in srgb,var(--pc) 22%,transparent)}
   .fl-lanes{display:none}.fl-info-m{display:flex}
   .dash .fl-auto{height:20px;padding:0 7px;font-size:var(--fs-xs)}
 }
+
+/* ---- Feinschliff 04.10.2026 (docs/DESIGN-KOMMANDOZENTRALE.md) ---------------------------------------------- */
+/* Inhaltsbreite: am großen Bildschirm (Mac ~1680 px) mehr Platz statt breiter leerer Ränder */
+.dash{--wmax:1240px}
+@media (min-width:1560px){.dash{--wmax:1400px}}
+/* Einheitlicher Seitenkopf (v2.tsx PageHead): Pfad · Titel · rechts Stand/Filter · eine kurze Zeile */
+.dash .pg-head{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;margin:8px 0 16px;min-height:44px}
+.dash .pg-head h1{margin:0 auto 0 0;font-size:var(--fs-xl);line-height:1.2;letter-spacing:.12em;text-transform:uppercase;color:#fff;display:flex;align-items:center;gap:10px}
+.dash .pg-head .chips{margin:0}
+.dash .pg-at{font-size:var(--fs-s);color:var(--soft);font-variant-numeric:tabular-nums}
+.dash .pg-sub{margin:-8px 0 16px;font-size:var(--fs-s);color:var(--soft);max-width:72ch}
+.dash .pg-link{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 14px;border-radius:99px;border:1px solid rgba(226,198,143,.5);color:var(--gold2);text-decoration:none;font-size:var(--fs-s);font-weight:600}
+.dash .pg-link:hover{background:rgba(226,198,143,.1)}
+/* Steuer-Kästen: Rand-Abstände einzelner Kästen dürfen die Reihe nicht versetzen (immer bündig) */
+.dash .ctrls{align-items:stretch}.dash .ctrls>*{margin-top:0;margin-bottom:0}
+/* Leerer Verlauf: Hinweis über die volle Breite statt in die schmale Zeit-Spalte gequetscht */
+.dash .timeline li.muted{display:block}
+/* Abzeichen „vom Gehirn“ als eigene Zeile über dem Auftrag – überdeckt nie den Text der Kugel (auch am Handy) */
+.dash .ag:has(.ag-brain){grid-template-areas:"o b" "o t" "o s"}
+.dash .ag .ag-brain{grid-area:b;position:static;justify-self:start;margin:0 0 2px;max-width:100%;white-space:nowrap}
+@media (max-width:480px){
+  /* Kopfzeile in einer Reihe: Marke + Knöpfe; das Segment steht ohnehin fest (S2) */
+  .dash .top .in{flex-wrap:nowrap;gap:8px}
+  .dash .top .tag{display:none}
+  .dash .mark{font-size:17px;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
+}
+@media (max-width:640px){
+  /* Klickflächen am Handy >= 44 px (Apple HIG 44 pt, Material 48 dp) */
+  .dash .top .ib{width:44px;height:44px}
+  .dash .chips a,.dash .zx-chips a,.dash .pg-link{min-height:44px}
+  .dash .chips3 span{min-height:44px;display:inline-flex;align-items:center}
+  .dash .bnav a{min-height:48px;justify-content:center}
+  .dash .crumbs a{display:inline-block;padding:6px 0}
+  .dash .pg-head{margin:0 0 12px}
+  .dash .pg-head h1{font-size:var(--fs-l)}
+}
 `;

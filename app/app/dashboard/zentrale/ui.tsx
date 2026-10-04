@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { Ampel } from "@/lib/ampel";
 import { AMPEL_TEXT } from "@/lib/ampel";
 import { Icon, type IconName } from "@/app/icons";
-import { Crumbs } from "../v2";
+import { PageHead } from "../v2";
 
 /** Bausteine der Abteilungs-Seiten (Recht, Betrieb, Protokoll). Farben nur über zx-a-<ampel> (lib/ampel.ts). */
 export const amp = (a: Ampel) => `zx-a-${a}`;
@@ -13,16 +13,7 @@ export function Dot({ a, tip }: { a: Ampel; tip?: string }) {
 }
 
 export function Head({ name, icon, at, children }: { name: string; icon: IconName; at?: string; children?: ReactNode }) {
-  return (
-    <>
-      <Crumbs items={[["JARVIS", "/dashboard/jarvis"], [name, ""]]} />
-      <div className="zx-head">
-        <h1><Icon name={icon} size={22} /> {name}</h1>
-        {at && <span className="zx-at">{at}</span>}
-        {children}
-      </div>
-    </>
-  );
+  return <PageHead title={name} icon={icon} at={at}>{children}</PageHead>;
 }
 
 export function Tile({ a, label, value, note, href }: { a: Ampel; label: string; value: ReactNode; note?: ReactNode; href?: string }) {

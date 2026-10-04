@@ -1,12 +1,12 @@
 import { requireOwner } from "../actions";
-import { Crumbs } from "../v2";
+import { PageHead } from "../v2";
 
 /** Hilfe (Inhaber 03.10.2026): Schritt für Schritt, ohne Geheimnisse. */
 export default async function Hilfe() {
   await requireOwner();
   return (
     <div className="v2">
-      <Crumbs items={[["JARVIS", "/dashboard/jarvis"], ["Hilfe", ""]]} />
+      <PageHead title="Hilfe" icon="frage" />
       <section className="card tile" id="token">
         <header className="th"><span>Sofortstart der Werke einrichten (GitHub-Token, kostenlos, einmalig)</span></header>
         <p className="muted">Ohne Token laufen alle Werke nach Zeitplan und der Wachhund startet ausgefallene Läufe nach. Mit Token kannst du

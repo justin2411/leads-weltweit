@@ -4,7 +4,7 @@
  * Handy zuerst: 390 px ohne Querscroll.
  */
 export const ZX_CSS = `
-.zx{max-width:1240px;margin:0 auto;padding-bottom:40px}
+.zx{max-width:var(--wmax,1240px);margin:0 auto;padding-bottom:40px}
 .zx-head{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;margin:4px 0 12px}
 .zx-head h1{margin:0 auto 0 0;font-size:var(--fs-xl);letter-spacing:.12em;text-transform:uppercase;color:#fff;display:flex;align-items:center;gap:10px}
 .zx-at{font-size:var(--fs-s);color:var(--soft)}

@@ -91,11 +91,11 @@ export const REGLER_CSS = `
 .rg-hist .none{display:block;color:var(--soft);font-size:13px}
 
 .rg-bar{position:fixed;left:0;right:0;bottom:var(--bnav);z-index:45;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:rgba(4,10,22,.94);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-top:1px solid rgba(226,198,143,.6);box-shadow:0 -12px 40px -10px rgba(226,198,143,.35);animation:rg-up .2s ease-out}
-.rg-bar .in{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:10px 14px}
+.rg-bar .in{max-width:var(--wmax,1240px);margin:0 auto;display:flex;align-items:center;gap:10px 14px}
 .rg-n{flex:none;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 10px 0 4px;border-radius:10px;font:700 15px var(--sans);color:#fff;cursor:pointer;background:transparent!important;border:1px solid transparent!important}
 .rg-n:hover,.rg-n[aria-expanded=true]{border-color:rgba(226,198,143,.45)!important}
 .rg-n i{display:inline-flex;font-style:normal;font-size:12px;color:var(--gold2)}
-.rg-pop{list-style:none;max-width:1240px;margin:0 auto 10px;padding:6px 12px;max-height:40vh;overflow:auto;border:1px solid rgba(226,198,143,.35);border-radius:10px;background:rgba(2,8,18,.6);display:grid;gap:2px}
+.rg-pop{list-style:none;max-width:var(--wmax,1240px);margin:0 auto 10px;padding:6px 12px;max-height:40vh;overflow:auto;border:1px solid rgba(226,198,143,.35);border-radius:10px;background:rgba(2,8,18,.6);display:grid;gap:2px}
 .rg-pop li{display:flex;gap:10px;align-items:baseline;padding:5px 0;font-size:14px;color:#e6f6ff;border-top:1px solid rgba(95,212,255,.08)}
 .rg-pop li:first-child{border-top:0}
 .rg-pop li b{flex:none;min-width:120px;font-size:13px;font-weight:600;color:var(--soft)}
@@ -107,7 +107,7 @@ export const REGLER_CSS = `
 .rg-btns .now{color:#02060f!important;background:linear-gradient(180deg,#a8ecff,#5fd4ff)!important;border:0!important}
 .rg-x{flex:none;min-height:44px;padding:0 14px;border-radius:10px;font:600 14px var(--sans);cursor:pointer;background:transparent!important}
 .rg-btns button:disabled{opacity:.55;cursor:wait}
-.rg-msg{margin:6px auto 0;max-width:1240px;font-size:13px;color:#ffb3bd;font-weight:600}
+.rg-msg{margin:6px auto 0;max-width:var(--wmax,1240px);font-size:13px;color:#ffb3bd;font-weight:600}
 
 .rg-toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:70;width:min(440px,calc(100vw - 24px));padding:12px 14px 12px 16px;border-radius:14px;border:1px solid rgba(61,220,151,.55);background:rgba(6,26,22,.96);box-shadow:0 20px 50px -14px rgba(0,0,0,.9),0 0 30px -10px rgba(61,220,151,.6);animation:rg-down .2s ease-out}
 .rg-toast.bad{border-color:rgba(255,94,115,.6);background:rgba(36,8,14,.96)}
