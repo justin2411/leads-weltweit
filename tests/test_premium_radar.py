@@ -1,7 +1,6 @@
-"""Premium-Bewertung (lib/premium.py), Veränderungs-Radar (lib/radar.py, lib/tls_info.py) und Umzüge FR aus dem
-BODACC (extraktor/sources/fr_bodacc_moves.py). Erfundene Firmen, example-Domains – keine echten Lead-Daten."""
+"""Premium-Bewertung (lib/premium.py) und Veränderungs-Radar (lib/radar.py, lib/tls_info.py).
+Erfundene Firmen, example-Domains – keine echten Lead-Daten. (FR-Umzüge ruhen: BODACC per robots.txt gesperrt.)"""
 import datetime as dt
-import json
 import sys
 import unittest
 from pathlib import Path
@@ -203,53 +202,6 @@ class RadarLeadPassesGateTest(unittest.TestCase):
         with mock.patch.object(tls_info, "read", return_value=None):
             reasons, _ = G.live_recheck(it, fetcher, TODAY)
             self.assertTrue(reasons[0].startswith("nachpruefung_fehler"))
-
-
-class MovesTest(unittest.TestCase):
-    def record(self, desc="transfert du siège social.", form="Société par actions simplifiée"):
-        lp = {"personne": {"typePersonne": "pm", "numeroImmatriculation": {"numeroIdentification": "123 456 789",
-                                                                            "nomGreffeImmat": "Lyon"},
-                           "denomination": "ATELIER LUMIERE", "formeJuridique": form, "activite": "menuiserie",
-                           "administration": "Président : DURAND Marie",
-                           "adresseSiegeSocial": {"numeroVoie": "4", "typeVoie": "rue", "nomVoie": "des Tests",
-                                                  "codePostal": "69002", "ville": "Lyon"}}}
-        return {"id": "B1", "dateparution": "2026-09-30", "listepersonnes": json.dumps(lp),
-                "modificationsgenerales": json.dumps({"descriptif": desc}), "url_complete": "https://www.bodacc.fr/x"}
-
-    def test_candidate(self):
-        from extraktor.sources import fr_bodacc_moves as M
-        c = M.to_candidate(self.record())
-        self.assertEqual(c["source"], "bodacc_move")
-        self.assertEqual(c["facts"]["signal_type"], "relocation")
-        self.assertEqual((c["zip"], c["city"]), ("69002", "Lyon"))
-        self.assertEqual(c["person_name"], "Marie Durand")
-
-    def test_skips(self):
-        from extraktor.sources import fr_bodacc_moves as M
-        self.assertIsNone(M.to_candidate(self.record(desc="Modification de l'administration.")))
-        self.assertIsNone(M.to_candidate(self.record(desc="transfert du siège social, dissolution de la société")))
-        self.assertIsNone(M.to_candidate(self.record(form="Société civile immobilière")))
-
-    def test_texts_pass_signal_check_and_gate(self):
-        from extraktor import sc, segments
-        from extraktor.sources import fr_bodacc_moves as M
-        c = M.to_candidate(self.record())
-        c.update(website="https://atelier-lumiere.example.fr", email="contact@atelier-lumiere.example.fr",
-                 phone="+33478000000")
-        c["facts"].update(domain="atelier-lumiere.example.fr", checked_on=TODAY,
-                          findings=[{"type": "website_outdated", "detail": "jquery1", "value": "1.12.4"}])
-        t = segments.texts("S2", c)
-        self.assertIn("30 septembre 2026", t["signal"])
-        self.assertIn("jQuery", t["signal"])
-        self.assertEqual(sc.run(c, "S2", t, TODAY)["problems"], [])
-        it = {"id": "m1", "segment_id": "S2", "country": "FR", "status": "new", "signal_type": "relocation",
-              "event_date": "2026-09-30", "source_date": "2026-09-30", "source_name": "BODACC (Bulletin officiel) – transfert",
-              "source_url": c["source_url"], "event_summary": t["signal"], "opener": t["opener"],
-              "urgency_reason": t["urgency_reason"],
-              "company": {"name": c["name"], "country": "FR", "address": "4 rue des Tests, Lyon, 69002",
-                          "website": c["website"]}, "contact": {"email": c["email"]}}
-        self.assertEqual(G.stage1(it, TODAY), [])
-        self.assertEqual(G.stage3(it, {"allowed_status": ("new",)}), [])
 
 
 if __name__ == "__main__":

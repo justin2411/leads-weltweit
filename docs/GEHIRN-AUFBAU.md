@@ -76,7 +76,7 @@ Ziel: die besten, einzigartigen, frischen Anlässe (Premium-Leads) für S2 Webag
 | Werk | Stand |
 |---|---|
 | Lead-, Kunden-Werk, Versand, Antworten, Proben-Vorrat, Kundenlieferung, Freigabe-Stichprobe, Wachhund/Tagescheck | laufen |
-| Radar-Werk: Website kaputt seit Datum, Zertifikat abgelaufen/läuft ab (TLS), Umzug FR (BODACC) – Linie `radar` im Lead-Werk | läuft (05.10.2026); Domain-Ablauf (RDAP) bewusst weggelassen, siehe QUELLEN-SCOUT |
+| Radar-Werk: Website kaputt seit Datum, Zertifikat abgelaufen/läuft ab (TLS) – Linie `radar` im Lead-Werk | läuft (05.10.2026); FR-Umzüge ruhen: BODACC per robots.txt gesperrt; Domain-Ablauf (RDAP) bewusst weggelassen, siehe QUELLEN-SCOUT |
 | Bewertungs-Werk: `scripts/lib/premium.py` beim Speichern, `scripts/premium_score.py` stündlich (Bestand nachtragen, nach 30 Tagen zurückstufen) | läuft (05.10.2026) |
 | Kontakt-Werk: Register + Firmenwebsite zusammenführen und gegenprüfen | Auftrag an Agent 3 |
 | Feedback-Werk: Kunden bewerten Leads, die Bewertung lernt | Auftrag an Agent 4 |

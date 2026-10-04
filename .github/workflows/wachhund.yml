@@ -67,6 +67,14 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SITE_URL: ${{ vars.SITE_URL || 'https://www.nextgen-profit.de' }}   # Push über /api/push
+      # Abteilungs-Motor (Inhaber 04.10.2026: „JARVIS baut sich selbst“): je Abteilung Ziel vs. Ist -> Lücke; für die
+      # 2–3 größten Lücken (umsatznah zuerst) je höchstens 1 offener Auftrag, max. 6 offen, nur S2 × US/UK/FR, eigener
+      # Takt alle 2 h; brain_enabled = false -> nur rechnen. Sendet nichts; Fehler stoppen den Wachhund nie
+      - run: python scripts/abteilungen_motor.py lauf --apply
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       # A/B je Schritt (Inhaber 04.10.2026): laufende Tests auswerten – Gewinner (≥ 95 % und Mindestmenge) übernehmen,
       # nach 21 Tagen ohne Entscheidung stoppen; Meldung in decisions und im Gehirn-Chat. Fehler stoppen den Wachhund nie
       - run: python scripts/ab.py auswerten --apply
