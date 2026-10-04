@@ -18,6 +18,8 @@ import { nextSendStart, planText } from "@/lib/versandzeit";
 import { addDays, neckStreak, trendLine } from "@/lib/trend";
 import { kohortenBrief } from "@/lib/kohorten";
 import { hintsKurz, line, probenKurz, type ProbeSeite } from "@/lib/kontext-kurz";
+import { loadPrognose } from "@/lib/prognose-data";
+import { kurz as prognoseKurz } from "@/lib/prognose";
 
 /**
  * Kompakter Kontext für die Sofort-Antworten (lib/jarvis-ask.ts) und die lesenden Werkzeuge (lib/jarvis-tools.ts).
@@ -182,6 +184,16 @@ async function trend7(now: Date): Promise<string> {
   }
 }
 
+/** „Prognose 30T“: je Land ein Satz (Mails → Antworten → Proben → Kunden), ehrlich ohne Basis. */
+export async function prognose(now: Date): Promise<string | string[]> {
+  try {
+    const ps = await loadPrognose(now);
+    return ps ? ps.map(prognoseKurz).join(" · ") : NA;
+  } catch {
+    return NA;
+  }
+}
+
 /** Letzter täglicher Zustellbarkeits-Check (scripts/zustellbarkeit.py; Tabelle darf fehlen). */
 async function zustellbarkeit() {
   try {
@@ -253,10 +265,10 @@ async function kohorten(now: Date): Promise<unknown> {
  */
 export async function buildContext(session: ChatSession, s: Sources): Promise<string> {
   const now = s.now;
-  const [fg, en, an, top, api, wt, wh, zu, tr, bk, kh] = await Promise.all([freigabe(), engpass(), antworten(), topic(session), loadLlmState(s.own),
+  const [fg, en, an, top, api, wt, wh, zu, tr, bk, kh, pg] = await Promise.all([freigabe(), engpass(), antworten(), topic(session), loadLlmState(s.own),
     loadFunnelCache(5 * 60_000).then(funnelBrief, () => ({ fehler: NA })),
     Promise.all([loadAnalyticsCache(10 * 60_000), loadFunnelCache(5 * 60_000)]).then(([a, f]) => webHints(a, f, "7d").map((h) => `${h.title}: ${h.grund}`), () => NA),
-    zustellbarkeit(), trend7(now), loadBounceStats(7).then(bounceBrief, () => NA), kohorten(now)]);
+    zustellbarkeit(), trend7(now), loadBounceStats(7).then(bounceBrief, () => NA), kohorten(now), prognose(now)]);
   const v = versand(s) as Record<string, unknown>;
   const p = proben(s) as Record<string, unknown>;
   const k = kunden(s);
@@ -274,6 +286,8 @@ export async function buildContext(session: ChatSession, s: Sources): Promise<st
     line("Bounces 7T", bk),
     // 7 volle Tage vs. die 7 davor (lib/trend.ts); unter n=20 „zu wenig Daten“
     line("Trend 7T (Vor-7T)", tr),
+    // Hochrechnung 30 T je Land (lib/prognose.ts): Mails→Antworten→Proben→Kunden, Spanne 80 %, ohne Antworten „keine Basis“
+    line("Prognose 30T", pg),
     line("Kunden", k),
     line("Antworten", { offen: an.offen_im_cockpit }),
     line("Proben", p.fehler ? p : { bereit: `${p.bereit_gesamt}/${p.soll_gesamt}`, ...probenKurz(p.seiten as ProbeSeite[], SEGMENT) }),

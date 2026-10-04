@@ -40,3 +40,7 @@ jobs:
       - run: npm test
       - run: npm run build
         env: { SUPABASE_URL: "https://example.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "build-only" }
+      # Layout-Wächter (Inhaber 04.10.2026: bündig, X mittig, kein Querscrollen, Fluss-Karte ohne Überlappung):
+      # Dashboard mit erfundenen Testdaten (tests/layout/fixtures.mjs), keine Datenbank, keine Geheimnisse
+      - run: npm i --no-save playwright@1 && npx playwright install --with-deps chromium
+      - run: npm run layout

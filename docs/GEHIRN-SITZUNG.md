@@ -14,7 +14,8 @@ in `signalwerk.decisions`. Ziel: **möglichst viele zahlende Kunden und maximale
 ## Ablauf jeder Sitzung (max. ca. 20 Minuten)
 1. **Not-Aus:** `select brain_enabled from signalwerk.settings`. Bei `false`: nur Zahlen ansehen, Tagesnotiz, Ende.
 2. **Zahlen (letzte 24 h und 14 Tage):** `page_stats`, `experiment_stats`, `sample_requests`, `subscriptions`, `email_events`,
-   Antworten, Käufe. Nichts schönen.
+   Antworten, Käufe. Nichts schönen. `python scripts/prognose.py`: Prognose 30 Tage je Land (Mails → Antworten →
+   Proben → Kunden, Spanne 80 %; ohne Antworten „noch keine Basis“ – nie eigene Annahmen einsetzen).
 3. **Sicherheit:** Spam-Beschwerde, Tages-Bounce > 5 %, drei fehlgeschlagene Stripe-Webhooks, Kundenbeschwerde,
    Rechtsunsicherheit → `brain_enabled = false`, Eintrag `decisions` (type `safety`), Ende.
 4. **Eine Sache verbessern** (die mit dem größten erwarteten Umsatzhebel, höchstens 3 Änderungen pro Sitzung):

@@ -89,13 +89,13 @@ export function FlowMap(p: { stations: Station[]; edges: Edge[]; active: Station
 }
 
 /** Kern-Kennzahlen oben: 4 Kacheln (Icon, Wert, Name, kurzer Zusatz), Klick öffnet die Station. */
-export type Kpi = { label: string; value: string; sub: string; tone: "green" | "gold" | "red" | "cyan" | "grey"; href: string; icon?: IconName; task?: TipTask };
+export type Kpi = { label: string; value: string; sub: string; tone: "green" | "gold" | "red" | "cyan" | "grey"; href: string; icon?: IconName; task?: TipTask; tip?: string };
 export function Ampeln({ items }: { items: Kpi[] }) {
   return (
-    <div className="amps4">
+    <div className={`amps4${items.length === 5 ? " k5" : ""}`}>
       {items.map((a) => {
         const tile = (
-          <Link key={a.label} href={a.href} scroll={false} className={`amp4 t-${a.tone}${a.task ? " jt-drag" : ""}`}>
+          <Link key={a.label} href={a.href} scroll={false} title={a.tip} className={`amp4 t-${a.tone}${a.task ? " jt-drag" : ""}`}>
             {a.icon ? <span className="amp4-ic" aria-hidden><Icon name={a.icon} size={20} /></span> : <i className="amp4-led" aria-hidden />}
             <span className="amp4-tx"><span className="amp4-l">{a.label}</span><b>{a.value}</b><em>{a.sub}</em></span>
           </Link>

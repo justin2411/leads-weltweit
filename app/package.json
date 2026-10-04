@@ -7,7 +7,8 @@
     "build": "node scripts/ops-config.mjs && next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "node --test --experimental-strip-types lib/*.test.ts"
+    "test": "node --test --experimental-strip-types lib/*.test.ts",
+    "layout": "node tests/layout/run.mjs"
   },
   "engines": {
     "node": ">=20"
