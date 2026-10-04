@@ -346,6 +346,16 @@ export const HUD_CSS = `
 .fl-l{font-size:13px;font-weight:700;color:var(--cy2);margin-top:2px}
 .fl-s{font-size:12.5px;color:var(--soft);max-width:110px;line-height:1.25}
 .fl-neck{position:absolute;top:-14px;font-style:normal;font-size:12px;font-weight:700;color:#fff;background:#ff5e73;padding:2px 8px;border-radius:999px;box-shadow:0 0 12px rgba(255,94,115,.7)}
+/* Autopilot-Abzeichen unten rechts auf dem Kreisrand (Inhaber 04.10.2026): Schalter, grün = an, grau = aus */
+.fl-map{--fl-r:66px}
+.dash .fl-auto{position:absolute;z-index:3;translate:calc(-50% + var(--fl-r)*.72) calc(-50% + var(--fl-r)*.72);transform:translate(0,0);display:inline-flex;align-items:center;justify-content:center;
+  height:22px;min-height:0;padding:0 9px;border-radius:999px;font:700 11.5px/1 var(--sans);letter-spacing:.02em;cursor:pointer;white-space:nowrap;
+  background:#1a2638;border:1.5px solid #5d7ca3;color:#a9bdd6;box-shadow:0 0 0 3px rgba(2,6,15,.9);transition:background .15s,border-color .15s,color .15s}
+.dash .fl-auto.on{background:#14402f;border-color:var(--green);color:#bff5dc;box-shadow:0 0 0 3px rgba(2,6,15,.9),0 0 12px rgba(61,220,151,.45)}
+.dash .fl-auto:hover:not(:disabled){border-color:var(--cy);box-shadow:0 0 0 3px rgba(2,6,15,.9),var(--glow)}
+.dash .fl-auto.on:hover:not(:disabled){border-color:#7ff0bf;box-shadow:0 0 0 3px rgba(2,6,15,.9),0 0 14px rgba(61,220,151,.6)}
+.dash .fl-auto.err{border-color:var(--red)}
+.dash .fl-auto:disabled{opacity:.7;cursor:progress}
 
 .drw{position:absolute;right:10px;top:10px;max-height:calc(100% - 20px);width:420px;max-width:calc(100% - 20px);overflow:auto;z-index:35;scrollbar-width:thin;border:1px solid rgba(226,198,143,.45);border-radius:14px;background:linear-gradient(180deg,rgba(12,28,54,.97),rgba(4,12,26,.98));-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);padding:14px 16px 16px;align-self:start;box-shadow:0 20px 60px -20px rgba(0,0,0,.9),0 0 30px -10px rgba(226,198,143,.35);animation:drw-in .25s ease-out}
 .drw-shade{display:none}
@@ -426,12 +436,12 @@ export const HUD_CSS = `
 @keyframes drw-in{from{opacity:0;transform:translateX(16px)}}
 
 @media (max-width:1100px){
-  .fl-st{width:112px;height:112px}.fl-st.goal{width:124px;height:124px}.fl-v{font-size:19px}.fl-s{display:none}
+  .fl-st{width:112px;height:112px}.fl-st.goal{width:124px;height:124px}.fl-v{font-size:19px}.fl-s{display:none}.fl-map{--fl-r:56px}
 }
 @media (max-width:720px){
   .amps4{grid-template-columns:1fr 1fr;gap:8px}.amp4{padding:10px 10px 10px 32px}.amp4-led{left:12px;top:16px;width:10px;height:10px}.amp4 b{font-size:19px}.amp4 em{display:none}
   .fl-wide{display:none}.fl-tall{display:block}.fl-lanes{display:none}.fl-info-m{display:flex}
-  .fl-st{width:96px;height:96px}.fl-st.goal{width:112px;height:112px}.fl-v{font-size:17px}.fl-l{font-size:12px;letter-spacing:-.01em}.fl-ic{font-size:15px}
+  .fl-st{width:96px;height:96px}.fl-st.goal{width:112px;height:112px}.fl-map{--fl-r:48px}.dash .fl-auto{height:20px;padding:0 7px;font-size:11px}.fl-v{font-size:17px}.fl-l{font-size:12px;letter-spacing:-.01em}.fl-ic{font-size:15px}
   .drw{position:fixed;left:0;right:0;top:auto;bottom:0;width:auto;max-width:none;z-index:40;max-height:78vh;border-radius:16px 16px 0 0;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
   .frm label{grid-template-columns:64px 80px 1fr}
 }

@@ -11,7 +11,9 @@ export type StationId = "lead" | "gate" | "bestand" | "proben" | "kwerk" | "kaeu
   // Klick öffnet die Auswertung. Stationen und Werte: webLine() in lib/website-stats.ts
   | WebStationId;
 export type StationState = "live" | "idle" | "off" | "bad";
-export type Station = { id: StationId; label: string; icon: IconName; value: string; unit?: string; sub: string; state: StationState; neck?: boolean; tip: string };
+export type Station = { id: StationId; label: string; icon: IconName; value: string; unit?: string; sub: string; state: StationState; neck?: boolean; tip: string;
+  /** Werk mit Plätzen: Autopilot an/aus (Abzeichen unten rechts am Kreis); undefined = kein Abzeichen */
+  auto?: boolean };
 export type Edge = { from: StationId; to: StationId; perHour: number; label: string };
 
 export const ORDER: StationId[] = ["lead", "gate", "bestand", "proben", "kwerk", "kaeufer", "versand", "antworten", "wland", "wtarif", "wstripe", "wdanke", "kunden"];
