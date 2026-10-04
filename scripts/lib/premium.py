@@ -118,15 +118,41 @@ def columns(lead: dict, today: dt.date | None = None) -> dict:
                                                      "on": (today or dt.date.today()).isoformat()}}
 
 
+def score_now(row: dict, today: dt.date | None = None) -> int | None:
+    """Gespeicherte Punktzahl, gealtert auf heute (Premium-Labor 04.10.2026): wurde der Lead mit „frisch ≤ FRESH_HIGH
+    Tage“ (35) bewertet und ist das Ereignis inzwischen älter, zählt nur noch „frisch ≤ FRESH_MID“ (20); älter als
+    FRESH_MID zählt gar keine Frische mehr. Nur strenger, nie höher als gespeichert."""
+    v = row.get("premium_score")
+    if not isinstance(v, (int, float)):
+        return None
+    p = row.get("premium") or {}
+    reasons = p.get("reasons") or [] if isinstance(p, dict) else []
+    fresh_pts = 0
+    for r in reasons:
+        m = re.match(r"^frisch_(\d+)_tage$", str(r))
+        if m:
+            fresh_pts = POINTS["fresh_high"] if int(m.group(1)) <= FRESH_HIGH else POINTS["fresh_mid"]
+    ev = _date(row.get("event_date"))
+    if not fresh_pts or ev is None:
+        return int(v)
+    age = ((today or dt.date.today()) - ev).days
+    now_pts = POINTS["fresh_high"] if age <= FRESH_HIGH else POINTS["fresh_mid"] if age <= FRESH_MID else 0
+    return max(0, int(v) - max(0, fresh_pts - now_pts))
+
+
 def tier_now(row: dict, today: dt.date | None = None) -> str:
     """Stufe eines gespeicherten Leads heute: „premium“ nur, solange das Ereignis höchstens FRESH_MID Tage alt ist
-    (die Stufe wird beim Speichern berechnet und veraltet sonst unbemerkt)."""
+    und die auf heute gealterte Punktzahl (score_now) noch mindestens PREMIUM_MIN erreicht (die Stufe wird beim
+    Speichern berechnet und veraltet sonst unbemerkt)."""
     p = row.get("premium") or {}
     if not isinstance(p, dict) or p.get("tier") != "premium":
         return "standard"
     ev = _date(row.get("event_date"))
     # -1: Ereignisdatum aus einer anderen Zeitzone (Lauf kurz nach Mitternacht UTC) gilt als heute
     if ev is None or not -1 <= ((today or dt.date.today()) - ev).days <= FRESH_MID:
+        return "standard"
+    now = score_now(row, today)
+    if now is not None and now < PREMIUM_MIN:
         return "standard"
     return "premium"
 
@@ -139,5 +165,5 @@ def count(rows: list[dict], today: dt.date | None = None) -> int:
 def sort_key(row: dict, today: dt.date | None = None) -> tuple:
     """Premium zuerst (nur Reihenfolge, schließt nichts aus): Stufe heute, dann Punktzahl; ohne Wert zuletzt.
     Standard-Leads füllen nur auf, wenn es keine 10 Premium-Leads gibt (Inhaber 05.10.2026, Übergang)."""
-    v = row.get("premium_score")
-    return (0 if tier_now(row, today) == "premium" else 1, -int(v) if isinstance(v, (int, float)) else 1)
+    v = score_now(row, today)
+    return (0 if tier_now(row, today) == "premium" else 1, -v if v is not None else 1)
