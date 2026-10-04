@@ -534,6 +534,10 @@ export async function Landing({ params, sp: search, rand }: { params: LandingPar
                 <div className="ctaline"><div className="ctabox"><Start label={known ? L.send : cta} /></div>
                   {canBuy && <a className="btn ghost" href="#plans" data-cta>{L.subscribe}</a>}</div>
               )}
+              {/* Werkzeug „Firmen ohne Website“ (nur Webagenturen US/UK/FR) */}
+              {page.segment_id === "S2" && (
+                <p className="finder-link"><a href={`/finder/${cc.toLowerCase()}`}>{fr ? "Voir les entreprises sans site web cette semaine" : "See this week's companies without a website"}</a></p>
+              )}
             </div>
             <HeroStage cc={cc} sigs={HERO_SIGNALS[seg][cc]} note={lz.heroNote} hidden={lz.hidden} />
           </div>
