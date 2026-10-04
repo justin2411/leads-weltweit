@@ -1,0 +1,7 @@
+[
+  {"name": "0 Antworten", "in": {"country": "UK", "sent": 74, "replies": 0, "samples": 0, "customers": 0, "perDay": 10, "freeBuyers": null, "price": 129, "currency": "£"}, "basis": "keine", "mails30": 300, "antworten": null, "proben": null, "kunden": null, "umsatz": null},
+  {"name": "kein Versand", "in": {"country": "US", "sent": 100, "replies": 3, "samples": 0, "customers": 0, "perDay": 0, "freeBuyers": null, "price": 129, "currency": "$"}, "basis": "kein_versand", "mails30": 0, "antworten": null, "proben": null, "kunden": null, "umsatz": null},
+  {"name": "Käufer begrenzen", "in": {"country": "US", "sent": 100, "replies": 2, "samples": 0, "customers": 0, "perDay": 50, "freeBuyers": 400, "price": 129, "currency": "$"}, "basis": "duenn", "mails30": 400, "antworten": {"lo": 3, "mid": 8, "hi": 19}, "proben": null, "kunden": null, "umsatz": null},
+  {"name": "nur Antworten", "in": {"country": "FR", "sent": 200, "replies": 4, "samples": 0, "customers": 0, "perDay": 20, "freeBuyers": null, "price": 129, "currency": "€"}, "basis": "duenn", "mails30": 600, "antworten": {"lo": 6, "mid": 12, "hi": 23}, "proben": null, "kunden": null, "umsatz": null},
+  {"name": "voller Trichter", "in": {"country": "UK", "sent": 1000, "replies": 50, "samples": 20, "customers": 4, "perDay": 100, "freeBuyers": null, "price": 129, "currency": "£"}, "basis": "ok", "mails30": 3000, "antworten": {"lo": 125, "mid": 150, "hi": 179}, "proben": {"lo": 39.6, "mid": 60, "hi": 87.8}, "kunden": {"lo": 4.3, "mid": 12, "hi": 29.5}, "umsatz": {"lo": 564, "mid": 1548, "hi": 3794}}
+]

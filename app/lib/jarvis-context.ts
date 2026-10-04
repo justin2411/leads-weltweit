@@ -15,6 +15,7 @@ import { REG } from "@/lib/regler-data";
 import { fmtBerlin } from "@/lib/start-queue";
 import { nextSendStart, planText } from "@/lib/versandzeit";
 import { addDays, neckStreak, trendLine } from "@/lib/trend";
+import { loadPrognose } from "@/lib/prognose-data";
 
 /**
  * Kompakter Kontext für die Sofort-Antworten (lib/jarvis-ask.ts) und die lesenden Werkzeuge (lib/jarvis-tools.ts).
@@ -179,6 +180,16 @@ async function trend7(now: Date): Promise<string> {
   }
 }
 
+/** „Prognose 30T“: je Land ein Satz (Mails → Antworten → Proben → Kunden), ehrlich ohne Basis. */
+export async function prognose(now: Date): Promise<string | string[]> {
+  try {
+    const ps = await loadPrognose(now);
+    return ps ? ps.map((p) => p.text) : NA;
+  } catch {
+    return NA;
+  }
+}
+
 /** Letzter täglicher Zustellbarkeits-Check (scripts/zustellbarkeit.py; Tabelle darf fehlen). */
 async function zustellbarkeit() {
   try {
@@ -243,10 +254,10 @@ const line = (k: string, v: unknown) => `${k}: ${typeof v === "string" ? v : JSO
 /** Kompakter Kontext (wenige hundert Tokens): Uhrzeit, Kennzahlen, Thema der Sitzung. */
 export async function buildContext(session: ChatSession, s: Sources): Promise<string> {
   const now = s.now;
-  const [fg, en, an, top, api, wt, wh, zu, tr] = await Promise.all([freigabe(), engpass(), antworten(), topic(session), loadLlmState(s.own),
+  const [fg, en, an, top, api, wt, wh, zu, tr, pg] = await Promise.all([freigabe(), engpass(), antworten(), topic(session), loadLlmState(s.own),
     loadFunnelCache(5 * 60_000).then(funnelBrief, () => ({ fehler: NA })),
     Promise.all([loadAnalyticsCache(10 * 60_000), loadFunnelCache(5 * 60_000)]).then(([a, f]) => webHints(a, f, "7d").map((h) => `${h.title}: ${h.grund}`), () => NA),
-    zustellbarkeit(), trend7(now)]);
+    zustellbarkeit(), trend7(now), prognose(now)]);
   const v = versand(s) as Record<string, unknown>;
   const p = proben(s) as Record<string, unknown>;
   const k = kunden(s);
@@ -265,6 +276,8 @@ export async function buildContext(session: ChatSession, s: Sources): Promise<st
     line("Engpass", en),
     // 7 volle Tage vs. die 7 davor (lib/trend.ts); unter n=20 „zu wenig Daten“
     line("Trend 7T (Vor-7T)", tr),
+    // Trichter-Hochrechnung 30 Tage je Land (lib/prognose.ts): nur aus echten Quoten, Spanne 80 %, 0 Antworten = keine Basis
+    line("Prognose 30T", pg),
     // Website-Trichter Startseite → Landingpage → Tarif → Stripe → Danke (24 h und 30 Tage, wie /dashboard/website/auswertung)
     line("Website-Trichter", wt),
     // drei automatische Website-Hinweise (größter Abbruch, beste Quelle, langsamste Seite; 7 Tage)

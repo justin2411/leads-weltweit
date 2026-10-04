@@ -371,6 +371,8 @@ export const HUD_CSS = `
 .dash .fl-auto.err{border-color:var(--red)}
 .dash .fl-auto:disabled{opacity:.7;cursor:progress}
 .dash .fl-badge{cursor:default;pointer-events:none}
+/* Zustands-Abzeichen weiter außen als „Auto“: Versand trägt Linie + Name tiefer im Kreis (721 px: „24/7“ berührte „Versand“) */
+.dash .fl-auto.fl-badge{translate:calc(-50% + var(--fl-r)*.92) calc(-50% + var(--fl-r)*.86)}
 .dash .fl-auto.fl-badge.off{background:#40141c;border-color:var(--red);color:#ffc9d1;box-shadow:0 0 0 3px rgba(2,6,15,.9),0 0 12px rgba(255,94,115,.45)}
 
 .drw{position:absolute;right:10px;top:10px;max-height:calc(100% - 20px);width:420px;max-width:calc(100% - 20px);overflow:auto;z-index:35;scrollbar-width:thin;border:1px solid rgba(226,198,143,.45);border-radius:14px;background:linear-gradient(180deg,rgba(12,28,54,.97),rgba(4,12,26,.98));-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);padding:14px 16px 16px;align-self:start;box-shadow:0 20px 60px -20px rgba(0,0,0,.9),0 0 30px -10px rgba(226,198,143,.35);animation:drw-in .25s ease-out}
@@ -453,6 +455,12 @@ export const HUD_CSS = `
 
 @media (max-width:1100px){
   .fl-st{width:112px;height:112px}.fl-st.goal{width:124px;height:124px}.fl-v{font-size:var(--fs-l)}.fl-s{display:none}.fl-map{--fl-r:56px}
+}
+/* 721–800 px: quer ist zu schmal (Mengen lagen auf den Kreisen, „24/7“ am Wort „Versand“) – hohe Karte wie am Handy, mittig begrenzt */
+@media (min-width:721px) and (max-width:800px){
+  .fl-wide{display:none}.fl-tall{display:block;max-width:520px;margin:0 auto}.fl-lanes{display:none}.fl-info-m{display:flex}
+  .fl-st{width:96px;height:96px}.fl-st.goal{width:112px;height:112px}.fl-map{--fl-r:48px}.dash .fl-auto{height:20px;padding:0 7px}
+  .fl-tall .fl-st.web{width:80px;height:80px}.fl-tall .fl-st.web .fl-v{font-size:var(--fs-m)}.fl-tall .fl-st.web .fl-l{font-size:var(--fs-xs)}
 }
 @media (max-width:720px){
   .amps4{grid-template-columns:1fr 1fr;gap:8px}.amp4{padding:10px 10px 10px 32px}.amp4-led{left:12px;top:16px;width:10px;height:10px}.amp4 b{font-size:var(--fs-l)}.amp4 em{display:none}
@@ -541,6 +549,10 @@ export const HUD_CSS = `
 .jv-top .clock{font:500 var(--fs-m) var(--sans),system-ui,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:0;padding:8px 12px;border-radius:8px;white-space:nowrap}
 
 .jv3 .amps4{grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+/* fünf Kacheln (Prognose 30 Tage): breit eine Reihe, mittel 3 + 2, Handy 2 + 2 + 1 (letzte über die ganze Breite) – je Reihe bündig */
+.jv3 .amps4.k5{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media (max-width:1100px){.jv3 .amps4.k5{grid-template-columns:repeat(6,minmax(0,1fr))}.jv3 .amps4.k5>:nth-child(n+1){grid-column:span 2}.jv3 .amps4.k5>:nth-child(n+4){grid-column:span 3}}
+@media (max-width:720px){.jv3 .amps4.k5{grid-template-columns:repeat(2,minmax(0,1fr))}.jv3 .amps4.k5>:nth-child(n+1){grid-column:auto}.jv3 .amps4.k5>:nth-child(5){grid-column:1/-1}}
 .dash .jv3 .amp4{display:flex;align-items:center;gap:16px;min-height:96px;padding:16px;border-radius:12px;border:1px solid var(--line);color:var(--text)!important;
   background:linear-gradient(180deg,rgba(12,30,58,.78),rgba(4,12,26,.6))}
 .dash .jv3 .amp4:hover{border-color:color-mix(in srgb,var(--ac) 70%,transparent);transform:translateY(-1px);box-shadow:0 8px 24px -12px color-mix(in srgb,var(--ac) 60%,transparent)}

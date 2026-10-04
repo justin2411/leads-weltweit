@@ -7,6 +7,8 @@ import { werkLine, werkTip } from "@/lib/werk-zeile";
 import { berlin, berlinDay, brake, chain, compact, currencySign, greeting, mailboxes, monthly, nextWorkflowRun, onlySegment, realSubscriptions, sampleStock, stockSegment, BOX_MIN, COUNTRY_COLOR } from "@/lib/dashboard-logic";
 import { totals } from "@/lib/dashboard-periods";
 import { stationSparks } from "@/lib/spark";
+import { loadPrognose } from "@/lib/prognose-data";
+import { summary as prognoseSummary } from "@/lib/prognose";
 import { addDays } from "@/lib/trend";
 import { alarmTips, coach, hall, laneOf, laneStats, neckTask, rankTips, recommend, running, utilization, type Beat, type Tip } from "@/lib/leitstand";
 import { agentStartLabel, freeAgent } from "@/lib/agents";
@@ -77,6 +79,8 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   // Sparklines und Trend (7 T vs. Vor-7 T): 15 Tage bis heute, kpi_daily parallel (Fehler → leer)
   const from15 = addDays(today, -14);
   const kpiP = loadKpiDaily(from15, today);
+  // Prognose 30 Tage (lib/prognose.ts): Trichter-Hochrechnung je Land, ohne Antworten „keine Basis“; Fehler → null
+  const progP = loadPrognose(new Date()).catch(() => null);
   const [liveAll, own, act, rows, stockAll, daily, sent, checks, agentTasks, starts, planLog, openReplies, health, funnel] = await Promise.all([
     loadLive(), loadOwnerSettings(), loadActivity(), loadRunRows(24),
     // Bestand: höchstens 5 s warten (Abfrage ~3,5 s, 10 min zwischengespeichert); sonst „…“ statt falscher Nullen
@@ -224,6 +228,11 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     openReplies
       ? { label: "Antworten offen", value: `${openReplies}`, sub: "jetzt beantworten", tone: "gold", href: "/dashboard/antworten", icon: "antworten" }
       : { label: "Antworten 7 Tage", value: `${w.replies}`, sub: `${w.positive} positiv`, tone: w.positive ? "green" : w.replies ? "cyan" : "grey", href: base("antworten"), icon: "antworten" },
+    ((ps) => {
+      if (!ps) return { label: "Prognose 30 Tage", value: "–", sub: "nicht lesbar", tone: "grey" as const, href: base("antworten"), icon: "tempo" as IconName };
+      const x = prognoseSummary(ps);
+      return { label: "Prognose 30 Tage", value: x.value, sub: x.sub, tone: x.tone, href: base("antworten"), icon: "tempo" as IconName, tip: x.tip };
+    })(await progP),
   ];
   const startAt = agentStartLabel(now);
   const gateView: GateView = {
