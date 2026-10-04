@@ -20,6 +20,24 @@ export function Crumbs({ items }: { items: [string, string][] }) {
   );
 }
 
+/** Einheitlicher Seitenkopf (docs/DESIGN-KOMMANDOZENTRALE.md): Pfad · Titel mit Symbol · rechts Stand/Aktionen ·
+ *  darunter höchstens eine kurze Zeile (≤ 160 Zeichen). Gleiche Höhe und Typo auf jeder Unterseite. */
+export function PageHead({ title, icon, sub, at, crumbs, children }: {
+  title: string; icon: IconName; sub?: ReactNode; at?: string; crumbs?: [string, string][]; children?: ReactNode;
+}) {
+  return (
+    <>
+      <Crumbs items={crumbs ?? [["JARVIS", "/dashboard/jarvis"], [title, ""]]} />
+      <div className="pg-head">
+        <h1><Icon name={icon} size={22} /> {title}</h1>
+        {at && <span className="pg-at">{at}</span>}
+        {children}
+      </div>
+      {sub && <p className="pg-sub">{sub}</p>}
+    </>
+  );
+}
+
 const ICON: Record<"rot" | "gelb" | "gruen", IconName> = { rot: "fehler", gelb: "achtung", gruen: "ok" };
 
 export function AmpelRow({ alerts }: { alerts: Alert[] }) {

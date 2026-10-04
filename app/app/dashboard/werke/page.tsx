@@ -6,7 +6,7 @@ import { PERIODS, buckets, period } from "@/lib/dashboard-periods";
 import { WERK_SWITCHES, werkOn, type OwnerSettings, type WerkKey } from "@/lib/owner-settings";
 import { isLive, lastActivity, liveParts, sampleErrorRate, werkStatus, type Activity, type WerkId } from "@/lib/werke-live";
 import { requireOwner } from "../actions";
-import { COUNTRY_OPTS, Chips, Columns, Crumbs, Kpi, Legend, countrySeries } from "../v2";
+import { COUNTRY_OPTS, Chips, Columns, Kpi, PageHead, Legend, countrySeries } from "../v2";
 import { FunnelViz, LiveDot, type FunnelStage } from "../live";
 import { WerkSwitch } from "../werk-switch";
 import { readParams, withQuery, type SP } from "../params";
@@ -38,7 +38,7 @@ export default async function Werke({ searchParams }: { searchParams: SP }) {
 
   return (
     <div className="v2">
-      <Crumbs items={[["JARVIS", withQuery("/dashboard/jarvis", raw)], ["Werke", ""]]} />
+      <PageHead title="Werke" icon="werk" crumbs={[["JARVIS", withQuery("/dashboard/jarvis", raw)], ["Werke", ""]]} />
       <div className="werke2">
         {CARDS.map((c) => <WerkCard key={c.key} c={c} act={act} runs={runs} own={own} now={now} here={here} />)}
       </div>

@@ -4,6 +4,7 @@
 //  2. jedes .x-btn-Zeichen sitzt mittig (±1 px)
 //  3. kein seitliches Scrollen bei 1440 / 760 / 390 px
 //  4. JARVIS-Fluss-Karte: keine Beschriftung berührt eine andere (Abzeichen, Mengen, Kreis-Texte)
+//  5. überall: kein absolut gesetztes Abzeichen (z. B. „vom Gehirn“ auf A1–A8) überdeckt Text in seinem Kasten
 import { createHmac } from "node:crypto";
 import { existsSync, mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -38,7 +39,7 @@ export function ownerCookie(secret, now = Date.now()) {
 
 /** Läuft im Browser: sammelt alle Verstöße einer Seite. */
 export function inspect(tol) {
-  const out = { scroll: null, x: [], uneven: [], flow: [], seen: { rows: 0, x: 0, labels: 0 } };
+  const out = { scroll: null, x: [], uneven: [], flow: [], overlap: [], seen: { rows: 0, x: 0, labels: 0, badges: 0 } };
   const vw = document.documentElement.clientWidth;
   const sw = document.documentElement.scrollWidth;
   if (sw > vw + tol) {
@@ -72,15 +73,16 @@ export function inspect(tol) {
     const flexRow = cs.display.includes("flex") && cs.flexDirection.startsWith("row");
     if (!cs.display.includes("grid") && !flexRow) continue;
     if (g.closest(".fl-map, svg, .tick, .ags")) continue;
-    const kids = [...g.children].filter((k) => visible(k) && !["absolute", "fixed"].includes(getComputedStyle(k).position) && boxy(k) && k.getBoundingClientRect().height >= 48);
-    const rows = new Map();
+    const kids = [...g.children].filter((k) => !["BUTTON", "TEXTAREA", "INPUT", "SELECT"].includes(k.tagName) && visible(k) && !["absolute", "fixed"].includes(getComputedStyle(k).position) && boxy(k) && k.getBoundingClientRect().height >= 48);
+    // Reihe = Kästen, die sich senkrecht zu mehr als der Hälfte überdecken (nicht nur „Oberkante ±8 px“ –
+    // sonst fällt ein Versatz von 12 px durchs Raster und gilt als neue Reihe)
+    const rows = [];
     for (const k of kids) {
       const r = k.getBoundingClientRect();
-      const key = [...rows.keys()].find((t) => Math.abs(t - r.top) <= 8) ?? r.top;
-      if (!rows.has(key)) rows.set(key, []);
-      rows.get(key).push({ k, r });
+      const row = rows.find((rs) => rs.some((x) => Math.min(x.r.bottom, r.bottom) - Math.max(x.r.top, r.top) > Math.min(x.r.height, r.height) / 2 && Math.abs(x.r.left - r.left) > tol));
+      if (row) row.push({ k, r }); else rows.push([{ k, r }]);
     }
-    for (const rs of rows.values()) {
+    for (const rs of rows) {
       if (rs.length < 2) continue;
       out.seen.rows++;
       const tops = rs.map((x) => x.r.top), bots = rs.map((x) => x.r.bottom);
@@ -117,6 +119,34 @@ export function inspect(tol) {
     }
     for (const x of [...badges, ...rates]) { const m = map.getBoundingClientRect(); if (x.r.left < m.left - tol || x.r.right > m.right + tol) out.flow.push(`${x.n} ragt aus der Karte`); }
   }
+  // 5. Abzeichen über Text: absolut gesetzte, kleine Elemente mit Text dürfen keinen anderen Text im selben Kasten berühren
+  const textRects = (root, skip) => {
+    const rs = [];
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode()) {
+      if (!n.textContent.trim() || skip.contains(n) || !n.parentElement || !visible(n.parentElement)) continue;
+      if (n.parentElement.closest("svg, .sr-only, [aria-hidden='true']")) continue;
+      const rg = document.createRange(); rg.selectNodeContents(n);
+      for (const r of rg.getClientRects()) if (r.width > 1 && r.height > 1) rs.push({ r, t: n.textContent.trim().slice(0, 24) });
+    }
+    return rs;
+  };
+  for (const b of document.querySelectorAll("main *")) {
+    if (b.closest(".fl-map, svg, .drw, [role='dialog']")) continue;
+    const cs = getComputedStyle(b);
+    if (cs.position !== "absolute" || !visible(b) || !b.textContent.trim()) continue;
+    const br = b.getBoundingClientRect();
+    if (br.height > 40 || br.width > 240) continue;
+    const host = b.offsetParent;
+    if (!host || host === document.body) continue;
+    out.seen.badges++;
+    for (const { r, t } of textRects(host, b)) {
+      if (r.left < br.right - tol && br.left < r.right - tol && r.top < br.bottom - tol && br.top < r.bottom - tol) {
+        out.overlap.push(`${label(b)} „${b.textContent.trim().slice(0, 20)}“ überdeckt „${t}“`);
+        break;
+      }
+    }
+  }
   return out;
 }
 
@@ -139,9 +169,9 @@ export async function runChecks({ base, secret, pages = PAGES, widths = WIDTHS, 
         const status = res?.status() ?? 0;
         if (status >= 400) { errors.push(`${p} @${w}: HTTP ${status}`); continue; }
         const r = await page.evaluate(inspect, TOL);
-        const list = [...(r.scroll ? [`seitliches Scrollen: ${r.scroll}`] : []), ...r.x.map((x) => `X nicht mittig: ${x}`), ...r.uneven.map((x) => `nicht bündig: ${x}`), ...r.flow.map((x) => `Fluss-Karte: ${x}`)];
+        const list = [...(r.scroll ? [`seitliches Scrollen: ${r.scroll}`] : []), ...r.x.map((x) => `X nicht mittig: ${x}`), ...r.uneven.map((x) => `nicht bündig: ${x}`), ...r.flow.map((x) => `Fluss-Karte: ${x}`), ...r.overlap.map((x) => `Überlappung: ${x}`)];
         for (const e of list) errors.push(`${p} @${w}: ${e}`);
-        log(`${list.length ? "✗" : "✓"} ${p} @${w}${list.length ? ` (${list.length})` : ""} · geprüft: ${r.seen.rows} Kasten-Reihen, ${r.seen.x} X, ${r.seen.labels} Karten-Texte`);
+        log(`${list.length ? "✗" : "✓"} ${p} @${w}${list.length ? ` (${list.length})` : ""} · geprüft: ${r.seen.rows} Kasten-Reihen, ${r.seen.x} X, ${r.seen.labels} Karten-Texte, ${r.seen.badges} Abzeichen`);
         if (shots) await page.screenshot({ path: `${shots}/${tag}-${w}.png`, fullPage: true });
       }
       await ctx.close();

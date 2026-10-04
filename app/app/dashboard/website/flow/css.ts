@@ -4,7 +4,7 @@
  * Stufen als Zeilen, ohne Querscroll. Bewegung nur ohne „Bewegung reduzieren“.
  */
 export const WF_CSS = `
-.wf{padding-bottom:40px;max-width:1240px;margin:0 auto;--box-h:118px}
+.wf{padding-bottom:40px;max-width:var(--wmax,1240px);margin:0 auto;--box-h:118px}
 .wf section{margin-top:0}
 .wf-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:4px 0 12px}
 .wf-head h1{margin:0;font-size:24px;letter-spacing:.12em;text-transform:uppercase;color:#fff;display:flex;align-items:center;gap:10px}

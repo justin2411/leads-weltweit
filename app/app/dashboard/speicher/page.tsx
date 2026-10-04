@@ -11,6 +11,7 @@ import { isTestSub, matrixRows, nextColor, poolDraft, poolTotals } from "@/lib/p
 import { loadPools, type PoolsData } from "@/lib/pools-data";
 import { requireOwner } from "../actions";
 import { Icon } from "@/app/icons";
+import { PageHead } from "../v2";
 import { SPEICHER_CSS } from "./css";
 import { Pools } from "./pools";
 import { TankScroller } from "./scroller";
@@ -98,11 +99,7 @@ export default async function Speicher({ searchParams }: { searchParams: SP }) {
   return (
     <div className="sp">
       <style dangerouslySetInnerHTML={{ __html: SPEICHER_CSS }} />
-      <div className="sp-head">
-        <h1>Speicher</h1>
-        {chips}
-        <span className="sp-at">{st.ok ? `Stand ${berlin(st.d.at, false)}` : ""}</span>
-      </div>
+      <PageHead title="Speicher" icon="speicher" at={st.ok ? `Stand ${berlin(st.d.at, false)}` : undefined}>{chips}</PageHead>
       {st.ok ? <Body d={st.d} seg={seg} proben={pr} brake={brake} /> : (
         <section className="sp-card sp-err"><p className="sp-none">Speicher-Zahlen gerade nicht erreichbar – gleich noch einmal laden.</p></section>
       )}

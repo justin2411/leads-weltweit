@@ -3,7 +3,7 @@
  * Handy zuerst: 390 px ohne Querscroll, Ringe 4 + 3 je Zeile. Bewegung nur ohne „Bewegung reduzieren“.
  */
 export const WS_CSS = `
-.ws{padding-bottom:40px;max-width:1240px;margin:0 auto}
+.ws{padding-bottom:40px;max-width:var(--wmax,1240px);margin:0 auto}
 .ws-head{display:flex;align-items:center;gap:8px 10px;flex-wrap:wrap;margin:4px 0 12px}
 .ws-head h1{margin-right:auto!important}
 .ws-head h1{margin:0;font-size:var(--fs-xl);letter-spacing:.12em;text-transform:uppercase;color:#fff;display:flex;align-items:center;gap:10px}

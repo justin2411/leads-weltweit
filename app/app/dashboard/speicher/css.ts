@@ -159,7 +159,7 @@ a.tk:hover .tk-glass,a.tk:focus-visible .tk-glass{border-color:rgba(168,236,255,
 .pl-test{font-style:normal;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;color:#c9d4e3;border:1px solid rgba(139,166,201,.45);background:rgba(139,166,201,.12)}
 
 .pl-bar{position:fixed;left:0;right:0;bottom:var(--bnav);z-index:45;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:rgba(4,10,22,.94);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-top:1px solid rgba(226,198,143,.6);box-shadow:0 -12px 40px -10px rgba(226,198,143,.35)}
-.pl-bar .in{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:10px 14px}
+.pl-bar .in{max-width:var(--wmax,1240px);margin:0 auto;display:flex;align-items:center;gap:10px 14px}
 .pl-bn{flex:none;display:inline-flex;align-items:center;gap:8px;font:700 15px var(--sans);color:#fff}
 .pl-bn b{display:inline-grid;place-items:center;min-width:28px;height:28px;padding:0 6px;border-radius:99px;background:var(--gold);color:#02060f;font-size:14px}
 .pl-list{flex:1;min-width:0;font-size:13px;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
