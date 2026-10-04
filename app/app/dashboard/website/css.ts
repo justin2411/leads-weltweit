@@ -4,7 +4,8 @@
  */
 export const WS_CSS = `
 .ws{padding-bottom:40px;max-width:1240px;margin:0 auto}
-.ws-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:4px 0 12px}
+.ws-head{display:flex;align-items:center;gap:8px 10px;flex-wrap:wrap;margin:4px 0 12px}
+.ws-head h1{margin-right:auto!important}
 .ws-head h1{margin:0;font-size:24px;letter-spacing:.12em;text-transform:uppercase;color:#fff;display:flex;align-items:center;gap:10px}
 .ws-open{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 14px;border-radius:99px;border:1px solid rgba(226,198,143,.5);color:var(--gold2);text-decoration:none;font-size:13px;font-weight:600}
 .ws-open:hover{background:rgba(226,198,143,.1)}
