@@ -8,7 +8,7 @@ Alle Zeiten in **UTC** (deutsche Sommerzeit = UTC + 2).
 | # | Kontaktpunkt | Wann | Kanal | Code |
 |---|---|---|---|---|
 | 1 | Entwürfe schreiben und freigeben | täglich 12:17 | intern | `scripts/drafts.py`, `taeglich.yml` |
-| 2 | **Erstmail** mit persönlichem Seitenlink (`?r=`) | täglich 14:23 | Strato-SMTP info@ | `scripts/outreach.py send`, `send.yml` |
+| 2 | **Erstmail** mit persönlichem Seitenlink (`?r=`) | Di–Do: UK/FR 08:37, US 14:37 (deutsche Zeit) | Strato-SMTP info@ | `scripts/outreach.py send`, `send.yml` |
 | 3 | **Persönliche Landingpage** („Vorbereitet für {Firma}“), Branchenfilm, Beispiele, FAQ | Klick | Web | `app/app/[country]/[segment]/page.tsx` |
 | 4 | **Probe anfordern**: kurzes Formular auf jeder Landingpage und der Startseite (Firma, E-Mail, „Welche Leads?“ bis 3 Signale, optional ein Satz, Einwilligung; über `?r=` vorbelegt). Wunsch landet als `wunsch:signals=…;text=…` in `sample_requests.note`, `web_samples.py` liefert passende vollständige Leads zuerst + Bestätigung | sofort | Resend | `app/app/sample-form.tsx`, `app/api/sample-request/route.ts`, `app/content/sample-wishes.ts`, `scripts/lib/wishes.py` |
 | 5 | **Probe-Mail** (10 Leads, PDF + CSV) | stündlich | Resend | `scripts/web_samples.py`, `antworten.yml` |
@@ -46,7 +46,7 @@ Feedback/Upgrade, Kaufabbruch. Siehe offene Entscheidungen in [`ENTSCHEIDUNGEN.m
 | `antworten.yml` | stündlich :07, 06–21 | Bounces, Antworten, Web-Proben | Antworten, Proben (Resend) |
 | `anreichern.yml` | 02:41, 08:41, 15:41, 20:41 | Websites/Kontakte finden (nur bei `lead_suche: true`) | nein |
 | `taeglich.yml` | täglich 12:17 | Quellen (nur bei `lead_suche: true`), Proben, Nachfassmails anlegen, Entwürfe | nein |
-| `send.yml` | täglich 14:23 | Kalt- und Nachfassmails senden (nur bei `aktiv: true`) | **ja (Strato)** |
+| `send.yml` | Di–Do 08:37 (UK/FR, Versand bis 11 Uhr) und 14:37 (US, bis 19 Uhr), deutsche Zeit; Plan `app/lib/versandzeit.json` | Kalt- und Nachfassmails senden (nur bei `aktiv: true`); Kopie an Kontrolladressen (`SEED_INBOXES`) | **ja (Strato)** |
 | `tagescheck.yml` | täglich 17:37 | alle Kontaktpunkte prüfen | nur an den Inhaber |
 | `wachhund.yml` | alle 15–30 min | ausgefallene Läufe nachstarten | nein |
 | `gehirn.yml` | nur von Hand | Seiten/Varianten/Entscheidungen | – |

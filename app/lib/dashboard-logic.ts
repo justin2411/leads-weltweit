@@ -10,7 +10,10 @@
  * Bounce-Zählung und Notbremse wie scripts/lib/deliverability.py, Antworten wie scripts/lib/stats.py.
  */
 
+import { isSendDay, nextSendStart, sendDayStart } from "./versandzeit.ts";
+
 // --------------------------------------------------------------------------------------------- Typen
+
 export type OpsConfig = {
   versand: {
     aktiv: boolean; notbremse_ab: string | null; tagesziel: number; tagesziel_ab: string | null; tagesziel_schritt: number;
@@ -151,6 +154,14 @@ export function nextCron(expr: string, from: Date): Date | null {
 export function nextRun(crons: string[], from: Date): Date | null {
   const all = crons.map((c) => nextCron(c, from)).filter((d): d is Date => !!d);
   return all.length ? new Date(Math.min(...all.map((d) => d.getTime()))) : null;
+}
+
+/** Nächster Lauf eines Workflows. Versand (send.yml): aus dem Versandplan Di–Do in deutscher Zeit (lib/versandzeit.ts),
+ * nicht aus den Crons – die haben je Gruppe einen Sommer- und einen Winterzeit-Eintrag (Inhaber 04.10.2026). */
+export function nextWorkflowRun(wf: { file: string; crons: string[] } | undefined, from: Date): Date | null {
+  if (!wf) return null;
+  if (wf.file === "send.yml") return nextSendStart(from)?.at ?? null;
+  return nextRun(wf.crons, from);
 }
 
 // --------------------------------------------------------------------------------------------- Versand
@@ -529,7 +540,7 @@ export function alerts(live: Live, stock: Stock | null, cfg: OpsConfig, now: Dat
   const cap = boxes.reduce((s, x) => s + x.cap, 0);
   const sentToday = boxes.reduce((s, x) => s + x.today, 0);
   const sendWf = cfg.workflows.find((w) => w.file === "send.yml");
-  const nextSend = sendWf ? nextRun(sendWf.crons, now) : null;
+  const nextSend = nextWorkflowRun(sendWf, now);
   if (!v.aktiv) add("gelb", "Versand", "Versand ist ausgeschaltet", "config/versand.yaml: aktiv: false", "Versand ausgeschaltet");
   if (b.stop) add("rot", "Versand", "Notbremse aktiv", b.stop, "Notbremse aktiv");
   else if (b.complained === 0) {
@@ -540,8 +551,10 @@ export function alerts(live: Live, stock: Stock | null, cfg: OpsConfig, now: Dat
   if (b.complained > 0 && !b.stop) add("rot", "Versand", `${b.complained} Spam-Beschwerde(n)`, undefined, "Spam-Beschwerde eingegangen");
   const hourBerlin = Number(new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "numeric", hourCycle: "h23" }).format(now));
   if (v.aktiv && !b.stop) {
-    if (hoursSince(live.last_sent_at, now) > 26) add("rot", "Versand", "Seit über 26 h keine Mail gesendet", `zuletzt ${berlin(live.last_sent_at)}`, "Seit 26 h kein Versand");
-    else if (hourBerlin >= 21 && sentToday < cap * 0.8) add("gelb", "Versand", `Versand heute unter Ziel: ${sentToday} von ${cap}`, "Kapazität aller Postfächer heute", "Versand heute unter Ziel");
+    // Versand nur Di–Do (Inhaber 04.10.2026): rot erst, wenn seit dem letzten fälligen Versandtag nichts rausging
+    const dayStart = sendDayStart(now);
+    if (dayStart && (!live.last_sent_at || Date.parse(live.last_sent_at) < dayStart.getTime())) add("rot", "Versand", "Am letzten Versandtag keine Mail gesendet", `zuletzt ${berlin(live.last_sent_at)} · Versand Di–Do`, "Versandtag ohne Versand");
+    else if (isSendDay(now) && hourBerlin >= 21 && sentToday < cap * 0.8) add("gelb", "Versand", `Versand heute unter Ziel: ${sentToday} von ${cap}`, "Kapazität aller Postfächer heute", "Versand heute unter Ziel");
     else add("gruen", "Versand", `Heute ${sentToday} von ${cap} Mails gesendet`, nextSend ? `nächster geplanter Lauf ${berlin(nextSend)}` : undefined);
   }
   const totalSent = live.boxes.reduce((s, x) => s + x.n, 0);

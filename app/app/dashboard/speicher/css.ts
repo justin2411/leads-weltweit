@@ -16,12 +16,6 @@ export const SPEICHER_CSS = `
 .sp-card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:16px 18px 18px;min-width:0;
   clip-path:polygon(0 10px,10px 0,calc(100% - 10px) 0,100% 10px,100% calc(100% - 10px),calc(100% - 10px) 100%,10px 100%,0 calc(100% - 10px));
   -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
-.pl-fold>summary{list-style:none;cursor:pointer;margin:0;position:relative;padding-right:30px}
-.pl-fold>summary::-webkit-details-marker{display:none}
-.pl-fold>summary::after{content:"";position:absolute;right:6px;top:50%;width:9px;height:9px;border-right:2px solid var(--cy2);border-bottom:2px solid var(--cy2);transform:translateY(-70%) rotate(45deg);transition:transform .2s}
-.pl-fold[open]>summary{margin-bottom:12px}
-.pl-fold[open]>summary::after{transform:translateY(-30%) rotate(-135deg)}
-.pl-fold>summary:focus-visible{outline:2px solid var(--cy2);outline-offset:4px;border-radius:6px}
 .sp-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 12px}
 .sp-h h2{margin:0;font-family:var(--hud);font-size:15px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--cy2)}
 .sp-h .sp-big{font-size:26px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;text-shadow:0 0 14px rgba(95,212,255,.4)}
@@ -33,6 +27,7 @@ export const SPEICHER_CSS = `
 .sp-row3{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:18px;min-width:0}
 /* bündig (Inhaber 04.10.2026): Karten einer Zeile gleich hoch, Fußzeilen unten */
 .sp-row3{align-items:stretch}.sp-row3>.sp-card{display:flex;flex-direction:column}.sp-row3>.sp-card>.sp-cost:first-of-type{margin-top:auto;padding-top:12px}
+.sp-row3>.fold{display:block}.sp-row3>.fold .sp-cost:first-of-type{padding-top:12px}
 @media (max-width:1000px){.sp-row3{grid-template-columns:1fr}}
 
 /* ------------------------------------------------------------- Tanks */

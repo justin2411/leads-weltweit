@@ -1,0 +1,102 @@
+{
+ "titel": [
+  [
+   "Sitzung 27.09. 16:30 UTC: Not-Aus geprueft (ok), Probe-Anfrage jetzt 4h+ unbeantwortet, taeglicher Kaltmail-Versand heute offenbar nicht gelaufen",
+   "Not-Aus geprueft (ok), Probe-Anfrage jetzt 4h+ unbeantwortet"
+  ],
+  [
+   "Lead-Qualität: Kontaktdaten fehlen fast vollständig",
+   "Lead-Qualität: Kontaktdaten fehlen fast vollständig"
+  ],
+  [
+   "Bounce-Notbremse NICHT ausgelöst (Zählfehler gefunden statt echtem Problem)",
+   "Bounce-Notbremse NICHT ausgelöst"
+  ],
+  [
+   "Vorschlag: Versand nur Di–Do zur Bürozeit der Empfänger",
+   "Versand nur Di–Do zur Bürozeit der Empfänger"
+  ],
+  [
+   "Probe-Anfrage Forward Role Recruitment (S1/UK) liegt seit ~12:24 UTC unbeantwortet",
+   "Probe-Anfrage Forward Role Recruitment liegt unbeantwortet"
+  ],
+  [
+   "Technisches Problem: Diese Sitzung kann nicht nach GitHub pushen (Repo nicht in Session-Quellen autorisiert)",
+   "Technisches Problem: Diese Sitzung kann nicht nach GitHub…"
+  ],
+  [
+   "Sitzung 13:29 UTC: weiterhin ohne Repo-/Mail-Zugriff, Kaufinteresse per Push gemeldet",
+   "weiterhin ohne Repo-/Mail-Zugriff"
+  ],
+  [
+   "Tagesnotiz 26.09.2026",
+   "Tagesnotiz 26.09.2026"
+  ],
+  [
+   "Schalter auto_publish_pages = true",
+   "Schalter auto_publish_pages = true"
+  ],
+  [
+   "Wenig Leads für My performance",
+   "Wenig Leads für My performance"
+  ],
+  [
+   "",
+   ""
+  ],
+  [
+   "Ein sehr langer Titel ohne jede Satzgrenze der einfach immer weiter geht und nicht aufhört zu reden",
+   "Ein sehr langer Titel ohne jede Satzgrenze der einfach…"
+  ],
+  [
+   "Gehirn-Sitzung weiterhin ohne Schreibzugriff aufs Repo (git push + GitHub API blockiert)",
+   "Gehirn-Sitzung weiterhin ohne Schreibzugriff aufs Repo"
+  ]
+ ],
+ "grund": [
+  [
+   "Not-Aus geprueft: brain_enabled=true, keine Abschaltregel ausgeloest (Bounces 24h 4/83=4,8% unter 5%, 0 Beschwerden). Wie in den vorigen 4 Sitzungen (09:35-15:43 UTC) bestaetigt",
+   "Not-Aus geprueft: brain_enabled=true, keine Abschaltregel ausgeloest."
+  ],
+  [
+   "Alle 350 Mails gingen am Wochenende raus, US-Mails teils nachts Ortszeit. B2B-Antworten kommen werktags.",
+   "Alle 350 Mails gingen am Wochenende raus, US-Mails teils nachts Ortszeit."
+  ],
+  [
+   "Nur 0 passende Leads (Qualität ab 60) für 2026-09-28 – nicht mit schwachen Leads aufgefüllt (BRAIN.md 5.3).",
+   "Nur 0 passende Leads für 2026-09-28 – nicht mit schwachen Leads aufgefüllt."
+  ],
+  [
+   "Gehirn aktiv",
+   "Gehirn aktiv"
+  ],
+  [
+   "Probe-Anfrage liegt seit 27.09. 12:24 UTC unbeantwortet (status weiterhin \"new\"). Ursache: x",
+   "Probe-Anfrage liegt unbeantwortet (status weiterhin \"new\")."
+  ],
+  [
+   "Geprüft: z. B. app/app/x zeigt den Preise-Bereich nur, wenn v.pricing gefüllt ist. Beide waren null",
+   "Geprüft: z. B. app/app/x zeigt den Preise-Bereich nur, wenn v.pricing gefüllt ist."
+  ],
+  [
+   "Inhaber-Auftrag 27.09. (Chat): Leads immer mit Ansprechperson, Firmenname, E-Mail, Telefon, Kurzprofil und Ansprech-Tipps, alles kostenlos, dazu noch sehr viel mehr Text der den Rahmen sprengt. Stand: 54.676 Leads",
+   "Inhaber-Auftrag 27.09. (Chat): Leads immer mit Ansprechperson, Firmenname, E-Mail, Telefon, Kurzprofil und Ansprech-Tipps, alles kostenlos"
+  ],
+  [
+   "Checkout abgeschlossen (Testmodus)",
+   "Checkout abgeschlossen (Testmodus)"
+  ],
+  [
+   "vom Inhaber im Dashboard gesetzt",
+   "vom Inhaber im Dashboard gesetzt"
+  ],
+  [
+   "",
+   ""
+  ],
+  [
+   "Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort ",
+   "Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort Wort…"
+  ]
+ ]
+}

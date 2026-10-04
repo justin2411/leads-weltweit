@@ -11,6 +11,7 @@ import {
 } from "./owner-settings.ts";
 import { START_MAX_AGE_MIN, fmtBerlin, nextPickup, type StartKey, type StartRequest } from "./start-queue.ts";
 import type { IconName } from "../app/icons.tsx";
+import { nextSendStart } from "./versandzeit.ts";
 
 export { fmtBerlin };
 
@@ -36,7 +37,8 @@ export const CARDS: readonly Card[] = [
   { key: "proben-vorrat", icon: "proben", name: "Proben-Vorrat", keys: ["werke_paused", "sample_targets", "sample_max_age_hours"], werk: "proben-vorrat", start: "proben-vorrat", cron: "23 * * * *", file: "proben-vorrat.yml" },
   { key: "antworten", icon: "antworten", name: "Antwort-Assistent", keys: ["werke_paused"], werk: "antworten", start: null, cron: "*/10 * * * *", file: "antworten.yml", note: WERK_SWITCHES.antworten.note },
   { key: "nachfass", icon: "nachfass", name: "Nachfassmails", keys: ["followup_enabled", "followup_days"], werk: "nachfass", start: null, cron: "17 12 * * *", file: "taeglich.yml" },
-  { key: "versand", icon: "versand", name: "Versand", keys: ["send_paused"], werk: "versand", start: null, cron: "23 14 * * *", file: "send.yml" },
+  // Versand nur Di–Do (Inhaber 04.10.2026): nächster Lauf aus lib/versandzeit.ts (cardNext), Cron nur zur Info
+  { key: "versand", icon: "versand", name: "Versand", keys: ["send_paused"], werk: "versand", start: null, cron: "37 6 * * 2-4", file: "send.yml" },
   { key: "kundenlieferung", icon: "lieferung", name: "Kundenlieferung", keys: ["werke_paused"], werk: "kundenlieferung", start: null, cron: "53 4 * * 1", file: "kundenlieferung.yml" },
   { key: "tagescheck", icon: "tagescheck", name: "Tagescheck", keys: ["werke_paused"], werk: "tagescheck", start: null, cron: "37 17 * * *", file: "tagescheck.yml" },
   { key: "agenten", icon: "agent", name: "Agenten-Werk", keys: ["werke_paused"], werk: "agenten", start: null, cron: "29 * * * *", file: "agenten-werk.yml" },
@@ -89,6 +91,12 @@ export function nextRun(cron: string, now: Date): Date {
     }
   }
   throw new Error(`cron ohne Lauf: ${cron}`);
+}
+
+/** Nächster Lauf einer Karte: Versand aus dem Versandplan (Di–Do, deutsche Zeit, Sommer-/Winterzeit), sonst Cron. */
+export function cardNext(c: Pick<Card, "key" | "cron">, now: Date): Date {
+  if (c.key === "versand") return nextSendStart(now)?.at ?? nextRun(c.cron, now);
+  return nextRun(c.cron, now);
 }
 
 /** Letzter planmäßiger Lauf vor `now` (gleiches Muster wie nextRun). */
@@ -535,6 +543,6 @@ export function status(cardKey: CardKey, o: {
   if (o.saved && !werkOn(o.saved, c.key).on && pending.some((k) => k !== viaKey(c.key))) {
     return { ...base, kind: "wartet", text: "pausiert – greift nach dem Einschalten", savedAt };
   }
-  const next = nextRun(c.cron, o.now);
+  const next = cardNext(c, o.now);
   return { ...base, kind: "wartet", text: `wird angewandt um ca. ${fmtWhen(next, o.now)}`, savedAt, next: next.toISOString() };
 }

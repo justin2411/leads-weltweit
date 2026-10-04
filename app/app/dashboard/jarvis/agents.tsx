@@ -1,6 +1,6 @@
 /**
  * Agenten in JARVIS (Inhaber 03.10.2026: „einzelne agenten … ich beauftrage agent 1 neue leads zu holen für den markt“).
- * Vier Agenten als Kugeln: Ring dreht sich, solange einer arbeitet, Bogen zeigt den Fortschritt. Klick öffnet den
+ * Acht Agenten (A1–A8) als Kugeln: Ring dreht sich, solange einer arbeitet, Bogen zeigt den Fortschritt. Klick öffnet den
  * Agenten (Auftrag, Ergebnis, Verlauf, neuer Auftrag). Server-Komponenten, Formulare als Server Actions.
  */
 import Link from "next/link";

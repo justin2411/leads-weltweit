@@ -17,7 +17,7 @@ export type Entry = { id: number; at: string; key: SettingKey; texts: string[]; 
 const LABEL: Record<SettingKey, string> = {
   send_paused: "Versand", send_countries_off: "Versand-Länder", send_country_limits: "Mails pro Tag", followup_enabled: "Nachfassmails",
   followup_days: "Nachfass-Tage", sample_targets: "Proben-Soll", sample_max_age_hours: "Proben-Verfall", buyer_countries_off: "Käufer-Länder",
-  werke_paused: "Werke an/aus", slot_plan: "Plätze", slot_autopilot: "Autopilot",
+  werke_paused: "Werke an/aus", slot_plan: "Plätze", slot_autopilot: "Autopilot", dismissed_tips: "Ausgeblendete Hinweise",
 };
 
 /** Eintrag für eine Zeile aus owner_log (null = keine Einstellung). */

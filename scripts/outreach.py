@@ -9,6 +9,7 @@ Beispiele:
   python scripts/outreach.py lint --db                  # alle Entwürfe (status draft)
   python scripts/outreach.py send                       # Probelauf: zeigt nur, was gesendet würde
   python scripts/outreach.py send --live --owner-ok "Freigabe per Chat 2026-10-01"
+  python scripts/outreach.py send --live --countries UK,FR --bis 11:00   # nur diese Länder, Versand bis 11 Uhr
 
 Versand-Regeln (CLAUDE.md Abschnitt 2 und 6):
   - nur status = approved (vom Inhaber im Dashboard freigegeben)
@@ -197,6 +198,56 @@ def notbremse(db) -> str | None:
 
 
 NOTBREMSE_EVERY = 20  # Notbremse während des Versands alle 20 gesendeten Mails erneut prüfen (Prüfung 04.10.2026)
+MIN_PAUSE = 20  # Sekunden: schneller wird auch zum Ende des Versandfensters (--bis) nie gesendet
+
+
+def country_filter(value: str | None) -> set[str] | None:
+    """--countries UK,FR -> {"UK", "FR"}; leer = alle Länder (Versandzeit, Inhaber 04.10.2026)."""
+    out = {c.strip().upper() for c in (value or "").split(",") if c.strip()}
+    return out or None
+
+
+def window_pause(pause: float, left_s: float | None, rest: int) -> float:
+    """Pause bis zur nächsten Mail: normal `pause`; reicht die Zeit bis zum Fensterende (--bis) dafür nicht, kürzer –
+    gleichmäßig verteilt, aber nie unter MIN_PAUSE."""
+    if left_s is None:
+        return pause
+    return max(MIN_PAUSE, min(pause, left_s / max(1, rest)))
+
+
+def seed_inboxes() -> list[str]:
+    """Kontrolladressen des Inhabers (Secret SEED_INBOXES, kommagetrennt) für den Posteingangstest."""
+    return [a.strip() for a in os.environ.get("SEED_INBOXES", "").split(",") if "@" in a]
+
+
+def seed_copy(db, m: dict, country: str, subject: str, text: str, html: str | None, box: dict | None,
+              sent_from: str | None, done: set[str]) -> None:
+    """Posteingangstest (Inhaber 04.10.2026): je Lauf und Land genau eine echte Mail zusätzlich als Kopie an jede
+    Kontrolladresse – gleicher Betreff, Text, Postfach. Keine Kaltmail: nicht in messages, zählt nicht für Limits
+    oder Notbremse; Nachweis in signalwerk.seed_checks (placement später per Hand/IMAP). Der persönliche
+    Abmelde-/Seitenlink des Käufers wird in der Kopie unschädlich gemacht."""
+    seeds = seed_inboxes()
+    if not seeds or country in done:
+        return
+    done.add(country)
+    token = m.get("unsubscribe_token") or ""
+    if token:
+        text = text.replace(token, "kontrolle")
+        html = html.replace(token, "kontrolle") if html else html
+    unsub = unsubscribe_target("kontrolle")
+    for seed in seeds:
+        try:
+            fields = deliver(seed, subject, text, unsub, html, mailbox=box)
+        except Exception as exc:  # noqa: BLE001 - Kontrollmail darf den Versand nie aufhalten
+            print(f"Kontrollmail {country} an {seed} nicht gesendet: {type(exc).__name__}")
+            continue
+        print(f"KONTROLLE {country} -> {seed} (Kopie von {m['id']})")
+        try:
+            db.insert("seed_checks", {"country": country, "seed": seed, "message_id": m["id"],
+                                      "sent_from": fields.get("sent_from") or sent_from,
+                                      "smtp_message_id": fields.get("smtp_message_id"), "subject": subject})
+        except Exception as exc:  # noqa: BLE001 - Tabelle fehlt (Migration noch nicht angewendet)
+            print(f"seed_checks nicht gespeichert: {type(exc).__name__}: {str(exc)[:120]}")
 
 
 LANDING_LINE = {"en": "How it works in under a minute, and your free sample with one click: {url}",
@@ -391,13 +442,16 @@ def cmd_send(args) -> int:
     # Fokus-Tests zuerst (config/fokus.yaml), innerhalb Fokus und Rest jeweils abwechselnd je Experiment
     from lib.fokus import focus_only, focus_pairs
     pairs = set(focus_pairs())
+    # Versandzeit (Inhaber 04.10.2026): je Lauf nur die Länder, deren Bürozeit gerade ist (send.yml, --countries)
+    only_countries = country_filter(getattr(args, "countries", None))
     # Nur Fokus: schon in der Abfrage auf die Fokus-Experimente einschränken. Sonst füllen ältere Entwürfe ruhender
     # Branchen das Limit und Fokus-Entwürfe (z. B. S2/FR, später freigegeben) kommen nie an die Reihe (03.10.2026).
     only: dict = {}
     exp_ids: list[str] = []
     if focus_only() and pairs:
         exp_ids = [x["id"] for x in db.select_all("experiments", {"select": "id,segment_id,country"})
-                   if (x.get("segment_id"), x.get("country")) in pairs]
+                   if (x.get("segment_id"), x.get("country")) in pairs
+                   and (only_countries is None or (x.get("country") or "").upper() in only_countries)]
         only = {"experiment_id": "in.(" + ",".join(exp_ids) + ")"} if exp_ids else {"experiment_id": "is.null"}
     later = db.select("messages", {"status": "eq.approved", "kind": "neq.initial", "order": "approved_at.asc",
                                    "limit": str(args.limit), "select": sel, **only})
@@ -417,7 +471,17 @@ def cmd_send(args) -> int:
         later, initial = [m for m in later if in_focus(m)], [m for m in initial if in_focus(m)]
         if skipped:
             print(f"Nur Fokus-Tests ({', '.join(f'{a}/{b}' for a, b in sorted(pairs))}): {skipped} andere Entwürfe ruhen")
+    if only_countries is not None:
+        later, initial = [[m for m in x if ((m.get("prospects") or {}).get("country") or "").upper() in only_countries]
+                          for x in (later, initial)]
+        print("Nur Länder dieses Laufs: " + ", ".join(sorted(only_countries)))
     rows = later + interleave([m for m in initial if in_focus(m)]) + interleave([m for m in initial if not in_focus(m)])
+    until = None
+    if getattr(args, "bis", None):
+        from lib import versandzeit
+        until = versandzeit.parse_until(args.bis, dt.datetime.now(dt.timezone.utc))
+        print(f"Versandfenster bis {args.bis} deutscher Zeit")
+    seeded: set[str] = set()
     already = sum(sent_today.values())
     print(f"Aufwärmphase: heute max. {cap} Mails insgesamt, bereits gesendet: {already}")
     if len(boxes) > 1:
@@ -429,7 +493,10 @@ def cmd_send(args) -> int:
     n_sent = 0
     from lib import freshness
     fetcher = None
-    for m in rows:
+    for i, m in enumerate(rows):
+        if until is not None and dt.datetime.now(dt.timezone.utc) >= until:
+            print(f"Versandfenster vorbei ({args.bis} deutscher Zeit): Rest am nächsten Versandtag")
+            break
         p, e = m["prospects"], m["experiments"]
         country = p["country"]
         rules = country_rules(cfg, country)
@@ -537,12 +604,11 @@ def cmd_send(args) -> int:
             continue
 
         try:
-            provider_fields = deliver(m["to_email"], m["subject"], text, unsub,
-                                      html_version(body, footer, m.get("language") or "en",
-                                                   p["company_name"] if kind != "sample_followup" else None,
-                                                   _country_area(country), link or plan_url,
-                                                   segment=e["segment_id"] if kind == "initial" else None,
-                                                   plan=bool(plan_url)),
+            html = html_version(body, footer, m.get("language") or "en",
+                                p["company_name"] if kind != "sample_followup" else None,
+                                _country_area(country), link or plan_url,
+                                segment=e["segment_id"] if kind == "initial" else None, plan=bool(plan_url))
+            provider_fields = deliver(m["to_email"], m["subject"], text, unsub, html,
                                       mailbox=box if box.get("user") else None, attachments=files)
         except Exception as exc:  # noqa: BLE001 - Versandfehler melden, nicht abbrechen
             print(f"FEHLER Versand {m['to_email']}: {exc}")
@@ -560,6 +626,9 @@ def cmd_send(args) -> int:
         initial_total += kind == "initial"
         n_sent += 1
         print(f"GESENDET {m['to_email']}" + (f" (Postfach {box['n']})" if len(boxes) > 1 else ""))
+        if kind == "initial":  # Posteingangstest mit einer echten Erstmail je Land und Lauf (SEED_INBOXES)
+            seed_copy(db, m, country, m["subject"], text, html, box if box.get("user") else None,
+                      provider_fields.get("sent_from"), seeded)
         if n_sent % NOTBREMSE_EVERY == 0:
             # Rückläufer kommen während des stundenlangen Versands an (antworten.yml liest alle 10 min die Postfächer)
             stop = notbremse(db)
@@ -569,7 +638,9 @@ def cmd_send(args) -> int:
         if args.pause:
             import random
             import time
-            time.sleep(args.pause * random.uniform(0.6, 1.4))  # nicht im Takt senden
+            left = (until - dt.datetime.now(dt.timezone.utc)).total_seconds() if until is not None else None
+            rest = min(len(rows) - i - 1, cap - sum(sent_today.values()))
+            time.sleep(window_pause(args.pause, left, rest) * random.uniform(0.6, 1.4))  # nicht im Takt senden
     print(f"\n{'gesendet' if live else 'Probelauf, würde senden'}: {n_sent}")
     return 0
 
@@ -748,6 +819,8 @@ def main(argv=None) -> int:
     s.add_argument("--owner-ok", help="Wortlaut/Datum der Freigabe des Inhabers für diesen Lauf")
     s.add_argument("--limit", type=int, default=400)
     s.add_argument("--pause", type=float, default=0, help="Sekunden zwischen zwei Mails (mit Zufall)")
+    s.add_argument("--countries", help="nur diese Länder senden, z. B. UK,FR oder US (Versandzeit, send.yml)")
+    s.add_argument("--bis", help="HH:MM deutscher Zeit: danach keine Mail mehr, Pausen verteilen sich bis dahin")
     s.set_defaults(func=cmd_send)
 
     t = sub.add_parser("test", help="Testmail an den Inhaber (nicht an Käufer)")

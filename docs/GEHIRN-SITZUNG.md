@@ -39,6 +39,9 @@ in `signalwerk.decisions`. Ziel: **möglichst viele zahlende Kunden und maximale
 6. **Plan:** `docs/GEHIRN-PLAN.md` höchstens einmal am Tag per Pull Request aktualisieren (nicht jede Stunde).
 7. **Tagesnotiz** in `decisions` (type `daily_note`) nur in der ersten Sitzung nach 06:00 Uhr deutscher Zeit;
    montags zusätzlich Wochenbericht nach CLAUDE.md.
+8. **Wenig Text (Inhaber 04.10.2026, CLAUDE.md §8a):** jeder `decisions`-Eintrag bekommt `kurz_titel` (≤ 60 Zeichen,
+   worum es geht, kein „Sitzung …:“, keine Uhrzeit) und `kurz_grund` (1 Satz ≤ 160 Zeichen). Bei SQL selbst formulieren,
+   in Skripten `lib.kurz.insert_decisions`. `subject`/`reasoning` nur für Details; keine Sitzungsprotokolle als Vorschlag.
 
 ## Darf das Gehirn allein
 - Seiten/Varianten anlegen (review); live schalten nur, wenn `auto_publish_pages = true` UND `legal_ready = true`

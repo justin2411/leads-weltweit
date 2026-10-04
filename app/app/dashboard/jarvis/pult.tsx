@@ -8,6 +8,12 @@
  */
 import { useMemo, useState } from "react";
 import { Icon } from "@/app/icons";
+import { Fold } from "../fold";
+
+/** Lange Linien-Listen (über 6) einklappbar (Dashboard-Regel docs/DESIGN.md), kurze bleiben offen ohne Kopf. */
+function FoldIf({ long, id, title, sum, children }: { long: boolean; id: string; title: string; sum: string; children: React.ReactNode }) {
+  return long ? <Fold id={id} title={title} sum={sum} head="h2s pult-fold">{children}</Fold> : <>{children}</>;
+}
 
 export type PultLane = {
   id: string; werk: string; label: string; short: string; what: string; max: number; def: number; cur: number; color: string;
@@ -46,6 +52,8 @@ export function Pult({ lanes, cap, total, back, action, nextStart, custom, only 
         </div>
       </div>
       {lanes.filter((l) => !shown.includes(l)).map((l) => <input key={l.id} type="hidden" name={`slot_${l.id}`} value={v[l.id]} />)}
+      <FoldIf long={shown.length > 6} id={`pult-${shown.map((l) => l.id).join("-").slice(0, 60)}`} title="Feinsteuerung je Linie"
+        sum={`${shown.length} Linien · ${shown.reduce((a, l) => a + v[l.id], 0)} Plätze`}>
       <ul className="lanes">
         {shown.map((l) => {
           const s = l.stat;
@@ -75,6 +83,7 @@ export function Pult({ lanes, cap, total, back, action, nextStart, custom, only 
           );
         })}
       </ul>
+      </FoldIf>
       <input type="hidden" name="changed" value={dirty ? "1" : "0"} />
       <input type="hidden" name="werke" value={[...new Set(shown.map((l) => l.werk))].join(",")} />
       <div className="pult-go">

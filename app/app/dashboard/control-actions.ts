@@ -392,10 +392,58 @@ export async function setSubscriptionPaused(f: FormData) {
   });
 }
 
+// ------------------------------------------------------------------------------------------- Hinweise ausblenden
+/**
+ * JARVIS-Empfehlung oder Hinweis per X ausblenden (Inhaber 04.10.2026: „was jarvis empfiehlt auch sachen löschen können
+ * sehr einfach“): Schlüssel -> bis-Zeitpunkt in owner_settings.dismissed_tips (7 Tage, rote Alarme nur 24 h), mit
+ * owner_log. Ohne Weiterleitung, damit die Seite die Leiste „ausgeblendet · rückgängig“ zeigen kann.
+ */
+/** Eigene Protokoll-Aktion (tip:dismiss/tip:undo) statt setting:…, damit der Regler-Verlauf nicht vollläuft. */
+async function saveTips(value: Record<string, string>) {
+  const { error } = await db().from("owner_settings").upsert({ key: "dismissed_tips", value, updated_at: new Date().toISOString(), updated_by: BY });
+  if (error) throw new Error(error.message);
+}
+
+export async function dismissTip(f: FormData): Promise<{ ok: boolean; msg?: string }> {
+  await requireOwner();
+  const { addDismissal, DismissError } = await import("@/lib/tips");
+  const s = await loadOwnerSettings();
+  try {
+    const level = f.get("level") === "rot" ? "rot" : "gelb";
+    const key = String(f.get("key") ?? "");
+    const next = addDismissal(s.dismissed_tips, key, level, new Date());
+    await saveTips(next);
+    await log("tip:dismiss", key, null, { until: next[key.trim()], level });
+  } catch (e) {
+    if (e instanceof DismissError) return { ok: false, msg: e.message };
+    throw e;
+  }
+  revalidatePath("/dashboard", "layout");
+  return { ok: true };
+}
+
+/** „rückgängig“ nach dem Ausblenden. */
+export async function undoDismissTip(f: FormData): Promise<{ ok: boolean; msg?: string }> {
+  await requireOwner();
+  const { removeDismissal, DismissError } = await import("@/lib/tips");
+  const s = await loadOwnerSettings();
+  try {
+    const key = String(f.get("key") ?? "");
+    await saveTips(removeDismissal(s.dismissed_tips, key, new Date()));
+    await log("tip:undo", key.trim(), s.dismissed_tips?.[key.trim()] ?? null, null);
+  } catch (e) {
+    if (e instanceof DismissError) return { ok: false, msg: e.message };
+    throw e;
+  }
+  revalidatePath("/dashboard", "layout");
+  return { ok: true };
+}
+
 // ------------------------------------------------------------------------------------------- Agenten
 /** Auftrag an einen Agenten (Inhaber 03.10.2026). Ausgeführt von der stündlichen Claude-Sitzung „Agenten“. */
 export async function createAgentTask(f: FormData) {
-  await run(f, "Auftrag erteilt – Agent startet spätestens zur nächsten vollen Stunde", async () => {
+  const { agentStartLabel } = await import("@/lib/agents");
+  await run(f, () => `Auftrag erteilt – Agent startet um ${agentStartLabel(new Date())}`, async () => {
     const { validateTask, TaskError } = await import("@/lib/agents");
     let t;
     try {

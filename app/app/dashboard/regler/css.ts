@@ -80,6 +80,7 @@ export const REGLER_CSS = `
 
 .rg-hist{margin-top:22px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:rgba(4,12,26,.5)}
 .rg-hist h2{margin:0 0 10px;font-family:var(--sans);font-size:15px;font-weight:700;letter-spacing:0;color:var(--cy2)}
+.rg-hist>summary h2{margin:0}.rg-fold-h{font-size:13px;font-weight:700;color:var(--cy2)}.rg-fold-h+.fold-b{margin-top:8px}
 .rg-hist ul{list-style:none;margin:0;padding:0;display:grid;gap:2px}
 .rg-hist li{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:10px;align-items:center;padding:7px 0;border-top:1px solid rgba(95,212,255,.08)}
 .rg-hist li:first-child{border-top:0}

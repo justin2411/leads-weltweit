@@ -285,6 +285,10 @@ export const HUD_CSS = `
 .jchat-f .go{display:flex;align-items:center;gap:6px;padding:10px 16px;min-height:44px;border-radius:8px;font-weight:700;color:#02060f;background:linear-gradient(180deg,#f2dcae,#e2c68f);border:0;cursor:pointer;white-space:nowrap}
 .jchat>.lock{padding:0 12px 10px;display:flex;gap:6px;align-items:flex-start}
 @media (max-width:720px){.jrec-l{grid-template-columns:1fr}.jchat-f{flex-direction:column;align-items:stretch}.jchat-log p{max-width:100%}}
+.jchat>.lock .jchat-all{display:inline-flex;align-items:center;gap:5px;min-height:32px;text-decoration:none;color:var(--cy2)}
+.jchat>.lock .jchat-all+.jchat-all{margin-left:12px}
+.jc-dot-s{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px rgba(226,198,143,.8);margin-left:4px}
+.jchat-log .me time{overflow-wrap:anywhere}.jchat-log p{overflow-wrap:anywhere;white-space:pre-wrap}
 .ag-drop{position:relative;flex:1 0 150px;display:flex;min-width:0}
 .ag-drop>.ag{flex:1;min-width:0}
 .ag-hint{display:none}
@@ -625,5 +629,72 @@ export const HUD_CSS = `
   .jfg-rings{flex-direction:column;align-items:stretch}.jfg-main{align-self:center}
   .jv3 .jchat-f{flex-direction:row;align-items:stretch}
   .jv3 .jchat-f .go{padding:0 12px}.jv3 .jchat-f textarea{min-height:72px}
+}
+
+/* ---- Einklappbare Abschnitte (Inhaber 04.10.2026: „solchen langen sektionen immer zum ein und ausklappen“,
+   docs/DESIGN.md). Gemeinsame Klasse .fold für <Fold> (fold.tsx) – Kopfzeile mit Titel, Kurzzusammenfassung, Chevron. */
+.fold>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;padding-right:32px;min-height:36px;margin:0;-webkit-tap-highlight-color:transparent}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary::after{content:"";position:absolute;right:8px;top:50%;width:9px;height:9px;border-right:2px solid var(--cy2);border-bottom:2px solid var(--cy2);transform:translateY(-70%) rotate(45deg);transition:transform .2s}
+.fold[open]>summary::after{transform:translateY(-30%) rotate(-135deg)}
+.fold>summary:hover::after{border-color:#fff}
+.fold>summary:focus-visible{outline:2px solid var(--cy2);outline-offset:4px;border-radius:6px}
+.fold-t{flex:0 1 auto;min-width:0;display:flex;align-items:center;gap:8px}
+.fold-t>h2{margin:0;font-size:inherit}
+.fold-s{flex:0 1 auto;min-width:0;max-width:100%;margin-left:auto;display:inline-flex;align-items:baseline;gap:6px;font-size:12.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--soft);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fold-s>*{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.fold>summary.h2s{margin:6px 0 0}
+.fold[open]>.fold-b{margin-top:12px}
+.fold-note{margin:0 0 12px;font-size:13px;color:var(--soft)}
+.fold.card>.fold-b,.fold.sp-card>.fold-b{margin-top:0}
+.fold.card[open]>summary,.fold.sp-card[open]>summary{margin-bottom:12px}
+.fold:not([open]).card,.fold:not([open]).sp-card{padding-bottom:12px}
+@media (max-width:720px){.fold-s{font-size:12px}.fold>summary{padding-right:28px}}
+
+/* ---- JARVIS: Empfehlungen ausblenden (X) und „ausgeblendet · rückgängig“ (Inhaber 04.10.2026) */
+.tip-x{position:absolute;top:6px;right:6px;z-index:2;display:grid;place-items:center;width:22px;height:22px;padding:0;margin:0;border:0;border-radius:50%;background:transparent;color:var(--soft);opacity:.55;cursor:pointer;transition:opacity .15s,color .15s,background-color .15s}
+.tip-x::before{content:"";position:absolute;inset:-9px}
+.tip-x svg{width:12px;height:12px}
+.tip-x:hover,.tip-x:focus-visible{opacity:1;color:#fff;background:rgba(255,94,115,.2)}
+.tip-x:disabled{opacity:.3;cursor:default}
+.jrec-i{position:relative}
+.jv3 .jrec-give{border-radius:0 12px 12px 0}
+.jt-wrap .tip-x{top:-7px;right:-7px;width:18px;height:18px;opacity:.85;background:#07101f;border:1px solid var(--line)}
+.jt-wrap .tip-x svg{width:10px;height:10px}
+.jt-wrap .tip-x:hover,.jt-wrap .tip-x:focus-visible{border-color:rgba(255,94,115,.6);background:#2a0f17}
+.tip-gone{display:none!important}
+.tip-undo{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:70;display:flex;align-items:center;gap:12px;max-width:calc(100vw - 32px);padding:6px 6px 6px 16px;border:1px solid rgba(226,198,143,.5);border-radius:12px;background:#07101f;box-shadow:0 16px 40px -12px rgba(0,0,0,.9),0 0 24px -10px rgba(226,198,143,.4);font-size:13.5px;color:var(--text)}
+.tip-undo>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tip-undo b{color:#fff;font-weight:600}
+.tip-undo button{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border-radius:8px;border:1px solid rgba(226,198,143,.55);background:rgba(226,198,143,.1);color:var(--gold2);font:600 13px var(--sans);cursor:pointer}
+.tip-undo button:hover{background:rgba(226,198,143,.2);color:#fff}
+.jt-pick{display:grid;grid-template-columns:repeat(4,44px);gap:6px}
+.jt-pick em{grid-column:1/-1;margin:0}
+
+/* ---- Agenten A1–A8 (Inhaber 04.10.2026: „nicht nur 4 … sondern 8“): Desktop 4×2 + Spalte „Auftrag“/„Kunden-Agenten“,
+   bis 1100 px 4 Spalten, mobil 2 Spalten – immer bündig. Freie Agenten kompakt. */
+.jv3 .ags{grid-template-columns:repeat(4,minmax(0,1fr)) minmax(0,1.05fr);gap:12px}
+.jv3 .ags>.ag-new{grid-column:5;grid-row:1}
+.jv3 .ags>.ag-ka{grid-column:5;grid-row:2;flex:none;min-width:0}
+.jv3 .ag.st-idle{min-height:64px;opacity:.78;border-style:dashed}
+.jv3 .ag.st-idle:hover,.jv3 .ag.st-idle.on{opacity:1}
+.jv3 .ag.st-idle .ag-orb{width:36px;height:36px;justify-self:center}
+.jv3 .ag.st-idle .ag-orb b{font-size:13px}
+.jv3 .ag.st-idle .ag-arc{display:none}
+.jv3 .ag.st-idle .ag-t{font-weight:600;color:var(--soft)}
+@media (max-width:1100px){
+  .jv3 .ags{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .jv3 .ags>.ag-new{grid-column:1/span 2;grid-row:auto}
+  .jv3 .ags>.ag-ka{grid-column:3/span 2;grid-row:auto}
+}
+@media (max-width:720px){
+  .jv3 .ags{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .jv3 .ags>.ag-new{grid-column:1;grid-row:auto}
+  .jv3 .ags>.ag-ka{grid-column:2;grid-row:auto}
+  .jv3 .ag.st-idle{min-height:56px}
+  .jv3 .ag.st-idle .ag-orb{width:32px;height:32px}
+  .tip-undo{bottom:calc(84px + env(safe-area-inset-bottom))}
+  .jt-wrap{flex-wrap:wrap}
+  .jt-pick{position:static;flex-basis:100%;grid-template-columns:repeat(4,minmax(0,1fr));box-shadow:none}
 }
 `;

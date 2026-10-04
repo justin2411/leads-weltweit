@@ -42,6 +42,7 @@ HOURLY_GAP_MIN = 50       # stündlich: frühestens nach so vielen Minuten wiede
 DEFAULT_HOUR = 7          # täglich ohne Stunde: 7 Uhr deutscher Zeit
 MARKETS = ("US", "UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK", "MX", "BR")   # wie app/lib/agents.ts MARKETS
 TASK_KINDS = ("leads", "kaeufer", "quelle", "pruefen", "frage")
+AGENT_COUNT = 8           # Agenten des Inhabers A1–A8 (wie app/lib/agents.ts AGENT_COUNT; 9 = Kunden-Agenten)
 BRIEF_MAX = 1000
 SITE_PATH = "/dashboard/baukasten"
 
@@ -280,7 +281,7 @@ def run_agent(db, agent: dict, apply: bool, log=print) -> dict:
                                     f"Agent {agent.get('name')}"[:80], f"{len(got)} {what}: " + ", ".join(names[:3]), log)
             out["ziele"][nid] = {"art": "melden", "n": len(got), "firmen": names, "gesendet": sent}
         elif kind == "agent":
-            num = n.get("agent") if isinstance(n.get("agent"), int) and 1 <= n["agent"] <= 4 else 1
+            num = n.get("agent") if isinstance(n.get("agent"), int) and 1 <= n["agent"] <= AGENT_COUNT else 1
             task_kind = n.get("task") if n.get("task") in TASK_KINDS else "frage"
             if got:
                 head = f"Baukasten „{flows[0].get('name') or ''}“: {len(got)} Zeilen am Agent-Baustein"
@@ -295,7 +296,7 @@ def run_agent(db, agent: dict, apply: bool, log=print) -> dict:
     if brief:
         first = next((n for n in nodes.values() if n.get("kind") == "agent"), None)
         at = sum(v.get("n", 0) for v in out["ziele"].values())
-        tasks.append({"agent": first["agent"] if first and isinstance(first.get("agent"), int) and 1 <= first["agent"] <= 4 else 1,
+        tasks.append({"agent": first["agent"] if first and isinstance(first.get("agent"), int) and 1 <= first["agent"] <= AGENT_COUNT else 1,
                       "kind": first["task"] if first and first.get("task") in TASK_KINDS else guess_kind(brief),
                       "market": market_of(agent, q, brief), "brief": brief_of(brief, agent, len(rows), at), "created_by": by})
     out["auftraege"] = 0

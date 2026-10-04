@@ -1,35 +1,99 @@
 # Agenten – Aufträge aus dem Dashboard
 
 Inhaber 03.10.2026: „einzelne agenten nutzen die sachen für mich machen, z.b. ich beauftrage agent 1 neue leads zu
-holen für den markt“. Der Inhaber erteilt Aufträge in JARVIS (Agenten-Leiste, „+ Auftrag“, oder einen gelben Hinweis bzw. den Engpass auf A1–A4 ziehen – dann steht der Auftragstext schon fertig drin). Eine Claude-Sitzung
-(Routine „Agenten“, stündlich) bearbeitet sie nach dieser Anleitung. CLAUDE.md gilt immer zuerst.
+holen für den markt“. Der Inhaber erteilt Aufträge in JARVIS (Agenten-Leiste, „+ Auftrag“, oder einen gelben Hinweis bzw. den Engpass auf A1–A8 ziehen – dann steht der Auftragstext schon fertig drin). Eine Claude-Sitzung
+(Routine „JARVIS-Agenten“, viermal pro Stunde) bearbeitet sie nach dieser Anleitung. CLAUDE.md gilt immer zuerst.
+
+**Acht Agenten** (Inhaber 04.10.2026: „nicht nur 4 freie agenten … sondern 8“): A1–A8 gehören dem Inhaber
+(`agent_tasks.agent` 1–8, Prüfung `app/lib/agents.ts` `AGENT_COUNT`), Agent 9 ist für Kunden-Aufträge reserviert
+(Spalte erlaubt 1–9). Freier Agent = erster ohne offenen oder laufenden Auftrag.
+
+**Laufzeiten** (Inhaber 04.10.2026): Die Runde startet viermal pro Stunde, Minute **:08, :23, :38 und :53** deutscher
+Zeit. Das Dashboard zeigt bei offenen Aufträgen nie „wartet“, sondern „startet um HH:MM“ mit dem nächsten dieser
+Zeitpunkte (`nextAgentRun(now)` / `agentStartLabel(now)` in `app/lib/agents.ts`, Europe/Berlin, mit Tests).
 
 Nach den Aufträgen macht jede Sitzung den JARVIS-Lauf nach `docs/JARVIS.md` (Engpass protokollieren, A/B-Tests
 auswerten und bei anhaltendem Engpass selbst starten).
 
 ## Ablauf je Sitzung
 
-1. `python scripts/agent_tasks.py offen` – nichts offen: sofort beenden (keine weitere Arbeit, keine Nachricht).
+0. **Chat zuerst**: `python scripts/jarvis_chat.py offen` → jede Sitzung mit offenen Nachrichten beantworten bzw.
+   ausführen (Abschnitt „JARVIS-Chat“ unten), Baukasten-Sitzungen mit `scripts/flow_edit.py` (Abschnitt
+   „Baukasten-Chat“). Danach einmal am Tag den **Tagesbericht** (unten).
+1. `python scripts/agent_tasks.py offen` – nichts offen und kein Chat offen: sofort beenden (keine weitere Arbeit, keine Nachricht).
 2. Je Auftrag (Chat-Aufträge `created_by = "JARVIS-Chat"` zuerst – `offen` sortiert sie nach vorn –, sonst älteste zuerst, höchstens 3 je Sitzung): `start <id>` (Exit-Code 3 = schon von einer anderen Sitzung übernommen → überspringen), beim Arbeiten `schritt <id> <prozent> "<kurz>"`
    (alle paar Minuten), am Ende `fertig <id> "<Ergebnis in 1–3 Sätzen>" '<Kennzahlen als JSON>'` oder `fehler`.
 3. Ergebnis-Sätze: kurz, Deutsch, echte Zahlen, keine Fachbegriffe. Kennzahlen nur gemessene Werte
    (z. B. `{"neue Leads": 420, "grün %": 94}`).
+   **Wenig Text (Inhaber 04.10.2026):** Ergebnis höchstens 300 Zeichen (1–2 Sätze, worum es geht zuerst),
+   Zwischenstand höchstens 120 Zeichen – `agent_tasks.py` kürzt hart. Einträge in `decisions` mit `kurz_titel` (≤ 60) und
+   `kurz_grund` (1 Satz ≤ 160).
 
 ## JARVIS-Chat (Inhaber 04.10.2026)
 
-„ich will auch mit jarvis schreiben können und ihm direkt aufgaben per text geben können … über mein claude abo“.
-Nachrichten aus dem Chat-Feld auf der JARVIS-Startseite landen als Auftrag mit `created_by = "JARVIS-Chat"` (Art und
-Markt aus dem Text erkannt, unklar = `frage`; Agent = erster freier A1–A4). Der Inhaber sieht `result` als Antwort im
-Gesprächsverlauf – deshalb:
+„ich will mit jarvis direkt einen eigenen chat mit unterschiedlichen sitzungen haben … wie mit claude … er soll auch
+selber jeden tag über einen speziellen chat sagen was er angepasst hat“. Der Inhaber schreibt unter
+`/dashboard/jarvis/chat` in beliebig vielen Sitzungen (oder im Feld „Schreib JARVIS“ auf der Startseite – das schreibt
+in die zuletzt genutzte Sitzung und öffnet sie). Tabellen `signalwerk.jarvis_sessions` / `jarvis_messages` (Migration
+20261004140000). Die Routine läuft viermal pro Stunde (Minute :08, :23, :38, :53 deutsche Zeit); unter jeder offenen
+Nachricht sieht der Inhaber „startet um HH:MM“ (nächster dieser Zeitpunkte), dann „in Arbeit“, dann „erledigt“.
 
-- **Zuerst bearbeiten**, vor allen anderen Aufträgen.
-- **Fragen beantworten statt nur handeln**: Ist der Text eine Frage („Warum …?“, „Wie viele …?“), aus echten Daten
-  antworten und nichts ändern – auch wenn die erkannte Art etwas anderes sagt. Ist er eine Aufgabe, erledigen wie die
-  passende Art unten und im Ergebnis sagen, was getan wurde.
-- **Antwort kurz in `result`**: 1–3 Sätze, Deutsch, du-Form, echte Zahlen, Uhrzeiten in deutscher Zeit, keine
-  Fachbegriffe. Passt die erkannte Art/Markt nicht zum Text, gilt der Text.
-- Unklar, was gemeint ist: `fertig <id> "Meinst du …? Schreib mir kurz …"` (Rückfrage als Antwort, nichts ändern).
-- Grenzen unverändert (unten) – ein Chat-Text ist nie eine Freigabe für Versand, Kosten oder Regeländerungen.
+**Ablauf je Lauf** (vor den Agenten-Aufträgen):
+
+1. `python scripts/jarvis_chat.py offen` – JSON je Sitzung (älteste offene Nachricht zuerst): `offen` (Nachrichten des
+   Inhabers) und `verlauf` (letzte 20 Nachrichten als Zusammenhang). Leer → weiter mit den Agenten-Aufträgen.
+2. Je offene Nachricht `python scripts/jarvis_chat.py start <msg_id>` (Exit 3 = schon von einem anderen Lauf
+   übernommen → Sitzung überspringen).
+3. **Verstehen und ausführen**: den Text im Zusammenhang des Verlaufs lesen. Frage („Warum …?“, „Wie viele …?“): aus
+   echten Daten antworten, nichts ändern. Aufgabe: direkt erledigen wie die passende Art unten (Leads holen, Käufer
+   finden, Quelle, Prüfen …) – mit allen Rechten dieser Anleitung, innerhalb der Grenzen. Unklar: kurz zurückfragen
+   („Meinst du …?“) statt zu raten.
+4. **Antworten**: Text in eine Datei, dann `python scripts/jarvis_chat.py antwort <session_id> antwort.txt
+   [--links '[{"label": "PR #12", "url": "https://github.com/…"}, {"label": "Bestand", "url": "/dashboard/bestand"}]']`.
+   Das setzt die übernommenen Nachrichten der Sitzung auf „erledigt“. Große Aufgaben: Zwischenstand mit
+   `--zwischenstand` (Nachricht bleibt „in Arbeit“), im nächsten Lauf weiter.
+5. Stil: Deutsch, du-Form, einfache Worte, kurz (meist 2–6 Sätze), echte Zahlen, Uhrzeiten in deutscher Zeit; was
+   getan wurde und was offen ist. Links nur `https://…` oder `/dashboard…`. Nie erfundene Zahlen.
+
+Frühere Chat-Aufträge (`agent_tasks` mit `created_by = "JARVIS-Chat"`) bleiben im Chat unter „Frühere Aufträge“ lesbar;
+noch offene davon wie bisher mit `agent_tasks.py` fertig machen. Neue Nachrichten kommen nur noch über `jarvis_messages`.
+Grenzen unverändert (unten) – ein Chat-Text ist nie eine Freigabe für Versand, Kosten oder Regeländerungen.
+
+### Tagesbericht
+
+Einmal am Tag – im ersten Lauf nach 07:00 deutscher Zeit – in der festen Sitzung „Tagesbericht“:
+`python scripts/jarvis_chat.py bericht bericht.txt` (Exit 3 = heute schon geschrieben → nichts tun). Kurz und ehrlich,
+auch schlechte Zahlen: was JARVIS in den letzten 24 h angepasst hat (mit Links zu PRs/Seiten), laufende Tests und
+Ergebnisse, Kennzahlen gegenüber Vortag (Antworten, Proben, Kunden, Umsatz, Freigabe-Fehlerquote), was er heute vorhat,
+was er vom Inhaber braucht. Schreibt der Inhaber im Tagesbericht zurück, ist das eine normale Chat-Nachricht.
+
+### Baukasten-Chat
+
+„im baukasten egal ob bei master pipeline oder testflows auch text reinschreiben … es soll dann mit meinen worten
+selber gebaut werden … feedback ob es so übernommen wurde“. Unter jeder Baukasten-Fläche steht ein Chat; seine Sitzung
+hat `kind = "baukasten"` und `flow_id` (in `offen` steht dazu `flow`: Name, Art test/master/agent, Status).
+
+1. `python scripts/flow_edit.py show <flow_id>` – gespeicherte Fassung (`def`), ggf. offener Vorschlag
+   (`pending_def`), Prüfung, `updated_at`, `gilt_fuer_neue_leads`.
+2. Den Wunsch als neuen Graphen bauen (Format wie der Baukasten, `app/lib/flow.ts`: Bausteine `quelle`, `filter`,
+   `weiche`, `punkte`, `top`, `dubletten`, `statistik`, `freigabe`, `pipeline`, `export`, `agent`, `speicher`,
+   `melden`; ids `[a-z0-9_-]`, neue Bausteine rechts neben die bestehenden, nichts übereinander). Vorhandene Bausteine
+   des Inhabers bleiben, außer er will sie ausdrücklich weg.
+3. Optional Zahlen ansehen: `python scripts/flow_edit.py probe <flow_id> graph.json` (je Baustein aus der Stichprobe,
+   wie im Baukasten).
+4. `python scripts/flow_edit.py apply <flow_id> graph.json --notiz "kurz, was geändert" --version <updated_at>` – prüft
+   wie der Baukasten (`parseFlow` + `problems`, in Python `scripts/lib/flow_check.py`); Exit 2 = abgelehnt mit Grund
+   (korrigieren oder dem Inhaber erklären, warum es so nicht geht), Exit 3 = Inhaber hat inzwischen selbst gespeichert
+   (neu lesen). **Test-Flows und Agenten-Flows** werden direkt gespeichert. **Master-Pipeline und Test-Flows, die in
+   der Pipeline laufen**, nur als Vorschlag (`pending_def`): der Inhaber sieht ihn auf der Fläche und aktiviert ihn mit
+   „Übernehmen“ bzw. „Speichern“ – nie selbst aktivieren, nie den Status eines Flows ändern (betrifft alle neuen Leads).
+5. Antwort in den Baukasten-Chat (`jarvis_chat.py antwort <session_id> …`) in einfachen Worten: welche Bausteine mit
+   welchen Einstellungen, Zahlen aus der Stichprobe („von 1.000 Leads bleiben 412 mit Telefon“), direkt gespeichert
+   oder Vorschlag („bitte oben auf Übernehmen klicken“), Hinweise aus der Prüfung. Der Baukasten lädt alle 20 s neu,
+   wenn sich der Flow geändert hat.
+
+„Chat leeren“ archiviert nur die Sitzung; der Flow bleibt, wie er ist. Die Drei-Stufen-Freigabe bleibt immer an
+(Pipeline-Regeln machen sie nur strenger).
 
 ## Arten
 

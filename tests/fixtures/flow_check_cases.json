@@ -1,0 +1,1713 @@
+{
+ "_doc": "Gemeinsame Testfälle Prüfung eines Flows: parseFlow/problems (app/lib/flow.ts) = parse_flow/problems (scripts/lib/flow_check.py). {AGENT_COUNT} = AGENT_COUNT aus app/lib/agents.ts. Erzeugt aus flow.ts, von Hand geprüft.",
+ "field_labels": {
+  "land": "Land",
+  "segment": "Zielgruppe",
+  "signal": "Signal",
+  "dringlichkeit": "Dringlichkeit",
+  "status": "Status",
+  "quelle": "Quelle",
+  "alter_tage": "Alter (Tage)",
+  "erfasst_tage": "Erfasst vor (Tagen)",
+  "firma": "Firmenname",
+  "rechtsform": "Rechtsform",
+  "ort": "Ort",
+  "region": "Region",
+  "branche": "Branche",
+  "text": "Ereignis-Text",
+  "hat_website": "Website vorhanden",
+  "hat_telefon": "Telefon vorhanden",
+  "telefon_art": "Telefon-Art",
+  "hat_email": "E-Mail vorhanden",
+  "email_art": "E-Mail-Art",
+  "hat_person": "Ansprechperson",
+  "rolle": "Rolle",
+  "vollstaendig": "Daten vollständig",
+  "geprueft": "Freigabe",
+  "email_generisch": "Allgemeine E-Mail",
+  "pruefung": "Prüfung",
+  "grund": "Prüfgrund",
+  "spezialisierung": "Spezialisierung",
+  "angeschrieben": "Angeschrieben",
+  "punkte": "Punkte"
+ },
+ "node_labels": {
+  "quelle": "Quelle",
+  "filter": "Filter",
+  "weiche": "Weiche",
+  "punkte": "Punkte",
+  "top": "Top",
+  "dubletten": "Dubletten",
+  "statistik": "Statistik",
+  "freigabe": "Freigabe",
+  "pipeline": "Pipeline",
+  "export": "Export",
+  "agent": "Agent",
+  "speicher": "Speicher",
+  "melden": "Melden"
+ },
+ "cases": [
+  {
+   "name": "gut: Quelle → Filter → Pipeline",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000
+     },
+     {
+      "id": "f",
+      "x": 100,
+      "y": 0,
+      "kind": "filter",
+      "mode": "alle",
+      "conds": [
+       {
+        "f": "hat_telefon",
+        "op": "ja"
+       }
+      ]
+     },
+     {
+      "id": "p",
+      "x": 300,
+      "y": 0,
+      "kind": "pipeline",
+      "name": "Regel"
+     }
+    ],
+    "edges": [
+     {
+      "id": "e1",
+      "from": "q",
+      "port": "out",
+      "to": "f"
+     },
+     {
+      "id": "e2",
+      "from": "f",
+      "port": "out",
+      "to": "p"
+     }
+    ]
+   },
+   "parse_errors": null,
+   "problems": []
+  },
+  {
+   "name": "kein Flow",
+   "kind": "test",
+   "flow": {
+    "nodes": []
+   },
+   "parse_errors": [
+    "kein Flow (v: 1 fehlt)"
+   ],
+   "problems": null
+  },
+  {
+   "name": "nodes fehlen",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": {},
+    "edges": []
+   },
+   "parse_errors": [
+    "nodes/edges fehlen"
+   ],
+   "problems": null
+  },
+  {
+   "name": "Baustein-Art unbekannt",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000
+     },
+     {
+      "id": "z",
+      "x": 0,
+      "y": 0,
+      "kind": "zauber"
+     }
+    ],
+    "edges": []
+   },
+   "parse_errors": [
+    "Baustein 2: Art unbekannt"
+   ],
+   "problems": null
+  },
+  {
+   "name": "id ungültig",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "Q!",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000
+     }
+    ],
+    "edges": []
+   },
+   "parse_errors": [
+    "Baustein 1: id ungültig"
+   ],
+   "problems": null
+  },
+  {
+   "name": "Position fehlt",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": "a",
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000
+     }
+    ],
+    "edges": []
+   },
+   "parse_errors": [
+    "Baustein 1: Position ungültig"
+   ],
+   "problems": null
+  },
+  {
+   "name": "Titel zu lang",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000,
+      "title": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     }
+    ],
+    "edges": []
+   },
+   "parse_errors": [
+    "Baustein 1: Titel zu lang"
+   ],
+   "problems": null
+  },
+  {
+   "name": "Quelle unbekannt",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "web",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000
+     }
+    ],
+    "edges": []
+   },
+   "parse_errors": [
+    "Baustein 1: Quelle unbekannt"
+   ],
+   "problems": null
+  },
+  {
+   "name": "Stichprobe ungültig",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 3000
+     }
+    ],
+    "edges": []
+   },
+   "parse_errors": [
+    "Baustein 1: Stichprobe ungültig"
+   ],
+   "problems": null
+  },
+  {
+   "name": "Filter Modus",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000
+     },
+     {
+      "id": "f",
+      "x": 100,
+      "y": 0,
+      "kind": "filter",
+      "mode": "x",
+      "conds": []
+     }
+    ],
+    "edges": [
+     {
+      "id": "e1",
+      "from": "q",
+      "port": "out",
+      "to": "f"
+     }
+    ]
+   },
+   "parse_errors": [
+    "Baustein 2: Modus ungültig"
+   ],
+   "problems": null
+  },
+  {
+   "name": "Bedingung Vergleich ungültig",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000
+     },
+     {
+      "id": "f",
+      "x": 100,
+      "y": 0,
+      "kind": "filter",
+      "mode": "alle",
+      "conds": [
+       {
+        "f": "land",
+        "op": "gleich"
+       }
+      ]
+     }
+    ],
+    "edges": [
+     {
+      "id": "e1",
+      "from": "q",
+      "port": "out",
+      "to": "f"
+     }
+    ]
+   },
+   "parse_errors": [
+    "Baustein 2/1: Vergleich ungültig"
+   ],
+   "problems": null
+  },
+  {
+   "name": "Bedingung Wert ungültig",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000
+     },
+     {
+      "id": "f",
+      "x": 100,
+      "y": 0,
+      "kind": "filter",
+      "mode": "alle",
+      "conds": [
+       {
+        "f": "land",
+        "op": "ist",
+        "v": {
+         "a": 1
+        }
+       }
+      ]
+     }
+    ],
+    "edges": [
+     {
+      "id": "e1",
+      "from": "q",
+      "port": "out",
+      "to": "f"
+     }
+    ]
+   },
+   "parse_errors": [
+    "Baustein 2/1: Wert ungültig"
+   ],
+   "problems": null
+  },
+  {
+   "name": "Verbindung doppelt + Anschluss",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000
+     },
+     {
+      "id": "p",
+      "x": 300,
+      "y": 0,
+      "kind": "pipeline",
+      "name": "Regel"
+     }
+    ],
+    "edges": [
+     {
+      "id": "e1",
+      "from": "q",
+      "port": "out",
+      "to": "p"
+     },
+     {
+      "id": "e1",
+      "from": "q",
+      "port": "out",
+      "to": "p"
+     },
+     {
+      "id": "e2",
+      "from": "q",
+      "port": "seite",
+      "to": "p"
+     }
+    ]
+   },
+   "parse_errors": [
+    "Verbindung doppelt: e1",
+    "Verbindung 3: Anschluss ungültig"
+   ],
+   "problems": null
+  },
+  {
+   "name": "id doppelt",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000
+     },
+     {
+      "id": "q",
+      "x": 300,
+      "y": 0,
+      "kind": "pipeline",
+      "name": "Regel"
+     }
+    ],
+    "edges": []
+   },
+   "parse_errors": [
+    "id doppelt: q"
+   ],
+   "problems": null
+  },
+  {
+   "name": "Quelle fehlt, Pipeline doppelt",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "p",
+      "x": 300,
+      "y": 0,
+      "kind": "pipeline",
+      "name": "Regel"
+     },
+     {
+      "id": "p2",
+      "x": 300,
+      "y": 0,
+      "kind": "pipeline",
+      "name": "Regel"
+     }
+    ],
+    "edges": []
+   },
+   "parse_errors": null,
+   "problems": [
+    {
+     "nodeId": null,
+     "msg": "Quelle fehlt",
+     "level": "error"
+    },
+    {
+     "nodeId": "p2",
+     "msg": "nur ein Pipeline-Baustein erlaubt",
+     "level": "error"
+    },
+    {
+     "nodeId": "p",
+     "msg": "Pipeline hat keinen Eingang",
+     "level": "warn"
+    },
+    {
+     "nodeId": "p2",
+     "msg": "Pipeline hat keinen Eingang",
+     "level": "warn"
+    }
+   ]
+  },
+  {
+   "name": "zwei Quellen",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000
+     },
+     {
+      "id": "q2",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000
+     }
+    ],
+    "edges": [
+     {
+      "id": "e1",
+      "from": "q",
+      "port": "out",
+      "to": "q2"
+     }
+    ]
+   },
+   "parse_errors": null,
+   "problems": [
+    {
+     "nodeId": "q2",
+     "msg": "nur eine Quelle erlaubt",
+     "level": "error"
+    },
+    {
+     "nodeId": "q2",
+     "msg": "in eine Quelle führt nichts hinein",
+     "level": "error"
+    },
+    {
+     "nodeId": "q",
+     "msg": "Quelle ist mit nichts verbunden",
+     "level": "warn"
+    },
+    {
+     "nodeId": "q2",
+     "msg": "Quelle ist mit nichts verbunden",
+     "level": "warn"
+    }
+   ]
+  },
+  {
+   "name": "Pipeline bei Käufern",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "kaeufer",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "ok"
+      ],
+      "size": 1000
+     },
+     {
+      "id": "p",
+      "x": 300,
+      "y": 0,
+      "kind": "pipeline",
+      "name": "Regel"
+     }
+    ],
+    "edges": [
+     {
+      "id": "e1",
+      "from": "q",
+      "port": "out",
+      "to": "p"
+     }
+    ]
+   },
+   "parse_errors": null,
+   "problems": [
+    {
+     "nodeId": "p",
+     "msg": "Pipeline gilt nur für Leads, nicht für Käufer",
+     "level": "error"
+    }
+   ]
+  },
+  {
+   "name": "Feld bei Käufern nicht",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "kaeufer",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "ok"
+      ],
+      "size": 1000
+     },
+     {
+      "id": "f",
+      "x": 100,
+      "y": 0,
+      "kind": "filter",
+      "mode": "alle",
+      "conds": [
+       {
+        "f": "signal",
+        "op": "ist",
+        "v": "no_website"
+       }
+      ]
+     }
+    ],
+    "edges": [
+     {
+      "id": "e1",
+      "from": "q",
+      "port": "out",
+      "to": "f"
+     }
+    ]
+   },
+   "parse_errors": null,
+   "problems": [
+    {
+     "nodeId": "f",
+     "msg": "„Signal“ gibt es bei Käufern nicht",
+     "level": "error"
+    },
+    {
+     "nodeId": "f",
+     "msg": "Sackgasse – Ausgang verbinden",
+     "level": "warn"
+    }
+   ]
+  },
+  {
+   "name": "Feld unbekannt / Wert fehlt / Liste / zwei Zahlen",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000
+     },
+     {
+      "id": "f",
+      "x": 100,
+      "y": 0,
+      "kind": "filter",
+      "mode": "alle",
+      "conds": [
+       {
+        "f": "farbe",
+        "op": "ist",
+        "v": "rot"
+       },
+       {
+        "f": "land",
+        "op": "ist",
+        "v": " "
+       },
+       {
+        "f": "signal",
+        "op": "in",
+        "v": []
+       },
+       {
+        "f": "alter_tage",
+        "op": "zwischen",
+        "v": 5
+       },
+       {
+        "f": "alter_tage",
+        "op": "gt"
+       },
+       {
+        "f": "firma",
+        "op": "enthaelt"
+       },
+       {
+        "f": "hat_email",
+        "op": "gt",
+        "v": 1
+       }
+      ]
+     },
+     {
+      "id": "p",
+      "x": 300,
+      "y": 0,
+      "kind": "pipeline",
+      "name": "Regel"
+     }
+    ],
+    "edges": [
+     {
+      "id": "e1",
+      "from": "q",
+      "port": "out",
+      "to": "f"
+     },
+     {
+      "id": "e2",
+      "from": "f",
+      "port": "out",
+      "to": "p"
+     }
+    ]
+   },
+   "parse_errors": null,
+   "problems": [
+    {
+     "nodeId": "f",
+     "msg": "Feld unbekannt: farbe",
+     "level": "error"
+    },
+    {
+     "nodeId": "f",
+     "msg": "Land: Wert wählen",
+     "level": "error"
+    },
+    {
+     "nodeId": "f",
+     "msg": "Signal: 1–50 Werte wählen",
+     "level": "error"
+    },
+    {
+     "nodeId": "f",
+     "msg": "Alter (Tage): zwei Zahlen nötig",
+     "level": "error"
+    },
+    {
+     "nodeId": "f",
+     "msg": "Alter (Tage): Zahl fehlt",
+     "level": "error"
+    },
+    {
+     "nodeId": "f",
+     "msg": "Firmenname: Wert fehlt",
+     "level": "error"
+    },
+    {
+     "nodeId": "f",
+     "msg": "„gt“ passt nicht zu „E-Mail vorhanden“",
+     "level": "error"
+    }
+   ]
+  },
+  {
+   "name": "Status auf dem Weg zur Pipeline",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000
+     },
+     {
+      "id": "f",
+      "x": 100,
+      "y": 0,
+      "kind": "filter",
+      "mode": "alle",
+      "conds": [
+       {
+        "f": "status",
+        "op": "ist",
+        "v": "new"
+       }
+      ]
+     },
+     {
+      "id": "p",
+      "x": 300,
+      "y": 0,
+      "kind": "pipeline",
+      "name": "Regel"
+     }
+    ],
+    "edges": [
+     {
+      "id": "e1",
+      "from": "q",
+      "port": "out",
+      "to": "f"
+     },
+     {
+      "id": "e2",
+      "from": "f",
+      "port": "out",
+      "to": "p"
+     }
+    ]
+   },
+   "parse_errors": null,
+   "problems": [
+    {
+     "nodeId": "f",
+     "msg": "„Status“ darf nicht auf dem Weg zur Pipeline stehen",
+     "level": "error"
+    }
+   ]
+  },
+  {
+   "name": "Top vor Pipeline",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000
+     },
+     {
+      "id": "t",
+      "x": 0,
+      "y": 0,
+      "kind": "top",
+      "sort": "neueste",
+      "n": 0
+     },
+     {
+      "id": "p",
+      "x": 300,
+      "y": 0,
+      "kind": "pipeline",
+      "name": "Regel"
+     }
+    ],
+    "edges": [
+     {
+      "id": "e1",
+      "from": "q",
+      "port": "out",
+      "to": "t"
+     },
+     {
+      "id": "e2",
+      "from": "t",
+      "port": "out",
+      "to": "p"
+     }
+    ]
+   },
+   "parse_errors": null,
+   "problems": [
+    {
+     "nodeId": "t",
+     "msg": "Anzahl 1 bis 5000",
+     "level": "error"
+    },
+    {
+     "nodeId": "t",
+     "msg": "Top entscheidet nach der ganzen Menge – nicht auf dem Weg zur Pipeline",
+     "level": "error"
+    }
+   ]
+  },
+  {
+   "name": "Kreis",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000
+     },
+     {
+      "id": "a",
+      "x": 100,
+      "y": 0,
+      "kind": "filter",
+      "mode": "alle",
+      "conds": []
+     },
+     {
+      "id": "b",
+      "x": 100,
+      "y": 0,
+      "kind": "filter",
+      "mode": "alle",
+      "conds": []
+     }
+    ],
+    "edges": [
+     {
+      "id": "e1",
+      "from": "q",
+      "port": "out",
+      "to": "a"
+     },
+     {
+      "id": "e2",
+      "from": "a",
+      "port": "out",
+      "to": "b"
+     },
+     {
+      "id": "e3",
+      "from": "b",
+      "port": "out",
+      "to": "a"
+     }
+    ]
+   },
+   "parse_errors": null,
+   "problems": [
+    {
+     "nodeId": "a",
+     "msg": "Kreis im Ablauf – Verbindungen dürfen nicht zurückführen",
+     "level": "error"
+    },
+    {
+     "nodeId": "a",
+     "msg": "Filter ohne Bedingung lässt alles durch",
+     "level": "warn"
+    },
+    {
+     "nodeId": "b",
+     "msg": "Filter ohne Bedingung lässt alles durch",
+     "level": "warn"
+    }
+   ]
+  },
+  {
+   "name": "Ziel hat keinen Ausgang + in Quelle",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000
+     },
+     {
+      "id": "x",
+      "x": 0,
+      "y": 0,
+      "kind": "export"
+     }
+    ],
+    "edges": [
+     {
+      "id": "e1",
+      "from": "q",
+      "port": "out",
+      "to": "x"
+     },
+     {
+      "id": "e2",
+      "from": "x",
+      "port": "out",
+      "to": "q"
+     }
+    ]
+   },
+   "parse_errors": null,
+   "problems": [
+    {
+     "nodeId": "x",
+     "msg": "Export ist ein Ziel und hat keinen Ausgang",
+     "level": "error"
+    },
+    {
+     "nodeId": "q",
+     "msg": "in eine Quelle führt nichts hinein",
+     "level": "error"
+    }
+   ]
+  },
+  {
+   "name": "Punkte und Mindestwert",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000
+     },
+     {
+      "id": "pk",
+      "x": 0,
+      "y": 0,
+      "kind": "punkte",
+      "rules": [
+       {
+        "cond": {
+         "f": "hat_telefon",
+         "op": "ja"
+        },
+        "pts": 2.5
+       }
+      ],
+      "min": 1.5
+     }
+    ],
+    "edges": [
+     {
+      "id": "e1",
+      "from": "q",
+      "port": "out",
+      "to": "pk"
+     }
+    ]
+   },
+   "parse_errors": null,
+   "problems": [
+    {
+     "nodeId": "pk",
+     "msg": "Punkte: ganze Zahl −100 bis 100",
+     "level": "error"
+    },
+    {
+     "nodeId": "pk",
+     "msg": "Mindestwert: ganze Zahl",
+     "level": "error"
+    },
+    {
+     "nodeId": "pk",
+     "msg": "Sackgasse – Ausgang verbinden",
+     "level": "warn"
+    }
+   ]
+  },
+  {
+   "name": "Weiche ohne Bedingung, Sackgasse",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000
+     },
+     {
+      "id": "w",
+      "x": 0,
+      "y": 0,
+      "kind": "weiche",
+      "cond": null
+     }
+    ],
+    "edges": [
+     {
+      "id": "e1",
+      "from": "q",
+      "port": "out",
+      "to": "w"
+     }
+    ]
+   },
+   "parse_errors": null,
+   "problems": [
+    {
+     "nodeId": "w",
+     "msg": "Weiche ohne Bedingung – alles geht nach „ja“",
+     "level": "warn"
+    },
+    {
+     "nodeId": "w",
+     "msg": "Sackgasse – Ausgang verbinden",
+     "level": "warn"
+    }
+   ]
+  },
+  {
+   "name": "Agent ungültig",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000
+     },
+     {
+      "id": "a",
+      "x": 0,
+      "y": 0,
+      "kind": "agent",
+      "agent": 0,
+      "task": "leads"
+     }
+    ],
+    "edges": [
+     {
+      "id": "e1",
+      "from": "q",
+      "port": "out",
+      "to": "a"
+     }
+    ]
+   },
+   "parse_errors": null,
+   "problems": [
+    {
+     "nodeId": "a",
+     "msg": "Agent 1 bis {AGENT_COUNT}",
+     "level": "error"
+    }
+   ]
+  },
+  {
+   "name": "Agent gut",
+   "kind": "agent",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000
+     },
+     {
+      "id": "a",
+      "x": 0,
+      "y": 0,
+      "kind": "agent",
+      "agent": 1,
+      "task": "frage"
+     },
+     {
+      "id": "m",
+      "x": 0,
+      "y": 0,
+      "kind": "melden"
+     }
+    ],
+    "edges": [
+     {
+      "id": "e1",
+      "from": "q",
+      "port": "out",
+      "to": "a"
+     },
+     {
+      "id": "e2",
+      "from": "q",
+      "port": "out",
+      "to": "m"
+     }
+    ]
+   },
+   "parse_errors": null,
+   "problems": []
+  },
+  {
+   "name": "Master ohne Freigabe, Speicher Gesamtbestand",
+   "kind": "master",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000
+     },
+     {
+      "id": "s",
+      "x": 0,
+      "y": 0,
+      "kind": "speicher",
+      "pool_id": null,
+      "pool_name": "Gesamtbestand"
+     },
+     {
+      "id": "m",
+      "x": 0,
+      "y": 0,
+      "kind": "melden"
+     }
+    ],
+    "edges": [
+     {
+      "id": "e1",
+      "from": "q",
+      "port": "out",
+      "to": "s"
+     }
+    ]
+   },
+   "parse_errors": null,
+   "problems": [
+    {
+     "nodeId": null,
+     "msg": "Freigabe läuft trotzdem immer (feste Regel)",
+     "level": "warn"
+    },
+    {
+     "nodeId": "s",
+     "msg": "Gesamtbestand – Speicher wählen, sonst ändert sich nichts",
+     "level": "warn"
+    },
+    {
+     "nodeId": "m",
+     "msg": "meldet nur in einem Agenten – hier Vorschau",
+     "level": "warn"
+    },
+    {
+     "nodeId": "m",
+     "msg": "Melden hat keinen Eingang",
+     "level": "warn"
+    }
+   ]
+  },
+  {
+   "name": "Speicher bei Käufern",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "kaeufer",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [],
+      "size": 1000
+     },
+     {
+      "id": "s",
+      "x": 0,
+      "y": 0,
+      "kind": "speicher",
+      "pool_id": "11111111-2222-3333-4444-555555555555",
+      "pool_name": "Mein"
+     }
+    ],
+    "edges": [
+     {
+      "id": "e1",
+      "from": "q",
+      "port": "out",
+      "to": "s"
+     }
+    ]
+   },
+   "parse_errors": null,
+   "problems": [
+    {
+     "nodeId": "s",
+     "msg": "Speicher nur für Leads, nicht für Käufer",
+     "level": "error"
+    },
+    {
+     "nodeId": "s",
+     "msg": "füllt sich nur in Master-Pipeline oder Agent – hier Vorschau",
+     "level": "warn"
+    }
+   ]
+  },
+  {
+   "name": "Statistik Feld",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000
+     },
+     {
+      "id": "st",
+      "x": 0,
+      "y": 0,
+      "kind": "statistik",
+      "by": "pruefung"
+     },
+     {
+      "id": "st2",
+      "x": 0,
+      "y": 0,
+      "kind": "statistik",
+      "by": "xyz"
+     }
+    ],
+    "edges": [
+     {
+      "id": "e1",
+      "from": "q",
+      "port": "out",
+      "to": "st"
+     },
+     {
+      "id": "e2",
+      "from": "st",
+      "port": "out",
+      "to": "st2"
+     }
+    ]
+   },
+   "parse_errors": null,
+   "problems": [
+    {
+     "nodeId": "st",
+     "msg": "„Prüfung“ gibt es bei Leads nicht",
+     "level": "error"
+    },
+    {
+     "nodeId": "st2",
+     "msg": "Feld unbekannt: xyz",
+     "level": "error"
+    },
+    {
+     "nodeId": "st2",
+     "msg": "Sackgasse – Ausgang verbinden",
+     "level": "warn"
+    }
+   ]
+  },
+  {
+   "name": "Pipeline-Name leer, Verbindung ins Leere",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "leads",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [
+       "new"
+      ],
+      "size": 1000
+     },
+     {
+      "id": "p",
+      "x": 300,
+      "y": 0,
+      "kind": "pipeline",
+      "name": "  "
+     }
+    ],
+    "edges": [
+     {
+      "id": "e1",
+      "from": "q",
+      "port": "out",
+      "to": "p"
+     },
+     {
+      "id": "e2",
+      "from": "q",
+      "port": "out",
+      "to": "nix"
+     }
+    ]
+   },
+   "parse_errors": null,
+   "problems": [
+    {
+     "nodeId": "q",
+     "msg": "Verbindung zu unbekanntem Baustein",
+     "level": "error"
+    },
+    {
+     "nodeId": "p",
+     "msg": "Name: 1 bis 60 Zeichen",
+     "level": "error"
+    }
+   ]
+  },
+  {
+   "name": "Dubletten Käufer, Top Dringlichkeit",
+   "kind": "test",
+   "flow": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "q",
+      "x": 0,
+      "y": 0,
+      "kind": "quelle",
+      "source": "kaeufer",
+      "segment": "S2",
+      "countries": [
+       "US"
+      ],
+      "status": [],
+      "size": 1000
+     },
+     {
+      "id": "d",
+      "x": 0,
+      "y": 0,
+      "kind": "dubletten",
+      "by": "firma_id"
+     },
+     {
+      "id": "t",
+      "x": 0,
+      "y": 0,
+      "kind": "top",
+      "sort": "dringlichkeit",
+      "n": 10
+     },
+     {
+      "id": "x",
+      "x": 0,
+      "y": 0,
+      "kind": "export"
+     }
+    ],
+    "edges": [
+     {
+      "id": "e1",
+      "from": "q",
+      "port": "out",
+      "to": "d"
+     },
+     {
+      "id": "e2",
+      "from": "d",
+      "port": "out",
+      "to": "t"
+     },
+     {
+      "id": "e3",
+      "from": "t",
+      "port": "out",
+      "to": "x"
+     }
+    ]
+   },
+   "parse_errors": null,
+   "problems": [
+    {
+     "nodeId": "d",
+     "msg": "Käufer haben keine Firmen-ID – nach Name prüfen",
+     "level": "warn"
+    },
+    {
+     "nodeId": "t",
+     "msg": "Käufer haben keine Dringlichkeit",
+     "level": "warn"
+    }
+   ]
+  }
+ ]
+}

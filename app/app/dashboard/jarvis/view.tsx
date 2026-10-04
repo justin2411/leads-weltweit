@@ -1,7 +1,7 @@
 /**
  * Aufbau der JARVIS-Startseite (Inhaber 04.10.2026: „optimiere nochmal das design bei jarvis“) – reine Darstellung,
- * alle Zahlen kommen fertig aus page.tsx. Reihenfolge: Kopf (Begrüßung, Uhr) · 4 Kern-Kennzahlen · JARVIS empfiehlt ·
- * Agenten · Fluss-Karte (mit Seitenfenster) · Chat und Freigabe (unten rechts) · Live-Ticker.
+ * alle Zahlen kommen fertig aus page.tsx. Reihenfolge: Kopf (Begrüßung, Uhr) · 4 Kern-Kennzahlen · JARVIS empfiehlt (X = ausblenden) ·
+ * Agenten A1–A8 · Fluss-Karte (mit Seitenfenster) · Chat und Freigabe (unten rechts) · Live-Ticker.
  * Raster in 8er-Schritten, Karten je Reihe gleich hoch, am Handy eine Spalte ohne seitliches Scrollen.
  */
 import type { ReactNode } from "react";
@@ -11,8 +11,11 @@ import type { AgentTask } from "@/lib/agents";
 import { Ampeln, FlowMap, Ticker, type Kpi } from "./flow";
 import { AgentRow } from "./agents";
 import { Empfiehlt, JarvisChat } from "./empfiehlt";
+import type { StartChat } from "./chat/start";
 import { GatePanel, type GateView } from "./freigabe";
 import { DragTip } from "./dnd";
+import { UndoBar } from "./dismiss";
+import { tipKey, tipReactKeys } from "@/lib/tips";
 import { Clock, Voice } from "./voice";
 
 export type JarvisProps = {
@@ -25,6 +28,8 @@ export type JarvisProps = {
   gate: GateView;
   ticker: TickerItem[];
   customerAgents?: number | null;
+  /** JARVIS-Chat mit Sitzungen (zuletzt genutzte); null = Tabellen fehlen noch → bisheriger Chat über Agenten-Aufträge */
+  chat?: StartChat | null;
 };
 
 export function JarvisView(p: JarvisProps) {
@@ -42,17 +47,18 @@ export function JarvisView(p: JarvisProps) {
       <Empfiehlt recs={p.recs} href={p.tipHref} agent={p.agent}>
         {p.rest.length > 0 && (
           <div className="jtips2">
-            {p.rest.slice(0, 4).map((x, i) => <DragTip key={i} task={x.task} title={x.title} href={p.tipHref(x)} level={x.level} tip={x.text} />)}
+            {p.rest.slice(0, 4).map((x, i, all) => <DragTip key={tipReactKeys(all)[i]} task={x.task} title={x.title} href={p.tipHref(x)} level={x.level} tip={x.text} dkey={tipKey(x)} />)}
           </div>
         )}
       </Empfiehlt>
+      <UndoBar />
       <AgentRow tasks={p.tasks} active={p.activeAgent} startAt={p.startAt} customerAgents={p.customerAgents} />
       <div className="jv-stage">
         <FlowMap stations={p.stations} edges={p.edges} active={p.activeAgent ? null : p.activeStation} href={p.stationHref} />
         {p.drawer}
       </div>
       <div className="jv-duo">
-        <JarvisChat tasks={p.tasks} startAt={p.startAt} />
+        <JarvisChat tasks={p.tasks} startAt={p.startAt} chat={p.chat ?? null} />
         <GatePanel g={p.gate} />
       </div>
       <Ticker items={p.ticker} />

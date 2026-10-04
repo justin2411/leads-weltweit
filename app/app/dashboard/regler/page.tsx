@@ -1,5 +1,5 @@
 import { CONFIG } from "@/lib/dashboard-data";
-import { CARDS, fmtWhen, leadTotal, nextRun, status, versandStopText } from "@/lib/regler";
+import { CARDS, cardNext, fmtWhen, leadTotal, status, versandStopText } from "@/lib/regler";
 import { slotCounts } from "@/lib/owner-settings";
 import { REG, loadRegler, reglerCtx } from "@/lib/regler-data";
 import { entryOf, type Entry } from "@/lib/regler-verlauf";
@@ -37,7 +37,7 @@ export default async function Page() {
       key: c.key, kind: st.kind, text: st.text,
       saved: st.savedAt ? fmtWhen(st.savedAt, now) : null,
       at: st.at ? fmtWhen(st.at, now) : null,
-      next: fmtWhen(nextRun(c.cron, now), now),
+      next: fmtWhen(cardNext(c, now), now),
       effect: effect[c.key] ?? null, // „nächster Lauf“ steht in der Statuszeile
     };
   });

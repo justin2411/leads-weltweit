@@ -200,9 +200,18 @@ test("Ampel: leerer Vorrat, wartende Probe-Anfrage, Kaufinteresse, knappe Leads 
 });
 
 test("Ampel: Versand unter Ziel erst am Abend, Werke zu alt, Versand aus", () => {
-  const late = new Date("2026-10-03T20:00:00Z"); // 22:00 MESZ
+  const late = new Date("2026-10-03T20:00:00Z"); // Sa 22:00 MESZ – kein Versandtag (nur Di–Do, Inhaber 04.10.2026)
   const a = alerts(live({ now: late.toISOString(), last_lead_at: "2026-10-03T06:00:00Z" }), stock, cfg, late, null);
-  assert.ok(a.some((x) => x.level === "gelb" && x.title === "Versand heute unter Ziel: 50 von 150"));
+  assert.ok(!a.some((x) => x.title.startsWith("Versand heute unter Ziel")));
+  assert.ok(!a.some((x) => x.level === "rot" && x.area === "Versand"));
+  const wed = new Date("2026-10-07T20:00:00Z"); // Mi 22:00 MESZ
+  const w = alerts(live({ now: wed.toISOString(), last_sent_at: "2026-10-07T15:30:00Z" }), stock, cfg, wed, null);
+  assert.ok(w.some((x) => x.level === "gelb" && x.title.startsWith("Versand heute unter Ziel")), JSON.stringify(w.filter((x) => x.area === "Versand")));
+  // Versandtag ohne Mail (zuletzt Di) -> rot; am Montag danach nicht rot, wenn Do gesendet wurde
+  const none = alerts(live({ now: wed.toISOString(), last_sent_at: "2026-10-06T15:30:00Z" }), stock, cfg, wed, null);
+  assert.ok(none.some((x) => x.level === "rot" && x.title === "Am letzten Versandtag keine Mail gesendet"));
+  const mon = new Date("2026-10-12T10:00:00Z");
+  assert.ok(!alerts(live({ now: mon.toISOString(), last_sent_at: "2026-10-08T15:30:00Z" }), stock, cfg, mon, null).some((x) => x.level === "rot" && x.area === "Versand"));
   assert.ok(a.some((x) => x.level === "rot" && x.title.startsWith("Lead-Werk: seit 14 h")));
   const early = new Date("2026-10-03T10:00:00Z");
   assert.ok(!alerts(live({ now: early.toISOString() }), stock, cfg, early, null).some((x) => x.title.startsWith("Versand heute unter Ziel")));
