@@ -27,7 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 PERSONAS = Path(__file__).resolve().parents[1] / "app" / "lib" / "personas.json"  # einzige Quelle (App + Skripte)
-PRO_WEEKLY = 50                 # Pro = bis 50 Leads/Woche; individuell ab dieser Menge bekommt auch einen Agenten
+PRO_WEEKLY = 40                 # Pro = bis 40 Leads/Woche (Inhaber 04.10.2026); individuell ab dieser Menge bekommt auch einen Agenten
 TASK_AGENT = 9                  # agent_tasks.agent für alle Kunden-Aufträge (wie KUNDE_TASK_AGENT in der App; A1–A8 bleiben dem Inhaber)
 TASK_BY = "Kunden-Agent"
 MIN_WORDS, MAX_WORDS = 40, 120
@@ -158,7 +158,7 @@ def weekly(sub: dict) -> int:
 
 
 def eligible(sub: dict, customer: dict | None = None) -> bool:
-    """Agent ab Pro: Paket `pro`, oder `custom`/ohne Paket mit mindestens 50 Leads/Woche; nie `starter`.
+    """Agent ab Pro: Paket `pro`, oder `custom`/ohne Paket mit mindestens 40 Leads/Woche; nie `starter`.
     Nur aktive Abos zahlender Kunden (kein Stripe-Testkauf)."""
     from deliveries import deliverable_customer
     customer = customer if customer is not None else (sub.get("customers") or {})

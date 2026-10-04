@@ -116,9 +116,9 @@
     "name": "Pro",
     "price": "249 €",
     "per": "par mois",
-    "text": "Jusqu’à **50** nouveaux prospects par semaine, tous les signaux pertinents. Chaque prospect est exclusif à votre entreprise.",
-    "perLead": 1.15,
-    "perLeadLabel": "Dès env. 1,15 €",
+    "text": "Jusqu’à **40** nouveaux prospects par semaine, tous les signaux pertinents. Chaque prospect est exclusif à votre entreprise.",
+    "perLead": 1.44,
+    "perLeadLabel": "Dès env. 1,44 €",
     "highlight": true
    },
    {

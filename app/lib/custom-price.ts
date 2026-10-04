@@ -4,11 +4,12 @@
  * (Exponent < 1). Wird im Browser (Anzeige) und auf dem Server (Checkout) identisch gerechnet – der Server
  * vertraut nie einem Preis aus dem Formular.
  */
-export const PER_WEEK: Record<string, number> = { starter: 15, pro: 50 };
+export const PER_WEEK: Record<string, number> = { starter: 15, pro: 40 };
 export const CUSTOM_MIN = 150;
 export const CUSTOM_MAX = 10_000;
-// 0.68 (Pakete 15/50 pro Woche, Inhaber 02.10.2026): 10.000 Leads/Woche bleiben unter 10.000 pro Monat
-const EXPONENT = 0.68;
+// 0.66 (Pakete 15/40 pro Woche, Pro 249 = 40/Woche, Inhaber 04.10.2026): 10.000 Leads/Woche bleiben unter 10.000 pro Monat
+// (bei 0.68 wären es 10.636); vorher 0.68 mit Pro = 50/Woche.
+const EXPONENT = 0.66;
 
 type Base = { key: string; amount_cents?: number; currency?: string };
 

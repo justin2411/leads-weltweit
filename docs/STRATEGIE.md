@@ -52,7 +52,7 @@ Landingpages sind live für S1, S2, S4, S5, S9 in **UK, US, FR** (15 Seiten, jew
 | Paket | UK | US | FR | Umfang |
 |---|---|---|---|---|
 | Starter | £129 / Monat | $129 / Monat | 129 € / Monat | bis 15 Leads pro Woche |
-| Pro | £249 / Monat | $249 / Monat | 249 € / Monat | bis 50 Leads pro Woche, alle Signale |
+| Pro | £249 / Monat | $249 / Monat | 249 € / Monat | bis 40 Leads pro Woche, alle Signale (Inhaber 04.10.2026, vorher 50) |
 | Individuell | per Regler | per Regler | per Regler | 150–10.000 Leads pro Woche |
 
 - Gleiche Zahlen in allen Ländern (Inhaber 29.09.2026: „lass alle gleich auf den Preisen von UK“).

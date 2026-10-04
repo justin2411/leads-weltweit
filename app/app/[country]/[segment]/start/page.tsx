@@ -29,7 +29,7 @@ const TXT = {
     for: "For", per: "per month", pick: "Start with", popular: "Recommended", billing: "Billing country",
     plan: {
       starter: ["Up to 15 new leads per week", "Weekly PDF briefing and spreadsheet", "Phone, email and contact person", "Every lead exclusive to your firm"],
-      pro: ["Up to 50 new leads per week", "All signals that fit your business", "Weekly PDF briefing and spreadsheet", "Every lead exclusive to your firm"],
+      pro: ["Up to 40 new leads per week", "All signals that fit your business", "Weekly PDF briefing and spreadsheet", "Every lead exclusive to your firm"],
     } as Record<string, string[]>,
     how: "How it works",
     // Überschriften unter dem Video, einzeilig (Inhaber 02.10.2026)
@@ -56,7 +56,7 @@ const TXT = {
     for: "Pour", per: "par mois", pick: "Choisir", popular: "Recommandé", billing: "Pays de facturation",
     plan: {
       starter: ["Jusqu'à 15 nouvelles pistes par semaine", "Briefing PDF et tableau chaque semaine", "Téléphone, e-mail et interlocuteur", "Chaque piste réservée à votre entreprise"],
-      pro: ["Jusqu'à 50 nouvelles pistes par semaine", "Tous les signaux utiles", "Briefing PDF et tableau chaque semaine", "Chaque piste réservée à votre entreprise"],
+      pro: ["Jusqu'à 40 nouvelles pistes par semaine", "Tous les signaux utiles", "Briefing PDF et tableau chaque semaine", "Chaque piste réservée à votre entreprise"],
     } as Record<string, string[]>,
     how: "Comment ça marche",
     short: ["Votre formule", "Votre cible", "Votre contact", "Chaque lundi"],

@@ -174,7 +174,7 @@ export function validateSlotPlan(input: Record<string, unknown>, reg: LaneRegist
   return out;
 }
 
-export const PACKAGES = { starter: { label: "Starter", price: 129, perWeek: 15 }, pro: { label: "Pro", price: 249, perWeek: 50 } } as const;
+export const PACKAGES = { starter: { label: "Starter", price: 129, perWeek: 15 }, pro: { label: "Pro", price: 249, perWeek: 40 } } as const;
 export type PackageKey = keyof typeof PACKAGES;
 
 /** Neuer Kunde aus dem Formular: Firma, geschäftliche E-Mail, Land (eines der Dashboard-Länder), Paket. */

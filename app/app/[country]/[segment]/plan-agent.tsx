@@ -3,7 +3,7 @@ import { Icon } from "@/app/icons";
 import { planAgentLine } from "@/lib/customer-agents";
 
 /**
- * Paketvorteil „Persönlicher Ansprechpartner“ (Inhaber 04.10.2026): bei Pro und individuell ab 50/Woche.
+ * Paketvorteil „Persönlicher Ansprechpartner“ (Inhaber 04.10.2026): bei Pro und individuell ab 40/Woche (Pro-Menge).
  * Ohne Hooks, darum in Server- und Client-Komponenten nutzbar. Ohne Trennpunkt (Inhaber 04.10.2026).
  * Tarifseite Desktop: Titel eine Zeile, Text zwei Zeilen darunter (Inhaber 04.10.2026: „auf desktop immer 3 zeilig“).
  */
