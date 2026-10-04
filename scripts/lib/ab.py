@@ -177,6 +177,8 @@ def check_test(step_key: str, segment: str, country: str, element: str, b, a=Non
     errs = []
     if not step(step_key):
         return ["Schritt unbekannt"]
+    if step(step_key).get("pausiert"):  # z. B. Versandzeit: Versand läuft rund um die Uhr (Inhaber 04.10.2026)
+        return [f"Schritt pausiert: {step(step_key)['pausiert']}"]
     if not test_allowed(segment, country, scope):
         errs.append("Tests nur Webagenturen US/UK/FR (config/fokus.yaml tests)")
     errs += check_value(step_key, element, b)
@@ -330,6 +332,8 @@ class Ctx:
 
     def send_window(self, segment: str | None, country: str | None, unit) -> tuple[str | None, dict]:
         """Versandzeit-Test: 'frueh' (erste Hälfte des Fensters) oder 'spaet' (zweite Hälfte), sonst None."""
+        if (step("mail_zeit") or {}).get("pausiert"):  # Versand rund um die Uhr (Inhaber 04.10.2026)
+            return None, {}
         v, mark = self.value("mail_zeit", "fenster", segment, country, unit)
         return (str(v) if v in ("frueh", "spaet") else None), mark
 

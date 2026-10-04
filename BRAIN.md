@@ -48,7 +48,7 @@ Du bist das operative Gehirn von Signalwerk. Du beobachtest jeden Tag die Zahlen
 - Unter 300 Aufrufen pro Variante entscheidest du nichts, sondern notierst „zu wenig Daten“.
 
 ### 5.1a A/B je Schritt (Inhaber 04.10.2026)
-Jeder Schritt der Kette ist testbar (Kaltmail-Betreff/Einstieg/Versandzeit, Nachfass, Antwort-Bausteine, Landingpage,
+Jeder Schritt der Kette ist testbar (Kaltmail-Betreff/Einstieg, Versandzeit pausiert seit Versand rund um die Uhr, Nachfass, Antwort-Bausteine, Landingpage,
 Probe-Mail, Probe-Nachfrage, Tarifseite, Stripe-Kasse) – Schritte, Elemente und Mindestmengen in
 `app/lib/ab-schritte.json`, Werkzeug `scripts/ab.py`, Dashboard `/dashboard/gehirn#ab`. **Engpass zuerst:** der nächste
 Test kommt an die Station mit dem größten Abfall gegenüber ihrem Richtwert (`ab.py trichter`). Eine Sache pro Test,

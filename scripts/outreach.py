@@ -9,7 +9,7 @@ Beispiele:
   python scripts/outreach.py lint --db                  # alle Entwürfe (status draft)
   python scripts/outreach.py send                       # Probelauf: zeigt nur, was gesendet würde
   python scripts/outreach.py send --live --owner-ok "Freigabe per Chat 2026-10-01"
-  python scripts/outreach.py send --live --countries UK,FR --bis 11:00   # nur diese Länder, Versand bis 11 Uhr
+  python scripts/outreach.py send --live --anteil --minuten 45   # stündlicher Lauf: Anteil der Tagesmenge, max. 45 min
 
 Versand-Regeln (CLAUDE.md Abschnitt 2 und 6):
   - nur status = approved (vom Inhaber im Dashboard freigegeben)
@@ -198,17 +198,17 @@ def notbremse(db) -> str | None:
 
 
 NOTBREMSE_EVERY = 20  # Notbremse während des Versands alle 20 gesendeten Mails erneut prüfen (Prüfung 04.10.2026)
-MIN_PAUSE = 20  # Sekunden: schneller wird auch zum Ende des Versandfensters (--bis) nie gesendet
+MIN_PAUSE = 20  # Sekunden: schneller wird auch zum Ende der Laufzeit (--minuten) nie gesendet
 
 
 def country_filter(value: str | None) -> set[str] | None:
-    """--countries UK,FR -> {"UK", "FR"}; leer = alle Länder (Versandzeit, Inhaber 04.10.2026)."""
+    """--countries UK,FR -> {"UK", "FR"}; leer = alle Länder (Standard: Versand rund um die Uhr, alle Länder)."""
     out = {c.strip().upper() for c in (value or "").split(",") if c.strip()}
     return out or None
 
 
 def window_pause(pause: float, left_s: float | None, rest: int) -> float:
-    """Pause bis zur nächsten Mail: normal `pause`; reicht die Zeit bis zum Fensterende (--bis) dafür nicht, kürzer –
+    """Pause bis zur nächsten Mail: normal `pause`; reicht die Zeit bis zum Laufende (--minuten) dafür nicht, kürzer –
     gleichmäßig verteilt, aber nie unter MIN_PAUSE."""
     if left_s is None:
         return pause
@@ -218,8 +218,10 @@ def window_pause(pause: float, left_s: float | None, rest: int) -> float:
 def ab_send_order(abx, rows: list[dict], until: dt.datetime | None,
                   start: dt.datetime | None = None) -> tuple[list[dict], dict, dt.datetime | None]:
     """Versandzeit-Test (A/B, Schritt mail_zeit): Erstmails mit Variante „spät“ ans Ende, Mitte des Fensters als
-    Grenze. Ohne Fensterende (--bis) kein Versandzeit-Test. (Reihenfolge, {message_id: (fenster, marke)}, Mitte)."""
-    if until is None:
+    Grenze. Ohne Fensterende kein Versandzeit-Test; pausiert, solange der Schritt in app/lib/ab-schritte.json
+    „pausiert“ trägt (Versand rund um die Uhr, Inhaber 04.10.2026). (Reihenfolge, {message_id: (fenster, marke)}, Mitte)."""
+    from lib import ab as ablib
+    if until is None or (ablib.step("mail_zeit") or {}).get("pausiert"):
         return rows, {}, None
     zeit = {}
     for m in rows:
@@ -280,6 +282,13 @@ def seed_copy(db, m: dict, country: str, subject: str, text: str, html: str | No
     if not seeds or country in done:
         return
     done.add(country)
+    # Versand rund um die Uhr (24 Läufe am Tag): Kontrollkopie nur einmal je Land und Tag, nicht in jedem Lauf
+    try:
+        if db.select("seed_checks", {"country": f"eq.{country}", "at": f"gte.{dt.date.today().isoformat()}",
+                                     "select": "id", "limit": "1"}):
+            return
+    except Exception:  # noqa: BLE001 - nicht lesbar: lieber eine Kopie zu viel als keine
+        pass
     token = m.get("unsubscribe_token") or ""
     if token:
         text = text.replace(token, "kontrolle")
@@ -499,7 +508,7 @@ def cmd_send(args) -> int:
     # Fokus-Tests zuerst (config/fokus.yaml), innerhalb Fokus und Rest jeweils abwechselnd je Experiment
     from lib.fokus import focus_only, focus_pairs
     pairs = set(focus_pairs())
-    # Versandzeit (Inhaber 04.10.2026): je Lauf nur die Länder, deren Bürozeit gerade ist (send.yml, --countries)
+    # optional nur bestimmte Länder (per Hand); stündliche Läufe senden alle Länder (Versand rund um die Uhr)
     only_countries = country_filter(getattr(args, "countries", None))
     # Nur Fokus: schon in der Abfrage auf die Fokus-Experimente einschränken. Sonst füllen ältere Entwürfe ruhender
     # Branchen das Limit und Fokus-Entwürfe (z. B. S2/FR, später freigegeben) kommen nie an die Reihe (03.10.2026).
@@ -534,10 +543,10 @@ def cmd_send(args) -> int:
         print("Nur Länder dieses Laufs: " + ", ".join(sorted(only_countries)))
     rows = later + interleave([m for m in initial if in_focus(m)]) + interleave([m for m in initial if not in_focus(m)])
     until = None
-    if getattr(args, "bis", None):
-        from lib import versandzeit
-        until = versandzeit.parse_until(args.bis, dt.datetime.now(dt.timezone.utc))
-        print(f"Versandfenster bis {args.bis} deutscher Zeit")
+    if getattr(args, "minuten", None):
+        # Versand rund um die Uhr (Inhaber 04.10.2026): jeder stündliche Lauf endet spätestens nach --minuten
+        until = dt.datetime.now(dt.timezone.utc) + dt.timedelta(minutes=args.minuten)
+        print(f"Laufzeit höchstens {args.minuten:g} min")
     # A/B je Schritt (scripts/lib/ab.py): laufende Tests und übernommene Gewinner einmal je Lauf laden
     from lib import ab as ablib
     abx = ablib.Ctx(db)
@@ -545,6 +554,14 @@ def cmd_send(args) -> int:
     seeded: set[str] = set()
     already = sum(sent_today.values())
     print(f"Aufwärmphase: heute max. {cap} Mails insgesamt, bereits gesendet: {already}")
+    quota = None
+    if getattr(args, "anteil", False):
+        # Versand rund um die Uhr (Inhaber 04.10.2026): je stündlichem Lauf nur der Anteil der Resttagesmenge
+        from lib import versandzeit
+        now_utc = dt.datetime.now(dt.timezone.utc)
+        quota = versandzeit.share(cap - already, now_utc)
+        print(f"Anteil dieses Laufs: {quota} Mails (Rest {max(0, cap - already)} auf "
+              f"{versandzeit.runs_left(now_utc)} Läufe verteilt)")
     if len(boxes) > 1:
         print("Postfächer: " + ", ".join(f"{b['n']}: {sent_box.get(b['n'], 0)}/{caps[b['n']]}" for b in boxes))
     limit_total = total_limit()
@@ -556,7 +573,10 @@ def cmd_send(args) -> int:
     fetcher = None
     for i, m in enumerate(rows):
         if until is not None and dt.datetime.now(dt.timezone.utc) >= until:
-            print(f"Versandfenster vorbei ({args.bis} deutscher Zeit): Rest am nächsten Versandtag")
+            print("Laufzeit vorbei: Rest im nächsten Lauf")
+            break
+        if quota is not None and n_sent >= quota:
+            print(f"Anteil dieses Laufs erreicht ({quota}): Rest im nächsten Lauf")
             break
         p, e = m["prospects"], m["experiments"]
         country = p["country"]
@@ -565,7 +585,7 @@ def cmd_send(args) -> int:
         if zw and mid is not None:
             t_now = dt.datetime.now(dt.timezone.utc)
             if zw[0] == "frueh" and t_now >= mid:
-                print(f"A/B Versandzeit: {m['to_email']} (früh) folgt am nächsten Versandtag")
+                print(f"A/B Versandzeit: {m['to_email']} (früh) folgt im nächsten Lauf")
                 continue
             if zw[0] == "spaet" and t_now < mid:
                 wait = (mid - t_now).total_seconds()
@@ -724,7 +744,10 @@ def cmd_send(args) -> int:
             import random
             import time
             left = (until - dt.datetime.now(dt.timezone.utc)).total_seconds() if until is not None else None
-            rest = min(len(rows) - i - 1, cap - sum(sent_today.values()))
+            rest = min(len(rows) - i - 1, cap - sum(sent_today.values()),
+                       quota - n_sent if quota is not None else len(rows))
+            if rest <= 0:
+                continue  # Anteil/Tagesmenge erreicht: keine Pause, die Schleife endet beim nächsten Eintrag
             time.sleep(window_pause(args.pause, left, rest) * random.uniform(0.6, 1.4))  # nicht im Takt senden
     print(f"\n{'gesendet' if live else 'Probelauf, würde senden'}: {n_sent}")
     return 0
@@ -904,8 +927,10 @@ def main(argv=None) -> int:
     s.add_argument("--owner-ok", help="Wortlaut/Datum der Freigabe des Inhabers für diesen Lauf")
     s.add_argument("--limit", type=int, default=400)
     s.add_argument("--pause", type=float, default=0, help="Sekunden zwischen zwei Mails (mit Zufall)")
-    s.add_argument("--countries", help="nur diese Länder senden, z. B. UK,FR oder US (Versandzeit, send.yml)")
-    s.add_argument("--bis", help="HH:MM deutscher Zeit: danach keine Mail mehr, Pausen verteilen sich bis dahin")
+    s.add_argument("--countries", help="nur diese Länder senden, z. B. UK,FR oder US (per Hand; Standard: alle)")
+    s.add_argument("--minuten", type=float, help="Laufzeit höchstens so viele Minuten, Pausen verteilen sich bis dahin")
+    s.add_argument("--anteil", action="store_true",
+                   help="nur den Anteil der Resttagesmenge senden (stündlicher Lauf rund um die Uhr, send.yml)")
     s.set_defaults(func=cmd_send)
 
     t = sub.add_parser("test", help="Testmail an den Inhaber (nicht an Käufer)")

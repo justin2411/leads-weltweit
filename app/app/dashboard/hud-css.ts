@@ -338,6 +338,9 @@ export const HUD_CSS = `
 .fl-st.live .fl-ring i:first-child{border-top-color:var(--cy);border-right-color:rgba(95,212,255,.4)}
 .fl-st.live{border-color:rgba(95,212,255,.7)}
 .fl-st.bad{border-color:#ff5e73}.fl-st.off{opacity:.55;filter:grayscale(.6)}
+/* Versand an (24/7, Inhaber 04.10.2026): grüner Rand, drehender Ring grün */
+.fl-st.go{border-color:rgba(61,220,151,.75)}
+.fl-st.go.live .fl-ring i:first-child{border-top-color:var(--green);border-right-color:rgba(61,220,151,.4)}
 .fl-st.neck{border-color:#ff5e73;box-shadow:0 0 0 6px rgba(2,6,15,.85),0 0 34px rgba(255,94,115,.55)}
 .fl-ic{font-size:18px;line-height:1;color:var(--cy2);margin-bottom:2px}
 .fl-v{font-size:26px;font-weight:700;color:#fff;line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -355,6 +358,8 @@ export const HUD_CSS = `
 .dash .fl-auto.on:hover:not(:disabled){border-color:#7ff0bf;box-shadow:0 0 0 3px rgba(2,6,15,.9),0 0 14px rgba(61,220,151,.6)}
 .dash .fl-auto.err{border-color:var(--red)}
 .dash .fl-auto:disabled{opacity:.7;cursor:progress}
+.dash .fl-badge{cursor:default;pointer-events:none}
+.dash .fl-auto.fl-badge.off{background:#40141c;border-color:var(--red);color:#ffc9d1;box-shadow:0 0 0 3px rgba(2,6,15,.9),0 0 12px rgba(255,94,115,.45)}
 
 .drw{position:absolute;right:10px;top:10px;max-height:calc(100% - 20px);width:420px;max-width:calc(100% - 20px);overflow:auto;z-index:35;scrollbar-width:thin;border:1px solid rgba(226,198,143,.45);border-radius:14px;background:linear-gradient(180deg,rgba(12,28,54,.97),rgba(4,12,26,.98));-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);padding:14px 16px 16px;align-self:start;box-shadow:0 20px 60px -20px rgba(0,0,0,.9),0 0 30px -10px rgba(226,198,143,.35);animation:drw-in .25s ease-out}
 .drw-shade{display:none}

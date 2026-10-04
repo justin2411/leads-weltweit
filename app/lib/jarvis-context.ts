@@ -13,7 +13,7 @@ import { nextRunAt, type ChatSession } from "@/lib/jarvis-chat";
 import { WERK_SWITCHES, slotCounts, werkOn, type OwnerSettings, type WerkKey } from "@/lib/owner-settings";
 import { REG } from "@/lib/regler-data";
 import { fmtBerlin } from "@/lib/start-queue";
-import { nextSendStart } from "@/lib/versandzeit";
+import { nextSendStart, planText } from "@/lib/versandzeit";
 
 /**
  * Kompakter Kontext für die Sofort-Antworten (lib/jarvis-ask.ts) und die lesenden Werkzeuge (lib/jarvis-tools.ts).
@@ -63,7 +63,7 @@ function versand(s: Sources) {
   return {
     aktiv: CONFIG.versand.aktiv !== false && !s.own.send_paused, pausiert_im_dashboard: s.own.send_paused,
     heute_gesendet: sumBy(boxes, (x) => x.today), tagesgrenze: sumBy(boxes, (x) => x.cap), postfaecher: boxes.length,
-    naechster_lauf: next ? `${fmtBerlin(next.at)} (${next.g.name})` : "kein Lauf geplant",
+    versandplan: planText(), naechster_lauf: next ? `${fmtBerlin(next.at)} (${next.g.name})` : "kein Lauf geplant",
     notbremse: b.stop ?? "aus", bounces_30_tage: `${b.bounced}/${b.sent}`, beschwerden: b.complained,
     nachfass: s.own.followup_enabled !== false ? "an" : "aus", letzte_mail: s.live.last_sent_at ? fmtBerlin(s.live.last_sent_at) : null,
   };

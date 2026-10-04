@@ -156,8 +156,8 @@ export function nextRun(crons: string[], from: Date): Date | null {
   return all.length ? new Date(Math.min(...all.map((d) => d.getTime()))) : null;
 }
 
-/** Nächster Lauf eines Workflows. Versand (send.yml): aus dem Versandplan Di–Do in deutscher Zeit (lib/versandzeit.ts),
- * nicht aus den Crons – die haben je Gruppe einen Sommer- und einen Winterzeit-Eintrag (Inhaber 04.10.2026). */
+/** Nächster Lauf eines Workflows. Versand (send.yml): aus dem Versandplan (rund um die Uhr, stündlich, Inhaber
+ * 04.10.2026; lib/versandzeit.ts), sonst aus den Crons. */
 export function nextWorkflowRun(wf: { file: string; crons: string[] } | undefined, from: Date): Date | null {
   if (!wf) return null;
   if (wf.file === "send.yml") return nextSendStart(from)?.at ?? null;
@@ -551,9 +551,9 @@ export function alerts(live: Live, stock: Stock | null, cfg: OpsConfig, now: Dat
   if (b.complained > 0 && !b.stop) add("rot", "Versand", `${b.complained} Spam-Beschwerde(n)`, undefined, "Spam-Beschwerde eingegangen");
   const hourBerlin = Number(new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "numeric", hourCycle: "h23" }).format(now));
   if (v.aktiv && !b.stop) {
-    // Versand nur Di–Do (Inhaber 04.10.2026): rot erst, wenn seit dem letzten fälligen Versandtag nichts rausging
+    // Versand rund um die Uhr (Inhaber 04.10.2026): rot, wenn seit dem ersten Lauf des Tags nichts rausging
     const dayStart = sendDayStart(now);
-    if (dayStart && (!live.last_sent_at || Date.parse(live.last_sent_at) < dayStart.getTime())) add("rot", "Versand", "Am letzten Versandtag keine Mail gesendet", `zuletzt ${berlin(live.last_sent_at)} · Versand Di–Do`, "Versandtag ohne Versand");
+    if (dayStart && (!live.last_sent_at || Date.parse(live.last_sent_at) < dayStart.getTime())) add("rot", "Versand", "Heute noch keine Mail gesendet", `zuletzt ${berlin(live.last_sent_at)} · Versand 24/7`, "Tag ohne Versand");
     else if (isSendDay(now) && hourBerlin >= 21 && sentToday < cap * 0.8) add("gelb", "Versand", `Versand heute unter Ziel: ${sentToday} von ${cap}`, "Kapazität aller Postfächer heute", "Versand heute unter Ziel");
     else add("gruen", "Versand", `Heute ${sentToday} von ${cap} Mails gesendet`, nextSend ? `nächster geplanter Lauf ${berlin(nextSend)}` : undefined);
   }

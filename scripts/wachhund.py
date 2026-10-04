@@ -51,8 +51,8 @@ JOBS = [
     {"wf": "kaeufer.yml", "kind": "daily", "at": "05:13", "grace": 60},
     {"wf": "sync.yml", "kind": "daily", "at": "06:17", "grace": 45},
     {"wf": "taeglich.yml", "kind": "daily", "at": "12:17", "grace": 45},
-    # Versand nur Di–Do zur Bürozeit der Empfänger (Inhaber 04.10.2026): je Gruppe ein Job in deutscher Zeit
-    # (UK/FR 08:37, US 14:37; Plan app/lib/versandzeit.json), Nachholen nur so lange, wie der Lauf noch im Fenster beginnt
+    # Versand rund um die Uhr (Inhaber 04.10.2026): stündlich (Plan app/lib/versandzeit.json), nachstarten, wenn
+    # 80 min kein Lauf begann; send_paused und config/versand.yaml aktiv: false starten nie nach
     *versandzeit.wachhund_jobs(inputs={
         "freigabe": "Dauerfreigabe des Inhabers laut config/versand.yaml (Wachhund: geplanter Lauf ausgefallen)",
         "probelauf": "false"}),

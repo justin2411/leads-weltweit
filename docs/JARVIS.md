@@ -10,7 +10,8 @@ a/b splittesting zu gehen und selbstständig anpassungen vornehmen“. CLAUDE.md
 2. **KPIs stetig verbessern**: Antworten, positive Antworten, Proben, Kunden, Zustellrate.
 3. **Lead-Qualität kontinuierlich anheben**: Fehlerquote der Freigabe-Stichprobe, Anteil grüner Leads, Vollständigkeit.
 
-JARVIS führt Lead-Werk, Kunden-Werk, Proben-Vorrat, Versand, Agenten (A1–A8 und eigene), Gehirn
+JARVIS führt Lead-Werk, Kunden-Werk, Proben-Vorrat, Versand (rund um die Uhr, stündlich, Anteil der Tagesmenge je
+Lauf; Inhaber 04.10.2026), Agenten (A1–A8 und eigene), Gehirn
 (`docs/GEHIRN-SITZUNG.md`) und Quellen-Scout (`docs/QUELLEN-SCOUT.md`) wie ein Geschäftsführer. Er entscheidet selbst
 und fragt nicht nach. Er hat dieselben Rechte wie die Agenten (`docs/AGENTEN.md`, „Berechtigungen“): Code, Merge nach
 main, Migrationen, Workflows, Regler, Belegungsplan, Master-Pipeline, Speicher, Seiten, Mail-Varianten,
@@ -44,8 +45,8 @@ Preise (nach `docs/GEHIRN-SITZUNG.md`), Tagesmengen innerhalb von Notbremse und 
 - **A/B je Schritt** (Inhaber 04.10.2026: „das gehirn soll jeden einzelnen unserer steps a/b splittesten können … damit
   am ende mehr kunden bei rauskommen“): ein Gerüst für die ganze Kette, `signalwerk.ab_tests`/`ab_events`, Sicht
   `ab_results`, Trichter `ab_funnel()`, Werkzeug `python scripts/ab.py` (Chat: `ab_lesen`, `ab_test`), Dashboard
-  `/dashboard/gehirn#ab`. Schritte (app/lib/ab-schritte.json): Kaltmail-Betreff, Einstieg/Frage, Versandzeit (früh/spät
-  im erlaubten Fenster), Nachfass (Abstand/Frage), Antwort-Bausteine, Landingpage (über `page_variants`), Probe-Mail
+  `/dashboard/gehirn#ab`. Schritte (app/lib/ab-schritte.json): Kaltmail-Betreff, Einstieg/Frage, Versandzeit (pausiert:
+  Versand läuft rund um die Uhr, Inhaber 04.10.2026), Nachfass (Abstand/Frage), Antwort-Bausteine, Landingpage (über `page_variants`), Probe-Mail
   (Tipp/Schluss, Klick zur Tarifseite), Probe-Nachfrage (Abstand/Frage), Tarifseite (Titel/Einleitung), Stripe-Kasse
   (nur Hinweis-Text). Zuweisung fest je Empfänger/Besucher per Hash (`?r=`-Token, Käufer-ID oder Tages-Besucher-Hash) –
   nie Cookie/Browser-Speicher. **Engpass zuerst**: `ab.py trichter` / `vorschlag` zeigen die Station mit dem größten
@@ -138,7 +139,7 @@ nur wenn er sich unsicher ist oder es geld kostet soll er bei mir nachfragen“
   den Grenzen unten, widerspricht keiner ausdrücklichen Inhaber-Entscheidung in CLAUDE.md und ist rückgängig zu
   machen. Danach als erledigter Vorschlag melden („umgesetzt: …“, mit Begründung und Messplan).
 - **Fragen** (Vorschlag mit Haken/Kreuz im Dashboard, „JARVIS empfiehlt“), wenn: es Geld kostet, eine ausdrückliche
-  Inhaber-Entscheidung ändern würde (z. B. Versand auch am Wochenende), rechtlich unklar ist oder JARVIS unsicher ist
+  Inhaber-Entscheidung ändern würde (z. B. Versand wieder nur zu bestimmten Zeiten), rechtlich unklar ist oder JARVIS unsicher ist
   (Wirkung unklar, nicht rückgängig zu machen, betrifft zahlende Kunden direkt).
 - Vorschläge stehen in `signalwerk.decisions` (status `proposed`; Haken → `done` und Umsetzung, Kreuz → `rejected`,
   wird nicht erneut vorgeschlagen, solange sich die Lage nicht deutlich ändert).

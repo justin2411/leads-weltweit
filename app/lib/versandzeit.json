@@ -1,11 +1,8 @@
 {
-  "_info": "Versandzeit der Kalt- und Nachfassmails (Inhaber 04.10.2026: „übernimm alle 3 punkte“): nur Di–Do zur Bürozeit der Empfänger. Neue Länder 04.10.2026: FI/SG/HK im Europa-Lauf (SG/HK dort ca. 15–17 Uhr Ortszeit), MX/BR im US-Lauf (BR ca. 9:30–14 Uhr, MX ca. 7–11 Uhr Ortszeit). Zeiten in deutscher Zeit (Europe/Berlin). start = geplanter Start von send.yml (Vorbereitung ~10–30 min, dann Versand), spaetester_start = danach beginnt kein neuer Lauf dieser Gruppe, bis = ab hier keine Mail mehr (Versand verteilt sich bis dahin). Gelesen von scripts/lib/versandzeit.py (send.yml, Wachhund, Tagescheck) und vom Dashboard (nächster Lauf). Die Crons in .github/workflows/send.yml müssen dazu passen (je Gruppe ein Sommer- und ein Winterzeit-Cron; tests/test_versandzeit.py prüft das).",
+  "_info": "Versand rund um die Uhr (Inhaber 04.10.2026: „es sollen immer mails rausgehen nicht nur di-do. sondern jeden tag um jede uhrzeit es soll die ganze zeit laufen“). Kalt- und Nachfassmails jeden Tag 0–24 Uhr: send.yml startet stündlich zur Minute 37 (Cron \"37 * * * *\"). Jeder Lauf sendet nur seinen Anteil der Tagesmenge (Rest des Tages / verbleibende Läufe des Tages, scripts/lib/versandzeit.py share) und höchstens dauer_min Minuten lang, damit es gleichmäßig läuft. Alle Länder in jedem Lauf (Länderregeln, daily_limit, Postfach-Tagesmengen, Notbremse, Sperrliste unverändert). Gelesen von scripts/lib/versandzeit.py (send.yml, Wachhund, Tagescheck) und vom Dashboard (app/lib/versandzeit.ts, Gleichheit per Test).",
   "tz": "Europe/Berlin",
-  "wochentage": [2, 3, 4],
-  "laeufe": [
-    { "gruppe": "europa", "name": "UK/FR", "laender": ["UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK"],
-      "start": "08:37", "spaetester_start": "10:30", "bis": "11:00" },
-    { "gruppe": "us", "name": "US", "laender": ["US", "MX", "BR"],
-      "start": "14:37", "spaetester_start": "17:30", "bis": "19:00" }
-  ]
+  "wochentage": [1, 2, 3, 4, 5, 6, 7],
+  "minute": 37,
+  "dauer_min": 45,
+  "name": "alle Länder · 24/7"
 }
