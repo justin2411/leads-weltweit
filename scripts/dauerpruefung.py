@@ -20,8 +20,9 @@ sample_stock.py alle 20 h mit derselben Freigabe; auch diese Ergebnisse zählen 
 
 Käufer-Prüfer: mail-fähige Käufer (check_status ok). Dieselbe Käufer-Prüfung wie outreach.py check (check_values,
 Sperrliste für Adresse und Domain) – besteht sie nicht mehr, wird der Käufer call_only (Telefon/Adresse vorhanden)
-bzw. rejected; nie gelockert, nie ok gesetzt. Zusätzlich nur markiert (pruef_hinweis, Status bleibt): Bounce/Beschwerde
-in der Historie, kein MX der Mail-Domain, Website-Domain löst nicht auf oder Startseite antwortet 404/410/5xx.
+bzw. rejected; nie gelockert, nie ok gesetzt. Wie beim Eingang im Kunden-Werk ebenfalls nicht mehr mail-fähig: ungültige
+Adresse (%20/Leerzeichen), Mail-Domain ohne MX, Overture-Eintrags-Mail bei toter Website. Sonst nur markiert
+(pruef_hinweis, Status bleibt): Bounce/Beschwerde in der Historie, Website-Domain löst nicht auf oder 404/410/5xx.
 
 Sendet nichts, löscht nichts, schreibt keine Lead-Daten ins Repo (nur Zahlen in die Actions-Zusammenfassung).
 Pause per Dashboard (owner_settings.werke_paused „dauerpruefung“). Speicher-Bremse „stopp“: nur fällige Nachprüfungen.
@@ -312,11 +313,38 @@ def prospect_verdict(p: dict, ccfg: dict, suppressed: set[str], bounced: tuple[s
     hints = []
     if p["id"] in bounced[0] or (e and e in bounced[1]):
         hints.append("bounce_historie")
-    if mx is not None and dom and mx(dom) is False:
+    no_mx = mx is not None and dom and mx(dom) is False
+    if no_mx:
         hints.append("kein_mx")
-    if site is not None and p.get("website") and site(p["website"]) == "tot":
+    dead = site is not None and p.get("website") and site(p["website"]) == "tot"
+    if dead:
         hints.append("website_nicht_erreichbar")
+    # Gleiche Eingangsregeln wie das Kunden-Werk (#358/#360) auch für den Altbestand – nur strenger, nie ok setzen:
+    # ungültige Adresse (%20/Leerzeichen), Mail-Domain ohne MX, Eintrags-Mail (Overture) bei toter Website.
+    # US 04.10.2026: 10 von 13 markierten S2-Käufern stammten aus Overture-Einträgen von vor #358.
+    stop = None
+    if e and not _address_ok(p.get("email") or ""):
+        stop = "Adresse ungültig (%-Kodierung oder Leerzeichen)"
+    elif no_mx:
+        stop = "Mail-Domain ohne MX (nicht zustellbar)"
+    elif dead and _foreign_source(p):
+        stop = "Adresse nur aus Fremdeintrag (Overture) und Website nicht erreichbar"
+    if stop:
+        values = {**values, "check_status": "rejected", "check_reason": f"Dauerprüfung: {stop}"[:500]}
+        if p.get("phone") or p.get("published_address"):
+            values = {**values, "check_status": "call_only", "check_reason": ("nur Anruf/Brief – " + values["check_reason"])[:500]}
+        return {"id": p["id"], "result": "abgelehnt", "hinweis": values["check_reason"][:300], "update": values}
     return {"id": p["id"], "result": "hinweis" if hints else "ok", "hinweis": ",".join(hints) or None}
+
+
+def _address_ok(email: str) -> bool:
+    from kundenwerk import address_ok
+    return address_ok(email)
+
+
+def _foreign_source(p: dict) -> bool:
+    from lib.freshness import FOREIGN_SOURCES
+    return (p.get("source_url") or "").lower().startswith(FOREIGN_SOURCES)
 
 
 def run_kaeufer(db, budget: int, *, apply: bool, live: bool, rng: random.Random, cfg: dict | None = None,

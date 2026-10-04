@@ -288,6 +288,11 @@ def site_scan(website: str, fetcher) -> dict:
     home = fetcher.get(base) or fetcher.get(base.replace("http://", "https://", 1))
     if not home:
         return {"emails": {}, "text": "", "pages": [], "final_domain": "", "html": "", "loaded": False}
+    if hosting_placeholder(home[0], home[1]):
+        # gesperrtes/geparktes Hosting-Konto: Adressen dort gehören dem Hoster (z. B. webmaster@), Website gilt als tot
+        # (US 04.10.2026: webmaster@ von /cgi-sys/suspendedpage.cgi hart zurückgekommen)
+        return {"emails": {}, "text": "", "pages": [home[0]], "final_domain": W.site_domain(home[0]), "html": "",
+                "loaded": False, "placeholder": True}
     pages = {home[0]: home[1]}
     for sub in W.subpage_links(home[1], home[0], limit=4):
         got = fetcher.get(sub)
@@ -302,12 +307,25 @@ def site_scan(website: str, fetcher) -> dict:
             "html": "\n".join(pages.values()), "loaded": True}
 
 
+PLACEHOLDER_URL = re.compile(r"/cgi-sys/(suspendedpage|defaultwebpage)\.cgi|account-?suspended|sedoparking|parkingcrew",
+                             re.I)
+PLACEHOLDER_TITLE = re.compile(r"<title>\s*(account suspended|this account has been suspended|default web ?page|"
+                               r"domain (is )?parked|website (is )?(suspended|disabled))", re.I)
+
+
+def hosting_placeholder(url: str, html: str) -> bool:
+    """Startseite ist eine Sperr-/Park-/Standardseite des Hosters (cPanel suspendedpage.cgi, Sedo …)."""
+    return bool(PLACEHOLDER_URL.search(url or "") or PLACEHOLDER_TITLE.search((html or "")[:4000]))
+
+
 def listed_email_usable(d: dict, res: dict, email: str, fetcher) -> bool:
     """Firmen-E-Mail aus dem Eintrag (Overture/Register) nur, wenn sie heute noch zustellbar wirkt: Domain hat MX
     und die Website ist nicht tot (gleiche Kriterien wie die Dauerprüfung: kein_mx, website_nicht_erreichbar).
     Overture-Einträge sind oft veraltet – FR 04.10.2026: 6 von 28 geprüften Overture-Käufern so markiert."""
     from lib.rules import email_domain
     if mx_check(email_domain(email)) is False:
+        return False
+    if res.get("placeholder"):
         return False
     if res.get("loaded", True) or not d.get("website"):
         return True
