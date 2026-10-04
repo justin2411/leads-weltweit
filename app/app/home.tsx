@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import VIDEOS from "@/content/videos.json";
-import { BRAND, CONTACT, LEGAL_NAME, fitTitle, siteUrl } from "@/lib/site";
+import { BRAND, CONTACT, LEGAL_NAME, fitDesc, fitTitle, siteUrl } from "@/lib/site";
 import { consentText } from "@/lib/consent";
 import { HOME_SPRITE, HOME_STAT_ART } from "@/lib/home-v2-css";
 import { SampleForm } from "./sample-form";
@@ -27,10 +27,10 @@ export function homeMetadata(lang: HomeLang): Metadata {
   const title = fitTitle(t.title, BRAND, true);
   const url = siteUrl() + (lang === "en" ? "" : HOME_PATH[lang]);
   return {
-    title, description: t.desc,
+    title, description: fitDesc(t.desc),
     alternates: { canonical: url, languages: { en: siteUrl() + "/", fr: siteUrl() + "/fr", de: siteUrl() + "/de", "x-default": siteUrl() + "/" } },
     robots: { index: true, follow: true },
-    openGraph: { title, description: t.desc, url, siteName: BRAND, type: "website", locale: { en: "en_GB", fr: "fr_FR", de: "de_DE" }[lang] },
+    openGraph: { title, description: fitDesc(t.desc), url, siteName: BRAND, type: "website", locale: { en: "en_GB", fr: "fr_FR", de: "de_DE" }[lang] },
   };
 }
 

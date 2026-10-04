@@ -52,7 +52,7 @@ WEIGHT = {"rot": 1.0, "gelb": 0.35, "info": 0.0}
 
 SLOW_MS, VERY_SLOW_MS = 2500, 6000
 BIG_KB, VERY_BIG_KB = 900, 2500
-TITLE_MAX, DESC_MIN, DESC_MAX = 60, 50, 170   # Titel ≤ 60 (wie app/lib/site.ts TITLE_MAX)
+TITLE_MAX, DESC_MIN, DESC_MAX = 60, 70, 160   # wie app/lib/site.ts TITLE_MAX, DESC_MIN, DESC_MAX
 PLACEHOLDER_RX = re.compile(r"PLATZHALTER|[Ll]orem ipsum|\[(?:Name|Adresse|Firma|Datum|Ort|Vorname)\]|\bTODO\b")
 DASH_RX = re.compile(r"[–—]")
 HEAD_PUNCT_RX = re.compile(r"[.,:;!]\s*$|[,;:]")

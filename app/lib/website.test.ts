@@ -5,7 +5,7 @@ import {
   fixBrief, fixState, isDue, isFindingKey, isIgnored, nextDue, recentlyFixed, ringDash, shortTime, suggestionLine, toAgent, toCheck, toFix,
   toneOf, totalScore, validateAgent, visibleFindings, type Finding, type WebsiteAgent, type WebsiteFix,
 } from "./website.ts";
-import { fitTitle } from "./site.ts";
+import { fitDesc, fitTitle } from "./site.ts";
 import { KINDS, OWNER_KINDS } from "./agents.ts";
 import { orderSessions, toSession } from "./jarvis-chat.ts";
 
@@ -189,4 +189,16 @@ test("Seitentitel ≤ 60: Marke nur, wenn sie passt, sonst kürzen", () => {
   const t = fitTitle("Des entreprises nouvelles et en croissance, partout en France, qui doivent s'assurer", "NextGen Profit");
   assert.ok(t.length <= 60 && t.endsWith("…"));
   assert.equal(fitTitle("", "NextGen Profit"), "NextGen Profit");
+});
+
+test("Meta-Beschreibung 70–160: ganze Sätze, sonst bis zum Komma, sonst Wortgrenze", () => {
+  const home = "Every week: companies across the country with a real reason to buy. Each lead dated, with its source, phone, email and an opening line. For web agencies, recruiters, accountants, insurance brokers and other B2B service firms.";
+  assert.equal(fitDesc(home), "Every week: companies across the country with a real reason to buy. Each lead dated, with its source, phone, email and an opening line.");
+  const web = "Every Monday, your firm would receive local businesses across the UK with no website, an outdated site or security gaps, each with phone, email and a short sales briefing.";
+  assert.equal(fitDesc(web), "Every Monday, your firm would receive local businesses across the UK with no website.");
+  const long = "word ".repeat(60);
+  const w = fitDesc(long);
+  assert.ok(w.length <= 160 && w.endsWith("…"));
+  assert.equal(fitDesc("Short text stays."), "Short text stays.");
+  for (const d of [home, web, long]) { const r = fitDesc(d); assert.ok(r.length >= 70 && r.length <= 160, r); }
 });
