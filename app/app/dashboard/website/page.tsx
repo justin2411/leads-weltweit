@@ -43,6 +43,7 @@ export default async function WebsitePage() {
       <div className="ws-head">
         <h1><Icon name="website" size={22} /> Website</h1>
         <a className="ws-open" href="/dashboard/website/auswertung"><Icon name="statistik" size={14} />Auswertung</a>
+        <a className="ws-open" href="/dashboard/website/flow"><Icon name="pipeline" size={14} />Flow</a>
         <a className="ws-open" href={site} target="_blank" rel="noopener noreferrer"><Icon name="pfeil" size={14} />Öffnen</a>
       </div>
       {data.error && <div className="ws-err" role="alert"><Icon name="fehler" size={16} /> Nicht lesbar: {data.error.slice(0, 160)}</div>}
