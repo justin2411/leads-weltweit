@@ -155,6 +155,8 @@ const CSS = `
 .bx .plan2.cu .price .amt{display:inline-block;min-width:7.6ch}.bx .plan2 .price small{font-size:15px;font-weight:600;color:var(--soft);margin-left:6px}
 .bx .plan2 ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}.bx .plan2 li{font-size:15.5px;display:flex;gap:10px}.bx .plan2 li:before{${maskIcon(CHECK_PATH, 2.8)};width:1em;height:1em;margin-top:.2em;color:var(--gold)}
 .bx .plan2 li.agl:before{display:none}.bx .plan2 li.agl .ico{flex:none;margin-top:.2em;color:var(--gold)}.bx .plan2 li.agl b{font-weight:700}
+/* Desktop: Ansprechpartner immer 3 Zeilen (Titel + 2 Zeilen über die volle Kartenbreite), Montags-Satz immer 2 Zeilen (Inhaber 04.10.2026) */
+@media (min-width:900px){.bx .plan2 li.agl{display:block;container-type:inline-size}.bx .plan2 li.agl .ico{display:inline-block;vertical-align:-3px;margin:0 8px 0 0}.bx .plan2 li.agl b{white-space:nowrap;font-size:min(1em,calc((100cqi - 30px) / (var(--nt) * .6)))}.bx .plan2 li.agl .agl-t{display:block;text-wrap:balance;font-size:min(1em,calc(100cqi * 3.9 / var(--n)))}.bx .start .lede{max-width:880px;text-wrap:balance}}
 .bx .plan2 .pl{font-size:13.5px;font-weight:700;color:#8a6a33;padding-top:12px;border-top:1px solid var(--line)}
 .bx .plan2 form,.bx .plan2 .go{margin-top:auto}.bx .plan2 .btn{width:100%;justify-content:center}
 .bx .sx-how{margin:44px 0 52px;max-width:1080px}
