@@ -27,13 +27,18 @@ export type OwnerSettings = {
   dismissed_tips: Record<string, string>;
   /** Monatsgrenze der Sofort-Antworten über die Claude-API in Euro (Inhaber 04.10.2026: „vorerst 30 €“). */
   llm_budget_eur: number;
+  /** Website Auto-Fix (Inhaber 04.10.2026: „jarvis soll das aber eigentlich alles selber machen“): an = JARVIS behebt
+   * neue Website-Funde selbst (scripts/website_agents.py autofix). */
+  website_autofix: boolean;
+  /** Ausgeblendete Website-Funde: Fund-Schlüssel (website_checks.funde[].key) -> bis (ISO), 30 Tage. */
+  website_ignored: Record<string, string>;
 };
 export type SettingKey = keyof OwnerSettings;
 
 export const DEFAULTS: OwnerSettings = {
   send_paused: false, send_countries_off: [], send_country_limits: {}, followup_enabled: true, followup_days: null,
   sample_targets: {}, sample_max_age_hours: null, buyer_countries_off: [], werke_paused: {}, slot_plan: {},
-  slot_autopilot: { on: true, locks: {} }, dismissed_tips: {}, llm_budget_eur: 30,
+  slot_autopilot: { on: true, locks: {} }, dismissed_tips: {}, llm_budget_eur: 30, website_autofix: true, website_ignored: {},
 };
 
 /**

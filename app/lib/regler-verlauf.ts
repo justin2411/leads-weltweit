@@ -19,6 +19,7 @@ const LABEL: Record<SettingKey, string> = {
   followup_days: "Nachfass-Tage", sample_targets: "Proben-Soll", sample_max_age_hours: "Proben-Verfall", buyer_countries_off: "Käufer-Länder",
   werke_paused: "Werke an/aus", slot_plan: "Plätze", slot_autopilot: "Autopilot", dismissed_tips: "Ausgeblendete Hinweise",
   llm_budget_eur: "API-Grenze",
+  website_autofix: "Website Auto-Fix", website_ignored: "Ausgeblendete Website-Funde",
 };
 
 /** Eintrag für eine Zeile aus owner_log (null = keine Einstellung). */
