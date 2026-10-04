@@ -152,7 +152,7 @@ export const LEAD_COUNTRIES: { id: LeadCountry; label: string; title: string }[]
 const CORE = ["US", "UK", "FR"];
 export const countryOf = (l: Lane): LeadCountry => {
   const cs = l.country.split(",");
-  if (cs.includes("FI")) return "Neu";
+  if (cs.includes("FI") && !cs.includes("IE")) return "Neu"; // web-north prüft auch FI/SG-Websites (05.10.2026)
   if (cs.every((c) => CORE.includes(c))) return cs[0] as LeadCountry;
   return cs.length > 1 ? "Nord" : (l.country as LeadCountry);
 };

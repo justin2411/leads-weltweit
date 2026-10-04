@@ -302,7 +302,7 @@ class LeadTests(unittest.TestCase):
         self.assertGreaterEqual(len(web), 8)  # Inhaber 02.10.2026: „im ganz großen stil“
         for e in web:
             co = e["name"].split("-")[1].upper()
-            co = "IE,NL,BE,SE" if co == "NORTH" else co  # Quellen-Scout R19: Website-Prüfung IE/NL/BE/SE
+            co = "IE,NL,BE,SE,FI,SG" if co == "NORTH" else co  # Scout R19 IE/NL/BE/SE, Premium-Ausbau 05.10.: FI/SG
             self.assertIn("--web-check", e["args"])
             self.assertIn(f"--countries {co} ", e["args"] + " ")
             self.assertGreaterEqual(e.get("workers", 16), 32)
