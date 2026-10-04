@@ -14,7 +14,7 @@ export type StorageData = {
   db_bytes: number;
   tables: { name: string; bytes: number }[];
   leads: { segment: string | null; country: string | null; status: string; n: number }[];
-  buyers: { segment: string | null; country: string | null; check_status: string | null; n: number; sent: number }[];
+  buyers: { segment: string | null; country: string | null; check_status: string | null; n: number; sent: number; used?: number }[];
   stock: { segment: string | null; country: string | null; status: string; n: number }[];
   checks: { segment?: string | null; country: string | null; released: number; failed: number }[];
 };
@@ -103,18 +103,20 @@ export function leadTanks(d: StorageData, seg: string): LeadTank[] {
 }
 
 // --------------------------------------------------------------------------------------------- Käufer
-export type BuyerTank = { country: string; mail: number; sent: number; free: number; callOnly: number; mailCountry: boolean };
+export type BuyerTank = { country: string; mail: number; sent: number; queued: number; free: number; callOnly: number; mailCountry: boolean };
 
 /**
  * Käufer je Land nach CLAUDE.md: mail-fähig = check_status ok UND Land in den Mail-Ländern der Zielgruppe;
- * davon angeschrieben (Mail gesendet) und noch frei. „nur Anruf/Brief“ = call_only + ok außerhalb der Mail-Länder.
+ * davon angeschrieben (Mail gesendet), in Arbeit (Entwurf/freigegeben/gesperrt, noch nicht gesendet) und noch frei
+ * (ohne jede Mail, wie JARVIS). „nur Anruf/Brief“ = call_only + ok außerhalb der Mail-Länder.
+ * Ältere Daten ohne `used` zählen wie bisher nur Gesendete als belegt (Prüfung 04.10.2026).
  * Andere Status (rejected, …) zählen nirgends.
  */
 export function buyerTanks(d: StorageData, segments: SegmentInfo[], seg: string): BuyerTank[] {
   const mailOf = new Map(segments.map((s) => [s.id, new Set(s.email_countries ?? [])]));
   const by = new Map<string, BuyerTank>();
   const tank = (c: string) => {
-    if (!by.has(c)) by.set(c, { country: c, mail: 0, sent: 0, free: 0, callOnly: 0, mailCountry: false });
+    if (!by.has(c)) by.set(c, { country: c, mail: 0, sent: 0, queued: 0, free: 0, callOnly: 0, mailCountry: false });
     return by.get(c)!;
   };
   for (const c of LEAD_COUNTRIES) tank(c);
@@ -124,15 +126,17 @@ export function buyerTanks(d: StorageData, segments: SegmentInfo[], seg: string)
     const mailOk = mailOf.get(r.segment)?.has(r.country) ?? false;
     if (mailOk) t.mailCountry = true;
     if (r.check_status === "ok" && mailOk) {
-      t.mail += num(r.n);
-      t.sent += Math.min(num(r.sent), num(r.n));
+      const n = num(r.n), sent = Math.min(num(r.sent), n);
+      t.mail += n;
+      t.sent += sent;
+      t.queued += Math.min(Math.max(num(r.used ?? r.sent) - sent, 0), n - sent);
     } else if (r.check_status === "call_only" || r.check_status === "ok") t.callOnly += num(r.n);
   }
   // Mail-Land auch ohne Käufer kennzeichnen (Zielgruppe hat das Land freigeschaltet)
   for (const t of by.values()) {
     if (seg !== ALL) t.mailCountry ||= mailOf.get(seg)?.has(t.country) ?? false;
     else t.mailCountry ||= [...mailOf.values()].some((s) => s.has(t.country));
-    t.free = t.mail - t.sent;
+    t.free = t.mail - t.sent - t.queued;
   }
   const fixed = LEAD_COUNTRIES as readonly string[];
   return [...by.values()].filter((t) => fixed.includes(t.country) || t.mail + t.callOnly > 0)

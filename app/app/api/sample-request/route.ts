@@ -11,6 +11,7 @@ import { cleanText, validEmail, wishKeys, wishNote } from "@/content/sample-wish
 import { after } from "next/server";
 import { dispatchSampleWorkflow, previewFromStock, sendFromStock, STOCK_BUCKET, type StockDeps } from "@/lib/sample-stock";
 import { pushAlarmSafe } from "@/lib/push";
+import { isOwnerAddress } from "@/lib/owner-address";
 
 export const dynamic = "force-dynamic";
 // Sofortversand nach dem Klick läuft per after() nach der Antwort: Vorrat abrufen + Resend (wenige Sekunden)
@@ -95,13 +96,21 @@ export async function POST(req: Request) {
   // Sofortversand (Inhaber 03.10.2026): nur, wenn web_samples.py die Anfrage auch beantworten würde – also nicht,
   // wenn diese Adresse schon eine Probe bekam (dann entscheidet wie bisher die Warteschlange: „doppelt“).
   const instant = !suppressed && !test && !(await hadSample(email));
-  const { data: row, error } = await db().from("sample_requests").insert({
+  // Testprobe des Inhabers (Vorschau, eigene Adresse oder angemeldet): läuft normal, zählt aber nicht als echte
+  // Probe in den Kennzahlen (Prüfung 04.10.2026). is_test nur mitsenden, wenn gesetzt – so bleiben Anfragen von
+  // Kunden unberührt, falls die Spalte (Migration 20261004090200) noch fehlt.
+  const isTest = test || isOwnerAddress(email, process.env) || (await isOwner());
+  const fields: Record<string, unknown> = {
     variant_id: ownPage ? v.id : null, company_name: company, email, segment_id: page.segment_id, country,
     region: region || null, consent_text: consent, consent_at: new Date().toISOString(),
     status: suppressed || test ? "rejected" : "new", note,
     // Sperre: die App bedient diese Anfrage gerade selbst, web_samples.py lässt sie 15 Minuten in Ruhe
     claimed_at: instant ? new Date().toISOString() : null,
-  }).select("id").single();
+  };
+  const insert = (f: Record<string, unknown>) => db().from("sample_requests").insert(f).select("id").single();
+  let res = await insert(isTest ? { ...fields, is_test: true } : fields);
+  if (res.error && isTest) res = await insert(fields);
+  const { data: row, error } = res;
   if (error) return json ? Response.json({ ok: false, error: "server" }, { status: 500 }) : new Response("Fehler", { status: 500 });
   if (!test && ownPage) await recordEvent(v.id, "sample_request");
   // Sofort-Alarm aufs Handy (Web-Push, feuern und vergessen; ändert nichts am Ablauf der Anfrage)
