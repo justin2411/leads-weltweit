@@ -17,7 +17,7 @@ def per_page(html: str) -> list[int]:
 
 class PagesTest(unittest.TestCase):
     def setUp(self):
-        self.raw = (ROOT / "samples/S5/US/leads.csv").read_bytes()
+        self.raw = (ROOT / "tests/fixtures/leads_s5_us.csv").read_bytes()
 
     def test_ten_leads_on_three_pages(self):
         # Deckblatt mit Übersicht, dann 4/3/3 Karten (Inhaber 02.10.2026: Freiräume nutzen)
@@ -35,7 +35,7 @@ class SampleSizeTest(unittest.TestCase):
         import csv
         import io
         from lib import leadreport
-        raw = (ROOT / "samples/S5/US/leads.csv").read_bytes()
+        raw = (ROOT / "tests/fixtures/leads_s5_us.csv").read_bytes()
         rows = list(csv.DictReader(io.StringIO(raw.decode("utf-8-sig"))))
         rows[1]["company"] = rows[0]["company"]  # 10 Zeilen, aber nur 9 Firmen
         buf = io.StringIO()
