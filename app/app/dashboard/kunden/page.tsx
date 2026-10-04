@@ -5,7 +5,7 @@ import { approveFirstDelivery, createCustomer, setSubscriptionPaused } from "../
 import { COUNTRY_COLOR, berlin, compact, currencySign, isTestCustomer, monthly, nextRun, onlySegment, realSubscriptions } from "@/lib/dashboard-logic";
 import { requireOwner } from "../actions";
 import { Icon } from "@/app/icons";
-import { Back, COUNTRY_OPTS, Chips, Ctrl, Kpi, PageHead } from "../v2";
+import { Back, COUNTRY_OPTS, Chips, Ctrl, Kpi, Leer, PageHead } from "../v2";
 import { readParams, withQuery, type SP } from "../params";
 
 /** Kunden & Umsatz der Webagenturen: Abos, Umsatz pro Monat, Lieferungen. Testkäufe zählen nicht. */
@@ -71,7 +71,7 @@ export default async function Kunden({ searchParams }: { searchParams: SP }) {
             </div>
           );
         })}
-        {custs.length === 0 && <div className="muted">noch keine Kunden</div>}
+        {custs.length === 0 && <Leer icon="kunden" text="Noch keine Kunden." />}
       </div>
       </Fold>
       {contacts.length > 0 && (

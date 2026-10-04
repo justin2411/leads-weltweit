@@ -4,9 +4,10 @@ import { COUNTRY_COLOR, berlinDay, compact, onlySegment } from "@/lib/dashboard-
 import { PERIODS, isPeriod, period } from "@/lib/dashboard-periods";
 import { STAGES, board, isStage, type Card } from "@/lib/dashboard-board";
 import { requireOwner } from "../actions";
-import { COUNTRY_OPTS, Chips, Crumbs, PageHead, ago2 } from "../v2";
+import { COUNTRY_OPTS, Chips, Crumbs, Leer, PageHead, ago2 } from "../v2";
 import { readParams, withQuery, type SP } from "../params";
 import { Icon } from "@/app/icons";
+import { MobileTabs } from "../mobile-tabs";
 
 function CardRow({ c, now }: { c: Card; now: Date }) {
   const inner = (
@@ -59,7 +60,7 @@ export default async function Kontakte({ searchParams }: { searchParams: SP }) {
         <div className="big1"><b>{compact(col.count)}</b> {col.label} · {col.cards.length < col.count ? `neueste ${compact(col.cards.length)} von ${compact(col.count)}` : "alle"}</div>
         <div className="klist card">
           {col.cards.map((c) => <CardRow key={c.key} c={c} now={now} />)}
-          {col.cards.length === 0 && <div className="muted">keine</div>}
+          {col.cards.length === 0 && <Leer icon="kontakte" text="Keine Firmen in dieser Stufe." />}
         </div>
         {col.count > col.cards.length && n < 1000 && (
           <Link className="more-btn" href={withQuery("/dashboard/kontakte", { ...base, n: String(Math.min(1000, n + 200)) })}>mehr laden ({compact(col.count - col.cards.length)} weitere)</Link>
@@ -72,7 +73,7 @@ export default async function Kontakte({ searchParams }: { searchParams: SP }) {
     <div className="v2">
       <PageHead title="Kontakte" icon="kontakte" crumbs={[["JARVIS", withQuery("/dashboard/jarvis", raw)], ["Kontakte", ""]]} />
       <div className="head2">{zChips("/dashboard/kontakte", prm)}<Chips base="/dashboard/kontakte" param="land" value={land} options={COUNTRY_OPTS} params={prm} dots /></div>
-      <div className="kanban">
+      <MobileTabs className="kanban" label="Stufen" tabs={cols.map((c) => ({ label: c.label, n: compact(c.count) }))}>
         {cols.map((col) => (
           <section key={col.id} className={`kcol ${col.id === "out" ? "out" : ""}`}>
             <Link href={withQuery("/dashboard/kontakte", { ...prm, stufe: col.id })} className="kh" title="ganze Liste">
@@ -80,13 +81,14 @@ export default async function Kontakte({ searchParams }: { searchParams: SP }) {
             </Link>
             <div className="kc">
               {col.cards.slice(0, 8).map((c) => <CardRow key={c.key} c={c} now={now} />)}
+              {col.cards.length === 0 && <Leer small icon="kontakte" text="Noch keine." />}
               {col.count > Math.min(8, col.cards.length) && (
                 <Link href={withQuery("/dashboard/kontakte", { ...prm, stufe: col.id })} className="kmore">alle {compact(col.count)} ansehen <Icon name="weiter" size={14} /></Link>
               )}
             </div>
           </section>
         ))}
-      </div>
+      </MobileTabs>
     </div>
   );
 }

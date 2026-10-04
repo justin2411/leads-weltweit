@@ -32,6 +32,7 @@ import type { BdPunkt } from "@/lib/braucht-dich";
 import { BrauchtDich } from "./braucht-dich";
 import { ABTEILUNGEN_CSS, Abteilungen } from "./abteilungen";
 import type { Kachel } from "@/lib/abteilungen";
+import { MobileFold } from "../mobile-fold";
 
 export type JarvisProps = {
   hello: string; say: string;
@@ -64,6 +65,10 @@ export type JarvisProps = {
 };
 
 export function JarvisView(p: JarvisProps) {
+  // Handy: Kennzahl im eingeklappten Kopf (Entscheidungen offen, Chat-Sitzungen bzw. Aufträge)
+  const offen = p.zeit ? p.zeit.filter((e) => e.status === "proposed").length : 0;
+  const zeitSum = p.zeit ? (offen ? `${offen} offen` : `${p.zeit.length}`) : undefined;
+  const chatSum = p.chat ? (p.chat.gehirnUnread ? `${p.chat.gehirnUnread} neu` : `${p.chat.sessions}`) : `${p.tasks.length}`;
   return (
     <div className={`jv jv2 jv3 ${p.drawer ? "has-drw" : ""}`}>
       <style dangerouslySetInnerHTML={{ __html: JCHAT_CSS + SOFORT_CSS + KOHORTEN_CSS + TEAM_CSS + GEHIRN_LERNT_CSS + ABTEILUNGEN_CSS }} />
@@ -100,9 +105,9 @@ export function JarvisView(p: JarvisProps) {
       </div>
       {p.kohorten && <Kohorten rows={p.kohorten.rows} countries={p.kohorten.countries} today={p.kohorten.today} />}
       {p.gehirn && <GehirnLernt d={p.gehirn} />}
-      {p.zeit !== undefined && <Zeitleiste items={p.zeit} />}
+      {p.zeit && <MobileFold id="jv-zeit" title="Entscheidungen" sum={zeitSum}><Zeitleiste items={p.zeit} /></MobileFold>}
       <div className="jv-duo">
-        <JarvisChat tasks={p.tasks} startAt={p.startAt} chat={p.chat ?? null} />
+        <MobileFold id="jv-chat" title="Chat" sum={chatSum}><JarvisChat tasks={p.tasks} startAt={p.startAt} chat={p.chat ?? null} /></MobileFold>
         <GatePanel g={p.gate} />
       </div>
       <Ticker items={p.ticker} />

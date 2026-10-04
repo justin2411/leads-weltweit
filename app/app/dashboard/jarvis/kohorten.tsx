@@ -24,7 +24,7 @@ export function Kohorten({ rows, countries, today }: { rows: KohorteRow[] | null
   return (
     <details className="kh" id="kohorten">
       <summary>
-        <span className="kh-t">Kohorten-Trichter</span>
+        <span className="kh-t"><span className="l">Kohorten-Trichter</span><span className="s">Kohorten</span></span>
         <em>{m ? `${m.weeks.length} Wochen · ${countries.join("/")}` : "nicht lesbar"}</em>
         <span className="kh-leg" aria-label="Farben">{AMPELN.map((a) => <i key={a} className={`t-${a}`}>{AMPEL_TEXT[a]}</i>)}</span>
       </summary>
@@ -82,6 +82,12 @@ export const KOHORTEN_CSS = `
 .jv .kh .t-gold{--ac:var(--amp-gold);--ab:var(--amp-gold-bg)}
 .jv .kh .t-red{--ac:var(--amp-red);--ab:var(--amp-red-bg)}
 .jv .kh .t-grey{--ac:var(--amp-grey);--ab:var(--amp-grey-bg)}
+.jv .kh-t .s{display:none}
+@media (max-width:760px){
+  .jv .kh-t .l{display:none}.jv .kh-t .s{display:inline}
+  .jv .kh>summary em{margin-left:auto}
+  .jv .kh:not([open]) .kh-leg{display:none}
+}
 @media (max-width:720px){
   .jv .kh>summary{padding:8px 12px}.jv .kh-leg{margin-left:0}
   .jv .kh-wrap{padding:0 6px 12px}
