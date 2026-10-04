@@ -28,6 +28,9 @@ const mk = (p: Partial<AgentTask>) =>
 
 test("Freitext: Markt erkennen", () => {
   const m = (s: string) => inferTask(s).market;
+  assert.equal(m("er soll uk käufer finden"), "UK"); // Inhaber schreibt klein
+  assert.equal(m("gb leads"), "UK");
+  assert.equal(m("Bukarest"), null);
   assert.equal(m("UK Käufer finden"), "UK");
   assert.equal(m("käufer in england"), "UK");
   assert.equal(m("Großbritannien"), "UK");

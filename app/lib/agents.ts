@@ -57,10 +57,10 @@ export function agentBoard(tasks: AgentTask[]) {
 // Inhaber 04.10.2026: „wenn ich den auftrag einem agenten gebe, er soll uk käufer finden warum ist dann unten markt nicht
 // direkt UK ausgewählt? … jarvis soll schlau sein und mir die arbeit so einfach wie möglich machen“.
 
-/** Ländernamen und Kürzel je Markt. Kürzel nur in Großbuchstaben („us“, „be“, „se“ sind normale Wörter). */
+/** Ländernamen und Kürzel je Markt. Kürzel nur in Großbuchstaben („us“, „be“, „se“ sind normale Wörter) – außer „uk“/„gb“ (kein normales Wort, Inhaber schreibt „uk käufer finden“). */
 const MARKET_NAMES: Record<string, { code: RegExp; words: RegExp }> = {
   US: { code: /US|USA/, words: /usa|amerika|vereinigten? staaten|united states|vereinigte staaten/ },
-  UK: { code: /UK|GB/, words: /england|gro(?:ß|ss)britannien|britain|united kingdom|vereinigte[ns]? königreich|schottland|wales/ },
+  UK: { code: /UK|GB/, words: /uk|gb|england|gro(?:ß|ss)britannien|britain|united kingdom|vereinigte[ns]? königreich|schottland|wales/ },
   FR: { code: /FR/, words: /frankreich|france|französisch/ },
   IE: { code: /IE/, words: /irland|ireland|irisch/ },
   NL: { code: /NL/, words: /niederlande|holland|netherlands|niederländisch/ },
