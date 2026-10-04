@@ -227,8 +227,13 @@ def with_website(country: str, limit: int, log=print, exclude: set[str] | None =
 
 
 def web_cache_for(country: str) -> Path:
-    """GB/FR und IE/NL/BE/SE: der vorhandene Auszug (alle Firmen mit Telefon); US: eigener Auszug mit Website."""
-    return overture.CACHE_US_WEB if country == "US" else overture.cache_for(country)
+    """GB/FR und IE/NL/BE/SE: der vorhandene Auszug (alle Firmen mit Telefon); US und FI/SG: eigener Auszug mit Website
+    (der FI/SG-Auszug für S2 ohne Website enthält keine Firmen mit Website)."""
+    if country == "US":
+        return overture.CACHE_US_WEB
+    if country in ("FI", "SG"):
+        return overture.CACHE_WEB_FISG
+    return overture.cache_for(country)
 
 
 def to_candidate(d: dict, country: str) -> dict:

@@ -41,6 +41,9 @@ CACHE_WEB_NOPHONE = Path(os.environ.get("EXTRAKTOR_OVERTURE_WEB_NOPHONE", "out/c
 # durchgeprüft, 120 Tage Pause je Firma): genau die Ergänzung zum ersten Auszug – Website, Konfidenz 0,4–0,6 (mit oder
 # ohne Telefon) oder ab 0,6 ohne Telefon. Keine Überschneidung mit overture_us_web.parquet
 CACHE_US_WEB2 = Path(os.environ.get("EXTRAKTOR_OVERTURE_US_WEB2", "out/cache/overture_us_web_zweite.parquet"))
+# Website-Prüfung FI/SG (JARVIS-Agent 2, 05.10.2026: Premium-Ausbau FI/SG): Firmen MIT Website und Telefon; der Auszug
+# CACHE_NEW enthält nur Firmen ohne Website. Klein (FI+SG), wird im Teil web-north bei Bedarf gebaut
+CACHE_WEB_FISG = Path(os.environ.get("EXTRAKTOR_OVERTURE_WEB_FISG", "out/cache/overture_fi_sg_web.parquet"))
 COUNTRY = {"GB": "UK", "FR": "FR", "IE": "IE", "NL": "NL", "BE": "BE", "SE": "SE", "US": "US",
            "FI": "FI", "SG": "SG", "HK": "HK", "MX": "MX", "BR": "BR"}
 # Auszug -> (Overture-Ländercodes, Bounding-Box xmin, xmax, ymin, ymax – oder mehrere Boxen, je Land eine)
@@ -52,7 +55,9 @@ GROUPS = {CACHE: (("GB", "FR"), (-8.7, 9.6, 41.3, 60.9)),
           CACHE_US_WEB2: (("US",), (-180.0, -60.0, 15.0, 72.0)),
           CACHE_NEW: (("FI", "SG", "HK", "MX", "BR"), ((19.0, 31.6, 59.6, 70.1), (103.55, 104.1, 1.15, 1.48),
                                                        (113.8, 114.45, 22.13, 22.58), (-118.5, -86.6, 14.4, 32.8),
-                                                       (-74.1, -34.7, -33.9, 5.4)))}
+                                                       (-74.1, -34.7, -33.9, 5.4))),
+          # nach CACHE_NEW: cache_for("FI"/"SG") bleibt der Auszug ohne Website (S2 ohne Website)
+          CACHE_WEB_FISG: (("FI", "SG"), ((19.0, 31.6, 59.6, 70.1), (103.55, 104.1, 1.15, 1.48)))}
 # Länder, in denen S2 ohne Website nur Firmen MIT E-Mail nimmt (US und die neuen Länder)
 EMAIL_ONLY = {"US", "FI", "SG", "HK", "MX", "BR"}
 # Hongkong hat keine Postleitzahlen: dort reicht Straße + Ort (qc.postcode_ok prüft HK nicht)
@@ -63,6 +68,7 @@ EXTRA_WHERE = {CACHE_US: "AND (websites IS NULL OR len(websites) = 0)",
                CACHE_US_WEB: "AND len(websites) > 0 AND coalesce(confidence, 0) >= 0.6",
                CACHE_NEW: "AND (websites IS NULL OR len(websites) = 0) AND len(emails) > 0",
                CACHE_WEB_NOPHONE: "AND len(websites) > 0",
+               CACHE_WEB_FISG: "AND len(websites) > 0",
                CACHE_US_WEB2: "AND len(websites) > 0 AND coalesce(confidence, 0) >= 0.4 "
                               "AND (coalesce(confidence, 0) < 0.6 OR phones IS NULL OR len(phones) = 0)"}
 # Auszüge OHNE Telefon-Pflicht (alle anderen: nur Firmen mit Telefon)
