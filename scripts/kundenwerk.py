@@ -4,7 +4,7 @@
 Sucht Käufer (unsere Zielgruppen) und legt sie geprüft in `prospects` ab. Sendet nie Mails – ob und wann
 angeschrieben wird, entscheidet weiter config/versand.yaml (zurzeit aus).
 
-  python scripts/kundenwerk.py pool                 # Overture-Auszug: Firmen der Käufer-Branchen mit Website
+  python scripts/kundenwerk.py pool                 # Overture-Auszug + offene Register (MX DENUE, FI YTJ) mit Website
   python scripts/kundenwerk.py run --shard 0/4 --max 3000
   python scripts/kundenwerk.py stand                # Zählung je Branche und Land
 
@@ -140,7 +140,49 @@ def build_pool() -> Path:
       ) TO '{POOL}' (FORMAT parquet)""")
     n = con.execute(f"SELECT count(*) FROM '{POOL}'").fetchone()[0]
     log(f"Kunden-Pool {rel}: {n} Firmen mit Website -> {POOL}")
+    add_register_rows(con, POOL)
     return POOL
+
+
+# Offene Register als zusätzliche Käuferquellen (JARVIS-Agent 5 „Käuferquellen“, 04.10.2026): gleiche Spalten wie der
+# Overture-Auszug, dazu Rechtsform laut Register (reg_form/reg_note) und Herkunft (quelle). Fällt eine Quelle aus,
+# bleibt der Pool trotzdem (Overture) – nächster Pool-Bau versucht es erneut.
+REGISTER_SOURCES = ("mx_denue", "fi_ytj")
+REGISTER_COLUMNS = ("reg_form", "reg_note", "quelle")
+POOL_COLUMNS = {"id": "VARCHAR", "name": "VARCHAR", "websites": "VARCHAR[]", "emails": "VARCHAR[]",
+                "phones": "VARCHAR[]", "street": "VARCHAR", "city": "VARCHAR", "postcode": "VARCHAR",
+                "region": "VARCHAR", "country": "VARCHAR", "category": "VARCHAR", "confidence": "DOUBLE",
+                "operating_status": "VARCHAR", "reg_form": "VARCHAR", "reg_note": "VARCHAR", "quelle": "VARCHAR"}
+
+
+def register_rows(log=log) -> list[dict]:
+    import importlib
+    rows: list[dict] = []
+    for name in REGISTER_SOURCES:
+        try:
+            mod = importlib.import_module(f"extraktor.sources.{name}")
+            rows += mod.pool_rows(log=log)
+        except Exception as exc:  # noqa: BLE001 - eine Quelle darf den Pool nicht verhindern
+            log(f"Register-Quelle {name} übersprungen: {type(exc).__name__}: {str(exc)[:120]}")
+    return rows
+
+
+def add_register_rows(con, pool: Path, rows: list[dict] | None = None) -> int:
+    """Register-Zeilen an den Pool anhängen (UNION ALL BY NAME: Overture-Zeilen haben reg_form/quelle = NULL)."""
+    rows = register_rows() if rows is None else rows
+    if not rows:
+        return 0
+    tmp_json = pool.with_suffix(".register.json")
+    tmp_pool = pool.with_suffix(".tmp.parquet")
+    tmp_json.write_text("\n".join(json.dumps({k: r.get(k) for k in POOL_COLUMNS}, ensure_ascii=False) for r in rows))
+    cols = "{" + ", ".join(f"'{k}': '{v}'" for k, v in POOL_COLUMNS.items()) + "}"
+    con.execute(f"""COPY (SELECT * FROM '{pool}' UNION ALL BY NAME
+                         SELECT * FROM read_json('{tmp_json}', format='newline_delimited', columns={cols}))
+                    TO '{tmp_pool}' (FORMAT parquet)""")
+    tmp_pool.replace(pool)
+    tmp_json.unlink()
+    log(f"Kunden-Pool: +{len(rows)} Firmen aus offenen Registern ({', '.join(REGISTER_SOURCES)})")
+    return len(rows)
 
 
 def _q(rx: str) -> str:
@@ -197,14 +239,18 @@ def candidates(segments: dict[str, set[str]]) -> list[dict]:
     if not POOL.exists():
         build_pool()
     con = duckdb.connect()
+    have = {r[0] for r in con.execute(f"DESCRIBE SELECT * FROM '{POOL}'").fetchall()}
+    # Pool ohne Register-Spalten (älterer Zwischenspeicher): ohne sie weiter
+    extra = "".join(f", {c}" for c in REGISTER_COLUMNS) if set(REGISTER_COLUMNS) <= have else ""
     rows = con.execute(f"""
         WITH base AS (SELECT * FROM '{POOL}'
                       WHERE coalesce(operating_status, 'open') = 'open' AND coalesce(confidence, 0) >= 0.5
                         AND name IS NOT NULL),
              chains AS (SELECT country, lower(name) n FROM base GROUP BY 1, 2 HAVING count(*) > 3)
-        SELECT id, name, websites, emails, phones, street, city, postcode, region, country, category FROM base
+        SELECT id, name, websites, emails, phones, street, city, postcode, region, country, category{extra} FROM base
         WHERE (country, lower(name)) NOT IN (SELECT country, n FROM chains)""").fetchall()
-    cols = ["id", "name", "websites", "emails", "phones", "street", "city", "postcode", "region", "country", "category"]
+    cols = ["id", "name", "websites", "emails", "phones", "street", "city", "postcode", "region", "country", "category",
+            *(REGISTER_COLUMNS if extra else ())]
     out = []
     for r in rows:
         d = dict(zip(cols, r))
@@ -264,7 +310,7 @@ def check_one(d: dict, fetcher, cfg: dict, generic: set[str], blocked: set[str])
         # Firmen-E-Mail aus dem eigenen Eintrag der Firma (Overture), nur auf der eigenen Domain
         listed = {e.lower().strip() for e in d.get("emails") or [] if e}
         email, is_gen = P.pick_email(listed, d["domain"], generic)
-        src = f"https://overturemaps.org (Firmeneintrag {d['id']})" if email else None
+        src = (d.get("quelle") or f"https://overturemaps.org (Firmeneintrag {d['id']})") if email else None
     legal, reg_no = P.detect_legal_form(d["country"], d["name"], res["text"])
     size_note = f"Company No. {reg_no} (Website)" if reg_no else None
     if d.get("ch_number") and not legal:
@@ -276,6 +322,9 @@ def check_one(d: dict, fetcher, cfg: dict, generic: set[str], blocked: set[str])
     if (d.get("ie_reg") or {}).get("form") and not legal:
         # IE: eindeutiger Name im Firmenregister (CRO Open Data) -> Kapitalgesellschaft
         legal, size_note = d["ie_reg"]["form"], f"Company No. {d['ie_reg']['number']} (CRO, Name)"
+    if d.get("reg_form") and not legal:
+        # offenes Register (z. B. FI YTJ: Osakeyhtiö) nennt die Rechtsform der Firma mit dieser Website
+        legal, size_note = d["reg_form"], d.get("reg_note")
     suppressed = d["domain"] in blocked or bool(email and email.lower() in blocked)
     chk = check_prospect(email=email, country=d["country"], website=d["website"], legal_form=legal,
                          source_url=src, size_note=size_note,

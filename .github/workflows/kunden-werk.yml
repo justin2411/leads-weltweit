@@ -38,7 +38,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: out/cache/kunden_pool.parquet
-          key: kunden-pool-v7-${{ steps.m.outputs.monat }}  # v7: Namens-Pool auch US/IE (04.10.2026); v6: neue Länder FI/SG/HK/MX/BR (04.10.2026); v5: Namens-Pool Webagenturen UK/FR (04.10.2026); v4: weitere Käufer-Kategorien
+          key: kunden-pool-v8-${{ steps.m.outputs.monat }}  # v8: offene Register MX DENUE + FI YTJ (04.10.2026); v7: Namens-Pool auch US/IE (04.10.2026); v6: neue Länder FI/SG/HK/MX/BR (04.10.2026); v5: Namens-Pool Webagenturen UK/FR (04.10.2026); v4: weitere Käufer-Kategorien
       - uses: actions/setup-python@v5
         if: steps.gate.outputs.an == 'true' && steps.cache.outputs.cache-hit != 'true'
         with: { python-version: "3.11" }
@@ -113,7 +113,7 @@ jobs:
       - uses: actions/cache/restore@v4
         with:
           path: out/cache/kunden_pool.parquet
-          key: kunden-pool-v7-${{ needs.pool.outputs.monat }}
+          key: kunden-pool-v8-${{ needs.pool.outputs.monat }}
           fail-on-cache-miss: true
       - uses: actions/cache/restore@v4
         with:
