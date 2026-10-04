@@ -125,3 +125,7 @@ steht in einem einklappbaren Abschnitt:
 - Agenten-Leiste A1–A8: Desktop 4 × 2 plus Spalte „Auftrag erteilen“ / „Kunden-Agenten“, bis 1100 px 4 Spalten,
   am Handy 2 Spalten – immer bündig. Freie Agenten kompakt (gestrichelt, kleinere Kugel).
 - Offene Aufträge zeigen nie „wartet“, sondern „startet um HH:MM“ (nächste Runde :08/:23/:38/:53 deutscher Zeit).
+- **Immer bündig (Inhaber 04.10.2026: „das muss immer sein“):** Kästen nebeneinander schließen oben und unten bündig
+  ab – Grid `align-items:stretch`, `.dash section`-Abstand (34 px aus `dash-css.ts`) in Spalten nullen, Überschrift
+  in den Kasten. Schließen-X immer `x-btn`: nur das Zeichen, ohne Rahmen, exakt mittig (globale `.dash button`-Polsterung
+  schiebt Icons sonst aus der Mitte).
