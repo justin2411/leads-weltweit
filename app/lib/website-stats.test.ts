@@ -74,7 +74,7 @@ test("Bots: Suchmaschinen, Link-Prüfer, Skripte, leerer User-Agent", () => {
 test("Ereignisse streng prüfen", () => {
   assert.deepEqual(parseBeacon({ variant_id: V, type: "view" }), { kind: "legacy", variant_id: V, type: "view" });
   assert.deepEqual(parseBeacon({ variant_id: V, pv: PV, type: "view", src: "mail", sv: "b", dev: "mobil" }),
-    { kind: "view", variant_id: V, pv: PV, src: "mail", subj: "B", device: "mobil" });
+    { kind: "view", variant_id: V, pv: PV, src: "mail", subj: "B", device: "mobil", ref: null });
   // Betreff-Variante nur bei Mail-Herkunft
   assert.equal((parseBeacon({ variant_id: V, pv: PV, type: "view", src: "direkt", sv: "A", dev: "desktop" }) as { subj: unknown }).subj, null);
   assert.equal(parseBeacon({ variant_id: V, pv: PV, type: "view", src: "facebook", dev: "desktop" }), null);
@@ -89,7 +89,7 @@ test("Ereignisse streng prüfen", () => {
   // Formularfelder: nie eine Beschriftung (keine Eingaben)
   const f = parseBeacon({ variant_id: V, pv: PV, type: "click", x: 10, y: 10, el: "feld", label: "Acme Ltd", dev: "mobil" });
   assert.equal((f as { label: unknown }).label, null);
-  assert.deepEqual(parseBeacon({ variant_id: V, pv: PV, type: "end", depth: 75, dwell: "30-60" }), { kind: "end", variant_id: V, pv: PV, depth: 75, dwell: "30-60" });
+  assert.deepEqual(parseBeacon({ variant_id: V, pv: PV, type: "end", depth: 75, dwell: "30-60" }), { kind: "end", variant_id: V, pv: PV, depth: 75, dwell: "30-60", ds: null });
   assert.equal(parseBeacon({ variant_id: V, pv: PV, type: "end", depth: 70, dwell: "30-60" }), null);
   assert.equal(parseBeacon({ variant_id: V, pv: PV, type: "cta_click" }), null);
 });
@@ -200,18 +200,18 @@ test("Engpass der Website nach festen Schwellen: Landingpage → Tarif → Strip
   assert.equal(webNeck({ ...EMPTY_WEBSITE, land_30d: 49, tarif_30d: 0 }), null);
 });
 
-test("JARVIS-Linie Website: genau Landingpage, Tarif, Stripe, Danke → Kunden (kein „Kauf“)", () => {
-  assert.deepEqual(WEB_LINE.map((x) => x.label), ["Landingpage", "Tarif", "Stripe", "Danke"]);
+test("JARVIS-Linie Website: genau Startseite, Landingpage, Tarif, Stripe, Danke → Kunden (kein „Kauf“)", () => {
+  assert.deepEqual(WEB_LINE.map((x) => x.label), ["Startseite", "Landingpage", "Tarif", "Stripe", "Danke"]);
   const w = { ...EMPTY_WEBSITE, land_24h: 40, land_60m: 3, views_24h: 90, tarif_24h: 7, tarif_60m: 0, co_24h: 2, co_60m: 1, buy_24h: 1, buy_30d: 4, buy_60m: 0 };
   const { stations, edges } = webLine(w);
-  assert.deepEqual(stations.map((s) => s.label), ["Landingpage", "Tarif", "Stripe", "Danke"]);
+  assert.deepEqual(stations.map((s) => s.label), ["Startseite", "Landingpage", "Tarif", "Stripe", "Danke"]);
   assert.ok(!stations.some((s) => /Kauf/.test(s.label)));
-  assert.deepEqual(stations.map((s) => s.value), ["40", "7", "2", "1"]);
-  assert.deepEqual(stations.map((s) => s.state), ["live", "idle", "live", "idle"]);
-  assert.match(stations[0].tip, /90 Aufrufe gesamt/);
-  assert.ok(stations[0].tip.includes(WEB_INFO) && stations[1].tip.includes(WEB_INFO));
-  assert.deepEqual(edges.map((e) => `${e.from}>${e.to}`), ["wland>wtarif", "wtarif>wstripe", "wstripe>wdanke", "wdanke>kunden"]);
-  assert.deepEqual(edges.map((e) => e.perHour), [0, 1, 0, 0]);
+  assert.deepEqual(stations.map((s) => s.value), ["0", "40", "7", "2", "1"]);
+  assert.deepEqual(stations.map((s) => s.state), ["idle", "live", "idle", "live", "idle"]);
+  assert.match(stations[1].tip, /90 Aufrufe gesamt/);
+  assert.ok(stations[0].tip.includes(WEB_INFO) && stations[1].tip.includes(WEB_INFO) && stations[2].tip.includes(WEB_INFO));
+  assert.deepEqual(edges.map((e) => `${e.from}>${e.to}`), ["wstart>wland", "wland>wtarif", "wtarif>wstripe", "wstripe>wdanke", "wdanke>kunden"]);
+  assert.deepEqual(edges.map((e) => e.perHour), [0, 0, 1, 0, 0]);
   assert.match(WEB_INFO, /eindeutig je Tag/);
   assert.match(WEB_INFO, /ohne Cookies/);
   assert.match(WEB_INFO, /Inhaber ausgeblendet/);

@@ -1,8 +1,9 @@
 import { db } from "@/lib/supabase";
 import { CLIENT_EVENTS } from "@/lib/variants";
 import { isOwner } from "@/lib/pages";
-import { RateLimiter, isBot, parseBeacon } from "@/lib/website-stats";
-import { SaltCache, clientIp, countable, isPreviewRef, visitorHash } from "@/lib/visitor";
+import { RateLimiter, countryOfSlug, isBot, parseBeacon } from "@/lib/website-stats";
+import { countable, isPreviewRef } from "@/lib/visitor";
+import { countryFromHeaders, endHit, recordHit, visitorKey, type VisitorKey } from "@/lib/web-hits";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,9 @@ export const dynamic = "force-dynamic";
  * Eindeutige Besucher (Inhaber 04.10.2026): je Aufruf der Landingpage bzw. Tarifseite ein Tages-Besucher-Schlüssel =
  * SHA-256(Tages-Salz | IP | User-Agent | Tag) (lib/visitor.ts); nur der Hash landet in web_visitors. Inhaber-Sitzung
  * (Dashboard-Login-Cookie, nur gelesen), Vorschau (?vorschau=1) und Bots zählen gar nicht – auch nicht in page_events.
+ *
+ * Website-Trichter (Inhaber 04.10.2026): zusätzlich je Aufruf von Startseite, Landingpage, Tarif und Danke eine schlanke
+ * Zeile in web_hits (Stufe, Land, Hash, Gerät, Herkunft; beim Verlassen Sekunden und Scrolltiefe), lib/web-hits.ts.
  */
 const limiter = new RateLimiter();
 const MAX_BODY = 1024;
@@ -34,22 +38,10 @@ async function variantInfo(id: string): Promise<{ live: boolean; slug: string | 
 
 const done = () => new Response(null, { status: 204 });
 
-// Tages-Salz aus der Datenbank (je Server-Instanz zwischengespeichert, nie im Browser)
-const salts = new SaltCache(async () => {
-  const { data, error } = await db().rpc("web_salt_today");
-  if (error || !data) return null;
-  const x = data as { day?: string; salt?: string | null };
-  return x.day && x.salt ? { day: x.day, salt: x.salt } : null;
-});
-
-/** Eindeutigen Besucher vermerken (nur Hash). Ohne IP oder Salz wird kein Besucher gezählt. */
-async function visit(req: Request, page: "landing" | "tarif", slug: string) {
-  const ip = clientIp(req.headers);
-  if (!ip) return;
-  const s = await salts.get();
-  const vh = s && visitorHash(s.salt, ip, req.headers.get("user-agent") ?? "", s.day);
-  if (!s || !vh) return;
-  await db().rpc("web_visit", { p_page: page, p_slug: slug, p_vh: vh, p_day: s.day });
+/** Eindeutigen Besucher vermerken (nur Hash, JARVIS-Linie „Website“). Ohne Schlüssel wird nichts gezählt. */
+async function visit(key: VisitorKey | null, page: "landing" | "tarif", slug: string) {
+  if (!key) return;
+  await db().rpc("web_visit", { p_page: page, p_slug: slug, p_vh: key.vh, p_day: key.day });
 }
 
 export async function POST(req: Request) {
@@ -69,26 +61,53 @@ export async function POST(req: Request) {
   if (!limiter.allow(b.kind === "legacy" || b.kind === "visit" ? null : b.pv)) return new Response(null, { status: 429 });
   // Inhaber nie mitzählen (Login-Cookie auf derselben Domain, nur gelesen)
   if (await isOwner().catch(() => false)) return done();
+  try {
+    // Trichter: Ende eines Aufrufs (alle Stufen) und Startseite (ohne Variante, Land aus dem Hoster-Kürzel)
+    if (b.kind === "hit_end") {
+      await endHit(b.pv, b.ds, b.depth);
+      return done();
+    }
+    if (b.kind === "hit" && b.stage === "start") {
+      const key = await visitorKey(req.headers);
+      if (key) await recordHit({ key, stage: "start", country: countryFromHeaders(req.headers), pv: b.pv, device: b.device, src: b.src, ref: b.ref });
+      return done();
+    }
+  } catch {
+    return done();
+  }
+  if (!b.variant_id) return done();
   const v = await variantInfo(b.variant_id);
-  if (!v.live || !v.slug) return done();
+  // Danke zählt auch, wenn die gekaufte Variante inzwischen nicht mehr live ist
+  if (!v.slug || (!v.live && !(b.kind === "hit" && b.stage === "danke"))) return done();
   try {
     if (b.kind === "legacy") {
       await db().from("page_events").insert({ variant_id: b.variant_id, type: b.type });
     } else if (b.kind === "view") {
+      const key = await visitorKey(req.headers);
       await Promise.all([
         db().from("page_events").insert({ variant_id: b.variant_id, type: "view" }),
         db().from("web_views").insert({ pv: b.pv, slug: v.slug, variant_id: b.variant_id, src: b.src, subj: b.subj, device: b.device }),
-        visit(req, "landing", v.slug),
+        visit(key, "landing", v.slug),
+        key && recordHit({ key, stage: "landing", country: countryOfSlug(v.slug), slug: v.slug, pv: b.pv, device: b.device, src: b.src, ref: b.ref }),
       ]);
     } else if (b.kind === "visit") {
-      await visit(req, b.page, v.slug);
+      await visit(await visitorKey(req.headers), b.page, v.slug);
+    } else if (b.kind === "hit") {
+      const key = await visitorKey(req.headers);
+      await Promise.all([
+        b.stage === "tarif" ? visit(key, "tarif", v.slug) : null,
+        key && recordHit({ key, stage: b.stage, country: countryOfSlug(v.slug), slug: v.slug, pv: b.pv, device: b.device, src: b.src, ref: b.ref }),
+      ]);
     } else if (b.kind === "click") {
       await Promise.all([
         b.cta ? db().from("page_events").insert({ variant_id: b.variant_id, type: "cta_click" }) : null,
         db().from("web_clicks").insert({ slug: v.slug, device: b.device, x: b.x, y: b.y, el: b.el, label: b.label }),
       ]);
-    } else {
-      await db().rpc("web_view_end", { p_pv: b.pv, p_depth: b.depth, p_dwell: b.dwell });
+    } else if (b.kind === "end") {
+      await Promise.all([
+        db().rpc("web_view_end", { p_pv: b.pv, p_depth: b.depth, p_dwell: b.dwell }),
+        b.ds !== null ? endHit(b.pv, b.ds, b.depth) : null,
+      ]);
     }
   } catch {
     /* Messung darf die Seite nie stören */

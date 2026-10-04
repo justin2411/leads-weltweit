@@ -263,6 +263,10 @@ def refresh_dashboard_stock(db) -> None:
         db.rpc("website_refresh", {})
     except Exception as exc:  # noqa: BLE001 - darf den Wachhund nie aufhalten (Migration evtl. noch nicht angewendet)
         print(f"Website-Kennzahlen nicht aufgefrischt: {type(exc).__name__}: {str(exc)[:160]}")
+    try:  # Website-Trichter Startseite → Landingpage → Tarif → Stripe → Danke (24 h / 7 / 30 Tage, dashboard_cache)
+        db.rpc("web_funnel_refresh", {})
+    except Exception as exc:  # noqa: BLE001 - darf den Wachhund nie aufhalten
+        print(f"Website-Trichter nicht aufgefrischt: {type(exc).__name__}: {str(exc)[:160]}")
 
 
 def overdue(job: dict, runs: list[dict], now: dt.datetime) -> tuple[bool, str]:

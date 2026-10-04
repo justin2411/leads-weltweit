@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/supabase";
-import { CONFIG, SEGMENT, loadFunnel, loadLive, loadOwnerSettings, loadStock } from "@/lib/dashboard-data";
+import { CONFIG, SEGMENT, loadFunnel, loadFunnelCache, loadLive, loadOwnerSettings, loadStock } from "@/lib/dashboard-data";
+import { funnelBrief } from "@/lib/website-funnel";
 import { brake, mailboxes, monthly, realSubscriptions, sampleStock, type Live, type Stock } from "@/lib/dashboard-logic";
 import { budgetOf, budgetState, compactFlow, knowledgeBlock, monthStart, type Bereich, type BudgetState, type KnowledgeDoc } from "@/lib/jarvis-llm";
 import { nextRun, scheduleLabel, toRoutine, whenLabel, type BrainRoutine } from "@/lib/brain-routines";
@@ -209,7 +210,8 @@ const line = (k: string, v: unknown) => `${k}: ${typeof v === "string" ? v : JSO
 /** Kompakter Kontext (wenige hundert Tokens): Uhrzeit, Kennzahlen, Thema der Sitzung. */
 export async function buildContext(session: ChatSession, s: Sources): Promise<string> {
   const now = s.now;
-  const [fg, en, an, top, api] = await Promise.all([freigabe(), engpass(), antworten(), topic(session), loadLlmState(s.own)]);
+  const [fg, en, an, top, api, wt] = await Promise.all([freigabe(), engpass(), antworten(), topic(session), loadLlmState(s.own),
+    loadFunnelCache(5 * 60_000).then(funnelBrief, () => ({ fehler: NA }))]);
   const v = versand(s) as Record<string, unknown>;
   const p = proben(s) as Record<string, unknown>;
   const k = kunden(s);
@@ -225,6 +227,8 @@ export async function buildContext(session: ChatSession, s: Sources): Promise<st
     line("Bestand", b.laender ? b.laender.map((x) => ({ land: x.land, leads_neu_24h: x.leads_neu_24h, kaeufer_ok: x.kaeufer_mailfaehig, kaeufer_frei: x.kaeufer_noch_nicht_angeschrieben })) : b),
     line("Werke", { ...w.werke, autopilot: w.autopilot_plaetze, plaetze: w.plaetze_gesamt }),
     line("Engpass", en),
+    // Website-Trichter Startseite → Landingpage → Tarif → Stripe → Danke (24 h und 30 Tage, wie /dashboard/website/auswertung)
+    line("Website-Trichter", wt),
     line("API", api?.text ?? NA),
     top,
   ].join("\n");

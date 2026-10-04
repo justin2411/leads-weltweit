@@ -5,7 +5,7 @@
  */
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ASPECT, POS, VIEW, edgePath, flow, type Edge, type Station, type StationId, type TickerItem } from "@/lib/fluss";
+import { ASPECT, POS, VIEW, WEB_STATIONS, edgePath, flow, type Edge, type Station, type StationId, type TickerItem } from "@/lib/fluss";
 import type { TipTask } from "@/lib/leitstand";
 import { WEB_INFO } from "@/lib/website-stats";
 import { DragBox } from "./dnd";
@@ -50,7 +50,7 @@ function Map({ layout, stations, edges, active, href }: { layout: "wide" | "tall
       {stations.map((s) => {
         const [x, y] = POS[layout][s.id];
         return (
-          <Link key={s.id} href={href(s.id)} scroll={false} className={`fl-st ${s.state} ${s.neck ? "neck" : ""} ${active === s.id ? "on" : ""} ${s.id === "kunden" ? "goal" : ""}`}
+          <Link key={s.id} href={href(s.id)} scroll={false} className={`fl-st ${s.state} ${s.neck ? "neck" : ""} ${active === s.id ? "on" : ""} ${s.id === "kunden" ? "goal" : ""} ${WEB_STATIONS.includes(s.id) ? "web" : ""}`}
             style={{ left: `${x}%`, top: `${y}%` }} title={s.tip} aria-label={`${s.label}: ${s.value}${s.unit ?? ""} – ${s.sub}`}>
             <span className="fl-ring" aria-hidden><i /><i /></span>
             <b className="fl-v">{s.value}{s.unit && <small>{s.unit}</small>}</b>

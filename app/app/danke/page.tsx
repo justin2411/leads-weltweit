@@ -8,6 +8,7 @@ import { firstDelivery } from "@/lib/welcome-mail";
 import { BrandShell, SiteFooter, SiteHeader } from "../chrome";
 import { FilterForm, FORM_CSS } from "../kunde/filter/form";
 import { Icon } from "@/app/icons";
+import { HitBeacon } from "../hit-beacon";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: `Welcome | ${BRAND}`, robots: { index: false, follow: false } };
@@ -122,6 +123,8 @@ export default async function Danke({ searchParams }: { searchParams: Promise<{ 
   return (
     <BrandShell lang={lang} extraCss={CSS + FORM_CSS}>
       {retry && <meta httpEquiv="refresh" content={`3;url=${retry}`} />}
+      {/* Website-Trichter, Stufe „Danke“: nur echte Live-Käufe (keine Vorschau, kein Testkauf), anonym ohne Cookies */}
+      {found && !demo && found.mode === "live" && typeof m.variant_id === "string" && <HitBeacon stage="danke" variantId={m.variant_id} />}
       <SiteHeader />
       <main className="wl"><div className="wrap">
         <div className="eyebrow"><i><Icon name="ok" size={13} /></i>{T.eyebrow}{found?.mode === "test" ? " · TEST" : ""}</div>

@@ -446,6 +446,8 @@ export const HUD_CSS = `
   .amps4{grid-template-columns:1fr 1fr;gap:8px}.amp4{padding:10px 10px 10px 32px}.amp4-led{left:12px;top:16px;width:10px;height:10px}.amp4 b{font-size:19px}.amp4 em{display:none}
   .fl-wide{display:none}.fl-tall{display:block}.fl-lanes{display:none}.fl-info-m{display:flex}
   .fl-st{width:96px;height:96px}.fl-st.goal{width:112px;height:112px}.fl-map{--fl-r:48px}.dash .fl-auto{height:20px;padding:0 7px;font-size:11px}.fl-v{font-size:17px}.fl-l{font-size:12px;letter-spacing:-.01em}.fl-ic{font-size:15px}
+  /* Linie „Website“ hat fünf Stationen (Startseite davor): am Handy etwas kleiner, damit die Kreise nicht aneinanderstoßen */
+  .fl-tall .fl-st.web{width:80px;height:80px}.fl-tall .fl-st.web .fl-v{font-size:15px}.fl-tall .fl-st.web .fl-l{font-size:11px}
   .drw{position:fixed;left:0;right:0;top:auto;bottom:0;width:auto;max-width:none;z-index:40;max-height:78vh;border-radius:16px 16px 0 0;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
   .frm label{grid-template-columns:64px 80px 1fr}
 }
