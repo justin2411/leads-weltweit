@@ -4,7 +4,9 @@
  */
 import "server-only";
 import { db } from "@/lib/supabase";
-import { COUNTRIES, SEGMENT } from "@/lib/dashboard-data";
+import { COUNTRIES, SEGMENT, loadActivity } from "@/lib/dashboard-data";
+import type { RolleLite, RoutineLite, TaskLite, WebAgentLite } from "@/lib/office";
+import { isLive, type Activity, type WerkId } from "@/lib/werke-live";
 import { loadZieleIst } from "@/lib/zentrale/data";
 import type { ZielZeile } from "@/lib/zentrale/ziele";
 import { toBereich, toUebergabe, type Bereich, type Lage, type Uebergabe } from "@/lib/firma";
@@ -59,4 +61,37 @@ export async function loadFirma(now = new Date()): Promise<FirmaDaten | null> {
     uebergaben: ueb.map((u) => ({ ...toUebergabe(u), task_status: u.task_id ? ts.get(String(u.task_id)) ?? null : null })),
     stand,
   };
+}
+
+// ------------------------------------------------------------------------------------------- Bereichs-Office
+
+export type OfficeDaten = {
+  firma: FirmaDaten; roles: RolleLite[] | null; routines: RoutineLite[] | null; web: WebAgentLite[] | null;
+  tasks: TaskLite[] | null; werkLive: Record<string, boolean> | null; act: Activity | null;
+};
+
+const WERKE: WerkId[] = ["lead-werk", "kunden-werk", "proben-vorrat", "versand", "antworten", "freigabe"];
+
+/** Office eines Bereichs: Firma-Daten + Arbeitsplätze (Rollen, Routinen, Website-Agenten, Aufträge, Werk-Lebenszeichen). */
+export async function loadOffice(now = new Date()): Promise<OfficeDaten | null> {
+  const [firma, roles, routines, web, tasks, act] = await Promise.all([
+    loadFirma(now),
+    soft(db().from("agent_roles").select("slug, name, aktiv, department, takt").abortSignal(T()), (d) => rows(d).map((r) => ({
+      slug: String(r.slug), name: String(r.name ?? r.slug), aktiv: r.aktiv === false ? false : true, department: r.department ? String(r.department) : null, takt: r.takt ? String(r.takt) : null,
+    })), null as RolleLite[] | null),
+    soft(db().from("brain_routines").select("id, name, aktiv, last_run_at, last_task_id, last_result").abortSignal(T()), (d) => rows(d) as unknown as RoutineLite[], null as RoutineLite[] | null),
+    soft(db().from("website_agents").select("id, name, aktiv, last_run_at, last_task_id, last_result").abortSignal(T()), (d) => rows(d) as unknown as WebAgentLite[], null as WebAgentLite[] | null),
+    soft(db().from("agent_tasks").select("id, created_at, agent, brief, status, result, step, finished_at, rolle, routine_id, grund, kind")
+      .order("created_at", { ascending: false }).limit(300).abortSignal(T()), (d) => rows(d).map((t) => ({
+      id: String(t.id), created_at: String(t.created_at ?? ""), agent: Number(t.agent ?? 0), brief: String(t.brief ?? ""), status: String(t.status ?? ""),
+      result: t.result ? String(t.result) : null, step: t.step ? String(t.step) : null, finished_at: t.finished_at ? String(t.finished_at) : null,
+      rolle: t.rolle ? String(t.rolle) : null, routine_id: t.routine_id ? String(t.routine_id) : null, grund: t.grund ? String(t.grund) : null, kind: t.kind ? String(t.kind) : null,
+    })), null as TaskLite[] | null),
+    loadActivity().catch(() => null),
+  ]);
+  if (!firma) return null;
+  // leere Ersatz-Aktivität (Abfrage fehlgeschlagen) erkennt man an fehlenden Läufen → Werk-Status „–“
+  const okAct = act && act.heartbeats && Object.keys(act.last_run ?? {}).length ? act : null;
+  const werkLive = okAct ? Object.fromEntries(WERKE.map((w) => [w, isLive(okAct, w, now)])) : null;
+  return { firma, roles, routines, web, tasks, werkLive, act: okAct };
 }

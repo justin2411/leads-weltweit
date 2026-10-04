@@ -187,6 +187,20 @@ Richtung Umsatz. Feste Übergaben zwischen Bereichen legt `scripts/uebergaben.py
 (`signalwerk.handoffs`, Details in `docs/AGENTEN.md` „Firma“). JARVIS liest vor Entscheidungen `firma_lage()` und den
 Geschäftsbericht und arbeitet am Bereich mit der schlechtesten Ampel zuerst; Übergaben nie doppelt von Hand anlegen.
 
+### Startseite und Bereichs-Offices (Inhaber 04.10.2026: „aus 5 metern sehen ob was läuft“, „wirkt zu voll“)
+
+- `/dashboard/jarvis` hat nur noch 4 Blöcke: **Puls** (5 Ströme Leads, Käufer, Versand, Antworten, Umsatz – großer Ring,
+  eine Zahl; grün pulsiert = läuft, gelb = langsam, rot = steht; `lib/puls.ts`), **Braucht dich** (nur wenn offen),
+  **Firma** (8 Bereichs-Kacheln mit Icon, Ampel, 1 Zahl → Office) und **Werke & Agenten** (A1–A8 + Fluss-Karte, immer
+  offen). Chat = schwebender Knopf → `/dashboard/jarvis/chat`. `?teil=mehr`: Heute wichtig, Kennzahlen mit Prognose,
+  Ziel vs. Ist, JARVIS empfiehlt, Mini-Chat, Ticker.
+- `/dashboard/firma/<bereich>` = **Office**: Ziel mit Ring und Ampel, Arbeitsplätze (Mitglieder + `agent_roles.department`,
+  Status arbeitet/wartet/fertig aus `agent_tasks`, `brain_routines`, `website_agents`, Werk-Lebenszeichen; `lib/office.ts`),
+  Klick zeigt die letzten Aufträge je 1 Zeile, Übergaben als Pfeile, „Auftrag geben“ (`assignBereich`, Text mit Präfix
+  „Bereich <Name>:“, Rolle = Leitung). Dazu je Bereich: Team-Karten seiner Fach-Agenten, Vertrieb Kohorten, Qualität
+  Freigabe, Strategie „Optimiert sich selbst“ + Vorschläge, Produktion/Vertrieb Link zur Fluss-Karte. Entscheidungen
+  stehen im Protokoll. Neue Inhalte für einen Bereich gehören ins Office, nicht auf die Startseite.
+
 ## Grenzen (Gesetz und Geld des Inhabers, gelten auch für JARVIS)
 
 - Kein Geld ausgeben (Tarife, Upgrades, bezahlte Dienste, kostenpflichtige Claude-Extranutzung).

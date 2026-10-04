@@ -36,6 +36,8 @@ export type AgentTask = {
   numbers: Record<string, number>; started_at: string | null; finished_at: string | null; created_by?: string | null;
   /** Grund des Gehirns (≤ 160 Zeichen, Ziel-Bezug) – nur bei Aufträgen vom Gehirn */
   grund?: string | null;
+  /** Fach-Agent (agent_roles.slug), falls der Auftrag einer Rolle gehört */
+  rolle?: string | null;
 };
 /** Absender von Chat-Aufträgen (JARVIS-Chat) – die Agenten-Runde bearbeitet sie zuerst (docs/AGENTEN.md). */
 export const CHAT_BY = "JARVIS-Chat";

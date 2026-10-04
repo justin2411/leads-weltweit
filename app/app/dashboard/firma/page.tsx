@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { berlin } from "@/lib/dashboard-logic";
 import { AMPEL_TEXT } from "@/lib/ampel";
-import { ART_TEXT, STATUS_TEXT, bilder, geschaeftsbericht, type BereichBild } from "@/lib/firma";
+import { STATUS_TEXT, bilder, geschaeftsbericht, type BereichBild } from "@/lib/firma";
 import { loadFirma, type FirmaDaten, type UebergabeTask } from "@/lib/firma-data";
 import { Icon, isIconName } from "@/app/icons";
 import { requireOwner } from "../actions";
@@ -15,13 +16,14 @@ export const metadata = { title: "Firma" };
 /**
  * Firma (Inhaber 04.10.2026: „gib verschiedene bereiche wie in einem unternehmen … bau daraus ein unternehmen was geld
  * verdient“ + „zu viel text … vereinfache es“): Geschäftsbericht in 5 Zahlen, Organigramm (Bereiche → Leitung und
- * Mitglieder, Ziel mit Ampel) und die letzten Übergaben zwischen den Bereichen. Details nur auf Klick (?b=<Bereich>).
+ * Mitglieder, Ziel mit Ampel) und die letzten Übergaben zwischen den Bereichen. Klick auf einen Bereich → sein Office (/dashboard/firma/<Bereich>).
  * Nicht im Menü – Zugang über „Organigramm“ in den JARVIS-Abteilungen. Nur Anzeige: Regeln ändert hier niemand.
  */
 export default async function FirmaPage({ searchParams }: { searchParams: SP }) {
   await requireOwner();
   const sp = await searchParams;
-  const sel = typeof sp.b === "string" ? sp.b : null;
+  // früher Detail per ?b=<Bereich>; jetzt eigenes Office /dashboard/firma/<Bereich>
+  if (typeof sp.b === "string" && /^[a-z][a-z_]{1,30}$/.test(sp.b)) redirect(`/dashboard/firma/${sp.b}`);
   let d: FirmaDaten | null = null;
   try {
     d = await loadFirma();
@@ -32,16 +34,15 @@ export default async function FirmaPage({ searchParams }: { searchParams: SP }) 
     <div className="v2 zx fa">
       <style dangerouslySetInnerHTML={{ __html: ZX_CSS + FIRMA_CSS }} />
       <Head name="Firma" icon="agent" at={d ? `Stand ${berlin(new Date(), false)}` : undefined} />
-      {d ? <Body d={d} sel={sel} /> : <div className="zx-err" role="alert">Firma gerade nicht lesbar – gleich noch einmal laden.</div>}
+      {d ? <Body d={d} /> : <div className="zx-err" role="alert">Firma gerade nicht lesbar – gleich noch einmal laden.</div>}
     </div>
   );
 }
 
-function Body({ d, sel }: { d: FirmaDaten; sel: string | null }) {
+function Body({ d }: { d: FirmaDaten }) {
   const b = bilder(d.bereiche, d.lage, d.ziele, d.uebergaben);
   const g = geschaeftsbericht(d.lage);
   const name = Object.fromEntries(b.map((x) => [x.slug, x.name]));
-  const offen = b.find((x) => x.slug === sel) ?? null;
   return (
     <>
       <section className="fa-gb" aria-label="Geschäftsbericht">
@@ -56,11 +57,9 @@ function Body({ d, sel }: { d: FirmaDaten; sel: string | null }) {
       <section className="fa-org" aria-label="Organigramm">
         <div className="fa-top"><Icon name="jarvis" size={16} /><b>Inhaber · JARVIS</b></div>
         <ul className="fa-grid">
-          {b.map((x) => <li key={x.slug}><Bereich x={x} aktiv={x.slug === offen?.slug} /></li>)}
+          {b.map((x) => <li key={x.slug}><Bereich x={x} /></li>)}
         </ul>
       </section>
-
-      {offen && <Detail x={offen} d={d} name={name} />}
 
       <Card title="Übergaben" icon="pfeil" sum={`${d.uebergaben.length} in 7 Tagen`}>
         <Liste items={d.uebergaben.slice(0, 8)} name={name} />
@@ -69,48 +68,14 @@ function Body({ d, sel }: { d: FirmaDaten; sel: string | null }) {
   );
 }
 
-function Bereich({ x, aktiv }: { x: BereichBild; aktiv: boolean }) {
+function Bereich({ x }: { x: BereichBild }) {
   return (
-    <Link href={`/dashboard/firma?b=${x.slug}#bereich`} scroll={false} className={`fa-b ${amp(x.ziel.ampel)}${aktiv ? " on" : ""}`}
-      title={`${x.ziel_titel}: ${AMPEL_TEXT[x.ziel.ampel]}`} aria-current={aktiv ? "true" : undefined}>
+    <Link href={`/dashboard/firma/${x.slug}`} className={`fa-b ${amp(x.ziel.ampel)}`} title={`${x.name} – Office öffnen · ${x.ziel_titel}: ${AMPEL_TEXT[x.ziel.ampel]}`}>
       <span className="fa-bh">{isIconName(x.icon) && <Icon name={x.icon} size={15} />}<span>{x.name}</span><Dot a={x.ziel.ampel} /></span>
       <b>{x.ziel.text}</b>
       <small>{x.ziel_titel}</small>
       <em><Icon name="agent" size={12} /><span>{x.leitung_name}</span>{x.mitglieder.length > 1 && <i>+{x.mitglieder.length - 1}</i>}</em>
     </Link>
-  );
-}
-
-function Detail({ x, d, name }: { x: BereichBild; d: FirmaDaten; name: Record<string, string> }) {
-  const ueb = d.uebergaben.filter((u) => u.von === x.slug || u.an === x.slug).slice(0, 5);
-  return (
-    <section className="zx-card fa-det" id="bereich" aria-label={x.name}>
-      <div className="zx-h"><h2>{isIconName(x.icon) && <Icon name={x.icon} size={14} />}{x.name}</h2>
-        <span className="zx-sum">{x.zweck}</span>
-        <Link href="/dashboard/firma" scroll={false} className="x-btn" aria-label="Schließen"><Icon name="schliessen" size={16} /></Link>
-      </div>
-      <div className="fa-kz">
-        <div className={`zx-tile ${amp(x.ziel.ampel)}`}><span>Ziel · {x.ziel_titel}</span><b>{x.ziel.text}</b>
-          <em>{x.ziel.quelle === "inhaber" ? "Soll vom Inhaber" : x.ziel.quelle === "vorschlag" ? "Soll: Vorschlag" : "Bereichs-Ziel"}</em></div>
-        <div className="zx-tile zx-a-grey"><span>Wirkung · {x.wirkung_titel}</span><b>{x.wirkung}</b><em>Richtung Umsatz</em></div>
-        <div className="zx-tile zx-a-grey"><span>Leitung</span><b className="fa-t">{x.leitung_name}</b><em>{x.leitung_takt}</em></div>
-      </div>
-      <ul className="zx-rows">
-        {x.mitglieder.map((m) => {
-          const st = d.stand[`${m.art}:${m.ref}`] ?? null;
-          const a = st ? (st.aktiv ? "green" : "grey") : "grey";
-          return (
-            <li key={`${m.art}:${m.ref}`} className="zx-row">
-              <Dot a={a} tip={st ? (st.aktiv ? "aktiv" : "pausiert") : "läuft als Workflow"} />
-              <span className="n">{m.name}</span>
-              <span className="m">{ART_TEXT[m.art]}{st?.zuletzt ? ` · zuletzt ${berlin(st.zuletzt)}` : ""}</span>
-              <span className="v">{m.takt}</span>
-            </li>
-          );
-        })}
-      </ul>
-      {ueb.length > 0 && <div className="fa-sub"><Liste items={ueb} name={name} /></div>}
-    </section>
   );
 }
 
