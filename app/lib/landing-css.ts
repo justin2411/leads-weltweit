@@ -52,6 +52,7 @@ export const LANDING_CSS = `
 .bx .lp2 .kpi b{display:block;font-size:clamp(30px,3.4vw,44px);font-weight:800;color:var(--gink);letter-spacing:-.02em;line-height:1}
 .bx .lp2 .kpi span{display:block;margin-top:10px;font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#aab4ca}
 .bx .lp2 .kpinote{position:relative;font-size:12.5px;color:#8f9ab3;padding-bottom:0;margin:6px 0 0}
+.bx .lp2 .finder-link{margin:16px 0 0;font-size:14px}.bx .lp2 .finder-link a{color:var(--gold2);text-underline-offset:3px}
 
 /* Karte */
 .bx .lp2 .mapcard{background:#fff;border:1px solid var(--pline);border-radius:22px;padding:18px;box-shadow:0 30px 70px -40px rgba(11,21,48,.45)}
