@@ -698,6 +698,20 @@ def check_kpi(c: Check, db) -> None:
               f" → {k['samples']} Proben → {k['customers']} Kunden → {k['revenue']:.0f} {k['currency']}/Monat")
 
 
+def check_datenfluss(c: Check, db) -> None:
+    """Datenfluss steht still (JARVIS-Plan C3): je Station der Kette Zuwachs im üblichen Intervall × 3? Meldet zugleich
+    in JARVIS (Vorschlag) und im Gehirn-Chat – höchstens 1× je 6 h je Station (scripts/datenfluss.py)."""
+    import datenfluss
+    for a in datenfluss.stillstand(db, apply=True):
+        if a["stufe"] in ("gelb", "rot"):
+            c.add("Datenfluss", FAIL if a["stufe"] == "rot" else WARN, f"{a['name']} steht still",
+                  f"seit {a['still_h']:.0f} h kein Zuwachs, üblich alle {a['intervall_h']:g} h")
+        elif a["stufe"] == "ok":
+            c.add("Datenfluss", OK, f"{a['name']} fließt", f"zuletzt vor {a['still_h']:g} h")
+        else:
+            c.add("Datenfluss", OK, f"{a['name']}: {a.get('grund', '')}")
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--send", action="store_true")
@@ -724,6 +738,7 @@ def main(argv=None) -> int:
     c.guard("Kunden", lambda: check_customers(c, db))
     c.guard("Werke", lambda: check_werke(c, db))
     c.guard("Werke", lambda: check_plan(c, db))
+    c.guard("Datenfluss", lambda: check_datenfluss(c, db))
     c.guard("Kennzahl", lambda: check_kpi(c, db))
     subject, body = mail(c)
     print("\n" + subject)
