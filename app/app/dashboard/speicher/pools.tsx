@@ -212,7 +212,7 @@ export function Pools({ pools, rows, saved, subs, subRoute, error, newColor }: {
       {toast && (
         <div className={`pl-toast${toast.ok ? "" : " bad"}`} role="status" aria-live="polite">
           <Icon name={toast.ok ? "ok" : "fehler"} size={18} /><span>{toast.text}</span>
-          <button type="button" onClick={() => setToast(null)} aria-label="schließen"><Icon name="schliessen" size={16} /></button>
+          <button type="button" className="x-btn" onClick={() => setToast(null)} aria-label="schließen"><Icon name="schliessen" size={16} /></button>
         </div>
       )}
     </div>

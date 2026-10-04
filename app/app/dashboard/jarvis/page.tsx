@@ -23,6 +23,7 @@ import { Pult } from "./pult";
 import { AgentDrawer, AgentRow } from "./agents";
 import { countCustomerAgents } from "@/lib/customer-agents-data";
 import { loadStartChat } from "./chat/start";
+import { loadProposals } from "@/lib/vorschlaege-data";
 import { AutopilotPanel } from "./autopilot";
 import { GateRings, GateSteps, Reasons, type GateView } from "./freigabe";
 import { JarvisView } from "./view";
@@ -62,6 +63,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const ag = typeof sp.a === "string" && /^([1-9]|neu)$/.test(sp.a) ? sp.a : null;
   const kaP = countCustomerAgents();
   const chatP = loadStartChat();
+  const propP = loadProposals();
   const webP = loadWebsite();
   const stockP = loadStock();
   stockP.catch(() => {});
@@ -381,7 +383,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   return (
     <JarvisView hello={hello} say={say} kpis={kpis} recs={recs} rest={rest} tipHref={tipHref} agent={freeAgent(agentTasks)}
       tasks={agentTasks} startAt={startAt} activeAgent={ag} stations={stations} edges={edges} activeStation={s} stationHref={href}
-      drawer={drawer} gate={gateView} ticker={ticker(items)} customerAgents={await kaP} chat={await chatP} />
+      drawer={drawer} gate={gateView} ticker={ticker(items)} customerAgents={await kaP} chat={await chatP} proposals={await propP} />
   );
 }
 

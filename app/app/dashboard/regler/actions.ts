@@ -14,10 +14,13 @@ import { InputError, type OwnerSettings, type SettingKey } from "@/lib/owner-set
 import { cardOf, diff, draftFrom, isCardKey, toSettings, validateValue, type Change } from "@/lib/regler";
 import { isReglerKey, undoValue } from "@/lib/regler-verlauf";
 import { loadSettingsStrict, reglerCtx } from "@/lib/regler-data";
-import { START_WORKFLOWS, fmtBerlin, nextPickup, type StartKey } from "@/lib/start-queue";
+import { type StartKey } from "@/lib/start-queue";
+import { startWerk as startWerkBy } from "@/lib/start-werk";
 import { requireOwner } from "../actions";
 
 const BY = "Inhaber Dashboard";
+/** Direktstart über den gemeinsamen Pfad (lib/start-werk.ts) – wie bisher als Inhaber aus dem Regler. */
+const startWerk = (key: StartKey, s: OwnerSettings) => startWerkBy(key, s, BY, "Regler");
 export type ApplyResult = { ok: true; at: string; applied: { card: string; text: string }[]; started: string[] } | { ok: false; error: string };
 
 const fail = (e: unknown): { ok: false; error: string } =>
@@ -35,56 +38,6 @@ async function write(values: Partial<Record<SettingKey, unknown>>, old: OwnerSet
     if (error) throw new Error(error.message);
     await log(`setting:${key}`, target, old[key], value);
   }
-}
-
-// ------------------------------------------------------------------------------------------- Direktstart
-/** workflow_dispatch auf main mit GH_DISPATCH_TOKEN; Antwort-Status (0 = Netzfehler/Zeitüberschreitung). */
-async function ghDispatch(token: string, file: string, inputs: Record<string, string>): Promise<{ ok: boolean; status: number }> {
-  const repo = process.env.GH_REPO?.trim() || "justin2411/leads-weltweit";
-  try {
-    const r = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/${file}/dispatches`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "Content-Type": "application/json" },
-      body: JSON.stringify({ ref: "main", inputs }),
-      signal: AbortSignal.timeout(8000),
-    });
-    return { ok: r.ok, status: r.status };
-  } catch {
-    return { ok: false, status: 0 };
-  }
-}
-
-/** Wie der Direktstart in control-actions.ts: mit Token sofort, sonst Wunsch für den Wachhund (nie doppelt, nie bei Pause). */
-async function startWerk(key: StartKey, s: OwnerSettings): Promise<string> {
-  const spec = START_WORKFLOWS[key];
-  if (spec.pause && s.werke_paused?.[spec.pause]) throw new InputError(`${spec.label} ist pausiert – erst einschalten`);
-  const sb = db();
-  const now = new Date();
-  const { data: open, error: e0 } = await sb.from("start_requests").select("id").eq("workflow", key).eq("status", "offen").limit(5);
-  if (e0) throw new Error(e0.message);
-  const inputs: Record<string, string> = { ...spec.inputs };
-  const token = process.env.GH_DISPATCH_TOKEN?.trim();
-  let note: string | null = null;
-  if (token) {
-    const r = await ghDispatch(token, spec.file, inputs);
-    if (r.ok) {
-      const at = now.toISOString();
-      if (open?.length) await sb.from("start_requests").update({ status: "gestartet", started_at: at, note: "direkt (Regler)" }).in("id", open.map((o) => o.id)).eq("status", "offen");
-      else {
-        const { error } = await sb.from("start_requests").insert({ workflow: key, inputs, status: "gestartet", started_at: at, note: "direkt (Regler)", created_by: BY });
-        if (error) throw new Error(error.message);
-      }
-      await log("workflow:start", spec.file, null, { ...inputs, via: "direkt" });
-      return `${spec.label} gestartet`;
-    }
-    note = r.status ? `GitHub ${r.status} – Wachhund übernimmt` : "GitHub nicht erreichbar – Wachhund übernimmt";
-  }
-  const when = fmtBerlin(nextPickup(now));
-  if (open?.length) return `${spec.label}: Start schon angefordert – spätestens ${when}`;
-  const { error } = await sb.from("start_requests").insert({ workflow: key, inputs, status: "offen", note, created_by: BY });
-  if (error) throw new Error(error.message);
-  await log("workflow:request_start", spec.file, null, { ...inputs, via: "wachhund", note });
-  return `${spec.label}: startet spätestens ${when}`;
 }
 
 // ------------------------------------------------------------------------------------------- Übernehmen

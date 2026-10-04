@@ -497,7 +497,7 @@ export function Inspector({ cfg, rows, source, pipe, probs, ctx, set, remove, cl
           <button type="button" className="bk-x" onClick={dup} aria-label="Baustein kopieren" title="Kopieren (Strg+D)"><Icon name="kopieren" size={14} /></button>
         )}
         <button type="button" className="bk-x bk-del" onClick={remove} aria-label="Baustein löschen" title="Löschen (Entf)"><Icon name="loeschen" size={14} /></button>
-        <button type="button" className="bk-x" onClick={close} aria-label="Schließen"><Icon name="schliessen" size={14} /></button>
+        <button type="button" className="bk-x x-btn" onClick={close} aria-label="Schließen"><Icon name="schliessen" size={14} /></button>
       </header>
       <div className="bk-bigs" style={{ "--nc": meta.color } as CSSProperties}>
         {bigs.map(([v, l, hi]) => <div key={l} className={hi ? "hi" : undefined}><b>{v}</b><span>{l}</span></div>)}

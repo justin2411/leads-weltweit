@@ -582,6 +582,9 @@ def main(argv=None) -> int:
     ap.add_argument("--tender-days", type=int, default=0,
                     help="S1 UK: KMU mit gewonnenem öffentlichem Auftrag (Find a Tender), letzte N Tage (0 = aus)")
     ap.add_argument("--tender-pages", type=int, default=30, help="Find a Tender: höchstens so viele Abrufe (je 100)")
+    ap.add_argument("--award-days", type=int, default=0,
+                    help="S1 US: kleine Firmen mit neuem Bundesauftrag (USAspending.gov), letzte N Tage (0 = aus)")
+    ap.add_argument("--award-pages", type=int, default=20, help="USAspending: höchstens so viele Abrufe (je 100)")
     ap.add_argument("--cf-pages", type=int, default=0, help="Contracts Finder dazu: höchstens so viele Abrufe (je 100, 0 = aus)")
     ap.add_argument("--web-check", action="store_true",
                     help="S2: Firmen MIT Website prüfen (unsicher, nicht handytauglich, veraltet, kaputt) statt ohne Website")
@@ -641,6 +644,18 @@ def main(argv=None) -> int:
         got = [c for c in filters.dedupe([c for c in us_dol_lca.load(log=log) if not filters.pre_filter(c)])
                if segments.fits("S1", c)[0]]
         stats["dol_lca_candidates"] = len(got)
+        p["S1"] = got + p.get("S1", [])
+    if us and args.award_days > 0 and "S1" in segs:
+        # S1/US: kleine Firmen mit neuem Bundesauftrag (USAspending.gov, Quellen-Scout 04.10.2026)
+        from extraktor.sources import us_usaspending
+        try:
+            got = [c for c in filters.dedupe([c for c in us_usaspending.load(
+                       dt.date.today() - dt.timedelta(days=args.award_days), args.award_pages, log=log)
+                       if not filters.pre_filter(c)]) if segments.fits("S1", c)[0]]
+        except Exception as e:  # noqa: BLE001 - eine ausgefallene Quelle darf die anderen nicht stoppen
+            log(f"S1/US: USAspending übersprungen ({type(e).__name__}: {str(e)[:200]})")
+            got = []
+        stats["us_award_candidates"] = len(got)
         p["S1"] = got + p.get("S1", [])
     if "UK" in countries and args.tender_days > 0 and "S1" in segs:
         # S1/UK: KMU mit gewonnenem öffentlichem Auftrag (Find a Tender, Quellen-Scout 02.10.2026)

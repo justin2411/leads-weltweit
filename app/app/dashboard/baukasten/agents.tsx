@@ -48,7 +48,7 @@ export function AgentForm({ init, title, submit, busy, close, err }: {
         <div className="bk-modal-h">
           <span className="bkn-ic" aria-hidden><Icon name="agent" size={16} /></span>
           <h4>{title}</h4>
-          <button type="button" className="bk-x" onClick={close} aria-label="Schließen"><Icon name="schliessen" size={14} /></button>
+          <button type="button" className="bk-x x-btn" onClick={close} aria-label="Schließen"><Icon name="schliessen" size={14} /></button>
         </div>
         <label className="bk-f"><span>Name</span>
           <input value={a.name} maxLength={60} onChange={(e) => setA({ ...a, name: e.target.value })} placeholder="z. B. UK Käufer täglich" autoFocus />

@@ -104,7 +104,7 @@ export function Drawer({ title, icon, tab, base, close, tabs, children, state }:
     <aside className={`drw st-${state}`} aria-label={title}>
       <header>
         <span className="drw-ic" aria-hidden><Icon name={icon} size={20} /></span><h2>{title}</h2>
-        <Link href={close} scroll={false} className="drw-x" aria-label="Schließen"><Icon name="schliessen" size={16} /></Link>
+        <Link href={close} scroll={false} className="drw-x x-btn" aria-label="Schließen"><Icon name="schliessen" size={16} /></Link>
       </header>
       <nav className="drw-tabs" style={{ gridTemplateColumns: `repeat(${1 + Number(tabs.set) + Number(tabs.check)},minmax(0,1fr))` }}>
         {[t("info", "Info", "info"), t("set", "Einstellen", "einstellungen", tabs.set), t("check", "Prüfen", "ok", tabs.check)]}</nav>

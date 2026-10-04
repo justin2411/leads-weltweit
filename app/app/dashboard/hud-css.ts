@@ -668,6 +668,13 @@ export const HUD_CSS = `
 .jt-wrap .tip-x svg{width:10px;height:10px}
 .jt-wrap .tip-x:hover,.jt-wrap .tip-x:focus-visible{background:none;color:#ff5e73}
 .dash button.tip-x,.dash button.tip-x:hover,.dash button.tip-x:focus-visible{background:none!important;border:0!important;box-shadow:none!important;padding:0;min-height:0}
+/* Schließen-X überall gleich (Inhaber 04.10.2026: „das x ist wieder nicht mittig … prüfe das überall“): nur das Zeichen, ohne Rahmen, exakt mittig.
+   !important, weil .dash button (padding 7px 14px) und Seiten-CSS sonst das Zeichen aus der Mitte schieben. */
+.dash .x-btn,.dash .x-btn:hover,.dash .x-btn:focus-visible{display:inline-grid!important;place-items:center;flex:none;width:32px!important;height:32px!important;min-width:0;min-height:0;padding:0!important;border:0!important;border-radius:50%;background:none!important;box-shadow:none!important;line-height:0;font-size:0;text-decoration:none;cursor:pointer}
+.dash .x-btn{color:var(--soft)!important;opacity:.8}
+.dash .x-btn:hover,.dash .x-btn:focus-visible{color:#ff5e73!important;opacity:1}
+.dash .x-btn>svg{display:block;margin:0}
+.dash .x-btn:active:not(:disabled){transform:none}
 .tip-gone{display:none!important}
 .tip-undo{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:70;display:flex;align-items:center;gap:12px;max-width:calc(100vw - 32px);padding:6px 6px 6px 16px;border:1px solid rgba(226,198,143,.5);border-radius:12px;background:#07101f;box-shadow:0 16px 40px -12px rgba(0,0,0,.9),0 0 24px -10px rgba(226,198,143,.4);font-size:13.5px;color:var(--text)}
 .tip-undo>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -703,4 +710,9 @@ export const HUD_CSS = `
   .jt-wrap{flex-wrap:wrap}
   .jt-pick{position:static;flex-basis:100%;grid-template-columns:repeat(4,minmax(0,1fr));box-shadow:none}
 }
+/* Sprungziele (app/dashboard/use-anker.ts): Abstand unter der festen Kopfzeile, kurzes Aufleuchten nach dem Sprung */
+.dash [id],.dash .fold{scroll-margin-top:118px}
+@keyframes anker-flash{0%{box-shadow:0 0 0 2px rgba(226,198,143,.95),0 0 34px rgba(226,198,143,.55)}100%{box-shadow:0 0 0 1px rgba(226,198,143,0),0 0 0 rgba(226,198,143,0)}}
+@media (prefers-reduced-motion:no-preference){.dash .anker-flash{animation:anker-flash 1.6s ease-out}}
+@media (prefers-reduced-motion:reduce){.dash .anker-flash{outline:2px solid var(--gold);outline-offset:2px}}
 `;

@@ -21,6 +21,8 @@ export type ChatSession = {
 export type ChatMessage = {
   id: string; session_id: string; created_at: string; role: "inhaber" | "jarvis"; body: string; status: MsgStatus | null;
   links: ChatLink[];
+  /** Sofort-Antwort über die Claude-API: Modell und Kosten in Euro (null = Antwort der Routine) */
+  model?: "haiku" | "opus" | null; cost_eur?: number | null;
 };
 
 export const BODY_MAX = 8000;
@@ -149,6 +151,8 @@ export function toMessage(x: Record<string, unknown>): ChatMessage {
   return {
     id: String(x.id), session_id: String(x.session_id), created_at: String(x.created_at ?? ""), role, body: String(x.body ?? ""),
     status: role === "inhaber" ? st ?? "offen" : null, links: safeLinks(x.links),
+    model: x.model === "haiku" || x.model === "opus" ? x.model : null,
+    cost_eur: x.cost_eur === null || x.cost_eur === undefined || !Number.isFinite(Number(x.cost_eur)) ? null : Number(x.cost_eur),
   };
 }
 

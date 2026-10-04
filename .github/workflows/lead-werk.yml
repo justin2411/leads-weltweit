@@ -114,6 +114,8 @@ jobs:
           # Quellen-Scout S1 (Inhaber 02.10.2026: „recruiting kunden und leads … darauf fokussieren“): US-Arbeitgeber mit
           # Fachkräfte-Bedarf aus den DOL-LCA-Daten, Test 50 -> 26 grün
           # - { name: s1-us-lca, args: "--segments S1 --countries US --fmcsa-days 0 --formd-days 0 --s1-probe 0 --lca --per 4000 --max-tries 4000" }
+          # Quellen-Scout 04.10.2026: s1-us-lca zusätzlich mit USAspending.gov (kleine US-Firmen mit neuem Bundesauftrag,
+          # --award-days 30, Test 300 -> 22 grün), 1 Standardplatz (von web-uk 5 -> 4, UK abgearbeitet, Autopilot 1 Wachplatz)
           # Inhaber 03.10.2026 (19:48): „lead werke auf volle leistung für webagencies“ – andere Branchen ruhen: die beiden
           # S1-Teile (DOL LCA, Find a Tender) pausiert (liefen nur 1–3 min je Lauf), Website-Prüfung IE/NL/BE/SE 4 -> 1 Teil
           # (Fokus US/UK/FR). Die 5 Plätze gehen an die US-Website-Prüfung (16 -> 21 Teile, alle 77 min ausgelastet).
@@ -167,6 +169,7 @@ jobs:
             out/cache/find_tender.json
             out/cache/find_tender_ch.json
             out/cache/contracts_finder.json
+            out/cache/usaspending.json
           key: lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-${{ github.run_id }}
           restore-keys: |
             lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-
@@ -445,6 +448,7 @@ jobs:
             out/cache/find_tender.json
             out/cache/find_tender_ch.json
             out/cache/contracts_finder.json
+            out/cache/usaspending.json
           key: lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-${{ github.run_id }}
       - name: Gedächtnis der Website-Prüfung sichern
         if: always() && steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')

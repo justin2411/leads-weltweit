@@ -19,6 +19,8 @@ export const ENV_VARS: { name: string; purpose: string; required: boolean }[] = 
   { name: "VAPID_PUBLIC_KEY", purpose: "Handy-Alarm: öffentlicher Schlüssel", required: false },
   { name: "VAPID_PRIVATE_KEY", purpose: "Handy-Alarm: privater Schlüssel (sensitiv)", required: false },
   { name: "VAPID_SUBJECT", purpose: "Handy-Alarm: Kontakt (mailto:)", required: false },
+  // Sofort-Antworten im JARVIS-Chat (Inhaber 04.10.2026): nur serverseitig, nie geloggt; fehlt er, antwortet die Routine
+  { name: "ANTHROPIC_API_KEY", purpose: "JARVIS-Chat Sofort-Antworten (Claude-API, nur serverseitig)", required: false },
 ];
 
 export function envStatus(env: Record<string, string | undefined> = process.env) {
