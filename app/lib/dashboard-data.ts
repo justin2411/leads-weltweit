@@ -360,6 +360,7 @@ export async function loadBrain(): Promise<BrainData> {
   const [settings, pages, decisions, report] = await Promise.all([
     sb.from("settings").select("*").eq("id", 1).abortSignal(t()).maybeSingle(),
     sb.from("page_stats").select("*").order("slug").order("variant_key").abortSignal(t()),
+    // select * (keine feste Spaltenliste): optionale Spalten kurz_titel/kurz_grund kommen mit, sobald es sie gibt
     sb.from("decisions").select("*").order("created_at", { ascending: false }).limit(30).abortSignal(t()),
     sb.from("decisions").select("*").in("type", ["daily_note", "weekly_report"]).order("created_at", { ascending: false }).limit(1).abortSignal(t()),
   ]);

@@ -7,6 +7,7 @@
  * gilt `open`). Für alle Listen/Tabellen/Matrizen über ~6 Zeilen im Dashboard.
  */
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useAnker } from "./use-anker";
 
 const PREFIX = "sw-fold:";
 
@@ -32,6 +33,8 @@ function write(id: string, open: boolean) {
  * head: Klassen der Kopfzeile (Standard "h2s" = Abschnittsüberschrift, in Karten z. B. "th" oder "sp-h");
  * alert: Warnzustand (fehlende Variable, ungespeicherte Änderung) – dann immer offen, auch wenn der Inhaber den
  * Abschnitt früher zugeklappt hat (docs/DESIGN.md).
+ * Sprungziel: Links auf „#<id>“ öffnen den Abschnitt, scrollen hin und lassen ihn kurz aufleuchten (useAnker,
+ * lib/anker.ts) – dieses Öffnen wird nicht gespeichert.
  */
 export function Fold({ id, title, sum, open = true, alert = false, className = "", head = "h2s", children }: { id: string; title: ReactNode; sum?: ReactNode; open?: boolean; alert?: boolean; className?: string; head?: string; children: ReactNode }) {
   const ref = useRef<HTMLDetailsElement>(null);
@@ -45,6 +48,10 @@ export function Fold({ id, title, sum, open = true, alert = false, className = "
   useEffect(() => {
     if (alert && ref.current && !ref.current.open) ref.current.open = true; // Warnzustand: immer sichtbar
   }, [alert]);
+  useAnker(ref, id, [], (el) => {
+    const d = el as HTMLDetailsElement;
+    if (!d.open) d.open = true; // kein Klick → byUser bleibt false → nicht gespeichert
+  });
   return (
     <details ref={ref} className={`fold ${className}`.trim()} open={initial} data-fold={id}
       onToggle={(e) => { if (byUser.current) { byUser.current = false; write(id, (e.currentTarget as HTMLDetailsElement).open); } }}>
