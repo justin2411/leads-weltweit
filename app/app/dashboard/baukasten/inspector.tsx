@@ -8,9 +8,10 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import { KINDS } from "@/lib/agents";
 import {
-  FIELDS, LIMITS, NODE_META, OPS, SORT_LABELS, countBy, evalCond, condProblem, fieldDef, fieldsFor,
-  type Cond, type FieldType, type FlowNode, type NodeRows, type Op, type Problem, type Row, type Source, type TopSort, type AgentTaskKind,
+  FIELDS, GESAMTBESTAND, LIMITS, NODE_META, OPS, SORT_LABELS, countBy, evalCond, condProblem, fieldDef, fieldsFor,
+  type Cond, type FieldType, type FlowKind, type FlowNode, type NodeRows, type Op, type Problem, type Row, type Source, type TopSort, type AgentTaskKind,
 } from "@/lib/flow";
+import { meldenPreview, pendingPool, type PoolInfo } from "@/lib/baukasten";
 import { fmt, outRows, valLabel } from "./nodes";
 import { Icon, type IconName } from "@/app/icons";
 
@@ -229,9 +230,57 @@ function breakdownField(n: FlowNode): string {
   }
 }
 
-export function Inspector({ cfg, rows, source, pipe, probs, ctx, set, remove, close, act }: {
+/** Speicher wählen (mit Anzahl) oder neu anlegen. Gesamtbestand = kein eigener Speicher (alle Leads). */
+function PoolPick({ cfg, pools, addPool, set, source }: {
+  cfg: Extract<FlowNode, { kind: "speicher" }>; pools: PoolInfo[]; source: Source;
+  addPool: (name: string) => Promise<{ id: string; name: string } | string>; set: (n: FlowNode) => void;
+}) {
+  const want = pendingPool(cfg);
+  const [nm, setNm] = useState(want ?? "");
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const create = async () => {
+    setBusy(true);
+    setErr(null);
+    const r = await addPool(nm);
+    setBusy(false);
+    if (typeof r === "string") setErr(r);
+    else { set({ ...cfg, pool_id: r.id, pool_name: r.name }); setNm(""); }
+  };
+  const top = (p: PoolInfo) => Object.entries(p.byCountry).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, n]) => `${k} ${fmt(n)}`).join(" · ");
+  return (
+    <>
+      <ul className="bk-pools">
+        <li>
+          <button type="button" className={cfg.pool_id === null && !want ? "on" : ""} onClick={() => set({ ...cfg, pool_id: null, pool_name: GESAMTBESTAND })} aria-pressed={cfg.pool_id === null && !want}>
+            <Icon name="bestand" size={15} /><span><b>{GESAMTBESTAND}</b><small>alle Leads – kein eigener Speicher</small></span>
+          </button>
+        </li>
+        {pools.map((p) => (
+          <li key={p.id}>
+            <button type="button" className={cfg.pool_id === p.id ? "on" : ""} onClick={() => set({ ...cfg, pool_id: p.id, pool_name: p.name })} aria-pressed={cfg.pool_id === p.id}>
+              <Icon name="speicher" size={15} /><span><b>{p.name}</b><small>{p.n ? top(p) : "noch leer"}</small></span><em>{fmt(p.n)}</em>
+            </button>
+          </li>
+        ))}
+      </ul>
+      {!pools.length && <p className="bk-hint">Noch keine eigenen Speicher – unten einen anlegen.</p>}
+      {want && <p className="bk-err">„{want}“ gibt es noch nicht – anlegen oder anderen wählen.</p>}
+      <div className="bk-row">
+        <input className="bk-in" value={nm} maxLength={LIMITS.pool} placeholder="Neuer Speicher, z. B. Premium" onChange={(e) => setNm(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && nm.trim() && !busy) void create(); }} aria-label="Name des neuen Speichers" />
+        <button type="button" className="bk-btn gold" disabled={!nm.trim() || busy} onClick={() => void create()}><Icon name="mehr" size={14} />{busy ? "…" : "Anlegen"}</button>
+      </div>
+      {err && <p className="bk-err">{err}</p>}
+      {source === "kaeufer" && <p className="bk-err">Speicher nur für Leads – Quelle auf „Leads“ stellen.</p>}
+    </>
+  );
+}
+
+export function Inspector({ cfg, rows, source, pipe, probs, ctx, set, remove, close, act, dup, kind, flowName, pools, addPool }: {
   cfg: FlowNode; rows: NodeRows | undefined; source: Source; pipe: boolean; probs: Problem[]; ctx: InsCtx;
-  set: (n: FlowNode) => void; remove: () => void; close: () => void; act: Act;
+  set: (n: FlowNode) => void; remove: () => void; close: () => void; act: Act; dup: () => void;
+  kind: FlowKind; flowName: string; pools: PoolInfo[]; addPool: (name: string) => Promise<{ id: string; name: string } | string>;
 }) {
   const meta = NODE_META[cfg.kind];
   const [port, setPort] = useState<"ja" | "nein">("ja");
@@ -333,8 +382,13 @@ export function Inspector({ cfg, rows, source, pipe, probs, ctx, set, remove, cl
       form = (
         <>
           {sec("Sortierung", <Chips opts={(Object.keys(SORT_LABELS) as TopSort[]).map((k) => ({ v: k, label: SORT_LABELS[k] }))} on={(v) => cfg.sort === v} pick={(v) => set({ ...cfg, sort: v })} />)}
-          {sec("Anzahl", <input className="bk-in" type="number" min={1} max={LIMITS.n} step={1} value={cfg.n}
-            onChange={(e) => set({ ...cfg, n: Math.round(numIn(e.target.value) ?? 1) })} />)}
+          {sec("Anzahl", (
+            <>
+              <Chips opts={[10, 50, 100, 500, 1000].map((n) => ({ v: n, label: fmt(n) }))} on={(v) => cfg.n === v} pick={(v) => set({ ...cfg, n: v })} />
+              <input className="bk-in" type="number" min={1} max={LIMITS.n} step={1} value={cfg.n} aria-label="Anzahl"
+                onChange={(e) => set({ ...cfg, n: Math.round(numIn(e.target.value) ?? 1) })} />
+            </>
+          ))}
           {pipe && <p className="bk-err">Top entscheidet nach der ganzen Menge – nicht auf dem Weg zur Pipeline.</p>}
         </>
       );
@@ -363,7 +417,11 @@ export function Inspector({ cfg, rows, source, pipe, probs, ctx, set, remove, cl
                 {!on && <p>Noch nichts angeschlossen – dann würde alles im Geltungsbereich zurückgehalten.</p>}
               </>
             ) : <p>Stichprobe lädt …</p>}
-            {ctx.active ? (
+            {kind === "master" ? (
+              <p>Master: „Übernehmen“ oben gilt sofort für alle neuen Leads dieser Quelle.</p>
+            ) : kind === "agent" ? (
+              <p>Im Agenten ohne Wirkung – Regeln für alle Leads gehören in die Master-Pipeline.</p>
+            ) : ctx.active ? (
               <>
                 <p>Läuft in der Pipeline: gilt für alle neuen Leads dieser Quelle.</p>
                 <button type="button" className="bk-btn red" disabled={ctx.busy} onClick={act.deactivate}>Von der Pipeline lösen</button>
@@ -371,7 +429,7 @@ export function Inspector({ cfg, rows, source, pipe, probs, ctx, set, remove, cl
             ) : (
               <button type="button" className="bk-btn green" disabled={ctx.busy || !saved || ctx.errors > 0 || source !== "leads"} onClick={act.activate}><Icon name="pipeline" size={15} />An Pipeline anschließen</button>
             )}
-            {!saved && <p className="bk-hint">Erst speichern – angeschlossen wird die gespeicherte Fassung.</p>}
+            {!saved && kind === "test" && <p className="bk-hint">Erst speichern – angeschlossen wird die gespeicherte Fassung.</p>}
             {ctx.errors > 0 && <p className="bk-err">Erst die Fehler beheben ({ctx.errors}).</p>}
           </div>
           <p className="bk-lock"><Icon name="schloss" size={14} /> Regeln machen die Freigabe nur strenger. Zurückgehaltene Leads kommen beim Lösen zurück.</p>
@@ -390,6 +448,30 @@ export function Inspector({ cfg, rows, source, pipe, probs, ctx, set, remove, cl
       );
       break;
     }
+    case "freigabe":
+      form = (
+        <div className="bk-act gold">
+          <p><Icon name="schloss" size={14} /> <b>Drei-Stufen-Freigabe</b>: Trigger echt, Daten vollständig, auslieferbar.</p>
+          <p>Läuft vor jeder Probe und Lieferung immer – auch wenn dieser Baustein fehlt. Hier nur die Markierung im Ablauf.</p>
+        </div>
+      );
+      break;
+    case "speicher":
+      form = (
+        <>
+          {sec("Speicher", <PoolPick key={cfg.id} cfg={cfg} pools={pools} addPool={addPool} set={set} source={source} />)}
+          <p className="bk-hint">{kind === "master" ? "Neue Leads, die hier ankommen, kommen in diesen Speicher." : kind === "agent" ? "Bei jedem Lauf kommen die Treffer in diesen Speicher." : "Im Test-Flow nur Vorschau – wirksam in Master oder Agent."}</p>
+        </>
+      );
+      break;
+    case "melden":
+      form = (
+        <>
+          {sec("Vorschau", <p className="bk-quote">{meldenPreview(input, flowName)}</p>)}
+          <p className="bk-hint">{kind === "agent" ? "Kommt bei jedem Lauf per Mail und aufs Handy – nur an dich." : "Nur in einem Agenten wirksam – hier Vorschau."}</p>
+        </>
+      );
+      break;
     case "agent":
       form = (
         <>
@@ -411,7 +493,10 @@ export function Inspector({ cfg, rows, source, pipe, probs, ctx, set, remove, cl
           <input value={cfg.title ?? ""} maxLength={LIMITS.title} placeholder={cfg.kind === "pipeline" ? cfg.name : meta.label} aria-label="Name des Bausteins"
             onChange={(e) => set({ ...cfg, title: e.target.value || undefined })} />
         </div>
-        <button type="button" className="bk-x bk-del" onClick={remove} aria-label="Baustein löschen" title="Löschen"><Icon name="loeschen" size={14} /></button>
+        {cfg.kind !== "quelle" && cfg.kind !== "pipeline" && (
+          <button type="button" className="bk-x" onClick={dup} aria-label="Baustein kopieren" title="Kopieren (Strg+D)"><Icon name="kopieren" size={14} /></button>
+        )}
+        <button type="button" className="bk-x bk-del" onClick={remove} aria-label="Baustein löschen" title="Löschen (Entf)"><Icon name="loeschen" size={14} /></button>
         <button type="button" className="bk-x" onClick={close} aria-label="Schließen"><Icon name="schliessen" size={14} /></button>
       </header>
       <div className="bk-bigs" style={{ "--nc": meta.color } as CSSProperties}>
