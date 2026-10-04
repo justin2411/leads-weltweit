@@ -4,8 +4,8 @@
   "reserve": 2,
   "lanes": [
     { "id": "web-us", "werk": "lead-werk", "label": "Website-Prüfung USA", "short": "WEB·US", "segment": "S2", "country": "US", "default": 20, "max": 21, "workers": 40,
-      "what": "Firmen mit Website in den USA: unsicher, nicht handytauglich, veraltet oder kaputt",
-      "args": "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --s2-limit 60000 --per 60000 --max-tries 60000" },
+      "what": "Firmen mit Website in den USA: unsicher, nicht handytauglich, veraltet oder kaputt (auch Einträge ohne Telefon)",
+      "args": "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --web-check --web-min-conf 0.4 --web-no-phone --s2-limit 60000 --per 60000 --max-tries 60000" },
     { "id": "web-uk", "werk": "lead-werk", "label": "Website-Prüfung UK", "short": "WEB·UK", "segment": "S2", "country": "UK", "default": 4, "max": 21, "workers": 40,
       "what": "Firmen mit Website in Großbritannien: unsicher, nicht handytauglich, veraltet oder kaputt (auch Einträge ohne Telefon)",
       "args": "--segments S2 --countries UK --web-check --web-min-conf 0.4 --web-no-phone --s2-limit 60000 --per 60000 --max-tries 60000" },
