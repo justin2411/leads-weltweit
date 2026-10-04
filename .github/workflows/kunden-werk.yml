@@ -38,7 +38,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: out/cache/kunden_pool.parquet
-          key: kunden-pool-v6-${{ steps.m.outputs.monat }}  # v6: neue Länder FI/SG/HK/MX/BR (04.10.2026); v5: Namens-Pool Webagenturen UK/FR (04.10.2026); v4: weitere Käufer-Kategorien
+          key: kunden-pool-v7-${{ steps.m.outputs.monat }}  # v7: Namens-Pool auch US/IE (04.10.2026); v6: neue Länder FI/SG/HK/MX/BR (04.10.2026); v5: Namens-Pool Webagenturen UK/FR (04.10.2026); v4: weitere Käufer-Kategorien
       - uses: actions/setup-python@v5
         if: steps.gate.outputs.an == 'true' && steps.cache.outputs.cache-hit != 'true'
         with: { python-version: "3.11" }
@@ -113,7 +113,7 @@ jobs:
       - uses: actions/cache/restore@v4
         with:
           path: out/cache/kunden_pool.parquet
-          key: kunden-pool-v6-${{ needs.pool.outputs.monat }}
+          key: kunden-pool-v7-${{ needs.pool.outputs.monat }}
           fail-on-cache-miss: true
       - uses: actions/cache/restore@v4
         with:
@@ -143,8 +143,11 @@ jobs:
       # Zuerst ohne Abruf: an der Rechtsform gescheiterte Käufer in Ländern ohne company_forms_only (FR seit
       # 04.10.2026, Einzelunternehmer nach Anwaltsberatung erlaubt) mit unveränderter Prüfregel neu prüfen –
       # idempotent, findet nach dem ersten Lauf nichts mehr. Danach Registernummer nur noch, wo die Rechtsform zählt.
-      - name: Regeln neu prüfen, dann Registernummer nachprüfen (S2 UK, S1 UK)
-        run: python scripts/kundenwerk.py nachpruefen --max 3000 --workers 16 --deadline-min 80 | tee -a "$GITHUB_STEP_SUMMARY"
+      # 04.10.2026 (JARVIS-Agent „Käufer finden · Mail-Länder“): auch S2 SE/FI (Org.nr/Y-tunnus -> EU VIES, Test SE
+      # 4–7 von 100 neu mail-fähig); NL (KVK-Nummer -> KVK Open Dataset, nur BV/NV, 1 Abfrage/min je IP, --kvk-max 75)
+      # wirkt erst, wenn NL wieder Mail-Land ist (nur Länder mit allowed + company_forms_only)
+      - name: Regeln neu prüfen, dann Registernummer nachprüfen (S2 UK/SE/FI, S1 UK)
+        run: python scripts/kundenwerk.py nachpruefen --max 3000 --workers 16 --deadline-min 80 --kvk-max 75 | tee -a "$GITHUB_STEP_SUMMARY"
 
   weiter:
     # sofort den nächsten Lauf starten (nur bei Schalter an und echter Laufzeit, sonst Cron/Wachhund)

@@ -765,13 +765,18 @@ class WebAgencyFocusTests(unittest.TestCase):
           ('6', {'primary': 'Power SEO'}, {'primary': NULL}, 'restaurant', [{'country': 'GB'}], ['https://f.co.uk']),
           ('7', {'primary': 'London SEO Co'}, {'primary': NULL}, NULL, [{'country': 'GB'}], ['https://g.co.uk']),
           ('8', {'primary': 'Studio Créatif'}, {'primary': NULL}, NULL, [{'country': 'FR'}], ['https://h.fr']),
-          ('9', {'primary': 'Bright Web Design'}, {'primary': NULL}, NULL, [{'country': 'US'}], ['https://i.com'])
+          ('9', {'primary': 'Bright Web Design'}, {'primary': NULL}, NULL, [{'country': 'US'}], ['https://i.com']),
+          ('10', {'primary': 'Dublin Creative'}, {'primary': NULL}, NULL, [{'country': 'IE'}], ['https://j.ie']),
+          ('11', {'primary': 'Galway SEO'}, {'primary': NULL}, NULL, [{'country': 'IE'}], ['https://k.ie']),
+          ('12', {'primary': 'Web Design Stockholm'}, {'primary': NULL}, NULL, [{'country': 'SE'}], ['https://l.se'])
         ) v(id, names, taxonomy, basic_category, addresses, websites)""")
         cats = ", ".join(f"'{c}'" for c in K.CATEGORIES)
-        got = con.execute(f"SELECT id, {K.name_category_sql()} FROM t WHERE {K.name_pool_where(cats)} ORDER BY id").fetchall()
-        # 4 Küchenstudio, 5 schon im Kategorie-Pool, 6 Restaurant, 8 FR ohne Webagentur-Wort, 9 nur GB/FR
+        got = con.execute(f"SELECT id, {K.name_category_sql()} FROM t WHERE {K.name_pool_where(cats)} "
+                          "ORDER BY id::INT").fetchall()
+        # 4 Küchenstudio, 5 schon im Kategorie-Pool, 6 Restaurant, 8 FR ohne Webagentur-Wort; US (04.10.2026) mit
+        # dem englischen Webagentur-Filter (9), IE kein Mail-Land mehr (10, 11), SE nicht im Namens-Pool (12)
         self.assertEqual(got, [("1", "web_designer"), ("2", K.CREATIVE), ("3", "web_designer"),
-                               ("7", "internet_marketing_service")])
+                               ("7", "internet_marketing_service"), ("9", "web_designer")])
 
     def test_kundenwerk_creative_studio_needs_companies_house_branch(self):
         import kundenwerk as K

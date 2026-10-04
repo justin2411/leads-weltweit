@@ -54,3 +54,74 @@ def uk_numbers(text: str) -> list[str]:
         if n.strip("0") and n not in out:
             out.append(n)
     return out
+
+
+# ---------------------------------------------------------------------------
+# BE / SE / IE / NL (JARVIS-Agent „Käufer finden · Mail-Länder“, 04.10.2026): Nummern auf der eigenen Website,
+# Rechtsform kommt aus EU-VIES (Name der Firma im Mehrwertsteuerregister) bzw. KVK Open Dataset (nur BV/NV).
+# ---------------------------------------------------------------------------
+BE_NUMBER = re.compile(
+    r"(?:\bbtw\b|\btva\b|\bvat\b|ondernemingsnummer|num[ée]ro d.entreprise|\bkbo\b|\bbce\b|enterprise number|"
+    r"\brpr\b|\brpm\b|\bbe\b)[^0-9<]{0,25}?(?:BE)?\s?([01]\d{3}[\s.]?\d{3}[\s.]?\d{3})(?!\d)", re.I)
+SE_NUMBER = re.compile(
+    r"(?:org\.?\s*nr|organisationsnummer|org\.?\s*nummer|momsreg\w*|\bvat\b|\bmoms\b)[^0-9<]{0,25}?(?:SE)?\s?"
+    r"(\d{6}-?\d{4})(?!\d)", re.I)
+IE_VAT = re.compile(r"\b(?:vat|tax)\b[^0-9<]{0,30}?(?:IE)\s?(\d{7}[A-W][A-IW]?)\b", re.I)
+FI_YTUNNUS = re.compile(r"(?:y-?tunnus|business id|ly-?tunnus|fo-?nummer|\bvat\b|alv)[^0-9<]{0,25}?(?:FI)?\s?(\d{7}-?\d)(?!\d)", re.I)
+NL_KVK = re.compile(r"(?:\bkvk\b|k\.v\.k\.|kamer van koophandel|\bcoc\b|chamber of commerce|handelsregister)"
+                    r"[^0-9<]{0,30}?(\d{8})(?!\d)", re.I)
+
+
+def _uniq(xs):
+    out = []
+    for x in xs:
+        if x not in out:
+            out.append(x)
+    return out
+
+
+def be_numbers(text: str) -> list[str]:
+    """Belgische Unternehmensnummern (10 Ziffern, Prüfziffer 97 − Rest mod 97)."""
+    out = []
+    for m in BE_NUMBER.findall(text or ""):
+        n = re.sub(r"\D", "", m).zfill(10)
+        if len(n) == 10 and int(n[:8]) and 97 - int(n[:8]) % 97 == int(n[8:]):
+            out.append(n)
+    return _uniq(out)
+
+
+def se_numbers(text: str) -> list[str]:
+    """Schwedische Organisationsnummern (10 Ziffern, Luhn) als VIES-Nummer (+ „01“)."""
+    out = []
+    for m in SE_NUMBER.findall(text or ""):
+        n = re.sub(r"\D", "", m)
+        if len(n) == 10 and luhn_ok(n):
+            out.append(n + "01")
+    return _uniq(out)
+
+
+def ie_vats(text: str) -> list[str]:
+    """Irische USt-Nummern mit Präfix IE („VAT No. IE 1234567AB“)."""
+    return _uniq([m.upper() for m in IE_VAT.findall(text or "")])
+
+
+def fi_numbers(text: str) -> list[str]:
+    """Finnische Y-tunnus (7 Ziffern + Prüfziffer, Gewichte 7-9-10-5-8-4-2, mod 11) als VIES-Nummer (8 Ziffern)."""
+    out = []
+    for m in FI_YTUNNUS.findall(text or ""):
+        n = re.sub(r"\D", "", m)
+        r = sum(int(a) * w for a, w in zip(n[:7], (7, 9, 10, 5, 8, 4, 2))) % 11
+        if len(n) == 8 and r != 1 and (0 if r == 0 else 11 - r) == int(n[7]):
+            out.append(n)
+    return _uniq(out)
+
+
+def nl_kvks(text: str) -> list[str]:
+    """KVK-Nummern (8 Ziffern) neben „KvK“/„Kamer van Koophandel“."""
+    return _uniq([m for m in NL_KVK.findall(text or "") if m.strip("0")])
+
+
+def numbers_for(country: str, text: str) -> list[str]:
+    """Registernummern je Land (UK, FR, BE, SE, IE, NL, FI)."""
+    fn = {"UK": uk_numbers, "FR": fr_sirens, "BE": be_numbers, "SE": se_numbers, "IE": ie_vats, "NL": nl_kvks, "FI": fi_numbers}.get(country)
+    return fn(text) if fn else []
