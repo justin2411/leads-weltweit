@@ -698,4 +698,9 @@ export const HUD_CSS = `
   .jt-wrap{flex-wrap:wrap}
   .jt-pick{position:static;flex-basis:100%;grid-template-columns:repeat(4,minmax(0,1fr));box-shadow:none}
 }
+/* Sprungziele (app/dashboard/use-anker.ts): Abstand unter der festen Kopfzeile, kurzes Aufleuchten nach dem Sprung */
+.dash [id],.dash .fold{scroll-margin-top:118px}
+@keyframes anker-flash{0%{box-shadow:0 0 0 2px rgba(226,198,143,.95),0 0 34px rgba(226,198,143,.55)}100%{box-shadow:0 0 0 1px rgba(226,198,143,0),0 0 0 rgba(226,198,143,0)}}
+@media (prefers-reduced-motion:no-preference){.dash .anker-flash{animation:anker-flash 1.6s ease-out}}
+@media (prefers-reduced-motion:reduce){.dash .anker-flash{outline:2px solid var(--gold);outline-offset:2px}}
 `;
