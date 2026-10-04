@@ -134,9 +134,27 @@ def address_problems(email: str, p: dict) -> list[str]:
     from kundenwerk import PLACEHOLDER_URL, address_ok
     out = []
     if not address_ok(email or ""):
-        out.append("Adresse ungültig (%-Kodierung oder Leerzeichen)")
+        out.append("Adresse ungültig (Syntax, %-Kodierung oder Leerzeichen)")
     if PLACEHOLDER_URL.search((p or {}).get("source_url") or ""):
         out.append("Adresse stammt von einer Sperr-/Parkseite des Hosters")
+    return out
+
+
+def kind_of(m: dict) -> str:
+    return m.get("kind") or "initial"
+
+
+def hard_bounce_domains(db) -> set[str]:
+    """Domains mit endgültigem Bounce (5.x.x oder ohne Status; 4.x.x zählt nicht) – Erstmails an eine andere Adresse
+    derselben Domain gehen nicht mehr raus (Bounce-Analyse 05.10.2026, nur strenger)."""
+    from lib.deliverability import is_transient
+    ev = db.select_all("email_events", {"type": "eq.bounced", "select": "payload,messages(to_email)"}) or []
+    out = set()
+    for e in ev:
+        b = ((e.get("payload") or {}).get("bounce") or {}) if isinstance(e.get("payload"), dict) else {}
+        to = ((e.get("messages") or {}).get("to_email") or "").lower()
+        if "@" in to and not is_transient(b):
+            out.add(to.rsplit("@", 1)[1])
     return out
 
 
@@ -601,6 +619,7 @@ def cmd_send(args) -> int:
     if limit_total is not None:
         print(f"Gesamtgrenze Erstmails: {initial_total} von {limit_total} gesendet")
     n_sent = 0
+    bounced_domains = hard_bounce_domains(db)
     from lib import freshness
     fetcher = None
     for i, m in enumerate(rows):
@@ -639,6 +658,8 @@ def cmd_send(args) -> int:
         if role_address(m["to_email"]):
             problems.append("Funktionsadresse ohne Vertriebsbezug (z. B. privacy@, support@)")
         problems += address_problems(m["to_email"], p)
+        if kind_of(m) == "initial" and (m["to_email"] or "").rsplit("@", 1)[-1].lower() in bounced_domains:
+            problems.append("Domain hatte schon einen endgültigen Bounce (andere Adresse)")
         # Pflicht-Kennzeichnung im Betreff (SG Spam Control Act: „<ADV> “) und Sprache des Landes (BR pt, MX es),
         # neue Länder 04.10.2026 – fehlt etwas, wird nicht gesendet
         prefix = rules.get("subject_prefix") or ""

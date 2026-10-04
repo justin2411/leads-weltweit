@@ -34,7 +34,7 @@ export type OpsConfig = {
 
 export type Ev = {
   id: string; type: string; dedupe_key?: string | null; message_id?: string | null; occurred_at: string; created_at: string;
-  note?: string | null; bounce_type?: string | null; to_email?: string | null; kind?: string | null;
+  note?: string | null; bounce_type?: string | null; bounce_status?: string | null; to_email?: string | null; kind?: string | null;
   segment_id?: string | null; country?: string | null; prospect_id?: string | null; company_name?: string | null;
   domain?: string | null;
 };
@@ -214,8 +214,13 @@ export function mailboxes(live: Live, cfg: OpsConfig): BoxRow[] {
   return [...rows.values()];
 }
 
+/** Erweiterter Status 4.x.x = vorübergehend (RFC 3463), wie deliverability.is_transient. */
+export function isTransient(e: Pick<Ev, "bounce_type" | "bounce_status">): boolean {
+  return (e.bounce_type ?? "").toLowerCase() === "transient" || /^4\.\d{1,3}\.\d{1,3}$/.test((e.bounce_status ?? "").trim());
+}
+
 /** Bounces und Beschwerden je Empfängeradresse (deliverability.count_bounces). */
-export function countBounces(events: Pick<Ev, "type" | "bounce_type" | "to_email" | "message_id">[]): { bounced: number; complained: number } {
+export function countBounces(events: Pick<Ev, "type" | "bounce_type" | "bounce_status" | "to_email" | "message_id">[]): { bounced: number; complained: number } {
   const hard = new Set<string>();
   const soft = new Map<string, number>();
   const complained = new Set<string>();
@@ -223,7 +228,7 @@ export function countBounces(events: Pick<Ev, "type" | "bounce_type" | "to_email
     const who = (e.to_email || e.message_id || "").toLowerCase();
     if (e.type === "complained") { complained.add(who); continue; }
     if (e.type !== "bounced") continue;
-    if ((e.bounce_type ?? "").toLowerCase() === "transient") soft.set(who, (soft.get(who) ?? 0) + 1);
+    if (isTransient(e)) soft.set(who, (soft.get(who) ?? 0) + 1);
     else hard.add(who);
   }
   for (const [w, n] of soft) if (n >= 2) hard.add(w);
@@ -241,7 +246,7 @@ export const BOX_WARN = 0.03, BOX_FAIL = 0.05, BOX_MIN = 30;
  * Beschwerde, grau unter 30 Mails (zu wenig für eine Aussage). Mails ohne Absender zählen zum Hauptpostfach.
  */
 export function boxHealth(msgs: { id: string; sent_from: string | null }[],
-                          events: (Pick<Ev, "type" | "bounce_type" | "to_email" | "message_id"> & { bounce_status?: string | null })[]): BoxHealth[] {
+                          events: Pick<Ev, "type" | "bounce_type" | "bounce_status" | "to_email" | "message_id">[]): BoxHealth[] {
   const key = (from: string | null) => {
     const a = (from ?? "").match(/<([^>]+)>/)?.[1] ?? from ?? "";
     const addr = a.trim().toLowerCase();

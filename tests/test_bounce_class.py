@@ -139,7 +139,8 @@ class Parsen(unittest.TestCase):
         d = B.details(msg(STRATO_DSN))["info@reach-media.com"]
         self.assertEqual((d["status"], d["klasse"], d["remote_mta"], d["quelle"]),
                          ("4.4.1", "weich", "mail.reach-media.com", "dsn"))
-        self.assertEqual(d["type"], "Permanent")  # Notbremse zählt voll – nie lockern
+        # 4.x.x = vorübergehend (RFC 3463, Bounce-Analyse 05.10.2026): zählt erst beim zweiten Mal je Adresse
+        self.assertEqual(d["type"], "Transient")
         self.assertEqual(count_bounces([{"type": "bounced", "to_email": "x", "payload": {"bounce": d}}]), (1, 0))
 
     def test_dsn_ohne_felder_nimmt_grund_aus_text(self):

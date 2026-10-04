@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import re as _re
 
 # Tag seit der ersten gesendeten Mail -> maximale Mails pro Tag (über alle Länder zusammen).
 # Ziel des Inhabers (26.09.2026): 100 pro Tag (Resend Gratis), hochgefahren über gut eine Woche.
@@ -78,10 +79,20 @@ def emergency_stop(sent: int, bounced: int, complained: int) -> str | None:
     return None
 
 
+TRANSIENT_STATUS = _re.compile(r"^4\.\d{1,3}\.\d{1,3}$")
+
+
+def is_transient(bounce: dict) -> bool:
+    """Vorübergehend: Typ „Transient“ oder erweiterter Status 4.x.x (RFC 3463: „persistent transient failure“, z. B.
+    4.4.1 Timeout, „will retry“). Bounce-Analyse 05.10.2026: Unzustellbar-Meldungen aus dem Postfach trugen bisher
+    immer „Permanent“, auch bei 4.x.x. Jeder 5.x.x-Status und jede Meldung ohne Status zählt weiter voll."""
+    return str(bounce.get("type", "")).lower() == "transient" or bool(TRANSIENT_STATUS.match(str(bounce.get("status") or "").strip()))
+
+
 def count_bounces(events: list[dict]) -> tuple[int, int]:
     """(Bounces, Beschwerden) für die Notbremse, je Empfängeradresse gezählt (Inhaber 03.10.2026, Punkt 3):
     dieselbe Adresse zählt nur einmal, eine vorübergehende Abweisung („Transient“, Postfach existiert)
-    erst, wenn sie bei derselben Adresse wiederholt auftritt. Ereignisse: type, payload, to_email (oder message_id)."""
+    (oder Status 4.x.x) erst, wenn sie bei derselben Adresse wiederholt auftritt. Ereignisse: type, payload, to_email (oder message_id)."""
     hard: set[str] = set()
     soft: dict[str, int] = {}
     complained: set[str] = set()
@@ -93,7 +104,7 @@ def count_bounces(events: list[dict]) -> tuple[int, int]:
         if e.get("type") != "bounced":
             continue
         bounce = ((e.get("payload") or {}).get("bounce") or {}) if isinstance(e.get("payload"), dict) else {}
-        if str(bounce.get("type", "")).lower() == "transient":
+        if is_transient(bounce):
             soft[who] = soft.get(who, 0) + 1
         else:
             hard.add(who)
