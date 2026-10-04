@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { coach, hall, laneOf, laneStats, neckTask, partRuns, tipTask, utilization, type Beat, type RunRow } from "./leitstand.ts";
+import { coach, EMPTY_WHY, hall, laneOf, laneStats, markEmpty, neckTask, partRuns, tipTask, utilization, type Beat, type RunRow } from "./leitstand.ts";
 import { validateTask } from "./agents.ts";
 import type { LaneRegistry } from "./owner-settings.ts";
 import { slotCounts } from "./owner-settings.ts";
@@ -197,4 +197,21 @@ test("tipTask: jeder Hinweis wird ein gültiger Auftrag (auch ohne eigenen), Mä
     assert.doesNotThrow(() => validateTask({ agent: 1, ...t }));
     assert.ok(t.brief.length >= 3 && t.brief.length <= 1000);
   }
+});
+
+test("Vorrat leer: Linie aus dem Autopilot-Grund markieren, eigener Hinweis statt „erschöpft“", () => {
+  const r = reg as LaneRegistry;
+  const now = Date.parse("2026-10-04T13:30:00Z");
+  const rows: RunRow[] = [
+    { werk: "lead-werk", part: "web-uk-0", country: "UK", started_at: "2026-10-04T13:12:00Z", finished_at: "2026-10-04T13:13:00Z", processed: 0, green: 0, candidates: 0, run_id: "r1" },
+    { werk: "lead-werk", part: "web-north-0", country: "NL", started_at: "2026-10-04T12:25:00Z", finished_at: "2026-10-04T13:11:00Z", processed: 7000, green: 480, candidates: 7000, run_id: "r0" },
+  ];
+  const stats = markEmpty(laneStats(r, rows, now), [{ "web-uk": `${EMPTY_WHY} (7 Läufe ohne Kandidaten) – Plätze an ertragreiche Linien`, "web-north": "läuft" }, null]);
+  assert.equal(stats["web-uk"].empty, true);
+  assert.ok(!stats["web-north"].empty);
+  const tips = coach({ reg: r, plan: { "web-uk": 0, "web-north": 6 }, stats, util: 0.9, queue: {}, freeBuyers: {}, leads: {}, capPerDay: 0, kundenNew24h: null, failed: [], autopilot: true });
+  const t = tips.find((x) => x.title === "Website-Prüfung UK: Vorrat leer");
+  assert.ok(t && t.title.length <= 60);
+  assert.ok(!tips.some((x) => x.title === "Website-Prüfung UK: Vorrat erschöpft"));
+  assert.equal(t!.task?.kind, "quelle");
 });

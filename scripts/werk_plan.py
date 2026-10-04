@@ -9,7 +9,12 @@ nie einen Lauf. Grenzen: je Linie 0 … max, Summe höchstens total_slots - rese
 Autopilot (Inhaber 03.10.2026: „Ja, Autopilot an“, owner_settings.slot_autopilot): verteilt bei jedem Start die
 Plätze nach den letzten beiden Läufen je Linie um – erschöpfte Linien behalten 1 Wachplatz, voll ausgelastete
 bekommen mehr Teile (Ziel ~30 min je Teil), Linien auf 0 und festgesetzte Linien bleiben, Summe nie über
-total_slots - reserve. Speicher-Bremse (Inhaber 03.10.2026): ab 5,5 GB Hinweis, ab 6 GB höchstens 8 Lead-Plätze,
+total_slots - reserve. Leere Linien (Scout 04.10.2026: web-uk/web-fr liefen mit 0 Kandidaten weiter): kommen in
+allen Läufen des Fensters (mind. 2) im Schnitt höchstens 1 Kandidat je Teil und kein grüner Lead, gilt die Linie als
+„Vorrat leer“ – sie bekommt 0 Plätze und nur alle PROBE_H Stunden einen Prüfplatz; findet der wieder Kandidaten, gilt
+sofort wieder die Belegung des Inhabers. Die freien Plätze leerer und erschöpfter Linien gehen an Linien, deren
+letzter Lauf grüne Leads brachte (nach grünen je Platz-Stunde, je Start höchstens 2 × Teile + 2, nie über max der
+Linie oder die Summe). Speicher-Bremse (Inhaber 03.10.2026): ab 5,5 GB Hinweis, ab 6 GB höchstens 8 Lead-Plätze,
 ab 7 GB zusätzlich ohne Rohbestand (--no-raw), ab 7,5 GB Lead-Werk gestoppt (alle Lead-Plätze 0, Kunden-Werk
 läuft weiter; Prüfung 04.10.2026: die Datenbank wuchs ~1,3 GB/Tag und hätte 8 GB sonst überschritten); zurück erst
 0,2 GB unter der Grenze. GB = 1024³ Byte wie die Speicher-Seite (app/lib/storage.ts). Jede gestartete Belegung steht
@@ -66,6 +71,8 @@ BRAKE_HYST = 0.2      # zurück erst 0,2 GB unter der Grenze
 BRAKE_LEAD_MAX = 8    # Lead-Plätze ab „drossel“
 TARGET_MIN = 30       # Ziel-Laufzeit je Teil (min): ein langsamer Teil soll das Werk nicht aufhalten
 FULL_MIN = 55         # ab dieser Ø-Laufzeit gilt ein Teil als voll ausgelastet (Zeitfenster 75 min)
+EMPTY_WHY = "Vorrat leer"  # Anfang des Grundes leerer Linien (Dashboard erkennt die Linie daran, app/lib/leitstand.ts)
+PROBE_H = 4           # leere Linie: alle 4 h ein Prüfplatz (findet er Kandidaten, gilt wieder die Belegung)
 
 
 def lane_of(werk: str, part: str | None) -> str | None:
@@ -120,7 +127,11 @@ def lane_stats(rows: list[dict], werk: str, runs: int = 2) -> dict[str, dict]:
         green = sum(x["green"] for x in ps)
         lp = rs[order[0]]  # letzter Lauf allein (frisch aufgefüllte Quelle soll nicht an alten Leerläufen scheitern)
         lmins = [(x["end"] - x["start"]).total_seconds() / 60 for x in lp]
+        every = [x for run in rs for x in rs[run]]  # alle Läufe im Fenster (leere Linie erkennen)
         out[lane] = {"parts_last": len(lp), "parts": len(ps), "empty": sum(1 for x in ps if work(x) == 0),
+                     "runs_all": len(rs), "parts_all": len(every), "cand_all": sum(work(x) for x in every),
+                     "green_all": sum(x["green"] for x in every), "green_last": sum(x["green"] for x in lp),
+                     "last_end": max(x["end"] for x in every).isoformat(),
                      "avg_min": sum(mins) / len(mins), "max_min": max(mins), "green": green,
                      "per_slot_h": green / slot_h if slot_h > 0 else 0.0, "cand_last": sum(work(x) for x in lp),
                      "empty_last": sum(1 for x in lp if work(x) == 0), "avg_last": sum(lmins) / len(lmins),
@@ -143,11 +154,31 @@ def brake_level(db_bytes: int | None, last: str = "aus") -> str:
     return names[lvl]
 
 
+def is_empty(s: dict | None, was_empty: bool = False) -> bool:
+    """Linie ohne Kandidaten-Vorrat: alle Läufe im Fenster (mind. 2, nach einer Leer-Meldung reicht 1) ohne grüne Leads
+    und im Schnitt höchstens 1 Kandidat je Teil."""
+    if not s or "runs_all" not in s:
+        return False
+    if s["runs_all"] < (1 if was_empty else 2):
+        return False
+    return s["green_all"] == 0 and s["cand_all"] <= s["parts_all"]
+
+
+def _hours_since(iso: str | None, now: dt.datetime) -> float:
+    t = _ts(iso)
+    return (now - t).total_seconds() / 3600 if t else float("inf")
+
+
 def autopilot(reg: dict, werk: str, base: dict[str, int], stats: dict[str, dict], locks: dict | None = None,
-              other: dict[str, int] | None = None, brake: str = "aus") -> tuple[dict[str, int], dict[str, str]]:
+              other: dict[str, int] | None = None, brake: str = "aus", prev: dict | None = None,
+              now: dt.datetime | None = None) -> tuple[dict[str, int], dict[str, str]]:
     """Belegung der Linien von `werk` nach Ertrag. base = Belegung des Inhabers bzw. Standard; other = aktuelle
-    Belegung des anderen Werks (für die Summe). Gibt (Plätze je Linie des Werks, Grund je Linie)."""
+    Belegung des anderen Werks (für die Summe); prev = Gründe der letzten Belegung dieses Werks (leere Linien).
+    Gibt (Plätze je Linie des Werks, Grund je Linie)."""
     locks = locks if isinstance(locks, dict) else {}
+    prev = prev if isinstance(prev, dict) else {}
+    now = now or dt.datetime.now(dt.timezone.utc)
+    freed = 0  # Plätze leerer/erschöpfter Linien (gehen an ertragreiche Linien)
     lanes = [l for l in reg["lanes"] if l["werk"] == werk]
     cap = int(reg["total_slots"]) - int(reg["reserve"]) - sum((other or {}).values())
     if werk == "lead-werk" and brake in ("drossel", "ohne-rohbestand"):
@@ -167,8 +198,24 @@ def autopilot(reg: dict, werk: str, base: dict[str, int], stats: dict[str, dict]
             plan[lid], why[lid] = 0, "von dir auf 0 gesetzt"
             continue
         s = stats.get(lid)
+        was_empty = str(prev.get(lid) or "").startswith(EMPTY_WHY)
+        if is_empty(s, was_empty) or (not s and was_empty):
+            n = (s or {}).get("runs_all", 0)
+            ago = _hours_since((s or {}).get("last_end"), now)
+            runs = f"{n} Läufe ohne Kandidaten" if n != 1 else "1 Lauf ohne Kandidaten"
+            if ago >= PROBE_H:
+                plan[lid], why[lid] = 1, f"{EMPTY_WHY} ({runs}) – 1 Prüfplatz alle {PROBE_H} h"
+            else:
+                plan[lid] = 0
+                why[lid] = (f"{EMPTY_WHY} ({runs}) – Plätze an ertragreiche Linien, "
+                            f"nächste Prüfung in {max(1, math.ceil(PROBE_H - ago))} h")
+            freed += max(0, min(b, mx) - plan[lid])
+            continue
         if not s:
             plan[lid], why[lid] = min(b, mx), "noch keine Laufzahlen – wie eingestellt"
+            continue
+        if was_empty:
+            plan[lid], why[lid] = min(b, mx), "Vorrat wieder da (Prüfplatz fand Kandidaten) – wie eingestellt"
             continue
         last = max(1, int(s["parts_last"]))
         share = s["empty"] / max(1, s["parts"])
@@ -185,6 +232,7 @@ def autopilot(reg: dict, werk: str, base: dict[str, int], stats: dict[str, dict]
                         f"Ø {round(s['avg_last'])} min) – unverändert")
         elif dry_all:
             plan[lid] = 1
+            freed += max(0, min(b, mx) - 1)
             if s["empty"] == 0:
                 # kein Teil leer, aber alle schnell fertig: „erschöpft (0/2 Teile leer)“ las sich widersprüchlich
                 # (Prüfung 04.10.2026)
@@ -228,6 +276,29 @@ def autopilot(reg: dict, werk: str, base: dict[str, int], stats: dict[str, dict]
     for k in plan:
         if plan[k] > (stats.get(k, {}).get("parts_last") or 0) and k in weight:
             why[k] += f" – mehr Teile: {plan[k]}"
+    # Plätze leerer/erschöpfter Linien an Linien, deren letzter Lauf grüne Leads brachte (Höchstzahlverfahren)
+    give = min(freed, cap - sum(plan.values()))
+    gain: dict[str, int] = {}
+    room = {}
+    for l in lanes:
+        k, s = l["id"], stats.get(l["id"])
+        if k in locks or not s or plan.get(k, 0) <= 0 or not s.get("green_last") or why[k].startswith(EMPTY_WHY):
+            continue
+        if "Wachplatz" in why[k] or "durchgeprüft" in why[k]:
+            continue
+        top = min(int(l["max"]), max(1, int(s["parts_last"])) * 2 + 2)
+        if top > plan[k]:
+            room[k] = top - plan[k]
+    while give > 0 and room:
+        k = max(room, key=lambda x: (max(stats[x]["per_slot_h"], 1.0) / (plan[x] + 1), x))
+        plan[k] += 1
+        gain[k] = gain.get(k, 0) + 1
+        give -= 1
+        room[k] -= 1
+        if room[k] <= 0:
+            del room[k]
+    for k, n in gain.items():
+        why[k] += f" – +{n} aus leeren Linien"
     return plan, why
 
 
@@ -296,9 +367,10 @@ def read_inputs(werk: str, hours: int = 8) -> dict:
     except BaseException as e:  # noqa: BLE001
         print(f"Datenbankgröße nicht lesbar ({type(e).__name__}) – letzte Bremsstufe gilt", file=sys.stderr)
     try:
-        for r in db.select("werk_plan_log", {"select": "werk,bremse,plan", "order": "at.desc", "limit": "20"}) or []:
+        for r in db.select("werk_plan_log", {"select": "werk,bremse,plan,reasons", "order": "at.desc", "limit": "20"}) or []:
             if r["werk"] == werk and out["last_brake"] == "aus" and not out.get("_brake_seen"):
                 out["last_brake"], out["_brake_seen"] = r.get("bremse") or "aus", True
+                out["prev_reasons"] = r.get("reasons") if isinstance(r.get("reasons"), dict) else {}
             if r["werk"] != werk and out["other"] is None and isinstance(r.get("plan"), dict):
                 out["other"] = {k: int(v) for k, v in r["plan"].items()}
     except BaseException as e:  # noqa: BLE001
@@ -322,7 +394,8 @@ def decide(reg: dict, werk: str, inp: dict) -> dict:
     plan = dict(own)
     if settings is not None and ap.get("on") is not False:
         try:
-            plan, reasons = autopilot(reg, werk, own, lane_stats(inp.get("rows") or [], werk), ap.get("locks"), other, brake)
+            plan, reasons = autopilot(reg, werk, own, lane_stats(inp.get("rows") or [], werk), ap.get("locks"), other, brake,
+                                      prev=inp.get("prev_reasons"))
             mode = "autopilot"
         except Exception as e:  # noqa: BLE001 – Autopilot darf nie einen Lauf verhindern
             print(f"Autopilot-Fehler ({type(e).__name__}: {e}) – Belegung wie eingestellt", file=sys.stderr)

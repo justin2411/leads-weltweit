@@ -59,6 +59,17 @@ jobs:
         run: |
           pip install -r requirements.txt
           python -c "import sys; sys.path.insert(0, 'scripts'); from extraktor.sources import overture as o; o.build_cache(path=o.CACHE_US_WEB)"
+      - id: webtel
+        uses: actions/cache@v4
+        with:
+          path: out/cache/overture_gb_fr_web_ohne_tel.parquet
+          key: overture-gbfr-web-ohne-tel-${{ steps.m.outputs.release }}
+      - name: UK/FR-Auszug mit Website ohne Telefon bauen (Website-Prüfung S2, Scout 04.10.2026, ~1 min)
+        if: steps.webtel.outputs.cache-hit != 'true'
+        continue-on-error: true  # fehlt er, baut ihn jeder Teil web-uk-*/web-fr-* selbst
+        run: |
+          pip install -r requirements.txt
+          python -c "import sys; sys.path.insert(0, 'scripts'); from extraktor.sources import overture as o; o.build_cache(path=o.CACHE_WEB_NOPHONE)"
       - id: lca
         uses: actions/cache@v4
         with:
@@ -424,6 +435,12 @@ jobs:
         with:
           path: out/cache/overture_us_web.parquet
           key: overture-us-web3-${{ needs.us-auszug.outputs.release }}
+      - name: UK/FR-Auszug mit Website ohne Telefon laden (Website-Prüfung, Scout 04.10.2026)
+        if: steps.gate.outputs.an == 'true' && (startsWith(matrix.name, 'web-uk-') || startsWith(matrix.name, 'web-fr-'))
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/overture_gb_fr_web_ohne_tel.parquet
+          key: overture-gbfr-web-ohne-tel-${{ needs.us-auszug.outputs.release }}
       - name: DOL-LCA-Auszug laden
         if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 's1-us-lca')
         uses: actions/cache/restore@v4
