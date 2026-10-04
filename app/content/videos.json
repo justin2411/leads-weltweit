@@ -113,5 +113,20 @@
     "src": "/video/v5-de-web-agencies.mp4",
     "poster": "/video/v5-de-web-agencies.jpg",
     "seconds": 42
+  },
+  "us/web-agencies:radar": {
+    "src": "/video/v12-us-radar.mp4",
+    "poster": "/video/v12-us-radar.jpg",
+    "seconds": 42
+  },
+  "uk/web-agencies:radar": {
+    "src": "/video/v12-uk-radar.mp4",
+    "poster": "/video/v12-uk-radar.jpg",
+    "seconds": 42
+  },
+  "fr/agences-web:radar": {
+    "src": "/video/v12-fr-radar.mp4",
+    "poster": "/video/v12-fr-radar.jpg",
+    "seconds": 42
   }
 }

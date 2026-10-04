@@ -126,6 +126,14 @@ def cta_button(company: str, region: str | None, lang: str) -> str:
             f'</td></tr></table>')
 
 
+def link_p(text: str, url: str) -> str:
+    """Absatz wie _p, die URL darin als Link (z. B. Radar-Film in der Probe-Mail). Kein Tracking, keine Bilder."""
+    e, u = html.escape(text, quote=False), html.escape(url, quote=False)
+    a = f'<a href="{html.escape(url)}" style="color:{NAVY};font-weight:600;text-decoration:underline;">{u}</a>'
+    return (f'<p style="margin:0 0 16px 0;font-family:{FONT};font-size:15px;line-height:24px;color:{INK};">'
+            f"{e.replace(u, a, 1)}</p>")
+
+
 def plan_button(url: str, lang: str) -> str:
     """Knopf zur Buchungsseite in der Probe-Mail (Inhaber 02.10.2026), gleiche Gestaltung wie in der Kaltmail."""
     if lang in LOCAL:

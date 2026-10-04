@@ -82,6 +82,15 @@ Grundregeln: keine Garantien, keine erfundenen Zahlen, nur belegte Spannen mit Q
 - Nur eigene Messwerte zu Antworten und Abschlüssen, sobald vorhanden.
 - Namentlicher Wettbewerbsvergleich und Ersatz-Zusage für falsche Leads: entscheidet der Inhaber.
 
+### Radar-Film (05.10.2026, Auftrag Premium-Video)
+
+- Film `video/v12` je US/UK/FR, ≤ 45 s: Anlass mit Datum → Beleg → Ansprechperson → belegte Zahlen (Clutch, WordStream, Codeur), „not a promise“.
+- **Aktiv:** nur als Link in Probe-Mail (Zeile vor dem Tarif-Link) und Probe-PDF (Seite „Was ein Kunde wert ist“), `lib.premium_wert.video`.
+- **Entwurf Seiten-Variante (nicht aktiv):** Schritt `landing`, neues Element `video` = `standard` | `radar` (Variante B zeigt
+  `us/web-agencies:radar` usw. statt des bisherigen Films). Braucht Spalte `page_variants.video` + Constraint (wie
+  `value_block`) und `landing.tsx`-Auswahl. Erst starten, wenn der Test „Lohnt sich das?“ (`value_block`) entschieden ist –
+  nie zwei Seitentests parallel.
+
 ### Kaltmail (nur S2 × US/UK/FR, A/B)
 
 - Variante B ändert **nur den Einstieg**: ein Wert-Argument mit belegter Zahl, z. B. „Google Ads leads for business services average around $100 each (WordStream 2025). We find companies that need a website for about $2 per lead.“ Bau nach `docs/KALTMAIL-VORLAGE.md`, Prüfung `lib.rules.lint_draft`.
