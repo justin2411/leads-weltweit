@@ -243,6 +243,14 @@ def release_stale_held(db) -> int:
     return n
 
 
+def refresh_dashboard_stock(db) -> None:
+    """Bestandszahlen fürs Dashboard vorrechnen (signalwerk.dashboard_cache), damit JARVIS nie „…“ zeigt."""
+    try:
+        db.rpc("dashboard_stock_refresh", {})
+    except Exception as exc:  # noqa: BLE001 - darf den Wachhund nie aufhalten
+        print(f"Dashboard-Bestand nicht aufgefrischt: {type(exc).__name__}: {str(exc)[:160]}")
+
+
 def overdue(job: dict, runs: list[dict], now: dt.datetime) -> tuple[bool, str]:
     """runs: neueste zuerst, jeweils mit created_at (ISO) und status."""
     starts = [dt.datetime.fromisoformat(r["created_at"].replace("Z", "+00:00")) for r in runs]
@@ -309,6 +317,7 @@ def main(argv=None) -> int:
             print(f"Startwünsche nicht lesbar: {type(exc).__name__}: {str(exc)[:200]}")
         if args.apply:
             release_stale_held(db)
+            refresh_dashboard_stock(db)
     for job in JOBS:
         if job["wf"] in started:
             print(f"✓  {job['wf']:<22} eben auf Wunsch gestartet")
