@@ -31,8 +31,8 @@ Feedback/Upgrade, Kaufabbruch. Siehe offene Entscheidungen in [`ENTSCHEIDUNGEN.m
 |---|---|---|
 | Morgenbericht | täglich 04:47 | `OWNER_EMAIL` |
 | Tagescheck („alles läuft“ / Hinweise / Probleme) | täglich 17:37 | `OWNER_EMAIL` |
-| Kaufinteresse / Rückfrage / Probe nicht lieferbar | sofort | `kaufinteresse_an` in `config/versand.yaml` (justin.koch@horbach.de) |
-| Neuer Kunde | sofort nach Zahlung | `SALE_NOTIFY_EMAIL` (Standard deinetop5@gmail.com) |
+| Kaufinteresse / Rückfrage / Probe nicht lieferbar | sofort | Variable `KAUFINTERESSE_AN` (sonst `OWNER_EMAIL`) |
+| Neuer Kunde | sofort nach Zahlung | `SALE_NOTIFY_EMAIL` (sonst `OWNER_EMAIL`) |
 | Erste Lieferung zur Freigabe | Montag | `OWNER_EMAIL` |
 
 ## 3. Zeitplan aller GitHub-Läufe

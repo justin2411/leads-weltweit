@@ -196,9 +196,9 @@ Unter den Kästen: wann es passiert und über welchen Kanal.</p>
 <table>
   <tr><th>Meldung</th><th>Wann</th><th>An</th><th>Was du tust</th></tr>
   <tr><td><b>Morgenbericht</b></td><td>täglich ca. 06:47 (dt. Zeit)</td><td>OWNER_EMAIL</td><td>lesen; Zahlen der letzten 24 h, Tabelle pro Experiment</td></tr>
-  <tr><td><b>Kaufinteresse / Rückfrage</b></td><td>sobald eine Antwort kommt</td><td>justin.koch@horbach.de</td><td>selbst antworten – der Käufer hat „ich melde mich heute“ bekommen</td></tr>
-  <tr><td><b>Probe nicht lieferbar</b> <span class="tag fix">neu</span></td><td>einmal pro Anfrage</td><td>justin.koch@horbach.de</td><td>persönlich melden oder abwarten, bis Leads vollständig sind</td></tr>
-  <tr><td><b>Neuer Kunde</b></td><td>sofort nach Zahlung</td><td>deinetop5@gmail.com</td><td>nichts, nur Info (Paket, Preis, Kontakt)</td></tr>
+  <tr><td><b>Kaufinteresse / Rückfrage</b></td><td>sobald eine Antwort kommt</td><td>KAUFINTERESSE_AN</td><td>selbst antworten – der Käufer hat „ich melde mich heute“ bekommen</td></tr>
+  <tr><td><b>Probe nicht lieferbar</b> <span class="tag fix">neu</span></td><td>einmal pro Anfrage</td><td>KAUFINTERESSE_AN</td><td>persönlich melden oder abwarten, bis Leads vollständig sind</td></tr>
+  <tr><td><b>Neuer Kunde</b></td><td>sofort nach Zahlung</td><td>SALE_NOTIFY_EMAIL</td><td>nichts, nur Info (Paket, Preis, Kontakt)</td></tr>
   <tr><td><b>Erste Lieferung (Vorschau)</b></td><td>Montag vor der 1. Lieferung</td><td>OWNER_EMAIL</td><td>prüfen und in GitHub freigeben (<i>kundenlieferung → approve</i>)</td></tr>
 </table>
 <p class="small">Die Meldungen gehen heute an drei verschiedene Adressen. Empfehlung: alles an eine Adresse bündeln (siehe Abschnitt 5).</p>
@@ -255,7 +255,7 @@ Unter den Kästen: wann es passiert und über welchen Kanal.</p>
   <li><b>Erste Lieferung ohne Klick in GitHub:</b> Freigabe-Knopf im Dashboard oder automatische Freigabe, wenn du bis Montag 12 Uhr nichts sagst. Sonst verpasst der Kunde den in der Willkommensmail genannten Termin.</li>
   <li><b>Erinnerung an das Wunsch-Formular</b> 2 Tage nach dem Kauf, wenn es noch leer ist; Link neu ausstellen statt nach 30 Tagen ablaufen.</li>
   <li><b>Kundenbindung:</b> Feedback-Mail nach 4 Wochen („Welche Leads haben gepasst?“) und Upgrade-Hinweis, wenn das Kontingent regelmäßig ausgeschöpft wird.</li>
-  <li><b>Alle Meldungen an eine Adresse</b> (heute: horbach.de, gmail, OWNER_EMAIL).</li>
+  <li><b>Alle Meldungen an eine Adresse</b> (heute: KAUFINTERESSE_AN, SALE_NOTIFY_EMAIL, OWNER_EMAIL).</li>
   <li><b>Messung ehrlicher machen:</b> Über Strato gibt es keine „zugestellt“-Ereignisse; Auswertungen, die „50 zugestellt“ verlangen, greifen deshalb nie. Zählen auf „gesendet minus Bounces“ umstellen; doppelte Antwort-Zählung entfernen.</li>
   <li><b>Einheitlicher Absender:</b> Kaltmails kommen von info@ über Strato, Proben und Antworten über Resend, die Willkommensmail signiert „Das Team“ mit fester Hamburger Adresse. Besser: überall dieselbe Person, dieselbe Signatur.</li>
 </ol>
