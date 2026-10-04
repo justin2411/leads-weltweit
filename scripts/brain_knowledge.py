@@ -6,7 +6,7 @@ signalwerk.brain_knowledge (Markdown je Notiz, eindeutiger slug; jede Änderung 
 brain_knowledge_versions ab, nichts wird gelöscht). Angezeigt auf /dashboard/gehirn#wissen (gerendert, „.md
 herunterladen“); der Gehirn-Modus im JARVIS-Chat lädt alle Notizen (neueste zuerst, gekürzt) in seinen Kontext.
 
-  python scripts/brain_knowledge.py add <slug> "<Titel>" datei.md [--quelle routine|chat|agent|inhaber] [--routine <id>] [--anhaengen]
+  python scripts/brain_knowledge.py add <slug> "<Titel>" datei.md [--quelle routine|chat|agent|inhaber] [--routine <id>] [--anhaengen] [--typ notiz|gelernt|fehlermuster]
                                        # anlegen oder ersetzen (alte Fassung bleibt als Version); --anhaengen hängt mit
                                        # Datums-Überschrift an; Datei „-“ = Standardeingabe
   python scripts/brain_knowledge.py list                  # alle Notizen (slug, Titel, Quelle, Stand, Zeichen)
@@ -28,6 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]{1,79}$")
 QUELLEN = ("routine", "chat", "agent", "inhaber")
+TYPEN = ("notiz", "gelernt", "fehlermuster")       # gelernt/fehlermuster schreibt das Meta-Review (brain_meta.py)
 MAX_MD = 60000
 BERLIN = ZoneInfo("Europe/Berlin")
 
@@ -62,7 +63,7 @@ def check(slug: str, titel: str, markdown: str, quelle: str) -> tuple[str, str, 
 
 
 def add(db, slug: str, titel: str, markdown: str, quelle: str = "agent", routine_id: str | None = None,
-        anhaengen: bool = False, now: dt.datetime | None = None) -> dict:
+        anhaengen: bool = False, now: dt.datetime | None = None, typ: str | None = None) -> dict:
     """Notiz anlegen oder ersetzen; mit anhaengen: unter „## <Datum>“ an die bestehende Notiz anhängen (neueste oben)."""
     slug, titel, md, quelle = check(slug, titel, markdown, quelle)
     cur = (db.select("brain_knowledge", {"slug": f"eq.{slug}", "select": "id,markdown"}) or [None])[0]
@@ -74,6 +75,10 @@ def add(db, slug: str, titel: str, markdown: str, quelle: str = "agent", routine
     vals = {"titel": titel, "markdown": md, "quelle": quelle}
     if routine_id:
         vals["routine_id"] = routine_id
+    if typ:
+        if typ not in TYPEN:
+            raise InputError(f"Typ: {', '.join(TYPEN)}")
+        vals["typ"] = typ
     if cur:
         db.update("brain_knowledge", {"id": cur["id"]}, vals)
         return {"slug": slug, "neu": False, "zeichen": len(md)}
@@ -108,7 +113,7 @@ def main(argv: list[str]) -> int:
     try:
         if cmd == "add" and len(args) >= 3:
             res = add(DB(), args[0], args[1], _read(args[2]), _opt(args, "--quelle") or "agent", _opt(args, "--routine"),
-                      "--anhaengen" in args)
+                      "--anhaengen" in args, typ=_opt(args, "--typ"))
             print(f"add: {json.dumps(res, ensure_ascii=False)}")
             return 0
         if cmd == "list":

@@ -49,7 +49,8 @@ MAX_NEW = 3                           # höchstens so viele neue Aufträge je La
 OPEN = ("offen", "laeuft")
 DONE = ("fertig", "fehler", "abgebrochen")
 RESULT_MAX = 300
-COLS = "id,name,aufgabe,uhrzeit,tage,wochentage,dauer_min,aktiv,last_run_at,last_task_id,last_result,created_at"
+COLS = "id,name,aufgabe,uhrzeit,tage,wochentage,dauer_min,aktiv,takt,last_run_at,last_task_id,last_result,created_at"
+EPOCH = dt.date(1970, 1, 1)
 HHMM = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 
 
@@ -88,13 +89,28 @@ def berlin_at(day: dt.date, hhmm: str) -> dt.datetime:
     return local.astimezone(dt.timezone.utc)
 
 
+def day_times(r: dict, day: dt.date) -> list[str]:
+    """Uhrzeiten (HH:MM) an diesem Tag nach Takt (brain_routines.takt, Meta-Review brain_meta.py): 0,5 = nur an geraden
+    Tagen seit 1970-01-01, 1 = Uhrzeit, 2/4 = Uhrzeit plus gleichmäßig verteilt (alle 12/6 h, am selben Tag).
+    Gleich app/lib/brain-routines.ts dayTimes."""
+    if not runs_on(r, day.isoweekday()):
+        return []
+    takt = float(r.get("takt") or 1)
+    if takt < 1:
+        return [r["uhrzeit"]] if (day - EPOCH).days % 2 == 0 else []
+    n = max(1, min(4, int(takt)))
+    h, m = (int(x) for x in r["uhrzeit"].split(":"))
+    step = 1440 // n
+    mins = sorted((h * 60 + m + k * step) % 1440 for k in range(n))
+    return [f"{x // 60:02d}:{x % 60:02d}" for x in mins]
+
+
 def due_at(r: dict, t: dt.datetime, task_open: bool = False) -> dt.datetime | None:
     """Geplanter Zeitpunkt, wenn die Routine jetzt beauftragt werden soll, sonst None."""
     if not r.get("aktiv") or task_open or not HHMM.match(str(r.get("uhrzeit") or "")):
         return None
     today = t.astimezone(BERLIN).date()
-    slots = [berlin_at(d, r["uhrzeit"]) for d in (today - dt.timedelta(days=1), today)
-             if runs_on(r, d.isoweekday())]
+    slots = sorted(berlin_at(d, hm) for d in (today - dt.timedelta(days=1), today) for hm in day_times(r, d))
     past = [s for s in slots if s <= t]
     if not past:
         return None
@@ -183,7 +199,7 @@ def faellig(db, t: dt.datetime, apply: bool) -> dict:
         out["neu"].append({"routine": r["name"], "an": f"A{n}", "text": text, **({"rolle": role["slug"]} if role else {})})
         if not apply:
             continue
-        task = {"agent": n, "kind": "gehirn", "market": None, "brief": text, "created_by": BY}
+        task = {"agent": n, "kind": "gehirn", "market": None, "brief": text, "created_by": BY, "routine_id": r["id"]}
         if role:
             task["rolle"] = role["slug"]
         row = (db.insert("agent_tasks", task) or [{}])[0]

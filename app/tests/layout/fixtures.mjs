@@ -64,6 +64,8 @@ export function makeFixtures(nowMs = Date.now()) {
     { day: d, country: c, metric: "leads_new", value: 380 + i * 5 }, { day: d, country: c, metric: "buyers_ok", value: 100 + i },
     { day: d, country: c, metric: "sent", value: 25 + i }, { day: d, country: c, metric: "replies", value: i % 4 === 0 ? 1 : 0 },
   ]));
+  // Gehirn-Score (scripts/brain_meta.py, Land ALL) für die Karte „Gehirn lernt“
+  kpi.push(...days.map((d, i) => ({ day: d, country: "ALL", metric: "gehirn_score", value: 40 + i })));
   // Kommandozentrale (Finanzen, Vertrieb, Ziele): erfundene Firmen, ein Testkauf zählt nie
   const goals = [["mrr", "Umsatz pro Monat (MRR)", "£/$/€", 1290, "hoch"], ["kunden", "Zahlende Kunden", "", 10, "hoch"], ["antwortquote", "Antwortquote", "%", 3, "hoch"],
     ["lead_fehler", "Lead-Fehlerquote", "%", 2, "runter"], ["gruen_uk", "Grüne Leads/Woche UK", "", 1000, "hoch"], ["gruen_fr", "Grüne Leads/Woche FR", "", 1000, "hoch"]]
@@ -174,8 +176,10 @@ export function makeFixtures(nowMs = Date.now()) {
       ],
       decisions: [
         { id: 11, created_at: iso(50), type: "note", status: "done", subject: "Betreff-Test UK gestartet", reasoning: "Antwortquote stagniert seit drei Tagen. Variante B mit kürzerem Betreff.", action: "experiment B", kurz_titel: "Betreff-Test UK gestartet", kurz_grund: "Antwortquote stagniert seit drei Tagen." },
+        { id: 12, created_at: iso(30), type: "note", status: "done", subject: "Meta: Routine Takt", reasoning: "0 von 5 Läufen mit Wirkung; jetzt jeden 2. Tag.", action: null, kurz_titel: "Routine „Markt-Recherche Webagenturen“ seltener", kurz_grund: "0 von 5 Läufen mit Wirkung; jetzt jeden 2. Tag." },
         { id: 10, created_at: iso(60 * 26), type: "daily_note", status: "done", subject: "Tagesnotiz", reasoning: "Alles im Plan.", action: null, kurz_titel: null, kurz_grund: null },
       ],
+      brain_improvements: [{ id: "i1", status: "offen" }, { id: "i2", status: "offen" }],
       agent_tasks: [
         ...tasks,
         { id: "t1", created_at: iso(200), finished_at: iso(120), agent: 2, kind: "leads", market: "UK", brief: "Neue Leads für UK holen", status: "fertig", result: "380 neue grüne Leads aus zwei Quellen.", progress: 100, step: null, numbers: {} },

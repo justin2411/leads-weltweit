@@ -1,0 +1,28 @@
+{
+  "_hinweis": "Regeln des Meta-Reviews (scripts/brain_meta.py): Urteil je Bilanz, Takt-Schritt, Gehirn-Score.",
+  "urteil": [
+    {"name": "zu wenig Läufe", "bilanz": {"bewertet": 4, "wirkt": 0, "sinkt": 0}, "urteil": "noch keine Basis"},
+    {"name": "5 ohne Wirkung", "bilanz": {"bewertet": 5, "wirkt": 0, "sinkt": 1}, "urteil": "ohne Wirkung"},
+    {"name": "klar positiv", "bilanz": {"bewertet": 5, "wirkt": 3, "sinkt": 0}, "urteil": "gut"},
+    {"name": "gemischt", "bilanz": {"bewertet": 6, "wirkt": 2, "sinkt": 2}, "urteil": "offen"},
+    {"name": "positiv aber mehr sinkt", "bilanz": {"bewertet": 10, "wirkt": 6, "sinkt": 6}, "urteil": "offen"}
+  ],
+  "takt": [
+    {"takt": 4, "urteil": "ohne Wirkung", "neu": [2, true]},
+    {"takt": 1, "urteil": "ohne Wirkung", "neu": [0.5, true]},
+    {"takt": 0.5, "urteil": "ohne Wirkung", "neu": [0.5, false]},
+    {"takt": 1, "urteil": "gut", "neu": [2, true]},
+    {"takt": 2, "urteil": "gut", "neu": [4, true]},
+    {"takt": 4, "urteil": "gut", "neu": null},
+    {"takt": 1, "urteil": "offen", "neu": null},
+    {"takt": 1, "urteil": "noch keine Basis", "neu": null}
+  ],
+  "score": [
+    {"name": "heute (04.10.2026)", "roh": {"gesendet": 246, "antworten": 0, "bounces": 10, "geprueft": 600, "fehler": 8, "gruen": 95064, "platz_h": 255.17},
+     "teile": {"antwortquote": 0.0, "zustellrate": 59.3, "fehlerquote": 73.3, "gruen_platzh": 100.0}, "score": 46.5},
+    {"name": "nur Lead-Werk", "roh": {"gesendet": 10, "antworten": 0, "bounces": 0, "geprueft": 0, "fehler": 0, "gruen": 100, "platz_h": 2},
+     "teile": {"gruen_platzh": 25.0}, "score": null},
+    {"name": "Ziel erreicht", "roh": {"gesendet": 100, "antworten": 5, "bounces": 0, "geprueft": 100, "fehler": 0, "gruen": 400, "platz_h": 2},
+     "teile": {"antwortquote": 100.0, "zustellrate": 100.0, "fehlerquote": 100.0, "gruen_platzh": 100.0}, "score": 100.0}
+  ]
+}

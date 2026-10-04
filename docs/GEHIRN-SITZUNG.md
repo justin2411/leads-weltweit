@@ -22,6 +22,8 @@ in `signalwerk.decisions`. Ziel: **möglichst viele zahlende Kunden und maximale
 - „Vorrat leer“: Autopilot gibt leeren Linien 0 Plätze (`python scripts/werk_plan.py lead-werk --dry`); Abhilfe = Agent `quelle`.
 - A/B je Schritt: `python scripts/ab.py trichter | liste | vorschlag | anlegen … --starten` (siehe 4a).
 - Gehirn-Routinen und Aufträge: `python scripts/brain_routines.py faellig | ergebnisse | auftrag …` (siehe 4b).
+- Meta-Review und Gehirn-Score: `python scripts/brain_meta.py lauf | score | vorrang | vorschlaege` (siehe 4c und
+  „Selbstverbesserung“). Score täglich in `kpi_daily` (Land `ALL`, Kennzahl `gehirn_score`, Teile `gs_*`).
 
 ## Ablauf jeder Sitzung (max. ca. 20 Minuten)
 1. **Not-Aus:** `select brain_enabled from signalwerk.settings`. Bei `false`: nur Zahlen ansehen, Tagesnotiz, Ende.
@@ -61,6 +63,12 @@ in `signalwerk.decisions`. Ziel: **möglichst viele zahlende Kunden und maximale
    `python scripts/brain_routines.py auftrag <art> "<Auftrag>" --grund "<≤ 160 Zeichen, Ziel-Bezug>" [--markt US|UK|FR]`
    (höchstens 3 je Stunde; Regeln docs/AGENTEN.md „Gehirn beauftragt Agenten selbst“). Kurz in den Gehirn-Chat berichten
    (`jarvis_chat.py gehirn-update -`).
+4c. **Meta-Review – das Gehirn verbessert sich selbst** (Inhaber 04.10.2026): einmal täglich (erste Sitzung ab
+   21:15 Uhr deutscher Zeit, sonst die Routine „Meta-Review Gehirn“ 21:10) `python scripts/brain_meta.py lauf --apply`.
+   Es bewertet jede Routine und Auftragsart nach gemessener Wirkung, halbiert/pausiert wirkungslose Routinen
+   (≥ 5 Läufe), erhöht den Takt wirksamer (höchstens 4×/Tag), schreibt Gelerntes und Fehlermuster als Wissen und
+   höchstens 3 Verbesserungsvorschläge. Ohne Basis ändert es nichts. Zurücknehmen: `brain_meta.py zurueck <decision_id>`.
+   Bei der Wahl der Auftragsart in 4b zuerst `python scripts/brain_meta.py vorrang` lesen.
 5. **Recherche:** 1–3 gezielte Fragen, die die nächste Entscheidung besser machen (z. B. „was zahlen Recruiter in UK
    für Lead-Listen“). Ergebnis kurz als `decisions` (type `note`, subject „Recherche: …“) mit Quellen-URLs.
 6. **Plan:** `docs/GEHIRN-PLAN.md` höchstens einmal am Tag per Pull Request aktualisieren (nicht jede Stunde).
@@ -69,6 +77,18 @@ in `signalwerk.decisions`. Ziel: **möglichst viele zahlende Kunden und maximale
 8. **Wenig Text (Inhaber 04.10.2026, CLAUDE.md §8a):** jeder `decisions`-Eintrag bekommt `kurz_titel` (≤ 60 Zeichen,
    worum es geht, kein „Sitzung …:“, keine Uhrzeit) und `kurz_grund` (1 Satz ≤ 160 Zeichen). Bei SQL selbst formulieren,
    in Skripten `lib.kurz.insert_decisions`. `subject`/`reasoning` nur für Details; keine Sitzungsprotokolle als Vorschlag.
+
+## Selbstverbesserung
+Das Meta-Review legt höchstens 3 offene Vorschläge für diese Anleitung in `signalwerk.brain_improvements` ab (mit Beleg).
+- **Wann:** höchstens einmal je Tag, in der ersten Sitzung nach dem Meta-Review, wenn `python scripts/brain_meta.py
+  vorschlaege` etwas zeigt.
+- **Wie:** einen Vorschlag wählen (größter Beleg zuerst), diese Datei auf einem Branch `claude/gehirn-selbst-<datum>`
+  höchstens um 1–3 Zeilen ergänzen oder präzisieren, Pull Request, nach grüner CI selbst squash-mergen. Danach
+  `python scripts/brain_meta.py uebernommen <id> --pr <url>`; passt er nicht: `verworfen <id> --grund "<≤ 160 Zeichen>"`.
+- **Grenzen:** nur Arbeitsweise (Werkzeuge, Ablauf, Reihenfolge, Formulierung von Aufträgen). Nie CLAUDE.md, nie
+  Regeln oder Grenzen ändern oder lockern, nie die Abschnitte „Selbstverbesserung“, „Darf das Gehirn allein“ und „Nie“
+  (ein Test prüft ihren Fingerabdruck, `tests/test_brain_meta.py` – den Test nie anpassen). Nichts zu Geld,
+  Kaltmail-Recht, Sperrliste, Abmeldung, Notbremse oder Drei-Stufen-Freigabe.
 
 ## Darf das Gehirn allein
 - Seiten/Varianten anlegen (review); live schalten nur, wenn `auto_publish_pages = true` UND `legal_ready = true`

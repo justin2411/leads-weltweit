@@ -20,6 +20,8 @@ export const BRAIN_BY = "Gehirn-Routine";
 
 export type BrainRoutine = {
   id: string; name: string; aufgabe: string; uhrzeit: string; tage: Tage; wochentage: number[]; dauer_min: number; aktiv: boolean;
+  /** Läufe je Tag (0,5 = jeden 2. Tag, 1, 2, 4) – setzt das Meta-Review (scripts/brain_meta.py); fehlt = 1 */
+  takt?: number;
   last_run_at: string | null; last_task_id: string | null; last_result: string | null; created_at: string; updated_at?: string | null;
 };
 export type RoutineInput = { name: string; aufgabe: string; uhrzeit: string; tage: Tage; wochentage: number[]; dauer_min: number };
@@ -109,23 +111,46 @@ export function runsOn(r: Pick<BrainRoutine, "tage" | "wochentage">, wd: number)
   return true;
 }
 
+type Plan = Pick<BrainRoutine, "tage" | "wochentage" | "uhrzeit" | "takt">;
+
+/**
+ * Uhrzeiten (HH:MM) an einem Tag nach Takt (gleich scripts/brain_routines.py day_times): 0,5 = nur an geraden Tagen
+ * seit 1970-01-01, 1 = Uhrzeit, 2/4 = Uhrzeit plus gleichmäßig verteilt (alle 12/6 h, am selben Tag).
+ */
+export function dayTimes(r: Plan, y: number, mo: number, da: number, wd: number): string[] {
+  if (!runsOn(r, wd)) return [];
+  const takt = Number(r.takt ?? 1) || 1;
+  if (takt < 1) return Math.round(Date.UTC(y, mo - 1, da) / 86_400_000) % 2 === 0 ? [r.uhrzeit] : [];
+  const n = Math.max(1, Math.min(4, Math.floor(takt)));
+  const [h, mi] = r.uhrzeit.split(":").map(Number);
+  const step = Math.floor(1440 / n);
+  return Array.from({ length: n }, (_, k) => (h * 60 + mi + k * step) % 1440).sort((a, b) => a - b)
+    .map((x) => `${String(Math.floor(x / 60)).padStart(2, "0")}:${String(x % 60).padStart(2, "0")}`);
+}
+
 /** Geplante Zeitpunkte (heute und die nächsten Tage) ab dem Tag von `from`, aufsteigend. */
-function slots(r: Pick<BrainRoutine, "tage" | "wochentage" | "uhrzeit">, from: Date, days: number): Date[] {
+function slots(r: Plan, from: Date, days: number): Date[] {
   const out: Date[] = [];
   const base = berlinParts(from);
   for (let i = -1; i <= days; i++) {
     const noon = new Date(Date.UTC(base.y, base.mo - 1, base.da, 12) + i * 86_400_000);
     const p = berlinParts(noon);
-    if (runsOn(r, p.wd)) out.push(berlinAt(p.y, p.mo, p.da, r.uhrzeit));
+    for (const hm of dayTimes(r, p.y, p.mo, p.da, p.wd)) out.push(berlinAt(p.y, p.mo, p.da, hm));
   }
-  return out;
+  return out.sort((a, b) => a.getTime() - b.getTime());
+}
+
+/** „1×/Tag“, „2×/Tag“, „jeden 2. Tag“ (Meta-Review). */
+export function taktLabel(takt: number | null | undefined): string {
+  const t = Number(takt ?? 1) || 1;
+  return t < 1 ? "jeden 2. Tag" : `${Math.floor(t)}×/Tag`;
 }
 
 /**
  * Fällig? aktiv, kein offener/laufender Auftrag, letzter geplanter Zeitpunkt ≤ jetzt liegt höchstens 6 h zurück und
  * die Routine wurde seitdem noch nicht beauftragt (last_run_at < geplanter Zeitpunkt). Gibt den Zeitpunkt zurück.
  */
-export function dueAt(r: Pick<BrainRoutine, "aktiv" | "tage" | "wochentage" | "uhrzeit" | "last_run_at">, now: Date, taskOpen = false): Date | null {
+export function dueAt(r: Pick<BrainRoutine, "aktiv" | "tage" | "wochentage" | "uhrzeit" | "last_run_at" | "takt">, now: Date, taskOpen = false): Date | null {
   if (!r.aktiv || taskOpen || !HHMM.test(r.uhrzeit)) return null;
   const past = slots(r, now, 0).filter((d) => d.getTime() <= now.getTime());
   const slot = past.at(-1);
@@ -136,15 +161,16 @@ export function dueAt(r: Pick<BrainRoutine, "aktiv" | "tage" | "wochentage" | "u
 }
 
 /** Nächster geplanter Lauf nach `now` (oder null, wenn aus). */
-export function nextRun(r: Pick<BrainRoutine, "aktiv" | "tage" | "wochentage" | "uhrzeit">, now: Date): Date | null {
+export function nextRun(r: Pick<BrainRoutine, "aktiv" | "tage" | "wochentage" | "uhrzeit" | "takt">, now: Date): Date | null {
   if (!r.aktiv || !HHMM.test(r.uhrzeit)) return null;
   return slots(r, now, 8).find((d) => d.getTime() > now.getTime()) ?? null;
 }
 
 /** „täglich 14:00 · 15 min“, „Mo–Fr 11:00 · 10 min“, „Di, Do 09:30 · 5 min“. */
-export function scheduleLabel(r: Pick<BrainRoutine, "tage" | "wochentage" | "uhrzeit" | "dauer_min">): string {
+export function scheduleLabel(r: Pick<BrainRoutine, "tage" | "wochentage" | "uhrzeit" | "dauer_min" | "takt">): string {
   const days = r.tage === "wochentage" ? (r.wochentage ?? []).map((d) => WOCHENTAG_KURZ[d - 1]).filter(Boolean).join(", ") : TAGE_LABEL[r.tage] ?? "täglich";
-  return `${days} ${r.uhrzeit} · ${r.dauer_min} min`;
+  const takt = Number(r.takt ?? 1) === 1 ? "" : ` · ${taktLabel(r.takt)}`;
+  return `${days} ${r.uhrzeit}${takt} · ${r.dauer_min} min`;
 }
 
 /** „heute 14:00“, „morgen 11:00“, „Di 09:30“ (deutsche Zeit). */
@@ -171,6 +197,7 @@ export function toRoutine(x: Record<string, unknown>): BrainRoutine {
   return {
     id: String(x.id), name: String(x.name ?? ""), aufgabe: String(x.aufgabe ?? ""), uhrzeit: normTime(x.uhrzeit) ?? "00:00", tage,
     wochentage: normDays(x.wochentage), dauer_min: Number(x.dauer_min) || 15, aktiv: x.aktiv !== false,
+    takt: [0.5, 1, 2, 4].includes(Number(x.takt)) ? Number(x.takt) : 1,
     last_run_at: (x.last_run_at as string | null) ?? null, last_task_id: (x.last_task_id as string | null) ?? null,
     last_result: (x.last_result as string | null) ?? null, created_at: String(x.created_at ?? ""), updated_at: (x.updated_at as string | null) ?? null,
   };

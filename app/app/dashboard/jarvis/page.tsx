@@ -40,6 +40,7 @@ import { loadUeberblick } from "@/lib/ueberblick-data";
 import { bar, dayShare, heuteWichtig, judgeFlow, leadZiel, stillTip, switchedOff, zeitleiste } from "@/lib/ueberblick";
 import { Icon, type IconName } from "@/app/icons";
 import type { FunnelRow } from "@/lib/dashboard-logic";
+import { anpassungTitel, gehirnScore } from "@/lib/gehirn-lernt";
 import { KLASSEN, KLASSE_COLOR, KLASSE_LABEL, KLASSE_TIP, badSources } from "@/lib/bounce-stats";
 
 export const metadata = { title: "JARVIS" };
@@ -94,6 +95,11 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const kpiP = loadKpiDaily(from15, today);
   // Prognose 30 Tage (lib/prognose.ts): Trichter-Hochrechnung je Land, ohne Antworten „keine Basis“; Fehler → null
   const progP = loadPrognose(new Date()).catch(() => null);
+  // Gehirn lernt: letzte 3 Selbstanpassungen (decisions „Meta: …“) und offene Verbesserungsvorschläge; Fehler → null
+  const metaP = db().from("decisions").select("kurz_titel, subject").like("subject", "Meta: %").order("created_at", { ascending: false }).limit(3)
+    .then((r) => (r.error ? null : (r.data ?? []).map(anpassungTitel)), () => null);
+  const impP = db().from("brain_improvements").select("id", { count: "exact", head: true }).eq("status", "offen")
+    .then((r) => (r.error ? null : r.count ?? 0), () => null);
   const [liveAll, own, act, rows, stockAll, daily, sent, checks, agentTasks, starts, planLog, openReplies, health, funnel, bounceSt] = await Promise.all([
     loadLive(), loadOwnerSettings(), loadActivity(), loadRunRows(24),
     // Bestand: höchstens 5 s warten (Abfrage ~3,5 s, 10 min zwischengespeichert); sonst „…“ statt falscher Nullen
@@ -464,7 +470,8 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
       drawer={drawer} gate={gateView}
       heute={heute} ziel={{ mails: mailBars, leads: leadBars }} zeit={zeit} ticker={ticker(items)} customerAgents={await kaP} chat={await chatP} proposals={await propP} brauchtDich={await bdP}
       kohorten={{ rows: await khP, countries, today }}
-      team={await teamP.then(async (d) => (d ? karten({ ...d, kohorten: await khP, today, now }) : null))} />
+      team={await teamP.then(async (d) => (d ? karten({ ...d, kohorten: await khP, today, now }) : null))}
+      gehirn={{ score: gehirnScore(await kpiP, today), anpassungen: await metaP, offen: await impP }} />
   );
 }
 

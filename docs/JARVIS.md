@@ -124,6 +124,12 @@ man nicht löschen kann wo mir das gehirn immer updates gibt … sehr kurz und k
 - **Wissen** (`/dashboard/gehirn#wissen`, `signalwerk.brain_knowledge`, Markdown, Versionen): was das Gehirn lernt,
   steht dort – nie im öffentlichen Repo. `scripts/brain_knowledge.py add/list/get`; der Gehirn-Modus lädt alles.
   „Weiterbildung“ (oben) schreibt ihre Erkenntnisse zusätzlich dorthin.
+- **Gehirn optimiert sich selbst** (Inhaber 04.10.2026: „Bau es so das sich auch das gehirn weiter selbstoptimiert“):
+  Meta-Review `scripts/brain_meta.py` (Routine „Meta-Review Gehirn“ täglich 21:10, einmal je Tag) bewertet Routinen und
+  Auftragsarten nach Wirkung, passt den Takt an (halbieren/pausieren, höchstens 4×/Tag, umkehrbar), schreibt Wissen
+  (typ gelernt/fehlermuster) und höchstens 3 Vorschläge für docs/GEHIRN-SITZUNG.md; die Gehirn-Sitzung übernimmt
+  einen je Tag per PR (Abschnitt „Selbstverbesserung“, Grenzen-Abschnitte geschützt). Gehirn-Score in `kpi_daily`,
+  Karte „Gehirn lernt“ auf `/dashboard/jarvis`.
 
 ## Website-Analyse (Inhaber 04.10.2026: „mehr daten … wie google analytics … damit jarvis super auswertungen hat“)
 

@@ -83,7 +83,7 @@ export async function runRoutineNow(f: FormData) {
   const { data: role } = await db().from("agent_roles").select("*").eq("routine_id", id).eq("aktiv", true).maybeSingle()
     .then((x) => x, () => ({ data: null }));
   const brief = role ? roleBrief(toRolle(role), r.dauer_min, r.aufgabe) : routineBrief(r);
-  const { data: task, error } = await db().from("agent_tasks").insert({ agent, kind: "gehirn", market: null, brief, created_by: BRAIN_BY, ...(role ? { rolle: role.slug } : {}) })
+  const { data: task, error } = await db().from("agent_tasks").insert({ agent, kind: "gehirn", market: null, brief, created_by: BRAIN_BY, routine_id: id, ...(role ? { rolle: role.slug } : {}) })
     .select("id").single();
   if (error) { console.error("gehirn routine jetzt:", error.message); back("nicht gestartet"); }
   await db().from("brain_routines").update({ last_run_at: new Date().toISOString(), last_task_id: task!.id }).eq("id", id);
