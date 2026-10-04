@@ -121,6 +121,20 @@ def is_company_form(country: str, legal_form: str | None) -> bool:
     return any(norm == f.replace(" ", "") for f in COMPANY_FORMS.get(country.upper(), set()))
 
 
+# Personengesellschaften in COMPANY_FORMS (US: Limited Partnership, „& Co“) – keine juristische Person im Sinne
+# der Nachfass-Regel (Inhaber 04.10.2026)
+PARTNERSHIP_FORMS = {"US": {"lp", "llp", "co"}}
+
+
+def is_legal_person(country: str, legal_form: str | None) -> bool:
+    """Juristische Person (Kapitalgesellschaft) laut Rechtsform-Erkennung? Unbekannte Rechtsform zählt NICHT als
+    juristische Person: Einzelunternehmer und Personengesellschaften bekommen keine automatische Nachfassmail, nur
+    nach eigener Antwort (Inhaber 04.10.2026 nach Anwaltsberatung)."""
+    if not is_company_form(country, legal_form):
+        return False
+    return _norm_form(legal_form or "") not in PARTNERSHIP_FORMS.get((country or "").upper(), set())
+
+
 @dataclass
 class CheckResult:
     ok: bool

@@ -30,7 +30,7 @@ countries:
     generic_only: true
     company_forms_only: true
     daily_limit: 100
-    notes: "PECR: B2B-Mails an 'corporate subscribers' (Ltd, LLP, PLC) ohne Einwilligung zulässig; Einzelunternehmer und Personengesellschaften brauchen Einwilligung."
+    notes: "PECR: B2B-Mails an 'corporate subscribers' (Ltd, LLP, PLC) ohne Einwilligung zulässig; Einzelunternehmer und Personengesellschaften brauchen Einwilligung. Inhaber 04.10.2026: Einzelunternehmer nein (PECR: sole trader = individual)."
     open_question: "Reicht bei Ltd-Firmen eine allgemeine Adresse aus, oder ist eine Interessenabwägung nach UK GDPR zu dokumentieren? Vom Inhaber bestätigen lassen."
   IE:
     allowed: true
@@ -65,9 +65,9 @@ countries:
     allowed: true
     language: fr
     generic_only: false
-    company_forms_only: true
+    company_forms_only: false
     daily_limit: 60
-    notes: "CNIL: B2B-Mails ohne Einwilligung zulässig, wenn der Inhalt zum Beruf der Person passt; Opt-out Pflicht."
+    notes: "CNIL: B2B-Mails ohne Einwilligung zulässig, wenn der Inhalt zum Beruf der Person passt; Opt-out Pflicht. Inhaber 04.10.2026 nach Anwaltsberatung: Einzelunternehmer erlaubt (CNIL: berufsbezogene B2B-Mail an Berufsadresse, Opt-out); Verantwortung Inhaber. Einzelunternehmer bekommen keine automatische Nachfassmail, nur nach eigener Antwort."
 
   # Niemals Kaltmails. Nur Anruflisten und Briefe (S8).
   DE: { allowed: false, language: de, notes: "UWG § 7: keine Kaltmails. Nur Anrufliste/Brief." }

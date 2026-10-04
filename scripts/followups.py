@@ -8,6 +8,11 @@
    keine Antwort, keine Sperre und kein Bounce/keine Beschwerde vorliegt.
 2) sample_followup: 3 Tage nach einer automatisch gesendeten Probe ohne weitere Antwort:
    Nachfrage nach Feedback und ob die wöchentliche Lieferung starten soll (keine Preise).
+
+Einzelunternehmer und Personengesellschaften (Inhaber 04.10.2026 nach Anwaltsberatung): keine automatische
+Nachfassmail (1), nur nach eigener Antwort – die Nachfrage zur Probe (2) setzt eine Probe-Anfrage voraus, also
+eine Antwort. Als juristische Person zählt nur eine erkannte Kapitalgesellschaft (lib.rules.is_legal_person);
+unbekannte Rechtsform = keine Nachfassmail.
 """
 from __future__ import annotations
 
@@ -19,7 +24,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from drafts import LAND, build, has_variant_column, short_name, signature, subject_variant  # noqa: E402
-from lib.rules import lint_draft  # noqa: E402
+from lib.rules import is_legal_person, lint_draft  # noqa: E402
 
 NEGATIVE = {"bounced", "complained", "failed", "reply", "reply_positive", "reply_negative", "sample_requested",
             "unsubscribed"}  # auto_reply (Abwesenheit) bricht die Nachfassmail nicht ab
@@ -129,6 +134,12 @@ def refresh_open(db, dry_run: bool = False) -> int:
     return 0
 
 
+def needs_reply_first(p: dict) -> bool:
+    """Keine juristische Person (Einzelunternehmer/Personengesellschaft/unbekannt): Nachfassen nur nach eigener
+    Antwort (Inhaber 04.10.2026)."""
+    return not is_legal_person(p.get("country") or "", p.get("legal_form"))
+
+
 def answered(db, prospect_id: str, since: str | None = None) -> bool:
     """Hat die Firma geantwortet (Antworten-Cockpit, auch von einer anderen Adresse oder während der Pause des
     Antwort-Assistenten)? Dann keine Nachfassmail (Nachtschicht 04.10.2026). Abwesenheitsnotizen stehen nicht im
@@ -166,8 +177,12 @@ def main(argv=None) -> int:
     if not owner["followup_enabled"]:
         print("Nachfassmails im Dashboard ausgeschaltet (Inhaber) – keine neuen Nachfassmails")
         initial = []
+    n_sole = 0
     for m in initial:
         p = m["prospects"]
+        if needs_reply_first(p):
+            n_sole += 1  # Einzelunternehmer: keine automatische Nachfassmail, nur nach eigener Antwort
+            continue
         if db.select("messages", {"prospect_id": f"eq.{p['id']}", "kind": "neq.initial", "select": "id"}):
             continue
         evs = db.select("email_events", {"message_id": f"eq.{m['id']}", "select": "type"})
@@ -213,6 +228,9 @@ def main(argv=None) -> int:
                                    "subject": subj, "body": body, "language": lang, "kind": "sample_followup",
                                    **_variant_field(m, var), "parent_id": m["id"], "status": "approved",
                                    "approved_at": now.isoformat(), "approved_by": note})
+    if n_sole:
+        print(f"{n_sole} Erstmails an Einzelunternehmer/ohne erkannte Kapitalgesellschaft: keine automatische "
+              f"Nachfassmail (nur nach eigener Antwort, Inhaber 04.10.2026)")
     print(f"\n{n1} Nachfassmails, {n2} Nachfragen nach Probe" + ("" if args.apply else " (Probelauf)"))
     return 0
 

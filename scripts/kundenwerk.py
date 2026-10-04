@@ -34,7 +34,7 @@ import requests
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lib.fetch import host_blocked  # noqa: E402
-from lib.rules import check_prospect, load_countries, normalize_domain  # noqa: E402
+from lib.rules import check_prospect, country_rules, load_countries, normalize_domain  # noqa: E402
 
 TARGET = 1_000_000  # Inhaber 01.10.2026: „Kundenwerk soll erst bei 1mio Kunden aufhören“
 POOL = Path(os.environ.get("KUNDENWERK_POOL", "out/cache/kunden_pool.parquet"))
@@ -535,9 +535,12 @@ RECHECK_MARK = "Registernummer-Nachprüfung"
 RECHECK_PAIRS = "S2:UK,S2:FR,S1:UK"  # FR bleibt für S1-Mail aus (Inhaber)
 
 
-def recheck_rows(db, pairs: list[tuple[str, str]], limit: int) -> list[dict]:
+def recheck_rows(db, pairs: list[tuple[str, str]], limit: int, cfg: dict | None = None) -> list[dict]:
     """„Nur Anruf/Brief“-Käufer mit Firmen-E-Mail, die nur an der fehlenden Rechtsform scheitern und noch nicht
-    nachgeprüft sind."""
+    nachgeprüft sind. Länder ohne company_forms_only (FR seit 04.10.2026) brauchen keine Registernummer mehr –
+    dort reicht die Regel-Nachprüfung (cmd_rules)."""
+    cfg = cfg or load_countries()
+    pairs = [(seg, co) for seg, co in pairs if country_rules(cfg, co).get("company_forms_only")]
     out: list[dict] = []
     for k, (seg, co) in enumerate(pairs):
         share = (limit - len(out)) // (len(pairs) - k)  # gleichmäßig; was ein Paar nicht braucht, bekommen die übrigen
@@ -603,8 +606,9 @@ def cmd_recheck(args) -> int:
     if stop_if_paused(db, "kunden-werk", log):
         return 0
     cfg = load_countries()
+    rules_recheck(db, cfg, dry_run=args.dry_run)  # ohne Abruf, vorher: FR-Einzelunternehmer (Inhaber 04.10.2026)
     pairs = [tuple(p.split(":")) for p in args.pairs.split(",") if ":" in p]
-    rows = {r["id"]: r for r in recheck_rows(db, pairs, args.max)}
+    rows = {r["id"]: r for r in recheck_rows(db, pairs, args.max, cfg)}
     log(f"Nachprüfung Registernummer: {len(rows)} Käufer ({args.pairs})")
     if not rows:
         return 0
@@ -687,6 +691,77 @@ def cmd_recheck(args) -> int:
     return 0
 
 
+# ---------------------------------------------------------------------------
+# Regel-Nachprüfung ohne Abruf (Inhaber 04.10.2026 nach Anwaltsberatung: Einzelunternehmer in FR erlaubt)
+# ---------------------------------------------------------------------------
+RULES_MARK = "Regel-Nachprüfung"
+
+
+def rules_recheck_rows(db, cfg: dict) -> list[dict]:
+    """Käufer mit Firmen-E-Mail, die (nur Anruf/Brief oder abgelehnt) an der Rechtsform gescheitert sind, in Ländern,
+    die heute keine Kapitalgesellschaft mehr verlangen (company_forms_only: false)."""
+    lands = sorted(c for c, r in (cfg.get("countries") or {}).items()
+                   if isinstance(r, dict) and r.get("allowed") and not country_rules(cfg, c).get("company_forms_only"))
+    if not lands:
+        return []
+    return db.select_all("prospects", {
+        "select": "id,segment_id,country,email,website,legal_form,source_url,size_note,domain,check_status,check_reason",
+        "country": f"in.({','.join(lands)})", "check_status": "in.(call_only,rejected)", "email": "not.is.null",
+        "check_reason": "like.*Rechtsform*", "order": "id.asc"})
+
+
+def rules_recheck_values(r: dict, cfg: dict, blocked: set[str], today: str) -> dict:
+    """Neue Prüfwerte für eine Zeile: dieselbe Prüfregel wie immer (lib.rules.check_prospect) mit den gespeicherten
+    Daten. Besteht sie, wird der Käufer mail-fähig (ok); sonst bleibt der Status, nur der Prüfgrund wird aktuell
+    (enthält dann kein „Rechtsform“ mehr, die Zeile wird nicht erneut geprüft)."""
+    sup = (r.get("domain") or "").lower() in blocked or (r.get("email") or "").lower() in blocked
+    chk = check_prospect(email=r["email"], country=r["country"], website=r.get("website"), legal_form=r.get("legal_form"),
+                         source_url=r.get("source_url"), size_note=r.get("size_note"), suppressed=sup, cfg=cfg)
+    now = dt.datetime.now(dt.timezone.utc).isoformat()
+    tail = f" | {RULES_MARK} {today}"
+    if chk.ok:
+        return {"check_status": "ok", "check_reason": (chk.summary() + tail)[:500], "checked_at": now}
+    head = "nur Anruf/Brief – " if r["check_status"] == "call_only" else ""
+    return {"check_reason": (head + chk.summary())[:500 - len(tail)] + tail, "checked_at": now}
+
+
+def rules_recheck(db, cfg: dict, dry_run: bool = False) -> Counter:
+    """Einmalig nötig, aber idempotent: läuft in jedem Kunden-Werk-Lauf (Teil „nachpruefen“) und findet nach dem
+    ersten Lauf nichts mehr. Ruft keine Website ab, sendet nie, löscht nichts."""
+    rows = rules_recheck_rows(db, cfg)
+    stats: Counter = Counter()
+    if not rows:
+        log("Regel-Nachprüfung: nichts zu tun")
+        return stats
+    blocked = {r["value"].lower() for r in db.select_all("suppression", {"select": "value"}) if r.get("value")}
+    today = dt.date.today().strftime("%d.%m.%Y")
+    for r in rows:
+        vals = rules_recheck_values(r, cfg, blocked, today)
+        stats[f"{r['segment_id']}/{r['country']}:{'ok' if vals.get('check_status') == 'ok' else 'bleibt'}"] += 1
+        if dry_run:
+            continue
+        try:
+            db.update("prospects", {"id": r["id"]}, vals)
+        except RuntimeError as exc:  # eine Zeile darf den Lauf nicht beenden; sie kommt im nächsten Lauf wieder
+            stats["Speicherfehler"] += 1
+            log(f"Speicherfehler {r.get('domain')}: {str(exc)[:80]}")
+    log(f"Regel-Nachprüfung (Einzelunternehmer): {len(rows)} Käufer geprüft"
+        f"{' (Probelauf, nichts gespeichert)' if dry_run else ''}")
+    for k, v in sorted(stats.items()):
+        log(f"  {k} {v}")
+    return stats
+
+
+def cmd_rules(args) -> int:
+    from lib.db import DB
+    from lib.owner_settings import stop_if_paused
+    db = DB()
+    if stop_if_paused(db, "kunden-werk", log):
+        return 0
+    rules_recheck(db, load_countries(), dry_run=args.dry_run)
+    return 0
+
+
 def cmd_stand(args) -> int:
     from lib.db import DB
     db = DB()
@@ -719,7 +794,11 @@ def main(argv=None) -> int:
     n.add_argument("--workers", type=int, default=16)
     n.add_argument("--deadline-min", type=float, default=0)
     n.add_argument("--dry-run", action="store_true", help="nur zählen, nichts speichern")
+    g = sub.add_parser("regeln", help="an der Rechtsform gescheiterte Käufer mit der heutigen Länderregel neu prüfen")
+    g.add_argument("--dry-run", action="store_true", help="nur zählen, nichts speichern")
     args = ap.parse_args(argv)
+    if args.cmd == "regeln":
+        return cmd_rules(args)
     if args.cmd == "pool":
         build_pool()
         return 0
