@@ -1,0 +1,107 @@
+# Prüfer-Werk (Inhaber 05.10.2026: „Brauchen wir Masse-Leads? Lieber 4 dauerhafte Prüfer der Leads nach
+# Qualitätsmerkmalen, damit die Leads immer besser werden und gut aufbereitet für den Kunden werden.“).
+# Rund um die Uhr: Teile nach Plätzen der Linie „pruefer“ (app/lib/werk-linien.json, Leitstand owner_settings.slot_plan,
+# scripts/werk_plan.py). Jeder Teil prüft seinen ID-Ausschnitt des lieferbaren S2-Bestands US/UK/FR mit
+# scripts/pruefer.py: Premium zuerst, dann nie geprüfte, dann älteste Prüfung; unveränderte Drei-Stufen-Freigabe
+# (Live-Nachprüfung höchstens 1×/Tag je Seite, robots.txt) plus strengere Zusatzprüfungen. Durchgefallen = held + Grund
+# (nichts gelöscht). Sendet nichts, ändert keine Sperrliste, lädt keine Lead-Daten hoch (öffentliches Repo) – nur Zahlen.
+# Pause im Dashboard (werke_paused „pruefer-werk“): Plan-Job beendet sich sauber, kein Neustart.
+name: pruefer-werk
+on:
+  schedule:
+    - cron: "11 * * * *"   # Rückfall; normalerweise startet sich das Werk nach jedem Lauf selbst neu (Job „weiter“)
+  workflow_dispatch:
+concurrency: { group: pruefer-werk, cancel-in-progress: false }
+permissions:
+  contents: read
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.p.outputs.matrix }}
+      teile: ${{ steps.p.outputs.teile }}
+      an: ${{ steps.gate.outputs.an }}
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install requests pyyaml
+      - name: Pause-Schalter (Dashboard)
+        id: gate
+        run: |
+          python - <<'EOF'
+          import os, sys
+          sys.path.insert(0, "scripts")
+          from lib.db import DB
+          from lib.owner_settings import stop_if_paused
+          an = "true"
+          try:
+              if stop_if_paused(DB(timeout=15), "pruefer-werk"):
+                  an = "false"
+          except BaseException as e:  # Lesefehler = nicht pausiert
+              print(f"Schalter nicht lesbar ({type(e).__name__})")
+          open(os.environ["GITHUB_OUTPUT"], "a").write(f"an={an}\n")
+          EOF
+      - id: p
+        if: steps.gate.outputs.an == 'true'
+        run: python scripts/werk_plan.py pruefer-werk
+
+  pruefen:
+    needs: plan
+    if: needs.plan.outputs.an == 'true' && needs.plan.outputs.teile != '0' && needs.plan.outputs.teile != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    name: ${{ matrix.name }}
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RUN_PART: ${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - name: Leads prüfen (Teil ${{ matrix.shard }}/${{ matrix.of }})
+        run: python scripts/pruefer.py run --shard ${{ matrix.shard }}/${{ matrix.of }} --deadline-min 80 --batch 120 | tail -n 40
+
+  weiter:
+    needs: [plan, pruefen]
+    if: always() && needs.plan.outputs.an == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: read
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install requests pyyaml
+      - name: Kennzahlen (Qualität lieferbar %, geprüft 24 h)
+        run: python scripts/pruefer.py kpi | tee -a "$GITHUB_STEP_SUMMARY" || true
+      - name: Nächsten Lauf starten
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          retry() { for i in 1 2 3; do "$@" && return 0; [ "$i" -lt 3 ] && sleep 20; done; return 1; }
+          start=$(retry gh run view ${{ github.run_id }} --json createdAt -q .createdAt || true)
+          if [ -n "$start" ]; then
+            mins=$(( ( $(date -u +%s) - $(date -u -d "$start" +%s) ) / 60 ))
+          else
+            mins=0
+          fi
+          # kurze Läufe (nichts zu tun, Fehler) nicht sofort wiederholen – Cron und Wachhund übernehmen
+          if [ "$mins" -lt 10 ]; then echo "Lauf nur $mins Minuten – kein Sofort-Neustart"; exit 0; fi
+          retry gh workflow run pruefer-werk.yml --ref "${{ github.ref_name }}"
+          echo "Nächster Lauf gestartet (dieser lief $mins Minuten)" | tee -a "$GITHUB_STEP_SUMMARY"
