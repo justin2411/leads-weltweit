@@ -13,7 +13,7 @@ import {
   Reply, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Split, Square, Star, Target, TrendingDown,
   TrendingUp, Trash2, TriangleAlert, Undo2, UserRound, Users, Workflow, X,
 } from "lucide-react";
-import { CircleQuestionMark } from "lucide-react";
+import { AppWindow, CircleQuestionMark, Gauge, RectangleEllipsis, Scale, Smartphone, Type, Unlink } from "lucide-react";
 
 const ICONS = {
   // Werke und Stationen
@@ -61,6 +61,14 @@ const ICONS = {
   speicher: HardDrive,
   kontakte: Contact,
   gehirn: Brain,
+  // Website (Inhaber 04.10.2026): Themenfeld mit Gesundheit je Bereich, Website-Agenten, Änderungswünschen
+  website: AppWindow,
+  tempo: Gauge,
+  handy: Smartphone,
+  recht: Scale,
+  formular: RectangleEllipsis,
+  text: Type,
+  "link-kaputt": Unlink,
   "start-seite": House,
   menue: Menu,
   // Status und Aktionen

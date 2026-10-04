@@ -46,7 +46,7 @@ async function send(sessionId: unknown, text: unknown): Promise<string> {
   else {
     if (!isSessionId(sessionId)) throw new ChatInputError("Sitzung unbekannt");
     const s = await loadSession(sessionId);
-    if (!s || s.kind === "baukasten") throw new ChatInputError("Sitzung unbekannt");
+    if (!s || s.kind === "baukasten" || s.kind === "website") throw new ChatInputError("Sitzung unbekannt");
     if (s.archived) throw new ChatInputError("Sitzung ist archiviert – neue Sitzung starten");
     sid = s.id;
   }

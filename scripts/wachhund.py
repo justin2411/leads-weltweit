@@ -58,6 +58,8 @@ JOBS = [
         "probelauf": "false"}),
     {"wf": "tagescheck.yml", "kind": "daily", "at": "17:37", "grace": 40, "inputs": {"mail": "true"}},
     {"wf": "freigabe-stichprobe.yml", "kind": "daily", "at": "05:07", "grace": 60},
+    # Website-Check der eigenen Seite (Inhaber 04.10.2026, /dashboard/website)
+    {"wf": "website-check.yml", "kind": "daily", "at": "04:23", "grace": 90},
     {"wf": "kundenlieferung.yml", "kind": "daily", "at": "04:53", "grace": 60, "weekdays": [0], "until": "12:00"},
     {"wf": "anreichern.yml", "kind": "daily", "at": "08:41", "grace": 60, "cond": "lead_suche"},
     # Werke (24/7): GitHub ließ am 01.10.2026 die ersten geplanten Kunden-Werk-Läufe aus. Inhaber 01.10.2026: „Er soll
