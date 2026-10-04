@@ -195,6 +195,37 @@ footer.foot.dark{color:#7F89A3}
 .ask::after{content:'';position:absolute;left:4mm;top:-1.4mm;width:2.8mm;height:2.8mm;background:#E6CB98;transform:rotate(45deg);border-radius:.4mm}
 .ask .q{display:flex;align-items:center;gap:1.2mm;font-size:5.9pt;font-weight:800;letter-spacing:.14em;text-transform:uppercase;margin-bottom:.8mm;position:relative;z-index:1}
 .ask .q em{font-style:normal}
+/* Lead-Karte: Beleg, Quelle der Ansprechperson, Einstiegssatz (Wertrechnung, Inhaber 04.10.2026) */
+.cv .age{font-style:normal;font-weight:500;color:var(--muted)}
+.proof{grid-column:1 / span 2;align-self:end;display:flex;flex-wrap:wrap;gap:.8mm 4mm;font-size:6.5pt;color:var(--muted);line-height:1.35}
+.proof span{display:inline-flex;align-items:center;gap:1.1mm;min-width:0}
+.proof b{font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:5.6pt;color:var(--faint)}
+.proof a{color:var(--gold-d);font-weight:600;text-decoration:underline;text-decoration-thickness:.2mm;text-underline-offset:.5mm}
+.opener{border-left:.5mm solid var(--gink);padding:.4mm 0 .4mm 2.4mm}
+.opener em{display:block;font-style:normal;font-size:5.9pt;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--gink);margin-bottom:.6mm}
+.opener q{quotes:none;display:block;font-size:7.6pt;line-height:1.38;font-style:italic;color:#E9EDF5}
+/* Seite „Was ein Kunde wert ist“ */
+.value .vbody{position:absolute;left:14mm;right:14mm;top:27mm;bottom:17mm;display:flex;flex-direction:column;gap:4mm}
+.value h2{font-size:24pt;font-weight:800;letter-spacing:-.03em;line-height:1.1}
+.value .vlede{font-size:10pt;color:var(--muted);max-width:150mm}
+.vgrid{flex:none;display:grid;grid-template-columns:1.1fr .9fr;gap:5mm;align-items:stretch;min-height:0}
+.vgrid .panel{padding:6mm;display:flex;flex-direction:column;gap:3.4mm;min-width:0}
+.vfact{font-size:9pt;line-height:1.45;color:#2B3650}
+.vsrc{display:block;font-size:6.8pt;color:var(--faint);margin-top:.8mm}
+.vsrc a{color:var(--gold-d);text-decoration:underline;text-decoration-thickness:.2mm}
+.vrow .vl{display:flex;justify-content:space-between;gap:3mm;align-items:baseline;font-size:8.6pt}
+.vrow.us .vl{flex-direction:column;gap:.6mm} .vrow.us .vl b{font-size:11.5pt}
+.vgrid .panel .cap:not(:first-child){margin-top:2mm}
+.vrow .vl b{font-size:10.5pt;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+.vtrack{height:2.2mm;border-radius:99mm;background:var(--cream);margin:1.4mm 0 1mm;overflow:hidden}
+.vtrack i{display:block;height:100%;border-radius:99mm;background:#9AA3B5}
+.vrow.us .vl b{color:var(--gtext)} .vrow.us .vtrack i{background:linear-gradient(90deg,#EBD7AE,#C9A465)}
+.vex{font-size:12pt;line-height:1.5;font-weight:600;color:var(--ink)}
+.vcost{font-size:9pt;line-height:1.5;color:#2B3650}
+.vown{margin-top:auto;font-size:8pt;color:var(--muted);border-top:.2mm solid var(--line2);padding-top:3mm}
+.vgrid .panel.ex{background:var(--navy);border-color:var(--navy);color:#fff}
+.vgrid .panel.ex .vex{color:#fff} .vgrid .panel.ex .vcost{color:#D5DBE7} .vgrid .panel.ex .vown{color:#A9B2C6;border-top-color:rgba(255,255,255,.12)}
+.vgrid .panel.ex .cap{color:var(--gink)}
 .ask .q .ic{width:3.2mm;height:3.2mm;stroke-width:2.2}
 .ask q{quotes:none;display:block;font-size:8.5pt;line-height:1.36;font-style:italic;font-weight:600;position:relative;z-index:1}
 
@@ -1090,6 +1121,14 @@ header.top.dark .kicker .demo{color:#FFB7A8;border-color:rgba(240,128,108,.7)}
     const [rcls, ricon] = REASON_STYLE[L.reasonType] || REASON_STYLE.nosite;
     const sub = [L.category, [L.city, L.state].filter(Boolean).join(', ')].filter(Boolean).join(' · ');
     const mm = MAP ? miniMap(L) : '';
+    const CL = D.cardLabels || {};
+    const detectedV = isEmpty(L.detected) ? val('') : `<span>${esc(L.detected)}${L.detectedAge ? ` <i class="age">· ${esc(L.detectedAge)}</i>` : ''}</span>`;
+    const ev = L.evidence && /^https?:\/\//.test(L.evidence.url || '') ? L.evidence : null;
+    const proofItems = [
+      ev ? `<span><b>${esc(CL.evidence || 'Evidence')}</b><a href="${esc(ev.url)}">${esc(ev.label)}</a>${ev.checked ? ` · ${esc(ev.checked)}` : ''}</span>` : '',
+      !isEmpty(L.contact) && L.contactSource ? `<span><b>${esc(CL.contactSource || 'Source')}</b>${esc(L.contactSource)}</span>` : '',
+    ].filter(Boolean).join('');
+    const proof = proofItems ? `<div class="proof">${proofItems}</div>` : '';
     return `
 <article class="tile" id="lead-${L._n}">
   <div class="main">
@@ -1099,15 +1138,16 @@ header.top.dark .kicker .demo{color:#FFB7A8;border-color:rgba(240,128,108,.7)}
     </div>
     <div class="cgrid">
       ${f('phone', T.phone, phone)}
-      ${isEmpty(L.contact) ? f('cal', T.detected, val(L.detected)) : f('user', T.contact, val(L.contact, 'fit'))}
+      ${isEmpty(L.contact) ? f('cal', T.detected, detectedV) : f('user', T.contact, val(L.contact, 'fit'))}
       ${f('mail', T.email, email, 'span2')}
       ${f('pin', T.address, val(L.address, 'fit'), 'span2')}
       ${isEmpty(L.website) ? '' : f('globe', T.website, site)}
-      ${isEmpty(L.contact) ? '' : f('cal', T.detected, val(L.detected))}
+      ${isEmpty(L.contact) ? '' : f('cal', T.detected, detectedV)}
     </div>
     <div class="tlow">
       <div class="why"><div class="cap gold">${esc(T.whyNow)}</div><p>${md(L.why)}</p></div>
       <div class="needsbox"><div class="cap gold">${esc(T.needs)}</div><ul class="needs">${needs}</ul></div>
+      ${proof}
       ${pres ? `<div class="pres"><span class="cap">${esc(T.onlineCheck)}</span>${pres}</div>` : ''}
     </div>
   </div>
@@ -1122,6 +1162,7 @@ header.top.dark .kicker .demo{color:#FFB7A8;border-color:rgba(240,128,108,.7)}
       ${L.offer ? `<p class="offer"><em>${esc(T.offer)}</em> ${md(L.offer)}</p>` : ''}
       ${L.ask ? `<div class="ask"><span class="q">${ic('chat', 'ic')}<em>${esc(T.ask)}</em></span><q>${esc(L.ask)}</q></div>` : ''}
     </div>
+    ${L.opener ? `<div class="opener"><em>${esc(CL.opener || 'Opening line')}</em><q>“${esc(L.opener)}”</q></div>` : ''}
     ${isEmpty(L.phone) ? '' : `<a class="call" href="${telHref(L.phone)}"><span class="cb">${ic('phone', 'ic')}</span><span><em>${esc(T.callPrompt)}</em>${esc(fmtPhone(L.phone))}</span></a>`}
   </aside>
 </article>`;
@@ -1141,6 +1182,39 @@ header.top.dark .kicker .demo{color:#FFB7A8;border-color:rgba(240,128,108,.7)}
 <section class="page leads">
   ${header(D, false, [a, b])}
   <div class="tiles">${pair.map(L => tile(D, L)).join('')}${pair.length === 1 ? filler(D) : ''}</div>
+  ${footer(D, pageNo)}
+</section>`;
+  }
+
+  function valuePage(D, pageNo) {   // „Was ein Kunde wert ist“ (nur Proben S2 US/UK/FR, Daten aus PREMIUM-WERT.md)
+    const V = D.value;
+    const src = (x) => `<span class="vsrc">${esc(V.sourceLabel || 'Source:')} <a href="${esc(x.url)}">${esc(x.source)}</a>${x.note ? ` · ${esc(x.note)}` : ''}${x.checked ? ` · ${esc(x.checked)}` : ''}</span>`;
+    const facts = (V.proof || []).map(x => `<p class="vfact">${esc(x.text)}${src(x)}</p>`).join('') || (V.noProof ? `<p class="vfact">${esc(V.noProof)}</p>` : '');
+    const vals = (V.compare || []).map(x => +x.num || 0);
+    const max = Math.max(1, ...vals);
+    const bars = (V.compare || []).map((x, k) => `<div class="vrow"><div class="vl"><span>${esc(x.label)}</span><b>${esc(x.value)}</b></div><div class="vtrack"><i style="width:${(vals[k] / max * 100).toFixed(1)}%"></i></div>${src(x)}</div>`).join('');
+    const ours = V.ours ? `<div class="vrow us"><div class="vl"><span>${esc(V.ours.label)}</span><b>${esc(V.ours.value)}</b></div><div class="vtrack"><i style="width:${Math.max(1.5, (+V.ours.num || 0) / max * 100).toFixed(1)}%"></i></div></div>` : '';
+    return `
+<section class="page value">
+  ${header(D, false)}
+  <div class="vbody">
+    <h2>${esc(V.title)}</h2>
+    <p class="vlede">${esc(V.lede)}</p>
+    <div class="vgrid">
+      <div class="panel">
+        ${facts ? `<span class="cap gold">${esc(V.proofTitle)}</span>${facts}` : ''}
+        <span class="cap gold">${esc(V.compareTitle)}</span>
+        ${bars}${ours}
+      </div>
+      <div class="panel ex">
+        <span class="cap">${esc(V.exampleTitle)}</span>
+        <p class="vex">${esc(V.example)}</p>
+        <span class="cap">${esc(V.costTitle)}</span>
+        <p class="vcost">${esc(V.cost)}</p>
+        <p class="vown">${esc(V.own)}</p>
+      </div>
+    </div>
+  </div>
   ${footer(D, pageNo)}
 </section>`;
   }
@@ -1209,7 +1283,7 @@ header.top.dark .kicker .demo{color:#FFB7A8;border-color:rgba(240,128,108,.7)}
     }
     for (const t of $$('.tile:not(.filler)')) {         // long texts: shrink inside the tile instead of overflowing
       const main = $('.main', t), act = $('.act', t);
-      for (const [box, sels] of [[main, ['.why p', '.needs li']], [act, ['.offer', '.ask q']]]) {
+      for (const [box, sels] of [[main, ['.why p', '.needs li']], [act, ['.offer', '.ask q', '.opener q']]]) {
         let k = 1;
         while (box.scrollHeight > box.clientHeight + 1 && k > 0.8) {
           k -= 0.03; for (const sel of sels) for (const el of $$(sel, box)) { el.style.fontSize = ''; el.style.fontSize = (parseFloat(getComputedStyle(el).fontSize) * k) + 'px'; }
@@ -1219,7 +1293,7 @@ header.top.dark .kicker .demo{color:#FFB7A8;border-color:rgba(240,128,108,.7)}
     const warn = [];
     $$('.page').forEach((p, i) => {
       const pr = p.getBoundingClientRect();
-      for (const el of $$('.tile, .panel, .legend, .mapbox, .plans, .cta, .sign', p)) {
+      for (const el of $$('.tile, .panel, .legend, .mapbox, .plans, .cta, .sign, .vgrid', p)) {
         const r = el.getBoundingClientRect();
         if (r.bottom > pr.bottom - 10 || el.scrollHeight > el.clientHeight + 2) { warn.push(`Seite ${i + 1}: Inhalt passt nicht ganz (${el.className.split(' ')[0]})`); break; }
       }
@@ -1249,7 +1323,7 @@ header.top.dark .kicker .demo{color:#FFB7A8;border-color:rgba(240,128,108,.7)}
     useMap(D.report.map);
     const states = new Set(leads.map(L => normKey(regionOf(L))).filter(Boolean)).size;
     const industries = new Set(leads.map(L => industryLabel(L).toLowerCase())).size;
-    D._pages = 2 + Math.ceil(leads.length / 2);
+    D._pages = 2 + Math.ceil(leads.length / 2) + (D.value && D.value.title ? 1 : 0);
     D._vars = { count: leads.length, date: D.report.date || '', country: D.report.country || '', states, industries };
     if (D.report.documentTitle) document.title = fill(D.report.documentTitle, D._vars);
     const m = String(D.report.date || '').match(/^(.*\S)\s+(\d{4})$/);
@@ -1257,6 +1331,7 @@ header.top.dark .kicker .demo{color:#FFB7A8;border-color:rgba(240,128,108,.7)}
 
     const pages = [cover(D)];
     for (let k = 0; k < leads.length; k += 2) pages.push(leadPage(D, 2 + k / 2, leads.slice(k, k + 2)));
+    if (D.value && D.value.title) pages.push(valuePage(D, 2 + Math.ceil(leads.length / 2)));
     pages.push(closing(D));
     $('#report').innerHTML = miniDefs() + pages.join('');
     await document.fonts.ready;

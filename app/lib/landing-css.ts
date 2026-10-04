@@ -175,10 +175,24 @@ export const LANDING_CSS = `
 .bx .lp2 .faq2 summary:after{content:"";flex:none;width:20px;height:20px;background:var(--pgold-d);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M5 12h14M12 5v14'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M5 12h14M12 5v14'/%3E%3C/svg%3E") center/contain no-repeat}.bx .lp2 .faq2 details[open] summary:after{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M5 12h14'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M5 12h14'/%3E%3C/svg%3E")}
 .bx .lp2 .faq2 p{margin:10px 0 0;color:var(--muted)}
 
+/* Wertrechnung „Lohnt sich das?“ (Variante value_block, Inhaber 04.10.2026): zwei Kästen, oben und unten bündig */
+.bx .lp2 .wgrid{display:grid;grid-template-columns:1.15fr .85fr;gap:18px;align-items:stretch}
+.bx .lp2 .wcard{background:#fff;border:1px solid var(--pline);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:18px;min-width:0}
+.bx .lp2 .wrow .wl{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:15px;color:var(--pink)}
+.bx .lp2 .wrow .wl b{font-variant-numeric:tabular-nums;font-size:17px;white-space:nowrap}
+.bx .lp2 .wtrack{height:8px;border-radius:99px;background:var(--cream);margin:8px 0 6px;overflow:hidden}
+.bx .lp2 .wtrack i{display:block;height:100%;border-radius:99px;background:#9aa3b5}
+.bx .lp2 .wrow.us .wl{flex-wrap:wrap}.bx .lp2 .wrow.us .wl b{color:var(--gtext);white-space:normal}
+.bx .lp2 .wrow.us .wtrack i{background:linear-gradient(90deg,#EBD7AE,#C9A465)}
+.bx .lp2 .wsrc{margin:0;font-size:12.5px;color:var(--faint);line-height:1.5}
+.bx .lp2 .wsrc a{color:var(--muted)}
+.bx .lp2 .wcard.ex .wex{margin:0;font-size:15.5px;color:var(--pink);line-height:1.6}
+.bx .lp2 .wcard.ex .wown{margin:auto 0 0;font-size:13px;color:var(--muted)}
+
 @media (max-width:980px){
   .bx .lp2 .h2o .wrap{grid-template-columns:1fr;gap:28px;padding-top:4px}
   .bx .lp2 .kpis{grid-template-columns:repeat(2,1fr)}
-  .bx .lp2 .two,.bx .lp2 .formwrap{grid-template-columns:1fr}
+  .bx .lp2 .two,.bx .lp2 .formwrap,.bx .lp2 .wgrid{grid-template-columns:1fr}
   .bx .lp2 .tile{grid-template-columns:1fr}
   .bx .lp2 .rs,.bx .lp2 .steps{grid-template-columns:1fr}
 }

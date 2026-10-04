@@ -1,0 +1,166 @@
+{
+ "geld": [
+  {
+   "x": 3500,
+   "sym": "$",
+   "lang": "en",
+   "out": "$3,500"
+  },
+  {
+   "x": 1.9846,
+   "sym": "$",
+   "lang": "en",
+   "out": "$1.98"
+  },
+  {
+   "x": 1.4365,
+   "sym": "£",
+   "lang": "en",
+   "out": "£1.44"
+  },
+  {
+   "x": 3000,
+   "sym": "€",
+   "lang": "fr",
+   "out": "3 000 €"
+  },
+  {
+   "x": 1.4365,
+   "sym": "€",
+   "lang": "fr",
+   "out": "1,44 €"
+  },
+  {
+   "x": 10000,
+   "sym": "$",
+   "lang": "en",
+   "out": "$10,000"
+  },
+  {
+   "x": 70.11,
+   "sym": "$",
+   "lang": "en",
+   "out": "$70.11"
+  },
+  {
+   "x": 103.54,
+   "sym": "$",
+   "lang": "fr",
+   "out": "103,54 $"
+  },
+  {
+   "x": 3960,
+   "sym": "€",
+   "lang": "fr",
+   "out": "3 960 €"
+  }
+ ],
+ "rechnung": [
+  {
+   "country": "US",
+   "plans": [
+    {
+     "key": "starter",
+     "amount_cents": 12900
+    },
+    {
+     "key": "pro",
+     "amount_cents": 24900
+    }
+   ],
+   "out": {
+    "proLead": {
+     "starter": "$1.98",
+     "pro": "$1.44"
+    },
+    "monate": {
+     "starter": 41,
+     "pro": 21
+    },
+    "leads": {
+     "starter": 65,
+     "pro": 173
+    },
+    "beispiel": {
+     "projekt": "$3,500",
+     "monat": "$150",
+     "jahr1": "$5,300"
+    }
+   }
+  },
+  {
+   "country": "UK",
+   "plans": [
+    {
+     "key": "starter",
+     "amount_cents": 12900
+    },
+    {
+     "key": "pro",
+     "amount_cents": 24900
+    }
+   ],
+   "out": {
+    "proLead": {
+     "starter": "£1.98",
+     "pro": "£1.44"
+    },
+    "monate": {
+     "starter": 33,
+     "pro": 17
+    },
+    "leads": {
+     "starter": 65,
+     "pro": 173
+    },
+    "beispiel": {
+     "projekt": "£3,000",
+     "monat": "£100",
+     "jahr1": "£4,200"
+    }
+   }
+  },
+  {
+   "country": "FR",
+   "plans": [
+    {
+     "key": "starter",
+     "amount_cents": 12900
+    },
+    {
+     "key": "pro",
+     "amount_cents": 24900
+    }
+   ],
+   "out": {
+    "proLead": {
+     "starter": "1,98 €",
+     "pro": "1,44 €"
+    },
+    "monate": {
+     "starter": 31,
+     "pro": 16
+    },
+    "leads": {
+     "starter": 65,
+     "pro": 173
+    },
+    "beispiel": {
+     "projekt": "3 000 €",
+     "monat": "80 €",
+     "jahr1": "3 960 €"
+    }
+   }
+  },
+  {
+   "country": "US",
+   "plans": [
+    {
+     "key": "starter",
+     "amount_cents": 12900
+    }
+   ],
+   "out": null
+  }
+ ]
+}
