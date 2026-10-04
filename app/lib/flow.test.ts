@@ -286,7 +286,8 @@ test("problems: Fehler", () => {
   assert.ok(errs(flow([Q(), { id: "t", x: 0, y: 0, kind: "top", sort: "punkte", n: 0 }], [])).some((m) => m.includes("Anzahl")));
   assert.ok(errs(flow([Q(), { ...P, name: " " }], [])).some((m) => m.includes("Name")));
   assert.ok(errs(flow([Q(), { ...P, name: "x".repeat(61) }], [])).some((m) => m.includes("Name")));
-  assert.ok(errs(flow([Q(), { id: "a", x: 0, y: 0, kind: "agent", agent: 5, task: "leads" }], [])).some((m) => m.includes("Agent")));
+  assert.ok(errs(flow([Q(), { id: "a", x: 0, y: 0, kind: "agent", agent: 9, task: "leads" }], [])).some((m) => m.includes("Agent")));
+  assert.ok(!errs(flow([Q(), { id: "a", x: 0, y: 0, kind: "agent", agent: 8, task: "leads" }], [])).some((m) => m.includes("Agent 1 bis"))); // A1–A8;
   assert.ok(errs(flow([Q(), F("f", [{ f: "firma", op: "enthaelt", v: "x".repeat(201) }])], [])).some((m) => m.includes("200")));
   assert.ok(errs(flow([Q(), { id: "s", x: 0, y: 0, kind: "statistik", by: "angeschrieben" }], [])).some((m) => m.includes("Leads")));
   const big = flow([Q(), ...Array.from({ length: 40 }, (_, i) => F(`f${i}`, []))], []);

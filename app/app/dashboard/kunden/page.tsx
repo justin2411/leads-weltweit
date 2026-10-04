@@ -1,3 +1,4 @@
+import { Fold } from "../fold";
 import { COUNTRIES, CONFIG, SEGMENT, loadLive } from "@/lib/dashboard-data";
 import { PACKAGES } from "@/lib/owner-settings";
 import { approveFirstDelivery, createCustomer, setSubscriptionPaused } from "../control-actions";
@@ -36,6 +37,7 @@ export default async function Kunden({ searchParams }: { searchParams: SP }) {
         <Kpi value={next ? berlin(next) : "–"} label="nächste Lieferung" />
         <Kpi value={compact(open)} label="Freigabe offen" tip="vorbereitete Lieferungen, die noch freigegeben werden müssen" />
       </div>
+      <Fold id="kunden-liste" title="Kunden" sum={`${custs.length}`}>
       <div className="klist card">
         {custs.map((c) => {
           const s = live.subscriptions.filter((x) => x.customer_id === c.id);
@@ -70,9 +72,9 @@ export default async function Kunden({ searchParams }: { searchParams: SP }) {
         })}
         {custs.length === 0 && <div className="muted">noch keine Kunden</div>}
       </div>
+      </Fold>
       {contacts.length > 0 && (
-        <>
-          <h2 className="h2s">Kontaktanfragen</h2>
+        <Fold id="kunden-kontakte" title="Kontaktanfragen" sum={`${contacts.filter((r) => r.status === "new").length} neu · ${contacts.length}`}>
           <div className="klist card">
             {contacts.slice(0, 10).map((r) => (
               <div key={r.id} className="kcard static">
@@ -86,7 +88,7 @@ export default async function Kunden({ searchParams }: { searchParams: SP }) {
               </div>
             ))}
           </div>
-        </>
+        </Fold>
       )}
 
       <h2 className="h2s">Steuerung</h2>

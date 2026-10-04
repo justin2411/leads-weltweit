@@ -4,12 +4,12 @@
  * Aktionen der Kunden-Agenten (Inhaber 04.10.2026, docs/KUNDEN-AGENTEN.md). Jede Aktion: Sitzung prüfen (requireOwner),
  * Eingabe serverseitig prüfen, Agent aus der Datenbank laden (nie Formularwerten vertrauen), in owner_log protokollieren.
  * Server Actions sind von Next gegen CSRF geschützt. Hier wird nichts versendet und nichts gelöscht: ein Hinweis wird als
- * Notiz gespeichert und als Auftrag (agent_tasks kind „kunde“) an die stündliche Agenten-Runde gegeben.
+ * Notiz gespeichert und als Auftrag (agent_tasks kind „kunde“) an die Agenten-Runde (:08/:23/:38/:53) gegeben.
  */
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/supabase";
-import { MARKETS } from "@/lib/agents";
+import { MARKETS, agentStartLabel } from "@/lib/agents";
 import { KUNDE_TASK_AGENT, cleanNote, fullName, noteBrief, resumeStatus } from "@/lib/customer-agents";
 import { isUuid } from "@/lib/antworten";
 import { requireOwner } from "../actions";
@@ -57,7 +57,7 @@ export async function addAgentNote(f: FormData) {
   await log("kunden-agent:hinweis", a.id, { note, task: e2 ? null : task.agent });
   revalidatePath(LIST, "layout");
   if (e2) go(back, "fehler", `Hinweis gespeichert, Auftrag nicht angelegt: ${e2.message.slice(0, 120)}`);
-  go(back, "ok", "Hinweis gespeichert – Agent übernimmt ihn mit der nächsten Runde");
+  go(back, "ok", `Hinweis gespeichert – Agent startet um ${agentStartLabel(new Date())}`);
 }
 
 /** Pausieren (keine eigenen Mails, Lieferungen laufen weiter) oder fortsetzen. */

@@ -1,3 +1,4 @@
+import { Fold } from "../fold";
 import { COUNTRIES, CONFIG, SEGMENT, loadActivity, loadDaily, loadLive, loadOwnerSettings } from "@/lib/dashboard-data";
 import { isLive } from "@/lib/werke-live";
 import { planText } from "@/lib/versandzeit";
@@ -83,8 +84,7 @@ export default async function Versand({ searchParams }: { searchParams: SP }) {
       </div>
 
       <div className="vizgrid">
-        <section className="card tile">
-          <header className="th"><span title="Regel §5: bewertet ab 50 zugestellten Mails, entschieden 14 Tage nach der letzten Mail">Tests nach Regel §5</span></header>
+        <Fold id="versand-tests" className="card tile" head="th" title={<span title="Regel §5: bewertet ab 50 zugestellten Mails, entschieden 14 Tage nach der letzten Mail">Tests nach Regel §5</span>} sum={`${countries.length} Länder`}>
           <div className="klist">
             {countries.map((c) => {
               const f = funnel(live, null, SEGMENT, c);
@@ -98,9 +98,8 @@ export default async function Versand({ searchParams }: { searchParams: SP }) {
               );
             })}
           </div>
-        </section>
-        <section className="card tile">
-          <header className="th"><span title="Kapazität wächst je Postfach ab der ersten Mail">Postfächer</span></header>
+        </Fold>
+        <Fold id="versand-postfaecher" className="card tile" head="th" title={<span title="Kapazität wächst je Postfach ab der ersten Mail">Postfächer</span>} sum={`${boxes.length} · heute ${compact(boxes.reduce((a, x) => a + x.today, 0))}`}>
           <div className="klist">
             {boxes.map((x) => (
               <div key={x.box} className="kcard">
@@ -113,7 +112,7 @@ export default async function Versand({ searchParams }: { searchParams: SP }) {
           <div className="facts" title="Adressen; die Domain wird jeweils mitgesperrt. Sperren werden nie aufgehoben.">
             <span>Gesperrt <b>{Object.entries(live.suppression).map(([r, n]) => `${SUP[r] ?? r} ${compact(Number(n))}`).join(" · ") || "keine"}</b></span>
           </div>
-        </section>
+        </Fold>
       </div>
 
       <h2 className="h2s">Steuerung</h2>

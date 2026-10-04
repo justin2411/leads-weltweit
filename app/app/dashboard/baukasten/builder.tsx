@@ -26,6 +26,7 @@ import { activateFlow, archiveFlow, createPool, deactivateFlow, flowToAgent, pre
 import { AgentForm, type AgentState } from "./agents";
 import { BkEdgeView, BkNodeView, LiveCtx, fmt, outRows, type BkEdge, type BkNode, type Live } from "./nodes";
 import { Inspector, type InsCtx } from "./inspector";
+import { FlowChat, type Remote } from "./chat";
 import { Icon } from "@/app/icons";
 
 export type SavedFlow = { id: string; name: string; status: string; updated_at: string | null };
@@ -380,6 +381,56 @@ function Editor({ initial, flows, pools: poolsIn, onNav, notice }: {
     addNode(k, { x: p.x - 120, y: p.y - 40 });
   };
 
+  // ---------------------------------------------------------------- Baukasten-Chat: Live-Nachladen (Inhaber 04.10.2026)
+  // Der Chat meldet alle 20 s den Stand des Flows. Hat er sich geändert (JARVIS hat gebaut) und gibt es keine eigenen
+  // ungespeicherten Änderungen, wird neu geladen; sonst Hinweis „Chat hat geändert – neu laden“. Vorschläge (Master,
+  // angeschlossene Flows) landen als ungespeicherter Stand auf der Fläche – aktiv erst mit „Übernehmen“/„Speichern“.
+  const seen = useRef<string | null>(initial.version ?? null);
+  const firstPoll = useRef(true);
+  const [stale, setStale] = useState<Remote | null>(null);
+  const takeRemote = (r: Remote) => {
+    const work = r.pending ?? r.def;
+    if (!work) return;
+    setNodes(toRfNodes(work));
+    setEdges(toRfEdges(work));
+    setName(r.name);
+    setBase(r.def ? sig(r.name, r.def) : "");
+    setPristine(sig(r.name, work));
+    if (master) setVersion(r.version);
+    skipHist.current = true;
+    setStale(null);
+    setMsg({ good: true, text: r.pending ? `Vorschlag aus dem Chat${r.note ? `: ${r.note}` : ""} – prüfen und ${master ? "übernehmen" : "speichern"}` : "Vom Chat gebaut – neu geladen" });
+    setTimeout(() => { void rf.fitView({ padding: 0.2, maxZoom: 1, duration: 300 }); }, 60);
+  };
+  const onRemote = (r: Remote) => {
+    const first = firstPoll.current;
+    firstPoll.current = false;
+    const changed = r.version !== seen.current;
+    seen.current = r.version;
+    if (!changed && !(first && r.pending)) return;
+    const work = r.pending ?? r.def;
+    if (!work) return;
+    if (sig(r.name, work) === now) {
+      // gleicher Inhalt (z. B. eigenes Speichern): nur Stand übernehmen
+      if (master) setVersion(r.version);
+      if (r.def && !r.pending) setBase(sig(r.name, r.def));
+      setStale(null);
+      return;
+    }
+    if (!r.pending && r.def && sig(r.name, r.def) === base) {
+      // eigenes Speichern (gleicher Inhalt wie zuletzt gespeichert), danach weiter bearbeitet: kein Chat-Hinweis
+      if (master) setVersion(r.version);
+      setStale(null);
+      return;
+    }
+    if (touched) { setStale(r); return; }
+    takeRemote(r);
+  };
+  const reloadRemote = () => {
+    if (!stale || !window.confirm("Deine ungespeicherten Änderungen verwerfen und den Stand aus dem Chat laden?")) return;
+    takeRemote(stale);
+  };
+
   // ---------------------------------------------------------------- Laden, Speichern, Aktionen
   const replaceAll = (f: Flow, n: string, id: string | null, nav: string, url: string) => {
     setNodes(toRfNodes(f));
@@ -702,6 +753,7 @@ function Editor({ initial, flows, pools: poolsIn, onNav, notice }: {
         </div>
         <p className="bk-lock"><Icon name="schloss" size={14} /> {master ? "Master: Übernehmen gilt sofort. Die Pipeline macht die Freigabe nur strenger; Speicher füllen sich mit neuen Leads."
           : agentMode ? "Agent: läuft von selbst nach Auslöser. Nie Versand." : "Regeln machen die Freigabe nur strenger."} Versand, Sperrliste und die drei Prüfstufen bleiben immer an.</p>
+        <FlowChat flowId={flowId} kind={kind} proposal={master || active} stale={!!stale} onRemote={onRemote} onReload={reloadRemote} />
       </div>
     </LiveCtx.Provider>
   );

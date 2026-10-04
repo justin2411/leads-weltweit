@@ -1,3 +1,4 @@
+import { Fold } from "../fold";
 import { berlin } from "@/lib/dashboard-logic";
 import { db } from "@/lib/supabase";
 import { Icon } from "@/app/icons";
@@ -31,7 +32,7 @@ export async function Freigaben() {
   const evs: any[] = events.data ?? [];
   return (
     <>
-      <h2 className="h2s">Entwürfe{ds.length ? ` · ${ds.length}` : ""}</h2>
+      <Fold id="versand-entwuerfe" title="Entwürfe" sum={ds.length ? `${ds.length} offen` : "keine offen"}>
       <div className="klist card">
         {ds.map((m) => {
           const bad: string[] = m.check_errors ?? [];
@@ -61,6 +62,7 @@ export async function Freigaben() {
         })}
         {ds.length === 0 && <div className="muted">Keine offenen Entwürfe.</div>}
       </div>
+      </Fold>
 
       <div className="ctrls">
         <Ctrl title="Antwort erfassen" tip="Für Antworten, die nicht über die Postfächer kamen (z. B. Telefon). „Nicht mehr schreiben“ sperrt die Firma dauerhaft.">
@@ -77,8 +79,7 @@ export async function Freigaben() {
             <button className="primary">Speichern</button>
           </form>
         </Ctrl>
-        <section className="card ctrl evs">
-          <header className="th"><span title="Antworten, Proben, Abmeldungen, Beschwerden und Bounces – deutsche Zeit">Letzte Ereignisse</span></header>
+        <Fold id="versand-ereignisse" className="card ctrl evs" head="th" title={<span title="Antworten, Proben, Abmeldungen, Beschwerden und Bounces – deutsche Zeit">Letzte Ereignisse</span>} sum={`${evs.length}`}>
           <ul className="timeline">
             {evs.map((e) => {
               const [l, t] = EV[e.type] ?? [e.type, "t-grey"];
@@ -92,7 +93,7 @@ export async function Freigaben() {
             })}
             {evs.length === 0 && <li className="muted">Noch keine Ereignisse.</li>}
           </ul>
-        </section>
+        </Fold>
       </div>
     </>
   );

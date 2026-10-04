@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 PERSONAS = Path(__file__).resolve().parents[1] / "app" / "lib" / "personas.json"  # einzige Quelle (App + Skripte)
 PRO_WEEKLY = 50                 # Pro = bis 50 Leads/Woche; individuell ab dieser Menge bekommt auch einen Agenten
-TASK_AGENT = 9                  # agent_tasks.agent für alle Kunden-Aufträge (wie KUNDE_TASK_AGENT in der App; A1–A4 bleiben dem Inhaber)
+TASK_AGENT = 9                  # agent_tasks.agent für alle Kunden-Aufträge (wie KUNDE_TASK_AGENT in der App; A1–A8 bleiben dem Inhaber)
 TASK_BY = "Kunden-Agent"
 MIN_WORDS, MAX_WORDS = 40, 120
 MAX_SENTENCE_WORDS = 25

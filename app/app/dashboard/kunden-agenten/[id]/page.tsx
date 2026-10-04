@@ -3,6 +3,7 @@ import { Fragment, type CSSProperties } from "react";
 import { loadCustomerAgent } from "@/lib/customer-agents-data";
 import { avatarHue, fullName, goalChips, initials, kpiOf, roleDe, statusLabel } from "@/lib/customer-agents";
 import { isUuid } from "@/lib/antworten";
+import { agentStartLabel } from "@/lib/agents";
 import { COUNTRY_COLOR, berlin } from "@/lib/dashboard-logic";
 import { Icon } from "@/app/icons";
 import { requireOwner } from "../../actions";
@@ -16,7 +17,7 @@ type V = CSSProperties & Record<`--${string}`, string | number>;
 const WHO = { in: "Kunde", out: "Agent", notiz: "Inhaber → Agent" } as const;
 const MSG_STATUS: Record<string, string> = { entwurf: "Entwurf", fehler: "Fehler beim Senden" };
 const PROFILE: [string, string][] = [["zielgruppe", "Zielgruppe"], ["leistungen", "Leistungen"], ["ziele", "Ziele"], ["signale", "Signale"], ["regionen", "Regionen"], ["notizen", "Notizen"]];
-const TASK_STATUS: Record<string, string> = { offen: "wartet", laeuft: "läuft", fertig: "fertig", fehler: "Fehler", abgebrochen: "zurückgezogen" };
+const TASK_STATUS: Record<string, string> = { offen: "startet bald", laeuft: "läuft", fertig: "fertig", fehler: "Fehler", abgebrochen: "zurückgezogen" };
 
 const show = (v: unknown) => (Array.isArray(v) ? v.join(", ") : v && typeof v === "object" ? Object.values(v).join(", ") : String(v ?? "")).trim();
 
@@ -117,7 +118,7 @@ export default async function KundenAgent({ params }: { params: Promise<{ id: st
             <section className="ka-box">
               <h2><Icon name="agent" size={14} /> Aufträge</h2>
               <ul className="ka-tasks">{tasks.slice(0, 6).map((t) => (
-                <li key={t.id} title={t.result ?? t.brief}><span className="tt">{berlin(t.created_at)}</span><span className="tx">{TASK_STATUS[t.status] ?? t.status}{t.result ? ` · ${t.result}` : ""}</span></li>
+                <li key={t.id} title={t.result ?? t.brief}><span className="tt">{berlin(t.created_at)}</span><span className="tx">{t.status === "offen" ? `startet um ${agentStartLabel(new Date())}` : TASK_STATUS[t.status] ?? t.status}{t.result ? ` · ${t.result}` : ""}</span></li>
               ))}</ul>
             </section>
           )}

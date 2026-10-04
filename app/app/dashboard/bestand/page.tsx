@@ -1,3 +1,4 @@
+import { Fold } from "../fold";
 import { COUNTRIES, CONFIG, SEGMENT, canDispatch, loadOwnerSettings, loadRawStock, loadStock } from "@/lib/dashboard-data";
 import { WORKFLOWS } from "@/lib/owner-settings";
 import { dispatchWorkflow, toggleBuyerCountry } from "../control-actions";
@@ -49,12 +50,12 @@ export default async function Bestand({ searchParams }: { searchParams: SP }) {
         <Kpi value={compact(sum((c) => P(c, "call_only")))} label="nur Anruf/Brief" tip="zählt nicht als Käufer (keine Mail erlaubt)" />
       </div>
       <div className="vizgrid">
-        <section className="card tile"><header className="th"><span>Leads lieferbar je Land</span></header>
+        <Fold id="bestand-leads-land" className="card tile" head="th" title="Leads lieferbar je Land" sum={`${countries.length} Länder · ${compact(sum((c) => L(c, "new")))}`}>
           <Bars rows={countries.map((c) => ({ key: c, n: L(c, "new"), tip: `${c}: ${L(c, "new").toLocaleString("de-DE")} lieferbar · +${L24(c).toLocaleString("de-DE")} in 24 h` }))} />
-        </section>
-        <section className="card tile"><header className="th"><span>Käufer frei je Land</span></header>
+        </Fold>
+        <Fold id="bestand-kaeufer-land" className="card tile" head="th" title="Käufer frei je Land" sum={`${countries.length} Länder · ${compact(sum((c) => P(c, "ok", "unused")))}`}>
           <Bars rows={countries.map((c) => ({ key: c, n: P(c, "ok", "unused"), tip: `${c}: ${P(c, "ok", "unused").toLocaleString("de-DE")} frei von ${P(c, "ok").toLocaleString("de-DE")} mail-fähig` }))} />
-        </section>
+        </Fold>
       </div>
 
       <h2 className="h2s">Steuerung</h2>

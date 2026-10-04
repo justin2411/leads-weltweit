@@ -92,6 +92,14 @@ async function staleStock(flow: Flow): Promise<void> {
   if (error) console.error("baukasten sample_stock:", error.message); // Regel steht schon; Vorrat spätestens nach 26 h neu geprüft
 }
 
+/** Vorschlag aus dem Baukasten-Chat (flows.pending_def, scripts/flow_edit.py) wird mit dem Speichern/Übernehmen des
+ *  Inhabers erledigt – im selben Schreibvorgang leeren (sonst änderte sich updated_at ein zweites Mal). Nur wenn einer da
+ *  ist: die Spalten gibt es erst ab Migration 20261004140000. */
+async function pendingClear(id: string): Promise<Record<string, null>> {
+  const { data, error } = await db().from("flows").select("pending_def").eq("id", id).maybeSingle();
+  return !error && data && (data as { pending_def?: unknown }).pending_def ? { pending_def: null, pending_at: null, pending_note: null } : {};
+}
+
 // ------------------------------------------------------------------------------------------- Vorschau
 /** Stichprobe einer Quelle für die Auswertung im Browser (nur Vorschau-Spalten, keine Telefonnummern/Adressen). */
 export async function previewSource(q: unknown): Promise<Result<{ pack: RowPack; total: number; exact: boolean; at: string }>> {
@@ -120,7 +128,8 @@ export async function saveFlow(input: { id?: string | null; name: unknown; def: 
     notTest(cur);
     if (cur.status === "archiv") throw new InputError("archiviert – als neuen Flow speichern");
     if (cur.status === "aktiv") checkPipeline(flow);
-    const { data, error } = await db().from("flows").update({ name, def: flow }).eq("id", cur.id).eq("status", cur.status).select("id");
+    const clear = await pendingClear(cur.id);
+    const { data, error } = await db().from("flows").update({ name, def: flow, ...clear }).eq("id", cur.id).eq("status", cur.status).select("id");
     if (error) throw new Error(error.message);
     if (!data?.length) throw new InputError("inzwischen geändert – bitte neu laden");
     const released = cur.status === "aktiv" ? await releaseHeld(cur.id) : 0;
@@ -230,8 +239,9 @@ export async function saveMaster(input: { id?: string | null; version?: string |
     if (cur.kind !== "master") throw new InputError("keine Master-Pipeline");
     if (cur.status === "archiv") throw new InputError("archiviert – bitte neu laden");
     if (input.version && input.version !== cur.updated_at) throw new InputError("inzwischen geändert – bitte neu laden");
+    const clear = await pendingClear(cur.id);
     const { data, error } = await db().from("flows")
-      .update({ name, def: flow, status: "aktiv", activated_at: cur.status === "aktiv" ? cur.activated_at : now, snapshot })
+      .update({ name, def: flow, status: "aktiv", activated_at: cur.status === "aktiv" ? cur.activated_at : now, snapshot, ...clear })
       .eq("id", cur.id).eq("updated_at", cur.updated_at).select("updated_at");
     if (error) throw new Error(error.message);
     if (!data?.length) throw new InputError("inzwischen geändert – bitte neu laden");

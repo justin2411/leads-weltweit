@@ -1,3 +1,4 @@
+import { Fold } from "../fold";
 import Link from "next/link";
 import { COUNTRIES, CONFIG, SEGMENT, canDispatch, loadActivity, loadLive, loadOwnerSettings, loadStock } from "@/lib/dashboard-data";
 import { isLive } from "@/lib/werke-live";
@@ -49,8 +50,7 @@ export default async function Proben({ searchParams }: { searchParams: SP }) {
           stacks={st.map((r) => ({ country: r.key.split("/")[1], ready: r.ready, target: r.target }))} />
         <div className="fills">{st.map((r) => <Fill key={r.key} label={r.slug} ready={r.ready} target={r.target} tip={r.oldestH !== null ? `älteste ${Math.round(r.oldestH)} h` : "leer"} />)}</div>
       </section>
-      <section className="card tile">
-        <header className="th"><span title="Kunden-Leads = lieferbare Leads für Webagentur-Kunden · Käufer = mail-fähige Webagenturen">Je Land</span></header>
+      <Fold id="proben-je-land" className="card tile" head="th" title={<span title="Kunden-Leads = lieferbare Leads für Webagentur-Kunden · Käufer = mail-fähige Webagenturen">Je Land</span>} sum={`${countries.length} Länder`}>
         <div className="tbl"><table>
           <thead><tr><th>Land</th><th className="num">Kunden-Leads</th><th className="num">Käufer mail-fähig</th><th className="num" title="noch ohne Mail">frei</th><th className="num" title="Mail geschrieben und geprüft, wartet auf Versand">Mail bereit</th><th className="num" title="Mail wirklich gesendet">gesendet</th></tr></thead>
           <tbody>{countries.map((c) => (
@@ -59,7 +59,7 @@ export default async function Proben({ searchParams }: { searchParams: SP }) {
               <td className="num">{stock ? compact(P(c, "queued")) : "…"}</td><td className="num">{stock ? compact(P(c, "sent")) : "…"}</td></tr>
           ))}</tbody>
         </table></div>
-      </section>
+      </Fold>
 
       <h2 className="h2s">Steuerung</h2>
       <div className="ctrls">
@@ -110,6 +110,7 @@ export default async function Proben({ searchParams }: { searchParams: SP }) {
           </div>
         </Ctrl>
       </div>
+      <Fold id="proben-liste" title="Proben" sum={`${rows.length} · ${rows.filter((r) => r.status === "offen").length} offen`}>
       <div className="klist card">
         {rows.map((r) => (
           <div key={r.key} className="kcard static">
@@ -124,6 +125,7 @@ export default async function Proben({ searchParams }: { searchParams: SP }) {
         ))}
         {rows.length === 0 && <div className="muted">noch keine Proben</div>}
       </div>
+      </Fold>
     </div>
   );
 }

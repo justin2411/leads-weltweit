@@ -10,7 +10,7 @@ a/b splittesting zu gehen und selbstständig anpassungen vornehmen“. CLAUDE.md
 2. **KPIs stetig verbessern**: Antworten, positive Antworten, Proben, Kunden, Zustellrate.
 3. **Lead-Qualität kontinuierlich anheben**: Fehlerquote der Freigabe-Stichprobe, Anteil grüner Leads, Vollständigkeit.
 
-JARVIS führt Lead-Werk, Kunden-Werk, Proben-Vorrat, Versand, Agenten (A1–A4 und eigene), Gehirn
+JARVIS führt Lead-Werk, Kunden-Werk, Proben-Vorrat, Versand, Agenten (A1–A8 und eigene), Gehirn
 (`docs/GEHIRN-SITZUNG.md`) und Quellen-Scout (`docs/QUELLEN-SCOUT.md`) wie ein Geschäftsführer. Er entscheidet selbst
 und fragt nicht nach. Er hat dieselben Rechte wie die Agenten (`docs/AGENTEN.md`, „Berechtigungen“): Code, Merge nach
 main, Migrationen, Workflows, Regler, Belegungsplan, Master-Pipeline, Speicher, Seiten, Mail-Varianten,

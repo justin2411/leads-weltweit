@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { CHAT_BY, TaskError, agentBoard, chatTask, chatThread, formDefaults, freeAgent, inferTask, nextAgentRound, validateTask, type AgentTask } from "./agents.ts";
+import { CHAT_BY, TaskError, agentBoard, chatTask, chatThread, formDefaults, freeAgent, inferTask, agentStartLabel, nextAgentRun, nextAgentRound, validateTask, AGENT_COUNT, type AgentTask } from "./agents.ts";
 
 test("Auftrag prüfen", () => {
   assert.deepEqual(validateTask({ agent: "1", kind: "leads", market: "uk", brief: "  mehr  Leads " }), { agent: 1, kind: "leads", market: "UK", brief: "mehr Leads" });
@@ -14,7 +14,7 @@ test("Tafel je Agent", () => {
   const t = (agent: number, status: AgentTask["status"], created_at: string, finished_at: string | null = null) =>
     ({ id: `${agent}${status}${created_at}`, agent, status, created_at, finished_at, kind: "leads", market: null, brief: "x", progress: 0, step: null, result: null, numbers: {}, started_at: null }) as AgentTask;
   const b = agentBoard([t(1, "offen", "2"), t(1, "laeuft", "1"), t(2, "fertig", "1", "5"), t(2, "fertig", "2", "9"), t(3, "offen", "3"), t(3, "offen", "1")]);
-  assert.equal(b.length, 4);
+  assert.equal(b.length, 8);
   assert.equal(b[0].current?.status, "laeuft");
   assert.equal(b[0].queued, 1);
   assert.equal(b[1].current?.finished_at, "9");
@@ -90,7 +90,8 @@ test("Formular schlau vorbelegen", () => {
 test("Chat: freier Agent, Auftrag, Verlauf", () => {
   assert.equal(freeAgent([]), 1);
   assert.equal(freeAgent([mk({ agent: 1, status: "laeuft" }), mk({ agent: 2, status: "offen" }), mk({ agent: 3, status: "fertig" })]), 3);
-  assert.equal(freeAgent([1, 2, 3, 4].map((a) => mk({ agent: a }))), 1);
+  assert.equal(freeAgent([1, 2, 3, 4].map((a) => mk({ agent: a }))), 5); // A5–A8 frei
+  assert.equal(freeAgent([1, 2, 3, 4, 5, 6, 7, 8].map((a) => mk({ agent: a }))), 1); // alle belegt -> A1
   assert.deepEqual(chatTask("  Warum  keine Antworten in UK? ", []), { agent: 1, kind: "frage", market: "UK", brief: "Warum keine Antworten in UK?" });
   assert.equal(chatTask("Hallo JARVIS", []).kind, "frage"); // unklar: nur auswerten
   assert.equal(validateTask(chatTask("UK Käufer finden", [])).kind, "kaeufer");
@@ -105,6 +106,29 @@ test("Chat: freier Agent, Auftrag, Verlauf", () => {
   assert.match(th[1].reply, /40 %\) · prüfe/);
   assert.match(th[2].reply, /Agent 2/);
   assert.equal(chatThread([], 6).length, 0);
+});
+
+test("acht Agenten A1–A8, 9 bleibt den Kunden-Agenten", () => {
+  assert.equal(AGENT_COUNT, 8);
+  assert.equal(validateTask({ agent: "8", kind: "leads" }).agent, 8);
+  assert.throws(() => validateTask({ agent: "9", kind: "leads" }), TaskError);
+  assert.throws(() => validateTask({ agent: "0", kind: "leads" }), TaskError);
+  const busy = Array.from({ length: 7 }, (_, i) => mk({ id: String(i), agent: i + 1, status: "laeuft" }));
+  assert.equal(freeAgent(busy), 8);
+  assert.equal(freeAgent([...busy, mk({ agent: 8, status: "offen" })]), 1); // alle belegt -> A1
+});
+
+test("nextAgentRun: :08/:23/:38/:53 deutsche Zeit, auch über die Zeitumstellung", () => {
+  const n = (s: string) => nextAgentRun(new Date(s)).toISOString();
+  assert.equal(n("2026-10-04T07:52:30Z"), "2026-10-04T07:53:00.000Z");
+  assert.equal(n("2026-10-04T07:08:00Z"), "2026-10-04T07:23:00.000Z"); // genau jetzt: nächste
+  // Winterzeit (MEZ, UTC+1) und Umstellung 25.10.2026 03:00 MESZ -> 02:00 MEZ
+  assert.equal(n("2026-12-01T10:40:00Z"), "2026-12-01T10:53:00.000Z");
+  assert.equal(n("2026-10-25T00:55:00Z"), "2026-10-25T01:08:00.000Z");
+  assert.equal(agentStartLabel(new Date("2026-10-25T00:55:00Z")), "02:08"); // 02:55 MESZ -> 02:08 MEZ
+  assert.equal(agentStartLabel(new Date("2026-10-04T07:40:00Z")), "09:53"); // MESZ
+  assert.equal(agentStartLabel(new Date("2026-12-01T22:59:00Z")), "00:08"); // über Mitternacht
+  assert.equal(nextAgentRound, nextAgentRun);
 });
 
 test("nächste Agenten-Runde (:53) für „startet um HH:MM“", () => {

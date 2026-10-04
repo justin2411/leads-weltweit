@@ -4,7 +4,8 @@ import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, 
 import { berlin, berlinDay, brake, chain, compact, currencySign, greeting, mailboxes, monthly, nextWorkflowRun, onlySegment, realSubscriptions, sampleStock, stockSegment, BOX_MIN, COUNTRY_COLOR } from "@/lib/dashboard-logic";
 import { totals } from "@/lib/dashboard-periods";
 import { alarmTips, coach, hall, laneOf, laneStats, neckTask, rankTips, recommend, running, utilization, type Beat, type Tip } from "@/lib/leitstand";
-import { freeAgent, nextAgentRound } from "@/lib/agents";
+import { agentStartLabel, freeAgent } from "@/lib/agents";
+import { visibleTips } from "@/lib/tips";
 import { NECK_TO_STATION, ticker, type Edge, type Station, type StationId, type TickerItem } from "@/lib/fluss";
 import { effectiveLimit, slotCounts, werkOn, type LaneRegistry, type WerkKey } from "@/lib/owner-settings";
 import { START_WORKFLOWS, startState, type StartKey, type StartRequest } from "@/lib/start-queue";
@@ -20,6 +21,7 @@ import { Bays, LANE_COLOR, Reactor, UtilChart, laneColor } from "./hud";
 import { Pult } from "./pult";
 import { AgentDrawer, AgentRow } from "./agents";
 import { countCustomerAgents } from "@/lib/customer-agents-data";
+import { loadStartChat } from "./chat/start";
 import { AutopilotPanel } from "./autopilot";
 import { GateRings, GateSteps, Reasons, type GateView } from "./freigabe";
 import { JarvisView } from "./view";
@@ -55,9 +57,10 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
   const s = (typeof sp.s === "string" && IDS.includes(sp.s as StationId) ? sp.s : null) as StationId | null;
   const tab = (sp.t === "set" || sp.t === "check" ? sp.t : "info") as "info" | "set" | "check";
-  // Agenten: ?a=1…4 oder ?a=neu öffnet das Agenten-Fenster (statt einer Station)
+  // Agenten: ?a=1…8 oder ?a=neu öffnet das Agenten-Fenster (statt einer Station)
   const ag = typeof sp.a === "string" && /^([1-9]|neu)$/.test(sp.a) ? sp.a : null;
   const kaP = countCustomerAgents();
+  const chatP = loadStartChat();
   const stockP = loadStock();
   stockP.catch(() => {});
   const today = berlinDay(new Date());
@@ -177,8 +180,10 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   // JARVIS empfiehlt (Inhaber 04.10.2026): 2–3 Optimierungen mit fertigem Auftrag, dazu der Engpass der Kette
   const neckLabel = neck ? stations.find((x) => x.id === neck)!.label : null;
   const neckTip: Tip[] = neck && neckLabel ? [{ level: "gelb", title: `Engpass: ${neckLabel}`, text: "Hier verliert die Kette am meisten – Ursachen finden und kostenlose Verbesserungen vorschlagen.", href: base(neck), task: neckTask(neckLabel) }] : [];
-  const { recs, rest } = recommend([...tips, ...neckTip]);
-  const say = tips[0]?.level === "rot" ? tips[0].title : recs[0] ? `Mein Vorschlag: ${recs[0].title}` : tips[0]?.title ?? "alles im grünen Bereich";
+  // Per X ausgeblendete Hinweise (Inhaber 04.10.2026, lib/tips.ts): 7 Tage, rote Alarme höchstens 24 h
+  const shown = visibleTips([...tips, ...neckTip], own.dismissed_tips, now);
+  const { recs, rest } = recommend(shown);
+  const say = shown[0]?.level === "rot" ? shown[0].title : recs[0] ? `Mein Vorschlag: ${recs[0].title}` : shown[0]?.title ?? "alles im grünen Bereich";
   // Kern-Kennzahlen (Inhaber 04.10.2026: Kopf mit Umsatz, Kunden, Proben, Antworten); Versand und Engpass zeigt die Fluss-Karte
   const sent24 = st.reduce((a, r) => a + r.sent24, 0);
   const kpis: Kpi[] = [
@@ -189,7 +194,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
       ? { label: "Antworten offen", value: `${openReplies}`, sub: "jetzt beantworten", tone: "gold", href: "/dashboard/antworten", icon: "antworten" }
       : { label: "Antworten 7 Tage", value: `${w.replies}`, sub: `${w.positive} positiv`, tone: w.positive ? "green" : w.replies ? "cyan" : "grey", href: base("antworten"), icon: "antworten" },
   ];
-  const startAt = berlin(nextAgentRound(now), false);
+  const startAt = agentStartLabel(now);
   const gateView: GateView = {
     pct: gatePct, ok: gateOk, bad: gateBad, href: base("gate"), reasonsHref: `${base("gate")}&t=check&f=rot`,
     countries: countries.map((c) => { const r = sp7.find((x) => x.country === c); return { c, pct: r && r.candidates ? Math.round((r.green / r.candidates) * 1000) / 10 : null }; }),
@@ -368,7 +373,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   return (
     <JarvisView hello={hello} say={say} kpis={kpis} recs={recs} rest={rest} tipHref={tipHref} agent={freeAgent(agentTasks)}
       tasks={agentTasks} startAt={startAt} activeAgent={ag} stations={stations} edges={edges} activeStation={s} stationHref={href}
-      drawer={drawer} gate={gateView} ticker={ticker(items)} customerAgents={await kaP} />
+      drawer={drawer} gate={gateView} ticker={ticker(items)} customerAgents={await kaP} chat={await chatP} />
   );
 }
 
