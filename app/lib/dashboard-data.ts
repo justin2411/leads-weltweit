@@ -191,6 +191,18 @@ export async function loadDaily(from: string, to: string): Promise<DailyRow[]> {
   return rpc<DailyRow[]>("dashboard_daily", { p_segment: SEGMENT, p_from: from, p_to: to }, 10_000);
 }
 
+/** Prüfer-Werk der letzten 24 h je Land (View signalwerk.pruefer_kpi, 05.10.2026); Fehler → leer. */
+export type PrueferKpi = { country: string; geprueft_24h: number; bestanden_24h: number; gehalten_24h: number; qualitaet_pct: number | null; punkte_avg: number | null; letzter_lauf: string | null };
+export async function loadPrueferKpi(): Promise<PrueferKpi[]> {
+  try {
+    const { data, error } = await db().from("pruefer_kpi").select("*").abortSignal(AbortSignal.timeout(4000));
+    if (error) throw new Error(error.message);
+    return (data ?? []) as PrueferKpi[];
+  } catch {
+    return [];
+  }
+}
+
 /** KPI-Tageswerte (signalwerk.kpi_daily, seit 04.10.2026) der Zielgruppe zwischen from und to; Fehler/fehlende Tabelle → leer. */
 export async function loadKpiDaily(from: string, to: string): Promise<KpiRow[]> {
   try {
@@ -305,7 +317,7 @@ const runRowsCached = unstable_cache(
       const since = new Date(Date.now() - hours * 3_600_000).toISOString();
       const { data, error } = await db().from("run_stats")
         .select("werk, part, run_id, country, started_at, finished_at, candidates, processed, green, yellow, red")
-        .in("werk", ["lead-werk", "kunden-werk"]).gte("finished_at", since).order("finished_at", { ascending: false }).limit(5000)
+        .in("werk", ["lead-werk", "kunden-werk", "pruefer-werk"]).gte("finished_at", since).order("finished_at", { ascending: false }).limit(5000)
         .abortSignal(AbortSignal.timeout(6000));
       if (error) throw new Error(error.message);
       return (data ?? []) as import("@/lib/leitstand").RunRow[];
@@ -419,7 +431,7 @@ export async function loadAgentTasks(): Promise<import("@/lib/agents").AgentTask
 }
 
 /** Gestartete Belegung je Werk (werk_plan_log, geschrieben vom Plan-Job: Autopilot/Inhaber/Standard, Speicher-Bremse). */
-export type PlanLog = { werk: "lead-werk" | "kunden-werk"; at: string; mode: "autopilot" | "inhaber" | "standard"; bremse: "aus" | "hinweis" | "drossel" | "ohne-rohbestand" | "stopp";
+export type PlanLog = { werk: "lead-werk" | "kunden-werk" | "pruefer-werk"; at: string; mode: "autopilot" | "inhaber" | "standard"; bremse: "aus" | "hinweis" | "drossel" | "ohne-rohbestand" | "stopp";
   db_bytes: number | null; plan: Record<string, number>; reasons: Record<string, string> };
 export async function loadPlanLog(): Promise<Partial<Record<PlanLog["werk"], PlanLog>>> {
   try {

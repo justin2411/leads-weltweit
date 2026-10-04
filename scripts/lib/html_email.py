@@ -60,7 +60,7 @@ def _p(text: str) -> str:
 # Bausteine 1, 7, 8, 9, 10 wie EN/FR „1:1 nachbauen“)
 LOCAL = {
     "pt": {"page": "Ver meus 10 leads gratuitos", "plan": "Escolher meu plano", "secure": "Link seguro para {dom}",
-           "trust": "Certificado", "title": "Fundador",
+           "title": "Fundador",
            "tagline": "Leads exclusivos no momento certo para prestadores B2B",
            "steps": [("ENCONTRAMOS", "Um motivo para ligar"), ("VERIFICAMOS", "Cada contato"),
                      ("VOCÊ RECEBE", "Toda segunda-feira"), ("VOCÊ GANHA", "Novos clientes")],
@@ -70,7 +70,7 @@ LOCAL = {
                         "Podem enviar a amostra para este endereço.\n\nAtenciosamente\n"),
            "area_pre": " de ", "area_missing": "(por favor, complete)"},
     "es": {"page": "Ver mis 10 leads gratuitos", "plan": "Elegir mi plan", "secure": "Enlace seguro a {dom}",
-           "trust": "Certificado", "title": "Fundador",
+           "title": "Fundador",
            "tagline": "Leads exclusivos en el momento justo para empresas de servicios B2B",
            "steps": [("ENCONTRAMOS", "Un motivo para llamar"), ("VERIFICAMOS", "Cada contacto"),
                      ("USTED RECIBE", "Cada lunes"), ("USTED GANA", "Nuevos clientes")],
@@ -203,8 +203,7 @@ def render(body_text: str, footer_text: str, lang: str = "en", cta: str = "",
     head, tail = (parts[0], " " + parts[1]) if len(parts) == 2 else (company, "")
     wordmark = (f'<span style="font-family:{FONT};font-size:22px;font-weight:800;letter-spacing:-0.4px;color:#FFFFFF;">'
                 f'{html.escape(head)}<span style="color:{GOLD};">{html.escape(tail)}</span></span>')
-    # Vertrauens-Etikett im Kopf (Inhaber 02.10.2026: „nimm certified“, „doch das haben wir“ – „echtes Prüfsiegel“)
-    trust = LOCAL[lang]["trust"] if lang in LOCAL else "Certifié" if lang == "fr" else "Certified"
+    # Kein Siegel-Etikett im Kopf (Inhaber 05.10.2026: „✓ Certified“ ohne Aussteller entfernt, §7 ehrlich)
     footer_html = html.escape(footer_text.lstrip("—-").strip()).replace("\n", "<br>")
     link = lambda text, size=13, color=ORANGE: (f'<a href="{html.escape(url)}" style="font-family:{FONT};font-size:{size}px;'
                                                 f'color:{color};text-decoration:none;font-weight:600;">{html.escape(text)}</a>')
@@ -221,7 +220,6 @@ def render(body_text: str, footer_text: str, lang: str = "en", cta: str = "",
 <tr><td style="background:{NAVY};padding:22px 36px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
 <td>{wordmark}</td>
-<td align="right" style="white-space:nowrap;"><span style="display:inline-block;border:1px solid {GOLD};border-radius:99px;padding:5px 12px;font-family:{FONT};font-size:12px;font-weight:600;letter-spacing:0.3px;color:{GOLD};">&#10003; {html.escape(trust)}</span></td>
 </tr></table></td></tr>
 <tr><td style="height:3px;background:{GOLD};font-size:0;line-height:0;">&nbsp;</td></tr>
 <tr><td style="padding:32px 40px 8px 40px;">

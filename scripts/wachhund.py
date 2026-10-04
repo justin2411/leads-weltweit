@@ -69,6 +69,8 @@ JOBS = [
     # der nächste sofort (Wachhund prüft alle 15 min); min_gap verhindert Dauerschleifen bei sofortigem Absturz.
     {"wf": "lead-werk.yml", "kind": "continuous", "min_gap": 20, "cond": "lead_suche"},
     {"wf": "kunden-werk.yml", "kind": "continuous", "min_gap": 20, "cond": "kunden_suche"},
+    # Prüfer-Werk (Inhaber 05.10.2026: „4 dauerhafte Prüfer der Leads“): rund um die Uhr, ohne Datei-Schalter
+    {"wf": "pruefer-werk.yml", "kind": "continuous", "min_gap": 20},
 ]
 
 
@@ -76,7 +78,7 @@ JOBS = [
 # immer an (Abmeldungen per Antwort dürfen nie liegen bleiben; pausiert werden dort nur automatische Antworten).
 PAUSE_KEY = {"lead-werk.yml": "lead-werk", "kunden-werk.yml": "kunden-werk", "proben-vorrat.yml": "proben-vorrat",
              "kundenlieferung.yml": "kundenlieferung", "tagescheck.yml": "tagescheck", "agenten-werk.yml": "agenten",
-             "dauerpruefung.yml": "dauerpruefung"}
+             "dauerpruefung.yml": "dauerpruefung", "pruefer-werk.yml": "pruefer-werk"}
 
 
 # Direktstart aus dem Dashboard (gleiche Liste wie app/lib/start-queue.ts START_WORKFLOWS und die DB-Prüfung in

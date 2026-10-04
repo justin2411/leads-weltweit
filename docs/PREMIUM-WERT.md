@@ -104,5 +104,5 @@ Unser Premium-Kern: **frisch (≤ 14 Tage), Kombi-Anlass, Beleg mit Datum, gepr�
 - Eigene Zahl: ~500 Kaltmails, 0 echte Antworten (in der Datenbank noch nicht gegengeprüft). Erwartbar bei 3,43 % Schnitt ([Instantly](https://instantly.ai/cold-email-benchmark-report-2026)) wären ≈ 17. Zuerst Zustellung mit `seed_checks` prüfen, dann Botschaft.
 - Instantly: 58 % der Antworten auf die erste Mail, unter 80 Wörter am besten. Widerspruch zu §7 (70–120 Wörter) als A/B prüfen.
 - HTML-Mails: Hunter sieht mehr Bounces (kein kontrollierter Test). Kandidat für A/B „nur Text“.
-- „✓ Certified“ in `docs/KALTMAIL-VORLAGE.md` hat keinen Aussteller: Ehrlichkeitsfrage an den Inhaber.
+- „✓ Certified“ ohne Aussteller: am 05.10.2026 aus allen Mails und Vorlagen entfernt.
 - Abschlussquote pro Lead messen (Feedback-Werk), dann diese Datei mit echten Zahlen ersetzen.
