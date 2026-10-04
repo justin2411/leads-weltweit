@@ -6,7 +6,7 @@
  * Agent) gehen nur über ausdrückliche Knöpfe und nur für gespeicherte Flows ohne offene Änderungen.
  */
 import { useMemo, useState, type CSSProperties } from "react";
-import { KINDS } from "@/lib/agents";
+import { KINDS, OWNER_KINDS } from "@/lib/agents";
 import {
   FIELDS, GESAMTBESTAND, LIMITS, NODE_META, OPS, SORT_LABELS, countBy, evalCond, condProblem, fieldDef, fieldsFor,
   type Cond, type FieldType, type FlowKind, type FlowNode, type NodeRows, type Op, type Problem, type Row, type Source, type TopSort, type AgentTaskKind,
@@ -476,7 +476,7 @@ export function Inspector({ cfg, rows, source, pipe, probs, ctx, set, remove, cl
       form = (
         <>
           {sec("Agent", <Chips opts={[1, 2, 3, 4].map((n) => ({ v: n, label: `A${n}` }))} on={(v) => cfg.agent === v} pick={(v) => set({ ...cfg, agent: v })} />)}
-          {sec("Auftrag", <Chips opts={(Object.keys(KINDS) as AgentTaskKind[]).map((k) => ({ v: k, label: KINDS[k].label }))} on={(v) => cfg.task === v} pick={(v) => set({ ...cfg, task: v })} />)}
+          {sec("Auftrag", <Chips opts={(OWNER_KINDS as AgentTaskKind[]).map((k) => ({ v: k, label: KINDS[k].label }))} on={(v) => cfg.task === v} pick={(v) => set({ ...cfg, task: v })} />)}
           <button type="button" className="bk-btn gold" disabled={ctx.busy || !saved || !on} onClick={() => act.toAgent(cfg.id)}><Icon name="an-agent" size={15} />Auftrag erteilen</button>
           <p className="bk-hint">{!saved ? "Erst speichern." : !on ? "Erst einen Eingang verbinden." : `Agent ${cfg.agent} bekommt den Weg und ${fmt(input.length)} Treffer als Auftrag.`}</p>
         </>

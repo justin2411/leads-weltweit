@@ -8,7 +8,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Archive, ArrowDown, ArrowRight, ArrowUpWideNarrow, Ban, Bell, Blocks, Bot, Cable, ChartColumn, Check, ChevronDown, ChevronRight,
   ChevronUp, CircleAlert, CircleCheck, CircleX, ClipboardCheck, Clock, Contact, Copy, CopyX, Database, Delete, Download, Ellipsis,
-  Factory, Filter, Flag, Forward, Gift, Globe, GripVertical, HardDrive, Hourglass, House, Info, Lock, Magnet, Mail, MailX,
+  Factory, Filter, Flag, Forward, Gift, Globe, GripVertical, HardDrive, Headset, Hourglass, House, Info, Lock, Magnet, Mail, MailX,
   Menu, MessageSquare, Minus, MousePointerClick, Move, Package, Pause, Phone, Pickaxe, Play, Plus, Radar, RefreshCw, Repeat,
   Reply, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Split, Square, Star, Target, TrendingDown,
   TrendingUp, Trash2, TriangleAlert, Undo2, UserRound, Users, Workflow, X,
@@ -23,6 +23,8 @@ const ICONS = {
   kunden: Users,
   kunde: UserRound,
   kaeufer: Target,
+  // Kunden-Agent / persönlicher Ansprechpartner (Inhaber 04.10.2026)
+  ansprechpartner: Headset,
   proben: Gift,
   antworten: MessageSquare,
   antwort: Reply,
