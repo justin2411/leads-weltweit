@@ -170,9 +170,10 @@ def match_companies(cands: list[dict], log=print) -> dict[str, str]:
     return out
 
 
-def match_by_name(names: dict[str, str], log=print) -> dict[str, str]:
+def match_by_name(names: dict[str, str], log=print, with_sic: bool = False) -> dict:
     """{Kandidaten-ID: Firmenname} -> {Kandidaten-ID: Firmennummer}, nur wenn der Name (ohne Rechtsform) unter den
-    aktiven Firmen genau einmal vorkommt und mindestens zwei Wörter oder 8 Zeichen hat (eindeutig genug)."""
+    aktiven Firmen genau einmal vorkommt und mindestens zwei Wörter oder 8 Zeichen hat (eindeutig genug).
+    with_sic: {Kandidaten-ID: {"number", "sic": {SIC-Codes}}} (Namens-Pool im Kunden-Werk)."""
     want: dict[str, list[str]] = {}
     for sid, n in names.items():
         k = _key(n)
@@ -184,13 +185,19 @@ def match_by_name(names: dict[str, str], log=print) -> dict[str, str]:
         reader = csv.reader(io.TextIOWrapper(f, encoding="utf-8"))
         head = [h.strip() for h in next(reader)]
         ix = {h: i for i, h in enumerate(head)}
+        sic_ix = [i for h, i in ix.items() if h.startswith("SICCode")]
+        sics: dict[str, set] = {}
         for row in reader:
             if len(row) < len(head) or row[ix["CompanyStatus"]] != "Active":
                 continue
             k = _key(row[ix["CompanyName"]])
             if k in want:
                 found.setdefault(k, set()).add(row[ix["CompanyNumber"]])
+                if with_sic:
+                    sics[row[ix["CompanyNumber"]]] = {row[i].split(" ")[0] for i in sic_ix if row[i]}
     out = {sid: next(iter(nums)) for k, nums in found.items() if len(nums) == 1 for sid in want[k]}
+    if with_sic:
+        out = {sid: {"number": n, "sic": sics.get(n, set())} for sid, n in out.items()}
     log(f"UK: {len(out)} von {len(names)} Firmen über den Namen eindeutig im Register")
     return out
 

@@ -65,6 +65,7 @@ CATEGORIES = {
     "auto_insurance": "S4", "life_insurance": "S4", "home_and_rental_insurance": "S4",
     "carpet_cleaning": "S7", "window_washing": "S7", "pressure_washing": "S7",
     "investing": "S9", "investment_management_company": "S9",
+    "namens_pool_kreativstudio": "S2",  # = CREATIVE (keine Overture-Kategorie), nur UK, nur mit Companies-House-Branche (creative_fit), sonst verworfen
 }
 # Zweite Zielgruppe je Kategorie für Länder, in die die erste nicht mailen darf (Quellen-Scout 03.10.2026, R16b):
 # Werbe-/Marketingagenturen bleiben in UK/US eigener Test S12 (getrennt von S2 testbar, config/zielgruppen.yaml);
@@ -72,6 +73,28 @@ CATEGORIES = {
 # b2b_advertising_and_marketing_service/media_agency). Test: 95 Firmen -> 10 ok (FR 7/30, SE 3/15).
 SECOND = {"marketing_agency": "S2", "advertising_agency": "S2", "b2b_marketing_consultant": "S2"}
 SECOND_COUNTRIES = {"FR", "IE", "NL", "BE", "SE"}  # nicht UK/US: dort bleibt S12 eigener Test, auch im S2-Fokuslauf
+# Namens-Pool (JARVIS-Agent „Käufer finden · UK/FR“, 04.10.2026): Overture-Orte AUSSERHALB der Kategorien oben
+# (Kategorie leer oder allgemein wie professional_service/design_service), deren Name eindeutig eine Webagentur nennt.
+# Test 04.10.2026 (ohne Speichern): UK 10/150, FR 3/48 mail-fähig; Rest meist Einzelunternehmer (nur Anruf/Brief).
+NAME_WEB = {
+    "GB": r"(?i)\b(web ?design(er|ers|s)?|website(s| design| designer| development)?|web ?develop(er|ers|ment)|"
+          r"web (agency|studio|solutions|services)|digital (agency|studio)|seo)\b",
+    "FR": r"(?i)(\bweb ?design|\bagence (web|digitale|de communication|communication|marketing|webmarketing)|"
+          r"cr[ée]ation (de )?sites?|sites? (internet|web)|d[ée]veloppeu?r web|\bwebmaster|\bweb ?agency|\bgraphiste|"
+          r"\bstudio (web|graphique|de cr[ée]ation)|\bseo\b|\bwebmarketing)",
+}
+# UK zusätzlich Kreativ-/Designstudios, aber nur wenn Companies House sie eindeutig (Name) als aktive Firma mit
+# Branche Webentwicklung/Design führt (SIC 62012 Software-/Webentwicklung, 63120 Webportale, 74100 Design).
+# Test 04.10.2026: 100 -> 49 mail-fähig (alle Ltd laut Register).
+NAME_CREATIVE_GB = r"(?i)\b(web|websites?|digital|creative|creatives|design|designs|studio|branding|brand|graphics?|seo|media|pixel|online)\b"
+NAME_EXCLUDE = (r"(?i)(architect|interior|kitchen|furniture|landscap|garden|fashion|bridal|engineer|\bcad\b|3d|joinery|"
+                r"bathroom|print|sign|embroider|theatr|lighting|exhibition|product design|packaging|jewel|textile|tattoo|"
+                r"photograph|wedding|cake|floral|flower)")
+# allgemeine Overture-Kategorien (categories.primary), in denen solche Agenturen landen; leer zählt mit
+NAME_NEUTRAL = ("design_service", "professional_service", "corporate_or_business_office", "technical_service",
+                "b2b_office_and_professional_service", "b2b_service", "media_service")
+CREATIVE = "namens_pool_kreativstudio"  # vorläufige Kategorie, wird im Lauf über Companies House bestätigt oder verworfen
+CH_SIC_S2 = {"62012": "software_development", "63120": "software_development", "74100": "graphic_designer"}
 NOT_OWN_SITE = re.compile(r"(facebook|instagram|linkedin|twitter|x\.com|yelp|google|wix(site)?\.com|godaddysites|"
                           r"business\.site|yell\.com|pagesjaunes|bark\.com|checkatrade|houzz|tripadvisor|"
                           r"booking\.com|amazon|ebay|etsy|youtube|tiktok|linktr\.ee|square\.site)", re.I)
@@ -102,10 +125,53 @@ def build_pool() -> Path:
         confidence, operating_status
       FROM read_parquet({files})
       WHERE taxonomy.primary IN ({cats}) AND addresses[1].country IN ({listed}) AND len(websites) > 0
+      UNION ALL
+      SELECT id, names.primary AS name, websites, emails, phones,
+        addresses[1].freeform AS street, addresses[1].locality AS city, addresses[1].postcode AS postcode,
+        addresses[1].region AS region, addresses[1].country AS country, {name_category_sql()} AS category,
+        confidence, operating_status
+      FROM read_parquet({files})
+      WHERE {name_pool_where(cats)}
       ) TO '{POOL}' (FORMAT parquet)""")
     n = con.execute(f"SELECT count(*) FROM '{POOL}'").fetchone()[0]
     log(f"Kunden-Pool {rel}: {n} Firmen mit Website -> {POOL}")
     return POOL
+
+
+def _q(rx: str) -> str:
+    return rx.replace("'", "''")
+
+
+def name_pool_where(cats: str) -> str:
+    """Namens-Pool: Orte außerhalb unserer Kategorien mit Website, deren Name eine Webagentur nennt (GB/FR) bzw.
+    in GB ein Kreativ-/Designstudio (Bestätigung über Companies House im Lauf)."""
+    neutral = ", ".join(f"'{c}'" for c in NAME_NEUTRAL)
+    return (f"(taxonomy.primary IS NULL OR taxonomy.primary NOT IN ({cats})) AND len(websites) > 0 "
+            f"AND names.primary IS NOT NULL AND (categories.primary IS NULL OR categories.primary IN ({neutral})) AND ("
+            f"(addresses[1].country = 'GB' AND (regexp_matches(names.primary, '{_q(NAME_WEB['GB'])}') OR "
+            f"(regexp_matches(names.primary, '{_q(NAME_CREATIVE_GB)}') AND NOT regexp_matches(names.primary, '{_q(NAME_EXCLUDE)}'))))"
+            f" OR (addresses[1].country = 'FR' AND regexp_matches(names.primary, '{_q(NAME_WEB['FR'])}')))")
+
+
+def name_category_sql() -> str:
+    """Kategorie für den Namens-Pool: SEO -> internet_marketing_service, Webagentur -> web_designer, sonst CREATIVE."""
+    return (f"CASE WHEN regexp_matches(names.primary, '(?i)\\bseo\\b') THEN 'internet_marketing_service' "
+            f"WHEN regexp_matches(names.primary, '{_q(NAME_WEB['GB'])}') OR regexp_matches(names.primary, '{_q(NAME_WEB['FR'])}') "
+            f"THEN 'web_designer' ELSE '{CREATIVE}' END")
+
+
+def creative_fit(d: dict, hit: dict | None) -> bool:
+    """Kreativstudio aus dem Namens-Pool (nur UK): zählt nur mit eindeutigem Companies-House-Treffer, dessen Branche
+    (SIC) Web-/Softwareentwicklung oder Design ist; dann echte Kategorie setzen."""
+    if d.get("category") != CREATIVE:
+        return True
+    if d.get("country") != "UK" or not hit:
+        return False
+    for sic in sorted(hit.get("sic") or ()):
+        if sic in CH_SIC_S2:
+            d["category"] = CH_SIC_S2[sic]
+            return True
+    return False
 
 
 def segment_for(category: str, co: str | None, segments: dict[str, set[str]]) -> tuple[str | None, str | None]:
@@ -394,9 +460,14 @@ def cmd_run(args) -> int:
     uk = {d["domain"]: d["name"] for d in pool if d["country"] == "UK"}
     if uk:
         from extraktor.sources import uk_ch
-        nums = uk_ch.match_by_name(uk, log=log)
+        nums = uk_ch.match_by_name(uk, log=log, with_sic=True)
         for d in pool:
-            d["ch_number"] = nums.get(d["domain"])
+            hit = nums.get(d["domain"])
+            d["ch_number"] = hit["number"] if hit else None
+        before = len(pool)
+        pool = [d for d in pool if creative_fit(d, nums.get(d["domain"]))]
+        if before > len(pool):
+            log(f"Namens-Pool UK: {before - len(pool)} Kreativstudios ohne passende Companies-House-Branche ausgelassen")
     ie = {d["domain"]: d["name"] for d in pool if d["country"] == "IE"}
     if ie:
         from extraktor.sources import ie_cro
