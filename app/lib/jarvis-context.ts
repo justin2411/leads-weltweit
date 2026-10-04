@@ -296,7 +296,9 @@ export async function brainContext(s: Sources): Promise<string> {
     line("JARVIS hat umgesetzt (7 Tage)", done ? done.map(short) : NA),
     line("Gehirn-Routinen", routines.length ? routines.map((r) => ({ id: r.id, name: r.name, plan: scheduleLabel(r), aktiv: r.aktiv, naechster: whenLabel(nextRun(r, s.now), s.now), ergebnis: r.last_result })) : "keine"),
     line("Letzte Aufträge", tasks ? tasks.map((t) => ({ agent: t.agent, art: t.kind, status: t.status, von: fromBrain(t as { created_by?: string | null }) ? "Gehirn" : t.created_by ?? null,
-      grund: t.grund ?? null, auftrag: String(t.brief ?? "").slice(0, 100), ergebnis: t.result ? String(t.result).slice(0, 160) : null, gelernt: !!t.gelernt_at })) : NA),
+      grund: t.grund ?? null, auftrag: String(t.brief ?? "").slice(0, 100), ergebnis: t.result ? String(t.result).slice(0, 160) : null, gelernt: !!t.gelernt_at,
+      // Lernschleife (scripts/datenfluss.py wirkung): 72 h nach Abschluss Kennzahl vorher/nachher aus kpi_daily
+      wirkung: (t.wirkung as { bewertung?: string } | null)?.bewertung ?? null })) : NA),
   ].join("\n");
 }
 

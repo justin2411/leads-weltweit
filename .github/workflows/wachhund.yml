@@ -54,3 +54,17 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Datenfluss steht still (JARVIS-Plan C3): Station der Kette (Leads, Käufer, Proben, Mails, Antworten) länger als
+      # 3× ihr übliches Intervall ohne Zuwachs -> Vorschlag in JARVIS + Gehirn-Chat, höchstens 1× je 6 h je Station.
+      # Lernschleife (C4): fertige Aufträge leads/kaeufer/quelle nach 72 h vorher/nachher (kpi_daily) bewerten
+      # -> agent_tasks.wirkung + Wissensnotiz, höchstens 1×/h. Senden nichts; Fehler stoppen den Wachhund nie
+      - run: python scripts/datenfluss.py stillstand --apply
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      - run: python scripts/datenfluss.py wirkung --apply
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
