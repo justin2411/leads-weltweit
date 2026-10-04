@@ -27,9 +27,9 @@ revoke all on signalwerk.website_fixes from anon, authenticated;
 revoke delete, truncate on signalwerk.website_fixes from service_role;
 grant select, insert, update on signalwerk.website_fixes to service_role;
 
--- Schlüsselliste: alle bisherigen (Stand DB 04.10.2026) + website_autofix, website_ignored
+-- Schlüsselliste: alle bisherigen (Stand DB 04.10.2026, inkl. website_flow aus paralleler Arbeit) + website_autofix, website_ignored
 alter table signalwerk.owner_settings drop constraint if exists owner_settings_key_check;
 alter table signalwerk.owner_settings add constraint owner_settings_key_check check (key in (
   'send_paused', 'send_countries_off', 'send_country_limits', 'followup_enabled', 'followup_days',
   'sample_targets', 'sample_max_age_hours', 'buyer_countries_off', 'werke_paused', 'slot_plan', 'slot_autopilot',
-  'dismissed_tips', 'website_autofix', 'website_ignored'));
+  'dismissed_tips', 'website_flow', 'website_autofix', 'website_ignored'));
