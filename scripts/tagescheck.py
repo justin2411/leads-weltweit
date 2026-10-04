@@ -64,6 +64,7 @@ class Check:
     def __init__(self):
         self.rows: list[tuple[str, str, str, str]] = []  # (bereich, status, titel, detail)
         self.kurz: list[str] = []  # Kurzzeilen ohne Status (zählen nie für die Ampel)
+        self.geschaeft: list[str] = []  # Geschäftsbericht (Titel + 5 Zeilen, scripts/uebergaben.py bericht), nie ein Status
         self.ctx: dict = {}  # Ergebnisse einzelner Checks für die Kurzzeilen (z. B. Datenfluss)
 
     def add(self, area: str, status: str, title: str, detail: str = "") -> None:
@@ -566,6 +567,8 @@ def mail(c: Check) -> tuple[str, str]:
     else:
         subject = f"Tagescheck {NOW:%d.%m.}: alles läuft"
     lines = [f"Tagescheck vom {_berlin(NOW.isoformat())} Uhr (deutsche Zeit)", ""]
+    if c.geschaeft:  # Firma (Inhaber 04.10.2026): Geschäftsbericht ganz oben, je Zeile eine Zahl
+        lines += [c.geschaeft[0].upper()] + [f"  · {z}" for z in c.geschaeft[1:]] + [""]
     for title, rows in (("PROBLEME", fails), ("KURZ", None), ("HINWEISE", warns),
                         ("LÄUFT", [r for r in c.rows if r[1] == OK])):
         if rows is None:  # Kurzzeilen direkt nach den Problemen (Wichtigstes oben)
@@ -976,6 +979,19 @@ def collect_kurz(c: Check, db) -> None:
     line("Dauerprüfung", lambda: kurz_pruefung(db.rpc("pruef_kpi", {"p_days": 1})))
 
 
+def collect_geschaeft(c: Check, db) -> None:
+    """Geschäftsbericht der Firma (Titel ≤ 60 + 5 Zeilen, je 1 Zahl) aus signalwerk.firma_lage; Fehler = keine Zeilen."""
+    try:
+        import uebergaben
+        from lib.fokus import test_scope
+        segs, countries = test_scope()
+        b = uebergaben.bericht(db.rpc("firma_lage", {"p_segment": segs[0] if segs else "S2", "p_countries": countries}) or {})
+        c.geschaeft = [b["titel"], *b["zeilen"]]
+        print(f"[·] Geschäft   {' · '.join(c.geschaeft)}")
+    except Exception as e:  # noqa: BLE001 - der Bericht darf den Tagescheck nie stören
+        print(f"Geschäftsbericht nicht messbar: {type(e).__name__}: {str(e)[:120]}")
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--send", action="store_true")
@@ -1007,6 +1023,7 @@ def main(argv=None) -> int:
     c.guard("Datenfluss", lambda: check_datenfluss(c, db, apply=not args.dry_run))
     c.guard("Kennzahl", lambda: check_kpi(c, db))
     collect_kurz(c, db)  # nur Anzeige, nie ein Status
+    collect_geschaeft(c, db)  # nur Anzeige, nie ein Status
     subject, body = mail(c)
     print("\n" + subject)
     if args.dry_run:

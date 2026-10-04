@@ -39,6 +39,15 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Firma (Inhaber 04.10.2026): feste Übergaben zwischen den Bereichen (Qualität → Produktion, Vertrieb → Marketing,
+      # Kaufinteresse → Kundenservice + Push, Vorrat leer → Strategie, Spam → Qualität) als agent_tasks, je Schlüssel
+      # nur einmal (signalwerk.handoffs); token-frei, sendet keine Mails. Fehler stoppen den Wachhund nie
+      - run: python scripts/uebergaben.py pruefen --apply
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SITE_URL: ${{ vars.SITE_URL || 'https://www.nextgen-profit.de' }}   # Push über /api/push
       # A/B je Schritt (Inhaber 04.10.2026): laufende Tests auswerten – Gewinner (≥ 95 % und Mindestmenge) übernehmen,
       # nach 21 Tagen ohne Entscheidung stoppen; Meldung in decisions und im Gehirn-Chat. Fehler stoppen den Wachhund nie
       - run: python scripts/ab.py auswerten --apply
