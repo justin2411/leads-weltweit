@@ -39,7 +39,8 @@ DEFAULTS = {
 
 # Schaltbare Werke (Schlüssel wie im Dashboard). Sicherheitsfunktionen sind NIE schaltbar: Abmelde-Link, Resend-Webhook
 # (Bounce/Beschwerde-Sperre), Sperrliste, Notbremse und die Abmelde-Erkennung im Antwort-Assistenten.
-WERKE = ("lead-werk", "kunden-werk", "proben-vorrat", "antworten", "kundenlieferung", "tagescheck", "agenten")
+WERKE = ("lead-werk", "kunden-werk", "proben-vorrat", "antworten", "kundenlieferung", "tagescheck", "agenten",
+         "dauerpruefung")
 
 
 class Settings(dict):

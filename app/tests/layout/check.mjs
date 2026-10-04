@@ -14,6 +14,7 @@ export const PAGES = [
   "/dashboard/jarvis", "/dashboard/jarvis?s=versand", "/dashboard", "/dashboard/gehirn", "/dashboard/website", "/dashboard/baukasten",
   "/dashboard/regler", "/dashboard/speicher", "/dashboard/antworten", "/dashboard/versand", "/dashboard/kunden", "/dashboard/kunden-agenten",
   "/dashboard/bestand", "/dashboard/proben", "/dashboard/werke", "/dashboard/hilfe", "/dashboard/kontakte",
+  "/dashboard/recht", "/dashboard/betrieb", "/dashboard/protokoll",
 ];
 const TOL = 1;
 

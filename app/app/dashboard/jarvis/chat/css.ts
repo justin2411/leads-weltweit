@@ -186,6 +186,27 @@ export const SOFORT_CSS = `
 .jvs-done li{display:flex;flex-wrap:wrap;gap:2px 8px;font-size:13px;min-width:0}
 .jvs-done li b{font-weight:600;overflow-wrap:anywhere}.jvs-done li time{color:var(--soft);font-size:12px}
 .jvs-done li span{flex:1 0 100%;color:var(--soft);font-size:12.5px}
+/* „Braucht dich“: nur der Inhaber kann es erledigen (Farben aus lib/ampel.ts) */
+.bd{margin:0 0 14px;padding:12px;border:1px solid color-mix(in srgb,var(--amp-gold) 45%,transparent);border-radius:12px;background:color-mix(in srgb,var(--amp-gold) 5%,transparent);min-width:0}
+.bd h2{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--amp-gold)}
+.bd h2 em{font-style:normal;font-size:12px;line-height:20px;padding:0 8px;border-radius:10px;background:var(--amp-gold-bg);letter-spacing:0;text-transform:none}
+.bd-l{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.bd-i{--pc:var(--amp-gold);display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:rgba(4,12,26,.6);min-width:0}
+.bd-i.t-red{--pc:var(--amp-red)}.bd-i.t-grey{--pc:var(--amp-grey)}.bd-i.gone{opacity:.6}
+.bd-dot{flex:none;width:8px;height:8px;margin-top:8px;border-radius:50%;background:var(--pc);box-shadow:0 0 8px var(--pc)}
+.bd-d{flex:1;min-width:0}
+.bd-d summary{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;cursor:pointer;list-style:none;min-height:24px}
+.bd-d summary::-webkit-details-marker{display:none}
+.bd-d summary b{font-size:14.5px;color:#fff;overflow-wrap:anywhere}
+.bd-d summary span{font-size:13px;color:var(--soft);overflow-wrap:anywhere;flex:1 1 260px;min-width:0}
+.bd-d p{margin:6px 0;font-size:13px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--text)}
+.bd-d em{display:block;font-style:normal;font-size:12.5px;margin-top:4px}.bd-d em.ok{color:var(--amp-green)}.bd-d em.bad{color:var(--amp-red)}
+.bd-two{display:inline-flex;flex-wrap:wrap;gap:6px}
+.bd-btn{min-height:36px;padding:0 12px;border-radius:8px;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--text);font:inherit;font-size:13px}
+.bd-btn:hover{border-color:var(--pc)}
+.bd-go{flex:none;display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 10px;border-radius:8px;border:1px solid color-mix(in srgb,var(--pc) 50%,transparent);color:var(--pc)!important;font-size:12.5px;font-weight:600;text-decoration:none;white-space:nowrap}
+.bd-go:hover{background:color-mix(in srgb,var(--pc) 12%,transparent)}
+@media (max-width:520px){.bd-i{flex-wrap:wrap}.bd-d{flex:1 1 calc(100% - 18px)}.bd-go{margin-left:18px}}
 /* Schalter „Assistent | Gehirn“, goldener Gehirn-Chat (Inhaber 04.10.2026) */
 .jc-modebar{display:flex;align-items:center;min-width:0;padding:8px 12px;border-bottom:1px solid var(--line);background:rgba(9,24,48,.35)}
 .jc-mode{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}

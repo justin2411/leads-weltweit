@@ -313,3 +313,94 @@ class EmptyLaneTests(unittest.TestCase):
                                                "prev_reasons": {"web-fr": W.EMPTY_WHY + " (3 Läufe ohne Kandidaten)"}})
         self.assertEqual(res["plan"]["web-fr"], 1)
         self.assertTrue(res["reasons"]["web-fr"].startswith(W.EMPTY_WHY))
+
+
+class VorrangResetTests(unittest.TestCase):
+    """Zurücksetzen einer Linie und Länder-Vorrang UK/FR vor US (Inhaber 04.10.2026)."""
+
+    def setUp(self):
+        import datetime as dt
+        self.reg = W.load_lines()
+        self.lead = {"web-us": 13, "web-uk": 8, "web-fr": 10, "web-north": 1, "s2-us": 3, "s2-neu": 1,
+                     "s1-us-lca": 0, "s1-uk-tender": 0}
+        self.now = dt.datetime(2026, 10, 4, 15, 0, tzinfo=dt.timezone.utc)
+        self.rule = {"segment": "S2", "vor": ["UK", "FR"], "nach": ["US"], "faktor": 3.0}
+
+    def old_empty_rows(self):
+        rows = []
+        for lane in ("web-uk", "web-fr"):
+            rows += _rows(lane, "r1", 1, 1, 0, start="2026-10-04T14:00:00+00:00")
+            rows += _rows(lane, "r0", 1, 1, 0, start="2026-10-04T13:00:00+00:00")
+        return rows
+
+    def test_reset_ignores_old_empty_runs_and_previous_empty_reason(self):
+        prev = {k: W.EMPTY_WHY + " (7 Läufe ohne Kandidaten)" for k in ("web-uk", "web-fr")}
+        reset = {"web-uk": "2026-10-04T14:40:00+00:00", "web-fr": "2026-10-04T14:40:00+00:00"}
+        st = W.lane_stats(self.old_empty_rows(), "lead-werk", reset=reset)
+        self.assertNotIn("web-uk", st)
+        plan, why = W.autopilot(self.reg, "lead-werk", self.lead, st, other={"kunden": 1}, prev=prev, now=self.now,
+                                reset=reset)
+        self.assertEqual((plan["web-uk"], plan["web-fr"]), (8, 10))
+        self.assertIn("zurückgesetzt", why["web-uk"])
+        # ohne Zurücksetzen bleiben sie leer
+        plan, _ = W.autopilot(self.reg, "lead-werk", self.lead, W.lane_stats(self.old_empty_rows(), "lead-werk"),
+                              other={"kunden": 1}, prev=prev, now=self.now)
+        self.assertEqual((plan["web-uk"], plan["web-fr"]), (0, 0))
+        # neue Läufe nach dem Zeitpunkt zählen wieder
+        new = _rows("web-uk", "r2", 8, 40, 500, 30, start="2026-10-04T14:45:00+00:00")
+        st = W.lane_stats(self.old_empty_rows() + new, "lead-werk", reset=reset)
+        self.assertEqual(st["web-uk"]["parts"], 8)
+
+    def test_vorrang_moves_us_slots_to_uk_fr(self):
+        stock = {"US": 446356, "UK": 91920, "FR": 68970}
+        reset = {"web-uk": "2026-10-04T14:40:00+00:00", "web-fr": "2026-10-04T14:40:00+00:00"}
+        plan, why = W.autopilot(self.reg, "lead-werk", self.lead, {}, other={"kunden": 1}, now=self.now,
+                                reset=reset, vorrang=self.rule, stock=stock)
+        self.assertEqual((plan["web-us"], plan["s2-us"]), (1, 1))
+        self.assertIn("Länder-Vorrang", why["web-us"])
+        self.assertGreater(plan["web-uk"], 8)
+        self.assertGreater(plan["web-fr"], 10)
+        self.assertLessEqual(plan["web-uk"], 21)
+        self.assertLessEqual(sum(plan.values()), 38 - 1)
+        self.assertEqual(plan["web-north"], 1)  # andere Länder unberührt
+        # US unter 3× -> kein Vorrang
+        plan, why = W.autopilot(self.reg, "lead-werk", self.lead, {}, other={"kunden": 1}, now=self.now,
+                                vorrang=self.rule, stock={"US": 200000, "UK": 91920, "FR": 68970})
+        self.assertEqual(plan["web-us"], 13)
+        self.assertNotIn("Vorrang", why["web-us"])
+
+    def test_vorrang_off_when_uk_fr_empty_or_rule_missing(self):
+        stock = {"US": 446356, "UK": 91920, "FR": 68970}
+        prev = {k: W.EMPTY_WHY + " (7 Läufe ohne Kandidaten)" for k in ("web-uk", "web-fr")}
+        plan, _ = W.autopilot(self.reg, "lead-werk", self.lead, W.lane_stats(self.old_empty_rows(), "lead-werk"),
+                              other={"kunden": 1}, prev=prev, now=self.now, vorrang=self.rule, stock=stock)
+        self.assertGreater(plan["web-us"], 1)  # UK/FR leer -> US behält Plätze
+        self.assertEqual(W.vorrang_active(None, stock), (False, ""))
+        self.assertFalse(W.vorrang_active(self.rule, {"US": 5})[0])
+
+    def test_decide_passes_reset_and_vorrang(self):
+        res = W.decide(self.reg, "lead-werk", {
+            "settings": {"slot_plan": dict(self.lead, kunden=1),
+                         "lane_reset": {"web-uk": "2026-10-04T14:40:00+00:00"}},
+            "rows": self.old_empty_rows(), "prev_reasons": {"web-uk": W.EMPTY_WHY + " (7 Läufe)"},
+            "vorrang": self.rule, "stock": {"US": 446356, "UK": 91920, "FR": 68970}})
+        self.assertGreaterEqual(res["plan"]["web-uk"], 8)
+        self.assertEqual(res["plan"]["web-us"], 1)
+
+    def test_vorrang_lanes_are_kept_when_sum_is_cut(self):
+        # Lauf 04.10.2026: web-north lief zuletzt mit 6 Teilen, web-fr frisch zurückgesetzt ohne Laufzahlen
+        lead = {"web-us": 1, "web-uk": 15, "web-fr": 17, "web-north": 1, "s2-us": 1, "s2-neu": 1,
+                "s1-us-lca": 0, "s1-uk-tender": 0}
+        rows = _rows("web-north", "r1", 6, 46, 7000, 480, start="2026-10-04T14:50:00+00:00")
+        rows += _rows("s2-neu", "r1", 4, 37, 2000, 300, start="2026-10-04T14:50:00+00:00")
+        reset = {"web-uk": "2026-10-04T14:36:00+00:00", "web-fr": "2026-10-04T14:36:00+00:00"}
+        plan, why = W.autopilot(self.reg, "lead-werk", lead, W.lane_stats(rows, "lead-werk"), other={"kunden": 1},
+                                now=self.now, reset=reset, vorrang=self.rule,
+                                stock={"US": 446356, "UK": 91920, "FR": 68970})
+        self.assertEqual((plan["web-uk"], plan["web-fr"]), (15, 17))
+        self.assertLessEqual(sum(plan.values()), 37)
+        self.assertGreaterEqual(plan["web-north"], 1)
+
+    def test_fokus_config_has_rule(self):
+        from lib.fokus import laender_vorrang
+        self.assertEqual(laender_vorrang(), self.rule)

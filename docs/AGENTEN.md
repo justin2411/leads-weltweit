@@ -305,6 +305,55 @@ beantworten** – der Inhaber ist schon informiert (Mail + Push); der Agent best
 sich persönlich meldet. Drei-Stufen-Freigabe, „jeder Lead einmal pro Abo“ und die Freigabe der ersten Lieferung
 durch den Inhaber bleiben unberührt. Mails nur an den Kunden selbst, nie an Dritte, nie Kaltmails.
 
+## Prüf-Agenten (ohne Tokens)
+
+Inhaber 04.10.2026: „Qualitätsagenten bitte mehrere, auch die die Kunden-Leads immer nochmal dauerhaft überprüfen …
+effizient, nicht extrem viele unnötige Tokens“. Die Dauerprüfung ist reines Python (`scripts/dauerpruefung.py`,
+`.github/workflows/dauerpruefung.yml`, stündlich zur Minute 47, Wachhund startet nach 2 h nach, Schalter
+`werke_paused.dauerpruefung`). Budget und Abstände in `config/pruefung.yaml`.
+
+- **Lead-Prüfer:** je Lauf fällige Nachprüfungen, dann noch nie geprüfte vollständige Leads (Kunden-Märkte, dann
+  S2 US/UK/FR …) durch die unveränderte Drei-Stufen-Freigabe. Bestanden: `pruef_anzahl` + 1, nächste Prüfung nach
+  1 → 3 → 7 → 14 → 30 Tagen, `qualitaet_score` steigt (Prüfungen + Alter). Durchgefallen: `held` + Grund in `lead_checks`.
+  Auch Probe, Vorrat, Lieferung und Stichprobe zählen in den Wert (`release_gate.persist`).
+- **Käufer-Prüfer:** mail-fähige Käufer mit derselben Prüfung wie `outreach.py check` (nur strenger: `call_only`/
+  `rejected`, nie zurück auf ok); MX, Website und Bounce-Historie nur als `pruef_hinweis` markiert.
+- **Auswahl:** Proben-Vorrat und Lieferungen nehmen öfter geprüfte Leads zuerst; alle Regeln (genau 10 Firmen, Land,
+  einmal pro Abo, Freigabe) bleiben.
+- **Für LLM-Agenten:** nie einzelne Leads nachprüfen lassen. Nur die Tageszusammenfassung lesen:
+  `python scripts/dauerpruefung.py zusammenfassung` bzw. `select signalwerk.pruef_kpi(1)` (Summen, Bestand, Ausreißer
+  > 5 % Abweichung) oder die Sicht `signalwerk.pruef_stats_daily`. Handeln nur bei Ausreißern (Quelle/Land ansehen).
+
+## Fach-Agenten („Team“ in JARVIS)
+
+Inhaber 04.10.2026: „Welche agenten machen sinn bei gehirn testing und bei leadqualität. Bau die bitte direkt in jarvis
+alle rein“. Feste Fach-Agenten als Daten in `signalwerk.agent_roles` (Rolle, Ziel-Kennzahl mit Ampel-Schwellen und
+Richtung, Takt, Werkzeuge, Grenzen, Auftragstext, verknüpfte Gehirn-Routine). Tests nur S2 × US/UK/FR.
+
+| Fach-Agent | Gruppe | Takt (deutsche Zeit) | Ziel-Kennzahl | Aufgabe |
+|---|---|---|---|---|
+| Test-Agent | Gehirn-Testing | täglich 18:20 (Routine „A/B-Prüfung Webagenturen“) | Antwortquote | A/B-Tests (`ab.py`): Entwürfe starten, Mindestmenge/≥ 95 % prüfen, Gewinner erklären und übernehmen, nächsten Test am Engpass – eine Sache je Test |
+| Trichter-Agent | Gehirn-Testing | täglich 07:40 („KPI-Diagnose mit Engpass“) | Engpass-Quote (schwächster reifer Schritt, `cohort_funnel`) | Kohorten messen, schwächsten Schritt nennen, dem Test-Agenten genau einen Testgegenstand geben (Wissen `trichter-engpass`) |
+| Qualitäts-Agent | Lead-Qualität | täglich 07:50 | Fehlerquote Freigabe-Stichprobe | nur Ausreißer und Tageszusammenfassung der Prüfer (`pruef_kpi`), harte Bounces je Quelle; Ursache in Quelle/Feld beheben |
+| Lead-Prüfer | Lead-Qualität | Dauerlauf `dauerpruefung.yml` | bestanden % | token-frei (Abschnitt oben) |
+| Käufer-Prüfer | Lead-Qualität | Dauerlauf `dauerpruefung.yml` | bestanden % | token-frei (Abschnitt oben) |
+| Zustell-Agent | Lead-Qualität | täglich 06:30 | Bounce-Quote | `deliverability_daily`, Bounce-Klassen je Postfach, Spam-Signale; Maßnahme nur innerhalb der Limits vorschlagen |
+| Quellen-Agent | Lead-Qualität | täglich 12:10 | grüne Leads je Platz-Stunde US/UK/FR | Linien mit „Vorrat leer“, schwache Quellen verbessern, neue Quellen nach Scout-Regeln |
+
+**Effizienz-Regel (Inhaber 04.10.2026):** LLM-Agenten nur für Auswertung und Entscheidung; Massenprüfung immer
+token-frei (Python-Workflow). Kein LLM-Agent prüft einzelne Leads oder Käufer.
+
+**Ablauf:** Die verknüpfte Routine legt wie jede Gehirn-Routine einen Auftrag an (`brain_routines.py faellig`), aber
+mit `agent_tasks.rolle` und dem Text aus `agent_roles.auftrag` („Fach-Agent … (N min): …“). In JARVIS hat jede Karte
+„Jetzt beauftragen“ (höchstens ein offener Auftrag je Fach-Agent). Der Agent bearbeitet ihn wie einen Gehirn-Auftrag:
+Ergebnis ≤ 300 Zeichen mit Zahlen, Wissen per `brain_knowledge.py add`. 72 h nach Abschluss misst
+`datenfluss.py wirkung` die Ziel-Kennzahl vorher/nachher (`agent_role_kpi`, Richtung beachtet) → `agent_tasks.wirkung`,
+auf der Karte als „Wirkung“. Kennzahl, Ampel und 7-Tage-Trend der Karte kommen aus `signalwerk.agent_role_kpi()`,
+der Trichter aus `cohort_funnel`, die Prüfer aus `pruef_kpi()` und `pruef_bestand()`.
+
+**Grenzen aller Fach-Agenten:** nie Versand einschalten, nie Sperrliste, Notbremse, Abmeldung oder Drei-Stufen-Freigabe
+lockern (auch nicht als Testvariante), keine Kosten, nichts löschen.
+
 ## Berechtigungen (Inhaber 04.10.2026: „gib den agents wirklich jede berechtigung“)
 
 Agenten dürfen alles selbst machen, was die Hauptsitzung darf – ohne Rückfrage:

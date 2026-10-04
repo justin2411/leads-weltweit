@@ -6,6 +6,10 @@ Lieferungen) und die geplanten GitHub-Läufe. Ergebnis als Mail an OWNER_EMAIL; 
 
   python scripts/tagescheck.py            # nur ausgeben
   python scripts/tagescheck.py --send     # zusätzlich Mail an den Inhaber
+  python scripts/tagescheck.py --dry-run  # Probelauf: Mail nur ausgeben, nichts senden, keine Meldungen schreiben
+
+Kurzzeilen (04.10.2026, Block „KURZ“ direkt nach den Problemen, je 1 Zeile): Zustellbarkeit, Stillstand, Vorrat leer,
+Wochen-Trichter, Prognose 30 Tage, Gehirn. Nur Anzeige – sie ändern nie die Ampel der Mail.
 """
 from __future__ import annotations
 
@@ -39,6 +43,7 @@ WORKFLOWS = {
     "kundenlieferung.yml": ("Kundenlieferung (montags)", 24 * 7 + 3),
     "wachhund.yml": ("Wachhund (startet ausgefallene Läufe nach)", 3),
     "agenten-werk.yml": ("Agenten-Werk (Speicher + eigene Agenten)", 3),
+    "dauerpruefung.yml": ("Dauerprüfung (Prüf-Agenten ohne Tokens)", 3),
     "zustellbarkeit.yml": ("Zustellbarkeits-Check (06:10)", 27),
 }
 
@@ -58,6 +63,8 @@ def ago(ts: str) -> float:
 class Check:
     def __init__(self):
         self.rows: list[tuple[str, str, str, str]] = []  # (bereich, status, titel, detail)
+        self.kurz: list[str] = []  # Kurzzeilen ohne Status (zählen nie für die Ampel)
+        self.ctx: dict = {}  # Ergebnisse einzelner Checks für die Kurzzeilen (z. B. Datenfluss)
 
     def add(self, area: str, status: str, title: str, detail: str = "") -> None:
         self.rows.append((area, status, title, detail))
@@ -225,11 +232,23 @@ def check_mailboxes(c: Check, db) -> None:
             c.add("Postfach", OK, f"{b}: Bounce-Quote {rate:.1%}", detail)
 
 
+def _resting(m: dict, pairs: set) -> bool:
+    """Mail einer ruhenden Branche: Versand nur Fokus-Tests (config/fokus.yaml nur_fokus, Inhaber 02.10.2026) – sie
+    bleibt freigegeben liegen, das ist Absicht und kein Fehler (gleiche Regel wie outreach.py send)."""
+    seg = (m.get("experiments") or {}).get("segment_id")
+    country = (m.get("prospects") or {}).get("country")
+    return bool(pairs) and (seg, country) not in pairs
+
+
 def check_followups(c: Check, db) -> None:
     from followups import NEGATIVE
+    from lib.fokus import focus_only, focus_pairs
+    pairs = set(focus_pairs()) if focus_only() else set()
+    emb = "experiments(segment_id),prospects(country)"
     cutoff = (NOW - dt.timedelta(days=5)).isoformat()   # 4 Tage + 1 Tag Puffer für den Automatiklauf
     initial = db.select_all("messages", {"status": "eq.sent", "kind": "eq.initial", "sent_at": f"lte.{cutoff}",
-                                         "select": "id,prospect_id,to_email"})
+                                         "select": f"id,prospect_id,to_email,{emb}"})
+    initial = [m for m in initial if not _resting(m, pairs)]
     if not initial:
         c.add("Nachfass", OK, "Noch keine Erstmail älter als 5 Tage")
         return
@@ -243,14 +262,19 @@ def check_followups(c: Check, db) -> None:
     missing = [m for m in initial if m["prospect_id"] not in followed and m["id"] not in neg]
     # gesperrte Adressen bekommen zu Recht keine Nachfassmail
     missing = [m for m in missing if not db.rpc("is_suppressed", {"p_email": m["to_email"]})]
-    stuck = db.select("messages", {"kind": "neq.initial", "status": "eq.approved", "approved_at": f"lte.{(NOW - dt.timedelta(hours=30)).isoformat()}",
-                                   "select": "id"})
+    stuck_all = db.select_all("messages", {"kind": "neq.initial", "status": "eq.approved",
+                                           "approved_at": f"lte.{(NOW - dt.timedelta(hours=30)).isoformat()}",
+                                           "select": f"id,{emb}"})
+    stuck = [m for m in stuck_all if not _resting(m, pairs)]
+    resting = len(stuck_all) - len(stuck)
+    note = f"{resting} Nachfassmails ruhender Branchen warten (nur Fokus-Tests werden gesendet)" if resting else ""
     if missing:
         c.add("Nachfass", FAIL, f"{len(missing)} Nachfassmails fehlen", "Erstmail > 5 Tage, keine Antwort, keine Nachfassmail")
     elif stuck:
-        c.add("Nachfass", FAIL, f"{len(stuck)} Nachfassmails seit über 30 h nicht gesendet")
+        c.add("Nachfass", FAIL, f"{len(stuck)} Nachfassmails seit über 30 h nicht gesendet", note)
     else:
-        c.add("Nachfass", OK, "Nachfassmails vollständig", f"{len(initial)} Erstmails älter als 5 Tage geprüft")
+        c.add("Nachfass", OK, "Nachfassmails vollständig",
+              f"{len(initial)} Erstmails älter als 5 Tage geprüft" + (f"; {note}" if note else ""))
 
 
 def check_replies(c: Check, db) -> None:
@@ -300,12 +324,20 @@ def check_unsubscribes(c: Check, db) -> None:
 def check_web_samples(c: Check, db) -> None:
     old = (NOW - dt.timedelta(hours=2)).isoformat()
     waiting = db.select("sample_requests", {"status": "eq.new", "created_at": f"lte.{old}",
-                                            "select": "company_name,created_at,segment_id,country"})
-    if waiting:
-        names = ", ".join(f"{w['company_name']} ({w['segment_id']}/{w['country']}, seit {ago(w['created_at']):.0f} h)"
-                          for w in waiting[:5])
-        c.add("Proben", FAIL, f"{len(waiting)} Probe-Anfragen von der Website unbeantwortet", names)
-    else:
+                                            "select": "company_name,created_at,segment_id,country,note"})
+    # Noch nicht lieferbar (keine 10 vollständigen Leads) und Inhaber schon informiert (web_samples.py): Inhaber-Punkt,
+    # kein Fehler der Pipeline – gelb. Rot nur, wenn eine Anfrage liegt, ohne dass jemand Bescheid weiß.
+    from web_samples import NOTIFIED
+    known = [w for w in waiting if NOTIFIED in (w.get("note") or "")]
+    open_ = [w for w in waiting if w not in known]
+    fmt = lambda ws: ", ".join(f"{w['company_name']} ({w['segment_id']}/{w['country']}, seit {ago(w['created_at']):.0f} h)"  # noqa: E731
+                               for w in ws[:5])
+    if open_:
+        c.add("Proben", FAIL, f"{len(open_)} Probe-Anfragen von der Website unbeantwortet", fmt(open_))
+    if known:
+        c.add("Proben", WARN, f"{len(known)} Probe-Anfragen warten auf Leads (Inhaber informiert)",
+              fmt(known) + " – noch keine 10 vollständigen Leads; persönlich melden")
+    if not waiting:
         c.add("Proben", OK, "Alle Probe-Anfragen von der Website beantwortet")
 
 
@@ -533,8 +565,13 @@ def mail(c: Check) -> tuple[str, str]:
         subject = f"Tagescheck {NOW:%d.%m.}: läuft, {len(warns)} Hinweis(e)"
     else:
         subject = f"Tagescheck {NOW:%d.%m.}: alles läuft"
-    lines = [f"Tagescheck vom {NOW:%d.%m.%Y, %H:%M} UTC", ""]
-    for title, rows in (("PROBLEME", fails), ("HINWEISE", warns), ("LÄUFT", [r for r in c.rows if r[1] == OK])):
+    lines = [f"Tagescheck vom {_berlin(NOW.isoformat())} Uhr (deutsche Zeit)", ""]
+    for title, rows in (("PROBLEME", fails), ("KURZ", None), ("HINWEISE", warns),
+                        ("LÄUFT", [r for r in c.rows if r[1] == OK])):
+        if rows is None:  # Kurzzeilen direkt nach den Problemen (Wichtigstes oben)
+            if c.kurz:
+                lines += ["KURZ"] + [f"  · {k}" for k in c.kurz] + [""]
+            continue
         if rows:
             lines.append(title)
             lines += [f"  {ICON[s]} {a}: {t}" + (f"\n      {d}" if d else "") for a, s, t, d in rows]
@@ -713,11 +750,13 @@ def check_kpi(c: Check, db) -> None:
               f" → {k['samples']} Proben → {k['customers']} Kunden → {k['revenue']:.0f} {k['currency']}/Monat")
 
 
-def check_datenfluss(c: Check, db) -> None:
+def check_datenfluss(c: Check, db, apply: bool = True) -> None:
     """Datenfluss steht still (JARVIS-Plan C3): je Station der Kette Zuwachs im üblichen Intervall × 3? Meldet zugleich
     in JARVIS (Vorschlag) und im Gehirn-Chat – höchstens 1× je 6 h je Station (scripts/datenfluss.py)."""
     import datenfluss
-    for a in datenfluss.stillstand(db, apply=True):
+    res = datenfluss.stillstand(db, apply=apply)
+    c.ctx["datenfluss"] = res
+    for a in res:
         if a["stufe"] in ("gelb", "rot"):
             c.add("Datenfluss", FAIL if a["stufe"] == "rot" else WARN, f"{a['name']} steht still",
                   f"seit {a['still_h']:.0f} h kein Zuwachs, üblich alle {a['intervall_h']:g} h")
@@ -727,9 +766,220 @@ def check_datenfluss(c: Check, db) -> None:
             c.add("Datenfluss", OK, f"{a['name']}: {a.get('grund', '')}")
 
 
+# ---------------------------------------------------------------------------
+# Kurzzeilen (04.10.2026): je höchstens 1 Zeile, nur Anzeige. Sie setzen nie einen Status – die Ampel der Mail
+# bleibt bei den Regeln der Checks oben. Fehlt eine Zahl, steht „nicht messbar“ statt eines Fehlers.
+KURZ_MAX = 160
+GEHIRN_STILL_H = 3  # länger ohne Lebenszeichen der stündlichen Gehirn-Routine -> „still seit … h“
+
+
+def _pct(x: float) -> str:
+    return f"{x * 100:.1f} %".replace(".", ",")
+
+
+def _cut(text: str) -> str:
+    return text if len(text) <= KURZ_MAX else text[:KURZ_MAX - 1] + "…"
+
+
+def kurz_zustellung(row: dict | None, stats: dict | None) -> str:
+    """Ampel aus deliverability_daily, Bounce-Quote 7 T und Bounce-Klassen (bounce_stats)."""
+    if not row:
+        out = "Zustellbarkeit: noch kein Check"
+    else:
+        word = {"gruen": "grün", "gelb": "gelb", "rot": "rot"}.get(row.get("status"), str(row.get("status")))
+        day = str(row.get("day") or "")
+        out = f"Zustellbarkeit {word}" + (f" ({day[8:10]}.{day[5:7]}.)" if len(day) >= 10 else "")
+        b = row.get("bounces") or {}
+        sent = int(b.get("gesendet_7t") or 0)
+        if sent:
+            n = int(b.get("bounces_7t") or 0)
+            q = b.get("quote")
+            out += f" · Bounce 7 T {_pct(float(q) if q is not None else n / sent)} ({n}/{sent})"
+    if isinstance(stats, dict) and stats.get("gesendet"):
+        k = stats.get("klassen") or {}
+        out += f" · hart {k.get('hart', 0)}, weich {k.get('weich', 0)}, Richtlinie {k.get('richtlinie', 0)}"
+    return _cut(out)
+
+
+def kurz_stillstand(res: list[dict] | None) -> str:
+    """Nur gelbe/rote Stationen aus datenfluss.stillstand (rote zuerst)."""
+    if res is None:
+        return "Stillstand: nicht messbar"
+    bad = sorted((a for a in res if a.get("stufe") in ("rot", "gelb")), key=lambda a: a["stufe"] != "rot")
+    if not bad:
+        return "Stillstand: keiner"
+    return _cut("Stillstand: " + " · ".join(
+        f"{a['name']} {a['stufe']} ({a.get('still_h') or 0:.0f} h, üblich {a.get('intervall_h') or 0:g} h)"
+        for a in bad))
+
+
+def kurz_trichter(rows: list[dict] | None, week: str, countries: list[str]) -> str:
+    """Trichter der aktuellen Versandwoche je Land (cohort_funnel): gesendet→zugestellt→Antwort."""
+    kw = f"KW {int(week.split('W')[-1])}" if "W" in week else week
+    if rows is None:
+        return f"Trichter {kw}: nicht messbar"
+    by = {r.get("country"): r for r in rows if r.get("week") == week}
+    parts = [f"{co} {int(r.get('sent') or 0)}→{int(r.get('delivered') or 0)}→{int(r.get('replies') or 0)}"
+             if (r := by.get(co)) else f"{co} 0" for co in countries]
+    return _cut(f"Trichter {kw} (gesendet→zugestellt→Antwort): " + (" · ".join(parts) or "kein Testland"))
+
+
+def kurz_prognose(ps: list[dict] | None) -> str:
+    """Prognose 30 Tage je Land (scripts/prognose.py); ohne Antworten ehrlich „noch keine Basis“."""
+    if ps is None:
+        return "Prognose 30 T: nicht messbar"
+    from lib.prognose import fmt_range
+    parts = []
+    for p in ps:
+        co, cur = p.get("country"), p.get("currency") or ""
+        if p.get("basis") == "kein_versand":
+            part = f"{co} kein Versand"
+        elif p.get("basis") == "keine" or not p.get("antworten30"):
+            part = f"{co} noch keine Basis"
+        elif p.get("umsatz30"):
+            part = f"{co} {fmt_range(p['umsatz30'], ' ' + cur)}/Mon."
+        elif p.get("proben30"):
+            part = f"{co} ~{fmt_range(p['proben30'])} Proben"
+        else:
+            part = f"{co} ~{fmt_range(p['antworten30'])} Antworten"
+        parts.append(part + (" (wenig Daten)" if p.get("basis") == "duenn" else ""))
+    return _cut("Prognose 30 T: " + (" · ".join(parts) if parts else "kein Testland"))
+
+
+def lane_labels() -> dict[str, str]:
+    """Namen der Linien (app/lib/werk-linien.json), z. B. web-uk -> „Website-Prüfung UK“."""
+    import json
+    try:
+        lanes = json.loads((ROOT / "app" / "lib" / "werk-linien.json").read_text(encoding="utf-8")).get("lanes") or []
+    except (OSError, ValueError):
+        return {}
+    return {x["id"]: x.get("label") or x["id"] for x in lanes if x.get("id")}
+
+
+def kurz_vorrat(rows: list[dict] | None, labels: dict[str, str]) -> str:
+    """Lead-Linien, die der letzte Plan-Lauf des Lead-Werks als „Vorrat leer“ führt (werk_plan_log.reasons)."""
+    from werk_plan import EMPTY_WHY
+    rows = sorted((r for r in rows or [] if r.get("werk") == "lead-werk"), key=lambda r: r.get("at") or "", reverse=True)
+    if not rows:
+        return "Vorrat leer: noch kein Plan-Lauf"
+    reasons = rows[0].get("reasons") if isinstance(rows[0].get("reasons"), dict) else {}
+    empty = [labels.get(k, k) for k, why in sorted(reasons.items()) if str(why or "").startswith(EMPTY_WHY)]
+    return _cut("Vorrat leer: " + (", ".join(empty) if empty else "keine Lead-Linie"))
+
+
+def kurz_gehirn(enabled: bool | None, last_at: list[str | None], note_at: str | None, tasks: list[dict],
+                now: dt.datetime | None = None) -> str:
+    """Gehirn aktiv? Letztes Lebenszeichen (Gehirn-Chat, Notizen), letzte Tagesnotiz, Agenten-Aufträge in 24 h."""
+    now = now or NOW
+    if enabled is False:
+        head = "Gehirn: abgeschaltet (Not-Aus)"
+    else:
+        ts = [dt.datetime.fromisoformat(x.replace("Z", "+00:00")) for x in last_at if x]
+        if not ts:
+            head = "Gehirn: kein Lebenszeichen"
+        else:
+            last = max(ts)
+            h = (now - last).total_seconds() / 3600
+            head = (f"Gehirn: still seit {h:.0f} h" if h > GEHIRN_STILL_H else "Gehirn: aktiv") \
+                + f", zuletzt {_berlin(last.isoformat())}"
+    note = f"Tagesnotiz {_berlin(note_at)[:6]}" if note_at else "keine Tagesnotiz"
+    done = sum(t.get("status") == "fertig" for t in tasks)
+    return _cut(f"{head} · {note} · {len(tasks)} Agenten-Aufträge in 24 h ({done} fertig)")
+
+
+def kurz_pruefung(kpi: dict | None) -> str:
+    """Dauerprüfung (Prüf-Agenten ohne Tokens) der letzten 24 h: geprüft, gehalten, Ausreißer."""
+    if not kpi or not kpi.get("letzter_lauf"):
+        return "Dauerprüfung: noch kein Lauf"
+    tage = kpi.get("tage") or []
+    last = max((t.get("tag") for t in tage), default=None)
+    agg: dict[str, list[int]] = {}
+    for t in tage:
+        if t.get("tag") == last:
+            a = agg.setdefault(t.get("art") or "lead", [0, 0])
+            a[0] += int(t.get("geprueft") or 0)
+            a[1] += int(t.get("geprueft") or 0) - int(t.get("bestanden") or 0)
+    parts = [f"{'Leads' if k == 'lead' else 'Käufer'} {v[0]} geprüft, {v[1]} abweichend" for k, v in sorted(agg.items(), reverse=True)]
+    out = kpi.get("ausreisser") or []
+    tail = f" · Ausreißer: {', '.join(str(o.get('segment_id')) + '/' + str(o.get('country')) for o in out[:3])}" if out else ""
+    return _cut("Dauerprüfung heute: " + ("; ".join(parts) or "nichts geprüft") + tail)
+
+
+def collect_kurz(c: Check, db) -> None:
+    """Füllt c.kurz in fester Reihenfolge (Wichtigstes oben). Jede Zeile einzeln abgesichert, nie ein Status."""
+    from zoneinfo import ZoneInfo
+
+    def line(label: str, fn) -> None:
+        try:
+            text = fn()
+        except Exception as e:  # noqa: BLE001 - eine fehlende Zahl darf die Mail nie rot machen
+            print(f"Kurzzeile {label} nicht messbar: {type(e).__name__}: {str(e)[:120]}")
+            text = f"{label}: nicht messbar"
+        c.kurz.append(text)
+        print(f"[·] Kurz       {text}")
+
+    def zustellung():
+        rows = db.select("deliverability_daily", {"select": "day,status,bounces", "order": "day.desc", "limit": "1"})
+        try:
+            st = db.rpc("bounce_stats", {"p_days": 7})
+        except Exception:  # noqa: BLE001 - Klassen fehlen dann nur
+            st = None
+        return kurz_zustellung(rows[0] if rows else None, st)
+
+    def trichter():
+        from lib.fokus import test_scope
+        segs, countries = test_scope()
+        week = NOW.astimezone(ZoneInfo("Europe/Berlin")).strftime("%G-W%V")
+        parts = []
+        for seg in segs:
+            rows = db.rpc("cohort_funnel", {"p_segment": seg, "p_countries": countries, "p_weeks": 1})
+            t = kurz_trichter(rows if isinstance(rows, list) else None, week, countries)
+            parts.append(t if len(segs) == 1 else f"{seg} {t}")
+        return _cut(" | ".join(parts) or "Trichter: kein Testland")
+
+    def prognose():
+        import prognose as pg
+        from lib.fokus import test_scope
+        segs, countries = test_scope()
+        return _cut(" | ".join(kurz_prognose(pg.load(db, s, countries)) for s in segs) or "Prognose 30 T: kein Testland")
+
+    def vorrat():
+        rows = db.select("werk_plan_log", {"select": "werk,at,reasons", "werk": "eq.lead-werk",
+                                           "order": "at.desc", "limit": "1"})
+        return kurz_vorrat(rows, lane_labels())
+
+    def gehirn():
+        st = db.select("settings", {"select": "brain_enabled", "limit": "1"})
+        enabled = st[0].get("brain_enabled") if st else None
+        last = []
+        sess = db.select("jarvis_sessions", {"select": "id", "kind": "eq.gehirn"})
+        if sess:
+            m = db.select("jarvis_messages", {"select": "created_at", "role": "eq.jarvis",
+                                              "session_id": f"in.({','.join(str(s['id']) for s in sess)})",
+                                              "order": "created_at.desc", "limit": "1"})
+            last.append(m[0]["created_at"] if m else None)
+        d = db.select("decisions", {"select": "created_at", "type": "in.(daily_note,note)",
+                                    "order": "created_at.desc", "limit": "1"})
+        last.append(d[0]["created_at"] if d else None)
+        note = db.select("decisions", {"select": "created_at", "type": "eq.daily_note",
+                                       "order": "created_at.desc", "limit": "1"})
+        since = (NOW - dt.timedelta(hours=24)).isoformat()
+        tasks = db.select("agent_tasks", {"select": "id,status", "created_at": f"gte.{since}"})
+        return kurz_gehirn(enabled, last, note[0]["created_at"] if note else None, tasks)
+
+    line("Zustellbarkeit", zustellung)
+    line("Stillstand", lambda: kurz_stillstand(c.ctx.get("datenfluss")))
+    line("Vorrat leer", vorrat)
+    line("Trichter", trichter)
+    line("Prognose 30 T", prognose)
+    line("Gehirn", gehirn)
+    line("Dauerprüfung", lambda: kurz_pruefung(db.rpc("pruef_kpi", {"p_days": 1})))
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--send", action="store_true")
+    ap.add_argument("--dry-run", action="store_true", help="Probelauf: keine Mail, keine Datenfluss-Meldungen")
     args = ap.parse_args(argv)
     from lib.db import DB
     from lib.owner_settings import stop_if_paused
@@ -754,10 +1004,14 @@ def main(argv=None) -> int:
     c.guard("Kunden", lambda: check_customers(c, db))
     c.guard("Werke", lambda: check_werke(c, db))
     c.guard("Werke", lambda: check_plan(c, db))
-    c.guard("Datenfluss", lambda: check_datenfluss(c, db))
+    c.guard("Datenfluss", lambda: check_datenfluss(c, db, apply=not args.dry_run))
     c.guard("Kennzahl", lambda: check_kpi(c, db))
+    collect_kurz(c, db)  # nur Anzeige, nie ein Status
     subject, body = mail(c)
     print("\n" + subject)
+    if args.dry_run:
+        print("\n" + body + "\n\nProbelauf: keine Mail gesendet.")
+        return 1 if c.worst == FAIL else 0
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
         Path(summary).write_text(f"## {subject}\n\n```\n{body}\n```\n", encoding="utf-8")

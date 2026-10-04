@@ -139,7 +139,418 @@
   },
   "rules": {
     "signal_max_age_days": 45,
-    "sample_size": 10
+    "sample_size": 10,
+    "signatur_exklusiv": [
+      "scripts/drafts.py",
+      "scripts/lib/html_email.py",
+      "app/lib/welcome-mail.ts"
+    ]
+  },
+  "recht": {
+    "laender": {
+      "US": {
+        "allowed": true,
+        "never": false,
+        "generic_only": false,
+        "company_forms_only": false,
+        "daily_limit": 110,
+        "open_question": null
+      },
+      "UK": {
+        "allowed": true,
+        "never": false,
+        "generic_only": true,
+        "company_forms_only": true,
+        "daily_limit": 100,
+        "open_question": "Reicht bei Ltd-Firmen eine allgemeine Adresse aus, oder ist eine Interessenabwägung nach UK GDPR zu dokumentieren? Vom Inhaber bestätigen lassen."
+      },
+      "IE": {
+        "allowed": false,
+        "never": true,
+        "generic_only": true,
+        "company_forms_only": true,
+        "daily_limit": 30,
+        "open_question": null
+      },
+      "NL": {
+        "allowed": false,
+        "never": false,
+        "generic_only": true,
+        "company_forms_only": true,
+        "daily_limit": 30,
+        "open_question": null
+      },
+      "SE": {
+        "allowed": true,
+        "never": false,
+        "generic_only": true,
+        "company_forms_only": true,
+        "daily_limit": 20,
+        "open_question": null
+      },
+      "BE": {
+        "allowed": false,
+        "never": true,
+        "generic_only": true,
+        "company_forms_only": true,
+        "daily_limit": 15,
+        "open_question": "Sprache: Englisch oder Französisch/Niederländisch je Region? Vor Start klären."
+      },
+      "FR": {
+        "allowed": true,
+        "never": false,
+        "generic_only": false,
+        "company_forms_only": false,
+        "daily_limit": 60,
+        "open_question": null
+      },
+      "DE": {
+        "allowed": false,
+        "never": false,
+        "generic_only": false,
+        "company_forms_only": false,
+        "daily_limit": null,
+        "open_question": null
+      },
+      "AT": {
+        "allowed": false,
+        "never": false,
+        "generic_only": false,
+        "company_forms_only": false,
+        "daily_limit": null,
+        "open_question": null
+      },
+      "CH": {
+        "allowed": false,
+        "never": false,
+        "generic_only": false,
+        "company_forms_only": false,
+        "daily_limit": null,
+        "open_question": null
+      },
+      "IT": {
+        "allowed": false,
+        "never": false,
+        "generic_only": false,
+        "company_forms_only": false,
+        "daily_limit": null,
+        "open_question": null
+      },
+      "ES": {
+        "allowed": false,
+        "never": false,
+        "generic_only": false,
+        "company_forms_only": false,
+        "daily_limit": null,
+        "open_question": null
+      },
+      "PL": {
+        "allowed": false,
+        "never": false,
+        "generic_only": false,
+        "company_forms_only": false,
+        "daily_limit": null,
+        "open_question": null
+      },
+      "DK": {
+        "allowed": false,
+        "never": false,
+        "generic_only": false,
+        "company_forms_only": false,
+        "daily_limit": null,
+        "open_question": null
+      },
+      "ZA": {
+        "allowed": false,
+        "never": false,
+        "generic_only": false,
+        "company_forms_only": false,
+        "daily_limit": null,
+        "open_question": null
+      },
+      "FI": {
+        "allowed": true,
+        "never": false,
+        "generic_only": true,
+        "company_forms_only": true,
+        "daily_limit": 15,
+        "open_question": null
+      },
+      "SG": {
+        "allowed": true,
+        "never": false,
+        "generic_only": true,
+        "company_forms_only": false,
+        "daily_limit": 15,
+        "open_question": null
+      },
+      "HK": {
+        "allowed": true,
+        "never": false,
+        "generic_only": true,
+        "company_forms_only": false,
+        "daily_limit": 15,
+        "open_question": null
+      },
+      "BR": {
+        "allowed": true,
+        "never": false,
+        "generic_only": true,
+        "company_forms_only": false,
+        "daily_limit": 15,
+        "open_question": null
+      },
+      "MX": {
+        "allowed": true,
+        "never": false,
+        "generic_only": true,
+        "company_forms_only": false,
+        "daily_limit": 15,
+        "open_question": null
+      },
+      "AU": {
+        "allowed": false,
+        "never": true,
+        "generic_only": false,
+        "company_forms_only": false,
+        "daily_limit": null,
+        "open_question": null
+      },
+      "NZ": {
+        "allowed": false,
+        "never": false,
+        "generic_only": false,
+        "company_forms_only": false,
+        "daily_limit": null,
+        "open_question": null
+      },
+      "CA": {
+        "allowed": false,
+        "never": true,
+        "generic_only": false,
+        "company_forms_only": false,
+        "daily_limit": null,
+        "open_question": null
+      },
+      "JP": {
+        "allowed": false,
+        "never": false,
+        "generic_only": false,
+        "company_forms_only": false,
+        "daily_limit": null,
+        "open_question": null
+      },
+      "IL": {
+        "allowed": false,
+        "never": true,
+        "generic_only": false,
+        "company_forms_only": false,
+        "daily_limit": null,
+        "open_question": null
+      }
+    },
+    "tabelle": [
+      {
+        "code": "US",
+        "name": "USA",
+        "einzel": "Ja",
+        "firmen": "Ja",
+        "bedingung": "Opt-out, Postanschrift, Werbekennzeichnung",
+        "risiko": "gering"
+      },
+      {
+        "code": "SG",
+        "name": "Singapur",
+        "einzel": "Ja",
+        "firmen": "Ja",
+        "bedingung": "„<ADV>“ im Betreff, Opt-out",
+        "risiko": "gering"
+      },
+      {
+        "code": "HK",
+        "name": "Hongkong",
+        "einzel": "Ja",
+        "firmen": "Ja",
+        "bedingung": "Absenderangabe, Opt-out",
+        "risiko": "gering"
+      },
+      {
+        "code": "BR",
+        "name": "Brasilien",
+        "einzel": "eher ja",
+        "firmen": "eher ja",
+        "bedingung": "berechtigtes Interesse, Opt-out",
+        "risiko": "gering bis mittel"
+      },
+      {
+        "code": "MX",
+        "name": "Mexiko",
+        "einzel": "eher ja",
+        "firmen": "eher ja",
+        "bedingung": "Opt-out, Absenderangaben",
+        "risiko": "gering"
+      },
+      {
+        "code": "FR",
+        "name": "Frankreich",
+        "einzel": "Ja, berufsbezogen",
+        "firmen": "Ja, berufsbezogen",
+        "bedingung": "Bezug zum Beruf, Herkunft der Daten nennen, Opt-out",
+        "risiko": "mittel, eher bei Masse"
+      },
+      {
+        "code": "AU",
+        "name": "Australien",
+        "einzel": "bedingt",
+        "firmen": "bedingt",
+        "bedingung": "nur veröffentlichte Adresse, kein Werbeverbot, berufsbezogen",
+        "risiko": "hoch (ACMA aktiv)"
+      },
+      {
+        "code": "NZ",
+        "name": "Neuseeland",
+        "einzel": "bedingt",
+        "firmen": "bedingt",
+        "bedingung": "wie Australien",
+        "risiko": "mittel"
+      },
+      {
+        "code": "CA",
+        "name": "Kanada",
+        "einzel": "bedingt",
+        "firmen": "bedingt",
+        "bedingung": "wie Australien, sauber dokumentieren",
+        "risiko": "sehr hoch (bis 10 Mio. CAD)"
+      },
+      {
+        "code": "JP",
+        "name": "Japan",
+        "einzel": "bedingt",
+        "firmen": "bedingt",
+        "bedingung": "geschäftlich veröffentlicht",
+        "risiko": "mittel"
+      },
+      {
+        "code": "IL",
+        "name": "Israel",
+        "einzel": "nur einmalige Anfrage",
+        "firmen": "nur einmalige Anfrage",
+        "bedingung": "nur Frage, ob Werbung gewünscht",
+        "risiko": "hoch (pro Mail)"
+      },
+      {
+        "code": "UK",
+        "name": "UK",
+        "einzel": "Nein",
+        "firmen": "Ja",
+        "bedingung": "Opt-out bei Ltd/PLC/LLP",
+        "risiko": "mittel (ICO)"
+      },
+      {
+        "code": "IE",
+        "name": "Irland",
+        "einzel": "Nein",
+        "firmen": "Ja",
+        "bedingung": "Geschäftsadresse, Opt-out",
+        "risiko": "sehr hoch (Straftat, pro Mail)"
+      },
+      {
+        "code": "SE",
+        "name": "Schweden",
+        "einzel": "Nein",
+        "firmen": "Ja",
+        "bedingung": "Opt-out",
+        "risiko": "gering bis mittel"
+      },
+      {
+        "code": "FI",
+        "name": "Finnland",
+        "einzel": "Nein",
+        "firmen": "Ja",
+        "bedingung": "Opt-out",
+        "risiko": "gering bis mittel"
+      },
+      {
+        "code": "BE",
+        "name": "Belgien",
+        "einzel": "Nein",
+        "firmen": "nur info@-Adressen",
+        "bedingung": "unpersönliche Adresse",
+        "risiko": "mittel bis hoch"
+      },
+      {
+        "code": "DE",
+        "name": "Deutschland",
+        "einzel": "Nein",
+        "firmen": "Nein",
+        "bedingung": "–",
+        "risiko": "Abmahnung"
+      },
+      {
+        "code": "NL",
+        "name": "Niederlande",
+        "einzel": "Nein",
+        "firmen": "Nein",
+        "bedingung": "–",
+        "risiko": "ACM-Bußgeld"
+      },
+      {
+        "code": "AT",
+        "name": "Österreich",
+        "einzel": "Nein",
+        "firmen": "Nein",
+        "bedingung": "–",
+        "risiko": "Verwaltungsstrafe"
+      },
+      {
+        "code": "CH",
+        "name": "Schweiz",
+        "einzel": "Nein",
+        "firmen": "Nein",
+        "bedingung": "gilt für Massenwerbung",
+        "risiko": "mittel"
+      },
+      {
+        "code": "IT",
+        "name": "Italien",
+        "einzel": "Nein",
+        "firmen": "Nein",
+        "bedingung": "–",
+        "risiko": "hoch"
+      },
+      {
+        "code": "ES",
+        "name": "Spanien",
+        "einzel": "Nein",
+        "firmen": "Nein",
+        "bedingung": "–",
+        "risiko": "hoch"
+      },
+      {
+        "code": "PL",
+        "name": "Polen",
+        "einzel": "Nein",
+        "firmen": "Nein",
+        "bedingung": "–",
+        "risiko": "mittel"
+      },
+      {
+        "code": "DK",
+        "name": "Dänemark",
+        "einzel": "Nein",
+        "firmen": "Nein",
+        "bedingung": "–",
+        "risiko": "mittel"
+      },
+      {
+        "code": "ZA",
+        "name": "Südafrika",
+        "einzel": "Nein",
+        "firmen": "Nein",
+        "bedingung": "–",
+        "risiko": "mittel"
+      }
+    ]
   },
   "workflows": [
     {
