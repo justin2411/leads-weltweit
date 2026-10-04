@@ -204,3 +204,40 @@ class AutopilotTests(unittest.TestCase):
         rows = _rows("kunden", "r1", 8, 3, 40, 10, werk="kunden-werk")
         plan, why = W.autopilot(self.reg, "kunden-werk", {"kunden": 8}, W.lane_stats(rows, "kunden-werk"), other={})
         self.assertEqual(plan["kunden"], 1)  # Pool durchgeprüft: Teile nach 3 min fertig
+
+
+class StorageStopTests(unittest.TestCase):
+    """Speicher-Stopp ab 7,5 GB (Prüfung 04.10.2026: ~1,3 GB/Tag Wachstum, 8 GB inklusive)."""
+
+    def setUp(self):
+        self.reg = W.load_lines()
+
+    def test_stop_level_with_hysteresis(self):
+        gb = W.GB
+        self.assertEqual(W.brake_level(int(7.6 * gb)), "stopp")
+        self.assertEqual(W.brake_level(int(7.4 * gb), "stopp"), "stopp")            # 0,2 GB Abstand
+        self.assertEqual(W.brake_level(int(7.25 * gb), "stopp"), "ohne-rohbestand")
+        self.assertEqual(W.brake_level(None, "stopp"), "stopp")
+
+    def test_stop_sets_all_lead_lanes_to_zero_even_locked(self):
+        for settings in ({"slot_autopilot": {"on": False}},
+                         {"slot_autopilot": {"on": True, "locks": {"web-us": 5}}}):
+            res = W.decide(self.reg, "lead-werk", {"settings": settings, "rows": [], "db_bytes": int(7.6 * W.GB)})
+            self.assertEqual(res["brake"], "stopp")
+            self.assertEqual(sum(res["plan"].values()), 0, settings)
+            self.assertTrue(all(v == W.BRAKE_STOP_WHY for v in res["reasons"].values()))
+            self.assertEqual(W.matrix(self.reg, "lead-werk", res["plan"], res["extra"]), [])
+
+    def test_stop_leaves_kunden_werk_alone(self):
+        res = W.decide(self.reg, "kunden-werk", {"settings": {"slot_autopilot": {"on": False}}, "rows": [],
+                                                 "db_bytes": int(7.9 * W.GB)})
+        self.assertEqual(res["plan"], {"kunden": W.counts(self.reg, None)[0]["kunden"]})
+        self.assertEqual(res["extra"], "")
+
+    def test_fast_parts_without_empty_ones_read_as_checked_not_exhausted(self):
+        stats = W.lane_stats(_rows("web-uk", "r1", 2, 3, 40, 2), "lead-werk")
+        lead = {k: v for k, v in W.counts(self.reg, None)[0].items() if k != "kunden"}
+        plan, why = W.autopilot(self.reg, "lead-werk", lead, stats, other={"kunden": 8})
+        self.assertEqual(plan["web-uk"], 1)
+        self.assertIn("Quelle durchgeprüft (Ø 3 min, kaum neue Kandidaten)", why["web-uk"])
+        self.assertNotIn("erschöpft", why["web-uk"])

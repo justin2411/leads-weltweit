@@ -283,7 +283,7 @@ export async function loadAgentTasks(): Promise<import("@/lib/agents").AgentTask
 }
 
 /** Gestartete Belegung je Werk (werk_plan_log, geschrieben vom Plan-Job: Autopilot/Inhaber/Standard, Speicher-Bremse). */
-export type PlanLog = { werk: "lead-werk" | "kunden-werk"; at: string; mode: "autopilot" | "inhaber" | "standard"; bremse: "aus" | "hinweis" | "drossel" | "ohne-rohbestand";
+export type PlanLog = { werk: "lead-werk" | "kunden-werk"; at: string; mode: "autopilot" | "inhaber" | "standard"; bremse: "aus" | "hinweis" | "drossel" | "ohne-rohbestand" | "stopp";
   db_bytes: number | null; plan: Record<string, number>; reasons: Record<string, string> };
 export async function loadPlanLog(): Promise<Partial<Record<PlanLog["werk"], PlanLog>>> {
   try {

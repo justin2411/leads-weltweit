@@ -273,8 +273,10 @@ def main(argv=None) -> int:
         if room <= 0:
             continue
         made = 0
+        # Reihenfolge eindeutig (created_at,id): gleiche created_at ließen beim Blättern Käufer doppelt erscheinen ->
+        # 409 Duplicate Key (Prüfung 04.10.2026)
         for p in db.select_all("prospects", {"check_status": "eq.ok", "segment_id": f"eq.{key[0]}",
-                                             "country": f"eq.{key[1]}", "order": "created_at"}):
+                                             "country": f"eq.{key[1]}", "order": "created_at,id"}):
             if made >= room:
                 break
             if total + n >= total_cap:
@@ -286,17 +288,25 @@ def main(argv=None) -> int:
                 continue
             subject, body, lang = build(p)
             lint = lint_draft(subject, body, lang)
+            have.add(p["id"])  # derselbe Käufer nie zweimal in diesem Lauf (Prüfung 04.10.2026)
+            if not args.dry_run:
+                approve = bool(args.approve) and lint.ok
+                # eindeutiger Index messages_prospect_experiment_kind_uq: schon vorhandene Erstmail wird übersprungen
+                # statt den ganzen Lauf mit 409 abzubrechen (Prüfung 04.10.2026)
+                saved = db.insert("messages", {"prospect_id": p["id"], "experiment_id": e["id"], "kind": "initial",
+                                               "to_email": p["email"], "subject": subject, "body": body,
+                                               "language": lang, "status": "approved" if approve else "draft",
+                                               "check_errors": lint.errors,
+                                               **({"approved_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+                                                   "approved_by": f"Inhaber: {args.approve}"} if approve else {})},
+                                  upsert_on="prospect_id,experiment_id,kind", ignore_duplicates=True)
+                if not saved:
+                    print(f"{p['segment_id']}/{p['country']} {p['email']:<40} schon vorhanden – übersprungen")
+                    continue
             n += 1
             made += 1
             bad += 0 if lint.ok else 1
             print(f"{p['segment_id']}/{p['country']} {p['email']:<40} {lint.summary()}")
-            if not args.dry_run:
-                approve = bool(args.approve) and lint.ok
-                db.insert("messages", {"prospect_id": p["id"], "experiment_id": e["id"], "to_email": p["email"],
-                                       "subject": subject, "body": body, "language": lang,
-                                       "status": "approved" if approve else "draft", "check_errors": lint.errors,
-                                       **({"approved_at": dt.datetime.now(dt.timezone.utc).isoformat(),
-                                           "approved_by": f"Inhaber: {args.approve}"} if approve else {})})
         print(f"{key[0]}/{key[1]}: {made} neue Entwürfe (bisher {len(have)})")
     print(f"\n{n} Entwürfe, davon {bad} mit Regelverstoß")
     return 0

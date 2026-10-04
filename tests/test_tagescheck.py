@@ -32,27 +32,87 @@ class TagescheckTest(unittest.TestCase):
         import datetime as dt
         now = dt.datetime.now(dt.timezone.utc)
         old = (now - dt.timedelta(hours=13)).isoformat()
+        gb = 1024 ** 3  # wie werk_plan.GB und die Speicher-Seite (Prüfung 04.10.2026)
         rows = [{"werk": "kunden-werk", "at": now.isoformat(), "mode": "autopilot", "bremse": "drossel",
-                 "db_bytes": 6_100_000_000, "plan": {"kunden": 2}},
+                 "db_bytes": int(6.1 * gb), "plan": {"kunden": 2}},
                 {"werk": "lead-werk", "at": old, "mode": "inhaber", "bremse": "aus", "db_bytes": 5_000_000_000,
                  "plan": {"web-us": 3, "web-uk": 1}}]
         c = t.Check()
         t.check_plan(c, FakeDB({"werk_plan_log": rows}))
         got = {(r[0], r[2]): r[1] for r in c.rows}
-        self.assertEqual(got[("Speicher", "Datenbank 6.10 GB von 8 GB")], t.WARN)
+        self.assertEqual(got[("Speicher", "Datenbank 6.10 GB von 8 GB")], t.FAIL)  # ab Drossel rot
         self.assertEqual(got[("Werke", "kunden-werk: 2 Plätze (Autopilot)")], t.OK)
         self.assertEqual(got[("Werke", "lead-werk: 4 Plätze (deine Belegung)")], t.WARN)  # 13 h ohne Start
 
     def test_buyers_count_only_mail_ready(self):
-        db = FakeDB({"prospects": [{"id": "a", "check_status": "ok"}, {"id": "b", "check_status": "call_only"},
-                                   {"id": "c", "check_status": "call_only"}], "leads": []})
+        # ok in einem Land ohne Mail-Erlaubnis der Zielgruppe (S1/FR) zählt als „nur Anruf/Brief“ (Prüfung 04.10.2026)
+        db = FakeDB({"segments": [{"id": "S1", "email_countries": ["UK", "US"]}, {"id": "S2", "email_countries": ["US"]}],
+                     "prospects": [{"id": "a", "check_status": "ok", "segment_id": "S1", "country": "UK"},
+                                   {"id": "d", "check_status": "ok", "segment_id": "S1", "country": "FR"},
+                                   {"id": "b", "check_status": "call_only", "segment_id": "S2", "country": "US"},
+                                   {"id": "c", "check_status": "call_only", "segment_id": "S2", "country": "US"}],
+                     "leads": []})
         c = t.Check()
         count = lambda db_, table, params: len(db_.select(table, params))  # noqa: E731 - wie _count (exakte Zahl)
-        with mock.patch.object(t, "cfg", return_value="true"), mock.patch.object(t, "_count", side_effect=count):
+        with mock.patch.object(t, "cfg", return_value="true"), mock.patch.object(t, "_count", side_effect=count), \
+                mock.patch("lib.fokus.focus_pairs", return_value=[("S2", "US")]):
             t.check_werke(c, db)
         row = next(r for r in c.rows if r[0] == "Kunden-Werk")
         self.assertEqual(row[2], "1 mail-fähige Käufer")
-        self.assertIn("nur Anruf/Brief 2", row[3])
+        self.assertIn("nur Anruf/Brief 3", row[3])
+        lead = next(r for r in c.rows if r[0] == "Lead-Werk")
+        self.assertEqual(lead[2], "0 Leads im Bestand (vor Freigabe), Fokus S2/US")
+        # Nachschub: keine neuen S2-Käufer in 24 h -> gelber Hinweis
+        self.assertIn((t.WARN, "S2-Käufer: < 50 neu in 24 h"), [(r[1], r[2]) for r in c.rows])
+
+    def test_werke_timeout_is_not_measurable_not_crash(self):
+        db = FakeDB({"segments": [{"id": "S2", "email_countries": ["US"]}], "prospects": [], "leads": []})
+
+        def count(db_, table, params):
+            if table == "prospects" and params.get("check_status") == "eq.ok" and "segment_id" in params:
+                raise RuntimeError("Supabase GET …: 500 {\"code\":\"57014\"}")
+            return len(db_.select(table, params))
+        c = t.Check()
+        with mock.patch.object(t, "cfg", return_value="true"), mock.patch.object(t, "_count", side_effect=count), \
+                mock.patch("lib.fokus.focus_pairs", return_value=[("S2", "US")]):
+            c.guard("Werke", lambda: t.check_werke(c, db))
+        row = next(r for r in c.rows if r[0] == "Kunden-Werk")
+        self.assertIn("unvollständig", row[2])
+        self.assertIn("nicht messbar: S2", row[3])
+        self.assertNotIn("Prüfung selbst fehlgeschlagen", [r[2] for r in c.rows])
+
+    def test_sample_supply_checks_only_newest_companies_per_page(self):
+        leads = [{"id": f"l{i}", "segment_id": "S2", "country": "US", "status": "new", "company_id": f"c{i}"}
+                 for i in range(12)]
+        leads += [{"id": "x", "segment_id": "S2", "country": "UK", "status": "new", "company_id": "u1"}]
+        db = FakeDB({"landing_pages": [{"status": "live", "segment_id": "S2", "country": "US", "slug": "us/web"},
+                                       {"status": "live", "segment_id": "S2", "country": "UK", "slug": "uk/web"}],
+                     "leads": leads})
+        calls = []
+
+        def fake(db_, website_optional=False, only=None):
+            calls.append((website_optional, only))
+            self.assertIsNotNone(only)  # nie alle Beobachtungen blättern (57014)
+            return {k: {} for k in only}
+        c = t.Check()
+        with mock.patch("deliveries.contact_companies", side_effect=fake):
+            t.check_sample_supply(c, db)
+        self.assertEqual(len(calls), 2)
+        self.assertTrue(all(w for w, _ in calls))  # S2: Website optional
+        self.assertEqual(c.rows[0][1:3], (t.WARN, "Probe lieferbar für 1 von 2 Seiten"))
+        self.assertIn("uk/web", c.rows[0][3])
+
+    def test_test_purchase_delivery_is_not_waiting(self):
+        db = FakeDB({"subscriptions": [{"id": "s1", "customer_id": "k1", "status": "active",
+                                        "customers": {"company_name": "Test", "status": "trial",
+                                                      "stripe_customer_id": "cus_x"}}],
+                     "deliveries": [{"id": "d1", "subscription_id": "s1", "status": "prepared"},
+                                    {"id": "d2", "subscription_id": "s1", "status": "approved",
+                                     "approved_at": "2026-01-01T00:00:00+00:00"}]})
+        c = t.Check()
+        t.check_customers(c, db)
+        self.assertEqual([r[1] for r in c.rows], [t.OK])
+        self.assertIn("1 Stripe-Testkauf", c.rows[0][3])
 
     def test_mailbox_lamps(self):
         recent = (t.NOW).isoformat()
@@ -109,6 +169,20 @@ class TagescheckTest(unittest.TestCase):
         k = t.kpi_line(db, "S4", "US")
         self.assertEqual((k["sent"], k["replies"], k["positive"], k["samples"], k["customers"]), (2, 1, 1, 1, 1))
         self.assertEqual((k["revenue"], k["currency"]), (129, "$"))
+
+    def test_kpi_counts_only_first_mails_and_ignores_owner_samples(self):
+        db = FakeDB({
+            "experiments": [{"id": "e1", "segment_id": "S2", "country": "US"}],
+            "messages": [{"id": "m1", "experiment_id": "e1", "status": "sent", "kind": "initial"},
+                         {"id": "m2", "experiment_id": "e1", "status": "sent", "kind": "followup", "parent_id": "m1"}],
+            # Antwort auf die Nachfassmail zählt weiter
+            "email_events": [{"id": "a", "type": "reply_positive", "dedupe_key": "imap:<y>", "message_id": "m2"}],
+            "sample_requests": [{"id": "s1", "segment_id": "S2", "country": "US", "email": "Chef@Example.com"},
+                                {"id": "s2", "segment_id": "S2", "country": "US", "email": "kunde@agentur.com"}],
+            "subscriptions": []})
+        with mock.patch.dict("os.environ", {"OWNER_EMAIL": "chef@example.com"}):
+            k = t.kpi_line(db, "S2", "US")
+        self.assertEqual((k["sent"], k["replies"], k["positive"], k["samples"]), (1, 1, 1, 1))
 
 
 if __name__ == "__main__":

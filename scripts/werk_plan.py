@@ -10,7 +10,9 @@ Autopilot (Inhaber 03.10.2026: „Ja, Autopilot an“, owner_settings.slot_autop
 Plätze nach den letzten beiden Läufen je Linie um – erschöpfte Linien behalten 1 Wachplatz, voll ausgelastete
 bekommen mehr Teile (Ziel ~30 min je Teil), Linien auf 0 und festgesetzte Linien bleiben, Summe nie über
 total_slots - reserve. Speicher-Bremse (Inhaber 03.10.2026): ab 5,5 GB Hinweis, ab 6 GB höchstens 8 Lead-Plätze,
-ab 7 GB zusätzlich ohne Rohbestand (--no-raw); zurück erst 0,2 GB unter der Grenze. Jede gestartete Belegung steht
+ab 7 GB zusätzlich ohne Rohbestand (--no-raw), ab 7,5 GB Lead-Werk gestoppt (alle Lead-Plätze 0, Kunden-Werk
+läuft weiter; Prüfung 04.10.2026: die Datenbank wuchs ~1,3 GB/Tag und hätte 8 GB sonst überschritten); zurück erst
+0,2 GB unter der Grenze. GB = 1024³ Byte wie die Speicher-Seite (app/lib/storage.ts). Jede gestartete Belegung steht
 mit Gründen in signalwerk.werk_plan_log. Jeder Fehler -> Belegung wie bisher (der Plan verhindert nie einen Lauf).
 
   python scripts/werk_plan.py lead-werk      # schreibt matrix=… und teile=… nach $GITHUB_OUTPUT
@@ -58,7 +60,8 @@ def counts(reg: dict, plan: dict | None) -> tuple[dict[str, int], str]:
 
 # ------------------------------------------------------------------------------------------- Autopilot
 GB = 1024 ** 3
-BRAKE = (("ohne-rohbestand", 7.0), ("drossel", 6.0), ("hinweis", 5.5))  # Stufe, ab GB
+BRAKE = (("stopp", 7.5), ("ohne-rohbestand", 7.0), ("drossel", 6.0), ("hinweis", 5.5))  # Stufe, ab GB
+BRAKE_STOP_WHY = "Speichergrenze 7,5 GB – Inhaber entscheidet über Aufräumen"
 BRAKE_HYST = 0.2      # zurück erst 0,2 GB unter der Grenze
 BRAKE_LEAD_MAX = 8    # Lead-Plätze ab „drossel“
 TARGET_MIN = 30       # Ziel-Laufzeit je Teil (min): ein langsamer Teil soll das Werk nicht aufhalten
@@ -149,6 +152,8 @@ def autopilot(reg: dict, werk: str, base: dict[str, int], stats: dict[str, dict]
     cap = int(reg["total_slots"]) - int(reg["reserve"]) - sum((other or {}).values())
     if werk == "lead-werk" and brake in ("drossel", "ohne-rohbestand"):
         cap = min(cap, BRAKE_LEAD_MAX)
+    if werk == "lead-werk" and brake == "stopp":
+        cap = 0
     plan, why, want, weight = {}, {}, {}, {}
     for l in lanes:
         lid, mx, b = l["id"], int(l["max"]), int(base.get(l["id"], 0))
@@ -180,7 +185,13 @@ def autopilot(reg: dict, werk: str, base: dict[str, int], stats: dict[str, dict]
                         f"Ø {round(s['avg_last'])} min) – unverändert")
         elif dry_all:
             plan[lid] = 1
-            why[lid] = f"Vorrat erschöpft ({s['empty']}/{s['parts']} Teile leer, Ø {round(s['avg_min'])} min) – 1 Wachplatz"
+            if s["empty"] == 0:
+                # kein Teil leer, aber alle schnell fertig: „erschöpft (0/2 Teile leer)“ las sich widersprüchlich
+                # (Prüfung 04.10.2026)
+                why[lid] = f"Quelle durchgeprüft (Ø {round(s['avg_min'])} min, kaum neue Kandidaten) – 1 Wachplatz"
+            else:
+                why[lid] = (f"Vorrat erschöpft ({s['empty']}/{s['parts']} Teile leer, Ø {round(s['avg_min'])} min)"
+                            " – 1 Wachplatz")
         elif s["empty"] == 0 and s["avg_min"] >= FULL_MIN:
             target = min(mx, math.ceil(s["avg_min"] * last / TARGET_MIN), last * 2 + 2)
             plan[lid] = min(last, mx)
@@ -322,7 +333,11 @@ def decide(reg: dict, werk: str, inp: dict) -> dict:
             k = max(plan, key=lambda x: plan[x])
             plan[k] -= 1
             reasons[k] = f"Speicher-Bremse ({brake}) – gekürzt"
-    extra = " --no-raw" if werk == "lead-werk" and brake == "ohne-rohbestand" else ""
+    if werk == "lead-werk" and brake == "stopp":
+        # Speicher-Stopp (Prüfung 04.10.2026): alle Lead-Plätze 0, auch festgesetzte; Kunden-Werk unverändert
+        plan = {k: 0 for k in plan}
+        reasons = {k: BRAKE_STOP_WHY for k in plan}
+    extra = " --no-raw" if werk == "lead-werk" and brake in ("ohne-rohbestand", "stopp") else ""
     return {"plan": plan, "reasons": reasons, "mode": mode, "brake": brake, "extra": extra, "base": own,
             "autopilot": ap}
 

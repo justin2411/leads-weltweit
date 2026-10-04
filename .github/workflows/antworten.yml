@@ -17,6 +17,9 @@ jobs:
   run:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      actions: write   # Wachhund anstoßen (Prüfung 04.10.2026)
+      contents: read
     env:
       SITE_URL: ${{ vars.SITE_URL || 'https://www.nextgen-profit.de' }}   # Deep-Link ins Cockpit, Push über /api/push
       # Chromium fürs Proben-PDF erst installieren, wenn wirklich eine Probe gebaut wird (responder.ensure_chromium)
@@ -83,4 +86,29 @@ jobs:
             python scripts/web_samples.py
           else
             python scripts/web_samples.py --apply
+          fi
+      - name: Wachhund anstoßen, wenn GitHub ihn nicht startet
+        # Nachtschicht 04.10.2026: GitHub ließ die geplanten Läufe (Wachhund, Antwort-Assistent) nachts stundenlang
+        # aus. Der Antwort-Assistent läuft alle 10 min und stößt den Wachhund an, wenn der seit
+        # 30 min nicht lief (Prüfung 04.10.2026). Nie Versand – den startet der Wachhund nur in seinen Grenzen.
+        # Prüfung 04.10.2026: GitHub-Aufrufe bis zu 3 Versuche (eine 503 ließ den Schritt sonst scheitern).
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          retry() { for i in 1 2 3; do "$@" && return 0; [ "$i" -lt 3 ] && sleep 20; done; return 1; }
+          last=$(retry gh run list --workflow wachhund.yml --limit 1 --json createdAt -q '.[0].createdAt' || true)
+          if [ -n "$last" ]; then
+            mins=$(( ( $(date -u +%s) - $(date -u -d "$last" +%s) ) / 60 ))
+          else
+            mins=999
+          fi
+          if [ "$mins" -ge 30 ]; then
+            if retry gh workflow run wachhund.yml --ref "${{ github.ref_name }}"; then
+              echo "Wachhund angestoßen (letzter Lauf vor $mins min)" | tee -a "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::warning::Wachhund nicht anstoßbar (GitHub antwortet nicht)"
+            fi
+          else
+            echo "Wachhund lief vor $mins min – nichts zu tun"
           fi

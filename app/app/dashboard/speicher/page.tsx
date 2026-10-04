@@ -102,7 +102,7 @@ export default async function Speicher({ searchParams }: { searchParams: SP }) {
 }
 
 const BREMSE: Record<string, string> = { aus: "aus", hinweis: "Hinweis (ab 5,5 GB)", drossel: "Drossel: höchstens 8 Lead-Plätze (ab 6 GB)",
-  "ohne-rohbestand": "nur noch grüne Leads, kein Rohbestand (ab 7 GB)" };
+  "ohne-rohbestand": "nur noch grüne Leads, kein Rohbestand (ab 7 GB)", stopp: "Lead-Werk gestoppt (ab 7,5 GB)" };
 
 function Body({ d, seg, proben, brake }: { d: Storage; seg: string; proben: ProbeRow[] | null; brake: { level: string; at: string } | null }) {
   // ------------------------------------------------------------- Kunden-Leads
@@ -174,7 +174,7 @@ function Body({ d, seg, proben, brake }: { d: Storage; seg: string; proben: Prob
             </div>
           </div>
           <p className="sp-cost"><b>Supabase Pro: 8 GB inklusive</b>, darüber kostet es extra.</p>
-          <p className="sp-cost" title="Stufen: ab 5,5 GB Hinweis · ab 6 GB höchstens 8 Lead-Plätze · ab 7 GB kein Rohbestand mehr · zurück erst 0,2 GB darunter">
+          <p className="sp-cost" title="Stufen: ab 5,5 GB Hinweis · ab 6 GB höchstens 8 Lead-Plätze · ab 7 GB kein Rohbestand mehr · ab 7,5 GB Lead-Werk gestoppt · zurück erst 0,2 GB darunter">
             <Icon name="speicher" size={14} /> Speicher-Bremse: <b>{brake ? BREMSE[brake.level] ?? brake.level : "noch keine Messung"}</b>
             {brake && <> · geprüft {berlin(brake.at)}</>}</p>
         </section>
