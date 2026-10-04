@@ -116,35 +116,13 @@ def parse_bounce(msg: EmailMessage) -> list[str]:
     return failed
 
 
-_ADDR = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+")
-
-
-def bounce_details(msg: EmailMessage) -> dict[str, dict]:
-    """Grund je endgültig gescheitertem Empfänger aus der DSN (Nachtschicht 04.10.2026): Status (z. B. 5.1.1 =
-    Adresse unbekannt, 5.7.1 = abgelehnt/blockiert) und gekürzter Diagnose-Text ohne Mailadressen. Damit lässt sich
-    unterscheiden, ob Adressen schlecht sind (Käuferbestand) oder der Absender abgelehnt wird (Ruf/Postfach)."""
-    out: dict[str, dict] = {}
-    if msg.get_content_type() != "multipart/report":
-        return out
-    for part in msg.walk():
-        if part.get_content_type() != "message/delivery-status":
-            continue
-        payload = part.get_payload()
-        blocks = payload if isinstance(payload, list) else [part]
-        for block in blocks:
-            raw = block.as_string() if hasattr(block, "as_string") else str(block)
-            for chunk in re.split(r"\n\s*\n", raw):
-                rcpt = re.search(r"^Final-Recipient:\s*[^;]+;\s*(\S+)", chunk, re.I | re.M)
-                action = re.search(r"^Action:\s*(\S+)", chunk, re.I | re.M)
-                if not (rcpt and action and action.group(1).lower() == "failed"):
-                    continue
-                status = re.search(r"^Status:\s*([245]\.\d{1,3}\.\d{1,3})", chunk, re.I | re.M)
-                diag = re.search(r"^Diagnostic-Code:\s*[^;]*;\s*(.+(?:\n[ \t].+)*)", chunk, re.I | re.M)
-                text = _ADDR.sub("<adr>", " ".join((diag.group(1) if diag else "").split()))[:200]
-                code = status.group(1) if status else ""
-                # Action: failed = endgültig gescheitert -> immer hart für die Notbremse (nie lockern), Status nur zur Info
-                out[rcpt.group(1).strip("<>").lower()] = {"type": "Permanent", "status": code, "diagnostic": text}
-    return out
+def bounce_details(msg: EmailMessage, own: set[str] | None = None) -> dict[str, dict]:
+    """Grund je endgültig gescheitertem Empfänger (Nachtschicht 04.10.2026, erweitert 04.10.2026): Status (z. B.
+    5.1.1 = Adresse unbekannt, 5.7.1 = abgelehnt/blockiert), gekürzter Diagnose-Text ohne Mailadressen, Remote-MTA
+    und Klasse (hart/weich/richtlinie/unbekannt, lib/bounce_class.py) – aus multipart/report und aus Text-Meldungen
+    (Strato, Gmail, Outlook). Type bleibt immer „Permanent“: die Notbremse zählt jede endgültige Meldung voll."""
+    from lib.bounce_class import details
+    return details(msg, own)
 
 
 def is_bounce(msg: EmailMessage) -> bool:
@@ -225,30 +203,53 @@ def handle_reply(db, msg: EmailMessage, dedupe: str, apply: bool) -> str | None:
     return "optout" if optout else kind
 
 
+def _store_bounce(db, event: dict) -> None:
+    """Ereignis speichern; liegt es schon vor (Meldung bleibt 14 Tage im Postfach) und fehlt dort der Grund, wird er
+    nachgetragen (alte Rückläufer ohne Code bekommen so beim nächsten Lauf ihre Klasse). Nichts wird gelöscht."""
+    have = db.select("email_events", {"dedupe_key": f"eq.{event['dedupe_key']}", "select": "id,payload,bounce_class",
+                                      "limit": "1"})
+    if not have:
+        db.insert("email_events", event, upsert_on="dedupe_key", ignore_duplicates=True)
+        return
+    old = have[0].get("payload") if isinstance(have[0].get("payload"), dict) else {}
+    why = (event.get("payload") or {}).get("bounce")
+    if why and not (old.get("bounce") or {}).get("klasse"):
+        db.update("email_events", {"id": have[0]["id"]},
+                  {"payload": {**old, "bounce": why}, "bounce_class": event.get("bounce_class")})
+
+
 def handle_bounce(db, msg: EmailMessage, dedupe: str, apply: bool, known_only: bool = False) -> list[str]:
     """Unzustellbar-Meldung: Ereignis 'bounced' + dauerhafte Sperre je endgültig gescheitertem Empfänger.
     known_only (Spam-Ordner und weitere Postfächer): nur Empfänger, an die wir wirklich gesendet haben – Rückläufer
-    fremder, gefälschter Mails mit unserer Domain (Backscatter) zählen nicht in die Bounce-Quote."""
+    fremder, gefälschter Mails mit unserer Domain (Backscatter) zählen nicht in die Bounce-Quote.
+    Text-Meldungen ohne delivery-status (Gmail, Outlook, Exim): Empfänger aus dem Text, aber immer nur Adressen,
+    an die wir wirklich gesendet haben."""
+    from lib.imap_boxes import own_domains
     recipients = parse_bounce(msg)
+    details = bounce_details(msg, own_domains())
+    from_text = not recipients
+    if from_text:
+        recipients = list(details)
     refs = referenced_ids(msg) + MSGID.findall(_text(msg))
-    details = bounce_details(msg)
     out = []
     for rcpt in recipients:
         sent = db.select("messages", {"to_email": f"eq.{rcpt}", "status": "eq.sent", "select": "id",
                                       "order": "sent_at.desc", "limit": "1"})
-        if known_only and not sent:
-            print(f"Rückläufer ohne eigene Mail an {rcpt} übersprungen (Backscatter)")
+        if (known_only or from_text) and not sent:
+            if not from_text:
+                print(f"Rückläufer ohne eigene Mail an {rcpt} übersprungen (Backscatter)")
             continue
         why = details.get(rcpt) or {}
-        print(f"BOUNCE {rcpt}" + (f" ({why['status']})" if why.get("status") else ""))
+        print(f"BOUNCE {rcpt}" + (f" ({why.get('klasse')}, {why.get('status') or 'ohne Code'})" if why else ""))
         out.append(rcpt)
         if apply:
-            db.insert("email_events", {"message_id": sent[0]["id"] if sent else None, "type": "bounced",
-                                       "dedupe_key": f"{dedupe}:{rcpt}", "note": "DSN aus Postfach",
-                                       "payload": {"refs": refs[:5], **({"bounce": why} if why else {})}},
-                      upsert_on="dedupe_key", ignore_duplicates=True)  # Meldung liegt 14 Tage im Postfach
+            _store_bounce(db, {"message_id": sent[0]["id"] if sent else None, "type": "bounced",
+                               "dedupe_key": f"{dedupe}:{rcpt}",
+                               "note": "DSN aus Postfach" if not from_text else "Text-Rückläufer aus Postfach",
+                               "bounce_class": why.get("klasse") or "unbekannt",
+                               "payload": {"refs": refs[:5], **({"bounce": why} if why else {})}})
             suppress(db, rcpt, "bounce", "imap-dsn")
-    if not recipients:
+    if not out and not recipients:
         print(f"Unklare Unzustellbar-Meldung, bitte ansehen: {msg.get('Subject')}")
     return out
 

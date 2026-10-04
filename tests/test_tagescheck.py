@@ -23,6 +23,18 @@ class TagescheckTest(unittest.TestCase):
         self.assertLess(body.index("PROBLEME"), body.index("HINWEISE"))
         self.assertEqual(c.worst, t.FAIL)
 
+    def test_richtlinien_bounces_gelb(self):
+        db = FakeDB({})
+        db.rpc_handlers["bounce_stats"] = lambda a, p: {"gesendet": 100, "bounces": 4,
+                                                        "klassen": {"hart": 2, "weich": 1, "richtlinie": 1}}
+        c = t.Check()
+        t.check_bounce_klassen(c, db)
+        self.assertEqual(c.rows[0][1], t.WARN)
+        db.rpc_handlers["bounce_stats"] = lambda a, p: {"gesendet": 100, "bounces": 2, "klassen": {"hart": 2}}
+        c = t.Check()
+        t.check_bounce_klassen(c, db)
+        self.assertEqual(c.rows[0][1], t.OK)
+
     def test_broken_check_is_reported_not_raised(self):
         c = t.Check()
         c.guard("Kunden", lambda: 1 / 0)
