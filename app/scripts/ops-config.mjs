@@ -28,6 +28,15 @@ const num = (text, key, dflt) => {
 };
 const bool = (text, key, dflt) => (val(text, key) === null ? dflt : val(text, key) === "true");
 
+/** Freigabe-Liste für Tests aus config/fokus.yaml (`tests:` mit `segmente: [S2]`, `laender: [US, UK, FR]`);
+ *  gleiche Regeln wie scripts/lib/fokus.py test_scope(). Fehlt der Block, ist nichts freigegeben. */
+export function parseTests(text) {
+  const block = text?.match(/^tests:\s*\n((?:[ \t]+.*\n?)*)/m)?.[1] ?? "";
+  const list = (key) => (block.match(new RegExp(`^\\s+${key}:\\s*\\[([^\\]]*)\\]`, "m"))?.[1] ?? "")
+    .split(",").map((x) => x.trim().replace(/^["']|["']$/g, "").toUpperCase()).filter(Boolean);
+  return { segmente: list("segmente"), laender: list("laender") };
+}
+
 /** Länder aus countries.yaml: Blockform (`  US:` + eingerückte Felder) und Kurzform (`  DE: { allowed: false … }`). */
 export function parseCountries(text) {
   const out = {};
@@ -101,6 +110,7 @@ function build() {
     },
     fokus: [...(fokus ?? "").matchAll(/^\s*-\s*(S\d+)\/([A-Z]{2})\s*$/gm)].map((m) => `${m[1]}/${m[2]}`),
     nur_fokus: bool(fokus, "nur_fokus", false),
+    tests: parseTests(fokus),
     lead_suche: bool(pipeline, "lead_suche", true),
     kunden_suche: bool(pipeline, "kunden_suche", true),
     countries: parseCountries(read("countries.yaml")),

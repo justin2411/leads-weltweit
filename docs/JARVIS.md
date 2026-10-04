@@ -24,7 +24,8 @@ Preise (nach `docs/GEHIRN-SITZUNG.md`), Tagesmengen innerhalb von Notbremse und 
    `metrics` = Kennzahlen der Station, status `done`). Nur einmal pro Lauf.
 3. **Laufende Tests auswerten** (siehe unten). Gewinner übernehmen, Verlierer beenden.
 4. **Anhaltender Engpass → A/B-Test starten**: Ist dieselbe Station in mindestens 6 der letzten 8 Läufe
-   **und** seit mindestens 24 h der Engpass und läuft für sie noch kein Test, startet JARVIS selbst einen A/B-Test.
+   **und** seit mindestens 24 h der Engpass und läuft für sie noch kein Test, startet JARVIS selbst einen A/B-Test –
+   nur in der Test-Freigabe `config/fokus.yaml` `tests` (Webagenturen US/UK/FR).
 5. **Kleine sichere Anpassungen** (ohne Test, wenn das Ergebnis eindeutig ist, z. B. Plätze auf eine Linie mit
    Ertrag umlegen, leeren Proben-Vorrat nachbauen): direkt machen und protokollieren.
 6. **Kurzmeldung**: Jede Änderung und jeder Testentscheid steht in `decisions` und im Dashboard. Dem Inhaber
@@ -33,6 +34,10 @@ Preise (nach `docs/GEHIRN-SITZUNG.md`), Tagesmengen innerhalb von Notbremse und 
    (`decisions.kurz_titel`/`kurz_grund`); gilt auch für Chat-Antworten, Tagesbericht und Push. Details nur auf Klick.
 
 ## A/B-Tests (Split-Tests)
+
+- **Nur Webagenturen US/UK/FR** (Inhaber 04.10.2026: „beim gehirn bei a/b tests soll er das nur für webagencys usa, fr, und uk machen nichts mehr erst wenn ich ihm das freigebe das soll überall so sein, wir brauchen erstmal nichts anderes“): Jeder Test – auch der automatische bei anhaltendem
+  Engpass – nur für Segment × Land aus `config/fokus.yaml` `tests` (`scripts/lib/fokus.py` `test_allowed`).
+  Liegt der Engpass woanders, nur protokollieren, keinen Test starten. Liste erweitern = Inhaber.
 
 - **Eine Sache pro Test** (CLAUDE.md §5): z. B. Betreff, Einstiegssatz, Signal-Auswahl, Probe-Zusammenstellung,
   Seitenüberschrift, Preis, Nachfass-Zeitpunkt, Quelle oder Belegung einer Linie. Kontrolle (A) bleibt unverändert.

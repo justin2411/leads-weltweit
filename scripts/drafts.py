@@ -256,7 +256,11 @@ LOCAL_TEXT = {
 
 def subject_variant(p: dict) -> str:
     """'A' oder 'B', 50/50 und fest je Käufer (Hash der Käufer-ID), damit ein neu geschriebener Entwurf denselben
-    Betreff behält und Antworten je Variante gemessen werden können."""
+    Betreff behält und Antworten je Variante gemessen werden können. Den Test gibt es nur in der Freigabe-Liste
+    config/fokus.yaml `tests` (Inhaber 04.10.2026: nur Webagenturen US/UK/FR); sonst immer 'A' (Kontrolle)."""
+    from lib.fokus import test_allowed
+    if not test_allowed(p.get("segment_id"), p.get("country")):
+        return "A"
     key = str(p.get("id") or p.get("email") or p.get("company_name") or "")
     return "AB"[hashlib.sha256(key.encode("utf-8")).digest()[0] % 2]
 

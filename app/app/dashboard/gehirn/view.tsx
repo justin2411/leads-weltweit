@@ -6,6 +6,8 @@ import {
   type BrainSettings, type Decision, type PageStat, type Workflow,
 } from "@/lib/gehirn";
 import { grundVon, hatMehr, titelVon } from "@/lib/kurz";
+import { proposalInScope, splitByScope } from "@/lib/test-scope";
+import { TEST_SCOPE } from "@/lib/test-scope-data";
 import { Icon, type IconName } from "@/app/icons";
 import { reviewDecision, setStatus, updateSetting } from "../brain-actions";
 import { Crumbs } from "../v2";
@@ -118,11 +120,17 @@ export function GehirnView({ now, settings: s, pages: pg, decisions: rawDec, rep
   const canLive = legalFiles && !!s.legal_ready;
   const flag = (k: string) => !!(s as Record<string, unknown>)[k];
   const daily = report ?? latestReport(rawDec);
-  const vg = proposalGroups(rawDec, now, daily?.id ?? null);
+  // Tests nur Webagenturen US/UK/FR (config/fokus.yaml tests, Inhaber 04.10.2026): andere Seiten/Vorschläge eingeklappt
+  const scoped = splitByScope(TEST_SCOPE, pg as (PageStat & { segment_id?: string; country?: string })[]);
+  const slugSeg = Object.fromEntries(pg.map((r) => [r.slug, String((r as { segment_id?: string }).segment_id ?? "")]));
+  const vgAll = proposalGroups(rawDec, now, daily?.id ?? null);
+  const vg = { ...vgAll, open: vgAll.open.filter((d) => proposalInScope(TEST_SCOPE, d.subject, slugSeg)) };
+  const openOther = vgAll.open.length - vg.open.length;
   const open = vg.open.length;
-  const groups = pagesByPage(pg);
-  const livePages = groups.filter((g) => g.page_status === "live").length;
-  const tests = abTests(pg);
+  const groups = pagesByPage(scoped.tested);
+  const otherPages = pagesByPage(scoped.other);
+  const livePages = [...groups, ...otherPages].filter((g) => g.page_status === "live").length;
+  const tests = abTests(scoped.tested);
   const brain = brainNow({ settings: s, tasks, decisions: rawDec, now });
   const sats = satellites(tasks);
   const marks = clockMarks(upcoming(workflows, now, 10));
@@ -214,6 +222,7 @@ export function GehirnView({ now, settings: s, pages: pg, decisions: rawDec, rep
           </>}>
           {vg.open.length > 0 ? <div className="gh-pcs">{vg.open.map((d) => <Proposal key={d.id} d={d} />)}</div>
             : <p className="gh-calm"><Icon name="ok-kreis" size={16} /> nichts offen</p>}
+          {openOther > 0 && <p className="muted" title="Tests nur Webagenturen US/UK/FR (config/fokus.yaml)">{openOther} zu anderen Zielgruppen ruhen – Freigabe durch dich</p>}
 
           {vg.rest.length > 0 && (
             <div className="gh-vlist">
@@ -256,7 +265,7 @@ export function GehirnView({ now, settings: s, pages: pg, decisions: rawDec, rep
 
         {/* ---------------------------------------------------------------- Seiten */}
         <Fold name="seiten" open={false} title="Seiten" icon={<Icon name="start-seite" size={16} />}
-          summary={<span className="gh-sum-n"><b>{livePages}</b>/{groups.length} live</span>}>
+          summary={<span className="gh-sum-n"><b>{livePages}</b>/{groups.length + otherPages.length} live</span>}>
           {groups.length ? (
             <div className="gh-pages">
               {groups.map((g) => {
@@ -299,7 +308,17 @@ export function GehirnView({ now, settings: s, pages: pg, decisions: rawDec, rep
                 );
               })}
             </div>
-          ) : <p className="muted">Noch keine Seiten (legt scripts/brain.py an).</p>}
+          ) : <p className="muted">Noch keine Seiten mit Tests (nur Webagenturen US/UK/FR).</p>}
+          {otherPages.length > 0 && (
+            <details className="gh-old">
+              <summary title="Tests nur Webagenturen US/UK/FR (config/fokus.yaml) – andere Seiten bleiben live, ohne Varianten">
+                <b>{otherPages.length}</b> weitere Seiten ohne Tests – Freigabe durch dich
+              </summary>
+              <p className="muted">{otherPages.map((g, i) => (
+                <span key={g.page_id}>{i > 0 && " · "}<a href={`/${g.slug}?vorschau=1`} title="Vorschau (zählt nicht)">{g.slug}</a></span>
+              ))}</p>
+            </details>
+          )}
         </Fold>
 
         {/* ---------------------------------------------------------------- Schalter */}

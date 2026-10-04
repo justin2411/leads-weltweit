@@ -8,6 +8,10 @@ Handlungsrechte (BRAIN.md 6): Stufe 1 immer (Seiten/Varianten als 'review' anleg
 Stufe 2 nur mit settings.auto_publish_pages (Seiten live schalten, Gewinner festlegen). Segmente stoppen oder
 ausbauen schlägt das Gehirn nur vor ('proposed') – das entscheidet der Inhaber. Nie: Preise, Zahlungs-/Rechtslogik,
 Länderregeln, Sperrliste, Kosten.
+
+Tests nur in der Freigabe-Liste config/fokus.yaml `tests` (Inhaber 04.10.2026: nur Webagenturen US/UK/FR): neue Seiten,
+Varianten, Gewinner, Live-Schalten aus dem Review und Zielgruppen-Auswertungen nur dort; alle anderen Seiten bleiben
+unverändert live (nur Kontrolle, kein Test), bis der Inhaber Segment oder Land freigibt.
 """
 from __future__ import annotations
 
@@ -29,6 +33,7 @@ LANG = {"UK": "en", "US": "en", "IE": "en", "FR": "fr"}
 
 from lib.stats import delivered  # noqa: E402
 from lib.kurz import insert_decisions  # noqa: E402
+from lib.fokus import test_allowed, test_scope  # noqa: E402
 
 
 def content_for(segment: str) -> tuple[str, dict] | None:
@@ -55,12 +60,20 @@ def safety_checks(sent_24: int, bounced_24: int, complaints_24: int, last_webhoo
     return out
 
 
-def page_decisions(stats: list[dict]) -> list[dict]:
-    """Varianten-Regeln nach BRAIN.md 5.1 (reine Funktion). Gibt Vorschläge zurück."""
+def in_scope(row: dict, scope: tuple[list[str], list[str]] | None = None) -> bool:
+    """Seite/Experiment in der Test-Freigabe (config/fokus.yaml tests)? Land aus country, sonst Präfix des Slugs."""
+    country = row.get("country") or str(row.get("slug") or "").split("/")[0]
+    return test_allowed(row.get("segment_id"), country, scope)
+
+
+def page_decisions(stats: list[dict], scope: tuple[list[str], list[str]] | None = None) -> list[dict]:
+    """Varianten-Regeln nach BRAIN.md 5.1 (reine Funktion). Gibt Vorschläge zurück – nur für Seiten in der
+    Test-Freigabe (scope, Standard config/fokus.yaml tests); andere Seiten bekommen keine Varianten."""
+    scope = test_scope() if scope is None else scope
     out = []
     by_page: dict[str, list[dict]] = {}
     for s in stats:
-        if s["variant_status"] == "live" and s["page_status"] == "live":
+        if s["variant_status"] == "live" and s["page_status"] == "live" and in_scope(s, scope):
             by_page.setdefault(s["page_id"], []).append(s)
     for pid, vs in by_page.items():
         slug = vs[0]["slug"]
@@ -157,6 +170,8 @@ def main(argv=None) -> int:
             if n >= MAX_DECISIONS or created_week >= int(st.get("max_new_pages_per_week", 3)):
                 break
             key = (e["segment_id"], e["country"])
+            if not test_allowed(*key):  # neue Seiten nur in der Test-Freigabe (Inhaber 04.10.2026)
+                continue
             if key in have or segs.get(e["segment_id"], {}).get("status") not in ("testing", "winner"):
                 continue
             c = content_for(e["segment_id"])
@@ -207,7 +222,7 @@ def main(argv=None) -> int:
         # Stufe 2: Seiten im Review selbst live schalten (nur mit Freigabe + Rechtstexten; DB-Trigger prüft zusätzlich)
         if st.get("auto_publish_pages") and st.get("legal_ready"):
             for p in pages:
-                if p["status"] == "review" and n < MAX_DECISIONS:
+                if p["status"] == "review" and n < MAX_DECISIONS and in_scope(p):
                     decide("page_new", f"{p['slug']} live geschaltet", "auto_publish_pages = true, Rechtstexte freigegeben")
                     n += 1
                     if args.apply:
@@ -224,7 +239,7 @@ def main(argv=None) -> int:
                 break
             dlv = delivered(s)  # SMTP: gesendet - Bounces (keine 'delivered'-Ereignisse)
             pos = int(s.get("positive") or 0) + int(s.get("samples") or 0) + page_pos.get((s["segment_id"], s["country"]), 0)
-            if dlv < 50 or s.get("decision"):
+            if dlv < 50 or s.get("decision") or not in_scope(s):  # Auswertung nur in der Test-Freigabe
                 continue
             r = rate(pos, dlv)
             if r < 0.02:
