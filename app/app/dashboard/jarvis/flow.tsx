@@ -10,9 +10,11 @@ import type { TipTask } from "@/lib/leitstand";
 import { WEB_INFO } from "@/lib/website-stats";
 import { DragBox } from "./dnd";
 import { AutoBadge } from "./auto-badge";
+import { SPARK_CSS, StationSpark, sparkText } from "./spark";
 import { Icon, type IconName } from "@/app/icons";
 
-const fmtRate = (n: number) => (n >= 1000 ? `${(n / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Tsd./h` : `${n.toLocaleString("de-DE")}/h`);
+// ab 10 Tsd. ohne Nachkomma („14 Tsd./h“): kürzer, damit die Menge zwischen die Kreise passt
+const fmtRate = (n: number) => (n >= 1000 ? `${(n / 1000).toLocaleString("de-DE", { maximumFractionDigits: n >= 10_000 ? 0 : 1 })} Tsd./h` : `${n.toLocaleString("de-DE")}/h`);
 
 function Map({ layout, stations, edges, active, href }: { layout: "wide" | "tall"; stations: Station[]; edges: Edge[]; active: StationId | null; href: (id: StationId) => string }) {
   const [W, H] = VIEW[layout];
@@ -29,8 +31,8 @@ function Map({ layout, stations, edges, active, href }: { layout: "wide" | "tall
           const jam = by[e.to]?.neck;
           const [x1, y1] = POS[layout][e.from], [x2, y2] = POS[layout][e.to];
           const mx = ((x1 + x2) / 200) * W, my = ((y1 + y2) / 200) * H;
-          // Menge auf jeder Leitung (Inhaber 03.10.2026: „auf dem strich die menge … z.b. 232/h“); hochkant neben der Leitung
-          const side = layout === "tall" && x1 === x2;
+          // Menge auf jeder Leitung (Inhaber 03.10.2026: „auf dem strich die menge … z.b. 232/h“): mittig auf der Leitung
+          // (Mitte der Kurve = Mitte zwischen den Kreisen), dunkel freigestellt, damit sie keinen Kreis berührt
           return (
             <g key={`${e.from}-${e.to}`} className={`fl-edge ${f ? "on" : "off"} ${jam ? "jam" : ""}`}>
               <path d={d} className="fl-pipe" />
@@ -40,8 +42,7 @@ function Map({ layout, stations, edges, active, href }: { layout: "wide" | "tall
                   <animateMotion dur={`${f.dur}s`} begin={`${-(i * f.dur) / f.dots}s`} repeatCount="indefinite" path={d} />
                 </circle>
               ))}
-              <text x={side ? mx + 10 : mx} y={side ? my + 4 : my - 10} className={`fl-rate${e.perHour > 0 ? "" : " zero"}`}
-                style={side ? { textAnchor: "start" } : undefined}>{fmtRate(Math.max(0, e.perHour || 0))}</text>
+              <text x={mx} y={my} dominantBaseline="central" className={`fl-rate fl-rate-on${e.perHour > 0 ? "" : " zero"}`}>{fmtRate(Math.max(0, e.perHour || 0))}</text>
               <title>{`${e.label}: ${e.perHour ? `${e.perHour.toLocaleString("de-DE")} in der letzten Stunde` : "gerade kein Durchfluss"}`}</title>
             </g>
           );
@@ -51,9 +52,10 @@ function Map({ layout, stations, edges, active, href }: { layout: "wide" | "tall
         const [x, y] = POS[layout][s.id];
         return (
           <Link key={s.id} href={href(s.id)} scroll={false} className={`fl-st ${s.state} ${s.badge?.on ? "go" : ""} ${s.neck ? "neck" : ""} ${active === s.id ? "on" : ""} ${s.id === "kunden" ? "goal" : ""} ${WEB_STATIONS.includes(s.id) ? "web" : ""}`}
-            style={{ left: `${x}%`, top: `${y}%` }} title={s.tip} aria-label={`${s.label}: ${s.value}${s.unit ?? ""} – ${s.sub}`}>
+            style={{ left: `${x}%`, top: `${y}%` }} title={s.tip} aria-label={`${s.label}: ${s.value}${s.unit ?? ""} – ${s.sub}${s.spark && sparkText(s.spark) ? ` · ${sparkText(s.spark)}` : ""}`}>
             <span className="fl-ring" aria-hidden><i /><i /></span>
             <b className="fl-v">{s.value}{s.unit && <small>{s.unit}</small>}</b>
+            {s.spark && <StationSpark s={s.spark} />}
             <span className="fl-l">{s.label}</span>
             <span className="fl-s">{s.sub}</span>
             {s.neck && <em className="fl-neck">Engpass</em>}
@@ -76,6 +78,7 @@ function Map({ layout, stations, edges, active, href }: { layout: "wide" | "tall
 export function FlowMap(p: { stations: Station[]; edges: Edge[]; active: StationId | null; href: (id: StationId) => string }) {
   return (
     <div className="fl">
+      <style dangerouslySetInnerHTML={{ __html: SPARK_CSS }} />
       <div className="fl-lanes"><span aria-hidden>Ware · Leads</span><span aria-hidden>Käufer · Webagenturen</span>
         <span><span aria-hidden>Website · Besucher</span><i className="fl-info" title={WEB_INFO} aria-label={`Website: ${WEB_INFO}`} tabIndex={0}><Icon name="info" size={13} /></i></span></div>
       <p className="fl-info-m"><Icon name="info" size={13} /> Website: {WEB_INFO}</p>
