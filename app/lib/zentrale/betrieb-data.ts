@@ -29,7 +29,7 @@ function dbSpuren(a: Activity): Record<string, string | null> {
 
 export async function loadBetrieb(): Promise<BetriebDaten> {
   const now = new Date();
-  const [live, act, runs, health, plans, own, web, flow] = await Promise.all([
+  const [live, act, runs, health, plans, own, web, flow, domains] = await Promise.all([
     loadLive().catch(() => null as Live | null),
     loadActivity(),
     loadRuns().catch(() => null),
@@ -39,6 +39,7 @@ export async function loadBetrieb(): Promise<BetriebDaten> {
     db().from("website_checks").select("at, scores").order("at", { ascending: false }).limit(1).abortSignal(T())
       .then((r) => (r.error ? null : ((r.data ?? [])[0] ?? null) as { at: string; scores: SiteCheck["scores"] } | null), () => null),
     db().rpc("datenfluss_stand").abortSignal(T()).then((r) => (r.error ? null : r.data as FlowRow[] | null), () => null),
+    loadBoxHealth(14, "domain"),
   ]);
   const stop = live ? brake(live, CONFIG).stop : null;
   const plan = [plans["lead-werk"], plans["kunden-werk"]].filter((p) => !!p).sort((a, b) => b!.at.localeCompare(a!.at))[0] ?? null;
@@ -51,6 +52,7 @@ export async function loadBetrieb(): Promise<BetriebDaten> {
     mitToken: runs !== null,
     workflows: workflowZeilen(CONFIG.workflows, runs, dbSpuren(act), now),
     boxen: live ? postfaecher(mailboxes(live, CONFIG), health) : [],
+    domains: domains ?? [],
     speicher: speicher(plan?.db_bytes ?? (live?.db_size || null), plan?.bremse ?? null),
     web: website(score, web?.at ?? null, now),
     still,

@@ -7,6 +7,9 @@
 4. DKIM: Testmail vom Postfach an sich selbst, per IMAP holen und die Signatur (d=Domain) mit dkimpy prüfen
 5. Weitere Versand-Postfächer (SMTP_USER_2 …, lib/mailboxes.py): Anmeldung, Testmail an OWNER_EMAIL und
    DKIM-Prüfung über das eigene IMAP-Postfach (gleiche Zugangsdaten), Inhaber 03.10.2026: „teste jedes postfach“
+   Jedes Postfach wird gegen seine eigene Domain geprüft (DNS je Domain + DKIM d=<Domain>). Das Ergebnis steht je
+   Adresse in signalwerk.mailbox_checks; ein Postfach auf einer neuen Domain sendet erst nach grünem Eintrag
+   (lib/mailboxes.active_boxes, Auftrag 05.10.2026). Rot oder nicht getestet = es sendet nicht.
 """
 from __future__ import annotations
 
@@ -49,11 +52,12 @@ def resend_send(to: str, subject: str, body: str) -> None:
     r.raise_for_status()
 
 
-def imap_fetch(token: str, wait: int = 180, user: str | None = None, password: str | None = None) -> bytes | None:
+def imap_fetch(token: str, wait: int = 180, user: str | None = None, password: str | None = None,
+               host: str | None = None) -> bytes | None:
     """Rohe Mail mit dem Token im Betreff aus dem Postfach holen (Posteingang oder Spam)."""
     end = time.time() + wait
     while time.time() < end:
-        with imaplib.IMAP4_SSL(os.environ["IMAP_HOST"]) as m:
+        with imaplib.IMAP4_SSL(host or os.environ["IMAP_HOST"]) as m:
             m.login(user or os.environ["IMAP_USER"], password or os.environ["IMAP_PASSWORD"])
             for box in ("INBOX", "Spam", "Junk"):
                 if m.select(box, readonly=True)[0] == "OK":
@@ -145,29 +149,71 @@ def main() -> int:
         ok = False
 
     print("5. Weitere Versand-Postfächer")
-    from lib.mailboxes import address, mailboxes
+    from lib.mailboxes import mailboxes
     extra = [b for b in mailboxes() if b["n"] > 1]
     if not extra:
-        print("       keine (SMTP_USER_2 … nicht gesetzt)")
-    for b in extra:
-        addr = address(b["from"])
+        print("       keine (SMTP_USER_2 … / SMTP_BOXES nicht gesetzt)")
+    results = [test_box(b, token) for b in extra]
+    ok &= all(r["ok"] for r in results)
+    save_checks(results)
+    return 0 if ok else 1
+
+
+_DNS: dict[str, tuple[bool, list[str]]] = {}
+
+
+def test_box(b: dict, token: str, send=None, fetch=None, dkim=None, dns_ok=None) -> dict:
+    """Ein Versand-Postfach prüfen: DNS seiner Domain, Anmeldung + Testmail an den Inhaber, DKIM der eigenen Domain.
+    Rückgabe = Zeile für signalwerk.mailbox_checks. send/fetch/dkim/dns_ok austauschbar (Tests)."""
+    from lib.mailboxes import address, domain_of
+    send, fetch, dkim = send or smtp_send, fetch or imap_fetch, dkim or dkim_check
+    addr, dom = address(b["from"]), b.get("domain") or domain_of(b["from"])
+    row = {"address": addr, "domain": dom, "box_n": b["n"], "dns_ok": False, "smtp_ok": False, "dkim_ok": False}
+    if dns_ok is None:
+        import dns_check
+        dns_ok = lambda d: _DNS.setdefault(d, dns_check.domain_ok(d))  # noqa: E731 - je Domain einmal
+    good, missing = dns_ok(dom)
+    row["dns_ok"] = good
+    print(f"{'OK    ' if good else 'FEHLT '} Postfach {b['n']} ({addr}): DNS {dom}" + (f" – fehlt: {', '.join(missing)}" if missing else ""))
+    try:
+        send(os.environ["OWNER_EMAIL"], f"[TEST] Postfach {b['n']} sendet {token}",
+             f"Testmail aus Versand-Postfach {b['n']} ({addr}). Bitte prüfen: Posteingang oder Spam?", box=b)
+        row["smtp_ok"] = True
+        print(f"OK     Postfach {b['n']} ({addr}): Anmeldung und Versand an den Inhaber")
+    except Exception as exc:  # noqa: BLE001
+        print(f"FEHLER Postfach {b['n']} ({addr}) SMTP: {type(exc).__name__}: {exc}")
+    if row["smtp_ok"]:
         try:
-            smtp_send(os.environ["OWNER_EMAIL"], f"[TEST] Postfach {b['n']} sendet {token}",
-                      f"Testmail aus Versand-Postfach {b['n']} ({addr}). Bitte prüfen: Posteingang oder Spam?", box=b)
-            print(f"OK     Postfach {b['n']} ({addr}): Anmeldung und Versand an den Inhaber")
-        except Exception as exc:  # noqa: BLE001
-            print(f"FEHLER Postfach {b['n']} ({addr}) SMTP: {type(exc).__name__}: {exc}")
-            ok = False
-            continue
-        try:
-            smtp_send(addr, f"[TEST] DKIM {b['n']} {token}", "DKIM-Test für dieses Postfach", box=b)
-            good = dkim_check(imap_fetch(f"DKIM {b['n']} {token}", user=b["user"], password=b["password"]), domain)
-            print(f"{'OK    ' if good else 'FEHLT '} Postfach {b['n']}: DKIM für {domain} {'gültig' if good else 'fehlt oder ungültig'}")
-            ok &= good
+            send(addr, f"[TEST] DKIM {b['n']} {token}", "DKIM-Test für dieses Postfach", box=b)
+            imap_box = {"user": b["user"], "password": b["password"]}
+            if b.get("imap_host"):
+                imap_box["host"] = b["imap_host"]
+            row["dkim_ok"] = bool(dkim(fetch(f"DKIM {b['n']} {token}", **imap_box), dom))
+            print(f"{'OK    ' if row['dkim_ok'] else 'FEHLT '} Postfach {b['n']}: DKIM für {dom} "
+                  f"{'gültig' if row['dkim_ok'] else 'fehlt oder ungültig'}")
         except Exception as exc:  # noqa: BLE001
             print(f"FEHLER Postfach {b['n']} DKIM/IMAP: {type(exc).__name__}: {exc}")
-            ok = False
-    return 0 if ok else 1
+    row["ok"] = row["dns_ok"] and row["smtp_ok"] and row["dkim_ok"]
+    parts = (("dns_ok", "DNS"), ("smtp_ok", "Anmeldung/Testmail"), ("dkim_ok", "DKIM"))
+    row["detail"] = "grün" if row["ok"] else "rot: " + ", ".join(label for k, label in parts if not row[k])
+    return row
+
+
+def save_checks(rows: list[dict], db=None) -> None:
+    """Ergebnis je Adresse in signalwerk.mailbox_checks (ohne Passwort). Ohne Datenbank nur Ausgabe."""
+    if not rows:
+        return
+    if db is None:
+        if not (os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SERVICE_ROLE_KEY")):
+            print("       Ergebnis nicht gespeichert (SUPABASE_* fehlt) – neue Domains bleiben aus")
+            return
+        from lib.db import DB
+        db = DB()
+    try:
+        db.insert("mailbox_checks", rows)
+        print(f"       {len(rows)} Prüfung(en) gespeichert (signalwerk.mailbox_checks)")
+    except Exception as exc:  # noqa: BLE001
+        print(f"FEHLER Speichern der Prüfungen: {type(exc).__name__}: {exc}")
 
 
 if __name__ == "__main__":

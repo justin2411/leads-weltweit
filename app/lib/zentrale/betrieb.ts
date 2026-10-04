@@ -132,7 +132,7 @@ export function schalter(o: {
 }
 
 // ------------------------------------------------------------------------------------------------- Kennzahl
-export type BetriebLage = { workflows: WfZeile[]; boxen: BoxZeile[]; speicher: Speicher; web: Web; still: Still[]; notbremse: string | null };
+export type BetriebLage = { workflows: WfZeile[]; boxen: BoxZeile[]; domains?: BoxHealth[]; speicher: Speicher; web: Web; still: Still[]; notbremse: string | null };
 
 /** Ampeln aller Bausteine (für Kopfzeile und Kennzahl); grau zählt nicht als Problem. */
 export function bausteine(x: BetriebLage): { name: string; ampel: Ampel }[] {

@@ -304,6 +304,23 @@ test("Bounces je Postfach: Zählung wie die Notbremse, Ampel erst ab 30 Mails", 
   assert.deepEqual(withCodes.find((x) => x.box !== "main")?.codes, { "5.1.1": 2 });
 });
 
+test("Domain-Werte 05.10.: je Versand-Domain gezählt, ohne Absender = Hauptdomain, rot erst über 5 % ab 100", async () => {
+  const { boxHealth } = await import("./dashboard-logic.ts");
+  const msgs = [
+    ...Array.from({ length: 60 }, (_, i) => ({ id: `a${i}`, sent_from: "NextGen Profit <info@nextgen-profit.de>" })),
+    ...Array.from({ length: 30 }, (_, i) => ({ id: `b${i}`, sent_from: "leads@nextgen-profit.de" })),
+    ...Array.from({ length: 10 }, (_, i) => ({ id: `c${i}`, sent_from: null })),
+    ...Array.from({ length: 40 }, (_, i) => ({ id: `d${i}`, sent_from: "anna@np-leads.com" })),
+  ];
+  const ev = [{ message_id: "b1", type: "bounced", to_email: "x1@y.com" }, { message_id: "b2", type: "bounced", to_email: "x2@y.com" },
+    { message_id: "d1", type: "complained", to_email: "q@y.com" }];
+  const h = boxHealth(msgs, ev, "domain");
+  assert.deepEqual(h.map((x) => [x.box, x.sent, x.bounced, x.complained, x.tone]), [
+    ["nextgen-profit.de", 100, 2, 0, "green"],
+    ["np-leads.com", 40, 0, 1, "red"],
+  ]);
+});
+
 test("Bounce-Analyse 05.10.: 4.x.x vorübergehend, Doppelmeldung derselben Mail einmal, 5.x.x voll", async () => {
   const { isTransient } = await import("./dashboard-logic.ts");
   assert.equal(isTransient({ bounce_type: "Permanent", bounce_status: "4.4.1" }), true);

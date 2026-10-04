@@ -232,6 +232,34 @@ def check_mailboxes(c: Check, db) -> None:
             c.add("Postfach", WARN, f"{b}: Bounce-Quote {rate:.1%}", detail)
         else:
             c.add("Postfach", OK, f"{b}: Bounce-Quote {rate:.1%}", detail)
+    check_domains(c, sent, ev)
+
+
+def check_domains(c: Check, sent: list[dict], ev: list[dict]) -> None:
+    """Je Versand-Domain (Auftrag 05.10.2026): gesendet, Bounces, Beschwerden der letzten 14 Tage. Gleiche Schwellen
+    wie die Notbremse je Domain (lib.deliverability.scoped_stops): Beschwerde rot, über 5 % ab 100 Mails rot."""
+    from lib.deliverability import BOUNCE_STOP, MIN_SAMPLE, count_bounces
+    from lib.mailboxes import domain_of
+    dom = {m["id"]: domain_of(m.get("sent_from")) or "nextgen-profit.de" for m in sent}
+    counts: dict[str, int] = {}
+    for d in dom.values():
+        counts[d] = counts.get(d, 0) + 1
+    per: dict[str, list[dict]] = {}
+    for e in ev:
+        if e.get("message_id") in dom:
+            per.setdefault(dom[e["message_id"]], []).append(e)
+    for d, n in sorted(counts.items(), key=lambda x: -x[1]):
+        bounced, complained = count_bounces(per.get(d, []))
+        rate = bounced / n
+        detail = f"{n} gesendet, {bounced} Bounces, {complained} Beschwerden (14 Tage)"
+        if complained:
+            c.add("Domain", FAIL, f"{d}: Spam-Beschwerde", detail)
+        elif n >= MIN_SAMPLE and rate > BOUNCE_STOP:
+            c.add("Domain", FAIL, f"{d}: Bounce-Quote {rate:.1%}", detail)
+        elif n >= BOX_MIN and rate >= BOX_WARN:
+            c.add("Domain", WARN, f"{d}: Bounce-Quote {rate:.1%}", detail)
+        else:
+            c.add("Domain", OK, f"{d}: {n} gesendet, Bounce {rate:.1%}", detail)
 
 
 def _resting(m: dict, pairs: set) -> bool:

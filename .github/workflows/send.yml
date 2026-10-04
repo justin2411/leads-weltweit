@@ -60,6 +60,8 @@ jobs:
       SMTP_USER_5: ${{ secrets.SMTP_USER_5 }}
       SMTP_PASSWORD_5: ${{ secrets.SMTP_PASSWORD_5 }}
       SMTP_FROM_5: ${{ secrets.SMTP_FROM_5 }}
+      # beliebig viele weitere Postfächer/Domains als JSON-Liste (lib/mailboxes.py, Auftrag 05.10.2026)
+      SMTP_BOXES: ${{ secrets.SMTP_BOXES }}
       REPLY_TO: ${{ secrets.SMTP_FROM || secrets.REPLY_TO }}
       SENDER_NAME: ${{ secrets.SENDER_NAME }}
       SENDER_COMPANY: ${{ secrets.SENDER_COMPANY }}

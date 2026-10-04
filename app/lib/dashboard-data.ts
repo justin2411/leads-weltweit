@@ -364,7 +364,7 @@ export async function loadRecentSent(limit = 10): Promise<SentMail[]> {
 }
 
 /** Gesendete Mails und Bounces/Beschwerden der letzten Tage je Postfach (für boxHealth); Fehler -> null. */
-export async function loadBoxHealth(days = 14): Promise<BoxHealth[] | null> {
+export async function loadBoxHealth(days = 14, by: "box" | "domain" = "box"): Promise<BoxHealth[] | null> {
   try {
     const since = new Date(Date.now() - days * 86_400_000).toISOString();
     const sb = db();
@@ -378,7 +378,7 @@ export async function loadBoxHealth(days = 14): Promise<BoxHealth[] | null> {
       message_id: x.message_id, type: x.type, bounce_type: x.payload?.bounce?.type ?? null, bounce_status: x.payload?.bounce?.status ?? null,
       to_email: (Array.isArray(x.messages) ? x.messages[0] : x.messages)?.to_email ?? null,
     }));
-    return boxHealth((m.data ?? []) as { id: string; sent_from: string | null }[], events);
+    return boxHealth((m.data ?? []) as { id: string; sent_from: string | null }[], events, by);
   } catch {
     return null;
   }

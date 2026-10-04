@@ -177,9 +177,13 @@ class TagescheckTest(unittest.TestCase):
                 "messages": {"to_email": "z@y.com"}}]                              # 1/10: zu wenig Mails
         c = t.Check()
         t.check_mailboxes(c, FakeDB({"messages": msgs, "email_events": ev}))
-        rows = {r[2].split(":")[0]: r[1] for r in c.rows}
+        rows = {r[2].split(":")[0]: r[1] for r in c.rows if r[0] == "Postfach"}
         self.assertEqual(rows, {"info@ (Hauptpostfach)": t.OK, "webagency@nextgen-profit.de": t.FAIL,
                                 "leads@nextgen-profit.de": t.OK})
+        # je Domain (05.10.2026): 4 Bounces bei 95 Mails = 4,2 % -> gelb, noch keine Notbremse (unter 100)
+        dom = [r for r in c.rows if r[0] == "Domain"]
+        self.assertEqual([(r[1], r[2].split(":")[0]) for r in dom], [(t.WARN, "nextgen-profit.de")])
+        self.assertIn("95 gesendet, 4 Bounces", dom[0][3])
         self.assertIn("bei 45 Mails", next(r[3] for r in c.rows if r[2].startswith("info@")))
 
     def test_unsubscribe_scanner_suspects(self):
