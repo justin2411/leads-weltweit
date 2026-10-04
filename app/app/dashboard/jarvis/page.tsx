@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadBoxHealth, loadDaily, loadFunnel, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock } from "@/lib/dashboard-data";
-import { berlin, berlinDay, brake, chain, compact, currencySign, greeting, mailboxes, monthly, nextRun, onlySegment, realSubscriptions, sampleStock, stockSegment, BOX_MIN, COUNTRY_COLOR } from "@/lib/dashboard-logic";
+import { berlin, berlinDay, brake, chain, compact, currencySign, greeting, mailboxes, monthly, nextWorkflowRun, onlySegment, realSubscriptions, sampleStock, stockSegment, BOX_MIN, COUNTRY_COLOR } from "@/lib/dashboard-logic";
 import { totals } from "@/lib/dashboard-periods";
 import { alarmTips, coach, hall, laneOf, laneStats, neckTask, rankTips, recommend, running, utilization, type Beat, type Tip } from "@/lib/leitstand";
 import { freeAgent, nextAgentRound } from "@/lib/agents";
@@ -216,7 +216,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
 
   // ---------------------------------------------------------------- Seitenfenster
   const back = s ? `/dashboard/jarvis?s=${s}&t=${tab}` : "/dashboard/jarvis";
-  const nx = (file: string) => { const x = CONFIG.workflows.find((y) => y.file === file); const d = x ? nextRun(x.crons, now) : null; return d ? berlin(d, false) : "–"; };
+  const nx = (file: string) => { const d = nextWorkflowRun(CONFIG.workflows.find((y) => y.file === file), now); return d ? berlin(d, file === "send.yml") : "–"; };  // Versand nur Di–Do: mit Datum
   const dispatch = canDispatch();
   // Direktstart (03.10.2026): mit Token sofort, sonst startet der Wachhund spätestens beim nächsten Lauf; Pausen gelten
   const Start = ({ wf }: { wf: StartKey }) => {

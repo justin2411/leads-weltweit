@@ -33,10 +33,12 @@ from pathlib import Path
 import requests
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+from lib import versandzeit  # noqa: E402
 
 # (Datei, Art, Zeit/Minuten, Karenz in Minuten, Eingaben, Bedingung)
 #   hourly: (start_h, end_h) UTC-Fenster, Minuten ohne Lauf bis überfällig
-#   daily:  "HH:MM" UTC, Wochentage (0=Mo) oder None
+#   daily:  "HH:MM" UTC (oder in "tz", z. B. Europe/Berlin), Wochentage (0=Mo) oder None
 JOBS = [
     # Antworten rund um die Uhr alle 10 min (Nachtschicht 04.10.2026: US-Antworten kommen in unserer Nacht);
     # nach 20 statt 45 min nachstarten (Prüfung 04.10.2026: GitHub ließ geplante Läufe stundenlang aus)
@@ -49,9 +51,11 @@ JOBS = [
     {"wf": "kaeufer.yml", "kind": "daily", "at": "05:13", "grace": 60},
     {"wf": "sync.yml", "kind": "daily", "at": "06:17", "grace": 45},
     {"wf": "taeglich.yml", "kind": "daily", "at": "12:17", "grace": 45},
-    {"wf": "send.yml", "kind": "daily", "at": "14:23", "grace": 40, "until": "21:00", "cond": "versand",
-     "inputs": {"freigabe": "Dauerfreigabe des Inhabers laut config/versand.yaml (Wachhund: geplanter Lauf ausgefallen)",
-                "probelauf": "false"}},
+    # Versand nur Di–Do zur Bürozeit der Empfänger (Inhaber 04.10.2026): je Gruppe ein Job in deutscher Zeit
+    # (UK/FR 08:37, US 14:37; Plan app/lib/versandzeit.json), Nachholen nur so lange, wie der Lauf noch im Fenster beginnt
+    *versandzeit.wachhund_jobs(inputs={
+        "freigabe": "Dauerfreigabe des Inhabers laut config/versand.yaml (Wachhund: geplanter Lauf ausgefallen)",
+        "probelauf": "false"}),
     {"wf": "tagescheck.yml", "kind": "daily", "at": "17:37", "grace": 40, "inputs": {"mail": "true"}},
     {"wf": "freigabe-stichprobe.yml", "kind": "daily", "at": "05:07", "grace": 60},
     {"wf": "kundenlieferung.yml", "kind": "daily", "at": "04:53", "grace": 60, "weekdays": [0], "until": "12:00"},
@@ -269,6 +273,9 @@ def overdue(job: dict, runs: list[dict], now: dt.datetime) -> tuple[bool, str]:
         if last and (now - last).total_seconds() / 60 < job["max_min"]:
             return False, f"zuletzt vor {(now - last).total_seconds() / 60:.0f} min"
         return True, "kein Lauf in " + (f"{(now - last).total_seconds() / 60:.0f} min" if last else "der Historie")
+    if job.get("tz"):  # Zeiten in Ortszeit (Versand: deutsche Zeit, Sommer-/Winterzeit automatisch)
+        from zoneinfo import ZoneInfo
+        now = now.astimezone(ZoneInfo(job["tz"]))
     if job.get("weekdays") is not None and now.weekday() not in job["weekdays"]:
         return False, "heute nicht geplant"
     due = at_today(now, job["at"])
@@ -278,7 +285,7 @@ def overdue(job: dict, runs: list[dict], now: dt.datetime) -> tuple[bool, str]:
         return False, "Nachholfenster vorbei"
     if any(s >= due - dt.timedelta(minutes=15) for s in starts):
         return False, "heute gelaufen"
-    return True, f"geplant {job['at']} UTC, heute kein Lauf"
+    return True, f"geplant {job['at']} {'deutscher Zeit' if job.get('tz') else 'UTC'}, heute kein Lauf"
 
 
 def main(argv=None) -> int:

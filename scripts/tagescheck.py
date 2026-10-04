@@ -27,7 +27,8 @@ ICON = {OK: "✓", WARN: "!", FAIL: "✗"}
 
 # Geplante Läufe: Datei -> (Name, höchstes erlaubtes Alter des letzten Laufs in Stunden)
 WORKFLOWS = {
-    "send.yml": ("Versand Kaltmails", 27),
+    # Versand nur Di–Do (Inhaber 04.10.2026): erwartetes Alter aus dem Versandplan, siehe send_max_age()
+    "send.yml": ("Versand Kaltmails (Di–Do)", 27),
     "taeglich.yml": ("Automatiklauf (Nachfassmails, Entwürfe)", 27),
     # läuft rund um die Uhr alle 10 min, Wachhund startet nach 20 min nach -> 1 h Toleranz (Prüfung 04.10.2026)
     "antworten.yml": ("Antwort-Assistent + Web-Proben (24/7)", 1),
@@ -75,6 +76,17 @@ class Check:
 
 
 # ---------------------------------------------------------------------------
+def send_max_age(now: dt.datetime) -> float:
+    """Höchstes Alter (h) des letzten send.yml-Laufs: der letzte geplante Versandstart (Di–Do, deutsche Zeit) muss
+    gelaufen sein. Fr–Mo fehlende Läufe sind kein Fehler (Inhaber 04.10.2026). Läufe, die vor dem Start endeten
+    (Cron der anderen Jahreszeit außerhalb des Fensters), zählen nicht."""
+    from lib import versandzeit
+    due = versandzeit.last_due(now)
+    if not due:
+        return 24 * 15
+    return (now - due[1]).total_seconds() / 3600 + 0.25
+
+
 def check_workflows(c: Check) -> None:
     repo, token = os.environ.get("GITHUB_REPOSITORY"), os.environ.get("GITHUB_TOKEN")
     if not (repo and token):
@@ -88,6 +100,8 @@ def check_workflows(c: Check) -> None:
         wanted["kunden-werk.yml"] = ("Kunden-Werk", 6)
     h = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
     for wf, (name, max_h) in wanted.items():
+        if wf == "send.yml":
+            max_h = send_max_age(NOW)
         r = requests.get(f"https://api.github.com/repos/{repo}/actions/workflows/{wf}/runs",
                          params={"per_page": 5, "branch": "main"}, headers=h, timeout=30)
         r.raise_for_status()
@@ -114,8 +128,12 @@ def check_workflows(c: Check) -> None:
 
 def check_sending(c: Check, db) -> None:
     from lib.deliverability import BOUNCE_STOP, MIN_SAMPLE, count_bounces, emergency_stop, window_start
+    from lib import versandzeit
     aktiv = cfg("versand.yaml", "aktiv") == "true"
-    since26 = (NOW - dt.timedelta(hours=26)).isoformat()
+    # Versand nur Di–Do (Inhaber 04.10.2026): „gesendet?“ ab dem ersten Start des letzten fälligen Versandtags
+    day_start = versandzeit.send_day_start(NOW) or (NOW - dt.timedelta(hours=26))
+    since26 = min(day_start, NOW - dt.timedelta(hours=26)).isoformat()
+    since_label = versandzeit.label(day_start)
     since30 = window_start(NOW).isoformat()  # Notbremse-Fenster wie beim Versand (notbremse_ab)
     sent_day = db.select("messages", {"status": "eq.sent", "sent_at": f"gte.{since26}", "select": "id,kind"})
     queue = db.select("messages", {"status": "eq.approved", "select": "id,kind"})
@@ -135,9 +153,11 @@ def check_sending(c: Check, db) -> None:
     elif stop:
         c.add("Versand", FAIL, "Notbremse aktiv", stop)
     elif queue and not sent_day:
-        c.add("Versand", FAIL, "Keine Mail in 26 h gesendet", f"{len(queue)} freigegebene Mails warten")
+        c.add("Versand", FAIL, f"Keine Mail seit dem letzten Versandtag gesendet ({since_label})",
+              f"{len(queue)} freigegebene Mails warten")
     else:
-        c.add("Versand", OK, f"{len(sent_day)} Mails in 26 h gesendet", f"{detail}; Warteschlange {len(queue)}")
+        c.add("Versand", OK, f"{len(sent_day)} Mails seit {since_label} gesendet (Versand Di–Do)",
+              f"{detail}; Warteschlange {len(queue)}")
     if not stop and len(sent30):
         rate = bounced / len(sent30)
         if rate > BOUNCE_STOP * 0.8:
