@@ -33,11 +33,12 @@ SOURCE_NAME = {
     "ats_jobs": "Careers page (applicant tracking system)",
     "overture_web": "Website check (company homepage)",
     "find_tender": "UK public contract award notice (Find a Tender / Contracts Finder)",
+    "us_award": "US federal contract award (USAspending.gov)",
 }
 EVENT_KEY = {"fmcsa": "fmcsa_registration", "sec_form_d": "form_d", "companies_house": "incorporation",
              "bodacc": "immatriculation", "overture": "no_website", "careers": "open_roles", "ats_jobs": "open_roles",
              "overture_web": "website_check",
-             "find_tender": "contract_award"}
+             "find_tender": "contract_award", "us_award": "contract_award"}
 INDUSTRY = {"fmcsa": "Motor carrier"}
 
 
@@ -48,7 +49,7 @@ def signal_type(seg: str, source: str, given: str = "") -> str:
         return "jobs_open"
     if source in ("companies_house", "bodacc"):
         return "incorporation"
-    if source == "find_tender":
+    if source in ("find_tender", "us_award"):
         return "contract_award"
     if seg == "S2":
         return "no_website"

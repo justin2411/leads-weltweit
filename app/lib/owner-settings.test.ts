@@ -58,11 +58,11 @@ test("Belegungsplan: je Linie 0 … max, Summe höchstens 38, gleiche Regeln wie
   assert.equal(Object.values(def).reduce((a: number, b: number) => a + b, 0), 38);
   const p = validateSlotPlan({ "web-us": "10", "web-uk": "", kunden: "4" }, reg);
   assert.equal(p["web-us"], 10);
-  assert.equal(p["web-uk"], 5); // leer = Standard
+  assert.equal(p["web-uk"], 4); // leer = Standard (5 -> 4: 1 Platz an S1 USA, Scout 04.10.2026)
   assert.equal(p.kunden, 4);
   assert.throws(() => validateSlotPlan({ "web-us": "22" }, reg), InputError); // über max
   assert.throws(() => validateSlotPlan({ "web-uk": "21" }, reg), InputError); // Summe 54 > 38
   assert.throws(() => validateSlotPlan({ "web-us": "-1" }, reg), InputError);
-  assert.deepEqual(slotCounts(reg, { "web-us": 99, "web-uk": 4 }), { ...def, "web-us": 21, "web-uk": 4 }); // gekappt wie in Python
+  assert.deepEqual(slotCounts(reg, { "web-us": 99, "web-uk": 3 }), { ...def, "web-us": 21, "web-uk": 3 }); // gekappt wie in Python
   assert.deepEqual(slotCounts(reg, { "web-uk": 21 }), def); // Summe zu hoch -> Standard
 });
