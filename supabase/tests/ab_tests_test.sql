@@ -1,4 +1,4 @@
--- Test A/B je Schritt (Migration 20261004233000): höchstens ein laufender Test je Schritt und Land, Ereignisse doppelt
+-- Test A/B je Schritt (Migration 20261004235500): höchstens ein laufender Test je Schritt und Land, Ereignisse doppelt
 -- ignoriert, ab_results zählt Antworten nach dem Kontakt (nicht davor, keine Abmeldungen) und Ereignisse, ab_funnel
 -- liefert alle Stationen. Läuft in der CI nach den Migrationen; alles in einer Transaktion, am Ende zurückgerollt.
 begin;

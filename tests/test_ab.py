@@ -84,7 +84,7 @@ class AssignTest(unittest.TestCase):
 
 class RegistryTest(unittest.TestCase):
     def test_steps_match_migration(self):
-        sql = (ROOT / "supabase" / "migrations" / "20261004233000_signalwerk_ab_tests.sql").read_text(encoding="utf-8")
+        sql = (ROOT / "supabase" / "migrations" / "20261004235500_signalwerk_ab_tests.sql").read_text(encoding="utf-8")
         block = re.search(r"ab_tests_step_check check \(step in \((.*?)\)\);", sql, re.S).group(1)
         self.assertEqual(sorted(re.findall(r"'(\w+)'", block)), sorted(s["key"] for s in ab.registry()["schritte"]))
         stations = {s["key"] for s in ab.registry()["stationen"]}
