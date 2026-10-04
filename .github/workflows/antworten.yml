@@ -31,6 +31,7 @@ jobs:
       MAIL_FROM: ${{ secrets.MAIL_FROM }}
       REPLY_TO: ${{ secrets.REPLY_TO }}
       OWNER_EMAIL: ${{ secrets.OWNER_EMAIL }}
+      KAUFINTERESSE_AN: ${{ secrets.KAUFINTERESSE_AN }}   # leer = Adresse aus config/versand.yaml bzw. OWNER_EMAIL
       SENDER_NAME: ${{ secrets.SENDER_NAME }}
       SENDER_COMPANY: ${{ secrets.SENDER_COMPANY }}
       SENDER_TITLE: ${{ secrets.SENDER_TITLE }}

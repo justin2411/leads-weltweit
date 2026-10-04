@@ -508,12 +508,13 @@ jobs:
         run: |
           grep -Eq '^lead_suche:\s*true' config/pipeline.yaml || { echo "Schalter aus – kein Neustart"; exit 0; }
           retry() { for i in 1 2 3; do "$@" && return 0; [ "$i" -lt 3 ] && sleep 20; done; return 1; }
-          # Prüfung 04.10.2026: bis zu 3 Versuche je GitHub-Aufruf; Startzeit unbekannt -> neu starten (mins=999)
+          # Prüfung 04.10.2026: bis zu 3 Versuche je GitHub-Aufruf; Startzeit unbekannt -> kein Sofort-Neustart
+          # (sonst Kette kurzer Selbststarts bei API-Störung); Cron und Wachhund übernehmen
           start=$(retry gh run view ${{ github.run_id }} --json createdAt -q .createdAt || true)
           if [ -n "$start" ]; then
             mins=$(( ( $(date -u +%s) - $(date -u -d "$start" +%s) ) / 60 ))
           else
-            mins=999
+            mins=0
           fi
           if [ "$mins" -lt 10 ]; then echo "Lauf nur $mins Minuten – kein Sofort-Neustart"; exit 0; fi
           retry gh workflow run lead-werk.yml --ref "${{ github.ref_name }}"

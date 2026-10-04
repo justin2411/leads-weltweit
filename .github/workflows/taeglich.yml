@@ -104,10 +104,7 @@ jobs:
         continue-on-error: true
         run: |
           python scripts/samples.py
-          git config user.name "signalwerk-bot"
-          git config user.email "signalwerk-bot@users.noreply.github.com"
-          git add samples/
-          git diff --cached --quiet || (git commit -m "Probe-Leads aktualisiert" && git pull --rebase -q && git push) || echo "Push übersprungen"
+          # Prüfung 04.10.2026: Proben nicht mehr ins öffentliche Repo committen (Lead-Kontaktdaten); Quelle ist die DB
       - name: Neue Entwürfe (Freigabe laut config/versand.yaml)
         if: ${{ !cancelled() }}
         run: |

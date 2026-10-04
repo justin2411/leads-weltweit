@@ -38,7 +38,8 @@ class WorkflowRobustnessTest(unittest.TestCase):
         for name in ("lead-werk.yml", "kunden-werk.yml"):
             run = _wf(name)["jobs"]["weiter"]["steps"][-1]["run"]
             self.assertIn("retry gh run view", run)
-            self.assertIn("mins=999", run)
+            self.assertIn("mins=0", run)   # Startzeit unbekannt -> kein Sofort-Neustart (keine Startkette)
+            self.assertNotIn("mins=999", run)
             self.assertIn(f"retry gh workflow run {name}", run)
 
     def test_daily_runs_skip_after_wachhund_restart(self):

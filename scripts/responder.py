@@ -350,7 +350,10 @@ def thread_references(msg, m: dict | None, mid: str) -> str:
 
 
 def alert_address() -> str | None:
-    """Adresse für Kaufinteresse aus config/versand.yaml (kaufinteresse_an), sonst OWNER_EMAIL."""
+    """Adresse für Kaufinteresse: Secret KAUFINTERESSE_AN (öffentliches Repo, Prüfung 04.10.2026), sonst
+    config/versand.yaml (kaufinteresse_an, Übergang bis das Secret gesetzt ist), sonst OWNER_EMAIL."""
+    if os.environ.get("KAUFINTERESSE_AN", "").strip():
+        return os.environ["KAUFINTERESSE_AN"].strip()
     cfg = ROOT / "config" / "versand.yaml"
     try:
         m = re.search(r"^kaufinteresse_an:\s*(\S+@\S+)", cfg.read_text(), re.M)
