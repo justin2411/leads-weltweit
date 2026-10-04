@@ -305,3 +305,24 @@ class PoolTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PlaceholderTest(unittest.TestCase):
+    def test_suspended_page_has_no_emails(self):
+        import kundenwerk as K
+
+        class F:
+            def get(self, url):
+                return ("http://www.oodda.com/cgi-sys/suspendedpage.cgi", "<html>webmaster@oodda.com</html>")
+        res = K.site_scan("http://www.oodda.com", F())
+        self.assertEqual(res["emails"], {})
+        self.assertTrue(res["placeholder"])
+        self.assertTrue(K.hosting_placeholder("https://x.com/", "<title>Account Suspended</title>"))
+        self.assertFalse(K.hosting_placeholder("https://x.com/", "<title>Acme Web Design</title>"))
+
+    def test_send_address_problems(self):
+        from outreach import address_problems
+        self.assertEqual(address_problems("info@acme.com", {"source_url": "https://acme.com/contact"}), [])
+        self.assertEqual(len(address_problems("%20service@acme.com", {})), 1)
+        self.assertEqual(len(address_problems("webmaster@x.com", {"source_url": "http://x.com/cgi-sys/suspendedpage.cgi"})), 1)
+

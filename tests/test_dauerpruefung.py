@@ -185,10 +185,21 @@ class KaeuferTest(unittest.TestCase):
         self.assertTrue(v["update"]["check_reason"].startswith("nur Anruf/Brief – "))
 
     def test_hints_only_mark(self):
-        v = self.verdict(prospect("p1"), bounced=({"p1"}, set()), mx=lambda d: False, site=lambda u: "tot")
+        v = self.verdict(prospect("p1"), bounced=({"p1"}, set()), mx=lambda d: True, site=lambda u: "tot")
         self.assertEqual(v["result"], "hinweis")
-        self.assertEqual(v["hinweis"], "bounce_historie,kein_mx,website_nicht_erreichbar")
+        self.assertEqual(v["hinweis"], "bounce_historie,website_nicht_erreichbar")
         self.assertNotIn("update", v)
+
+    def test_intake_rules_reject_stock(self):
+        # gleiche Eingangsregeln wie das Kunden-Werk: kein MX, ungültige Adresse, Overture-Mail bei toter Website
+        v = self.verdict(prospect("p1"), mx=lambda d: False, site=lambda u: None)
+        self.assertEqual((v["result"], v["update"]["check_status"]), ("abgelehnt", "rejected"))
+        self.assertIn("ohne MX", v["update"]["check_reason"])
+        v = self.verdict(prospect("p2", email="%20service@acme.com", phone="+1 555"), mx=lambda d: True, site=lambda u: None)
+        self.assertEqual(v["update"]["check_status"], "call_only")
+        ov = prospect("p3", source_url="https://overturemaps.org (Firmeneintrag x)")
+        self.assertEqual(self.verdict(ov, mx=lambda d: True, site=lambda u: "tot")["result"], "abgelehnt")
+        self.assertEqual(self.verdict(ov, mx=lambda d: True, site=lambda u: None)["result"], "ok")
         # MX nicht prüfbar (None) ist kein Hinweis
         self.assertEqual(self.verdict(prospect("p2"), mx=lambda d: None, site=lambda u: None)["result"], "ok")
 

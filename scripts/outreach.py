@@ -128,6 +128,18 @@ def role_address(email: str) -> bool:
 FOLLOWUP_MAX_DAYS = 11  # Nachfassmail spätestens 11 Tage nach der Erstmail (geplant: nach 4 Tagen)
 
 
+def address_problems(email: str, p: dict) -> list[str]:
+    """Versand-Prüfung der Adresse (nur strenger, Bounce-Analyse 04.10.2026): „%20“/Leerzeichen sind sichere Bounces;
+    Fundseite ist eine Sperr-/Parkseite des Hosters (webmaster@ von suspendedpage.cgi)."""
+    from kundenwerk import PLACEHOLDER_URL, address_ok
+    out = []
+    if not address_ok(email or ""):
+        out.append("Adresse ungültig (%-Kodierung oder Leerzeichen)")
+    if PLACEHOLDER_URL.search((p or {}).get("source_url") or ""):
+        out.append("Adresse stammt von einer Sperr-/Parkseite des Hosters")
+    return out
+
+
 def followup_block_reason(db, m: dict) -> str | None:
     """Nachfassmails beim Versand erneut prüfen: seit dem Anlegen kann eine Antwort, Probe-Anfrage oder ein Bounce
     eingegangen sein. Grund zum Blockieren oder None."""
@@ -626,6 +638,7 @@ def cmd_send(args) -> int:
             problems.append(f"Rechtsform '{p.get('legal_form') or '?'}' ist keine Kapitalgesellschaft in {country}")
         if role_address(m["to_email"]):
             problems.append("Funktionsadresse ohne Vertriebsbezug (z. B. privacy@, support@)")
+        problems += address_problems(m["to_email"], p)
         # Pflicht-Kennzeichnung im Betreff (SG Spam Control Act: „<ADV> “) und Sprache des Landes (BR pt, MX es),
         # neue Länder 04.10.2026 – fehlt etwas, wird nicht gesendet
         prefix = rules.get("subject_prefix") or ""
