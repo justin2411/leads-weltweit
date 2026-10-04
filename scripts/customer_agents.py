@@ -516,6 +516,13 @@ def _ts(s: str) -> dt.datetime:
     return t if t.tzinfo else t.replace(tzinfo=dt.timezone.utc)
 
 
+def recent_failure(messages: list[dict], now: dt.datetime | None = None) -> bool:
+    """Eigene Mail in den letzten 24 h gescheitert? Dann keine neue Nachfrage (sonst alle 10 min ein Versuch)."""
+    now = now or _now()
+    return any(m.get("direction") == "out" and m.get("status") == "fehler" and not m.get("in_reply_to")
+               and m.get("created_at") and _ts(m["created_at"]) > now - dt.timedelta(hours=24) for m in messages)
+
+
 def last_own_mail(messages: list[dict]) -> str | None:
     """Zeitpunkt der letzten eigenen Mail (gesendet, keine Antwort auf den Kunden)."""
     own = [m["created_at"] for m in messages if m.get("direction") == "out" and m.get("status") == "gesendet"
@@ -580,6 +587,8 @@ def send_agent_mail(db, agent: dict, customer: dict, subject: str, body: str, *,
         return "dry"
     from deliveries import _resend
     from lib.html_email import render
+    in_reply_to = re.sub(r"[\r\n]+", " ", in_reply_to).strip()[:500] if in_reply_to else None
+    references = re.sub(r"[\r\n]+", " ", references).strip()[:2000] if references else None
     headers = {"In-Reply-To": in_reply_to, "References": references or in_reply_to} if in_reply_to else None
     row = {"agent_id": agent["id"], "direction": "out", "channel": "mail", "subject": subject[:300],
            "body": text[:8000], "in_reply_to": in_reply_to}
@@ -591,8 +600,11 @@ def send_agent_mail(db, agent: dict, customer: dict, subject: str, body: str, *,
         db.insert("customer_agent_messages", {**row, "status": "fehler"})
         print(f"FEHLER Mail an {customer.get('company_name')}: {exc.__class__.__name__}: {str(exc)[:200]}")
         return "fehler"
-    db.insert("customer_agent_messages", {**row, "status": "gesendet", "message_id": rid})
-    db.update("customer_agents", {"id": agent["id"]}, {"last_contact_at": _now().isoformat()})
+    try:  # Mail ist raus: ein Speicherfehler darf den Lauf nicht abbrechen (Folgeschritte merken sich den Versand)
+        db.insert("customer_agent_messages", {**row, "status": "gesendet", "message_id": rid})
+        db.update("customer_agents", {"id": agent["id"]}, {"last_contact_at": _now().isoformat()})
+    except Exception as exc:  # noqa: BLE001
+        print(f"WARNUNG: gesendete Mail nicht im Verlauf gespeichert ({exc.__class__.__name__}: {str(exc)[:200]})")
     print(f"✓ {customer.get('company_name')}: Mail „{subject}“ gesendet")
     return "gesendet"
 
@@ -608,10 +620,13 @@ def ensure(db, *, welcome: bool = False, dry: bool = False, now: dt.datetime | N
     taken = {full_name(a.get("persona") or {}) for a in agents}
     out = {"neu": 0, "pausiert": 0, "aktiviert": 0, "begruesst": 0}
     fresh: set[str] = set()
+    eligible_subs: set[str] = set()
     for s in sorted(subs, key=lambda s: str(s["id"])):
         c = s.get("customers") or {}
         ok, a = eligible(s, c), by_sub.get(s["id"])
         name = c.get("company_name") or s["id"]
+        if ok:
+            eligible_subs.add(s["id"])
         if ok and not a:
             persona = pick_persona(s["id"], lang_for((s.get("filters") or {}).get("country") or c.get("country")),
                                    taken, data)
@@ -629,15 +644,19 @@ def ensure(db, *, welcome: bool = False, dry: bool = False, now: dt.datetime | N
             status = "aktiv" if a.get("profile") else "onboarding"
             print(f"~ {name}: Agent {full_name(a.get('persona') or {})} wieder {status}")
             out["aktiviert"] += 1
+            a["status"] = status
             if not dry:
                 db.update("customer_agents", {"id": a["id"]}, {"status": status})
         elif not ok and a and a.get("status") != "pausiert":
             print(f"- {name}: Agent {full_name(a.get('persona') or {})} pausiert (Abo gekündigt/Starter/Test)")
             out["pausiert"] += 1
+            a["status"] = "pausiert"  # nie ein gekündigtes/Starter-Abo im selben Lauf begrüßen
             if not dry:
                 db.update("customer_agents", {"id": a["id"]}, {"status": "pausiert"})
     if welcome:
-        for a in by_sub.values():
+        for sid, a in by_sub.items():
+            if sid not in eligible_subs:
+                continue  # nur aktive Abos ab Pro (Abo gekündigt, Starter, Test oder gelöscht: keine Begrüßung)
             if a.get("status", "onboarding") != "onboarding" or a.get("mail_opt_out"):
                 continue
             created = a.get("created_at")
@@ -684,7 +703,7 @@ def inbox(db, *, days: int = 14, dry: bool = False) -> dict:
     for r in rows:
         c = match_customer(r.get("from_email") or "", customers)
         a = agent_for_customer(c["id"], agents) if c else None
-        if a and r.get("imap_message_id"):
+        if a and a.get("status") != "pausiert" and r.get("imap_message_id"):
             todo.append((r, c, a))
     have = set()
     ids = [r["imap_message_id"] for r, _, _ in todo]
@@ -803,6 +822,8 @@ def checkin(db, *, dry: bool = False, now: dt.datetime | None = None) -> dict:
         sent = db.select("deliveries", {"subscription_id": f"eq.{a['subscription_id']}", "status": "eq.sent",
                                         "select": "id,sent_at"})
         msgs = _messages(db, a["id"])
+        if recent_failure(msgs, now):
+            continue
         n = checkin_due(sent or [], a.get("kpis"), last_own_mail(msgs), now)
         if not n:
             continue

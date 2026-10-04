@@ -271,6 +271,28 @@ class EnsureTest(unittest.TestCase):
         send.assert_not_called()
 
 
+    def test_cancelled_subscription_not_welcomed_in_same_run(self):
+        """Prüfung: Agent ohne Begrüßung, Abo inzwischen gekündigt -> pausiert, keine Begrüßung im selben Lauf."""
+        db = agents_db()
+        A.ensure(db, now=NOW)
+        db.tables["subscriptions"][0]["status"] = "cancelled"
+        with mock.patch.object(deliveries, "_resend", return_value="re_1") as send, \
+                mock.patch.dict(os.environ, {"MAIL_FROM": "hello@nextgen-profit.de"}):
+            A.ensure(db, welcome=True, now=NOW + dt.timedelta(days=1))
+        to = [c.args[0][0] for c in send.call_args_list]
+        self.assertNotIn("owner1@studio1.co.uk", to)
+
+    def test_header_injection_removed(self):
+        db = agents_db()
+        A.ensure(db, now=NOW)
+        a = db.rows("customer_agents")[0]
+        c = next(x for x in db.rows("customers") if x["id"] == a["customer_id"])
+        with mock.patch.object(deliveries, "_resend", return_value="re_h") as send, \
+                mock.patch.dict(os.environ, {"MAIL_FROM": "hello@nextgen-profit.de"}):
+            A.send_agent_mail(db, a, c, "Re: x", "Hello", in_reply_to="<a@b>\r\nBcc: evil@x.com")
+        h = send.call_args.kwargs["headers"]
+        self.assertNotIn("\n", h["In-Reply-To"] + h["References"])
+
 def inbox_db(body="We mostly want cafes, thanks!", subject="Re: your leads"):
     db = agents_db()
     A.ensure(db, now=NOW)
@@ -323,6 +345,13 @@ class InboxTest(unittest.TestCase):
         with mock.patch.object(responder, "alert_once"):
             self.assertEqual(A.inbox(db)["opt_out"], 1)
         self.assertTrue(a1["mail_opt_out"])
+        self.assertEqual(db.rows("agent_tasks"), [])
+
+    def test_paused_agent_gets_no_task(self):
+        db, a1 = inbox_db()
+        a1["status"] = "pausiert"
+        with mock.patch.object(responder, "alert_once"):
+            self.assertEqual(A.inbox(db)["neu"], 0)
         self.assertEqual(db.rows("agent_tasks"), [])
 
     def test_dry_run(self):
@@ -390,6 +419,20 @@ class CheckinTest(unittest.TestCase):
             self.assertEqual(A.checkin(db, now=NOW)["gesendet"], 0)
         send.assert_called_once()
         self.assertEqual(a1["kpis"]["checkins"], [2])
+
+    def test_checkin_failure_waits_a_day(self):
+        db, a1 = inbox_db()
+        a1["status"] = "aktiv"
+        db.tables["deliveries"] = [{"id": "d1", "subscription_id": "s1", "status": "sent", "sent_at": "2026-10-05T07:00:00+00:00"},
+                                   {"id": "d2", "subscription_id": "s1", "status": "sent", "sent_at": "2026-10-12T07:00:00+00:00"}]
+        with mock.patch.object(deliveries, "_resend", side_effect=RuntimeError("down")) as send, \
+                mock.patch.object(A, "_now", lambda: NOW), \
+                mock.patch.dict(os.environ, {"MAIL_FROM": "hello@nextgen-profit.de"}):
+            A.checkin(db, now=NOW)
+            for m in db.rows("customer_agent_messages"):
+                m.setdefault("created_at", NOW.isoformat())
+            A.checkin(db, now=NOW + dt.timedelta(minutes=10))
+        self.assertEqual(send.call_count, 1)
 
 
 def mail(frm, subject, body, mid="<k1@studio1>"):
