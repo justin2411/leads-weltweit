@@ -86,20 +86,15 @@ const SRC: { k: Source; label: string; icon: IconName }[] = [
   { k: "suche", label: "Suche", icon: "suche" }, { k: "andere", label: "Andere", icon: "land" },
 ];
 
-/** Trichter Aufruf → Probe-Klick → Probe-Anfrage → Kauf mit Quote je Schritt. */
-function Funnel({ v }: { v: View }) {
-  const f = v.funnel;
-  const steps = [
-    { label: "Aufrufe", n: f.views, icon: "land" as IconName },
-    { label: "Probe-Klick", n: f.cta, icon: "antippen" as IconName },
-    { label: "Probe-Anfrage", n: f.req, icon: "proben" as IconName },
-    { label: "Kauf", n: f.buy, icon: "kunde" as IconName },
-  ];
-  const max = Math.max(1, f.views);
+type Step = { label: string; n: number; icon: IconName; tip?: string };
+
+/** Trichter mit Quote je Schritt (Balken relativ zum ersten Schritt). */
+function Funnel({ steps }: { steps: Step[] }) {
+  const max = Math.max(1, ...steps.map((s) => s.n));
   return (
     <ol className="wa-fun">
       {steps.map((s, i) => (
-        <li key={s.label}>
+        <li key={s.label} title={s.tip}>
           {i > 0 && <span className="wa-rate" title={`${s.label} je ${steps[i - 1].label}`}><Icon name="pfeil-runter" size={13} />{pct(s.n, steps[i - 1].n)}</span>}
           <div className="wa-fr">
             <span className="wa-fl"><Icon name={s.icon} size={15} />{s.label}</span>
@@ -110,6 +105,25 @@ function Funnel({ v }: { v: View }) {
       ))}
     </ol>
   );
+}
+
+/** Kauf-Trichter wie die JARVIS-Linie: Landingpage → Tarif → Stripe → Danke (Besucher eindeutig je Tag). */
+export function buyFunnel(f: View["funnel"]): Step[] {
+  return [
+    { label: "Landingpage", n: f.land, icon: "website", tip: "eindeutige Besucher der Landingpages (je Tag, Summe der Tage)" },
+    { label: "Tarif", n: f.tarif, icon: "tarif", tip: `eindeutige Besucher der Tarifseite (${nf(f.tarifViews)} Aufrufe gesamt)` },
+    { label: "Stripe", n: f.checkout, icon: "karte", tip: "gestartete Stripe-Checkouts (serverseitig)" },
+    { label: "Danke", n: f.buy, icon: "ok-kreis", tip: "abgeschlossene Käufe (Stripe-Webhook)" },
+  ];
+}
+
+/** Probe-Weg (nicht mehr in der JARVIS-Linie): Aufrufe gesamt → Probe-Klick → Probe-Anfrage. */
+function probeFunnel(f: View["funnel"]): Step[] {
+  return [
+    { label: "Aufrufe gesamt", n: f.views, icon: "land" },
+    { label: "Probe-Klick", n: f.cta, icon: "antippen" },
+    { label: "Probe-Anfrage", n: f.req, icon: "proben" },
+  ];
 }
 
 /** Mail-Klicks je Land und Betreff-Variante (A/B) mit Klickquote je gesendeter Mail. */
@@ -261,12 +275,13 @@ export type AuswertungProps = {
 export function Auswertung({ v, stand, chips, device, pageLabel }: AuswertungProps) {
   const f = v.funnel;
   const mailViews = v.sources.mail;
-  const kpis: { label: string; n: number; sub: string; icon: IconName }[] = [
-    { label: "Aufrufe", n: f.views, sub: `${v.days.length} Tage`, icon: "land" },
+  const kpis: { label: string; n: number; sub: string; icon: IconName; tip?: string }[] = [
+    { label: "Landingpage", n: f.land, sub: "Besucher eindeutig", icon: "website", tip: "eindeutig je Tag, ohne Cookies – Gerätewechsel zählt doppelt, Inhaber ausgeblendet" },
+    { label: "Aufrufe gesamt", n: f.views, sub: `${v.days.length} Tage`, icon: "land" },
     { label: "aus Mails", n: mailViews, sub: v.tracked ? pct(mailViews, v.tracked, 0) : "–", icon: "mail" },
-    { label: "Probe-Klicks", n: f.cta, sub: pct(f.cta, f.views), icon: "antippen" },
-    { label: "Anfragen", n: f.req, sub: pct(f.req, f.cta), icon: "proben" },
-    { label: "Käufe", n: f.buy, sub: pct(f.buy, f.req), icon: "kunde" },
+    { label: "Probe-Anfragen", n: f.req, sub: `${nf(f.cta)} Klicks`, icon: "proben" },
+    { label: "Tarif", n: f.tarif, sub: pct(f.tarif, f.land), icon: "tarif" },
+    { label: "Danke", n: f.buy, sub: `${nf(f.checkout)} bei Stripe`, icon: "ok-kreis" },
   ];
   return (
     <div className="wa">
@@ -281,12 +296,13 @@ export function Auswertung({ v, stand, chips, device, pageLabel }: AuswertungPro
       </div>
       <div className="wa-kpis">
         {kpis.map((k) => (
-          <div key={k.label} className="wa-kpi"><span className="wa-ki" aria-hidden><Icon name={k.icon} size={18} /></span><b>{nf(k.n)}</b><span>{k.label}</span><em>{k.sub}</em></div>
+          <div key={k.label} className="wa-kpi" title={k.tip}><span className="wa-ki" aria-hidden><Icon name={k.icon} size={18} /></span><b>{nf(k.n)}</b><span>{k.label}</span><em>{k.sub}</em></div>
         ))}
       </div>
       <div className="wa-grid">
         <Card title="Aufrufe je Tag" sum={nf(f.views)} wide><Daily v={v} /></Card>
-        <Card title="Trichter" sum={f.views ? `Kauf je Aufruf ${pct(f.buy, f.views, 2)}` : undefined}><Funnel v={v} /></Card>
+        <Card title="Trichter" sum={f.land ? `Danke je Besucher ${pct(f.buy, f.land, 2)}` : undefined}><Funnel steps={buyFunnel(f)} /></Card>
+        <Card title="Probe" sum={f.views ? `Anfrage je Aufruf ${pct(f.req, f.views, 1)}` : undefined}><Funnel steps={probeFunnel(f)} /></Card>
         <Card title="Herkunft" sum={v.tracked ? `${nf(v.tracked)} gemessen` : undefined}>
           {v.tracked ? <Bars rows={SRC.map((s) => ({ key: s.k, label: s.label, icon: s.icon, n: v.sources[s.k] }))} total={v.tracked} /> : <Empty text="Noch keine Messung" />}
         </Card>
@@ -305,7 +321,7 @@ export function Auswertung({ v, stand, chips, device, pageLabel }: AuswertungPro
           </Fold>
         </div>
       </section>
-      <p className="wa-priv"><Icon name="schloss" size={14} /> anonym · ohne Cookies · ohne IP · keine Öffnungsmessung</p>
+      <p className="wa-priv"><Icon name="schloss" size={14} /> anonym · ohne Cookies · IP nicht gespeichert · Besucher eindeutig je Tag (Gerätewechsel zählt doppelt) · Inhaber und Vorschau ausgeblendet · keine Öffnungsmessung</p>
     </div>
   );
 }

@@ -471,7 +471,8 @@ export async function Landing({ params, sp: search, rand }: { params: LandingPar
       <script dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('js')" }} />
       <div dangerouslySetInnerHTML={{ __html: HOME_SPRITE }} />
       {preview && <div className="banner">VORSCHAU (nicht öffentlich) · Seite {page.status} · Variante {v.variant_key} ({v.status}) · keine Ereignisse gezählt</div>}
-      <Tracker variantId={v.id} enabled={!preview} />
+      {/* Vorschau (?vorschau=1) zählt nie mit – auch nicht auf öffentlichen Seiten (Inhaber 04.10.2026) */}
+      <Tracker variantId={v.id} enabled={!preview && sp.vorschau !== "1"} />
       <SiteHeader links={video ? [["#video", fr ? "Vidéo" : "Film"]] : []} cta={[stepHref, fr ? "Échantillon gratuit" : "Free sample"]} />
       <LandingFx />
       <div className="lp2">

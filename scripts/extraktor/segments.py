@@ -96,10 +96,11 @@ def fits(seg: str, c: dict) -> tuple[bool, str]:
         ok = f.get("new_hires", 0) >= 3
         return ok, (f"{f['new_hires']} new hires for skilled roles filed with the US Department of Labor" if ok
                     else "fewer than 3 new hires filed")
-    if c["source"] == "find_tender":
+    if c["source"] in ("find_tender", "us_award"):
         if seg != "S1":
             return False, "source only carries the contract-award signal"
-        ok = bool(f.get("contract_title") and f.get("buyer") and f.get("awarded_on"))
+        what = f.get("contract_title") if c["source"] == "find_tender" else f.get("category")
+        ok = bool(what and f.get("buyer") and f.get("awarded_on"))
         return ok, ("small or medium-sized supplier that just won a public contract: delivering it may need extra staff"
                     if ok else "award notice without title, buyer or date")
     if c["source"] == "overture":
@@ -488,10 +489,28 @@ def texts_tender(c: dict) -> dict:
             "urgency": "medium", "urgency_reason": why}
 
 
+def texts_us_award(c: dict) -> dict:
+    """S1/US aus USAspending.gov: ehrlich als neuer Bundesauftrag, keine offene Stelle behauptet. Gegenstand als
+    NAICS-Kategorie (die Freitexte der Behörden sind oft Verwaltungskürzel in Großbuchstaben)."""
+    f, name = c["facts"], c["name"]
+    won = day(f["awarded_on"])
+    signal = (f"{name} was awarded a new federal contract by the {f['buyer']}, signed on {won} "
+              f"({f.get('portal') or 'USAspending.gov'}); contract category: {f['category']}.")
+    info = (f"{name}" + (f", based in {c['city']}, {c['state']}," if c.get("city") and c.get("state") else "")
+            + f" is a US small business that was awarded a new federal contract by the {f['buyer']} on {won}.")
+    opener = (f"I saw {name} was awarded a new federal contract with the {f['buyer']}. If delivering it means "
+              f"adding people to the team, would pre-screened candidates from a specialist recruiter help?")
+    why = "A newly won contract often has to be staffed within weeks of the award; no open role is claimed."
+    return {"signal": signal, "signal_date": f["awarded_on"], "company_info": info, "opener": opener,
+            "urgency": "medium", "urgency_reason": why}
+
+
 def texts(seg: str, c: dict) -> dict:
     """{'signal', 'signal_date', 'company_info', 'opener', 'urgency', 'urgency_reason'}"""
     if c["source"] == "find_tender":
         return texts_tender(c)
+    if c["source"] == "us_award":
+        return texts_us_award(c)
     if c["source"] in ("ats_jobs", "careers"):
         return texts_jobs(c)
     if c["source"] == "dol_lca":

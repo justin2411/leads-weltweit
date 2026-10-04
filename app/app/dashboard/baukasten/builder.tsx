@@ -687,7 +687,7 @@ function Editor({ initial, flows, pools: poolsIn, onNav, notice }: {
 
         <div className="bk-main">
           <aside className={`bk-pal${sheet === "pal" ? " open" : ""}`} aria-label="Bausteine">
-            <div className="bk-sheet-h"><h4>Baustein hinzufügen</h4><button type="button" className="bk-x" onClick={() => setSheet(null)} aria-label="Schließen"><Icon name="schliessen" size={14} /></button></div>
+            <div className="bk-sheet-h"><h4>Baustein hinzufügen</h4><button type="button" className="bk-x x-btn" onClick={() => setSheet(null)} aria-label="Schließen"><Icon name="schliessen" size={14} /></button></div>
             {GROUPS.map(([label, kinds]) => (
               <div key={label}>
                 <h4>{label}</h4>
@@ -785,7 +785,7 @@ function Overview({ nodes, res, probs, ctx, source, focus, close, archive, kind 
   const t = ctx.at ? new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit" }).format(new Date(ctx.at)) : "–";
   return (
     <>
-      <div className="bk-sheet-h"><h4>Übersicht</h4><button type="button" className="bk-x" onClick={close} aria-label="Schließen"><Icon name="schliessen" size={14} /></button></div>
+      <div className="bk-sheet-h"><h4>Übersicht</h4><button type="button" className="bk-x x-btn" onClick={close} aria-label="Schließen"><Icon name="schliessen" size={14} /></button></div>
       <div className="bk-bigs" style={{ "--nc": "#5fd4ff" } as CSSProperties}>
         <div className="hi"><b>{ctx.loading ? "…" : fmt(ctx.sample)}</b><span>Stichprobe</span></div>
         <div><b>{ctx.total === null ? "–" : fmt(ctx.total)}</b><span>{source === "leads" ? "Leads" : "Käufer"} gesamt</span></div>

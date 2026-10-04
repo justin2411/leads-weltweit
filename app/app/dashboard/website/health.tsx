@@ -105,7 +105,7 @@ export function Health({ check, total, history, site, at, fix }: {
       {area && (
         <div className="ws-funde" role="region" aria-label={`Funde ${area.label}`}>
           <div className="ws-funde-h"><Icon name={area.icon} size={16} /><b>{area.label}</b>
-            <button type="button" onClick={() => setSel(null)} aria-label="Schließen"><Icon name="schliessen" size={15} /></button></div>
+            <button type="button" className="x-btn" onClick={() => setSel(null)} aria-label="Schließen"><Icon name="schliessen" size={15} /></button></div>
           <FindingList list={list} area={area.key} site={site} check={check} fix={fix} />
         </div>
       )}

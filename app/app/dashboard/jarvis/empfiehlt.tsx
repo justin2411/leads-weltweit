@@ -13,8 +13,7 @@ import { DragBox } from "./dnd";
 import { TipX } from "./dismiss";
 import { tipKey, tipReactKeys } from "@/lib/tips";
 import { Icon } from "@/app/icons";
-import { chatTime, statusText } from "@/lib/jarvis-chat";
-import { sendFromJarvis } from "./chat/actions";
+import { MiniChat } from "./mini-chat";
 import type { StartChat } from "./chat/start";
 
 const when = (iso: string) => new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
@@ -90,44 +89,21 @@ export function JarvisChat({ tasks, startAt, chat = null }: { tasks: AgentTask[]
   );
 }
 
-/** „Schreib JARVIS“ mit Sitzungen (Inhaber 04.10.2026: „eigenen chat mit unterschiedlichen sitzungen … wie mit claude“):
- *  letzte Nachrichten der zuletzt genutzten Sitzung, Eingabe schreibt dort hinein und öffnet den Chat. */
-function SessionChat({ chat, startAt }: { chat: StartChat; startAt?: string }) {
-  const now = new Date(chat.now);
+/** „Schreib JARVIS“ mit Sitzungen (Inhaber 04.10.2026: „eigenen chat mit unterschiedlichen sitzungen … wie mit claude“,
+ *  „alle chats sollen direkt antworten“, „chat größer machen“): zuletzt genutzte Sitzung als Mini-Chat mit Sofort-Antwort
+ *  und „Vergrößern“ (großes Fenster mit Sitzungsliste). */
+function SessionChat({ chat }: { chat: StartChat; startAt?: string }) {
   const s = chat.session;
-  const open = chat.messages.some((m) => m.role === "inhaber" && (m.status === "offen" || m.status === "in_arbeit"));
   const href = s ? `/dashboard/jarvis/chat?s=${s.id}` : "/dashboard/jarvis/chat";
   return (
-    <section className="jcard jchat" id="chat" aria-label="Schreib JARVIS">
-      <header className="jcard-h">
-        <h2><Icon name="jarvis" size={18} /> Schreib JARVIS</h2>
-        <em>{open && startAt ? `startet um ${startAt}` : s ? <Link href={href}>{s.title}</Link> : "neue Sitzung"}</em>
-      </header>
-      {chat.messages.length > 0 ? (
-        <ol className="jchat-log">
-          {chat.messages.map((m) => {
-            const st = statusText(m, now);
-            return (
-              <li key={m.id}>
-                {m.role === "inhaber"
-                  ? <p className="me"><span>{m.body.length > 240 ? `${m.body.slice(0, 240)} …` : m.body}</span><time>{chatTime(m.created_at, now)}{st ? ` · ${st.text}` : ""}</time></p>
-                  : <p className="bot"><b>JARVIS</b> {m.body.length > 320 ? `${m.body.slice(0, 320)} …` : m.body}</p>}
-              </li>
-            );
-          })}
-        </ol>
-      ) : <p className="jchat-empty">Aufgabe oder Frage eintippen – JARVIS antwortet im Chat.</p>}
-      <form action={sendFromJarvis} className="jchat-f">
-        {s && <input type="hidden" name="sid" value={s.id} />}
-        <textarea name="text" required minLength={1} maxLength={8000} rows={2} aria-label="Nachricht an JARVIS" placeholder="z. B. „UK Käufer finden“ oder „Warum keine Antworten in FR?“" />
-        <button className="go"><Icon name="weiter" size={16} /> Senden</button>
-      </form>
-      <p className="lock">
-        <Link href={href} className="jchat-all"><Icon name="antwort" size={14} /> {chat.sessions > 1 ? `Alle ${chat.sessions} Sitzungen` : "Chat öffnen"}</Link>
-        <Link href={chat.berichtId ? `/dashboard/jarvis/chat?s=${chat.berichtId}` : "/dashboard/jarvis/chat"} className="jchat-all">
-          <Icon name="statistik" size={14} /> Tagesbericht{chat.berichtNeu ? <b className="jc-dot-s" aria-label="neu" /> : null}
-        </Link>
-      </p>
-    </section>
+    <MiniChat id="chat" title="Schreib JARVIS" sessionId={s?.id ?? null} messages={chat.messages} now={chat.now} instant={chat.instant}
+      sessions={chat.list} footer={(
+        <>
+          <Link href={href} className="jchat-all"><Icon name="antwort" size={14} /> {chat.sessions > 1 ? `Alle ${chat.sessions} Sitzungen` : "Chat öffnen"}</Link>
+          <Link href={chat.berichtId ? `/dashboard/jarvis/chat?s=${chat.berichtId}` : "/dashboard/jarvis/chat"} className="jchat-all">
+            <Icon name="statistik" size={14} /> Tagesbericht{chat.berichtNeu ? <b className="jc-dot-s" aria-label="neu" /> : null}
+          </Link>
+        </>
+      )} />
   );
 }

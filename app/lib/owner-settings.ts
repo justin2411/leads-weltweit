@@ -25,6 +25,8 @@ export type OwnerSettings = {
   slot_autopilot: { on: boolean; locks: Record<string, number> };
   /** Ausgeblendete JARVIS-Empfehlungen/Hinweise (Inhaber 04.10.2026): Schlüssel (lib/tips.ts tipKey) -> bis (ISO). */
   dismissed_tips: Record<string, string>;
+  /** Monatsgrenze der Sofort-Antworten über die Claude-API in Euro (Inhaber 04.10.2026: „vorerst 30 €“). */
+  llm_budget_eur: number;
   /** Website Auto-Fix (Inhaber 04.10.2026: „jarvis soll das aber eigentlich alles selber machen“): an = JARVIS behebt
    * neue Website-Funde selbst (scripts/website_agents.py autofix). */
   website_autofix: boolean;
@@ -36,7 +38,7 @@ export type SettingKey = keyof OwnerSettings;
 export const DEFAULTS: OwnerSettings = {
   send_paused: false, send_countries_off: [], send_country_limits: {}, followup_enabled: true, followup_days: null,
   sample_targets: {}, sample_max_age_hours: null, buyer_countries_off: [], werke_paused: {}, slot_plan: {},
-  slot_autopilot: { on: true, locks: {} }, dismissed_tips: {}, website_autofix: true, website_ignored: {},
+  slot_autopilot: { on: true, locks: {} }, dismissed_tips: {}, llm_budget_eur: 30, website_autofix: true, website_ignored: {},
 };
 
 /**
@@ -113,6 +115,16 @@ export function validateSampleTargets(input: Record<string, unknown>, keys: stri
     out[k] = int(raw, 0, MAX_SAMPLE_TARGET, `${k} Soll`);
   }
   return out;
+}
+
+/** Monatsgrenze der Claude-API (Euro): 0–500, höchstens zwei Nachkommastellen (0 = Sofort-Antworten aus). */
+export const LLM_BUDGET_RANGE = [0, 500] as const;
+export function validateLlmBudget(raw: unknown): number {
+  const s = String(raw ?? "").trim().replace(",", ".");
+  if (!/^\d{1,3}(\.\d{1,2})?$/.test(s)) throw new InputError(`API-Grenze: Zahl ${LLM_BUDGET_RANGE[0]}–${LLM_BUDGET_RANGE[1]} €`);
+  const n = Number(s);
+  if (n < LLM_BUDGET_RANGE[0] || n > LLM_BUDGET_RANGE[1]) throw new InputError(`API-Grenze: ${LLM_BUDGET_RANGE[0]}–${LLM_BUDGET_RANGE[1]} €`);
+  return n;
 }
 
 export const validateMaxAge = (raw: unknown) => int(raw, MAX_AGE_RANGE[0], MAX_AGE_RANGE[1], "Verfall (h)");

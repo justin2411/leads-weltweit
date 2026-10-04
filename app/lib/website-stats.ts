@@ -107,7 +107,9 @@ export type Beacon =
   | { kind: "legacy"; variant_id: string; type: "view" | "cta_click" }
   | { kind: "view"; variant_id: string; pv: string; src: Source; subj: "A" | "B" | null; device: Device }
   | { kind: "click"; variant_id: string; pv: string; x: number; y: number; el: ElKind; label: string | null; device: Device; cta: boolean }
-  | { kind: "end"; variant_id: string; pv: string; depth: 0 | 25 | 50 | 75 | 100; dwell: Dwell };
+  | { kind: "end"; variant_id: string; pv: string; depth: 0 | 25 | 50 | 75 | 100; dwell: Dwell }
+  /** Aufruf der Tarifseite /[country]/[segment]/start (nur für eindeutige Besucher, ohne Heatmap) */
+  | { kind: "visit"; variant_id: string; page: "tarif" };
 
 const int = (x: unknown): number | null => (typeof x === "number" && Number.isInteger(x) ? x : null);
 
@@ -119,6 +121,7 @@ export function parseBeacon(body: unknown): Beacon | null {
   if (!isUuid(variant_id)) return null;
   const t = b.type;
   if ((t === "view" || t === "cta_click") && b.pv === undefined) return { kind: "legacy", variant_id: variant_id.toLowerCase(), type: t };
+  if (t === "visit") return b.pg === "tarif" ? { kind: "visit", variant_id: variant_id.toLowerCase(), page: "tarif" } : null;
   if (!isUuid(b.pv)) return null;
   const pv = (b.pv as string).toLowerCase();
   const device = DEVICES.includes(b.dev as Device) ? (b.dev as Device) : null;
@@ -195,7 +198,11 @@ export function dayRange(since: string, today: string): string[] {
   return out;
 }
 
-export type Funnel = { views: number; cta: number; req: number; buy: number; checkout: number };
+/**
+ * Zählungen des Zeitraums. Trichter (wie die JARVIS-Linie): land → tarif → checkout (Stripe) → buy (Danke).
+ * land/tarif = eindeutige Besucher je Tag (Hash ohne Cookies, Summe der Tage); views = Aufrufe gesamt der Landingpages.
+ */
+export type Funnel = { views: number; cta: number; req: number; buy: number; checkout: number; land: number; tarif: number; tarifViews: number };
 export type View = {
   days: string[];
   /** Aufrufe je Tag und Land (page_events „view“) */
@@ -225,7 +232,7 @@ export function buildView(st: WebsiteStats, f: Filter): View {
   const rows = st.rows.filter((r) => inFilter(r.s, f) && r.d >= st.since);
   const per = new Map<string, Record<string, number>>();
   const countries = new Set<string>();
-  const funnel: Funnel = { views: 0, cta: 0, req: 0, buy: 0, checkout: 0 };
+  const funnel: Funnel = { views: 0, cta: 0, req: 0, buy: 0, checkout: 0, land: 0, tarif: 0, tarifViews: 0 };
   const sources = n0();
   const devices = { mobil: 0, desktop: 0 } as Record<Device, number>;
   const depthN = new Map<number, number>();
@@ -246,6 +253,11 @@ export function buildView(st: WebsiteStats, f: Filter): View {
       else if (r.k === "sample_request") funnel.req += n;
       else if (r.k === "purchase") funnel.buy += n;
       else if (r.k === "checkout_started") funnel.checkout += n;
+    } else if (r.m === "uv") {
+      if (r.k === "landing") funnel.land += n;
+      else if (r.k === "tarif") funnel.tarif += n;
+    } else if (r.m === "av") {
+      if (r.k === "tarif") funnel.tarifViews += n;
     } else if (r.m === "tv") tracked += n;
     else if (r.m === "src" && SOURCES.includes(r.k as Source)) sources[r.k as Source] += n;
     else if (r.m === "dev" && DEVICES.includes(r.k as Device)) devices[r.k as Device] += n;
@@ -352,30 +364,71 @@ export function pct(a: number, b: number, digits = 1): string {
 
 // ------------------------------------------------------------------ JARVIS-Linie „Website“
 
+/**
+ * Kennzahlen aus signalwerk.dashboard_cache ('website', website_refresh): je letzte Stunde, 24 h, 30 Tage.
+ * land/tarif = eindeutige Besucher (je Tag, ohne Cookies, Inhaber/Vorschau/Bots ausgenommen), co = gestartete
+ * Stripe-Checkouts (serverseitig), buy = abgeschlossene Käufe (Stripe-Webhook). views/cta/req bleiben für die Auswertung.
+ */
 export type WebsiteLive = {
   at?: string;
+  land_60m: number; land_24h: number; land_30d: number;
+  tarif_60m: number; tarif_24h: number; tarif_30d: number; tarif_views_30d: number;
+  co_60m: number; co_24h: number; co_30d: number;
   views_60m: number; cta_60m: number; req_60m: number; buy_60m: number;
   views_24h: number; cta_24h: number; req_24h: number; buy_24h: number;
   views_30d: number; cta_30d: number; req_30d: number; buy_30d: number;
   mail_views_30d: number; mails_30d: number;
+  visitors_since?: string | null;
 };
 export const EMPTY_WEBSITE: WebsiteLive = {
+  land_60m: 0, land_24h: 0, land_30d: 0, tarif_60m: 0, tarif_24h: 0, tarif_30d: 0, tarif_views_30d: 0, co_60m: 0, co_24h: 0, co_30d: 0,
   views_60m: 0, cta_60m: 0, req_60m: 0, buy_60m: 0, views_24h: 0, cta_24h: 0, req_24h: 0, buy_24h: 0,
   views_30d: 0, cta_30d: 0, req_30d: 0, buy_30d: 0, mail_views_30d: 0, mails_30d: 0,
 };
 
-export type WebNeck = "web" | "wklick" | "wprobe" | "wkauf";
+/** Stationen der Linie (Inhaber 04.10.2026: „genau die websiten namen: Landingpage, Tarif, Stripe, Danke“). */
+export type WebStationId = "wland" | "wtarif" | "wstripe" | "wdanke";
+export type WebNeck = WebStationId;
+export const WEB_LINE: { id: WebStationId; label: "Landingpage" | "Tarif" | "Stripe" | "Danke" }[] = [
+  { id: "wland", label: "Landingpage" }, { id: "wtarif", label: "Tarif" }, { id: "wstripe", label: "Stripe" }, { id: "wdanke", label: "Danke" },
+];
+/** Ehrlicher Hinweis an der Linie (Inhaber: „wie zuverlässig kannst du die werte tracken“). */
+export const WEB_INFO = "eindeutig je Tag, ohne Cookies – Gerätewechsel zählt doppelt, Inhaber ausgeblendet";
 
 /**
  * Engpass der Website wie bottleneckOf() in dashboard-logic: feste Mindestmengen (30 Tage), dann die erste Stufe
- * unter ihrer Schwelle. Mails bringen kaum Besuche (< 1 % Klicks ab 200 Mails) → Aufrufe; wenig Probe-Klicks
- * (< 3 % ab 50 Aufrufen) → Probe-Klick; Klick ohne Anfrage (< 10 % ab 20 Klicks) → Probe-Anfrage;
- * Anfragen ohne Kauf (ab 5) → Kauf.
+ * unter ihrer Schwelle. Mails bringen kaum Besucher (< 1 % Klicks ab 200 Mails) → Landingpage; wenige gehen zum Tarif
+ * (< 3 % ab 50 Besuchern) → Tarif; Tarif ohne Checkout (< 5 % ab 20 Besuchern) → Stripe; Checkouts ohne Kauf (ab 5) → Danke.
  */
 export function webNeck(w: WebsiteLive): WebNeck | null {
-  if (w.mails_30d >= 200 && w.mail_views_30d / w.mails_30d < 0.01) return "web";
-  if (w.views_30d >= 50 && w.cta_30d / w.views_30d < 0.03) return "wklick";
-  if (w.cta_30d >= 20 && w.req_30d / w.cta_30d < 0.1) return "wprobe";
-  if (w.req_30d >= 5 && w.buy_30d === 0) return "wkauf";
+  if (w.mails_30d >= 200 && w.mail_views_30d / w.mails_30d < 0.01) return "wland";
+  if (w.land_30d >= 50 && w.tarif_30d / w.land_30d < 0.03) return "wtarif";
+  if (w.tarif_30d >= 20 && w.co_30d / w.tarif_30d < 0.05) return "wstripe";
+  if (w.co_30d >= 5 && w.buy_30d === 0) return "wdanke";
   return null;
+}
+
+type WebStation = { id: WebStationId; label: string; icon: "website" | "tarif" | "karte" | "ok-kreis"; value: string; sub: string; state: "live" | "idle"; tip: string };
+type WebEdge = { from: WebStationId; to: WebStationId | "kunden"; perHour: number; label: string };
+
+/** Stationen und Leitungen der Linie „Website“ (Werte aus echten Zählungen; fmt = kompakte Zahl). */
+export function webLine(w: WebsiteLive, fmt: (n: number) => string = String): { stations: WebStation[]; edges: WebEdge[] } {
+  const live = (n: number) => (n > 0 ? "live" : "idle") as "live" | "idle";
+  const stations: WebStation[] = [
+    { id: "wland", label: "Landingpage", icon: "website", value: fmt(w.land_24h), sub: "Besucher 24 h", state: live(w.land_60m),
+      tip: `eindeutige Besucher der Landingpages in 24 h (${fmt(w.views_24h)} Aufrufe gesamt) · ${WEB_INFO}` },
+    { id: "wtarif", label: "Tarif", icon: "tarif", value: fmt(w.tarif_24h), sub: "Besucher 24 h", state: live(w.tarif_60m),
+      tip: `eindeutige Besucher der Tarifseite in 24 h · ${WEB_INFO}` },
+    { id: "wstripe", label: "Stripe", icon: "karte", value: fmt(w.co_24h), sub: "Checkouts 24 h", state: live(w.co_60m),
+      tip: "gestartete Stripe-Checkouts in 24 h (serverseitig gezählt, ohne Inhaber)" },
+    { id: "wdanke", label: "Danke", icon: "ok-kreis", value: fmt(w.buy_24h), sub: `${fmt(w.buy_30d)} in 30 T`, state: live(w.buy_60m),
+      tip: "abgeschlossene Käufe in 24 h · 30 Tage (Stripe-Webhook)" },
+  ];
+  const edges: WebEdge[] = [
+    { from: "wland", to: "wtarif", perHour: w.tarif_60m, label: "zum Tarif" },
+    { from: "wtarif", to: "wstripe", perHour: w.co_60m, label: "Checkouts" },
+    { from: "wstripe", to: "wdanke", perHour: w.buy_60m, label: "Käufe" },
+    { from: "wdanke", to: "kunden", perHour: w.buy_60m, label: "neue Kunden" },
+  ];
+  return { stations, edges };
 }
