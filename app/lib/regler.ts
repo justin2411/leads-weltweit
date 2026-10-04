@@ -143,9 +143,15 @@ export const LEAD_COUNTRIES: { id: LeadCountry; label: string; title: string }[]
   { id: "FR", label: "FR", title: "Frankreich" }, { id: "Nord", label: "Nord", title: "IE · NL · BE · SE" },
   { id: "Neu", label: "Neu", title: "FI · SG · HK · MX · BR" },
 ];
-/** Land-Chip einer Lead-Linie: mehrere Länder (IE,NL,BE,SE) = „Nord“, neue Mail-Länder (FI,SG,HK,MX,BR, 04.10.2026) = „Neu“. */
-export const countryOf = (l: Lane): LeadCountry =>
-  (l.country.split(",").includes("FI") ? "Neu" : l.country.includes(",") ? "Nord" : (l.country as LeadCountry));
+/** Land-Chip einer Lead-Linie: mehrere Länder (IE,NL,BE,SE) = „Nord“, neue Mail-Länder (FI,SG,HK,MX,BR, 04.10.2026) = „Neu“,
+ *  UK und FR gemeinsam (s2-ukfr, Scout 04.10.2026) = „UK“ (erstes Land). */
+const CORE = ["US", "UK", "FR"];
+export const countryOf = (l: Lane): LeadCountry => {
+  const cs = l.country.split(",");
+  if (cs.includes("FI")) return "Neu";
+  if (cs.every((c) => CORE.includes(c))) return cs[0] as LeadCountry;
+  return cs.length > 1 ? "Nord" : (l.country as LeadCountry);
+};
 export const leadLanes = (reg: LaneRegistry) => reg.lanes.filter((l) => l.werk === "lead-werk");
 export const capOf = (reg: LaneRegistry) => reg.total_slots - reg.reserve;
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);

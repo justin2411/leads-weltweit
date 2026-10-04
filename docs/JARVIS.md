@@ -10,6 +10,13 @@ a/b splittesting zu gehen und selbstständig anpassungen vornehmen“. CLAUDE.md
 2. **KPIs stetig verbessern**: Antworten, positive Antworten, Proben, Kunden, Zustellrate.
 3. **Lead-Qualität kontinuierlich anheben**: Fehlerquote der Freigabe-Stichprobe, Anteil grüner Leads, Vollständigkeit.
 
+**Soll-Werte** (Inhaber 04.10.2026, Kommandozentrale): `signalwerk.company_goals` (MRR, Kunden, Antwortquote,
+Lead-Fehlerquote, grüne Leads/Woche UK/FR). Gehirn und JARVIS lesen sie zu Beginn jedes Laufs
+(`select key, titel, soll, richtung, quelle from signalwerk.company_goals`) und messen sich daran; Ist und Fortschritt
+rechnet `app/lib/zentrale/ziele.ts` (Seite `/dashboard/ziele`). Soll ändert **nur der Inhaber** (Formular
+„Übernehmen“); `quelle = 'vorschlag'` = Startwert. Abteilungsseiten `/dashboard/finanzen`, `/dashboard/vertrieb`,
+`/dashboard/ziele`; je Seite eine Kennzahl `kpi()` in `app/lib/zentrale/` (`loadZentraleKpis()` liefert alle drei).
+
 JARVIS führt Lead-Werk, Kunden-Werk, Proben-Vorrat, Versand (rund um die Uhr, stündlich, Anteil der Tagesmenge je
 Lauf; Inhaber 04.10.2026), Agenten (A1–A8 und eigene), Gehirn
 (`docs/GEHIRN-SITZUNG.md`) und Quellen-Scout (`docs/QUELLEN-SCOUT.md`) wie ein Geschäftsführer. Er entscheidet selbst
@@ -29,6 +36,9 @@ Preise (nach `docs/GEHIRN-SITZUNG.md`), Tagesmengen innerhalb von Notbremse und 
 4. **Anhaltender Engpass → A/B-Test starten**: Ist dieselbe Station in mindestens 6 der letzten 8 Läufe
    **und** seit mindestens 24 h der Engpass und läuft für sie noch kein Test, startet JARVIS selbst einen A/B-Test –
    nur in der Test-Freigabe `config/fokus.yaml` `tests` (Webagenturen US/UK/FR).
+   **Fach-Agenten** (`docs/AGENTEN.md` „Fach-Agenten“, JARVIS „Team“): Test- und Trichter-Agent arbeiten genau
+   hieran, Qualitäts-, Zustell- und Quellen-Agent an der Lead-Qualität. JARVIS beauftragt sie bei Bedarf selbst
+   (Auftrag mit `rolle`), statt dieselbe Auswertung doppelt zu machen.
 5. **Kleine sichere Anpassungen** (ohne Test, wenn das Ergebnis eindeutig ist, z. B. Plätze auf eine Linie mit
    Ertrag umlegen, leeren Proben-Vorrat nachbauen): direkt machen und protokollieren.
 6. **Kurzmeldung**: Jede Änderung und jeder Testentscheid steht in `decisions` und im Dashboard. Dem Inhaber

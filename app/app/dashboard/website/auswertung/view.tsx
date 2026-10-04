@@ -28,9 +28,10 @@ function Chips({ label, items }: { label: string; items: Chip[] }) {
   );
 }
 
-function Card({ title, sum, children, wide }: { title: string; sum?: ReactNode; children: ReactNode; wide?: boolean }) {
+/** fill2: füllt bei zwei Spalten die Zeile allein (keine halb leere Zeile). */
+function Card({ title, sum, children, wide, fill2 }: { title: string; sum?: ReactNode; children: ReactNode; wide?: boolean; fill2?: boolean }) {
   return (
-    <section className={`wa-card${wide ? " wide" : ""}`}>
+    <section className={`wa-card${wide ? " wide" : ""}${fill2 ? " fill2" : ""}`}>
       <header className="wa-h"><h2>{title}</h2>{sum !== undefined && <span className="wa-sum">{sum}</span>}</header>
       {children}
     </section>
@@ -125,6 +126,35 @@ function MailAB({ v }: { v: View }) {
   );
 }
 
+/** Probe-Weg je Land: Aufrufe → Probe-Klick → Anfrage → Checkout; beste Anfrage-Quote gold. */
+function PerCountry({ v }: { v: View }) {
+  const rows = v.byCountry;
+  if (!rows.length) return <Empty text="Noch keine Aufrufe" />;
+  const q = (r: View["byCountry"][number]) => (r.views ? r.req / r.views : 0);
+  const best = rows.reduce((b, r) => (q(r) > q(b) ? r : b), rows[0]);
+  const maxV = Math.max(1, ...rows.map((r) => r.views));
+  return (
+    <>
+      <ul className="wa-lt">
+        <li className="wa-lth" aria-hidden><span>Land</span><span>Aufrufe</span><span>Klick</span><span>Anfrage</span><span>Checkout</span></li>
+        {rows.map((r) => (
+          <li key={r.country} title={`${r.country}: Klick je Aufruf ${pct(r.cta, r.views)} · Anfrage je Aufruf ${pct(r.req, r.views)}`}>
+            <span className="wa-ltl">
+              <b><i style={{ background: WA_COUNTRY[r.country] ?? OTHER }} />{r.country}</b>
+              <span className="wa-bb"><i style={{ width: `${(r.views / maxV) * 100}%`, background: WA_COUNTRY[r.country] ?? OTHER }} /></span>
+            </span>
+            <span>{nf(r.views)}</span>
+            <span>{nf(r.cta)}<em>{pct(r.cta, r.views)}</em></span>
+            <span className={r.req && r === best ? "wa-g" : undefined}>{nf(r.req)}<em>{pct(r.req, r.views)}</em></span>
+            <span>{nf(r.checkout)}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="wa-note">Quote je Aufruf · gold = beste Anfrage-Quote</p>
+    </>
+  );
+}
+
 /**
  * Heatmap: schematische Seite im Hochformat, Wärmepunkte aus der Klickdichte (2-%-Raster, Nachbarn gewichtet),
  * Marken für die Scrolltiefe am Rand. Kein Screenshot der Seite nötig.
@@ -197,6 +227,26 @@ function Targets({ v }: { v: View }) {
   );
 }
 
+const DWELL_L: Record<string, string> = { "0-10": "unter 10 s", "10-30": "10–30 s", "30-60": "30–60 s", "60-180": "1–3 min", "180+": "über 3 min" };
+
+/** Verweildauer je Landingpage-Aufruf (gemessene Aufrufe, gleicher Filter Land/Seite). */
+function DwellBars({ v }: { v: View }) {
+  const tot = v.dwell.reduce((a, d) => a + d.n, 0);
+  if (!tot) return <Empty text="Noch keine Messung" />;
+  const max = Math.max(1, ...v.dwell.map((d) => d.n));
+  return (
+    <ul className="wa-bars">
+      {v.dwell.map((d) => (
+        <li key={d.k} title={`${DWELL_L[d.k] ?? d.k}: ${nf(d.n)} Aufrufe`}>
+          <span className="wa-bl">{DWELL_L[d.k] ?? d.k}</span>
+          <span className="wa-bb"><i style={{ width: `${(d.n / max) * 100}%` }} /></span>
+          <b>{nf(d.n)}</b><em>{pct(d.n, tot, 0)}</em>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** Zurück-Link wie auf den übrigen Unterseiten (Inhaber 04.10.2026: „bei websiten auswertung fehlt auch wieder zurücklink“). */
 export function WaCrumbs() {
   return <Crumbs items={[["JARVIS", "/dashboard/jarvis"], ["Website", "/dashboard/website"], ["Auswertung", ""]]} />;
@@ -233,15 +283,22 @@ export function Auswertung({ v, stand, chips, device, pageLabel, trichter }: Aus
         <Card title="Landingpage-Aufrufe je Tag" sum={nf(f.views)} wide><Daily v={v} /></Card>
         <Card title="Probe" sum={f.views ? `Anfrage je Aufruf ${pct(f.req, f.views, 1)}` : undefined}><Funnel steps={probeFunnel(f)} /></Card>
         <Card title="Mail-Klicks je Betreff"><MailAB v={v} /></Card>
+        <Card title="Je Land" sum={v.byCountry.length ? `${v.byCountry.length} Länder` : undefined} fill2><PerCountry v={v} /></Card>
       </div>
       <section className="wa-card wa-hm">
         <header className="wa-h"><h2>Heatmap</h2><span className="wa-sum">{pageLabel} · {nf(v.heatTotal)} Klicks</span></header>
         <Chips label="Gerät" items={chips.device} />
         <div className="wa-hmg">
           {v.heatTotal ? <Heat v={v} device={device} /> : <Empty text="Noch keine Klicks auf diesem Gerät" />}
-          <Fold id="website-klickziele" title="Top-Klickziele" sum={v.targets.length ? `${v.targets.length}` : ""} className="wa-tgf" head="wa-h">
-            <Targets v={v} />
-          </Fold>
+          <div className="wa-hmr">
+            <Fold id="website-klickziele" title="Top-Klickziele" sum={v.targets.length ? `${v.targets.length}` : ""} className="wa-tgf" head="wa-h">
+              <Targets v={v} />
+            </Fold>
+            <section className="wa-dw" aria-label="Verweildauer">
+              <header className="wa-h"><h2>Verweildauer</h2>{v.tracked > 0 && <span className="wa-sum">{nf(v.tracked)} Aufrufe</span>}</header>
+              <DwellBars v={v} />
+            </section>
+          </div>
         </div>
       </section>
       <p className="wa-priv"><Icon name="schloss" size={14} /> anonym · ohne Cookies · IP nicht gespeichert · Besucher eindeutig je Tag (Gerätewechsel zählt doppelt) · Inhaber und Vorschau ausgeblendet · keine Öffnungsmessung</p>
