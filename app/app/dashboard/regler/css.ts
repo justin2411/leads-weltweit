@@ -2,7 +2,6 @@
 export const REGLER_CSS = `
 .rg{--ok:#3ddc97;--wait:#ffb547;--now:#e2c68f;--bnav:0px;padding-bottom:40px}
 .rg.has-bar{padding-bottom:110px}
-.dash:has(.rg.has-bar) .foot{padding-bottom:calc(var(--rg-cover,220px) + 16px)}
 .rg-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:4px 0 16px}
 .rg-head h1{margin:0;font-size:26px;letter-spacing:.12em;color:#fff;text-transform:uppercase;text-shadow:0 0 22px rgba(95,212,255,.5)}
 .rg-steps{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--soft);flex-wrap:wrap}
