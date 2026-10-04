@@ -354,6 +354,35 @@ der Trichter aus `cohort_funnel`, die Prüfer aus `pruef_kpi()` und `pruef_besta
 **Grenzen aller Fach-Agenten:** nie Versand einschalten, nie Sperrliste, Notbremse, Abmeldung oder Drei-Stufen-Freigabe
 lockern (auch nicht als Testvariante), keine Kosten, nichts löschen.
 
+## Firma (Bereiche und Übergaben)
+
+Inhaber 04.10.2026: „gib verschiedene bereiche wie in einem unternehmen … damit sie gut zusammenarbeiten, bau daraus ein
+unternehmen was geld verdient“. Acht Bereiche in `signalwerk.departments` (Leitung, Mitglieder, Hauptziel, Wirkungszahl,
+Takt), Fach-Agenten über `agent_roles.department`. Seite `/dashboard/firma` (Link „Organigramm“ in den JARVIS-Abteilungen).
+
+| Bereich | Leitung | Hauptziel | Wirkung Richtung Umsatz |
+|---|---|---|---|
+| Vertrieb | Trichter-Agent (+ Zustell-Agent, Antwort-Analyse, Versand-Werk) | Antwortquote | positive Antworten 7 T |
+| Marketing | Test-Agent (+ Website-Agenten, Markt-Recherche) | Probe-Anfragen 7 T | Probe-Anfragen 7 T |
+| Produktion | Quellen-Agent (+ Lead-Werk, Kunden-Werk, Proben-Vorrat) | grüne Leads 7 T | fertige Proben im Vorrat |
+| Qualität | Qualitäts-Agent (+ Lead-/Käufer-Prüfer, Stichprobe) | Lead-Fehlerquote | Leads bestanden 24 h |
+| Kundenservice | Antwort-Assistent (+ Kunden-Agenten A9, Kundenlieferung) | Kaufinteresse offen = 0 | Kaufinteresse offen |
+| Finanzen | Finanz-Wache (token-frei) | MRR | MRR |
+| Recht | Recht-Wache (nur Wache, ändert nie Regeln) | Spam-Beschwerden 30 T = 0 | Spam-Beschwerden |
+| Strategie | Gehirn (+ Scout, Meta-Review, A1–A8) | zahlende Kunden | zahlende Kunden |
+
+**Übergaben** (`scripts/uebergaben.py pruefen --apply`, Wachhund alle 30 min, token-frei, Zahlen aus
+`signalwerk.firma_lage()`): Qualität → Produktion (Ausreißer > 5 % der Dauerprüfung, Rolle `quellen`), Vertrieb →
+Marketing (≥ 30 Erstmails ohne Antwort in einem Land, Rolle `test`), Vertrieb → Kundenservice (Antwort „buy“ offen, dazu
+Push, falls noch kein Alarm), Produktion → Strategie (Linie „Vorrat leer“ oder 0 fertige Proben), Recht → Qualität
+(Spam-Beschwerde, Rolle `zustellung`). Jede Übergabe steht einmal in `signalwerk.handoffs` (eindeutiger Schlüssel je
+Tag/Woche/Ereignis); der Auftrag (`created_by = "Übergabe"`, Grund in `agent_tasks.grund`) geht an einen freien Agenten,
+einer bleibt für den Inhaber frei, höchstens 3 je Lauf, ein offener je Fach-Agent. Bearbeiten wie jeden Auftrag.
+Nur Fokus-Tests (S2 × US/UK/FR). Nie Versand, Länder, Sperrliste, Notbremse, Prüfregeln oder Freigabe ändern.
+
+**Geschäftsbericht** (Titel ≤ 60 + 5 Zahlen: Mails 24 h, Antworten 7 T, Proben 7 T, Kunden, Umsatz/Monat) steht oben in
+der Tagescheck-Mail und auf `/dashboard/firma` (`python scripts/uebergaben.py bericht`).
+
 ## Berechtigungen (Inhaber 04.10.2026: „gib den agents wirklich jede berechtigung“)
 
 Agenten dürfen alles selbst machen, was die Hauptsitzung darf – ohne Rückfrage:

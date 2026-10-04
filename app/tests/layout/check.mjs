@@ -16,7 +16,7 @@ export const PAGES = [
   "/dashboard/regler", "/dashboard/speicher", "/dashboard/antworten", "/dashboard/versand", "/dashboard/kunden", "/dashboard/kunden-agenten",
   "/dashboard/bestand", "/dashboard/proben", "/dashboard/werke", "/dashboard/hilfe", "/dashboard/kontakte",
   "/dashboard/finanzen", "/dashboard/vertrieb", "/dashboard/ziele",
-  "/dashboard/recht", "/dashboard/betrieb", "/dashboard/protokoll",
+  "/dashboard/recht", "/dashboard/betrieb", "/dashboard/protokoll", "/dashboard/firma", "/dashboard/firma?b=vertrieb",
 ];
 const TOL = 1;
 

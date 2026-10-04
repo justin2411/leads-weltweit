@@ -165,6 +165,14 @@ nur wenn er sich unsicher ist oder es geld kostet soll er bei mir nachfragen“
   Feste Prüfungen (SEED_INBOXES, GH_DISPATCH_TOKEN, Rechtstexte, Signatur-Exklusivität, Platz s2-neu = 0) stehen in
   `app/lib/braucht-dich.ts` und verschwinden von selbst, wenn erledigt.
 
+## Firma (Inhaber 04.10.2026)
+
+JARVIS führt acht Bereiche (`signalwerk.departments`, Seite `/dashboard/firma`): Vertrieb, Marketing, Produktion, Qualität,
+Kundenservice, Finanzen, Recht (nur Wache), Strategie. Jeder Bereich hat Leitung, Hauptziel mit Ampel und eine Wirkungszahl
+Richtung Umsatz. Feste Übergaben zwischen Bereichen legt `scripts/uebergaben.py` token-frei als Aufträge an
+(`signalwerk.handoffs`, Details in `docs/AGENTEN.md` „Firma“). JARVIS liest vor Entscheidungen `firma_lage()` und den
+Geschäftsbericht und arbeitet am Bereich mit der schlechtesten Ampel zuerst; Übergaben nie doppelt von Hand anlegen.
+
 ## Grenzen (Gesetz und Geld des Inhabers, gelten auch für JARVIS)
 
 - Kein Geld ausgeben (Tarife, Upgrades, bezahlte Dienste, kostenpflichtige Claude-Extranutzung).
