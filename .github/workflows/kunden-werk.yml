@@ -140,7 +140,10 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
       - run: pip install -r requirements.txt
-      - name: Registernummer nachprüfen (S2 UK/FR, S1 UK)
+      # Zuerst ohne Abruf: an der Rechtsform gescheiterte Käufer in Ländern ohne company_forms_only (FR seit
+      # 04.10.2026, Einzelunternehmer nach Anwaltsberatung erlaubt) mit unveränderter Prüfregel neu prüfen –
+      # idempotent, findet nach dem ersten Lauf nichts mehr. Danach Registernummer nur noch, wo die Rechtsform zählt.
+      - name: Regeln neu prüfen, dann Registernummer nachprüfen (S2 UK, S1 UK)
         run: python scripts/kundenwerk.py nachpruefen --max 3000 --workers 16 --deadline-min 80 | tee -a "$GITHUB_STEP_SUMMARY"
 
   weiter:
