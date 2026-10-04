@@ -91,6 +91,8 @@ def lane_of(werk: str, part: str | None) -> str | None:
         return re.sub(r"-\d+$", "", part)
     if werk == "kunden-werk":
         return "kunden" if re.match(r"^(pruefen\b|run --shard)", part) else None
+    if werk == "pruefer-werk":  # Prüfer-Werk (Inhaber 05.10.2026): Teile „pruefer-0“ … bzw. „run --shard …“
+        return "pruefer" if re.match(r"^(pruefer\b|pruefer-\d+|run --shard)", part) else None
     return None
 
 
@@ -444,6 +446,9 @@ def matrix(reg: dict, werk: str, n: dict[str, int], extra_args: str = "") -> lis
             if werk == "kunden-werk":
                 rows.append({"shard": i, "of": k})
                 continue
+            if werk == "pruefer-werk":
+                rows.append({"name": f"{l['id']}-{i}", "shard": i, "of": k})
+                continue
             args = l["args"] + (f" --shard {i}/{k}" if k > 1 else "") + extra_args
             rows.append({"name": f"{l['id']}-{i}", "workers": int(l.get("workers", 16)), "args": args})
     return rows
@@ -516,8 +521,10 @@ def read_inputs(werk: str, hours: int = 8) -> dict:
             if r["werk"] == werk and out["last_brake"] == "aus" and not out.get("_brake_seen"):
                 out["last_brake"], out["_brake_seen"] = r.get("bremse") or "aus", True
                 out["prev_reasons"] = r.get("reasons") if isinstance(r.get("reasons"), dict) else {}
-            if r["werk"] != werk and out["other"] is None and isinstance(r.get("plan"), dict):
-                out["other"] = {k: int(v) for k, v in r["plan"].items()}
+            # letzte Belegung JEDES anderen Werks (seit dem Prüfer-Werk gibt es drei)
+            if r["werk"] != werk and r["werk"] not in out.setdefault("_other_seen", set()) and isinstance(r.get("plan"), dict):
+                out["_other_seen"].add(r["werk"])
+                out["other"] = {**(out["other"] or {}), **{k: int(v) for k, v in r["plan"].items()}}
     except BaseException as e:  # noqa: BLE001
         print(f"Letzte Belegung nicht lesbar ({type(e).__name__})", file=sys.stderr)
     return out
@@ -529,15 +536,18 @@ def decide(reg: dict, werk: str, inp: dict) -> dict:
     base, why = counts(reg, (settings or {}).get("slot_plan"))
     own = {l["id"]: base[l["id"]] for l in reg["lanes"] if l["werk"] == werk}
     other_ids = [l["id"] for l in reg["lanes"] if l["werk"] != werk]
-    other = inp.get("other") or {k: base[k] for k in other_ids}
-    other = {k: v for k, v in other.items() if k in other_ids}
+    # andere Werke: letzte gestartete Belegung, fehlende Linien mit ihrer Basis (Inhaber/Standard)
+    other = {k: base[k] for k in other_ids}
+    other.update({k: v for k, v in (inp.get("other") or {}).items() if k in other_ids})
     ap = (settings or {}).get("slot_autopilot")
     ap = ap if isinstance(ap, dict) else {"on": True, "locks": {}}  # Inhaber 03.10.2026: Autopilot an
     brake = brake_level(inp.get("db_bytes"), inp.get("last_brake") or "aus")
     reasons = {k: why for k in own}
     mode = "standard" if why == "Standardbelegung" else "inhaber"
     plan = dict(own)
-    if settings is not None and ap.get("on") is not False:
+    # Prüfer-Werk: feste Belegung (Inhaber 05.10.2026: „4 dauerhafte Prüfer“) – jeder Teil nutzt sein Zeitfenster immer
+    # voll, der Autopilot würde ihn sonst als „voll ausgelastet“ ständig vergrößern; seine Plätze zählt er bei den anderen
+    if settings is not None and ap.get("on") is not False and werk != "pruefer-werk":
         try:
             reset = (settings or {}).get("lane_reset")
             reset = reset if isinstance(reset, dict) else {}
@@ -581,7 +591,7 @@ def log_plan(db, werk: str, res: dict, db_bytes: int | None) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("werk", choices=["lead-werk", "kunden-werk"])
+    ap.add_argument("werk", choices=["lead-werk", "kunden-werk", "pruefer-werk"])
     ap.add_argument("--dry", action="store_true", help="nur anzeigen (nichts protokollieren, nichts quittieren)")
     a = ap.parse_args(argv)
     reg = load_lines()

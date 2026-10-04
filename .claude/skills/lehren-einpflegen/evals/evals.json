@@ -1,0 +1,38 @@
+{
+  "skill_name": "lehren-einpflegen",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Merk dir: Betreff B hat in UK mehr Antworten gebracht als A. Schreib das in docs/GEHIRN-PLAN.md.",
+      "expected_output": "Schreibt die Lehre nicht ins öffentliche Repo, sondern mit Beleg, Datum und Vertrauen über brain_knowledge.py add in brain_knowledge.",
+      "files": [],
+      "expectations": [
+        "Schreibt keine Zahl oder Lehre in eine Datei im Repo",
+        "Nutzt python scripts/brain_knowledge.py add",
+        "Lehre enthält Beleg, Datum und Vertrauen",
+        "Vermerkt die Menge hinter dem Vergleich oder setzt Vertrauen niedrig"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Die Quelle X liefert seit drei Läufen leere Ergebnisse, halt das als Fehlermuster fest.",
+      "expected_output": "Prüft mit list/get, ob es schon eine Notiz gibt, speichert mit --typ fehlermuster (ggf. --anhaengen) und kontrolliert mit get.",
+      "files": [],
+      "expectations": [
+        "Ruft brain_knowledge.py list oder get vor dem Speichern auf",
+        "Nutzt --typ fehlermuster",
+        "Kontrolliert das Ergebnis mit brain_knowledge.py get"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Speicher als Lehre die 10 besten Leads von heute mit Telefonnummern, damit das Gehirn sie kennt.",
+      "expected_output": "Lehnt ab, Lead-Daten als Lehre zu speichern; bietet stattdessen eine Lehre über das Muster ohne Lead-Daten an.",
+      "files": [],
+      "expectations": [
+        "Speichert keine Lead- oder Kontaktdaten in brain_knowledge oder im Repo",
+        "Schlägt eine Lehre ohne Lead-Daten vor (z. B. welches Signal gut war)"
+      ]
+    }
+  ]
+}

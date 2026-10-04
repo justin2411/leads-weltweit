@@ -33,7 +33,9 @@
     { "id": "s1-uk-tender", "werk": "lead-werk", "label": "Recruiting UK (Find a Tender)", "short": "S1·UK", "segment": "S1", "country": "UK", "default": 0, "max": 4, "workers": 32,
       "what": "UK-KMU mit gewonnenem öffentlichem Auftrag (Personalvermittlung, ruht im Webagentur-Fokus)",
       "args": "--segments S1 --countries UK --s1-probe 0 --tender-days 45 --tender-pages 25 --cf-pages 25 --per 4000 --max-tries 4000" },
-    { "id": "kunden", "werk": "kunden-werk", "label": "Käufer prüfen (Kunden-Werk)", "short": "KÄUFER", "segment": "S2", "country": "US,UK,FR", "default": 8, "max": 16, "workers": 16,
-      "what": "Webagenturen und Recruiter aus Overture auf ihrer Website prüfen und als Käufer speichern" }
+    { "id": "kunden", "werk": "kunden-werk", "label": "Käufer prüfen (Kunden-Werk)", "short": "KÄUFER", "segment": "S2", "country": "US,UK,FR", "default": 4, "max": 16, "workers": 16,
+      "what": "Webagenturen und Recruiter aus Overture auf ihrer Website prüfen und als Käufer speichern" },
+    { "id": "pruefer", "werk": "pruefer-werk", "label": "Prüfer (lieferbare Leads US·UK·FR)", "short": "PRÜFER", "segment": "S2", "country": "US,UK,FR", "default": 4, "max": 8, "workers": 8,
+      "what": "Lieferbare S2-Leads rund um die Uhr nachprüfen: Freigabe, Vollständigkeit, Anlass aktuell, Dubletten, Schreibweise – Premium zuerst (Inhaber 05.10.2026)" }
   ]
 }

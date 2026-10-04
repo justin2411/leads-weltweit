@@ -34,6 +34,7 @@ import requests
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lib.fetch import host_blocked  # noqa: E402
+from lib import fr_webfit  # noqa: E402
 from lib.rules import check_prospect, country_rules, load_countries, normalize_domain  # noqa: E402
 
 TARGET = 1_000_000  # Inhaber 01.10.2026: „Kundenwerk soll erst bei 1mio Kunden aufhören“
@@ -337,7 +338,24 @@ def address_ok(email: str) -> bool:
     """Gültige Käufer-Adresse: kein „%20“/kodiertes Zeichen, kein Leerzeichen, Form wie in der Prüfregel."""
     from lib.rules import EMAIL_RE
     e = (email or "").strip()
-    return bool(e) and "%" not in e and not re.search(r"\s", email or "") and bool(EMAIL_RE.match(e))
+    return bool(e) and "%" not in e and not re.search(r"\s", email or "") and bool(EMAIL_RE.match(e)) \
+        and syntax_strict(e)
+
+
+def syntax_strict(email: str) -> bool:
+    """Strenge Syntax nach RFC 5321/5322 (Bounce-Analyse 05.10.2026, 5.1.3 = ungültige Adresse): Punkt nicht am
+    Anfang/Ende des lokalen Teils, keine „..“, kein „mailto:“, lokaler Teil ≤ 64, gesamt ≤ 254 Zeichen, nur ASCII;
+    Domain: Labels 1–63 Zeichen aus Buchstaben/Ziffern/Bindestrich, nicht mit Bindestrich am Anfang/Ende."""
+    e = email or ""
+    if not e.isascii() or e.count("@") != 1 or len(e) > 254 or e.lower().startswith("mailto:"):
+        return False
+    local, dom = e.rsplit("@", 1)
+    if not local or len(local) > 64 or local[0] == "." or local[-1] == "." or ".." in local:
+        return False
+    labels = dom.split(".")
+    if len(labels) < 2 or not re.fullmatch(r"[A-Za-z]{2,63}", labels[-1]):
+        return False
+    return all(re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?", lab) for lab in labels)
 
 
 def mail_domain_ok(email: str) -> bool:
@@ -390,8 +408,18 @@ def check_one(d: dict, fetcher, cfg: dict, generic: set[str], blocked: set[str])
                          suppressed=suppressed, cfg=cfg)
     addr = ", ".join(x for x in (d.get("street"), d.get("city"), d.get("postcode")) if x)
     phone = company_phone(d, res)
+    no_fit = False
+    if chk.ok and fr_webfit.applies(d["segment"], d["country"]):
+        # FR Webagenturen (JARVIS 04.10.2026, optout-muster-s2): nur mit Web-/Design-NAF + Webdesign auf der Website
+        fit, why = fr_web_verdict(d, res, fetcher)
+        if fit:
+            chk.warnings.append(f"{why} ({fr_webfit.MARK})")
+        else:
+            chk.ok, chk.errors, no_fit = False, [f"kein Webdesign-Bezug (FR): {why}"], True
     if chk.ok:
         status, reason = "ok", chk.summary()
+    elif no_fit:
+        status, reason = "rejected", f"{chk.summary()} | {fr_webfit.MARK}"  # kein S2-Käufer, auch nicht Anruf/Brief
     elif phone or addr:
         # Inhaber 01.10.2026: „so viele leads besorgen … wie es geht“ – nicht per Mail erlaubt/erreichbar,
         # aber per Anruf oder Brief (UK: vor Anrufen gegen TPS/CTPS prüfen)
@@ -407,6 +435,58 @@ def check_one(d: dict, fetcher, cfg: dict, generic: set[str], blocked: set[str])
         "phone": phone, "check_status": status, "check_reason": reason[:500],
         "checked_at": dt.datetime.now(dt.timezone.utc).isoformat(),
     }
+
+
+def fr_naf(row: dict, html: str, fetcher, hit: dict | None = None) -> str | None:
+    """Code NAF der Firma aus SIRENE: Registertreffer aus dem Lauf, sonst SIREN aus size_note, sonst SIREN aus den
+    Mentions légales der eigenen Website, sonst eindeutiger Name + PLZ. Gestörte Schnittstelle ->
+    fr_sirene.RegisterUnavailable (dann nichts entscheiden)."""
+    from extraktor.sources import fr_sirene
+    from lib import regnum
+    if hit and hit.get("naf"):
+        return hit["naf"]
+    sirens = re.findall(r"SIREN (\d{9})", row.get("size_note") or "")
+    if hit and hit.get("siren"):
+        sirens.insert(0, hit["siren"])
+    sirens += [n for n in regnum.fr_sirens(regnum.plain_text(html or "")) if n not in sirens]
+    session = getattr(fetcher, "session", None)
+    for n in sirens[:3]:
+        h = fetcher.api("recherche-entreprises.api.gouv.fr", FR_API_INTERVAL, fr_sirene.by_siren, n, session, True)
+        if h and h.get("active") and h.get("naf"):
+            return h["naf"]
+    name = row.get("company_name") or row.get("name")
+    pc = row.get("postcode")
+    if not pc:
+        m = re.search(r"\b(\d{5})\b", row.get("published_address") or "")
+        pc = m.group(1) if m else None
+    if name and pc:
+        h = fetcher.api("recherche-entreprises.api.gouv.fr", FR_API_INTERVAL, fr_sirene.naf_lookup, name, pc, session, True)
+        if h and h.get("naf"):
+            return h["naf"]
+    return None
+
+
+FR_API_INTERVAL = float(os.environ.get("FR_API_INTERVAL", "0.5"))  # alle Teile zusammen unter 7 Abfragen/s
+
+
+def fr_web_verdict(row: dict, res: dict, fetcher) -> tuple[bool, str]:
+    """FR/S2: Web-/Design-NAF + Webdesign-Nachweis auf der eigenen Website, keine Verkaufs-/Parkseite."""
+    html = res.get("html") or ""
+    if not res.get("loaded") or res.get("placeholder"):
+        return fr_webfit.verdict(None, "", loaded=False)
+    if fr_webfit.parked(html, (res.get("pages") or [""])[0]):
+        return False, "Domain-Verkaufs-/Parkseite"
+    from lib import regnum
+    hit = row.get("fr_reg") or {}
+    if not (hit.get("naf") or "SIREN " in (row.get("size_note") or "") or regnum.fr_sirens(regnum.plain_text(html))) \
+            and not any(re.search(r"mentions|legal", p, re.I) for p in res.get("pages") or []):
+        # SIREN steht meist in den Mentions légales (Pflichtangabe), die oft nicht verlinkt gefunden werden
+        for path in ("/mentions-legales", "/mentions-legales/", "/mentions_legales"):
+            got = fetcher.get(res["pages"][0].rstrip("/") + path)
+            if got:
+                html += "\n" + got[1]
+                break
+    return fr_webfit.verdict(fr_naf(row, html, fetcher, row.get("fr_reg")), html, url=(res.get("pages") or [""])[0])
 
 
 def company_phone(d: dict, res: dict) -> str | None:
@@ -932,6 +1012,10 @@ def rules_recheck_values(r: dict, cfg: dict, blocked: set[str], today: str) -> d
                          source_url=r.get("source_url"), size_note=r.get("size_note"), suppressed=sup, cfg=cfg)
     now = dt.datetime.now(dt.timezone.utc).isoformat()
     tail = f" | {RULES_MARK} {today}"
+    if chk.ok and fr_webfit.applies(r.get("segment_id"), r.get("country")):
+        # FR/S2: erst nach der Webdesign-Prüfung (kundenwerk.py fr-webdesign) mail-fähig, Status bleibt
+        head = "nur Anruf/Brief – " if r["check_status"] == "call_only" else ""
+        return {"check_reason": (head + f"Regel OK, {fr_webfit.PENDING}")[:500 - len(tail)] + tail, "checked_at": now}
     if chk.ok:
         return {"check_status": "ok", "check_reason": (chk.summary() + tail)[:500], "checked_at": now}
     head = "nur Anruf/Brief – " if r["check_status"] == "call_only" else ""
@@ -950,7 +1034,9 @@ def rules_recheck(db, cfg: dict, dry_run: bool = False) -> Counter:
     today = dt.date.today().strftime("%d.%m.%Y")
     for r in rows:
         vals = rules_recheck_values(r, cfg, blocked, today)
-        stats[f"{r['segment_id']}/{r['country']}:{'ok' if vals.get('check_status') == 'ok' else 'bleibt'}"] += 1
+        what = ("ok" if vals.get("check_status") == "ok" else
+                "webdesign_offen" if fr_webfit.PENDING in vals.get("check_reason", "") else "bleibt")
+        stats[f"{r['segment_id']}/{r['country']}:{what}"] += 1
         if dry_run:
             continue
         try:
@@ -972,6 +1058,113 @@ def cmd_rules(args) -> int:
     if stop_if_paused(db, "kunden-werk", log):
         return 0
     rules_recheck(db, load_countries(), dry_run=args.dry_run)
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# FR Webagenturen schärfen (JARVIS-Auftrag 1e9a203d, 04.10.2026): Bestand einmal mit der strengeren Regel nachprüfen
+# ---------------------------------------------------------------------------
+def frweb_rows(db, limit: int) -> list[dict]:
+    """FR/S2-Käufer, die noch nicht webdesign-geprüft sind: alle mail-fähigen (ok) und die, die die Regel-Nachprüfung
+    bestanden haben, aber auf die Webdesign-Prüfung warten (PENDING)."""
+    sel = "id,segment_id,country,company_name,website,domain,email,legal_form,source_url,size_note,published_address,check_status,check_reason"
+    base = {"select": sel, "segment_id": "eq.S2", "country": "eq.FR", "order": "id.asc"}
+    rows = db.select_all("prospects", {**base, "check_status": "eq.ok",
+                                       "or": f"(check_reason.is.null,check_reason.not.like.*{fr_webfit.MARK}*)"})[:limit]
+    if len(rows) < limit:  # select_all blättert (PostgREST liefert höchstens 1000 je Abfrage)
+        rows += db.select_all("prospects", {**base, "check_status": "in.(call_only,rejected)", "email": "not.is.null",
+                                            "check_reason": f"like.*{fr_webfit.PENDING}*"})[:limit - len(rows)]
+    return rows
+
+
+def frweb_values(r: dict, fit: bool, why: str, chk, today: str) -> dict:
+    """Neue Werte: passt + Prüfregel ok -> ok (Grund mit Nachweis); passt nicht -> rejected mit Grund. Nur strenger:
+    eine Zeile wird nur dann (wieder) ok, wenn die unveränderte Prüfregel UND die Webdesign-Regel bestehen."""
+    now = dt.datetime.now(dt.timezone.utc).isoformat()
+    tail = f" | {fr_webfit.MARK} {today}: {why}"
+    if fit and chk is not None and chk.ok:
+        head = (r.get("check_reason") or chk.summary()) if r["check_status"] == "ok" else chk.summary()
+        return {"check_status": "ok", "check_reason": (head[:max(0, 500 - len(tail))] + tail)[:500], "checked_at": now}
+    if fit:  # Webdesign ja, aber die Prüfregel nicht (z. B. Sperrliste): Status bleibt, nur Grund
+        return {"check_reason": ((r.get("check_reason") or "")[:max(0, 500 - len(tail))] + tail)[:500], "checked_at": now}
+    prev = (r.get("check_reason") or "").replace(fr_webfit.PENDING, "Webdesign geprüft")
+    return {"check_status": "rejected", "check_reason": (f"kein Webdesign-Bezug (FR) – vorher {r['check_status']}: "
+                                                         f"{prev}"[:max(0, 500 - len(tail))] + tail)[:500],
+            "checked_at": now}
+
+
+def cmd_frweb(args) -> int:
+    """Bestand FR/S2 einmal mit der strengeren Regel nachprüfen. Löscht nichts, sendet nie; stuft nicht passende
+    Käufer auf rejected ab (Grund im check_reason). Gestörtes Register -> Zeile bleibt unverändert (nächster Lauf)."""
+    from lib.db import DB
+    from lib.owner_settings import stop_if_paused
+    from enrich import Fetcher
+    from extraktor.sources.fr_sirene import RegisterUnavailable
+    db = DB()
+    if stop_if_paused(db, "kunden-werk", log):
+        return 0
+    cfg = load_countries()
+    rows = frweb_rows(db, args.max)
+    log(f"FR-Webdesign-Prüfung: {len(rows)} Käufer")
+    if not rows:
+        return 0
+    blocked = {r["value"].lower() for r in db.select_all("suppression", {"select": "value"}) if r.get("value")}
+    fetcher = Fetcher()
+    deadline = time.monotonic() + args.deadline_min * 60 if args.deadline_min else 0
+    today = dt.date.today().strftime("%d.%m.%Y")
+    stats, lock = Counter(), threading.Lock()
+
+    def work(r):
+        if deadline and time.monotonic() >= deadline:
+            stats["später"] += 1
+            return
+        try:
+            res = site_scan(r["website"], fetcher)
+            fit, why = fr_web_verdict(r, res, fetcher)
+        except RegisterUnavailable:
+            stats["register_gestoert"] += 1
+            return
+        except Exception as exc:  # noqa: BLE001 - eine Firma darf den Lauf nicht beenden
+            stats["fehler"] += 1
+            log(f"Fehler {r.get('domain')}: {type(exc).__name__}")
+            return
+        sup = (r.get("domain") or "").lower() in blocked or (r.get("email") or "").lower() in blocked
+        chk = check_prospect(email=r.get("email"), country="FR", website=r.get("website"), legal_form=r.get("legal_form"),
+                             source_url=r.get("source_url"), size_note=r.get("size_note"), suppressed=sup, cfg=cfg)
+        vals = frweb_values(r, fit, why, chk, today)
+        key = ("bleibt_ok" if r["check_status"] == "ok" else "neu_ok") if vals.get("check_status") == "ok" else (
+            "abgestuft" if r["check_status"] == "ok" else "bleibt_nicht_ok")
+        with lock:
+            stats[key] += 1
+            stats["grund:" + re.split(r"[„,]", why)[0].strip()[:50]] += 1
+        if args.dry_run:
+            return
+        try:  # Bedingung: Status unverändert seit dem Lesen (kein Rennen mit anderen Läufen)
+            db.update("prospects", {"id": r["id"], "check_status": r["check_status"]}, vals)
+        except RuntimeError as exc:
+            with lock:
+                stats["Speicherfehler"] += 1
+            log(f"Speicherfehler {r.get('domain')}: {str(exc)[:80]}")
+
+    from lib.heartbeat import Heartbeat
+    with Heartbeat(db, "kunden-werk", "fr-webdesign") as hb, ThreadPoolExecutor(max_workers=args.workers) as ex:
+        for k, _ in enumerate(ex.map(work, rows)):
+            if k % 100 == 0:
+                hb.update(processed=k, green=stats["bleibt_ok"] + stats["neu_ok"])
+    log(f"fertig: {stats['bleibt_ok']} bleiben ok, {stats['neu_ok']} neu ok, {stats['abgestuft']} abgestuft (rejected), "
+        f"{stats['bleibt_nicht_ok']} bleiben nicht ok, {stats['register_gestoert']} Register gestört, "
+        f"{stats['fehler']} Fehler, {stats['später']} später{' (Probelauf, nichts gespeichert)' if args.dry_run else ''}")
+    for k, v in stats.most_common():
+        if k.startswith("grund:"):
+            log(f"  {k[6:]}: {v}")
+    if not args.dry_run:
+        from lib.run_stats import record
+        n = sum(stats[k] for k in ("bleibt_ok", "neu_ok", "abgestuft", "bleibt_nicht_ok"))
+        record(db, "kunden-werk", [{"segment_id": "S2", "country": "FR", "candidates": len(rows), "processed": n,
+                                    "green": stats["bleibt_ok"] + stats["neu_ok"], "yellow": 0,
+                                    "red": stats["abgestuft"] + stats["bleibt_nicht_ok"],
+                                    "reasons": {k[6:]: v for k, v in stats.items() if k.startswith("grund:")},
+                                    "extra": {"teil": "fr-webdesign"}}], None, log)
     return 0
 
 
@@ -1010,7 +1203,14 @@ def main(argv=None) -> int:
     n.add_argument("--kvk-max", type=int, default=75, help="NL: höchstens so viele KVK-Abfragen (je 61 s) im Lauf")
     g = sub.add_parser("regeln", help="an der Rechtsform gescheiterte Käufer mit der heutigen Länderregel neu prüfen")
     g.add_argument("--dry-run", action="store_true", help="nur zählen, nichts speichern")
+    w = sub.add_parser("fr-webdesign", help="FR/S2-Bestand: nur Web-/Design-NAF + Webdesign auf der Website bleibt ok")
+    w.add_argument("--max", type=int, default=10000)
+    w.add_argument("--workers", type=int, default=16)
+    w.add_argument("--deadline-min", type=float, default=0)
+    w.add_argument("--dry-run", action="store_true", help="nur zählen, nichts speichern")
     args = ap.parse_args(argv)
+    if args.cmd == "fr-webdesign":
+        return cmd_frweb(args)
     if args.cmd == "regeln":
         return cmd_rules(args)
     if args.cmd == "pool":
