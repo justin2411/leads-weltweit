@@ -240,13 +240,21 @@ export const HUD_CSS = `
   .bay .bl{font-size:var(--fs-xs);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:clip}
   .dash .bnav{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}.dash .bnav a{font-size:var(--fs-xs);white-space:nowrap;min-width:0;letter-spacing:-.02em}.dash .bnav a .bnl{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 }
-/* Handy-Leiste: 12 px passt nicht für 10 Wörter → nur der aktive Punkt zeigt sein Wort (doppelt breit), die übrigen nur
-   das Symbol; der Name bleibt für Screenreader lesbar. */
-@media (max-width:480px){
-  .dash .bnav a:not(.on) .bnl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-  .dash .bnav a:not(.on){justify-content:center}
-  .dash .bnav a.on{grid-column:span 2}
-}
+/* Handy-Leiste (docs/DESIGN-KOMMANDOZENTRALE.md): 5 Hauptziele + „Mehr“, alle sechs mit Symbol und Wort, je ≥ 48 px hoch.
+   „Mehr“ öffnet ein Blatt von unten mit den übrigen Bereichen (Kacheln ≥ 56 px, X = x-btn mittig, 44 px Klickfläche). */
+.dash .bnav .bmore{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:0;min-height:48px;padding:4px 0;border:0;background:none;color:#c9d0db;font:inherit;font-size:var(--fs-xs);letter-spacing:-.02em;white-space:nowrap;cursor:pointer}
+.dash .bnav .bmore.on,.dash .bnav .bmore[aria-expanded="true"]{color:var(--gold2)}
+.dash .bnav .bmore .bnl{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.dash .msheet-bg{position:fixed;inset:0;z-index:40;background:rgba(0,4,12,.6);display:flex;align-items:flex-end}
+.dash .msheet{width:100%;max-height:80vh;overflow:auto;background:#06121f;border-top:1px solid rgba(95,212,255,.25);border-radius:16px 16px 0 0;padding:8px 16px calc(16px + env(safe-area-inset-bottom))}
+.dash .msheet header{display:flex;align-items:center;justify-content:space-between;min-height:48px}
+.dash .msheet header b{font-size:var(--fs-l);color:#fff}
+.dash .msheet .x-btn,.dash .msheet .x-btn:hover,.dash .msheet .x-btn:focus-visible{width:44px!important;height:44px!important}
+.dash .msheet-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;align-items:stretch}
+.dash .msheet-g a{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:72px;padding:8px 4px;border:1px solid var(--line);border-radius:12px;background:rgba(10,26,50,.6);color:var(--text);text-decoration:none;font-size:var(--fs-s);text-align:center}
+.dash .msheet-g a.on{border-color:var(--gold2);color:var(--gold2)}
+.dash .msheet-g a .nb{position:absolute;top:6px;right:8px;margin:0}
+@media (min-width:641px){.dash .msheet-bg{display:none}}
 
 /* ------------------------------------------------------------------ JARVIS v2: Fluss-Karte (Inhaber 03.10.2026) */
 .dash{font-size:var(--fs-m)}

@@ -7,7 +7,7 @@ import { MAX_AGE_RANGE, MAX_SAMPLE_TARGET } from "@/lib/owner-settings";
 import { dispatchWorkflow, saveMaxAge, saveSampleTargets } from "../control-actions";
 import { COUNTRY_COLOR, berlin, compact, distinctReplies, durationS, nextRun, onlySegment, sampleStock, stockSegment } from "@/lib/dashboard-logic";
 import { requireOwner } from "../actions";
-import { Back, COUNTRY_OPTS, Chips, Ctrl, Fill, PageHead, Kpi, ago2 } from "../v2";
+import { Back, COUNTRY_OPTS, Chips, Ctrl, Fill, Leer, PageHead, Kpi, ago2 } from "../v2";
 import { readParams, withQuery, type SP } from "../params";
 
 /** Proben: Vorrat je Seite und alle Anfragen (Website + Mail-Antwort) mit Zeit bis zur Probe. */
@@ -122,7 +122,7 @@ export default async function Proben({ searchParams }: { searchParams: SP }) {
             </span>
           </div>
         ))}
-        {rows.length === 0 && <div className="muted">noch keine Proben</div>}
+        {rows.length === 0 && <Leer icon="proben" text="Noch keine Proben." />}
       </div>
       </Fold>
     </div>

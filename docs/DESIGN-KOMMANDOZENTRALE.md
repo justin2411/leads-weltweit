@@ -23,9 +23,10 @@ Stand 04.10.2026. Ergänzt `docs/DESIGN.md` (Farben, Schriftskala) für `/dashbo
 - Layout-Wächter (`npm run layout`): prüft bündige Reihen (Reihe = senkrechte Überdeckung > 50 %), X mittig, kein seitliches
   Scrollen, Fluss-Karte und jetzt auch **Abzeichen über Text** (absolut gesetzte Abzeichen dürfen keinen Text im Kasten berühren).
 
-## Offene Vorschläge (größere Umbauten)
+## Handy-Übersicht (umgesetzt 04.10.2026, Inhaber: „übersichtlicher“)
 
-- JARVIS-Startseite kürzen: Kohorten-Trichter, Entscheidungen und Chat in Reiter oder Aufklapper, damit die Seite am Handy < 3 Bildschirme ist.
-- Untere Handy-Leiste: 10 Symbole sind zu viele – 5 feste (JARVIS, Antworten, Kunden, Regler, Mehr) plus „Mehr“-Blatt.
-- Kontakte am Handy: Spalten als Reiter statt sechs übereinander gestapelter Kästen.
-- Gemeinsamer Leer-Zustand (Symbol + 1 Satz + nächster Schritt) als Baustein statt vieler Einzel-Texte.
+- Untere Leiste: 5 feste Ziele nach Nutzung (JARVIS, Antworten mit Zähler, Versand, Kunden, Website) + „Mehr“-Blatt mit den übrigen Bereichen (`BottomNav` in `nav.tsx`, X = `x-btn`, 44 px). Desktop-Reiter unverändert.
+- JARVIS ≤ 760 px: Kohorten, Entscheidungen und Chat eingeklappt (`MobileFold` in `mobile-fold.tsx`, Kennzahl im Kopf, Zustand im Browser). Desktop unverändert offen.
+- Kontakte ≤ 760 px: Stufen als Reiter (`MobileTabs` in `mobile-tabs.tsx`) statt sechs gestapelter Kästen.
+- Leer-Zustand: `Leer` in `v2.tsx` (Symbol + 1 Satz), auf allen Seiten mit leeren Listen.
+- CSS der Handy-Bausteine in `mobile-css.ts` (Konstanten aus „use client“-Dateien sind auf dem Server nur Verweise).

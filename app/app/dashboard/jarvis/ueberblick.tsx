@@ -5,6 +5,7 @@
  */
 import Link from "next/link";
 import { Icon } from "@/app/icons";
+import { Leer } from "../v2";
 import type { Bar, Eintrag, Wichtig } from "@/lib/ueberblick";
 
 export function HeuteWichtig({ items }: { items: Wichtig[] }) {
@@ -80,7 +81,7 @@ export function Zeitleiste({ items }: { items: Eintrag[] | null }) {
             </details>
           )}
         </>
-      ) : <p className="jchat-empty">noch keine Entscheidungen</p>}
+      ) : <Leer icon="uhr" text="Noch keine Entscheidungen." />}
     </section>
   );
 }

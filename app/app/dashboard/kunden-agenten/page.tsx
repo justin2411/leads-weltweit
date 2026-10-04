@@ -5,7 +5,7 @@ import { avatarHue, fullName, goalChips, initials, kpiOf, roleDe, statusLabel } 
 import { COUNTRY_COLOR, berlin } from "@/lib/dashboard-logic";
 import { Icon, type IconName } from "@/app/icons";
 import { requireOwner } from "../actions";
-import { PageHead } from "../v2";
+import { Leer, PageHead } from "../v2";
 import { KA_CSS } from "./css";
 
 type V = CSSProperties & Record<`--${string}`, string | number>;
@@ -69,7 +69,7 @@ export default async function KundenAgenten() {
         })}
       </div>
       {!error && agents.length === 0 && (
-        <div className="ka-empty"><Icon name="ansprechpartner" size={28} />Noch keine Kunden-Agenten.<br />Jeder Kauf ab Pro legt einen an.</div>
+        <Leer icon="ansprechpartner" text="Noch keine – jeder Kauf ab Pro legt einen an." />
       )}
     </div>
   );

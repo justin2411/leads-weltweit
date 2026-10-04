@@ -27,8 +27,6 @@ export const ANTWORTEN_CSS = `
 .aw-age.late{color:var(--aw-red);font-weight:700}
 .aw-chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600;border:1px solid currentColor;white-space:nowrap}
 .aw-chip.gold{color:var(--aw-gold)}.aw-chip.blue{color:var(--aw-blue)}.aw-chip.amber{color:var(--aw-amber)}.aw-chip.green{color:var(--aw-green)}.aw-chip.grey{color:var(--aw-grey)}
-.aw-empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:36px 12px;color:var(--soft);border:1px dashed var(--line);border-radius:12px}
-.aw-empty .ico{color:var(--aw-green)}
 
 .aw-top{display:flex;flex-direction:column;gap:8px;margin:2px 0 12px}
 .aw-top h1{margin:0;font-size:22px;color:#fff;letter-spacing:.03em;overflow-wrap:anywhere}
