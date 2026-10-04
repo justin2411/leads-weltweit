@@ -1,7 +1,7 @@
 """Agenten-Aufträge aus dem Dashboard bearbeiten (Inhaber 03.10.2026: „ich beauftrage agent 1 neue leads zu holen für
 den markt“). Werkzeug für die stündliche Claude-Sitzung „Agenten“ (docs/AGENTEN.md):
 
-  python scripts/agent_tasks.py offen                       # offene Aufträge (älteste zuerst)
+  python scripts/agent_tasks.py offen                       # offene Aufträge (Chat zuerst, sonst älteste zuerst)
   python scripts/agent_tasks.py start <id>                  # übernehmen: Status „läuft“
   python scripts/agent_tasks.py schritt <id> 40 "prüfe 3 Quellen"   # Fortschritt + Zwischenstand
   python scripts/agent_tasks.py fertig <id> "Ergebnis in 1–3 Sätzen" '{"leads": 420}'
@@ -19,6 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lib.db import DB  # noqa: E402
 
+CHAT_BY = "JARVIS-Chat"  # wie app/lib/agents.ts
 NOW = lambda: dt.datetime.now(dt.timezone.utc).isoformat()  # noqa: E731
 
 
@@ -29,7 +30,9 @@ def main(argv: list[str]) -> int:
     db, cmd = DB(), argv[0]
     if cmd == "offen":
         rows = db.select("agent_tasks", {"status": "in.(offen,laeuft)", "order": "created_at.asc",
-                                         "select": "id,agent,kind,market,brief,status,progress,created_at"})
+                                         "select": "id,agent,kind,market,brief,status,progress,created_at,created_by"})
+        # Chat-Nachrichten an JARVIS zuerst (Inhaber wartet im Gespräch), sonst älteste zuerst (stabil)
+        rows = sorted(rows or [], key=lambda r: r.get("created_by") != CHAT_BY)
         print(json.dumps(rows, ensure_ascii=False, indent=1))
         return 0
     tid = argv[1]

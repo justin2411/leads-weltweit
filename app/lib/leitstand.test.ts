@@ -145,3 +145,28 @@ test("Alarme: offene Antworten und leerer Proben-Vorrat zuerst, nie aus fehlende
   const ranked = rankTips([{ level: "info", title: "i" }, { level: "gelb", title: "g1" }, { level: "rot", title: "r" }, { level: "gelb", title: "g2" }, { level: "gruen", title: "gr" }]);
   assert.deepEqual(ranked.map((t) => t.title), ["r", "g1", "g2", "gr", "i"]);
 });
+
+test("JARVIS empfiehlt: kurz, mit Auftrag zuerst, Rest für die Chips", async () => {
+  const { recommend, shortText } = await import("./leitstand.ts");
+  assert.equal(shortText("Erster Satz. Zweiter Satz."), "Erster Satz.");
+  assert.equal(shortText("Kein Punkt"), "Kein Punkt");
+  const long = shortText("Wort ".repeat(40).trim() + ".", 40);
+  assert.ok(long.length <= 40 && long.endsWith("…"), long);
+  assert.equal(shortText("Version 1.5 ist da. Mehr"), "Version 1.5 ist da."); // Punkt in Zahl beendet keinen Satz
+  const task = { kind: "kaeufer" as const, market: "UK", brief: "Käufer UK" };
+  const tips = [
+    { level: "info" as const, title: "Noch keine Laufzahlen", text: "x" },
+    { level: "gruen" as const, title: "Ergiebig", text: "Mehr Plätze. Sonst nichts.", href: "#pult", task },
+    { level: "gelb" as const, title: "Antworten offen", text: "Lesen.", href: "/dashboard/antworten" },
+    { level: "gelb" as const, title: "UK knapp", text: "Käufer werden knapp.", task },
+    { level: "rot" as const, title: "Teil abgebrochen", text: "lead-werk web-us-1", task: { ...task, kind: "pruefen" as const } },
+  ];
+  const { recs, rest } = recommend(tips);
+  assert.deepEqual(recs.map((r) => r.title), ["Teil abgebrochen", "UK knapp", "Ergiebig"]); // Aufträge zuerst, nach Wichtigkeit
+  assert.equal(recs[2].short, "Mehr Plätze.");
+  assert.deepEqual(rest.map((r) => r.title), ["Antworten offen", "Noch keine Laufzahlen"]);
+  // nur ein Auftrag: mit Hinweisen mit Ziel auffüllen, reine Info nie
+  const r2 = recommend([tips[0], tips[1], tips[2]]);
+  assert.deepEqual(r2.recs.map((r) => r.title), ["Antworten offen", "Ergiebig"]);
+  assert.deepEqual(recommend([tips[0]]).recs, []);
+});

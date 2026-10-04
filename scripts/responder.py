@@ -484,7 +484,11 @@ def regional_sample(db, seg: str, country: str, region: str | None,
                         "urgency_reason,opener,signal_type,company_id,observation_ids,"
                         "watch_companies(name,legal_form,city,region,address,website,website_checked_at)",
               "order": "event_date.desc,id"}
-    rows = best_first(_newest(db, params, SAMPLE_POOL))
+    # Speicher (docs/BAUKASTEN-MASTER.md): ist für Zielgruppe+Land einer gesetzt (pool_routes), kommen die Kandidaten
+    # NUR aus ihm – reicht er nicht für 10 verschiedene Firmen, gibt es keine Probe (kein Ausweichen, Tagescheck meldet)
+    from lib.pools import pool_for, restrict, strip
+    params = restrict(params, pool_for(db, seg, country))
+    rows = best_first(strip(_newest(db, params, SAMPLE_POOL)))
     if exclude_companies:
         rows = [r for r in rows if r.get("company_id") not in exclude_companies]
     if wish:
@@ -492,7 +496,7 @@ def regional_sample(db, seg: str, country: str, region: str | None,
         types = signal_types(wish)
         if types:  # seltene Wunsch-Signale stehen evtl. nicht unter den neuesten Leads: gezielt nachladen
             have = {r["id"] for r in rows}
-            extra = _newest(db, {**params, "signal_type": f"in.({','.join(types)})"}, SAMPLE_POOL // 2)
+            extra = strip(_newest(db, {**params, "signal_type": f"in.({','.join(types)})"}, SAMPLE_POOL // 2))
             rows = [r for r in best_first(extra) if r["id"] not in have
                     and r.get("company_id") not in (exclude_companies or ())] + rows
         rows = prefer(rows, wish, _sic_lookup(db, rows) if "fleet_warehouse" in wish else None)

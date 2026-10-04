@@ -85,9 +85,12 @@ def select_leads(leads: list[dict], sub: dict, already: set[str], details: dict[
     types = set(f.get("signal_types") or [])
     # Gebuchte Menge (Abo) gilt; customer_filters.max_per_week nur, wenn am Abo keine Menge steht
     cap = int(f.get("max_per_week") or (cfilter or {}).get("max_per_week") or DEFAULT_MAX)
+    pool = sub.get("_pool")  # Speicher des Abos (lib/pools.py): strikt, kein Ausweichen auf den Gesamtbestand
     picked, per = [], {}
     for l in leads:
         if l["id"] in already or l["segment_id"] != sub["segment_id"] or l["country"] != country:
+            continue
+        if pool and pool not in (l.get("_pools") or ()):
             continue
         if types and l["signal_type"] not in types:
             continue
@@ -353,7 +356,9 @@ def tag_fresh_leads(db) -> None:
 POOL_PER_MARKET = 5000  # neueste unvergebene Leads je Branche und Land (reicht für viele Kunden je Woche)
 
 
-def _load_leads(db, since: dt.date, markets: set[tuple[str, str]] | None = None) -> tuple[list[dict], dict[str, dict]]:
+def _load_leads(db, since: dt.date, markets: set[tuple] | None = None) -> tuple[list[dict], dict[str, dict]]:
+    """markets: (Zielgruppe, Land) oder (Zielgruppe, Land, Speicher-ID|None). Leads aus einem Speicher tragen dessen ID
+    in `_pools` (select_leads nimmt für ein Abo mit Speicher nur diese)."""
     # nur unvergebene Leads: Probe-Leads (sample) und gelieferte gehen an keinen weiteren Käufer (exklusiv, 01.10.2026)
     params = {"created_at": f"gte.{since.isoformat()}", "status": "eq.new", "select": LEAD_SELECT,
               "order": "event_date.desc,id"}
@@ -363,9 +368,18 @@ def _load_leads(db, since: dt.date, markets: set[tuple[str, str]] | None = None)
         # Nur Märkte mit aktiven Abos und je Markt die neuesten: alle frischen Leads (200.000+ allein S2/US)
         # seitenweise zu laden lief in einen Statement-Timeout (Audit 02.10.2026)
         from responder import _newest
-        leads = []
-        for seg, country in sorted(markets):
-            leads += _newest(db, {**params, "segment_id": f"eq.{seg}", "country": f"eq.{country}"}, POOL_PER_MARKET)
+        from lib.pools import restrict, strip
+        by_id: dict[str, dict] = {}
+        for m in sorted(markets, key=lambda m: tuple(x or "" for x in m)):
+            seg, country, pool = (tuple(m) + (None,))[:3]
+            got = strip(_newest(db, restrict({**params, "segment_id": f"eq.{seg}", "country": f"eq.{country}"}, pool),
+                                POOL_PER_MARKET))
+            for l in got:
+                l = by_id.setdefault(l["id"], l)
+                l.setdefault("_pools", set())
+                if pool:
+                    l["_pools"].add(pool)
+        leads = list(by_id.values())
     details = {}
     us_obs = {l["observation_ids"][0]: l["id"] for l in leads if l["country"] == "US" and l.get("observation_ids")}
     ids = list(us_obs)
@@ -410,7 +424,16 @@ def cmd_prepare(args) -> int:
         print("Keine aktiven Abos – nichts zu liefern.")
         return 0
     tag_fresh_leads(db)
-    markets = {(s["segment_id"], (s.get("filters") or {}).get("country") or s["customers"]["country"]) for s in subs}
+    # Speicher je Abo (docs/BAUKASTEN-MASTER.md): subscriptions.pool_id vor pool_routes, sonst Gesamtbestand
+    from lib.pools import pool_for, routes as pool_routes
+    known_routes = pool_routes(db)
+    for s in subs:
+        cc = (s.get("filters") or {}).get("country") or s["customers"]["country"]
+        s["_pool"] = pool_for(db, s["segment_id"], cc, s, known_routes)
+        if s["_pool"]:
+            print(f"- {s['customers']['company_name']}: Leads nur aus Speicher {s['_pool'][:8]}")
+    markets = {(s["segment_id"], (s.get("filters") or {}).get("country") or s["customers"]["country"], s["_pool"])
+               for s in subs}
     leads, details = _load_leads(db, dt.date.today() - dt.timedelta(days=FRESH_DAYS), markets)
     known = None
     if REQUIRE_CONTACT:

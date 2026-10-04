@@ -11,6 +11,11 @@ hier nur je Lead (kein top/dubletten über Mengen). Der Python-Teil vertraut der
 unbekannte Bausteine, Felder oder Operatoren ergeben False; enthält der Weg zur Pipeline so etwas (oder ein Feld, das
 für die Pipeline nicht taugt, oder top/dubletten), gilt die Regel als defekt und hält jeden Lead in ihrem Bereich zurück.
 Rücknahme: flow_release_held(flow) gibt die zurückgehaltenen Leads einer Regel wieder frei (Status 'new').
+
+Master-Pipeline und eigene Agenten (docs/BAUKASTEN-MASTER.md): run_flow_rows wertet einen Flow über eine ganze Menge aus
+(wie runFlowRows in flow.ts, mit top/dubletten/Punkte-Zusammenführung); sink_rows liefert, was bei den Zielen einer Art
+(„speicher“, „melden“, …) ankommt. „freigabe“ lässt alles durch – die echte Drei-Stufen-Freigabe macht release_gate.py
+immer, unabhängig vom Flow.
 """
 from __future__ import annotations
 
@@ -59,8 +64,9 @@ OPS: dict[str, set[str]] = {
     "bool": {"ja", "nein"},
 }
 OUT_PORTS = {"quelle": ("out",), "filter": ("out",), "punkte": ("out",), "top": ("out",), "dubletten": ("out",),
-             "statistik": ("out",), "weiche": ("ja", "nein"), "pipeline": (), "export": (), "agent": ()}
-SINKS = {"pipeline", "export", "agent"}
+             "statistik": ("out",), "freigabe": ("out",), "weiche": ("ja", "nein"), "pipeline": (), "export": (),
+             "agent": (), "speicher": (), "melden": ()}
+SINKS = {"pipeline", "export", "agent", "speicher", "melden"}
 COND_NODES = {"filter", "weiche", "punkte"}
 
 _warned: set[str] = set()
@@ -235,7 +241,7 @@ def _order(flow: dict) -> tuple[dict[str, dict], list[tuple[str, str, str]], lis
 
 def _process(node: dict, r: dict) -> dict[str, dict]:
     kind = node.get("kind")
-    if kind in ("quelle", "statistik", "dubletten"):
+    if kind in ("quelle", "statistik", "dubletten", "freigabe"):
         return {"out": r}
     if kind == "filter":
         conds = node.get("conds")
@@ -268,6 +274,151 @@ def _process(node: dict, r: dict) -> dict[str, dict]:
         n = node.get("n")
         return {"out": r} if _finite(n) and n >= 1 else {}
     return {}  # Senken und Unbekanntes geben nichts weiter
+
+
+# ---------------------------------------------------------------------------- Ablauf über eine Menge (wie flow.ts)
+_URG = {"high": 3, "medium": 2, "low": 1}
+
+
+def _isnum(x) -> bool:
+    return isinstance(x, (int, float)) and not isinstance(x, bool)
+
+
+def _asc_missing_last(x):
+    """Sortierschlüssel wie ascMissingLast in flow.ts: Zahlen aufsteigend, fehlende zuletzt."""
+    return (0, x) if _finite(x) else (1, 0)
+
+
+def sort_rows(rows: list[dict], sort) -> list[dict] | None:
+    """Wie sortRows in flow.ts (stabil). Unbekannte Sortierung → None (nichts geht weiter)."""
+    if sort == "neueste":
+        key = lambda r: _asc_missing_last(r.get("erfasst_tage"))  # noqa: E731
+    elif sort == "aelteste":
+        key = lambda r: _asc_missing_last(-r["erfasst_tage"] if _finite(r.get("erfasst_tage")) else None)  # noqa: E731
+    elif sort == "punkte":
+        key = lambda r: -(r.get("punkte") if _finite(r.get("punkte")) else 0)  # noqa: E731
+    elif sort == "dringlichkeit":
+        key = lambda r: (-_URG.get(_sv(r.get("dringlichkeit")), 0), _asc_missing_last(r.get("erfasst_tage")))  # noqa: E731
+    else:
+        return None
+    return sorted(rows, key=key)
+
+
+def count_by(rows: list[dict], key: str, limit: int = 12) -> list[dict]:
+    """Wie countBy in flow.ts: fehlend → „–“, Häkchen → ja/nein, absteigend nach Anzahl, dann Schlüssel."""
+    m: dict[str, int] = {}
+    for r in rows:
+        x = r.get(key)
+        k = ("ja" if x else "nein") if isinstance(x, bool) else "–" if missing(x) else _sv(x)
+        m[k] = m.get(k, 0) + 1
+    return [{"key": k, "n": n} for k, n in sorted(m.items(), key=lambda kv: (-kv[1], kv[0]))][:limit]
+
+
+def _merge(arrivals: list[list[dict]]) -> list[dict]:
+    """Eingänge vereinen wie merge in flow.ts: je id die erste Ankunft, Punkte = Maximum der Ankünfte."""
+    out: list[dict] = []
+    at: dict = {}
+    for rows in arrivals:
+        for r in rows:
+            i = at.get(r.get("id"))
+            if i is None:
+                at[r.get("id")] = len(out)
+                out.append(r)
+                continue
+            a, b = out[i].get("punkte"), r.get("punkte")
+            if _isnum(b) and (not _isnum(a) or b > a):
+                out[i] = {**out[i], "punkte": b}
+    return out
+
+
+def _step(node: dict, rows: list[dict]) -> dict:
+    """Ein Baustein über die ganze Menge (wie step in flow.ts). Ziele und freigabe geben alles weiter (out = Eingang)."""
+    kind = node.get("kind")
+    if kind in ("filter", "punkte"):
+        out = []
+        for r in rows:
+            got = _process(node, r).get("out")
+            if got is not None:
+                out.append(got)
+        return {"out": out}
+    if kind == "weiche":
+        ja, nein = [], []
+        for r in rows:
+            (ja if "ja" in _process(node, r) else nein).append(r)
+        return {"out": ja + nein, "ja": ja, "nein": nein}
+    if kind == "top":
+        n, srt = node.get("n"), sort_rows(rows, node.get("sort"))
+        if srt is None or not _finite(n):
+            return {"out": []}
+        return {"out": srt[:max(0, math.floor(n))]}
+    if kind == "dubletten":
+        seen, out = set(), []
+        for r in rows:
+            x = r.get("cid") if node.get("by") == "firma_id" else r.get("firma")
+            if missing(x):
+                out.append(r)
+                continue
+            k = _sv(x) if node.get("by") == "firma_id" else norm(_sv(x))
+            if k not in seen:
+                seen.add(k)
+                out.append(r)
+        return {"out": out}
+    if kind == "statistik":
+        by = node.get("by")
+        return {"out": rows, "stats": count_by(rows, by) if isinstance(by, str) else []}
+    return {"out": rows}
+
+
+def run_flow_rows(flow: dict, rows: list[dict]) -> dict[str, dict]:
+    """Ablauf über eine Menge wie runFlowRows in flow.ts: je Baustein {connected, in, out, ja, nein[, stats]}
+    (ja/nein nur bei der Weiche, sonst None). Topologisch ab der (ersten) Quelle; Bausteine in einem Kreis bleiben leer."""
+    nodes = _nodes(flow)
+    res: dict[str, dict] = {nid: {"connected": False, "in": [], "out": [], "ja": None, "nein": None} for nid in nodes}
+    q = next((n for n in (flow.get("nodes") or [] if isinstance(flow, dict) else [])
+              if isinstance(n, dict) and n.get("kind") == "quelle" and nodes.get(n.get("id")) is n), None)
+    if q is None:
+        return res
+    edges = _edges(flow, nodes)
+    reach, stack = {q["id"]}, [q["id"]]
+    while stack:
+        cur = stack.pop()
+        for a, _, b in edges:
+            if a == cur and b not in reach:
+                reach.add(b)
+                stack.append(b)
+    for nid in reach:
+        res[nid]["connected"] = True
+    sub = [(a, p, b) for a, p, b in edges if a in reach]
+    indeg: dict[str, int] = {}
+    for _, _, b in sub:
+        indeg[b] = indeg.get(b, 0) + 1
+    arrivals: dict[str, list[list[dict]]] = {}
+    queue = [q["id"]]
+    while queue:
+        nid = queue.pop(0)
+        node = nodes[nid]
+        if node is q:
+            inp, r = list(rows), {"out": list(rows)}
+        else:
+            inp = _merge(arrivals.get(nid, []))
+            r = _step(node, inp)
+        res[nid] = {"connected": True, "in": inp, "out": r["out"], "ja": r.get("ja"), "nein": r.get("nein"),
+                    **({"stats": r["stats"]} if "stats" in r else {})}
+        for a, port, b in sub:
+            if a != nid:
+                continue
+            sent = (r.get("ja") or []) if port == "ja" else (r.get("nein") or []) if port == "nein" else r["out"]
+            arrivals.setdefault(b, []).append(sent)
+            indeg[b] -= 1
+            if indeg[b] == 0:
+                queue.append(b)
+    return res
+
+
+def sink_rows(flow: dict, rows: list[dict], kind: str) -> dict[str, list[dict]]:
+    """Was bei den Zielen einer Art ankommt (z. B. "speicher", "melden"): je Baustein-id die Zeilen am Eingang."""
+    res = run_flow_rows(flow, rows)
+    return {nid: res[nid]["in"] for nid, n in _nodes(flow).items() if n.get("kind") == kind}
 
 
 def walk(flow: dict, row: dict) -> set[str]:

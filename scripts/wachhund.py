@@ -43,6 +43,8 @@ JOBS = [
     {"wf": "antworten.yml", "kind": "hourly", "window": (0, 23), "max_min": 20, "inputs": {"probelauf": "false"}},
     # Proben-Vorrat + Web-Proben rund um die Uhr (03.10.2026: Anfrage 18:30 wartete 5 h, weil GitHub Läufe ausließ)
     {"wf": "proben-vorrat.yml", "kind": "hourly", "window": (0, 23), "max_min": 75, "inputs": {"befehl": "run"}},
+    # Agenten-Werk (04.10.2026): Master-Pipeline füllt Speicher, eigene Agenten laufen nach Auslöser
+    {"wf": "agenten-werk.yml", "kind": "hourly", "window": (0, 23), "max_min": 90, "inputs": {"probelauf": "false"}},
     {"wf": "morgenbericht.yml", "kind": "daily", "at": "04:47", "grace": 45},
     {"wf": "kaeufer.yml", "kind": "daily", "at": "05:13", "grace": 60},
     {"wf": "sync.yml", "kind": "daily", "at": "06:17", "grace": 45},
@@ -65,7 +67,7 @@ JOBS = [
 # Schalter im Dashboard (Inhaber 03.10.2026): pausierte Werke startet der Wachhund nie nach. antworten.yml bleibt
 # immer an (Abmeldungen per Antwort dürfen nie liegen bleiben; pausiert werden dort nur automatische Antworten).
 PAUSE_KEY = {"lead-werk.yml": "lead-werk", "kunden-werk.yml": "kunden-werk", "proben-vorrat.yml": "proben-vorrat",
-             "kundenlieferung.yml": "kundenlieferung", "tagescheck.yml": "tagescheck"}
+             "kundenlieferung.yml": "kundenlieferung", "tagescheck.yml": "tagescheck", "agenten-werk.yml": "agenten"}
 
 
 # Direktstart aus dem Dashboard (gleiche Liste wie app/lib/start-queue.ts START_WORKFLOWS und die DB-Prüfung in

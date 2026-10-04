@@ -22,8 +22,8 @@ const check = (p: Record<string, number>) => {
   assert.deepEqual(validateSlotPlan(p, reg), p);
 };
 
-test("Karten: acht Werke, Direktstart nur Lead-/Kunden-Werk und Proben-Vorrat, Zeitpläne aus den Workflows", () => {
-  assert.deepEqual(CARDS.map((c) => c.key), ["lead-werk", "kunden-werk", "proben-vorrat", "antworten", "nachfass", "versand", "kundenlieferung", "tagescheck"]);
+test("Karten: neun Werke, Direktstart nur Lead-/Kunden-Werk und Proben-Vorrat, Zeitpläne aus den Workflows", () => {
+  assert.deepEqual(CARDS.map((c) => c.key), ["lead-werk", "kunden-werk", "proben-vorrat", "antworten", "nachfass", "versand", "kundenlieferung", "tagescheck", "agenten"]);
   assert.deepEqual(CARDS.filter((c) => c.start).map((c) => c.start), ["lead-werk", "kunden-werk", "proben-vorrat"]);
   for (const c of CARDS) {
     const yml = readFileSync(new URL(`../../.github/workflows/${c.file}`, import.meta.url), "utf8");

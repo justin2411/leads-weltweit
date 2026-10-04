@@ -27,6 +27,10 @@ def _match(row: dict, key: str, cond) -> bool:
         ok = val is not None and str(val) >= arg
     elif op == "lte":
         ok = val is not None and str(val) <= arg
+    elif op == "gt":
+        ok = val is not None and str(val) > arg
+    elif op == "lt":
+        ok = val is not None and str(val) < arg
     elif op == "is":
         ok = val is None if arg == "null" else str(val).lower() == arg
     else:
@@ -41,9 +45,15 @@ class FakeDB:
         self.rpcs: list[tuple[str, dict]] = []
         self.updates: list[tuple[str, dict, dict]] = []
         self.inserts: list[tuple[str, dict]] = []
+        self.rpc_handlers: dict = {}
 
     def select(self, table: str, params: dict | None = None) -> list[dict]:
-        rows = [r for r in self.tables.get(table, []) if all(_match(r, k, v) for k, v in (params or {}).items())]
+        params = dict(params or {})
+        pool = params.pop("lead_pool_items.pool_id", None)  # Speicher-Filter (lib/pools.restrict, !inner-Einbettung)
+        rows = [r for r in self.tables.get(table, []) if all(_match(r, k, v) for k, v in params.items())]
+        if pool is not None:
+            inside = {i["lead_id"] for i in self.tables.get("lead_pool_items", []) if _match(i, "pool_id", pool)}
+            rows = [r for r in rows if r.get("id") in inside]
         if params and params.get("limit"):
             rows = rows[:int(params["limit"])]
         return copy.deepcopy(rows)
@@ -76,8 +86,10 @@ class FakeDB:
                 out.append(copy.deepcopy(r))
         return out
 
-    def rpc(self, fn: str, args: dict):
+    def rpc(self, fn: str, args: dict, params: dict | None = None):
         self.rpcs.append((fn, args))
+        if fn in self.rpc_handlers:  # Tests geben Ergebnisse einzelner Funktionen vor
+            return self.rpc_handlers[fn](args, params or {})
         if fn == "is_suppressed":
             e = args["p_email"].lower()
             listed = {r["value"] for r in self.tables.get("suppression", [])}
