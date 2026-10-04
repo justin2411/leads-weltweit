@@ -22,8 +22,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
-      - run: pip install requests
+      - run: pip install requests pyyaml
       - name: KPI-Tageswerte speichern
         run: python scripts/kpi_snapshot.py ${{ github.event_name == 'schedule' && '--nur-abends' || '' }}
+      - name: Lernschleife nachmessen (brain_learn.py, frische KPI-Werte)
+        continue-on-error: true
+        run: python scripts/brain_learn.py pruefen --apply
       - name: Gehirn-Score speichern (brain_meta.py, kpi_daily Land ALL)
         run: python scripts/brain_meta.py score --apply ${{ github.event_name == 'schedule' && '--nur-abends' || '' }}

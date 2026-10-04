@@ -14,10 +14,10 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 7
     steps:
       - uses: actions/checkout@v4
-      - run: pip install requests
+      - run: pip install requests pyyaml
       - run: python scripts/wachhund.py --apply
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -27,6 +27,25 @@ jobs:
       # Website-Agenten (Inhaber 04.10.2026): fällige bekommen einen Auftrag (agent_tasks, kind website) für die
       # JARVIS-Routine; Fehler hier dürfen den Wachhund nie stoppen
       - run: python scripts/website_agents.py faellig --apply
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Lernschleife des Gehirns (docs/GEHIRN-AUFBAU.md 2–4): fällige Entscheidungen mit Erwartung nachmessen
+      # (bestaetigt/widerlegt/unklar -> Vertrauen im Wissensspeicher), montags ab 05:00 deutscher Zeit die Rückschau
+      # (archivieren statt löschen, Widersprüche, Top-3-Lehren), täglich einmal die Prüffälle (brain_evals).
+      # Gehirn pausiert (settings.brain_enabled = false) -> nur anzeigen. Sendet nichts; Fehler stoppen den Wachhund nie
+      - run: python scripts/brain_learn.py pruefen --apply
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      - run: python scripts/brain_learn.py rueckschau --apply --nur-montag
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      - run: python scripts/brain_eval.py regeln --apply --einmal-taeglich
         continue-on-error: true
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

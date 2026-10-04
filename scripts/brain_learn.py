@@ -1,14 +1,14 @@
 """Lernschleife und Wochen-Rückschau des Gehirns (Inhaber 04.10.2026: „Gehirn bestmöglich aufbauen, damit es wie
 Claude Sachen optimiert und immer schlauer wird; Umsatz vergrößern“).
 
-pruefen    (täglich, kpi-tag.yml nach dem KPI-Schnappschuss): misst jede fällige Entscheidung mit Erwartung
+pruefen    (Wachhund alle 30 min und kpi-tag.yml nach dem KPI-Schnappschuss): misst jede fällige Entscheidung mit Erwartung
            (decisions.erwartung, pruefen_am ≤ jetzt, noch ohne ergebnis) nach – Live-Kennzahlen aus
            gehirn_score_teile (antwortquote, zustellrate, bounce_quote, lead_fehlerquote, gruen_platzh), sonst
            kpi_daily (metric, Land, Segment). Ergebnis bestaetigt | widerlegt | unklar + Messwert.
            Bestätigt -> Wissen „lehre-<thema>“ (typ gelernt, richtung wirkt, Vertrauen hoch, Beleg = Entscheidung),
            Gegenteil „fehler-<thema>“ verliert Vertrauen. Widerlegt -> passende „wirkt“-Einträge verlieren Vertrauen,
            Wissen „fehler-<thema>“ (typ fehlermuster). Unklar ändert kein Wissen.
-rueckschau (montags früh, gehirn-rueckschau.yml): archiviert Wissen > 30 Tage ohne Bestätigung mit Vertrauen < 0,3
+rueckschau (montags ab 05:00 deutscher Zeit, Wachhund mit --nur-montag): archiviert Wissen > 30 Tage ohne Bestätigung mit Vertrauen < 0,3
            (status archiviert, nie löschen; Notizen des Inhabers nie), findet Widersprüche (gleiches Thema, wirkt und
            wirkt_nicht), schreibt die 3 wichtigsten Lehren der Woche als Entscheidung (kurz_titel/kurz_grund) und in
            signalwerk.brain_rueckschau (eine Zeile je Woche, kein Repo-Commit).
@@ -19,7 +19,7 @@ Pause: settings.brain_enabled = false -> nur anzeigen, nichts schreiben. Sendet 
 Regeln (Notbremse, Sperrliste, Freigabe, Prüfregeln, Länder bleiben unberührt).
 
   python scripts/brain_learn.py pruefen [--apply]
-  python scripts/brain_learn.py rueckschau [--apply] [--force]
+  python scripts/brain_learn.py rueckschau [--apply] [--force] [--nur-montag]
   python scripts/brain_learn.py faellig
   python scripts/brain_learn.py lehren
 """
@@ -48,6 +48,12 @@ def now() -> dt.datetime:
 
 def berlin_day(t: dt.datetime) -> dt.date:
     return t.astimezone(BERLIN).date()
+
+
+def ist_montag_frueh(t: dt.datetime) -> bool:
+    """Rückschau nur montags ab 05:00 deutscher Zeit (Wachhund ruft stündlich, brain_rueckschau verhindert Doppelte)."""
+    b = t.astimezone(BERLIN)
+    return b.weekday() == 0 and b.hour >= 5
 
 
 def brain_enabled(db) -> bool:
@@ -334,6 +340,9 @@ def main(argv: list[str]) -> int:
     if cmd == "pruefen":
         out = pruefen(DB(), apply=apply)
     elif cmd == "rueckschau":
+        if "--nur-montag" in argv and not ist_montag_frueh(now()):
+            print("rueckschau: nur montags ab 05:00 deutscher Zeit")
+            return 0
         out = rueckschau(DB(), apply=apply, force="--force" in argv)
     elif cmd == "faellig":
         out = faellig_liste(DB())

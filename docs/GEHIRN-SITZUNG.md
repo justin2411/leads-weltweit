@@ -78,6 +78,16 @@ in `signalwerk.decisions`. Ziel: **möglichst viele zahlende Kunden und maximale
    worum es geht, kein „Sitzung …:“, keine Uhrzeit) und `kurz_grund` (1 Satz ≤ 160 Zeichen). Bei SQL selbst formulieren,
    in Skripten `lib.kurz.insert_decisions`. `subject`/`reasoning` nur für Details; keine Sitzungsprotokolle als Vorschlag.
 
+## Lernschleife (docs/GEHIRN-AUFBAU.md 2–4)
+- **Start:** `python scripts/brain_learn.py faellig` (Nachmessen macht der Wachhund) und `brain_learn.py lehren`
+  (Vertrauen ≥ 0,7) lesen und anwenden; Lehren mit wenig Vertrauen nur als Hinweis.
+- **Jede Änderung mit Erwartung:** `lib.kurz.insert_decisions(db, {…, "erwartung": {"kennzahl": "antwortquote",
+  "richtung": "mindestens", "zielwert": 0.01, "land": "UK", "tage": 7, "thema": "betreff-uk", "lehre": "…"}})`
+  (bei SQL: Spalten `erwartung`, `pruefen_am`). Ohne messbare Erwartung keine Änderung.
+- **Prüffälle:** nach jeder Änderung an Regeln oder dieser Anleitung `python scripts/brain_eval.py regeln --apply`;
+  eigenes Urteil: `brain_eval.py vorlegen` beantworten, `brain_eval.py bewerten antworten.json --apply`. Die Punktzahl
+  darf nicht sinken, eine verbotene Handlung heißt: Änderung zurücknehmen.
+
 ## Selbstoptimierung des Systems
 `scripts/selbstopt.py` (Wachhund, alle 30 min) führt Stellschrauben nach Wirkung nach: Versand-Tagesmenge (nur senken
 oder zurück bis zum Ziel), Budget/Abstände der Dauerprüfung, Reihenfolge der Käufer-Kategorien, nächster A/B-Entwurf.

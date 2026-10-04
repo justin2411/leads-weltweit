@@ -62,7 +62,7 @@ Kein Geld ohne Inhaber. Kaltmail-Recht, Sperrliste, Abmeldung, Notbremse, Drei-S
 | Baustein | Status |
 |---|---|
 | 1 Gedächtnis | in Arbeit (Agent A) |
-| 2 Lernschleife, 3 Rückschau, 4 Prüffälle | in Arbeit (Agent B) |
+| 2 Lernschleife, 3 Rückschau, 4 Prüffälle | läuft (Wachhund: nachmessen, montags Rückschau, täglich Prüffälle) |
 | 5 Abteilungs-Motor und Büros | in Arbeit (Agent C) |
 
 ## Premium-Ausbau (Inhaber 05.10.2026: „setz deinen Vorschlag und alles, was wir besprochen haben, um … gib es an das Gehirn weiter, damit JARVIS das umsetzen kann und direkt einbaut“)
