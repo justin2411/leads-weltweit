@@ -418,6 +418,66 @@ class ParityTest(unittest.TestCase):
                     n += 1
         self.assertGreater(n, 0)
 
+    def test_runs(self):
+        """Ablauf über eine Menge (runs): run_flow_rows/sink_rows wie runFlowRows/sinkRows in flow.ts."""
+        data = json.loads(FIXTURES.read_text(encoding="utf-8"))
+        runs = (data.get("runs") or []) if isinstance(data, dict) else []
+        self.assertGreaterEqual(len(runs), 3)
+        ids = lambda rs: [x["id"] for x in rs or []]  # noqa: E731
+        for case in runs:
+            res = R.run_flow_rows(case["flow"], case["rows"])
+            self.assertEqual(sorted(res), sorted(case["expect"]), case["name"])
+            for nid, e in case["expect"].items():
+                r = res[nid]
+                with self.subTest(run=case["name"], node=nid):
+                    self.assertEqual(r["connected"], e["connected"])
+                    self.assertEqual(ids(r["in"]), e["in"])
+                    self.assertEqual(ids(r["out"]), e["out"])
+                    if "ja" in e:
+                        self.assertEqual((ids(r["ja"]), ids(r["nein"])), (e["ja"], e["nein"]))
+                    else:
+                        self.assertIsNone(r["ja"])
+                    self.assertEqual({x["id"]: x["punkte"] for x in r["out"] if "punkte" in x}, e.get("punkte", {}))
+                    self.assertEqual(r.get("stats"), e.get("stats"))
+            for kind, exp in case["sinks"].items():
+                got = R.sink_rows(case["flow"], case["rows"], kind)
+                self.assertEqual({k: ids(v) for k, v in got.items()}, exp, f"{case['name']} / {kind}")
+            self.assertEqual([x.get("punkte") for x in case["rows"]], [None] * len(case["rows"]))  # Eingabe unverändert
+
+
+class MasterKindsTest(unittest.TestCase):
+    """Neue Bausteine der Master-Pipeline: freigabe (Schritt), speicher und melden (Ziele)."""
+
+    def test_ports_and_sinks(self):
+        self.assertEqual(R.OUT_PORTS["freigabe"], ("out",))
+        self.assertEqual((R.OUT_PORTS["speicher"], R.OUT_PORTS["melden"]), ((), ()))
+        self.assertTrue({"speicher", "melden"} <= R.SINKS)
+        self.assertNotIn("freigabe", R.SINKS)
+
+    def test_freigabe_on_rule_path_passes_through(self):
+        f = flow([{"id": "g", "kind": "freigabe", "x": 0, "y": 0},
+                  {"id": "f", "kind": "filter", "x": 0, "y": 0, "mode": "alle", "conds": [c("hat_telefon", "ja")]},
+                  {"id": "p", "kind": "pipeline", "x": 0, "y": 0, "name": "Haupt"},
+                  {"id": "sp", "kind": "speicher", "x": 0, "y": 0, "pool_id": None, "pool_name": "Gesamtbestand"}],
+                 [("q", "out", "g"), ("g", "out", "f"), ("f", "out", "p"), ("f", "out", "sp")])
+        self.assertIsNone(R.broken_reason(f))
+        self.assertTrue(R.pipeline_check(f, row()))
+        self.assertFalse(R.pipeline_check(f, row(hat_telefon=False)))
+        # Ziele geben nichts weiter: eine Kante aus dem Speicher trägt nicht
+        f["edges"].append({"id": "x", "from": "sp", "port": "out", "to": "p"})
+        self.assertFalse(R.pipeline_check(f, row(hat_telefon=False)))
+        self.assertEqual(R.sink_rows(f, [row(id="a"), row(id="b", hat_telefon=False)], "speicher"), {"sp": [row(id="a")]})
+
+    def test_set_semantics_edge_cases(self):
+        rows = [row(id="a", erfasst_tage=2), row(id="b", erfasst_tage=1)]
+        top = lambda **kw: flow([{"id": "t", "kind": "top", "x": 0, "y": 0, **kw}], [("q", "out", "t")])  # noqa: E731
+        self.assertEqual([x["id"] for x in R.run_flow_rows(top(sort="neueste", n=1.9), rows)["t"]["out"]], ["b"])
+        self.assertEqual(R.run_flow_rows(top(sort="zufall", n=5), rows)["t"]["out"], [])  # unbekannt = nichts
+        self.assertEqual(R.run_flow_rows(top(sort="neueste", n=True), rows)["t"]["out"], [])
+        self.assertEqual(R.run_flow_rows({"v": 1, "nodes": [], "edges": []}, rows), {})
+        self.assertEqual(R.count_by([{"x": True}, {"x": False}, {"x": " "}, {"x": 2}, {"x": 2.0}], "x"),
+                         [{"key": "2", "n": 2}, {"key": "ja", "n": 1}, {"key": "nein", "n": 1}, {"key": "–", "n": 1}])
+
 
 if __name__ == "__main__":
     unittest.main()
