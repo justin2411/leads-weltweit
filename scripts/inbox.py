@@ -28,11 +28,33 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lib.rules import suppress  # noqa: E402
 
 OPTOUT = re.compile(
-    r"\b(unsubscribe|remove (me|us)|take (me|us) off|stop (emailing|contacting|sending)|do not (contact|email)|"
-    r"don'?t (contact|email)|opt[- ]?out|désinscri\w*|ne plus (me|nous) (contacter|écrire)|retirez)\b",
-    re.IGNORECASE,
+    r"\b(unsubscribe|remove (me|us)|take (me|us) off|stop (emailing|contacting|sending)|do not (call|contact|email)|"
+    r"don'?t (call|contact|email)|please remove|opt[- ]?out|désinscri\w*|ne plus (me|nous) (contacter|écrire)|retirez)\b"
+    r"|^\s*stop\b",  # „STOP“ als eigene Zeile (Prüfung 04.10.2026)
+    re.IGNORECASE | re.MULTILINE,
 )
 MSGID = re.compile(r"<[^<>\s]+@[^<>\s]+>")
+
+# Beginn des zitierten Verlaufs (Prüfung 04.10.2026): „>“-Zitat, Outlook-Trennlinie und Kopfblock (From/Sent),
+# „Original Message“ und die Einleitungen von Gmail/Apple Mail/Thunderbird in EN/FR/DE
+QUOTE_START = re.compile(
+    r"\n>|\n_{5,}\s*\n|\n\*?(From|De|Von)\s?:.*\n\*?(Sent|Envoyé|Gesendet|Date|Datum)\s?:|\n-{2,}\s*Original Message"
+    r"|\n-{2,}\s*(Message d'origine|Ursprüngliche Nachricht)"
+    r"|\nOn [^\n]{5,160}(\n[^\n]{0,80})?\swrote:|\nLe [^\n]{5,160}(\n[^\n]{0,80})?\sa écrit\s?:|"
+    r"\nAm [^\n]{5,160}(\n[^\n]{0,80})?\sschrieb[^\n]{0,160}:",
+    re.IGNORECASE,
+)
+# Unser eigener Abmelde-Hinweis aus der Pflichtfußzeile (lib/rules.UNSUBSCRIBE_BY_REPLY / UNSUBSCRIBE_LINK), wie er
+# im zitierten Verlauf wiederkommt – auch umbrochen. Er ist kein Abmeldewunsch des Absenders (Prüfung 04.10.2026).
+OWN_NOTICE = re.compile(
+    r"If\s+you\s+would\s+rather\s+not\s+hear\s+from\s+us,?\s+reply\s+[\"“”'‘’«»]?\s*unsubscribe\s*[\"“”'‘’«»]?"
+    r"\s+and\s+we\s+will\s+not\s+contact\s+[^\n]{0,120}?\s*again\.?"
+    r"|Pour\s+ne\s+plus\s+recevoir\s+de\s+messages,?\s+répondez\s+[«\"“”']?\s*désinscrire\s*[»\"“”']?"
+    r"\s+et\s+nous\s+ne\s+contacterons\s+plus\s+[^\n]{0,120}?\.(?=\s|$)"
+    r"|To\s+opt\s+out\s*:\s*\S*|Pour\s+vous\s+désinscrire\s*:\s*\S*"
+    r"|\S*/api/unsubscribe\S*",
+    re.IGNORECASE,
+)
 
 
 def _text(msg: EmailMessage) -> str:
@@ -41,6 +63,27 @@ def _text(msg: EmailMessage) -> str:
         return part.get_content() if part else ""
     except (LookupError, KeyError):
         return ""
+
+
+def strip_quoted(text: str) -> str:
+    """Nur die eigenen Worte des Absenders: alles ab dem zitierten Verlauf abschneiden (Prüfung 04.10.2026)."""
+    return QUOTE_START.split("\n" + (text or "").replace("\r\n", "\n"), maxsplit=1)[0].strip()
+
+
+def optout_text(text: str) -> str:
+    """Text für die Abmelde-Erkennung (Prüfung 04.10.2026): eigene Worte oberhalb des Zitats, dazu Zeilen unter
+    einem „>“-Zitat (Antwort unten), jeweils ohne unseren wiedergegebenen Abmelde-Hinweis. Eigene Worte wie
+    „unsubscribe“ oder „remove me“ sperren damit weiterhin immer."""
+    body = (text or "").replace("\r\n", "\n")
+    lines = body.split("\n")
+    last_quote = max((i for i, ln in enumerate(lines) if ln.lstrip().startswith(">")), default=-1)
+    below = "\n".join(lines[last_quote + 1:]) if last_quote >= 0 else ""
+    parts = [strip_quoted(OWN_NOTICE.sub(" ", body)), strip_quoted(OWN_NOTICE.sub(" ", below))]
+    return "\n".join(p for p in parts if p)
+
+
+def is_optout_text(text: str) -> bool:
+    return bool(OPTOUT.search(optout_text(text)[:4000]))
 
 
 def parse_bounce(msg: EmailMessage) -> list[str]:
@@ -150,7 +193,7 @@ def handle_reply(db, msg: EmailMessage, dedupe: str, apply: bool) -> str | None:
                       upsert_on="dedupe_key", ignore_duplicates=True)
         return "optout"
     body = _text(msg)
-    optout = bool(OPTOUT.search(body.split("\n>")[0][:2000]) or subject_is_optout(subject))
+    optout = is_optout_text(body) or subject_is_optout(subject)
     # Abwesenheitsnotizen und andere Autoresponder sind keine Antwort (Inhaber 03.10.2026: „Automatic reply“ zählte
     # im Dashboard als „Geantwortet“) – gleiche Erkennung wie der Antwort-Assistent (Kopfzeilen + Betreff)
     from responder import is_auto_reply

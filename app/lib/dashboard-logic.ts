@@ -295,7 +295,14 @@ export function brake(live: Live, cfg: OpsConfig) {
 
 // --------------------------------------------------------------------------------------------- Antworten
 const REPLY_PRIORITY: Record<string, number> = { reply_positive: 5, sample_requested: 4, reply_negative: 3, unsubscribed: 2, auto_reply: 1, reply: 0 };
-const INBOUND = /^(imap|reply|unknown):(.+)$/;
+// owner: Kaufinteresse aus dem Antworten-Cockpit zur selben Mail (Prüfung 04.10.2026)
+const INBOUND = /^(imap|reply|unknown|owner):(.+)$/;
+
+/** dedupe_key für „Kaufinteresse“ aus dem Cockpit: zählt als dieselbe eingehende Mail wie inbox.py/responder.py. */
+export function ownerReplyKey(imapMessageId: string | null | undefined): string | null {
+  const mid = String(imapMessageId ?? "").trim();
+  return mid ? `owner:${mid}` : null;
+}
 
 /** Je eingehender Mail ein Ereignis, das aussagekräftigste (stats.distinct_replies). */
 export function distinctReplies<T extends Pick<Ev, "id" | "type" | "dedupe_key" | "message_id">>(events: T[]): T[] {

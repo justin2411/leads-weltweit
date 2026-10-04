@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   alerts, berlin, greeting, brake, countBounces, distinctReplies, extraBoxCap, funnel, mailboxes, mainBoxCap, nextCron, nextRun,
   pipeline, sampleStock, type Live, type OpsConfig, type Stock,
-  bottleneckOf, chain, compact, lastDays, nextChip, openActions, sentPerDay, topAlerts,
+  bottleneckOf, chain, compact, lastDays, nextChip, openActions, ownerReplyKey, sentPerDay, topAlerts,
 } from "./dashboard-logic.ts";
 
 const cfg: OpsConfig = {
@@ -123,6 +123,17 @@ test("Antworten: je eingehender Mail nur das aussagekräftigste Ereignis", () =>
     { id: "4", type: "bounced", dedupe_key: null, message_id: "m" },
   ]);
   assert.deepEqual(r.map((e) => e.type).sort(), ["reply", "reply_positive"]);
+});
+
+test("Kaufinteresse aus dem Cockpit zählt nicht doppelt (Prüfung 04.10.2026)", () => {
+  assert.equal(ownerReplyKey(" <m1@x> "), "owner:<m1@x>");
+  assert.equal(ownerReplyKey(null), null);
+  const r = distinctReplies([
+    { id: "1", type: "reply", dedupe_key: "imap:<m1@x>", message_id: "m" },
+    { id: "2", type: "reply", dedupe_key: "reply:<m1@x>", message_id: "m" },
+    { id: "3", type: "reply_positive", dedupe_key: ownerReplyKey("<m1@x>"), message_id: "m" },
+  ]);
+  assert.deepEqual(r.map((e) => e.id), ["3"]);
 });
 
 test("Trichter: Käufer nur mail-fähig, call_only getrennt, zugestellt = gesendet − Bounces, Testkäufe zählen nicht", () => {
