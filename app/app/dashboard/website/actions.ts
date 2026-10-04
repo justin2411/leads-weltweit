@@ -85,6 +85,16 @@ export async function sendWebsiteChat(text: string): Promise<R<{ sessionId: stri
   });
 }
 
+/** Website-Sitzung für die Sofort-Antwort (/api/jarvis/ask) holen oder anlegen (Inhaber 04.10.2026: „er soll auch hier
+ *  erstmal per api direkt mit mir sprechen können, dafür brauchen wir keine routine“). */
+export async function ensureWebsiteChat(): Promise<R<{ sessionId: string }>> {
+  return guard("Senden", async () => {
+    const s = await websiteSession(true);
+    if (!s) throw new Error("Sitzung fehlt");
+    return { sessionId: s.id };
+  });
+}
+
 /** „Chat leeren“: Sitzung archivieren (nichts gelöscht), die nächste Nachricht startet eine neue. */
 export async function clearWebsiteChat(): Promise<R> {
   return guard("Leeren", async () => {

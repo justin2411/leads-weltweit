@@ -10,7 +10,8 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import { sessionState, type ChatMessage } from "@/lib/jarvis-chat";
 import { Icon } from "@/app/icons";
 import { Composer, Thread } from "../jarvis/chat/chat-ui";
-import { clearWebsiteChat, sendWebsiteChat, websiteChatState } from "./actions";
+import { clearWebsiteChat, ensureWebsiteChat, websiteChatState } from "./actions";
+import { sendToJarvis } from "@/lib/jarvis-send";
 
 const KEY = "ws-chat-open";
 const POLL = 20_000;
@@ -47,10 +48,13 @@ export function WebsiteChat({ initial, now: nowIso, missing: missing0 }: { initi
     return () => { clearInterval(id); document.removeEventListener("visibilitychange", vis); };
   }, [load]);
 
+  // Sofort-Antwort wie in allen Chats (eine Sende-Stelle: lib/jarvis-send.ts); Code-Änderungen gibt JARVIS selbst an den Agenten
   const send = async (text: string) => {
-    const r = await sendWebsiteChat(text);
-    if (r.ok) void load();
-    return r.ok ? { ok: true as const } : { ok: false as const, error: r.error };
+    const s = await ensureWebsiteChat();
+    if (!s.ok) return { ok: false as const, error: s.error };
+    const r = await sendToJarvis({ sessionId: s.sessionId, text });
+    void load();
+    return r.ok ? { ok: true as const, hint: r.fallback?.hint ?? null } : { ok: false as const, error: r.error };
   };
   const clear = () => {
     if (!window.confirm("Chat leeren? Der Verlauf wird abgelegt, die Website bleibt, wie sie ist.")) return;

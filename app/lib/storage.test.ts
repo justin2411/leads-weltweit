@@ -76,7 +76,7 @@ test("Lead-Tanks: Status → Schichten, Zielgruppe, Länder", () => {
   assert.equal(layerOf("expired"), "abgelaufen");
   assert.equal(layerOf("xyz"), "sonst");
   const s2 = leadTanks(D, "S2");
-  assert.deepEqual(s2.map((t) => t.country), ["US", "UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK", "MX", "BR"]);
+  assert.deepEqual(s2.map((t) => t.country), ["US", "UK", "FR", "SE", "FI", "SG", "HK", "MX", "BR"]);
   const us = s2[0];
   assert.equal(us.total, 1076);
   assert.deepEqual(us.layers, { frei: 1000, proben: 50, geliefert: 20, zurueck: 3, abgelaufen: 2, sonst: 1 });
@@ -93,7 +93,7 @@ test("Käufer: nur ok im Mail-Land zählt, Anruf/Brief getrennt", () => {
   assert.equal(de.mail, 0);
   assert.equal(de.callOnly, 11);
   assert.equal(de.mailCountry, false);
-  assert.equal(s2.find((t) => t.country === "IE")!.mailCountry, false);
+  assert.equal(s2.find((t) => t.country === "IE"), undefined); // nie-Länder ausgeblendet
   // alle Zielgruppen: S4/US ist kein Mail-Land von S4 -> nur Anruf/Brief; S4/FR zählt, sent gekappt
   const all = buyerTanks(D, SEGS, ALL);
   const usAll = all.find((t) => t.country === "US")!;
