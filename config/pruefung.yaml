@@ -9,7 +9,7 @@ leads:
   budget_je_lauf: 200            # Leads je stündlichem Lauf (fällige Nachprüfungen zuerst, Rest noch nie geprüfte)
   live: true                     # Trigger live nachprüfen (höchstens 1x/Tag je Seite, robots.txt – wie die Freigabe)
   # Reihenfolge für noch nie geprüfte Leads: Märkte aktiver Kunden-Abos zuerst (automatisch), dann diese Liste
-  maerkte: [S2/US, S2/UK, S2/FR, S2/IE, S2/SE, S2/BE, S2/NL, S2/FI, S2/SG, S2/HK, S2/MX, S2/BR]
+  maerkte: [S2/US, S2/UK, S2/FR, S2/IE, S2/SE, S2/BE, S2/NL, S2/FI, S2/SG, S2/MX, S2/BR]
   schwerpunkt: [S2/US, S2/UK, S2/FR]   # bekommen (wie Kunden-Märkte) das 4-fache Gewicht beim Budget
   schwerpunkt_gewicht: 4
 

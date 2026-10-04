@@ -102,7 +102,7 @@ countries:
     subject_prefix: "<ADV> "
     notes: "Inhaber-Tabelle 04.10.2026: ja (beide), Risiko gering. Spam Control Act 2007 (Cap. 311A) Second Schedule: unaufgeforderte kommerzielle E-Mails zulässig mit „<ADV>“ und Leerzeichen am Betreffanfang, korrektem Absender/Kopfzeilen, Kontaktangabe und funktionierender Abmeldung (Umsetzung binnen 10 Werktagen). Umsetzung: subject_prefix (drafts.subject_for, Versandprüfung outreach.send), Fußzeile mit Postanschrift und Abmeldelink. PDPA: Geschäftskontaktdaten (business contact information) ausgenommen."
   HK:
-    allowed: true
+    allowed: false  # Inhaber 05.10.2026: „nimm hk raus“ (kein offenes Gratis-Register, kein Premium möglich)
     language: en
     generic_only: true
     company_forms_only: false
