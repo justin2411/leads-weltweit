@@ -11,7 +11,7 @@ export function ContactPersonSec({ t, contactHref }: { t: HomeText; contactHref:
       <div className="hp-wrap hp-contact__grid">
         <div className="hp-contact__copy" data-reveal="">
           <p className="hp-rule">{t.pcKick}</p>
-          <h2 className="hp-h2" id="contact-title">{t.pcH[0]}{t.pcH[1]}</h2>
+          <h2 className="hp-h2" id="contact-title">{t.pcH[0]}<span className="hp-gold">{t.pcH[1]}</span></h2>
           <p className="hp-contact__lede">{t.pcLede}</p>
           <ul className="hp-contact__points">
             {t.pcList.map(([ic, h, d]) => (
