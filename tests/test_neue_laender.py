@@ -142,9 +142,17 @@ class FooterTest(unittest.TestCase):
         from lib.html_email import page_button, process_strip, render
         html = render("Olá,\n\nTexto.\n\nAtenciosamente,\nJustin", self.footer("pt", "BR"), "pt",
                       page_button("https://www.nextgen-profit.de/br/x", "pt"), extra=process_strip("pt"))
-        for w in ("Ver meus 10 leads gratuitos", "Link seguro", "ENCONTRAMOS", "Certificado"):
+        for w in ("Ver meus 10 leads gratuitos", "Link seguro", "ENCONTRAMOS"):
             self.assertIn(w, html)
         self.assertIn("ENCONTRAMOS", process_strip("es"))
+
+    def test_html_kein_siegel_ohne_aussteller(self):
+        # §7: kein „✓ Certified“ ohne Aussteller (Inhaber 05.10.2026)
+        from lib.html_email import render
+        for lang, cc in (("en", "US"), ("fr", "FR"), ("pt", "BR"), ("es", "MX")):
+            out = render("Hi,\n\nText.\n\nBest,\nJustin", self.footer(lang, cc), lang).lower()
+            for w in ("certified", "certifié", "certificado"):
+                self.assertNotIn(w, out)
 
 
 class PipelineTest(unittest.TestCase):
