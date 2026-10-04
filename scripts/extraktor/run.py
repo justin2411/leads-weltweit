@@ -157,31 +157,6 @@ def load_rge(limit: int, stats: Counter, exclude: set[str] | None = None) -> lis
     return cands
 
 
-def load_moves(days: int, stats: Counter) -> list[dict]:
-    """S2/FR: Umzüge (Sitz/Hauptbetrieb) aus dem BODACC (Scout 05.10.2026), neueste zuerst, mit Ansprechperson zuerst."""
-    from extraktor.sources import fr_bodacc_moves
-    rows = fr_bodacc_moves.fetch(dt.date.today() - dt.timedelta(days=days), log=log)
-    cands = [c for c in (fr_bodacc_moves.to_candidate(r) for r in rows) if c]
-    cands = filters.dedupe([c for c in cands if not filters.pre_filter(c) and segments.fits("S2", c)[0]])
-    cands.sort(key=lambda c: (-c["facts"]["published_on"].toordinal(), not c.get("person_name")))
-    stats["fr_moves_candidates"] = len(cands)
-    return cands
-
-
-def process_move(c: dict, fetcher) -> None:
-    """Umzug FR: Website und Kontakt über die kostenlose Anreicherung; gefundene eigene Website zusätzlich mit der
-    Website-Prüfung ansehen (Befund = Kombi-Anlass „Umzug + alte/unsichere Website“)."""
-    E.enrich(c, fetcher, need_website=True)
-    c["facts"]["checked_on"] = dt.date.today()
-    if not c.get("website"):
-        return
-    c["facts"]["listed_website"] = c["website"]
-    c["facts"]["domain"] = W.site_domain(c["website"])
-    res = website_check.inspect({**c, "facts": {**c["facts"]}}, fetcher)
-    if res["findings"]:
-        c["facts"]["findings"] = res["findings"]
-
-
 def load_web(country: str, limit: int, stats: Counter, part: tuple[int, int] | None = None,
              min_conf: float = website_check.HIGH_CONF, no_phone: bool = False) -> list[dict]:
     """S2 Website-Prüfung: Overture-Firmen MIT Website, die dieser Teil in den letzten RECHECK_DAYS noch nicht
@@ -455,8 +430,6 @@ def process(c: dict, seg: str, fetcher, shared: Counter, guard: filters.Guard) -
                 return {**c, "segment": seg, "ampel": "skip", "qc": {"status": "skip", "blocking": [why], "missing": [],
                                                                       "warnings": [], "evidence": []},
                         "sc": {"status": "skip", "problems": []}}
-        elif c["source"] == "bodacc_move":
-            process_move(c, fetcher)
         else:
             E.enrich(c, fetcher, need_website=True)
     except Exception as exc:  # noqa: BLE001 - ein Fehler bei einer Firma darf den Lauf nicht beenden
@@ -668,8 +641,6 @@ def main(argv=None) -> int:
                     help="Website-Prüfung: Overture-Konfidenz ab (Standard 0.6; UK/FR 0.4 = zweite Stufe, nur belegte Befunde)")
     ap.add_argument("--web-no-phone", action="store_true",
                     help="Website-Prüfung UK/FR: auch Firmen ohne Telefon im Eintrag (Nummer von der eigenen Website)")
-    ap.add_argument("--fr-moves-days", type=int, default=0,
-                    help="S2 FR: Umzüge (Sitz/Hauptbetrieb) aus dem BODACC der letzten N Tage (0 = aus, Scout 05.10.2026)")
     ap.add_argument("--radar", type=int, default=0,
                     help="S2: Veränderungs-Radar – so viele bekannte Firmen mit Website je Land neu prüfen (0 = aus)")
     ap.add_argument("--radar-countries", default="US,UK,FR", help="Länder für --radar")
@@ -764,11 +735,6 @@ def main(argv=None) -> int:
     if "FR" in countries and "S2" in segs and args.rge > 0:
         # nach Overture anhängen: im gemeinsamen Teil zuerst die Overture-Firmen, dann RGE
         p["S2/FR"] = p.get("S2/FR", []) + load_rge(args.rge, stats, {i for s_, i in guard.known if s_ == "rge"})
-    if "FR" in countries and "S2" in segs and args.fr_moves_days > 0:
-        try:
-            p["S2/FR"] = load_moves(args.fr_moves_days, stats) + p.get("S2/FR", [])
-        except Exception as e:  # noqa: BLE001 - eine ausgefallene Quelle darf die anderen nicht stoppen
-            log(f"S2/FR: BODACC-Umzüge übersprungen ({type(e).__name__}: {str(e)[:200]})")
     if guard.known:
         p = {k: [c for c in v if (c["source"], c["source_id"]) not in guard.known] for k, v in p.items()}
     if args.shard:
