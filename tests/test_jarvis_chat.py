@@ -25,6 +25,7 @@ def db_with():
             {"id": "s2", "title": "Alt", "kind": "chat", "flow_id": None, "archived": True},
             {"id": "s3", "title": "Baukasten", "kind": "baukasten", "flow_id": "f1", "archived": False},
             {"id": "sb", "title": "Tagesbericht", "kind": "bericht", "flow_id": None, "archived": False},
+            {"id": "sg", "title": "Gehirn", "kind": "gehirn", "mode": "gehirn", "flow_id": None, "archived": False},
         ],
         "jarvis_messages": [
             {"id": "m1", "session_id": "s1", "created_at": ISO(-30), "role": "inhaber", "body": "Hol UK Leads", "status": "fertig"},
@@ -126,16 +127,17 @@ class BerichtTest(unittest.TestCase):
         with mock.patch.object(J, "now", return_value=dt.datetime(2026, 10, 4, 23, 30, tzinfo=dt.timezone.utc)):
             db.tables["jarvis_messages"][-1]["created_at"] = T0.isoformat()
             self.assertIsNotNone(J.bericht(db, "neuer Tag"))
-        rows = [m for m in db.rows("jarvis_messages") if m["session_id"] == "sb"]
+        rows = [m for m in db.rows("jarvis_messages") if m["session_id"] == "sg"]  # Tagesbericht geht in den Gehirn-Chat
         self.assertEqual(len(rows), 2)
+        self.assertFalse([m for m in db.rows("jarvis_messages") if m["session_id"] == "sb" and m["role"] == "jarvis"])
         self.assertTrue(all(m["role"] == "jarvis" and m["status"] is None for m in rows))
 
     def test_reply_in_bericht_session_does_not_block_report(self):
         db = db_with()
-        db.tables["jarvis_messages"].append({"id": "q1", "session_id": "sb", "created_at": ISO(-3), "role": "inhaber",
+        db.tables["jarvis_messages"].append({"id": "q1", "session_id": "sg", "created_at": ISO(-3), "role": "inhaber",
                                              "body": "Warum weniger Proben?", "status": "offen"})
         with mock.patch.object(J, "now", return_value=T0):
-            J.antwort(db, "sb", "Weil der Vorrat leer war.", [])
+            J.antwort(db, "sg", "Weil der Vorrat leer war.", [])
             self.assertIsNotNone(J.bericht(db, "Tagesbericht"))  # Antwort zählt nicht als Bericht
             self.assertIsNone(J.bericht(db, "nochmal"))
 
@@ -151,13 +153,84 @@ class BerichtTest(unittest.TestCase):
         db = FakeDB({"jarvis_sessions": [], "jarvis_messages": []})
         with mock.patch.object(J, "now", return_value=T0):
             res = J.bericht(db, "Bericht")
-        self.assertEqual(db.rows("jarvis_sessions")[0]["kind"], "bericht")
+        self.assertEqual(db.rows("jarvis_sessions")[0]["kind"], "gehirn")
+        self.assertEqual(db.rows("jarvis_sessions")[0]["mode"], "gehirn")
         self.assertEqual(res["session_id"], db.rows("jarvis_sessions")[0]["id"])
+
+    def test_bericht_is_short(self):
+        with mock.patch.object(J, "now", return_value=T0), self.assertRaises(J.InputError):
+            J.bericht(db_with(), "x" * 1501)
 
     def test_berlin_day_start(self):
         self.assertEqual(J.berlin_day_start(T0).isoformat(), "2026-10-03T22:00:00+00:00")  # MESZ
         winter = dt.datetime(2026, 12, 1, 12, tzinfo=dt.timezone.utc)
         self.assertEqual(J.berlin_day_start(winter).isoformat(), "2026-11-30T23:00:00+00:00")  # MEZ
+
+
+class GehirnTest(unittest.TestCase):
+    def test_update_short_check(self):
+        self.assertEqual(J.check_update("Aufgefallen: FR ohne Antworten\n\nNächster Schritt: Betreff testen"),
+                         "Aufgefallen: FR ohne Antworten\nNächster Schritt: Betreff testen")
+        for bad in ("", "   ", "a\nb\nc\nd", "x" * 401):
+            with self.assertRaises(J.InputError, msg=repr(bad)[:30]):
+                J.check_update(bad)
+        self.assertEqual(len(J.check_update("x" * 400)), 400)
+
+    def test_update_dedup_6h_and_push_only_with_brauche(self):
+        db = db_with()
+        pushes = []
+        push = lambda *a: pushes.append(a) or True  # noqa: E731
+        with mock.patch.object(J, "now", return_value=T0):
+            r = J.gehirn_update(db, "Aufgefallen: Proben leer · Nächster Schritt: Vorrat bauen", push=push)
+            self.assertEqual(r["session_id"], "sg")
+            self.assertFalse(r["push"])
+            self.assertIsNone(J.gehirn_update(db, "  aufgefallen: Proben leer ·  Nächster Schritt: Vorrat bauen ", push=push))
+            r2 = J.gehirn_update(db, "Aufgefallen: Kosten · Brauche: deine Freigabe für Domain", push=push)
+            self.assertTrue(r2["push"])
+        self.assertEqual(len(pushes), 1)
+        self.assertIn("/dashboard/jarvis/chat?s=sg", pushes[0][2])
+        with mock.patch.object(J, "now", return_value=T0 + dt.timedelta(hours=7)):
+            self.assertIsNotNone(J.gehirn_update(db, "Aufgefallen: Proben leer · Nächster Schritt: Vorrat bauen", push=push))
+        msgs = [m for m in db.rows("jarvis_messages") if m["session_id"] == "sg"]
+        self.assertEqual(len(msgs), 3)
+        self.assertTrue(all(m["role"] == "jarvis" and m["status"] is None for m in msgs))
+        self.assertTrue(J.needs_owner("Aufgefallen: x · Brauche: y"))
+        self.assertFalse(J.needs_owner("Aufgefallen: ich brauche nichts"))
+
+    def test_gehirn_session_never_archivable(self):
+        self.assertFalse(J.may_archive({"kind": "gehirn"}))
+        self.assertFalse(J.may_archive({"kind": "bericht"}))
+        self.assertTrue(J.may_archive({"kind": "chat"}))
+        db = FakeDB({"jarvis_sessions": [], "jarvis_messages": []})
+        a = J.gehirn_session(db)
+        self.assertEqual(J.gehirn_session(db)["id"], a["id"])  # genau eine
+        self.assertEqual(len(db.rows("jarvis_sessions")), 1)
+
+    def test_offen_marks_gehirn_mode(self):
+        db = db_with()
+        db.tables["jarvis_messages"].append({"id": "g1", "session_id": "sg", "created_at": ISO(-1), "role": "inhaber",
+                                             "body": "Was ist dein Plan?", "status": "offen"})
+        with mock.patch.object(J, "now", return_value=T0):
+            out = J.offen(db)
+        g = next(x for x in out if x["session"]["id"] == "sg")
+        self.assertEqual(g["session"]["mode"], "gehirn")
+        self.assertIn("brain_knowledge.py", g["hinweis"])
+        s1 = next(x for x in out if x["session"]["id"] == "s1")
+        self.assertEqual(s1["session"]["mode"], "assistent")
+
+    def test_cli_gehirn_update(self):
+        db = db_with()
+        with mock.patch.object(J, "DB", return_value=db), mock.patch.object(J, "now", return_value=T0), \
+                mock.patch("sys.stdout", new_callable=io.StringIO), \
+                mock.patch("sys.stdin", io.StringIO("Aufgefallen: alles ruhig")):
+            self.assertEqual(J.main(["gehirn-update", "-"]), 0)
+        with mock.patch.object(J, "DB", return_value=db), mock.patch.object(J, "now", return_value=T0), \
+                mock.patch("sys.stdout", new_callable=io.StringIO), \
+                mock.patch("sys.stdin", io.StringIO("Aufgefallen: alles ruhig")):
+            self.assertEqual(J.main(["gehirn-update", "-"]), 3)
+        with mock.patch.object(J, "DB", return_value=db), mock.patch("sys.stdout", new_callable=io.StringIO), \
+                mock.patch("sys.stdin", io.StringIO("1\n2\n3\n4")):
+            self.assertEqual(J.main(["gehirn-update", "-"]), 2)
 
 
 class MainTest(unittest.TestCase):

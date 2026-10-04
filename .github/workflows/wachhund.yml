@@ -31,3 +31,11 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Gehirn-Routinen (Inhaber 04.10.2026: „jeden tag um 14 uhr sollst du 15min recherchieren …“): fällige bekommen
+      # einen Auftrag (agent_tasks, kind gehirn) für die JARVIS-Runde, Ergebnisse landen kurz in brain_routines;
+      # Fehler hier dürfen den Wachhund nie stoppen
+      - run: python scripts/brain_routines.py faellig --apply
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

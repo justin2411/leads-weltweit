@@ -99,6 +99,9 @@ export const GH_CSS = `
 .dash .gh button.gh-sat.is-open .gh-sat-bg{stroke:var(--gold)}
 .dash .gh-tether{position:absolute;left:-.5px;top:-29.5cqw;width:1px;height:17cqw;background:linear-gradient(180deg,rgba(95,212,255,.6),rgba(95,212,255,0))}
 .dash .gh-arm.st-wartet .gh-tether{background:linear-gradient(180deg,rgba(226,198,143,.35),rgba(226,198,143,0))}
+/* Auftrag vom Gehirn: goldene Linie Gehirn → Agent */
+.dash .gh-arm.brain .gh-tether{width:2px;left:-1px;background:linear-gradient(0deg,rgba(242,220,174,.95),rgba(226,198,143,.15));box-shadow:0 0 8px rgba(226,198,143,.7)}
+.dash .gh-pop-g{display:flex;align-items:center;gap:5px;margin:2px 0;font-size:12px;color:var(--gold2)}
 .dash .gh-signal{position:absolute;left:-.6cqw;top:-.6cqw;width:1.2cqw;height:1.2cqw;border-radius:50%;background:var(--gold2);box-shadow:0 0 8px var(--gold);opacity:0;transform:translateY(-29cqw)}
 
 /* Uhr-Punkte (nächste Läufe) */

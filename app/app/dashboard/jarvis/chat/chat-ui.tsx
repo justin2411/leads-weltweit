@@ -7,10 +7,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, useTransition, type KeyboardEvent, type ReactNode } from "react";
-import { BODY_MAX, LEGACY_ID, chatTime, hasNew, nextRunAt, sessionState, statusText, type ChatMessage, type ChatSession } from "@/lib/jarvis-chat";
+import { BODY_MAX, LEGACY_ID, chatTime, hasNew, modeOf, nextRunAt, sessionState, statusText, type ChatMessage, type ChatMode, type ChatSession } from "@/lib/jarvis-chat";
 import { Icon } from "@/app/icons";
 import { sendToJarvis, modelLabel } from "@/lib/jarvis-send";
-import { archiveChatSession, renameChatSession } from "./actions";
+import { archiveChatSession, renameChatSession, setChatMode } from "./actions";
+import { ModeSwitch } from "./mode-switch";
 import { LlmBudget, type LlmView } from "./budget";
 
 type Mode = "session" | "neu" | "legacy";
@@ -31,6 +32,19 @@ export function ChatApp({ now: nowIso, sessions, archived, selected, messages, m
   const title = mode === "legacy" ? "Frühere Aufträge" : mode === "neu" ? "Neue Sitzung" : selected?.title ?? "Sitzung";
   const state = mode === "session" ? sessionState(messages, now) : null;
   const readOnly = mode === "legacy" || !!selected?.archived;
+  const isGehirn = selected?.kind === "gehirn";
+  // Schalter „Assistent | Gehirn“: je Sitzung gespeichert; neue Sitzung übernimmt die Wahl beim ersten Senden
+  const [chatMode, setMode] = useState<ChatMode>(modeOf(selected));
+  useEffect(() => { setMode(modeOf(selected)); }, [selected]);
+  const switchMode = (m: ChatMode) => {
+    setMode(m);
+    if (!sid) return;
+    start(async () => {
+      const r = await setChatMode(sid, m);
+      if (!r.ok) { setErr(r.error); setMode(modeOf(selected)); return; }
+      router.refresh();
+    });
+  };
 
   useEffect(() => { setDrawer(false); setRenaming(false); setErr(null); }, [sid, mode]);
 
@@ -64,15 +78,18 @@ export function ChatApp({ now: nowIso, sessions, archived, selected, messages, m
         <ul className="jc-list">
           {sessions.map((s) => {
             const on = mode === "session" && s.id === sid;
-            const dot = !on && hasNew(s);
+            const g = s.kind === "gehirn";
+            const unread = !on && g ? s.unread ?? 0 : 0;
+            const dot = !on && !unread && hasNew(s);
             return (
               <li key={s.id}>
-                <Link href={`/dashboard/jarvis/chat?s=${s.id}`} className={`${on ? "on" : ""}${s.kind === "bericht" ? " pin" : ""}`} aria-current={on ? "page" : undefined}>
-                  <i aria-hidden><Icon name={s.kind === "bericht" ? "statistik" : "antwort"} size={15} /></i>
+                <Link href={`/dashboard/jarvis/chat?s=${s.id}`} className={`${on ? "on" : ""}${g ? " pin gold" : ""}${s.mode === "gehirn" && !g ? " mg" : ""}`} aria-current={on ? "page" : undefined}>
+                  <i aria-hidden><Icon name={g || s.mode === "gehirn" ? "gehirn" : s.kind === "bericht" ? "statistik" : "antwort"} size={15} /></i>
                   <span className="t">{s.title}</span>
                   {(s.open ?? 0) > 0 ? <em className="jc-open" title="offene Nachrichten">{s.open}</em> : null}
+                  {unread > 0 && <b className="jc-unread" aria-label={`${unread} neu`}>{unread}</b>}
                   {dot && <b className="jc-dot" aria-label="neu" />}
-                  <time>{s.kind === "bericht" && !s.last_at ? "täglich" : chatTime(s.last_at ?? s.created_at, now)}</time>
+                  <time>{g && !s.last_at ? "Updates vom Gehirn" : chatTime(s.last_at ?? s.created_at, now)}</time>
                 </Link>
               </li>
             );
@@ -93,7 +110,7 @@ export function ChatApp({ now: nowIso, sessions, archived, selected, messages, m
       </aside>
       <div className="jc-shade" onClick={() => setDrawer(false)} aria-hidden />
 
-      <section className="jc-main" aria-label={title}>
+      <section className={`jc-main${chatMode === "gehirn" ? " is-g" : ""}`} aria-label={title}>
         <header className="jc-head">
           <button type="button" className="jc-ib jc-only-m" onClick={() => setDrawer(true)} aria-label="Sitzungen öffnen"><Icon name="menue" size={18} /></button>
           {renaming && selected ? (
@@ -103,7 +120,7 @@ export function ChatApp({ now: nowIso, sessions, archived, selected, messages, m
               <button type="button" className="x-btn" onClick={() => setRenaming(false)} aria-label="Abbrechen"><Icon name="schliessen" size={15} /></button>
             </form>
           ) : (
-            <h1 title={title}>{selected?.kind === "bericht" ? <Icon name="statistik" size={18} /> : <Icon name="jarvis" size={18} />}<span>{title}</span></h1>
+            <h1 title={title}>{isGehirn || chatMode === "gehirn" ? <Icon name="gehirn" size={18} /> : selected?.kind === "bericht" ? <Icon name="statistik" size={18} /> : <Icon name="jarvis" size={18} />}<span>{title}</span></h1>
           )}
           {state && <em className="jc-state"><Icon name={state.startsWith("startet") ? "uhr" : "werk"} size={14} />{state}</em>}
           <span className="jc-sp" />
@@ -115,16 +132,20 @@ export function ChatApp({ now: nowIso, sessions, archived, selected, messages, m
             </>
           )}
         </header>
+        {mode !== "legacy" && !selected?.archived && (
+          <div className="jc-modebar"><ModeSwitch mode={chatMode} onChange={switchMode} locked={isGehirn} busy={busy} /></div>
+        )}
         {err && <p className="jc-err" role="alert"><Icon name="achtung" size={15} />{err}</p>}
-        <Thread messages={messages} now={now} empty={
-          mode === "neu" ? "Schreib JARVIS, was er tun oder prüfen soll – er antwortet hier."
-            : selected?.kind === "bericht" ? "Hier schreibt JARVIS jeden Morgen, was er angepasst hat."
+        <Thread messages={messages} now={now} who={chatMode === "gehirn" ? "GEHIRN" : "JARVIS"} empty={
+          isGehirn ? "Hier meldet das Gehirn kurz, was ihm auffällt und was es als Nächstes tut. Schreib ihm direkt."
+            : mode === "neu" ? (chatMode === "gehirn" ? "Frag das Gehirn – Ziele, KPIs, Strategie. Es denkt mit und handelt selbst." : "Schreib JARVIS, was er tun oder prüfen soll – er antwortet hier.")
+            : selected?.kind === "bericht" ? "Frühere Tagesberichte. Neue stehen im Gehirn-Chat."
             : "Noch leer – schreib die erste Nachricht."
         } />
         {readOnly ? (
           <p className="jc-ro"><Icon name="schloss" size={14} />{mode === "legacy" ? "Ältere Chat-Aufträge – nur lesbar. Neue Nachrichten gehen in die Sitzungen." : "Archiviert – nur lesbar."}</p>
         ) : (
-          <Composer sessionId={sid} now={now} onError={setErr} instant={instant && (llm?.ok ?? true)} />
+          <Composer sessionId={sid} now={now} onError={setErr} instant={instant && (llm?.ok ?? true)} mode={chatMode} />
         )}
       </section>
     </div>
@@ -149,7 +170,9 @@ function usePend(key: string): Pend {
   );
 }
 
-export function Thread({ messages, now, empty, compact = false, chatKey = "chat" }: { messages: ChatMessage[]; now: Date; empty: ReactNode; compact?: boolean; chatKey?: string }) {
+export function Thread({ messages, now, empty, compact = false, chatKey = "chat", who = "JARVIS" }: { messages: ChatMessage[]; now: Date; empty: ReactNode; compact?: boolean; chatKey?: string;
+  /** Name über den Antworten (Gehirn-Modus: „GEHIRN“) */
+  who?: string }) {
   const box = useRef<HTMLOListElement>(null);
   const n = messages.length;
   const pend = usePend(chatKey);
@@ -168,7 +191,7 @@ export function Thread({ messages, now, empty, compact = false, chatKey = "chat"
         return (
           <li key={m.id} className={m.role === "jarvis" ? "bot" : "me"}>
             <div className="b">
-              {m.role === "jarvis" && <b className="who">JARVIS{modelLabel(m.model) && <em className="jc-model" title="Sofort-Antwort über die Claude-API">{modelLabel(m.model)}</em>}</b>}
+              {m.role === "jarvis" && <b className="who">{who}{modelLabel(m.model) && <em className="jc-model" title="Sofort-Antwort über die Claude-API">{modelLabel(m.model)}</em>}</b>}
               <p>{m.body}</p>
               {m.links.length > 0 && (
                 <span className="lk">{m.links.map((l, i) => l.url.startsWith("/")
@@ -185,7 +208,7 @@ export function Thread({ messages, now, empty, compact = false, chatKey = "chat"
       })}
       {shown && <>
         <li className="me"><div className="b"><p>{shown.text}</p></div></li>
-        <li className="bot"><div className="b"><b className="who">JARVIS</b><p className="jc-think">{shown.think}</p></div></li>
+        <li className="bot"><div className="b"><b className="who">{who}</b><p className="jc-think">{shown.think}</p></div></li>
       </>}
     </ol>
   );
@@ -196,7 +219,7 @@ const lastId = new Map<string, string | null>();
 /** Eingabe: Enter sendet, Shift+Enter neue Zeile. Ohne Sitzung entsteht beim Senden eine neue (Titel aus dem Text).
  *  Sofort-Antwort über /api/jarvis/ask (lib/jarvis-send.ts): während des Wartens „JARVIS denkt …“, danach lädt der
  *  Verlauf neu. Ohne Schlüssel/bei erreichter Grenze bleibt die Nachricht offen und die Routine antwortet (Hinweis). */
-export function Composer({ sessionId, now, onError, send, placeholder, instant = true, onDone, chatKey = "chat" }: {
+export function Composer({ sessionId, now, onError, send, placeholder, instant = true, onDone, chatKey = "chat", mode = "assistent" }: {
   sessionId: string | null; now: Date; onError: (e: string | null) => void;
   /** eigener Versand (Baukasten-Chat, Mini-Chats); ohne = JARVIS-Chat-Seite */
   send?: (text: string) => Promise<{ ok: true; hint?: string | null } | { ok: false; error: string }>; placeholder?: string;
@@ -206,6 +229,8 @@ export function Composer({ sessionId, now, onError, send, placeholder, instant =
   onDone?: () => void;
   /** derselbe Schlüssel wie beim zugehörigen Thread (mehrere Chats auf einer Seite) */
   chatKey?: string;
+  /** Schalter „Assistent | Gehirn“ (für neue Sitzungen; bestehende tragen ihn selbst) */
+  mode?: ChatMode;
 }) {
   const router = useRouter();
   const [text, setText] = useState("");
@@ -215,7 +240,7 @@ export function Composer({ sessionId, now, onError, send, placeholder, instant =
     const t = text.trim();
     if (!t || busy) return;
     // sofort im Verlauf zeigen, Eingabe leeren; bei Fehler kommt der Text zurück
-    setPend(chatKey, { text: t, think: instant ? "JARVIS denkt …" : "wird gespeichert …", base: lastId.get(chatKey) ?? null });
+    setPend(chatKey, { text: t, think: instant ? (mode === "gehirn" ? "Gehirn denkt …" : "JARVIS denkt …") : "wird gespeichert …", base: lastId.get(chatKey) ?? null });
     setText("");
     setHint(null);
     const fail = (e: string) => { setPend(chatKey, null); setText(t); onError(e); };
@@ -229,7 +254,7 @@ export function Composer({ sessionId, now, onError, send, placeholder, instant =
           onDone?.();
           return;
         }
-        const r = await sendToJarvis({ sessionId, text: t });
+        const r = await sendToJarvis({ sessionId, text: t, mode });
         if (!r.ok) { fail(r.error); return; }
         onError(null);
         setHint(r.fallback?.hint ?? null);
@@ -249,9 +274,9 @@ export function Composer({ sessionId, now, onError, send, placeholder, instant =
     <form className="jc-comp" onSubmit={(e) => { e.preventDefault(); submit(); }}>
       {hint && <p className="jc-hint2" role="status"><Icon name="uhr" size={13} />{hint}</p>}
       <textarea value={text} onChange={(e) => setText(e.target.value)} onKeyDown={onKey} rows={2} maxLength={BODY_MAX}
-        aria-label="Nachricht an JARVIS" placeholder={placeholder ?? "Nachricht an JARVIS … (Enter sendet, Shift+Enter neue Zeile)"} />
+        aria-label="Nachricht an JARVIS" placeholder={placeholder ?? (mode === "gehirn" ? "Frag das Gehirn … z. B. „Was ist dein Plan für heute?“" : "Nachricht an JARVIS … (Enter sendet, Shift+Enter neue Zeile)")} />
       <button type="submit" className="go" disabled={busy || !text.trim()} aria-label="Senden"><Icon name="weiter" size={17} /><span>Senden</span></button>
-      <small className="jc-hint"><Icon name={instant ? "jarvis" : "uhr"} size={12} />{instant ? "Antwort sofort · einfache Fragen Haiku, Systemzugriff Opus" : `Sofort-Antwort aus – Schlüssel fehlt, Routine antwortet um ${nextRunAt(now)}`}</small>
+      <small className="jc-hint"><Icon name={instant ? (mode === "gehirn" ? "gehirn" : "jarvis") : "uhr"} size={12} />{instant ? (mode === "gehirn" ? "Gehirn · Opus mit Zielen, KPIs und Wissen" : "Antwort sofort · einfache Fragen Haiku, Systemzugriff Opus") : `Sofort-Antwort aus – Schlüssel fehlt, Agent antwortet um ${nextRunAt(now)}`}</small>
     </form>
   );
 }

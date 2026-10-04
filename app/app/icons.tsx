@@ -8,7 +8,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Archive, ArrowDown, ArrowRight, ArrowUpWideNarrow, Ban, Bell, Blocks, Brain, Bot, Cable, ChartColumn, Check, ChevronDown, ChevronRight,
   ChevronUp, CircleAlert, CircleCheck, CircleX, ClipboardCheck, Clock, Contact, Copy, CopyX, Database, Delete, Download, Ellipsis,
-  Factory, Filter, Flag, Forward, Gift, Globe, GripVertical, HardDrive, Headset, Hourglass, House, Info, Lock, Magnet, Mail, MailX,
+  Factory, FileText, Filter, Flag, Forward, Gift, Globe, GripVertical, HardDrive, Headset, Hourglass, House, Info, Lock, Magnet, Mail, MailX,
   Menu, MessageSquare, Minus, MousePointerClick, Move, Package, Pause, Phone, Pickaxe, Play, Plus, Radar, RefreshCw, Repeat,
   Reply, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Split, Square, Star, Target, TrendingDown,
   TrendingUp, Trash2, TriangleAlert, Undo2, UserRound, Users, Workflow, X,
@@ -68,6 +68,7 @@ const ICONS = {
   recht: Scale,
   formular: RectangleEllipsis,
   text: Type,
+  dokument: FileText,
   "link-kaputt": Unlink,
   "start-seite": House,
   menue: Menu,

@@ -3,7 +3,7 @@
  * gerade arbeitet … auf und zu klappbar … merken was ich ausklappe“). Reine Funktionen (ohne React/Datenbank), damit
  * Satz, Knoten und Abläufe getestet werden können.
  */
-import { AGENT_COUNT, nextAgentRound, type AgentTask } from "./agents.ts";
+import { AGENT_COUNT, fromBrain, nextAgentRound, type AgentTask } from "./agents.ts";
 import { berlin, nextRun } from "./dashboard-logic.ts";
 import { kurzTitel } from "./kurz.ts";
 
@@ -167,7 +167,9 @@ export function clockMarks(runs: Upcoming[], mergeMin = 20): ClockMark[] {
 }
 
 export type SatState = "laeuft" | "wartet" | "frei";
-export type Satellite = { agent: number; angle: number; state: SatState; progress: number; brief: string | null; step: string | null; since: string | null; queued: number };
+export type Satellite = { agent: number; angle: number; state: SatState; progress: number; brief: string | null; step: string | null; since: string | null; queued: number;
+  /** Auftrag kam vom Gehirn (goldene Linie Gehirn → Agent), mit Grund */
+  brain?: boolean; grund?: string | null };
 
 /**
  * Agenten als Satelliten um das Gehirn: je Agent ein Platz, gleichmäßig verteilt (A1 oben rechts, dann im Uhrzeigersinn).
@@ -187,6 +189,7 @@ export function satellites(tasks: AgentTask[], n = AGENT_COUNT): Satellite[] {
       progress: run ? Math.max(0, Math.min(100, Math.round(run.progress ?? 0))) : 0,
       brief: t?.brief ?? null, step: run?.step ?? null, since: run?.started_at ?? null,
       queued: Math.max(0, waiting.length - (run ? 0 : 1)),
+      brain: fromBrain(t), grund: t?.grund ?? null,
     };
   });
 }

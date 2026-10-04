@@ -2,13 +2,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   ChatInputError, LEGACY_ID, checkBody, checkTitle, chatTime, flowSessionTitle, hasNew, isSessionId, lastUsed, legacyMessages, nextRunAt,
-  orderSessions, safeLinks, sessionState, statusText, titleFrom, toMessage, toSession, type ChatSession,
+  orderSessions, safeLinks, sessionState, statusText, titleFrom, toMessage, toSession, canArchive, modeOf, unreadCount, isChatMode, type ChatSession,
 } from "./jarvis-chat.ts";
 import type { AgentTask } from "./agents.ts";
 
 const NOW = new Date("2026-10-04T10:10:00Z"); // 12:10 deutsche Zeit
 const S = (id: string, x: Partial<ChatSession> = {}): ChatSession => ({
-  id, title: id, kind: "chat", flow_id: null, created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-01T00:00:00Z", read_at: null, archived: false, ...x,
+  id, title: id, kind: "chat", flow_id: null, created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-01T00:00:00Z", read_at: null, archived: false, mode: "assistent", ...x,
 });
 
 test("Nachricht und Titel prüfen", () => {
@@ -53,13 +53,13 @@ test("Zeiten in deutscher Zeit", () => {
   assert.equal(chatTime("kaputt", NOW), "");
 });
 
-test("Sitzungen: Tagesbericht oben, dann neueste; Baukasten und Archiv nicht in der Liste", () => {
+test("Sitzungen: Gehirn golden ganz oben, dann neueste (Tagesbericht wie ein Chat); Baukasten und Archiv nicht in der Liste", () => {
   const list = [
     S("a", { last_at: "2026-10-04T08:00:00Z" }), S("b", { last_at: "2026-10-04T09:00:00Z" }), S("c"),
-    S("r", { kind: "bericht", title: "Tagesbericht" }), S("x", { archived: true, last_at: "2026-10-04T09:30:00Z" }),
-    S("k", { kind: "baukasten", flow_id: "f" }),
+    S("r", { kind: "bericht", title: "Tagesbericht", last_at: "2026-10-04T08:30:00Z" }), S("x", { archived: true, last_at: "2026-10-04T09:30:00Z" }),
+    S("k", { kind: "baukasten", flow_id: "f" }), S("g", { kind: "gehirn", title: "Gehirn", mode: "gehirn" }),
   ];
-  assert.deepEqual(orderSessions(list).map((s) => s.id), ["r", "b", "a", "c"]);
+  assert.deepEqual(orderSessions(list).map((s) => s.id), ["g", "b", "r", "a", "c"]);
   assert.equal(lastUsed(list)?.id, "b");
   assert.equal(lastUsed([S("r", { kind: "bericht" })]), null);
 });
@@ -97,4 +97,21 @@ test("Frühere Chat-Aufträge bleiben lesbar", () => {
   const msgs = legacyMessages([T({}), T({ id: "u", created_at: "2026-10-04T09:00:00Z", status: "offen", result: null }), T({ id: "v", created_by: "Inhaber Dashboard" })]);
   assert.deepEqual(msgs.map((m) => [m.id, m.role, m.status]), [["t-q", "inhaber", "fertig"], ["t-a", "jarvis", null], ["u-q", "inhaber", "offen"]]);
   assert.equal(msgs[1].body, "Weil.");
+});
+
+test("Gehirn-Chat: nie archivierbar/umbenennbar, Modus immer Gehirn, ungelesen zählen", () => {
+  assert.equal(canArchive(S("g", { kind: "gehirn" })), false);
+  assert.equal(canArchive(S("r", { kind: "bericht" })), false);
+  assert.equal(canArchive(S("k", { kind: "baukasten" })), false);
+  assert.equal(canArchive(S("a")), true);
+  assert.equal(modeOf(S("g", { kind: "gehirn", mode: "assistent" })), "gehirn");
+  assert.equal(modeOf(S("a", { mode: "gehirn" })), "gehirn");
+  assert.equal(modeOf(null), "assistent");
+  assert.equal(toSession({ id: "g", kind: "gehirn", mode: "assistent" }).mode, "gehirn");
+  assert.equal(toSession({ id: "a", kind: "chat" }).mode, "assistent");
+  assert.equal(toSession({ id: "a", kind: "chat", mode: "kaputt" }).mode, "assistent");
+  assert.ok(isChatMode("gehirn") && isChatMode("assistent") && !isChatMode("x"));
+  assert.equal(unreadCount(["2026-10-04T08:00:00Z", "2026-10-04T09:00:00Z"], "2026-10-04T08:30:00Z"), 1);
+  assert.equal(unreadCount(["2026-10-04T08:00:00Z"], null), 1);
+  assert.equal(unreadCount([], null), 0);
 });

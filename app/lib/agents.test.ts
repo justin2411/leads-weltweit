@@ -145,3 +145,31 @@ test("nächste Agenten-Runde (:53) für „startet um HH:MM“", () => {
   const mk = (p: Partial<AgentTask>) => ({ id: "x", agent: 2, status: "offen", created_at: "1", finished_at: null, kind: "leads", market: null, brief: "x", progress: 0, step: null, result: null, numbers: {}, started_at: null, created_by: CHAT_BY, ...p }) as AgentTask;
   assert.equal(chatThread([mk({})], 6, "09:53")[0].reply, "Notiert für Agent 2 – startet um 09:53.");
 });
+
+// ---------------------------------------------------------------- Gehirn beauftragt Agenten selbst
+import { checkBrainTask, fromBrain, TaskError as TE } from "./agents.ts";
+import { satellites } from "./gehirn.ts";
+
+test("Gehirn-Auftrag: frei, Fokus-Märkte, Grund, nie Verbotenes, höchstens 3 je Stunde", () => {
+  const now = new Date("2026-10-04T12:00:00Z");
+  const T = (x: Partial<AgentTask>): AgentTask => ({ id: Math.random().toString(36), created_at: "2026-10-04T08:00:00Z", agent: 1, kind: "leads", market: null, brief: "x",
+    status: "fertig", progress: 0, step: null, result: null, numbers: {}, started_at: null, finished_at: null, ...x });
+  const busy1 = [T({ agent: 1, status: "laeuft" })];
+  const r = checkBrainTask({ kind: "pruefen", market: "us", brief: "20 US-Leads prüfen", grund: "Fehlerquote US senken" }, busy1, now);
+  assert.deepEqual([r.agent, r.market, r.grund], [2, "US", "Fehlerquote US senken"]);
+  assert.throws(() => checkBrainTask({ agent: 1, kind: "pruefen", brief: "x x x", grund: "Grund da" }, busy1, now), /A1 ist belegt/);
+  assert.throws(() => checkBrainTask({ kind: "website", brief: "x x x", grund: "Grund da" }, [], now), TE);
+  assert.throws(() => checkBrainTask({ kind: "pruefen", market: "DE", brief: "x x x", grund: "Grund da" }, [], now), /Fokus/);
+  assert.throws(() => checkBrainTask({ kind: "pruefen", brief: "x x x", grund: "" }, [], now), /Grund/);
+  assert.throws(() => checkBrainTask({ kind: "pruefen", brief: "Versand einschalten", grund: "mehr Umsatz" }, [], now), /nie per Auftrag/);
+  assert.throws(() => checkBrainTask({ kind: "quelle", brief: "Sperrliste aufräumen", grund: "Qualität" }, [], now), /nie per Auftrag/);
+  const three = [1, 2, 3].map((i) => T({ agent: 5 + i, created_by: "Gehirn", created_at: new Date(now.getTime() - i * 600_000).toISOString() }));
+  assert.throws(() => checkBrainTask({ kind: "frage", brief: "Warum?", grund: "Antwortquote heben" }, three, now), /3 je Stunde/);
+  const allBusy = Array.from({ length: 8 }, (_, i) => T({ agent: i + 1, status: "offen" }));
+  assert.throws(() => checkBrainTask({ kind: "frage", brief: "Warum?", grund: "Antwortquote heben" }, allBusy, now), /alle Agenten belegt/);
+  assert.ok(fromBrain({ created_by: "Gehirn" }) && fromBrain({ created_by: "Gehirn-Routine" }) && !fromBrain({ created_by: "JARVIS-Chat" }) && !fromBrain(null));
+  const sats = satellites([T({ agent: 3, status: "laeuft", created_by: "Gehirn", grund: "Umsatz-Hebel" }), T({ agent: 4, status: "offen" })]);
+  assert.equal(sats[2].brain, true);
+  assert.equal(sats[2].grund, "Umsatz-Hebel");
+  assert.equal(sats[3].brain, false);
+});

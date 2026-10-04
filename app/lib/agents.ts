@@ -20,20 +20,72 @@ export const KINDS = {
   kunde: { label: "Kunde", icon: "ansprechpartner", hint: "Kunden-Agent: Ziele aufnehmen, Antwort schreiben" },
   // Website-Agenten (Inhaber 04.10.2026, /dashboard/website): entstehen nur über scripts/website_agents.py faellig
   website: { label: "Website", icon: "website", hint: "Website-Agent: Seite prüfen und sauber halten" },
+  // Gehirn-Routinen (Inhaber 04.10.2026, /dashboard/gehirn#routinen): entstehen nur über scripts/brain_routines.py faellig
+  // bzw. „Jetzt starten“ – recherchieren/prüfen für die angegebene Dauer, Ergebnis als Wissen (brain_knowledge)
+  gehirn: { label: "Gehirn", icon: "gehirn", hint: "Gehirn-Routine: recherchieren oder prüfen, Wissen notieren" },
 } as const satisfies Record<string, { label: string; icon: IconName; hint: string }>;
 export type Kind = keyof typeof KINDS;
 /** Arten, die der Inhaber im Auftragsformular, im Chat und im Baukasten wählt („kunde“ nur über Kunden-Agenten,
- *  „website“ nur über Website-Agenten). */
-export const OWNER_KINDS = (Object.keys(KINDS) as Kind[]).filter((k) => k !== "kunde" && k !== "website");
+ *  „website“ nur über Website-Agenten, „gehirn“ nur über Gehirn-Routinen). */
+export const OWNER_KINDS = (Object.keys(KINDS) as Kind[]).filter((k) => k !== "kunde" && k !== "website" && k !== "gehirn");
 export const MARKETS = ["US", "UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK", "MX", "BR"] as const;
 
 export type AgentTask = {
   id: string; created_at: string; agent: number; kind: Kind; market: string | null; brief: string;
   status: "offen" | "laeuft" | "fertig" | "fehler" | "abgebrochen"; progress: number; step: string | null; result: string | null;
   numbers: Record<string, number>; started_at: string | null; finished_at: string | null; created_by?: string | null;
+  /** Grund des Gehirns (≤ 160 Zeichen, Ziel-Bezug) – nur bei Aufträgen vom Gehirn */
+  grund?: string | null;
 };
 /** Absender von Chat-Aufträgen (JARVIS-Chat) – die Agenten-Runde bearbeitet sie zuerst (docs/AGENTEN.md). */
 export const CHAT_BY = "JARVIS-Chat";
+
+// ------------------------------------------------------------------------------------------- Aufträge vom Gehirn
+// Inhaber 04.10.2026: „ich will auch das das gehirn die agents selber nutzt und beauftragt für seine ziele“.
+/** Absender, wenn das Gehirn selbst beauftragt (Gehirn-Modus im Chat, Gehirn-Lauf) bzw. eine Gehirn-Routine fällig ist. */
+export const BRAIN_TASK_BY = "Gehirn";
+export const BRAIN_SOURCES = ["Gehirn", "Gehirn-Routine"] as const;
+/** Kam dieser Auftrag vom Gehirn? (goldene Linie Gehirn → Agent, Kennzeichnung „vom Gehirn“) */
+export const fromBrain = (t: Pick<AgentTask, "created_by"> | null | undefined) => !!t?.created_by && (BRAIN_SOURCES as readonly string[]).includes(t.created_by);
+/** Höchstens so viele neue Gehirn-Aufträge je Stunde. */
+export const BRAIN_MAX_PER_HOUR = 3;
+/** Märkte für Gehirn-Aufträge = Fokus-Tests (config/fokus.yaml: S2 in US, UK, FR). */
+export const BRAIN_MARKETS = ["US", "UK", "FR"] as const;
+/** Nie per Gehirn-Auftrag: Versand, Kosten, Prüfregeln, Sperrliste, Notbremse, Abmeldung, Löschen. */
+export const BRAIN_FORBIDDEN = /versand\s*(an|ein|start)|mails?\s+(senden|schicken|verschicken)|sperrliste|notbremse|abmeld|pr[üu]fregel|freigabe\s*(lockern|aus|abschalten)|kosten|bezahl|kaufen|upgrade|abo\s+abschlie|l[öo]sch/i;
+
+/**
+ * Auftrag des Gehirns prüfen (reine Funktion, gleiche Regeln in scripts/brain_routines.py auftrag): Art aus OWNER_KINDS,
+ * Markt nur US/UK/FR (oder alle), Grund 3–160 Zeichen mit Ziel-Bezug, nichts Verbotenes, höchstens 3 neue
+ * Gehirn-Aufträge je Stunde, Agent frei (höchstens ein offener Auftrag je Agent; ohne Angabe der erste freie).
+ */
+export function checkBrainTask(f: { agent?: unknown; kind?: unknown; market?: unknown; brief?: unknown; grund?: unknown }, tasks: AgentTask[], now: Date) {
+  const kind = String(f.kind ?? "");
+  if (!(OWNER_KINDS as readonly string[]).includes(kind)) throw new TaskError("Gehirn-Auftrag: Art leads, kaeufer, quelle, pruefen oder frage");
+  const m = String(f.market ?? "").trim().toUpperCase();
+  const market = m === "" || m === "ALLE" ? null : m;
+  if (market && !(BRAIN_MARKETS as readonly string[]).includes(market)) throw new TaskError("Gehirn-Auftrag: nur Fokus-Märkte US, UK, FR");
+  const grund = String(f.grund ?? "").replace(/\s+/g, " ").trim();
+  if (grund.length < 3 || grund.length > 160) throw new TaskError("Gehirn-Auftrag: Grund 3–160 Zeichen (Ziel-Bezug)");
+  const brief = String(f.brief ?? "").replace(/\s+/g, " ").trim();
+  if (BRAIN_FORBIDDEN.test(`${brief} ${grund}`)) throw new TaskError("Gehirn-Auftrag: Versand, Kosten, Prüfregeln, Sperrliste und Löschen nie per Auftrag");
+  const hour = now.getTime() - 3_600_000;
+  const recent = tasks.filter((t) => t.created_by === BRAIN_TASK_BY && Date.parse(t.created_at) >= hour).length;
+  if (recent >= BRAIN_MAX_PER_HOUR) throw new TaskError(`Gehirn-Auftrag: höchstens ${BRAIN_MAX_PER_HOUR} je Stunde`);
+  const busy = (n: number) => tasks.some((t) => t.agent === n && (t.status === "offen" || t.status === "laeuft"));
+  let agent: number;
+  if (f.agent === undefined || f.agent === null || f.agent === "") {
+    const free = Array.from({ length: AGENT_COUNT }, (_, i) => i + 1).find((n) => !busy(n));
+    if (!free) throw new TaskError("Gehirn-Auftrag: alle Agenten belegt");
+    agent = free;
+  } else {
+    agent = Number(f.agent);
+    if (!Number.isInteger(agent) || agent < 1 || agent > AGENT_COUNT) throw new TaskError("Agent wählen");
+    if (busy(agent)) throw new TaskError(`Gehirn-Auftrag: A${agent} ist belegt – freien Agenten nehmen`);
+  }
+  const v = validateTask({ agent, kind, market: market ?? "", brief });
+  return { ...v, grund };
+}
 
 export class TaskError extends Error {}
 

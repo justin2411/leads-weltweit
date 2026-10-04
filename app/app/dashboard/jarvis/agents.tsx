@@ -5,7 +5,7 @@
  */
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import { AGENT_COUNT, FORM_MARKETS, KINDS, OWNER_KINDS, agentBoard, formDefaults, marketLabel, marketList, type AgentTask } from "@/lib/agents";
+import { AGENT_COUNT, FORM_MARKETS, KINDS, OWNER_KINDS, agentBoard, formDefaults, fromBrain, marketLabel, marketList, type AgentTask } from "@/lib/agents";
 import { cancelAgentTask, createAgentTask } from "../control-actions";
 import { Back } from "../v2";
 import { AgentDrop } from "./dnd";
@@ -32,6 +32,7 @@ export function AgentRow({ tasks, active, startAt, customerAgents }: { tasks: Ag
             title={c ? `Agent ${a.n}: ${KINDS[c.kind].label}${c.market ? ` ${marketLabel(c.market)}` : ""} – ${statusText(c.status, startAt)}` : `Agent ${a.n}: frei`}>
             <span className="ag-orb" aria-hidden><i className="ag-ring" /><i className="ag-arc" /><b>A{a.n}</b></span>
             <span className="ag-t">{c ? <><Icon name={KINDS[c.kind].icon} size={16} /> {KINDS[c.kind].label}{c.market ? ` · ${marketLabel(c.market)}` : ""}</> : "frei"}</span>
+            {c && fromBrain(c) && (c.status === "offen" || c.status === "laeuft") && <span className="ag-brain" title={`vom Gehirn${c.grund ? `: ${c.grund}` : ""}`}><Icon name="gehirn" size={12} /> vom Gehirn</span>}
             <span className="ag-s">{c ? (c.status === "laeuft" ? `${c.progress} %${c.step ? ` · ${c.step}` : ""}` : statusText(c.status, startAt)) : "bereit"}{a.queued > 0 ? ` · +${a.queued}` : ""}</span>
           </Link>
           </AgentDrop>

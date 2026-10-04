@@ -36,6 +36,12 @@ in `signalwerk.decisions`. Ziel: **möglichst viele zahlende Kunden und maximale
      `tagesziel`, `countries.yaml` Tageslimits) – nur innerhalb der Notbremse (Bounces/Beschwerden) und der Grenze des
      Mail-Anbieters. Nach einer Spam-Beschwerde oder ausgelöster Notbremse Mengen senken, nie erhöhen.
    - **Käufer-Leads:** kostenlose Quellen (OpenStreetMap, Register) über die Abläufe `kaeufer`/`recherche` anstoßen.
+4b. **Agenten nutzen** (Inhaber 04.10.2026: „das gehirn die agents selber nutzt und beauftragt für seine ziele“):
+   zuerst `python scripts/brain_routines.py ergebnisse` auswerten (Gelerntes mit `brain_knowledge.py add`, dann
+   `gelernt <id>`), dann für den größten Hebel einen freien Agenten beauftragen:
+   `python scripts/brain_routines.py auftrag <art> "<Auftrag>" --grund "<≤ 160 Zeichen, Ziel-Bezug>" [--markt US|UK|FR]`
+   (höchstens 3 je Stunde; Regeln docs/AGENTEN.md „Gehirn beauftragt Agenten selbst“). Kurz in den Gehirn-Chat berichten
+   (`jarvis_chat.py gehirn-update -`).
 5. **Recherche:** 1–3 gezielte Fragen, die die nächste Entscheidung besser machen (z. B. „was zahlen Recruiter in UK
    für Lead-Listen“). Ergebnis kurz als `decisions` (type `note`, subject „Recherche: …“) mit Quellen-URLs.
 6. **Plan:** `docs/GEHIRN-PLAN.md` höchstens einmal am Tag per Pull Request aktualisieren (nicht jede Stunde).

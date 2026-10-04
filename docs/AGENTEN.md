@@ -87,6 +87,17 @@ Nachricht sieht der Inhaber „startet um HH:MM“ (nächster dieser Zeitpunkte)
 5. Stil: Deutsch, du-Form, einfache Worte, kurz (meist 2–6 Sätze), echte Zahlen, Uhrzeiten in deutscher Zeit; was
    getan wurde und was offen ist. Links nur `https://…` oder `/dashboard…`. Nie erfundene Zahlen.
 
+**Zwei Modi – Schalter „Assistent | Gehirn“** (Inhaber 04.10.2026: „den einen schalter haben wo ich direkt mit dem
+super gehirn sprechen kann … und einmal soll er nur der assistent bei bestimmten bausteinen sein“): oben in jedem Chat
+(Chat-Seite, Mini-Chat, großes Fenster), je Sitzung gespeichert (`jarvis_sessions.mode`). **Assistent** = Helfer zu
+Bausteinen/Themen (Haiku-Weiche, Opus mit Werkzeugen), kennt die Ziele in einem Satz und verweist für Strategie auf das
+Gehirn. **Gehirn** = JARVIS als Kopf: immer Opus, System-Text mit Zielen, Grenzen, KPIs (Trichter, Kunden, Vorschläge,
+Tests, Routinen, Aufträge) und dem gesamten Gehirn-Wissen (`brain_knowledge`, neueste zuerst, gekürzt). Beide Modi
+führen selbst aus (Agent beauftragen „gib das Agent 3“, Regler, Werke, Flows, Routinen anlegen/ändern/pausieren,
+Wissen notieren) – jede Aktion mit `checkTool`, `owner_log` und Aktions-Chip unter der Antwort; das Dashboard lädt neu
+und aktualisiert sich alle 10 s, solange Aufträge offen sind. In Texten an den Inhaber heißt die JARVIS-Runde immer
+„Agent“ (Inhaber 04.10.2026: „sag zukünftig immer agent dazu“), z. B. „Übernimmt ein Agent, startet um 14:23“.
+
 **Sofort-Antworten** (Inhaber 04.10.2026: „alle chats sollen direkt antworten“): Jede Chat-Oberfläche (JARVIS-Chat,
 Mini-Chats, Baukasten, Website-Seite) schickt über eine Sende-Funktion (`app/lib/jarvis-send.ts` → `POST /api/jarvis/ask`,
 `app/lib/jarvis-ask.ts`). Haiku (`claude-haiku-4-5-20251001`) beantwortet einfache Fragen aus einem kompakten Kontext;
@@ -102,10 +113,29 @@ Frühere Chat-Aufträge (`agent_tasks` mit `created_by = "JARVIS-Chat"`) bleiben
 noch offene davon wie bisher mit `agent_tasks.py` fertig machen. Neue Nachrichten kommen nur noch über `jarvis_messages`.
 Grenzen unverändert (unten) – ein Chat-Text ist nie eine Freigabe für Versand, Kosten oder Regeländerungen.
 
+### Gehirn-Chat (Pflicht: dort berichten)
+
+Inhaber 04.10.2026: „einen chat den man nicht löschen kann wo mir das gehirn immer updates gibt … sehr kurz und knapp
+… was ihm aufgefallen ist, was er als nächstes macht … immer der goldene chat ganz oben … aber nicht löschbar“.
+Feste Sitzung `jarvis_sessions.kind = 'gehirn'` (genau eine, Titel „Gehirn“, Modus fest „gehirn“; Archivieren,
+Umbenennen und Umstellen lehnen Dashboard, `jarvis_chat.py` und ein Datenbank-Trigger ab). Ganz oben in jeder
+Sitzungsliste, golden, mit Zähler ungelesener Updates.
+
+- **Updates schreiben** – Pflicht nach jeder Gehirn-Routine und nach jedem Lauf mit Änderung (Merge, A/B-Test
+  gestartet/entschieden, Engpass erkannt, Agent beauftragt, Regler/Werk geändert):
+  `printf 'Aufgefallen: … · Nächster Schritt: … · Brauche: …' | python scripts/jarvis_chat.py gehirn-update - [--links '[…]']`.
+  Höchstens 3 Zeilen und 400 Zeichen (Exit 2 = zu lang → kürzen), „Brauche:“ nur, wenn der Inhaber etwas tun muss
+  (dann zusätzlich Web-Push aufs Handy). Gleicher Text innerhalb 6 h → Exit 3 (nichts tun). Keine Lead-Kontaktdaten.
+- **Nachrichten des Inhabers** im Gehirn-Chat (und in jeder Sitzung mit `mode = gehirn`, in `offen` als
+  `session.mode` mit Hinweis) immer als Gehirn beantworten: Ziele (docs/JARVIS.md), echte Zahlen, Wissen
+  (`python scripts/brain_knowledge.py list` / `get <slug>`), selbst handeln im Rahmen, Erkenntnisse mit
+  `brain_knowledge.py add` notieren. Kurz.
+
 ### Tagesbericht
 
-Einmal am Tag – im ersten Lauf nach 07:00 deutscher Zeit – in der festen Sitzung „Tagesbericht“:
-`python scripts/jarvis_chat.py bericht bericht.txt` (Exit 3 = heute schon geschrieben → nichts tun). Kurz und ehrlich,
+Einmal am Tag – im ersten Lauf nach 07:00 deutscher Zeit – als **Kurzfassung in den Gehirn-Chat** (die frühere Sitzung
+„Tagesbericht“ bleibt als normale Sitzung lesbar):
+`python scripts/jarvis_chat.py bericht bericht.txt` (höchstens 1500 Zeichen; Exit 3 = heute schon geschrieben → nichts tun). Kurz und ehrlich,
 auch schlechte Zahlen: was JARVIS in den letzten 24 h angepasst hat (mit Links zu PRs/Seiten), laufende Tests und
 Ergebnisse, Kennzahlen gegenüber Vortag (Antworten, Proben, Kunden, Umsatz, Freigabe-Fehlerquote), was er heute vorhat,
 was er vom Inhaber braucht. Schreibt der Inhaber im Tagesbericht zurück, ist das eine normale Chat-Nachricht.
@@ -192,7 +222,56 @@ diese umgesetzt werden“. Seite `/dashboard/website`: Gesundheit je Bereich (le
 | `quelle` – Neue Quelle | Wie der Quellen-Scout (`docs/QUELLEN-SCOUT.md`): kostenlose, erlaubte Quelle recherchieren, mit ≥ 10 grünen Leads testen, in die Werke einbauen (PR, Tests, CI grün, selbst mergen), Logbuch-Eintrag. | „Neue Quelle · NL“ |
 | `pruefen` – Prüfen | Stichprobe ziehen (z. B. 20 Leads/Mails/Proben des Marktes), gegen die Drei-Stufen-Freigabe und Schreibregeln prüfen, Fehler beheben, Ergebnis mit Fehlerquote. | „Prüfen · US“ |
 | `frage` – Frage | Auswertung aus echten Daten, Antwort in 1–3 Sätzen. Nichts ändern. | „Warum keine Antworten in FR?“ |
+| `gehirn` – Gehirn-Routine | Über `brain_routines.py faellig` (Wachhund) oder „Jetzt starten“: recherchieren/prüfen für die angegebene Dauer, im Rahmen handeln, Ergebnis als Wissen (`brain_knowledge.py add`) und kurz in den Gehirn-Chat (siehe „Gehirn-Routinen“). | „Gehirn-Routine Umsatz maximieren (15 min): …“ |
 | `website` – Website-Agent | Über Website-Agenten (`website_agents.py faellig`), Knopf „Beheben“ oder Auto-Fix: Aufgabe an der eigenen Website erledigen, Änderungen als PR (siehe „Website-Chat und Website-Agenten“). | „Website-Agent Fehler & Links: …“, „Website-Fix /fr/agences-web: …“ |
+
+## Gehirn-Routinen (kind `gehirn`)
+
+Inhaber 04.10.2026: „beim gehirn mit ihm auch einzelne workflows bauen können z.b. jeden tag um 14 uhr sollst du 15min
+recherchieren wie wir unser system verbessern können … jeden tag um 11 uhr sollst du prüfen ob alles glatt läuft …
+alles was er dort lernt soll in mds gepackt werden“. Routinen stehen in `signalwerk.brain_routines` (Name, Aufgabe,
+Uhrzeit **deutsche Zeit**, Tage täglich/werktags/bestimmte Wochentage, Dauer 5–60 min, aktiv). Angelegt auf
+`/dashboard/gehirn#routinen` (Vorlagen 14:00 System verbessern, 14:00 Umsatz maximieren, 11:00 Alles läuft glatt?)
+oder im Chat („jeden Tag um 14 Uhr …“ → Werkzeug `routine_anlegen`). Nie löschen – pausieren (`aktiv = false`).
+
+**Wer, wann:** Der Wachhund (alle 15 min) ruft `python scripts/brain_routines.py faellig --apply` auf: fällige, aktive
+Routinen (Uhrzeit erreicht, höchstens 6 h nachholen, heute noch nicht beauftragt, kein offener Auftrag) bekommen einen
+Auftrag `kind = gehirn`, `created_by = "Gehirn-Routine"` auf den ersten freien Agenten A1–A8 („Gehirn-Routine <Name>
+(<Dauer> min): <Aufgabe> | …“). „Jetzt starten“ im Dashboard macht dasselbe sofort. Die JARVIS-Runde (:08/:23/:38/:53)
+arbeitet ihn ab – keine Extrakosten (Claude-Abo, keine API).
+
+**So bearbeiten:**
+1. `start <id>`, dann für die angegebene Dauer recherchieren bzw. prüfen (WebSearch/WebFetch höchstens 8 Suchen,
+   Zahlen aus Supabase, Läufe/Workflows). Vorher das vorhandene Wissen lesen: `python scripts/brain_knowledge.py list`.
+2. **Im Rahmen selbst handeln** (docs/JARVIS.md „Selbst entscheiden“): kleine sichere Anpassungen direkt, sonst
+   Vorschlag in `decisions` (status `proposed`, `kurz_titel`/`kurz_grund`), größere Arbeit als Teilaufträge.
+3. **Wissen schreiben** (das Repo ist öffentlich – Erkenntnisse mit Zahlen/Strategie NIE ins Repo):
+   `python scripts/brain_knowledge.py add <slug> "<Titel>" erkenntnis.md --quelle routine --routine <routine_id> --anhaengen`
+   (eine Notiz je Routine/Thema, z. B. slug `routine-umsatz`; `--anhaengen` stellt den neuen Lauf mit Datum oben dazu;
+   jede Änderung bleibt als Version). Inhalt: was gefunden, Zahlen, Quellen-URLs, was getan, was als Nächstes.
+4. `fertig <id> "<1–2 Sätze, ≤ 300 Zeichen>"` – der Wachhund übernimmt das Ergebnis kurz nach
+   `brain_routines.last_result` (oder sofort: `python scripts/brain_routines.py ergebnis <routine_id> "…"`).
+5. **Gehirn-Update** in den Gehirn-Chat (`jarvis_chat.py gehirn-update -`, siehe oben), z. B.
+   „Aufgefallen: FR-Proben 0 seit 3 Tagen · Nächster Schritt: Betreff-Test FR gestartet“.
+
+## Gehirn beauftragt Agenten selbst
+
+Inhaber 04.10.2026: „ich will auch das das gehirn die agents selber nutzt und beauftragt für seine ziele“. Das Gehirn
+(Gehirn-Modus im Chat, Gehirn-Routinen, JARVIS-/Gehirn-Lauf) legt Aufträge für seine Ziele selbst an:
+
+- **Anlegen**: `python scripts/brain_routines.py auftrag <art> "<Auftrag>" --grund "<≤ 160 Zeichen, Ziel-Bezug>" [--markt US|UK|FR] [--agent N]`
+  (im Chat: Werkzeug `auftrag_anlegen` mit `grund`). `created_by = "Gehirn"`, Grund in `agent_tasks.grund`.
+  Regeln (gleich in `app/lib/agents.ts checkBrainTask` und `scripts/brain_routines.py check_brain_task`, Exit 2 = abgelehnt):
+  nur Arten leads/kaeufer/quelle/pruefen/frage, nur freie Agenten (höchstens ein offener Auftrag je Agent), Märkte nur
+  Fokus-Tests US/UK/FR (S2, `config/fokus.yaml`), höchstens 3 neue Gehirn-Aufträge je Stunde, nie Versand, Kosten,
+  Prüfregeln, Sperrliste, Notbremse, Abmeldung, Löschen. Eine Kurzmeldung „A3 beauftragt: <Grund>“ geht automatisch in
+  den Gehirn-Chat.
+- **Auswerten**: jeder Lauf ruft `python scripts/brain_routines.py ergebnisse` (fertige Gehirn-Aufträge, noch nicht
+  ausgewertet), schreibt das Gelernte als Wissen (`brain_knowledge.py add … --quelle agent --anhaengen`, z. B. slug
+  `gelernt-agenten`), vergibt bei Bedarf den nächsten Auftrag und markiert: `python scripts/brain_routines.py gelernt <task_id> …`.
+- **Sichtbar**: auf `/dashboard/gehirn` goldene Linie Gehirn → Agent im Satelliten-Ring (Hover: „vom Gehirn: Grund“),
+  in JARVIS goldener Rahmen und Kennzeichnung „vom Gehirn“ an der Agenten-Karte; Dashboard lädt alle 10 s nach,
+  solange Aufträge offen sind.
 
 ## Kunden-Aufträge (kind `kunde`)
 

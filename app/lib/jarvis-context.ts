@@ -2,7 +2,10 @@ import "server-only";
 import { db } from "@/lib/supabase";
 import { CONFIG, SEGMENT, loadFunnel, loadLive, loadOwnerSettings, loadStock } from "@/lib/dashboard-data";
 import { brake, mailboxes, monthly, realSubscriptions, sampleStock, type Live, type Stock } from "@/lib/dashboard-logic";
-import { budgetOf, budgetState, monthStart, type Bereich, type BudgetState } from "@/lib/jarvis-llm";
+import { budgetOf, budgetState, compactFlow, knowledgeBlock, monthStart, type Bereich, type BudgetState, type KnowledgeDoc } from "@/lib/jarvis-llm";
+import { nextRun, scheduleLabel, toRoutine, whenLabel, type BrainRoutine } from "@/lib/brain-routines";
+import { titelVon } from "@/lib/kurz";
+import { fromBrain } from "@/lib/agents";
 import { nextRunAt, type ChatSession } from "@/lib/jarvis-chat";
 import { WERK_SWITCHES, slotCounts, werkOn, type OwnerSettings, type WerkKey } from "@/lib/owner-settings";
 import { REG } from "@/lib/regler-data";
@@ -177,8 +180,13 @@ async function topic(session: ChatSession): Promise<string> {
     try {
       const { data } = await db().from("flows").select("id, name, kind, status, def, updated_at").eq("id", session.flow_id).abortSignal(T()).maybeSingle();
       if (!data) return head;
-      const nodes = (((data.def as { nodes?: { kind?: string; title?: string }[] } | null)?.nodes) ?? []).map((n) => n.title || n.kind).slice(0, 20);
-      return `${head}\nFlow im Baukasten: id ${data.id}, „${data.name}“, Art ${data.kind ?? "test"}, Status ${data.status}, Stand ${data.updated_at}, Bausteine: ${nodes.join(", ") || "keine"}`;
+      let pending: unknown = null;
+      const p = await db().from("flows").select("pending_def").eq("id", session.flow_id).abortSignal(T()).maybeSingle();
+      if (!p.error && p.data) pending = p.data.pending_def ?? null;
+      return `${head}\nFlow im Baukasten: id ${data.id}, „${data.name}“, Art ${data.kind ?? "test"}, Status ${data.status}, version (updated_at) ${data.updated_at}`
+        + `\nGespeicherter Flow (kompakt): ${compactFlow(data.def)}`
+        + (pending ? `\nOffener Vorschlag (noch nicht übernommen): ${compactFlow(pending)}` : "")
+        + "\nFlow-Änderungen selbst mit flow_speichern machen (vorher flow_lesen für die volle Fassung) – nicht an einen Agenten geben.";
     } catch {
       return head;
     }
@@ -208,7 +216,7 @@ export async function buildContext(session: ChatSession, s: Sources): Promise<st
   const b = bestand(s) as { laender?: { land: string; leads_neu_24h: number; kaeufer_mailfaehig: number; kaeufer_noch_nicht_angeschrieben: number }[] };
   const w = werke(s);
   return [
-    `Jetzt: ${new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", dateStyle: "full", timeStyle: "short" }).format(now)} (deutsche Zeit). Nächster Routine-Lauf: ${nextRunAt(now)}.`,
+    `Jetzt: ${new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", dateStyle: "full", timeStyle: "short" }).format(now)} (deutsche Zeit). Nächster Agenten-Lauf: ${nextRunAt(now)}.`,
     line("Versand", v.fehler ? v : { aktiv: v.aktiv, heute: `${v.heute_gesendet}/${v.tagesgrenze}`, naechster_lauf: v.naechster_lauf, notbremse: v.notbremse, nachfass: v.nachfass }),
     line("Proben", p.fehler ? p : { bereit: `${p.bereit_gesamt}/${p.soll_gesamt}`, seiten: p.seiten }),
     line("Freigabe", fg),
@@ -220,4 +228,62 @@ export async function buildContext(session: ChatSession, s: Sources): Promise<st
     line("API", api?.text ?? NA),
     top,
   ].join("\n");
+}
+
+// ------------------------------------------------------------------------------------------- Gehirn-Modus
+/** Gehirn-Routinen (Tabelle darf fehlen → leer). */
+export async function loadRoutines(): Promise<BrainRoutine[]> {
+  try {
+    const { data, error } = await db().from("brain_routines").select("*").order("uhrzeit").limit(100).abortSignal(T());
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((x) => toRoutine(x as Record<string, unknown>));
+  } catch {
+    return [];
+  }
+}
+
+/** Wissen des Gehirns, neueste zuerst (Tabelle darf fehlen → leer). */
+export async function loadKnowledge(limit = 60): Promise<(KnowledgeDoc & { id: string; created_at: string; routine_id: string | null })[]> {
+  try {
+    const { data, error } = await db().from("brain_knowledge").select("id, slug, titel, markdown, quelle, routine_id, created_at, updated_at")
+      .order("updated_at", { ascending: false }).limit(limit).abortSignal(T(6000));
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((x) => ({
+      id: String(x.id), slug: String(x.slug), titel: String(x.titel), markdown: String(x.markdown ?? ""), quelle: String(x.quelle ?? "agent"),
+      routine_id: (x.routine_id as string | null) ?? null, created_at: String(x.created_at), updated_at: String(x.updated_at),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/** Zusätzlicher Kontext für den Gehirn-Modus: Trichter je Land, Umsatz/Kunden, offene Vorschläge, laufende Tests,
+ *  letzte Änderungen von JARVIS, Routinen, Aufträge. Nur Zahlen und kurze Titel – keine Lead-Kontaktdaten. */
+export async function brainContext(s: Sources): Promise<string> {
+  const since7 = new Date(s.now.getTime() - 7 * 86_400_000).toISOString();
+  type Row = Record<string, unknown>;
+  const rows = (p: PromiseLike<{ data: unknown; error: unknown }>) => Promise.resolve(p).then((r) => (r.error ? null : ((r.data ?? []) as Row[])), () => null);
+  const [an, proposed, tests, done, routines, tasks] = await Promise.all([
+    antworten(),
+    rows(db().from("decisions").select("*").eq("status", "proposed").gte("created_at", since7).order("created_at", { ascending: false }).limit(8).abortSignal(T())),
+    rows(db().from("decisions").select("*").like("subject", "Test:%").order("created_at", { ascending: false }).limit(5).abortSignal(T())),
+    rows(db().from("decisions").select("*").eq("status", "done").gte("created_at", since7).order("created_at", { ascending: false }).limit(8).abortSignal(T())),
+    loadRoutines(),
+    rows(db().from("agent_tasks").select("*").order("created_at", { ascending: false }).limit(10).abortSignal(T())),
+  ]);
+  const short = (d: Row) => ({ titel: titelVon({ subject: String(d.subject ?? ""), kurz_titel: (d.kurz_titel as string | null) ?? null }), am: fmtBerlin(String(d.created_at)) });
+  return [
+    line("Trichter je Land seit Start", an.je_land_seit_start),
+    line("Offene Vorschläge (7 Tage)", proposed ? proposed.map(short) : NA),
+    line("A/B-Tests (letzte)", tests ? tests.map((d) => ({ ...short(d), status: d.status })) : NA),
+    line("JARVIS hat umgesetzt (7 Tage)", done ? done.map(short) : NA),
+    line("Gehirn-Routinen", routines.length ? routines.map((r) => ({ id: r.id, name: r.name, plan: scheduleLabel(r), aktiv: r.aktiv, naechster: whenLabel(nextRun(r, s.now), s.now), ergebnis: r.last_result })) : "keine"),
+    line("Letzte Aufträge", tasks ? tasks.map((t) => ({ agent: t.agent, art: t.kind, status: t.status, von: fromBrain(t as { created_by?: string | null }) ? "Gehirn" : t.created_by ?? null,
+      grund: t.grund ?? null, auftrag: String(t.brief ?? "").slice(0, 100), ergebnis: t.result ? String(t.result).slice(0, 160) : null, gelernt: !!t.gelernt_at })) : NA),
+  ].join("\n");
+}
+
+/** Wissen als Kontext-Block (neueste zuerst, gekürzt). */
+export async function knowledgeContext(): Promise<string> {
+  return knowledgeBlock(await loadKnowledge());
 }

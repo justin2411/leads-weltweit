@@ -9,12 +9,19 @@
  */
 import { CHAT_BY, nextAgentRound, type AgentTask } from "./agents.ts";
 
-export type SessionKind = "chat" | "bericht" | "baukasten" | "website";
+export type SessionKind = "chat" | "bericht" | "baukasten" | "website" | "gehirn";
+/** Schalter im Chat (Inhaber 04.10.2026: „den einen schalter … wo ich direkt mit dem super gehirn sprechen kann“):
+ *  assistent = Helfer zu Bausteinen und Themen, gehirn = JARVIS als Kopf mit Zielen, KPIs und Gehirn-Wissen (immer Opus). */
+export type ChatMode = "assistent" | "gehirn";
+export const CHAT_MODES: readonly ChatMode[] = ["assistent", "gehirn"];
+export const isChatMode = (x: unknown): x is ChatMode => x === "assistent" || x === "gehirn";
 export type MsgStatus = "offen" | "in_arbeit" | "fertig";
 export type ChatLink = { label: string; url: string };
 export type ChatSession = {
   id: string; title: string; kind: SessionKind; flow_id: string | null; created_at: string; updated_at: string;
-  read_at: string | null; archived: boolean;
+  read_at: string | null; archived: boolean; mode: ChatMode;
+  /** ungelesene JARVIS-Nachrichten (nur für die Gehirn-Sitzung gezählt) */
+  unread?: number;
   /** Zeit der letzten Nachricht (sonst null), letzte JARVIS-Antwort, offene Inhaber-Nachrichten */
   last_at?: string | null; last_jarvis_at?: string | null; open?: number;
 };
@@ -30,6 +37,15 @@ export const TITLE_MAX = 80;
 /** Pseudo-Sitzung für die früheren Chat-Aufträge (agent_tasks, created_by „JARVIS-Chat“) – nur lesbar. */
 export const LEGACY_ID = "frueher";
 export const BERICHT_TITLE = "Tagesbericht";
+/** Feste Sitzung „Gehirn“ (Inhaber 04.10.2026: „ein chat den man nicht löschen kann wo mir das gehirn immer updates gibt
+ *  … immer der goldene chat ganz oben … aber nicht löschbar“). Genau eine, nicht archivierbar/umbenennbar, Modus fest. */
+export const GEHIRN_TITLE = "Gehirn";
+
+/** Darf diese Sitzung archiviert/umbenannt werden? Nur eigene Chats – nie Gehirn, Tagesbericht, Baukasten, Website. */
+export const canArchive = (s: Pick<ChatSession, "kind">) => s.kind === "chat";
+/** Modus einer Sitzung: Gehirn-Sitzung immer „gehirn“. */
+export const modeOf = (s: Pick<ChatSession, "kind" | "mode"> | null | undefined, fallback: ChatMode = "assistent"): ChatMode =>
+  s?.kind === "gehirn" ? "gehirn" : s && isChatMode(s.mode) ? s.mode : fallback;
 
 export class ChatInputError extends Error {}
 
@@ -117,12 +133,19 @@ export function hasNew(s: Pick<ChatSession, "read_at" | "last_jarvis_at">): bool
 
 const lastOf = (s: ChatSession) => s.last_at ?? s.created_at;
 
-/** Liste links: Tagesbericht oben angeheftet, dann Chats nach letzter Nachricht (neueste zuerst). Baukasten- und
- *  Website-Sitzungen und archivierte erscheinen nicht (die stehen unter dem Baukasten, auf /dashboard/website bzw. im Archiv). */
+/** Liste links: Gehirn (golden) immer ganz oben angeheftet, dann Chats und der frühere Tagesbericht nach letzter
+ *  Nachricht (neueste zuerst). Baukasten- und Website-Sitzungen und archivierte erscheinen nicht (die stehen unter dem
+ *  Baukasten, auf /dashboard/website bzw. im Archiv). */
 export function orderSessions(list: ChatSession[]): ChatSession[] {
-  const bericht = list.filter((s) => s.kind === "bericht").slice(0, 1);
-  const chats = list.filter((s) => s.kind === "chat" && !s.archived).sort((a, b) => (lastOf(a) < lastOf(b) ? 1 : lastOf(a) > lastOf(b) ? -1 : 0));
-  return [...bericht, ...chats];
+  const gehirn = list.filter((s) => s.kind === "gehirn").slice(0, 1);
+  const chats = list.filter((s) => (s.kind === "chat" || s.kind === "bericht") && !s.archived)
+    .sort((a, b) => (lastOf(a) < lastOf(b) ? 1 : lastOf(a) > lastOf(b) ? -1 : 0));
+  return [...gehirn, ...chats];
+}
+
+/** Ungelesene JARVIS-Nachrichten seit dem letzten Lesen (Zeitstempel als Text, ISO). */
+export function unreadCount(jarvisTimes: string[], readAt: string | null): number {
+  return jarvisTimes.filter((t) => !readAt || t > readAt).length;
 }
 
 /** Zuletzt genutzte Chat-Sitzung (für „Schreib JARVIS“ auf der Startseite), sonst null. */
@@ -158,8 +181,9 @@ export function toMessage(x: Record<string, unknown>): ChatMessage {
 
 /** Datenbank-Zeile → Sitzung. */
 export function toSession(x: Record<string, unknown>): ChatSession {
-  const kind: SessionKind = x.kind === "bericht" || x.kind === "baukasten" || x.kind === "website" ? x.kind : "chat";
+  const kind: SessionKind = x.kind === "bericht" || x.kind === "baukasten" || x.kind === "website" || x.kind === "gehirn" ? x.kind : "chat";
   return {
+    mode: kind === "gehirn" ? "gehirn" : isChatMode(x.mode) ? x.mode : "assistent",
     id: String(x.id), title: String(x.title ?? "") || "Sitzung", kind, flow_id: (x.flow_id as string | null) ?? null,
     created_at: String(x.created_at ?? ""), updated_at: String(x.updated_at ?? ""), read_at: (x.read_at as string | null) ?? null,
     archived: x.archived === true,

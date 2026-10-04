@@ -8,11 +8,11 @@ import type { AskResult } from "./jarvis-ask.ts";
 
 export type { AskResult };
 
-export async function sendToJarvis(p: { sessionId?: string | null; flowId?: string | null; text: string }): Promise<AskResult> {
+export async function sendToJarvis(p: { sessionId?: string | null; flowId?: string | null; text: string; mode?: "assistent" | "gehirn" | null }): Promise<AskResult> {
   try {
     const r = await fetch("/api/jarvis/ask", {
       method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", cache: "no-store",
-      body: JSON.stringify({ session_id: p.sessionId ?? null, flow_id: p.flowId ?? null, text: p.text }),
+      body: JSON.stringify({ session_id: p.sessionId ?? null, flow_id: p.flowId ?? null, text: p.text, mode: p.mode ?? null }),
     });
     if (r.status === 404) return { ok: false, error: "Sitzung abgelaufen – bitte neu anmelden" };
     const j = (await r.json().catch(() => null)) as AskResult | null;
