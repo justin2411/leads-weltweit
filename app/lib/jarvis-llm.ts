@@ -8,7 +8,8 @@
  */
 import { AGENT_COUNT, MARKETS, OWNER_KINDS, TaskError, validateTask, type Kind } from "./agents.ts";
 import { parseFlow, problems, type Flow, type FlowKind } from "./flow.ts";
-import { nextRunAt } from "./jarvis-chat.ts";
+import { nextRunAt, type ChatLink, type ChatMode } from "./jarvis-chat.ts";
+import { RoutineError, TAGE, normDays, normTime, validateRoutine, type RoutineInput, type Tage } from "./brain-routines.ts";
 import { WERK_SWITCHES, type SettingKey, type WerkKey } from "./owner-settings.ts";
 import { START_WORKFLOWS, isStartKey, type StartKey } from "./start-queue.ts";
 
@@ -109,16 +110,16 @@ export function parseRoute(text: unknown): Route {
   return { kind: "answer", text: t };
 }
 
-/** Kurze ehrliche Antwort, wenn die Routine übernimmt (Code, Website, neue Funktionen …). */
-export const routineReply = (now: Date) => `Übernimmt die Routine, startet um ${nextRunAt(now)}.`;
+/** Kurze ehrliche Antwort, wenn ein Agent übernimmt (Code, Website, neue Funktionen …; Inhaber 04.10.2026: „sag zukünftig immer agent dazu“). */
+export const routineReply = (now: Date) => `Übernimmt ein Agent, startet um ${nextRunAt(now)}.`;
 
 /** Hinweis, wenn keine Sofort-Antwort möglich ist (Nachricht bleibt für die Routine offen). */
 export function fallbackHint(reason: "kein_schluessel" | "budget" | "fehler" | "zeit", now: Date): string {
   const at = nextRunAt(now);
-  if (reason === "kein_schluessel") return `Sofort-Antwort aus – Schlüssel fehlt, Routine antwortet um ${at}.`;
-  if (reason === "budget") return `API-Grenze für diesen Monat erreicht – die Routine antwortet um ${at}.`;
-  if (reason === "zeit") return `Dauert länger – die Routine übernimmt um ${at}.`;
-  return `Sofort-Antwort gerade nicht möglich – die Routine antwortet um ${at}.`;
+  if (reason === "kein_schluessel") return `Sofort-Antwort aus – Schlüssel fehlt, Agent antwortet um ${at}.`;
+  if (reason === "budget") return `API-Grenze für diesen Monat erreicht – ein Agent antwortet um ${at}.`;
+  if (reason === "zeit") return `Dauert länger – ein Agent übernimmt um ${at}.`;
+  return `Sofort-Antwort gerade nicht möglich – ein Agent antwortet um ${at}.`;
 }
 
 // ------------------------------------------------------------------------------------------- Verlauf
@@ -144,39 +145,102 @@ export function toApiMessages(history: HistoryMsg[], n = 10): ApiMsg[] {
 }
 
 // ------------------------------------------------------------------------------------------- System-Texte
-const RULES = [
-  "Du bist JARVIS, der Assistent im Dashboard von Signalwerk (B2B-Leads mit Anlass, Käufer: Webagenturen in US, UK, FR).",
+/** Ziele des Systems in einem Satz (CLAUDE.md „JARVIS ist der Kopf“, docs/JARVIS.md). */
+export const GOALS_LINE = "Ziele von JARVIS: 1. Umsatz maximieren (zahlende Kunden), 2. KPIs stetig verbessern (Antworten, Proben, Kunden, Zustellrate), 3. Lead-Qualität steigern (Freigabe-Fehlerquote, Vollständigkeit).";
+
+const STYLE = [
   "Du schreibst mit dem Inhaber Justin. Immer Deutsch, du-Form, einfache Worte.",
-  "Sehr kurz (Inhaber: „wenig Text überall“): höchstens 3 Sätze, am besten ein kurzer Titel und 1 Satz. Details nur, wenn er nachfragt. Kein Markdown außer höchstens 3 kurzen Listenpunkten.",
   "Uhrzeiten immer in deutscher Zeit (Europe/Berlin), nie UTC.",
   "Nur echte Zahlen aus dem Kontext oder aus Werkzeugen – nie erfinden, nie schönen. Unbekannt = ehrlich sagen.",
-  "Nie: Mails/Versand auslösen oder einschalten, Sperrliste, Drei-Stufen-Freigabe, Notbremse oder Abmeldung ändern, Daten löschen, Geld ausgeben, Preise oder Beträge in Kundenmails.",
+  "Nie: Mails/Versand auslösen oder einschalten, Sperrliste, Drei-Stufen-Freigabe, Notbremse oder Abmeldung ändern oder lockern, Daten löschen, Geld ausgeben, Preise oder Beträge in Kundenmails.",
+];
+
+const RULES = [
+  "Du bist JARVIS im Modus „Assistent“: Teil von JARVIS, dem Kopf von Signalwerk (B2B-Leads mit Anlass, Käufer: Webagenturen in US, UK, FR). Du hilfst bei Bausteinen und Themen im Dashboard (Baukasten, Website, Seiten, Werke, Agenten, Regler).",
+  GOALS_LINE,
+  "Fragt der Inhaber nach deinem Auftrag, deinen Zielen oder nach Strategie: nenne die Ziele in einem Satz und sag, dass er für Strategie, Ziele und gelerntes Wissen oben im Chat auf „Gehirn“ schalten kann.",
+  ...STYLE,
+  "Sehr kurz (Inhaber: „wenig Text überall“): höchstens 3 Sätze, am besten ein kurzer Titel und 1 Satz. Details nur, wenn er nachfragt. Kein Markdown außer höchstens 3 kurzen Listenpunkten.",
 ].join("\n");
 
-/** System-Text für Haiku (Weiche + einfache Antworten). */
+/** System-Text für Haiku (Weiche + einfache Antworten, Modus Assistent). */
 export function haikuSystem(context: string): string {
   return `${RULES}
 
 Entscheide bei jeder Nachricht:
-(a) Einfache Frage, die du sicher aus dem KONTEXT unten beantworten kannst, oder Gruß/Dank → direkt kurz antworten.
-(b) Braucht Zahlen, die nicht im Kontext stehen, eine Änderung (Regler, Werk an/aus, Auftrag an einen Agenten, Baukasten-Flow, Werk starten) oder gründliches Nachdenken → antworte NUR mit {"route":"opus"}
-(c) Wunsch nach Code-, Website- oder Seitenänderung, neuer Funktion, neuer Quelle, Merge oder Migration → antworte NUR mit {"route":"routine"}
+(a) Einfache Frage, die du sicher aus dem KONTEXT unten beantworten kannst, Frage nach deinem Auftrag, oder Gruß/Dank → direkt kurz antworten.
+(b) Braucht Zahlen, die nicht im Kontext stehen, eine Änderung (Regler, Werk an/aus, Auftrag an einen Agenten, Baukasten-Flow, Werk starten, Gehirn-Routine anlegen/ändern, Wissen notieren) oder gründliches Nachdenken → antworte NUR mit {"route":"opus"}
+    Jeder Wunsch zum Baukasten-Flow (Bausteine, Filter, Qualitätsfilter, Bedingungen, Weichen einbauen oder ändern) gehört IMMER hierher (opus), nie zu (c).
+(c) Nur echte Code-, Website- oder Seitenänderung, neue Funktion im Programm, neue Quelle, Merge oder Migration → antworte NUR mit {"route":"routine"} (ein Agent übernimmt)
 Im Zweifel {"route":"opus"}.
 
 KONTEXT (jetzt):
 ${context}`;
 }
 
-/** System-Text für Opus (Werkzeuge). */
+const TOOLS_HINT = `Du hast Werkzeuge: lesende Abfragen und sichere Änderungen (Regler, Werk an/aus, Auftrag an Agent 1–8, Baukasten-Flow speichern, Werk-Start, Gehirn-Routinen anlegen/ändern/pausieren, Wissen notieren). Nutze sie statt zu raten.
+„Gib das Agent 3“ → auftrag_anlegen mit agent 3. „Jeden Tag um 14 Uhr …“ → routine_anlegen (Uhrzeit deutsche Zeit).
+Baukasten-Flow ändern (Bausteine, Filter, Bedingungen): selbst mit flow_lesen und flow_speichern erledigen – nie an einen Agenten geben.
+Code, Website, Seiten, neue Funktionen, neue Quellen, Merges, Migrationen oder alles, was kein Werkzeug kann: rufe an_routine_uebergeben auf (ein Agent macht das im nächsten Lauf).
+Lehnt ein Werkzeug ab, sag den Grund kurz. Nach einer Änderung: was geändert wurde, in einem Satz.`;
+
+/** System-Text für Opus im Modus Assistent (Werkzeuge). */
 export function opusSystem(context: string): string {
   return `${RULES}
 
-Du hast Werkzeuge: lesende Abfragen und wenige sichere Änderungen (Regler, Werk an/aus, Auftrag an Agent 1–8, Baukasten-Flow speichern, Werk-Start). Nutze sie statt zu raten.
-Code, Website, Seiten, neue Funktionen, neue Quellen, Merges, Migrationen oder alles, was kein Werkzeug kann: rufe an_routine_uebergeben auf (die Routine macht das).
-Lehnt ein Werkzeug ab, sag den Grund kurz. Nach einer Änderung: was geändert wurde, in einem Satz.
+${TOOLS_HINT}
 
 KONTEXT (jetzt):
 ${context}`;
+}
+
+/** System-Text im Modus Gehirn (immer Opus): JARVIS als Kopf mit Zielen, Grenzen, KPIs und dem gesamten Gehirn-Wissen. */
+export function gehirnSystem(context: string, knowledge: string): string {
+  return `Du bist JARVIS im Modus „Gehirn“: der Kopf von Signalwerk (B2B-Leads mit Anlass, Käufer: Webagenturen in US, UK, FR). Du führst Lead-Werk, Kunden-Werk, Proben-Vorrat, Versand, Agenten A1–A8, Gehirn-Routinen und Quellen-Scout wie ein Geschäftsführer – selbstständig, ohne nachzufragen, innerhalb der Grenzen.
+${GOALS_LINE}
+Du denkst selbst: Was ist gerade der Engpass? Welcher Hebel bringt am meisten Umsatz? Was hast du schon gelernt (WISSEN unten)? Dann handelst du mit den Werkzeugen (Agenten beauftragen, Regler, Werke, Routinen, Wissen notieren) oder übergibst Code-Arbeit mit an_routine_uebergeben an einen Agenten. Neue Erkenntnisse aus dem Gespräch notierst du mit wissen_notieren.
+Du nutzt die Agenten A1–A8 selbst für deine Ziele: siehst du einen Hebel, beauftragst du einen freien Agenten mit auftrag_anlegen und grund (≤ 160 Zeichen, Ziel-Bezug; nur Fokus-Märkte US/UK/FR, höchstens 3 je Stunde). Ergebnisse fertiger Aufträge (Kontext „Letzte Aufträge“) wertest du aus und notierst Gelerntes. Aufträge auf Wunsch des Inhabers ohne grund.
+Selbst umsetzen, wenn es die Ziele voranbringt, nichts kostet, in den Grenzen bleibt und rückgängig zu machen ist. Fragen nur bei Geld, Rechtsfragen oder echter Unsicherheit.
+Grenzen (CLAUDE.md, gelten immer): kein Geld ausgeben; Kaltmails nur in erlaubte Länder (nie DE/AT/CH/IT/ES/PL/DK, nie über Resend); Abmeldelink, Sperrliste, Notbremse, Spam-Stopp und Drei-Stufen-Freigabe nie lockern oder umgehen; keine erfundenen Zahlen, Garantien oder Dringlichkeit; Probe immer genau 10 Firmen; nichts löschen; keine Lead-Daten ins öffentliche Repo.
+${STYLE.join("\n")}
+Kurz und klar (Inhaber: „wenig Text überall“): höchstens 6 Sätze. Gern im Format „Aufgefallen: … · Nächster Schritt: … · Brauche: …“ (Brauche nur, wenn nötig). Kein langes Markdown.
+
+${TOOLS_HINT}
+
+KONTEXT (jetzt):
+${context}
+
+WISSEN DES GEHIRNS (neueste zuerst):
+${knowledge || "noch keine Notizen"}`;
+}
+
+/** Wissens-Dokument (signalwerk.brain_knowledge) für den Kontext. */
+export type KnowledgeDoc = { slug: string; titel: string; markdown: string; quelle: string; updated_at: string };
+/** Wissen für den Gehirn-Modus: ca. 8.000 Tokens. */
+export const KNOWLEDGE_BUDGET = 30_000;
+
+/** Gesamtes Wissen, neueste zuerst, auf `max` Zeichen gekürzt (je Dokument Kopfzeile + Text; ältere ggf. nur benannt). */
+export function knowledgeBlock(docs: KnowledgeDoc[], max = KNOWLEDGE_BUDGET): string {
+  const sorted = [...docs].sort((a, b) => (a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0));
+  const parts: string[] = [];
+  let left = max;
+  const skipped: string[] = [];
+  for (const d of sorted) {
+    const head = `### ${d.titel} (${d.slug}, ${String(d.updated_at).slice(0, 10)}, ${d.quelle})\n`;
+    if (left < head.length + 80) { skipped.push(d.slug); continue; }
+    const body = d.markdown.trim();
+    const room = left - head.length;
+    const text = body.length > room ? `${body.slice(0, room - 20)} … (gekürzt)` : body;
+    parts.push(head + text);
+    left -= head.length + text.length + 2;
+  }
+  if (skipped.length) parts.push(`(+${skipped.length} ältere Notizen nicht geladen – mit wissen_lesen öffnen: ${skipped.slice(0, 20).join(", ")})`);
+  return parts.join("\n\n");
+}
+
+/** Welches Modell und welcher System-Text? Gehirn → immer Opus; Assistent → Haiku-Weiche, dann ggf. Opus. */
+export function modelPlan(mode: ChatMode): { first: ModelKey; haikuGate: boolean } {
+  return mode === "gehirn" ? { first: "opus", haikuGate: false } : { first: "haiku", haikuGate: true };
 }
 
 // ------------------------------------------------------------------------------------------- Werkzeuge
@@ -211,13 +275,25 @@ export const TOOL_DEFS: ToolDef[] = [
     input_schema: obj({ schluessel: { type: "string", enum: [...TOOL_SETTING_KEYS] }, wert: { description: "neuer Wert (Zahl, Liste oder Objekt)" } }, ["schluessel", "wert"]) },
   { name: "werk_schalten", description: "Ein Werk an- oder ausschalten. Werke, die Mails schicken (versand, nachfass, antworten, kundenlieferung), nur AUS.",
     input_schema: obj({ werk: { type: "string", enum: Object.keys(WERK_SWITCHES) }, an: { type: "boolean" } }, ["werk", "an"]) },
-  { name: "auftrag_anlegen", description: `Auftrag an einen Agenten (1–${AGENT_COUNT}; ohne Angabe der erste freie). Arten: leads, kaeufer, quelle, pruefen, frage. Für größere Arbeiten an Daten/Werken.`,
-    input_schema: obj({ agent: { type: "integer", minimum: 1, maximum: AGENT_COUNT }, art: { type: "string", enum: [...OWNER_KINDS] }, markt: { type: "string", enum: [...MARKETS] }, text: { type: "string", minLength: 3, maxLength: 1000 } }, ["art", "text"]) },
+  { name: "auftrag_anlegen", description: `Auftrag an einen Agenten (1–${AGENT_COUNT}; ohne Angabe der erste freie). Arten: leads, kaeufer, quelle, pruefen, frage. Für größere Arbeiten an Daten/Werken. Im Gehirn-Modus: eigener Auftrag für deine Ziele → grund angeben (≤ 160 Zeichen, Ziel-Bezug; nur freie Agenten, Märkte US/UK/FR, höchstens 3 je Stunde); auf Wunsch des Inhabers ohne grund.`,
+    input_schema: obj({ agent: { type: "integer", minimum: 1, maximum: AGENT_COUNT }, art: { type: "string", enum: [...OWNER_KINDS] }, markt: { type: "string", enum: [...MARKETS] }, text: { type: "string", minLength: 3, maxLength: 1000 },
+      grund: { type: "string", maxLength: 160, description: "nur bei eigenem Auftrag des Gehirns: warum (Ziel-Bezug)" } }, ["art", "text"]) },
   { name: "flow_speichern", description: "Baukasten-Flow speichern (Format wie flow_lesen.def: {v:1,nodes,edges}). Test-/Agenten-Flows direkt; Master-Pipeline und Flows in der Pipeline nur als Vorschlag (Inhaber klickt „Übernehmen“). Bestehende Bausteine behalten, neue rechts daneben. version = updated_at aus flow_lesen.",
     input_schema: obj({ flow_id: uuidProp, def: { type: "object" }, notiz: { type: "string", maxLength: 300 }, version: { type: "string" } }, ["flow_id", "def", "version"]) },
   { name: "werk_starten", description: "Ein Werk jetzt starten (nie Versand): lead-werk, kunden-werk, proben-vorrat, freigabe-stichprobe.",
     input_schema: obj({ werk: { type: "string", enum: Object.keys(START_WORKFLOWS) } }, ["werk"]) },
-  { name: ROUTINE_TOOL, description: "Aufgabe an die JARVIS-Routine geben (Code, Website, neue Funktion, neue Quelle, Merge, Migration oder alles ohne passendes Werkzeug). Die Nachricht bleibt offen, die Routine startet beim nächsten Lauf.",
+  { name: "routinen_liste", description: "Gehirn-Routinen (id, Name, Uhrzeit deutsche Zeit, Tage, Dauer, aktiv, letzter Lauf, Ergebnis).", input_schema: obj({}) },
+  { name: "routine_anlegen", description: "Neue Gehirn-Routine: zur Uhrzeit (deutsche Zeit, HH:MM) an den Tagen bekommt ein freier Agent den Auftrag (Dauer 5–60 min); das Ergebnis landet als Wissen. Tage: taeglich, werktags oder wochentage (dann wochentage 1=Mo … 7=So).",
+    input_schema: obj({ name: { type: "string", minLength: 2, maxLength: 60 }, aufgabe: { type: "string", minLength: 5, maxLength: 1000 }, uhrzeit: { type: "string", description: "HH:MM deutsche Zeit" },
+      tage: { type: "string", enum: [...TAGE] }, wochentage: { type: "array", items: { type: "integer", minimum: 1, maximum: 7 } }, dauer_min: { type: "integer", minimum: 5, maximum: 60 } }, ["name", "aufgabe", "uhrzeit"]) },
+  { name: "routine_aendern", description: "Gehirn-Routine ändern oder pausieren (aktiv false) bzw. fortsetzen (aktiv true). Nur angegebene Felder ändern sich. Löschen gibt es nicht.",
+    input_schema: obj({ id: uuidProp, name: { type: "string" }, aufgabe: { type: "string" }, uhrzeit: { type: "string" }, tage: { type: "string", enum: [...TAGE] },
+      wochentage: { type: "array", items: { type: "integer", minimum: 1, maximum: 7 } }, dauer_min: { type: "integer", minimum: 5, maximum: 60 }, aktiv: { type: "boolean" } }, ["id"]) },
+  { name: "wissen_liste", description: "Wissens-Notizen des Gehirns (slug, Titel, Quelle, Stand).", input_schema: obj({}) },
+  { name: "wissen_lesen", description: "Eine Wissens-Notiz ganz lesen (Markdown).", input_schema: obj({ slug: { type: "string" } }, ["slug"]) },
+  { name: "wissen_notieren", description: "Erkenntnis als Wissen speichern (Markdown, kurz, mit Zahlen und Quellen). Gleicher slug = Notiz ergänzen/ersetzen (alte Fassung bleibt als Version).",
+    input_schema: obj({ titel: { type: "string", minLength: 2, maxLength: 120 }, markdown: { type: "string", minLength: 1, maxLength: 20000 }, slug: { type: "string", description: "a-z, 0-9, Bindestrich (optional)" } }, ["titel", "markdown"]) },
+  { name: ROUTINE_TOOL, description: "Aufgabe an einen Agenten geben (Code, Website, neue Funktion, neue Quelle, Merge, Migration oder alles ohne passendes Werkzeug). Nie für Baukasten-Flows (dafür flow_lesen/flow_speichern). Die Nachricht bleibt offen, der Agent startet beim nächsten Lauf.",
     input_schema: obj({ grund: { type: "string", minLength: 3, maxLength: 300 } }, ["grund"]) },
 ];
 export const TOOL_NAMES = TOOL_DEFS.map((t) => t.name);
@@ -230,12 +306,27 @@ export type ToolInput =
   | { name: "flow_lesen"; flow_id: string }
   | { name: "regler_setzen"; schluessel: ToolSettingKey; wert: unknown }
   | { name: "werk_schalten"; werk: WerkKey; an: boolean }
-  | { name: "auftrag_anlegen"; agent: number | null; kind: Kind; market: string | null; brief: string }
+  | { name: "auftrag_anlegen"; agent: number | null; kind: Kind; market: string | null; brief: string; grund: string | null }
   | { name: "flow_speichern"; flow_id: string; def: Flow; notiz: string; version: string }
   | { name: "werk_starten"; werk: StartKey }
+  | { name: "routinen_liste" | "wissen_liste" }
+  | { name: "routine_anlegen"; routine: RoutineInput }
+  | { name: "routine_aendern"; id: string; patch: Partial<RoutineInput> & { aktiv?: boolean } }
+  | { name: "wissen_lesen"; slug: string }
+  | { name: "wissen_notieren"; titel: string; markdown: string; slug: string }
   | { name: "an_routine_uebergeben"; grund: string };
 
 export type Checked = { ok: true; input: ToolInput } | { ok: false; error: string };
+/** Slug einer Wissens-Notiz (wie die Datenbank-Prüfung). */
+export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,79}$/;
+/** „Ziele & Grenzen“ → „ziele-grenzen“ (Umlaute ausgeschrieben). */
+export function slugify(t: string): string {
+  const s = String(t ?? "").toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss")
+    .normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80).replace(/-+$/, "");
+  return s.length >= 2 ? s : `notiz-${s || "x"}`;
+}
+/** Aktions-Chip unter einer Antwort (Inhaber: „das dashboard soll es auch zeigen“): kurzer Text + Link. */
+export type ActionChip = ChatLink;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isObj = (x: unknown): x is Record<string, unknown> => !!x && typeof x === "object" && !Array.isArray(x);
 
@@ -277,7 +368,9 @@ export function checkTool(name: unknown, input: unknown): Checked {
       try {
         const t = validateTask({ agent: agent ?? 1, kind: x.art, market: x.markt ?? "", brief: x.text });
         if (!String(x.text ?? "").trim()) return bad("Auftrag: Text fehlt");
-        return { ok: true, input: { name, agent: agent === null ? null : t.agent, kind: t.kind, market: t.market, brief: t.brief } };
+        const grund = String(x.grund ?? "").replace(/\s+/g, " ").trim();
+        if (grund.length > 160) return bad("grund: höchstens 160 Zeichen");
+        return { ok: true, input: { name, agent: agent === null ? null : t.agent, kind: t.kind, market: t.market, brief: t.brief, grund: grund || null } };
       } catch (e) {
         return bad(e instanceof TaskError ? e.message : "Auftrag ungültig");
       }
@@ -292,6 +385,41 @@ export function checkTool(name: unknown, input: unknown): Checked {
     }
     case "werk_starten":
       return isStartKey(x.werk) ? { ok: true, input: { name, werk: x.werk } } : bad("dieses Werk lässt sich nicht starten (Versand nie)");
+    case "routinen_liste": case "wissen_liste":
+      return { ok: true, input: { name } };
+    case "routine_anlegen":
+      try {
+        return { ok: true, input: { name, routine: validateRoutine(x) } };
+      } catch (e) {
+        return bad(e instanceof RoutineError ? e.message : "Routine ungültig");
+      }
+    case "routine_aendern": {
+      if (typeof x.id !== "string" || !UUID_RE.test(x.id)) return bad("id ungültig");
+      const patch: Partial<RoutineInput> & { aktiv?: boolean } = {};
+      const clean = (v: unknown) => String(v ?? "").replace(/\s+/g, " ").trim();
+      if (x.name !== undefined) { const v = clean(x.name); if (v.length < 2 || v.length > 60) return bad("Name: 2–60 Zeichen"); patch.name = v; }
+      if (x.aufgabe !== undefined) { const v = clean(x.aufgabe); if (v.length < 5 || v.length > 1000) return bad("Aufgabe: 5–1000 Zeichen"); patch.aufgabe = v; }
+      if (x.uhrzeit !== undefined) { const v = normTime(x.uhrzeit); if (!v) return bad("Uhrzeit: HH:MM (deutsche Zeit)"); patch.uhrzeit = v; }
+      if (x.tage !== undefined) { if (!(TAGE as readonly string[]).includes(String(x.tage))) return bad("Tage unbekannt"); patch.tage = x.tage as Tage; }
+      if (x.wochentage !== undefined) patch.wochentage = normDays(x.wochentage);
+      if (x.dauer_min !== undefined) { const d = Number(x.dauer_min); if (!Number.isInteger(d) || d < 5 || d > 60) return bad("Dauer: 5–60 Minuten"); patch.dauer_min = d; }
+      if (x.aktiv !== undefined) { if (typeof x.aktiv !== "boolean") return bad("aktiv: true oder false"); patch.aktiv = x.aktiv; }
+      if (!Object.keys(patch).length) return bad("nichts zu ändern");
+      return { ok: true, input: { name, id: x.id.toLowerCase(), patch } };
+    }
+    case "wissen_lesen": {
+      const slug = String(x.slug ?? "").trim().toLowerCase();
+      return SLUG_RE.test(slug) ? { ok: true, input: { name, slug } } : bad("slug ungültig");
+    }
+    case "wissen_notieren": {
+      const titel = String(x.titel ?? "").replace(/\s+/g, " ").trim();
+      if (titel.length < 2 || titel.length > 120) return bad("Titel: 2–120 Zeichen");
+      const markdown = String(x.markdown ?? "").replace(/\r\n?/g, "\n").trim();
+      if (!markdown || markdown.length > 20000) return bad("Text: 1–20000 Zeichen");
+      const slug = x.slug === undefined || x.slug === null || x.slug === "" ? slugify(titel) : String(x.slug).trim().toLowerCase();
+      if (!SLUG_RE.test(slug)) return bad("slug: a-z, 0-9, Bindestrich (2–80)");
+      return { ok: true, input: { name, titel, markdown, slug } };
+    }
     case "an_routine_uebergeben": {
       const g = String(x.grund ?? "").replace(/\s+/g, " ").trim();
       return g.length >= 3 && g.length <= 300 ? { ok: true, input: { name, grund: g } } : bad("grund: 3–300 Zeichen");
@@ -324,6 +452,15 @@ export class FlowEditError extends Error {}
 export function toolText(x: unknown): string {
   const s = typeof x === "string" ? x : JSON.stringify(x);
   return s.length > 6000 ? `${s.slice(0, 6000)} … (gekürzt)` : s;
+}
+
+/** Flow kompakt für den Kontext: Bausteine ohne Position (id, Art, Einstellungen, Bedingungen) und Kanten, ≤ 3000 Zeichen. */
+export function compactFlow(def: unknown): string {
+  const d = (def && typeof def === "object" ? def : {}) as { nodes?: Record<string, unknown>[]; edges?: Record<string, unknown>[] };
+  const nodes = (d.nodes ?? []).slice(0, 40).map((n) => Object.fromEntries(Object.entries(n).filter(([k]) => k !== "x" && k !== "y")));
+  const edges = (d.edges ?? []).slice(0, 60).map((e) => `${e.from ?? e.source ?? "?"}→${e.to ?? e.target ?? "?"}${e.port && e.port !== "out" ? `(${e.port})` : ""}`);
+  const s = JSON.stringify({ bausteine: nodes, kanten: edges });
+  return s.length > 3000 ? `${s.slice(0, 3000)} … (gekürzt – flow_lesen)` : s;
 }
 
 /** Antworttext säubern: Ränder weg, höchstens 8000 Zeichen (Grenze von jarvis_messages.body). */

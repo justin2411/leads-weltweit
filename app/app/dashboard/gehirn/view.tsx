@@ -13,6 +13,10 @@ import { BrainStage } from "./brain-core";
 import { Fold } from "./fold";
 import { GH_CSS } from "./gehirn-css";
 import { Tip, TipHost } from "./tips";
+import { GH_ROUT_CSS, Routinen, Wissen } from "./routinen";
+import { LivePoll } from "../live-poll";
+import type { BrainRoutine } from "@/lib/brain-routines";
+import type { KnowledgeDoc } from "@/lib/jarvis-llm";
 
 /**
  * Ansicht der Gehirn-Seite (Daten aus page.tsx). Inhaber 04.10.2026: „denk beim gehirn bitte dran wenig text und gute
@@ -111,9 +115,12 @@ export type GehirnProps = {
   now: Date; settings: BrainSettings; pages: PageStat[]; decisions: Decision[]; report: Decision | null; error: string | null;
   tasks: AgentTask[]; workflows: Workflow[]; env: { name: string; purpose: string; required: boolean; set: boolean }[];
   legalFiles: boolean; stripe: { live: boolean; test: boolean };
+  /** Gehirn-Routinen (#routinen), Wissen (#wissen), Fehler beim Speichern, geöffnete Notiz, Gehirn-Chat */
+  routines?: BrainRoutine[]; knowledge?: (KnowledgeDoc & { id: string })[]; routineError?: string | null; openDoc?: string | null; chatId?: string | null;
 };
 
-export function GehirnView({ now, settings: s, pages: pg, decisions: rawDec, report, error: err, tasks, workflows, env, legalFiles, stripe }: GehirnProps) {
+export function GehirnView({ now, settings: s, pages: pg, decisions: rawDec, report, error: err, tasks, workflows, env, legalFiles, stripe,
+  routines = [], knowledge = [], routineError = null, openDoc = null, chatId = null }: GehirnProps) {
   const envMissing = env.filter((e) => e.required && !e.set);
   const canLive = legalFiles && !!s.legal_ready;
   const flag = (k: string) => !!(s as Record<string, unknown>)[k];
@@ -135,8 +142,12 @@ export function GehirnView({ now, settings: s, pages: pg, decisions: rawDec, rep
   return (
     <TipHost>
       <div className="v2 gh">
-        <style dangerouslySetInnerHTML={{ __html: GH_CSS }} />
-        <Crumbs items={[["JARVIS", "/dashboard/jarvis"], ["Gehirn", ""]]} />
+        <style dangerouslySetInnerHTML={{ __html: GH_CSS + GH_ROUT_CSS }} />
+        <LivePoll active={tasks.some((t) => t.status === "offen" || t.status === "laeuft")} />
+        <div className="gh-topbar">
+          <Crumbs items={[["JARVIS", "/dashboard/jarvis"], ["Gehirn", ""]]} />
+          <a href={chatId ? `/dashboard/jarvis/chat?s=${chatId}` : "/dashboard/jarvis/chat"} className="gh-talk"><Icon name="gehirn" size={15} /> Mit dem Gehirn sprechen</a>
+        </div>
         {err && <div className="card bad"><Icon name="fehler" size={16} /> Gehirn-Tabellen nicht lesbar: {err}</div>}
 
         <div className="kpis2 four">
@@ -253,6 +264,10 @@ export function GehirnView({ now, settings: s, pages: pg, decisions: rawDec, rep
             </details>
           )}
         </Fold>
+
+        {/* ---------------------------------------------------------------- Routinen und Wissen */}
+        <Routinen routines={routines} tasks={tasks} now={now} error={routineError} />
+        <Wissen docs={knowledge} open={openDoc} />
 
         {/* ---------------------------------------------------------------- Seiten */}
         <Fold name="seiten" open={false} title="Seiten" icon={<Icon name="start-seite" size={16} />}

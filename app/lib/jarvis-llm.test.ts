@@ -23,8 +23,8 @@ test("Routing: Weiche zu Opus/Routine, sonst Antwort von Haiku", () => {
 });
 
 test("Routine-Antwort und Hinweise nennen die deutsche Startzeit", () => {
-  assert.equal(routineReply(NOW), "Übernimmt die Routine, startet um 12:23.");
-  assert.equal(fallbackHint("kein_schluessel", NOW), "Sofort-Antwort aus – Schlüssel fehlt, Routine antwortet um 12:23.");
+  assert.equal(routineReply(NOW), "Übernimmt ein Agent, startet um 12:23.");
+  assert.equal(fallbackHint("kein_schluessel", NOW), "Sofort-Antwort aus – Schlüssel fehlt, Agent antwortet um 12:23.");
   assert.match(fallbackHint("budget", NOW), /Grenze .* 12:23/);
 });
 
@@ -123,7 +123,10 @@ test("Werkzeug-Prüfung: ungültige Eingaben werden abgelehnt", () => {
   assert.equal(checkTool("auftrag_anlegen", { agent: 9, art: "leads", text: "Leads holen" }).ok, false);
   assert.equal(checkTool("auftrag_anlegen", { art: "leads", text: "" }).ok, false);
   const a = checkTool("auftrag_anlegen", { art: "leads", markt: "uk", text: "  UK   Leads holen " });
-  assert.deepEqual(a, { ok: true, input: { name: "auftrag_anlegen", agent: null, kind: "leads", market: "UK", brief: "UK Leads holen" } });
+  assert.deepEqual(a, { ok: true, input: { name: "auftrag_anlegen", agent: null, kind: "leads", market: "UK", brief: "UK Leads holen", grund: null } });
+  const g = checkTool("auftrag_anlegen", { art: "pruefen", text: "US prüfen", grund: "  Fehlerquote  senken " });
+  assert.ok(g.ok && g.input.name === "auftrag_anlegen" && g.input.grund === "Fehlerquote senken");
+  assert.equal(checkTool("auftrag_anlegen", { art: "pruefen", text: "US prüfen", grund: "x".repeat(161) }).ok, false);
   // Flow: Format geprüft, Version Pflicht
   const id = "11111111-2222-4333-8444-555555555555";
   assert.equal(checkTool("flow_speichern", { flow_id: id, def: { v: 2 }, version: "x" }).ok, false);
@@ -149,4 +152,79 @@ test("API-Grenze im Dashboard: 0–500 €, höchstens 2 Nachkommastellen", asyn
   assert.equal(validateLlmBudget("12,5"), 12.5);
   assert.equal(validateLlmBudget("0"), 0);
   for (const bad of ["", "-1", "501", "1e3", "abc", "1.234"]) assert.throws(() => validateLlmBudget(bad), bad);
+});
+
+// ---------------------------------------------------------------- Modi Assistent | Gehirn
+import { GOALS_LINE, KNOWLEDGE_BUDGET, compactFlow, gehirnSystem, haikuSystem, knowledgeBlock, modelPlan, opusSystem, slugify, SLUG_RE } from "./jarvis-llm.ts";
+
+test("Assistent kennt die Ziele in einem Satz und verweist auf das Gehirn; Flow-Wünsche an Opus, nicht an den Agenten", () => {
+  const h = haikuSystem("KTX");
+  assert.ok(h.includes(GOALS_LINE));
+  assert.match(h, /Umsatz maximieren/);
+  assert.match(h, /„Gehirn“/);
+  assert.match(h, /Baukasten-Flow .* IMMER hierher \(opus\)/);
+  assert.ok(h.endsWith("KTX"));
+  const o = opusSystem("KTX");
+  assert.match(o, /flow_lesen und flow_speichern erledigen – nie an einen Agenten/);
+  assert.match(o, /auftrag_anlegen mit agent 3/);
+});
+
+test("Gehirn: Ziele, Grenzen, Kontext und Wissen im System-Text, immer Opus", () => {
+  const g = gehirnSystem("KPI-KONTEXT", "### Ziele & Grenzen");
+  for (const must of ["Modus „Gehirn“", "Umsatz maximieren", "KPIs", "Lead-Qualität", "kein Geld ausgeben", "Sperrliste", "Notbremse", "Drei-Stufen-Freigabe", "nichts löschen", "nie DE/AT/CH/IT/ES/PL/DK", "KPI-KONTEXT", "### Ziele & Grenzen", "wissen_notieren"])
+    assert.ok(g.includes(must), must);
+  assert.ok(g.indexOf("KPI-KONTEXT") < g.indexOf("### Ziele & Grenzen"));
+  assert.match(gehirnSystem("x", ""), /noch keine Notizen/);
+  assert.deepEqual(modelPlan("gehirn"), { first: "opus", haikuGate: false });
+  assert.deepEqual(modelPlan("assistent"), { first: "haiku", haikuGate: true });
+});
+
+test("Wissen: neueste zuerst, auf Budget gekürzt, ältere benannt", () => {
+  const D = (slug: string, at: string, n: number) => ({ slug, titel: slug.toUpperCase(), markdown: "x".repeat(n), quelle: "routine", updated_at: at });
+  const docs = [D("alt", "2026-10-01T00:00:00Z", 100), D("neu", "2026-10-04T00:00:00Z", 100), D("mitte", "2026-10-02T00:00:00Z", 100)];
+  const b = knowledgeBlock(docs);
+  assert.ok(b.indexOf("### NEU") < b.indexOf("### MITTE") && b.indexOf("### MITTE") < b.indexOf("### ALT"), b);
+  const small = knowledgeBlock([D("neu", "2026-10-04T00:00:00Z", 5000), D("alt", "2026-10-01T00:00:00Z", 5000)], 1000);
+  assert.ok(small.length < 1300, String(small.length));
+  assert.match(small, /\(gekürzt\)/);
+  assert.match(small, /\+1 ältere Notizen nicht geladen – mit wissen_lesen öffnen: alt/);
+  assert.ok(knowledgeBlock(Array.from({ length: 200 }, (_, i) => D(`n${i}`, `2026-10-0${1 + (i % 4)}T00:00:00Z`, 1000))).length <= KNOWLEDGE_BUDGET + 2000);
+  assert.equal(knowledgeBlock([]), "");
+});
+
+test("Werkzeuge: Routinen und Wissen prüfen", () => {
+  const id = "11111111-2222-3333-4444-555555555555";
+  const a = checkTool("routine_anlegen", { name: "Umsatz", aufgabe: "Umsatz recherchieren", uhrzeit: "14 Uhr", dauer_min: 15 });
+  assert.ok(a.ok && a.input.name === "routine_anlegen" && a.input.routine.uhrzeit === "14:00");
+  assert.equal(checkTool("routine_anlegen", { name: "Umsatz", aufgabe: "Umsatz recherchieren", uhrzeit: "26:00" }).ok, false);
+  assert.equal(checkTool("routine_anlegen", { name: "U", aufgabe: "Umsatz recherchieren", uhrzeit: "14:00" }).ok, false);
+  const p = checkTool("routine_aendern", { id, aktiv: false });
+  assert.ok(p.ok && p.input.name === "routine_aendern" && p.input.patch.aktiv === false);
+  assert.equal(checkTool("routine_aendern", { id }).ok, false); // nichts zu ändern
+  assert.equal(checkTool("routine_aendern", { id: "x", aktiv: false }).ok, false);
+  assert.equal(checkTool("routine_aendern", { id, dauer_min: 90 }).ok, false);
+  assert.equal(checkTool("routine_aendern", { id, aktiv: "nein" }).ok, false);
+  const w = checkTool("wissen_notieren", { titel: "Ziele & Grenzen", markdown: "# Ziele" });
+  assert.ok(w.ok && w.input.name === "wissen_notieren" && w.input.slug === "ziele-grenzen");
+  assert.equal(checkTool("wissen_notieren", { titel: "Ziele", markdown: "" }).ok, false);
+  assert.equal(checkTool("wissen_notieren", { titel: "Ziele", markdown: "x", slug: "../etc" }).ok, false);
+  assert.equal(checkTool("wissen_lesen", { slug: "ziele-grenzen" }).ok, true);
+  assert.equal(checkTool("wissen_lesen", { slug: "Ziele Grenzen" }).ok, false);
+  assert.equal(checkTool("routinen_liste", {}).ok, true);
+  assert.equal(checkTool("wissen_liste", {}).ok, true);
+  // Auftrag an Agent 3 („gib die Aufgabe dem Agenten 3“)
+  const t = checkTool("auftrag_anlegen", { agent: 3, art: "pruefen", text: "Stichprobe US prüfen" });
+  assert.ok(t.ok && t.input.name === "auftrag_anlegen" && t.input.agent === 3);
+  assert.equal(checkTool("auftrag_anlegen", { agent: 9, art: "pruefen", text: "x x x" }).ok, false);
+  assert.equal(slugify("Über Öl & Größe"), "ueber-oel-groesse");
+  assert.equal(slugify("!"), "notiz-x");
+  assert.ok(SLUG_RE.test(slugify("x".repeat(200))));
+});
+
+test("Baukasten-Flow kompakt im Kontext (ohne Positionen, mit Bedingungen)", () => {
+  const c = compactFlow(FLOW(TEMPLATES[0].id));
+  assert.ok(!/"x":/.test(c) && !/"y":/.test(c), c);
+  assert.match(c, /"kind":"quelle"/);
+  assert.match(c, /→/);
+  assert.equal(compactFlow(null), '{"bausteine":[],"kanten":[]}');
 });

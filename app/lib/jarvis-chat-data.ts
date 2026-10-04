@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "@/lib/supabase";
-import { BERICHT_TITLE, flowSessionTitle, toMessage, toSession, type ChatMessage, type ChatSession } from "@/lib/jarvis-chat";
+import { GEHIRN_TITLE, flowSessionTitle, toMessage, toSession, unreadCount, type ChatMessage, type ChatSession } from "@/lib/jarvis-chat";
 
 /**
  * Daten des JARVIS-Chats (Tabellen jarvis_sessions / jarvis_messages, Migration 20261004140000). Nur serverseitig mit
@@ -9,7 +9,8 @@ import { BERICHT_TITLE, flowSessionTitle, toMessage, toSession, type ChatMessage
  */
 export class ChatMissing extends Error {}
 
-const SESSION_COLS = "id, title, kind, flow_id, created_at, updated_at, read_at, archived";
+// "*": mode kommt erst mit Migration 20261004213000 – so klappt das Laden auch davor (Standard „assistent“)
+const SESSION_COLS = "*";
 // "*": model/cost_eur kommen erst mit Migration 20261004160500 – so klappt das Laden auch davor
 const MSG_COLS = "*";
 const T = () => AbortSignal.timeout(6000);
@@ -26,9 +27,10 @@ export async function loadSessions(archived = false): Promise<ChatSession[]> {
     .order("updated_at", { ascending: false }).limit(100).abortSignal(T());
   if (s.error) fail("jarvis_sessions", s.error);
   const list = (s.data ?? []).map((x) => toSession(x as Record<string, unknown>));
-  if (!archived && !list.some((x) => x.kind === "bericht")) {
-    // feste Sitzung fehlt (z. B. Migration ohne Startzeile) – anlegen; Doppel verhindert der eindeutige Index
-    const ins = await db().from("jarvis_sessions").insert({ title: BERICHT_TITLE, kind: "bericht" }).select(SESSION_COLS).maybeSingle();
+  if (!archived && !list.some((x) => x.kind === "gehirn")) {
+    // feste Sitzung „Gehirn“ fehlt (z. B. Migration ohne Startzeile) – anlegen; Doppel verhindert der eindeutige Index.
+    // Vor der Migration scheitert das still (Art „gehirn“ noch unbekannt) – die Liste geht trotzdem.
+    const ins = await db().from("jarvis_sessions").insert({ title: GEHIRN_TITLE, kind: "gehirn", mode: "gehirn" }).select(SESSION_COLS).maybeSingle();
     if (!ins.error && ins.data) list.push(toSession(ins.data as Record<string, unknown>));
   }
   if (!list.length) return list;
@@ -39,14 +41,16 @@ export async function loadSessions(archived = false): Promise<ChatSession[]> {
     db().from("jarvis_messages").select("session_id").in("session_id", ids).in("status", ["offen", "in_arbeit"]).limit(500).abortSignal(T()),
   ]);
   if (last.error) fail("jarvis_messages", last.error);
-  const lastAt = new Map<string, string>(), lastJ = new Map<string, string>(), openN = new Map<string, number>();
+  const lastAt = new Map<string, string>(), lastJ = new Map<string, string>(), openN = new Map<string, number>(), jTimes = new Map<string, string[]>();
   for (const m of last.data ?? []) {
     const sid = String(m.session_id), at = String(m.created_at);
     if (!lastAt.has(sid)) lastAt.set(sid, at);
     if (m.role === "jarvis" && !lastJ.has(sid)) lastJ.set(sid, at);
+    if (m.role === "jarvis") jTimes.set(sid, [...(jTimes.get(sid) ?? []), at]);
   }
   for (const m of open.data ?? []) openN.set(String(m.session_id), (openN.get(String(m.session_id)) ?? 0) + 1);
-  return list.map((x) => ({ ...x, last_at: lastAt.get(x.id) ?? null, last_jarvis_at: lastJ.get(x.id) ?? null, open: openN.get(x.id) ?? 0 }));
+  return list.map((x) => ({ ...x, last_at: lastAt.get(x.id) ?? null, last_jarvis_at: lastJ.get(x.id) ?? null, open: openN.get(x.id) ?? 0,
+    unread: x.kind === "gehirn" ? unreadCount(jTimes.get(x.id) ?? [], x.read_at) : 0 }));
 }
 
 /** Eine Sitzung (auch archiviert, auch Baukasten); unbekannt → null. */

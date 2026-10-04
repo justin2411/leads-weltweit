@@ -10,6 +10,7 @@ import type { Rec, Tip } from "@/lib/leitstand";
 import type { AgentTask } from "@/lib/agents";
 import { Ampeln, FlowMap, Ticker, type Kpi } from "./flow";
 import { AgentRow } from "./agents";
+import { LivePoll } from "../live-poll";
 import { Empfiehlt, JarvisChat } from "./empfiehlt";
 import type { StartChat } from "./chat/start";
 import { GatePanel, type GateView } from "./freigabe";
@@ -59,7 +60,10 @@ export function JarvisView(p: JarvisProps) {
         )}
       </Empfiehlt>
       <UndoBar />
-      <AgentRow tasks={p.tasks} active={p.activeAgent} startAt={p.startAt} customerAgents={p.customerAgents} />
+      <div id="agenten" className="jv-agenten">
+        <AgentRow tasks={p.tasks} active={p.activeAgent} startAt={p.startAt} customerAgents={p.customerAgents} />
+      </div>
+      <LivePoll active={p.tasks.some((t) => t.status === "offen" || t.status === "laeuft")} />
       <div className="jv-stage">
         <FlowMap stations={p.stations} edges={p.edges} active={p.activeAgent ? null : p.activeStation} href={p.stationHref} />
         {p.drawer}

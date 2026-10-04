@@ -72,6 +72,7 @@ function SatTip({ s }: { s: Satellite }) {
   return (
     <div className="gh-pop">
       <div className="gh-pop-h"><b>A{s.agent}</b><span>{s.state === "laeuft" ? `${s.progress} %` : s.state === "wartet" ? "wartet" : "frei"}</span></div>
+      {s.brain && <p className="gh-pop-g"><Icon name="gehirn" size={12} /> vom Gehirn{s.grund ? `: ${s.grund}` : ""}</p>}
       {s.brief && <p className="gh-pop-t">{s.brief}</p>}
       {s.step && <p>{s.step}</p>}
       {(s.since || s.queued > 0) && <p className="gh-pop-m">{s.since && `seit ${berlin(s.since, false)}`}{s.since && s.queued > 0 && " · "}{s.queued > 0 && `+${s.queued} wartet`}</p>}
@@ -119,7 +120,7 @@ export function BrainStage({ mode, label, hot, sats, marks, nowAngle, nowTime }:
       {/* Satelliten (kreisen, halten bei Hover/Tippen an) */}
       <div className="gh-orbit-l">
         {sats.map((s) => (
-          <div key={s.agent} className={`gh-arm st-${s.state}`} style={{ "--a": `${s.angle}deg` } as V}>
+          <div key={s.agent} className={`gh-arm st-${s.state}${s.brain ? " brain" : ""}`} style={{ "--a": `${s.angle}deg` } as V}>
             {s.state !== "frei" && <i className="gh-tether" />}
             {s.state === "laeuft" && <><i className="gh-signal" /><i className="gh-signal s2" /><i className="gh-signal s3" /></>}
             <div className="gh-satpos">

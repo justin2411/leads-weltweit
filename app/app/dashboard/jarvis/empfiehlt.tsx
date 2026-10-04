@@ -96,12 +96,12 @@ function SessionChat({ chat }: { chat: StartChat; startAt?: string }) {
   const s = chat.session;
   const href = s ? `/dashboard/jarvis/chat?s=${s.id}` : "/dashboard/jarvis/chat";
   return (
-    <MiniChat id="chat" title="Schreib JARVIS" sessionId={s?.id ?? null} messages={chat.messages} now={chat.now} instant={chat.instant}
+    <MiniChat id="chat" title="Schreib JARVIS" sessionId={s?.id ?? null} messages={chat.messages} now={chat.now} instant={chat.instant} mode={s?.mode}
       sessions={chat.list} footer={(
         <>
           <Link href={href} className="jchat-all"><Icon name="antwort" size={14} /> {chat.sessions > 1 ? `Alle ${chat.sessions} Sitzungen` : "Chat öffnen"}</Link>
-          <Link href={chat.berichtId ? `/dashboard/jarvis/chat?s=${chat.berichtId}` : "/dashboard/jarvis/chat"} className="jchat-all">
-            <Icon name="statistik" size={14} /> Tagesbericht{chat.berichtNeu ? <b className="jc-dot-s" aria-label="neu" /> : null}
+          <Link href={chat.gehirnId ? `/dashboard/jarvis/chat?s=${chat.gehirnId}` : "/dashboard/jarvis/chat"} className="jchat-all jchat-gehirn">
+            <Icon name="gehirn" size={14} /> Gehirn{chat.gehirnUnread > 0 ? <b className="jc-unread" aria-label={`${chat.gehirnUnread} neu`}>{chat.gehirnUnread}</b> : null}
           </Link>
         </>
       )} />

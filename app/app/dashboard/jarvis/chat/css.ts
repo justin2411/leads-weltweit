@@ -147,7 +147,7 @@ export const SOFORT_CSS = `
 .jmodal-w{display:grid;grid-template-columns:minmax(200px,260px) minmax(0,1fr);gap:0;width:80vw;height:80vh;max-width:1400px;border:1px solid var(--line);border-radius:14px;background:rgba(4,12,26,.98);overflow:hidden;box-shadow:0 30px 80px -20px rgba(0,0,0,.9)}
 .jmodal-w:not(:has(.jmodal-side)){grid-template-columns:minmax(0,1fr)}
 .jmodal-side{display:flex;flex-direction:column;gap:8px;padding:12px;border-right:1px solid var(--line);overflow:auto;min-width:0}
-.jmodal-main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.jmodal-main{display:flex;flex-direction:column;min-width:0;min-height:0;margin:0!important}
 .jmodal-body{display:flex;flex-direction:column;flex:1;min-height:0}
 .jmodal-body .jc-log{flex:1;min-height:0;max-height:none;resize:none}
 .jmodal-body>.jc-empty{margin:auto}
@@ -186,5 +186,35 @@ export const SOFORT_CSS = `
 .jvs-done li{display:flex;flex-wrap:wrap;gap:2px 8px;font-size:13px;min-width:0}
 .jvs-done li b{font-weight:600;overflow-wrap:anywhere}.jvs-done li time{color:var(--soft);font-size:12px}
 .jvs-done li span{flex:1 0 100%;color:var(--soft);font-size:12.5px}
+/* Schalter „Assistent | Gehirn“, goldener Gehirn-Chat (Inhaber 04.10.2026) */
+.jc-modebar{display:flex;align-items:center;min-width:0;padding:8px 12px;border-bottom:1px solid var(--line);background:rgba(9,24,48,.35)}
+.jc-mode{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
+.jc-mode-b{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--soft);font-weight:600;font-size:13px;cursor:pointer}
+.jc-mode-b:disabled{cursor:default;opacity:.45}
+.jc-mode-b.on{opacity:1}
+.jc-mode-b.m-gehirn svg{color:var(--gold)}
+.jc-mode-b.on.m-assistent{color:var(--cy2);border-color:rgba(95,212,255,.55);background:rgba(95,212,255,.12)}
+.jc-mode-b.on.m-gehirn{color:#02060f;background:linear-gradient(180deg,#f2dcae,#e2c68f);border-color:transparent;box-shadow:0 0 16px rgba(226,198,143,.7)}
+.jc-mode-b.on.m-gehirn svg{color:#02060f}
+.jc-mode-h{display:inline-flex;align-items:center;gap:4px;min-width:0;font-style:normal;font-size:12px;color:var(--soft)}
+.jc-mode.is-g .jc-mode-h{color:var(--gold2)}
+.jc-mode.cmp .jc-mode-b{min-height:32px;padding:0 11px;font-size:12.5px}
+.jc-main.is-g,.jmc.is-g,.jmodal-w.is-g{border-color:rgba(226,198,143,.6)!important;box-shadow:0 0 0 1px rgba(226,198,143,.12),0 0 34px -10px rgba(226,198,143,.55)}
+.jc-main.is-g .jc-head h1 svg,.jmodal-w.is-g .jc-head h1 svg{filter:drop-shadow(0 0 6px rgba(226,198,143,.9))}
+.jc-list a.gold{border-color:rgba(226,198,143,.65);background:linear-gradient(90deg,rgba(226,198,143,.2),rgba(226,198,143,.04));box-shadow:0 0 18px -6px rgba(226,198,143,.65)}
+.jc-list a.gold i{color:var(--gold);filter:drop-shadow(0 0 5px rgba(226,198,143,.9))}
+.jc-list a.gold .t{color:var(--gold2);font-weight:700}
+.jc-list a.mg i{color:var(--gold)}
+.jc-unread{font-style:normal;font-size:11px;line-height:18px;min-width:18px;padding:0 5px;border-radius:9px;text-align:center;background:var(--gold);color:#02060f;box-shadow:0 0 8px rgba(226,198,143,.8)}
+.jmc .jc-modebar{border:0;padding:2px 0 8px;background:none}
+.jmodal-body .jc-modebar{padding:8px 12px}
+.jchat-gehirn svg{color:var(--gold)}
+.jchat-gehirn .jc-unread{margin-left:4px}
+.jv-agenten{scroll-margin-top:90px}
+.jv-agenten .ag{position:relative}
+.jv-agenten .ag:has(.ag-brain){border-color:rgba(226,198,143,.6);box-shadow:0 0 18px -6px rgba(226,198,143,.6)}
+.ag-brain{position:absolute;top:4px;right:6px;display:inline-flex;align-items:center;gap:3px;padding:0 6px;border-radius:999px;font-size:10.5px;line-height:16px;
+  color:var(--gold2);border:1px solid rgba(226,198,143,.5);background:rgba(226,198,143,.1);pointer-events:none}
+@media (prefers-reduced-motion:no-preference){.jc-mode-b.on.m-gehirn{animation:jcglow 2.4s ease-in-out infinite}@keyframes jcglow{50%{box-shadow:0 0 26px rgba(226,198,143,.95)}}}
 @media (prefers-reduced-motion:no-preference){.jc-think{animation:jcpulse 1.2s ease-in-out infinite}@keyframes jcpulse{50%{opacity:.45}}}
 `;

@@ -8,7 +8,17 @@ Sendet nichts.
   python scripts/jarvis_chat.py start <msg_id>               # übernehmen: Status „in_arbeit“ (Exit 3 = schon übernommen)
   python scripts/jarvis_chat.py antwort <session_id> antwort.txt [--links '[{"label": "PR", "url": "https://…"}]'] [--zwischenstand]
                                                              # JARVIS-Antwort speichern; Nachrichten der Sitzung in Arbeit → fertig
-  python scripts/jarvis_chat.py bericht bericht.txt          # Tagesbericht (höchstens einmal je Tag, deutsche Zeit; sonst Exit 3)
+  python scripts/jarvis_chat.py bericht bericht.txt          # Tagesbericht als Kurzfassung in den Gehirn-Chat (höchstens einmal
+                                                             # je Tag, deutsche Zeit; sonst Exit 3; ≤ 1500 Zeichen)
+  python scripts/jarvis_chat.py gehirn-update - [--links '…']  # kurzes Update des Gehirns in den festen Gehirn-Chat (Text von
+                                                             # stdin): ≤ 3 Zeilen, ≤ 400 Zeichen, Format „Aufgefallen: … ·
+                                                             # Nächster Schritt: … · Brauche: …“; gleicher Text in 6 h → Exit 3;
+                                                             # mit „Brauche:“ zusätzlich Web-Push aufs Handy
+
+Gehirn-Chat (Inhaber 04.10.2026: „ein chat den man nicht löschen kann wo mir das gehirn immer updates gibt … sehr kurz
+und knapp … was ihm aufgefallen ist, was er als nächstes macht … immer der goldene chat ganz oben“): feste Sitzung
+kind 'gehirn' (genau eine, nie archivieren/umbenennen – die Datenbank verhindert es). Nachrichten des Inhabers dort
+immer im Gehirn-Modus beantworten (Ziele docs/JARVIS.md, Wissen scripts/brain_knowledge.py list/get).
 
 Datei „-“ = Text von der Standardeingabe. Exit 2 = Eingabe ungültig (Text 1–8000 Zeichen, Links: höchstens 10,
 label 1–80 Zeichen, url https://… oder /dashboard…).
@@ -17,6 +27,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import re
 import sys
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -28,6 +39,10 @@ BERLIN = ZoneInfo("Europe/Berlin")
 HISTORY = 20                 # Nachrichten Verlauf je Sitzung
 STALE = dt.timedelta(hours=2)  # „in_arbeit“ seit 2 h ohne Antwort → darf neu übernommen werden
 MAX_BODY, MAX_LINKS = 8000, 10
+UPDATE_MAX, UPDATE_LINES = 400, 3     # Gehirn-Update: sehr kurz
+BERICHT_MAX = 1500                    # Tagesbericht als Kurzfassung
+DEDUP = dt.timedelta(hours=6)         # gleicher Update-Text innerhalb 6 h → nicht erneut
+GEHIRN_TITLE = "Gehirn"
 MSG_COLS = "id,session_id,created_at,role,body,status,started_at,links"
 
 
@@ -125,14 +140,19 @@ def offen(db) -> list[dict]:
         by_session.setdefault(str(m["session_id"]), []).append(m)
     if not by_session:
         return []
-    sessions = db.select("jarvis_sessions", {"id": f"in.({','.join(by_session)})",
-                                             "select": "id,title,kind,flow_id,archived,created_at"}) or []
+    # "*": mode erst ab Migration 20261004213000
+    sessions = db.select("jarvis_sessions", {"id": f"in.({','.join(by_session)})", "select": "*"}) or []
     out = []
     for s in sessions:
         if s.get("archived"):  # „Chat leeren“: Inhaber hat die Sitzung abgelegt – nicht mehr bearbeiten
             continue
-        item = {"session": {k: s.get(k) for k in ("id", "title", "kind", "flow_id")},
+        mode = "gehirn" if s.get("kind") == "gehirn" else (s.get("mode") or "assistent")
+        item = {"session": {**{k: s.get(k) for k in ("id", "title", "kind", "flow_id")}, "mode": mode},
                 "offen": by_session[str(s["id"])], "verlauf": history(db, str(s["id"]))}
+        if mode == "gehirn":
+            item["hinweis"] = ("Gehirn-Modus: als Kopf antworten – Ziele (docs/JARVIS.md: Umsatz, KPIs, Lead-Qualität), "
+                               "aktuelle Zahlen und Wissen (python scripts/brain_knowledge.py list/get) einbeziehen, "
+                               "selbst handeln im Rahmen, neue Erkenntnisse mit brain_knowledge.py add notieren; kurz.")
         if s.get("kind") == "baukasten" and s.get("flow_id"):
             f = (db.select("flows", {"id": f"eq.{s['flow_id']}", "select": "id,name,kind,status,updated_at"}) or [None])[0]
             item["flow"] = f
@@ -177,13 +197,68 @@ def antwort(db, session_id: str, body: str, links: list[dict], zwischenstand: bo
     return {"id": (row or [{}])[0].get("id"), "fertig": done, "archiviert": bool(s.get("archived"))}
 
 
+def gehirn_session(db) -> dict:
+    """Feste Sitzung „Gehirn“ (kind 'gehirn', genau eine); fehlt sie, wird sie angelegt."""
+    s = (db.select("jarvis_sessions", {"kind": "eq.gehirn", "select": "id"}) or [None])[0]
+    if not s:
+        s = (db.insert("jarvis_sessions", {"title": GEHIRN_TITLE, "kind": "gehirn", "mode": "gehirn"}) or [None])[0]
+    if not s:
+        raise RuntimeError("Sitzung Gehirn fehlt")
+    return s
+
+
+def may_archive(session: dict) -> bool:
+    """Nur eigene Chats dürfen archiviert/umbenannt werden – nie Gehirn, Tagesbericht, Baukasten oder Website."""
+    return session.get("kind") == "chat"
+
+
+def _norm(text: str) -> str:
+    return " ".join(str(text or "").lower().split())
+
+
+def check_update(text: str) -> str:
+    """Gehirn-Update prüfen: 1–400 Zeichen, höchstens 3 Zeilen (leere Zeilen zählen nicht)."""
+    lines = [x.strip() for x in str(text or "").replace("\r\n", "\n").split("\n") if x.strip()]
+    body = "\n".join(lines)
+    if not body:
+        raise InputError("Update: Text fehlt")
+    if len(lines) > UPDATE_LINES:
+        raise InputError(f"Update: höchstens {UPDATE_LINES} Zeilen (sehr kurz: Aufgefallen · Nächster Schritt · Brauche)")
+    if len(body) > UPDATE_MAX:
+        raise InputError(f"Update: höchstens {UPDATE_MAX} Zeichen (ist {len(body)})")
+    return body
+
+
+def needs_owner(text: str) -> bool:
+    """Steht „Brauche:“ im Update (dann Push aufs Handy)?"""
+    return bool(re.search(r"(^|[\s·|])brauche\s*:", str(text or ""), re.I))
+
+
+def gehirn_update(db, body: str, links: list[dict] | None = None, push=None) -> dict | None:
+    """Kurzes Update in den Gehirn-Chat; None = gleicher Text in den letzten 6 h schon geschrieben."""
+    body = check_update(body)
+    s = gehirn_session(db)
+    t = now()
+    recent = db.select("jarvis_messages", {"session_id": f"eq.{s['id']}", "role": "eq.jarvis",
+                                           "created_at": f"gte.{(t - DEDUP).isoformat()}", "select": "id,body"}) or []
+    if any(_norm(m.get("body")) == _norm(body) for m in recent):
+        return None
+    row = db.insert("jarvis_messages", {"session_id": s["id"], "role": "jarvis", "body": body, "status": None,
+                                        "links": links or [], "created_at": t.isoformat()})
+    pushed = False
+    if needs_owner(body):
+        if push is None:
+            from lib.push import notify as push
+        pushed = bool(push("Gehirn braucht dich", body, f"/dashboard/jarvis/chat?s={s['id']}", "other"))
+    return {"id": (row or [{}])[0].get("id"), "session_id": s["id"], "push": pushed}
+
+
 def bericht(db, body: str) -> dict | None:
-    """Tagesbericht in die feste Sitzung „Tagesbericht“; None = heute (deutsche Zeit) schon geschrieben."""
-    s = (db.select("jarvis_sessions", {"kind": "eq.bericht", "select": "id"}) or [None])[0]
-    if not s:
-        s = (db.insert("jarvis_sessions", {"title": "Tagesbericht", "kind": "bericht"}) or [None])[0]
-    if not s:
-        raise RuntimeError("Sitzung Tagesbericht fehlt")
+    """Tagesbericht (Kurzfassung) in den Gehirn-Chat (Inhaber 04.10.2026: Tagesbericht-Meldungen gehen in den
+    Gehirn-Chat; die frühere Sitzung „Tagesbericht“ bleibt als normale Sitzung erhalten). None = heute schon geschrieben."""
+    if len(body) > BERICHT_MAX:
+        raise InputError(f"Tagesbericht: Kurzfassung höchstens {BERICHT_MAX} Zeichen (ist {len(body)})")
+    s = gehirn_session(db)
     # Nur echte Tagesberichte zählen (done_at gesetzt) – Antworten auf Rückfragen des Inhabers in dieser Sitzung
     # (`antwort`, done_at leer) sperren den Bericht des Tages nicht.
     since = berlin_day_start(now()).isoformat()
@@ -215,6 +290,15 @@ def main(argv: list[str]) -> int:
             links = parse_links(args[args.index("--links") + 1] if "--links" in args else None)
             res = antwort(DB(), args[0], _read(args[1]), links, "--zwischenstand" in args)
             print(f"antwort: {json.dumps(res, ensure_ascii=False)}")
+            return 0
+        if cmd == "gehirn-update" and len(args) >= 1:
+            links = parse_links(args[args.index("--links") + 1] if "--links" in args else None)
+            text = sys.stdin.read() if args[0] == "-" else Path(args[0]).read_text(encoding="utf-8")
+            res = gehirn_update(DB(), text, links)
+            if res is None:
+                print("gehirn-update: gleicher Text in den letzten 6 h – übersprungen")
+                return 3
+            print(f"gehirn-update: {json.dumps(res, ensure_ascii=False)}")
             return 0
         if cmd == "bericht" and len(args) == 1:
             res = bericht(DB(), _read(args[0]))

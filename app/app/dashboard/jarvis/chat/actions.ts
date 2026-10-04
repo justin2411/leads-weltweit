@@ -9,7 +9,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/supabase";
-import { ChatInputError, checkBody, checkTitle, isSessionId, titleFrom, type ChatMessage, type ChatSession } from "@/lib/jarvis-chat";
+import { ChatInputError, checkBody, checkTitle, isChatMode, isSessionId, titleFrom, type ChatMessage, type ChatSession } from "@/lib/jarvis-chat";
 import { loadMessages, loadSession } from "@/lib/jarvis-chat-data";
 import { InputError, validateLlmBudget } from "@/lib/owner-settings";
 import { requireOwner } from "../../actions";
@@ -62,10 +62,19 @@ export async function sendChat(sessionId: string | null, text: string): Promise<
   return guard("Senden", async () => ({ sessionId: await send(sessionId, text) }));
 }
 
+/** Feste Sitzungen (Gehirn, Tagesbericht) lassen sich weder umbenennen noch archivieren – ausdrücklich ablehnen. */
+async function assertOwnChat(id: string) {
+  const s = await loadSession(id.toLowerCase());
+  if (!s) throw new ChatInputError("Sitzung unbekannt");
+  if (s.kind === "gehirn") throw new ChatInputError("Der Gehirn-Chat bleibt immer");
+  if (s.kind !== "chat") throw new ChatInputError("nur eigene Sitzungen lassen sich ändern");
+}
+
 export async function renameChatSession(id: string, title: string): Promise<ChatResult> {
   return guard("Umbenennen", async () => {
     const t = checkTitle(title);
     if (!isSessionId(id)) throw new ChatInputError("Sitzung unbekannt");
+    await assertOwnChat(id);
     const { data, error } = await db().from("jarvis_sessions").update({ title: t }).eq("id", id).eq("kind", "chat").select("id");
     if (error) throw new Error(error.message);
     if (!data?.length) throw new ChatInputError("nur eigene Sitzungen lassen sich umbenennen");
@@ -78,10 +87,28 @@ export async function renameChatSession(id: string, title: string): Promise<Chat
 export async function archiveChatSession(id: string): Promise<ChatResult> {
   return guard("Archivieren", async () => {
     if (!isSessionId(id)) throw new ChatInputError("Sitzung unbekannt");
+    await assertOwnChat(id);
     const { data, error } = await db().from("jarvis_sessions").update({ archived: true }).eq("id", id).eq("kind", "chat").select("id");
     if (error) throw new Error(error.message);
     if (!data?.length) throw new ChatInputError("Tagesbericht bleibt immer");
     await log("jarvis:archive", id, null);
+    return {};
+  });
+}
+
+/** Schalter „Assistent | Gehirn“ je Sitzung (die Gehirn-Sitzung bleibt immer Gehirn). */
+export async function setChatMode(id: string, mode: string): Promise<ChatResult> {
+  return guard("Umschalten", async () => {
+    if (!isSessionId(id)) throw new ChatInputError("Sitzung unbekannt");
+    if (!isChatMode(mode)) throw new ChatInputError("Modus unbekannt");
+    const s = await loadSession(id.toLowerCase());
+    if (!s || s.archived) throw new ChatInputError("Sitzung unbekannt");
+    if (s.kind === "gehirn") { if (mode !== "gehirn") throw new ChatInputError("Der Gehirn-Chat spricht immer mit dem Gehirn"); return {}; }
+    if (s.mode === mode) return {};
+    const { error } = await db().from("jarvis_sessions").update({ mode }).eq("id", s.id);
+    if (error) throw new Error(error.message);
+    await log("jarvis:mode", s.id, { mode });
+    revalidatePath("/dashboard/jarvis/chat");
     return {};
   });
 }

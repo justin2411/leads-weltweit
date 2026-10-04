@@ -61,12 +61,36 @@ nehmen. jeden tag besser“
   Sitzung als Kontext, führt Gewünschtes direkt aus (Rechte wie oben) und schreibt in einfachen Worten zurück, was
   er getan hat (mit echten Zahlen, Links zu PRs/Seiten). Große Aufgaben: Zwischenstand als Nachricht, weiter im
   nächsten Lauf.
-- **Tagesbericht**: einmal täglich (erster Lauf nach 07:00 deutscher Zeit) in der festen Sitzung „Tagesbericht“:
+- **Tagesbericht**: einmal täglich (erster Lauf nach 07:00 deutscher Zeit) als Kurzfassung im Gehirn-Chat:
   was er in den letzten 24 h angepasst hat, laufende A/B-Tests und Ergebnisse, Kennzahlen gegenüber Vortag
   (Antworten, Proben, Kunden, Umsatz, Freigabe-Fehlerquote), was er heute vorhat. Kurz, ehrlich, auch schlechte Zahlen.
 - **Weiterbildung**: täglich 1–3 gezielte Recherchen (Zustellbarkeit, Kaltmail-Praxis, Lead-Quellen, Preise,
   Wettbewerber) und daraus höchstens ein kleiner Test; Erkenntnisse kurz in `decisions` (subject „Gelernt: …“,
   mit Quellen) und im Tagesbericht.
+
+## Gehirn-Modus, Gehirn-Chat, Routinen und Wissen (Inhaber 04.10.2026)
+
+„einmal mit jarvis zu sprechen der das gehirn hat … KPIs optimieren, umsatz maximieren und qualität steigern … beim
+gehirn mit ihm auch einzelne workflows bauen … alles was er dort lernt soll in mds gepackt werden“ und „einen chat den
+man nicht löschen kann wo mir das gehirn immer updates gibt … sehr kurz und knapp“.
+
+- **Schalter „Assistent | Gehirn“** in jedem Chat. Im Gehirn-Modus antwortet JARVIS als Kopf (Ziele oben, Grenzen
+  unten, aktuelle KPIs, gesamtes Wissen) – sofort über die API (immer Opus) oder, ohne Schlüssel/Budget, im nächsten
+  Agenten-Lauf (`jarvis_chat.py offen` zeigt `mode: gehirn`).
+- **Gehirn-Chat** (fest, golden, nicht löschbar): JARVIS **muss** dort kurz berichten (`jarvis_chat.py gehirn-update -`,
+  ≤ 3 Zeilen: „Aufgefallen: … · Nächster Schritt: … · Brauche: …“) nach jeder Gehirn-Routine und nach jedem Lauf mit
+  Änderung (Merge, A/B-Test gestartet/entschieden, Engpass erkannt, Agent beauftragt). Der Tagesbericht geht als
+  Kurzfassung ebenfalls dorthin (`jarvis_chat.py bericht`). „Brauche:“ nur bei Geld, Rechtsfrage oder echter Unsicherheit.
+- **Gehirn-Routinen** (`/dashboard/gehirn#routinen`, `signalwerk.brain_routines`): zur Uhrzeit (deutsche Zeit) legt der
+  Wachhund einen Auftrag `kind = gehirn` für einen freien Agenten an; Ablauf in docs/AGENTEN.md „Gehirn-Routinen“.
+- **Agenten selbst beauftragen** (Inhaber 04.10.2026: „das gehirn die agents selber nutzt und beauftragt für seine
+  ziele“): das Gehirn vergibt Aufträge an freie Agenten mit kurzem Grund (`brain_routines.py auftrag … --grund`, im
+  Chat `auftrag_anlegen` mit `grund`; höchstens 3 je Stunde, nur US/UK/FR, nie Versand/Kosten/Prüfregeln/Sperrliste),
+  liest fertige Ergebnisse (`brain_routines.py ergebnisse`), lernt daraus (Wissen) und vergibt den nächsten Auftrag.
+  Details docs/AGENTEN.md „Gehirn beauftragt Agenten selbst“.
+- **Wissen** (`/dashboard/gehirn#wissen`, `signalwerk.brain_knowledge`, Markdown, Versionen): was das Gehirn lernt,
+  steht dort – nie im öffentlichen Repo. `scripts/brain_knowledge.py add/list/get`; der Gehirn-Modus lädt alles.
+  „Weiterbildung“ (oben) schreibt ihre Erkenntnisse zusätzlich dorthin.
 
 ## Selbst entscheiden oder fragen (Inhaber 04.10.2026)
 

@@ -8,9 +8,9 @@ export const maxDuration = 60;
 
 /**
  * Sofort-Antwort im JARVIS-Chat (Inhaber 04.10.2026: „alle chats sollen direkt antworten“). Nur mit gültiger
- * Inhaber-Sitzung (sonst 404 wie das Dashboard) und nur vom eigenen Ursprung. POST {session_id?, flow_id?, text}:
+ * Inhaber-Sitzung (sonst 404 wie das Dashboard) und nur vom eigenen Ursprung. POST {session_id?, flow_id?, text, mode?}:
  * session_id = Sitzung (Chat, Tagesbericht, Baukasten, Website); leer = neue Chat-Sitzung; flow_id = Baukasten-Chat
- * des Flows. Antwort: {ok, sessionId, messageId, reply, model, cost, routine, changed, fallback}. Ablauf: lib/jarvis-ask.ts.
+ * des Flows; mode = „assistent“ | „gehirn“ (Schalter im Chat). Antwort: {ok, sessionId, messageId, reply, model, cost, routine, changed, fallback}. Ablauf: lib/jarvis-ask.ts.
  */
 const notFound = () => new Response("Not found", { status: 404 });
 
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   }
   const data = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   if (!data || typeof data !== "object") return Response.json({ ok: false, error: "Nachricht fehlt" }, { status: 400 });
-  const r = await askJarvis({ sessionId: data.session_id, flowId: data.flow_id, text: data.text });
+  const r = await askJarvis({ sessionId: data.session_id, flowId: data.flow_id, text: data.text, mode: data.mode });
   return Response.json(r, { status: r.ok ? 200 : 400, headers: { "Cache-Control": "no-store" } });
 }
 
