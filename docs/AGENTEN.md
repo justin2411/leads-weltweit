@@ -4,6 +4,9 @@ Inhaber 03.10.2026: „einzelne agenten nutzen die sachen für mich machen, z.b.
 holen für den markt“. Der Inhaber erteilt Aufträge in JARVIS (Agenten-Leiste, „+ Auftrag“, oder einen gelben Hinweis bzw. den Engpass auf A1–A4 ziehen – dann steht der Auftragstext schon fertig drin). Eine Claude-Sitzung
 (Routine „Agenten“, stündlich) bearbeitet sie nach dieser Anleitung. CLAUDE.md gilt immer zuerst.
 
+Nach den Aufträgen macht jede Sitzung den JARVIS-Lauf nach `docs/JARVIS.md` (Engpass protokollieren, A/B-Tests
+auswerten und bei anhaltendem Engpass selbst starten).
+
 ## Ablauf je Sitzung
 
 1. `python scripts/agent_tasks.py offen` – nichts offen: sofort beenden (keine weitere Arbeit, keine Nachricht).
@@ -70,9 +73,25 @@ beantworten** – der Inhaber ist schon informiert (Mail + Push); der Agent best
 sich persönlich meldet. Drei-Stufen-Freigabe, „jeder Lead einmal pro Abo“ und die Freigabe der ersten Lieferung
 durch den Inhaber bleiben unberührt. Mails nur an den Kunden selbst, nie an Dritte, nie Kaltmails.
 
-## Grenzen (nie ohne Inhaber)
+## Berechtigungen (Inhaber 04.10.2026: „gib den agents wirklich jede berechtigung“)
 
-Kein Versand und kein Einschalten des Versands (Ausnahme: Antworten der Kunden-Agenten an zahlende Kunden mit
-`customer_agents.py reply`, siehe oben), keine Kosten, Sperrliste und Prüfregeln nie lockern, keine neuen
-Mail-Länder, keine destruktiven Datenbankänderungen, keine Lead-Daten ins Repo. Unklar oder rechtlich offen:
-`fehler <id> "Braucht deine Entscheidung: …"` – der Inhaber sieht es im Dashboard.
+Agenten dürfen alles selbst machen, was die Hauptsitzung darf – ohne Rückfrage:
+- Code ändern, Tests, PR, bei grüner CI **selbst nach main mergen** (Deployment)
+- Datenbank: lesen, schreiben, nicht destruktive Migrationen anlegen **und anwenden**
+- Workflows starten (`gh workflow run` / dispatch), Belegungsplan, Regler, Speicher, Proben-Vorrat, eigene Agenten,
+  Master-Pipeline und Test-Flows einstellen; Werke an/aus
+- neue Quellen und Käuferquellen einbauen, Kategorien erweitern, neue Länder nach den Scout-Regeln aufnehmen
+- Vercel: neue Variablen anlegen und neu deployen (`vercel.yml`)
+- Auftrag zu groß für eine Runde: in Teilaufträge zerlegen (neue Zeilen in `agent_tasks`) und weiterarbeiten
+- Technische Hindernisse (Zugriff, Timeout, rote CI) selbst lösen oder umgehen – das ist nie „Inhaber-Entscheidung“
+
+## Was trotzdem nie geht (Gesetz bzw. Geld des Inhabers)
+
+- Geld ausgeben (Tarife, Upgrades, bezahlte APIs/Dienste) – Inhaber fragen
+- Mails nur als Kaltmails im Versand-Werk oder als Antworten der Kunden-Agenten an zahlende Kunden
+  (`customer_agents.py reply`); Kaltmails in Länder ohne `allowed: true`, nie DE/AT/CH/IT/ES/PL/DK; Abmeldelink/Sperrliste/Notbremse/Drei-Stufen-
+  Freigabe nie lockern oder umgehen (Rechtspflicht und Schutz der Absenderdomain)
+- Daten löschen – nur der Inhaber per Klick im Dashboard (Aufräumen)
+- Keine Lead-Daten ins öffentliche Repo, kein Scraping verbotener Plattformen
+
+`fehler <id> "Braucht deine Entscheidung: …"` nur für genau diese Punkte. Alles andere: selbst lösen.
