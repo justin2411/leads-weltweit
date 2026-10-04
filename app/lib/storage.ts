@@ -21,7 +21,7 @@ export type StorageData = {
 export type SegmentInfo = { id: string; email_countries: string[] | null };
 
 export const DB_LIMIT_BYTES = 8 * 1024 ** 3; // Supabase Pro: 8 GB inklusive
-export const LEAD_COUNTRIES = ["US", "UK", "FR", "IE", "NL", "BE", "SE"] as const;
+export const LEAD_COUNTRIES = ["US", "UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK", "MX", "BR"] as const;
 export const ALL = "alle";
 
 const num = (x: unknown) => (Number.isFinite(Number(x)) ? Number(x) : 0);

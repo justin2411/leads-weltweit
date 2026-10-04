@@ -12,7 +12,7 @@ export type DecisionRow = {
 export type Proposal = { id: number; title: string; reason: string; full: string; numbers: [string, string][]; at: string };
 
 export const TITLE_MAX = 60;
-export const REASON_MAX = 140;
+export const REASON_MAX = 160;
 export const PROPOSAL_PREFIX = /^\s*vorschlag\s*:\s*/i;
 export const DONE_PREFIX = /^\s*umgesetzt\s*:\s*/i;
 
@@ -54,7 +54,7 @@ export function numbersOf(metrics: unknown): [string, string][] {
 export function toProposal(r: DecisionRow): Proposal {
   return {
     id: Number(r.id),
-    title: cut(str(r.kurz_titel) ?? kurzTitel(r.subject), TITLE_MAX),
+    title: kurzTitel(str(r.kurz_titel) ?? r.subject), // Kurzspalte kann „Vorschlag:“ noch enthalten (Trigger aus subject)
     reason: cut(str(r.kurz_grund) ?? kurzGrund(r.reasoning), REASON_MAX),
     full: String(r.reasoning ?? "").trim(),
     numbers: numbersOf(r.metrics),

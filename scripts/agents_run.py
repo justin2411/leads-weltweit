@@ -40,7 +40,7 @@ SIZES = (1000, 2000, 5000)
 EXPORT_MAX = 5000
 HOURLY_GAP_MIN = 50       # stündlich: frühestens nach so vielen Minuten wieder
 DEFAULT_HOUR = 7          # täglich ohne Stunde: 7 Uhr deutscher Zeit
-MARKETS = ("US", "UK", "FR", "IE", "NL", "BE", "SE")   # wie app/lib/agents.ts MARKETS
+MARKETS = ("US", "UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK", "MX", "BR")   # wie app/lib/agents.ts MARKETS
 TASK_KINDS = ("leads", "kaeufer", "quelle", "pruefen", "frage")
 AGENT_COUNT = 8           # Agenten des Inhabers A1–A8 (wie app/lib/agents.ts AGENT_COUNT; 9 = Kunden-Agenten)
 BRIEF_MAX = 1000
@@ -56,6 +56,12 @@ MARKET_WORDS = {
     "NL": r"\b(nl|niederlande\w*|niederländisch\w*|holland|holländisch\w*|netherlands)\b",
     "BE": r"\b(be|belgien|belgisch\w*|belgium)\b",
     "SE": r"\b(se|schweden|schwedisch\w*|sweden)\b",
+    # neue Länder 04.10.2026
+    "FI": r"\b(fi|finnland|finnisch\w*|finland)\b",
+    "SG": r"\b(sg|singapur|singapore)\b",
+    "HK": r"\b(hk|hongkong|hong kong)\b",
+    "MX": r"\b(mx|mexiko|mexikanisch\w*|mexico|méxico)\b",
+    "BR": r"\b(br|brasilien|brasilianisch\w*|brazil|brasil)\b",
 }
 KIND_WORDS = (  # erste passende Art gewinnt
     ("kaeufer", r"käufer|kaeufer|kunden|agentur|abnehmer|buyer"),

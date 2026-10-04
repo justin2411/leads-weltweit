@@ -11,7 +11,7 @@ test("Kurztexte: Titel ≤ 60 Zeichen ohne Vorsilbe, Grund = 1 Satz", () => {
   const long = kurzTitel(`Vorschlag: ${"sehr langer Titel ".repeat(10)}`);
   assert.ok(long.length <= 60 && long.endsWith("…"), long);
   assert.equal(kurzGrund("Mehr Antworten in UK. Zweiter Satz mit Details."), "Mehr Antworten in UK.");
-  assert.ok(kurzGrund("x ".repeat(200)).length <= 140);
+  assert.ok(kurzGrund("x ".repeat(200)).length <= 160);
 });
 
 test("Kurzspalten aus decisions haben Vorrang", () => {

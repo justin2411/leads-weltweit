@@ -38,6 +38,8 @@ FORM_D_SEGMENTS = ("S1", "S5", "S9")
 FMCSA_SEGMENTS = ("S4", "S2", "S5")
 # Scout-Sprint 01.10.2026: S2 (Firmen ohne Website, Overture) auch in den übrigen Mail-Ländern aus countries.yaml
 S2_EXTRA = ("IE", "NL", "BE", "SE")
+# Neue Mail-Länder (Inhaber 04.10.2026, docs/KALTMAIL-RECHT.md): S2 ohne Website aus Overture, nur mit E-Mail
+S2_NEW = ("FI", "SG", "HK", "MX", "BR")
 
 
 def log(msg: str) -> None:
@@ -653,7 +655,7 @@ def main(argv=None) -> int:
         part = tuple(int(x) for x in args.shard.split("/")) if args.shard else None
         for co in countries:
             p[f"S2/{co}"] = load_web(co, args.s2_limit, stats, part)
-    for co in ("UK", "FR") + S2_EXTRA + (("US",) if args.us_overture else ()):
+    for co in ("UK", "FR") + S2_EXTRA + S2_NEW + (("US",) if args.us_overture else ()):
         if co in countries and "S2" in segs and not args.web_check:
             known = {i for s_, i in guard.known if s_ == "overture"}
             # mehr laden als bearbeitet wird: der Abgleich mit der Datenbank (unten) wirft Gespeicherte noch raus

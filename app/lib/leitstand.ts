@@ -133,7 +133,7 @@ export function utilization(rows: RunRow[], beats: Beat[], now: number, total: n
 export type TipTask = { kind: "leads" | "kaeufer" | "quelle" | "pruefen" | "frage"; market: string | null; brief: string };
 export type Tip = { level: "rot" | "gelb" | "gruen" | "info"; title: string; text: string; href?: string; task?: TipTask };
 
-const MARKET = new Set(["US", "UK", "FR", "IE", "NL", "BE", "SE"]);
+const MARKET = new Set(["US", "UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK", "MX", "BR"]);
 const marketOf = (c: string | null | undefined) => (c && MARKET.has(c) ? c : null);
 
 /** Alarme vor den Werk-Hinweisen (Nachtschicht 04.10.2026, Plan Paket 5 „Alarmleiste“): offene Antworten von

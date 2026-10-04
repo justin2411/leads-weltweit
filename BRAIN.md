@@ -35,7 +35,7 @@ Du bist das operative Gehirn von Signalwerk. Du beobachtest jeden Tag die Zahlen
 - `customer_filters`: Segment, Regionen, Signale, Berufe/Branchen, Ausschlüsse
 - `lead_tags`: pro Lead die passenden Segmente, Region, Berufe/Branchen, Qualitätswert 0–100
 - `deliveries`: pro Kunde und Woche die gelieferten Leads
-- `decisions`: `type`, `subject`, `reasoning`, `metrics` (json), `action`, `status` (`proposed`, `done`, `rejected`), `created_at`
+- `decisions`: `type`, `subject`, `reasoning`, `metrics` (json), `action`, `status` (`proposed`, `done`, `rejected`), `created_at`, `kurz_titel` (≤ 60 Zeichen), `kurz_grund` (1 Satz ≤ 160 Zeichen; Inhaber 04.10.2026: wenig Text)
 
 ## 5. Entscheidungsregeln
 

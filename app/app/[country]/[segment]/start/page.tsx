@@ -157,7 +157,7 @@ const CSS = `
 .bx .plan2 li.agl:before{display:none}.bx .plan2 li.agl .ico{flex:none;margin-top:.2em;color:var(--gold)}.bx .plan2 li.agl b{font-weight:700}
 .bx .plan2 .pl{font-size:13.5px;font-weight:700;color:#8a6a33;padding-top:12px;border-top:1px solid var(--line)}
 .bx .plan2 form,.bx .plan2 .go{margin-top:auto}.bx .plan2 .btn{width:100%;justify-content:center}
-.bx .sx-how{margin-top:56px;max-width:1080px}
+.bx .sx-how{margin:44px 0 52px;max-width:1080px}
 .bx .sx-how .hd{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);font-weight:700;margin:0 0 16px}
 .bx .sx-steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 .bx .sx-steps li{position:relative;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px 24px 24px}
@@ -211,6 +211,17 @@ export default async function StartPage({ params, searchParams }: { params: Para
         <p className="lede">{T.lede}</p>
         {who?.firma && <div className="for">{T.for} {who.firma}</div>}
 
+        <div className="sx-how"><div className="hd">{T.how}</div>
+          {online && howVideo ? (<>
+            <div className="sx-vid"><video controls playsInline preload="metadata" poster={howVideo.poster} src={howVideo.src}>
+              {howVideo.vtt && <track kind="captions" src={howVideo.vtt} srcLang={howVideo.srclang} label={lang === "fr" ? "Français" : "English"} />}
+            </video></div>
+            <ol className="sx-steps short">{T.short.map((h, k) => (
+              <li key={h}><div className="n"><span>{String(k + 1).padStart(2, "0")}</span></div><b>{h}</b></li>))}</ol>
+          </>) : (
+          <ol className="sx-steps">{(online ? T.steps : T.stepsMail).map(([h, d], k) => (
+            <li key={h}><div className="n"><span>{String(k + 1).padStart(2, "0")}</span><i /></div><b>{h}</b><p>{d}</p></li>))}</ol>)}
+        </div>
         {online && (
           <label className="billing">{T.billing}
             <select id="billing" defaultValue={isoOf(page.country)} autoComplete="country">
@@ -258,17 +269,6 @@ export default async function StartPage({ params, searchParams }: { params: Para
         </div>
 
         {!online && <p className="note">{T.mailNote}</p>}
-        <div className="sx-how"><div className="hd">{T.how}</div>
-          {online && howVideo ? (<>
-            <div className="sx-vid"><video controls playsInline preload="metadata" poster={howVideo.poster} src={howVideo.src}>
-              {howVideo.vtt && <track kind="captions" src={howVideo.vtt} srcLang={howVideo.srclang} label={lang === "fr" ? "Français" : "English"} />}
-            </video></div>
-            <ol className="sx-steps short">{T.short.map((h, k) => (
-              <li key={h}><div className="n"><span>{String(k + 1).padStart(2, "0")}</span></div><b>{h}</b></li>))}</ol>
-          </>) : (
-          <ol className="sx-steps">{(online ? T.steps : T.stepsMail).map(([h, d], k) => (
-            <li key={h}><div className="n"><span>{String(k + 1).padStart(2, "0")}</span><i /></div><b>{h}</b><p>{d}</p></li>))}</ol>)}
-        </div>
         <p className="note">{T.q} <a href={`mailto:${CONTACT}`}>{CONTACT}</a>.</p>
       </div></main>
       <SiteFooter lang={lang} />

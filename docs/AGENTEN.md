@@ -25,6 +25,9 @@ auswerten und bei anhaltendem Engpass selbst starten).
    (alle paar Minuten), am Ende `fertig <id> "<Ergebnis in 1–3 Sätzen>" '<Kennzahlen als JSON>'` oder `fehler`.
 3. Ergebnis-Sätze: kurz, Deutsch, echte Zahlen, keine Fachbegriffe. Kennzahlen nur gemessene Werte
    (z. B. `{"neue Leads": 420, "grün %": 94}`).
+   **Wenig Text (Inhaber 04.10.2026):** Ergebnis höchstens 300 Zeichen (1–2 Sätze, worum es geht zuerst),
+   Zwischenstand höchstens 120 Zeichen – `agent_tasks.py` kürzt hart. Einträge in `decisions` mit `kurz_titel` (≤ 60) und
+   `kurz_grund` (1 Satz ≤ 160).
 4. **Vorschläge** (Inhaber 04.10.2026: „verbesserungsvorschläge mit haken annehmen oder kreuz ablehnen“): Ergibt ein
    Auftrag einen Vorschlag, der eine Inhaber-Entscheidung braucht (Geld, ausdrückliche Inhaber-Regel, rechtlich unklar,
    unsicher), schreibt der Agent ihn als Zeile in `signalwerk.decisions`: `type` `note`, `status` `proposed`,

@@ -136,13 +136,15 @@ export function fmtWhen(d: Date | string | null | undefined, now: Date): string 
 }
 
 // ------------------------------------------------------------------------------------------------ Plätze
-export type LeadCountry = "US" | "UK" | "FR" | "Nord";
+export type LeadCountry = "US" | "UK" | "FR" | "Nord" | "Neu";
 export const LEAD_COUNTRIES: { id: LeadCountry; label: string; title: string }[] = [
   { id: "US", label: "US", title: "USA" }, { id: "UK", label: "UK", title: "Großbritannien" },
   { id: "FR", label: "FR", title: "Frankreich" }, { id: "Nord", label: "Nord", title: "IE · NL · BE · SE" },
+  { id: "Neu", label: "Neu", title: "FI · SG · HK · MX · BR" },
 ];
-/** Land-Chip einer Lead-Linie: mehrere Länder (IE,NL,BE,SE) = „Nord“. */
-export const countryOf = (l: Lane): LeadCountry => (l.country.includes(",") ? "Nord" : (l.country as LeadCountry));
+/** Land-Chip einer Lead-Linie: mehrere Länder (IE,NL,BE,SE) = „Nord“, neue Mail-Länder (FI,SG,HK,MX,BR, 04.10.2026) = „Neu“. */
+export const countryOf = (l: Lane): LeadCountry =>
+  (l.country.split(",").includes("FI") ? "Neu" : l.country.includes(",") ? "Nord" : (l.country as LeadCountry));
 export const leadLanes = (reg: LaneRegistry) => reg.lanes.filter((l) => l.werk === "lead-werk");
 export const capOf = (reg: LaneRegistry) => reg.total_slots - reg.reserve;
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);

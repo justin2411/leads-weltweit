@@ -30,7 +30,31 @@ GENERIC_SPEC = {"recruitment", "general recruitment", "financial advice", "indep
                 "accounting"}
 
 
-LAND = {"UK": "the UK", "US": "the US", "IE": "Ireland", "NL": "the Netherlands", "SE": "Sweden", "BE": "Belgium", "FR": "France"}
+LAND = {"UK": "the UK", "US": "the US", "IE": "Ireland", "NL": "the Netherlands", "SE": "Sweden", "BE": "Belgium", "FR": "France",
+        "FI": "Finland", "SG": "Singapore", "HK": "Hong Kong", "MX": "Mexico", "BR": "Brazil"}
+# Sprache der Mail je Land (wie countries.yaml language; Test MailLanguageTests): FR Französisch, BR Portugiesisch,
+# MX Spanisch (Inhaber 04.10.2026), sonst Englisch
+MAIL_LANG = {"FR": "fr", "BR": "pt", "MX": "es"}
+# Land in der eigenen Sprache, landesweit (Inhaber 27.09.2026): „em todo o Brasil“, „en todo México“
+LAND_LOCAL = {"pt": {"BR": "Brasil"}, "es": {"MX": "México"}}
+AREA_LOCAL = {"pt": {"BR": "em todo o Brasil"}, "es": {"MX": "en todo México"}}
+AREA_FROM = {"pt": {"BR": "de todo o Brasil"}, "es": {"MX": "de todo México"}}
+
+
+def mail_lang(country: str | None) -> str:
+    return MAIL_LANG.get((country or "").upper(), "en")
+
+
+def subject_prefix(country: str | None) -> str:
+    """Pflicht-Kennzeichnung am Betreffanfang aus countries.yaml (SG Spam Control Act: „<ADV> “)."""
+    from lib.rules import country_rules, load_countries
+    global _CFG
+    if _CFG is None:
+        _CFG = load_countries()
+    return country_rules(_CFG, country or "").get("subject_prefix") or ""
+
+
+_CFG = None
 
 
 def _place(region: str | None) -> tuple[str, str]:
@@ -45,8 +69,12 @@ def _place(region: str | None) -> tuple[str, str]:
 
 def _clean_name(name: str) -> str:
     # Rechtsformen aller Mail-Länder (UK/US/FR/IE/NL/BE/SE) aus der Anrede entfernen
+    # Neue Länder 04.10.2026: FI Oy/Oyj, SG Pte Ltd, MX S.A. de C.V./S. de R.L., BR Ltda/S.A./EIRELI
+    name = re.sub(r"[\s,]+(S\.?\s?A\.?\s?P\.?\s?I\.?\s?de\s?C\.?\s?V\.?|S\.?\s?A\.?\s?de\s?C\.?\s?V\.?|"
+                  r"S\.?\s?de\s?R\.?\s?L\.?(\s?de\s?C\.?\s?V\.?)?|Pte\.?\s?Ltd\.?|Ltda\.?|EIRELI|Oyj|Oy)$",
+                  "", name.strip(), flags=re.I)
     return re.sub(r"[\s,]+(Ltd\.?|Limited|LLP|LLC|Inc\.?|Corp\.?|SAS|SARL|SASU|EURL|SA|DAC|CLG|UC|Teo\.?|"
-                  r"B\.?V\.?|N\.?V\.?|VOF|BVBA|SRL|SPRL|CommV|AB|HB|KB)$", "", name.strip(), flags=re.I)
+                  r"B\.?V\.?|N\.?V\.?|VOF|BVBA|SRL|SPRL|CommV|AB|HB|KB|S\.A\.)$", "", name.strip(), flags=re.I)
 
 
 _GENERIC_WORDS = {"website", "websites", "web", "and", "&", "marketing", "solutions", "design", "designs", "agency",
@@ -65,13 +93,18 @@ def short_name(name: str) -> str:
     return " ".join(words) if len(words) <= 4 else ""
 
 
+TAGLINE = {"en": "Exclusive trigger leads for B2B service firms",
+           "fr": "Pistes exclusives au bon moment pour les prestataires B2B",
+           "pt": "Leads exclusivos no momento certo para prestadores B2B",
+           "es": "Leads exclusivos en el momento justo para empresas de servicios B2B"}
+
+
 def signature(lang: str) -> str:
     """Signatur aus Umgebungsvariablen (GitHub-Secrets/Variablen). Nur Angaben, die es wirklich gibt."""
     name = os.environ.get("SENDER_NAME") or brand()
     company = brand()
-    title = os.environ.get("SENDER_TITLE") or ("Fondateur" if lang == "fr" else "Founder")
-    tagline = ("Pistes exclusives au bon moment pour les prestataires B2B" if lang == "fr"
-               else "Exclusive trigger leads for B2B service firms")
+    title = os.environ.get("SENDER_TITLE") or {"fr": "Fondateur", "pt": "Fundador", "es": "Fundador"}.get(lang, "Founder")
+    tagline = TAGLINE.get(lang, TAGLINE["en"])
     lines = [name, f"{title}, {company}", tagline] if name != company else [company, tagline]
     site = os.environ.get("SENDER_WEBSITE") or "www.nextgen-profit.de"
     lines += [x for x in (site.replace("https://", "").rstrip("/"), os.environ.get("SENDER_PHONE")) if x]
@@ -110,6 +143,23 @@ SPEC_PLURAL = {
         "financial advising": "conseillers en gestion de patrimoine",
         "financial advice": "conseillers en gestion de patrimoine",
     },
+    # Neue Länder BR/MX (Inhaber 04.10.2026): nur die S2-Käufer-Kategorien des Kunden-Werks
+    "pt": {
+        "web designer": "agências de criação de sites", "graphic designer": "estúdios de design gráfico",
+        "social media agency": "agências de redes sociais", "web hosting service": "empresas de hospedagem de sites",
+        "internet marketing service": "agências de marketing digital", "software development": "empresas de software",
+        "advertising agency": "agências de publicidade", "marketing agency": "agências de marketing",
+        "media agency": "agências de mídia", "b2b advertising and marketing service": "agências de marketing B2B",
+        "b2b marketing consultant": "consultores de marketing B2B", "e commerce service": "agências de e-commerce",
+    },
+    "es": {
+        "web designer": "agencias de diseño web", "graphic designer": "estudios de diseño gráfico",
+        "social media agency": "agencias de redes sociales", "web hosting service": "proveedores de hosting",
+        "internet marketing service": "agencias de marketing digital", "software development": "empresas de software",
+        "advertising agency": "agencias de publicidad", "marketing agency": "agencias de marketing",
+        "media agency": "agencias de medios", "b2b advertising and marketing service": "agencias de marketing B2B",
+        "b2b marketing consultant": "consultores de marketing B2B", "e commerce service": "agencias de e-commerce",
+    },
 }
 
 
@@ -120,7 +170,8 @@ def _opener_name(company_name: str | None) -> str:
     if not raw:
         return ""
     name = short_name(raw) or _clean_name(raw)
-    if len(name.split()) > 5 or re.search(r"https?://|www\.|\.(com|net|org|io|co|uk|fr|ie|nl|be|se)\b", name, re.I):
+    if len(name.split()) > 5 or re.search(r"https?://|www\.|\.(com|net|org|io|co|uk|fr|ie|nl|be|se|fi|sg|hk|mx|br)\b",
+                                         name, re.I):
         return ""
     return name
 
@@ -129,7 +180,15 @@ def opener(p: dict, lang: str) -> str:
     """Individueller erster Satz aus echten Daten (Firmenname, Kategorie); ehrlich: wir sind bei der Suche nach
     Firmen dieser Art auf sie gestoßen (so finden wir Käufer). Ohne Kategorie: neutraler Satz mit Firmenname."""
     name = _opener_name(p.get("company_name"))
-    spec = SPEC_PLURAL["fr" if lang == "fr" else "en"].get((p.get("specialization") or "").strip().lower())
+    spec = SPEC_PLURAL.get(lang, SPEC_PLURAL["en"]).get((p.get("specialization") or "").strip().lower())
+    if lang == "pt":
+        if spec:
+            return f"Encontrei {name or 'a sua empresa'} ao pesquisar {spec}."
+        return f"Escrevo diretamente para a equipe de {name}." if name else "Escrevo diretamente para a sua equipe."
+    if lang == "es":
+        if spec:
+            return f"Encontré {name or 'su empresa'} mientras buscaba {spec}."
+        return f"Escribo directamente al equipo de {name}." if name else "Escribo directamente a su equipo."
     if lang == "fr":
         if spec:
             return f"J'ai découvert {name or 'votre entreprise'} en cherchant des {spec}."
@@ -157,6 +216,41 @@ SUBJECTS = {
         "S2": ("Entreprises en France sans site web", "Pas encore de site web : entreprises partout en France"),
         "": ("Nouveaux dirigeants en France", "Pistes : nouveaux dirigeants partout en France"),
     },
+    # Neue Länder (Inhaber 04.10.2026): nur S2 (Webagenturen); andere Branchen haben dort keinen Mail-Test
+    "pt": {
+        "S2": ("Empresas no {land} sem site", "Ainda sem site: empresas locais {area}"),
+        "": ("Empresas no {land} com um motivo para comprar", "Leads: empresas {area}"),
+    },
+    "es": {
+        "S2": ("Negocios en {land} sin sitio web", "Aún sin sitio web: negocios locales {area}"),
+        "": ("Empresas en {land} con un motivo para comprar", "Leads: empresas {area}"),
+    },
+}
+
+
+# Bausteine 3–6 und 9 der Kaltmail-Vorlage für BR (Portugiesisch) und MX (Spanisch), Inhaber 04.10.2026:
+# Wortlaut wie EN/FR („1:1 nachbauen“), landesweit, nur wahre Aussagen, keine Exklusivitätszusage
+LOCAL_TEXT = {
+    "pt": {
+        "greet": "Olá, equipe {short},", "greet_anon": "Olá,", "bye": "Atenciosamente,",
+        "intro": "Sou {me}, fundador da {brand}.", "intro_anon": "Sou o fundador da {brand}.",
+        "s2": "Encontramos empresas locais {area} que ainda não têm site, um bom motivo para elas falarem com uma "
+              "agência web.",
+        "other": "Encontramos empresas {area} com um motivo concreto para comprar agora.",
+        "core": "Toda segunda-feira você recebe um breve relatório em PDF e uma planilha: empresa, telefone, e-mail, "
+                "com quem falar e uma frase de abordagem.",
+        "ask": "Preparei uma amostra gratuita com 10 leads atuais {area_from}. Posso enviar?",
+    },
+    "es": {
+        "greet": "Hola, equipo de {short}:", "greet_anon": "Hola:", "bye": "Saludos cordiales,",
+        "intro": "Soy {me}, fundador de {brand}.", "intro_anon": "Soy el fundador de {brand}.",
+        "s2": "Encontramos negocios locales {area} que todavía no tienen sitio web, una buena razón para que hablen "
+              "con una agencia web.",
+        "other": "Encontramos empresas {area} con un motivo concreto para comprar ahora.",
+        "core": "Cada lunes recibe un breve informe en PDF y una hoja de cálculo: empresa, teléfono, correo, a quién "
+                "preguntar y una frase de apertura.",
+        "ask": "Preparé una muestra gratuita de 10 leads actuales {area_from}. ¿Se la envío?",
+    },
 }
 
 
@@ -168,13 +262,18 @@ def subject_variant(p: dict) -> str:
 
 
 def subject_for(p: dict, lang: str, variant: str | None = None) -> str:
-    """Betreff der Variante (A/B) für Segment und Land des Käufers."""
-    table = SUBJECTS["fr" if lang == "fr" else "en"]
+    """Betreff der Variante (A/B) für Segment und Land des Käufers. SG: Pflicht-Präfix „<ADV> “ (Spam Control Act)
+    aus countries.yaml subject_prefix, zählt bei den 60 Zeichen mit."""
+    table = SUBJECTS.get(lang, SUBJECTS["en"])
     pair = table.get(p.get("segment_id") or "", table[""])
-    subject = pair[(variant or subject_variant(p)) == "B"].format(area=LAND.get(p.get("country") or "", "your country"))
-    if len(subject) > 60:
-        subject = subject[:57].rsplit(" ", 1)[0]
-    return subject
+    co = (p.get("country") or "").upper()
+    subject = pair[(variant or subject_variant(p)) == "B"].format(
+        area=AREA_LOCAL.get(lang, {}).get(co) or LAND.get(co, "your country"), land=LAND_LOCAL.get(lang, {}).get(co, ""))
+    prefix = subject_prefix(co)
+    room = 60 - len(prefix)
+    if len(subject) > room:
+        subject = subject[:room - 3].rsplit(" ", 1)[0]
+    return prefix + subject
 
 
 def _example_line(example: dict | None, lang: str) -> str:
@@ -195,15 +294,26 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
     area = LAND.get(country, "your country")
     spec = (p.get("specialization") or "").strip()
     has_spec = spec.lower() not in GENERIC_SPEC
-    fr = country == "FR"
-    lang = "fr" if fr else "en"
-    ex = _example_line(example, lang)
+    lang = mail_lang(country)
+    fr = lang == "fr"
+    ex = _example_line(example, lang) if lang in ("en", "fr") else ""
 
     # Aufbau (Inhaber 27.09.2026, Richtung "C, auf den Punkt"): persönlich vom Gründer, klarer Nutzen
     # (Leads, mit denen der Käufer Umsatz machen kann, weil die Firmen einen konkreten Anlass haben),
     # Lieferung und Exklusivität in einem Satz, Probe als fertiges Geschenk, Ja/Nein-Frage.
     me = (os.environ.get("SENDER_NAME") or "").split(" ")[0]
-    if fr:
+    if lang in ("pt", "es"):
+        # Neue Länder BR/MX (Inhaber 04.10.2026): Webagenturen-Mail 1:1 nach docs/KALTMAIL-VORLAGE.md übersetzt
+        t = LOCAL_TEXT[lang]
+        where = AREA_LOCAL[lang].get(country, "")
+        intro = t["intro"].format(me=me, brand=brand()) if me else t["intro_anon"].format(brand=brand())
+        first = f"{intro} " + (t["s2"] if seg == "S2" else t["other"]).format(area=where)
+        core = t["core"]
+        ask = t["ask"].format(area_from=AREA_FROM[lang].get(country, ""))
+        short = _opener_name(p["company_name"]) and short_name(p["company_name"])
+        greet = t["greet"].format(short=short) if short else t["greet_anon"]
+        bye = t["bye"]
+    elif fr:
         # Betreff: subject_for() (A/B je Käufer, SUBJECTS)
         need, kind = {
             "S1": (f"des employeurs de toute la France qui ont en ce moment un vrai besoin de recrutement, par exemple un poste "

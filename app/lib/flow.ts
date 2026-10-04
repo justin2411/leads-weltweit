@@ -17,7 +17,7 @@ export type FieldDef = { key: string; label: string; type: FieldType; sources: S
 
 const L: Source[] = ["leads"], K: Source[] = ["kaeufer"], LK: Source[] = ["leads", "kaeufer"];
 const opts = (o: Record<string, string>) => Object.entries(o).map(([v, label]) => ({ v, label }));
-const LANDS = opts({ US: "US", UK: "UK", FR: "FR", IE: "IE", NL: "NL", BE: "BE", SE: "SE" });
+const LANDS = opts({ US: "US", UK: "UK", FR: "FR", IE: "IE", NL: "NL", BE: "BE", SE: "SE", FI: "FI", SG: "SG", HK: "HK", MX: "MX", BR: "BR" });
 const SEGS = opts({ S1: "S1 Personal", S2: "S2 Webagenturen", S3: "S3 IT", S4: "S4 Versicherung", S5: "S5 Buchhaltung",
   S6: "S6 Büro", S7: "S7 Reinigung", S8: "S8 Deutschland", S9: "S9 Finanzberater" });
 

@@ -115,9 +115,15 @@ Reply text:
 
 KEYWORDS = [
     ("unsubscribe", r"\b(unsubscribe|remove (me|us)|stop (emailing|contacting)|do not (contact|email)|opt[- ]?out|"
-                    r"désinscri\w*|ne plus (me|nous) contacter)\b"),
+                    r"désinscri\w*|ne plus (me|nous) contacter|"
+                    # BR/MX (neue Länder 04.10.2026)
+                    r"descadastr\w*|cancelar (a |minha |nossa )?inscri[çc][ãa]o|n[ãa]o (me|nos) (envie|contate|mande)\w*|"
+                    r"dar(me|nos|se)? de baja|d[ée]n(me|nos)? de baja|no (me|nos) (env[íi]e|contacte|escriba)\w*)\b"
+                    r"|^\s*baja\b|取消訂閱|取消订阅"),
     # Absage vor Kaufinteresse: „not interested in a call“ ist eine Absage (Prüfung 04.10.2026)
-    ("not_interested", r"\b(not interested|no thanks|no thank you|not for us|pas intéressé|non merci)\b"),
+    ("not_interested", r"\b(not interested|no thanks|no thank you|not for us|pas intéressé|non merci|"
+                       r"n[ãa]o tenho interesse|n[ãa]o temos interesse|no me interesa|no nos interesa|no, gracias|"
+                       r"n[ãa]o, obrigad[oa])\b"),
     ("out_of_office", r"\b(out of (the )?office|on (annual )?leave|away until|absent|congés?|automatic reply|"
                       r"auto(matic|mated)?[- ]?(reply|response)|(office|we) (will be|is|are) closed|closed until|"
                       r"(no|not have|limited) access to (my |our )?e-?mail|upon (my|our) return|when i return|"
@@ -129,6 +135,8 @@ KEYWORDS = [
     ("sample", r"\b(yes|sure|please send|send (it|the sample|over)|interested|happy to (see|take a look)|oui|volontiers|"
                r"envoyez|would like to receive|glad to receive|(free )?sample request|souhaitons recevoir|heureux de recevoir|"
                r"merci d'envoyer|"
+               r"pode(m)? enviar|sim,? por favor|tenho interesse|temos interesse|"  # BR (04.10.2026)
+               r"env[íi]e(n)?la|s[íi],? por favor|me interesa|nos interesa|"  # MX (04.10.2026)
                r"demande d'échantillon)\b"),
 ]
 
@@ -1049,6 +1057,9 @@ def handle_message(db, msg: EmailMessage, mid: str, apply: bool, own: set[str] |
     if not m:
         return handle_unknown(db, msg, mid, sender, text, apply, own)
     lang = m.get("language") or "en"
+    # Automatische Antworten gibt es bisher nur auf Englisch und Französisch: BR/MX (pt/es, neue Länder 04.10.2026)
+    # bekommen sie vollständig auf Englisch (Text und Fußzeile gleichsprachig) – offener Punkt in docs/QUELLEN-SCOUT.md
+    lang = lang if lang in ("en", "fr") else "en"
     if subject_optout(msg.get("Subject")):
         c = {"intent": "unsubscribe", "faq": ["none"], "needs_owner": False,
              "summary_de": "Abmeldung (Betreff)", "by": "subject"}
