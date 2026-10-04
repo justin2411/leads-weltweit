@@ -311,6 +311,11 @@ export const HUD_CSS = `
 .fl-lanes{position:absolute;inset:8px;display:grid;grid-template-rows:repeat(3,1fr);pointer-events:none}
 .fl-lanes span{font-size:12px;font-weight:600;color:#4d6b91;padding:6px 10px;letter-spacing:.04em}
 .fl-lanes span+span{border-top:1px dashed rgba(95,212,255,.1)}
+.fl-lanes>span{display:flex;align-items:flex-start;gap:6px}
+.fl-lanes span span{padding:0;border:0}
+.fl-info{position:relative;z-index:5;pointer-events:auto;cursor:help;display:inline-flex;color:#6f8db3;font-style:normal;margin-top:1px}
+.fl-info:hover,.fl-info:focus-visible{color:#9fd8ff;outline:none}
+.fl-info-m{display:none;margin:6px 2px 14px;font-size:12px;color:#6f8db3;align-items:center;gap:6px}
 .fl-map{position:relative;width:100%}
 .fl-tall{display:none}
 .fl-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
@@ -425,7 +430,7 @@ export const HUD_CSS = `
 }
 @media (max-width:720px){
   .amps4{grid-template-columns:1fr 1fr;gap:8px}.amp4{padding:10px 10px 10px 32px}.amp4-led{left:12px;top:16px;width:10px;height:10px}.amp4 b{font-size:19px}.amp4 em{display:none}
-  .fl-wide{display:none}.fl-tall{display:block}.fl-lanes{display:none}
+  .fl-wide{display:none}.fl-tall{display:block}.fl-lanes{display:none}.fl-info-m{display:flex}
   .fl-st{width:96px;height:96px}.fl-st.goal{width:112px;height:112px}.fl-v{font-size:17px}.fl-l{font-size:12px;letter-spacing:-.01em}.fl-ic{font-size:15px}
   .drw{position:fixed;left:0;right:0;top:auto;bottom:0;width:auto;max-width:none;z-index:40;max-height:78vh;border-radius:16px 16px 0 0;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
   .frm label{grid-template-columns:64px 80px 1fr}
@@ -663,6 +668,13 @@ export const HUD_CSS = `
 .jt-wrap .tip-x svg{width:10px;height:10px}
 .jt-wrap .tip-x:hover,.jt-wrap .tip-x:focus-visible{background:none;color:#ff5e73}
 .dash button.tip-x,.dash button.tip-x:hover,.dash button.tip-x:focus-visible{background:none!important;border:0!important;box-shadow:none!important;padding:0;min-height:0}
+/* Schließen-X überall gleich (Inhaber 04.10.2026: „das x ist wieder nicht mittig … prüfe das überall“): nur das Zeichen, ohne Rahmen, exakt mittig.
+   !important, weil .dash button (padding 7px 14px) und Seiten-CSS sonst das Zeichen aus der Mitte schieben. */
+.dash .x-btn,.dash .x-btn:hover,.dash .x-btn:focus-visible{display:inline-grid!important;place-items:center;flex:none;width:32px!important;height:32px!important;min-width:0;min-height:0;padding:0!important;border:0!important;border-radius:50%;background:none!important;box-shadow:none!important;line-height:0;font-size:0;text-decoration:none;cursor:pointer}
+.dash .x-btn{color:var(--soft)!important;opacity:.8}
+.dash .x-btn:hover,.dash .x-btn:focus-visible{color:#ff5e73!important;opacity:1}
+.dash .x-btn>svg{display:block;margin:0}
+.dash .x-btn:active:not(:disabled){transform:none}
 .tip-gone{display:none!important}
 .tip-undo{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:70;display:flex;align-items:center;gap:12px;max-width:calc(100vw - 32px);padding:6px 6px 6px 16px;border:1px solid rgba(226,198,143,.5);border-radius:12px;background:#07101f;box-shadow:0 16px 40px -12px rgba(0,0,0,.9),0 0 24px -10px rgba(226,198,143,.4);font-size:13.5px;color:var(--text)}
 .tip-undo>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

@@ -151,7 +151,7 @@ export const jarvisLabel = (n: number | null) => (n == null ? "Kunden-Agenten" :
  *  Ansprechpartners (Signatur, erste Mail), wo das Gespräch stattfindet (EU-KI-Verordnung Art. 50). */
 export const PLAN_AGENT_LINE: Record<"en" | "fr" | "de", { title: string; text: string }> = {
   en: { title: "Personal account manager", text: "learns your goals and picks the right leads to increase your revenue" },
-  fr: { title: "Interlocuteur dédié", text: "apprend vos objectifs et choisit les bonnes pistes pour augmenter votre chiffre d'affaires" },
+  fr: { title: "Interlocuteur dédié", text: "apprend vos objectifs et choisit les pistes qui augmentent vos ventes" },
   de: { title: "Persönlicher Ansprechpartner", text: "lernt Ihre Ziele und wählt die passenden Leads, um Ihren Umsatz zu steigern" },
 };
 export const planAgentLine = (lang: unknown) => PLAN_AGENT_LINE[lang === "fr" || lang === "de" ? lang : "en"];

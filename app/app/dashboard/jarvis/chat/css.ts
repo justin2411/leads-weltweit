@@ -116,3 +116,76 @@ export const JCHAT_CSS = `
 .bk-chat-f button{display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:0 12px;border-radius:8px;cursor:pointer;font-size:12.5px}
 @media (prefers-reduced-motion:no-preference){.jc-side{transition:transform .22s ease}.bk-chat>summary .chev{transition:transform .2s ease}}
 `;
+
+/**
+ * Sofort-Antworten (Inhaber 04.10.2026: „alle chats sollen direkt antworten“, „chat größer machen oder so das ich ihn
+ * aufklappen kann“, Vorschläge mit Haken/Kreuz): „JARVIS denkt …“, Modell-Label, API-Kosten, Mini-Chat mit
+ * „Vergrößern“ (großes Fenster, Handy Vollbild), Karte „Vorschläge“. Gleicher HUD-Stil, am Handy ohne seitliches Scrollen.
+ */
+export const SOFORT_CSS = `
+.jc-comp .jc-pend{grid-column:1/-1;padding:0 0 4px;overflow:visible;flex:none}
+.jc-think{color:var(--gold2)}
+.jc-hint2{grid-column:1/-1;display:flex;align-items:center;gap:6px;margin:0;font-size:12.5px;color:var(--gold2)}
+.jc-model{font-style:normal;font-size:10px;letter-spacing:.08em;margin-left:8px;padding:1px 7px;border-radius:999px;border:1px solid rgba(95,212,255,.35);color:var(--cy2);vertical-align:1px}
+.jc-llm{position:relative;display:inline-flex;align-items:center;min-width:0}
+.jc-llm-b{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:4px 10px;border-radius:8px;border:1px solid var(--line);font-size:12px;color:var(--soft);cursor:pointer;background:transparent;max-width:100%}
+.jc-llm-b span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jc-llm .bar{display:inline-block;width:40px;height:4px;border-radius:2px;background:rgba(255,255,255,.1);overflow:hidden;flex:none}
+.jc-llm .bar i{display:block;height:100%;background:var(--cy2)}
+.jc-llm.full .jc-llm-b{color:var(--gold2);border-color:rgba(226,198,143,.5)}.jc-llm.full .bar i{background:var(--gold)}
+.jc-llm-f{position:absolute;top:calc(100% + 6px);right:0;z-index:30;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px;border-radius:10px;border:1px solid var(--line);background:rgba(4,12,26,.98);width:max-content;max-width:min(92vw,360px)}
+.jc-llm-f input[type=range]{flex:1 1 140px;min-width:0}
+.jc-llm-f input[type=text]{width:64px;padding:6px 8px;border-radius:8px;font:inherit;font-size:14px}
+.jc-llm-f .go{min-height:36px;padding:0 12px;border-radius:8px;font-weight:700;cursor:pointer;color:#02060f!important;background:linear-gradient(180deg,#f2dcae,#e2c68f)!important;border:0!important}
+.jc-llm-f em{flex:1 0 100%;font-style:normal;font-size:12px;color:#ffd0d6}
+/* Mini-Chat mit Vergrößern */
+.jmc .jcard-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.jmc .jcard-h em{margin-left:auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jmc-big{display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:0 10px;border-radius:8px;border:1px solid rgba(95,212,255,.35);background:rgba(95,212,255,.06);color:var(--cy2);font-size:12.5px;cursor:pointer}
+.jmc .jc-log.cmp{max-height:280px;resize:vertical;overflow:auto}
+.jmc>.jc-empty{margin:0;padding:14px 12px;text-align:left;max-width:none}
+.jmodal{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:rgba(2,6,15,.72);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.jmodal-w{display:grid;grid-template-columns:minmax(200px,260px) minmax(0,1fr);gap:0;width:80vw;height:80vh;max-width:1400px;border:1px solid var(--line);border-radius:14px;background:rgba(4,12,26,.98);overflow:hidden;box-shadow:0 30px 80px -20px rgba(0,0,0,.9)}
+.jmodal-w:not(:has(.jmodal-side)){grid-template-columns:minmax(0,1fr)}
+.jmodal-side{display:flex;flex-direction:column;gap:8px;padding:12px;border-right:1px solid var(--line);overflow:auto;min-width:0}
+.jmodal-main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.jmodal-body{display:flex;flex-direction:column;flex:1;min-height:0}
+.jmodal-body .jc-log{flex:1;min-height:0;max-height:none;resize:none}
+.jmodal-body>.jc-empty{margin:auto}
+.jmodal-full{display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:0 10px;font-size:12.5px;color:var(--cy2)!important;text-decoration:none}
+@media (max-width:820px){
+  .jmodal-w{width:100vw;height:100dvh;max-width:none;border-radius:0;grid-template-columns:minmax(0,1fr)}
+  .jmodal-side{display:none}
+  .jmc-big span{display:none}
+}
+/* Vorschläge mit Haken/Kreuz */
+.jvs{margin:0 0 14px;padding:12px;border:1px solid rgba(226,198,143,.4);border-radius:12px;background:rgba(226,198,143,.05);min-width:0}
+.jvs h2{display:flex;align-items:center;gap:6px;margin:0 0 8px;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold2)}
+.jvs h2 em{font-style:normal;font-size:11px;line-height:18px;min-width:18px;padding:0 6px;border-radius:9px;background:rgba(226,198,143,.2);letter-spacing:0}
+.jvs-l{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.jvs-i{display:flex;align-items:flex-start;gap:10px;padding:10px;border-radius:10px;border:1px solid var(--line);background:rgba(4,12,26,.6);min-width:0}
+.jvs-i.gone{opacity:.6}
+.jvs-t{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
+.jvs-t b{font-size:14.5px;color:#fff;overflow-wrap:anywhere}
+.jvs-t>span{font-size:13px;color:var(--soft);overflow-wrap:anywhere}
+.jvs-t>em{font-style:normal;font-size:12.5px}.jvs-t>em.ok{color:var(--green)}.jvs-t>em.bad{color:#ffd0d6}
+.jvs-d summary{cursor:pointer;font-size:12px;color:var(--cy2);min-height:28px;display:inline-flex;align-items:center}
+.jvs-d p{margin:4px 0;font-size:13px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--text)}
+.jvs-d dl{display:flex;flex-wrap:wrap;gap:4px 12px;margin:4px 0 0;font-size:12px}
+.jvs-d dl div{display:flex;gap:4px}.jvs-d dt{color:var(--soft)}.jvs-d dd{margin:0;font-variant-numeric:tabular-nums}
+.jvs-b{display:flex;gap:6px;flex:none}
+.jvs-b button{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:10px;cursor:pointer;border:1px solid var(--line);background:transparent}
+.jvs-b .yes{color:var(--green);border-color:rgba(80,200,120,.45)}.jvs-b .yes:hover{background:rgba(80,200,120,.12)}
+.jvs-b .no{color:#ff8a99;border-color:rgba(255,94,115,.4)}.jvs-b .no:hover{background:rgba(255,94,115,.1)}
+.jvs-why{display:flex;gap:6px;margin-top:4px}
+.jvs-why input{flex:1;min-width:0;padding:7px 9px;border-radius:8px;font:inherit;font-size:13.5px}
+.jvs-why button{min-height:36px;padding:0 12px;border-radius:8px;cursor:pointer}
+.jvs-done{margin-top:10px}
+.jvs-done summary{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12.5px;color:var(--soft);min-height:32px;list-style:none}
+.jvs-done summary em{font-style:normal}
+.jvs-done ul{list-style:none;margin:4px 0 0;padding:0;display:grid;gap:4px}
+.jvs-done li{display:flex;flex-wrap:wrap;gap:2px 8px;font-size:13px;min-width:0}
+.jvs-done li b{font-weight:600;overflow-wrap:anywhere}.jvs-done li time{color:var(--soft);font-size:12px}
+.jvs-done li span{flex:1 0 100%;color:var(--soft);font-size:12.5px}
+@media (prefers-reduced-motion:no-preference){.jc-think{animation:jcpulse 1.2s ease-in-out infinite}@keyframes jcpulse{50%{opacity:.45}}}
+`;

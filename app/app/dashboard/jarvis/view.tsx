@@ -17,6 +17,9 @@ import { DragTip } from "./dnd";
 import { UndoBar } from "./dismiss";
 import { tipKey, tipReactKeys } from "@/lib/tips";
 import { Clock, Voice } from "./voice";
+import { Vorschlaege } from "./vorschlaege";
+import { JCHAT_CSS, SOFORT_CSS } from "./chat/css";
+import type { Proposal } from "@/lib/vorschlaege";
 
 export type JarvisProps = {
   hello: string; say: string;
@@ -30,11 +33,14 @@ export type JarvisProps = {
   customerAgents?: number | null;
   /** JARVIS-Chat mit Sitzungen (zuletzt genutzte); null = Tabellen fehlen noch → bisheriger Chat über Agenten-Aufträge */
   chat?: StartChat | null;
+  /** Vorschläge mit Haken/Kreuz und „JARVIS hat umgesetzt“ (decisions); null = nicht lesbar */
+  proposals?: { open: Proposal[]; done: Proposal[] } | null;
 };
 
 export function JarvisView(p: JarvisProps) {
   return (
     <div className={`jv jv2 jv3 ${p.drawer ? "has-drw" : ""}`}>
+      <style dangerouslySetInnerHTML={{ __html: JCHAT_CSS + SOFORT_CSS }} />
       <header className="jv-top">
         <span className="jv-logo" aria-hidden><i /><i /><i /></span>
         <div className="jv-hi">
@@ -44,6 +50,7 @@ export function JarvisView(p: JarvisProps) {
         <Clock />
       </header>
       <Ampeln items={p.kpis} />
+      {p.proposals && <Vorschlaege open={p.proposals.open} done={p.proposals.done} />}
       <Empfiehlt recs={p.recs} href={p.tipHref} agent={p.agent}>
         {p.rest.length > 0 && (
           <div className="jtips2">

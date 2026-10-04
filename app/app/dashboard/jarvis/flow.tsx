@@ -7,6 +7,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ASPECT, POS, VIEW, edgePath, flow, type Edge, type Station, type StationId, type TickerItem } from "@/lib/fluss";
 import type { TipTask } from "@/lib/leitstand";
+import { WEB_INFO } from "@/lib/website-stats";
 import { DragBox } from "./dnd";
 import { Icon, type IconName } from "@/app/icons";
 
@@ -65,7 +66,9 @@ function Map({ layout, stations, edges, active, href }: { layout: "wide" | "tall
 export function FlowMap(p: { stations: Station[]; edges: Edge[]; active: StationId | null; href: (id: StationId) => string }) {
   return (
     <div className="fl">
-      <div className="fl-lanes" aria-hidden><span>Ware · Leads</span><span>Käufer · Webagenturen</span><span>Website · Besucher</span></div>
+      <div className="fl-lanes"><span aria-hidden>Ware · Leads</span><span aria-hidden>Käufer · Webagenturen</span>
+        <span><span aria-hidden>Website · Besucher</span><i className="fl-info" title={WEB_INFO} aria-label={`Website: ${WEB_INFO}`} tabIndex={0}><Icon name="info" size={13} /></i></span></div>
+      <p className="fl-info-m"><Icon name="info" size={13} /> Website: {WEB_INFO}</p>
       <Map layout="wide" {...p} />
       <Map layout="tall" {...p} />
     </div>
@@ -101,7 +104,7 @@ export function Drawer({ title, icon, tab, base, close, tabs, children, state }:
     <aside className={`drw st-${state}`} aria-label={title}>
       <header>
         <span className="drw-ic" aria-hidden><Icon name={icon} size={20} /></span><h2>{title}</h2>
-        <Link href={close} scroll={false} className="drw-x" aria-label="Schließen"><Icon name="schliessen" size={16} /></Link>
+        <Link href={close} scroll={false} className="drw-x x-btn" aria-label="Schließen"><Icon name="schliessen" size={16} /></Link>
       </header>
       <nav className="drw-tabs" style={{ gridTemplateColumns: `repeat(${1 + Number(tabs.set) + Number(tabs.check)},minmax(0,1fr))` }}>
         {[t("info", "Info", "info"), t("set", "Einstellen", "einstellungen", tabs.set), t("check", "Prüfen", "ok", tabs.check)]}</nav>

@@ -13,7 +13,7 @@ import {
   Reply, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Split, Square, Star, Target, TrendingDown,
   TrendingUp, Trash2, TriangleAlert, Undo2, UserRound, Users, Workflow, X,
 } from "lucide-react";
-import { AppWindow, CircleQuestionMark, Gauge, RectangleEllipsis, Scale, Smartphone, Type, Unlink } from "lucide-react";
+import { AppWindow, CircleQuestionMark, CreditCard, Gauge, Maximize2, RectangleEllipsis, Scale, Smartphone, Tags, Type, Unlink } from "lucide-react";
 
 const ICONS = {
   // Werke und Stationen
@@ -110,6 +110,10 @@ const ICONS = {
   flagge: Flag,
   suche: Search,
   frage: CircleQuestionMark,
+  vergroessern: Maximize2,
+  // Linie „Website“: Tarifseite und Stripe-Checkout
+  tarif: Tags,
+  karte: CreditCard,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

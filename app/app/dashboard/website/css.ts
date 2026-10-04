@@ -55,7 +55,12 @@ export const WS_CSS = `
 .ws-clean{display:flex;gap:6px;align-items:center;color:var(--green);margin:0;font-size:14px}
 
 /* Chat + Agenten */
-.ws-cols{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
+.ws-cols{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:stretch}
+/* Kästen nebeneinander oben und unten bündig (Inhaber 04.10.2026: „das muss immer sein“): .dash section-Abstand nullen, beide als Kasten */
+.dash .ws-cols>*{margin:0}
+.ws-cols:has(>.ws-chat:not([open])){align-items:start}
+.ws-agents{padding:14px;border:1px solid var(--line);border-radius:12px;background:rgba(4,12,26,.72);box-sizing:border-box}
+.ws-agents>.ws-h{min-height:22px}
 .ws-chat{margin:0}
 .ws-chat>summary{min-height:50px;font-size:15px}
 .ws-chat .jc-log{max-height:min(52vh,520px);min-height:120px}
