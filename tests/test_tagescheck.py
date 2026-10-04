@@ -241,6 +241,15 @@ class KurzzeilenTest(unittest.TestCase):
         self.assertTrue(line.startswith("Gehirn: still seit 8 h"))
         self.assertTrue(t.kurz_gehirn(False, [], None, [], NOW_FIX).startswith("Gehirn: abgeschaltet"))
 
+    def test_pruefung(self):
+        kpi = {"letzter_lauf": "2026-10-04T15:47:00+00:00",
+               "tage": [{"tag": "2026-10-04", "art": "lead", "geprueft": 200, "bestanden": 190},
+                        {"tag": "2026-10-04", "art": "kaeufer", "geprueft": 300, "bestanden": 290}],
+               "ausreisser": [{"segment_id": "S2", "country": "FR"}]}
+        self.assertEqual(t.kurz_pruefung(kpi), "Dauerprüfung heute: Leads 200 geprüft, 10 abweichend; "
+                                               "Käufer 300 geprüft, 10 abweichend · Ausreißer: S2/FR")
+        self.assertEqual(t.kurz_pruefung(None), "Dauerprüfung: noch kein Lauf")
+
     def test_lines_never_change_traffic_light(self):
         db = FakeDB({"deliverability_daily": FIX["deliverability_daily"], "werk_plan_log": FIX["werk_plan_log"][:1],
                      "settings": [{"brain_enabled": True}], "jarvis_sessions": [], "decisions": [], "agent_tasks": []})
@@ -253,7 +262,8 @@ class KurzzeilenTest(unittest.TestCase):
                 mock.patch("lib.fokus.test_scope", return_value=(["S2"], ["US", "UK", "FR"])), \
                 mock.patch("prognose.load", return_value=[{"country": "US", "basis": "keine"}]):
             t.collect_kurz(c, db)
-        self.assertEqual(len(c.kurz), 6)
+        self.assertEqual(len(c.kurz), 7)
+        self.assertEqual(c.kurz[6], "Dauerprüfung: noch kein Lauf")
         self.assertEqual(c.kurz[3], "Trichter: nicht messbar")
         self.assertTrue(all(len(k) <= t.KURZ_MAX and "\n" not in k for k in c.kurz))
         self.assertEqual(c.worst, t.OK)

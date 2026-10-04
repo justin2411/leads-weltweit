@@ -1,0 +1,45 @@
+# Dauerprüfung (Inhaber 04.10.2026: „Qualitätsagenten bitte mehrere, auch die die Kunden-Leads immer nochmal dauerhaft
+# überprüfen – je länger die liegen, desto bessere Qualität … Effizient, nicht extrem viele unnötige Tokens“).
+# Prüf-Agenten ohne Tokens (reines Python): stündlich ein Budget an Leads durch die unveränderte Drei-Stufen-Freigabe
+# (scripts/lib/release_gate.py) und mail-fähige Käufer durch die Käufer-Prüfung (outreach.py check_values) plus MX,
+# Website und Bounce-Historie. Budget und Abstände in config/pruefung.yaml. Durchgefallene Leads = held + Grund
+# (nichts gelöscht), Käufer werden nur strenger (nie zurück auf ok). Sendet nichts, lädt keine Lead-Daten hoch
+# (öffentliches Repo) – nur Zahlen in der Zusammenfassung. Pause im Dashboard (werke_paused „dauerpruefung“).
+name: dauerpruefung
+on:
+  schedule: [{ cron: "47 * * * *" }]   # stündlich :47 (versetzt zu Proben-Vorrat :23 und Agenten :29)
+  workflow_dispatch:
+    inputs:
+      leads:
+        description: "Lead-Budget (leer = config/pruefung.yaml)"
+        default: ""
+      kaeufer:
+        description: "Käufer-Budget (leer = config/pruefung.yaml)"
+        default: ""
+      probelauf:
+        type: boolean
+        default: false
+concurrency: { group: dauerpruefung, cancel-in-progress: false }
+permissions:
+  contents: read
+jobs:
+  pruefen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RUN_PART: dauerpruefung
+      APPLY: ${{ inputs.probelauf == true && ' ' || '--apply' }}
+      LEADS: ${{ inputs.leads && format('--leads {0}', inputs.leads) || ' ' }}
+      KAEUFER: ${{ inputs.kaeufer && format('--kaeufer {0}', inputs.kaeufer) || ' ' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - name: Leads und Käufer nachprüfen
+        run: python scripts/dauerpruefung.py run $APPLY $LEADS $KAEUFER
+      - name: Tageszusammenfassung (nur Zahlen)
+        if: ${{ !cancelled() }}
+        run: python scripts/dauerpruefung.py zusammenfassung >> "$GITHUB_STEP_SUMMARY" || true

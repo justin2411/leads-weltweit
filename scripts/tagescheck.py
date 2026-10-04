@@ -43,6 +43,7 @@ WORKFLOWS = {
     "kundenlieferung.yml": ("Kundenlieferung (montags)", 24 * 7 + 3),
     "wachhund.yml": ("Wachhund (startet ausgefallene Läufe nach)", 3),
     "agenten-werk.yml": ("Agenten-Werk (Speicher + eigene Agenten)", 3),
+    "dauerpruefung.yml": ("Dauerprüfung (Prüf-Agenten ohne Tokens)", 3),
     "zustellbarkeit.yml": ("Zustellbarkeits-Check (06:10)", 27),
 }
 
@@ -861,6 +862,24 @@ def kurz_gehirn(enabled: bool | None, last_at: list[str | None], note_at: str | 
     return _cut(f"{head} · {note} · {len(tasks)} Agenten-Aufträge in 24 h ({done} fertig)")
 
 
+def kurz_pruefung(kpi: dict | None) -> str:
+    """Dauerprüfung (Prüf-Agenten ohne Tokens) der letzten 24 h: geprüft, gehalten, Ausreißer."""
+    if not kpi or not kpi.get("letzter_lauf"):
+        return "Dauerprüfung: noch kein Lauf"
+    tage = kpi.get("tage") or []
+    last = max((t.get("tag") for t in tage), default=None)
+    agg: dict[str, list[int]] = {}
+    for t in tage:
+        if t.get("tag") == last:
+            a = agg.setdefault(t.get("art") or "lead", [0, 0])
+            a[0] += int(t.get("geprueft") or 0)
+            a[1] += int(t.get("geprueft") or 0) - int(t.get("bestanden") or 0)
+    parts = [f"{'Leads' if k == 'lead' else 'Käufer'} {v[0]} geprüft, {v[1]} abweichend" for k, v in sorted(agg.items(), reverse=True)]
+    out = kpi.get("ausreisser") or []
+    tail = f" · Ausreißer: {', '.join(str(o.get('segment_id')) + '/' + str(o.get('country')) for o in out[:3])}" if out else ""
+    return _cut("Dauerprüfung heute: " + ("; ".join(parts) or "nichts geprüft") + tail)
+
+
 def collect_kurz(c: Check, db) -> None:
     """Füllt c.kurz in fester Reihenfolge (Wichtigstes oben). Jede Zeile einzeln abgesichert, nie ein Status."""
     from zoneinfo import ZoneInfo
@@ -929,6 +948,7 @@ def collect_kurz(c: Check, db) -> None:
     line("Trichter", trichter)
     line("Prognose 30 T", prognose)
     line("Gehirn", gehirn)
+    line("Dauerprüfung", lambda: kurz_pruefung(db.rpc("pruef_kpi", {"p_days": 1})))
 
 
 def main(argv=None) -> int:
