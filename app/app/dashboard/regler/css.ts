@@ -9,7 +9,8 @@ export const REGLER_CSS = `
 .rg-steps b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;border:1px solid var(--line);font-size:12px;color:var(--cy2);margin-right:4px}
 .rg-steps i{font-style:normal;color:#6e8db3}
 .rg-err{margin:0 0 14px;padding:10px 14px;border:1px solid rgba(255,94,115,.5);border-radius:10px;background:rgba(255,94,115,.12);color:#ffb3bd;font-weight:600}
-.rg-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
+/* Karten einer Zeile gleich hoch (Inhaber 04.10.2026: bündig, keine Lücken) – Fußzeile (Rail/Ruhe-Zeile) per margin-top:auto unten */
+.rg-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:stretch}
 @media (min-width:1100px){.rg-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 .rg-card{position:relative;margin:0;display:flex;flex-direction:column;gap:14px;padding:16px 16px 14px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,rgba(9,24,48,.72),rgba(4,12,26,.55));transition:border-color .2s,box-shadow .2s}

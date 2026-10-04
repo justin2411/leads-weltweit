@@ -7,9 +7,12 @@ import {
 } from "@/lib/storage";
 import { loadProben, loadStorage, type Storage } from "@/lib/storage-data";
 import { loadPlanLog } from "@/lib/dashboard-data";
+import { isTestSub, matrixRows, nextColor, poolDraft, poolTotals } from "@/lib/pools";
+import { loadPools, type PoolsData } from "@/lib/pools-data";
 import { requireOwner } from "../actions";
 import { Icon } from "@/app/icons";
 import { SPEICHER_CSS } from "./css";
+import { Pools } from "./pools";
 
 export const metadata = { title: "Speicher" };
 type SP = Promise<Record<string, string | string[] | undefined>>;
@@ -66,13 +69,17 @@ export default async function Speicher({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
   const raw = typeof sp.seg === "string" ? sp.seg : "S2";
   const seg = raw === ALL || /^S\d{1,2}$/.test(raw) ? raw : "S2";
-  const [st, pr, plans] = await Promise.all([
+  const [st, pr, plans, pl] = await Promise.all([
     loadStorage().then((d) => ({ ok: true as const, d }), (e: unknown) => {
       console.error("speicher:", e); // Details nur im Server-Protokoll, nie im Browser
       return { ok: false as const };
     }),
     loadProben().catch(() => null as ProbeRow[] | null),
     loadPlanLog(),
+    loadPools().then((d) => ({ ok: true as const, d }), (e: unknown) => {
+      console.error("speicher pools:", e);
+      return { ok: false as const };
+    }),
   ]);
   // Speicher-Bremse (Nachtschicht 04.10.2026): Stufe aus der letzten Verteilung eines Werks (werk_plan_log)
   const lastPlan = [plans["lead-werk"], plans["kunden-werk"]].filter(Boolean).sort((a, b) => b!.at.localeCompare(a!.at))[0];
@@ -97,7 +104,25 @@ export default async function Speicher({ searchParams }: { searchParams: SP }) {
       {st.ok ? <Body d={st.d} seg={seg} proben={pr} brake={brake} /> : (
         <section className="sp-card sp-err"><p className="sp-none">Speicher-Zahlen gerade nicht erreichbar – gleich noch einmal laden.</p></section>
       )}
+      <PoolsBlock r={pl} />
     </div>
+  );
+}
+
+/** Eigene Speicher: Daten für den Client-Teil aufbereiten (nur Namen/Zahlen, keine Lead-Daten). */
+function PoolsBlock({ r }: { r: { ok: true; d: PoolsData } | { ok: false } }) {
+  const d: PoolsData = r.ok ? r.d : { pools: [], counts: [], routes: [], segments: [], subs: [] };
+  const tot = poolTotals(d.pools, d.counts);
+  const pools = d.pools.map((p) => ({ ...p, ...(tot.get(p.id) ?? { total: 0, byCountry: [] }) }));
+  // Testkäufe ans Ende, sonst neueste zuerst (Reihenfolge aus der Abfrage)
+  const subs = d.subs.filter((s) => s.customer).map((s) => ({
+    id: s.id, company: s.customer!.company_name, country: s.customer!.country, segment: s.segment_id, pkg: s.package,
+    test: isTestSub(s), paused: s.status === "paused",
+  })).sort((a, b) => Number(a.test) - Number(b.test));
+  const subRoute = Object.fromEntries(d.subs.map((s) => [s.id, { segment_id: s.segment_id, country: s.customer?.country ?? null }]));
+  return (
+    <Pools pools={pools} rows={matrixRows(d.segments, d.routes)} saved={poolDraft(d.routes, d.subs.filter((s) => s.customer))} subs={subs}
+      subRoute={subRoute} error={r.ok ? null : "nicht lesbar"} newColor={nextColor(d.pools)} />
   );
 }
 
