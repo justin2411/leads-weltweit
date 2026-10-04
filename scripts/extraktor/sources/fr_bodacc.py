@@ -1,8 +1,15 @@
-"""Frankreich: Gründungen von Gesellschaften aus dem BODACC (amtliches Bekanntmachungsblatt, offene Schnittstelle,
-kostenlos, ohne Schlüssel). Je Meldung: Firma, SIREN, Rechtsform, Kapital, Sitz, Tätigkeit, Geschäftsführung.
+"""Frankreich: Gründungen von Gesellschaften aus dem BODACC (amtliches Bekanntmachungsblatt).
+
+ABGESCHALTET (05.10.2026, CLAUDE.md §2 „robots.txt beachten“): bodacc-datadila.opendatasoft.com und www.bodacc.fr
+sperren in robots.txt `/api/` für alle Bots außer Googlebot – auch die Export-Schnittstelle, die hier genutzt wurde.
+`fetch()` ruft deshalb nichts mehr ab und liefert eine leere Liste (Hinweis im Log); bestehende Leads bleiben.
+Geprüfte Ersatzquellen (Logbuch docs/QUELLEN-SCOUT.md): DILA-Rohdaten echanges.dila.gouv.fr/OPENDATA/BODACC
+(von GitHub Actions aus nicht erreichbar: Verbindung wird zurückgesetzt), Ressourcen-Downloads auf
+static.data.gouv.fr (robots.txt: Disallow /resources) und files.data.gouv.fr (Disallow /), Recherche d'entreprises
+(erlaubt, aber ohne Filter/Sortierung nach Gründungsdatum, kein Gründungs-Feed). Die Umwandlung einer
+BODACC-Meldung in einen Kandidaten (`to_candidate`, `dirigeant`) bleibt für eine erlaubte Quelle im selben Format.
 
 Kein Telefon, keine E-Mail im Register: die kommen nur von der eigenen Website (mentions légales mit SIREN).
-https://bodacc-datadila.opendatasoft.com/explore/dataset/annonces-commerciales/
 """
 from __future__ import annotations
 
@@ -10,13 +17,12 @@ import datetime as dt
 import json
 import re
 
-import requests
-
 from extraktor.model import candidate
 
-EXPORT = ("https://bodacc-datadila.opendatasoft.com/api/explore/v2.1/catalog/datasets/annonces-commerciales/"
-          "exports/json")
-FIELDS = "id,dateparution,commercant,ville,cp,numerodepartement,registre,tribunal,listepersonnes,listeetablissements,acte,url_complete"
+# Die bisherige Schnittstelle ist laut robots.txt gesperrt (siehe oben); hier nie wieder eintragen.
+DISABLED_REASON = ("BODACC abgeschaltet: robots.txt von bodacc-datadila.opendatasoft.com und bodacc.fr sperrt /api/ "
+                   "für alle Bots außer Googlebot (CLAUDE.md §2). Keine erlaubte Ersatzquelle mit Gründungs-Feed, "
+                   "siehe docs/QUELLEN-SCOUT.md")
 # Keine Leads: Immobilien-/Holding-Gesellschaften (SCI, sociétés civiles), reine Beteiligungen
 SKIP_FORM = re.compile(r"soci[ée]t[ée] civile|\bsci\b|\bscpi\b|\bscm\b|groupement", re.I)
 SKIP_ACT = re.compile(r"prise de participation|holding|acquisition.{0,40}immobili|location de (biens|tous biens)|"
@@ -25,14 +31,9 @@ COMPANY_WORDS = re.compile(r"\b(sté|société|sas|sasu|sarl|eurl|sa|holding|gro
 
 
 def fetch(since: dt.date, until: dt.date | None = None, log=print) -> list[dict]:
-    where = f'familleavis="creation" and dateparution>="{since}" and listepersonnes like "%\\"pm\\"%"'
-    if until:
-        where += f' and dateparution<="{until}"'
-    r = requests.get(EXPORT, params={"where": where, "select": FIELDS}, timeout=300)
-    r.raise_for_status()
-    rows = r.json()
-    log(f"FR: {len(rows)} Gründungen von Gesellschaften im BODACC seit {since}")
-    return rows
+    """Abgeschaltet (robots.txt): ruft nichts ab, schreibt den Grund ins Log und liefert keine Meldungen."""
+    log(f"FR: {DISABLED_REASON} (Zeitraum ab {since} übersprungen)")
+    return []
 
 
 def _json(v):

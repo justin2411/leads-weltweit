@@ -41,7 +41,8 @@ jobs:
         run: python scripts/watch.py uk-bulk --days 45 --limit 12000
       - name: Neugründungen Frankreich (BODACC)
         if: ${{ contains(inputs.schritt, 'register-fr') || inputs.schritt == 'alles' }}
-        run: python scripts/watch.py fr-incorporations --departement 69,75,92,59 --days 30 --limit 400
+        # Abgeschaltet (05.10.2026): robots.txt von BODACC sperrt /api/ (CLAUDE.md §2); der Befehl meldet das nur.
+        run: python scripts/watch.py fr-incorporations
       - name: Kandidaten aus OpenStreetMap
         if: ${{ contains(inputs.schritt, 'osm') }}
         run: |
