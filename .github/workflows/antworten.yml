@@ -79,6 +79,19 @@ jobs:
           else
             python scripts/responder.py --apply
           fi
+      - name: Kunden-Agenten – Kundenmails zuordnen, Nachfragen nach Lieferungen
+        # docs/KUNDEN-AGENTEN.md: Mails zahlender Kunden (ab Pro) landen beim Kunden-Agenten (Verlauf + Auftrag für die
+        # Agenten-Routine); Preis/Vertrag/Kündigung/Beschwerde meldet er dem Inhaber. Check-in nach der 2./4. Lieferung,
+        # höchstens 1 eigene Mail pro Woche. Nur an Kunden (Einwilligung, Resend), nie Kaltmails.
+        if: ${{ !cancelled() && steps.gate.outputs.ok == 'true' }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.probelauf }}" = "true" ]; then
+            python scripts/customer_agents.py inbox --dry-run
+            python scripts/customer_agents.py checkin --dry-run
+          else
+            python scripts/customer_agents.py inbox
+            python scripts/customer_agents.py checkin
+          fi
       - name: Probe-Anfragen von Landingpages beantworten
         if: ${{ !cancelled() }}
         # unabhängig vom Postfach: Anfragen kommen über die Website (Einwilligung -> Resend erlaubt)
