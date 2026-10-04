@@ -69,7 +69,7 @@ test("Tempo: Summe ≤ Obergrenze, je Linie ≤ max, ganze Zahlen, anteilig, abg
     check(p);
     assert.equal(leadTotal(p, reg), Math.max(0, Math.min(t, leadMax(d, reg))));
     assert.equal(p.kunden, d.kunden); // Kunden-Linie bleibt
-    assert.equal(p["s1-us-lca"], 0); // Gewicht 0 bleibt 0
+    assert.equal(p["s1-uk-tender"], 0); // Gewicht 0 bleibt 0
   }
   const half = scalePlan(d, reg, 15);
   assert.ok(half["web-us"] > half["web-uk"] && half["web-uk"] >= half["web-fr"]);
@@ -175,7 +175,7 @@ test("diff und toSettings: Hin- und Rückweg", () => {
 
 test("diff: Umverteilung ohne Summen-/Länderänderung wird trotzdem erkannt", () => {
   const d = draftFrom(DEFAULTS, ctx);
-  const p = { ...d.slot_plan, "web-us": 19, "web-uk": 6 };
+  const p = { ...d.slot_plan, "web-us": 19, "web-uk": 5 };
   const ch = diff(DEFAULTS, { ...d, slot_plan: p }, ctx);
   assert.deepEqual(ch.map((c) => c.part), ["belegung"]);
   assert.deepEqual(toSettings(ch, DEFAULTS, "x").slot_plan, p);
@@ -245,12 +245,13 @@ test("Tempo: langsamer schaltet nie ein Land ab; Standard bringt die Standardbel
   const d = defaults();
   const on = (p: Record<string, number>) => LEAD_COUNTRIES.map((c) => countryOn(p, reg, c.id));
   const all = on(d);
+  const active = leadLanes(reg).filter((l) => d[l.id] > 0).length; // Linien mit Standardplätzen
   for (let t = 5; t <= 30; t++) { // 5 Länder-Chips (seit „Neu“, 04.10.2026)
     const p = scalePlan(d, reg, t);
     check(p);
     assert.equal(leadTotal(p, reg), t);
     assert.deepEqual(on(p), all, `t=${t}`);
-    if (t >= 6) for (const l of leadLanes(reg)) if (d[l.id] > 0) assert.ok(p[l.id] >= 1, `t=${t} ${l.id}`);
+    if (t >= active) for (const l of leadLanes(reg)) if (d[l.id] > 0) assert.ok(p[l.id] >= 1, `t=${t} ${l.id}`);
   }
   // Sparsam (10) -> Standard (30) und Sparsam -> + bis 30: alle Länder bleiben an
   const sp = presetPlan(d, reg, presets(d, reg)[0]);
