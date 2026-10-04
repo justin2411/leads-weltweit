@@ -110,7 +110,7 @@ class DB:
                                       headers=headers))
 
     def update(self, table: str, match: dict, values: dict) -> list[dict]:
-        params = {k: f"eq.{v}" for k, v in match.items()}
+        params = {k: "is.null" if v is None else f"eq.{v}" for k, v in match.items()}
         return self._check(self._send("PATCH", f"{self.base}/{table}", safe=True, params=params, json=clean(values),
                                       headers={"Prefer": "return=representation"}))
 

@@ -8,7 +8,7 @@ import {
   GESAMTBESTAND, LIMITS, NODE_META, newNode,
   type Flow, type FlowEdge, type FlowKind, type FlowNode, type Port, type Row,
 } from "./flow.ts";
-import { MARKETS } from "./agents.ts";
+import { FORM_MARKETS } from "./agents.ts";
 import { InputError } from "./owner-settings.ts";
 
 // ---------------------------------------------------------------------------------------------- Bereiche
@@ -140,48 +140,124 @@ export function meldenPreview(rows: Row[], flowName: string): string {
 }
 
 // ---------------------------------------------------------------------------------------------- Agenten
-export type Trigger = "stuendlich" | "taeglich" | "neue_leads";
+/** Auslöser (Inhaber 04.10.2026: „auslöser will ich hier auch eine eigen zeit festlegen“). Alles in deutscher Zeit
+ *  (Europe/Berlin), 15-Minuten-Raster; das Agenten-Werk prüft alle 15 min (agents_run.py). „stuendlich“ ist der alte
+ *  Wert (= alle 1 Stunde) und wird beim Laden/Speichern zu „alle_stunden“. */
+export type Trigger = "taeglich" | "alle_stunden" | "neue_leads" | "stuendlich";
 export const TRIGGERS: { v: Trigger; label: string }[] = [
-  { v: "taeglich", label: "täglich" }, { v: "stuendlich", label: "stündlich" }, { v: "neue_leads", label: "bei neuen Leads" },
+  { v: "taeglich", label: "täglich" }, { v: "alle_stunden", label: "alle … Stunden" }, { v: "neue_leads", label: "bei neuen Leads" },
 ];
-export type AgentInput = { name: string; trigger: Trigger; at_hour: number | null; ai_brief: string | null; ai_market: string | null };
+export const EVERY_HOURS = [1, 2, 3, 4, 6, 8, 12] as const;
+export const MINUTE_STEP = 15;
+/** Wochentage ISO 1 = Mo … 7 = So. */
+export const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"] as const;
+const ALL_DAYS = [1, 2, 3, 4, 5, 6, 7];
+/** Markt-Auswahl im Formular: ohne IE, NL, BE (Inhaber: dürfen wir nicht). */
+export const AGENT_MARKETS = FORM_MARKETS;
+
+export type Schedule = { trigger: Trigger; at_hour: number | null; at_minute: number | null; weekdays: number[] | null; every_hours: number | null };
+export type AgentInput = Schedule & { name: string; ai_brief: string | null; ai_market: string | null };
 export type CustomAgent = AgentInput & {
   id: string; flow_id: string; enabled: boolean; archived: boolean; last_run_at: string | null; last_result: unknown; updated_at: string | null;
 };
 
-/** Eingaben eines eigenen Agenten prüfen (Server und Browser gleich). Uhrzeit in deutscher Zeit, nur bei „täglich“. */
+const intOr = (x: unknown, d: number | null): number | null => {
+  if (x === null || x === undefined || x === "") return d;
+  const n = Number(x);
+  return Number.isInteger(n) ? n : NaN;
+};
+
+/** Wochentage bereinigen: ISO 1–7, sortiert, ohne Doppelte; alle 7 (oder nichts angegeben) = null. Leere Liste → Fehler. */
+export function parseWeekdays(x: unknown): number[] | null {
+  if (x === null || x === undefined) return null;
+  if (!Array.isArray(x)) throw new InputError("Wochentage wählen");
+  const n = x.map(Number);
+  if (n.some((v) => !Number.isInteger(v) || v < 1 || v > 7)) throw new InputError("Wochentage wählen");
+  const d = [...new Set(n)].sort((a, b) => a - b);
+  if (!d.length) throw new InputError("mindestens einen Wochentag wählen");
+  return d.length === 7 ? null : d;
+}
+
+/** Zeitplan prüfen und rückwärtskompatibel bereinigen (stuendlich → alle 1 Stunde, at_hour ohne Minute → HH:00).
+ *  Minuten werden aufs 15-Minuten-Raster abgerundet. Nicht zum Auslöser passende Felder werden null. */
+export function parseSchedule(o: Record<string, unknown>): Schedule {
+  let trigger = String(o.trigger ?? "") as Trigger;
+  if (!TRIGGERS.some((t) => t.v === trigger) && trigger !== "stuendlich") throw new InputError("Auslöser wählen");
+  let every: unknown = o.every_hours;
+  if (trigger === "stuendlich") { trigger = "alle_stunden"; every = 1; }
+  if (trigger === "neue_leads") return { trigger, at_hour: null, at_minute: null, weekdays: null, every_hours: null };
+  const weekdays = parseWeekdays(o.weekdays);
+  if (trigger === "alle_stunden") {
+    const e = intOr(every, null);
+    if (e === null || !(EVERY_HOURS as readonly number[]).includes(e)) throw new InputError(`Stunden: ${EVERY_HOURS.join(", ")}`);
+    return { trigger, at_hour: null, at_minute: null, weekdays, every_hours: e };
+  }
+  const h = intOr(o.at_hour, null);
+  if (h === null || Number.isNaN(h) || h < 0 || h > 23) throw new InputError("Uhrzeit 0 bis 23");
+  const m = intOr(o.at_minute, 0) as number;
+  if (Number.isNaN(m) || m < 0 || m > 59) throw new InputError("Minute 0 bis 59");
+  return { trigger, at_hour: h, at_minute: Math.floor(m / MINUTE_STEP) * MINUTE_STEP, weekdays, every_hours: null };
+}
+
+/** Gespeicherten Zeitplan laden (alte Zeilen ohne neue Spalten, „stuendlich“) – wirft nie. */
+export function loadSchedule(o: Record<string, unknown>): Schedule {
+  try {
+    return parseSchedule(o);
+  } catch {
+    return { trigger: "taeglich", at_hour: 7, at_minute: 0, weekdays: null, every_hours: null };
+  }
+}
+
+/** Eingaben eines eigenen Agenten prüfen (Server und Browser gleich). Zeiten in deutscher Zeit. */
 export function parseAgentInput(x: unknown): AgentInput {
   const o = (typeof x === "object" && x !== null && !Array.isArray(x) ? x : {}) as Record<string, unknown>;
   const name = String(o.name ?? "").trim().replace(/\s+/g, " ");
   if (name.length < 1 || name.length > 60) throw new InputError("Name: 1 bis 60 Zeichen");
-  const trigger = String(o.trigger ?? "") as Trigger;
-  if (!TRIGGERS.some((t) => t.v === trigger)) throw new InputError("Auslöser wählen");
-  let at_hour: number | null = null;
-  if (trigger === "taeglich") {
-    const h = Number(o.at_hour);
-    if (o.at_hour === null || o.at_hour === undefined || o.at_hour === "" || !Number.isInteger(h) || h < 0 || h > 23) throw new InputError("Uhrzeit 0 bis 23");
-    at_hour = h;
-  }
+  const sched = parseSchedule(o);
   const brief = String(o.ai_brief ?? "").trim().replace(/\s+/g, " ");
   if (brief.length > 1000) throw new InputError("KI-Auftrag: höchstens 1000 Zeichen");
   if (brief && brief.length < 3) throw new InputError("KI-Auftrag: mindestens 3 Zeichen");
   const m = String(o.ai_market ?? "").trim().toUpperCase();
   const ai_market = m === "" || m === "ALLE" ? null : m;
-  if (ai_market && !(MARKETS as readonly string[]).includes(ai_market)) throw new InputError("Markt unbekannt");
-  return { name, trigger, at_hour, ai_brief: brief || null, ai_market };
+  if (ai_market && !(AGENT_MARKETS as readonly string[]).includes(ai_market)) throw new InputError("Markt unbekannt");
+  return { name, ...sched, ai_brief: brief || null, ai_market };
+}
+
+/** „Mo–Fr“, „Di–Do“, „Mo, Mi, Fr“, „Sa, So“; alle Tage = "". Läufe ab 3 Tagen werden zum Bereich. */
+export function describeWeekdays(d: number[] | null): string {
+  const days = (d ?? ALL_DAYS).filter((n) => n >= 1 && n <= 7);
+  if (!days.length || days.length === 7) return "";
+  const parts: string[] = [];
+  for (let i = 0; i < days.length;) {
+    let j = i;
+    while (j + 1 < days.length && days[j + 1] === days[j] + 1) j++;
+    if (j - i >= 2) parts.push(`${WEEKDAYS[days[i] - 1]}–${WEEKDAYS[days[j] - 1]}`);
+    else for (let k = i; k <= j; k++) parts.push(WEEKDAYS[days[k] - 1]);
+    i = j + 1;
+  }
+  return parts.join(", ");
+}
+
+export const hhmm = (h: number, m: number) => `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+
+/** Kurz: „Läuft täglich um 07:00 Uhr“, „Läuft Di–Do um 14:15 Uhr“, „Läuft alle 3 Stunden“, „Läuft stündlich“,
+ *  „Läuft bei neuen Leads“. */
+export function describeTrigger(s: Partial<Schedule> & { trigger: Trigger }): string {
+  const sc = loadSchedule(s as Record<string, unknown>);
+  const days = describeWeekdays(sc.weekdays);
+  if (sc.trigger === "neue_leads") return "Läuft bei neuen Leads";
+  if (sc.trigger === "alle_stunden") {
+    const e = sc.every_hours ?? 1;
+    return `Läuft ${days ? `${days} ` : ""}${e === 1 ? "stündlich" : `alle ${e} Stunden`}`;
+  }
+  return `Läuft ${days || "täglich"} um ${hhmm(sc.at_hour ?? 7, sc.at_minute ?? 0)} Uhr`;
 }
 
 /** Markt passend zur Quelle vorschlagen: genau ein Land → dieses Land (z. B. UK-Käufer → UK), sonst alle. */
 export function suggestMarket(f: Flow): string | null {
   const q = f.nodes.find((n) => n.kind === "quelle");
   if (!q || q.kind !== "quelle" || q.countries.length !== 1) return null;
-  return (MARKETS as readonly string[]).includes(q.countries[0]) ? q.countries[0] : null;
-}
-
-/** „täglich um 7 Uhr“, „stündlich“, „bei neuen Leads“. */
-export function describeTrigger(t: Trigger, h: number | null): string {
-  if (t === "taeglich") return h === null ? "täglich" : `täglich um ${h} Uhr`;
-  return TRIGGERS.find((x) => x.v === t)?.label ?? t;
+  return (AGENT_MARKETS as readonly string[]).includes(q.countries[0]) ? q.countries[0] : null;
 }
 
 /** Letztes Ergebnis kurz (Form von agents_run.py offen): Text, Fehler oder Zahlen „Leads 12 · Speicher 5“. */

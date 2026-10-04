@@ -531,7 +531,7 @@ function Editor({ initial, flows, pools: poolsIn, onNav, notice }: {
         const r = await saveAgent({ id: asNew ? null : a.id, agent: a, def });
         if (!r.ok) { const t = errText(r, "Agent nicht gespeichert"); setMsg({ good: false, text: t }); setAgentForm((f) => (f ? { ...f, err: t } : f)); return; }
         setAgentForm(null);
-        if (asNew) { setMsg({ good: true, text: `Agent „${a.name}“ gespeichert – läuft ${describeTrigger(a.trigger, a.at_hour)}` }); router.refresh(); return; }
+        if (asNew) { setMsg({ good: true, text: `Agent „${a.name}“ gespeichert · ${describeTrigger(a)}` }); router.refresh(); return; }
         setAgent({ ...a, id: r.id });
         setName(a.name);
         const s = sig(a.name, def);
@@ -612,11 +612,11 @@ function Editor({ initial, flows, pools: poolsIn, onNav, notice }: {
   const nodeProbs = (id: string) => probMap.get(id) ?? [];
   const status = master ? (flowId ? <span className="bk-chip on gold">aktiv</span> : <span className="bk-chip">noch nicht übernommen</span>)
     : agentMode ? (agent?.archived ? <span className="bk-chip aus">Archiv</span> : agent?.enabled === false ? <span className="bk-chip aus">aus</span>
-      : <span className="bk-chip on gold">{agent ? describeTrigger(agent.trigger, agent.at_hour) : "Agent"}</span>)
+      : <span className="bk-chip on gold">{agent ? describeTrigger(agent) : "Agent"}</span>)
     : active ? <span className="bk-chip on">läuft in der Pipeline</span>
     : saved?.status === "aus" ? <span className="bk-chip aus">aus</span> : <span className="bk-chip">Entwurf</span>;
   const tpls = master ? MASTER_TEMPLATES.map((t) => ({ id: t.id, label: t.label })) : TEMPLATES.map((t) => ({ id: t.id, label: t.label }));
-  const newAgent: AgentState = { id: null, name: name.trim().slice(0, 60) || "Mein Agent", trigger: "taeglich", at_hour: 7, ai_brief: null, ai_market: suggestMarket(logic) };
+  const newAgent: AgentState = { id: null, name: name.trim().slice(0, 60) || "Mein Agent", trigger: "taeglich", at_hour: 7, at_minute: 0, weekdays: null, every_hours: null, ai_brief: null, ai_market: suggestMarket(logic) };
   const saveLabel = master ? "Übernehmen" : "Speichern";
 
   return (

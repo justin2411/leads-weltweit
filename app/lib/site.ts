@@ -27,3 +27,25 @@ export function fitTitle(main: string, brand: string, brandFirst = false, max = 
   const at = cut.lastIndexOf(" ");
   return `${(at > max / 2 ? cut.slice(0, at) : cut).replace(/[\s,;:.–—-]+$/, "")}…`;
 }
+
+/** Länge der Meta-Beschreibung für Suchtreffer: 70–160 Zeichen. */
+export const DESC_MIN = 70;
+export const DESC_MAX = 160;
+
+/**
+ * Meta-Beschreibung ≤ 160 Zeichen; der sichtbare Seitentext bleibt unverändert. Zu lang: ganze Sätze, sonst bis zum
+ * ersten Komma ab 70 Zeichen mit Punkt, sonst an einer Wortgrenze mit „…“. Teile unter 70 Zeichen werden nicht genommen.
+ */
+export function fitDesc(text: string, max = DESC_MAX, min = DESC_MIN): string {
+  const d = text.replace(/\s+/g, " ").trim();
+  if (d.length <= max) return d;
+  const head = d.slice(0, max + 1);
+  const sentence = head.match(/^.*[.!?](?=\s)/)?.[0] ?? "";
+  if (sentence.length >= min && sentence.length <= max) return sentence;
+  // erstes Komma ab 70 Zeichen: hinter einer Aufzählung abzuschneiden ließe sie mittendrin enden
+  const comma = d.indexOf(", ", min - 1);
+  if (comma > 0 && comma < max) return `${d.slice(0, comma)}.`;
+  const cut = d.slice(0, max - 1);
+  const at = cut.lastIndexOf(" ");
+  return `${(at > max / 2 ? cut.slice(0, at) : cut).replace(/[\s,;:.–—-]+$/, "")}…`;
+}
