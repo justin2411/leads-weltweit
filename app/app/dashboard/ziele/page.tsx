@@ -1,10 +1,10 @@
 import { berlin } from "@/lib/dashboard-logic";
 import { AMPEL_TEXT } from "@/lib/ampel";
 import { loadZieleIst } from "@/lib/zentrale/data";
-import { kpi, zahl } from "@/lib/zentrale/ziele";
+import { kpiAus, zahl } from "@/lib/zentrale/ziele";
 import { kurzZahl } from "@/lib/zentrale/kpi";
 import { requireOwner } from "../actions";
-import { ZtHead, ZtKpi } from "../zentrale";
+import { ZtHead, ZtKpi } from "../zentrale/zt";
 import { saveGoals } from "./actions";
 
 export const metadata = { title: "Ziele" };
@@ -17,7 +17,7 @@ export default async function Ziele() {
   await requireOwner();
   const now = new Date();
   const { zeilen, error } = await loadZieleIst(now);
-  const k = kpi(zeilen);
+  const k = kpiAus(zeilen);
   const vorschlag = zeilen.filter((z) => z.quelle === "vorschlag").length;
 
   return (

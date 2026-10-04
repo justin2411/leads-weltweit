@@ -3,11 +3,11 @@ import Link from "next/link";
 import { COUNTRY_COLOR, OTHER_COLOR } from "@/lib/dashboard-logic";
 import { ageLabel, ageMinutes, intentMeta } from "@/lib/antworten";
 import { loadAbos, loadHeiss, loadVertrieb } from "@/lib/zentrale/data";
-import { STUFEN, kpi } from "@/lib/zentrale/vertrieb";
+import { STUFEN, kpiAus } from "@/lib/zentrale/vertrieb";
 import { kurzZahl, prozent } from "@/lib/zentrale/kpi";
 import { Icon } from "@/app/icons";
 import { requireOwner } from "../actions";
-import { ZtAmpel, ZtHead, ZtKpi } from "../zentrale";
+import { ZtAmpel, ZtHead, ZtKpi } from "../zentrale/zt";
 
 export const metadata = { title: "Vertrieb" };
 
@@ -28,7 +28,7 @@ export default async function Vertrieb() {
       </div>
     );
   }
-  const k = kpi(v, hot?.length ?? 0);
+  const k = kpiAus(v, hot?.length ?? 0);
   const step = Object.fromEntries(v.schritte.map((s) => [s.key, s]));
   const kauf = step.kauf;
 

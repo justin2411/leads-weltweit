@@ -1,10 +1,10 @@
 import { loadPrognose } from "@/lib/prognose-data";
 import { kurz as prognoseKurz, summary } from "@/lib/prognose";
 import { loadFinanzen, loadZiele } from "@/lib/zentrale/data";
-import { geldText, kpi } from "@/lib/zentrale/finanzen";
+import { geldText, kpiAus } from "@/lib/zentrale/finanzen";
 import { kurzZahl } from "@/lib/zentrale/kpi";
 import { requireOwner } from "../actions";
-import { ZtHead, ZtKpi } from "../zentrale";
+import { ZtHead, ZtKpi } from "../zentrale/zt";
 
 export const metadata = { title: "Finanzen" };
 
@@ -17,7 +17,7 @@ export default async function Finanzen() {
   const now = new Date();
   const [f, pr, z] = await Promise.all([loadFinanzen(now), loadPrognose(now).catch(() => null), loadZiele()]);
   const mrrZiel = z.ziele.find((x) => x.key === "mrr")?.soll ?? null;
-  const k = f ? kpi(f, mrrZiel) : null;
+  const k = f ? kpiAus(f, mrrZiel) : null;
   const ps = pr ? summary(pr) : null;
 
   return (

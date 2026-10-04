@@ -7,6 +7,9 @@ import type { Ampel } from "../ampel.ts";
 export type Trend = "hoch" | "runter" | "gleich" | null;
 export type AbteilungKpi = { titel: string; wert: string; ampel: Ampel; trend: Trend; grund: string; href: string };
 
+/** Rückfall, wenn die Daten nicht lesbar sind (grau, keine erfundenen Zahlen). */
+export const unlesbar = (titel: string, href: string): AbteilungKpi => ({ titel, wert: "–", ampel: "grey", trend: null, grund: "Gerade nicht lesbar.", href });
+
 export const TITEL_MAX = 60, GRUND_MAX = 160;
 
 export const kurzZahl = (n: number, max = 1): string =>

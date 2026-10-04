@@ -3,9 +3,9 @@ import { db } from "@/lib/supabase";
 import { COUNTRIES, SEGMENT } from "@/lib/dashboard-data";
 import { berlinDay } from "@/lib/dashboard-logic";
 import { normalizeRows, type KohorteRow } from "@/lib/kohorten";
-import { finanzen, kpi as finanzKpi, type AboIn, type Finanzen } from "./finanzen";
-import { HEISS, heiss, inboundJeLand, kpi as vertriebKpi, vertrieb, type Vertrieb } from "./vertrieb";
-import { START, kpi as zielKpi, zeilen, type Ziel, type ZielZeile } from "./ziele";
+import { finanzen, kpiAus as finanzKpi, type AboIn, type Finanzen } from "./finanzen";
+import { HEISS, heiss, inboundJeLand, kpiAus as vertriebKpi, vertrieb, type Vertrieb } from "./vertrieb";
+import { START, kpiAus as zielKpi, zeilen, type Ziel, type ZielZeile } from "./ziele";
 import type { AbteilungKpi } from "./kpi";
 
 /**

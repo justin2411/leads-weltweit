@@ -5,7 +5,7 @@
  * Ehrlich: fehlt ein Ist (nicht lesbar), bleibt das Ziel grau – keine Annahmen.
  */
 import type { Ampel } from "../ampel.ts";
-import { abteilung, kurzZahl, type AbteilungKpi } from "./kpi.ts";
+import { abteilung, unlesbar, kurzZahl, type AbteilungKpi } from "./kpi.ts";
 
 export type Richtung = "hoch" | "runter";
 export type Ziel = { key: string; titel: string; einheit: string; soll: number; richtung: Richtung; sort: number; quelle: "vorschlag" | "inhaber"; updated_at: string | null; updated_by: string | null };
@@ -62,7 +62,7 @@ export function zeilen(ziele: Ziel[], ist: Record<string, number | null>, hinwei
 }
 
 /** Kennzahl für JARVIS: „2/6“ Ziele erreicht. Alle erreicht grün, mindestens die Hälfte gelb, sonst rot. */
-export function kpi(z: ZielZeile[]): AbteilungKpi {
+export function kpiAus(z: ZielZeile[]): AbteilungKpi {
   const mess = z.filter((x) => x.ist !== null);
   const ok = mess.filter((x) => x.erreicht).length;
   const ampel: Ampel = !mess.length ? "grey" : ok === mess.length ? "green" : ok * 2 >= mess.length ? "gold" : "red";
@@ -70,4 +70,14 @@ export function kpi(z: ZielZeile[]): AbteilungKpi {
   const grund = !mess.length ? "Noch keine Ist-Werte lesbar."
     : weit ? `Am weitesten weg: ${weit.titel} (${zahl(weit.ist, weit.einheit)} von ${zahl(weit.soll, weit.einheit)}).` : "Alle Ziele erreicht.";
   return abteilung({ titel: "Ziele", wert: `${ok}/${z.length}`, ampel, trend: null, grund, href: "/dashboard/ziele" });
+}
+
+/** Kennzahl für die JARVIS-Abteilungs-Übersicht (lädt selbst; nur auf dem Server aufrufen). */
+export async function kpi(): Promise<AbteilungKpi> {
+  try {
+    const { loadZentraleKpis } = await import("./data");
+    return (await loadZentraleKpis()).ziele ?? unlesbar("Ziele", "/dashboard/ziele");
+  } catch {
+    return unlesbar("Ziele", "/dashboard/ziele");
+  }
 }

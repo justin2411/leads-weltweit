@@ -8,7 +8,7 @@
 import { ampelVon, type Ampel, type Schwelle } from "../ampel.ts";
 import { SCHWELLE as KOH, isJung, type KohorteRow } from "../kohorten.ts";
 import { sortReplies, type ReplyRow } from "../antworten.ts";
-import { abteilung, prozent, trendVon, type AbteilungKpi, type Trend } from "./kpi.ts";
+import { abteilung, unlesbar, prozent, trendVon, type AbteilungKpi, type Trend } from "./kpi.ts";
 
 export type Stufe = "angeschrieben" | "geantwortet" | "probe" | "kauf" | "kunde";
 export const STUFEN: { key: Stufe; label: string }[] = [
@@ -88,10 +88,20 @@ export function inboundJeLand(rows: { intent: string | null; country: string | n
 }
 
 /** Kennzahl für JARVIS: Antwortquote (Antworten / zugestellt), Ampel aus reifen Wochen. */
-export function kpi(v: Vertrieb, offenHeiss = 0): AbteilungKpi {
+export function kpiAus(v: Vertrieb, offenHeiss = 0): AbteilungKpi {
   const a = v.schritte[0];
   const grund = v.gesamt.angeschrieben === 0
     ? "Noch keine Erstmail gesendet."
     : `${v.gesamt.angeschrieben} angeschrieben, ${v.gesamt.geantwortet} Antworten, ${v.gesamt.kauf} Kaufinteresse${offenHeiss ? `, ${offenHeiss} heiß offen` : ""}${a.jung ? " – Antworten laufen noch" : ""}.`;
   return abteilung({ titel: "Vertrieb", wert: prozent(a.quote), ampel: offenHeiss > 0 && a.ampel !== "red" ? "gold" : a.ampel, trend: v.trend, grund, href: "/dashboard/vertrieb" });
+}
+
+/** Kennzahl für die JARVIS-Abteilungs-Übersicht (lädt selbst; nur auf dem Server aufrufen). */
+export async function kpi(): Promise<AbteilungKpi> {
+  try {
+    const { loadZentraleKpis } = await import("./data");
+    return (await loadZentraleKpis()).vertrieb ?? unlesbar("Vertrieb", "/dashboard/vertrieb");
+  } catch {
+    return unlesbar("Vertrieb", "/dashboard/vertrieb");
+  }
 }

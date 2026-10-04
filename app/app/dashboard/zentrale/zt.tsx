@@ -4,8 +4,8 @@
 import type { ReactNode } from "react";
 import { AMPEL_TEXT, type Ampel } from "@/lib/ampel";
 import { berlin } from "@/lib/dashboard-logic";
-import { Crumbs } from "./v2";
-import { ZENTRALE_CSS } from "./zentrale-css";
+import { Crumbs } from "../v2";
+import { ZENTRALE_CSS } from "./zt-css";
 
 export function ZtHead({ title, at }: { title: string; at?: Date }) {
   return (

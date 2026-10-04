@@ -6,7 +6,7 @@
  * Preise werden hier nur angezeigt, nie gesetzt (Gehirn/Inhaber). Währungen werden nicht umgerechnet.
  */
 import type { Ampel } from "../ampel.ts";
-import { abteilung, kurzZahl, trendVon, type AbteilungKpi } from "./kpi.ts";
+import { abteilung, unlesbar, kurzZahl, trendVon, type AbteilungKpi } from "./kpi.ts";
 
 export type AboIn = {
   id: string; status: string; package: string | null; amount_cents: number | null; currency: string | null;
@@ -126,7 +126,7 @@ export function finanzen(abos: AboIn[], heute: string): Finanzen {
  * Kennzahl für JARVIS: MRR. Ampel gegen das MRR-Ziel (company_goals 'mrr'): ≥ 100 % grün, ≥ 50 % gelb, sonst rot;
  * ohne Ziel und ohne Umsatz grau. Trend = neue Abos gegen Kündigungen der letzten 30 Tage.
  */
-export function kpi(f: Finanzen, ziel: number | null = null): AbteilungKpi {
+export function kpiAus(f: Finanzen, ziel: number | null = null): AbteilungKpi {
   const ampel: Ampel = ziel && ziel > 0
     ? (f.mrrSumme >= ziel ? "green" : f.mrrSumme >= ziel / 2 ? "gold" : "red")
     : f.mrrSumme > 0 ? "green" : "grey";
@@ -137,4 +137,14 @@ export function kpi(f: Finanzen, ziel: number | null = null): AbteilungKpi {
     titel: "Finanzen", wert: geldText(f.mrr), ampel, href: "/dashboard/finanzen",
     trend: f.neu30 || f.kuendigungen30 ? trendVon(f.neu30, f.kuendigungen30) : null, grund,
   });
+}
+
+/** Kennzahl für die JARVIS-Abteilungs-Übersicht (lädt selbst; nur auf dem Server aufrufen). */
+export async function kpi(): Promise<AbteilungKpi> {
+  try {
+    const { loadZentraleKpis } = await import("./data");
+    return (await loadZentraleKpis()).finanzen ?? unlesbar("Finanzen", "/dashboard/finanzen");
+  } catch {
+    return unlesbar("Finanzen", "/dashboard/finanzen");
+  }
 }
