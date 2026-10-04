@@ -1,0 +1,23 @@
+{
+  "deliverability_daily": [{"day": "2026-10-04", "status": "gelb", "gruende": ["Bounce-Quote 7 T 3.9 %"],
+                            "bounces": {"quote": 0.0385, "bounces_7t": 10, "gesendet_7t": 260, "beschwerden_7t": 0}}],
+  "bounce_stats": {"gesendet": 286, "bounces": 11, "klassen": {"hart": 7, "weich": 2, "richtlinie": 2, "unbekannt": 0}},
+  "datenfluss": [
+    {"station": "leads", "name": "Neue Leads", "stufe": "ok", "still_h": 0.5, "intervall_h": 1},
+    {"station": "mails", "name": "Mails gesendet", "stufe": "gelb", "still_h": 5.2, "intervall_h": 1.5},
+    {"station": "proben", "name": "Proben gebaut", "stufe": "rot", "still_h": 9.0, "intervall_h": 1},
+    {"station": "kaeufer", "name": "Neue Käufer", "stufe": "aus", "still_h": 30, "grund": "pausiert"}
+  ],
+  "cohort_funnel": [
+    {"week": "2026-W40", "country": "US", "sent": 75, "delivered": 72, "replies": 1},
+    {"week": "2026-W40", "country": "UK", "sent": 79, "delivered": 78, "replies": 0},
+    {"week": "2026-W39", "country": "FR", "sent": 40, "delivered": 39, "replies": 2}
+  ],
+  "werk_plan_log": [
+    {"werk": "lead-werk", "at": "2026-10-04T15:00:00+00:00",
+     "reasons": {"web-uk": "Vorrat leer (2 Läufe) – 1 Prüfplatz alle 4 h", "web-us": "letzter Lauf ergiebig",
+                 "web-fr": "Vorrat leer (3 Läufe) – Plätze an ertragreiche Linien"}},
+    {"werk": "lead-werk", "at": "2026-10-04T09:00:00+00:00", "reasons": {"web-us": "Vorrat leer (2 Läufe)"}},
+    {"werk": "kunden-werk", "at": "2026-10-04T16:00:00+00:00", "reasons": {"kunden": "Vorrat leer"}}
+  ]
+}

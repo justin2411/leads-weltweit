@@ -1,3 +1,5 @@
+import datetime as dt
+import json
 import sys
 import unittest
 from unittest import mock
@@ -195,6 +197,73 @@ class TagescheckTest(unittest.TestCase):
         with mock.patch.dict("os.environ", {"OWNER_EMAIL": "chef@example.com"}):
             k = t.kpi_line(db, "S2", "US")
         self.assertEqual((k["sent"], k["replies"], k["positive"], k["samples"]), (1, 1, 1, 1))
+
+
+FIX = json.loads((Path(__file__).resolve().parent / "fixtures" / "tagescheck_kurz.json").read_text(encoding="utf-8"))
+NOW_FIX = dt.datetime(2026, 10, 4, 17, 37, tzinfo=dt.timezone.utc)
+
+
+class KurzzeilenTest(unittest.TestCase):
+    """Kurzzeilen (04.10.2026): je 1 Zeile, nur Anzeige, nie Einfluss auf die Ampel."""
+
+    def test_zustellung(self):
+        line = t.kurz_zustellung(FIX["deliverability_daily"][0], FIX["bounce_stats"])
+        self.assertEqual(line, "Zustellbarkeit gelb (04.10.) · Bounce 7 T 3,9 % (10/260) · hart 7, weich 2, Richtlinie 2")
+        self.assertEqual(t.kurz_zustellung(None, None), "Zustellbarkeit: noch kein Check")
+
+    def test_stillstand_only_yellow_red(self):
+        line = t.kurz_stillstand(FIX["datenfluss"])
+        self.assertEqual(line, "Stillstand: Proben gebaut rot (9 h, üblich 1 h) · Mails gesendet gelb (5 h, üblich 1.5 h)")
+        self.assertEqual(t.kurz_stillstand([FIX["datenfluss"][0]]), "Stillstand: keiner")
+        self.assertEqual(t.kurz_stillstand(None), "Stillstand: nicht messbar")
+
+    def test_trichter_current_week(self):
+        line = t.kurz_trichter(FIX["cohort_funnel"], "2026-W40", ["US", "UK", "FR"])
+        self.assertEqual(line, "Trichter KW 40 (gesendet→zugestellt→Antwort): US 75→72→1 · UK 79→78→0 · FR 0")
+
+    def test_prognose_honest(self):
+        ps = [{"country": "US", "basis": "keine", "currency": "$"}, {"country": "UK", "basis": "kein_versand"},
+              {"country": "FR", "basis": "duenn", "currency": "€", "antworten30": {"lo": 1, "mid": 3, "hi": 6},
+               "proben30": {"lo": 0.4, "mid": 1, "hi": 2.6}}]
+        self.assertEqual(t.kurz_prognose(ps),
+                         "Prognose 30 T: US noch keine Basis · UK kein Versand · FR ~0–3 Proben (wenig Daten)")
+
+    def test_vorrat_latest_lead_run_only(self):
+        line = t.kurz_vorrat(FIX["werk_plan_log"], t.lane_labels())
+        self.assertEqual(line, "Vorrat leer: Website-Prüfung Frankreich, Website-Prüfung UK")
+        self.assertEqual(t.kurz_vorrat([], {}), "Vorrat leer: noch kein Plan-Lauf")
+
+    def test_gehirn(self):
+        tasks = [{"status": "fertig"}, {"status": "fertig"}, {"status": "laeuft"}]
+        line = t.kurz_gehirn(True, ["2026-10-04T15:19:40+00:00", None], "2026-10-04T05:10:00+00:00", tasks, NOW_FIX)
+        self.assertEqual(line, "Gehirn: aktiv, zuletzt 04.10. 17:19 · Tagesnotiz 04.10. · 3 Agenten-Aufträge in 24 h (2 fertig)")
+        line = t.kurz_gehirn(True, ["2026-10-04T10:00:00+00:00"], None, [], NOW_FIX)
+        self.assertTrue(line.startswith("Gehirn: still seit 8 h"))
+        self.assertTrue(t.kurz_gehirn(False, [], None, [], NOW_FIX).startswith("Gehirn: abgeschaltet"))
+
+    def test_lines_never_change_traffic_light(self):
+        db = FakeDB({"deliverability_daily": FIX["deliverability_daily"], "werk_plan_log": FIX["werk_plan_log"][:1],
+                     "settings": [{"brain_enabled": True}], "jarvis_sessions": [], "decisions": [], "agent_tasks": []})
+        db.rpc_handlers["bounce_stats"] = lambda a, p: FIX["bounce_stats"]
+        db.rpc_handlers["cohort_funnel"] = lambda a, p: 1 / 0  # Fehler -> „nicht messbar“, nie rot
+        c = t.Check()
+        c.add("Versand", t.OK, "läuft")
+        c.ctx["datenfluss"] = FIX["datenfluss"]  # rote Station: Kurzzeile allein ändert die Ampel nicht
+        with mock.patch.object(t, "NOW", NOW_FIX), \
+                mock.patch("lib.fokus.test_scope", return_value=(["S2"], ["US", "UK", "FR"])), \
+                mock.patch("prognose.load", return_value=[{"country": "US", "basis": "keine"}]):
+            t.collect_kurz(c, db)
+        self.assertEqual(len(c.kurz), 6)
+        self.assertEqual(c.kurz[3], "Trichter: nicht messbar")
+        self.assertTrue(all(len(k) <= t.KURZ_MAX and "\n" not in k for k in c.kurz))
+        self.assertEqual(c.worst, t.OK)
+        subject, body = t.mail(c)
+        self.assertIn("alles läuft", subject)
+        self.assertLess(body.index("KURZ"), body.index("LÄUFT"))
+        self.assertNotIn("UTC", body)
+        c.add("Website", t.FAIL, "kaputt")
+        body = t.mail(c)[1]
+        self.assertLess(body.index("PROBLEME"), body.index("KURZ"))
 
 
 if __name__ == "__main__":
