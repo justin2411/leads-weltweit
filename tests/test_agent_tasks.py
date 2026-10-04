@@ -42,6 +42,20 @@ class AgentTasksTest(unittest.TestCase):
             self.assertEqual(A.main(["start", "t1"]), 0)
         self.assertEqual(db.update.call_args_list[1].args[1]["status"], "laeuft")
 
+    def test_offen_chat_first(self):
+        db = mock.Mock()
+        db.select.return_value = [
+            {"id": "a", "created_at": "1", "created_by": "Inhaber Dashboard"},
+            {"id": "b", "created_at": "2", "created_by": "JARVIS-Chat"},
+            {"id": "c", "created_at": "3", "created_by": None},
+            {"id": "d", "created_at": "4", "created_by": "JARVIS-Chat"},
+        ]
+        with mock.patch.object(A, "DB", return_value=db), mock.patch("builtins.print") as out:
+            self.assertEqual(A.main(["offen"]), 0)
+        import json
+        self.assertEqual([r["id"] for r in json.loads(out.call_args.args[0])], ["b", "d", "a", "c"])
+        self.assertIn("created_by", db.select.call_args.args[1]["select"])
+
 
 if __name__ == "__main__":
     unittest.main()
