@@ -17,7 +17,7 @@ import requests
 
 SCHEMA = "signalwerk"
 RETRY_STATUS = {429, 502, 503, 504}
-READ_ONLY_RPC = {"is_suppressed", "bounce_stats", "flow_lead_rows", "flow_buyer_rows", "pool_counts", "pruef_kpi"}
+READ_ONLY_RPC = {"is_suppressed", "radar_candidates", "bounce_stats", "flow_lead_rows", "flow_buyer_rows", "pool_counts", "pruef_kpi"}
 RETRY_WAIT = (2, 5, 15)  # Sekunden; danach gibt der Aufruf den Fehler weiter
 
 

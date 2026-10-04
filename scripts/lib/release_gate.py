@@ -47,7 +47,11 @@ STAGES = {1: "Trigger echt", 2: "Qualität & Vollständigkeit", 3: "auslieferbar
 WEB_FINDINGS = {"no_https", "website_not_mobile", "website_outdated", "website_broken"}
 NO_SITE = {"no_website"}
 INCORPORATION = {"new_incorporation"}
-SEGMENT_SIGNALS = {"S2": WEB_FINDINGS | NO_SITE | INCORPORATION}
+# Premium-Anlässe (05.10.2026): Zertifikat läuft ab (Veränderungs-Radar, live nachgeprüft) und Umzug laut BODACC
+CERT_EXPIRING = {"cert_expiring"}
+RELOCATION = {"relocation"}
+WEB_CHECKED = WEB_FINDINGS | CERT_EXPIRING  # Befunde auf der eigenen Website: Website, Domain und Quelle prüfen
+SEGMENT_SIGNALS = {"S2": WEB_FINDINGS | NO_SITE | INCORPORATION | CERT_EXPIRING | RELOCATION}
 DELIVERY_COUNTRIES = {"US", "UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK", "MX", "BR"}  # FI…BR: 04.10.2026
 NEVER_COUNTRIES = {"DE", "AT", "CH", "IT", "ES", "PL", "DK"}
 LANG = {"FR": "fr"}
@@ -61,6 +65,8 @@ SIGNAL_WORDS = {
                       r"ne présente|introuvable|not found|domain",
     "no_website": r"no website|no own website|pas de site|aucun site|could not find an own website",
     "new_incorporation": r"registered|incorporated|immatricul|créée|formed",
+    "cert_expiring": r"certificat|certificate",
+    "relocation": r"transf[eé]r|d[ée]m[ée]nag|moved|relocat|nouvelle adresse|new address|nouveau si[eè]ge",
 }
 SOURCE_WORDS = {"website": r"website check", "no_website": r"overture|fmcsa|register|registry|companies house"}
 
@@ -226,7 +232,7 @@ def stage1(it: dict, today: dt.date, max_age: int | None = None) -> list[str]:
     if not re.match(r"^https?://", src):
         out.append("quelle_fehlt")
     site = co.get("website") or ""
-    if sig in WEB_FINDINGS:
+    if sig in WEB_CHECKED:
         if not site:
             out.append("befund_ohne_website")
         elif any(d != domain_of(site) and not domain_of(site).endswith("." + d) for d in DOMAIN_IN_TEXT.findall(summary.lower())):
@@ -413,6 +419,22 @@ def live_recheck(it: dict, fetcher, today: dt.date) -> tuple[list[str], bool]:
             return [], True
         note = (res.get("note") or "seite_in_ordnung").split(" ")[0]
         return [f"befund_nicht_bestaetigt:{note}"], True
+    if sig in CERT_EXPIRING:
+        # Zertifikat noch nicht erneuert und weiter im Ablauf-Fenster? (ein TLS-Handshake, höchstens 1×/Tag je Firma)
+        if (checked and checked >= today) or it.get("rechecked_today"):
+            return [], False
+        from extraktor.sources import website_check as wc
+        from lib import tls_info
+        host = wc.host_of(co.get("website") or "")
+        if not host:
+            return ["befund_ohne_website"], False
+        fetcher._throttle("https://" + host + "/")
+        cert = tls_info.read(host)
+        if cert is None:
+            return ["nachpruefung_fehler:zertifikat_nicht_lesbar"], True
+        if tls_info.expiring(cert, today) is None:
+            return ["befund_nicht_bestaetigt:zertifikat_erneuert_oder_abgelaufen"], True
+        return [], True
     if sig in NO_SITE or (sig in INCORPORATION and not co.get("website")):
         if it.get("rechecked_today") or (checked and checked >= today and sig in NO_SITE):
             return [], False

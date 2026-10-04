@@ -41,7 +41,7 @@ REQUIRE_CONTACT = True
 # Gleiche Felder beim Vorbereiten und beim Senden: ohne watch_companies.address verwirft
 # leadreport.complete_only jede Zeile und der Kunde bekäme eine Mail ohne Anhang.
 LEAD_SELECT = ("id,segment_id,country,signal_type,event_summary,event_date,source_name,source_url,source_date,"
-               "urgency,urgency_reason,opener,company_id,observation_ids,qualitaet_score,"
+               "urgency,urgency_reason,opener,company_id,observation_ids,qualitaet_score,premium_score,premium,"
                "watch_companies(name,legal_form,city,region,address,website,website_checked_at)")
 DELIVERED_STATUSES = ("approved", "sent")
 
@@ -92,6 +92,9 @@ def select_leads(leads: list[dict], sub: dict, already: set[str], details: dict[
     # aus; die Prioritäten des Kunden-Agenten sortieren danach (Qualität entscheidet bei Gleichstand)
     from lib.quality import sort_key
     leads = sorted(leads, key=sort_key)
+    # Premium zuerst (Inhaber 05.10.2026, lib/premium.py) – nur Reihenfolge, schließt nichts aus
+    from lib.premium import sort_key as premium_key
+    leads = sorted(leads, key=premium_key)
     if prefs:
         from customer_agents import lead_priority
         leads = sorted(leads, key=lambda l: -lead_priority(l, prefs, (tags or {}).get(l["id"])))  # stabil
@@ -396,6 +399,11 @@ def _load_leads(db, since: dt.date, markets: set[tuple] | None = None) -> tuple[
                 got += strip(_newest(db, {**q, "qualitaet_score": "not.is.null", "order": "qualitaet_score.desc,id"},
                                      QUALITY_PER_MARKET))
             except Exception:  # noqa: BLE001 - ohne Qualitätswerte bleibt es bei den neuesten Leads
+                pass
+            try:  # dazu die Premium-Leads des Markts (lib/premium.py, gleiche Filter)
+                got += strip(_newest(db, {**q, "premium_score": "gte.70", "order": "premium_score.desc,id"},
+                                     QUALITY_PER_MARKET))
+            except Exception:  # noqa: BLE001 - ohne Premium-Werte bleibt es bei der bisherigen Auswahl
                 pass
             for l in got:
                 l = by_id.setdefault(l["id"], l)

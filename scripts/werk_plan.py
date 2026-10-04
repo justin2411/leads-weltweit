@@ -118,7 +118,8 @@ def lane_stats(rows: list[dict], werk: str, runs: int = 2, reset: dict | None = 
             if st0 is None or st0 < cut[lane]:
                 continue
         k = (str(r.get("run_id") or r.get("started_at")), str(r.get("part")))
-        p = parts.setdefault(k, {"lane": lane, "run": k[0], "start": None, "end": None, "cand": 0, "proc": 0, "green": 0})
+        p = parts.setdefault(k, {"lane": lane, "run": k[0], "start": None, "end": None, "cand": 0, "proc": 0, "green": 0,
+                                 "premium": 0})
         st, en = _ts(r.get("started_at")), _ts(r.get("finished_at"))
         if st and (p["start"] is None or st < p["start"]):
             p["start"] = st
@@ -127,6 +128,8 @@ def lane_stats(rows: list[dict], werk: str, runs: int = 2, reset: dict | None = 
         p["cand"] += int(r.get("candidates") or 0)
         p["proc"] += int(r.get("processed") or 0)
         p["green"] += int(r.get("green") or 0)
+        ex = r.get("extra") if isinstance(r.get("extra"), dict) else {}
+        p["premium"] += int(ex.get("premium") or 0)
     by_lane: dict[str, dict[str, list[dict]]] = {}
     for p in parts.values():
         if p["start"] and p["end"]:
@@ -149,8 +152,50 @@ def lane_stats(rows: list[dict], werk: str, runs: int = 2, reset: dict | None = 
                      "avg_min": sum(mins) / len(mins), "max_min": max(mins), "green": green,
                      "per_slot_h": green / slot_h if slot_h > 0 else 0.0, "cand_last": sum(work(x) for x in lp),
                      "empty_last": sum(1 for x in lp if work(x) == 0), "avg_last": sum(lmins) / len(lmins),
-                     "max_last": max(lmins)}
+                     "max_last": max(lmins), "premium_all": sum(x["premium"] for x in every),
+                     "premium_last": sum(x["premium"] for x in lp),
+                     "premium_per_slot_h": sum(x["premium"] for x in ps) / slot_h if slot_h > 0 else 0.0}
     return out
+
+
+# ------------------------------------------------------------------------------------------- Premium
+# Inhaber 05.10.2026: „wir brauchen keine normalen leads mehr nur noch premium leads“. Sobald eine Linie des
+# Lead-Werks im Fenster Premium-Leads (lib/premium.py) gebracht hat, zählt für den Autopilot der Premium-Ertrag statt
+# der Lead-Menge: Linien ohne Premium wachsen nicht mehr und bekommen keine frei gewordenen Plätze, und
+# premium_shift() gibt Plätze reiner Standard-Linien (jede behält 1) an Premium-Linien mit Platz bis zu deren max.
+def premium_weight(stats: dict[str, dict]) -> bool:
+    """Gewicht nach Premium-Ertrag umstellen (in place). True, wenn Premium-Zahlen vorliegen."""
+    if not any(s.get("premium_all") for s in stats.values()):
+        return False
+    for s in stats.values():
+        s["per_slot_h_leads"] = s.get("per_slot_h", 0.0)
+        s["per_slot_h"] = s.get("premium_per_slot_h", 0.0)
+        s["green_last"] = s.get("premium_last", 0)
+        s["standard_only"] = not s.get("premium_all")
+    return True
+
+
+def premium_shift(reg: dict, werk: str, plan: dict[str, int], reasons: dict[str, str], stats: dict[str, dict],
+                  locks: dict | None = None) -> int:
+    """Plätze von reinen Standard-Linien an Premium-Linien (höchster Premium-Ertrag je Platz zuerst, bis max).
+    Festgesetzte Linien bleiben; jede aktive Standard-Linie behält 1 Platz. Gibt die Zahl verschobener Plätze."""
+    locks = locks if isinstance(locks, dict) else {}
+    lanes = {l["id"]: l for l in reg["lanes"] if l["werk"] == werk}
+    prem = [k for k in plan if k in lanes and k not in locks and (stats.get(k) or {}).get("premium_last")]
+    std = [k for k in plan if k in lanes and k not in locks and (stats.get(k) or {}).get("standard_only")]
+    moved = 0
+    while True:
+        room = [k for k in prem if plan[k] > 0 and plan[k] < int(lanes[k]["max"])]
+        give = [k for k in std if plan[k] > 1]
+        if not room or not give:
+            return moved
+        g = max(give, key=lambda k: (plan[k], k))
+        r = max(room, key=lambda k: (stats[k].get("premium_per_slot_h", 0.0) / (plan[k] + 1), k))
+        plan[g] -= 1
+        plan[r] += 1
+        moved += 1
+        reasons[g] = "nur Standard-Leads – Platz an Premium-Linien (Inhaber 05.10.2026)"
+        reasons[r] = f"Premium-Ertrag ({round(stats[r].get('premium_per_slot_h', 0.0))} je Platz·h) – +Platz von Standard-Linien"
 
 
 def brake_level(db_bytes: int | None, last: str = "aus") -> str:
@@ -288,7 +333,8 @@ def autopilot(reg: dict, werk: str, base: dict[str, int], stats: dict[str, dict]
         elif s["empty"] == 0 and s["avg_min"] >= FULL_MIN:
             target = min(mx, math.ceil(s["avg_min"] * last / TARGET_MIN), last * 2 + 2)
             plan[lid] = min(last, mx)
-            want[lid] = max(0, target - plan[lid])
+            # Premium-Gewicht (05.10.2026): reine Standard-Linien wachsen nicht mehr
+            want[lid] = 0 if s.get("standard_only") else max(0, target - plan[lid])
             weight[lid] = max(s["per_slot_h"], 1.0)
             why[lid] = f"voll ausgelastet (Ø {round(s['avg_min'])} min je Teil, {round(s['per_slot_h'])} grün/Platz·h)"
         else:
@@ -444,7 +490,7 @@ def read_inputs(werk: str, hours: int = 8) -> dict:
     since = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=hours)).isoformat()
     try:
         out["rows"] = db.select("run_stats", {"werk": f"eq.{werk}", "finished_at": f"gte.{since}", "limit": "5000",
-                                              "select": "werk,part,run_id,started_at,finished_at,candidates,processed,green"}) or []
+                                              "select": "werk,part,run_id,started_at,finished_at,candidates,processed,green,extra"}) or []
     except BaseException as e:  # noqa: BLE001
         print(f"Laufzahlen nicht lesbar ({type(e).__name__}) – ohne Autopilot", file=sys.stderr)
     try:
@@ -495,9 +541,13 @@ def decide(reg: dict, werk: str, inp: dict) -> dict:
         try:
             reset = (settings or {}).get("lane_reset")
             reset = reset if isinstance(reset, dict) else {}
-            plan, reasons = autopilot(reg, werk, own, lane_stats(inp.get("rows") or [], werk, reset=reset),
+            stats = lane_stats(inp.get("rows") or [], werk, reset=reset)
+            premium_on = werk == "lead-werk" and premium_weight(stats)
+            plan, reasons = autopilot(reg, werk, own, stats,
                                       ap.get("locks"), other, brake, prev=inp.get("prev_reasons"), reset=reset,
                                       vorrang=inp.get("vorrang"), stock=inp.get("stock"))
+            if premium_on:
+                premium_shift(reg, werk, plan, reasons, stats, ap.get("locks"))
             mode = "autopilot"
         except Exception as e:  # noqa: BLE001 – Autopilot darf nie einen Lauf verhindern
             print(f"Autopilot-Fehler ({type(e).__name__}: {e}) – Belegung wie eingestellt", file=sys.stderr)

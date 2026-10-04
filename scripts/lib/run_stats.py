@@ -22,7 +22,8 @@ def rows_from_lead_report(segments: dict) -> list[dict]:
                     "processed": int(r.get("processed") or 0), "green": int(r.get("green") or 0),
                     "yellow": int(r.get("yellow") or 0), "red": int(r.get("red") or 0),
                     "reasons": {str(k): int(v) for k, v in (r.get("top_reasons") or [])},
-                    "extra": {"stufen": r["stufen"]} if r.get("stufen") else {}})
+                    "extra": {**({"stufen": r["stufen"]} if r.get("stufen") else {}),
+                              **({"premium": int(r["premium"])} if r.get("premium") else {})}})
     return out
 
 
