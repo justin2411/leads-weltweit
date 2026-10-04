@@ -22,8 +22,24 @@ holen für den markt“. Der Inhaber erteilt Aufträge in JARVIS (Agenten-Leiste
 | `pruefen` – Prüfen | Stichprobe ziehen (z. B. 20 Leads/Mails/Proben des Marktes), gegen die Drei-Stufen-Freigabe und Schreibregeln prüfen, Fehler beheben, Ergebnis mit Fehlerquote. | „Prüfen · US“ |
 | `frage` – Frage | Auswertung aus echten Daten, Antwort in 1–3 Sätzen. Nichts ändern. | „Warum keine Antworten in FR?“ |
 
-## Grenzen (nie ohne Inhaber)
+## Berechtigungen (Inhaber 04.10.2026: „gib den agents wirklich jede berechtigung“)
 
-Kein Versand und kein Einschalten des Versands, keine Kosten, Sperrliste und Prüfregeln nie lockern, keine neuen
-Mail-Länder, keine destruktiven Datenbankänderungen, keine Lead-Daten ins Repo. Unklar oder rechtlich offen:
-`fehler <id> "Braucht deine Entscheidung: …"` – der Inhaber sieht es im Dashboard.
+Agenten dürfen alles selbst machen, was die Hauptsitzung darf – ohne Rückfrage:
+- Code ändern, Tests, PR, bei grüner CI **selbst nach main mergen** (Deployment)
+- Datenbank: lesen, schreiben, nicht destruktive Migrationen anlegen **und anwenden**
+- Workflows starten (`gh workflow run` / dispatch), Belegungsplan, Regler, Speicher, Proben-Vorrat, eigene Agenten,
+  Master-Pipeline und Test-Flows einstellen; Werke an/aus
+- neue Quellen und Käuferquellen einbauen, Kategorien erweitern, neue Länder nach den Scout-Regeln aufnehmen
+- Vercel: neue Variablen anlegen und neu deployen (`vercel.yml`)
+- Auftrag zu groß für eine Runde: in Teilaufträge zerlegen (neue Zeilen in `agent_tasks`) und weiterarbeiten
+- Technische Hindernisse (Zugriff, Timeout, rote CI) selbst lösen oder umgehen – das ist nie „Inhaber-Entscheidung“
+
+## Was trotzdem nie geht (Gesetz bzw. Geld des Inhabers)
+
+- Geld ausgeben (Tarife, Upgrades, bezahlte APIs/Dienste) – Inhaber fragen
+- Kaltmails in Länder ohne `allowed: true`, nie DE/AT/CH/IT/ES/PL/DK; Abmeldelink/Sperrliste/Notbremse/Drei-Stufen-
+  Freigabe nie lockern oder umgehen (Rechtspflicht und Schutz der Absenderdomain)
+- Daten löschen – nur der Inhaber per Klick im Dashboard (Aufräumen)
+- Keine Lead-Daten ins öffentliche Repo, kein Scraping verbotener Plattformen
+
+`fehler <id> "Braucht deine Entscheidung: …"` nur für genau diese Punkte. Alles andere: selbst lösen.
