@@ -31,7 +31,8 @@ class WerkPlanTests(unittest.TestCase):
     def test_default_without_plan_or_db(self):
         n, why = W.counts(self.reg, None)
         self.assertEqual(why, "Standardbelegung")
-        self.assertEqual(n["web-us"], 20)  # 21 -> 20: ein Platz an s2-neu (neue Länder 04.10.2026)
+        self.assertEqual(n["web-us"], 18)  # 21 -> 20 (s2-neu) -> 18: zwei Plätze an s2-ukfr (Scout 04.10.2026)
+        self.assertEqual(n["s2-ukfr"], 2)
         self.assertEqual(n["s2-neu"], 1)
         self.assertEqual(len(W.matrix(self.reg, "lead-werk", n)), 30)
         self.assertEqual(len(W.matrix(self.reg, "kunden-werk", n)), 8)
@@ -195,7 +196,7 @@ class AutopilotTests(unittest.TestCase):
         self.assertEqual(res["plan"], self.lead)
         # Autopilot aus -> Belegung des Inhabers
         res = W.decide(self.reg, "lead-werk", {"settings": {"slot_autopilot": {"on": False}}, "rows": _rows("web-us", "r1", 21, 1, 0)})
-        self.assertEqual((res["mode"], res["plan"]["web-us"]), ("standard", 20))
+        self.assertEqual((res["mode"], res["plan"]["web-us"]), ("standard", 18))
         # Bremse ab 7 GB: höchstens 8 Lead-Plätze und ohne Rohbestand
         res = W.decide(self.reg, "lead-werk", {"settings": {"slot_autopilot": {"on": False}}, "rows": [],
                                                "db_bytes": int(7.1 * W.GB)})

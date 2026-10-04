@@ -16,6 +16,7 @@ from pathlib import Path
 
 import requests
 
+from extraktor.enrich import FREEMAIL
 from extraktor.model import candidate
 
 BUCKET = "https://overturemaps-us-west-2.s3.us-west-2.amazonaws.com/"
@@ -144,8 +145,17 @@ def build_cache(log=print, path: Path = CACHE) -> Path:
     return path
 
 
-def no_website(country: str, limit: int, log=print, exclude: set[str] | None = None) -> list[dict]:
-    """Firmen ohne Website (Telefon vorhanden), E-Mail und Social-Media-Seite zuerst, Ketten/Behörden ausgenommen."""
+# Ohne Website, zweite Stufe UK/FR (Scout 04.10.2026: Vorrat ab 0,6 abgearbeitet, s2-uk/s2-fr seit 02.10. ohne neue
+# Firma): `--s2-min-conf 0.4` nimmt Einträge ab 0,4 dazu (UK ~50.000, FR ~85.000 mit Adresse; alle 2026 aktualisiert und
+# mit Facebook-Seite). Tiefer nie – wie bei der Website-Prüfung (website_check.LOW_CONF)
+S2_HIGH_CONF = 0.6
+S2_LOW_CONF = 0.4
+
+
+def no_website(country: str, limit: int, log=print, exclude: set[str] | None = None,
+               min_conf: float = S2_HIGH_CONF) -> list[dict]:
+    """Firmen ohne Website (Telefon vorhanden), E-Mail und Social-Media-Seite zuerst, Ketten/Behörden ausgenommen.
+    min_conf: Overture-Konfidenz (Standard 0,6; zweite Stufe 0,4, nie tiefer)."""
     import duckdb
     path = cache_for(country)
     if not path.exists():
@@ -160,10 +170,15 @@ def no_website(country: str, limit: int, log=print, exclude: set[str] | None = N
         WHERE (websites IS NULL OR len(websites) = 0)
           AND coalesce(operating_status, 'open') NOT IN ('permanently_closed', 'temporarily_closed')
           AND name IS NOT NULL AND lower(name) NOT IN (SELECT n FROM chains)
-          AND coalesce(confidence, 0) >= 0.6
+          AND coalesce(confidence, 0) >= ?
           AND (NOT ? OR len(emails) > 0)  -- US/neue Länder: nur mit E-Mail (sonst Millionen Rohbestand ohne Nutzen)
+          -- eigene E-Mail-Domain = wohl eigene Website: segments.fits verwirft diese Firmen immer. Vorher standen sie
+          -- (nie gespeichert) bei jedem Lauf vorn und verdrängten die Freemail-Firmen (Scout 04.10.2026: UK 7.786,
+          -- FR 11.046 Firmen ab 0,6 mit Freemail-Adresse nie bearbeitet, die Linien liefen „leer“)
+          AND (emails IS NULL OR len(emails) = 0 OR list_contains(?, split_part(lower(emails[1]), '@', 2)))
         ORDER BY (len(emails) > 0) DESC, (len(socials) > 0) DESC, confidence DESC
-        LIMIT ?""", [cc, country in EMAIL_ONLY, limit * 3 + len(exclude or ())]).fetchall()
+        LIMIT ?""", [cc, max(min_conf, S2_LOW_CONF), country in EMAIL_ONLY, sorted(FREEMAIL),
+                     limit * 3 + len(exclude or ())]).fetchall()
     cols = ["id", "name", "phones", "emails", "socials", "street", "city", "postcode", "category", "datasets",
             "updated", "confidence", "region"]
     out = []
@@ -178,6 +193,25 @@ def no_website(country: str, limit: int, log=print, exclude: set[str] | None = N
             break
     log(f"Overture {country}: {len(out)} Firmen ohne Website (Telefon vorhanden) ausgewählt")
     return out
+
+
+def phone_key(raw: str | None) -> str:
+    """Telefonnummer -> Vergleichsschlüssel (letzte 9 Ziffern ohne Landes-/Ortsvorwahl-Null)."""
+    d = re.sub(r"\D", "", raw or "")
+    if d.startswith("33") and len(d) == 11:
+        d = d[2:]
+    return d.lstrip("0")[-9:]
+
+
+def phones(country: str) -> set[str]:
+    """Alle Telefonnummern eines Landes im Overture-Auszug (mit und ohne Website); leer, wenn kein Auszug da ist."""
+    import duckdb
+    path = cache_for(country)
+    if not path.exists():
+        return set()
+    rows = duckdb.connect().execute(f"SELECT DISTINCT unnest(phones) FROM '{path}' WHERE country = ?",
+                                    [code(country)]).fetchall()
+    return {k for (p,) in rows if len(k := phone_key(p)) == 9}
 
 
 def social_kind(urls: list[str] | None) -> str:
