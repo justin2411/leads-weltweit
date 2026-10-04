@@ -37,6 +37,7 @@ WORKFLOWS = {
     "kaeufer.yml": ("Käufersuche", 27),
     "kundenlieferung.yml": ("Kundenlieferung (montags)", 24 * 7 + 3),
     "wachhund.yml": ("Wachhund (startet ausgefallene Läufe nach)", 3),
+    "agenten-werk.yml": ("Agenten-Werk (Speicher + eigene Agenten)", 3),
 }
 
 
@@ -346,6 +347,17 @@ def check_sample_supply(c: Check, db) -> None:
               "nicht lieferbar: " + ", ".join(not_ready))
     else:
         c.add("Proben", OK, f"Probe lieferbar für alle {len(pages)} Seiten")
+
+
+def check_pools(c: Check, db) -> None:
+    """Speicher, aus denen Proben/Lieferungen kommen (pool_routes, Abo-Speicher): reichen sie für 10 verschiedene,
+    vollständige Firmen? Bei gesetztem Speicher gibt es kein Ausweichen auf den Gesamtbestand (lib/pools.py)."""
+    from lib.pools import shortfalls
+    short = shortfalls(db)
+    for s in short:
+        c.add("Speicher", WARN, f"Speicher {s['name']} reicht nicht für {s['segment']}/{s['country']}",
+              f"{s['firmen']} von 10 vollständigen Firmen mit freien Leads – keine Probe aus diesem Speicher "
+              f"({', '.join(s['wer'])}); Speicher füllen oder Zuordnung ändern")
 
 
 def check_sample_stock(c: Check, db) -> None:
@@ -668,6 +680,7 @@ def main(argv=None) -> int:
     c.guard("Proben", lambda: check_web_samples(c, db))
     c.guard("Proben", lambda: check_sample_supply(c, db))
     c.guard("Proben", lambda: check_sample_stock(c, db))
+    c.guard("Speicher", lambda: check_pools(c, db))
     c.guard("Freigabe", lambda: check_release_gate(c, db))
     c.guard("Website", lambda: check_website(c, db))
     c.guard("Kunden", lambda: check_customers(c, db))

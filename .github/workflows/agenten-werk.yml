@@ -1,0 +1,65 @@
+# Agenten-Werk (Inhaber 04.10.2026, docs/BAUKASTEN-MASTER.md): stündlich die Master-Pipeline über neue Leads laufen
+# lassen und ihre Speicher füllen (scripts/pools.py fill), danach fällige eigene Agenten aus dem Baukasten ausführen
+# (scripts/agents_run.py: Speicher, Meldung an den Inhaber, Aufträge an die Agenten-Routine, Export-IDs).
+# Kostenlos (öffentliches Repo). Sendet NIE an Käufer oder Leads – Mails nur an den Inhaber selbst (OWNER_EMAIL).
+# Pause im Dashboard: werke_paused „agenten“ (beide Skripte beenden sich dann sauber). Wird vom Wachhund nachgestartet.
+name: agenten-werk
+on:
+  schedule: [{ cron: "29 * * * *" }]
+  workflow_dispatch:
+    inputs:
+      probelauf:
+        type: boolean
+        default: false
+concurrency: { group: agenten-werk, cancel-in-progress: false }
+defaults:
+  run:
+    shell: bash   # mit pipefail: ein Fehler vor „| tee“ lässt den Schritt scheitern
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      actions: write   # Wachhund anstoßen
+      contents: read
+    env:
+      SITE_URL: ${{ vars.SITE_URL || 'https://www.nextgen-profit.de' }}   # Push über /api/push
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      MAIL_FROM: ${{ secrets.MAIL_FROM }}
+      OWNER_EMAIL: ${{ secrets.OWNER_EMAIL }}
+      APPLY: ${{ inputs.probelauf == true && ' ' || '--apply' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - name: Speicher füllen (Master-Pipeline)
+        run: python scripts/pools.py fill $APPLY | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Eigene Agenten
+        if: ${{ !cancelled() }}
+        run: python scripts/agents_run.py $APPLY | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Wachhund anstoßen, wenn GitHub ihn nicht startet
+        # wie lead-werk.yml/kunden-werk.yml: GitHub ließ geplante Läufe nachts stundenlang aus (04.10.2026).
+        # Nie Versand – den startet der Wachhund nur in seinen Grenzen. GitHub-Aufrufe bis zu 3 Versuche.
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          retry() { for i in 1 2 3; do "$@" && return 0; [ "$i" -lt 3 ] && sleep 20; done; return 1; }
+          last=$(retry gh run list --workflow wachhund.yml --limit 1 --json createdAt -q '.[0].createdAt' || true)
+          if [ -n "$last" ]; then
+            mins=$(( ( $(date -u +%s) - $(date -u -d "$last" +%s) ) / 60 ))
+          else
+            mins=999
+          fi
+          if [ "$mins" -ge 30 ]; then
+            if retry gh workflow run wachhund.yml --ref "${{ github.ref_name }}"; then
+              echo "Wachhund angestoßen (letzter Lauf vor $mins min)" | tee -a "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::warning::Wachhund nicht anstoßbar (GitHub antwortet nicht)"
+            fi
+          else
+            echo "Wachhund lief vor $mins min – nichts zu tun"
+          fi
