@@ -149,9 +149,29 @@ jobs:
       - name: Regeln neu prüfen, dann Registernummer nachprüfen (S2 UK/SE/FI, S1 UK)
         run: python scripts/kundenwerk.py nachpruefen --max 3000 --workers 16 --deadline-min 80 --kvk-max 75 | tee -a "$GITHUB_STEP_SUMMARY"
 
+  fr_webdesign:
+    # JARVIS-Auftrag 1e9a203d (04.10.2026, optout-muster-s2: 3 von 17 FR-Käufern ohne Webdesign meldeten sich ab):
+    # S2/FR bleibt nur mail-fähig mit Code NAF 6201Z/6202A/7311Z/7410Z (SIRENE) + Webdesign auf der eigenen Website,
+    # keine Verkaufs-/Parkseiten. Prüft noch nicht markierte FR/S2-Käufer (Bestand einmal, danach nur Nachzügler),
+    # stuft nicht passende auf rejected ab (Grund im check_reason), löscht nichts, sendet nie.
+    needs: pool
+    if: needs.pool.outputs.an == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - name: FR Webagenturen schärfen (S2)
+        run: python scripts/kundenwerk.py fr-webdesign --max 10000 --workers 16 --deadline-min 80 | tee -a "$GITHUB_STEP_SUMMARY"
+
   weiter:
     # sofort den nächsten Lauf starten (nur bei Schalter an und echter Laufzeit, sonst Cron/Wachhund)
-    needs: [pool, plan, pruefen, nachpruefen]
+    needs: [pool, plan, pruefen, nachpruefen, fr_webdesign]
     if: always() && needs.pool.outputs.an == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
