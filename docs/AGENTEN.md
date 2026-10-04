@@ -32,7 +32,7 @@ auswerten und bei anhaltendem Engpass selbst starten).
 selber jeden tag über einen speziellen chat sagen was er angepasst hat“. Der Inhaber schreibt unter
 `/dashboard/jarvis/chat` in beliebig vielen Sitzungen (oder im Feld „Schreib JARVIS“ auf der Startseite – das schreibt
 in die zuletzt genutzte Sitzung und öffnet sie). Tabellen `signalwerk.jarvis_sessions` / `jarvis_messages` (Migration
-20261004130000). Die Routine läuft viermal pro Stunde (Minute :08, :23, :38, :53 deutsche Zeit); unter jeder offenen
+20261004140000). Die Routine läuft viermal pro Stunde (Minute :08, :23, :38, :53 deutsche Zeit); unter jeder offenen
 Nachricht sieht der Inhaber „startet um HH:MM“ (nächster dieser Zeitpunkte), dann „in Arbeit“, dann „erledigt“.
 
 **Ablauf je Lauf** (vor den Agenten-Aufträgen):

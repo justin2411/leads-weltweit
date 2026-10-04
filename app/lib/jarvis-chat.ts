@@ -4,7 +4,7 @@
  * und Baukasten-Chat („text reinschreiben … es soll dann mit meinen worten selber gebaut werden … feedback ob es so
  * übernommen wurde“). Reine Funktionen ohne Server-/React-Abhängigkeiten: Prüfung der Eingaben, Status je Nachricht
  * („startet um HH:MM“), Reihenfolge der Sitzungen, Punkt bei Neuem, frühere Chat-Aufträge (agent_tasks) lesbar.
- * Tabellen: signalwerk.jarvis_sessions / jarvis_messages (Migration 20261004130000); beantwortet von der JARVIS-Routine
+ * Tabellen: signalwerk.jarvis_sessions / jarvis_messages (Migration 20261004140000); beantwortet von der JARVIS-Routine
  * (scripts/jarvis_chat.py, docs/AGENTEN.md).
  */
 import { CHAT_BY, nextAgentRound, type AgentTask } from "./agents.ts";

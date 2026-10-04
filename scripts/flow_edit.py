@@ -56,7 +56,7 @@ def load(db, flow_id: str) -> dict:
     row = (db.select("flows", {"id": f"eq.{flow_id}", "select": COLS}) or [None])[0]
     if not row:
         raise EditError(f"Flow {flow_id} unbekannt")
-    try:  # Vorschlag-Spalten erst ab Migration 20261004130000
+    try:  # Vorschlag-Spalten erst ab Migration 20261004140000
         extra = (db.select("flows", {"id": f"eq.{flow_id}", "select": "pending_def,pending_at,pending_note"}) or [{}])[0]
     except RuntimeError:
         extra = {}

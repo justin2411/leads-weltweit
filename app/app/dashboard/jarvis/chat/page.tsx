@@ -33,7 +33,7 @@ export default async function JarvisChatPage({ searchParams }: { searchParams: S
         {css}
         <section className="jc-missing" role="status">
           <h1>JARVIS Chat</h1>
-          <p>{e instanceof ChatMissing ? "Der Chat wird gerade eingerichtet (Datenbank-Migration 20261004130000)." : "Chat konnte nicht laden – gleich noch einmal."}</p>
+          <p>{e instanceof ChatMissing ? "Der Chat wird gerade eingerichtet (Datenbank-Migration 20261004140000)." : "Chat konnte nicht laden – gleich noch einmal."}</p>
           <a href="/dashboard/jarvis#chat">Zurück zu JARVIS</a>
         </section>
       </>

@@ -57,7 +57,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
   const s = (typeof sp.s === "string" && IDS.includes(sp.s as StationId) ? sp.s : null) as StationId | null;
   const tab = (sp.t === "set" || sp.t === "check" ? sp.t : "info") as "info" | "set" | "check";
-  // Agenten: ?a=1…4 oder ?a=neu öffnet das Agenten-Fenster (statt einer Station)
+  // Agenten: ?a=1…8 oder ?a=neu öffnet das Agenten-Fenster (statt einer Station)
   const ag = typeof sp.a === "string" && /^([1-9]|neu)$/.test(sp.a) ? sp.a : null;
   const kaP = countCustomerAgents();
   const chatP = loadStartChat();

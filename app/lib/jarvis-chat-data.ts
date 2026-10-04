@@ -3,7 +3,7 @@ import { db } from "@/lib/supabase";
 import { BERICHT_TITLE, flowSessionTitle, toMessage, toSession, type ChatMessage, type ChatSession } from "@/lib/jarvis-chat";
 
 /**
- * Daten des JARVIS-Chats (Tabellen jarvis_sessions / jarvis_messages, Migration 20261004130000). Nur serverseitig mit
+ * Daten des JARVIS-Chats (Tabellen jarvis_sessions / jarvis_messages, Migration 20261004140000). Nur serverseitig mit
  * dem Service-Schlüssel. Fehlt die Tabelle noch (Migration nicht angewandt), werfen die Loader ChatMissing – die Seiten
  * zeigen dann einen Hinweis bzw. die Startseite den bisherigen Chat über Agenten-Aufträge.
  */
@@ -93,6 +93,6 @@ export async function flowLiveState(flowId: string): Promise<{ updated_at: strin
   if (!data) return null;
   let pending: { pending_def?: unknown; pending_note?: string | null } = {};
   const p = await db().from("flows").select("pending_def, pending_note").eq("id", flowId).abortSignal(T()).maybeSingle();
-  if (!p.error && p.data) pending = p.data; // Spalten erst ab Migration 20261004130000
+  if (!p.error && p.data) pending = p.data; // Spalten erst ab Migration 20261004140000
   return { updated_at: String(data.updated_at), name: String(data.name ?? ""), def: data.def, pending_def: pending.pending_def ?? null, pending_note: pending.pending_note ?? null };
 }
