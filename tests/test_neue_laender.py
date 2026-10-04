@@ -226,5 +226,51 @@ class SendCheckTest(unittest.TestCase):
                                                     "contacto@pixel.mx"))
 
 
+class FairShareTest(unittest.TestCase):
+    """Agent 6 (04.10.2026): MX/BR hatten 0 Leads, weil FI/SG/HK das ganze Zeitfenster der Linie s2-neu verbrauchten
+    („S2/MX: Zeitfenster vorbei“). Jetzt bekommt jedes Land seinen Anteil an der Restzeit."""
+
+    def test_fair_deadline(self):
+        from extraktor import run
+        self.assertEqual(run.fair_deadline(0, 5, now=100.0), 0)  # ohne Frist keine Frist
+        self.assertAlmostEqual(run.fair_deadline(100.0 + 75 * 60, 5, now=100.0), 100.0 + 15 * 60)
+        self.assertAlmostEqual(run.fair_deadline(500.0, 1, now=100.0), 500.0)  # letzte Branche: ganze Restzeit
+        self.assertAlmostEqual(run.fair_deadline(500.0, 3, now=600.0), 600.0)  # abgelaufen bleibt abgelaufen
+
+    def test_every_country_of_the_line_gets_time(self):
+        """Jedes Land der Linie s2-neu kommt dran, auch wenn jedes Land seinen ganzen Anteil ausschöpft."""
+        import tempfile
+        from extraktor import run
+        clock = {"t": 1000.0}
+        seen = []
+
+        def fake_segment(seg, pool, per, fetcher, shared, guard, workers, max_tries, progress=None, deadline=0):
+            seen.append((pool[0]["country"], clock["t"], deadline))
+            clock["t"] = deadline  # schöpft seinen Anteil ganz aus (großer Vorrat)
+            return []
+
+        def fake_pool(co, limit, stats, known):
+            return [{"source": "overture", "source_id": f"{co}{i}", "country": co} for i in range(3)]
+
+        import types
+        fake_enrich = types.SimpleNamespace(Fetcher=lambda: types.SimpleNamespace(requests=0))
+        # sys.modules unverändert lassen: „enrich“ gibt es zweimal (scripts/ und scripts/extraktor/)
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.dict(sys.modules, {"enrich": fake_enrich}), \
+                mock.patch.object(run.time, "monotonic", lambda: clock["t"]), \
+                mock.patch.object(run, "load_overture_s2", fake_pool), \
+                mock.patch.object(run.segments, "fits", lambda seg, c: (True, "")), \
+                mock.patch.object(run, "run_segment", fake_segment):
+            run.main(["--segments", "S2", "--countries", "FI,SG,HK,MX,BR", "--fmcsa-days", "0", "--formd-days", "0",
+                      "--deadline-min", "75", "--out", d])
+        self.assertEqual([c for c, _, _ in seen], ["FI", "SG", "HK", "MX", "BR"])
+        end = 1000.0 + 75 * 60
+        for c, start, dl in seen:
+            self.assertGreater(dl, start, c)  # jedes Land bekommt Zeit
+            self.assertLessEqual(dl, end + 1e-6, c)
+        self.assertAlmostEqual(seen[0][2] - seen[0][1], 15 * 60)  # 75 min / 5 Länder
+        self.assertAlmostEqual(seen[-1][2], end)
+
+
 if __name__ == "__main__":
     unittest.main()

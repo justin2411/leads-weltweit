@@ -434,6 +434,17 @@ def ampel(l: dict) -> str:
     return "green" if l["qc"]["status"] == "green" else "yellow"
 
 
+def fair_deadline(deadline: float, left: int, now: float | None = None) -> float:
+    """Frist für die nächste Branche/das nächste Land: gerechter Anteil an der Restzeit (Restzeit / offene Branchen).
+    Ohne das verbrauchten die ersten Länder einer Linie (FI, SG) das ganze Zeitfenster und die letzten (MX, BR)
+    kamen nie dran (Agent 6, 04.10.2026). Wer früher fertig ist, gibt seine Restzeit an die folgenden weiter;
+    die letzte Branche bekommt die ganze Restzeit. 0 = keine Frist."""
+    if not deadline:
+        return 0
+    now = time.monotonic() if now is None else now
+    return now + max(0.0, deadline - now) / max(1, left)
+
+
 def run_segment(seg: str, pool: list[dict], per: int, fetcher, shared: Counter, guard: filters.Guard,
                 workers: int, max_tries: int, progress=None, deadline: float = 0) -> list[dict]:
     """Kandidaten in Wellen parallel bearbeiten, bis `per` grüne Leads da sind, der Vorrat leer ist oder die
@@ -697,16 +708,17 @@ def main(argv=None) -> int:
 
     out = Path(args.out)
     leads, failed = [], []
-    for key in keys:
+    for n, key in enumerate(keys):
         if deadline and time.monotonic() >= deadline:
             log(f"{key}: Zeitfenster vorbei, Branche im nächsten Lauf")
             continue
         seg = key.split("/")[0]
+        key_deadline = fair_deadline(deadline, len(keys) - n)  # jedes Land bekommt seinen Anteil am Zeitfenster
         part = run_segment(seg, p.get(key, []), args.per, fetcher, shared, guard, args.workers, args.max_tries,
                            progress=lambda part: (write(out, leads + part, args.per),
                                                   hb and hb.update(processed=len(leads) + len(part),
                                                                    green=sum(l["ampel"] == "green" for l in leads + part))),
-                           deadline=deadline)
+                           deadline=key_deadline)
         leads += part
         if args.store and guard.db is not None:
             from extraktor.store import store_new
