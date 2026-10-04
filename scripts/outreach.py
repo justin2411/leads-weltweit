@@ -256,8 +256,11 @@ LANDING_LINE = {"en": "How it works in under a minute, and your free sample with
                 "es": "Cómo funciona en menos de un minuto, y su muestra gratuita con un clic: {url}"}
 
 
-def landing_link(db, cache: dict, segment_id: str, country: str, token: str) -> str | None:
-    """Persönlicher Link zur Landingpage (/<land>/<segment>?r=<token>), nur wenn die Seite live ist."""
+def landing_link(db, cache: dict, segment_id: str, country: str, token: str,
+                 variant: str | None = None, src: str | None = "mail") -> str | None:
+    """Persönlicher Link zur Landingpage (/<land>/<segment>?r=<token>), nur wenn die Seite live ist.
+    Herkunft für die Website-Auswertung (Inhaber 04.10.2026, nur aggregiert, keine Öffnungsmessung): &src=mail und
+    die Betreff-Variante &sv=A|B. Der Mailtext bleibt gleich, nur die URL trägt die Parameter."""
     base = (os.environ.get("APP_BASE_URL") or os.environ.get("SITE_URL") or "https://www.nextgen-profit.de").rstrip("/")
     if not base or not token:
         return None
@@ -266,7 +269,10 @@ def landing_link(db, cache: dict, segment_id: str, country: str, token: str) -> 
         rows = db.select("landing_pages", {"segment_id": f"eq.{segment_id}", "country": f"eq.{country}",
                                            "status": "eq.live", "select": "slug"})
         cache[key] = rows[0]["slug"] if rows else None
-    return f"{base}/{cache[key]}?r={token}" if cache[key] else None
+    if not cache[key]:
+        return None
+    extra = (f"&src={src}" if src else "") + (f"&sv={variant}" if src and variant in ("A", "B") else "")
+    return f"{base}/{cache[key]}?r={token}{extra}"
 
 
 def unsubscribe_headers(unsub_url: str | None) -> dict:
@@ -403,6 +409,7 @@ def cmd_send(args) -> int:
                 raise SystemExit(f"{var} fehlt")
 
     from lib.deliverability import domain_accepts_mail, interleave
+    from drafts import subject_variant  # Betreff-Variante für den Mail-Link (?sv=), falls die Spalte fehlt
 
     stop = notbremse(db)
     if stop:
@@ -581,7 +588,8 @@ def cmd_send(args) -> int:
                                company=p["company_name"], unsubscribe_url=unsub, country=country)
         body = m["body"].rstrip()
         # Nachfassmail: derselbe Knopf zur Landingpage wie die Erstmail (Inhaber 02.10.2026, Schritt 3)
-        link = (landing_link(db, pages, e["segment_id"], country, m["unsubscribe_token"])
+        link = (landing_link(db, pages, e["segment_id"], country, m["unsubscribe_token"],
+                             variant=m.get("subject_variant") or subject_variant(p))
                 if kind in ("initial", "followup") else None)
         plan_url = _plan_url(body) if kind == "sample_followup" else None
         # Nachfrage nach der Probe: Erklär-PDF „How it works“ im Anhang (Inhaber 02.10.2026)
@@ -669,7 +677,7 @@ def cmd_test(args) -> int:
                            postal_address=postal_address(), company=name,
                            unsubscribe_url=unsubscribe_target("test"), country=args.country)
     from lib.db import DB
-    link = landing_link(DB(), {}, args.segment, args.country, "test")
+    link = landing_link(DB(), {}, args.segment, args.country, "test", src=None)
     if link:
         body = body.rstrip() + "\n\n" + LANDING_LINE[lang if lang in LANDING_LINE else "en"].format(url=link)
     text = body.rstrip() + "\n\n" + footer
@@ -691,7 +699,7 @@ def _test_followup(args, name: str) -> int:
     if args.art == "nachfass":
         body, _ = followup_text(p, lang)
         from lib.db import DB
-        link = landing_link(DB(), {}, args.segment, args.country, "test")
+        link = landing_link(DB(), {}, args.segment, args.country, "test", src=None)
         if link:
             body = body.rstrip() + "\n\n" + LANDING_LINE[lang if lang in LANDING_LINE else "en"].format(url=link)
     else:

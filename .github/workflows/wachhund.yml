@@ -24,3 +24,10 @@ jobs:
           # nur lesend: Schalter des Inhabers (owner_settings), damit pausierte Werke nicht nachgestartet werden
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Website-Agenten (Inhaber 04.10.2026): fällige bekommen einen Auftrag (agent_tasks, kind website) für die
+      # JARVIS-Routine; Fehler hier dürfen den Wachhund nie stoppen
+      - run: python scripts/website_agents.py faellig --apply
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

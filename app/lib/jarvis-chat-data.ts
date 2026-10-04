@@ -20,9 +20,9 @@ function fail(what: string, e: { message: string; code?: string }): never {
   throw new Error(`${what}: ${e.message}`);
 }
 
-/** Alle Sitzungen (ohne Baukasten) mit letzter Nachricht, letzter JARVIS-Antwort und offenen Nachrichten. */
+/** Alle Sitzungen (ohne Baukasten und Website) mit letzter Nachricht, letzter JARVIS-Antwort und offenen Nachrichten. */
 export async function loadSessions(archived = false): Promise<ChatSession[]> {
-  const s = await db().from("jarvis_sessions").select(SESSION_COLS).neq("kind", "baukasten").eq("archived", archived)
+  const s = await db().from("jarvis_sessions").select(SESSION_COLS).not("kind", "in", "(baukasten,website)").eq("archived", archived)
     .order("updated_at", { ascending: false }).limit(100).abortSignal(T());
   if (s.error) fail("jarvis_sessions", s.error);
   const list = (s.data ?? []).map((x) => toSession(x as Record<string, unknown>));

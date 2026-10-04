@@ -114,7 +114,33 @@ hat `kind = "baukasten"` und `flow_id` (in `offen` steht dazu `flow`: Name, Art 
 „Chat leeren“ archiviert nur die Sitzung; der Flow bleibt, wie er ist. Die Drei-Stufen-Freigabe bleibt immer an
 (Pipeline-Regeln machen sie nur strenger).
 
-## Arten
+### Website-Chat und Website-Agenten
+
+Inhaber 04.10.2026: „die website als themenfeld … agenten erstellen, die anpassungen an der website übernehmen und
+schauen das man dort auch immer alles sauber macht … chatfeld, dass ich änderungswünsche direkt dort posten kann und
+diese umgesetzt werden“. Seite `/dashboard/website`: Gesundheit je Bereich (letzter Website-Check), Chatfeld
+„Änderungswunsch“, Website-Agenten.
+
+- **Website-Chat** (`jarvis_sessions.kind = 'website'`, genau eine offene Sitzung; „Chat leeren“ archiviert): in
+  `offen` steht dazu `website_check` (Zeit, Punkte je Bereich, rote/gelbe Funde). Jede Nachricht ist eine Änderung an
+  der Website: im Repo umsetzen (Branch `claude/agenten-website-<kurz>`), Tests und Build grün
+  (`python3 -m unittest discover -s tests`, in `app` `npx tsc --noEmit -p .`, `npm test`, `npx next build --webpack`),
+  PR, bei grüner CI **selbst mergen**, Antwort kurz mit Link zum PR (und zur geänderten Seite). Frage statt Auftrag:
+  nur antworten.
+- **Website-Agenten** (`signalwerk.website_agents`): `scripts/website_agents.py faellig --apply` (Wachhund alle 15 min,
+  nach dem täglichen Website-Check) legt für fällige, aktive Agenten einen Auftrag `kind = website`,
+  `created_by = "Website-Agent"` auf einen freien Agenten A1–A8 an („Website-Agent <Name>: <Aufgabe>“). Bearbeiten
+  wie einen normalen Auftrag; Grundlage ist der letzte Website-Check (`website_checks`, neuester Eintrag) und die Seite
+  selbst. Änderungen wie beim Website-Chat als PR. Das Ergebnis aus `fertig` landet automatisch kurz in
+  `website_agents.last_result`.
+- **Website-Check** (`scripts/website_check.py`, `website-check.yml` täglich 06:23 deutscher Zeit, manuell startbar):
+  nur die eigene Domain, höflich (1 s Pause, eigener User-Agent), keine fremden Seiten. Nach einer Website-Änderung darf
+  der Agent ihn starten (`gh workflow run website-check.yml`).
+- **Grenzen**: Preise nur nach den Gehirn-Regeln, Rechtstexte (`app/content/legal.ts`) nur nach ausdrücklicher Vorgabe
+  des Inhabers, nichts, was Geld kostet, kein Versand, Abmeldelink/Formular-Einwilligung nie entfernen oder aufweichen,
+  keine Lead-Daten ins Repo. Design nach `docs/DESIGN.md` (wenig Text, Linien-Icons, keine Gedankenstriche in
+  Kundentexten, Überschriften ohne Satzzeichen).
+
 
 | Art | Was tun | Typisch |
 |---|---|---|
@@ -123,6 +149,7 @@ hat `kind = "baukasten"` und `flow_id` (in `offen` steht dazu `flow`: Name, Art 
 | `quelle` – Neue Quelle | Wie der Quellen-Scout (`docs/QUELLEN-SCOUT.md`): kostenlose, erlaubte Quelle recherchieren, mit ≥ 10 grünen Leads testen, in die Werke einbauen (PR, Tests, CI grün, selbst mergen), Logbuch-Eintrag. | „Neue Quelle · NL“ |
 | `pruefen` – Prüfen | Stichprobe ziehen (z. B. 20 Leads/Mails/Proben des Marktes), gegen die Drei-Stufen-Freigabe und Schreibregeln prüfen, Fehler beheben, Ergebnis mit Fehlerquote. | „Prüfen · US“ |
 | `frage` – Frage | Auswertung aus echten Daten, Antwort in 1–3 Sätzen. Nichts ändern. | „Warum keine Antworten in FR?“ |
+| `website` – Website-Agent | Nur über Website-Agenten (`website_agents.py faellig`): Aufgabe an der eigenen Website erledigen, Änderungen als PR (siehe „Website-Chat und Website-Agenten“). | „Website-Agent Fehler & Links: …“ |
 
 ## Kunden-Aufträge (kind `kunde`)
 

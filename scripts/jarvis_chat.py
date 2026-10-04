@@ -3,7 +3,8 @@ unterschiedlichen sitzungen haben … er soll auch selber jeden tag über einen 
 hat“). Ablauf: docs/AGENTEN.md, Abschnitt „JARVIS-Chat“. Schreibt nur in signalwerk.jarvis_sessions/jarvis_messages.
 Sendet nichts.
 
-  python scripts/jarvis_chat.py offen                        # offene Inhaber-Nachrichten je Sitzung + letzte 20 als Verlauf (JSON)
+  python scripts/jarvis_chat.py offen                        # offene Inhaber-Nachrichten je Sitzung + letzte 20 als Verlauf (JSON);
+                                                             # Website-Sitzungen mit dem letzten Website-Check
   python scripts/jarvis_chat.py start <msg_id>               # übernehmen: Status „in_arbeit“ (Exit 3 = schon übernommen)
   python scripts/jarvis_chat.py antwort <session_id> antwort.txt [--links '[{"label": "PR", "url": "https://…"}]'] [--zwischenstand]
                                                              # JARVIS-Antwort speichern; Nachrichten der Sitzung in Arbeit → fertig
@@ -100,6 +101,19 @@ def history(db, session_id: str) -> list[dict]:
     return sorted(rows, key=lambda r: str(r.get("created_at")))[-HISTORY:]
 
 
+def website_context(db) -> dict | None:
+    """Letzter Website-Check (Punkte je Bereich, die wichtigsten Funde) als Zusammenhang für Website-Sitzungen."""
+    try:
+        row = (db.select("website_checks", {"order": "at.desc", "limit": "1",
+                                            "select": "at,site,scores,funde,seiten"}) or [None])[0]
+    except Exception:  # Tabelle fehlt (Migration noch nicht angewandt) – Chat geht trotzdem
+        return None
+    if not row:
+        return None
+    funde = [f for f in (row.get("funde") or []) if isinstance(f, dict) and f.get("stufe") in ("rot", "gelb")]
+    return {"at": row.get("at"), "site": row.get("site"), "scores": row.get("scores") or {}, "funde": funde[:12]}
+
+
 def offen(db) -> list[dict]:
     """Sitzungen mit offenen (oder seit 2 h liegengebliebenen) Inhaber-Nachrichten, älteste zuerst."""
     t = now()
@@ -123,6 +137,10 @@ def offen(db) -> list[dict]:
             f = (db.select("flows", {"id": f"eq.{s['flow_id']}", "select": "id,name,kind,status,updated_at"}) or [None])[0]
             item["flow"] = f
             item["hinweis"] = "Flow ändern mit scripts/flow_edit.py show/apply (docs/AGENTEN.md, Baukasten-Chat)"
+        if s.get("kind") == "website":
+            item["website_check"] = website_context(db)
+            item["hinweis"] = ("Änderungswunsch an der Website: als PR umsetzen (Branch claude/agenten-website-<kurz>), "
+                               "Tests/Build grün, selbst mergen, Ergebnis kurz mit Link (docs/AGENTEN.md, Website-Chat)")
         out.append(item)
     return sorted(out, key=lambda x: str(x["offen"][0].get("created_at")))
 

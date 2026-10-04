@@ -1,12 +1,13 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadBoxHealth, loadDaily, loadFunnel, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock } from "@/lib/dashboard-data";
+import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadBoxHealth, loadDaily, loadFunnel, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock, loadWebsite } from "@/lib/dashboard-data";
+import { webNeck } from "@/lib/website-stats";
 import { berlin, berlinDay, brake, chain, compact, currencySign, greeting, mailboxes, monthly, nextWorkflowRun, onlySegment, realSubscriptions, sampleStock, stockSegment, BOX_MIN, COUNTRY_COLOR } from "@/lib/dashboard-logic";
 import { totals } from "@/lib/dashboard-periods";
 import { alarmTips, coach, hall, laneOf, laneStats, neckTask, rankTips, recommend, running, utilization, type Beat, type Tip } from "@/lib/leitstand";
 import { agentStartLabel, freeAgent } from "@/lib/agents";
 import { visibleTips } from "@/lib/tips";
-import { NECK_TO_STATION, ticker, type Edge, type Station, type StationId, type TickerItem } from "@/lib/fluss";
+import { NECK_TO_STATION, WEB_STATIONS, ticker, type Edge, type Station, type StationId, type TickerItem } from "@/lib/fluss";
 import { effectiveLimit, slotCounts, werkOn, type LaneRegistry, type WerkKey } from "@/lib/owner-settings";
 import { START_WORKFLOWS, startState, type StartKey, type StartRequest } from "@/lib/start-queue";
 import { db } from "@/lib/supabase";
@@ -63,6 +64,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const kaP = countCustomerAgents();
   const chatP = loadStartChat();
   const propP = loadProposals();
+  const webP = loadWebsite();
   const stockP = loadStock();
   stockP.catch(() => {});
   const today = berlinDay(new Date());
@@ -121,6 +123,9 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const gatePct = spC ? Math.round((spG / spC) * 1000) / 10 : null;
   const gateOk = n(act.gate_60m?.released), gateBad = n(act.gate_60m?.failed);
   const neck = NECK_TO_STATION[chain(live, stock, cfg, countries).bottleneck ?? ""] ?? null;
+  // Linie „Website“ (Inhaber 04.10.2026): Zahlen aus dashboard_cache, eigener Engpass nach festen Schwellen (webNeck)
+  const web = await webP;
+  const wNeck = webNeck(web);
 
   // ---------------------------------------------------------------- Stationen
   const sw = (k: Parameters<typeof werkOn>[1]) => werkOn(own, k);
@@ -141,7 +146,11 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     { id: "versand", label: "Versand", icon: "versand", value: `${sentToday}`, unit: `/${cap}`, sub: "heute", state: own.send_paused ? "off" : isLive(act, "versand", now) ? "live" : "idle", tip: "Mails heute / Kapazität" },
     { id: "antworten", label: "Antworten", icon: "antworten", value: `${w.replies}`, sub: `${w.positive} positiv`, state: state("antworten", "antworten", 30), tip: "echte Antworten 7 Tage (ohne Abwesenheit)" },
     { id: "kunden", label: "Kunden", icon: "kunden", value: `${subs.length}`, sub: `${revenue}/Mon.`, state: subs.length ? "live" : "idle", tip: "zahlende Kunden · Umsatz pro Monat" },
-  ] as Station[]).map((x) => ({ ...x, neck: x.id === neck }));
+    { id: "web", label: "Aufrufe", icon: "land", value: compact(web.views_24h), sub: "24 h", state: web.views_60m ? "live" : "idle", tip: "Aufrufe der Landingpages in 24 h (ohne Bots)" },
+    { id: "wklick", label: "Probe-Klick", icon: "antippen", value: compact(web.cta_24h), sub: "24 h", state: web.cta_60m ? "live" : "idle", tip: "Klicks auf „10 kostenlose Leads“ in 24 h" },
+    { id: "wprobe", label: "Anfrage", icon: "proben", value: compact(web.req_24h), sub: "Proben 24 h", state: web.req_60m ? "live" : "idle", tip: "Probe-Anfragen über die Website in 24 h" },
+    { id: "wkauf", label: "Kauf", icon: "kunde", value: compact(web.buy_24h), sub: `${compact(web.buy_30d)} in 30 T`, state: web.buy_60m ? "live" : "idle", tip: "Käufe über die Website in 24 h · 30 Tage" },
+  ] as Station[]).map((x) => ({ ...x, neck: x.id === neck || x.id === wNeck }));
   const edges: Edge[] = [
     { from: "lead", to: "gate", perHour: act.leads_60m, label: "neue Leads" },
     { from: "gate", to: "bestand", perHour: gateOk, label: "freigegeben" },
@@ -151,6 +160,10 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     { from: "kaeufer", to: "versand", perHour: act.sent_60m, label: "Mails" },
     { from: "versand", to: "antworten", perHour: act.replies_60m, label: "Antworten" },
     { from: "antworten", to: "kunden", perHour: 0, label: "Kunden" },
+    { from: "web", to: "wklick", perHour: web.cta_60m, label: "Probe-Klicks" },
+    { from: "wklick", to: "wprobe", perHour: web.req_60m, label: "Probe-Anfragen" },
+    { from: "wprobe", to: "wkauf", perHour: web.buy_60m, label: "Käufe" },
+    { from: "wkauf", to: "kunden", perHour: web.buy_60m, label: "neue Kunden" },
   ];
 
   // ---------------------------------------------------------------- JARVIS, Ampeln, Ticker
@@ -177,7 +190,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const base = (id: StationId) => `/dashboard/jarvis?s=${id}`;
   // Antworten öffnen direkt das Cockpit, alles andere die passende Station
   const tipHref = (x: { href?: string }) => (x.href === "/dashboard/antworten" || x.href?.startsWith("/dashboard/jarvis") ? x.href! : `${base(tipStation(x.href))}${x.href === "#pult" || x.href?.includes("proben") ? "&t=set" : ""}`);
-  const href = (id: StationId) => (s === id ? "/dashboard/jarvis" : base(id));
+  const href = (id: StationId) => (WEB_STATIONS.includes(id) ? "/dashboard/website/auswertung" : s === id ? "/dashboard/jarvis" : base(id));
   const hello = greeting(now);
   // JARVIS empfiehlt (Inhaber 04.10.2026): 2–3 Optimierungen mit fertigem Auftrag, dazu der Engpass der Kette
   const neckLabel = neck ? stations.find((x) => x.id === neck)!.label : null;

@@ -58,6 +58,8 @@ JOBS = [
         "probelauf": "false"}),
     {"wf": "tagescheck.yml", "kind": "daily", "at": "17:37", "grace": 40, "inputs": {"mail": "true"}},
     {"wf": "freigabe-stichprobe.yml", "kind": "daily", "at": "05:07", "grace": 60},
+    # Website-Check der eigenen Seite (Inhaber 04.10.2026, /dashboard/website)
+    {"wf": "website-check.yml", "kind": "daily", "at": "04:23", "grace": 90},
     {"wf": "kundenlieferung.yml", "kind": "daily", "at": "04:53", "grace": 60, "weekdays": [0], "until": "12:00"},
     {"wf": "anreichern.yml", "kind": "daily", "at": "08:41", "grace": 60, "cond": "lead_suche"},
     # Werke (24/7): GitHub ließ am 01.10.2026 die ersten geplanten Kunden-Werk-Läufe aus. Inhaber 01.10.2026: „Er soll
@@ -253,6 +255,14 @@ def refresh_dashboard_stock(db) -> None:
         db.rpc("dashboard_stock_refresh", {})
     except Exception as exc:  # noqa: BLE001 - darf den Wachhund nie aufhalten
         print(f"Dashboard-Bestand nicht aufgefrischt: {type(exc).__name__}: {str(exc)[:160]}")
+    try:  # Speicher-Ansicht (dashboard_storage braucht > 20 s – vorrechnen, damit die Seite sofort lädt)
+        db.rpc("dashboard_storage_refresh", {})
+    except Exception as exc:  # noqa: BLE001 - darf den Wachhund nie aufhalten
+        print(f"Speicher-Zahlen nicht aufgefrischt: {type(exc).__name__}: {str(exc)[:160]}")
+    try:  # Website-Kennzahlen für die JARVIS-Linie „Website“ (Tagessummen + letzte Stunde/24 h/30 Tage)
+        db.rpc("website_refresh", {})
+    except Exception as exc:  # noqa: BLE001 - darf den Wachhund nie aufhalten (Migration evtl. noch nicht angewendet)
+        print(f"Website-Kennzahlen nicht aufgefrischt: {type(exc).__name__}: {str(exc)[:160]}")
 
 
 def overdue(job: dict, runs: list[dict], now: dt.datetime) -> tuple[bool, str]:

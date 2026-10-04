@@ -1,0 +1,30 @@
+# Website-Check (Inhaber 04.10.2026: „die website als themenfeld … schauen das man dort auch immer alles sauber macht“):
+# täglich die eigene Seite prüfen (scripts/website_check.py): Erreichbarkeit, Fehler/404, Tempo, Handy, Rechtstexte,
+# Probe-Formular, Texte. Nur die eigene Domain (SITE_URL bzw. https://www.nextgen-profit.de), eine Anfrage nach der
+# anderen mit Pause und eigenem User-Agent, keine fremden Seiten. Ergebnis in signalwerk.website_checks (Dashboard
+# /dashboard/website). Danach fällige Website-Agenten beauftragen. Sendet nichts, ändert nichts an der Seite.
+name: website-check
+on:
+  schedule: [{ cron: "23 4 * * *" }]   # 06:23 MESZ
+  workflow_dispatch:
+concurrency: { group: website-check, cancel-in-progress: false }
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SITE_URL: ${{ vars.SITE_URL || 'https://www.nextgen-profit.de' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install requests
+      - name: Eigene Website prüfen
+        run: python scripts/website_check.py
+      - name: Fällige Website-Agenten beauftragen
+        continue-on-error: true
+        run: python scripts/website_agents.py faellig --apply

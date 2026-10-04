@@ -9,7 +9,6 @@
  */
 import { CHAT_BY, nextAgentRound, type AgentTask } from "./agents.ts";
 
-/** website = Sitzung der Seite /dashboard/website (eigene Art, Kontext = letzter Website-Check). */
 export type SessionKind = "chat" | "bericht" | "baukasten" | "website";
 export type MsgStatus = "offen" | "in_arbeit" | "fertig";
 export type ChatLink = { label: string; url: string };
@@ -118,8 +117,8 @@ export function hasNew(s: Pick<ChatSession, "read_at" | "last_jarvis_at">): bool
 
 const lastOf = (s: ChatSession) => s.last_at ?? s.created_at;
 
-/** Liste links: Tagesbericht oben angeheftet, dann Chats nach letzter Nachricht (neueste zuerst). Baukasten-Sitzungen
- *  und archivierte erscheinen nicht (die stehen unter dem Baukasten bzw. im Archiv). */
+/** Liste links: Tagesbericht oben angeheftet, dann Chats nach letzter Nachricht (neueste zuerst). Baukasten- und
+ *  Website-Sitzungen und archivierte erscheinen nicht (die stehen unter dem Baukasten, auf /dashboard/website bzw. im Archiv). */
 export function orderSessions(list: ChatSession[]): ChatSession[] {
   const bericht = list.filter((s) => s.kind === "bericht").slice(0, 1);
   const chats = list.filter((s) => s.kind === "chat" && !s.archived).sort((a, b) => (lastOf(a) < lastOf(b) ? 1 : lastOf(a) > lastOf(b) ? -1 : 0));

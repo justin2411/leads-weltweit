@@ -18,10 +18,13 @@ export const KINDS = {
   // Kunden-Agenten (Inhaber 04.10.2026, docs/KUNDEN-AGENTEN.md): Kundenantworten und Inhaber-Hinweise an einen
   // Kunden-Agenten. Entstehen nur über Kunden-Agenten (Dashboard/antworten.yml), nicht über das Auftragsformular.
   kunde: { label: "Kunde", icon: "ansprechpartner", hint: "Kunden-Agent: Ziele aufnehmen, Antwort schreiben" },
+  // Website-Agenten (Inhaber 04.10.2026, /dashboard/website): entstehen nur über scripts/website_agents.py faellig
+  website: { label: "Website", icon: "website", hint: "Website-Agent: Seite prüfen und sauber halten" },
 } as const satisfies Record<string, { label: string; icon: IconName; hint: string }>;
 export type Kind = keyof typeof KINDS;
-/** Arten, die der Inhaber im Auftragsformular, im Chat und im Baukasten wählt („kunde“ nur über Kunden-Agenten). */
-export const OWNER_KINDS = (Object.keys(KINDS) as Kind[]).filter((k) => k !== "kunde");
+/** Arten, die der Inhaber im Auftragsformular, im Chat und im Baukasten wählt („kunde“ nur über Kunden-Agenten,
+ *  „website“ nur über Website-Agenten). */
+export const OWNER_KINDS = (Object.keys(KINDS) as Kind[]).filter((k) => k !== "kunde" && k !== "website");
 export const MARKETS = ["US", "UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK", "MX", "BR"] as const;
 
 export type AgentTask = {

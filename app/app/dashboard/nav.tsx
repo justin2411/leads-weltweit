@@ -18,6 +18,8 @@ export const SECTIONS: [string, string, IconName][] = [
   ["/dashboard/gehirn", "Gehirn", "gehirn"],
   // Inhaber 04.10.2026: KI-Ansprechpartner je Kunde ab Pro (docs/KUNDEN-AGENTEN.md)
   ["/dashboard/kunden-agenten", "Kunden-Agenten", "ansprechpartner"],
+  // Inhaber 04.10.2026: Website als Themenfeld (Gesundheit, Website-Agenten, Änderungswünsche)
+  ["/dashboard/website", "Website", "website"],
 ];
 
 /** Bereiche des Dashboards: oben als Tabs, am Handy als Leiste unten. Land- und Zeitraum-Auswahl bleiben erhalten.
