@@ -762,4 +762,52 @@ export const HUD_CSS = `
 .jt-pick .jt-more{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:4px;min-height:36px;border:1px solid var(--line);border-radius:10px;font-size:var(--fs-s);font-weight:600;color:var(--cy2)!important;text-decoration:none}
 .jt-pick .jt-more:hover{border-color:var(--gold);color:var(--gold)!important}
 .jrec h2 .jrec-how{margin-left:auto;font:500 var(--fs-xs) var(--sans),system-ui,sans-serif;font-style:normal;color:var(--soft)}
+
+/* ------------------------------------------------------------------ Überblick (Inhaber 04.10.2026): Heute wichtig, Ziel vs. Ist, Entscheidungen */
+.ub-heute{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(4,12,26,.55)}
+.ub-heute-l{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-s);font-weight:700;color:var(--gold);white-space:nowrap;margin-right:4px}
+.ub-pt{display:inline-flex;align-items:center;gap:8px;min-height:32px;padding:4px 12px;border:1px solid var(--pc);border-radius:999px;background:color-mix(in srgb,var(--pc) 12%,transparent);color:#fff!important;text-decoration:none;font-size:var(--fs-s);font-weight:600;max-width:100%;min-width:0}
+.ub-pt i{flex:none;width:8px;height:8px;border-radius:50%;background:var(--pc);box-shadow:0 0 8px var(--pc)}
+a.ub-pt:hover{background:color-mix(in srgb,var(--pc) 22%,transparent)}
+.ub-pt.t-rot{--pc:#ff5e73}.ub-pt.t-gelb{--pc:#ffb547}.ub-pt.t-ok{--pc:#3ddc97}
+.ub-ziel{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:stretch;margin:0}
+.ub-card{gap:8px}
+.ub-bars{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.ub-bar{display:grid;grid-template-columns:32px minmax(0,1fr) auto;align-items:center;gap:12px;min-height:32px;text-decoration:none;color:var(--text)!important;border-radius:8px}
+.ub-bar:hover .ub-track{border-color:var(--bc)}
+.ub-c{font-size:var(--fs-s);font-weight:700;color:var(--cy2)}
+.ub-track{position:relative;height:10px;border-radius:999px;background:rgba(95,212,255,.08);border:1px solid var(--line);overflow:hidden}
+.ub-track i{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--bc)}
+.ub-track b{position:absolute;top:-1px;bottom:-1px;width:2px;margin-left:-1px;background:rgba(230,246,255,.7)}
+.ub-n{font-size:var(--fs-m);font-weight:700;color:#fff;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:88px;text-align:right}
+.ub-n small{font-size:var(--fs-s);font-weight:500;color:var(--soft)}
+.ub-bar.t-green{--bc:#3ddc97}.ub-bar.t-gold{--bc:#ffb547}.ub-bar.t-red{--bc:#ff5e73}.ub-bar.t-grey{--bc:#5d7ca3}
+.dash .jv3 .ub-zeit{margin:0}
+.ub-line{list-style:none;margin:0;padding:0;display:grid;gap:0}
+.ub-line li+li{border-top:1px solid var(--line)}
+.ub-ev summary{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;min-height:44px;cursor:pointer;list-style:none}
+.ub-ev summary::-webkit-details-marker,.ub-more summary::-webkit-details-marker{display:none}
+.ub-ev time{font-size:var(--fs-s);color:var(--soft);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ub-ev b{font-size:var(--fs-m);font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ub-ev[open] b{white-space:normal}
+.ub-ev p{margin:0 0 12px;font-size:var(--fs-s);line-height:1.45;color:#b6cbe6}
+.ub-st{font-style:normal;font-size:var(--fs-xs);font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--soft);white-space:nowrap}
+.ub-st.s-done,.ub-st.s-applied{color:var(--green);border-color:rgba(61,220,151,.4)}.ub-st.s-proposed{color:var(--gold);border-color:rgba(226,198,143,.45)}.ub-st.s-rejected{color:#ff8fa0;border-color:rgba(255,94,115,.4)}
+.ub-more>summary{display:inline-flex;align-items:center;min-height:40px;cursor:pointer;list-style:none;font-size:var(--fs-m);font-weight:600;color:var(--gold2)}
+.ub-more[open]>summary{border-bottom:1px solid var(--line);width:100%}
+@media (max-width:720px){
+  .ub-ziel{grid-template-columns:1fr;gap:8px}
+  .ub-heute{padding:8px}.ub-heute-l{width:100%}
+  .ub-pt{white-space:normal}
+  .ub-ev summary{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"t s" "b b";gap:2px 8px;padding:8px 0}
+  .ub-ev time{grid-area:t}.ub-ev em{grid-area:s}.ub-ev b{grid-area:b;white-space:normal}
+  .ub-n{min-width:0}
+}
+/* Fluss-Karte 721–900 px: Linien-Namen wie am Handy über der Karte, sonst liegen sie unter den Kreisen (Kreisgrößen: spark-css.ts) */
+@media (min-width:721px) and (max-width:900px){.fl-lanes{display:none}.fl-info-m{display:flex}}
+  .fl-v{font-size:var(--fs-m)}.fl-v small{font-size:var(--fs-xs)}.fl-l{font-size:var(--fs-xs);letter-spacing:-.01em}.fl-s{display:none}
+  .fl-wide .fl-rate{font-size:17px;stroke-width:5px}
+  .fl-lanes{display:none}.fl-info-m{display:flex}
+  .dash .fl-auto{height:20px;padding:0 7px;font-size:var(--fs-xs)}
+}
 `;
