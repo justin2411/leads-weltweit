@@ -3,7 +3,7 @@
  * 14 uhr sollst du 15min recherchieren wie wir unser system verbessern können … jeden tag um 11 uhr sollst du prüfen ob
  * alles glatt läuft“). Reine Funktionen ohne Server-/React-Abhängigkeiten (testbar): Prüfung einer Routine, Fälligkeit
  * und nächster Lauf in deutscher Zeit (Sommer-/Winterzeit über Intl), Anzeige-Texte, Vorlagen.
- * Tabelle signalwerk.brain_routines (Migration 20261004213000). Gleiche Fälligkeitsregel in scripts/brain_routines.py:
+ * Tabelle signalwerk.brain_routines (Migration 20261004224500). Gleiche Fälligkeitsregel in scripts/brain_routines.py:
  * fällige Routinen legt der Wachhund als Auftrag (agent_tasks, kind 'gehirn') für einen freien Agenten an; die
  * JARVIS-Routine (:08/:23/:38/:53) arbeitet ihn ab und schreibt das Ergebnis als Wissen (brain_knowledge).
  */

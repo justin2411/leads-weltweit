@@ -89,15 +89,32 @@ export function checkBrainTask(f: { agent?: unknown; kind?: unknown; market?: un
 
 export class TaskError extends Error {}
 
+/** Länder in der Auftrags-Auswahl (IE/NL/BE ohne Kaltmail-Erlaubnis ausgeblendet, Inhaber 04.10.2026). */
+export const FORM_MARKETS = MARKETS.filter((m) => !["IE", "NL", "BE"].includes(m));
+
+/**
+ * Märkte eines Auftrags: einer oder mehrere (Inhaber 04.10.2026: „ich will hier auch mehrere anklicken können … also
+ * mehrere länder“). Eingabe Liste oder „US,UK“; leer/„alle“ = alle Märkte (null). Gespeichert als „US,UK“ in Listen-Reihenfolge.
+ */
+export function parseMarkets(v: unknown): string | null {
+  const raw = (Array.isArray(v) ? v : String(v ?? "").split(",")).map((x) => String(x).trim().toUpperCase()).filter(Boolean);
+  if (!raw.length || raw.includes("ALLE")) return null;
+  for (const m of raw) if (!(MARKETS as readonly string[]).includes(m)) throw new TaskError("Markt unbekannt");
+  const set = new Set(raw);
+  return MARKETS.filter((m) => set.has(m)).join(",");
+}
+/** Märkte als Liste („US,UK“ → ["US","UK"]). */
+export const marketList = (m: string | null | undefined) => (m ? m.split(",").filter(Boolean) : []);
+/** Anzeige „US · UK“. */
+export const marketLabel = (m: string | null | undefined) => marketList(m).join(" · ");
+
 /** Auftrag aus dem Formular prüfen: Agent 1–8, bekannte Art, Markt optional aus der Liste, Text 3–1000 Zeichen. */
 export function validateTask(f: { agent?: unknown; kind?: unknown; market?: unknown; brief?: unknown }) {
   const agent = Number(f.agent);
   if (!Number.isInteger(agent) || agent < 1 || agent > AGENT_COUNT) throw new TaskError("Agent wählen");
   const kind = String(f.kind ?? "") as Kind;
   if (!(OWNER_KINDS as readonly string[]).includes(kind)) throw new TaskError("Art wählen");
-  const m = String(f.market ?? "").trim().toUpperCase();
-  const market = m === "" || m === "ALLE" ? null : m;
-  if (market && !(MARKETS as readonly string[]).includes(market)) throw new TaskError("Markt unbekannt");
+  const market = parseMarkets(f.market);
   const brief = String(f.brief ?? "").trim().replace(/\s+/g, " ") || `${KINDS[kind].label}${market ? ` ${market}` : ""}`;
   if (brief.length < 3 || brief.length > 1000) throw new TaskError("Auftrag: 3–1000 Zeichen");
   return { agent, kind, market, brief };
@@ -168,7 +185,9 @@ export function inferTask(text: string): { kind: Kind | null; market: string | n
 }
 
 const isKind = (k: unknown): k is Kind => typeof k === "string" && (OWNER_KINDS as string[]).includes(k);
-const isMarket = (m: unknown): m is string => typeof m === "string" && (MARKETS as readonly string[]).includes(m.toUpperCase());
+const isMarket = (m: unknown): m is string => {
+  try { return typeof m === "string" && parseMarkets(m) !== null; } catch { return false; }
+};
 
 /**
  * Vorbelegung des Auftragsformulars: 1. ausdrücklich übergeben (Hinweis „an Agent geben“: k, m, b), 2. aus dessen Text
@@ -182,7 +201,7 @@ export function formDefaults(o: { tasks: AgentTask[]; agent: number | null; kind
   const prev = o.agent ? agentBoard(o.tasks)[o.agent - 1]?.current ?? null : latest;
   const prevSaid = prev ? inferTask(prev.brief) : { kind: null, market: null };
   const kind: Kind = isKind(o.kind) ? o.kind : said.kind ?? prev?.kind ?? "leads";
-  const market = isMarket(o.market) ? (o.market as string).toUpperCase() : said.market ?? prev?.market ?? prevSaid.market ?? null;
+  const market = isMarket(o.market) ? parseMarkets(o.market) : said.market ?? prev?.market ?? prevSaid.market ?? null;
   return { agent: o.agent ?? freeAgent(o.tasks), kind, market, brief };
 }
 

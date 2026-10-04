@@ -10,11 +10,11 @@ const [to, land = "US"] = process.argv.slice(2);
 const fr = land === "FR";
 const cur = land === "UK" ? "£" : fr ? "" : "$";
 const price = fr ? "249 €" : `${cur}249`;
-const m = welcomeMail({ lang: fr ? "fr" : "en", company: "Example Studio", plan: "Pro", weekly: 50, price,
+const m = welcomeMail({ lang: fr ? "fr" : "en", company: "Example Studio", plan: "Pro", weekly: 40, price,
   formLink: `${siteUrl()}/danke?demo=1&seg=S2#focus` });
 
 async function main() {
-const pdf = await receiptPdf({ lang: fr ? "fr" : "en", company: "Example Studio", email: to, plan: "Pro", weekly: 50, amount: price,
+const pdf = await receiptPdf({ lang: fr ? "fr" : "en", company: "Example Studio", email: to, plan: "Pro", weekly: 40, amount: price,
   paidAt: new Date(), reference: "in_TEST0000000000", test: true });
 const r = await fetch("https://api.resend.com/emails", {
   method: "POST",

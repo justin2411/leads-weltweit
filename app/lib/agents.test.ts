@@ -8,6 +8,12 @@ test("Auftrag prüfen", () => {
   assert.throws(() => validateTask({ agent: "9", kind: "leads" }), TaskError);
   assert.throws(() => validateTask({ agent: "1", kind: "senden" }), TaskError);
   assert.throws(() => validateTask({ agent: "1", kind: "leads", market: "DE" }), TaskError); // nur bekannte Märkte
+  // mehrere Länder (Inhaber 04.10.2026): Liste oder „fr,us“, Reihenfolge wie MARKETS, „alle“ = null
+  assert.equal(validateTask({ agent: "1", kind: "leads", market: ["fr", "US", "uk"] }).market, "US,UK,FR");
+  assert.equal(validateTask({ agent: "1", kind: "leads", market: "fr,us" }).market, "US,FR");
+  assert.equal(validateTask({ agent: "1", kind: "leads", market: ["", "US"] }).market, "US");
+  assert.equal(validateTask({ agent: "1", kind: "leads", market: ["alle", "US"] }).market, null);
+  assert.throws(() => validateTask({ agent: "1", kind: "leads", market: ["US", "DE"] }), TaskError);
 });
 
 test("Tafel je Agent", () => {

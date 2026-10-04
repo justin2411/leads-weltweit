@@ -104,6 +104,10 @@ class PackageTest(unittest.TestCase):
         self.assertFalse(A.eligible(sub(1, "starter", 80)))
         self.assertTrue(A.eligible(sub(1, "custom", 50)))
         self.assertFalse(A.eligible(sub(1, "custom", 30)))
+        # Pro = bis 40/Woche (Inhaber 04.10.2026): individuell ab 40 mit Agent
+        self.assertEqual(A.PRO_WEEKLY, 40)
+        self.assertTrue(A.eligible(sub(1, "custom", 40)))
+        self.assertFalse(A.eligible(sub(1, "custom", 39)))
         self.assertTrue(A.eligible(sub(1, None, 60)))   # von Hand angelegt (deliveries.py add-customer)
         self.assertFalse(A.eligible(sub(1, None, 15)))
         self.assertFalse(A.eligible(sub(1, "pro", 50, status="cancelled")))
@@ -273,7 +277,7 @@ class EnsureTest(unittest.TestCase):
         db.tables["subscriptions"][0]["package"] = "pro"
         self.assertEqual(A.ensure(db, now=NOW)["aktiviert"], 1)
         self.assertEqual((a1["status"], a1["paused_by"]), ("onboarding", None))
-        # individuell unter 50/Woche -> pausiert
+        # individuell unter 40/Woche -> pausiert
         db.tables["subscriptions"][0].update({"package": "custom", "filters": {"country": "UK", "max_per_week": 30}})
         self.assertEqual(A.ensure(db, now=NOW)["pausiert"], 1)
         db.tables["subscriptions"][0].update({"package": "pro", "filters": {"country": "UK", "max_per_week": 50}})

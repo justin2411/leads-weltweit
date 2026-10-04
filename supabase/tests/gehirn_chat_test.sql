@@ -1,4 +1,4 @@
--- Test Gehirn-Chat und Gehirn-Wissen (Migration 20261004213000): die feste Sitzung „Gehirn“ gibt es nur einmal, sie
+-- Test Gehirn-Chat und Gehirn-Wissen (Migration 20261004224500): die feste Sitzung „Gehirn“ gibt es nur einmal, sie
 -- lässt sich nicht archivieren, umbenennen oder umstellen; Wissen behält alte Fassungen. Läuft in der CI nach den
 -- Migrationen; alles in einer Transaktion, am Ende zurückgerollt.
 begin;

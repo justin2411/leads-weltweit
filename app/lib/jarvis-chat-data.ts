@@ -9,7 +9,7 @@ import { GEHIRN_TITLE, flowSessionTitle, toMessage, toSession, unreadCount, type
  */
 export class ChatMissing extends Error {}
 
-// "*": mode kommt erst mit Migration 20261004213000 – so klappt das Laden auch davor (Standard „assistent“)
+// "*": mode kommt erst mit Migration 20261004224500 – so klappt das Laden auch davor (Standard „assistent“)
 const SESSION_COLS = "*";
 // "*": model/cost_eur kommen erst mit Migration 20261004160500 – so klappt das Laden auch davor
 const MSG_COLS = "*";

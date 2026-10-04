@@ -13,7 +13,31 @@ Zeit. Das Dashboard zeigt bei offenen Aufträgen nie „wartet“, sondern „st
 Zeitpunkte (`nextAgentRun(now)` / `agentStartLabel(now)` in `app/lib/agents.ts`, Europe/Berlin, mit Tests).
 
 Nach den Aufträgen macht jede Sitzung den JARVIS-Lauf nach `docs/JARVIS.md` (Engpass protokollieren, A/B-Tests
-auswerten und bei anhaltendem Engpass selbst starten).
+auswerten und bei anhaltendem Engpass selbst starten – Tests nur für Webagenturen US/UK/FR laut
+`config/fokus.yaml` `tests`, Inhaber 04.10.2026).
+
+**Name** (Inhaber 04.10.2026): Die Routine „JARVIS-Agenten“ heißt gegenüber dem Inhaber immer **„der Agent“**
+(Chat, Dashboard, Berichte) – z. B. „übernimmt der Agent, startet um HH:MM“.
+
+## Wissen für Agenten (immer zuerst lesen)
+
+Übergeordnete Anleitungen, die jeder Agent zu Beginn nutzt (bei Widersprüchen gilt CLAUDE.md):
+
+| Datei | Wozu |
+|---|---|
+| `CLAUDE.md` | Grundregeln, Inhaber-Entscheidungen, Grenzen (Geld, Kaltmail-Recht, Löschen) |
+| `docs/JARVIS.md` | JARVIS als Kopf: Ziele, Engpass, A/B-Tests, Werke steuern |
+| `docs/AGENTEN.md` | diese Datei: Aufträge, Chat, Baukasten-Chat, Berechtigungen |
+| `docs/BAUKASTEN-MASTER.md` | Master-Pipeline, Speicher und eigene Agenten im Baukasten |
+| `docs/DESIGN.md` | Stil von Dashboard, Seiten und Mails, wenig Text |
+| `docs/KALTMAIL-RECHT.md` | Rechts-Tabelle: welche Länder und Rechtsformen angeschrieben werden dürfen |
+| `docs/QUELLEN-SCOUT.md` | Logbuch der Quellen, Länder und Branchen mit Testergebnissen |
+| `BRAIN.md` | Gehirn: Preise, Seiten, Tests (ergänzt CLAUDE.md) |
+| `docs/GEHIRN-PLAN.md` | aktueller Plan des Gehirns |
+
+**Erkenntnisse ablegen:** Geschäftliche Erkenntnisse mit Zahlen (Umsatz, Antwortquoten, Käufer, Leads je Quelle)
+gehören nicht ins öffentliche Repo, sondern in die Wissensablage des Gehirns in der Datenbank
+(`signalwerk.brain_knowledge`, im Aufbau; bis dahin `decisions`). Ins Repo nur Regeln und Abläufe, nie Lead-Daten.
 
 ## Ablauf je Sitzung
 
@@ -129,7 +153,9 @@ hat `kind = "baukasten"` und `flow_id` (in `offen` steht dazu `flow`: Name, Art 
    `melden`; ids `[a-z0-9_-]`, neue Bausteine rechts neben die bestehenden, nichts übereinander). Vorhandene Bausteine
    des Inhabers bleiben, außer er will sie ausdrücklich weg.
 3. Optional Zahlen ansehen: `python scripts/flow_edit.py probe <flow_id> graph.json` (je Baustein aus der Stichprobe,
-   wie im Baukasten).
+   wie im Baukasten). Qualitätsfilter: je Filter ein eigener Baustein mit Titel (Zahlen je Filter sichtbar); nimmt
+   einer mehr als 70 % weg, weglassen oder lockerer wählen. Webagenturen (S2): kein Altersfilter (Proben verfallen
+   dort nicht nach Alter).
 4. `python scripts/flow_edit.py apply <flow_id> graph.json --notiz "kurz, was geändert" --version <updated_at>` – prüft
    wie der Baukasten (`parseFlow` + `problems`, in Python `scripts/lib/flow_check.py`); Exit 2 = abgelehnt mit Grund
    (korrigieren oder dem Inhaber erklären, warum es so nicht geht), Exit 3 = Inhaber hat inzwischen selbst gespeichert
@@ -141,7 +167,8 @@ hat `kind = "baukasten"` und `flow_id` (in `offen` steht dazu `flow`: Name, Art 
    oder Vorschlag („bitte oben auf Übernehmen klicken“), Hinweise aus der Prüfung. Der Baukasten lädt alle 20 s neu,
    wenn sich der Flow geändert hat.
 
-„Chat leeren“ archiviert nur die Sitzung; der Flow bleibt, wie er ist. Die Drei-Stufen-Freigabe bleibt immer an
+Der Verlauf bleibt sichtbar, bis der Inhaber „Chat leeren“ klickt; Sofort-Antwort und Agent sehen dabei immer den
+gespeicherten Flow. „Chat leeren“ archiviert nur die Sitzung; der Flow bleibt, wie er ist. Die Drei-Stufen-Freigabe bleibt immer an
 (Pipeline-Regeln machen sie nur strenger).
 
 ### Website-Chat und Website-Agenten

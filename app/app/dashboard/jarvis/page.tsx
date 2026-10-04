@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadBoxHealth, loadDaily, loadFunnel, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock, loadWebsite } from "@/lib/dashboard-data";
 import { webLine, webNeck } from "@/lib/website-stats";
+import { werkLine, werkTip } from "@/lib/werk-zeile";
 import { berlin, berlinDay, brake, chain, compact, currencySign, greeting, mailboxes, monthly, nextWorkflowRun, onlySegment, realSubscriptions, sampleStock, stockSegment, BOX_MIN, COUNTRY_COLOR } from "@/lib/dashboard-logic";
 import { totals } from "@/lib/dashboard-periods";
 import { alarmTips, coach, hall, laneOf, laneStats, neckTask, rankTips, recommend, running, utilization, type Beat, type Tip } from "@/lib/leitstand";
@@ -99,6 +100,9 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const leadPlanned = REG.lanes.filter((l) => l.werk === "lead-werk").reduce((a, l) => a + (plan[l.id] ?? 0), 0);
   const bays = hall(REG, plan, beats, t);
   const busy = bays.filter((b) => b.state === "run" || b.state === "other").length;
+  // Plätze je Werk für die Kreis-Zeile: arbeitend (Herzschlag) / eingeplant (Belegung) – nur dieses Werk
+  const leadRun = bays.filter((b) => b.state === "run" && b.werk === "lead-werk").length;
+  const leadPaused = !werkOn(own, "lead-werk").on;
   const stats = laneStats(REG, rows, t);
   const firstRun = rows.reduce<number | null>((a, r) => (r.started_at && (a === null || Date.parse(r.started_at) < a) ? Date.parse(r.started_at) : a), null);
   const util = utilization(rows, beats, t, REG.total_slots, 24, 30, firstRun);
@@ -138,11 +142,11 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     return x.live ? "live" : x.cls === "t-red" ? "bad" : "idle";
   };
   const stations: Station[] = ([
-    { id: "lead", label: "Lead-Werk", icon: "lead-werk", value: stockAll ? compact(leads24) : "…", sub: `${busy} läuft · ${leadPlanned} geplant${autopilotOn ? " · Auto" : ""}`, state: state("lead-werk", "lead-werk", 4), tip: "neue Leads in 24 h · belegte Plätze" },
-    { id: "gate", label: "Freigabe", icon: "freigabe", value: gatePct === null ? "–" : `${gatePct}`, unit: gatePct === null ? "" : "%", sub: `${compact(gateOk)} frei/h`, state: act.last_gate_at && t - Date.parse(act.last_gate_at) < 15 * 60_000 ? "live" : "idle", tip: "Stichprobe bestanden · letzte Stunde freigegeben" },
+    { id: "lead", label: "Lead-Werk", icon: "lead-werk", value: stockAll ? compact(leads24) : "…", sub: werkLine({ running: leadRun, planned: leadPlanned, paused: leadPaused }), state: state("lead-werk", "lead-werk", 4), tip: werkTip("neue Leads in 24 h", { running: leadRun, planned: leadPlanned, paused: leadPaused }), auto: autopilotOn },
+    { id: "gate", label: "Freigabe", icon: "freigabe", value: gatePct === null ? "–" : `${gatePct}`, unit: gatePct === null ? "" : "%", sub: gateOk + gateBad > 0 ? `${compact(gateOk + gateBad)} geprüft/h` : "prüft vor Probe", state: act.last_gate_at && t - Date.parse(act.last_gate_at) < 15 * 60_000 ? "live" : "idle", tip: "Stichprobe bestanden (7 Tage) · jeder Lead wird vor Probe und Lieferung einzeln geprüft" },
     { id: "bestand", label: "Bestand", icon: "bestand", value: stock ? compact(Object.values(leadsNew).reduce((a, b) => a + b, 0)) : "…", sub: stock ? "Leads" : "lädt", state: "idle", tip: "lieferbare Leads US/UK/FR" },
     { id: "proben", label: "Proben", icon: "proben", value: `${ready}/${target}`, sub: "bereit", state: state("proben-vorrat", "proben-vorrat", 26), tip: "fertige, geprüfte Proben / Soll" },
-    { id: "kwerk", label: "Kunden-Werk", icon: "kunden-werk", value: stockAll ? compact(newBuyers24) : "…", sub: "neu 24 h", state: state("kunden-werk", "kunden-werk", 5), tip: "neue mail-fähige Webagenturen in 24 h" },
+    { id: "kwerk", label: "Kunden-Werk", icon: "kunden-werk", value: stockAll ? compact(newBuyers24) : "…", sub: "neu 24 h", state: state("kunden-werk", "kunden-werk", 5), tip: "neue mail-fähige Webagenturen in 24 h", auto: autopilotOn },
     { id: "kaeufer", label: "Käufer", icon: "kaeufer", value: stock ? compact(Object.values(freeBuyers).reduce((a, b) => a + b, 0)) : "…", sub: stock ? "frei" : "lädt", state: "idle", tip: "mail-fähige Käufer ohne Mail" },
     { id: "versand", label: "Versand", icon: "versand", value: `${sentToday}`, unit: `/${cap}`, sub: "heute", state: own.send_paused ? "off" : isLive(act, "versand", now) ? "live" : "idle", tip: "Mails heute / Kapazität" },
     { id: "antworten", label: "Antworten", icon: "antworten", value: `${w.replies}`, sub: `${w.positive} positiv`, state: state("antworten", "antworten", 30), tip: "echte Antworten 7 Tage (ohne Abwesenheit)" },
@@ -151,7 +155,9 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   ] as Station[]).map((x) => ({ ...x, neck: x.id === neck || x.id === wNeck }));
   const edges: Edge[] = [
     { from: "lead", to: "gate", perHour: act.leads_60m, label: "neue Leads" },
-    { from: "gate", to: "bestand", perHour: gateOk, label: "freigegeben" },
+    // grüne Leads gehen direkt in den Bestand; die Drei-Stufen-Freigabe prüft jeden Lead erst vor Probe/Lieferung
+    // (Inhaber 04.10.2026: „warum läuft nichts von freigabe zu bestand?“ – vorher stand hier die Prüf-Rate, bei vollem Vorrat 0)
+    { from: "gate", to: "bestand", perHour: act.leads_60m, label: "in den Bestand" },
     { from: "bestand", to: "proben", perHour: act.stock_built_60m, label: "Proben gebaut" },
     { from: "proben", to: "kunden", perHour: act.stock_sent_60m, label: "Proben raus" },
     { from: "kwerk", to: "kaeufer", perHour: act.buyers_ok_60m, label: "Käufer geprüft" },

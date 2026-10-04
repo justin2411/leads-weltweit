@@ -132,7 +132,7 @@ Regeln: Abstände 72 px Desktop / 52 px Handy, zwei helle Abschnitte teilen sich
 |---|---|
 | Kopf | Etikett „Weekly trigger leads“, Titel „Start your weekly leads“, ein Satz Unterzeile |
 | Rechnungsland | volle Länderliste (Intl, sortiert), vorausgewählt = Land der Seite, goldener Pfeil; 19 % USt. nur bei Deutschland, sonst netto, keine Steuerhinweise auf der Seite |
-| Pakete | Starter 129 (bis 15 Leads/Woche), Pro 249 (bis 50, „Recommended“), „Your volume“ mit Regler 150–10.000 Leads/Woche; je Paket 4 Häkchen und „From about … per lead“; Button → Stripe-Checkout (live; Inhaber-Vorschau `?vorschau=1` im Testmodus) |
+| Pakete | Starter 129 (bis 15 Leads/Woche), Pro 249 (bis 40, „Recommended“, Inhaber 04.10.2026), „Your volume“ mit Regler 150–10.000 Leads/Woche; je Paket 4 Häkchen und „From about … per lead“; Button → Stripe-Checkout (live; Inhaber-Vorschau `?vorschau=1` im Testmodus) |
 | How it works | Erklärvideo des Landes (`HOW_VIDEO`, mit Untertiteln, Poster, Rahmen Navy/Gold), darunter nur die 4 Überschriften einzeilig: Choose your plan · Set your focus · Personal contact · Leads every Monday (Handy 2×2). Ohne Video für das Land: 4 Karten mit Text |
 | Fuß | „Questions? …“ mit Kontaktadresse |
 

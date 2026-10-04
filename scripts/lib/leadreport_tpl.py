@@ -18,7 +18,7 @@ import os
 import re
 from pathlib import Path
 
-from lib.leadreport import T, T2, _day, _money, _per_lead, _short_why, briefing, group_rows, real_role
+from lib.leadreport import PER_WEEK, T, T2, _day, _money, _per_lead, _short_why, briefing, group_rows, real_role
 from lib.report_regions import region_of
 
 ASSETS = Path(__file__).resolve().parents[1] / "assets" / "report"
@@ -123,7 +123,7 @@ def report_data(data: bytes, country: str = "US", plans: list[dict] | None = Non
         for i, p in enumerate(plans):
             per = _per_lead(p, t2)
             cents = p.get("amount_cents") or 0
-            n = {"starter": 15, "pro": 50}.get(p.get("key"), 1)
+            n = PER_WEEK.get(p.get("key"), 1)
             cards.append({"name": p.get("name", ""), "price": _money(p), "per": t2["per"],
                           "text": re.sub(r"(\d+)", r"**\1**", t2["plan_txt"].get(p.get("key", ""), ""), count=1),
                           "perLead": round(cents / 100 / (n * 52 / 12), 2),

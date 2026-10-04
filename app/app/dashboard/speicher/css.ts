@@ -32,6 +32,20 @@ export const SPEICHER_CSS = `
 
 /* ------------------------------------------------------------- Tanks */
 .tk-row{display:grid;grid-template-columns:repeat(var(--n,7),minmax(0,1fr));gap:14px;min-width:0}
+/* Länder-Reihe: jede Säule fester Platz, bei vielen Ländern seitlich verschiebbar mit Pfeilen (Inhaber 04.10.2026) */
+.tk-scroll{position:relative;min-width:0}
+.tk-scroll>.tk-row{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(150px,1fr);overflow-x:auto;overscroll-behavior-x:contain;
+  scroll-snap-type:x proximity;scrollbar-width:none;padding-bottom:2px}
+.tk-scroll>.tk-row::-webkit-scrollbar{display:none}
+.tk-scroll>.tk-row>.tk{scroll-snap-align:start}
+.dash .tk-arrow{position:absolute;top:calc(var(--h,230px) / 2 - 20px);z-index:4;display:grid;place-items:center;width:40px;height:40px;padding:0;border-radius:50%;
+  border:1px solid rgba(168,236,255,.45);background:rgba(2,10,24,.88);color:#d6ecff;cursor:pointer;box-shadow:0 0 18px rgba(95,212,255,.3)}
+.dash .tk-arrow:hover{border-color:var(--cy);color:#fff}
+.tk-arrow.l{left:-6px}.tk-arrow.l svg{transform:scaleX(-1)}
+.tk-arrow.r{right:-6px}
+.tk-arrow svg{display:block}
+.tk-scroll .tk-s,.tk-scroll .tk-call{white-space:normal}
+.tk-scroll .tk-s span,.tk-scroll .tk-call>span{display:block}.tk-scroll .tk-s .dot{display:none}
 .tk{display:grid;gap:6px;justify-items:center;align-content:start;text-decoration:none;color:inherit;min-width:0;border-radius:10px;padding:4px 2px 6px;transition:background .2s}
 a.tk:hover,a.tk:focus-visible{background:rgba(95,212,255,.06);outline:none}
 a.tk:hover .tk-glass,a.tk:focus-visible .tk-glass{border-color:rgba(168,236,255,.75);box-shadow:inset 0 0 24px rgba(95,212,255,.18),0 0 26px rgba(95,212,255,.35)}
@@ -179,6 +193,8 @@ a.tk:hover .tk-glass,a.tk:focus-visible .tk-glass{border-color:rgba(168,236,255,
   .sp-head h1{font-size:22px;letter-spacing:.2em}
   .sp-card{padding:14px 12px 16px}
   .tk-row{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 8px;--h:170px}
+  .tk-scroll>.tk-row{grid-auto-columns:minmax(96px,1fr)}
+  .dash .tk-arrow{width:34px;height:34px}
   .tk-n{font-size:18px}.tk-n small{font-size:12px}
   .tk-s,.tk-call{font-size:13px;white-space:normal}
   .tk-s span,.tk-call span{display:block}.tk-s .dot{display:none}

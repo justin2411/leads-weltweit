@@ -6,7 +6,7 @@ pakete:
     beschreibung: "bis zu 15 neue Leads pro Woche, 1 Region, 1 Signaltyp"
     preis_monat: null      # vom Inhaber festzulegen
   - name: Pro
-    beschreibung: "bis zu 50 neue Leads pro Woche, bis zu 3 Regionen, alle passenden Signale"
+    beschreibung: "bis zu 40 neue Leads pro Woche, bis zu 3 Regionen, alle passenden Signale"
     preis_monat: null
   - name: Exklusiv
     beschreibung: "wie Pro, aber exklusiv: pro Region und Zielgruppe nur ein Kunde"

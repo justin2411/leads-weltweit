@@ -9,7 +9,7 @@ verbessern und umsatz für den kunden erzielen … wie ein normaler mitarbeiter 
 
 ## Wer bekommt einen Agenten
 
-- Abo-Paket `pro` und `custom` mit mindestens so vielen Leads/Woche wie Pro (50). `starter` nicht.
+- Abo-Paket `pro` und `custom` mit mindestens so vielen Leads/Woche wie Pro (40, Inhaber 04.10.2026). `starter` nicht.
 - Erzeugt beim Kauf (Stripe-Webhook `checkout.session.completed`, nur einmal je Abo, idempotent) und nachträglich
   für bestehende passende Abos (`python scripts/customer_agents.py ensure`). Upgrade auf Pro → Agent entsteht,
   Downgrade/Kündigung → Agent `pausiert` (nichts gelöscht).
@@ -77,5 +77,5 @@ Hinweise, z. B. „mehr Handwerker“), Pausieren. Link aus JARVIS (Agenten-Leis
 
 ## Tarifseite
 
-Paket Pro (und individuell ab 50/Woche): Zeile „Persönlicher Ansprechpartner (KI)“ / „Personal AI account manager“
+Paket Pro (und individuell ab 40/Woche): Zeile „Persönlicher Ansprechpartner (KI)“ / „Personal AI account manager“
 / „Interlocuteur dédié (IA)“ mit Kurztext „lernt Ihre Ziele und wählt Ihre Leads gezielt aus“.

@@ -6,6 +6,8 @@ import { BRAND, CONTACT } from "@/lib/site";
 import { checkoutMode, lineItemFor, moneyLocale, priceLabel, stripeEnabled, type Plan } from "@/lib/stripe";
 import { personalFor } from "@/lib/recipient";
 import { pickVariant } from "@/lib/variants";
+import { servableVariants } from "@/lib/test-scope";
+import { TEST_SCOPE } from "@/lib/test-scope-data";
 import { BrandShell, SiteFooter, SiteHeader } from "../../../chrome";
 import { basePlan, PER_WEEK } from "@/lib/custom-price";
 import { CustomPlan } from "./custom";
@@ -29,7 +31,7 @@ const TXT = {
     for: "For", per: "per month", pick: "Start with", popular: "Recommended", billing: "Billing country",
     plan: {
       starter: ["Up to 15 new leads per week", "Weekly PDF briefing and spreadsheet", "Phone, email and contact person", "Every lead exclusive to your firm"],
-      pro: ["Up to 50 new leads per week", "All signals that fit your business", "Weekly PDF briefing and spreadsheet", "Every lead exclusive to your firm"],
+      pro: ["Up to 40 new leads per week", "All signals that fit your business", "Weekly PDF briefing and spreadsheet", "Every lead exclusive to your firm"],
     } as Record<string, string[]>,
     how: "How it works",
     // Überschriften unter dem Video, einzeilig (Inhaber 02.10.2026)
@@ -56,7 +58,7 @@ const TXT = {
     for: "Pour", per: "par mois", pick: "Choisir", popular: "Recommandé", billing: "Pays de facturation",
     plan: {
       starter: ["Jusqu'à 15 nouvelles pistes par semaine", "Briefing PDF et tableau chaque semaine", "Téléphone, e-mail et interlocuteur", "Chaque piste réservée à votre entreprise"],
-      pro: ["Jusqu'à 50 nouvelles pistes par semaine", "Tous les signaux utiles", "Briefing PDF et tableau chaque semaine", "Chaque piste réservée à votre entreprise"],
+      pro: ["Jusqu'à 40 nouvelles pistes par semaine", "Tous les signaux utiles", "Briefing PDF et tableau chaque semaine", "Chaque piste réservée à votre entreprise"],
     } as Record<string, string[]>,
     how: "Comment ça marche",
     short: ["Votre formule", "Votre cible", "Votre contact", "Chaque lundi"],
@@ -120,9 +122,9 @@ function perLead(p: Plan, lang?: string): string | null {
 
 /** Erklärvideo „How it works“ je Land (zeigt Preise in der Landeswährung, darum nicht länderübergreifend). */
 const HOW_VIDEO: Record<string, { src: string; poster: string; vtt?: string; srclang: string }> = {
-  us: { src: "/video/howitworks-us.mp4", poster: "/video/howitworks-us.jpg", vtt: "/video/howitworks-us.vtt", srclang: "en" },
-  uk: { src: "/video/howitworks-uk-v2.mp4", poster: "/video/howitworks-uk-v2.jpg", srclang: "en" },
-  fr: { src: "/video/howitworks-fr.mp4", poster: "/video/howitworks-fr.jpg", srclang: "fr" },
+  us: { src: "/video/howitworks-us-v2.mp4", poster: "/video/howitworks-us.jpg", vtt: "/video/howitworks-us.vtt", srclang: "en" },
+  uk: { src: "/video/howitworks-uk-v3.mp4", poster: "/video/howitworks-uk-v2.jpg", srclang: "en" },
+  fr: { src: "/video/howitworks-fr-v2.mp4", poster: "/video/howitworks-fr.jpg", srclang: "fr" },
 };
 
 const CSS = `
@@ -191,7 +193,8 @@ export default async function StartPage({ params, searchParams }: { params: Para
   const isPublic = pageIsPublic(data.page, settings);
   const preview = !isPublic && sp.vorschau === "1" && (await isOwner());
   if (!isPublic && !preview) notFound();
-  const variants = data.variants.filter((v: any) => (preview ? v.status !== "retired" : v.status === "live"));
+  const live = data.variants.filter((v: any) => (preview ? v.status !== "retired" : v.status === "live"));
+  const variants = preview ? live : servableVariants(TEST_SCOPE, data.page, live); // Tests nur laut config/fokus.yaml
   const v: any = (preview && sp.v && variants.find((x: any) => x.variant_key === sp.v)) || pickVariant(variants);
   if (!v) notFound();
 

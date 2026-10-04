@@ -140,7 +140,7 @@ def offen(db) -> list[dict]:
         by_session.setdefault(str(m["session_id"]), []).append(m)
     if not by_session:
         return []
-    # "*": mode erst ab Migration 20261004213000
+    # "*": mode erst ab Migration 20261004224500
     sessions = db.select("jarvis_sessions", {"id": f"in.({','.join(by_session)})", "select": "*"}) or []
     out = []
     for s in sessions:

@@ -13,6 +13,7 @@ import { requireOwner } from "../actions";
 import { Icon } from "@/app/icons";
 import { SPEICHER_CSS } from "./css";
 import { Pools } from "./pools";
+import { TankScroller } from "./scroller";
 import { Fold } from "../fold";
 
 export const metadata = { title: "Speicher" };
@@ -158,14 +159,14 @@ function Body({ d, seg, proben, brake }: { d: Storage; seg: string; proben: Prob
           <h2>Kunden-Leads</h2><span className="sp-big">{big(freeAll)}</span><span className="sp-note">frei</span>
           <span className="sp-sp" /><span className="sp-note" title="Jeder Teilstrich = zehnmal so viel">log. Skala</span>
         </div>
-        <div className="tk-row" style={{ "--n": lt.length } as CSSProperties}>
+        <TankScroller className="tk-row" style={{ "--n": lt.length } as CSSProperties}>
           {lt.map((t) => (
             <Tank key={t.country} href={baukastenHref(t.country, seg)} h={logHeight(t.total, lTop)} tk={lTicks}
               layers={STACK.map((k) => ({ c: `var(--l-${k})`, n: t.layers[k], title: LAYER[k].label }))}
               n={big(t.layers.frei)} label={t.country}
               sub={t.total > t.layers.frei ? <>von <b>{big(t.total)}</b></> : undefined} />
           ))}
-        </div>
+        </TankScroller>
         <Legend items={STACK.slice().reverse().filter((k) => k !== "sonst" || lt.some((t) => t.layers.sonst > 0)).map((k) => ({ c: `var(--l-${k})`, label: LAYER[k].label }))} />
       </section>
 
@@ -174,7 +175,7 @@ function Body({ d, seg, proben, brake }: { d: Storage; seg: string; proben: Prob
           <h2>Käufer</h2><span className="sp-big">{big(mailAll)}</span><span className="sp-note">mail-fähig</span>
           <span className="sp-sp" /><span className="sp-note" title="call_only und Käufer außerhalb der Mail-Länder – zählen nicht als Käufer">{big(callAll)} nur Anruf/Brief (getrennt)</span>
         </div>
-        <div className="tk-row gold" style={{ "--n": bt.length } as CSSProperties}>
+        <TankScroller className="tk-row gold" style={{ "--n": bt.length } as CSSProperties}>
           {bt.map((t) => (
             <Tank key={t.country} href={baukastenHref(t.country, seg, "kaeufer")} h={logHeight(t.mail, bTop)} tk={bTicks} off={!t.mailCountry}
               layers={[{ c: "var(--b-sent)", n: t.sent, title: "angeschrieben" }, { c: "var(--b-queued)", n: t.queued, title: "in Arbeit" }, { c: "var(--b-frei)", n: t.free, title: "noch frei" }]}
@@ -183,7 +184,7 @@ function Body({ d, seg, proben, brake }: { d: Storage; seg: string; proben: Prob
               call={t.callOnly > 0 ? <span className="tk-call" title="zählt nicht als Käufer"><Icon name="telefon" size={13} /> {big(t.callOnly)} <span>nur Anruf/Brief</span></span> : undefined}
               title={t.mailCountry ? `mail-fähig ${t.mail.toLocaleString("de-DE")} · angeschrieben ${t.sent.toLocaleString("de-DE")} · in Arbeit ${t.queued.toLocaleString("de-DE")} · noch frei ${t.free.toLocaleString("de-DE")} · nur Anruf/Brief ${t.callOnly.toLocaleString("de-DE")}` : `kein Mail-Land dieser Zielgruppe · nur Anruf/Brief ${t.callOnly.toLocaleString("de-DE")}`} />
           ))}
-        </div>
+        </TankScroller>
         <Legend items={[{ c: "var(--b-frei)", label: "noch frei" }, { c: "var(--b-queued)", label: "in Arbeit" }, { c: "var(--b-sent)", label: "angeschrieben" }]} />
       </section>
 
