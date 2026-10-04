@@ -389,6 +389,8 @@ def duplicates(items: list[dict]) -> dict[str, str]:
 
 
 # ---------------------------------------------------------------------------- Live-Nachprüfung (Netz)
+RECHECK_PER_IP = 1.0  # Sekunden Abstand je Server-IP bei der Live-Nachprüfung (zusätzlich zu 1/s je Domain)
+
 def live_recheck(it: dict, fetcher, today: dt.date) -> tuple[list[str], bool]:
     """(Gründe, abgerufen?) – Befund heute noch da? Höchstens einmal am Tag je Firma (Befund von heute = geprüft)."""
     sig = it.get("signal_type") or ""
@@ -548,7 +550,9 @@ def check(db, lead_ids: list[str], *, country: str | None = None, allowed_status
     if live:
         if fetcher is None:
             from enrich import Fetcher
-            fetcher = Fetcher()
+            # 1 Abruf/s auch je Server-IP: geparkte Domains teilen sich wenige Parkdienst-IPs; 8 parallele Abrufe
+            # dorthin liefen in Zeitüberschreitungen (befund_nicht_bestaetigt:https_unknown, UK 04.10.2026)
+            fetcher = Fetcher(per_ip=RECHECK_PER_IP)
         from concurrent.futures import ThreadPoolExecutor
         # nur nachprüfen, was die Datenprüfung der Stufe 1 besteht (spart Abrufe)
         todo = [it for it in items if not stage1(it, today)]
