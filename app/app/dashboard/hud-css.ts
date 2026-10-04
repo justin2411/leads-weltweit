@@ -256,7 +256,11 @@ export const HUD_CSS = `
 .jt-pick em{font-style:normal;font-size:12px;color:var(--soft);margin-right:2px}
 .jt-pick button{min-width:44px;height:40px;border-radius:10px;border:1px solid rgba(95,212,255,.35);background:rgba(95,212,255,.08);color:#fff;font:700 14px var(--sans);cursor:pointer}
 .jt-pick button:hover{border-color:var(--gold);color:var(--gold)}
-.drag-box{display:contents}
+.drag-box{display:grid;min-width:0}
+/* Beim Ziehen: Kinder der Agenten-Karten ohne Trefferfläche (sonst wechselt das Ziel zwischen Kugel, Ring und Text und
+   Chrome verwirft das Ablegen), Karte springt nicht beim Überfahren */
+.jv-dragging .ag-drop>.ag *{pointer-events:none}
+.jv-dragging .ag-drop>.ag:hover{transform:none}
 .amp4.jt-drag{cursor:grab}
 /* JARVIS empfiehlt und Chat (Inhaber 04.10.2026) */
 .jrec{margin:0 0 12px}.jrec h2{display:flex;align-items:center;gap:6px;margin:0 0 6px;font-size:13px;font-weight:700;color:var(--gold);letter-spacing:.04em}

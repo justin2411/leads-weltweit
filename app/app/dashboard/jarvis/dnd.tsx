@@ -28,7 +28,26 @@ function give(agent: number, t: Payload) {
   return createAgentTask(f);
 }
 
+/** Gerade gezogener Auftrag (dieselbe Seite). Sicherheitsnetz, falls ein Browser den eigenen Datentyp beim Ziehen
+ *  nicht in dataTransfer.types zeigt oder getData beim Ablegen leer bleibt. */
+let current: Payload | null = null;
+
 const dragging = (on: boolean) => document.documentElement.classList.toggle("jv-dragging", on);
+
+/** Ziehen beginnen: Auftrag in dataTransfer und als Sicherheitsnetz merken. Die Klasse jv-dragging (Agenten leuchten,
+ *  Kinder der Agenten-Karten ohne Trefferfläche) erst nach dem Start setzen – DOM-Änderungen in dragstart können das
+ *  Ziehen in Chrome abbrechen. */
+function startDrag(e: React.DragEvent, payload: Payload) {
+  e.dataTransfer.setData(MIME, JSON.stringify(payload));
+  e.dataTransfer.setData("text/plain", payload.title);
+  e.dataTransfer.effectAllowed = "copy";
+  current = payload;
+  setTimeout(() => { if (current === payload) dragging(true); }, 0);
+}
+function endDrag() {
+  current = null;
+  dragging(false);
+}
 
 /** Ziehbarer Hinweis (Link bleibt klickbar) mit Weitergeben-Knopf für Handys; dkey = Schlüssel zum Ausblenden (X). */
 export function DragTip({ task, title, href, level, tip, dkey }: { task?: TipTask; title: string; href: string; level: string; tip: string; dkey?: string }) {
@@ -50,8 +69,7 @@ export function DragTip({ task, title, href, level, tip, dkey }: { task?: TipTas
   return (
     <span ref={box} className={`jt-wrap ${open ? "open" : ""}`} data-tip="">
       <Link href={href} scroll={false} className={`jt ${level} jt-drag`} title={`${tip}\n\nAuf einen Agenten ziehen, um es zu beauftragen.`} draggable
-        onDragStart={(e) => { e.dataTransfer.setData(MIME, JSON.stringify(payload)); e.dataTransfer.setData("text/plain", title); e.dataTransfer.effectAllowed = "copy"; dragging(true); }}
-        onDragEnd={() => dragging(false)}>
+        onDragStart={(e) => startDrag(e, payload)} onDragEnd={endDrag}>
         <i className="jt-grip" aria-hidden><Icon name="griff" size={14} /></i>{title}
       </Link>
       <button type="button" className="jt-give" aria-label={`„${title}“ an einen Agenten geben`} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
@@ -70,22 +88,42 @@ export function DragTip({ task, title, href, level, tip, dkey }: { task?: TipTas
   );
 }
 
-/** Ablagefläche um eine Agenten-Karte: leuchtet beim Ziehen, erteilt beim Loslassen den Auftrag. */
+/** Auftrag aus dem Ziehen lesen (eigener Datentyp, sonst der gemerkte Auftrag dieser Seite). */
+function readPayload(e: React.DragEvent): Payload | null {
+  try {
+    const raw = e.dataTransfer.getData(MIME);
+    if (raw) return JSON.parse(raw) as Payload;
+  } catch { /* unten: gemerkter Auftrag */ }
+  return current;
+}
+
+/** Ablagefläche um eine Agenten-Karte: leuchtet beim Ziehen, erteilt beim Loslassen den Auftrag.
+ *  dragenter UND dragover werden angenommen: Chrome entscheidet beim Wechsel auf ein anderes Element (Kugel, Ring,
+ *  Text der Karte) allein nach dragenter – wer nur dragover annimmt, verliert das Ablegen, sobald die Maus beim
+ *  Loslassen auf ein Kind der Karte rutscht (Fehler 04.10.2026, nachgewiesen mit echtem Ziehen in Chromium).
+ *  dragleave zählt nur beim Verlassen der ganzen Fläche (kein Flackern zwischen den Kindern). */
 export function AgentDrop({ n, children }: { n: number; children: ReactNode }) {
   const [over, setOver] = useState(false);
   const [pending, start] = useTransition();
-  const accepts = (e: React.DragEvent) => Array.from(e.dataTransfer.types).includes(MIME);
+  const accepts = (e: React.DragEvent) => current !== null || Array.from(e.dataTransfer.types).includes(MIME);
+  const take = (e: React.DragEvent) => {
+    if (!accepts(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    setOver(true);
+  };
   return (
     <div className={`ag-drop ${over ? "over" : ""} ${pending ? "busy" : ""}`}
-      onDragOver={(e) => { if (accepts(e)) { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; setOver(true); } }}
-      onDragLeave={() => setOver(false)}
+      onDragEnter={take}
+      onDragOver={take}
+      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(false); }}
       onDrop={(e) => {
         if (!accepts(e)) return;
         e.preventDefault();
         setOver(false);
-        dragging(false);
-        let t: Payload;
-        try { t = JSON.parse(e.dataTransfer.getData(MIME)); } catch { return; }
+        const t = readPayload(e);
+        endDrag();
+        if (!t) return;
         start(async () => { await give(n, t); });
       }}>
       {children}
@@ -94,13 +132,23 @@ export function AgentDrop({ n, children }: { n: number; children: ReactNode }) {
   );
 }
 
-/** Beliebige Kachel ziehbar machen (z. B. Ampel „Engpass“); der Klick auf den Inhalt bleibt wie er ist. */
+/** Beliebige Kachel ziehbar machen (z. B. Ampel „Engpass“, Karten unter „JARVIS empfiehlt“); der Klick auf den Inhalt
+ *  bleibt wie er ist. Die Hülle ist selbst ziehbar (draggable, eigene Box) – nicht nur die Links darin –, sodass die
+ *  ganze Karte greift; vom X (Ausblenden) oder anderen Knöpfen aus startet kein Ziehen. */
 export function DragBox({ task, title, children, tip }: { task: TipTask; title: string; children: ReactNode; tip?: boolean }) {
   const payload: Payload = { ...task, title };
+  const fromButton = useRef(false);
   return (
-    <div className="drag-box" data-tip={tip ? "" : undefined} title="Auf einen Agenten ziehen, um es zu beauftragen"
-      onDragStart={(e) => { e.dataTransfer.setData(MIME, JSON.stringify(payload)); e.dataTransfer.setData("text/plain", title); e.dataTransfer.effectAllowed = "copy"; dragging(true); }}
-      onDragEnd={() => dragging(false)}>
+    <div className="drag-box" draggable data-tip={tip ? "" : undefined} title="Auf einen Agenten ziehen, um es zu beauftragen"
+      onPointerDown={(e) => { fromButton.current = !!(e.target as Element).closest?.("button"); }}
+      onDragStart={(e) => {
+        // dragstart meldet die Hülle bzw. den Link als Ziel, nie den Knopf – daher der Blick auf pointerdown
+        if (fromButton.current) { e.preventDefault(); return; }
+        const r = e.currentTarget.getBoundingClientRect();
+        e.dataTransfer.setDragImage(e.currentTarget, Math.max(0, e.clientX - r.left), Math.max(0, e.clientY - r.top));
+        startDrag(e, payload);
+      }}
+      onDragEnd={endDrag}>
       {children}
     </div>
   );
