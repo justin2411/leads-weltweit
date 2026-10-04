@@ -82,6 +82,11 @@ PAGE_HTML = ('<p><a class="fr-link" title="PIXEL COM, https://www.pixel-com.fr/ 
 
 
 class FranceNumTests(unittest.TestCase):
+    def setUp(self):
+        p = mock.patch.object(K, "mx_check", return_value=True)  # kein echtes DNS im Test
+        p.start()
+        self.addCleanup(p.stop)
+
     def fr(self, x=None, web="https://www.pixel-com.fr/"):
         return fr_francenum.row_of(x or activateur(), web, K.NOT_OWN_SITE, normalize_domain, is_freemail)
 
@@ -143,6 +148,9 @@ class CheckOneTests(unittest.TestCase):
     def setUp(self):
         self.cfg = load_countries()
         self.generic = {g.lower() for g in self.cfg.get("generic_local_parts") or []}
+        p = mock.patch.object(K, "mx_check", return_value=True)  # kein echtes DNS im Test; einzelne Tests überschreiben
+        p.start()
+        self.addCleanup(p.stop)
 
     def scan(self, emails, text=""):
         return mock.patch.object(K, "site_scan", return_value={"emails": emails, "text": text, "pages": [],
@@ -199,6 +207,25 @@ class CheckOneTests(unittest.TestCase):
             row = K.check_one(d, None, self.cfg, self.generic, set())
         self.assertIsNone(row["email"])
         self.assertNotEqual(row["check_status"], "ok")
+
+    def test_website_email_without_mx_dropped_in_all_mail_countries(self):
+        for co, site in (("US", "pixelco.com"), ("UK", "pixelco.co.uk"), ("SE", "pixelco.se"), ("FR", "pixel-com.fr")):
+            d = {"id": "x", "name": "Pixel Co", "country": co, "segment": "S2", "category": "web_designer",
+                 "website": site, "domain": site, "emails": [], "street": "1 X"}
+            with self.scan({f"info@{site}": f"https://{site}/contact"}), mock.patch.object(K, "mx_check", return_value=False):
+                row = K.check_one(d, None, self.cfg, self.generic, set())
+            self.assertIsNone(row["email"], co)
+            self.assertNotEqual(row["check_status"], "ok", co)
+
+    def test_encoded_or_spaced_addresses_invalid(self):
+        for bad in ("%20info@pixelco.com", "info%20@pixelco.com", "info @pixelco.com", " info@pixel co.com"):
+            self.assertFalse(K.address_ok(bad), bad)
+        self.assertTrue(K.address_ok("info@pixelco.com"))
+        d = {"id": "x", "name": "Pixel Co", "country": "US", "segment": "S2", "category": "web_designer",
+             "website": "pixelco.com", "domain": "pixelco.com", "emails": ["%20info@pixelco.com"]}
+        with self.scan({"%20hello@pixelco.com": "https://pixelco.com"}):
+            row = K.check_one(d, None, self.cfg, self.generic, set())
+        self.assertIsNone(row["email"])
 
     def test_listed_email_kept_when_site_only_refused(self):
         import dauerpruefung
