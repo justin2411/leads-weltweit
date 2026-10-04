@@ -38,8 +38,41 @@ Gesprächsverlauf – deshalb:
 | `pruefen` – Prüfen | Stichprobe ziehen (z. B. 20 Leads/Mails/Proben des Marktes), gegen die Drei-Stufen-Freigabe und Schreibregeln prüfen, Fehler beheben, Ergebnis mit Fehlerquote. | „Prüfen · US“ |
 | `frage` – Frage | Auswertung aus echten Daten, Antwort in 1–3 Sätzen. Nichts ändern. | „Warum keine Antworten in FR?“ |
 
+## Kunden-Aufträge (kind `kunde`)
+
+Bauplan `docs/KUNDEN-AGENTEN.md` (Inhaber 04.10.2026: jeder Kunde ab Pro bekommt „seinen eigenen agent … offiziell
+ansprechpartner“). Schreibt ein Kunde seinem Kunden-Agenten, legt `scripts/customer_agents.py inbox` (läuft in
+`antworten.yml` alle 10 min) einen Auftrag mit `kind = kunde`, `agent = 9`, `created_by = "Kunden-Agent"` an; die
+Agent-ID steht im Auftragstext. So bearbeiten:
+
+1. **Verlauf lesen**: `customer_agents` (Persona, Profil, Kennzahlen, `mail_opt_out`) und `customer_agent_messages`
+   des Agenten, dazu die letzten Lieferungen des Abos. Du schreibst als diese Persona – ihr Name, ihr Ton
+   (`persona.tone`, Steckbriefe in `scripts/lib/personas.json`). Die Ziele des Kunden sind deine Ziele: **Qualität
+   stetig verbessern** und **Umsatz für den Kunden**.
+2. **Profil aktualisieren**, wenn der Kunde etwas über Zielgruppe, Leistungen, Ziele, Signale, Branchen, Größe oder
+   Regionen sagt: `python scripts/customer_agents.py profile <agent_id> '{"zielgruppe": "…", "signale": ["no_website"],
+   "kpis": {"gute_leads": 4}}'` (Felder werden je Schlüssel ersetzt, `null` löscht). Daraus entstehen die Lieferfilter
+   in `subscriptions.filters` – nur innerhalb des gebuchten Landes und Pakets: Land und Menge bleiben, Signale und
+   Branchen werden Prioritäten (`filters.agent`, schließen nichts aus), Regionen nur bekannte Gebiete des Landes.
+   Rückmeldungen wie „3 gute Leads, 1 Abschluss“ als `kpis` (`gute_leads`, `abschluesse`) eintragen.
+3. **Antwort schreiben** in eine Datei (nur der Text mit Anrede, ohne Gruß und Signatur – die hängt das Skript an) und
+   senden: `python scripts/customer_agents.py reply <agent_id> antwort.txt` (vorher gern `--dry-run`). Das Skript prüft
+   40–120 Wörter, kurze Sätze und verbietet Preise, Beträge, Rabatte, Verträge und Garantien; es antwortet im
+   Verlauf über Resend (der Kunde hat eingewilligt) mit KI-Signatur. Exit 2 = umschreiben; Exit 4 = nicht gesendet
+   (Kunde will keine Agenten-Mails oder Adresse gesperrt) – dann nur im Ergebnis festhalten.
+4. `fertig <id> "<1–2 Sätze: was der Kunde wollte, was geändert, was geantwortet>"`.
+
+Ton und Regeln: sehr einfache Sprache, kurze Sätze, keine Fachwörter, möglichst eine Frage pro Mail, Sprache des
+Kunden (FR Französisch, sonst Englisch), freundlich wie ein guter Mitarbeiter, nie Druck, nichts erfinden (keine
+Zahlen, Referenzen, Zusagen). **Ehrlich**: Fragt der Kunde, ob er mit einem Menschen schreibt, sagt der Agent klar,
+dass er ein KI-Assistent ist und der Inhaber mitliest. **Preis, Rechnung, Vertrag, Kündigung, Beschwerde nie selbst
+beantworten** – der Inhaber ist schon informiert (Mail + Push); der Agent bestätigt nur freundlich, dass der Inhaber
+sich persönlich meldet. Drei-Stufen-Freigabe, „jeder Lead einmal pro Abo“ und die Freigabe der ersten Lieferung
+durch den Inhaber bleiben unberührt. Mails nur an den Kunden selbst, nie an Dritte, nie Kaltmails.
+
 ## Grenzen (nie ohne Inhaber)
 
-Kein Versand und kein Einschalten des Versands, keine Kosten, Sperrliste und Prüfregeln nie lockern, keine neuen
+Kein Versand und kein Einschalten des Versands (Ausnahme: Antworten der Kunden-Agenten an zahlende Kunden mit
+`customer_agents.py reply`, siehe oben), keine Kosten, Sperrliste und Prüfregeln nie lockern, keine neuen
 Mail-Länder, keine destruktiven Datenbankänderungen, keine Lead-Daten ins Repo. Unklar oder rechtlich offen:
 `fehler <id> "Braucht deine Entscheidung: …"` – der Inhaber sieht es im Dashboard.

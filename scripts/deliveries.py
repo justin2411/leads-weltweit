@@ -86,6 +86,10 @@ def select_leads(leads: list[dict], sub: dict, already: set[str], details: dict[
     # Gebuchte Menge (Abo) gilt; customer_filters.max_per_week nur, wenn am Abo keine Menge steht
     cap = int(f.get("max_per_week") or (cfilter or {}).get("max_per_week") or DEFAULT_MAX)
     pool = sub.get("_pool")  # Speicher des Abos (lib/pools.py): strikt, kein Ausweichen auf den Gesamtbestand
+    prefs = f.get("agent")  # Prioritäten des Kunden-Agenten (customer_agents.py profile): sortiert, schließt nichts aus
+    if prefs:
+        from customer_agents import lead_priority
+        leads = sorted(leads, key=lambda l: -lead_priority(l, prefs, (tags or {}).get(l["id"])))  # stabil
     picked, per = [], {}
     for l in leads:
         if l["id"] in already or l["segment_id"] != sub["segment_id"] or l["country"] != country:
@@ -265,8 +269,11 @@ def to_csv(leads: list[dict], lang: str = "en", area: str | None = None) -> byte
     return ("\ufeff" + buf.getvalue()).encode("utf-8")
 
 
-def delivery_text(lang: str, n: int, period: dt.date, areas: list[str], country: str | None = None) -> tuple[str, str]:
-    """Landesweit formuliert (Inhaber 27.09.2026); Gebiete nur, wenn der Kunde selbst welche gewählt hat."""
+def delivery_text(lang: str, n: int, period: dt.date, areas: list[str], country: str | None = None,
+                  note: str = "") -> tuple[str, str]:
+    """Landesweit formuliert (Inhaber 27.09.2026); Gebiete nur, wenn der Kunde selbst welche gewählt hat.
+    note: persönliche Notiz des Kunden-Agenten (customer_agents.delivery_note), steht vor dem Gruß."""
+    extra = f"{note.strip()}\n\n" if note and note.strip() else ""
     from drafts import signature
     from followups import _land
     where = ", ".join(areas)
@@ -279,7 +286,7 @@ def delivery_text(lang: str, n: int, period: dt.date, areas: list[str], country:
                 "l'événement et sa date, un conseil de vente et une phrase d'accroche. Le tableau joint contient les mêmes "
                 "pistes pour votre CRM. Commencez par les priorités hautes : le moment y est le meilleur. "
                 "Si vous souhaitez ajuster les types de signaux ou d'entreprises, répondez simplement à ce message.\n\n"
-                "Bien cordialement,\n" + signature(lang))
+                + extra + "Bien cordialement,\n" + signature(lang))
         if n == 0:
             body = ("Bonjour,\n\nCette semaine, nous n'avons trouvé aucune nouvelle piste correspondant à vos critères"
                     + (f" pour vos zones choisies ({where})" if where else "") + ". Nous préférons ne rien envoyer "
@@ -294,7 +301,7 @@ def delivery_text(lang: str, n: int, period: dt.date, areas: list[str], country:
             "date, a sales tip and a suggested opening line. The attached spreadsheet has the same leads for your CRM. "
             "Start with the high-priority ones: that is where the timing is best. "
             "If you would like to adjust the signal types or the kind of companies, simply reply to this email.\n\n"
-            "Best regards,\n" + signature(lang))
+            + extra + "Best regards,\n" + signature(lang))
     if n == 0:
         body = ("Hello,\n\nThis week we found no new leads matching your criteria"
                 + (f" in your chosen areas ({where})" if where else "") + ". We would rather send nothing than leads "
@@ -303,9 +310,14 @@ def delivery_text(lang: str, n: int, period: dt.date, areas: list[str], country:
 
 
 def _resend(to: list[str], subject: str, text: str, html: str | None = None,
-            attachments: list[tuple[str, bytes]] | None = None) -> str | None:
+            attachments: list[tuple[str, bytes]] | None = None, headers: dict | None = None,
+            sender: str | None = None) -> str | None:
+    """Mail an Kunden/Inhaber über Resend (Einwilligung liegt vor). headers: z. B. In-Reply-To (Antworten der
+    Kunden-Agenten), sender: Absendername mit derselben Adresse (customer_agents.display_from)."""
     import requests
-    payload = {"from": os.environ["MAIL_FROM"], "to": to, "subject": subject, "text": text}
+    payload = {"from": sender or os.environ["MAIL_FROM"], "to": to, "subject": subject, "text": text}
+    if headers:
+        payload["headers"] = headers
     if html:
         payload["html"] = html
     if os.environ.get("REPLY_TO"):
@@ -562,6 +574,21 @@ def cmd_send(args) -> int:
     return 0
 
 
+def agent_note(db, d: dict, leads: list[dict]) -> str:
+    """Persönliche Notiz des Kunden-Agenten (ab Pro, docs/KUNDEN-AGENTEN.md) – leer ohne Agent oder ohne Leads.
+    Fehler (z. B. Tabelle noch nicht angelegt) halten die Lieferung nie auf."""
+    if not leads or not d.get("subscription_id"):
+        return ""
+    try:
+        from customer_agents import delivery_note
+        rows = db.select("customer_agents", {"subscription_id": f"eq.{d['subscription_id']}",
+                                             "select": "id,status,persona,profile,mail_opt_out"})
+        return delivery_note(rows[0], leads) if rows else ""
+    except Exception as exc:  # noqa: BLE001
+        print(f"  Hinweis: Notiz des Kunden-Agenten fehlt ({exc.__class__.__name__}: {str(exc)[:120]})")
+        return ""
+
+
 def send_delivery(db, d: dict, live: bool) -> str:
     """Eine freigegebene Lieferung senden. Rückgabe: 'sent', 'skipped', 'dry' oder 'no_files'."""
     from lib.html_email import render
@@ -589,7 +616,7 @@ def send_delivery(db, d: dict, live: bool) -> str:
     lang = _lang(c["country"])
     period = dt.date.fromisoformat(d["period_start"])
     areas = s["filters"].get("areas") or []
-    subject, body = delivery_text(lang, len(leads), period, areas, c["country"])
+    subject, body = delivery_text(lang, len(leads), period, areas, c["country"], agent_note(db, d, leads))
     footer = f"{brand()} · {postal_address()}".strip(" ·")
     files = attachments(to_csv(leads, lang), lang, ", ".join(areas) or None,
                         c["company_name"], period, name=f"leads-{period.isoformat()}",
