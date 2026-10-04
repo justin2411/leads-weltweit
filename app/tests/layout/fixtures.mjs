@@ -53,6 +53,8 @@ export function makeFixtures(nowMs = Date.now()) {
     { day: d, country: c, metric: "leads_new", value: 380 + i * 5 }, { day: d, country: c, metric: "buyers_ok", value: 100 + i },
     { day: d, country: c, metric: "sent", value: 25 + i }, { day: d, country: c, metric: "replies", value: i % 4 === 0 ? 1 : 0 },
   ]));
+  // Gehirn-Score (scripts/brain_meta.py, Land ALL) für die Karte „Gehirn lernt“
+  kpi.push(...days.map((d, i) => ({ day: d, country: "ALL", metric: "gehirn_score", value: 40 + i })));
   const website = { at: iso(2), land_60m: 6, land_24h: 120, land_30d: 2400, tarif_60m: 1, tarif_24h: 20, tarif_30d: 380, tarif_views_30d: 420, co_60m: 0, co_24h: 2, co_30d: 18,
     views_60m: 9, cta_60m: 1, req_60m: 0, buy_60m: 0, views_24h: 160, cta_24h: 12, req_24h: 2, buy_24h: 0, views_30d: 3100, cta_30d: 210, req_30d: 26, buy_30d: 1, mail_views_30d: 700, mails_30d: 2700 };
   const expStats = C.map((c, i) => ({ segment_id: "S2", country: c, sent: 300 + i * 50, delivered: 0, bounced: 8, replies: 4 + i, positive: 1, samples: 1, customers: 0 }));
@@ -72,6 +74,10 @@ export function makeFixtures(nowMs = Date.now()) {
     tables: {
       dashboard_cache: [{ name: "stock", value: stock, updated_at: iso(1) }, { name: "website", value: website, updated_at: iso(1) }],
       kpi_daily: kpi, experiment_stats: expStats,
+      decisions: [{ kurz_titel: "Routine „Markt-Recherche Webagenturen“ seltener", subject: "Meta: Routine Takt" },
+        { kurz_titel: "Gelernt: Aufträge der Art Leads wirken (5/6).", subject: "Meta: Muster art-leads" },
+        { kurz_titel: "Routine „KPI-Diagnose mit Engpass“ öfter", subject: "Meta: Routine Takt" }],
+      brain_improvements: [{ id: "i1", status: "offen" }, { id: "i2", status: "offen" }],
     },
   };
 }

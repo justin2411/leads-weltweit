@@ -25,3 +25,5 @@ jobs:
       - run: pip install requests
       - name: KPI-Tageswerte speichern
         run: python scripts/kpi_snapshot.py ${{ github.event_name == 'schedule' && '--nur-abends' || '' }}
+      - name: Gehirn-Score speichern (brain_meta.py, kpi_daily Land ALL)
+        run: python scripts/brain_meta.py score --apply ${{ github.event_name == 'schedule' && '--nur-abends' || '' }}

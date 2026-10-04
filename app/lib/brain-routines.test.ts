@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  RoutineError, TEMPLATES, berlinAt, dueAt, nextRun, normDays, normTime, routineBrief, scheduleLabel, toRoutine, validateRoutine, whenLabel,
+  RoutineError, TEMPLATES, berlinAt, dayTimes, dueAt, taktLabel, nextRun, normDays, normTime, routineBrief, scheduleLabel, toRoutine, validateRoutine, whenLabel,
   type BrainRoutine,
 } from "./brain-routines.ts";
 
@@ -78,4 +78,22 @@ test("Anzeige: Plan, wann, Auftragstext, Datenbank-Zeile", () => {
   assert.equal(r.tage, "taeglich");
   assert.deepEqual(r.wochentage, [1, 3]);
   assert.equal(r.aktiv, true);
+});
+
+test("Takt (Meta-Review): 2×/4×/Tag verteilt, 0,5 = jeden 2. Tag, gleich Python day_times", () => {
+  assert.deepEqual(dayTimes(R({ takt: 2, uhrzeit: "21:10" }), 2026, 10, 4, 7), ["09:10", "21:10"]);
+  assert.deepEqual(dayTimes(R({ takt: 4, uhrzeit: "07:40" }), 2026, 10, 4, 7), ["01:40", "07:40", "13:40", "19:40"]);
+  // 2026-10-04 = Tag 20730 seit 1970 (gerade) → läuft; 2026-10-05 nicht
+  assert.deepEqual(dayTimes(R({ takt: 0.5 }), 2026, 10, 4, 7), ["14:00"]);
+  assert.deepEqual(dayTimes(R({ takt: 0.5 }), 2026, 10, 5, 1), []);
+  assert.deepEqual(dayTimes(R({ takt: 2, tage: "werktags" }), 2026, 10, 4, 7), []);
+  // 2×/Tag 14:00 → auch 02:00 deutscher Zeit fällig (00:00 UTC im Sommer)
+  assert.ok(dueAt(R({ takt: 2, last_run_at: "2026-10-03T12:05:00Z" }), new Date("2026-10-04T00:10:00Z")));
+  assert.equal(dueAt(R({ takt: 1, last_run_at: "2026-10-03T12:05:00Z" }), new Date("2026-10-04T00:10:00Z")), null);
+  assert.equal(dueAt(R({ takt: 0.5 }), new Date("2026-10-05T12:10:00Z")), null);
+  assert.ok(dueAt(R({ takt: 0.5 }), new Date("2026-10-04T12:10:00Z")));
+  assert.equal(taktLabel(0.5), "jeden 2. Tag");
+  assert.equal(taktLabel(4), "4×/Tag");
+  assert.equal(scheduleLabel(R({ takt: 2 })), "täglich 14:00 · 2×/Tag · 15 min");
+  assert.equal(toRoutine({ id: "x", name: "A", aufgabe: "B", uhrzeit: "9:00", takt: "7" }).takt, 1);
 });

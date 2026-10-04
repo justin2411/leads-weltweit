@@ -52,6 +52,20 @@ class DueTest(unittest.TestCase):
         self.assertIsNotNone(B.due_at(R(tage="wochentage", wochentage=[7]), sun))
         self.assertIsNone(B.due_at(R(tage="wochentage", wochentage=[2, 4]), mon))
 
+    def test_takt_like_ts(self):
+        """Meta-Review-Takt: gleiche Fälle wie app/lib/brain-routines.test.ts dayTimes."""
+        d4, d5 = dt.date(2026, 10, 4), dt.date(2026, 10, 5)
+        self.assertEqual(B.day_times(R(takt=2, uhrzeit="21:10"), d4), ["09:10", "21:10"])
+        self.assertEqual(B.day_times(R(takt=4, uhrzeit="07:40"), d4), ["01:40", "07:40", "13:40", "19:40"])
+        self.assertEqual(B.day_times(R(takt=0.5), d4), [R()["uhrzeit"]])
+        self.assertEqual(B.day_times(R(takt=0.5), d5), [])
+        self.assertEqual(B.day_times(R(takt=2, tage="werktags"), d4), [])
+        self.assertIsNone(B.due_at(R(takt=0.5), dt.datetime(2026, 10, 5, 12, 10, tzinfo=UTC)))
+        self.assertIsNotNone(B.due_at(R(takt=0.5), dt.datetime(2026, 10, 4, 12, 10, tzinfo=UTC)))
+        last = "2026-10-03T12:05:00Z"
+        self.assertIsNotNone(B.due_at(R(takt=2, last_run_at=last), dt.datetime(2026, 10, 4, 0, 10, tzinfo=UTC)))
+        self.assertIsNone(B.due_at(R(takt=1, last_run_at=last), dt.datetime(2026, 10, 4, 0, 10, tzinfo=UTC)))
+
     def test_brief_like_ts(self):
         b = B.brief(R(aufgabe="x" * 2000))
         self.assertLessEqual(len(b), 1000)
@@ -74,7 +88,7 @@ class FaelligTest(unittest.TestCase):
         self.assertEqual([x["routine"] for x in out["neu"]], ["Umsatz"])
         self.assertEqual(out["neu"][0]["an"], "A2")  # A1 belegt (läuft)
         task = [x for x in db.rows("agent_tasks") if x.get("created_by") == "Gehirn-Routine"][0]
-        self.assertEqual((task["kind"], task["agent"]), ("gehirn", 2))
+        self.assertEqual((task["kind"], task["agent"], task["routine_id"]), ("gehirn", 2, "r1"))
         r1 = next(x for x in db.rows("brain_routines") if x["id"] == "r1")
         self.assertEqual(r1["last_task_id"], task["id"])
         r2 = next(x for x in db.rows("brain_routines") if x["id"] == "r2")
