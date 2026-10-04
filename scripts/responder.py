@@ -472,7 +472,13 @@ def with_checked(db, params: dict, rows: list[dict], n: int = QUALITY_POOL) -> l
     except Exception:  # noqa: BLE001 - ohne Qualitätswerte bleibt es bei den neuesten Leads
         return rows
     have = {r["id"] for r in rows}
-    return rows + [r for r in top if r["id"] not in have]
+    rows = rows + [r for r in top if r["id"] not in have]
+    try:  # Premium-Leads (lib/premium.py) des Markts dazu, auch wenn sie nicht unter den neuesten stehen
+        prem = strip(_newest(db, {**params, "premium_score": "gte.70", "order": "premium_score.desc,id"}, n))
+    except Exception:  # noqa: BLE001 - ohne Premium-Werte bleibt es bei der bisherigen Auswahl
+        return rows
+    have = {r["id"] for r in rows}
+    return rows + [r for r in prem if r["id"] not in have]
 
 
 def best_first(rows: list[dict]) -> list[dict]:
@@ -485,6 +491,10 @@ def best_first(rows: list[dict]) -> list[dict]:
     rows.sort(key=lambda l: URG.get(l.get("urgency") or "", 3))
     # Dauerprüfung (Inhaber 04.10.2026): öfter bestandene Prüfungen = höherer qualitaet_score zuerst (nie geprüfte zuletzt)
     rows.sort(key=sort_key)
+    # Premium zuerst (Inhaber 05.10.2026, lib/premium.py): frische, kombinierte, belegte Anlässe – nur Reihenfolge,
+    # die Drei-Stufen-Freigabe prüft danach jeden Lead unverändert
+    from lib.premium import sort_key as premium_key
+    rows.sort(key=premium_key)
     return rows
 
 
@@ -509,6 +519,7 @@ def regional_sample(db, seg: str, country: str, region: str | None,
     params = {"segment_id": f"eq.{seg}", "country": f"eq.{country}", "status": "eq.new",
               "select": "id,event_summary,event_date,source_name,source_url,source_date,urgency,"
                         "urgency_reason,opener,signal_type,company_id,observation_ids,qualitaet_score,"
+                        "premium_score,premium,"
                         "watch_companies(name,legal_form,city,region,address,website,website_checked_at)",
               "order": "event_date.desc,id"}
     # Speicher (docs/BAUKASTEN-MASTER.md): ist für Zielgruppe+Land einer gesetzt (pool_routes), kommen die Kandidaten

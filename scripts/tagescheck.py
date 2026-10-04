@@ -433,6 +433,29 @@ def check_sample_stock(c: Check, db) -> None:
           "je Zielgruppe/Land: " + ", ".join(rows) + (f"; leer: {', '.join(empty)}" if empty else ""))
 
 
+def premium_lines(rows: list[dict], focus: set[tuple[str, str]]) -> tuple[str, str, str]:
+    """(Status, Titel, Detail) aus signalwerk.premium_status() – nur Fokus-Zielgruppen (Test-Matrix) zählen.
+    Inhaber 05.10.2026: „nur noch premium leads“; reicht der Premium-Vorrat nicht für reine Premium-Proben (genau 10),
+    füllen Standard-Leads auf – das wird hier gemeldet (gelb), nie rot: Proben gehen weiter raus."""
+    rows = [r for r in rows if (r["segment_id"], r["country"]) in focus] if focus else rows
+    if not rows:
+        return OK, "Premium: keine Live-Seite im Fokus", ""
+    small = [r for r in rows if r.get("zu_klein")]
+    detail = ", ".join(f"{r['segment_id']}/{r['country']} frei {r['premium_frei']}, Proben 10/10 "
+                       f"{r['proben_premium']}/{r['proben']}" for r in rows)
+    if small:
+        return (WARN, "Premium-Vorrat zu klein: " + ", ".join(f"{r['segment_id']}/{r['country']}" for r in small),
+                detail + " – Proben mit Standard-Leads aufgefüllt")
+    return OK, f"Premium-Proben bereit ({sum(r['proben_premium'] for r in rows)})", detail
+
+
+def check_premium(c: Check, db) -> None:
+    from lib.fokus import focus_pairs
+    st, title, detail = premium_lines(db.rpc("premium_status", {}) or [], set(focus_pairs()))
+    c.ctx["premium"] = title
+    c.add("Premium", st, title, detail)
+
+
 def check_website(c: Check, db) -> None:
     base = (os.environ.get("SITE_URL") or "https://www.nextgen-profit.de").rstrip("/")
     s = requests.Session()
@@ -1028,6 +1051,7 @@ def main(argv=None) -> int:
     c.guard("Proben", lambda: check_web_samples(c, db))
     c.guard("Proben", lambda: check_sample_supply(c, db))
     c.guard("Proben", lambda: check_sample_stock(c, db))
+    c.guard("Premium", lambda: check_premium(c, db))
     c.guard("Speicher", lambda: check_pools(c, db))
     c.guard("Freigabe", lambda: check_release_gate(c, db))
     c.guard("Website", lambda: check_website(c, db))

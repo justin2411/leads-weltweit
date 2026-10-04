@@ -68,13 +68,13 @@ def matches(key: str, l: dict, sic: str | None = None) -> bool:
     if key == "broken":
         return st == "website_broken"
     if key == "security":
-        return st == "no_https"
+        return st in ("no_https", "cert_expiring")
     if key == "new_director":
         return st == "new_incorporation"
     if key == "growth":
         return st == "jobs_3plus"
     if key == "expansion":
-        return st in ("new_location", "jobs_3plus")
+        return st in ("new_location", "jobs_3plus", "relocation")
     if key == "finance_roles":
         return st in ("job_open_30d", "jobs_3plus") and bool(FIN_WORDS.search(ev))
     if key == "no_website":
@@ -92,9 +92,9 @@ def matches(key: str, l: dict, sic: str | None = None) -> bool:
 SIGNAL_TYPES = {
     "job_open_30d": ["job_open_30d"], "jobs_3plus": ["jobs_3plus"], "new_location": ["new_location"],
     "new_incorporation": ["new_incorporation"], "new_director": ["new_incorporation"], "growth": ["jobs_3plus"],
-    "expansion": ["new_location", "jobs_3plus"], "finance_roles": ["job_open_30d", "jobs_3plus"],
+    "expansion": ["new_location", "jobs_3plus", "relocation"], "finance_roles": ["job_open_30d", "jobs_3plus"],
     "no_website": ["no_website", "new_incorporation"], "website_outdated": ["website_outdated", "website_broken"],
-    "not_mobile": ["website_not_mobile", "website_outdated"], "security": ["no_https"], "broken": ["website_broken"],
+    "not_mobile": ["website_not_mobile", "website_outdated"], "security": ["no_https", "cert_expiring"], "broken": ["website_broken"],
     "fleet_warehouse": ["new_incorporation", "new_location"],
 }
 

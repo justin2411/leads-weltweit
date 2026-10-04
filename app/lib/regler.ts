@@ -146,7 +146,7 @@ export const LEAD_COUNTRIES: { id: LeadCountry; label: string; title: string }[]
   { id: "Neu", label: "Neu", title: "FI · SG · HK · MX · BR" },
 ];
 /** Land-Chip einer Lead-Linie: mehrere Länder (IE,NL,BE,SE) = „Nord“, neue Mail-Länder (FI,SG,HK,MX,BR, 04.10.2026) = „Neu“,
- *  UK und FR gemeinsam (s2-ukfr, Scout 04.10.2026) = „UK“ (erstes Land). */
+ *  UK und FR gemeinsam (s2-ukfr, Scout 04.10.2026) = „UK“ (erstes Land); Radar US·UK·FR (05.10.2026) = „US“. */
 const CORE = ["US", "UK", "FR"];
 export const countryOf = (l: Lane): LeadCountry => {
   const cs = l.country.split(",");

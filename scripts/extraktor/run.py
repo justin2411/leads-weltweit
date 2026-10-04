@@ -157,6 +157,31 @@ def load_rge(limit: int, stats: Counter, exclude: set[str] | None = None) -> lis
     return cands
 
 
+def load_moves(days: int, stats: Counter) -> list[dict]:
+    """S2/FR: Umzüge (Sitz/Hauptbetrieb) aus dem BODACC (Scout 05.10.2026), neueste zuerst, mit Ansprechperson zuerst."""
+    from extraktor.sources import fr_bodacc_moves
+    rows = fr_bodacc_moves.fetch(dt.date.today() - dt.timedelta(days=days), log=log)
+    cands = [c for c in (fr_bodacc_moves.to_candidate(r) for r in rows) if c]
+    cands = filters.dedupe([c for c in cands if not filters.pre_filter(c) and segments.fits("S2", c)[0]])
+    cands.sort(key=lambda c: (-c["facts"]["published_on"].toordinal(), not c.get("person_name")))
+    stats["fr_moves_candidates"] = len(cands)
+    return cands
+
+
+def process_move(c: dict, fetcher) -> None:
+    """Umzug FR: Website und Kontakt über die kostenlose Anreicherung; gefundene eigene Website zusätzlich mit der
+    Website-Prüfung ansehen (Befund = Kombi-Anlass „Umzug + alte/unsichere Website“)."""
+    E.enrich(c, fetcher, need_website=True)
+    c["facts"]["checked_on"] = dt.date.today()
+    if not c.get("website"):
+        return
+    c["facts"]["listed_website"] = c["website"]
+    c["facts"]["domain"] = W.site_domain(c["website"])
+    res = website_check.inspect({**c, "facts": {**c["facts"]}}, fetcher)
+    if res["findings"]:
+        c["facts"]["findings"] = res["findings"]
+
+
 def load_web(country: str, limit: int, stats: Counter, part: tuple[int, int] | None = None,
              min_conf: float = website_check.HIGH_CONF, no_phone: bool = False) -> list[dict]:
     """S2 Website-Prüfung: Overture-Firmen MIT Website, die dieser Teil in den letzten RECHECK_DAYS noch nicht
@@ -430,6 +455,8 @@ def process(c: dict, seg: str, fetcher, shared: Counter, guard: filters.Guard) -
                 return {**c, "segment": seg, "ampel": "skip", "qc": {"status": "skip", "blocking": [why], "missing": [],
                                                                       "warnings": [], "evidence": []},
                         "sc": {"status": "skip", "problems": []}}
+        elif c["source"] == "bodacc_move":
+            process_move(c, fetcher)
         else:
             E.enrich(c, fetcher, need_website=True)
     except Exception as exc:  # noqa: BLE001 - ein Fehler bei einer Firma darf den Lauf nicht beenden
@@ -545,8 +572,24 @@ def funnel(leads: list[dict], pools_: dict[str, list[dict]]) -> dict:
                 reasons.update(f"missing:{m}" for m in l["qc"]["missing"])
         pool = len(pools_.get(seg, pools_.get(seg.replace("/US", ""), [])))
         rep[seg] = {"pool": pool, "processed": len(ls),
-                    **Counter(l["ampel"] for l in ls), "top_reasons": reasons.most_common(8), "stufen": stages(ls, pool)}
+                    **Counter(l["ampel"] for l in ls), "top_reasons": reasons.most_common(8), "stufen": stages(ls, pool),
+                    "premium": premium_count(ls)}
     return rep
+
+
+def premium_count(ls: list[dict]) -> int:
+    """Grüne Leads mit Premium-Stufe (lib/premium.py, gleiche Rechnung wie beim Speichern) – für den Autopilot."""
+    from extraktor.store import _premium
+    n = 0
+    for l in ls:
+        if l.get("ampel") != "green":
+            continue
+        try:
+            r = {k: (v.isoformat() if isinstance(v, (dt.date, dt.datetime)) else v) for k, v in row(l).items()}
+            n += _premium(r)["premium"]["tier"] == "premium"
+        except Exception:  # noqa: BLE001 - Zählen darf nie einen Lauf stören
+            continue
+    return n
 
 
 GUARD_REASONS = ("already", "suppressed", "public", "placeholder", "outside", "shared", "duplicate", "chain", "junk")
@@ -625,6 +668,11 @@ def main(argv=None) -> int:
                     help="Website-Prüfung: Overture-Konfidenz ab (Standard 0.6; UK/FR 0.4 = zweite Stufe, nur belegte Befunde)")
     ap.add_argument("--web-no-phone", action="store_true",
                     help="Website-Prüfung UK/FR: auch Firmen ohne Telefon im Eintrag (Nummer von der eigenen Website)")
+    ap.add_argument("--fr-moves-days", type=int, default=0,
+                    help="S2 FR: Umzüge (Sitz/Hauptbetrieb) aus dem BODACC der letzten N Tage (0 = aus, Scout 05.10.2026)")
+    ap.add_argument("--radar", type=int, default=0,
+                    help="S2: Veränderungs-Radar – so viele bekannte Firmen mit Website je Land neu prüfen (0 = aus)")
+    ap.add_argument("--radar-countries", default="US,UK,FR", help="Länder für --radar")
     ap.add_argument("--deadline-min", type=float, default=0,
                     help="nach N Minuten keine neuen Kandidaten mehr anfangen, Ergebnisse speichern (0 = aus)")
     args = ap.parse_args(argv)
@@ -708,7 +756,7 @@ def main(argv=None) -> int:
         for co in countries:
             p[f"S2/{co}"] = load_web(co, args.s2_limit, stats, part, args.web_min_conf, args.web_no_phone)
     for co in ("UK", "FR") + S2_EXTRA + S2_NEW + (("US",) if args.us_overture else ()):
-        if co in countries and "S2" in segs and not args.web_check:
+        if co in countries and "S2" in segs and not args.web_check and args.s2_limit > 0:
             known = {i for s_, i in guard.known if s_ == "overture"}
             # mehr laden als bearbeitet wird: der Abgleich mit der Datenbank (unten) wirft Gespeicherte noch raus
             p[f"S2/{co}"] = [c for c in load_overture_s2(co, args.s2_limit * 4, stats, known, args.s2_min_conf)
@@ -716,6 +764,11 @@ def main(argv=None) -> int:
     if "FR" in countries and "S2" in segs and args.rge > 0:
         # nach Overture anhängen: im gemeinsamen Teil zuerst die Overture-Firmen, dann RGE
         p["S2/FR"] = p.get("S2/FR", []) + load_rge(args.rge, stats, {i for s_, i in guard.known if s_ == "rge"})
+    if "FR" in countries and "S2" in segs and args.fr_moves_days > 0:
+        try:
+            p["S2/FR"] = load_moves(args.fr_moves_days, stats) + p.get("S2/FR", [])
+        except Exception as e:  # noqa: BLE001 - eine ausgefallene Quelle darf die anderen nicht stoppen
+            log(f"S2/FR: BODACC-Umzüge übersprungen ({type(e).__name__}: {str(e)[:200]})")
     if guard.known:
         p = {k: [c for c in v if (c["source"], c["source_id"]) not in guard.known] for k, v in p.items()}
     if args.shard:
@@ -738,6 +791,15 @@ def main(argv=None) -> int:
 
     out = Path(args.out)
     leads, failed = [], []
+    radar_rep = {}
+    if args.radar > 0 and "S2" in segs and guard.db is not None:
+        from lib import radar
+        rc = [x.strip().upper() for x in args.radar_countries.split(",") if x.strip()]
+        # Radar bekommt seinen Anteil am Zeitfenster wie eine weitere Branche
+        shard = tuple(int(x) for x in args.shard.split("/")) if args.shard else (0, 1)
+        radar_rep = radar.run(guard.db, rc, args.radar, fetcher, deadline=fair_deadline(deadline, len(keys) + 1),
+                              workers=args.workers, log=log, apply=args.store, shard=shard)
+        stats["radar"] = radar_rep
     for n, key in enumerate(keys):
         if deadline and time.monotonic() >= deadline:
             log(f"{key}: Zeitfenster vorbei, Branche im nächsten Lauf")
@@ -769,6 +831,14 @@ def main(argv=None) -> int:
         stats["website_check"] = dict(website_check.COUNTS)
     rep = {"date": dt.date.today().isoformat(), "stats": stats, "green_written": per_seg,
            "segments": funnel(leads, p), "web_requests": fetcher.requests}
+    for co, r in radar_rep.items():  # Radar im Trichter: geprüft = bearbeitet, neue Ereignis-Leads = grün
+        if isinstance(r, dict) and r.get("geprueft"):
+            seg = rep["segments"].setdefault(f"S2/{co}", {"pool": 0, "processed": 0, "green": 0, "top_reasons": []})
+            seg["pool"] += r.get("kandidaten", 0)
+            seg["processed"] += r.get("geprueft", 0)
+            seg["green"] = seg.get("green", 0) + r.get("neue_leads", 0)
+            seg["premium"] = seg.get("premium", 0) + r.get("premium", 0)
+            seg["radar"] = r
     (out / "bericht.json").write_text(json.dumps(rep, indent=2, default=str, ensure_ascii=False), encoding="utf-8")
     if guard.db is not None:  # Zähler je Lauf fürs Dashboard „Werke“ (Inhaber 03.10.2026)
         from lib.run_stats import record, rows_from_lead_report

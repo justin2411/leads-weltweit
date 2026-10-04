@@ -27,7 +27,7 @@ MAPS = {"US": "us", "UK": "uk", "IE": "ie", "FR": "fr", "BE": "be", "NL": "nl"}
 COUNTRY_EN = {"US": "United States", "UK": "United Kingdom", "IE": "Ireland", "BE": "Belgium", "NL": "the Netherlands"}
 
 REASON_TYPE = {"no_website": "nosite", "website_outdated": "outdated", "website_not_mobile": "outdated",
-               "website_broken": "outdated", "no_https": "insecure"}
+               "website_broken": "outdated", "no_https": "insecure", "cert_expiring": "insecure"}
 TXT = {
     "en": {"presence": {"nosite": "Reachable – but no website", "outdated": "Reachable – but the website lets them down",
                         "insecure": "Reachable – but the website is not secure"},

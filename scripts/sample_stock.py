@@ -206,7 +206,9 @@ def build_one(db, seg: str, country: str, wish: list[str], exclude: set[str], ho
     if not payload:
         return None
     dates = sorted(str(l.get("event_date") or "")[:10] for l in picked if l.get("event_date"))
-    row = {"segment_id": seg, "country": country, "lang": payload["lang"], "wish": wish,
+    from lib import premium
+    prem = premium.count(picked)  # Inhaber 05.10.2026: nur Premium – Standard füllt nur auf (Übergang)
+    row = {"premium_n": prem, "segment_id": seg, "country": country, "lang": payload["lang"], "wish": wish,
            "wish_match": wish_match(db, seg, picked), "signal_types": sorted({l.get("signal_type") or "" for l in picked} - {""}),
            "lead_ids": ids, "company_ids": cos, "score": score(picked),
            "newest_event": dates[-1] if dates else None, "oldest_event": dates[0] if dates else None,
@@ -214,7 +216,7 @@ def build_one(db, seg: str, country: str, wish: list[str], exclude: set[str], ho
            "expires_at": (dt.datetime.now(dt.timezone.utc)
                           + (dt.timedelta(days=NO_EXPIRY_DAYS) if seg in NO_EXPIRY else dt.timedelta(hours=hours))).isoformat()}
     if not apply:
-        log(f"  würde bauen: {seg}/{country} Wunsch {','.join(wish) or '-'} Score {row['score']}")
+        log(f"  würde bauen: {seg}/{country} Wunsch {','.join(wish) or '-'} Score {row['score']} Premium {prem}/10")
         exclude.update(cos)
         return row
     path = f"{seg}/{country}/{dt.datetime.now(dt.timezone.utc):%Y%m%dT%H%M%S}-{uuid.uuid4().hex[:8]}.json"
@@ -227,7 +229,7 @@ def build_one(db, seg: str, country: str, wish: list[str], exclude: set[str], ho
     # alle 10 Leads haben eben die Drei-Stufen-Freigabe bestanden (regional_sample): Zeitpunkt an der Probe merken
     db.rpc("mark_sample_stock_checked", {"p_stock": row["id"]})
     exclude.update(cos)
-    log(f"  gebaut: {seg}/{country} Wunsch {','.join(wish) or '-'} Score {row['score']} ({path})")
+    log(f"  gebaut: {seg}/{country} Wunsch {','.join(wish) or '-'} Score {row['score']} Premium {prem}/10 ({path})")
     return row
 
 
@@ -355,7 +357,7 @@ def run(db, apply: bool, log=print) -> dict:
     ready = stock_rows(db, "ready,claimed")
     have = {k: sum(r["segment_id"] == k[0] and r["country"] == k[1] and r["status"] == "ready" for r in ready)
             for k in want}
-    built, missing = {}, {}
+    built, missing, prem_built = {}, {}, {}
     for (seg, cc), target in want.items():
         exclude = {c for r in ready if r["segment_id"] == seg and r["country"] == cc for c in (r["company_ids"] or [])}
         for wish in plan(have[(seg, cc)], target, wish_keys(slug_of.get(seg, ""))):
@@ -373,12 +375,27 @@ def run(db, apply: bool, log=print) -> dict:
                 missing[(seg, cc)] = target - have[(seg, cc)] - built.get((seg, cc), 0)
                 break
             built[(seg, cc)] = built.get((seg, cc), 0) + 1
-    summary = {f"{s}/{c}": {"soll": t, "vorher": have[(s, c)], "neu": built.get((s, c), 0)} for (s, c), t in want.items()}
+            prem_built[(seg, cc)] = prem_built.get((seg, cc), 0) + int(row.get("premium_n") or 0)
+    summary = {f"{s}/{c}": {"soll": t, "vorher": have[(s, c)], "neu": built.get((s, c), 0),
+                            "premium_leads_neu": prem_built.get((s, c), 0)} for (s, c), t in want.items()}
+    short = premium_short(summary, built)
+    if short:
+        log("Premium-Vorrat zu klein (mit Standard-Leads aufgefüllt): " + ", ".join(short))
     log(json.dumps(summary, ensure_ascii=False))
     if apply:  # Zähler je Lauf fürs Dashboard „Werke“
         from lib.run_stats import record, rows_from_stock_summary
         record(db, "proben-vorrat", rows_from_stock_summary(summary), None, log)
-    return {"built": sum(built.values()), "missing": missing, "summary": summary}
+    return {"built": sum(built.values()), "missing": missing, "summary": summary, "premium_zu_klein": short}
+
+
+def premium_short(summary: dict, built: dict) -> list[str]:
+    """Zielgruppe/Land, deren neue Proben nicht nur aus Premium-Leads bestehen (je Probe 10 Premium nötig)."""
+    out = []
+    for (seg, cc), n in built.items():
+        got = (summary.get(f"{seg}/{cc}") or {}).get("premium_leads_neu", 0)
+        if n and got < n * 10:
+            out.append(f"{seg}/{cc} {got}/{n * 10}")
+    return out
 
 
 def inventory(db) -> dict[str, int]:

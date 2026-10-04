@@ -42,6 +42,11 @@ jobs:
       - name: Wartende Probe-Anfragen beantworten
         if: ${{ env.BEFEHL == 'run' }}
         run: python scripts/web_samples.py $APPLY
+      - name: Premium-Bewertung nachtragen (nur Reihenfolge, Inhaber 05.10.2026)
+        if: ${{ !cancelled() && env.BEFEHL == 'run' }}
+        continue-on-error: true
+        timeout-minutes: 10
+        run: python scripts/premium_score.py $APPLY --limit 20000
       - name: Vorrat verwerfen und auffüllen
         if: ${{ !cancelled() && env.BEFEHL == 'run' }}
         run: python scripts/sample_stock.py run $APPLY

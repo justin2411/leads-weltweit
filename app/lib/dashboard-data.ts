@@ -471,3 +471,17 @@ export async function loadBrain(): Promise<BrainData> {
     error: err?.message ?? null,
   };
 }
+
+/** Premium-Stand je Zielgruppe × Land (signalwerk.premium_status, Inhaber 05.10.2026 „nur noch premium leads“):
+ * freie Premium-Leads, fertige Proben, davon reine Premium-Proben (10/10). zu_klein = Proben mit Standard aufgefüllt. */
+export type PremiumRow = { segment_id: string; country: string; premium_frei: number; proben: number; proben_premium: number; premium_in_proben: number; zu_klein: boolean };
+
+export async function loadPremium(): Promise<PremiumRow[] | null> {
+  try {
+    const { data, error } = await db().rpc("premium_status").abortSignal(AbortSignal.timeout(5000));
+    if (error) throw new Error(error.message);
+    return ((data ?? []) as PremiumRow[]).map((r) => ({ ...r, premium_frei: Number(r.premium_frei), proben: Number(r.proben), proben_premium: Number(r.proben_premium), premium_in_proben: Number(r.premium_in_proben), zu_klein: Boolean(r.zu_klein) }));
+  } catch {
+    return null;
+  }
+}
