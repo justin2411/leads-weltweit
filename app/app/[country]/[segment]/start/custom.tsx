@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { CUSTOM_MAX, CUSTOM_MIN, customCents, fromSlider, perMonth, toSlider } from "@/lib/custom-price";
 import { Icon } from "@/app/icons";
+import { agentEligible } from "@/lib/customer-agents";
+import { PlanAgentLine } from "../plan-agent";
 
 // Schnellwahl unter dem Regler (Inhaber 02.10.2026: Regler „könnte von der Nutzung besser sein“)
 const PRESETS = [250, 500, 1000, 2500];
@@ -53,6 +55,7 @@ export function CustomPlan({ base, variantId, preview, r, online, offerHref, T, 
       <ul>
         <li>{T.perMonthL.replace("{n}", num(perMonth(weekly)))}</li>
         <li>{T.perLeadL.replace("{p}", money(cents / 100 / perMonth(weekly), 2))}</li>
+        {agentEligible("custom", weekly) && <PlanAgentLine lang={lang} />}
       </ul>
       {online ? (
         <form method="post" action="/api/checkout" className="go">

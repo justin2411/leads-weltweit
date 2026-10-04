@@ -19,6 +19,7 @@ import { Ampeln, Drawer, FlowMap, MiniBars, Ticker } from "./flow";
 import { Bays, LANE_COLOR, Reactor, UtilChart, laneColor } from "./hud";
 import { Pult } from "./pult";
 import { AgentDrawer, AgentRow } from "./agents";
+import { countCustomerAgents } from "@/lib/customer-agents-data";
 import { Empfiehlt, JarvisChat } from "./empfiehlt";
 import { AutopilotPanel } from "./autopilot";
 import { DragTip } from "./dnd";
@@ -57,6 +58,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const tab = (sp.t === "set" || sp.t === "check" ? sp.t : "info") as "info" | "set" | "check";
   // Agenten: ?a=1…4 oder ?a=neu öffnet das Agenten-Fenster (statt einer Station)
   const ag = typeof sp.a === "string" && /^([1-9]|neu)$/.test(sp.a) ? sp.a : null;
+  const kaP = countCustomerAgents();
   const stockP = loadStock();
   stockP.catch(() => {});
   const today = berlinDay(new Date());
@@ -371,7 +373,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
       )}
       <JarvisChat tasks={agentTasks} open={sp.c === "1"} />
       <Ampeln items={amps} />
-      <AgentRow tasks={agentTasks} active={ag} />
+      <AgentRow tasks={agentTasks} active={ag} customerAgents={await kaP} />
       <div className="jv-stage">
         <FlowMap stations={stations} edges={edges} active={ag ? null : s} href={href} />
         {drawer}

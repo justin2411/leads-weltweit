@@ -1,0 +1,376 @@
+{
+ "_doc": "Gemeinsame Fälle für die Persona-Auswahl (app/lib/customer-agents.ts pickPersona und scripts/lib/customer_agents.py). Regel: _doc in personas.json.",
+ "fnv1a32": {
+  "": 2166136261,
+  "a": 3826002220,
+  "Léa": 506999302,
+  "3f2b6c1e-0a4d-4c55-9b1e-7d2f00c1a001": 915767169
+ },
+ "cases": [
+  {
+   "lang": "en",
+   "seed": "3f2b6c1e-0a4d-4c55-9b1e-7d2f00c1a001",
+   "used": [],
+   "expect": {
+    "first_name": "Michael",
+    "last_name": "Bennett",
+    "role": "Your account manager",
+    "lang": "en",
+    "bio": "Learns your ideal client step by step and keeps the weekly list focused on it.",
+    "tone": "very simple, short sentences, friendly, no jargon, no pressure",
+    "gender": "m"
+   }
+  },
+  {
+   "lang": "en",
+   "seed": "9a0e4b7c-55d1-4f0a-8c3b-2e6f11d2b002",
+   "used": [],
+   "expect": {
+    "first_name": "Adam",
+    "last_name": "Walsh",
+    "role": "Your account manager",
+    "lang": "en",
+    "bio": "Learns your ideal client step by step and keeps the weekly list focused on it.",
+    "tone": "very simple, short sentences, friendly, no jargon, no pressure",
+    "gender": "m"
+   }
+  },
+  {
+   "lang": "en",
+   "seed": "c1d2e3f4-a5b6-4c7d-8e9f-001122334455",
+   "used": [],
+   "expect": {
+    "first_name": "Daniel",
+    "last_name": "Walsh",
+    "role": "Your account manager",
+    "lang": "en",
+    "bio": "Learns your ideal client step by step and keeps the weekly list focused on it.",
+    "tone": "very simple, short sentences, friendly, no jargon, no pressure",
+    "gender": "m"
+   }
+  },
+  {
+   "lang": "en",
+   "seed": "00000000-0000-0000-0000-000000000000",
+   "used": [],
+   "expect": {
+    "first_name": "Michael",
+    "last_name": "Bennett",
+    "role": "Your account manager",
+    "lang": "en",
+    "bio": "Friendly and direct. Focuses on the leads most likely to turn into paying clients for you.",
+    "tone": "very simple, short sentences, friendly, no jargon, no pressure",
+    "gender": "m"
+   }
+  },
+  {
+   "lang": "en",
+   "seed": "Sub-Ümlaut-Test",
+   "used": [],
+   "expect": {
+    "first_name": "Adam",
+    "last_name": "Brooks",
+    "role": "Your account manager",
+    "lang": "en",
+    "bio": "Checks each week which leads led to a real conversation and adjusts the selection.",
+    "tone": "very simple, short sentences, friendly, no jargon, no pressure",
+    "gender": "m"
+   }
+  },
+  {
+   "lang": "fr",
+   "seed": "3f2b6c1e-0a4d-4c55-9b1e-7d2f00c1a001",
+   "used": [],
+   "expect": {
+    "first_name": "Maxime",
+    "last_name": "Dubois",
+    "role": "Votre interlocuteur",
+    "lang": "fr",
+    "bio": "Apprend pas à pas votre client idéal et garde la liste de la semaine centrée sur lui.",
+    "tone": "très simple, phrases courtes, chaleureux, sans jargon, sans pression",
+    "gender": "m"
+   }
+  },
+  {
+   "lang": "fr",
+   "seed": "9a0e4b7c-55d1-4f0a-8c3b-2e6f11d2b002",
+   "used": [],
+   "expect": {
+    "first_name": "Hugo",
+    "last_name": "Moreau",
+    "role": "Votre interlocuteur",
+    "lang": "fr",
+    "bio": "Apprend pas à pas votre client idéal et garde la liste de la semaine centrée sur lui.",
+    "tone": "très simple, phrases courtes, chaleureux, sans jargon, sans pression",
+    "gender": "m"
+   }
+  },
+  {
+   "lang": "fr",
+   "seed": "c1d2e3f4-a5b6-4c7d-8e9f-001122334455",
+   "used": [],
+   "expect": {
+    "first_name": "Thomas",
+    "last_name": "Moreau",
+    "role": "Votre interlocuteur",
+    "lang": "fr",
+    "bio": "Apprend pas à pas votre client idéal et garde la liste de la semaine centrée sur lui.",
+    "tone": "très simple, phrases courtes, chaleureux, sans jargon, sans pression",
+    "gender": "m"
+   }
+  },
+  {
+   "lang": "fr",
+   "seed": "00000000-0000-0000-0000-000000000000",
+   "used": [],
+   "expect": {
+    "first_name": "Maxime",
+    "last_name": "Dubois",
+    "role": "Votre interlocuteur",
+    "lang": "fr",
+    "bio": "Se concentre sur les pistes qui ont le plus de chances de devenir vos clients.",
+    "tone": "très simple, phrases courtes, chaleureux, sans jargon, sans pression",
+    "gender": "m"
+   }
+  },
+  {
+   "lang": "fr",
+   "seed": "Sub-Ümlaut-Test",
+   "used": [],
+   "expect": {
+    "first_name": "Hugo",
+    "last_name": "Girard",
+    "role": "Votre interlocuteur",
+    "lang": "fr",
+    "bio": "Regarde chaque semaine quelles pistes ont mené à un vrai échange et ajuste la sélection.",
+    "tone": "très simple, phrases courtes, chaleureux, sans jargon, sans pression",
+    "gender": "m"
+   }
+  },
+  {
+   "lang": "en",
+   "seed": "3f2b6c1e-0a4d-4c55-9b1e-7d2f00c1a001",
+   "used": [
+    "Michael Bennett"
+   ],
+   "expect": {
+    "first_name": "Chloe",
+    "last_name": "Bennett",
+    "role": "Your account manager",
+    "lang": "en",
+    "bio": "Learns your ideal client step by step and keeps the weekly list focused on it.",
+    "tone": "very simple, short sentences, friendly, no jargon, no pressure",
+    "gender": "f"
+   }
+  },
+  {
+   "lang": "en",
+   "seed": "3f2b6c1e-0a4d-4c55-9b1e-7d2f00c1a001",
+   "used": [
+    "Michael Bennett",
+    "  CHLOE  Bennett "
+   ],
+   "expect": {
+    "first_name": "Adam",
+    "last_name": "Bennett",
+    "role": "Your account manager",
+    "lang": "en",
+    "bio": "Learns your ideal client step by step and keeps the weekly list focused on it.",
+    "tone": "very simple, short sentences, friendly, no jargon, no pressure",
+    "gender": "m"
+   }
+  },
+  {
+   "lang": "fr",
+   "seed": "3f2b6c1e-0a4d-4c55-9b1e-7d2f00c1a001",
+   "used": [
+    "Maxime Dubois"
+   ],
+   "expect": {
+    "first_name": "Juliette",
+    "last_name": "Dubois",
+    "role": "Votre interlocutrice",
+    "lang": "fr",
+    "bio": "Apprend pas à pas votre client idéal et garde la liste de la semaine centrée sur lui.",
+    "tone": "très simple, phrases courtes, chaleureux, sans jargon, sans pression",
+    "gender": "f"
+   }
+  },
+  {
+   "lang": "fr",
+   "seed": "3f2b6c1e-0a4d-4c55-9b1e-7d2f00c1a001",
+   "used": [
+    "Maxime Dubois",
+    "  JULIETTE  Dubois "
+   ],
+   "expect": {
+    "first_name": "Hugo",
+    "last_name": "Dubois",
+    "role": "Votre interlocuteur",
+    "lang": "fr",
+    "bio": "Apprend pas à pas votre client idéal et garde la liste de la semaine centrée sur lui.",
+    "tone": "très simple, phrases courtes, chaleureux, sans jargon, sans pression",
+    "gender": "m"
+   }
+  },
+  {
+   "lang": "en",
+   "seed": "9a0e4b7c-55d1-4f0a-8c3b-2e6f11d2b002",
+   "used": [
+    "Emma Carter",
+    "Emma Hughes",
+    "Emma Bennett",
+    "Emma Walsh",
+    "Emma Turner",
+    "Emma Brooks",
+    "Emma Murphy",
+    "Emma Fletcher",
+    "Emma Morgan",
+    "Emma Reid",
+    "Emma Hayes",
+    "Emma Palmer",
+    "James Carter",
+    "James Hughes",
+    "James Bennett",
+    "James Walsh",
+    "James Turner",
+    "James Brooks",
+    "James Murphy",
+    "James Fletcher",
+    "James Morgan",
+    "James Reid",
+    "James Hayes",
+    "James Palmer",
+    "Olivia Carter",
+    "Olivia Hughes",
+    "Olivia Bennett",
+    "Olivia Walsh",
+    "Olivia Turner",
+    "Olivia Brooks",
+    "Olivia Murphy",
+    "Olivia Fletcher",
+    "Olivia Morgan",
+    "Olivia Reid",
+    "Olivia Hayes",
+    "Olivia Palmer",
+    "Daniel Carter",
+    "Daniel Hughes",
+    "Daniel Bennett",
+    "Daniel Walsh",
+    "Daniel Turner",
+    "Daniel Brooks",
+    "Daniel Murphy",
+    "Daniel Fletcher",
+    "Daniel Morgan",
+    "Daniel Reid",
+    "Daniel Hayes",
+    "Daniel Palmer",
+    "Sophie Carter",
+    "Sophie Hughes",
+    "Sophie Bennett",
+    "Sophie Walsh",
+    "Sophie Turner",
+    "Sophie Brooks",
+    "Sophie Murphy",
+    "Sophie Fletcher",
+    "Sophie Morgan",
+    "Sophie Reid",
+    "Sophie Hayes",
+    "Sophie Palmer",
+    "Thomas Carter",
+    "Thomas Hughes",
+    "Thomas Bennett",
+    "Thomas Walsh",
+    "Thomas Turner",
+    "Thomas Brooks",
+    "Thomas Murphy",
+    "Thomas Fletcher",
+    "Thomas Morgan",
+    "Thomas Reid",
+    "Thomas Hayes",
+    "Thomas Palmer",
+    "Grace Carter",
+    "Grace Hughes",
+    "Grace Bennett",
+    "Grace Walsh",
+    "Grace Turner",
+    "Grace Brooks",
+    "Grace Murphy",
+    "Grace Fletcher",
+    "Grace Morgan",
+    "Grace Reid",
+    "Grace Hayes",
+    "Grace Palmer",
+    "Ryan Carter",
+    "Ryan Hughes",
+    "Ryan Bennett",
+    "Ryan Walsh",
+    "Ryan Turner",
+    "Ryan Brooks",
+    "Ryan Murphy",
+    "Ryan Fletcher",
+    "Ryan Morgan",
+    "Ryan Reid",
+    "Ryan Hayes",
+    "Ryan Palmer",
+    "Hannah Carter",
+    "Hannah Hughes",
+    "Hannah Bennett",
+    "Hannah Walsh",
+    "Hannah Turner",
+    "Hannah Brooks",
+    "Hannah Murphy",
+    "Hannah Fletcher",
+    "Hannah Morgan",
+    "Hannah Reid",
+    "Hannah Hayes",
+    "Hannah Palmer",
+    "Michael Carter",
+    "Michael Hughes",
+    "Michael Bennett",
+    "Michael Walsh",
+    "Michael Turner",
+    "Michael Brooks",
+    "Michael Murphy",
+    "Michael Fletcher",
+    "Michael Morgan",
+    "Michael Reid",
+    "Michael Hayes",
+    "Michael Palmer",
+    "Chloe Carter",
+    "Chloe Hughes",
+    "Chloe Bennett",
+    "Chloe Walsh",
+    "Chloe Turner",
+    "Chloe Brooks",
+    "Chloe Murphy",
+    "Chloe Fletcher",
+    "Chloe Morgan",
+    "Chloe Reid",
+    "Chloe Hayes",
+    "Chloe Palmer",
+    "Adam Carter",
+    "Adam Hughes",
+    "Adam Bennett",
+    "Adam Walsh",
+    "Adam Turner",
+    "Adam Brooks",
+    "Adam Murphy",
+    "Adam Fletcher",
+    "Adam Morgan",
+    "Adam Reid",
+    "Adam Hayes",
+    "Adam Palmer"
+   ],
+   "expect": {
+    "first_name": "Adam",
+    "last_name": "Walsh",
+    "role": "Your account manager",
+    "lang": "en",
+    "bio": "Learns your ideal client step by step and keeps the weekly list focused on it.",
+    "tone": "very simple, short sentences, friendly, no jargon, no pressure",
+    "gender": "m"
+   }
+  }
+ ]
+}

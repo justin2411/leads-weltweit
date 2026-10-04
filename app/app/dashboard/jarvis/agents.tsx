@@ -5,17 +5,18 @@
  */
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import { AGENT_COUNT, KINDS, MARKETS, agentBoard, formDefaults, type AgentTask } from "@/lib/agents";
+import { AGENT_COUNT, KINDS, MARKETS, OWNER_KINDS, agentBoard, formDefaults, type AgentTask } from "@/lib/agents";
 import { cancelAgentTask, createAgentTask } from "../control-actions";
 import { Back } from "../v2";
 import { AgentDrop } from "./dnd";
 import { Icon } from "@/app/icons";
+import { jarvisLabel } from "@/lib/customer-agents";
 
 type V = CSSProperties & Record<`--${string}`, string | number>;
 const STATUS: Record<AgentTask["status"], string> = { offen: "wartet", laeuft: "arbeitet", fertig: "fertig", fehler: "Fehler", abgebrochen: "zurückgezogen" };
 const when = (iso: string | null) => (iso ? new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)) : "–");
 
-export function AgentRow({ tasks, active }: { tasks: AgentTask[]; active: string | null }) {
+export function AgentRow({ tasks, active, customerAgents }: { tasks: AgentTask[]; active: string | null; customerAgents?: number | null }) {
   const board = agentBoard(tasks);
   return (
     <div className="ags">
@@ -37,6 +38,11 @@ export function AgentRow({ tasks, active }: { tasks: AgentTask[]; active: string
       <Link href={active === "neu" ? "/dashboard/jarvis" : "/dashboard/jarvis?a=neu"} scroll={false} className={`ag ag-new ${active === "neu" ? "on" : ""}`} title="Neuen Auftrag erteilen">
         <span className="ag-orb" aria-hidden><b><Icon name="mehr" size={22} /></b></span><span className="ag-t">Auftrag</span><span className="ag-s">erteilen</span>
       </Link>
+      {/* Kunden-Agenten (Inhaber 04.10.2026): KI-Ansprechpartner je Kunde ab Pro */}
+      <Link href="/dashboard/kunden-agenten" className="ag ag-ka" title="KI-Ansprechpartner der Kunden ab Pro">
+        <span className="ag-orb" aria-hidden><b><Icon name="ansprechpartner" size={22} /></b></span>
+        <span className="ag-t">{jarvisLabel(customerAgents ?? null)}</span><span className="ag-s">je Kunde ab Pro</span>
+      </Link>
     </div>
   );
 }
@@ -55,7 +61,7 @@ function NewTask({ agent, back, tasks, pre }: { agent: number | null; back: stri
         {Array.from({ length: AGENT_COUNT }, (_, i) => <label key={i}><input type="radio" name="agent" value={i + 1} defaultChecked={d.agent === i + 1} /><span>A{i + 1}</span></label>)}
       </div></fieldset>
       <fieldset><legend>Was</legend><div className="chips3">
-        {(Object.keys(KINDS) as (keyof typeof KINDS)[]).map((k) => <label key={k} title={KINDS[k].hint}><input type="radio" name="kind" value={k} defaultChecked={d.kind === k} /><span><Icon name={KINDS[k].icon} size={16} /> {KINDS[k].label}</span></label>)}
+        {OWNER_KINDS.map((k) => <label key={k} title={KINDS[k].hint}><input type="radio" name="kind" value={k} defaultChecked={d.kind === k} /><span><Icon name={KINDS[k].icon} size={16} /> {KINDS[k].label}</span></label>)}
       </div></fieldset>
       <fieldset><legend>Markt</legend><div className="chips3">
         <label><input type="radio" name="market" value="" defaultChecked={!d.market} /><span>alle</span></label>

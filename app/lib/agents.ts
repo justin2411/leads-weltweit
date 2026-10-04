@@ -14,8 +14,13 @@ export const KINDS = {
   quelle: { label: "Neue Quelle", icon: "neu", hint: "neue kostenlose Quelle suchen und testen" },
   pruefen: { label: "Prüfen", icon: "tagescheck", hint: "Stichprobe/Qualität kontrollieren" },
   frage: { label: "Frage", icon: "frage", hint: "Auswertung oder Antwort" },
+  // Kunden-Agenten (Inhaber 04.10.2026, docs/KUNDEN-AGENTEN.md): Kundenantworten und Inhaber-Hinweise an einen
+  // Kunden-Agenten. Entstehen nur über Kunden-Agenten (Dashboard/antworten.yml), nicht über das Auftragsformular.
+  kunde: { label: "Kunde", icon: "ansprechpartner", hint: "Kunden-Agent: Ziele aufnehmen, Antwort schreiben" },
 } as const satisfies Record<string, { label: string; icon: IconName; hint: string }>;
 export type Kind = keyof typeof KINDS;
+/** Arten, die der Inhaber im Auftragsformular, im Chat und im Baukasten wählt („kunde“ nur über Kunden-Agenten). */
+export const OWNER_KINDS = (Object.keys(KINDS) as Kind[]).filter((k) => k !== "kunde");
 export const MARKETS = ["US", "UK", "FR", "IE", "NL", "BE", "SE"] as const;
 
 export type AgentTask = {
@@ -33,7 +38,7 @@ export function validateTask(f: { agent?: unknown; kind?: unknown; market?: unkn
   const agent = Number(f.agent);
   if (!Number.isInteger(agent) || agent < 1 || agent > AGENT_COUNT) throw new TaskError("Agent wählen");
   const kind = String(f.kind ?? "") as Kind;
-  if (!(kind in KINDS)) throw new TaskError("Art wählen");
+  if (!(OWNER_KINDS as readonly string[]).includes(kind)) throw new TaskError("Art wählen");
   const m = String(f.market ?? "").trim().toUpperCase();
   const market = m === "" || m === "ALLE" ? null : m;
   if (market && !(MARKETS as readonly string[]).includes(market)) throw new TaskError("Markt unbekannt");
@@ -101,7 +106,7 @@ export function inferTask(text: string): { kind: Kind | null; market: string | n
   return { kind, market };
 }
 
-const isKind = (k: unknown): k is Kind => typeof k === "string" && k in KINDS;
+const isKind = (k: unknown): k is Kind => typeof k === "string" && (OWNER_KINDS as string[]).includes(k);
 const isMarket = (m: unknown): m is string => typeof m === "string" && (MARKETS as readonly string[]).includes(m.toUpperCase());
 
 /**

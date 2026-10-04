@@ -7,7 +7,7 @@
  * Master-Pipeline und eigene Agenten (docs/BAUKASTEN-MASTER.md): „freigabe“ markiert die Drei-Stufen-Freigabe (läuft immer,
  * release_gate.py), „speicher“ legt Leads in einen eigenen Speicher, „melden“ schickt dem Inhaber eine kurze Nachricht.
  */
-import { KINDS } from "./agents.ts";
+import { KINDS, OWNER_KINDS } from "./agents.ts";
 import type { IconName } from "../app/icons.tsx";
 
 export type Source = "leads" | "kaeufer";
@@ -156,7 +156,7 @@ export function newNode(kind: NodeKind, id: string, x: number, y: number): FlowN
 
 // ---------- Strukturprüfung (Eingaben vom Browser nie blind übernehmen) ----------
 const ID_RE = /^[a-z0-9_-]{1,24}$/;
-const TASKS = Object.keys(KINDS) as AgentTaskKind[];
+const TASKS = OWNER_KINDS as AgentTaskKind[];
 type Obj = Record<string, unknown>;
 const isObj = (x: unknown): x is Obj => typeof x === "object" && x !== null && !Array.isArray(x);
 const isStr = (x: unknown, max: number = LIMITS.str): x is string => typeof x === "string" && x.length <= max;
