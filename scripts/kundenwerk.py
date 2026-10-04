@@ -147,7 +147,8 @@ def build_pool() -> Path:
 # Offene Register als zusätzliche Käuferquellen (JARVIS-Agent 5 „Käuferquellen“, 04.10.2026): gleiche Spalten wie der
 # Overture-Auszug, dazu Rechtsform laut Register (reg_form/reg_note) und Herkunft (quelle). Fällt eine Quelle aus,
 # bleibt der Pool trotzdem (Overture) – nächster Pool-Bau versucht es erneut.
-REGISTER_SOURCES = ("mx_denue", "fi_ytj")  # fr_francenum aus: Export-API laut robots.txt (Disallow /api/) gesperrt, 04.10.2026
+# fr_francenum: Abruf über tabular-api.data.gouv.fr (die Export-API von data.economie.gouv.fr sperrt /api/ in robots.txt)
+REGISTER_SOURCES = ("mx_denue", "fi_ytj", "fr_francenum")
 REGISTER_COLUMNS = ("reg_form", "reg_note", "quelle")
 POOL_COLUMNS = {"id": "VARCHAR", "name": "VARCHAR", "websites": "VARCHAR[]", "emails": "VARCHAR[]",
                 "phones": "VARCHAR[]", "street": "VARCHAR", "city": "VARCHAR", "postcode": "VARCHAR",
