@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   RateLimiter, bin2, buildView, cleanLabel, density, depthBucket, deviceOf, dwellBucket, heatCells, isBot, parseBeacon,
-  refHost, sourceOf, subjectOf, topTargets, webNeck, EMPTY_WEBSITE, type WebsiteStats,
+  refHost, sourceOf, subjectOf, topTargets, webLine, webNeck, EMPTY_WEBSITE, WEB_INFO, WEB_LINE, type WebsiteStats,
 } from "./website-stats.ts";
 
 const V = "11111111-2222-4333-8444-555555555555";
@@ -150,7 +150,7 @@ test("Auswertung: Tage, Länder, Trichter, Herkunft, Treppe, Mail A/B", () => {
   assert.deepEqual(v.days, ["2026-10-02", "2026-10-03", "2026-10-04"]);
   assert.deepEqual(v.perDay.map((d) => d.total), [10, 0, 25]);
   assert.deepEqual(v.countries, ["US", "UK"]);
-  assert.deepEqual(v.funnel, { views: 35, cta: 4, req: 2, buy: 1, checkout: 0 });
+  assert.deepEqual(v.funnel, { views: 35, cta: 4, req: 2, buy: 1, checkout: 0, land: 0, tarif: 0, tarifViews: 0 });
   assert.equal(v.tracked, 20);
   assert.equal(v.sources.mail, 12);
   assert.equal(v.devices.mobil, 15);
@@ -189,11 +189,53 @@ test("Heatmap: Raster, Dichte, Klickziele", () => {
   assert.equal(Math.round(t[0].share * 100), 63);
 });
 
-test("Engpass der Website nach festen Schwellen", () => {
+test("Engpass der Website nach festen Schwellen: Landingpage → Tarif → Stripe → Danke", () => {
   assert.equal(webNeck(EMPTY_WEBSITE), null);
-  assert.equal(webNeck({ ...EMPTY_WEBSITE, mails_30d: 300, mail_views_30d: 2 }), "web");
-  assert.equal(webNeck({ ...EMPTY_WEBSITE, mails_30d: 300, mail_views_30d: 9, views_30d: 100, cta_30d: 2 }), "wklick");
-  assert.equal(webNeck({ ...EMPTY_WEBSITE, views_30d: 100, cta_30d: 30, req_30d: 1 }), "wprobe");
-  assert.equal(webNeck({ ...EMPTY_WEBSITE, views_30d: 100, cta_30d: 30, req_30d: 6, buy_30d: 0 }), "wkauf");
-  assert.equal(webNeck({ ...EMPTY_WEBSITE, views_30d: 100, cta_30d: 30, req_30d: 6, buy_30d: 1 }), null);
+  assert.equal(webNeck({ ...EMPTY_WEBSITE, mails_30d: 300, mail_views_30d: 2 }), "wland");
+  assert.equal(webNeck({ ...EMPTY_WEBSITE, mails_30d: 300, mail_views_30d: 9, land_30d: 100, tarif_30d: 2 }), "wtarif");
+  assert.equal(webNeck({ ...EMPTY_WEBSITE, land_30d: 100, tarif_30d: 30, co_30d: 1 }), "wstripe");
+  assert.equal(webNeck({ ...EMPTY_WEBSITE, land_30d: 100, tarif_30d: 30, co_30d: 6, buy_30d: 0 }), "wdanke");
+  assert.equal(webNeck({ ...EMPTY_WEBSITE, land_30d: 100, tarif_30d: 30, co_30d: 6, buy_30d: 1 }), null);
+  // unter den Mindestmengen nie ein Engpass
+  assert.equal(webNeck({ ...EMPTY_WEBSITE, land_30d: 49, tarif_30d: 0 }), null);
+});
+
+test("JARVIS-Linie Website: genau Landingpage, Tarif, Stripe, Danke → Kunden (kein „Kauf“)", () => {
+  assert.deepEqual(WEB_LINE.map((x) => x.label), ["Landingpage", "Tarif", "Stripe", "Danke"]);
+  const w = { ...EMPTY_WEBSITE, land_24h: 40, land_60m: 3, views_24h: 90, tarif_24h: 7, tarif_60m: 0, co_24h: 2, co_60m: 1, buy_24h: 1, buy_30d: 4, buy_60m: 0 };
+  const { stations, edges } = webLine(w);
+  assert.deepEqual(stations.map((s) => s.label), ["Landingpage", "Tarif", "Stripe", "Danke"]);
+  assert.ok(!stations.some((s) => /Kauf/.test(s.label)));
+  assert.deepEqual(stations.map((s) => s.value), ["40", "7", "2", "1"]);
+  assert.deepEqual(stations.map((s) => s.state), ["live", "idle", "live", "idle"]);
+  assert.match(stations[0].tip, /90 Aufrufe gesamt/);
+  assert.ok(stations[0].tip.includes(WEB_INFO) && stations[1].tip.includes(WEB_INFO));
+  assert.deepEqual(edges.map((e) => `${e.from}>${e.to}`), ["wland>wtarif", "wtarif>wstripe", "wstripe>wdanke", "wdanke>kunden"]);
+  assert.deepEqual(edges.map((e) => e.perHour), [0, 1, 0, 0]);
+  assert.match(WEB_INFO, /eindeutig je Tag/);
+  assert.match(WEB_INFO, /ohne Cookies/);
+  assert.match(WEB_INFO, /Inhaber ausgeblendet/);
+});
+
+test("Tarif-Beacon: nur Variante + Seitenart, alles andere verworfen", () => {
+  assert.deepEqual(parseBeacon({ variant_id: V, type: "visit", pg: "tarif" }), { kind: "visit", variant_id: V, page: "tarif" });
+  assert.equal(parseBeacon({ variant_id: V, type: "visit", pg: "landing" }), null);
+  assert.equal(parseBeacon({ variant_id: V, type: "visit" }), null);
+  assert.equal(parseBeacon({ variant_id: "x", type: "visit", pg: "tarif" }), null);
+});
+
+test("Auswertung: eindeutige Besucher (uv) und Tarif-Aufrufe (av) im Trichter", () => {
+  const st: WebsiteStats = { ...ST, rows: [
+    ...ST.rows,
+    { d: "2026-10-03", s: "us/web-agencies", m: "uv", k: "landing", n: 8 },
+    { d: "2026-10-04", s: "us/web-agencies", m: "uv", k: "landing", n: 5 },
+    { d: "2026-10-04", s: "uk/web-agencies", m: "uv", k: "landing", n: 2 },
+    { d: "2026-10-04", s: "us/web-agencies", m: "uv", k: "tarif", n: 3 },
+    { d: "2026-10-04", s: "us/web-agencies", m: "av", k: "tarif", n: 6 },
+    { d: "2026-10-04", s: "us/web-agencies", m: "pe", k: "checkout_started", n: 2 },
+  ] };
+  const all = buildView(st, { country: null, page: null, device: "mobil" }).funnel;
+  assert.deepEqual([all.land, all.tarif, all.tarifViews, all.checkout, all.buy], [15, 3, 6, 2, 1]);
+  const uk = buildView(st, { country: "UK", page: null, device: "mobil" }).funnel;
+  assert.deepEqual([uk.land, uk.tarif], [2, 0]);
 });

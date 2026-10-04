@@ -13,7 +13,7 @@ const one = (x: string | string[] | undefined) => (typeof x === "string" ? x : u
 
 /**
  * Website-Auswertung (Inhaber 04.10.2026: „grafiken zu den websitenaufrufen … heatmaps … brauch ich dafür google
- * analytics“ – nein): eigene, anonyme Messung der Landingpages. Aufrufe je Tag und Land, Herkunft, Trichter bis Kauf,
+ * analytics“ – nein): eigene, anonyme Messung der Landingpages. Aufrufe je Tag und Land, Herkunft, Trichter Landingpage → Tarif → Stripe → Danke (eindeutige Besucher), Probe-Weg,
  * Mail-Klicks je Betreff-Variante, Gerät, Scrolltiefe, Verweildauer, Heatmap je Seite. Filter über Chips (?d=&c=&p=&g=).
  */
 export default async function WebsiteAuswertung({ searchParams }: { searchParams: SP }) {

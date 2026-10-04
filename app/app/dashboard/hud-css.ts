@@ -311,6 +311,11 @@ export const HUD_CSS = `
 .fl-lanes{position:absolute;inset:8px;display:grid;grid-template-rows:repeat(3,1fr);pointer-events:none}
 .fl-lanes span{font-size:12px;font-weight:600;color:#4d6b91;padding:6px 10px;letter-spacing:.04em}
 .fl-lanes span+span{border-top:1px dashed rgba(95,212,255,.1)}
+.fl-lanes>span{display:flex;align-items:flex-start;gap:6px}
+.fl-lanes span span{padding:0;border:0}
+.fl-info{position:relative;z-index:5;pointer-events:auto;cursor:help;display:inline-flex;color:#6f8db3;font-style:normal;margin-top:1px}
+.fl-info:hover,.fl-info:focus-visible{color:#9fd8ff;outline:none}
+.fl-info-m{display:none;margin:6px 2px 14px;font-size:12px;color:#6f8db3;align-items:center;gap:6px}
 .fl-map{position:relative;width:100%}
 .fl-tall{display:none}
 .fl-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
@@ -425,7 +430,7 @@ export const HUD_CSS = `
 }
 @media (max-width:720px){
   .amps4{grid-template-columns:1fr 1fr;gap:8px}.amp4{padding:10px 10px 10px 32px}.amp4-led{left:12px;top:16px;width:10px;height:10px}.amp4 b{font-size:19px}.amp4 em{display:none}
-  .fl-wide{display:none}.fl-tall{display:block}.fl-lanes{display:none}
+  .fl-wide{display:none}.fl-tall{display:block}.fl-lanes{display:none}.fl-info-m{display:flex}
   .fl-st{width:96px;height:96px}.fl-st.goal{width:112px;height:112px}.fl-v{font-size:17px}.fl-l{font-size:12px;letter-spacing:-.01em}.fl-ic{font-size:15px}
   .drw{position:fixed;left:0;right:0;top:auto;bottom:0;width:auto;max-width:none;z-index:40;max-height:78vh;border-radius:16px 16px 0 0;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
   .frm label{grid-template-columns:64px 80px 1fr}
