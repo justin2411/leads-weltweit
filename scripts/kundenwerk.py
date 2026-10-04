@@ -337,7 +337,24 @@ def address_ok(email: str) -> bool:
     """Gültige Käufer-Adresse: kein „%20“/kodiertes Zeichen, kein Leerzeichen, Form wie in der Prüfregel."""
     from lib.rules import EMAIL_RE
     e = (email or "").strip()
-    return bool(e) and "%" not in e and not re.search(r"\s", email or "") and bool(EMAIL_RE.match(e))
+    return bool(e) and "%" not in e and not re.search(r"\s", email or "") and bool(EMAIL_RE.match(e)) \
+        and syntax_strict(e)
+
+
+def syntax_strict(email: str) -> bool:
+    """Strenge Syntax nach RFC 5321/5322 (Bounce-Analyse 05.10.2026, 5.1.3 = ungültige Adresse): Punkt nicht am
+    Anfang/Ende des lokalen Teils, keine „..“, kein „mailto:“, lokaler Teil ≤ 64, gesamt ≤ 254 Zeichen, nur ASCII;
+    Domain: Labels 1–63 Zeichen aus Buchstaben/Ziffern/Bindestrich, nicht mit Bindestrich am Anfang/Ende."""
+    e = email or ""
+    if not e.isascii() or e.count("@") != 1 or len(e) > 254 or e.lower().startswith("mailto:"):
+        return False
+    local, dom = e.rsplit("@", 1)
+    if not local or len(local) > 64 or local[0] == "." or local[-1] == "." or ".." in local:
+        return False
+    labels = dom.split(".")
+    if len(labels) < 2 or not re.fullmatch(r"[A-Za-z]{2,63}", labels[-1]):
+        return False
+    return all(re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?", lab) for lab in labels)
 
 
 def mail_domain_ok(email: str) -> bool:

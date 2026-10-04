@@ -55,13 +55,16 @@ class MailboxTest(unittest.TestCase):
         payload = db.insert.call_args[0][1]["payload"]
         self.assertEqual(payload["bounce"]["status"], "5.1.1")
 
-    def test_failed_with_4xx_status_stays_hard_bounce(self):
-        # z. B. 4.4.7 Zustellzeit abgelaufen: endgültig gescheitert -> zählt für die Notbremse wie bisher voll
+    def test_failed_with_4xx_status_is_transient(self):
+        # 4.4.7 Zustellzeit abgelaufen = vorübergehender Fehler (RFC 3463, Bounce-Analyse 05.10.2026): zählt erst,
+        # wenn dieselbe Adresse bei einer zweiten Mail wieder scheitert; die Adresse bleibt trotzdem gesperrt
         msg = message_from_string(DSN.replace("Status: 5.1.1", "Status: 4.4.7"), policy=policy.default)
         d = mb.bounce_details(msg)["info@gone-company.co.uk"]
-        self.assertEqual((d["type"], d["status"]), ("Permanent", "4.4.7"))
+        self.assertEqual((d["type"], d["status"]), ("Transient", "4.4.7"))
         from lib.deliverability import count_bounces
-        self.assertEqual(count_bounces([{"type": "bounced", "to_email": "a@b.c", "payload": {"bounce": d}}]), (1, 0))
+        e = {"type": "bounced", "to_email": "a@b.c", "message_id": "m1", "payload": {"bounce": d}}
+        self.assertEqual(count_bounces([e, dict(e)]), (0, 0))
+        self.assertEqual(count_bounces([e, dict(e, message_id="m2")]), (1, 0))
 
     def test_optout(self):
         self.assertTrue(mb.OPTOUT.search("Please remove us from your list"))

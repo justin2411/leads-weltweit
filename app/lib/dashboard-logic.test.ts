@@ -304,6 +304,19 @@ test("Bounces je Postfach: Zählung wie die Notbremse, Ampel erst ab 30 Mails", 
   assert.deepEqual(withCodes.find((x) => x.box !== "main")?.codes, { "5.1.1": 2 });
 });
 
+test("Bounce-Analyse 05.10.: 4.x.x vorübergehend, Doppelmeldung derselben Mail einmal, 5.x.x voll", async () => {
+  const { isTransient } = await import("./dashboard-logic.ts");
+  assert.equal(isTransient({ bounce_type: "Permanent", bounce_status: "4.4.1" }), true);
+  assert.equal(isTransient({ bounce_type: "Permanent", bounce_status: "5.4.1" }), false);
+  assert.deepEqual(countBounces([
+    { type: "bounced", to_email: "a@x.com", message_id: "m1", bounce_status: "4.4.1" },
+    { type: "bounced", to_email: "a@x.com", message_id: "m1", bounce_status: "4.4.1" }, // Posteingang + Spam
+    { type: "bounced", to_email: "b@x.com", message_id: "m2", bounce_status: "5.1.3" },
+    { type: "bounced", to_email: "c@x.com", message_id: "m3", bounce_status: "4.4.1" },
+    { type: "bounced", to_email: "c@x.com", message_id: "m4", bounce_status: "4.4.7" }, // zweite Mail: zählt
+  ]), { bounced: 2, complained: 0 });
+});
+
 test("Trichter je Land: zugestellt = gesendet − Bounces ohne Zustell-Ereignisse, fehlende Länder mit Nullen", async () => {
   const { funnelByCountry } = await import("./dashboard-logic.ts");
   const rows = [
