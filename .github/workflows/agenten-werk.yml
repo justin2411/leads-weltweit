@@ -3,20 +3,26 @@
 # (scripts/agents_run.py: Speicher, Meldung an den Inhaber, Aufträge an die Agenten-Routine, Export-IDs).
 # Kostenlos (öffentliches Repo). Sendet NIE an Käufer oder Leads – Mails nur an den Inhaber selbst (OWNER_EMAIL).
 # Pause im Dashboard: werke_paused „agenten“ (beide Skripte beenden sich dann sauber). Wird vom Wachhund nachgestartet.
+# Eigene Zeiten (Inhaber 04.10.2026: „auslöser will ich hier auch eine eigen zeit festlegen“): Speicher füllen stündlich
+# (:29), eigene Agenten alle 15 min (:03/:18/:33/:48) – der Vorab-Check beendet den Lauf sofort, wenn kein Agent fällig
+# ist (kein pip install, wenige Sekunden). Handstart/Wachhund: beides.
 name: agenten-werk
 on:
-  schedule: [{ cron: "29 * * * *" }]
+  schedule:
+    - cron: "29 * * * *"           # Speicher füllen (Master-Pipeline) + Wachhund-Anstoß
+    - cron: "3,18,33,48 * * * *"   # eigene Agenten nach Zeitplan (15-Minuten-Raster)
   workflow_dispatch:
     inputs:
       probelauf:
         type: boolean
         default: false
-concurrency: { group: agenten-werk, cancel-in-progress: false }
 defaults:
   run:
     shell: bash   # mit pipefail: ein Fehler vor „| tee“ lässt den Schritt scheitern
 jobs:
   run:
+    if: ${{ github.event_name != 'schedule' || github.event.schedule == '29 * * * *' }}
+    concurrency: { group: agenten-werk, cancel-in-progress: false }
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -37,9 +43,6 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Speicher füllen (Master-Pipeline)
         run: python scripts/pools.py fill $APPLY | tee -a "$GITHUB_STEP_SUMMARY"
-      - name: Eigene Agenten
-        if: ${{ !cancelled() }}
-        run: python scripts/agents_run.py $APPLY | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Wachhund anstoßen, wenn GitHub ihn nicht startet
         # wie lead-werk.yml/kunden-werk.yml: GitHub ließ geplante Läufe nachts stundenlang aus (04.10.2026).
         # Nie Versand – den startet der Wachhund nur in seinen Grenzen. GitHub-Aufrufe bis zu 3 Versuche.
@@ -63,3 +66,34 @@ jobs:
           else
             echo "Wachhund lief vor $mins min – nichts zu tun"
           fi
+  agenten:
+    # Eigene Agenten aus dem Baukasten: alle 15 min prüfen, nur fällige laufen (agents_run.py: nie doppelt,
+    # verpasste Termine einmal nachholen). Eigene Gruppe, damit ein langer Speicher-Lauf die Zeiten nicht verschiebt.
+    if: ${{ github.event_name != 'schedule' || github.event.schedule != '29 * * * *' }}
+    concurrency: { group: agenten-werk-agenten, cancel-in-progress: false }
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      SITE_URL: ${{ vars.SITE_URL || 'https://www.nextgen-profit.de' }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      MAIL_FROM: ${{ secrets.MAIL_FROM }}
+      OWNER_EMAIL: ${{ secrets.OWNER_EMAIL }}
+      APPLY: ${{ inputs.probelauf == true && ' ' || '--apply' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: Fällige Agenten zählen (sonst sofort fertig)
+        id: check
+        run: |
+          pip install -q "requests>=2.31"
+          python scripts/agents_run.py --faellig | tee -a "$GITHUB_STEP_SUMMARY"
+      - if: ${{ steps.check.outputs.faellig != '0' }}
+        run: pip install -r requirements.txt
+      - name: Eigene Agenten
+        if: ${{ steps.check.outputs.faellig != '0' }}
+        run: python scripts/agents_run.py $APPLY | tee -a "$GITHUB_STEP_SUMMARY"

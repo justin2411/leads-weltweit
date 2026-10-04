@@ -288,7 +288,8 @@ export async function saveAgent(input: { id?: string | null; agent: unknown; def
   return guard("Agent speichern", async () => {
     const a = parseAgentInput(input?.agent);
     const flow = checkAgentFlow(input?.def);
-    const fields = { name: a.name, trigger: a.trigger, at_hour: a.at_hour, ai_brief: a.ai_brief, ai_market: a.ai_market };
+    const fields = { name: a.name, trigger: a.trigger, at_hour: a.at_hour, at_minute: a.at_minute, weekdays: a.weekdays,
+      every_hours: a.every_hours, ai_brief: a.ai_brief, ai_market: a.ai_market };
     if (!input?.id) {
       const f = await db().from("flows").insert({ name: a.name, def: flow, kind: "agent", status: "entwurf" }).select("id").single();
       if (f.error) throw new Error(f.error.message);
@@ -311,7 +312,8 @@ export async function saveAgent(input: { id?: string | null; agent: unknown; def
     if (!u1.data?.length) throw new InputError("inzwischen geändert – bitte neu laden");
     const u2 = await db().from("custom_agents").update(fields).eq("id", cur.id);
     if (u2.error) throw new Error(u2.error.message);
-    await logOwner("custom_agent:save", cur.id, { name: cur.name, trigger: cur.trigger, at_hour: cur.at_hour }, { ...fields, nodes: flow.nodes.length });
+    await logOwner("custom_agent:save", cur.id, { name: cur.name, trigger: cur.trigger, at_hour: cur.at_hour, at_minute: cur.at_minute,
+      weekdays: cur.weekdays, every_hours: cur.every_hours }, { ...fields, nodes: flow.nodes.length });
     return { id: cur.id, flowId: fl.id };
   });
 }
