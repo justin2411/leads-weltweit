@@ -145,10 +145,17 @@ export const PLAN_AGENT_LINE: Record<"en" | "fr" | "de", { title: string; text: 
 };
 export const planAgentLine = (lang: unknown) => PLAN_AGENT_LINE[lang === "fr" || lang === "de" ? lang : "en"];
 
-/** Absatz in der Willkommensmail: Ansprechpartner stellt gleich 4 kurze Fragen; ehrlich als KI erkennbar. */
-export function welcomeAgentLine(p: Persona): string {
-  const name = fullName(p);
-  return p.lang === "fr"
-    ? `${p.role}, ${name} (IA), vous écrit très bientôt avec 4 questions courtes sur vos objectifs et vos clients idéaux. Il s'agit d'une intelligence artificielle ; notre équipe lit chaque échange.`
-    : `Your account manager, ${name} (AI assistant), will email you shortly with 4 quick questions about your goals and ideal clients. ${p.first_name} is an AI assistant and our team reads every message.`;
+/**
+ * Absatz in der Willkommensmail: Ansprechpartner stellt gleich 4 kurze Fragen; ehrlich als KI erkennbar. Sprache = Sprache
+ * der Mail (Stripe-Locale), nicht die der Persona – sonst stünde ein französischer Absatz in einer englischen Mail. Fehlende
+ * Felder einer Persona aus der Datenbank führen nie zu „undefined“ im Text.
+ */
+export function welcomeAgentLine(p: Persona, lang: Lang = p.lang === "fr" ? "fr" : "en"): string {
+  const name = fullName(p) || (lang === "fr" ? "Votre interlocuteur" : "Your account manager");
+  const first = String(p.first_name ?? "").trim() || name;
+  if (lang === "fr") {
+    const role = p.lang === "fr" && p.role ? p.role : p.gender === "m" ? "Votre interlocuteur" : "Votre interlocutrice";
+    return `${role}, ${name} (IA), vous écrit très bientôt avec 4 questions courtes sur vos objectifs et vos clients idéaux. Il s'agit d'une intelligence artificielle ; notre équipe lit chaque échange.`;
+  }
+  return `Your account manager, ${name} (AI assistant), will email you shortly with 4 quick questions about your goals and ideal clients. ${first} is an AI assistant and our team reads every message.`;
 }

@@ -80,6 +80,19 @@ test("Willkommens-Absatz: ehrlich als KI, keine Preise", () => {
   }
 });
 
+test("Willkommens-Absatz in der Sprache der Mail, robust bei unvollständiger Persona", () => {
+  const fr = pickPersona(DATA, "fr", "x");
+  const en = welcomeAgentLine(fr, "en");
+  assert.match(en, /AI assistant/);
+  assert.doesNotMatch(en, /Votre|IA\)/);
+  const en2 = pickPersona(DATA, "en", "y");
+  const f = welcomeAgentLine(en2, "fr");
+  assert.match(f, /^Votre interlocut(eur|rice), .*\(IA\)/);
+  assert.doesNotMatch(f, /account manager/);
+  const broken = { lang: "fr" } as unknown as Parameters<typeof welcomeAgentLine>[0];
+  for (const l of ["en", "fr"] as const) assert.doesNotMatch(welcomeAgentLine(broken, l), /undefined|null/);
+});
+
 test("Kurzlabels und Stichworte", () => {
   assert.equal(initials({ first_name: "emma", last_name: "carter" }), "EC");
   assert.equal(initials(null), "KA");
