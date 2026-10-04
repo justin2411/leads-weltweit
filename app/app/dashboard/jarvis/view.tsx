@@ -1,7 +1,7 @@
 /**
  * Aufbau der JARVIS-Startseite (Inhaber 04.10.2026: „optimiere nochmal das design bei jarvis“) – reine Darstellung,
  * alle Zahlen kommen fertig aus page.tsx. Reihenfolge: Kopf (Begrüßung, Uhr) · Heute wichtig · Braucht dich · 4 Kern-Kennzahlen · Ziel vs. Ist · JARVIS empfiehlt (X = ausblenden) ·
- * Agenten A1–A8 · Fluss-Karte (mit Seitenfenster) · Kohorten-Trichter (aufklappbar) · Gehirn lernt · Entscheidungen · Chat und Freigabe (unten rechts) · Live-Ticker.
+ * Agenten A1–A8 · Team (Fach-Agenten) · Fluss-Karte (mit Seitenfenster) · Kohorten-Trichter (aufklappbar) · Gehirn lernt · Entscheidungen · Chat und Freigabe (unten rechts) · Live-Ticker.
  * Raster in 8er-Schritten, Karten je Reihe gleich hoch, am Handy eine Spalte ohne seitliches Scrollen.
  */
 import type { ReactNode } from "react";
@@ -25,6 +25,8 @@ import type { Bar, Eintrag, Wichtig } from "@/lib/ueberblick";
 import { HeuteWichtig, ZielIst, Zeitleiste } from "./ueberblick";
 import { KOHORTEN_CSS, Kohorten } from "./kohorten";
 import { GEHIRN_LERNT_CSS, GehirnLernt, type GehirnLerntData } from "./gehirn-lernt";
+import { TEAM_CSS, Team } from "./team";
+import type { Karte } from "@/lib/fach-agenten";
 import type { KohorteRow } from "@/lib/kohorten";
 import type { BdPunkt } from "@/lib/braucht-dich";
 import { BrauchtDich } from "./braucht-dich";
@@ -49,6 +51,8 @@ export type JarvisProps = {
   zeit?: Eintrag[] | null;
   /** Kohorten-Trichter je Versandwoche × Land (aufklappbar unter der Fluss-Karte); rows null = nicht lesbar */
   kohorten?: { rows: KohorteRow[] | null; countries: readonly string[]; today: string };
+  /** Fach-Agenten („Team“: Gehirn-Testing, Lead-Qualität) – leer/fehlend = Abschnitt aus */
+  team?: Karte[] | null;
   /** „Braucht dich“: offene Punkte nur für den Inhaber (lib/braucht-dich.ts) */
   brauchtDich?: BdPunkt[];
   /** Gehirn lernt: Score + Trend, letzte 3 Selbstanpassungen, offene Verbesserungsvorschläge (scripts/brain_meta.py) */
@@ -58,7 +62,7 @@ export type JarvisProps = {
 export function JarvisView(p: JarvisProps) {
   return (
     <div className={`jv jv2 jv3 ${p.drawer ? "has-drw" : ""}`}>
-      <style dangerouslySetInnerHTML={{ __html: JCHAT_CSS + SOFORT_CSS + KOHORTEN_CSS + GEHIRN_LERNT_CSS }} />
+      <style dangerouslySetInnerHTML={{ __html: JCHAT_CSS + SOFORT_CSS + KOHORTEN_CSS + TEAM_CSS + GEHIRN_LERNT_CSS }} />
       <header className="jv-top">
         <span className="jv-logo" aria-hidden><i /><i /><i /></span>
         <div className="jv-hi">
@@ -83,6 +87,7 @@ export function JarvisView(p: JarvisProps) {
       <div id="agenten" className="jv-agenten">
         <AgentRow tasks={p.tasks} active={p.activeAgent} startAt={p.startAt} customerAgents={p.customerAgents} />
       </div>
+      {p.team && <Team cards={p.team} />}
       <LivePoll active={p.tasks.some((t) => t.status === "offen" || t.status === "laeuft")} />
       <div className="jv-stage">
         <FlowMap stations={p.stations} edges={p.edges} active={p.activeAgent ? null : p.activeStation} href={p.stationHref} />

@@ -34,6 +34,8 @@ import { AutopilotPanel } from "./autopilot";
 import { GateRings, GateSteps, Reasons, type GateView } from "./freigabe";
 import { JarvisView } from "./view";
 import { loadBrauchtDich } from "@/lib/braucht-dich-data";
+import { loadTeam } from "@/lib/fach-agenten-data";
+import { karten } from "@/lib/fach-agenten";
 import { loadUeberblick } from "@/lib/ueberblick-data";
 import { bar, dayShare, heuteWichtig, judgeFlow, leadZiel, stillTip, switchedOff, zeitleiste } from "@/lib/ueberblick";
 import { Icon, type IconName } from "@/app/icons";
@@ -86,6 +88,8 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const ubP = loadUeberblick(SEGMENT, COUNTRIES, today);
   // Kohorten-Trichter je Versandwoche × Land (cohort_funnel, ~0,5 s; Fehler → null = „nicht lesbar“)
   const khP = loadKohorten(8);
+  // Team: Fach-Agenten mit Kennzahl, Trend, letztem Auftrag (agent_roles, agent_role_kpi; Fehler → Abschnitt aus)
+  const teamP = loadTeam().catch(() => null);
   // Sparklines und Trend (7 T vs. Vor-7 T): 15 Tage bis heute, kpi_daily parallel (Fehler → leer)
   const from15 = addDays(today, -14);
   const kpiP = loadKpiDaily(from15, today);
@@ -466,6 +470,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
       drawer={drawer} gate={gateView}
       heute={heute} ziel={{ mails: mailBars, leads: leadBars }} zeit={zeit} ticker={ticker(items)} customerAgents={await kaP} chat={await chatP} proposals={await propP} brauchtDich={await bdP}
       kohorten={{ rows: await khP, countries, today }}
+      team={await teamP.then(async (d) => (d ? karten({ ...d, kohorten: await khP, today, now }) : null))}
       gehirn={{ score: gehirnScore(await kpiP, today), anpassungen: await metaP, offen: await impP }} />
   );
 }
