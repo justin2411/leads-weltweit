@@ -11,6 +11,7 @@ import type { AgentTask } from "@/lib/agents";
 import { Ampeln, FlowMap, Ticker, type Kpi } from "./flow";
 import { AgentRow } from "./agents";
 import { Empfiehlt, JarvisChat } from "./empfiehlt";
+import type { StartChat } from "./chat/start";
 import { GatePanel, type GateView } from "./freigabe";
 import { DragTip } from "./dnd";
 import { Clock, Voice } from "./voice";
@@ -25,6 +26,8 @@ export type JarvisProps = {
   gate: GateView;
   ticker: TickerItem[];
   customerAgents?: number | null;
+  /** JARVIS-Chat mit Sitzungen (zuletzt genutzte); null = Tabellen fehlen noch → bisheriger Chat über Agenten-Aufträge */
+  chat?: StartChat | null;
 };
 
 export function JarvisView(p: JarvisProps) {
@@ -52,7 +55,7 @@ export function JarvisView(p: JarvisProps) {
         {p.drawer}
       </div>
       <div className="jv-duo">
-        <JarvisChat tasks={p.tasks} startAt={p.startAt} />
+        <JarvisChat tasks={p.tasks} startAt={p.startAt} chat={p.chat ?? null} />
         <GatePanel g={p.gate} />
       </div>
       <Ticker items={p.ticker} />

@@ -11,6 +11,9 @@ import { chatToJarvis } from "../control-actions";
 import { Back } from "../v2";
 import { DragBox } from "./dnd";
 import { Icon } from "@/app/icons";
+import { chatTime, statusText } from "@/lib/jarvis-chat";
+import { sendFromJarvis } from "./chat/actions";
+import type { StartChat } from "./chat/start";
 
 const when = (iso: string) => new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 
@@ -48,8 +51,10 @@ export function Empfiehlt({ recs, href, agent, children }: { recs: Rec[]; href: 
   );
 }
 
-/** Chat: Verlauf der letzten Chat-Aufträge und Eingabe, als Karte (immer offen). startAt = nächste Agenten-Runde. */
-export function JarvisChat({ tasks, startAt }: { tasks: AgentTask[]; startAt?: string }) {
+/** Chat: mit Sitzungen (chat gesetzt) die zuletzt genutzte Sitzung – Senden schreibt dort hinein und öffnet den Chat;
+ *  ohne (Tabellen fehlen noch) wie bisher Chat-Aufträge an Agenten. startAt = nächste Runde. */
+export function JarvisChat({ tasks, startAt, chat = null }: { tasks: AgentTask[]; startAt?: string; chat?: StartChat | null }) {
+  if (chat) return <SessionChat chat={chat} startAt={startAt} />;
   const thread = chatThread(tasks, 6, startAt);
   const waiting = thread.some((x) => x.status === "offen" || x.status === "laeuft");
   const queued = thread.some((x) => x.status === "offen");
@@ -75,6 +80,48 @@ export function JarvisChat({ tasks, startAt }: { tasks: AgentTask[]; startAt?: s
         <button className="go"><Icon name="weiter" size={16} /> Senden</button>
       </form>
       <p className="lock"><Icon name="uhr" size={14} /> Über dein Claude-Abo{startAt ? `, nächste Runde ${startAt}` : ""}. Keine API-Kosten, nie Mails.</p>
+    </section>
+  );
+}
+
+/** „Schreib JARVIS“ mit Sitzungen (Inhaber 04.10.2026: „eigenen chat mit unterschiedlichen sitzungen … wie mit claude“):
+ *  letzte Nachrichten der zuletzt genutzten Sitzung, Eingabe schreibt dort hinein und öffnet den Chat. */
+function SessionChat({ chat, startAt }: { chat: StartChat; startAt?: string }) {
+  const now = new Date(chat.now);
+  const s = chat.session;
+  const open = chat.messages.some((m) => m.role === "inhaber" && (m.status === "offen" || m.status === "in_arbeit"));
+  const href = s ? `/dashboard/jarvis/chat?s=${s.id}` : "/dashboard/jarvis/chat";
+  return (
+    <section className="jcard jchat" id="chat" aria-label="Schreib JARVIS">
+      <header className="jcard-h">
+        <h2><Icon name="jarvis" size={18} /> Schreib JARVIS</h2>
+        <em>{open && startAt ? `startet um ${startAt}` : s ? <Link href={href}>{s.title}</Link> : "neue Sitzung"}</em>
+      </header>
+      {chat.messages.length > 0 ? (
+        <ol className="jchat-log">
+          {chat.messages.map((m) => {
+            const st = statusText(m, now);
+            return (
+              <li key={m.id}>
+                {m.role === "inhaber"
+                  ? <p className="me"><span>{m.body.length > 240 ? `${m.body.slice(0, 240)} …` : m.body}</span><time>{chatTime(m.created_at, now)}{st ? ` · ${st.text}` : ""}</time></p>
+                  : <p className="bot"><b>JARVIS</b> {m.body.length > 320 ? `${m.body.slice(0, 320)} …` : m.body}</p>}
+              </li>
+            );
+          })}
+        </ol>
+      ) : <p className="jchat-empty">Aufgabe oder Frage eintippen – JARVIS antwortet im Chat.</p>}
+      <form action={sendFromJarvis} className="jchat-f">
+        {s && <input type="hidden" name="sid" value={s.id} />}
+        <textarea name="text" required minLength={1} maxLength={8000} rows={2} aria-label="Nachricht an JARVIS" placeholder="z. B. „UK Käufer finden“ oder „Warum keine Antworten in FR?“" />
+        <button className="go"><Icon name="weiter" size={16} /> Senden</button>
+      </form>
+      <p className="lock">
+        <Link href={href} className="jchat-all"><Icon name="antwort" size={14} /> {chat.sessions > 1 ? `Alle ${chat.sessions} Sitzungen` : "Chat öffnen"}</Link>
+        <Link href={chat.berichtId ? `/dashboard/jarvis/chat?s=${chat.berichtId}` : "/dashboard/jarvis/chat"} className="jchat-all">
+          <Icon name="statistik" size={14} /> Tagesbericht{chat.berichtNeu ? <b className="jc-dot-s" aria-label="neu" /> : null}
+        </Link>
+      </p>
     </section>
   );
 }

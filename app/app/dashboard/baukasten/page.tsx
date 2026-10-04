@@ -6,6 +6,7 @@ import { requireOwner } from "../actions";
 import { Builder, type BuilderInit, type SavedFlow } from "./builder";
 import { AgentList } from "./agents";
 import { BAUKASTEN_CSS } from "./css";
+import { JCHAT_CSS } from "../jarvis/chat/css";
 
 export const metadata = { title: "Baukasten" };
 // Server-Actions (Stichprobe bis 5000 Zeilen in 1000er-Seiten) erben das Zeitlimit der Seite
@@ -74,7 +75,7 @@ export default async function Baukasten({ searchParams }: { searchParams: SP }) 
   ]);
   const flows: SavedFlow[] = rows.filter((r) => r.kind === "test").map((r) => ({ id: r.id, name: r.name, status: r.status, updated_at: r.updated_at }));
   const activeAgents = agents ? agents.filter((a) => a.enabled && !a.archived).length : null;
-  const css = <style dangerouslySetInnerHTML={{ __html: BAUKASTEN_CSS }} />;
+  const css = <style dangerouslySetInnerHTML={{ __html: BAUKASTEN_CSS + JCHAT_CSS }} />;
 
   if (opened?.kind === "master") bereich = "master";
   if (agentParam) bereich = "agenten";
@@ -126,7 +127,7 @@ export default async function Baukasten({ searchParams }: { searchParams: SP }) 
     if (flowParam) {
       const def = opened?.def ? parseFlow(opened.def) : null;
       if (opened?.kind === "agent") notice = "Dieser Flow gehört zu einem Agenten – unter Agenten bearbeiten";
-      else if (opened && def?.ok) initial = { id: opened.id, name: opened.name, flow: def.flow, kind: "test" };
+      else if (opened && def?.ok) initial = { id: opened.id, version: opened.updated_at, name: opened.name, flow: def.flow, kind: "test" };
       else notice = opened ? `Flow „${opened.name}“ ist beschädigt – Vorlage geladen` : "Flow nicht gefunden – Vorlage geladen";
     }
     navKey = flowParam ? `flow:${flowParam}` : `neu:${land ?? ""}|${seg ?? ""}|${quelle ?? ""}|${vorlage ?? ""}`;

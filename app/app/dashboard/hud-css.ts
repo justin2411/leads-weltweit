@@ -285,6 +285,10 @@ export const HUD_CSS = `
 .jchat-f .go{display:flex;align-items:center;gap:6px;padding:10px 16px;min-height:44px;border-radius:8px;font-weight:700;color:#02060f;background:linear-gradient(180deg,#f2dcae,#e2c68f);border:0;cursor:pointer;white-space:nowrap}
 .jchat>.lock{padding:0 12px 10px;display:flex;gap:6px;align-items:flex-start}
 @media (max-width:720px){.jrec-l{grid-template-columns:1fr}.jchat-f{flex-direction:column;align-items:stretch}.jchat-log p{max-width:100%}}
+.jchat>.lock .jchat-all{display:inline-flex;align-items:center;gap:5px;min-height:32px;text-decoration:none;color:var(--cy2)}
+.jchat>.lock .jchat-all+.jchat-all{margin-left:12px}
+.jc-dot-s{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px rgba(226,198,143,.8);margin-left:4px}
+.jchat-log .me time{overflow-wrap:anywhere}.jchat-log p{overflow-wrap:anywhere;white-space:pre-wrap}
 .ag-drop{position:relative;flex:1 0 150px;display:flex;min-width:0}
 .ag-drop>.ag{flex:1;min-width:0}
 .ag-hint{display:none}

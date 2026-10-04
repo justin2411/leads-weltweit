@@ -7,7 +7,7 @@
  * Master-Pipeline und eigene Agenten (docs/BAUKASTEN-MASTER.md): „freigabe“ markiert die Drei-Stufen-Freigabe (läuft immer,
  * release_gate.py), „speicher“ legt Leads in einen eigenen Speicher, „melden“ schickt dem Inhaber eine kurze Nachricht.
  */
-import { KINDS, OWNER_KINDS } from "./agents.ts";
+import { AGENT_COUNT, KINDS, OWNER_KINDS } from "./agents.ts";
 import type { IconName } from "../app/icons.tsx";
 
 export type Source = "leads" | "kaeufer";
@@ -617,7 +617,7 @@ export function problems(flow: Flow, kind: FlowKind = "test"): Problem[] {
         break;
       }
       case "pipeline": if (n.name.trim().length < 1 || n.name.length > LIMITS.name) err(`Name: 1 bis ${LIMITS.name} Zeichen`, n.id); break;
-      case "agent": if (!Number.isInteger(n.agent) || n.agent < 1 || n.agent > 4) err("Agent 1 bis 4", n.id); break;
+      case "agent": if (!Number.isInteger(n.agent) || n.agent < 1 || n.agent > AGENT_COUNT) err(`Agent 1 bis ${AGENT_COUNT}`, n.id); break;
       case "speicher":
         if (source === "kaeufer") err("Speicher nur für Leads, nicht für Käufer", n.id);
         if (n.pool_id !== null && !UUID_RE.test(n.pool_id)) err("Speicher ungültig", n.id);
