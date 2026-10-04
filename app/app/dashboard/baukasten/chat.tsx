@@ -105,11 +105,11 @@ export function FlowChat({ flowId, kind, proposal, stale, onRemote, onReload, in
           <p className="jc-empty">Chat wird gerade eingerichtet.</p>
         ) : (
           <>
-            <Thread messages={msgs} now={now} compact empty={kind === "master"
+            <Thread chatKey="bk" messages={msgs} now={now} compact empty={kind === "master"
               ? "Schreib, was die Master-Pipeline tun soll – JARVIS baut es als Vorschlag, du übernimmst mit einem Klick."
               : "Schreib, was gebaut werden soll, z. B. „nur Leads mit Telefon, dann Top 100“."} />
             {err && <p className="jc-err" role="alert"><Icon name="achtung" size={15} />{err}</p>}
-            <Composer sessionId={null} now={now} onError={setErr} send={send} instant={instant} placeholder="Was soll JARVIS hier bauen? (Enter sendet)" />
+            <Composer chatKey="bk" sessionId={null} now={now} onError={setErr} send={send} instant={instant} placeholder="Was soll JARVIS hier bauen? (Enter sendet)" />
             <div className="bk-chat-f">
               <span><Icon name="schloss" size={13} />{kind === "master" ? "Master: JARVIS schlägt vor – aktiv erst nach „Übernehmen“."
                 : proposal ? "Läuft in der Pipeline: JARVIS schlägt vor – gilt erst nach „Speichern“." : "Gebaute Bausteine bleiben, bis du sie löschst."}</span>

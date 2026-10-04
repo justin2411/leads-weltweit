@@ -123,7 +123,6 @@ export const JCHAT_CSS = `
  * „Vergrößern“ (großes Fenster, Handy Vollbild), Karte „Vorschläge“. Gleicher HUD-Stil, am Handy ohne seitliches Scrollen.
  */
 export const SOFORT_CSS = `
-.jc-comp .jc-pend{grid-column:1/-1;padding:0 0 4px;overflow:visible;flex:none}
 .jc-think{color:var(--gold2)}
 .jc-hint2{grid-column:1/-1;display:flex;align-items:center;gap:6px;margin:0;font-size:12.5px;color:var(--gold2)}
 .jc-model{font-style:normal;font-size:10px;letter-spacing:.08em;margin-left:8px;padding:1px 7px;border-radius:999px;border:1px solid rgba(95,212,255,.35);color:var(--cy2);vertical-align:1px}

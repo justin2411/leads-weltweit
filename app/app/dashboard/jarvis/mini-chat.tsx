@@ -63,9 +63,9 @@ export function MiniChat(p: MiniChatProps) {
   const full = sid ? `/dashboard/jarvis/chat?s=${sid}` : "/dashboard/jarvis/chat";
   const body = (compact: boolean) => (
     <>
-      <Thread messages={compact ? small : msgs} now={now} compact={compact} empty={p.empty ?? "Aufgabe oder Frage eintippen – JARVIS antwortet sofort."} />
+      <Thread chatKey="mini" messages={compact ? small : msgs} now={now} compact={compact} empty={p.empty ?? "Aufgabe oder Frage eintippen – JARVIS antwortet sofort."} />
       {err && <p className="jc-err" role="alert"><Icon name="achtung" size={15} />{err}</p>}
-      <Composer sessionId={sid} now={now} onError={setErr} send={send} instant={p.instant}
+      <Composer chatKey="mini" sessionId={sid} now={now} onError={setErr} send={send} instant={p.instant}
         placeholder={p.placeholder ?? "z. B. „Wie viele Proben sind bereit?“ oder „UK Käufer finden“"} />
     </>
   );

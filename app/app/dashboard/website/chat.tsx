@@ -75,9 +75,9 @@ export function WebsiteChat({ initial, now: nowIso, missing: missing0 }: { initi
           <p className="jc-empty">Chat wird gerade eingerichtet.</p>
         ) : (
           <>
-            <Thread messages={msgs} now={now} compact empty={<span className="ws-chat-empty"><Icon name="website" size={22} />Schreib, was sich an der Website ändern soll.<br />JARVIS baut es und meldet sich mit Link.</span>} />
+            <Thread chatKey="ws" messages={msgs} now={now} compact empty={<span className="ws-chat-empty"><Icon name="website" size={22} />Schreib, was sich an der Website ändern soll.<br />JARVIS baut es und meldet sich mit Link.</span>} />
             {err && <p className="jc-err" role="alert"><Icon name="achtung" size={15} />{err}</p>}
-            <Composer sessionId={null} now={now} onError={setErr} send={send} placeholder="z. B. „Überschrift auf der UK-Seite kürzer“ (Enter sendet)" />
+            <Composer chatKey="ws" sessionId={null} now={now} onError={setErr} send={send} placeholder="z. B. „Überschrift auf der UK-Seite kürzer“ (Enter sendet)" />
             <div className="bk-chat-f">
               <span><Icon name="schloss" size={13} />Keine Preise, kein Versand · Rechtstexte nur nach deiner Vorgabe</span>
               {msgs.length > 0 && <button type="button" onClick={clear} disabled={busy}><Icon name="rueckgaengig" size={14} />Chat leeren</button>}
