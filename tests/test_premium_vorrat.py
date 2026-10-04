@@ -81,6 +81,19 @@ class ScoreScriptTest(unittest.TestCase):
         self.assertIsNone(P.demote(lead(1), TODAY))
         self.assertEqual(P.demote(lead(1, age=45), TODAY)["tier"], "standard")
 
+    def test_aged_columns(self):
+        """Premium-Labor: gesunkene Frische-Punkte landen auch in premium_score (premium_status zählt daraus)."""
+        import premium_score as P
+        weak = lead(1, age=18, score=70)
+        weak["premium"] = {"tier": "premium", "reasons": ["frisch_3_tage", "kombi:no_https", "beleg"]}
+        upd = P.aged_columns(weak, TODAY)
+        self.assertEqual(upd["premium_score"], 55)
+        self.assertEqual(upd["premium"]["tier"], "standard")
+        strong = lead(2, age=18, score=100)
+        strong["premium"] = {"tier": "premium", "reasons": ["frisch_3_tage", "kombi:x", "beleg", "person", "kontakt"]}
+        self.assertEqual(P.aged_columns(strong, TODAY), {"premium_score": 85})
+        self.assertEqual(P.aged_columns(lead(3, age=18), TODAY), {})  # ohne Frische-Grund: nichts
+
     def test_lead_input_uses_company_contact(self):
         import premium_score as P
         inp = P.lead_input({"signal_type": "new_incorporation", "event_date": "2026-10-01",

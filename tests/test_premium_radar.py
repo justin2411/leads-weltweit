@@ -66,6 +66,36 @@ class PremiumTest(unittest.TestCase):
         self.assertEqual([r["id"] for r in sorted(rows, key=premium.sort_key)], ["c", "a", "b"])
 
 
+    def test_stored_score_ages(self):
+        """Premium-Labor: mit „frisch ≤ 14 Tage“ bewertet, heute älter → nur noch 20 statt 35 Frische-Punkte."""
+        lead = self.base(person_name="", details={"findings": [{"type": "no_https"}]}, event_date="2026-10-01")
+        cols = premium.columns(lead, TODAY)  # 35 + 25 + 10 + 15 = 85
+        row = {"event_date": "2026-10-01", **cols}
+        self.assertEqual(premium.score_now(row, TODAY), 85)
+        self.assertEqual(premium.score_now(row, TODAY + dt.timedelta(days=14)), 70)  # 18 Tage: 20 statt 35
+        self.assertEqual(premium.tier_now(row, TODAY + dt.timedelta(days=14)), "premium")
+        weak = {"event_date": "2026-10-01", "premium_score": 70,
+                "premium": {"tier": "premium", "reasons": ["frisch_4_tage", "kombi:no_https", "beleg"]}}
+        self.assertEqual(premium.score_now(weak, TODAY + dt.timedelta(days=14)), 55)
+        self.assertEqual(premium.tier_now(weak, TODAY + dt.timedelta(days=14)), "standard")
+        self.assertEqual(premium.tier_now(weak, TODAY), "premium")
+
+    def test_aging_never_raises_score(self):
+        row = {"event_date": "2026-09-10", "premium_score": 85,
+               "premium": {"tier": "premium", "reasons": ["frisch_20_tage", "kombi:no_website", "beleg", "kontakt"]}}
+        self.assertEqual(premium.score_now(row, TODAY), 85)
+        self.assertEqual(premium.score_now({"premium_score": 90}, TODAY), 90)  # ohne Gründe: unverändert
+        self.assertIsNone(premium.score_now({}, TODAY))
+
+    def test_sort_key_uses_aged_score(self):
+        old = {"id": "old", "event_date": "2026-09-15", "premium_score": 100,
+               "premium": {"tier": "premium", "reasons": ["frisch_2_tage", "kombi:x", "beleg", "person", "kontakt"]}}
+        new = {"id": "new", "event_date": "2026-10-03", "premium_score": 90,
+               "premium": {"tier": "premium", "reasons": ["frisch_2_tage", "kombi:x", "beleg", "kontakt"]}}
+        self.assertEqual([r["id"] for r in sorted([old, new], key=lambda r: premium.sort_key(r, TODAY))],
+                         ["new", "old"])
+
+
 class TlsTest(unittest.TestCase):
     def cert(self, left, valid=365, issuer="CN=Example CA,O=Example Trust"):
         na = TODAY + dt.timedelta(days=left)

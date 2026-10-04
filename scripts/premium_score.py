@@ -53,6 +53,19 @@ def demote(l: dict, today: dt.date) -> dict | None:
     return None
 
 
+def aged_columns(l: dict, today: dt.date) -> dict:
+    """Spalten-Update für einen Premium-Lead, dessen Frische-Punkte gesunken sind (premium_score auf heute gealtert,
+    damit signalwerk.premium_status() und der Index dieselbe Zahl sehen); leer, wenn sich nichts ändert."""
+    out = {}
+    now = premium.score_now(l, today)
+    if now is not None and now != l.get("premium_score"):
+        out["premium_score"] = now
+    new = demote(l, today)
+    if new:
+        out["premium"] = new
+    return out
+
+
 def _company_obs(db, ids: list[str]) -> tuple[dict, dict]:
     contact, person = {}, {}
     for i in range(0, len(ids), 150):
@@ -117,17 +130,20 @@ def run(db, apply: bool, limit: int = 50000, today: dt.date | None = None, log=p
                 if apply:
                     with ThreadPoolExecutor(8) as ex:
                         list(ex.map(lambda u: db.update("leads", {"id": u[0]}, u[1]), upd))
-    # veraltete Premium-Leads zurückstufen
-    since = (today - dt.timedelta(days=premium.FRESH_MID)).isoformat()
+    # gealterte Premium-Leads: Frische-Punkte senken (ab FRESH_HIGH Tagen), zurückstufen (unter PREMIUM_MIN oder
+    # älter als FRESH_MID Tage)
+    since = (today - dt.timedelta(days=premium.FRESH_HIGH)).isoformat()
     old = db.select_all("leads", {"status": "eq.new", "premium_score": "not.is.null", "premium->>tier": "eq.premium",
                                   "event_date": f"lt.{since}",
-                                  "select": "id,event_date,premium"})
+                                  "select": "id,event_date,premium_score,premium"})
     for l in old:
-        new = demote(l, today)
-        if new:
+        upd = aged_columns(l, today)
+        if "premium" in upd:
             stats["zurueckgestuft"] += 1
-            if apply:
-                db.update("leads", {"id": l["id"]}, {"premium": new})
+        elif upd:
+            stats["gealtert"] += 1
+        if upd and apply:
+            db.update("leads", {"id": l["id"]}, upd)
     log(json.dumps(dict(stats), ensure_ascii=False, sort_keys=True))
     return dict(stats)
 
