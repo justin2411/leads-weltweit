@@ -28,6 +28,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lib.rules import brand, postal_address  # noqa: E402
+from lib.kurz import insert_decisions  # noqa: E402
 
 FRESH_DAYS = 14          # nur Leads, die höchstens so alt sind
 DEFAULT_MAX = 15         # Leads pro Woche, falls im Abo nichts steht
@@ -498,10 +499,10 @@ def cmd_prepare(args) -> int:
         picked = [l for l in picked if l["id"] in released]
         enrich(db, picked, known)
         if len(picked) < 5:
-            db.insert("decisions", {"type": "delivery", "subject": f"Wenig Leads für {s['customers']['company_name']}",
-                                    "reasoning": f"Nur {len(picked)} passende Leads (Qualität ab 60) für {period} – "
-                                                 "nicht mit schwachen Leads aufgefüllt (BRAIN.md 5.3).",
-                                    "metrics": {"leads": len(picked)}, "status": "done"})
+            insert_decisions(db, {"type": "delivery", "subject": f"Wenig Leads für {s['customers']['company_name']}",
+                                  "reasoning": f"Nur {len(picked)} passende Leads (Qualität ab 60) für {period} – "
+                                               "nicht mit schwachen Leads aufgefüllt (BRAIN.md 5.3).",
+                                  "metrics": {"leads": len(picked)}, "status": "done"})
         first = not s["first_delivery_approved"]
         status = "prepared" if first else "approved"
         db.insert("deliveries", {"subscription_id": s["id"], "period_start": period.isoformat(),

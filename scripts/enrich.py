@@ -39,6 +39,7 @@ import requests
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lib import websites as W  # noqa: E402
+from lib.kurz import insert_decisions  # noqa: E402
 from lib.fetch import FetchRefused, host_blocked, polite_get  # noqa: E402
 
 TODAY = dt.date.today()
@@ -441,7 +442,7 @@ def print_completeness(before: dict, after: dict | None = None) -> None:
 
 def write_note(db, stats: Counter, before: dict, after: dict) -> None:
     tot = lambda d, f: sum(v[f] for v in d.values())  # noqa: E731
-    db.insert("decisions", {
+    insert_decisions(db, {
         "type": "daily_note", "subject": "Lead-Anreicherung",
         "reasoning": (f"{stats['processed']} Firmen geprüft: {stats['website_new']} neue geprüfte Websites, "
                       f"{stats['phone']} Telefon, {stats['email']} Sammel-E-Mail, {stats['person']} Ansprechpersonen. "

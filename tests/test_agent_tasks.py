@@ -20,10 +20,23 @@ class AgentTasksTest(unittest.TestCase):
         calls = [c.args for c in db.update.call_args_list]
         self.assertEqual(calls[0][2]["status"], "laeuft")
         self.assertEqual(calls[1][2]["progress"], 99)  # nie 100 vor „fertig“
-        self.assertEqual(len(calls[1][2]["step"]), 200)
+        self.assertLessEqual(len(calls[1][2]["step"]), A.STEP_MAX)  # Wenig Text: eine Zeile
         self.assertEqual(calls[2][2]["status"], "fertig")
         self.assertEqual(calls[2][2]["numbers"], {"leads": 420})  # nur Zahlen
 
+
+    def test_result_kurz(self):
+        db = mock.Mock()
+        db.update.return_value = [{"id": "t1"}]
+        lang = "Ergebnis mit viel zu viel Text " * 40
+        with mock.patch.object(A, "DB", return_value=db):
+            A.main(["fertig", "t1", lang])
+            A.main(["fehler", "t2", lang])
+            A.main(["fertig", "t3", "420 neue Leads"])
+        res = [c.args[2]["result"] for c in db.update.call_args_list]
+        self.assertTrue(all(len(r) <= A.RESULT_MAX for r in res))
+        self.assertTrue(res[0].endswith("…"))
+        self.assertEqual(res[2], "420 neue Leads")
 
     def test_start_is_atomic(self):
         db = mock.Mock()
