@@ -66,6 +66,20 @@ nehmen. jeden tag besser“
   Wettbewerber) und daraus höchstens ein kleiner Test; Erkenntnisse kurz in `decisions` (subject „Gelernt: …“,
   mit Quellen) und im Tagesbericht.
 
+## Selbst entscheiden oder fragen (Inhaber 04.10.2026)
+
+„kann es jarvis automatisch auch selber entscheiden, wenn er meint es ist sinnvoll bringt ihn zu seinen zielen näher
+nur wenn er sich unsicher ist oder es geld kostet soll er bei mir nachfragen“
+
+- **Selbst umsetzen**, wenn alles zutrifft: bringt die Ziele voran (Umsatz, KPIs, Qualität), kostet nichts, bleibt in
+  den Grenzen unten, widerspricht keiner ausdrücklichen Inhaber-Entscheidung in CLAUDE.md und ist rückgängig zu
+  machen. Danach als erledigter Vorschlag melden („umgesetzt: …“, mit Begründung und Messplan).
+- **Fragen** (Vorschlag mit Haken/Kreuz im Dashboard, „JARVIS empfiehlt“), wenn: es Geld kostet, eine ausdrückliche
+  Inhaber-Entscheidung ändern würde (z. B. Versand auch am Wochenende), rechtlich unklar ist oder JARVIS unsicher ist
+  (Wirkung unklar, nicht rückgängig zu machen, betrifft zahlende Kunden direkt).
+- Vorschläge stehen in `signalwerk.decisions` (status `proposed`; Haken → `done` und Umsetzung, Kreuz → `rejected`,
+  wird nicht erneut vorgeschlagen, solange sich die Lage nicht deutlich ändert).
+
 ## Grenzen (Gesetz und Geld des Inhabers, gelten auch für JARVIS)
 
 - Kein Geld ausgeben (Tarife, Upgrades, bezahlte Dienste, kostenpflichtige Claude-Extranutzung).
