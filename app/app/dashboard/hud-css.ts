@@ -258,6 +258,33 @@ export const HUD_CSS = `
 .jt-pick button:hover{border-color:var(--gold);color:var(--gold)}
 .drag-box{display:contents}
 .amp4.jt-drag{cursor:grab}
+/* JARVIS empfiehlt und Chat (Inhaber 04.10.2026) */
+.jrec{margin:0 0 12px}.jrec h2{display:flex;align-items:center;gap:6px;margin:0 0 6px;font-size:13px;font-weight:700;color:var(--gold);letter-spacing:.04em}
+.jrec-l{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px}
+.jrec-i{--tc:var(--cy);display:flex;align-items:stretch;border:1px solid color-mix(in srgb,var(--tc) 45%,transparent);border-left:3px solid var(--tc);border-radius:10px;background:color-mix(in srgb,var(--tc) 8%,rgba(4,12,26,.7));min-width:0}
+.jrec-i.rot{--tc:#ff5e73}.jrec-i.gelb{--tc:#ffb547}.jrec-i.gruen{--tc:#3ddc97}.jrec-i.info{--tc:#5fd4ff}
+.jrec-t{flex:1;min-width:0;display:grid;gap:2px;padding:8px 10px;text-decoration:none;color:var(--text)!important}
+.jrec-t b{font-size:14px;color:#fff}.jrec-t span{font-size:13px;color:var(--soft);line-height:1.35}
+.jrec-give{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:52px;padding:6px;border-left:1px solid var(--line);text-decoration:none;color:var(--cy2)!important;font-size:11.5px;font-weight:700}
+.jrec-give:hover{color:var(--gold)!important}
+.jchat{margin:0 0 14px;border:1px solid var(--line);border-radius:12px;background:rgba(4,12,26,.6)}
+.jchat summary{display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;font-weight:700;font-size:14px;color:var(--cy2);list-style:none;min-height:44px}
+.jchat summary::-webkit-details-marker{display:none}
+.jchat summary em{font-style:normal;font-weight:500;font-size:12.5px;color:var(--soft);margin-left:auto}
+.jchat[open] summary{border-bottom:1px solid var(--line)}
+.jchat-log{list-style:none;margin:0;padding:10px 12px;display:grid;gap:10px;max-height:320px;overflow:auto}
+.jchat-log li{display:grid;gap:4px}
+.jchat-log p{margin:0;padding:8px 10px;border-radius:10px;font-size:14px;line-height:1.4;max-width:88%}
+.jchat-log .me{justify-self:end;background:rgba(95,212,255,.14);display:grid;gap:2px}
+.jchat-log .me time{font-size:11.5px;color:var(--soft)}
+.jchat-log .bot{justify-self:start;background:rgba(226,198,143,.1);border:1px solid rgba(226,198,143,.3)}
+.jchat-log .bot b{color:var(--gold);font-size:12px;margin-right:6px}
+.jchat-log .bot.st-fehler{border-color:#ff5e73}
+.jchat-f{display:flex;gap:8px;padding:10px 12px;align-items:flex-end}
+.jchat-f textarea{flex:1;min-width:0;padding:9px 11px;border-radius:8px;font:inherit;font-size:15px;resize:vertical;min-height:44px}
+.jchat-f .go{display:flex;align-items:center;gap:6px;padding:10px 16px;min-height:44px;border-radius:8px;font-weight:700;color:#02060f;background:linear-gradient(180deg,#f2dcae,#e2c68f);border:0;cursor:pointer;white-space:nowrap}
+.jchat>.lock{padding:0 12px 10px;display:flex;gap:6px;align-items:flex-start}
+@media (max-width:720px){.jrec-l{grid-template-columns:1fr}.jchat-f{flex-direction:column;align-items:stretch}.jchat-log p{max-width:100%}}
 .ag-drop{position:relative;flex:1 0 150px;display:flex;min-width:0}
 .ag-drop>.ag{flex:1;min-width:0}
 .ag-hint{display:none}

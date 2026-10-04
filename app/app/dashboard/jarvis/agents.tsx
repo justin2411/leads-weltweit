@@ -5,7 +5,7 @@
  */
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import { AGENT_COUNT, KINDS, MARKETS, agentBoard, type AgentTask } from "@/lib/agents";
+import { AGENT_COUNT, KINDS, MARKETS, agentBoard, formDefaults, type AgentTask } from "@/lib/agents";
 import { cancelAgentTask, createAgentTask } from "../control-actions";
 import { Back } from "../v2";
 import { AgentDrop } from "./dnd";
@@ -41,34 +41,40 @@ export function AgentRow({ tasks, active }: { tasks: AgentTask[]; active: string
   );
 }
 
-function NewTask({ agent, back }: { agent: number | null; back: string }) {
+/** Vorbelegung aus der Adresse (Hinweis „an Agent geben“): k = Art, m = Markt, b = Auftragstext. */
+export type Pre = { k?: unknown; m?: unknown; b?: unknown };
+
+/** Formular „Neuer Auftrag“, schlau vorbelegt (formDefaults: Hinweis, Text, offener/letzter Auftrag des Agenten). */
+function NewTask({ agent, back, tasks, pre }: { agent: number | null; back: string; tasks: AgentTask[]; pre: Pre }) {
+  const d = formDefaults({ tasks, agent, kind: pre.k, market: pre.m, brief: pre.b });
+  // key: neue Vorbelegung setzt das Formular zurück (defaultChecked wirkt nur beim ersten Rendern)
   return (
-    <form action={createAgentTask} className="agf">
+    <form action={createAgentTask} className="agf" key={`${d.agent}-${d.kind}-${d.market}-${d.brief.length}`}>
       <Back to={back} />
       <fieldset><legend>Agent</legend><div className="chips3">
-        {Array.from({ length: AGENT_COUNT }, (_, i) => <label key={i}><input type="radio" name="agent" value={i + 1} defaultChecked={(agent ?? 1) === i + 1} /><span>A{i + 1}</span></label>)}
+        {Array.from({ length: AGENT_COUNT }, (_, i) => <label key={i}><input type="radio" name="agent" value={i + 1} defaultChecked={d.agent === i + 1} /><span>A{i + 1}</span></label>)}
       </div></fieldset>
       <fieldset><legend>Was</legend><div className="chips3">
-        {(Object.keys(KINDS) as (keyof typeof KINDS)[]).map((k, i) => <label key={k} title={KINDS[k].hint}><input type="radio" name="kind" value={k} defaultChecked={i === 0} /><span><Icon name={KINDS[k].icon} size={16} /> {KINDS[k].label}</span></label>)}
+        {(Object.keys(KINDS) as (keyof typeof KINDS)[]).map((k) => <label key={k} title={KINDS[k].hint}><input type="radio" name="kind" value={k} defaultChecked={d.kind === k} /><span><Icon name={KINDS[k].icon} size={16} /> {KINDS[k].label}</span></label>)}
       </div></fieldset>
       <fieldset><legend>Markt</legend><div className="chips3">
-        <label><input type="radio" name="market" value="" defaultChecked /><span>alle</span></label>
-        {MARKETS.map((m) => <label key={m}><input type="radio" name="market" value={m} /><span>{m}</span></label>)}
+        <label><input type="radio" name="market" value="" defaultChecked={!d.market} /><span>alle</span></label>
+        {MARKETS.map((m) => <label key={m}><input type="radio" name="market" value={m} defaultChecked={d.market === m} /><span>{m}</span></label>)}
       </div></fieldset>
-      <input name="brief" maxLength={1000} placeholder="Notiz (optional), z. B. „nur Firmen ohne Website“" />
+      <input name="brief" maxLength={1000} defaultValue={d.brief} placeholder="Notiz (optional), z. B. „nur Firmen ohne Website“" />
       <button className="go">Beauftragen</button>
     </form>
   );
 }
 
 /** Seitenfenster eines Agenten oder „Neuer Auftrag“. */
-export function AgentDrawer({ which, tasks }: { which: string; tasks: AgentTask[] }) {
+export function AgentDrawer({ which, tasks, pre = {} }: { which: string; tasks: AgentTask[]; pre?: Pre }) {
   const back = `/dashboard/jarvis?a=${which}`;
   if (which === "neu") {
     return (
       <aside className="drw" aria-label="Neuer Auftrag">
         <header><span className="drw-ic" aria-hidden><Icon name="neu" size={20} /></span><h2>Neuer Auftrag</h2><Link href="/dashboard/jarvis" scroll={false} className="drw-x" aria-label="Schließen"><Icon name="schliessen" size={16} /></Link></header>
-        <div className="drw-body"><NewTask agent={null} back={back} /><p className="lock"><Icon name="schloss" size={14} /> Agenten senden nie Mails, geben kein Geld aus und ändern keine Prüfregeln.</p></div>
+        <div className="drw-body"><NewTask agent={null} back={back} tasks={tasks} pre={pre} /><p className="lock"><Icon name="schloss" size={14} /> Agenten senden nie Mails, geben kein Geld aus und ändern keine Prüfregeln.</p></div>
       </aside>
     );
   }
@@ -91,7 +97,7 @@ export function AgentDrawer({ which, tasks }: { which: string; tasks: AgentTask[
             {cur.status === "offen" && <form action={cancelAgentTask}><Back to={back} /><input type="hidden" name="id" value={cur.id} /><button className="ghost2">zurückziehen</button></form>}
           </div>
         )}
-        <NewTask agent={n} back={back} />
+        <NewTask agent={n} back={back} tasks={tasks} pre={pre} />
         {mine.length > 1 && (
           <ul className="chk">{mine.filter((t) => t.id !== cur?.id).slice(0, 6).map((t) => (
             <li key={t.id} className={t.status === "fehler" ? "bad" : "ok"} title={t.result ?? t.brief}><i aria-hidden><Icon name={KINDS[t.kind].icon} size={16} /></i><b>{KINDS[t.kind].label}{t.market ? ` · ${t.market}` : ""}</b><span>{when(t.created_at)}</span><em>{STATUS[t.status]}{t.result ? ` · ${t.result.slice(0, 60)}` : ""}</em></li>

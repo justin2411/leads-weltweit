@@ -3,7 +3,8 @@ import type { ReactNode } from "react";
 import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadBoxHealth, loadDaily, loadFunnel, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock } from "@/lib/dashboard-data";
 import { berlin, berlinDay, brake, chain, compact, currencySign, greeting, mailboxes, monthly, nextRun, onlySegment, realSubscriptions, sampleStock, stockSegment, BOX_MIN, COUNTRY_COLOR } from "@/lib/dashboard-logic";
 import { totals } from "@/lib/dashboard-periods";
-import { alarmTips, coach, hall, laneOf, laneStats, neckTask, rankTips, running, utilization, type Beat } from "@/lib/leitstand";
+import { alarmTips, coach, hall, laneOf, laneStats, neckTask, rankTips, recommend, running, utilization, type Beat, type Tip } from "@/lib/leitstand";
+import { freeAgent } from "@/lib/agents";
 import { NECK_TO_STATION, ticker, type Edge, type Station, type StationId, type TickerItem } from "@/lib/fluss";
 import { effectiveLimit, slotCounts, werkOn, type LaneRegistry, type WerkKey } from "@/lib/owner-settings";
 import { START_WORKFLOWS, startState, type StartKey, type StartRequest } from "@/lib/start-queue";
@@ -18,6 +19,7 @@ import { Ampeln, Drawer, FlowMap, MiniBars, Ticker } from "./flow";
 import { Bays, LANE_COLOR, Reactor, UtilChart, laneColor } from "./hud";
 import { Pult } from "./pult";
 import { AgentDrawer, AgentRow } from "./agents";
+import { Empfiehlt, JarvisChat } from "./empfiehlt";
 import { AutopilotPanel } from "./autopilot";
 import { DragTip } from "./dnd";
 import { Clock, Voice } from "./voice";
@@ -159,9 +161,14 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const tipStation = (href?: string): StationId => (href === "#pult" ? "lead" : href?.includes("bestand") ? "kaeufer" : href?.includes("versand") ? "versand" : href?.includes("proben") ? "proben" : "lead");
   const base = (id: StationId) => `/dashboard/jarvis?s=${id}`;
   // Antworten öffnen direkt das Cockpit, alles andere die passende Station
-  const tipHref = (x: { href?: string }) => (x.href === "/dashboard/antworten" ? x.href : `${base(tipStation(x.href))}${x.href === "#pult" || x.href?.includes("proben") ? "&t=set" : ""}`);
+  const tipHref = (x: { href?: string }) => (x.href === "/dashboard/antworten" || x.href?.startsWith("/dashboard/jarvis") ? x.href! : `${base(tipStation(x.href))}${x.href === "#pult" || x.href?.includes("proben") ? "&t=set" : ""}`);
   const href = (id: StationId) => (s === id ? "/dashboard/jarvis" : base(id));
   const hello = greeting(now);
+  // JARVIS empfiehlt (Inhaber 04.10.2026): 2–3 Optimierungen mit fertigem Auftrag, dazu der Engpass der Kette
+  const neckLabel = neck ? stations.find((x) => x.id === neck)!.label : null;
+  const neckTip: Tip[] = neck && neckLabel ? [{ level: "gelb", title: `Engpass: ${neckLabel}`, text: "Hier verliert die Kette am meisten – Ursachen finden und kostenlose Verbesserungen vorschlagen.", href: base(neck), task: neckTask(neckLabel) }] : [];
+  const { recs, rest } = recommend([...tips, ...neckTip]);
+  const say = tips[0]?.level === "rot" ? tips[0].title : recs[0] ? `Mein Vorschlag: ${recs[0].title}` : tips[0]?.title ?? "alles im grünen Bereich";
   const amps = [
     { label: "Umsatz / Monat", value: revenue, sub: `${subs.length} Kunden`, tone: subs.length ? "green" : "grey", href: base("kunden") },
     openReplies
@@ -226,7 +233,8 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
       <form key={c} action={action}><Back to={back} /><input type="hidden" name="country" value={c} /><button className={off ? "off" : "on"} title={off ? "aus" : "an"}><i style={{ background: COUNTRY_COLOR[c] }} />{c}</button></form>); })}</div>
   );
 
-  let drawer: ReactNode = ag ? <AgentDrawer which={ag} tasks={agentTasks} /> : null;
+  const pre = { k: sp.k, m: sp.m, b: sp.b };
+  let drawer: ReactNode = ag ? <AgentDrawer which={ag} tasks={agentTasks} pre={pre} /> : null;
   if (s && !ag) {
     const stn = stations.find((x) => x.id === s)!;
     const tabsOn = { set: !["bestand", "gate"].includes(s), check: true };
@@ -337,14 +345,16 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
         <div className="jv-brand"><span className="jv-logo" aria-hidden><i /><i /><i /></span><h1>JARVIS</h1></div>
         <Clock />
       </div>
-      <Voice lines={[hello, tips[0]?.title ?? "alles im grünen Bereich"]} />
-      {tips.length > 0 && (
+      <Voice lines={[hello, say]} />
+      <Empfiehlt recs={recs} href={tipHref} agent={freeAgent(agentTasks)} />
+      {rest.length > 0 && (
         <div className="jtips2">
-          {tips.slice(0, 4).map((x, i) => (
+          {rest.slice(0, 4).map((x, i) => (
             <DragTip key={i} task={x.task} title={x.title} href={tipHref(x)} level={x.level} tip={x.text} />
           ))}
         </div>
       )}
+      <JarvisChat tasks={agentTasks} open={sp.c === "1"} />
       <Ampeln items={amps} />
       <AgentRow tasks={agentTasks} active={ag} />
       <div className="jv-stage">
