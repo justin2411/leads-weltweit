@@ -1,12 +1,12 @@
 """Temporärer Test (wird vor dem PR entfernt). Gibt keine Lead-Daten aus. Ausgabe als Annotation."""
-import re
+import ftplib
+import socket
 import sys
 
 import requests
 
 H = {"User-Agent": "signalwerk-probe/1.0 (+https://www.nextgen-profit.de)"}
 OUT = []
-B = "https://object.files.data.gouv.fr/data-pipeline-open/"
 
 
 def p(*a):
@@ -20,19 +20,31 @@ def flush():
         sys.stdout.write(f"::notice title=probe{i // 3800}::{chunk}\n")
 
 
-def ls(prefix):
-    r = requests.get(B, params={"list-type": "2", "prefix": prefix, "delimiter": "/", "max-keys": "1000"},
-                     headers=H, timeout=60)
-    pre = re.findall(r"<Prefix>([^<]*)</Prefix>", r.text)
-    keys = re.findall(r"<Key>([^<]*)</Key><LastModified>([^<]*)</LastModified><ETag>[^<]*</ETag><Size>(\d+)", r.text)
-    return r.status_code, pre, keys
-
-
 try:
-    p("TXT", requests.get(B + "siren/migration-fichiers-sirene.txt", headers=H, timeout=60).text)
-    for pre in ["siren/stock/", "prod/inpi/", "prod/signaux_faibles/", "hvd/", "dgv/"]:
-        st, prefs, keys = ls(pre)
-        p("LS", repr(pre), st, prefs[:30], [(k, s, m[:10]) for k, m, s in keys[-25:]])
+    p("DNS", socket.gethostbyname_ex("echanges.dila.gouv.fr"))
+    try:
+        f = ftplib.FTP("echanges.dila.gouv.fr", timeout=30)
+        f.login()
+        p("FTP root", f.nlst()[:40])
+        p("FTP BODACC", f.nlst("/BODACC")[:40] if "BODACC" in " ".join(f.nlst()) else "-")
+    except Exception as e:  # noqa: BLE001
+        p("FTP FEHLER", repr(e)[:200])
+    for port in (443, 80, 21):
+        s = socket.socket()
+        s.settimeout(10)
+        try:
+            s.connect(("echanges.dila.gouv.fr", port))
+            p("TCP", port, "offen")
+        except Exception as e:  # noqa: BLE001
+            p("TCP", port, repr(e)[:80])
+        finally:
+            s.close()
+    for q in ["sirene creations", "nouvelles entreprises immatriculations", "registre national des entreprises",
+              "immatriculations entreprises quotidien", "annonces commerciales"]:
+        r = requests.get("https://www.data.gouv.fr/api/1/datasets/", params={"q": q, "page_size": 6}, headers=H, timeout=60)
+        for d in r.json().get("data", []):
+            p("DS", q[:20], "|", d["id"], d["title"][:70], "|", (d.get("organization") or {}).get("name"),
+              d.get("license"), d.get("last_update", "")[:10])
 except Exception as e:  # noqa: BLE001
     p("FEHLER", e)
 flush()
