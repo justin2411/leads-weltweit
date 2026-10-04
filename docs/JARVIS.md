@@ -143,6 +143,11 @@ nur wenn er sich unsicher ist oder es geld kostet soll er bei mir nachfragen“
   (Wirkung unklar, nicht rückgängig zu machen, betrifft zahlende Kunden direkt).
 - Vorschläge stehen in `signalwerk.decisions` (status `proposed`; Haken → `done` und Umsetzung, Kreuz → `rejected`,
   wird nicht erneut vorgeschlagen, solange sich die Lage nicht deutlich ändert).
+- **Braucht dich** (Karte oben auf JARVIS, Zähler am Reiter): Was nur der Inhaber erledigen kann (Texte liefern,
+  Zugang anlegen, Entscheidung zu einer Zusage) als `decisions` mit `status = 'proposed'` und `needs_owner = true`,
+  `kurz_titel` ≤ 60, `kurz_grund` 1 Satz, nächster Schritt in `action`. Der Inhaber klickt „Erledigt“ (→ `done`).
+  Feste Prüfungen (SEED_INBOXES, GH_DISPATCH_TOKEN, Rechtstexte, Signatur-Exklusivität, Platz s2-neu = 0) stehen in
+  `app/lib/braucht-dich.ts` und verschwinden von selbst, wenn erledigt.
 
 ## Grenzen (Gesetz und Geld des Inhabers, gelten auch für JARVIS)
 

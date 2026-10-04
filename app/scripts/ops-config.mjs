@@ -83,6 +83,9 @@ const WORKFLOWS = {
   "wachhund.yml": "Wachhund",
 };
 
+export const SIGNATUR_FILES = ["scripts/drafts.py", "scripts/lib/html_email.py", "app/lib/welcome-mail.ts"];
+export const SIGNATUR_RE = /Exclusive trigger leads|Pistes exclusives/;
+
 function build() {
   const versand = read("config/versand.yaml");
   if (versand === null) return null;
@@ -117,6 +120,8 @@ function build() {
     rules: {
       signal_max_age_days: Number(read("scripts/extraktor/sc.py")?.match(/^MAX_AGE_DAYS\s*=\s*(\d+)/m)?.[1] ?? 0) || null,
       sample_size: Number(read("scripts/lib/leadreport.py")?.match(/^SAMPLE_SIZE\s*=\s*(\d+)/m)?.[1] ?? 0) || null,
+      // „Braucht dich“: Signatur-Zeile mit Exklusivitätszusage (widerspricht docs/KALTMAIL-VORLAGE.md §2)
+      signatur_exklusiv: SIGNATUR_FILES.filter((f) => SIGNATUR_RE.test(read(f) ?? "")),
     },
     workflows: Object.entries(WORKFLOWS).map(([file, name]) => ({ file, name, crons: parseCrons(read(`.github/workflows/${file}`)) })),
   };

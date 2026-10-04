@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Icon, type IconName } from "@/app/icons";
+import { bdZaehler } from "@/lib/braucht-dich";
 
 export const SECTIONS: [string, string, IconName][] = [
   // Inhaber 03.10.2026: wenige Reiter – alles Weitere öffnet sich über die Stationen der Fluss-Karte in JARVIS
@@ -41,7 +42,8 @@ export function Nav({ bottom = false, badges = {} }: { bottom?: boolean; badges?
         const n = badges[href] ?? 0;
         return (
           <Link key={href} href={href + q} className={`${on ? "on" : ""}${href.endsWith("/jarvis") ? " jv-tab" : ""}`.trim() || undefined}
-            aria-current={on ? "page" : undefined} aria-label={n > 0 ? `${label}, ${n} offen` : undefined}>
+            aria-current={on ? "page" : undefined} aria-label={n > 0 ? `${label}, ${href.endsWith("/jarvis") ? bdZaehler(n) : `${n} offen`}` : undefined}
+            title={n > 0 && href.endsWith("/jarvis") ? bdZaehler(n) : undefined}>
             {bottom && <span className="bi" aria-hidden><Icon name={icon} size={20} />{n > 0 && <b className="nb">{n > 99 ? "99+" : n}</b>}</span>}
             {bottom ? <span className="bnl">{label}</span> : label}
             {!bottom && n > 0 && <b className="nb" aria-hidden>{n > 99 ? "99+" : n}</b>}

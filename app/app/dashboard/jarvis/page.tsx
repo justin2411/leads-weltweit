@@ -33,6 +33,7 @@ import { loadProposals } from "@/lib/vorschlaege-data";
 import { AutopilotPanel } from "./autopilot";
 import { GateRings, GateSteps, Reasons, type GateView } from "./freigabe";
 import { JarvisView } from "./view";
+import { loadBrauchtDich } from "@/lib/braucht-dich-data";
 import { loadUeberblick } from "@/lib/ueberblick-data";
 import { bar, dayShare, heuteWichtig, judgeFlow, leadZiel, stillTip, switchedOff, zeitleiste } from "@/lib/ueberblick";
 import { Icon, type IconName } from "@/app/icons";
@@ -73,6 +74,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const kaP = countCustomerAgents();
   const chatP = loadStartChat();
   const propP = loadProposals();
+  const bdP = loadBrauchtDich();
   // Station „Startseite“ aus dem Website-Trichter (web_funnel_refresh); fehlt die Messung, bleibt sie bei 0
   const webP = Promise.all([loadWebsite(), loadFunnelCache(5 * 60_000)]).then(([w, f]) => ({ ...w, ...startLive(f) }));
   const stockP = loadStock();
@@ -456,7 +458,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     <JarvisView hello={hello} say={say} kpis={kpis} recs={recs} rest={rest} tipHref={tipHref} agent={freeAgent(agentTasks)}
       tasks={agentTasks} startAt={startAt} activeAgent={ag} stations={stations} edges={edges} activeStation={s} stationHref={href}
       drawer={drawer} gate={gateView}
-      heute={heute} ziel={{ mails: mailBars, leads: leadBars }} zeit={zeit} ticker={ticker(items)} customerAgents={await kaP} chat={await chatP} proposals={await propP}
+      heute={heute} ziel={{ mails: mailBars, leads: leadBars }} zeit={zeit} ticker={ticker(items)} customerAgents={await kaP} chat={await chatP} proposals={await propP} brauchtDich={await bdP}
       kohorten={{ rows: await khP, countries, today }} />
   );
 }
