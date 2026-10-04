@@ -11,8 +11,8 @@ export const PLAN: SendPlan = {
   tz: "Europe/Berlin",
   wochentage: [2, 3, 4],
   laeufe: [
-    { gruppe: "europa", name: "UK/FR", laender: ["UK", "FR", "IE", "NL", "BE", "SE"], start: "08:37", spaetester_start: "10:30", bis: "11:00" },
-    { gruppe: "us", name: "US", laender: ["US"], start: "14:37", spaetester_start: "17:30", bis: "19:00" },
+    { gruppe: "europa", name: "UK/FR", laender: ["UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK"], start: "08:37", spaetester_start: "10:30", bis: "11:00" },
+    { gruppe: "us", name: "US", laender: ["US", "MX", "BR"], start: "14:37", spaetester_start: "17:30", bis: "19:00" },
   ],
 };
 

@@ -29,8 +29,14 @@ from lib.rules import suppress  # noqa: E402
 
 OPTOUT = re.compile(
     r"\b(unsubscribe|remove (me|us)|take (me|us) off|stop (emailing|contacting|sending)|do not (call|contact|email)|"
-    r"don'?t (call|contact|email)|please remove|opt[- ]?out|désinscri\w*|ne plus (me|nous) (contacter|écrire)|retirez)\b"
-    r"|^\s*stop\b",  # „STOP“ als eigene Zeile (Prüfung 04.10.2026)
+    r"don'?t (call|contact|email)|please remove|opt[- ]?out|désinscri\w*|ne plus (me|nous) (contacter|écrire)|retirez|"
+    # BR/MX (neue Länder 04.10.2026): Portugiesisch und Spanisch
+    r"descadastr\w*|cancelar (a |minha |nossa )?inscri[çc][ãa]o|remover (meu|nosso|o) (e-?mail|contato)|"
+    r"n[ãa]o (me|nos) (envie|contate|mande)\w*|parem? de (enviar|mandar)|"
+    r"dar(me|nos|se)? de baja|d[ée]n(me|nos)? de baja|no (me|nos) (env[íi]e|contacte|escriba)\w*|"
+    r"eliminar(me|nos)? de (su|la|sus) lista)\b"
+    r"|^\s*(stop|baja)\b"  # „STOP“ als eigene Zeile (Prüfung 04.10.2026); „baja“ = unsere MX-Abmeldeantwort
+    r"|取消訂閱|取消订阅",  # HK: Abmeldung auf Chinesisch
     re.IGNORECASE | re.MULTILINE,
 )
 MSGID = re.compile(r"<[^<>\s]+@[^<>\s]+>")
@@ -51,7 +57,13 @@ OWN_NOTICE = re.compile(
     r"\s+and\s+we\s+will\s+not\s+contact\s+[^\n]{0,120}?\s*again\.?"
     r"|Pour\s+ne\s+plus\s+recevoir\s+de\s+messages,?\s+répondez\s+[«\"“”']?\s*désinscrire\s*[»\"“”']?"
     r"\s+et\s+nous\s+ne\s+contacterons\s+plus\s+[^\n]{0,120}?\.(?=\s|$)"
+    r"|Se\s+preferir\s+não\s+receber\s+mais\s+mensagens,?\s+responda\s+[\"“”'«]?\s*descadastrar\s*[\"“”'»]?"
+    r"\s+e\s+não\s+entraremos\s+mais\s+em\s+contato\s+com\s+[^\n]{0,120}?\.(?=\s|$)"
+    r"|Si\s+prefiere\s+no\s+recibir\s+más\s+mensajes,?\s+responda\s+[\"“”'«]?\s*baja\s*[\"“”'»]?"
+    r"\s+y\s+no\s+volveremos\s+a\s+contactar\s+a\s+[^\n]{0,120}?\.(?=\s|$)"
+    r"|如不希望再收到我們的電郵，請回覆「unsubscribe」。|取消訂閱：\S*"
     r"|To\s+opt\s+out\s*:\s*\S*|Pour\s+vous\s+désinscrire\s*:\s*\S*"
+    r"|Para\s+cancelar\s+o\s+recebimento\s*:\s*\S*|Para\s+darse\s+de\s+baja\s*:\s*\S*"
     r"|\S*/api/unsubscribe\S*",
     re.IGNORECASE,
 )

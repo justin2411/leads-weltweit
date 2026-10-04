@@ -56,6 +56,32 @@ def _p(text: str) -> str:
             f"{_bold(html.escape(text, quote=False)).replace(chr(10), '<br>')}</p>")
 
 
+# Texte der gestalteten Mail für BR (Portugiesisch) und MX (Spanisch), Inhaber 04.10.2026 (Kaltmail-Vorlage
+# Bausteine 1, 7, 8, 9, 10 wie EN/FR „1:1 nachbauen“)
+LOCAL = {
+    "pt": {"page": "Ver meus 10 leads gratuitos", "plan": "Escolher meu plano", "secure": "Link seguro para {dom}",
+           "trust": "Certificado", "title": "Fundador",
+           "tagline": "Leads exclusivos no momento certo para prestadores B2B",
+           "steps": [("ENCONTRAMOS", "Um motivo para ligar"), ("VERIFICAMOS", "Cada contato"),
+                     ("VOCÊ RECEBE", "Toda segunda-feira"), ("VOCÊ GANHA", "Novos clientes")],
+           "cta": "Enviem meus 10 leads gratuitos", "cta_subj": "Pedido de amostra: 10 leads{area}",
+           "cta_body": ("Olá{first},\n\nObrigado pela mensagem. Teremos prazer em receber a amostra gratuita de 10 leads"
+                        "{area}.\n\nEmpresa: {company}\nRegião atendida: {area_or}\nNossos serviços: \n\n"
+                        "Podem enviar a amostra para este endereço.\n\nAtenciosamente\n"),
+           "area_pre": " de ", "area_missing": "(por favor, complete)"},
+    "es": {"page": "Ver mis 10 leads gratuitos", "plan": "Elegir mi plan", "secure": "Enlace seguro a {dom}",
+           "trust": "Certificado", "title": "Fundador",
+           "tagline": "Leads exclusivos en el momento justo para empresas de servicios B2B",
+           "steps": [("ENCONTRAMOS", "Un motivo para llamar"), ("VERIFICAMOS", "Cada contacto"),
+                     ("USTED RECIBE", "Cada lunes"), ("USTED GANA", "Nuevos clientes")],
+           "cta": "Envíenme mis 10 leads gratuitos", "cta_subj": "Solicitud de muestra: 10 leads{area}",
+           "cta_body": ("Hola{first}:\n\nGracias por su mensaje. Con gusto recibiremos la muestra gratuita de 10 leads"
+                        "{area}.\n\nEmpresa: {company}\nZona que atendemos: {area_or}\nNuestros servicios: \n\n"
+                        "Pueden enviar la muestra a esta dirección.\n\nSaludos cordiales\n"),
+           "area_pre": " de ", "area_missing": "(por favor, complete)"},
+}
+
+
 def cta_button(company: str, region: str | None, lang: str) -> str:
     """Button, der eine fertige Antwort-Mail öffnet (mailto an REPLY_TO). Kein Weblink, kein Tracking."""
     from urllib.parse import quote
@@ -64,7 +90,13 @@ def cta_button(company: str, region: str | None, lang: str) -> str:
         return ""
     first = (os.environ.get("SENDER_NAME") or "").split(" ")[0]
     area = region or ""
-    if lang == "fr":
+    if lang in LOCAL:
+        t = LOCAL[lang]
+        label = t["cta"]
+        subj = t["cta_subj"].format(area=t["area_pre"] + area if area else "")
+        body = t["cta_body"].format(first=" " + first if first else "", area=t["area_pre"] + area if area else "",
+                                    company=company, area_or=area or t["area_missing"])
+    elif lang == "fr":
         label = "Envoyez-moi mes 10 pistes gratuites"
         subj = f"Demande d'échantillon : 10 pistes{' pour ' + area if area else ''}"
         body = (f"Bonjour{' ' + first if first else ''},\n\n"
@@ -96,12 +128,15 @@ def cta_button(company: str, region: str | None, lang: str) -> str:
 
 def plan_button(url: str, lang: str) -> str:
     """Knopf zur Buchungsseite in der Probe-Mail (Inhaber 02.10.2026), gleiche Gestaltung wie in der Kaltmail."""
+    if lang in LOCAL:
+        return page_button(url, lang, LOCAL[lang]["plan"])
     return page_button(url, lang, "Choisir ma formule" if lang == "fr" else "Choose your plan")
 
 
 def page_button(url: str, lang: str, label: str | None = None) -> str:
     """Knopf zur persönlichen Seite (dort: Video, Beispiel-Leads, Probe mit einem Klick)."""
-    label = label or ("Voir mes 10 pistes gratuites" if lang == "fr" else "See my 10 free leads")
+    label = label or (LOCAL[lang]["page"] if lang in LOCAL else
+                      "Voir mes 10 pistes gratuites" if lang == "fr" else "See my 10 free leads")
     # Sicherheitshinweis unter dem Knopf (Inhaber 02.10.2026); nur, was stimmt: HTTPS-Link auf unsere eigene Domain
     host = re.sub(r"^https?://(www\.)?", "", url).split("/")[0] or site_label()
     # Kein Schloss-Emoji (Inhaber 02.10.2026: „sieht sehr schlecht aus“): goldenes Häkchen, Domain als eigener,
@@ -109,7 +144,8 @@ def page_button(url: str, lang: str, label: str | None = None) -> str:
     dom = (f'<a href="{html.escape(url)}" style="color:{MUTED};text-decoration:none;font-weight:600;">'
            f'{html.escape(host)}</a>')
     note = (f'<span style="color:{GOLD};font-weight:700;">&#10003;</span>&nbsp; '
-            + (f"Lien sécurisé vers {dom}" if lang == "fr" else f"Secure link to {dom}"))
+            + (LOCAL[lang]["secure"].format(dom=dom) if lang in LOCAL else
+               f"Lien sécurisé vers {dom}" if lang == "fr" else f"Secure link to {dom}"))
     return (f'<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 8px 0;"><tr>'
             f'<td style="background:{GOLD};border-radius:99px;">'
             f'<a href="{html.escape(url)}" style="display:inline-block;padding:13px 26px;font-family:{FONT};'
@@ -121,7 +157,8 @@ def page_button(url: str, lang: str, label: str | None = None) -> str:
 def process_strip(lang: str = "en") -> str:
     """Kleine Ablauf-Grafik für Webagenturen (wie im PDF), nur HTML-Tabelle: keine Bilder, keine externen
     Ressourcen (Inhaber 02.10.2026). „Leads every Monday“ statt „Exclusive leads“: keine Exklusivitätszusage in Kaltmails."""
-    steps = ([("ON TROUVE", "Une raison d'appeler"), ("ON VÉRIFIE", "Chaque contact"),
+    steps = (LOCAL[lang]["steps"] if lang in LOCAL else
+             [("ON TROUVE", "Une raison d'appeler"), ("ON VÉRIFIE", "Chaque contact"),
               ("VOUS RECEVEZ", "Chaque lundi"), ("VOUS GAGNEZ", "Nouveaux clients")] if lang == "fr" else
              [("WE FIND", "A reason to call"), ("WE CHECK", "Every contact"),
               ("YOU GET", "Leads every Monday"), ("YOU WIN", "New clients")])
@@ -152,10 +189,12 @@ def render(body_text: str, footer_text: str, lang: str = "en", cta: str = "",
     from lib.rules import brand
     company = brand()
     name = os.environ.get("SENDER_NAME") or company
-    title = os.environ.get("SENDER_TITLE") or ("Fondateur" if lang == "fr" else "Founder")
+    title = os.environ.get("SENDER_TITLE") or (LOCAL[lang]["title"] if lang in LOCAL else
+                                               "Fondateur" if lang == "fr" else "Founder")
     if signer:
         name, title = signer
-    tagline = ("Pistes exclusives au bon moment pour les prestataires B2B" if lang == "fr"
+    tagline = (LOCAL[lang]["tagline"] if lang in LOCAL else
+               "Pistes exclusives au bon moment pour les prestataires B2B" if lang == "fr"
                else "Exclusive trigger leads for B2B service firms")
     phone = os.environ.get("SENDER_PHONE")
     url, label = site_url(), site_label()
@@ -165,7 +204,7 @@ def render(body_text: str, footer_text: str, lang: str = "en", cta: str = "",
     wordmark = (f'<span style="font-family:{FONT};font-size:22px;font-weight:800;letter-spacing:-0.4px;color:#FFFFFF;">'
                 f'{html.escape(head)}<span style="color:{GOLD};">{html.escape(tail)}</span></span>')
     # Vertrauens-Etikett im Kopf (Inhaber 02.10.2026: „nimm certified“, „doch das haben wir“ – „echtes Prüfsiegel“)
-    trust = "Certifié" if lang == "fr" else "Certified"
+    trust = LOCAL[lang]["trust"] if lang in LOCAL else "Certifié" if lang == "fr" else "Certified"
     footer_html = html.escape(footer_text.lstrip("—-").strip()).replace("\n", "<br>")
     link = lambda text, size=13, color=ORANGE: (f'<a href="{html.escape(url)}" style="font-family:{FONT};font-size:{size}px;'
                                                 f'color:{color};text-decoration:none;font-weight:600;">{html.escape(text)}</a>')
