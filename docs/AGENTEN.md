@@ -133,6 +133,22 @@ diese umgesetzt werden“. Seite `/dashboard/website`: Gesundheit je Bereich (le
   wie einen normalen Auftrag; Grundlage ist der letzte Website-Check (`website_checks`, neuester Eintrag) und die Seite
   selbst. Änderungen wie beim Website-Chat als PR. Das Ergebnis aus `fertig` landet automatisch kurz in
   `website_agents.last_result`.
+- **Funde beheben und Auto-Fix** (Inhaber 04.10.2026: „direkt anpassungen machen … mit lösungsvorschlägen, jarvis soll
+  das aber eigentlich alles selber machen und entscheiden“): jeder Fund im Check trägt `key` (Bereich:Art:Pfad) und
+  `vorschlag` {text, alt, neu, auto} – regelbasiert (Titel ≤ 60 Zeichen, Überschrift ohne Komma, Gedankenstrich
+  ersetzt), sonst kurz „was zu tun ist“. In der Fund-Liste: Vorschlag, Knopf „Beheben“ (Auftrag `kind = website` an
+  einen freien Agenten, Eintrag in `signalwerk.website_fixes`), „Ignorieren“ (30 Tage, `owner_settings.website_ignored`),
+  Stand „JARVIS behebt · startet um HH:MM“ / „in Arbeit“ / „erledigt · Check folgt“ / „behoben“.
+  **Auto-Fix** (`owner_settings.website_autofix`, Standard an, Schalter oben auf der Seite): nach jedem Website-Check
+  und im Wachhund (`website_agents.py faellig --apply` → `autofix`) bekommt jede Seite mit neuen gelben/roten Funden
+  EINEN gebündelten Auftrag („Website-Fix <Pfad>: Fund → Vorschlag; …“, `created_by = "Website-Auto-Fix"`), höchstens
+  3 je 24 h, höchstens 2 Versuche je Fund in 7 Tagen (danach nur noch per Knopf). Nie automatisch: Rechtstexte, Preise,
+  Variablen/Server (`vorschlag.auto = false`, nur melden). **So bearbeiten:** Vorschlag umsetzen oder besser formulieren
+  (Bedeutung gleich, landesweit, FR korrekt). Texte im Repo (`app/app/home-i18n.ts`, `app/content/…`) als PR (Branch
+  `claude/agenten-website-<kurz>`), Landingpage-Überschriften liegen in `page_variants.headline` (Titel =
+  Überschrift + „| NextGen Profit“, ohne Marke wenn > 60, `app/lib/site.ts fitTitle`): nur UPDATE des Textfelds, alten
+  Wert vorher als `decisions` (type `note`, `kurz_titel`/`kurz_grund`). Tests/Build grün, selbst mergen, dann
+  `website-check.yml` starten – der nächste Check setzt `website_fixes.behoben_at`.
 - **Website-Check** (`scripts/website_check.py`, `website-check.yml` täglich 06:23 deutscher Zeit, manuell startbar):
   nur die eigene Domain, höflich (1 s Pause, eigener User-Agent), keine fremden Seiten. Nach einer Website-Änderung darf
   der Agent ihn starten (`gh workflow run website-check.yml`).
@@ -149,7 +165,7 @@ diese umgesetzt werden“. Seite `/dashboard/website`: Gesundheit je Bereich (le
 | `quelle` – Neue Quelle | Wie der Quellen-Scout (`docs/QUELLEN-SCOUT.md`): kostenlose, erlaubte Quelle recherchieren, mit ≥ 10 grünen Leads testen, in die Werke einbauen (PR, Tests, CI grün, selbst mergen), Logbuch-Eintrag. | „Neue Quelle · NL“ |
 | `pruefen` – Prüfen | Stichprobe ziehen (z. B. 20 Leads/Mails/Proben des Marktes), gegen die Drei-Stufen-Freigabe und Schreibregeln prüfen, Fehler beheben, Ergebnis mit Fehlerquote. | „Prüfen · US“ |
 | `frage` – Frage | Auswertung aus echten Daten, Antwort in 1–3 Sätzen. Nichts ändern. | „Warum keine Antworten in FR?“ |
-| `website` – Website-Agent | Nur über Website-Agenten (`website_agents.py faellig`): Aufgabe an der eigenen Website erledigen, Änderungen als PR (siehe „Website-Chat und Website-Agenten“). | „Website-Agent Fehler & Links: …“ |
+| `website` – Website-Agent | Über Website-Agenten (`website_agents.py faellig`), Knopf „Beheben“ oder Auto-Fix: Aufgabe an der eigenen Website erledigen, Änderungen als PR (siehe „Website-Chat und Website-Agenten“). | „Website-Agent Fehler & Links: …“, „Website-Fix /fr/agences-web: …“ |
 
 ## Kunden-Aufträge (kind `kunde`)
 

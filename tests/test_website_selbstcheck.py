@@ -233,6 +233,122 @@ class FaelligTest(unittest.TestCase):
         self.assertEqual(len(A.short_result({"status": "fertig", "result": "x" * 900})), 300)
 
 
+class SuggestTest(unittest.TestCase):
+    """Lösungsvorschlag je Fund (Inhaber 04.10.2026: „direkt mit lösungsvorschlägen“)."""
+
+    def test_short_title_drops_brand_then_shortens(self):
+        self.assertEqual(W.short_title("New companies across the UK that still need an accountant | NextGen Profit"),
+                         "New companies across the UK that still need an accountant")
+        t = W.short_title("Des entreprises nouvelles et en croissance, partout en France, qui doivent s'assurer | NextGen Profit")
+        self.assertLessEqual(len(t), 60)
+        self.assertNotIn(",", t)
+        self.assertFalse(t.rstrip("…").endswith((" en", " qui", " et")))
+        self.assertEqual(W.short_title("Kurz | NextGen Profit"), "Kurz | NextGen Profit")
+
+    def test_heading_without_punctuation(self):
+        self.assertEqual(W.fix_heading("Built on public record, checked every day", "en"),
+                         "Built on public record and checked every day")
+        self.assertEqual(W.fix_heading("Fondé sur des données publiques, vérifié chaque jour", "fr"),
+                         "Fondé sur des données publiques et vérifié chaque jour")
+        self.assertEqual(W.fix_heading("See it for yourself,", "en"), "See it for yourself")
+        self.assertEqual(W.fix_heading("Des dirigeants partout en France, au moment où ils ont besoin de conseil", "fr"),
+                         "Des dirigeants partout en France au moment où ils ont besoin de conseil")
+        v = W.suggest("texte", "ueberschrift", "gelb", "/de", "Erreichen Sie Unternehmen genau dann, wenn sie Sie brauchen")
+        self.assertEqual(v["text"], "Ohne Komma umformulieren (Entwurf)")
+        self.assertNotIn(",", v["neu"])
+
+    def test_dash_replaced(self):
+        self.assertEqual(W.fix_dash("Reachable – but no website", "en"), "Reachable but no website")
+        self.assertEqual(W.fix_dash("Joignables – mais sans site web", "fr"), "Joignables mais sans site web")
+        self.assertEqual(W.fix_dash("Leads – jede Woche neu", "de"), "Leads, jede Woche neu")
+        self.assertEqual(W.dash_context("a b c d e Reachable – but no website at all here"), "c d e Reachable – but no website at")
+
+    def test_findings_carry_key_and_suggestion(self):
+        html = ('<html><head><meta name="viewport" content="width=device-width"><title>' + "Lange Überschrift " * 6
+                + '| NextGen Profit</title><meta name="description" content="' + "x" * 80 + '"></head><body>'
+                '<h1>Built on public record, checked every day</h1><p>Reachable – but no website</p></body></html>')
+        f = {x["key"]: x for x in W.check_page("/", "start", 200, 100, 5000, html)}
+        self.assertEqual(sorted(f), ["texte:strich:/", "texte:titel:/", "texte:ueberschrift:/"])
+        self.assertEqual(f["texte:strich:/"]["vorschlag"]["neu"], "Reachable but no website")
+        self.assertLessEqual(len(f["texte:titel:/"]["vorschlag"]["neu"]), 60)
+        self.assertTrue(all(x["vorschlag"]["auto"] for x in f.values()))
+
+    def test_legal_price_infra_only_reported(self):
+        self.assertFalse(W.suggest("recht", "platzhalter", "rot", "/impressum")["auto"])
+        self.assertFalse(W.suggest("texte", "titel", "gelb", "/agb", "x" * 80)["auto"])
+        self.assertFalse(W.suggest("texte", "ueberschrift", "gelb", "/uk/x", "Starter, 129 € per month")["auto"])
+        self.assertFalse(W.suggest("erreichbar", "variable", "gelb", "/api/health")["auto"])
+        self.assertFalse(W.suggest("texte", "beschreibung", "info", "/")["auto"])
+        self.assertTrue(W.suggest("fehler", "link", "rot", "/kaputt")["auto"])
+        self.assertEqual(W.check_health(200, fx("health.json"))[0]["key"], "erreichbar:variable:/api/health")
+
+
+T1 = dt.datetime(2026, 10, 4, 12, 0, tzinfo=dt.timezone.utc)
+
+
+def fnd(key, stufe="gelb", auto=True, text="Titel zu lang (90 Zeichen)"):
+    area, _, path = key.split(":", 2)
+    return {"bereich": area, "stufe": stufe, "text": text, "pfad": path or None, "key": key,
+            "vorschlag": {"text": "Titel kürzen", "neu": "Kurzer Titel", "auto": auto}}
+
+
+def fix_db(funde, fixes=(), tasks=(), settings=()):
+    return FakeDB({"website_checks": [{"at": (T1 - dt.timedelta(hours=1)).isoformat(), "funde": list(funde)}],
+                   "website_fixes": [dict(f) for f in fixes], "agent_tasks": [dict(t) for t in tasks],
+                   "owner_settings": [dict(s) for s in settings]})
+
+
+class AutoFixTest(unittest.TestCase):
+    def test_one_bundled_task_per_page(self):
+        db = fix_db([fnd("texte:titel:/fr/a"), fnd("texte:strich:/fr/a"), fnd("texte:titel:/uk/b", stufe="rot"),
+                     fnd("texte:beschreibung:/uk/b", stufe="info"), fnd("recht:platzhalter:/impressum", "rot", auto=False)])
+        res = A.autofix(db, T1, apply=True)
+        self.assertEqual([(x["pfad"], x["funde"]) for x in res["neu"]], [("/uk/b", 1), ("/fr/a", 2)])  # rot zuerst
+        tasks = [r for t, r in db.inserts if t == "agent_tasks"]
+        self.assertEqual([(r["kind"], r["created_by"]) for r in tasks], [("website", "Website-Auto-Fix")] * 2)
+        self.assertTrue(tasks[1]["brief"].startswith("Website-Fix /fr/a: Titel zu lang (90 Zeichen) → „Kurzer Titel“; "))
+        self.assertIn("Nie Rechtstexte oder Preise", tasks[1]["brief"])
+        self.assertLessEqual(max(len(r["brief"]) for r in tasks), 1000)
+        fx_rows = db.rows("website_fixes")
+        self.assertEqual(sorted(fx_rows[1]["keys"]), ["texte:strich:/fr/a", "texte:titel:/fr/a"])
+        self.assertEqual({r["quelle"] for r in fx_rows}, {"auto"})
+        # gleich danach: alles schon beauftragt, nichts doppelt
+        self.assertEqual(A.autofix(db, T1 + dt.timedelta(minutes=15), apply=True)["neu"], [])
+
+    def test_max_three_per_day_and_switch_off(self):
+        funde = [fnd(f"texte:titel:/p{i}") for i in range(5)]
+        res = A.autofix(fix_db(funde), T1, apply=True)
+        self.assertEqual(len(res["neu"]), 3)
+        self.assertEqual(len(res["wartet"]), 2)
+        off = fix_db(funde, settings=[{"key": "website_autofix", "value": False}])
+        self.assertTrue(A.autofix(off, T1, apply=True)["aus"])
+        self.assertEqual(off.inserts, [])
+
+    def test_ignored_and_retry_limit(self):
+        until = (T1 + dt.timedelta(days=30)).isoformat()
+        old = [{"id": f"f{i}", "created_at": (T1 - dt.timedelta(days=i + 2)).isoformat(), "task_id": f"t{i}",
+                "keys": ["texte:titel:/a"], "quelle": "auto", "behoben_at": None} for i in range(2)]
+        tasks = [{"id": "t0", "status": "fertig", "agent": 1}, {"id": "t1", "status": "fertig", "agent": 2}]
+        db = fix_db([fnd("texte:titel:/a"), fnd("texte:titel:/b")], fixes=old, tasks=tasks,
+                    settings=[{"key": "website_ignored", "value": {"texte:titel:/b": until}}])
+        res = A.autofix(db, T1, apply=True)
+        self.assertEqual(res["neu"], [])
+        self.assertEqual(res["gesperrt"], ["texte:titel:/a"])  # zwei Versuche, jetzt nur noch Inhaber
+
+    def test_mark_fixed_after_next_check(self):
+        fixes = [{"id": "f1", "created_at": T1.isoformat(), "task_id": "t1", "keys": ["texte:titel:/a"], "quelle": "auto", "behoben_at": None},
+                 {"id": "f2", "created_at": T1.isoformat(), "task_id": "t2", "keys": ["texte:titel:/b"], "quelle": "inhaber", "behoben_at": None},
+                 {"id": "f3", "created_at": T1.isoformat(), "task_id": "t3", "keys": ["texte:titel:/c"], "quelle": "auto", "behoben_at": None}]
+        tasks = [{"id": "t1", "status": "fertig"}, {"id": "t2", "status": "fertig"}, {"id": "t3", "status": "laeuft"}]
+        db = fix_db([], fixes=fixes, tasks=tasks)
+        n = A.mark_fixed(db, [fnd("texte:titel:/b")], T1 + dt.timedelta(hours=2))
+        self.assertEqual(n, 1)
+        got = {r["id"]: r["behoben_at"] for r in db.rows("website_fixes")}
+        self.assertIsNotNone(got["f1"])
+        self.assertIsNone(got["f2"])  # Fund noch da
+        self.assertIsNone(got["f3"])  # Auftrag läuft noch
+
+
 class ChatContextTest(unittest.TestCase):
     def test_website_session_gets_last_check(self):
         t = dt.datetime(2026, 10, 4, 10, 0, tzinfo=dt.timezone.utc)

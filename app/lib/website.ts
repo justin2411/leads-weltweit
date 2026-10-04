@@ -21,7 +21,9 @@ export const AREAS = [
 export type AreaKey = (typeof AREAS)[number]["key"];
 export type Level = "rot" | "gelb" | "info";
 export type Tone = "gruen" | "gelb" | "rot" | "leer";
-export type Finding = { bereich: AreaKey; stufe: Level; text: string; pfad?: string };
+/** Lösungsvorschlag aus scripts/website_check.py `suggest`: eine Zeile, alter/neuer Text, auto = JARVIS darf allein. */
+export type Suggestion = { text: string; alt?: string; neu?: string; auto: boolean };
+export type Finding = { bereich: AreaKey; stufe: Level; text: string; pfad?: string; key: string; vorschlag?: Suggestion };
 export type SiteCheck = { at: string; site: string; scores: Partial<Record<AreaKey, number | null>>; funde: Finding[]; seiten: number };
 
 const AREA_KEYS = AREAS.map((a) => a.key) as AreaKey[];
@@ -46,9 +48,37 @@ export function toCheck(x: Record<string, unknown> | null | undefined): SiteChec
     const text = String(r.text ?? "").trim().slice(0, 160);
     if (!text) continue;
     const pfad = typeof r.pfad === "string" && r.pfad.startsWith("/") ? r.pfad.slice(0, 200) : undefined;
-    funde.push(pfad ? { bereich: r.bereich, stufe, text, pfad } : { bereich: r.bereich, stufe, text });
+    const key = isFindingKey(r.key) ? r.key : findingKey(r.bereich, text, pfad);
+    const vorschlag = toSuggestion(r.vorschlag);
+    const out: Finding = { bereich: r.bereich, stufe, text, key };
+    if (pfad) out.pfad = pfad;
+    if (vorschlag) out.vorschlag = vorschlag;
+    funde.push(out);
   }
   return { at: String(x.at ?? ""), site: String(x.site ?? ""), scores, funde, seiten: Number(x.seiten) || 0 };
+}
+
+const KEY_RE = /^[a-z]+:[a-z0-9_]+:(\/[^\s]{0,199})?$/;
+/** Fund-Schlüssel wie scripts/website_check.py `finding_key` (Bereich:Art:Pfad). */
+export const isFindingKey = (x: unknown): x is string => typeof x === "string" && x.length <= 240 && KEY_RE.test(x);
+
+/** Ersatz-Schlüssel für ältere Checks ohne `key`: Art aus dem Text ohne Zahlen. */
+export function findingKey(bereich: AreaKey, text: string, pfad?: string): string {
+  const art = text.toLowerCase().replace(/[(:„].*$/, "").normalize("NFKD").replace(/[^a-z]+/g, "_").replace(/^_|_$/g, "").slice(0, 30) || "allgemein";
+  return `${bereich}:${art}:${pfad ?? ""}`;
+}
+
+function toSuggestion(x: unknown): Suggestion | undefined {
+  if (!x || typeof x !== "object") return undefined;
+  const r = x as Record<string, unknown>;
+  const clip = (v: unknown, n: number) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, n) : "");
+  const text = clip(r.text, 120);
+  if (!text) return undefined;
+  const out: Suggestion = { text, auto: r.auto === true };
+  const alt = clip(r.alt, 160), neu = clip(r.neu, 160);
+  if (alt) out.alt = alt;
+  if (neu) out.neu = neu;
+  return out;
 }
 
 /** Ampel aus Punkten: ab 90 grün, ab 70 gelb, darunter rot; ein roter Fund macht den Bereich immer rot. */
@@ -186,3 +216,93 @@ export function agentState(a: WebsiteAgent, task: { status: TaskStatus } | null,
 
 /** Feste Sitzung des Chatfelds „Änderungswunsch“ (jarvis_sessions kind 'website'). */
 export const WEBSITE_SESSION_TITLE = "Website";
+
+// ------------------------------------------------------------------------------------------------- Funde beheben
+/**
+ * Funde direkt beheben (Inhaber 04.10.2026: „direkt anpassungen machen … mit lösungsvorschlägen, jarvis soll das aber
+ * eigentlich alles selber machen und entscheiden“): Knopf „Beheben“ = Auftrag (agent_tasks kind 'website') + Eintrag in
+ * website_fixes; „Ignorieren“ blendet einen Fund 30 Tage aus (owner_settings.website_ignored, nichts gelöscht).
+ * Auto-Fix (owner_settings.website_autofix) macht dasselbe selbst: scripts/website_agents.py autofix.
+ */
+export const IGNORE_DAYS = 30;
+export const IGNORE_MAX = 200;
+export type FixQuelle = "inhaber" | "auto";
+export type WebsiteFix = { id: string; created_at: string; task_id: string | null; pfad: string | null; keys: string[]; quelle: FixQuelle; behoben_at: string | null };
+export type FixView = { text: string; tone: "wait" | "work" | "ok" | "bad"; canFix: boolean };
+
+const LEGAL_PATHS = ["/impressum", "/datenschutz", "/agb", "/privacy", "/terms", "/mentions-legales", "/confidentialite", "/cgv"];
+/** Rechtstexte nie per Knopf/Auto-Fix (nur der Inhaber mit genauer Vorgabe im Chat). */
+export const isLegalFinding = (f: Pick<Finding, "bereich" | "pfad">) => f.bereich === "recht" || LEGAL_PATHS.includes(f.pfad ?? "");
+export const canFixFinding = (f: Finding) => !isLegalFinding(f);
+
+export function toFix(x: Record<string, unknown>): WebsiteFix {
+  return {
+    id: String(x.id), created_at: String(x.created_at ?? ""), task_id: (x.task_id as string | null) ?? null,
+    pfad: typeof x.pfad === "string" ? x.pfad : null, keys: Array.isArray(x.keys) ? x.keys.filter(isFindingKey) : [],
+    quelle: x.quelle === "auto" ? "auto" : "inhaber", behoben_at: (x.behoben_at as string | null) ?? null,
+  };
+}
+
+/** Ist der Fund (noch) ausgeblendet? */
+export function isIgnored(key: string, ignored: Record<string, string> | null | undefined, now: Date): boolean {
+  const until = ignored?.[key];
+  const t = until ? new Date(until).getTime() : NaN;
+  return Number.isFinite(t) && t > now.getTime();
+}
+
+/** Neuer Wert von website_ignored: Fund 30 Tage ausblenden, abgelaufene Einträge fallen weg, höchstens 200. */
+export function addIgnore(cur: Record<string, string> | null | undefined, key: string, now: Date): Record<string, string> {
+  if (!isFindingKey(key)) throw new WebsiteInputError("Fund unbekannt");
+  const next: Record<string, string> = {};
+  for (const [k, v] of Object.entries(cur ?? {})) if (isIgnored(k, cur, now) && isFindingKey(k)) next[k] = v;
+  next[key] = new Date(now.getTime() + IGNORE_DAYS * 24 * HOUR).toISOString();
+  const keys = Object.keys(next).sort((a, b) => next[a].localeCompare(next[b]));
+  return Object.fromEntries(keys.slice(-IGNORE_MAX).map((k) => [k, next[k]]));
+}
+
+/** Sichtbare Funde (ohne ausgeblendete) und Zahl der ausgeblendeten. */
+export function visibleFindings(list: Finding[], ignored: Record<string, string> | null | undefined, now: Date): { shown: Finding[]; hidden: number } {
+  const shown = list.filter((f) => !isIgnored(f.key, ignored, now));
+  return { shown, hidden: list.length - shown.length };
+}
+
+/** Eine Zeile Vorschlag: neuer Text in Anführungszeichen, sonst was zu tun ist. */
+export function suggestionLine(f: Finding): string {
+  const v = f.vorschlag;
+  if (!v) return isLegalFinding(f) ? "Nur der Inhaber ändert Rechtstexte" : "Ursache prüfen und beheben";
+  return v.neu ? `„${v.neu}“` : v.text;
+}
+
+/** Zustand eines Funds aus dem letzten Fix-Auftrag. null = noch nichts beauftragt. checkAt = Zeit des angezeigten Checks. */
+export function fixState(f: Finding, fixes: WebsiteFix[], tasks: Record<string, { status: TaskStatus }>, checkAt: string, startAt: string): FixView | null {
+  const fix = fixes.filter((x) => x.keys.includes(f.key)).sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+  if (!fix) return null;
+  const st = fix.task_id ? tasks[fix.task_id]?.status ?? "offen" : "offen";
+  if (st === "offen") return { text: `JARVIS behebt · startet um ${startAt}`, tone: "wait", canFix: false };
+  if (st === "laeuft") return { text: "in Arbeit", tone: "work", canFix: false };
+  if (st === "fertig") {
+    const newer = new Date(fix.created_at).getTime() > new Date(checkAt).getTime();
+    return newer ? { text: "erledigt · Check folgt", tone: "ok", canFix: false } : { text: "noch da · erneut beheben", tone: "bad", canFix: canFixFinding(f) };
+  }
+  return { text: st === "fehler" ? "Fehler · erneut beheben" : "abgebrochen", tone: "bad", canFix: canFixFinding(f) };
+}
+
+/** Behobene Fixes eines Bereichs in den letzten `days` Tagen (neueste zuerst). */
+export function recentlyFixed(fixes: WebsiteFix[], area: AreaKey, now: Date, days = 3): WebsiteFix[] {
+  const from = now.getTime() - days * 24 * HOUR;
+  return fixes.filter((x) => x.behoben_at && new Date(x.behoben_at).getTime() >= from && x.keys.some((k) => k.startsWith(`${area}:`)))
+    .sort((a, b) => String(b.behoben_at).localeCompare(String(a.behoben_at)));
+}
+
+const FIX_RULES = "Vorschlag umsetzen oder besser formulieren (Bedeutung gleich, landesweit, FR korrekt). Texte im Repo als PR, "
+  + "Landingpage-Texte per UPDATE page_variants (alten Wert vorher in decisions). Nie Rechtstexte oder Preise, "
+  + "kein Versand, keine Kosten. Danach website-check.yml starten.";
+
+/** Auftragstext wie scripts/website_agents.py `fix_brief` (≤ 1000 Zeichen). */
+export function fixBrief(pfad: string | null | undefined, funde: Finding[], byOwner = false): string {
+  const head = `Website-Fix ${pfad || "Website"}${byOwner ? " (Inhaber)" : ""}: `;
+  let body = funde.map((f) => `${f.text} → ${f.vorschlag?.neu ? `„${f.vorschlag.neu}“` : f.vorschlag?.text || "beheben"}`).join("; ");
+  const room = 1000 - head.length - FIX_RULES.length - 3;
+  if (body.length > room) body = body.slice(0, Math.max(0, room - 1)).trimEnd() + "…";
+  return `${head}${body} | ${FIX_RULES}`;
+}

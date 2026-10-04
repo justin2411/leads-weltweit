@@ -221,8 +221,6 @@ export default async function StartPage({ params, searchParams }: { params: Para
             <div className="sx-vid"><video controls playsInline preload="metadata" poster={howVideo.poster} src={howVideo.src}>
               {howVideo.vtt && <track kind="captions" src={howVideo.vtt} srcLang={howVideo.srclang} label={lang === "fr" ? "Français" : "English"} />}
             </video></div>
-            <ol className="sx-steps short">{T.short.map((h, k) => (
-              <li key={h}><div className="n"><span>{String(k + 1).padStart(2, "0")}</span></div><b>{h}</b></li>))}</ol>
           </>) : (
           <ol className="sx-steps">{(online ? T.steps : T.stepsMail).map(([h, d], k) => (
             <li key={h}><div className="n"><span>{String(k + 1).padStart(2, "0")}</span><i /></div><b>{h}</b><p>{d}</p></li>))}</ol>)}
@@ -273,6 +271,9 @@ export default async function StartPage({ params, searchParams }: { params: Para
           </section>)}
         </div>
 
+        {/* Kurz-Schritte unter den Tarifen (Inhaber 04.10.2026: „pack das doch unter die tarife“) */}
+        {online && howVideo && <ol className="sx-steps short">{T.short.map((h, k) => (
+          <li key={h}><div className="n"><span>{String(k + 1).padStart(2, "0")}</span></div><b>{h}</b></li>))}</ol>}
         {!online && <p className="note">{T.mailNote}</p>}
         <p className="note">{T.q} <a href={`mailto:${CONTACT}`}>{CONTACT}</a>.</p>
       </div></main>

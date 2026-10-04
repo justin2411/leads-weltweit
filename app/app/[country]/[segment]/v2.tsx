@@ -88,7 +88,7 @@ export function MapCard({ map, note }: { map: MapData; note: string }) {
   );
 }
 
-/** Punktgrafik „Reachable – but no website“ aus der Probe (ein Punkt = ein Lead). */
+/** Punktgrafik „Reachable but no website“ aus der Probe (ein Punkt = ein Lead). */
 export function Presence({ title, note, rows, total, opening }: {
   title: string; note: string; rows: { key: string; icon: string; label: string; n: number; gap?: boolean }[]; total: number; opening: string;
 }) {

@@ -6,6 +6,14 @@ Rhythmus täglich/wöchentlich/einmal). Dieses Skript läuft im Wachhund (alle 1
   2. legt für jeden fälligen, aktiven Agenten einen Auftrag in agent_tasks an (kind 'website', erster freier Agent
      A1–A8, Text „Website-Agent <Name>: <Aufgabe>“) – die JARVIS-Routine (:08/:23/:38/:53) setzt ihn um.
 
+  3. Auto-Fix (Inhaber 04.10.2026: „jarvis soll das aber eigentlich alles selber machen und entscheiden“): ist
+     owner_settings.website_autofix an (Standard), bekommt jede Seite mit neuen gelben/roten Funden des letzten
+     Website-Checks EINEN gebündelten Auftrag („Website-Fix <Pfad>: Fund → Vorschlag; …“, created_by
+     „Website-Auto-Fix“) – nur Funde mit vorschlag.auto (nie Rechtstexte, Preise, Variablen/Server), nicht
+     ausgeblendet (owner_settings.website_ignored), nicht schon in Arbeit; höchstens 3 Auto-Aufträge je 24 h und
+     höchstens 2 Versuche je Fund in 7 Tagen. Jeder Auftrag steht in signalwerk.website_fixes (Fund-Schlüssel,
+     Auftrag); der nächste Website-Check setzt `behoben_at`, sobald die Funde weg sind (`mark_fixed`).
+
 Fällig: aktiv, kein offener/laufender Auftrag dieses Agenten, und täglich: letzter Auftrag ≥ 23 h her; wöchentlich:
 ≥ 7 Tage − 1 h; einmal: noch nie beauftragt. Gleiche Regeln in app/lib/website.ts (Anzeige „nächster Lauf“).
 Schreibt nur in agent_tasks und website_agents. Sendet nichts, löscht nichts.
@@ -13,6 +21,7 @@ Schreibt nur in agent_tasks und website_agents. Sendet nichts, löscht nichts.
   python scripts/website_agents.py faellig            # nur anzeigen
   python scripts/website_agents.py faellig --apply    # Ergebnisse übernehmen, fällige beauftragen
   python scripts/website_agents.py liste              # alle Website-Agenten (JSON)
+  python scripts/website_agents.py autofix [--apply]  # nur Auto-Fix (auch Teil von faellig --apply)
 """
 from __future__ import annotations
 
@@ -118,8 +127,142 @@ def faellig(db, t: dt.datetime, apply: bool) -> dict:
     return out
 
 
+# --------------------------------------------------------------------------------------------- Website-Fixes
+FIX_BY = "Website-Auto-Fix"
+AUTO_MAX_DAY = 3                # höchstens so viele Auto-Aufträge je 24 h
+AUTO_TRIES = 2                  # höchstens so viele Auto-Versuche je Fund in 7 Tagen, dann nur noch Inhaber
+FIX_COLS = "id,created_at,task_id,pfad,keys,quelle,behoben_at"
+LEVEL_RANK = {"rot": 0, "gelb": 1, "info": 2}
+RULES = ("Vorschlag umsetzen oder besser formulieren (Bedeutung gleich, landesweit, FR korrekt). Texte im Repo als PR, "
+         "Landingpage-Texte per UPDATE page_variants (alten Wert vorher in decisions). Nie Rechtstexte oder Preise, "
+         "kein Versand, keine Kosten. Danach website-check.yml starten.")
+
+
+def latest_check(db) -> dict | None:
+    rows = db.select("website_checks", {"select": "at,funde", "order": "at.desc", "limit": "1"}) or []
+    return rows[0] if rows else None
+
+
+def fix_line(f: dict) -> str:
+    v = f.get("vorschlag") or {}
+    goal = f"„{v['neu']}“" if v.get("neu") else str(v.get("text") or "beheben")
+    return f"{f.get('text', '')} → {goal}"
+
+
+def fix_brief(pfad: str | None, funde: list[dict], by_owner: bool = False) -> str:
+    """Auftragstext (≤ 1000 Zeichen): Seite, je Fund „Fund → Vorschlag“, Regeln."""
+    head = f"Website-Fix {pfad or 'Website'}{' (Inhaber)' if by_owner else ''}: "
+    body = "; ".join(fix_line(f) for f in funde)
+    room = 1000 - len(head) - len(RULES) - 3
+    if len(body) > room:
+        body = body[:max(0, room - 1)].rstrip() + "…"
+    return f"{head}{body} | {RULES}"
+
+
+def ignored_keys(settings: dict, t: dt.datetime) -> set[str]:
+    out = set()
+    for k, until in (settings.get("website_ignored") or {}).items():
+        u = _ts(until)
+        if u and u > t:
+            out.add(k)
+    return out
+
+
+def _fixes(db, since: dt.datetime) -> tuple[list[dict], dict]:
+    fixes = db.select("website_fixes", {"created_at": f"gte.{since.isoformat()}", "select": FIX_COLS,
+                                         "order": "created_at.desc"}) or []
+    ids = sorted({str(f["task_id"]) for f in fixes if f.get("task_id")})
+    tasks = {}
+    if ids:
+        for r in db.select("agent_tasks", {"id": f"in.({','.join(ids)})", "select": "id,status,finished_at"}) or []:
+            tasks[str(r["id"])] = r
+    return fixes, tasks
+
+
+def busy_keys(fixes: list[dict], tasks: dict, check_at: dt.datetime | None) -> set[str]:
+    """Funde, die schon jemand behebt: Auftrag offen/läuft, oder Auftrag nach dem letzten Check angelegt (wartet
+    auf den nächsten Check)."""
+    out = set()
+    for f in fixes:
+        st = (tasks.get(str(f.get("task_id") or "")) or {}).get("status")
+        created = _ts(f.get("created_at"))
+        if f.get("behoben_at"):
+            continue
+        if st in OPEN or (check_at and created and created > check_at):
+            out.update(f.get("keys") or [])
+    return out
+
+
+def autofix(db, t: dt.datetime, apply: bool, settings: dict | None = None, check: dict | None = None) -> dict:
+    """Auto-Fix: je Seite ein gebündelter Auftrag für neue gelbe/rote Funde (siehe Kopf, Punkt 3)."""
+    from lib import owner_settings
+    s = settings if settings is not None else owner_settings.load(db)
+    out = {"aus": False, "neu": [], "wartet": [], "gesperrt": []}
+    if s.get("website_autofix", True) is False:
+        out["aus"] = True
+        return out
+    check = check if check is not None else latest_check(db)
+    if not check:
+        return out
+    check_at = _ts(check.get("at"))
+    fixes, tasks = _fixes(db, t - dt.timedelta(days=7))
+    skip = busy_keys(fixes, tasks, check_at) | ignored_keys(s, t)
+    tries: dict[str, int] = {}
+    for f in fixes:
+        if f.get("quelle") == "auto":
+            for k in f.get("keys") or []:
+                tries[k] = tries.get(k, 0) + 1
+    pages: dict[str, list[dict]] = {}
+    for f in check.get("funde") or []:
+        v = f.get("vorschlag") or {}
+        k = f.get("key")
+        if not k or f.get("stufe") not in ("rot", "gelb") or not v.get("auto") or k in skip:
+            continue
+        if tries.get(k, 0) >= AUTO_TRIES:
+            out["gesperrt"].append(k)
+            continue
+        pages.setdefault(f.get("pfad") or "", []).append(f)
+    if not pages:
+        return out
+    day = t - dt.timedelta(hours=24)
+    used = sum(1 for f in fixes if f.get("quelle") == "auto" and (_ts(f.get("created_at")) or t) >= day)
+    order = sorted(pages.items(), key=lambda kv: (min(LEVEL_RANK.get(x["stufe"], 3) for x in kv[1]), -len(kv[1]), kv[0]))
+    free = free_agents(db.select("agent_tasks", {"status": f"in.({','.join(OPEN)})", "select": "agent"}) or [])
+    for pfad, funde in order:
+        if used >= AUTO_MAX_DAY or not free:
+            out["wartet"].append(pfad or "Website")
+            continue
+        n = free.pop(0)
+        used += 1
+        brief_text = fix_brief(pfad or None, funde)
+        out["neu"].append({"pfad": pfad or "Website", "an": f"A{n}", "funde": len(funde)})
+        if not apply:
+            continue
+        row = (db.insert("agent_tasks", {"agent": n, "kind": "website", "market": None, "brief": brief_text,
+                                         "created_by": FIX_BY}) or [{}])[0]
+        db.insert("website_fixes", {"task_id": row.get("id"), "pfad": pfad or None, "keys": [f["key"] for f in funde],
+                                    "funde": [{k: f.get(k) for k in ("bereich", "stufe", "text", "vorschlag")} for f in funde],
+                                    "quelle": "auto", "created_by": FIX_BY, "created_at": t.isoformat()})
+    return out
+
+
+def mark_fixed(db, funde: list[dict], t: dt.datetime) -> int:
+    """Nach einem Website-Check: Fixes mit fertigem Auftrag, deren Funde alle weg sind, als behoben markieren."""
+    present = {f.get("key") for f in funde if f.get("key")}
+    fixes, tasks = _fixes(db, t - dt.timedelta(days=14))
+    n = 0
+    for f in fixes:
+        if f.get("behoben_at") or (tasks.get(str(f.get("task_id") or "")) or {}).get("status") != "fertig":
+            continue
+        keys = f.get("keys") or []
+        if keys and not present.intersection(keys):
+            db.update("website_fixes", {"id": f["id"]}, {"behoben_at": t.isoformat()})
+            n += 1
+    return n
+
+
 def main(argv: list[str]) -> int:
-    if not argv or argv[0] not in ("faellig", "liste"):
+    if not argv or argv[0] not in ("faellig", "liste", "autofix"):
         print(__doc__)
         return 1
     from lib.db import DB
@@ -128,7 +271,14 @@ def main(argv: list[str]) -> int:
         print(json.dumps(db.select("website_agents", {"select": COLS, "order": "created_at.asc"}) or [],
                          ensure_ascii=False, indent=1))
         return 0
+    if argv[0] == "autofix":
+        print(json.dumps(autofix(db, now(), "--apply" in argv), ensure_ascii=False, indent=1))
+        return 0
     res = faellig(db, now(), "--apply" in argv)
+    try:  # Auto-Fix darf die Website-Agenten nie aufhalten (Tabelle fehlt noch, Netz)
+        res["autofix"] = autofix(db, now(), "--apply" in argv)
+    except Exception as e:  # noqa: BLE001
+        res["autofix"] = {"fehler": str(e)[:200]}
     print(json.dumps(res, ensure_ascii=False, indent=1))
     return 0
 

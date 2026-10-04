@@ -3,6 +3,7 @@ import { chatTime, type ChatMessage } from "@/lib/jarvis-chat";
 import { siteUrl } from "@/lib/site";
 import { totalScore } from "@/lib/website";
 import { isMissingTable, loadWebsite, websiteMessages, websiteSession, type WebsiteData } from "@/lib/website-data";
+import { loadOwnerSettings } from "@/lib/dashboard-data";
 import { Icon } from "@/app/icons";
 import { requireOwner } from "../actions";
 import { Crumbs } from "../v2";
@@ -22,7 +23,11 @@ const OWN = "https://www.nextgen-profit.de";
 export default async function WebsitePage() {
   await requireOwner();
   const now = new Date();
-  const data: WebsiteData = await loadWebsite().catch((e) => ({ check: null, history: [], agents: [], tasks: {}, missing: isMissingTable(e), error: String((e as Error)?.message ?? e) }));
+  const [data, own]: [WebsiteData, Awaited<ReturnType<typeof loadOwnerSettings>>] = await Promise.all([
+    loadWebsite().catch((e) => ({ check: null, history: [], agents: [], tasks: {}, fixes: [], missing: isMissingTable(e), error: String((e as Error)?.message ?? e) })),
+    loadOwnerSettings(),
+  ]);
+  const startAt = agentStartLabel(now);
   let messages: ChatMessage[] = [];
   let chatMissing = data.missing;
   try {
@@ -49,11 +54,12 @@ export default async function WebsitePage() {
       {data.error && <div className="ws-err" role="alert"><Icon name="fehler" size={16} /> Nicht lesbar: {data.error.slice(0, 160)}</div>}
 
       <Health check={data.check} total={total} history={data.history} site={site}
-        at={data.check ? `Check ${chatTime(data.check.at, now)}` : ""} />
+        at={data.check ? `Check ${chatTime(data.check.at, now)}` : ""}
+        fix={{ fixes: data.fixes, tasks: data.tasks, autofix: own.website_autofix !== false, ignored: own.website_ignored ?? {}, now: now.toISOString(), startAt }} />
 
       <div className="ws-cols">
         <WebsiteChat initial={messages} now={now.toISOString()} missing={chatMissing} />
-        <WebsiteAgents agents={data.agents} tasks={data.tasks} now={now.toISOString()} startAt={agentStartLabel(now)} missing={data.missing} />
+        <WebsiteAgents agents={data.agents} tasks={data.tasks} now={now.toISOString()} startAt={startAt} missing={data.missing} />
       </div>
     </div>
   );

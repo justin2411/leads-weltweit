@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import VIDEOS from "@/content/videos.json";
-import { BRAND, CONTACT, LEGAL_NAME, siteUrl } from "@/lib/site";
+import { BRAND, CONTACT, LEGAL_NAME, fitTitle, siteUrl } from "@/lib/site";
 import { consentText } from "@/lib/consent";
 import { HOME_SPRITE, HOME_STAT_ART } from "@/lib/home-v2-css";
 import { SampleForm } from "./sample-form";
@@ -23,7 +23,7 @@ const YEARLY = 250000;
 
 export function homeMetadata(lang: HomeLang): Metadata {
   const t = HOME[lang];
-  const title = `${BRAND} | ${t.title}`;
+  const title = fitTitle(t.title, BRAND, true);
   const url = siteUrl() + (lang === "en" ? "" : HOME_PATH[lang]);
   return {
     title, description: t.desc,

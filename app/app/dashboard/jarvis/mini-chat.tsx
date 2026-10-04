@@ -131,7 +131,7 @@ function BigChat({ title, sid, sessions, now, fullHref, onClose, onPick, onNew, 
             <h1 title={title}><Icon name="jarvis" size={18} /><span>{title}</span></h1>
             <span className="jc-sp" />
             <Link href={fullHref} className="jmodal-full"><Icon name="pfeil" size={14} />Ganze Seite</Link>
-            <button type="button" className="jc-ib" onClick={onClose} aria-label="Schließen (Esc)" title="Schließen (Esc)"><Icon name="schliessen" size={17} /></button>
+            <button type="button" className="jc-ib x-btn" onClick={onClose} aria-label="Schließen (Esc)" title="Schließen (Esc)"><Icon name="schliessen" size={17} /></button>
           </header>
           <div className="jmodal-body">{children}</div>
         </section>
