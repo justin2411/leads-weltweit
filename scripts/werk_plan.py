@@ -12,7 +12,10 @@ bekommen mehr Teile (Ziel ~30 min je Teil), Linien auf 0 und festgesetzte Linien
 total_slots - reserve. Leere Linien (Scout 04.10.2026: web-uk/web-fr liefen mit 0 Kandidaten weiter): kommen in
 allen Läufen des Fensters (mind. 2) im Schnitt höchstens 1 Kandidat je Teil und kein grüner Lead, gilt die Linie als
 „Vorrat leer“ – sie bekommt 0 Plätze und nur alle PROBE_H Stunden einen Prüfplatz; findet der wieder Kandidaten, gilt
-sofort wieder die Belegung des Inhabers. Die freien Plätze leerer und erschöpfter Linien gehen an Linien, deren
+sofort wieder die Belegung des Inhabers. Mindestbelegung (Inhaber 05.10.2026: „mind. 30 gleichzeitig“): liegen beide
+Werke zusammen unter MIN_BELEGT Plätzen, füllt der Autopilot auf – zuerst Premium-/Website-Linien US/UK/FR, dann
+Kunden, Prüfer, andere Linien mit Vorrat (fill_minimum); nie über max je Linie oder total_slots - reserve, die
+Speicher-Bremse geht vor. Die freien Plätze leerer und erschöpfter Linien gehen an Linien, deren
 letzter Lauf grüne Leads brachte (nach grünen je Platz-Stunde, je Start höchstens 2 × Teile + 2, nie über max der
 Linie oder die Summe). Speicher-Bremse (Inhaber 03.10.2026): ab 5,5 GB Hinweis, ab 6 GB höchstens 8 Lead-Plätze,
 ab 7 GB zusätzlich ohne Rohbestand (--no-raw), ab 7,5 GB Lead-Werk gestoppt (alle Lead-Plätze 0, Kunden-Werk
@@ -81,6 +84,8 @@ TARGET_MIN = 30       # Ziel-Laufzeit je Teil (min): ein langsamer Teil soll das
 FULL_MIN = 55         # ab dieser Ø-Laufzeit gilt ein Teil als voll ausgelastet (Zeitfenster 75 min)
 EMPTY_WHY = "Vorrat leer"  # Anfang des Grundes leerer Linien (Dashboard erkennt die Linie daran, app/lib/leitstand.ts)
 PROBE_H = 4           # leere Linie: alle 4 h ein Prüfplatz (findet er Kandidaten, gilt wieder die Belegung)
+MIN_BELEGT = 30       # Inhaber 05.10.2026: „Werke immer laufen lassen, mind. 30 gleichzeitig“ (beide Werke zusammen)
+MIN_WHY = "Mindestbelegung 30"
 
 
 def lane_of(werk: str, part: str | None) -> str | None:
@@ -211,7 +216,7 @@ def vorrang_active(rule: dict | None, stock: dict[str, float] | None) -> tuple[b
 def autopilot(reg: dict, werk: str, base: dict[str, int], stats: dict[str, dict], locks: dict | None = None,
               other: dict[str, int] | None = None, brake: str = "aus", prev: dict | None = None,
               now: dt.datetime | None = None, reset: dict | None = None, vorrang: dict | None = None,
-              stock: dict[str, float] | None = None) -> tuple[dict[str, int], dict[str, str]]:
+              stock: dict[str, float] | None = None, min_belegt: int = MIN_BELEGT) -> tuple[dict[str, int], dict[str, str]]:
     """Belegung der Linien von `werk` nach Ertrag. base = Belegung des Inhabers bzw. Standard; other = aktuelle
     Belegung des anderen Werks (für die Summe); prev = Gründe der letzten Belegung dieses Werks (leere Linien);
     reset = zurückgesetzte Linien {Linie: Zeitpunkt}; vorrang/stock = Länder-Vorrang (config/fokus.yaml) und
@@ -384,7 +389,64 @@ def autopilot(reg: dict, werk: str, base: dict[str, int], stats: dict[str, dict]
             del room[k]
     for k, n in gain.items():
         why[k] += f" – +{n} aus leeren Linien"
+    if not (werk == "lead-werk" and brake in ("drossel", "ohne-rohbestand", "stopp")):  # Speicher-Bremse geht vor
+        fill_minimum(lanes, plan, why, stats, locks, cap, sum((other or {}).values()), min_belegt, nach_ids)
     return plan, why
+
+
+def _min_tier(l: dict, s: dict | None) -> int | None:
+    """Rang einer Linie für die Mindestbelegung (kleiner = zuerst), None = nicht auffüllen.
+    1 Premium-/Website-Linien US/UK/FR, 2 Kunden, 3 Prüfer, 4 andere Linien mit Vorrat im letzten Lauf."""
+    lid = l["id"]
+    if (s or {}).get("premium_last") or "premium" in lid or \
+            (lid.startswith("web-") and lane_countries(l) and lane_countries(l) <= {"US", "UK", "FR"}):
+        return 1
+    if lid == "kunden":
+        return 2
+    if "pruefer" in lid:
+        return 3
+    if s and (s.get("cand_last") or s.get("green_last")):
+        return 4
+    return None
+
+
+def fill_minimum(lanes: list[dict], plan: dict[str, int], why: dict[str, str], stats: dict[str, dict],
+                 locks: dict, cap: int, other_sum: int, min_belegt: int = MIN_BELEGT,
+                 skip: set[str] | None = None) -> int:
+    """Werke immer ausgelastet (Inhaber 05.10.2026): liegen beide Werke zusammen unter `min_belegt` Plätzen, gehen
+    die fehlenden Plätze an Linien mit Ertrag/Vorrat (Rang siehe _min_tier, im Rang reihum), je Linie bis max, nie
+    über `cap` (total_slots - reserve - anderes Werk, bei Bremse kleiner). Nie: festgesetzte Linien, vom Inhaber auf
+    0 gesetzte, leere, erschöpfte (Wachplatz) und Nachrang-Linien des Länder-Vorrangs. Gibt die Zahl neuer Plätze."""
+    skip = skip or set()
+    need = min(min_belegt - other_sum - sum(plan.values()), cap - sum(plan.values()))
+    if need <= 0:
+        return 0
+    tiers: dict[int, list[dict]] = {}
+    for l in lanes:
+        k = l["id"]
+        r = str(why.get(k) or "")
+        if k in locks or k in skip or plan.get(k, 0) <= 0 or r.startswith(EMPTY_WHY) or "Wachplatz" in r \
+                or "durchgeprüft" in r or plan[k] >= int(l["max"]):
+            continue
+        t = _min_tier(l, stats.get(k))
+        if t is not None:
+            tiers.setdefault(t, []).append(l)
+    added: dict[str, int] = {}
+    for t in sorted(tiers):
+        group = tiers[t]
+        while need > 0:
+            open_ = [l for l in group if plan[l["id"]] < int(l["max"])]
+            if not open_:
+                break
+            for l in open_:
+                if need <= 0:
+                    break
+                plan[l["id"]] += 1
+                added[l["id"]] = added.get(l["id"], 0) + 1
+                need -= 1
+    for k, n in added.items():
+        why[k] += f" – +{n} {MIN_WHY}"
+    return sum(added.values())
 
 
 def matrix(reg: dict, werk: str, n: dict[str, int], extra_args: str = "") -> list[dict]:
