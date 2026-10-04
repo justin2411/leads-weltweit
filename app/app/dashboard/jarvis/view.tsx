@@ -1,6 +1,6 @@
 /**
  * Aufbau der JARVIS-Startseite (Inhaber 04.10.2026: „optimiere nochmal das design bei jarvis“) – reine Darstellung,
- * alle Zahlen kommen fertig aus page.tsx. Reihenfolge: Kopf (Begrüßung, Uhr) · Heute wichtig · Braucht dich · 4 Kern-Kennzahlen · Ziel vs. Ist · JARVIS empfiehlt (X = ausblenden) ·
+ * alle Zahlen kommen fertig aus page.tsx. Reihenfolge: Kopf (Begrüßung, Uhr) · Heute wichtig · Braucht dich · 4 Kern-Kennzahlen · Ziel vs. Ist · Abteilungen · JARVIS empfiehlt (X = ausblenden) ·
  * Agenten A1–A8 · Team (Fach-Agenten) · Fluss-Karte (mit Seitenfenster) · Kohorten-Trichter (aufklappbar) · Gehirn lernt · Entscheidungen · Chat und Freigabe (unten rechts) · Live-Ticker.
  * Raster in 8er-Schritten, Karten je Reihe gleich hoch, am Handy eine Spalte ohne seitliches Scrollen.
  */
@@ -30,6 +30,8 @@ import type { Karte } from "@/lib/fach-agenten";
 import type { KohorteRow } from "@/lib/kohorten";
 import type { BdPunkt } from "@/lib/braucht-dich";
 import { BrauchtDich } from "./braucht-dich";
+import { ABTEILUNGEN_CSS, Abteilungen } from "./abteilungen";
+import type { Kachel } from "@/lib/abteilungen";
 
 export type JarvisProps = {
   hello: string; say: string;
@@ -57,12 +59,14 @@ export type JarvisProps = {
   brauchtDich?: BdPunkt[];
   /** Gehirn lernt: Score + Trend, letzte 3 Selbstanpassungen, offene Verbesserungsvorschläge (scripts/brain_meta.py) */
   gehirn?: GehirnLerntData;
+  /** Abteilungen: Kachel-Raster als Einstieg in die Unterseiten (lib/abteilungen.ts) */
+  abteilungen?: Kachel[];
 };
 
 export function JarvisView(p: JarvisProps) {
   return (
     <div className={`jv jv2 jv3 ${p.drawer ? "has-drw" : ""}`}>
-      <style dangerouslySetInnerHTML={{ __html: JCHAT_CSS + SOFORT_CSS + KOHORTEN_CSS + TEAM_CSS + GEHIRN_LERNT_CSS }} />
+      <style dangerouslySetInnerHTML={{ __html: JCHAT_CSS + SOFORT_CSS + KOHORTEN_CSS + TEAM_CSS + GEHIRN_LERNT_CSS + ABTEILUNGEN_CSS }} />
       <header className="jv-top">
         <span className="jv-logo" aria-hidden><i /><i /><i /></span>
         <div className="jv-hi">
@@ -75,6 +79,7 @@ export function JarvisView(p: JarvisProps) {
       {p.brauchtDich && <BrauchtDich items={p.brauchtDich} />}
       <Ampeln items={p.kpis} />
       {p.ziel && <ZielIst mails={p.ziel.mails} leads={p.ziel.leads} href={{ mails: () => "/dashboard/jarvis?s=versand", leads: () => "/dashboard/jarvis?s=lead" }} />}
+      {p.abteilungen && <Abteilungen items={p.abteilungen} />}
       {p.proposals && <Vorschlaege open={p.proposals.open} done={p.proposals.done} />}
       <Empfiehlt recs={p.recs} href={p.tipHref} agent={p.agent}>
         {p.rest.length > 0 && (

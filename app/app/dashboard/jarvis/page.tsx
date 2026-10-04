@@ -33,6 +33,9 @@ import { loadProposals } from "@/lib/vorschlaege-data";
 import { AutopilotPanel } from "./autopilot";
 import { GateRings, GateSteps, Reasons, type GateView } from "./freigabe";
 import { JarvisView } from "./view";
+import { loadAbteilungen } from "@/lib/abteilungen-data";
+import { ABTEILUNGEN, antwortenKz, gehirnKz, kachel, marketingKz, produktionKz, teamKz, type AbteilungKey, type Kz } from "@/lib/abteilungen";
+import { speicher as speicherLage } from "@/lib/zentrale/betrieb";
 import { loadBrauchtDich } from "@/lib/braucht-dich-data";
 import { loadTeam } from "@/lib/fach-agenten-data";
 import { karten } from "@/lib/fach-agenten";
@@ -90,6 +93,8 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const khP = loadKohorten(8);
   // Team: Fach-Agenten mit Kennzahl, Trend, letztem Auftrag (agent_roles, agent_role_kpi; Fehler → Abschnitt aus)
   const teamP = loadTeam().catch(() => null);
+  // Abteilungen (Finanzen, Vertrieb, Ziele, Recht, Betrieb, Protokoll): je Quelle Zeitlimit, Ausfall → Kachel „–“
+  const abtP = loadAbteilungen();
   // Sparklines und Trend (7 T vs. Vor-7 T): 15 Tage bis heute, kpi_daily parallel (Fehler → leer)
   const from15 = addDays(today, -14);
   const kpiP = loadKpiDaily(from15, today);
@@ -464,14 +469,32 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     drawer = <Drawer title={stn.label} icon={stn.icon} tab={tab} base={base(s)} close="/dashboard/jarvis" tabs={tabsOn} state={stn.state}>{body}</Drawer>;
   }
 
+  const teamCards = await teamP.then(async (d) => (d ? karten({ ...d, kohorten: await khP, today, now }) : null), () => null);
+  const gScore = gehirnScore(await kpiP, today);
+  // Abteilungs-Kacheln: Zentrale-Kennzahlen + Werte dieser Seite; jede Kachel einzeln abgesichert („–“ statt Absturz)
+  const abt = await abtP;
+  const lastPlan = [planLog["lead-werk"], planLog["kunden-werk"]].filter((x) => !!x).sort((a, b) => b!.at.localeCompare(a!.at))[0] ?? null;
+  const stOf = (id: StationId) => stations.find((x) => x.id === id)?.state ?? "idle";
+  const probier = (f: () => Kz): Kz => { try { return f(); } catch { return null; } };
+  const kzs: Record<AbteilungKey, Kz> = {
+    ...abt,
+    team: probier(() => teamKz(teamCards)),
+    gehirn: probier(() => gehirnKz(gScore)),
+    produktion: probier(() => produktionKz({ leads24: stockAll ? leads24 : null, kaeufer24: stockAll ? newBuyers24 : null, werke: [stOf("lead"), stOf("kwerk")],
+      speicher: speicherLage(lastPlan?.db_bytes ?? (liveAll.db_size || null), lastPlan?.bremse ?? null).ampel })),
+    marketing: probier(() => marketingKz(web, wNeck)),
+    antworten: probier(() => antwortenKz(openReplies, { replies: w.replies, positive: w.positive })),
+  };
+  const abteilungen = ABTEILUNGEN.map((x) => kachel(x.key, kzs[x.key]));
+
   return (
     <JarvisView hello={hello} say={say} kpis={kpis} recs={recs} rest={rest} tipHref={tipHref} agent={freeAgent(agentTasks)}
       tasks={agentTasks} startAt={startAt} activeAgent={ag} stations={stations} edges={edges} activeStation={s} stationHref={href}
       drawer={drawer} gate={gateView}
       heute={heute} ziel={{ mails: mailBars, leads: leadBars }} zeit={zeit} ticker={ticker(items)} customerAgents={await kaP} chat={await chatP} proposals={await propP} brauchtDich={await bdP}
       kohorten={{ rows: await khP, countries, today }}
-      team={await teamP.then(async (d) => (d ? karten({ ...d, kohorten: await khP, today, now }) : null))}
-      gehirn={{ score: gehirnScore(await kpiP, today), anpassungen: await metaP, offen: await impP }} />
+      team={teamCards} abteilungen={abteilungen}
+      gehirn={{ score: gScore, anpassungen: await metaP, offen: await impP }} />
   );
 }
 
