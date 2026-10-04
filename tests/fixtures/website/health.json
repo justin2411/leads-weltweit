@@ -1,1 +1,1 @@
-{"umgebung":"production","variablen":{"SUPABASE_URL":"gesetzt","GH_DISPATCH_TOKEN":"FEHLT"}}
+{"umgebung":"production","variablen":{"SUPABASE_URL":"gesetzt","SITE_URL":"FEHLT","GH_DISPATCH_TOKEN":"optional"}}

@@ -9,6 +9,8 @@ import { fill, type Personal } from "@/lib/personalize";
 import { personalFor } from "@/lib/recipient";
 import { db } from "@/lib/supabase";
 import { pickVariant } from "@/lib/variants";
+import { servableVariants } from "@/lib/test-scope";
+import { TEST_SCOPE } from "@/lib/test-scope-data";
 import { unstable_cache } from "next/cache";
 import { Tracker } from "./tracker";
 import { segmentCopy } from "@/content/segment-words";
@@ -289,7 +291,9 @@ async function resolve({ country, segment }: LandingParams, sp: LandingSearch, r
   const isPublic = pageIsPublic(data.page, settings);
   const preview = !isPublic && sp.vorschau === "1" && (await isOwner());
   if (!isPublic && !preview) return null;
-  const candidates = data.variants.filter((v: any) => (preview ? v.status !== "retired" : v.status === "live"));
+  // Split-Test nur in der Freigabe-Liste (config/fokus.yaml tests, Inhaber 04.10.2026), sonst nur die Kontrolle
+  const live = data.variants.filter((v: any) => (preview ? v.status !== "retired" : v.status === "live"));
+  const candidates = preview ? live : servableVariants(TEST_SCOPE, data.page, live);
   const variant = (preview && sp.v && candidates.find((v: any) => v.variant_key === sp.v)) || pickVariant(candidates, rand);
   if (!variant) return null;
   return { ...data, variant, settings, preview, isPublic, sp, slug };

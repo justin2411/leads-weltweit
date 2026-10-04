@@ -81,7 +81,8 @@ class PageCheckTest(unittest.TestCase):
         self.assertEqual([(x["bereich"], x["stufe"]) for x in f], [("recht", "rot")])
 
     def test_health_and_404(self):
-        self.assertEqual(W.check_health(200, fx("health.json"))[0]["text"], "Variable fehlt: GH_DISPATCH_TOKEN")
+        self.assertEqual(W.check_health(200, fx("health.json"))[0]["text"], "Variable fehlt: SITE_URL")
+        self.assertEqual(W.check_health(200, '{"variablen": {"GH_DISPATCH_TOKEN": "optional"}}'), [])  # optional fehlt = kein Fund
         self.assertEqual(W.check_health(200, '{"variablen": {"A": "gesetzt"}}'), [])
         self.assertEqual(W.check_health(500, "")[0]["stufe"], "rot")
         self.assertEqual(W.check_missing(404), [])

@@ -18,6 +18,8 @@ in `signalwerk.decisions`. Ziel: **möglichst viele zahlende Kunden und maximale
 3. **Sicherheit:** Spam-Beschwerde, Tages-Bounce > 5 %, drei fehlgeschlagene Stripe-Webhooks, Kundenbeschwerde,
    Rechtsunsicherheit → `brain_enabled = false`, Eintrag `decisions` (type `safety`), Ende.
 4. **Eine Sache verbessern** (die mit dem größten erwarteten Umsatzhebel, höchstens 3 Änderungen pro Sitzung):
+   - **Nur Webagenturen US/UK/FR** (Inhaber 04.10.2026): Tests, Varianten, Preis-Tests und neue Seiten nur für
+     Segment × Land aus `config/fokus.yaml` `tests`. Alle anderen Seiten nicht anfassen (live, nur Variante A).
    - **Landingpages:** neue Seite oder Variante als `review` anlegen (Inhalte in `landing_pages`/`page_variants`),
      immer nur ein Element pro Variante ändern (Überschrift, Signale, Handlungsaufforderung **oder** Preis).
      Beispiel-Leads nur aus echten Proben (`leads.status = 'sample'`), als Beispiel markiert.

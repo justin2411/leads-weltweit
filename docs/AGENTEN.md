@@ -13,7 +13,8 @@ Zeit. Das Dashboard zeigt bei offenen Aufträgen nie „wartet“, sondern „st
 Zeitpunkte (`nextAgentRun(now)` / `agentStartLabel(now)` in `app/lib/agents.ts`, Europe/Berlin, mit Tests).
 
 Nach den Aufträgen macht jede Sitzung den JARVIS-Lauf nach `docs/JARVIS.md` (Engpass protokollieren, A/B-Tests
-auswerten und bei anhaltendem Engpass selbst starten).
+auswerten und bei anhaltendem Engpass selbst starten – Tests nur für Webagenturen US/UK/FR laut
+`config/fokus.yaml` `tests`, Inhaber 04.10.2026).
 
 **Name** (Inhaber 04.10.2026): Die Routine „JARVIS-Agenten“ heißt gegenüber dem Inhaber immer **„der Agent“**
 (Chat, Dashboard, Berichte) – z. B. „übernimmt der Agent, startet um HH:MM“.
