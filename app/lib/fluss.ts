@@ -5,30 +5,41 @@
  */
 import type { IconName } from "../app/icons";
 
-export type StationId = "lead" | "gate" | "bestand" | "proben" | "kwerk" | "kaeufer" | "versand" | "antworten" | "kunden";
+export type StationId = "lead" | "gate" | "bestand" | "proben" | "kwerk" | "kaeufer" | "versand" | "antworten" | "kunden"
+  // Linie „Website“ (Inhaber 04.10.2026): Aufrufe → Probe-Klick → Probe-Anfrage → Kauf; Klick öffnet die Auswertung
+  | "web" | "wklick" | "wprobe" | "wkauf";
 export type StationState = "live" | "idle" | "off" | "bad";
 export type Station = { id: StationId; label: string; icon: IconName; value: string; unit?: string; sub: string; state: StationState; neck?: boolean; tip: string };
 export type Edge = { from: StationId; to: StationId; perHour: number; label: string };
 
-export const ORDER: StationId[] = ["lead", "gate", "bestand", "proben", "kwerk", "kaeufer", "versand", "antworten", "kunden"];
+export const ORDER: StationId[] = ["lead", "gate", "bestand", "proben", "kwerk", "kaeufer", "versand", "antworten", "web", "wklick", "wprobe", "wkauf", "kunden"];
+/** Stationen der Linie „Website“ – öffnen /dashboard/website/auswertung statt eines Seitenfensters. */
+export const WEB_STATIONS: StationId[] = ["web", "wklick", "wprobe", "wkauf"];
 
-/** Positionen in Prozent der Kartenfläche (x, y). Oben die Ware (Leads), unten die Käufer, rechts treffen sie sich. */
+/**
+ * Positionen in Prozent der Kartenfläche (x, y). Oben die Ware (Leads), in der Mitte die Käufer, unten die Website;
+ * rechts (am Handy unten) treffen sich alle bei den Kunden.
+ */
 export const POS: Record<"wide" | "tall", Record<StationId, [number, number]>> = {
   wide: {
-    lead: [8, 26], gate: [27, 26], bestand: [46, 26], proben: [65, 26],
-    kwerk: [8, 76], kaeufer: [27, 76], versand: [46, 76], antworten: [65, 76], kunden: [89, 51],
+    lead: [8, 16], gate: [27, 16], bestand: [46, 16], proben: [65, 16],
+    kwerk: [8, 50], kaeufer: [27, 50], versand: [46, 50], antworten: [65, 50], kunden: [89, 50],
+    web: [8, 84], wklick: [27, 84], wprobe: [46, 84], wkauf: [65, 84],
   },
   tall: {
-    lead: [25, 7], gate: [25, 26], bestand: [25, 45], proben: [25, 64],
-    kwerk: [75, 7], kaeufer: [75, 26], versand: [75, 45], antworten: [75, 64], kunden: [50, 89],
+    lead: [17, 7], gate: [17, 26], bestand: [17, 45], proben: [17, 64],
+    kwerk: [50, 7], kaeufer: [50, 26], versand: [50, 45], antworten: [50, 64], kunden: [50, 89],
+    web: [83, 7], wklick: [83, 26], wprobe: [83, 45], wkauf: [83, 64],
   },
 };
+/** Größe der Zeichenfläche (viewBox) je Layout. */
+export const VIEW = { wide: [1200, 640], tall: [400, 820] } as const;
 /** Seitenverhältnis der Karte (Breite / Höhe) je Layout – SVG-Leitungen und Stationen liegen auf derselben Fläche. */
-export const ASPECT = { wide: 1200 / 470, tall: 400 / 820 };
+export const ASPECT = { wide: VIEW.wide[0] / VIEW.wide[1], tall: VIEW.tall[0] / VIEW.tall[1] };
 
 /** Leitung als SVG-Pfad (Koordinaten in viewBox-Einheiten). Geknickte Leitungen laufen weich um die Ecke. */
 export function edgePath(layout: "wide" | "tall", from: StationId, to: StationId): string {
-  const W = layout === "wide" ? 1200 : 400, H = layout === "wide" ? 470 : 820;
+  const [W, H] = VIEW[layout];
   const [x1, y1] = POS[layout][from].map((v, i) => (v / 100) * (i ? H : W));
   const [x2, y2] = POS[layout][to].map((v, i) => (v / 100) * (i ? H : W));
   if (Math.abs(y1 - y2) < 1 || Math.abs(x1 - x2) < 1) return `M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}`;

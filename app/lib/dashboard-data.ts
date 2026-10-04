@@ -6,6 +6,7 @@ import { boxHealth, funnelByCountry, type BoxHealth, type Days, type FunnelRow, 
 import type { DailyRow } from "@/lib/dashboard-periods";
 import { merge, type OwnerSettings } from "@/lib/owner-settings";
 import { EMPTY_ACTIVITY, type Activity } from "@/lib/werke-live";
+import { EMPTY_WEBSITE, type WebsiteLive, type WebsiteStats } from "@/lib/website-stats";
 import opsConfig from "@/lib/ops-config.json";
 
 /**
@@ -60,6 +61,36 @@ export async function loadStock(): Promise<Stock> {
     after(() => refreshStock().catch(() => {}));
   }
   return data.value as Stock;
+}
+
+/**
+ * JARVIS-Linie „Website“: Kennzahlen aus signalwerk.dashboard_cache ('website'), wie der Bestand sofort lesbar; älter
+ * als 5 min → im Hintergrund website_refresh() (zählt auch die Tagessummen der Auswertung). Fehlt die Zeile, einmal
+ * direkt rechnen; ohne Migration leere Zahlen statt eines Fehlers.
+ */
+let websiteRefreshing: Promise<unknown> | null = null;
+function refreshWebsite(): Promise<WebsiteLive> {
+  const p = rpc<WebsiteLive>("website_refresh", {}, 20_000);
+  websiteRefreshing = p.finally(() => { websiteRefreshing = null; });
+  return p;
+}
+export async function loadWebsite(): Promise<WebsiteLive> {
+  try {
+    const { data } = await db().from("dashboard_cache").select("value, updated_at").eq("name", "website")
+      .abortSignal(AbortSignal.timeout(3000)).maybeSingle();
+    if (!data) return { ...EMPTY_WEBSITE, ...(await Promise.race([refreshWebsite(), new Promise<WebsiteLive>((ok) => setTimeout(() => ok(EMPTY_WEBSITE), 4000))])) };
+    if (Date.now() - Date.parse(data.updated_at) > STOCK_FRESH_MS && !websiteRefreshing) {
+      after(() => refreshWebsite().catch(() => {}));
+    }
+    return { ...EMPTY_WEBSITE, ...(data.value as Partial<WebsiteLive>) };
+  } catch {
+    return EMPTY_WEBSITE;
+  }
+}
+
+/** Website-Auswertung: Tagessummen, Heatmap und gesendete Mails des Zeitraums (website_stats, nur Zählungen). */
+export function loadWebsiteStats(days: number): Promise<WebsiteStats> {
+  return rpc<WebsiteStats>("website_stats", { p_days: days }, 15_000);
 }
 
 export const loadRawStock = unstable_cache(async () => rpc<RawStock>("dashboard_raw_stock", {}, 70_000), ["dashboard-raw-stock-v1"], {

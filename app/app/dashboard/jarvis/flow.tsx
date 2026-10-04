@@ -5,7 +5,7 @@
  */
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ASPECT, POS, edgePath, flow, type Edge, type Station, type StationId, type TickerItem } from "@/lib/fluss";
+import { ASPECT, POS, VIEW, edgePath, flow, type Edge, type Station, type StationId, type TickerItem } from "@/lib/fluss";
 import type { TipTask } from "@/lib/leitstand";
 import { DragBox } from "./dnd";
 import { Icon, type IconName } from "@/app/icons";
@@ -13,7 +13,7 @@ import { Icon, type IconName } from "@/app/icons";
 const fmtRate = (n: number) => (n >= 1000 ? `${(n / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Tsd./h` : `${n.toLocaleString("de-DE")}/h`);
 
 function Map({ layout, stations, edges, active, href }: { layout: "wide" | "tall"; stations: Station[]; edges: Edge[]; active: StationId | null; href: (id: StationId) => string }) {
-  const W = layout === "wide" ? 1200 : 400, H = layout === "wide" ? 470 : 820;
+  const [W, H] = VIEW[layout];
   const by = Object.fromEntries(stations.map((s) => [s.id, s])) as Record<StationId, Station>;
   return (
     <div className={`fl-map fl-${layout}`} style={{ aspectRatio: `${ASPECT[layout]}` }}>
@@ -65,7 +65,7 @@ function Map({ layout, stations, edges, active, href }: { layout: "wide" | "tall
 export function FlowMap(p: { stations: Station[]; edges: Edge[]; active: StationId | null; href: (id: StationId) => string }) {
   return (
     <div className="fl">
-      <div className="fl-lanes" aria-hidden><span>Ware · Leads</span><span>Käufer · Webagenturen</span></div>
+      <div className="fl-lanes" aria-hidden><span>Ware · Leads</span><span>Käufer · Webagenturen</span><span>Website · Besucher</span></div>
       <Map layout="wide" {...p} />
       <Map layout="tall" {...p} />
     </div>
