@@ -54,7 +54,9 @@
       "karte_beleg": "Evidence",
       "karte_abruf": "checked {date}",
       "karte_quelle_person": "Source",
-      "karte_einstieg": "Opening line"
+      "karte_einstieg": "Opening line",
+      "video_mail": "Short video ({sek} seconds): how our radar finds your next client: {url}",
+      "video_pdf": "Short video ({sek} s): how our radar finds your next client"
     },
     "fr": {
       "landing_titel": "Est-ce rentable ?",
@@ -81,7 +83,9 @@
       "karte_beleg": "Preuve",
       "karte_abruf": "vérifié le {date}",
       "karte_quelle_person": "Source",
-      "karte_einstieg": "Phrase d'accroche"
+      "karte_einstieg": "Phrase d'accroche",
+      "video_mail": "Courte vidéo ({sek} secondes) : comment notre radar trouve votre prochain client : {url}",
+      "video_pdf": "Courte vidéo ({sek} s) : comment notre radar trouve votre prochain client"
     }
   }
 }

@@ -208,6 +208,7 @@ footer.foot.dark{color:#7F89A3}
 .value .vbody{position:absolute;left:14mm;right:14mm;top:27mm;bottom:17mm;display:flex;flex-direction:column;gap:4mm}
 .value h2{font-size:24pt;font-weight:800;letter-spacing:-.03em;line-height:1.1}
 .value .vlede{font-size:10pt;color:var(--muted);max-width:150mm}
+.vvid a{display:inline-flex;align-items:center;gap:1.6mm;font-size:9pt;font-weight:700;color:var(--gold-d);text-decoration:underline;text-decoration-thickness:.2mm;text-underline-offset:.6mm}
 .vgrid{flex:none;display:grid;grid-template-columns:1.1fr .9fr;gap:5mm;align-items:stretch;min-height:0}
 .vgrid .panel{padding:6mm;display:flex;flex-direction:column;gap:3.4mm;min-width:0}
 .vfact{font-size:9pt;line-height:1.45;color:#2B3650}
@@ -1200,6 +1201,7 @@ header.top.dark .kicker .demo{color:#FFB7A8;border-color:rgba(240,128,108,.7)}
   <div class="vbody">
     <h2>${esc(V.title)}</h2>
     <p class="vlede">${esc(V.lede)}</p>
+    ${V.video && V.video.url ? `<p class="vvid"><a href="${esc(V.video.url)}">${ic('arrow', 'ic s')}${esc(V.video.label)}</a></p>` : ''}
     <div class="vgrid">
       <div class="panel">
         ${facts ? `<span class="cap gold">${esc(V.proofTitle)}</span>${facts}` : ''}

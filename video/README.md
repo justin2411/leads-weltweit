@@ -51,3 +51,16 @@ Musik `v5/music.py`, Kodierung wie v4: 1280×720, 25 fps, crf 26, faststart, AAC
 und Eintrag in `app/content/videos.json`. Kontrollbilder (in `v5/`): `node ../v4/render.mjs <name> stills 25 0.5`.
 Beispiel-Firmen, -Personen, Telefonnummern (Fiktionsbereiche) und Domains sind erfunden und im Bild als Beispiel markiert;
 keine Regionen, keine Zahlen über Ergebnisse, keine Garantien.
+
+## Version 12 (`v12/`): Premium-Film Webagenturen „So findet unser Radar Ihren nächsten Kunden“
+Ein Film je Markt (US, UK mit US-Stimme, FR), ≤ 45 s, landesweit: Radar über dem Land → goldener Treffer (Neugründung vor
+6 Tagen, Domain da, Website lädt nicht) → Beleg (Signal, Datum, Quelle, Website-Prüfung, Abrufdatum) → Ansprechperson aus
+dem Register mit Firmenkontakt → Wert: nur veröffentlichte Zahlen aus `docs/PREMIUM-WERT.md` mit Quelle (US Clutch +
+WordStream, UK WordStream als „US data“, FR Codeur), Hinweis „Published figures · not a promise“ → Schlusskarte.
+Keine eigenen Preise (testet das Gehirn), kein „exklusiv“. Beispiel-Firma/-Person erfunden, Domains `.example`,
+Telefonnummern aus Fiktionsbereichen, im Bild als Beispiel markiert.
+- Inhalte: `python3 v12/segments.py` → `v12/segments/<markt>-radar.json` (Schlüssel `us/web-agencies:radar` usw.).
+- Bauen (Umgebung wie v5): `v12/build.sh <markt>-radar` → `app/public/video/v12-<markt>-radar.mp4/.jpg`, Eintrag in
+  `app/content/videos.json`; Einzelbilder werden danach gelöscht. Kontrollbilder (in `v12/`): `node ../v4/render.mjs <name> stills 25 0.5`.
+- Eingebunden nur als Link in Probe-Mail und Probe-PDF (`scripts/lib/premium_wert.py` `video`/`video_zeile`).
+  Landingpages: Entwurf einer Seiten-Variante in `docs/PREMIUM-WERT.md` §4, nicht aktiv.

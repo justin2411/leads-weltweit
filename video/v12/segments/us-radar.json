@@ -1,0 +1,110 @@
+{
+ "key": "us/web-agencies:radar",
+ "file": "v12-us-radar",
+ "lang": "en",
+ "tts": "en-us",
+ "voice": "af_heart",
+ "speed": 1.04,
+ "film": "radar.html",
+ "industry": "web-agencies",
+ "ui": {
+  "locale": "en-US",
+  "ill": "Illustrative example",
+  "scan": [
+   "Public registers",
+   "Company websites",
+   "Checked daily"
+  ],
+  "new": "New company",
+  "web": "Website doesn't load",
+  "proofhd": "Evidence",
+  "proofok": "Verified",
+  "pf": [
+   "Signal",
+   "Date",
+   "Source",
+   "Website check",
+   "Checked"
+  ],
+  "personhd": "Who to ask for",
+  "pk": [
+   "Phone",
+   "Email",
+   "Source"
+  ],
+  "valuehd": "What one client can be worth",
+  "srcl": "Source:",
+  "note": "Published figures · not a promise",
+  "area": "Across the US",
+  "endfree": "10 free leads from across the US",
+  "co": "Harbor Lane Bakery LLC",
+  "domain": "harborlanebakery.example",
+  "age": "Filed 6 days ago",
+  "pv": [
+   "New company filed",
+   "Sep 28, 2026 · 6 days ago",
+   "Public business register",
+   "No response · domain registered",
+   "Oct 4, 2026"
+  ],
+  "person": "Jordan Reyes",
+  "role": "Owner · Harbor Lane Bakery LLC",
+  "pc": [
+   "(312) 555-0142",
+   "hello@harborlanebakery.example",
+   "Public register"
+  ],
+  "vals": [
+   [
+    "Web design projects",
+    "Most under $10,000",
+    "Clutch",
+    "monitor"
+   ],
+   [
+    "Google Ads, average cost per lead",
+    "$70.11",
+    "WordStream 2025",
+    "search"
+   ]
+  ]
+ },
+ "script": [
+  {
+   "id": "radar",
+   "text": "Every day, our radar scans public registers and company websites across the US.",
+   "pause": 0.35
+  },
+  {
+   "id": "found",
+   "text": "Here's one: a company filed six days ago. The domain exists, but the website doesn't load.",
+   "pause": 0.55
+  },
+  {
+   "id": "proof",
+   "text": "Every signal comes with proof: the source, the date, and when we checked it.",
+   "pause": 0.5
+  },
+  {
+   "id": "person",
+   "text": "Then the person to ask for, from the public record, with the business phone and email.",
+   "pause": 0.55
+  },
+  {
+   "id": "value",
+   "text": "What could one client be worth? Clutch says most web design projects cost under ten thousand dollars. And a Google Ads lead averages about seventy dollars.",
+   "pause": 0.4
+  },
+  {
+   "id": "note",
+   "text": "Published figures, not a promise. Do the maths with your own numbers.",
+   "pause": 0.5
+  },
+  {
+   "id": "end",
+   "text": "Start with ten free leads from across the US, at nextgen-profit dot de.",
+   "pause": 0.3,
+   "say": "Start with ten free leads from across the U.S., at next gen profit, dot D E."
+  }
+ ]
+}

@@ -8,6 +8,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 import math
+import os
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -108,6 +109,36 @@ def beleg(signal: str, website: str, source_url: str, source_date: str, lang: st
     return {"url": url, "label": host, "checked": fuell(t["karte_abruf"], date=tag(source_date, lang)) if source_date else ""}
 
 
+APP = Path(__file__).resolve().parents[2] / "app"
+# Premium-Film „So findet unser Radar Ihren nächsten Kunden“ (video/v12, Inhaber 05.10.2026). Nur Probe-Mail und
+# Probe-PDF verlinken ihn; auf den Landingpages läuft erst der A/B-Test „Lohnt sich das?“ (kein zweiter Seitentest).
+VIDEO_KEY = {"US": "us/web-agencies:radar", "UK": "uk/web-agencies:radar", "FR": "fr/agences-web:radar"}
+
+
+def video(segment: str | None, country: str | None) -> dict | None:
+    """{"url", "sek"} des Radar-Films für S2 US/UK/FR – nur wenn eingetragen und die Datei wirklich ausgeliefert wird."""
+    if not land(segment, country):
+        return None
+    try:
+        v = json.loads((APP / "content" / "videos.json").read_text(encoding="utf-8")).get(VIDEO_KEY[(country or "").upper()])
+    except (OSError, ValueError, KeyError):
+        return None
+    src = str((v or {}).get("src") or "")
+    if not src.startswith("/video/") or not (APP / "public" / src.lstrip("/")).is_file():
+        return None
+    base = (os.environ.get("SITE_URL") or "https://www.nextgen-profit.de").rstrip("/")
+    return {"url": base + src, "sek": int(v.get("seconds") or 0)}
+
+
+def video_zeile(segment: str | None, country: str | None, art: str = "mail") -> str:
+    """Eine Zeile mit Link für die Probe-Mail (art=mail) bzw. Linktext fürs Probe-PDF (art=pdf); sonst leer."""
+    v = video(segment, country)
+    if not v:
+        return ""
+    lang = "fr" if land(segment, country)["lang"] == "fr" else "en"
+    return fuell(daten()["texte"][lang][f"video_{art}"], sek=v["sek"], url=v["url"])
+
+
 def seite(segment: str | None, country: str | None, plans: list[dict] | None) -> dict | None:
     """Daten der Seite „Was ein Kunde wert ist“ im Probe-PDF (nur S2 US/UK/FR und nur mit beiden Paketpreisen)."""
     lnd = land(segment, country)
@@ -123,7 +154,9 @@ def seite(segment: str | None, country: str | None, plans: list[dict] | None) ->
     belegt = [{"text": b["text"], "source": b["quelle"], "url": b["url"], "checked": checked} for b in lnd["belegt"]]
     vergleich = [{"label": t[v["key"]], "value": geld(v["wert"], v["sym"], lang), "note": t["us_daten"],
                   "source": v["quelle"], "url": v["url"], "checked": checked, "num": v["wert"]} for v in D["vergleich"]]
+    v = video(segment, country)
     return {
+        **({"video": {"label": video_zeile(segment, country, "pdf"), "url": v["url"]}} if v else {}),
         "title": t["pdf_titel"], "lede": t["pdf_lede"], "proofTitle": t["pdf_belegt"], "proof": belegt,
         "noProof": t["pdf_ohne_beleg"] if not belegt else "", "compareTitle": t["landing_titel"], "compare": vergleich,
         "ours": {"label": t["wir"], "value": fuell(t["wir_wert"], **r["proLead"]), "num": _starter_num(plans)},
