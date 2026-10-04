@@ -10,6 +10,13 @@ a/b splittesting zu gehen und selbstständig anpassungen vornehmen“. CLAUDE.md
 2. **KPIs stetig verbessern**: Antworten, positive Antworten, Proben, Kunden, Zustellrate.
 3. **Lead-Qualität kontinuierlich anheben**: Fehlerquote der Freigabe-Stichprobe, Anteil grüner Leads, Vollständigkeit.
 
+**Soll-Werte** (Inhaber 04.10.2026, Kommandozentrale): `signalwerk.company_goals` (MRR, Kunden, Antwortquote,
+Lead-Fehlerquote, grüne Leads/Woche UK/FR). Gehirn und JARVIS lesen sie zu Beginn jedes Laufs
+(`select key, titel, soll, richtung, quelle from signalwerk.company_goals`) und messen sich daran; Ist und Fortschritt
+rechnet `app/lib/zentrale/ziele.ts` (Seite `/dashboard/ziele`). Soll ändert **nur der Inhaber** (Formular
+„Übernehmen“); `quelle = 'vorschlag'` = Startwert. Abteilungsseiten `/dashboard/finanzen`, `/dashboard/vertrieb`,
+`/dashboard/ziele`; je Seite eine Kennzahl `kpi()` in `app/lib/zentrale/` (`loadZentraleKpis()` liefert alle drei).
+
 JARVIS führt Lead-Werk, Kunden-Werk, Proben-Vorrat, Versand (rund um die Uhr, stündlich, Anteil der Tagesmenge je
 Lauf; Inhaber 04.10.2026), Agenten (A1–A8 und eigene), Gehirn
 (`docs/GEHIRN-SITZUNG.md`) und Quellen-Scout (`docs/QUELLEN-SCOUT.md`) wie ein Geschäftsführer. Er entscheidet selbst

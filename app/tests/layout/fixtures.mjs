@@ -64,6 +64,28 @@ export function makeFixtures(nowMs = Date.now()) {
     { day: d, country: c, metric: "leads_new", value: 380 + i * 5 }, { day: d, country: c, metric: "buyers_ok", value: 100 + i },
     { day: d, country: c, metric: "sent", value: 25 + i }, { day: d, country: c, metric: "replies", value: i % 4 === 0 ? 1 : 0 },
   ]));
+  // Kommandozentrale (Finanzen, Vertrieb, Ziele): erfundene Firmen, ein Testkauf zählt nie
+  const goals = [["mrr", "Umsatz pro Monat (MRR)", "£/$/€", 1290, "hoch"], ["kunden", "Zahlende Kunden", "", 10, "hoch"], ["antwortquote", "Antwortquote", "%", 3, "hoch"],
+    ["lead_fehler", "Lead-Fehlerquote", "%", 2, "runter"], ["gruen_uk", "Grüne Leads/Woche UK", "", 1000, "hoch"], ["gruen_fr", "Grüne Leads/Woche FR", "", 1000, "hoch"]]
+    .map(([key, titel, einheit, soll, richtung], i) => ({ key, titel, einheit, soll, richtung, sort: i * 10, quelle: i ? "vorschlag" : "inhaber", updated_at: iso(600), updated_by: "Inhaber Dashboard" }));
+  const customers = [
+    { id: "c1", country: "UK", status: "active", notes: null, stripe_customer_id: "cus_x" },
+    { id: "c2", country: "US", status: "active", notes: null, stripe_customer_id: "cus_y" },
+    { id: "c3", country: "UK", status: "trial", notes: "Stripe-Testmodus", stripe_customer_id: "cus_t" },
+  ];
+  const subscriptions = [
+    { id: "s1", customer_id: "c1", status: "active", package: "starter", amount_cents: 12900, currency: "gbp", price_eur_month: null, started_on: day(40), cancelled_on: null },
+    { id: "s2", customer_id: "c2", status: "active", package: "pro", amount_cents: 24900, currency: "usd", price_eur_month: null, started_on: day(3), cancelled_on: null },
+    { id: "s3", customer_id: "c3", status: "active", package: "custom", amount_cents: 83300, currency: "gbp", price_eur_month: null, started_on: day(7), cancelled_on: null },
+  ];
+  const replies = [
+    { id: "00000000-0000-4000-8000-000000000001", received_at: iso(45), processed_at: iso(44), status: "offen", intent: "buy", summary_de: "Will Preise wissen",
+      prospects: { company_name: "Beispiel Studio Ltd", country: "UK", segment_id: "S2" } },
+    { id: "00000000-0000-4000-8000-000000000002", received_at: iso(300), processed_at: iso(299), status: "offen", intent: "question", summary_de: "Frage zur Quelle",
+      prospects: { company_name: "Muster Webdesign LLC mit sehr langem Firmennamen für den Test", country: "US", segment_id: "S2" } },
+    { id: "00000000-0000-4000-8000-000000000003", received_at: iso(2000), processed_at: iso(1999), status: "spaeter", intent: "sample", summary_de: "Probe gewünscht",
+      prospects: { company_name: "Agence Exemple SARL", country: "FR", segment_id: "S2" } },
+  ];
   const website = { at: iso(2), land_60m: 6, land_24h: 120, land_30d: 2400, tarif_60m: 1, tarif_24h: 20, tarif_30d: 380, tarif_views_30d: 420, co_60m: 0, co_24h: 2, co_30d: 18,
     views_60m: 9, cta_60m: 1, req_60m: 0, buy_60m: 0, views_24h: 160, cta_24h: 12, req_24h: 2, buy_24h: 0, views_30d: 3100, cta_30d: 210, req_30d: 26, buy_30d: 1, mail_views_30d: 700, mails_30d: 2700 };
   const expStats = C.map((c, i) => ({ segment_id: "S2", country: c, sent: 300 + i * 50, delivered: 0, bounced: 8, replies: 4 + i, positive: 1, samples: 1, customers: 0 }));
@@ -120,7 +142,7 @@ export function makeFixtures(nowMs = Date.now()) {
     },
     tables: {
       dashboard_cache: [{ name: "stock", value: stock, updated_at: iso(1) }, { name: "website", value: website, updated_at: iso(1) }],
-      kpi_daily: kpi, experiment_stats: expStats,
+      kpi_daily: kpi, experiment_stats: expStats, company_goals: goals, customers, subscriptions, inbound_replies: replies,
       agent_roles: roles,
       brain_routines: [routine("r-test", "A/B-Prüfung", "18:20"), routine("r-trichter", "KPI-Diagnose", "07:40"), routine("r-qual", "Qualität", "07:50"),
         routine("r-zust", "Zustellung", "06:30"), routine("r-quell", "Quellen", "12:10")],
