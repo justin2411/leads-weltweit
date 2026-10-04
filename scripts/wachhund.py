@@ -255,6 +255,10 @@ def refresh_dashboard_stock(db) -> None:
         db.rpc("dashboard_stock_refresh", {})
     except Exception as exc:  # noqa: BLE001 - darf den Wachhund nie aufhalten
         print(f"Dashboard-Bestand nicht aufgefrischt: {type(exc).__name__}: {str(exc)[:160]}")
+    try:  # Speicher-Ansicht (dashboard_storage braucht > 20 s – vorrechnen, damit die Seite sofort lädt)
+        db.rpc("dashboard_storage_refresh", {})
+    except Exception as exc:  # noqa: BLE001 - darf den Wachhund nie aufhalten
+        print(f"Speicher-Zahlen nicht aufgefrischt: {type(exc).__name__}: {str(exc)[:160]}")
     try:  # Website-Kennzahlen für die JARVIS-Linie „Website“ (Tagessummen + letzte Stunde/24 h/30 Tage)
         db.rpc("website_refresh", {})
     except Exception as exc:  # noqa: BLE001 - darf den Wachhund nie aufhalten (Migration evtl. noch nicht angewendet)
