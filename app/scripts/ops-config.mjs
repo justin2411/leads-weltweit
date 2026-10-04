@@ -65,6 +65,49 @@ export function parseCountries(text) {
   return out;
 }
 
+/** Rechts-Felder je Land aus countries.yaml (Recht-Seite /dashboard/recht, nur Anzeige): erlaubt, nie, nur allgemeine
+ *  Adressen, nur Kapitalgesellschaften, Tageslimit, offene Frage. Block- und Kurzform wie parseCountries. */
+export function parseCountryRules(text) {
+  const out = {};
+  if (!text) return out;
+  const body = text.split(/^countries:\s*$/m)[1] ?? "";
+  const flag = (s, k) => new RegExp(`${k}:\\s*true`).test(s);
+  const pick = (s, k) => s.match(new RegExp(`${k}:\\s*"([^"]*)"`))?.[1] ?? null;
+  const mk = (s) => ({ allowed: flag(s, "allowed"), never: flag(s, "never"), generic_only: flag(s, "generic_only"),
+    company_forms_only: flag(s, "company_forms_only"), daily_limit: Number(s.match(/daily_limit:\s*(\d+)/)?.[1] ?? 0) || null,
+    open_question: pick(s, "open_question") });
+  let cur = null, buf = "";
+  const flush = () => { if (cur) out[cur] = mk(buf); cur = null; buf = ""; };
+  for (const line of body.split("\n")) {
+    const inline = line.match(/^ {2}([A-Z]{2}):\s*\{(.*)\}/);
+    if (inline) { flush(); out[inline[1]] = mk(inline[2]); continue; }
+    const head = line.match(/^ {2}([A-Z]{2}):\s*$/);
+    if (head) { flush(); cur = head[1]; continue; }
+    if (cur && /^ {4}\S/.test(line)) buf += line + "\n";
+    else if (/^\S/.test(line)) flush();
+  }
+  flush();
+  return out;
+}
+
+const LAND_CODE = { USA: "US", Singapur: "SG", Hongkong: "HK", Brasilien: "BR", Mexiko: "MX", Frankreich: "FR", Australien: "AU",
+  Neuseeland: "NZ", Kanada: "CA", Japan: "JP", Israel: "IL", UK: "UK", Irland: "IE", Schweden: "SE", Finnland: "FI", Belgien: "BE",
+  Deutschland: "DE", Niederlande: "NL", "Österreich": "AT", Schweiz: "CH", Italien: "IT", Spanien: "ES", Polen: "PL", "Dänemark": "DK",
+  "Südafrika": "ZA" };
+
+/** Rechts-Tabelle aus docs/KALTMAIL-RECHT.md (Land, Einzelunternehmer, Firmen, Bedingung, Risiko). Markdown-Hervorhebung entfernt. */
+export function parseRechtTabelle(md) {
+  if (!md) return [];
+  const clean = (s) => s.replace(/\*\*/g, "").trim();
+  const rows = [];
+  for (const line of md.split("\n")) {
+    const c = line.split("|").slice(1, -1).map(clean);
+    if (c.length < 6 || !LAND_CODE[c[0]]) continue;
+    rows.push({ code: LAND_CODE[c[0]], name: c[0], einzel: c[1], firmen: c[2], bedingung: c[3], risiko: c[4] });
+  }
+  return rows;
+}
+
 /** Cron-Ausdrücke eines Workflows (nur aktive Zeilen, keine auskommentierten). */
 export function parseCrons(text) {
   if (!text) return [];
@@ -123,6 +166,7 @@ function build() {
       // „Braucht dich“: Signatur-Zeile mit Exklusivitätszusage (widerspricht docs/KALTMAIL-VORLAGE.md §2)
       signatur_exklusiv: SIGNATUR_FILES.filter((f) => SIGNATUR_RE.test(read(f) ?? "")),
     },
+    recht: { laender: parseCountryRules(read("countries.yaml")), tabelle: parseRechtTabelle(read("docs/KALTMAIL-RECHT.md")) },
     workflows: Object.entries(WORKFLOWS).map(([file, name]) => ({ file, name, crons: parseCrons(read(`.github/workflows/${file}`)) })),
   };
 }
