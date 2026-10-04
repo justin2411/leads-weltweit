@@ -124,3 +124,25 @@ export async function undoChange(logId: number): Promise<ApplyResult> {
     return fail(e);
   }
 }
+
+// ------------------------------------------------------------------------------------------- Autopilot-Abzeichen
+/**
+ * Autopilot der Plätze an/aus vom Abzeichen am Werk-Kreis in JARVIS (Inhaber 04.10.2026: „auto … einstellbar das ich
+ * es auch umschalten kann“). Gleicher Weg wie „Übernehmen“: Sitzung, validateValue, owner_settings + owner_log;
+ * festgesetzte Linien (locks) bleiben. Wirkt beim nächsten Start der Werke (Quittung in settings_ack).
+ */
+export async function setAutopilot(on: boolean): Promise<{ ok: true; on: boolean } | { ok: false; error: string }> {
+  await requireOwner();
+  try {
+    if (typeof on !== "boolean") throw new InputError("Autopilot: an/aus");
+    const { saved } = await loadSettingsStrict();
+    const cur = saved.slot_autopilot ?? { on: true, locks: {} };
+    if ((cur.on !== false) === on) return { ok: true, on };
+    const value = validateValue("slot_autopilot", { on, locks: cur.locks && typeof cur.locks === "object" ? cur.locks : {} }, reglerCtx(), saved);
+    await write({ slot_autopilot: value }, saved, new Date().toISOString(), "JARVIS");
+    revalidatePath("/dashboard", "layout");
+    return { ok: true, on };
+  } catch (e) {
+    return fail(e);
+  }
+}

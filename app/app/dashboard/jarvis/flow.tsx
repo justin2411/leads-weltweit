@@ -9,6 +9,7 @@ import { ASPECT, POS, VIEW, edgePath, flow, type Edge, type Station, type Statio
 import type { TipTask } from "@/lib/leitstand";
 import { WEB_INFO } from "@/lib/website-stats";
 import { DragBox } from "./dnd";
+import { AutoBadge } from "./auto-badge";
 import { Icon, type IconName } from "@/app/icons";
 
 const fmtRate = (n: number) => (n >= 1000 ? `${(n / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Tsd./h` : `${n.toLocaleString("de-DE")}/h`);
@@ -59,6 +60,10 @@ function Map({ layout, stations, edges, active, href }: { layout: "wide" | "tall
           </Link>
         );
       })}
+      {/* Autopilot-Abzeichen neben (nicht im) Kreis-Link: eigener Schalter, öffnet nie das Seitenfenster */}
+      {stations.filter((s) => s.auto !== undefined).map((s) => (
+        <AutoBadge key={`auto-${s.id}`} on={!!s.auto} x={POS[layout][s.id][0]} y={POS[layout][s.id][1]} label={s.label} />
+      ))}
     </div>
   );
 }
