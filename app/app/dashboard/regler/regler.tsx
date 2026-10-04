@@ -344,7 +344,7 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
 
       {toast && (
         <div className={`rg-toast${toast.ok ? "" : " bad"}`} role="status" aria-live="polite">
-          <header><b><Icon name={toast.ok ? toast.icon ?? "ok" : "fehler"} size={18} /><span>{toast.title}</span></b><button type="button" onClick={() => setToast(null)} aria-label="schließen"><Icon name="schliessen" size={16} /></button></header>
+          <header><b><Icon name={toast.ok ? toast.icon ?? "ok" : "fehler"} size={18} /><span>{toast.title}</span></b><button type="button" className="x-btn" onClick={() => setToast(null)} aria-label="schließen"><Icon name="schliessen" size={16} /></button></header>
           {toast.lines.length > 0 && <ul>{toast.lines.map((l, i) => <li key={i}>{l}</li>)}</ul>}
           {toast.note && <p>{toast.note}</p>}
         </div>

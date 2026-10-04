@@ -55,7 +55,7 @@ export function ChatApp({ now: nowIso, sessions, archived, selected, messages, m
         <div className="jc-side-h">
           <h2><Icon name="jarvis" size={16} /> Sitzungen</h2>
           <button type="button" className={`jc-new${mode === "neu" ? " on" : ""}`} onClick={newSession}><Icon name="neu" size={15} />Neu</button>
-          <button type="button" className="jc-ib jc-only-m" onClick={() => setDrawer(false)} aria-label="Sitzungen schließen"><Icon name="schliessen" size={16} /></button>
+          <button type="button" className="jc-ib x-btn jc-only-m" onClick={() => setDrawer(false)} aria-label="Sitzungen schließen"><Icon name="schliessen" size={16} /></button>
         </div>
         <ul className="jc-list">
           {sessions.map((s) => {
@@ -96,7 +96,7 @@ export function ChatApp({ now: nowIso, sessions, archived, selected, messages, m
             <form className="jc-rename" onSubmit={(e) => { e.preventDefault(); rename(String(new FormData(e.currentTarget).get("t") ?? "")); }}>
               <input name="t" defaultValue={selected.title} maxLength={80} autoFocus aria-label="Titel der Sitzung" />
               <button type="submit" disabled={busy} aria-label="Titel speichern"><Icon name="ok" size={15} /></button>
-              <button type="button" onClick={() => setRenaming(false)} aria-label="Abbrechen"><Icon name="schliessen" size={15} /></button>
+              <button type="button" className="x-btn" onClick={() => setRenaming(false)} aria-label="Abbrechen"><Icon name="schliessen" size={15} /></button>
             </form>
           ) : (
             <h1 title={title}>{selected?.kind === "bericht" ? <Icon name="statistik" size={18} /> : <Icon name="jarvis" size={18} />}<span>{title}</span></h1>

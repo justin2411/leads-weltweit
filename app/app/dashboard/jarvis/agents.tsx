@@ -81,7 +81,7 @@ export function AgentDrawer({ which, tasks, pre = {}, startAt }: { which: string
   if (which === "neu") {
     return (
       <aside className="drw" aria-label="Neuer Auftrag">
-        <header><span className="drw-ic" aria-hidden><Icon name="neu" size={20} /></span><h2>Neuer Auftrag</h2><Link href="/dashboard/jarvis" scroll={false} className="drw-x" aria-label="Schließen"><Icon name="schliessen" size={16} /></Link></header>
+        <header><span className="drw-ic" aria-hidden><Icon name="neu" size={20} /></span><h2>Neuer Auftrag</h2><Link href="/dashboard/jarvis" scroll={false} className="drw-x x-btn" aria-label="Schließen"><Icon name="schliessen" size={16} /></Link></header>
         <div className="drw-body"><NewTask agent={null} back={back} tasks={tasks} pre={pre} /><p className="lock"><Icon name="schloss" size={14} /> Agenten senden nie Mails, geben kein Geld aus und ändern keine Prüfregeln.</p></div>
       </aside>
     );
@@ -91,7 +91,7 @@ export function AgentDrawer({ which, tasks, pre = {}, startAt }: { which: string
   const cur = agentBoard(tasks)[n - 1]?.current ?? null;
   return (
     <aside className="drw" aria-label={`Agent ${n}`}>
-      <header><span className="drw-ic" aria-hidden>A{n}</span><h2>Agent {n}</h2><Link href="/dashboard/jarvis" scroll={false} className="drw-x" aria-label="Schließen"><Icon name="schliessen" size={16} /></Link></header>
+      <header><span className="drw-ic" aria-hidden>A{n}</span><h2>Agent {n}</h2><Link href="/dashboard/jarvis" scroll={false} className="drw-x x-btn" aria-label="Schließen"><Icon name="schliessen" size={16} /></Link></header>
       <div className="drw-body">
         {cur && (
           <div className={`agc st-${cur.status}`}>
