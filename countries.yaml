@@ -33,19 +33,20 @@ countries:
     notes: "PECR: B2B-Mails an 'corporate subscribers' (Ltd, LLP, PLC) ohne Einwilligung zulässig; Einzelunternehmer und Personengesellschaften brauchen Einwilligung. Inhaber 04.10.2026: Einzelunternehmer nein (PECR: sole trader = individual)."
     open_question: "Reicht bei Ltd-Firmen eine allgemeine Adresse aus, oder ist eine Interessenabwägung nach UK GDPR zu dokumentieren? Vom Inhaber bestätigen lassen."
   IE:
-    allowed: true
+    allowed: false
+    never: true
     language: en
     generic_only: true
     company_forms_only: true
     daily_limit: 30
-    notes: "S.I. 336/2011: B2B-Direktmarketing per Mail an Unternehmen mit Opt-out zulässig; Einzelpersonen brauchen Einwilligung."
+    notes: "Inhaber 04.10.2026: Risiko sehr hoch (Straftat pro Mail) → nie. S.I. 336/2011: B2B-Direktmarketing per Mail an Unternehmen mit Opt-out zulässig; Einzelpersonen brauchen Einwilligung."
   NL:
-    allowed: true
+    allowed: false
     language: en
     generic_only: true
     company_forms_only: true
     daily_limit: 30
-    notes: "Telecommunicatiewet 11.7: juristische Personen (B.V., N.V.) Opt-out; Einzelunternehmer (eenmanszaak, vof) brauchen Einwilligung."
+    notes: "Inhaber 04.10.2026 (Rechts-Tabelle nach Anwaltsberatung): keine Kaltmails – weder Einzelunternehmer noch B.V./N.V. ohne Einwilligung (Telecommunicatiewet 11.7, ACM-Bußgeld). Nur Anrufliste/Brief."
   SE:
     allowed: true
     language: en
@@ -54,12 +55,13 @@ countries:
     daily_limit: 20
     notes: "Marknadsföringslagen: Einwilligungspflicht nur für natürliche Personen; juristische Personen (AB) Opt-out."
   BE:
-    allowed: true
+    allowed: false
+    never: true
     language: en
     generic_only: true
     company_forms_only: true
     daily_limit: 15
-    notes: "KB 04.04.2003: Ausnahme für juristische Personen bei unpersönlichen Adressen (info@ ...)."
+    notes: "Inhaber 04.10.2026: Risiko mittel bis hoch → nie. KB 04.04.2003: Ausnahme für juristische Personen bei unpersönlichen Adressen (info@ ...)."
     open_question: "Sprache: Englisch oder Französisch/Niederländisch je Region? Vor Start klären."
   FR:
     allowed: true
@@ -77,6 +79,22 @@ countries:
   ES: { allowed: false, language: es, notes: "Keine Kaltmails." }
   PL: { allowed: false, language: pl, notes: "Keine Kaltmails." }
   DK: { allowed: false, language: da, notes: "Keine Kaltmails." }
+  ZA: { allowed: false, language: en, notes: "Inhaber-Tabelle 04.10.2026: keine Kaltmails (weder Einzelunternehmer noch Firmen)." }
+
+  # Noch nicht bearbeitete Länder aus der Rechts-Tabelle des Inhabers (04.10.2026, docs/KALTMAIL-RECHT.md).
+  # allowed bleibt false, bis der Quellen-Scout die zwei Tests (≥ 10 grüne Leads + Käufer im Land, Rechtsgrundlage)
+  # bestanden hat; nur Länder mit „Ja“ dürfen danach freigeschaltet werden, „bedingt“ nur mit dokumentierter Bedingung.
+  # Inhaber 04.10.2026: „bei sehr hoch oder hoch machen wir bitte nie etwas“ – never: true = nie freischalten.
+  FI: { allowed: false, language: en, company_forms_only: true, notes: "Tabelle: Firmen ja (Opt-out), Einzelunternehmer nein." }
+  SG: { allowed: false, language: en, notes: "Tabelle: ja (beide). Bedingung: „<ADV>“ am Betreffanfang, Opt-out." }
+  HK: { allowed: false, language: en, notes: "Tabelle: ja (beide). Bedingung: Absenderangabe, Opt-out." }
+  BR: { allowed: false, language: pt, notes: "Tabelle: eher ja (beide). Bedingung: berechtigtes Interesse dokumentieren (LGPD), Opt-out." }
+  MX: { allowed: false, language: es, notes: "Tabelle: eher ja (beide). Bedingung: Opt-out, Absenderangaben." }
+  AU: { allowed: false, never: true, language: en, notes: "Tabelle: bedingt – nur an öffentlich (berufsbezogen) veröffentlichte Adressen ohne Werbeverbot; Spam Act, ACMA aktiv, hohes Risiko." }
+  NZ: { allowed: false, language: en, notes: "Tabelle: bedingt wie AU (veröffentlichte Adresse, berufsbezogen)." }
+  CA: { allowed: false, never: true, language: en, notes: "Tabelle: bedingt wie AU (CASL: veröffentlichte Adresse, kein Hinweis gegen Werbung, berufsbezogen; sauber dokumentieren). Sehr hohes Risiko (bis 10 Mio. CAD)." }
+  JP: { allowed: false, language: ja, notes: "Tabelle: bedingt – nur geschäftlich veröffentlichte Adressen." }
+  IL: { allowed: false, never: true, language: en, notes: "Tabelle: nur eine einmalige Anfrage, ob Werbung gewünscht ist – keine Kaltmail mit Angebot. Hohes Risiko (Pauschalschadensersatz pro Mail)." }
 
 # Allgemeine Postfächer, die bei generic_only erlaubt sind (lokaler Teil vor dem @).
 generic_local_parts:
