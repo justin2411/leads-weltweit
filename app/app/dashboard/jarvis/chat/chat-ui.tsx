@@ -6,7 +6,7 @@
  */
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, useTransition, type KeyboardEvent, type ReactNode } from "react";
 import { BODY_MAX, LEGACY_ID, chatTime, hasNew, nextRunAt, sessionState, statusText, type ChatMessage, type ChatSession } from "@/lib/jarvis-chat";
 import { Icon } from "@/app/icons";
 import { sendToJarvis, modelLabel } from "@/lib/jarvis-send";
@@ -132,12 +132,35 @@ export function ChatApp({ now: nowIso, sessions, archived, selected, messages, m
 }
 
 /** Verlauf: Inhaber rechts, JARVIS links; Zeiten in deutscher Zeit; Status unter jeder eigenen Nachricht. */
-export function Thread({ messages, now, empty, compact = false }: { messages: ChatMessage[]; now: Date; empty: ReactNode; compact?: boolean }) {
+/**
+ * Gerade gesendete Nachricht je Chat (Inhaber 04.10.2026: „fixe es das ich einen flüssigen chat mit ihm haben kann“):
+ * der Composer meldet sie, der Verlauf zeigt sie unten an – mit „JARVIS denkt …“ – statt in einem zweiten Kasten über
+ * der Eingabe. Sobald eine neue Nachricht im Verlauf steht (letzte ID anders), verschwindet der Platzhalter.
+ */
+type Pend = { text: string; think: string; base: string | null } | null;
+const pendStore = new Map<string, Pend>();
+const pendSubs = new Set<() => void>();
+function setPend(key: string, p: Pend) { pendStore.set(key, p); pendSubs.forEach((f) => f()); }
+function usePend(key: string): Pend {
+  return useSyncExternalStore(
+    (f) => { pendSubs.add(f); return () => { pendSubs.delete(f); }; },
+    () => pendStore.get(key) ?? null,
+    () => null,
+  );
+}
+
+export function Thread({ messages, now, empty, compact = false, chatKey = "chat" }: { messages: ChatMessage[]; now: Date; empty: ReactNode; compact?: boolean; chatKey?: string }) {
   const box = useRef<HTMLOListElement>(null);
   const n = messages.length;
+  const pend = usePend(chatKey);
+  const last = messages.at(-1)?.id ?? null;
+  lastId.set(chatKey, last);
+  // neue Nachricht ist da → Platzhalter weg
+  useEffect(() => { if (pend && last !== pend.base) setPend(chatKey, null); }, [last, pend, chatKey]);
+  const shown = pend && last === pend.base ? pend : null;
   // nur im Verlauf selbst nach unten scrollen – nie die ganze Seite
-  useEffect(() => { const el = box.current; if (el) el.scrollTop = el.scrollHeight; }, [n]);
-  if (!n) return <p className="jc-empty">{empty}</p>;
+  useEffect(() => { const el = box.current; if (el) el.scrollTop = el.scrollHeight; }, [n, shown]);
+  if (!n && !shown) return <p className="jc-empty">{empty}</p>;
   return (
     <ol ref={box} className={`jc-log${compact ? " cmp" : ""}`} aria-live="polite">
       {messages.map((m) => {
@@ -160,14 +183,20 @@ export function Thread({ messages, now, empty, compact = false }: { messages: Ch
           </li>
         );
       })}
+      {shown && <>
+        <li className="me"><div className="b"><p>{shown.text}</p></div></li>
+        <li className="bot"><div className="b"><b className="who">JARVIS</b><p className="jc-think">{shown.think}</p></div></li>
+      </>}
     </ol>
   );
 }
+/** letzte Nachricht je Chat beim letzten Rendern (Basis für den Platzhalter) */
+const lastId = new Map<string, string | null>();
 
 /** Eingabe: Enter sendet, Shift+Enter neue Zeile. Ohne Sitzung entsteht beim Senden eine neue (Titel aus dem Text).
  *  Sofort-Antwort über /api/jarvis/ask (lib/jarvis-send.ts): während des Wartens „JARVIS denkt …“, danach lädt der
  *  Verlauf neu. Ohne Schlüssel/bei erreichter Grenze bleibt die Nachricht offen und die Routine antwortet (Hinweis). */
-export function Composer({ sessionId, now, onError, send, placeholder, instant = true, onDone }: {
+export function Composer({ sessionId, now, onError, send, placeholder, instant = true, onDone, chatKey = "chat" }: {
   sessionId: string | null; now: Date; onError: (e: string | null) => void;
   /** eigener Versand (Baukasten-Chat, Mini-Chats); ohne = JARVIS-Chat-Seite */
   send?: (text: string) => Promise<{ ok: true; hint?: string | null } | { ok: false; error: string }>; placeholder?: string;
@@ -175,53 +204,51 @@ export function Composer({ sessionId, now, onError, send, placeholder, instant =
   instant?: boolean;
   /** nach erfolgreichem Senden (eigener Versand) */
   onDone?: () => void;
+  /** derselbe Schlüssel wie beim zugehörigen Thread (mehrere Chats auf einer Seite) */
+  chatKey?: string;
 }) {
   const router = useRouter();
   const [text, setText] = useState("");
-  const [pending, setPending] = useState<string | null>(null);
   const [hint, setHint] = useState<string | null>(null);
   const [busy, start] = useTransition();
   const submit = () => {
     const t = text.trim();
     if (!t || busy) return;
-    setPending(t);
+    // sofort im Verlauf zeigen, Eingabe leeren; bei Fehler kommt der Text zurück
+    setPend(chatKey, { text: t, think: instant ? "JARVIS denkt …" : "wird gespeichert …", base: lastId.get(chatKey) ?? null });
+    setText("");
     setHint(null);
+    const fail = (e: string) => { setPend(chatKey, null); setText(t); onError(e); };
     start(async () => {
       try {
         if (send) {
           const r = await send(t);
-          if (!r.ok) { onError(r.error); return; }
+          if (!r.ok) { fail(r.error); return; }
           onError(null);
-          setText("");
           setHint(r.hint ?? null);
           onDone?.();
           return;
         }
         const r = await sendToJarvis({ sessionId, text: t });
-        if (!r.ok) { onError(r.error); return; }
+        if (!r.ok) { fail(r.error); return; }
         onError(null);
-        setText("");
         setHint(r.fallback?.hint ?? null);
         if (r.sessionId !== sessionId) router.push(`/dashboard/jarvis/chat?s=${r.sessionId}`);
         else router.refresh();
-      } finally {
-        setPending(null);
+      } catch {
+        fail("Senden fehlgeschlagen – bitte nochmal.");
       }
     });
+    // Sicherheitsnetz: Platzhalter nie länger als 90 s
+    setTimeout(() => { if (pendStore.get(chatKey)?.text === t) setPend(chatKey, null); }, 90_000);
   };
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit(); }
   };
   return (
     <form className="jc-comp" onSubmit={(e) => { e.preventDefault(); submit(); }}>
-      {pending && (
-        <ol className="jc-log jc-pend" aria-live="polite">
-          <li className="me"><div className="b"><p>{pending}</p></div></li>
-          <li className="bot"><div className="b"><b className="who">JARVIS</b><p className="jc-think">{instant ? "JARVIS denkt …" : "wird gespeichert …"}</p></div></li>
-        </ol>
-      )}
       {hint && <p className="jc-hint2" role="status"><Icon name="uhr" size={13} />{hint}</p>}
-      <textarea value={text} onChange={(e) => setText(e.target.value)} onKeyDown={onKey} rows={2} maxLength={BODY_MAX} disabled={busy}
+      <textarea value={text} onChange={(e) => setText(e.target.value)} onKeyDown={onKey} rows={2} maxLength={BODY_MAX}
         aria-label="Nachricht an JARVIS" placeholder={placeholder ?? "Nachricht an JARVIS … (Enter sendet, Shift+Enter neue Zeile)"} />
       <button type="submit" className="go" disabled={busy || !text.trim()} aria-label="Senden"><Icon name="weiter" size={17} /><span>Senden</span></button>
       <small className="jc-hint"><Icon name={instant ? "jarvis" : "uhr"} size={12} />{instant ? "Antwort sofort · einfache Fragen Haiku, Systemzugriff Opus" : `Sofort-Antwort aus – Schlüssel fehlt, Routine antwortet um ${nextRunAt(now)}`}</small>
