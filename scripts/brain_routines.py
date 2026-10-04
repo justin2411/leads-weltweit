@@ -7,7 +7,8 @@ deutscher Zeit, Tage, Dauer 5–60 min). Ausgeführt wird ohne Extrakosten über
 
   1. Ergebnisse fertiger Aufträge kurz nach brain_routines.last_result übernehmen,
   2. fällige, aktive Routinen als Auftrag in agent_tasks anlegen (kind 'gehirn', erster freier Agent A1–A8,
-     created_by „Gehirn-Routine“) – die JARVIS-Runde (:08/:23/:38/:53, docs/AGENTEN.md) arbeitet ihn ab, schreibt das
+     created_by „Gehirn-Routine“; Routine eines Fach-Agenten (agent_roles.routine_id): Text aus agent_roles.auftrag,
+     agent_tasks.rolle gesetzt – JARVIS „Team“) – die JARVIS-Runde (:08/:23/:38/:53, docs/AGENTEN.md) arbeitet ihn ab, schreibt das
      Ergebnis als Wissen (scripts/brain_knowledge.py add) und kurz in den Gehirn-Chat (jarvis_chat.py gehirn-update).
 
 Fällig (gleiche Regel wie app/lib/brain-routines.ts dueAt): aktiv, kein offener/laufender Auftrag dieser Routine, der
@@ -115,6 +116,27 @@ def brief(r: dict) -> str:
     return f"{head}{task[:1000 - len(head) - len(tail)]}{tail}"
 
 
+def role_brief(role: dict, dauer: int = 15, zusatz: str | None = None) -> str:
+    """Auftragstext eines Fach-Agenten (≤ 1000 Zeichen), gleich app/lib/fach-agenten.ts roleBrief."""
+    name = " ".join(str(role.get("name") or "").split())[:40]
+    head = f"Fach-Agent {name} ({int(dauer or 15)} min): "
+    tail = " | Ergebnis als Wissen (brain_knowledge.py add), kurz ins Gehirn (jarvis_chat.py gehirn-update)."
+    z = " ".join(str(zusatz or "").split())
+    body = " ".join(str(role.get("auftrag") or "").split())
+    if z and not z.startswith(" ".join(str(role.get("name") or "").split())):
+        body += f" Routine: {z}"
+    return f"{head}{body[:1000 - len(head) - len(tail)]}{tail}"
+
+
+def roles_by_routine(db) -> dict[str, dict]:
+    """Fach-Agenten (agent_roles) je verknüpfter Routine; fehlt die Tabelle → leer (Routinen laufen wie bisher)."""
+    try:
+        rows = db.select("agent_roles", {"aktiv": "eq.true", "select": "slug,name,auftrag,routine_id"}) or []
+    except Exception:  # noqa: BLE001
+        return {}
+    return {str(r["routine_id"]): r for r in rows if r.get("routine_id")}
+
+
 def short_result(task: dict) -> str:
     text = " ".join(str(task.get("result") or "").split())
     if task.get("status") == "abgebrochen":
@@ -150,16 +172,21 @@ def faellig(db, t: dt.datetime, apply: bool) -> dict:
     if not todo:
         return out
     free = free_agents(db.select("agent_tasks", {"status": f"in.({','.join(OPEN)})", "select": "agent"}) or [])
+    roles = roles_by_routine(db)
     for r in todo:  # 2) fällige beauftragen
         if not free or len(out["neu"]) >= MAX_NEW:
             out["wartet"].append(r["name"])
             continue
         n = free.pop(0)
-        out["neu"].append({"routine": r["name"], "an": f"A{n}", "text": brief(r)})
+        role = roles.get(str(r["id"]))
+        text = role_brief(role, int(r.get("dauer_min") or 15), r.get("aufgabe")) if role else brief(r)
+        out["neu"].append({"routine": r["name"], "an": f"A{n}", "text": text, **({"rolle": role["slug"]} if role else {})})
         if not apply:
             continue
-        row = (db.insert("agent_tasks", {"agent": n, "kind": "gehirn", "market": None, "brief": brief(r),
-                                         "created_by": BY}) or [{}])[0]
+        task = {"agent": n, "kind": "gehirn", "market": None, "brief": text, "created_by": BY}
+        if role:
+            task["rolle"] = role["slug"]
+        row = (db.insert("agent_tasks", task) or [{}])[0]
         db.update("brain_routines", {"id": r["id"]}, {"last_run_at": t.isoformat(), "last_task_id": row.get("id")})
     return out
 

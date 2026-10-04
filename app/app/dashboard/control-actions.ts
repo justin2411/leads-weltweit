@@ -492,3 +492,33 @@ export async function cancelAgentTask(f: FormData) {
     await log("agent:cancel", id, null, null);
   });
 }
+
+/**
+ * Fach-Agent jetzt beauftragen (JARVIS „Team“, Inhaber 04.10.2026): Auftrag (kind 'gehirn', rolle = Fach-Agent) an den
+ * ersten freien Agenten A1–A8; Text aus agent_roles.auftrag (+ Routine). Höchstens ein offener Auftrag je Fach-Agent.
+ */
+export async function assignRole(f: FormData) {
+  const { agentStartLabel, freeAgent } = await import("@/lib/agents");
+  await run(f, () => `Beauftragt – startet um ${agentStartLabel(new Date())}`, async () => {
+    const slug = String(f.get("rolle") ?? "");
+    if (!/^[a-z][a-z_]{1,30}$/.test(slug)) throw new InputError("Fach-Agent unbekannt");
+    const { data: role } = await db().from("agent_roles").select("*").eq("slug", slug).maybeSingle();
+    if (!role || role.aktiv === false) throw new InputError("Fach-Agent unbekannt");
+    const { data: open } = await db().from("agent_tasks").select("id").eq("rolle", slug).in("status", ["offen", "laeuft"]).limit(1);
+    if (open?.length) throw new InputError("läuft schon");
+    const { loadAgentTasks } = await import("@/lib/dashboard-data");
+    const { roleBrief, toRolle } = await import("@/lib/fach-agenten");
+    let zusatz: string | null = null, dauer = 15;
+    if (role.routine_id) {
+      const { data: r } = await db().from("brain_routines").select("aufgabe, dauer_min").eq("id", role.routine_id).maybeSingle();
+      zusatz = r?.aufgabe ?? null;
+      dauer = Number(r?.dauer_min) || 15;
+    }
+    const agent = freeAgent(await loadAgentTasks());
+    const row = { agent, kind: "gehirn", market: null, brief: roleBrief(toRolle(role), dauer, zusatz), rolle: slug,
+      grund: `Inhaber: ${String(role.name)} jetzt`.slice(0, 160), created_by: BY };
+    const { error } = await db().from("agent_tasks").insert(row);
+    if (error) throw new Error(error.message);
+    await log("agent:rolle", slug, null, { agent });
+  });
+}
