@@ -1052,11 +1052,11 @@ def frweb_rows(db, limit: int) -> list[dict]:
     bestanden haben, aber auf die Webdesign-Prüfung warten (PENDING)."""
     sel = "id,segment_id,country,company_name,website,domain,email,legal_form,source_url,size_note,published_address,check_status,check_reason"
     base = {"select": sel, "segment_id": "eq.S2", "country": "eq.FR", "order": "id.asc"}
-    rows = db.select("prospects", {**base, "check_status": "eq.ok", "limit": str(limit),
-                                   "or": f"(check_reason.is.null,check_reason.not.like.*{fr_webfit.MARK}*)"})
-    if len(rows) < limit:
-        rows += db.select("prospects", {**base, "check_status": "in.(call_only,rejected)", "email": "not.is.null",
-                                        "check_reason": f"like.*{fr_webfit.PENDING}*", "limit": str(limit - len(rows))})
+    rows = db.select_all("prospects", {**base, "check_status": "eq.ok",
+                                       "or": f"(check_reason.is.null,check_reason.not.like.*{fr_webfit.MARK}*)"})[:limit]
+    if len(rows) < limit:  # select_all blättert (PostgREST liefert höchstens 1000 je Abfrage)
+        rows += db.select_all("prospects", {**base, "check_status": "in.(call_only,rejected)", "email": "not.is.null",
+                                            "check_reason": f"like.*{fr_webfit.PENDING}*"})[:limit - len(rows)]
     return rows
 
 
