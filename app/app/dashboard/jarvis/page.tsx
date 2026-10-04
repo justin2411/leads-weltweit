@@ -143,7 +143,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   };
   const stations: Station[] = ([
     { id: "lead", label: "Lead-Werk", icon: "lead-werk", value: stockAll ? compact(leads24) : "…", sub: werkLine({ running: leadRun, planned: leadPlanned, paused: leadPaused }), state: state("lead-werk", "lead-werk", 4), tip: werkTip("neue Leads in 24 h", { running: leadRun, planned: leadPlanned, paused: leadPaused }), auto: autopilotOn },
-    { id: "gate", label: "Freigabe", icon: "freigabe", value: gatePct === null ? "–" : `${gatePct}`, unit: gatePct === null ? "" : "%", sub: `${compact(gateOk)} frei/h`, state: act.last_gate_at && t - Date.parse(act.last_gate_at) < 15 * 60_000 ? "live" : "idle", tip: "Stichprobe bestanden · letzte Stunde freigegeben" },
+    { id: "gate", label: "Freigabe", icon: "freigabe", value: gatePct === null ? "–" : `${gatePct}`, unit: gatePct === null ? "" : "%", sub: gateOk + gateBad > 0 ? `${compact(gateOk + gateBad)} geprüft/h` : "prüft vor Probe", state: act.last_gate_at && t - Date.parse(act.last_gate_at) < 15 * 60_000 ? "live" : "idle", tip: "Stichprobe bestanden (7 Tage) · jeder Lead wird vor Probe und Lieferung einzeln geprüft" },
     { id: "bestand", label: "Bestand", icon: "bestand", value: stock ? compact(Object.values(leadsNew).reduce((a, b) => a + b, 0)) : "…", sub: stock ? "Leads" : "lädt", state: "idle", tip: "lieferbare Leads US/UK/FR" },
     { id: "proben", label: "Proben", icon: "proben", value: `${ready}/${target}`, sub: "bereit", state: state("proben-vorrat", "proben-vorrat", 26), tip: "fertige, geprüfte Proben / Soll" },
     { id: "kwerk", label: "Kunden-Werk", icon: "kunden-werk", value: stockAll ? compact(newBuyers24) : "…", sub: "neu 24 h", state: state("kunden-werk", "kunden-werk", 5), tip: "neue mail-fähige Webagenturen in 24 h", auto: autopilotOn },
@@ -155,7 +155,9 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   ] as Station[]).map((x) => ({ ...x, neck: x.id === neck || x.id === wNeck }));
   const edges: Edge[] = [
     { from: "lead", to: "gate", perHour: act.leads_60m, label: "neue Leads" },
-    { from: "gate", to: "bestand", perHour: gateOk, label: "freigegeben" },
+    // grüne Leads gehen direkt in den Bestand; die Drei-Stufen-Freigabe prüft jeden Lead erst vor Probe/Lieferung
+    // (Inhaber 04.10.2026: „warum läuft nichts von freigabe zu bestand?“ – vorher stand hier die Prüf-Rate, bei vollem Vorrat 0)
+    { from: "gate", to: "bestand", perHour: act.leads_60m, label: "in den Bestand" },
     { from: "bestand", to: "proben", perHour: act.stock_built_60m, label: "Proben gebaut" },
     { from: "proben", to: "kunden", perHour: act.stock_sent_60m, label: "Proben raus" },
     { from: "kwerk", to: "kaeufer", perHour: act.buyers_ok_60m, label: "Käufer geprüft" },
