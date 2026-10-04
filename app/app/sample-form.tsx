@@ -11,7 +11,7 @@ import { Icon } from "@/app/icons";
  */
 export type FormOption = { value: string; label: string; wishes: { key: string; label: string }[] };
 /** Startseite (Inhaber 03.10.2026): Branche und Lieferland getrennt. pages: Land -> Seiten-Slug dieser Branche. */
-export type IndustryOption = FormOption & { pages: Record<string, string> };
+export type IndustryOption = FormOption & { pages: Record<string, string>; ready?: string[] };
 type Lang = "en" | "fr" | "de";
 
 const TX: Record<Lang, Record<string, string>> = {
@@ -21,6 +21,7 @@ const TX: Record<Lang, Record<string, string>> = {
     industry: "Your industry and country", ind: "Your industry", cty: "Delivery country", choose: "Please choose", privacy: "Privacy policy",
     send: "Send me 10 free leads", sending: "Sending…", fine1: "Free", fine2: "No obligation",
     done: "Done. Your 10 leads are being prepared, we'll email them to", doneShort: "Done. Your 10 leads are being prepared.",
+    wait: "Thank you. We don't have 10 verified leads for this industry and country yet. Your request is saved and we'll email you as soon as they are ready:",
     e_company: "Please enter your company name.", e_email: "Please enter a valid email address.",
     e_consent: "Please tick the consent box.", e_server: "Something went wrong. Please try again in a minute.",
     e_page: "Please choose your industry.", e_country: "Please choose the delivery country.",
@@ -31,6 +32,7 @@ const TX: Record<Lang, Record<string, string>> = {
     industry: "Votre secteur et pays", ind: "Votre secteur", cty: "Pays de livraison", choose: "Veuillez choisir", privacy: "Confidentialité",
     send: "Recevoir 10 pistes gratuites", sending: "Envoi…", fine1: "Gratuit", fine2: "Sans engagement",
     done: "C'est fait. Vos 10 pistes sont en préparation, nous les envoyons à", doneShort: "C'est fait. Vos 10 pistes sont en préparation.",
+    wait: "Merci. Nous n'avons pas encore 10 pistes vérifiées pour ce secteur et ce pays. Votre demande est enregistrée, nous vous écrivons dès qu'elles sont prêtes :",
     e_company: "Merci d'indiquer le nom de votre entreprise.", e_email: "Merci d'indiquer une adresse e-mail valide.",
     e_consent: "Merci de cocher la case de consentement.", e_server: "Une erreur s'est produite. Merci de réessayer dans une minute.",
     e_page: "Merci de choisir votre secteur.", e_country: "Merci de choisir le pays de livraison.",
@@ -41,6 +43,7 @@ const TX: Record<Lang, Record<string, string>> = {
     industry: "Ihre Branche und Land", ind: "Ihre Branche", cty: "Lieferland", choose: "Bitte wählen", privacy: "Datenschutz",
     send: "10 kostenlose Leads anfordern", sending: "Wird gesendet…", fine1: "Kostenlos", fine2: "Unverbindlich",
     done: "Erledigt. Ihre 10 Leads werden vorbereitet, wir schicken sie an", doneShort: "Erledigt. Ihre 10 Leads werden vorbereitet.",
+    wait: "Danke. Für diese Branche und dieses Land haben wir noch keine 10 geprüften Leads. Ihre Anfrage ist gespeichert, wir melden uns, sobald sie bereitstehen:",
     e_company: "Bitte den Firmennamen angeben.", e_email: "Bitte eine gültige E-Mail-Adresse angeben.",
     e_consent: "Bitte die Einwilligung ankreuzen.", e_server: "Etwas ist schiefgelaufen. Bitte in einer Minute erneut versuchen.",
     e_page: "Bitte die Branche wählen.", e_country: "Bitte das Lieferland wählen.",
@@ -62,7 +65,7 @@ export function SampleForm({ lang, options, field, consent, privacyHref, hidden 
   const T = TX[lang];
   const [page, setPage] = useState(options.length === 1 ? options[0].value : "");
   const [picked, setPicked] = useState<string[]>([]);
-  const [state, setState] = useState<"idle" | "busy" | "done">("idle");
+  const [state, setState] = useState<"idle" | "busy" | "done" | "wait">("idle");
   const [err, setErr] = useState("");
   const [sentTo, setSentTo] = useState("");
   const [cc, setCc] = useState(defCountry);
@@ -88,11 +91,21 @@ export function SampleForm({ lang, options, field, consent, privacyHref, hidden 
     try {
       const r = await fetch("/api/sample-request", { method: "POST", body: fd, headers: { Accept: "application/json" }, credentials: "same-origin" });
       const j = await r.json().catch(() => ({ ok: false, error: "server" }));
-      if (j.ok) { setSentTo(mail); setState("done"); return; }
+      // Noch nicht lieferbar (Prüfung 04.10.2026): ehrlich sagen statt „wird vorbereitet“
+      if (j.ok) { setSentTo(mail); setState(j.waitlist ? "wait" : "done"); return; }
       setErr(T[`e_${j.error}`] ?? T.e_server); setState("idle");
     } catch {
       setErr(T.e_server); setState("idle");
     }
+  }
+
+  if (state === "wait") {
+    return (
+      <div className="pf pf-done" id={id} role="status" aria-live="polite">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 7v5l3 2" /></svg>
+        <p>{T.wait} <b>{sentTo}</b>.</p>
+      </div>
+    );
   }
 
   if (state === "done") {
@@ -112,7 +125,12 @@ export function SampleForm({ lang, options, field, consent, privacyHref, hidden 
         <input type="hidden" name="slug" value={slug} />
         <div className="pf-row">
           <label className="pf-field"><span>{T.ind}</span>
-            <select value={page} required onChange={(e) => { setPage(e.target.value); setPicked([]); }}>
+            <select value={page} required onChange={(e) => {
+              const next = industries!.find((o) => o.value === e.target.value);
+              setPage(e.target.value); setPicked([]);
+              // Land ohne fertige Probe für die neue Branche: Auswahl zurücksetzen (bzw. einziges Land vorwählen)
+              if (next?.ready && !next.ready.includes(cc)) setCc(next.ready.length === 1 ? next.ready[0] : "");
+            }}>
               <option value="" disabled>{T.choose}</option>
               {industries!.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
@@ -120,7 +138,8 @@ export function SampleForm({ lang, options, field, consent, privacyHref, hidden 
           <label className="pf-field"><span>{T.cty}</span>
             <select name="country" value={cc} required onChange={(e) => setCc(e.target.value)}>
               <option value="" disabled>{T.choose}</option>
-              {countries!.map((o) => <option key={o.code} value={o.code}>{o.label}</option>)}
+              {countries!.filter((o) => !ind?.ready || ind.ready.includes(o.code))
+                .map((o) => <option key={o.code} value={o.code}>{o.label}</option>)}
             </select>
           </label>
         </div>

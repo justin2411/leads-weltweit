@@ -29,8 +29,8 @@ function back(slug: string, q: string, preview = "") {
 export async function POST(req: Request) {
   const f = await req.formData();
   const json = (req.headers.get("accept") ?? "").includes("application/json");
-  const answer = (ok: boolean, error: string, slug: string, pv: string) =>
-    json ? Response.json(ok ? { ok: true } : { ok: false, error }, { status: ok ? 200 : 400 })
+  const answer = (ok: boolean, error: string, slug: string, pv: string, waitlist = false) =>
+    json ? Response.json(ok ? { ok: true, ...(waitlist ? { waitlist: true } : {}) } : { ok: false, error }, { status: ok ? 200 : 400 })
       : back(slug, ok ? "angefragt=1" : "fehler=1", pv);
 
   const variantId = String(f.get("variant_id") ?? "");
@@ -85,17 +85,22 @@ export async function POST(req: Request) {
   }
 
   const { data: suppressed } = await db().rpc("is_suppressed", { p_email: email });
+  // Lieferbar? (Prüfung 04.10.2026: Startseite bot z. B. Deutschland an, ohne dass es Leads gab – die Seite sagte
+  // trotzdem „wird vorbereitet“.) Nicht lieferbar = Warteliste: Anfrage bleibt offen (web_samples.py sendet, sobald
+  // 10 Leads da sind), ehrliche Meldung auf der Seite, keine „wird vorbereitet“-Mail.
+  const available = test || (await canServe(page.segment_id, country));
   // Wortlaut in der Sprache, in der das Formular angezeigt wurde (Startseite auch Deutsch)
   const formLang = ["en", "fr", "de"].includes(String(f.get("lang"))) ? String(f.get("lang")) : page.language;
   const consent = consentText(formLang);
   // Inhaber-Vorschau (TEST): nie als offene Anfrage speichern (web_samples.py würde sonst dem echten Empfänger
   // aus dem Mail-Link eine Probe schicken) und nie den echten Empfänger anschreiben.
   // Wunsch immer zuletzt ("wunsch:signals=…;text=…"), damit der Freitext nichts anderes überdeckt.
-  const note = [suppressed ? "Adresse/Domain gesperrt – keine Mail" : "", test ? "TEST (Inhaber-Vorschau)" : "", wish]
+  const note = [suppressed ? "Adresse/Domain gesperrt – keine Mail" : "", test ? "TEST (Inhaber-Vorschau)" : "",
+    available || test ? "" : "Warteliste: noch nicht lieferbar", wish]
     .filter(Boolean).join("; ") || null;
   // Sofortversand (Inhaber 03.10.2026): nur, wenn web_samples.py die Anfrage auch beantworten würde – also nicht,
   // wenn diese Adresse schon eine Probe bekam (dann entscheidet wie bisher die Warteschlange: „doppelt“).
-  const instant = !suppressed && !test && !(await hadSample(email));
+  const instant = available && !suppressed && !test && !(await hadSample(email));
   // Testprobe des Inhabers (Vorschau, eigene Adresse oder angemeldet): läuft normal, zählt aber nicht als echte
   // Probe in den Kennzahlen (Prüfung 04.10.2026). is_test nur mitsenden, wenn gesetzt – so bleiben Anfragen von
   // Kunden unberührt, falls die Spalte (Migration 20261004090200) noch fehlt.
@@ -115,8 +120,8 @@ export async function POST(req: Request) {
   if (!test && ownPage) await recordEvent(v.id, "sample_request");
   // Sofort-Alarm aufs Handy (Web-Push, feuern und vergessen; ändert nichts am Ablauf der Anfrage)
   // Nur feste Bezeichnungen (keine Formulareingaben wie den Firmennamen) – Details stehen im Dashboard
-  if (!test && !suppressed) after(() => pushAlarmSafe("Probe angefragt", `${page.segment_id}/${country}`,
-                                                      "/dashboard/proben", "sample"));
+  if (!test && !suppressed) after(() => pushAlarmSafe(available ? "Probe angefragt" : "Probe angefragt – nicht lieferbar",
+                                                      `${page.segment_id}/${country}`, "/dashboard/proben", "sample"));
 
   const m = confirmationMail((ownPage ? page.language : formLang) === "fr" ? "fr" : "en", country, consent);
   const keys = wishKeys(segKey(page.slug), f.getAll("signals").map(String));
@@ -136,10 +141,26 @@ export async function POST(req: Request) {
   } else if (instant) {
     after(() => deliverNow({ id: row.id, email, company, segment: page.segment_id, country, wish: keys, wishText, m,
                              clicked }));
-  } else if (!suppressed) {
+  } else if (!suppressed && available) {
     await sendConsentMail(email, m.subject, m.text, m.html).catch(() => null); // Anfrage ist gespeichert; Bestätigung ist optional
   }
-  return answer(true, "", page.slug, pv);
+  return answer(true, "", page.slug, pv, !available && !suppressed);
+}
+
+/** Gibt es für Zielgruppe+Land eine fertige Probe im Vorrat oder mindestens 10 freie Leads? Bei Fehlern: ja
+ *  (lieber wie bisher behandeln als eine lieferbare Anfrage auf die Warteliste setzen). */
+async function canServe(segment: string, country: string): Promise<boolean> {
+  try {
+    const { data: stock } = await db().from("sample_stock").select("id").eq("segment_id", segment).eq("country", country)
+      .eq("status", "ready").limit(1).abortSignal(AbortSignal.timeout(3000));
+    if (stock?.length) return true;
+    const { data: leads, error } = await db().from("leads").select("id").eq("segment_id", segment).eq("country", country)
+      .eq("status", "new").limit(10).abortSignal(AbortSignal.timeout(3000));
+    if (error) return true;
+    return (leads?.length ?? 0) >= 10;
+  } catch {
+    return true;
+  }
 }
 
 function stockDeps(): StockDeps {
