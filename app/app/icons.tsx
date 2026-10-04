@@ -7,7 +7,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Archive, ArrowDown, ArrowRight, ArrowUpWideNarrow, Ban, Bell, Blocks, Bot, Cable, ChartColumn, Check, ChevronDown, ChevronRight,
-  ChevronUp, CircleAlert, CircleCheck, CircleX, ClipboardCheck, Clock, Contact, CopyX, Database, Delete, Download, Ellipsis,
+  ChevronUp, CircleAlert, CircleCheck, CircleX, ClipboardCheck, Clock, Contact, Copy, CopyX, Database, Delete, Download, Ellipsis,
   Factory, Filter, Flag, Forward, Gift, Globe, GripVertical, HardDrive, Hourglass, House, Info, Lock, Magnet, Mail, MailX,
   Menu, MessageSquare, Minus, MousePointerClick, Move, Package, Pause, Phone, Pickaxe, Play, Plus, Radar, RefreshCw, Repeat,
   Reply, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Split, Square, Star, Target, TrendingDown,
@@ -51,6 +51,7 @@ const ICONS = {
   antippen: MousePointerClick,
   griff: GripVertical,
   ruecktaste: Delete,
+  kopieren: Copy,
   // Navigation
   jarvis: Radar,
   regler: SlidersHorizontal,

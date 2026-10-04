@@ -9,6 +9,7 @@ import { createContext, memo, useContext, type CSSProperties } from "react";
 import { BaseEdge, EdgeLabelRenderer, Handle, Position, getBezierPath, type Edge, type EdgeProps, type Node, type NodeProps } from "@xyflow/react";
 import { Icon } from "@/app/icons";
 import { NODE_META, describeNode, fieldDef, type FlowNode, type NodeRows, type Port, type Problem } from "@/lib/flow";
+import { pendingPool } from "@/lib/baukasten";
 
 export type BkData = { cfg: FlowNode };
 export type BkNode = Node<BkData, "bk">;
@@ -70,7 +71,7 @@ function NodeCard({ id, data, selected }: NodeProps<BkNode>) {
         )}
         <button type="button" className="bkn-x nodrag" onClick={(e) => { e.stopPropagation(); live.remove(id); }} aria-label="Baustein löschen" title="Löschen (Rücktaste)"><Icon name="schliessen" size={12} /></button>
       </header>
-      <p className="bkn-d">{describeNode(n)}</p>
+      <p className="bkn-d">{pendingPool(n) ? `„${pendingPool(n)}“ – noch anlegen` : describeNode(n)}</p>
       <div className="bkn-v">
         <b>{loading && live.pending ? "…" : on || n.kind === "quelle" ? fmt(outN) : "–"}</b>
         <span>{on || n.kind === "quelle" ? VERB[n.kind] : "nicht verbunden"}</span>
