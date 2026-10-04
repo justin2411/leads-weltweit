@@ -10,8 +10,9 @@ gilt CLAUDE.md.
 | # | Baustein | Inhalt (Muster Webagenturen, EN) | Datei |
 |---|---|---|---|
 | 1 | **Kopf** | dunkelblauer Balken, links Wortmarke „NextGen **Profit**“, rechts Etikett „✓ Certified“ (FR „✓ Certifié“), Goldrand, nur Text | `scripts/lib/html_email.py` `render()` |
-| 2 | **Betreff** | konkret, Branche + Land, ≤ 60 Zeichen, keine Emojis: „Local businesses across {Land} without a website“ | `scripts/drafts.py` `build()` |
+| 2 | **Betreff** | konkret, Branche + Land, ≤ 60 Zeichen, keine Emojis, kein „Re:“. Zwei Varianten je Land (A/B-Test seit 04.10.2026), fest je Käufer, gespeichert in `messages.subject_variant`: A „Local businesses across {Land} without a website“, B „No website yet: local businesses across {Land}“ (FR A „Entreprises en France sans site web“, B „Pas encore de site web : entreprises partout en France“) | `scripts/drafts.py` `SUBJECTS`, `subject_variant()` |
 | 3 | **Anrede** | „Hi {Kurzname} team,“; Kurzname ohne Rechtsform (Ltd, LLC, BV, AB, SAS …) und ohne Allerweltswörter nach dem Namen; über 4 Wörter → „Hi there,“. FR: „Bonjour,“ | `drafts.short_name()`, `_clean_name()` |
+| 4a | **Einstiegssatz (individuell)** | aus echten Daten des Käufers, ohne Ort (§7, 04.10.2026): „I came across {Firma} while looking at {Kategorie, z. B. web design studios}.“ FR „J'ai découvert {Firma} en cherchant des {agences de création de sites web}.“ Ohne Kategorie: „I'm writing to the team at {Firma} directly.“ / „Je me permets d'écrire directement à {Firma}.“ Wird der Text dadurch länger als 120 Wörter, entfällt der Satz | `drafts.opener()`, `SPEC_PLURAL` |
 | 4 | **Satz 1: wer + was** | „I'm Justin, founder of NextGen Profit. We find {Firmen mit Anlass} across {Land}, a clear reason for them to talk to a {Käufer}.“ | `drafts.build()` |
 | 5 | **Satz 2: Lieferung** | „Every Monday you get a short PDF briefing and a spreadsheet: company, phone, email, who to ask for and an opening line.“ | `drafts.build()` |
 | 6 | **Satz 3: Angebot + Ja/Nein-Frage** | „I've put together a free sample of 10 current leads from across {Land}. Shall I send it over?“ | `drafts.build()` |
