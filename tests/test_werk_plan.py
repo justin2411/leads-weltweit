@@ -386,6 +386,20 @@ class VorrangResetTests(unittest.TestCase):
         self.assertGreaterEqual(res["plan"]["web-uk"], 8)
         self.assertEqual(res["plan"]["web-us"], 1)
 
+    def test_vorrang_lanes_are_kept_when_sum_is_cut(self):
+        # Lauf 04.10.2026: web-north lief zuletzt mit 6 Teilen, web-fr frisch zurückgesetzt ohne Laufzahlen
+        lead = {"web-us": 1, "web-uk": 15, "web-fr": 17, "web-north": 1, "s2-us": 1, "s2-neu": 1,
+                "s1-us-lca": 0, "s1-uk-tender": 0}
+        rows = _rows("web-north", "r1", 6, 46, 7000, 480, start="2026-10-04T14:50:00+00:00")
+        rows += _rows("s2-neu", "r1", 4, 37, 2000, 300, start="2026-10-04T14:50:00+00:00")
+        reset = {"web-uk": "2026-10-04T14:36:00+00:00", "web-fr": "2026-10-04T14:36:00+00:00"}
+        plan, why = W.autopilot(self.reg, "lead-werk", lead, W.lane_stats(rows, "lead-werk"), other={"kunden": 1},
+                                now=self.now, reset=reset, vorrang=self.rule,
+                                stock={"US": 446356, "UK": 91920, "FR": 68970})
+        self.assertEqual((plan["web-uk"], plan["web-fr"]), (15, 17))
+        self.assertLessEqual(sum(plan.values()), 37)
+        self.assertGreaterEqual(plan["web-north"], 1)
+
     def test_fokus_config_has_rule(self):
         from lib.fokus import laender_vorrang
         self.assertEqual(laender_vorrang(), self.rule)
