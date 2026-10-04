@@ -39,6 +39,8 @@ export function laneOf(werk: string, part: string | null | undefined): string | 
   if (werk === "kunden-werk") return /^pruefen\b|^run --shard/.test(part) ? "kunden" : null;
   // Prüfer-Werk (05.10.2026): Herzschlag/Laufzähler „pruefer-2“ (wie scripts/werk_plan.py lane_of)
   if (werk === "pruefer-werk") return /^(pruefer\b|pruefer-\d+|run --shard)/.test(part) ? "pruefer" : null;
+  // Kontakt-Werk (05.10.2026): „kontakt-1“ bzw. „run --shard …“
+  if (werk === "kontakt-werk") return /^(kontakt\b|kontakt-\d+|run --shard)/.test(part) ? "kontakt" : null;
   return null;
 }
 
@@ -127,7 +129,7 @@ export function utilization(rows: RunRow[], beats: Beat[], now: number, total: n
   const n = Math.round((hours * 60) / stepMin);
   const buckets = Array.from({ length: n }, (_, i) => ({ from: new Date(t0 + i * stepMin * MIN).toISOString(), slots: 0 }));
   const iv: [number, number][] = [];
-  for (const r of partRuns(rows)) if (r.started_at && (r.werk === "lead-werk" || r.werk === "kunden-werk" || r.werk === "pruefer-werk")) iv.push([Date.parse(r.started_at), Date.parse(r.finished_at)]);
+  for (const r of partRuns(rows)) if (r.started_at && (r.werk === "lead-werk" || r.werk === "kunden-werk" || r.werk === "pruefer-werk" || r.werk === "kontakt-werk")) iv.push([Date.parse(r.started_at), Date.parse(r.finished_at)]);
   for (const b of beats) if (b.started_at && running(b, now)) iv.push([Date.parse(b.started_at), now]);
   let used = 0;
   for (const [a, b] of iv) {

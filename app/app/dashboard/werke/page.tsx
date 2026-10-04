@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { CONFIG, SEGMENT, loadActivity, loadOwnerSettings, loadPrueferKpi, loadProduction, loadRuns, type Production, type PrueferKpi } from "@/lib/dashboard-data";
+import { CONFIG, SEGMENT, loadActivity, loadKontaktKpi, loadOwnerSettings, loadPrueferKpi, loadProduction, loadRuns, type KontaktKpi, type Production, type PrueferKpi } from "@/lib/dashboard-data";
 import { ago, berlin, berlinDay, compact, nextWorkflowRun, type RunInfo } from "@/lib/dashboard-logic";
 import { PERIODS, buckets, period } from "@/lib/dashboard-periods";
 import { WERK_SWITCHES, werkOn, type OwnerSettings, type WerkKey } from "@/lib/owner-settings";
@@ -19,6 +19,7 @@ const CARDS: Card[] = [
   { key: "kunden-werk", file: "kunden-werk.yml", werk: "kunden-werk", maxH: 5, lastLabel: "letzte Aktivität", what: "Webagenturen finden und prüfen, „nur Anruf/Brief“ über die Registernummer nachprüfen" },
   { key: "proben-vorrat", file: "proben-vorrat.yml", werk: "proben-vorrat", maxH: 26, lastLabel: "letzte Probe gebaut", what: "fertige, freigegebene Proben bereithalten (baut nur, wenn etwas fehlt)" },
   { key: "pruefer-werk", file: "pruefer-werk.yml", maxH: 3, lastLabel: "", what: "4 Prüfer prüfen lieferbare Leads rund um die Uhr nach (Freigabe, Vollständigkeit, Anlass, Dubletten)" },
+  { key: "kontakt-werk", file: "kontakt-werk.yml", maxH: 3, lastLabel: "", what: "Ansprechperson aus dem Register und Telefon/E-Mail der Firmenwebsite zusammenführen und gegenprüfen" },
   { key: "freigabe", werk: "freigabe", maxH: 26, lastLabel: "letzte Prüfung", what: "Drei-Stufen-Freigabe jedes Leads vor Probe und Lieferung (nicht abschaltbar)" },
   { key: "versand", file: "send.yml", werk: "versand", maxH: 26, lastLabel: "letzte Mail", what: "freigegebene Kaltmails senden (Notbremse, Sperrliste immer aktiv)" },
   { key: "nachfass", file: "taeglich.yml", maxH: 30, lastLabel: "", what: "eine Nachfassmail nach 4 Tagen ohne Antwort" },
@@ -31,7 +32,7 @@ const CARDS: Card[] = [
 export default async function Werke({ searchParams }: { searchParams: SP }) {
   await requireOwner();
   const { land, countries, z, raw } = await readParams(searchParams);
-  const [act, runs, own, pk] = await Promise.all([loadActivity(), loadRuns().catch(() => null), loadOwnerSettings(), loadPrueferKpi()]);
+  const [act, runs, own, pk, kk] = await Promise.all([loadActivity(), loadRuns().catch(() => null), loadOwnerSettings(), loadPrueferKpi(), loadKontaktKpi()]);
   const now = new Date(act.now && act.now > "2000" ? act.now : Date.now());
   const today = berlinDay(now);
   const p = period(z, today);
@@ -41,7 +42,7 @@ export default async function Werke({ searchParams }: { searchParams: SP }) {
     <div className="v2">
       <PageHead title="Werke" icon="werk" crumbs={[["JARVIS", withQuery("/dashboard/jarvis", raw)], ["Werke", ""]]} />
       <div className="werke2">
-        {CARDS.map((c) => <WerkCard key={c.key} c={c} act={act} runs={runs} own={own} now={now} here={here} pk={pk} />)}
+        {CARDS.map((c) => <WerkCard key={c.key} c={c} act={act} runs={runs} own={own} now={now} here={here} pk={pk} kk={kk} />)}
       </div>
 
       <div className="head2">
@@ -88,7 +89,7 @@ export default async function Werke({ searchParams }: { searchParams: SP }) {
   );
 }
 
-function WerkCard({ c, act, runs, own, now, here, pk }: { c: Card; act: Activity; runs: RunInfo[] | null; own: OwnerSettings; now: Date; here: string; pk: PrueferKpi[] }) {
+function WerkCard({ c, act, runs, own, now, here, pk, kk }: { c: Card; act: Activity; runs: RunInfo[] | null; own: OwnerSettings; now: Date; here: string; pk: PrueferKpi[]; kk: KontaktKpi[] }) {
   const sw = c.key !== "freigabe" ? werkOn(own, c.key as WerkKey) : { on: true, since: null };
   const run = c.file ? runs?.find((r) => r.file === c.file) : undefined;
   const wf = c.file ? CONFIG.workflows.find((x) => x.file === c.file) : undefined;
@@ -111,6 +112,7 @@ function WerkCard({ c, act, runs, own, now, here, pk }: { c: Card; act: Activity
         {parts.length > 0 && <span>aktive Teile <b>{parts.length}</b> · bearbeitet <b>{compact(parts.reduce((a, x) => a + x.processed, 0))}</b></span>}
         {c.key === "kunden-werk" && <span title="Käufer, die in der letzten Stunde (u. a. per Registernummer-Nachprüfung) mail-fähig wurden">mail-fähig letzte h <b>{compact(act.buyers_ok_60m)}</b> · letzter neuer Käufer <b>{ago(act.last_prospect_at, now)}</b></span>}
         {c.key === "pruefer-werk" && <PrueferFacts pk={pk} />}
+        {c.key === "kontakt-werk" && <KontaktFacts kk={kk} />}
         {c.key === "freigabe" && <span>letzte h: <b>{compact(act.gate_60m.released ?? 0)}</b> freigegeben · <b>{compact(act.gate_60m.failed ?? 0)}</b> aussortiert</span>}
         {run ? <span>GitHub: <b>{run.status === "completed" ? run.conclusion : "läuft"}</b> {berlin(run.updated_at)}</span> : null}
         {nx && <span>nächster Lauf <b>{berlin(nx)}</b></span>}
@@ -132,6 +134,20 @@ function PrueferFacts({ pk }: { pk: PrueferKpi[] }) {
     <>
       <span title="lieferbare Leads, die der Prüfer in 24 h geprüft hat">geprüft 24 h <b>{compact(n)}</b> · gehalten <b>{compact(held)}</b></span>
       <span title="Anteil bestandener Prüfungen (Freigabe + Zusatzprüfungen)">Qualität lieferbar <b>{(100 * ok / n).toFixed(1)} %</b></span>
+    </>
+  );
+}
+
+/** Kontakt-Werk: gegengeprüft 24 h, bestätigt, neue Ansprechpersonen aus signalwerk.kontakt_kpi. */
+function KontaktFacts({ kk }: { kk: KontaktKpi[] }) {
+  const n = kk.reduce((a, r) => a + (r.geprueft_24h ?? 0), 0);
+  const ok = kk.reduce((a, r) => a + (r.bestaetigt_24h ?? 0), 0);
+  const neu = kk.reduce((a, r) => a + (r.personen_neu_24h ?? 0), 0);
+  if (!n) return <span>gegengeprüft 24 h <b>0</b></span>;
+  return (
+    <>
+      <span title="Leads, deren Ansprechperson und Kontakt in 24 h gegengeprüft wurden">gegengeprüft 24 h <b>{compact(n)}</b> · bestätigt <b>{compact(ok)}</b></span>
+      <span title="Ansprechpersonen mit zwei Belegen, die neu am Lead stehen">Personen neu <b>{compact(neu)}</b></span>
     </>
   );
 }

@@ -122,7 +122,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   // ---------------------------------------------------------------- Zahlen
   const beats = act.heartbeats as Beat[];
   // Belegung: die zuletzt wirklich gestartete (Autopilot/Inhaber, werk_plan_log), sonst die Einstellung des Inhabers
-  const plan = { ...slotCounts(REG, own.slot_plan), ...(planLog["lead-werk"]?.plan ?? {}), ...(planLog["kunden-werk"]?.plan ?? {}), ...(planLog["pruefer-werk"]?.plan ?? {}) };
+  const plan = { ...slotCounts(REG, own.slot_plan), ...(planLog["lead-werk"]?.plan ?? {}), ...(planLog["kunden-werk"]?.plan ?? {}), ...(planLog["pruefer-werk"]?.plan ?? {}), ...(planLog["kontakt-werk"]?.plan ?? {}) };
   const autopilotOn = own.slot_autopilot?.on !== false;
   const leadPlanned = REG.lanes.filter((l) => l.werk === "lead-werk").reduce((a, l) => a + (plan[l.id] ?? 0), 0);
   const bays = hall(REG, plan, beats, t);
@@ -130,7 +130,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   // Plätze je Werk für die Kreis-Zeile: arbeitend (Herzschlag) / eingeplant (Belegung) – nur dieses Werk
   const leadRun = bays.filter((b) => b.state === "run" && b.werk === "lead-werk").length;
   const leadPaused = !werkOn(own, "lead-werk").on;
-  const stats = markEmpty(laneStats(REG, rows, t), [planLog["lead-werk"]?.reasons, planLog["kunden-werk"]?.reasons, planLog["pruefer-werk"]?.reasons]);
+  const stats = markEmpty(laneStats(REG, rows, t), [planLog["lead-werk"]?.reasons, planLog["kunden-werk"]?.reasons, planLog["pruefer-werk"]?.reasons, planLog["kontakt-werk"]?.reasons]);
   const firstRun = rows.reduce<number | null>((a, r) => (r.started_at && (a === null || Date.parse(r.started_at) < a) ? Date.parse(r.started_at) : a), null);
   const util = utilization(rows, beats, t, REG.total_slots, 24, 30, firstRun);
   const n = (x: number | string | null | undefined) => Number(x ?? 0);

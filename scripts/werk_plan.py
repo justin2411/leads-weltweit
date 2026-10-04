@@ -98,6 +98,8 @@ def lane_of(werk: str, part: str | None) -> str | None:
         return "kunden" if re.match(r"^(pruefen\b|run --shard)", part) else None
     if werk == "pruefer-werk":  # Prüfer-Werk (Inhaber 05.10.2026): Teile „pruefer-0“ … bzw. „run --shard …“
         return "pruefer" if re.match(r"^(pruefer\b|pruefer-\d+|run --shard)", part) else None
+    if werk == "kontakt-werk":  # Kontakt-Werk (Inhaber 05.10.2026): Teile „kontakt-0“ … bzw. „run --shard …“
+        return "kontakt" if re.match(r"^(kontakt\b|kontakt-\d+|run --shard)", part) else None
     return None
 
 
@@ -519,7 +521,7 @@ def matrix(reg: dict, werk: str, n: dict[str, int], extra_args: str = "") -> lis
             if werk == "kunden-werk":
                 rows.append({"shard": i, "of": k})
                 continue
-            if werk == "pruefer-werk":
+            if werk in ("pruefer-werk", "kontakt-werk"):
                 rows.append({"name": f"{l['id']}-{i}", "shard": i, "of": k})
                 continue
             args = l["args"] + (f" --shard {i}/{k}" if k > 1 else "") + extra_args
@@ -687,7 +689,7 @@ def log_plan(db, werk: str, res: dict, db_bytes: int | None) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("werk", choices=["lead-werk", "kunden-werk", "pruefer-werk"])
+    ap.add_argument("werk", choices=["lead-werk", "kunden-werk", "pruefer-werk", "kontakt-werk"])
     ap.add_argument("--dry", action="store_true", help="nur anzeigen (nichts protokollieren, nichts quittieren)")
     ap.add_argument("--teile", default=None, help="Linien-Lauf (Lead-Werk): „web-us:3,s2-ukfr:6“ – nur diese Linien")
     ap.add_argument("--github", action="store_true",
