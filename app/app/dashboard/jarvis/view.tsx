@@ -1,7 +1,7 @@
 /**
  * Aufbau der JARVIS-Startseite (Inhaber 04.10.2026: „optimiere nochmal das design bei jarvis“) – reine Darstellung,
  * alle Zahlen kommen fertig aus page.tsx. Reihenfolge: Kopf (Begrüßung, Uhr) · Heute wichtig · Braucht dich · 4 Kern-Kennzahlen · Ziel vs. Ist · Abteilungen · JARVIS empfiehlt (X = ausblenden) ·
- * Agenten A1–A8 · Team (Fach-Agenten) · Fluss-Karte (mit Seitenfenster) · Kohorten-Trichter (aufklappbar) · Gehirn lernt · Entscheidungen · Chat und Freigabe (unten rechts) · Live-Ticker.
+ * Agenten A1–A8 · Team (Fach-Agenten) · Fluss-Karte (mit Seitenfenster) · Kohorten-Trichter (aufklappbar) · Optimiert sich selbst · Entscheidungen · Chat und Freigabe (unten rechts) · Live-Ticker.
  * Raster in 8er-Schritten, Karten je Reihe gleich hoch, am Handy eine Spalte ohne seitliches Scrollen.
  */
 import type { ReactNode } from "react";
@@ -58,7 +58,7 @@ export type JarvisProps = {
   team?: Karte[] | null;
   /** „Braucht dich“: offene Punkte nur für den Inhaber (lib/braucht-dich.ts) */
   brauchtDich?: BdPunkt[];
-  /** Gehirn lernt: Score + Trend, letzte 3 Selbstanpassungen, offene Verbesserungsvorschläge (scripts/brain_meta.py) */
+  /** Optimiert sich selbst: Score + Trend, letzte 3 automatische Änderungen mit Wirkung, offene Vorschläge (selbstopt.py, brain_meta.py) */
   gehirn?: GehirnLerntData;
   /** Abteilungen: Kachel-Raster als Einstieg in die Unterseiten (lib/abteilungen.ts) */
   abteilungen?: Kachel[];

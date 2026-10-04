@@ -180,6 +180,12 @@ export function makeFixtures(nowMs = Date.now()) {
         { id: 10, created_at: iso(60 * 26), type: "daily_note", status: "done", subject: "Tagesnotiz", reasoning: "Alles im Plan.", action: null, kurz_titel: null, kurz_grund: null },
       ],
       brain_improvements: [{ id: "i1", status: "offen" }, { id: "i2", status: "offen" }],
+      // Selbstoptimierung (scripts/selbstopt.py) für die Karte „Optimiert sich selbst“: Titel ≤ 60 + Pfeil der Wirkung
+      selbstopt_changes: [
+        { id: "so1", created_at: iso(20), schraube: "versand_menge", status: "offen", kurz_titel: "Versand weniger: Menge × 0,9", kurz_grund: "Bounce-Quote 3,4 % bei 260 Mails (3 Tage); nie über das Tagesziel." },
+        { id: "so2", created_at: iso(60 * 30), schraube: "kaeufer_kategorien", status: "wirkt", kurz_titel: "Käufer: „e commerce service“ zuletzt prüfen", kurz_grund: "ok-Quote 32,4 % statt Schnitt 41,0 % (3290 geprüft, 14 Tage)." },
+        { id: "so3", created_at: iso(60 * 80), schraube: "dauerpruefung", status: "zurueck", kurz_titel: "Prüfung zurück Richtung Standard (× 1)", kurz_grund: "Lead-Fehlerquote 0,8 % bei 640 Prüfungen (3 Tage)." },
+      ],
       agent_tasks: [
         ...tasks,
         { id: "t1", created_at: iso(200), finished_at: iso(120), agent: 2, kind: "leads", market: "UK", brief: "Neue Leads für UK holen", status: "fertig", result: "380 neue grüne Leads aus zwei Quellen.", progress: 100, step: null, numbers: {} },

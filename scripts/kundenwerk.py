@@ -232,7 +232,7 @@ def segment_for(category: str, co: str | None, segments: dict[str, set[str]]) ->
     return None, None
 
 
-def candidates(segments: dict[str, set[str]]) -> list[dict]:
+def candidates(segments: dict[str, set[str]], hinten: set[str] | None = None) -> list[dict]:
     """Pool ohne Ketten (gleicher Name > 3x im Land), geschlossene Firmen und unsichere Einträge;
     nur Zielgruppe/Land-Paare, in die wir mailen dürfen und für die wir Leads liefern."""
     import duckdb
@@ -264,8 +264,11 @@ def candidates(segments: dict[str, set[str]]) -> list[dict]:
         out.append({**d, "segment": seg, "country": co, "website": site, "domain": dom})
     # gleichmäßig über Branchen und Länder mischen (fester Schlüssel: jeder Teillauf sieht dieselbe Reihenfolge)
     # Fokus-Tests zuerst (config/fokus.yaml), innerhalb gleichmäßig gemischt
+    # Selbstoptimierung (scripts/selbstopt.py): Kategorien mit schwacher ok-Quote zuletzt prüfen (nichts fällt weg)
     from lib.fokus import rank
-    out.sort(key=lambda d: (rank(d["segment"], d["country"]), hashlib.md5(d["domain"].encode()).hexdigest()))
+    hinten = hinten or set()
+    out.sort(key=lambda d: (rank(d["segment"], d["country"]), (d.get("category") or "") in hinten,
+                            hashlib.md5(d["domain"].encode()).hexdigest()))
     seen, uniq = set(), []
     for d in out:
         if d["domain"] not in seen:
@@ -497,8 +500,13 @@ def cmd_run(args) -> int:
             known.update(known_domains(db, [d["domain"] for d in rows if d["domain"] not in known]))
         return [d for d in rows if d["domain"] not in known]
 
-    pool = mine(candidates(segs))
-    pool = fill_up(pool, keep, lambda: mine(candidates(all_segs)))
+    # Selbstoptimierung (scripts/selbstopt.py): schwache Käufer-Kategorien zuletzt prüfen
+    from lib.selbstopt_state import kategorien_hinten
+    hinten = kategorien_hinten(db)
+    if hinten:
+        log(f"Selbstoptimierung: zuletzt geprüft {', '.join(sorted(hinten))}")
+    pool = mine(candidates(segs, hinten))
+    pool = fill_up(pool, keep, lambda: mine(candidates(all_segs, hinten)))
     # Dashboard (Inhaber 03.10.2026): Kunden-Werk je Land abschaltbar
     from lib.owner_settings import ack, load as load_owner_settings
     owner = load_owner_settings(db)

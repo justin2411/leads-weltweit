@@ -490,6 +490,13 @@ def cmd_send(args) -> int:
         firsts.setdefault(box_of(row.get("sent_from"), boxes), dt.date.fromisoformat(row["sent_at"][:10]))
     caps = {b["n"]: box_cap(b, firsts.get(b["n"]), dt.date.today()) for b in boxes}
     cap = sum(caps.values())
+    # Selbstoptimierung (scripts/selbstopt.py): bei hoher Bounce-Quote weniger Mails (Faktor 0,5 … 1,0) – nie mehr
+    # als config/versand.yaml erlaubt; Notbremse bleibt unverändert
+    from lib.selbstopt_state import versand_faktor
+    faktor = versand_faktor(db)
+    if faktor < 1:
+        cap = int(cap * faktor)
+        print(f"Selbstoptimierung: Tagesmenge × {faktor:g} = {cap} (Bounce-Quote hoch)")
 
     # Dashboard (Inhaber 03.10.2026): Mails pro Tag je Land (nie über countries.yaml daily_limit), Länder aus
     owner_limits, owner_off = owner["send_country_limits"], owner["send_countries_off"]

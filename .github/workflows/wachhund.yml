@@ -68,3 +68,12 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Selbstoptimierung (Inhaber 04.10.2026: „bekommen wir es hin das sich das system … selbst optimiert“):
+      # Versand-Tagesmenge (nur senken / bis zum Ziel), Dauerprüfung, Käufer-Kategorien und nächster A/B-Entwurf
+      # nach gemessener Wirkung; jede Änderung nach N Tagen bewertet, ohne Wirkung zurück; alles in decisions.
+      # Nie Prüfregeln, Sperrliste, Notbremse, Länder, Kosten, Preise. Fehler stoppen den Wachhund nie
+      - run: python scripts/selbstopt.py lauf --apply
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

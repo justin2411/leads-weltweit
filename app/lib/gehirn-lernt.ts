@@ -58,3 +58,28 @@ export function anpassungTitel(d: { kurz_titel?: string | null; subject?: string
   const t = (d.kurz_titel || String(d.subject ?? "").replace(/^Meta:\s*/, "")).replace(/\s+/g, " ").trim();
   return t.length > 60 ? `${t.slice(0, 59).trimEnd()}…` : t;
 }
+
+/** Automatische Änderung für die Karte „Optimiert sich selbst“: Titel ≤ 60 Zeichen + Pfeil der Wirkung. */
+export type Anpassung = { at: string; titel: string; pfeil: string; wirkung: string; grund: string };
+export type SelbstoptRow = { created_at: string; kurz_titel: string | null; kurz_grund?: string | null; status: string | null };
+export type MetaRow = { created_at: string; kurz_titel?: string | null; kurz_grund?: string | null; subject?: string | null };
+
+/** selbstopt_changes.status → Pfeil und Wort: wirkt ↑, ohne Effekt →, zurückgenommen ↩, wird bewertet …. */
+export function wirkungPfeil(status: string | null | undefined): { pfeil: string; wirkung: string } {
+  if (status === "wirkt") return { pfeil: "↑", wirkung: "wirkt" };
+  if (status === "neutral") return { pfeil: "→", wirkung: "ohne Effekt" };
+  if (status === "zurueck") return { pfeil: "↩", wirkung: "zurückgenommen" };
+  return { pfeil: "…", wirkung: "wird bewertet" };
+}
+
+const kurz = (s: string | null | undefined, n: number) => {
+  const t = String(s ?? "").replace(/\s+/g, " ").trim();
+  return t.length > n ? `${t.slice(0, n - 1).trimEnd()}…` : t;
+};
+
+/** Selbstoptimierung (selbstopt_changes) und Meta-Review (decisions „Meta: …“) gemischt, neueste zuerst. */
+export function anpassungen(so: SelbstoptRow[], meta: MetaRow[], n = 10): Anpassung[] {
+  const a: Anpassung[] = so.map((r) => ({ at: r.created_at, titel: kurz(r.kurz_titel, 60), grund: kurz(r.kurz_grund, 160), ...wirkungPfeil(r.status) }));
+  const b: Anpassung[] = meta.map((r) => ({ at: r.created_at, titel: anpassungTitel(r), grund: kurz(r.kurz_grund, 160), ...wirkungPfeil(null) }));
+  return [...a, ...b].filter((x) => x.titel).sort((x, y) => y.at.localeCompare(x.at)).slice(0, n);
+}

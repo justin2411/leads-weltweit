@@ -26,3 +26,15 @@ test("Ampel, Trend-Text, Titel ≤ 60", () => {
   assert.equal(anpassungTitel({ kurz_titel: null, subject: "Meta: Routine X Takt 1×/Tag → jeden 2. Tag" }), "Routine X Takt 1×/Tag → jeden 2. Tag");
   assert.ok(anpassungTitel({ kurz_titel: "x".repeat(80) }).length <= 60);
 });
+
+test("Optimiert sich selbst: Pfeil je Wirkung, gemischt und neueste zuerst, Titel ≤ 60", async () => {
+  const { anpassungen, wirkungPfeil } = await import("./gehirn-lernt.ts");
+  assert.deepEqual(["wirkt", "neutral", "zurueck", "offen"].map((s) => wirkungPfeil(s).pfeil), ["↑", "→", "↩", "…"]);
+  const list = anpassungen(
+    [{ created_at: "2026-10-05T10:00:00Z", kurz_titel: "Versand weniger: Menge × 0,9", status: "wirkt" },
+     { created_at: "2026-10-03T10:00:00Z", kurz_titel: "y".repeat(90), status: "zurueck" }],
+    [{ created_at: "2026-10-04T10:00:00Z", subject: "Meta: Routine X seltener" }]);
+  assert.deepEqual(list.map((x) => x.pfeil), ["↑", "…", "↩"]);
+  assert.equal(list[1].titel, "Routine X seltener");
+  assert.ok(list.every((x) => x.titel.length <= 60));
+});

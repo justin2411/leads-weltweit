@@ -464,13 +464,19 @@ def main(argv=None) -> int:
         return 0
     cfg = Q.config()
     rng = random.Random(args.seed)
+    # Selbstoptimierung (scripts/selbstopt.py): bei hoher Fehlerquote mehr Budget (bis 2×) und kürzere Abstände (bis ½)
+    from lib.selbstopt_state import pruef_faktoren
+    budget_f, intervall_f = pruef_faktoren(db)
+    Q.set_interval_factor(intervall_f)
+    if budget_f > 1 or intervall_f < 1:
+        print(f"Selbstoptimierung: Budget × {budget_f:g}, Prüfabstände × {intervall_f:g}")
     res = {}
     from lib.heartbeat import Heartbeat
     with Heartbeat(db if args.apply else None, WERK) as hb:
         if args.cmd in ("run", "leads"):
             lc = cfg.get("leads") or {}
             n = args.budget if args.cmd == "leads" and args.budget is not None else args.leads
-            n = int(n if n is not None else lc.get("budget_je_lauf") or 200)
+            n = int(n if n is not None else int((lc.get("budget_je_lauf") or 200) * budget_f))
             r = run_leads(db, n, apply=args.apply, live=not args.offline and lc.get("live", True) is not False, rng=rng)
             r.pop("verdicts", None)
             res["Leads"] = r
@@ -478,7 +484,7 @@ def main(argv=None) -> int:
         if args.cmd in ("run", "kaeufer"):
             kc = cfg.get("kaeufer") or {}
             n = args.budget if args.cmd == "kaeufer" and args.budget is not None else args.kaeufer
-            n = int(n if n is not None else kc.get("budget_je_lauf") or 300)
+            n = int(n if n is not None else int((kc.get("budget_je_lauf") or 300) * budget_f))
             res["Käufer"] = run_kaeufer(db, n, apply=args.apply, live=not args.offline and kc.get("live", True) is not False,
                                         rng=rng)
     write_summary(res)

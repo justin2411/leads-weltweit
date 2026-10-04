@@ -129,7 +129,21 @@ man nicht löschen kann wo mir das gehirn immer updates gibt … sehr kurz und k
   Auftragsarten nach Wirkung, passt den Takt an (halbieren/pausieren, höchstens 4×/Tag, umkehrbar), schreibt Wissen
   (typ gelernt/fehlermuster) und höchstens 3 Vorschläge für docs/GEHIRN-SITZUNG.md; die Gehirn-Sitzung übernimmt
   einen je Tag per PR (Abschnitt „Selbstverbesserung“, Grenzen-Abschnitte geschützt). Gehirn-Score in `kpi_daily`,
-  Karte „Gehirn lernt“ auf `/dashboard/jarvis`.
+  Karte „Optimiert sich selbst“ auf `/dashboard/jarvis`.
+- **System optimiert sich selbst** (Inhaber 04.10.2026: „bekommen wir es hin das sich das system also gehirn etc selbst
+  optimiert“): `scripts/selbstopt.py lauf --apply` im Wachhund. Je Stellschraube Messgröße, Mindestdaten, Schritt,
+  höchstens 1 Änderung/Tag, Bewertung nach N Tagen (`signalwerk.selbstopt_changes`, Stand `selbstopt_state`):
+  | Stellschraube | Messgröße · Mindestdaten | Schritt | Bewertung |
+  |---|---|---|---|
+  | Versand-Tagesmenge | Bounce-Quote 3 T · ≥ 50 Mails | Faktor ±0,1 (0,5–1,0 × versand.yaml) | 3 T |
+  | Dauerprüfung | Lead-Fehlerquote 3 T · ≥ 300 | Budget bis 2×, Abstände ½ | 3 T |
+  | Käufer-Kategorien | ok-Quote 14 T · ≥ 1000 / Kat. ≥ 200 | unter 60 % des Schnitts zuletzt prüfen | 7 T, +2 % |
+  | A/B nächster Test | Schritt × Land frei (nur S2 US/UK/FR) | ältesten Entwurf starten | Testergebnis |
+  Lead-Werk-Quellen führt schon der Autopilot (`werk_plan.py`), A/B-Gewinner `ab.py auswerten`. Schutz-Schritte (weniger
+  Versand, öfter prüfen) bleiben; Lockerungen/Umschichtungen ohne Wirkung gehen zurück. Jede Änderung in `decisions`
+  („Selbstopt: …“, kurz_titel/kurz_grund). Nie: Prüfregeln, Drei-Stufen-Freigabe, Sperrliste, Notbremse, Abmeldung,
+  Länder, Kosten, Preise, Löschen, Tests außerhalb der Test-Freigabe. Karte: Score + Trend, letzte 3 Änderungen mit
+  Pfeil (↑ wirkt, → ohne Effekt, ↩ zurück, … wird bewertet), Rest unter „Alle Änderungen“.
 
 ## Website-Analyse (Inhaber 04.10.2026: „mehr daten … wie google analytics … damit jarvis super auswertungen hat“)
 

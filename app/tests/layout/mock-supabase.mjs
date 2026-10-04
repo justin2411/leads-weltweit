@@ -3,18 +3,19 @@
 import http from "node:http";
 import { makeFixtures } from "./fixtures.mjs";
 
-/** Einfache PostgREST-Filter (eq/neq/in/gte/lte), genug für die Dashboard-Abfragen. */
+/** Einfache PostgREST-Filter (eq/neq/in/gte/lte/like), genug für die Dashboard-Abfragen. */
 function filterRows(rows, params) {
   let out = rows;
   for (const [k, v] of params) {
     if (["select", "order", "limit", "offset", "on_conflict", "columns"].includes(k)) continue;
-    const m = /^(eq|neq|gte|lte|gt|lt|in)\.(.*)$/.exec(v);
+    const m = /^(eq|neq|gte|lte|gt|lt|in|like)\.(.*)$/.exec(v);
     if (!m) continue;
     const [, op, raw] = m;
     out = out.filter((r) => {
       const x = r[k];
       if (x === undefined) return true;
       if (op === "eq") return String(x) === raw;
+      if (op === "like") return new RegExp(`^${raw.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/[*%]/g, ".*")}$`).test(String(x ?? ""));
       if (op === "neq") return String(x) !== raw;
       if (op === "in") return raw.replace(/^\(|\)$/g, "").split(",").map((s) => s.replace(/^"|"$/g, "")).includes(String(x));
       if (op === "gte") return String(x) >= raw;
