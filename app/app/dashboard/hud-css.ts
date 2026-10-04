@@ -247,11 +247,6 @@ export const HUD_CSS = `
 .jt-drag{cursor:grab}.jt-drag:active{cursor:grabbing}
 .jt.jt-drag:before{display:none}
 .jt-grip{font-style:normal;color:var(--tc);font-size:15px;line-height:1;margin-right:-2px}
-.jt-give{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:rgba(8,18,36,.8);color:var(--cy2);cursor:pointer;display:grid;place-items:center;padding:0}
-.jt-give svg{width:16px;height:16px}
-@media (hover:hover) and (pointer:fine){.jt-give{opacity:0;width:0;border-width:0;margin-left:-4px;transition:opacity .15s,width .15s}
-  .jt-wrap:hover .jt-give,.jt-wrap.open .jt-give,.jt-give:focus-visible{opacity:1;width:34px;border-width:1px;margin-left:0}}
-.jt-give:hover,.jt-wrap.open .jt-give{border-color:var(--gold);color:var(--gold)}
 .jt-pick{position:absolute;top:calc(100% + 6px);left:0;z-index:40;display:flex;align-items:center;gap:6px;padding:6px 8px;background:#07101f;border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.5)}
 .jt-pick em{font-style:normal;font-size:12px;color:var(--soft);margin-right:2px}
 .jt-pick button{min-width:44px;height:40px;border-radius:10px;border:1px solid rgba(95,212,255,.35);background:rgba(95,212,255,.08);color:#fff;font:700 14px var(--sans);cursor:pointer}
@@ -297,8 +292,8 @@ export const HUD_CSS = `
 .ag-drop>.ag{flex:1;min-width:0}
 .ag-hint{display:none}
 .jv-dragging .ag-drop>.ag{border-color:rgba(226,198,143,.7);box-shadow:0 0 0 2px rgba(226,198,143,.25),0 0 22px rgba(226,198,143,.25)}
-.ag-drop.over>.ag{border-color:var(--gold);background:rgba(226,198,143,.12)}
-.ag-drop.over .ag-hint,.ag-drop.busy .ag-hint{display:grid;place-items:center;position:absolute;inset:0;border-radius:12px;background:rgba(2,6,15,.9);color:var(--gold);font-weight:700;font-size:14px;pointer-events:none}
+.ag-drop[data-over]>.ag{border-color:var(--gold);background:rgba(226,198,143,.14);box-shadow:0 0 0 2px var(--gold),0 0 26px rgba(226,198,143,.45)}
+.ag-drop[data-over] .ag-hint,.ag-drop.busy .ag-hint{display:grid;place-items:center;position:absolute;inset:0;padding:4px;border-radius:12px;background:rgba(2,6,15,.88);color:var(--gold);font-weight:700;font-size:14px;text-align:center;pointer-events:none}
 
 .amps4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
 .amp4{position:relative;display:grid;gap:2px;padding:14px 16px 12px 40px;border:1px solid var(--line);background:linear-gradient(180deg,rgba(9,24,48,.7),rgba(4,12,26,.5));text-decoration:none;color:var(--text)!important;border-radius:10px;transition:border-color .2s,transform .2s}
@@ -731,4 +726,23 @@ export const HUD_CSS = `
 @keyframes anker-flash{0%{box-shadow:0 0 0 2px rgba(226,198,143,.95),0 0 34px rgba(226,198,143,.55)}100%{box-shadow:0 0 0 1px rgba(226,198,143,0),0 0 0 rgba(226,198,143,0)}}
 @media (prefers-reduced-motion:no-preference){.dash .anker-flash{animation:anker-flash 1.6s ease-out}}
 @media (prefers-reduced-motion:reduce){.dash .anker-flash{outline:2px solid var(--gold);outline-offset:2px}}
+
+/* ---- Ziehen auf Agenten mit Maus, Finger und Stift (Inhaber 04.10.2026: „wieso kann ich das grüne element nicht per drag
+   und drop bewegen“): Chips sind Knöpfe (Klick = Menü „an A…“), Griff ⠿ überall sichtbar, am Handy nur am Griff ziehen */
+.dash button.jt{font:600 13.5px var(--sans);line-height:1.3;padding:6px 12px 6px 6px;border:1px solid var(--tc);border-radius:999px;background:color-mix(in srgb,var(--tc) 14%,transparent);color:#fff;text-align:left;min-height:36px}
+.dash button.jt:hover:not(:disabled),.jt-wrap.open button.jt{border-color:var(--tc);background:color-mix(in srgb,var(--tc) 26%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--tc) 40%,transparent),0 0 14px -4px var(--tc)}
+.jt-drag,.drag-box{cursor:grab;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.drag-grip{display:inline-grid;place-items:center;flex:none;font-style:normal;touch-action:none;cursor:grab;color:var(--tc,var(--soft))}
+.jt-grip{width:22px;height:26px;margin:-4px -4px -4px 0;border-radius:6px}
+.jrec-grip{width:24px;align-self:stretch;border-right:1px solid color-mix(in srgb,var(--tc) 30%,transparent);opacity:.7;transition:opacity .15s}
+.drag-box:hover .jrec-i{box-shadow:0 0 0 1px color-mix(in srgb,var(--tc) 50%,transparent),0 0 18px -6px var(--tc)}
+.drag-box:hover .jrec-grip{opacity:1}
+.is-dragged{opacity:.45}
+.jv-dragging,.jv-dragging *{cursor:grabbing!important;user-select:none!important;-webkit-user-select:none!important}
+.jv-ghost{position:fixed;left:0;top:0;z-index:200;pointer-events:none;max-width:280px;padding:8px 12px;border:1px solid var(--gold);border-radius:10px;background:#07101f;color:#fff;font:600 13px var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 12px 30px rgba(0,0,0,.55),0 0 18px -4px rgba(226,198,143,.6)}
+.jt-pick .sug{border-color:var(--gold);color:var(--gold)}
+.jt-pick .busy{opacity:.6}
+.jt-pick .jt-more{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:4px;min-height:36px;border:1px solid var(--line);border-radius:10px;font-size:13px;font-weight:600;color:var(--cy2)!important;text-decoration:none}
+.jt-pick .jt-more:hover{border-color:var(--gold);color:var(--gold)!important}
+.jrec h2 .jrec-how{margin-left:auto;font:500 12px var(--sans);font-style:normal;color:var(--soft)}
 `;

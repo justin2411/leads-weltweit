@@ -19,7 +19,8 @@ export function AutoRefresh() {
   useEffect(() => {
     if (!on) return;
     const id = setInterval(() => {
-      if (document.visibilityState === "visible") router.refresh();
+      // nicht mitten im Ziehen eines Hinweises auf einen Agenten (JARVIS) neu laden
+      if (document.visibilityState === "visible" && !document.documentElement.classList.contains("jv-dragging")) router.refresh();
     }, 30_000);
     const onVis = () => document.visibilityState === "visible" && router.refresh();
     document.addEventListener("visibilitychange", onVis);

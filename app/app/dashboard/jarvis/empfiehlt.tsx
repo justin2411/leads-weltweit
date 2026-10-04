@@ -5,11 +5,11 @@
  */
 import Link from "next/link";
 import type { ReactNode } from "react";
-import type { Rec } from "@/lib/leitstand";
-import { KINDS, chatThread, type AgentTask, marketLabel } from "@/lib/agents";
+import { tipTask, type Rec } from "@/lib/leitstand";
+import { KINDS, agentBoard, chatThread, isIdle, type AgentTask, marketLabel } from "@/lib/agents";
 import { chatToJarvis } from "../control-actions";
 import { Back } from "../v2";
-import { DragBox } from "./dnd";
+import { DragBox, Grip, type AgentPick } from "./dnd";
 import { TipX } from "./dismiss";
 import { tipKey, tipReactKeys } from "@/lib/tips";
 import { Icon } from "@/app/icons";
@@ -25,30 +25,37 @@ export function giveHref(agent: number, t: NonNullable<Rec["task"]>) {
   return `/dashboard/jarvis?${q}`;
 }
 
-/** 2–3 Optimierungen, je eine Karte: Titel, kurzer Grund, Klick zur Station, „an Agent“ (vorbelegt) oder ziehen,
- *  X = ausblenden (7 Tage, rote Alarme 24 h; lib/tips.ts).
+/** Agenten für das Menü „an A…“ der Chips (frei = kein laufender/offener Auftrag). */
+export function agentPicks(tasks: AgentTask[]): AgentPick[] {
+  return agentBoard(tasks).map((a) => ({ n: a.n, free: isIdle(a), state: a.current ? `${KINDS[a.current.kind].label} · ${STATE[a.current.status]}` : "frei" }));
+}
+const STATE: Record<AgentTask["status"], string> = { offen: "startet bald", laeuft: "arbeitet", fertig: "fertig", fehler: "Fehler", abgebrochen: "frei" };
+
+/** 2–3 Optimierungen, je eine Karte: Titel, kurzer Grund, Klick zur Station, „an A…“ (erster freier Agent, vorbelegt) oder
+ *  ziehen – jede Karte, auch ohne eigenen Auftrag (tipTask). X = ausblenden (7 Tage, rote Alarme 24 h; lib/tips.ts).
  *  children: weitere Hinweise (Chips) unter den Karten. */
 export function Empfiehlt({ recs, href, agent, children }: { recs: Rec[]; href: (r: Rec) => string; agent: number; children?: ReactNode }) {
   if (!recs.length && !children) return null;
   return (
     <section className="jrec" aria-label="JARVIS empfiehlt">
-      <h2><Icon name="trend-hoch" size={16} /> JARVIS empfiehlt</h2>
+      <h2><Icon name="trend-hoch" size={16} /> JARVIS empfiehlt <em className="jrec-how">auf A1–A8 ziehen</em></h2>
       {recs.length > 0 && <div className="jrec-l">
         {recs.map((r, i, all) => {
           // stabiler Schlüssel statt Index: nach dem X rückt die nächste Empfehlung nicht in den versteckten Knoten
           const key = tipReactKeys(all)[i];
-          const row = (
-            <div key={key} className={`jrec-i ${r.level}`} data-tip={r.task ? undefined : ""}>
-              <Link href={href(r)} scroll={false} className="jrec-t"><b>{r.title}</b><span>{r.short}</span></Link>
-              {r.task && (
-                <Link href={giveHref(agent, r.task)} scroll={false} className="jrec-give" title={`als Auftrag „${KINDS[r.task.kind].label}${r.task.market ? ` · ${marketLabel(r.task.market)}` : ""}“ an Agent ${agent} – oder auf A1–A8 ziehen`}>
+          const task = tipTask(r);
+          return (
+            <DragBox key={key} task={task} title={r.title} tip>
+              <div className={`jrec-i ${r.level}`}>
+                <Grip className="jrec-grip" />
+                <Link href={href(r)} scroll={false} className="jrec-t" draggable={false}><b>{r.title}</b><span>{r.short}</span></Link>
+                <Link href={giveHref(agent, task)} scroll={false} className="jrec-give" draggable={false} title={`als Auftrag „${KINDS[task.kind].label}${task.market ? ` · ${marketLabel(task.market)}` : ""}“ an Agent ${agent} (erster freier) – oder auf A1–A8 ziehen`}>
                   <Icon name="an-agent" size={16} /><span>an A{agent}</span>
                 </Link>
-              )}
-              <TipX k={tipKey(r)} level={r.level} title={r.title} />
-            </div>
+                <TipX k={tipKey(r)} level={r.level} title={r.title} />
+              </div>
+            </DragBox>
           );
-          return r.task ? <DragBox key={key} task={r.task} title={r.title} tip>{row}</DragBox> : row;
         })}
       </div>}
       {children}

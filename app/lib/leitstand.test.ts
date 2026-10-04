@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { coach, hall, laneOf, laneStats, neckTask, partRuns, utilization, type Beat, type RunRow } from "./leitstand.ts";
+import { coach, hall, laneOf, laneStats, neckTask, partRuns, tipTask, utilization, type Beat, type RunRow } from "./leitstand.ts";
 import { validateTask } from "./agents.ts";
 import type { LaneRegistry } from "./owner-settings.ts";
 import { slotCounts } from "./owner-settings.ts";
@@ -169,4 +169,32 @@ test("JARVIS empfiehlt: kurz, mit Auftrag zuerst, Rest für die Chips", async ()
   const r2 = recommend([tips[0], tips[1], tips[2]]);
   assert.deepEqual(r2.recs.map((r) => r.title), ["Antworten offen", "Ergiebig"]);
   assert.deepEqual(recommend([tips[0]]).recs, []);
+});
+
+test("tipTask: jeder Hinweis wird ein gültiger Auftrag (auch ohne eigenen), Märkte als Liste, IE/NL/BE nie", () => {
+  // grüner Chip ohne Auftrag (Autopilot an): Leads, alle genannten Länder
+  const green = tipTask({ level: "gruen", title: "Ergiebigste Linie: Ohne Website FI·SG·HK·MX·BR (Overture)", text: "412 grüne je Platz-Stunde in den letzten 24 h. Der Autopilot gibt ihr freie Plätze.", href: "#pult" });
+  assert.equal(green.kind, "leads");
+  assert.equal(green.market, "FI,SG,HK,MX,BR");
+  assert.match(green.brief, /^Ergiebigste Linie: Ohne Website FI·SG·HK·MX·BR \(Overture\): 412 grüne/);
+  const v = validateTask({ agent: 6, kind: green.kind, market: green.market, brief: green.brief });
+  assert.equal(v.market, "FI,SG,HK,MX,BR");
+  // FormData-Weg: ein Feld „FI,SG“ oder mehrere Felder – beides gültig
+  assert.equal(validateTask({ agent: 6, kind: "leads", market: ["FI,SG"] }).market, "FI,SG");
+  assert.equal(validateTask({ agent: 6, kind: "leads", market: ["SG", "FI"] }).market, "FI,SG");
+  // eigener Auftrag bleibt, Markt ohne IE/NL/BE
+  const own = { kind: "kaeufer" as const, market: null, brief: "Leads reichen weit, Käufer sind der Hebel: neue Käuferquellen." };
+  assert.deepEqual(tipTask({ level: "info", title: "Leads reichen weit, Käufer sind der Hebel", text: "x", task: own }), own);
+  assert.equal(tipTask({ level: "gelb", title: "IE: Käufer werden knapp", text: "x", task: { kind: "kaeufer", market: "IE", brief: "IE knapp" } }).market, null);
+  assert.equal(tipTask({ level: "gelb", title: "Linie IE·NL·UK", text: "Irland und Belgien" }).market, "UK");
+  // Art aus dem Ziel, wenn der Text nichts verrät
+  assert.equal(tipTask({ level: "gelb", title: "Proben-Vorrat leer", text: "0 von 18 Proben bereit.", href: "/dashboard/proben" }).kind, "pruefen");
+  assert.equal(tipTask({ level: "gelb", title: "2 Antworten offen", text: "Interessenten haben geantwortet.", href: "/dashboard/antworten" }).kind, "frage");
+  assert.equal(tipTask({ level: "rot", title: "Notbremse: Versand gestoppt", text: "Bounce 6 %." }).kind, "pruefen");
+  assert.equal(tipTask({ level: "info", title: "UK Käufer finden", text: "" }).kind, "kaeufer");
+  // jeder erzeugte Auftrag besteht die Prüfung des Formulars (Server Action createAgentTask)
+  for (const t of [green, tipTask({ level: "info", title: "Noch keine Laufzahlen", text: "Ertrag je Linie wird gezählt." })]) {
+    assert.doesNotThrow(() => validateTask({ agent: 1, ...t }));
+    assert.ok(t.brief.length >= 3 && t.brief.length <= 1000);
+  }
 });
