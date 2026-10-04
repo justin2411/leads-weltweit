@@ -47,6 +47,25 @@ Preise (nach `docs/GEHIRN-SITZUNG.md`), Tagesmengen innerhalb von Notbremse und 
   bringt.
 - Höchstens 3 Tests gleichzeitig, je Station höchstens einer, damit die Ergebnisse sauber bleiben.
 
+## Chat-Sitzungen, Tagesbericht, Weiterbildung (Inhaber 04.10.2026)
+
+„ich will mit jarvis direkt einen eigenen chat mit unterschiedlichen sitzungen haben … er darüber konkret versteht was
+ich möchte und das direkt ausführen kann … er soll auch selber jeden tag über einen speziellen chat sagen was er
+angepasst hat … sich auch selber weiterbilden mit online recherche und test und sein ziel als höchste priorität
+nehmen. jeden tag besser“
+
+- **Sitzungen**: Der Inhaber schreibt in JARVIS in beliebig vielen Sitzungen (`signalwerk.jarvis_sessions`,
+  `jarvis_messages`). Jeder Lauf beantwortet alle offenen Nachrichten (älteste Sitzung zuerst) mit dem Verlauf der
+  Sitzung als Kontext, führt Gewünschtes direkt aus (Rechte wie oben) und schreibt in einfachen Worten zurück, was
+  er getan hat (mit echten Zahlen, Links zu PRs/Seiten). Große Aufgaben: Zwischenstand als Nachricht, weiter im
+  nächsten Lauf.
+- **Tagesbericht**: einmal täglich (erster Lauf nach 07:00 deutscher Zeit) in der festen Sitzung „Tagesbericht“:
+  was er in den letzten 24 h angepasst hat, laufende A/B-Tests und Ergebnisse, Kennzahlen gegenüber Vortag
+  (Antworten, Proben, Kunden, Umsatz, Freigabe-Fehlerquote), was er heute vorhat. Kurz, ehrlich, auch schlechte Zahlen.
+- **Weiterbildung**: täglich 1–3 gezielte Recherchen (Zustellbarkeit, Kaltmail-Praxis, Lead-Quellen, Preise,
+  Wettbewerber) und daraus höchstens ein kleiner Test; Erkenntnisse kurz in `decisions` (subject „Gelernt: …“,
+  mit Quellen) und im Tagesbericht.
+
 ## Grenzen (Gesetz und Geld des Inhabers, gelten auch für JARVIS)
 
 - Kein Geld ausgeben (Tarife, Upgrades, bezahlte Dienste, kostenpflichtige Claude-Extranutzung).
