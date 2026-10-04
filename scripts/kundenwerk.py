@@ -85,6 +85,9 @@ NAME_WEB = {
           r"cr[ée]ation (de )?sites?|sites? (internet|web)|d[ée]veloppeu?r web|\bwebmaster|\bweb ?agency|\bgraphiste|"
           r"\bstudio (web|graphique|de cr[ée]ation)|\bseo\b|\bwebmarketing)",
 }
+# Englischer Namensfilter auch für US (JARVIS-Agent „Käufer finden · Mail-Länder“, 04.10.2026): Test 100 neue
+# Domains -> 34 mail-fähig (US: keine Rechtsform-/Adressregel), Pool US ~950 neue Domains.
+NAME_WEB_EN = "'GB', 'US'"
 # UK zusätzlich Kreativ-/Designstudios, aber nur wenn Companies House sie eindeutig (Name) als aktive Firma mit
 # Branche Webentwicklung/Design führt (SIC 62012 Software-/Webentwicklung, 63120 Webportale, 74100 Design).
 # Test 04.10.2026: 100 -> 49 mail-fähig (alle Ltd laut Register).
@@ -145,13 +148,14 @@ def _q(rx: str) -> str:
 
 
 def name_pool_where(cats: str) -> str:
-    """Namens-Pool: Orte außerhalb unserer Kategorien mit Website, deren Name eine Webagentur nennt (GB/FR) bzw.
+    """Namens-Pool: Orte außerhalb unserer Kategorien mit Website, deren Name eine Webagentur nennt (GB/US/FR) bzw.
     in GB ein Kreativ-/Designstudio (Bestätigung über Companies House im Lauf)."""
     neutral = ", ".join(f"'{c}'" for c in NAME_NEUTRAL)
     return (f"(taxonomy.primary IS NULL OR taxonomy.primary NOT IN ({cats})) AND len(websites) > 0 "
             f"AND names.primary IS NOT NULL AND (basic_category IS NULL OR basic_category IN ({neutral})) AND ("
-            f"(addresses[1].country = 'GB' AND (regexp_matches(names.primary, '{_q(NAME_WEB['GB'])}') OR "
-            f"(regexp_matches(names.primary, '{_q(NAME_CREATIVE_GB)}') AND NOT regexp_matches(names.primary, '{_q(NAME_EXCLUDE)}'))))"
+            f"(addresses[1].country IN ({NAME_WEB_EN}) AND regexp_matches(names.primary, '{_q(NAME_WEB['GB'])}'))"
+            f" OR (addresses[1].country = 'GB' AND regexp_matches(names.primary, '{_q(NAME_CREATIVE_GB)}') "
+            f"AND NOT regexp_matches(names.primary, '{_q(NAME_EXCLUDE)}'))"
             f" OR (addresses[1].country = 'FR' AND regexp_matches(names.primary, '{_q(NAME_WEB['FR'])}')))")
 
 
@@ -534,23 +538,32 @@ def cmd_run(args) -> int:
 # Nachprüfung über die Registernummer (Quellen-Scout R20, 03.10.2026)
 # ---------------------------------------------------------------------------
 RECHECK_MARK = "Registernummer-Nachprüfung"
-RECHECK_PAIRS = "S2:UK,S2:FR,S1:UK"  # FR bleibt für S1-Mail aus (Inhaber)
+# FR bleibt für S1-Mail aus (Inhaber); SE/FI seit 04.10.2026 über EU VIES, NL über KVK (zuerst, KVK 1/min).
+# Es zählen nur Länder mit allowed und company_forms_only (recheck_rows): NL wirkt erst, wenn der Inhaber NL wieder
+# freigibt; BE/IE sind seit 04.10.2026 „nie“ und stehen deshalb nicht in der Liste.
+RECHECK_PAIRS = "S2:NL,S2:UK,S2:FR,S1:UK,S2:SE,S2:FI"
 
 
-def recheck_rows(db, pairs: list[tuple[str, str]], limit: int, cfg: dict | None = None) -> list[dict]:
+def recheck_rows(db, pairs: list[tuple[str, str]], limit: int, cfg: dict | None = None,
+                 caps: dict[str, int] | None = None) -> list[dict]:
     """„Nur Anruf/Brief“-Käufer mit Firmen-E-Mail, die nur an der fehlenden Rechtsform scheitern und noch nicht
     nachgeprüft sind. Länder ohne company_forms_only (FR seit 04.10.2026) brauchen keine Registernummer mehr –
-    dort reicht die Regel-Nachprüfung (cmd_rules)."""
+    dort reicht die Regel-Nachprüfung (cmd_rules); Länder ohne Mail-Freigabe bringen nichts. In Ländern mit generic_only nur allgemeine Adressen (sonst
+    scheitert die Prüfung ohnehin); `caps` begrenzt einzelne Länder (NL: KVK-Grenze 1/min)."""
     cfg = cfg or load_countries()
-    pairs = [(seg, co) for seg, co in pairs if country_rules(cfg, co).get("company_forms_only")]
+    pairs = [(seg, co) for seg, co in pairs
+             if country_rules(cfg, co).get("allowed") and country_rules(cfg, co).get("company_forms_only")]
     out: list[dict] = []
     for k, (seg, co) in enumerate(pairs):
         share = (limit - len(out)) // (len(pairs) - k)  # gleichmäßig; was ein Paar nicht braucht, bekommen die übrigen
+        share = min(share, (caps or {}).get(co, share))  # NL: so viele, wie die KVK-Grenze (1/min) im Lauf schafft
         q = {"select": "id,segment_id,country,company_name,website,domain,email,source_url,check_reason",
              "segment_id": f"eq.{seg}", "country": f"eq.{co}", "check_status": "eq.call_only",
              "email": "not.is.null", "legal_form": "is.null",
              "and": f"(check_reason.like.*Rechtsform*,check_reason.not.like.*{RECHECK_MARK[:18]}*)",
              "order": "id.asc", "limit": str(share)}
+        if country_rules(cfg, co).get("generic_only"):
+            q["email_is_generic"] = "is.true"
         if share > 0:
             out += db.select("prospects", q)
     return out
@@ -565,8 +578,7 @@ def reg_numbers(d: dict, fetcher) -> list[str]:
         got = fetcher.get(res["pages"][0].rstrip("/") + "/mentions-legales")
         if got:
             html += "\n" + got[1]
-    text = regnum.plain_text(html)
-    return regnum.fr_sirens(text) if d["country"] == "FR" else regnum.uk_numbers(text)
+    return regnum.numbers_for(d["country"], regnum.plain_text(html))
 
 
 def verify_numbers(found: dict[int, list[str]], rows: dict[int, dict], fetcher, log=print) -> dict[int, dict]:
@@ -594,7 +606,79 @@ def verify_numbers(found: dict[int, list[str]], rows: dict[int, dict], fetcher, 
             if h and h["active"] and h["form"]:
                 out[i] = {"form": h["form"], "note": f"SIREN {n} (Mentions légales + Annuaire des entreprises: {(h['name'] or '')[:80]})"}
                 break
+    out.update(verify_vies(found, rows, fetcher, session))
     return out
+
+
+VIES_LABEL = {"BE": "Ondernemingsnummer/BTW", "SE": "Org.nr", "IE": "VAT No.", "FI": "Y-tunnus"}
+
+
+def verify_vies(found: dict[int, list[str]], rows: dict[int, dict], fetcher, session=None) -> dict[int, dict]:
+    """BE/SE/IE/FI: Nummer von der eigenen Website -> EU VIES (gültig + eingetragener Name mit Rechtsform)."""
+    from extraktor.sources import eu_registers as EU
+    out: dict[int, dict] = {}
+    for i, ns in found.items():
+        co = rows[i]["country"]
+        if co not in VIES_LABEL:
+            continue
+        for n in ns[:2]:
+            try:
+                h = fetcher.api("ec.europa.eu", EU.VIES_INTERVAL, EU.vies, co, n, session)
+            except requests.RequestException:
+                h = None
+            if h and h["valid"] and h["form"]:
+                out[i] = {"form": h["form"], "note": f"{VIES_LABEL[co]} {co}{n} (Website + EU VIES: {h['name'][:80]})"}
+                break
+    return out
+
+
+class KvkQueue:
+    """NL: KVK-Nummern nacheinander prüfen, höchstens eine Abfrage je 61 s (Grenze der KVK), im Hintergrund,
+    während die übrigen Websites gelesen werden; hört am Zeitfenster auf (Rest kommt im nächsten Lauf)."""
+
+    def __init__(self, deadline: float, max_lookups: int, log=print):
+        import queue
+        self.q: "queue.Queue[tuple[int, list[str]] | None]" = queue.Queue()
+        self.deadline, self.left, self.log = deadline, max_lookups, log
+        self.hits: dict[int, dict] = {}
+        self.asked: set[int] = set()
+        self.thread = threading.Thread(target=self._run, daemon=True)
+        self.thread.start()
+
+    def put(self, i: int, numbers: list[str]) -> None:
+        self.q.put((i, numbers))
+
+    def _run(self) -> None:
+        from extraktor.sources import eu_registers as EU
+        session, last = requests.Session(), 0.0
+        while True:
+            item = self.q.get()
+            if item is None:
+                return
+            i, ns = item
+            for n in ns[:1]:  # eine Nummer je Firma: die erste auf der Seite (Grenze 1/min)
+                if self.left <= 0 or (self.deadline and time.monotonic() + EU.KVK_INTERVAL >= self.deadline):
+                    continue
+                wait = last + EU.KVK_INTERVAL - time.monotonic()
+                if wait > 0:
+                    time.sleep(wait)
+                last = time.monotonic()
+                self.left -= 1
+                try:
+                    h = EU.kvk(n, session)
+                except requests.RequestException:
+                    h = None
+                if h is None:
+                    continue  # Störung: Firma bleibt offen und kommt im nächsten Lauf wieder
+                self.asked.add(i)
+                if h["active"] and h["form"]:
+                    self.hits[i] = {"form": h["form"], "note": f"KvK {n} (Website + KVK Open Dataset: {h['form']}, actief)"}
+
+    def finish(self, wait_until: float) -> dict[int, dict]:
+        """Auf die Warteschlange warten, längstens bis wait_until (monotonic)."""
+        self.q.put(None)
+        self.thread.join(timeout=max(0.0, wait_until - time.monotonic()))
+        return dict(self.hits)
 
 
 def cmd_recheck(args) -> int:
@@ -608,9 +692,13 @@ def cmd_recheck(args) -> int:
     if stop_if_paused(db, "kunden-werk", log):
         return 0
     cfg = load_countries()
-    rules_recheck(db, cfg, dry_run=args.dry_run)  # ohne Abruf, vorher: FR-Einzelunternehmer (Inhaber 04.10.2026)
+    try:
+        rules_recheck(db, cfg, dry_run=args.dry_run)  # ohne Abruf, vorher: FR-Einzelunternehmer (Inhaber 04.10.2026)
+    except RuntimeError as exc:  # z. B. 57014 unter Last: die Registernummer-Nachprüfung läuft trotzdem
+        log(f"Regel-Nachprüfung übersprungen (nächster Lauf): {str(exc)[-120:]}")
     pairs = [tuple(p.split(":")) for p in args.pairs.split(",") if ":" in p]
-    rows = {r["id"]: r for r in recheck_rows(db, pairs, args.max, cfg)}
+    # NL: ca. ein Drittel nennt eine KVK-Nummer; mehr Firmen lesen, als die KVK-Grenze prüfen kann, wäre vergeblich
+    rows = {r["id"]: r for r in recheck_rows(db, pairs, args.max, cfg, {"NL": args.kvk_max * 3})}
     log(f"Nachprüfung Registernummer: {len(rows)} Käufer ({args.pairs})")
     if not rows:
         return 0
@@ -620,6 +708,7 @@ def cmd_recheck(args) -> int:
     found: dict[int, list[str]] = {}
     done: set[int] = set()
     lock = threading.Lock()
+    kq = KvkQueue(deadline, args.kvk_max, log) if any(r["country"] == "NL" for r in rows.values()) else None
 
     def work(i):
         if deadline and time.monotonic() >= deadline:
@@ -633,6 +722,8 @@ def cmd_recheck(args) -> int:
             done.add(i)
             if ns:
                 found[i] = ns
+        if ns and kq and rows[i]["country"] == "NL":
+            kq.put(i, ns)
 
     from lib.heartbeat import Heartbeat
     with Heartbeat(db, "kunden-werk", "nachpruefen") as hb, ThreadPoolExecutor(max_workers=args.workers) as ex:
@@ -640,6 +731,13 @@ def cmd_recheck(args) -> int:
             if k % 100 == 0:
                 hb.update(processed=k, green=len(found))
     hits = verify_numbers(found, rows, fetcher, log=log)
+    if kq:
+        # ohne Zeitfenster höchstens so lange, wie die erlaubten KVK-Abfragen dauern
+        hits.update(kq.finish(deadline or time.monotonic() + (args.kvk_max + 1) * 61))
+        open_nl = {i for i in found if rows[i]["country"] == "NL" and i not in kq.asked}
+        if open_nl:
+            log(f"NL: {len(open_nl)} KVK-Nummern noch nicht abgefragt (Grenze 1/min) – nächster Lauf")
+        done -= open_nl  # nicht als nachgeprüft markieren, kommen wieder
     stats = Counter()
     stats_ok: dict[int, bool] = {}
     today = dt.date.today().strftime("%d.%m.%Y")
@@ -796,6 +894,7 @@ def main(argv=None) -> int:
     n.add_argument("--workers", type=int, default=16)
     n.add_argument("--deadline-min", type=float, default=0)
     n.add_argument("--dry-run", action="store_true", help="nur zählen, nichts speichern")
+    n.add_argument("--kvk-max", type=int, default=75, help="NL: höchstens so viele KVK-Abfragen (je 61 s) im Lauf")
     g = sub.add_parser("regeln", help="an der Rechtsform gescheiterte Käufer mit der heutigen Länderregel neu prüfen")
     g.add_argument("--dry-run", action="store_true", help="nur zählen, nichts speichern")
     args = ap.parse_args(argv)
