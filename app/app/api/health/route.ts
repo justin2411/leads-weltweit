@@ -14,14 +14,15 @@ async function stripeStatus(mode: StripeMode) {
   }
 }
 
-/** Diagnose ohne Login: nur ob Variablen gesetzt sind (nie Werte) und welches Deployment läuft; ?stripe=1 prüft das Konto. */
+/** Diagnose ohne Login: nur ob Variablen gesetzt sind (nie Werte) und welches Deployment läuft; ?stripe=1 prüft das Konto.
+ *  „FEHLT“ nur bei Pflicht-Variablen; fehlende optionale (z. B. GH_DISPATCH_TOKEN, Ersatz über den Wachhund) = „optional“. */
 export async function GET(req: Request) {
   const withStripe = new URL(req.url).searchParams.get("stripe") === "1";
   return Response.json({
     umgebung: process.env.VERCEL_ENV ?? "unbekannt",
     commit: (process.env.VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 7) || "unbekannt",
     branch: process.env.VERCEL_GIT_COMMIT_REF ?? "unbekannt",
-    variablen: Object.fromEntries(envStatus().map((e) => [e.name, e.set ? "gesetzt" : "FEHLT"])),
+    variablen: Object.fromEntries(envStatus().map((e) => [e.name, e.set ? "gesetzt" : e.required ? "FEHLT" : "optional"])),
     ...(withStripe ? { stripe: { live: await stripeStatus("live"), test: await stripeStatus("test") } } : {}),
   }, { headers: { "Cache-Control": "no-store" } });
 }
