@@ -50,7 +50,7 @@ function Map({ layout, stations, edges, active, href }: { layout: "wide" | "tall
       {stations.map((s) => {
         const [x, y] = POS[layout][s.id];
         return (
-          <Link key={s.id} href={href(s.id)} scroll={false} className={`fl-st ${s.state} ${s.neck ? "neck" : ""} ${active === s.id ? "on" : ""} ${s.id === "kunden" ? "goal" : ""} ${WEB_STATIONS.includes(s.id) ? "web" : ""}`}
+          <Link key={s.id} href={href(s.id)} scroll={false} className={`fl-st ${s.state} ${s.badge?.on ? "go" : ""} ${s.neck ? "neck" : ""} ${active === s.id ? "on" : ""} ${s.id === "kunden" ? "goal" : ""} ${WEB_STATIONS.includes(s.id) ? "web" : ""}`}
             style={{ left: `${x}%`, top: `${y}%` }} title={s.tip} aria-label={`${s.label}: ${s.value}${s.unit ?? ""} – ${s.sub}`}>
             <span className="fl-ring" aria-hidden><i /><i /></span>
             <b className="fl-v">{s.value}{s.unit && <small>{s.unit}</small>}</b>
@@ -63,6 +63,11 @@ function Map({ layout, stations, edges, active, href }: { layout: "wide" | "tall
       {/* Autopilot-Abzeichen neben (nicht im) Kreis-Link: eigener Schalter, öffnet nie das Seitenfenster */}
       {stations.filter((s) => s.auto !== undefined).map((s) => (
         <AutoBadge key={`auto-${s.id}`} on={!!s.auto} x={POS[layout][s.id][0]} y={POS[layout][s.id][1]} label={s.label} />
+      ))}
+      {/* Zustands-Abzeichen (Versand rund um die Uhr, Inhaber 04.10.2026): grün „24/7“ = an, rot „aus“; kein Schalter */}
+      {stations.filter((s) => s.badge).map((s) => (
+        <span key={`badge-${s.id}`} className={`fl-auto fl-badge${s.badge!.on ? " on" : " off"}`} title={s.badge!.tip} aria-hidden
+          style={{ left: `${POS[layout][s.id][0]}%`, top: `${POS[layout][s.id][1]}%` }}>{s.badge!.text}</span>
       ))}
     </div>
   );

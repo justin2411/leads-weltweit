@@ -1,4 +1,4 @@
-"""Versandzeit: nur Di–Do zur Bürozeit der Empfänger (Inhaber 04.10.2026: „übernimm alle 3 punkte“)."""
+"""Versand rund um die Uhr (Inhaber 04.10.2026: „es sollen immer mails rausgehen nicht nur di-do“)."""
 import contextlib
 import datetime as dt
 import io
@@ -32,89 +32,90 @@ def utc(s):
 
 
 class PlanTest(unittest.TestCase):
-    def test_send_yml_crons_cover_summer_and_winter(self):
-        """Je Gruppe ein Cron für Sommer- (UTC+2) und Winterzeit (UTC+1), nur Di–Do."""
+    def test_send_yml_hourly_every_day(self):
+        """Versand rund um die Uhr (Inhaber 04.10.2026): ein stündlicher Cron zur Plan-Minute, jeden Tag."""
         wf = yaml.safe_load((ROOT / ".github/workflows/send.yml").read_text())
-        crons = {c["cron"] for c in wf[True]["schedule"]}
-        self.assertTrue(all(c.endswith(" * * 2-4") for c in crons), crons)
-        for g in vz.load()["laeufe"]:
-            h, m = map(int, g["start"].split(":"))
-            for off in (2, 1):
-                self.assertIn(f"{m} {h - off} * * 2-4", crons, (g["gruppe"], off))
+        crons = [c["cron"] for c in wf[True]["schedule"]]
+        self.assertEqual(crons, [f"{vz.load()['minute']} * * * *"])
+        self.assertEqual(vz.load()["wochentage"], [1, 2, 3, 4, 5, 6, 7])
 
-    def test_group_now(self):
-        # Sommerzeit (MESZ): Di 06.10.2026
-        self.assertEqual(vz.group_now(utc("2026-10-06T06:37"))["gruppe"], "europa")   # 08:37
-        self.assertEqual(vz.group_now(utc("2026-10-06T07:37"))["gruppe"], "europa")   # 09:37 zweiter Durchgang
-        self.assertIsNone(vz.group_now(utc("2026-10-06T08:45")))                      # 10:45 zu spät
-        self.assertEqual(vz.group_now(utc("2026-10-06T12:37"))["gruppe"], "us")       # 14:37
-        self.assertEqual(vz.group_now(utc("2026-10-06T13:37"))["gruppe"], "us")       # 15:37 zweiter Durchgang
-        self.assertIsNone(vz.group_now(utc("2026-10-06T11:00")))
-        # Winterzeit (MEZ): Di 27.10.2026 – der Sommer-Cron landet vor dem Fenster
-        self.assertIsNone(vz.group_now(utc("2026-10-27T06:37")))                      # 07:37 MEZ
-        self.assertEqual(vz.group_now(utc("2026-10-27T07:37"))["gruppe"], "europa")   # 08:37 MEZ
-        self.assertIsNone(vz.group_now(utc("2026-10-27T12:37")))                      # 13:37 MEZ
-        self.assertEqual(vz.group_now(utc("2026-10-27T13:37"))["gruppe"], "us")       # 14:37 MEZ
-        # Mo, Fr, Sa, So: nie
-        for day in ("2026-10-05", "2026-10-09", "2026-10-10", "2026-10-11"):
-            self.assertIsNone(vz.group_now(utc(f"{day}T06:37")), day)
-            self.assertIsNone(vz.group_now(utc(f"{day}T12:37")), day)
-        self.assertEqual(vz.group("europa")["laender"][:2], ["UK", "FR"])
-        self.assertEqual(vz.group("us")["laender"], ["US", "MX", "BR"])  # MX/BR: neue Länder 04.10.2026
+    def test_group_now_every_hour_every_day(self):
+        for day in ("2026-10-05", "2026-10-06", "2026-10-09", "2026-10-10", "2026-10-11"):
+            for hh in ("00", "03", "06", "12", "18", "23"):
+                g = vz.group_now(utc(f"{day}T{hh}:37"))
+                self.assertEqual((g["gruppe"], g["laender"]), ("alle", []), (day, hh))
 
-    def test_deadline_and_due(self):
-        g = vz.group("europa")
-        self.assertEqual(vz.deadline(g, utc("2026-10-06T06:40")), dt.datetime(2026, 10, 6, 11, 0, tzinfo=BERLIN))
-        g, t = vz.last_due(utc("2026-10-12T10:00"))                 # Montag -> Do US-Lauf
-        self.assertEqual((g["gruppe"], t.astimezone(UTC)), ("us", utc("2026-10-08T12:37")))
-        self.assertEqual(vz.send_day_start(utc("2026-10-12T10:00")).astimezone(UTC), utc("2026-10-08T06:37"))
-        g, t = vz.next_start(utc("2026-10-08T18:00"))
-        self.assertEqual(t.astimezone(UTC), utc("2026-10-13T06:37"))
+    def test_slots_and_dst(self):
+        self.assertEqual(len(vz.slots(dt.date(2026, 10, 6))), 24)
+        self.assertEqual(len(vz.slots(dt.date(2026, 10, 25))), 25)   # Ende Sommerzeit: 25 Stunden
+        self.assertEqual(len(vz.slots(dt.date(2027, 3, 28))), 23)    # Beginn Sommerzeit: 23 Stunden
+        first = vz.slots(dt.date(2026, 10, 6))[0][1]
+        self.assertEqual(first.astimezone(UTC), utc("2026-10-05T22:37"))   # 00:37 MESZ
+        self.assertTrue(all(t.minute == 37 for _, t in vz.slots(dt.date(2026, 10, 25))))
+
+    def test_due_and_next(self):
+        g, t = vz.last_due(utc("2026-10-12T10:00"))                 # Montag 12:00 MESZ -> 10:37 MESZ
+        self.assertEqual((g["gruppe"], t.astimezone(UTC)), ("alle", utc("2026-10-12T08:37")))
+        self.assertEqual(vz.send_day_start(utc("2026-10-12T10:00")).astimezone(UTC), utc("2026-10-11T22:37"))
+        g, t = vz.next_start(utc("2026-10-10T18:00"))               # Samstag
+        self.assertEqual(t.astimezone(UTC), utc("2026-10-10T18:37"))
         self.assertEqual(vz.label(utc("2026-10-13T06:37")), "Di 13.10. 08:37")
+        self.assertEqual(vz.plan_text(), "täglich 0–24 Uhr · stündlich :37")
+
+    def test_share_spreads_evenly(self):
+        self.assertEqual(vz.runs_left(utc("2026-10-06T00:37")), 24)
+        self.assertEqual(vz.runs_left(utc("2026-10-06T23:37")), 1)
+        self.assertEqual(vz.share(90, utc("2026-10-06T00:37")), 4)    # 90 / 24 aufgerundet
+        self.assertEqual(vz.share(30, utc("2026-10-06T21:37")), 10)   # Rest 30 auf 3 Läufe
+        self.assertEqual(vz.share(5, utc("2026-10-06T23:37")), 5)     # letzter Lauf: alles
+        self.assertEqual(vz.share(0, utc("2026-10-06T12:37")), 0)
+        self.assertEqual(vz.share(-3, utc("2026-10-06T12:37")), 0)
+        # über einen Tag verteilt: keine Spitze, Summe = Tagesmenge
+        rest, per = 90, []
+        for h in range(24):
+            n = vz.share(rest, utc(f"2026-10-06T{h:02d}:37"))
+            per.append(n)
+            rest -= n
+        self.assertEqual(sum(per), 90)
+        self.assertLessEqual(max(per) - min(per), 1)
 
     def test_cli_outputs(self):
         with tempfile.NamedTemporaryFile("r", suffix=".txt") as f, mock.patch.dict(os.environ, {"GITHUB_OUTPUT": f.name}), \
                 contextlib.redirect_stdout(io.StringIO()):
-            vz.main(["--gruppe", "us"])
+            vz.main(["--gruppe", "auto"])
             vz.main(["--gruppe", "alle"])
             out = f.read()
-        self.assertIn("ok=true\ngruppe=us\nlaender=US,MX,BR\nbis=\n", out)   # feste Gruppe per Hand: ohne Zeitfenster
-        self.assertIn("ok=true\ngruppe=alle\nlaender=\nbis=\n", out)
+        self.assertIn("ok=true\ngruppe=alle\nlaender=\nbis=\nminuten=45\nanteil=true\n", out)
+        self.assertIn("ok=true\ngruppe=alle\nlaender=\nbis=\nminuten=\nanteil=false\n", out)  # Handstart
 
 
 class WachhundTest(unittest.TestCase):
     def jobs(self):
-        return {j["gruppe"]: j for j in w.JOBS if j["wf"] == "send.yml"}
+        return [j for j in w.JOBS if j["wf"] == "send.yml"]
 
-    def test_two_send_jobs_in_german_time(self):
+    def test_one_hourly_job(self):
         jobs = self.jobs()
-        self.assertEqual(set(jobs), {"europa", "us"})
-        self.assertEqual(jobs["europa"]["weekdays"], [1, 2, 3])
-        self.assertEqual(jobs["us"]["inputs"]["gruppe"], "auto")
-        self.assertEqual(jobs["europa"]["inputs"]["probelauf"], "false")
+        self.assertEqual(len(jobs), 1)
+        j = jobs[0]
+        self.assertEqual((j["kind"], j["window"], j["cond"]), ("hourly", (0, 23), "versand"))
+        self.assertEqual(j["inputs"]["gruppe"], "auto")
+        self.assertEqual(j["inputs"]["probelauf"], "false")
 
-    def test_overdue_only_tue_to_thu(self):
-        eu, us = self.jobs()["europa"], self.jobs()["us"]
-        self.assertTrue(w.overdue(eu, [], utc("2026-10-06T07:30"))[0])      # Di 09:30 MESZ, kein Lauf
-        self.assertFalse(w.overdue(eu, [], utc("2026-10-05T07:30"))[0])     # Montag
-        self.assertFalse(w.overdue(eu, [], utc("2026-10-09T07:30"))[0])     # Freitag
-        self.assertFalse(w.overdue(eu, [], utc("2026-10-06T08:30"))[0])     # 10:30: Nachholfenster vorbei
-        self.assertFalse(w.overdue(eu, [{"created_at": "2026-10-06T06:40:00Z", "status": "completed"}],
-                                   utc("2026-10-06T07:30"))[0])
-        self.assertTrue(w.overdue(eu, [], utc("2026-10-27T08:30"))[0])      # Winterzeit: 09:30 MEZ
-        # US: der Morgenlauf zählt nicht als US-Lauf
-        morning = [{"created_at": "2026-10-06T06:40:00Z", "status": "completed"}]
-        self.assertTrue(w.overdue(us, morning, utc("2026-10-06T13:30"))[0])  # 15:30 MESZ
-        self.assertFalse(w.overdue(us, morning, utc("2026-10-06T12:50"))[0])  # noch in der Karenz
+    def test_overdue_any_day(self):
+        j = self.jobs()[0]
+        for day in ("2026-10-05", "2026-10-10", "2026-10-11"):          # Mo, Sa, So
+            self.assertTrue(w.overdue(j, [], utc(f"{day}T03:30"))[0], day)
+        recent = [{"created_at": "2026-10-10T02:37:00Z", "status": "completed"}]
+        self.assertFalse(w.overdue(j, recent, utc("2026-10-10T03:30"))[0])   # vor 53 min gelaufen
+        self.assertTrue(w.overdue(j, recent, utc("2026-10-10T04:05"))[0])    # 88 min ohne Lauf
 
 
 class TagescheckTest(unittest.TestCase):
-    def test_send_max_age_follows_plan(self):
-        # Montag 19:37 MESZ: letzter fälliger Lauf Do 14:37 MESZ -> ~4 Tage + 5 h ok, kein Fehler am Wochenende
-        age = tagescheck.send_max_age(utc("2026-10-12T17:37"))
-        self.assertAlmostEqual(age, (utc("2026-10-12T17:37") - utc("2026-10-08T12:37")).total_seconds() / 3600 + 0.25)
-        # Mittwoch abends: US-Lauf von heute muss gelaufen sein
-        self.assertLess(tagescheck.send_max_age(utc("2026-10-07T17:37")), 5.5)
+    def test_send_max_age_hourly(self):
+        # Sonntag 19:37 MESZ: letzter fälliger Lauf 18:37 MESZ (Karenz 60 min) -> 1 h + 1,5 h Puffer
+        age = tagescheck.send_max_age(utc("2026-10-11T17:37"))
+        self.assertAlmostEqual(age, 2.5)
+        self.assertLess(tagescheck.send_max_age(utc("2026-10-07T17:00")), 4)
 
 
 P = {"id": "p1", "company_name": "Acme Web Ltd", "segment_id": "S2", "country": "UK", "legal_form": "Ltd"}
@@ -151,14 +152,20 @@ class OutreachTest(unittest.TestCase):
         self.assertIn("info@acme.co.uk", out)
         self.assertIn("info@acme.com", out)
 
-    def test_window_over_stops(self):
+    def test_runtime_over_stops(self):
         db = FakeDB({"messages": [msg("a1", "info@acme.co.uk", P)]})
-        past = (dt.datetime.now(BERLIN) - dt.timedelta(minutes=5)).strftime("%H:%M")
-        if past > dt.datetime.now(BERLIN).strftime("%H:%M"):  # kurz nach Mitternacht: Test sinnlos
-            self.skipTest("Mitternacht")
-        out = self.run_send(db, countries="UK", bis=past)
-        self.assertIn("Versandfenster vorbei", out)
+        out = self.run_send(db, countries="UK", minuten=-1)
+        self.assertIn("Laufzeit vorbei", out)
         self.assertNotIn("würde senden an", out)
+
+    def test_share_limits_run(self):
+        """Stündlicher Lauf: nur der Anteil der Resttagesmenge (Inhaber 04.10.2026: rund um die Uhr, gleichmäßig)."""
+        rows = [msg(f"a{i}", f"info@acme{i}.com", dict(PU, id=f"p{i}")) for i in range(6)]
+        db = FakeDB({"messages": rows})
+        with mock.patch("lib.versandzeit.share", return_value=2):
+            out = self.run_send(db, anteil=True)
+        self.assertEqual(out.count("würde senden an"), 2)
+        self.assertIn("Anteil dieses Laufs erreicht (2)", out)
 
     def test_window_pause(self):
         self.assertEqual(outreach.window_pause(60, None, 100), 60)

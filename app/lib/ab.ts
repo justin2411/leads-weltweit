@@ -10,7 +10,9 @@
 import { testAllowed, type TestScope } from "./test-scope.ts";
 
 export type AbElement = { art: "text" | "zahl" | "wahl"; max?: number; min?: number; werte?: string[]; frage?: boolean };
-export type AbStep = { key: string; station: string; titel: string; messung: string; min_n: number; elemente: Record<string, AbElement> };
+export type AbStep = { key: string; station: string; titel: string; messung: string; min_n: number; elemente: Record<string, AbElement>;
+  /** Grund, wenn der Schritt nicht getestet werden darf (z. B. Versandzeit seit Versand rund um die Uhr) */
+  pausiert?: string };
 export type AbStation = { key: string; titel: string; von: string; zu: string; richtwert: number };
 export type AbRegistry = {
   sicherheit: number; max_tage: number; engpass_min_n: number; stationen: AbStation[]; schritte: AbStep[]; verboten: string[];
@@ -117,7 +119,9 @@ export type AbCreate = { step: string; segment: string; country: string; element
 
 /** Darf dieser Test angelegt werden? Freigabe-Liste (nur S2 US/UK/FR), ein Element, Werte, Hypothese. */
 export function checkTest(reg: AbRegistry, scope: TestScope, x: AbCreate): string[] {
-  if (!reg.schritte.some((s) => s.key === x.step)) return ["Schritt unbekannt"];
+  const st = reg.schritte.find((s) => s.key === x.step);
+  if (!st) return ["Schritt unbekannt"];
+  if (st.pausiert) return [`Schritt pausiert: ${st.pausiert}`];  // Versandzeit: Versand läuft rund um die Uhr (04.10.2026)
   const errs: string[] = [];
   if (!testAllowed(scope, x.segment, x.country)) errs.push("Tests nur Webagenturen US/UK/FR (config/fokus.yaml tests)");
   errs.push(...checkValue(reg, x.step, x.element, x.b));

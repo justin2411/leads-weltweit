@@ -1,26 +1,27 @@
-"""Versandzeit der Kalt- und Nachfassmails (Inhaber 04.10.2026: „übernimm alle 3 punkte“).
+"""Versand rund um die Uhr (Inhaber 04.10.2026: „es sollen immer mails rausgehen nicht nur di-do. sondern jeden tag
+um jede uhrzeit es soll die ganze zeit laufen“).
 
-Nur Dienstag bis Donnerstag zur Bürozeit der Empfänger: Europa (UK, FR …) ca. 09–11 Uhr, USA ab ca. 15 Uhr deutscher
-Zeit (Vormittag US-Ostküste). Der Plan steht in app/lib/versandzeit.json (gleiche Datei liest das Dashboard).
+Kalt- und Nachfassmails jeden Tag 0–24 Uhr: send.yml startet stündlich zur Minute 37 (Plan app/lib/versandzeit.json,
+gleiche Datei liest das Dashboard). Jeder Lauf sendet nur seinen Anteil der Tagesmenge (share: Rest des Tages geteilt
+durch die verbleibenden Läufe des Tages) und höchstens dauer_min Minuten lang – gleichmäßig, ohne Spitzen. Alle
+übrigen Grenzen (Notbremse, Sperrliste, Länderregeln, Postfach-/Länder-Tageslimits, Pausenschalter) gelten unverändert
+in outreach.py.
 
-send.yml hat je Gruppe zwei Crons (Sommer- und Winterzeit, UTC). Welcher Lauf wirklich sendet, entscheidet allein
-die deutsche Uhrzeit beim Start (group_now): der Cron der „falschen“ Jahreszeit landet entweder außerhalb des Fensters
-(endet ohne Arbeit) oder eine Stunde nach dem richtigen im Fenster (zweiter Durchgang, sendet nur, was übrig ist).
-
-  python scripts/lib/versandzeit.py --gruppe auto     # GitHub-Ausgaben ok/gruppe/laender/bis für send.yml
+  python scripts/lib/versandzeit.py --gruppe auto     # GitHub-Ausgaben ok/gruppe/laender/bis/minuten/anteil
 """
 from __future__ import annotations
 
 import argparse
 import datetime as dt
 import json
+import math
 import os
 import sys
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 PLAN_FILE = Path(__file__).resolve().parents[2] / "app" / "lib" / "versandzeit.json"
-EARLY_MIN = 10  # ein Lauf darf bis zu 10 min vor dem geplanten Start beginnen (Cron/Wachhund)
+UTC = dt.timezone.utc
 
 
 def load() -> dict:
@@ -45,57 +46,38 @@ def label(t: dt.datetime, plan: dict | None = None) -> str:
     return f"{TAGE[t.weekday()]} {t:%d.%m. %H:%M}"
 
 
-def _at(day: dt.date, hhmm: str, tz: ZoneInfo) -> dt.datetime:
-    h, m = map(int, hhmm.split(":"))
-    return dt.datetime(day.year, day.month, day.day, h, m, tzinfo=tz)
+def group(plan: dict | None = None) -> dict:
+    """Die eine Gruppe: alle Länder in jedem Lauf."""
+    plan = plan or load()
+    return {"gruppe": "alle", "name": plan.get("name") or "alle Länder", "laender": []}
 
 
 def send_day(day: dt.date, plan: dict | None = None) -> bool:
-    """Ist das (deutsche) Datum ein Versandtag? wochentage nach ISO: 1 = Montag … 7 = Sonntag."""
+    """Ist das (deutsche) Datum ein Versandtag? wochentage nach ISO: 1 = Montag … 7 = Sonntag (heute: alle)."""
     plan = plan or load()
     return day.isoweekday() in plan["wochentage"]
 
 
-def group(name: str, plan: dict | None = None) -> dict | None:
-    plan = plan or load()
-    return next((g for g in plan["laeufe"] if g["gruppe"] == name), None)
-
-
 def group_now(now: dt.datetime, plan: dict | None = None) -> dict | None:
-    """Gruppe, die jetzt senden darf (Versandtag und zwischen Start − 10 min und spätestem Start), sonst None."""
+    """Gruppe, die jetzt senden darf (an jedem Versandtag zu jeder Uhrzeit), sonst None."""
     plan = plan or load()
-    tz = _tz(plan)
-    local = now.astimezone(tz)
-    if not send_day(local.date(), plan):
-        return None
-    for g in plan["laeufe"]:
-        a = _at(local.date(), g["start"], tz) - dt.timedelta(minutes=EARLY_MIN)
-        if a <= local < _at(local.date(), g["spaetester_start"], tz):
-            return g
-    return None
-
-
-def deadline(g: dict, now: dt.datetime, plan: dict | None = None) -> dt.datetime:
-    """Ende des Versandfensters (bis) am heutigen deutschen Tag."""
-    plan = plan or load()
-    tz = _tz(plan)
-    return _at(now.astimezone(tz).date(), g["bis"], tz)
-
-
-def parse_until(hhmm: str, now: dt.datetime, plan: dict | None = None) -> dt.datetime:
-    """--bis HH:MM (deutsche Zeit) -> Zeitpunkt heute."""
-    plan = plan or load()
-    tz = _tz(plan)
-    return _at(now.astimezone(tz).date(), hhmm, tz)
+    return group(plan) if send_day(now.astimezone(_tz(plan)).date(), plan) else None
 
 
 def slots(day: dt.date, plan: dict | None = None) -> list[tuple[dict, dt.datetime]]:
-    """Geplante Starts eines deutschen Kalendertags (leer an Nicht-Versandtagen)."""
+    """Geplante stündliche Starts (Minute `minute`) eines deutschen Kalendertags (23–25 je nach Zeitumstellung)."""
     plan = plan or load()
     if not send_day(day, plan):
         return []
     tz = _tz(plan)
-    return [(g, _at(day, g["start"], tz)) for g in plan["laeufe"]]
+    start = dt.datetime(day.year, day.month, day.day, tzinfo=tz).astimezone(UTC)
+    g = group(plan)
+    out = []
+    for h in range(26):
+        t = start + dt.timedelta(hours=h, minutes=int(plan.get("minute", 37)))
+        if t.astimezone(tz).date() == day:
+            out.append((g, t))
+    return out
 
 
 def last_due(now: dt.datetime, grace_min: int = 60, plan: dict | None = None) -> tuple[dict, dt.datetime] | None:
@@ -110,7 +92,7 @@ def last_due(now: dt.datetime, grace_min: int = 60, plan: dict | None = None) ->
 
 
 def send_day_start(now: dt.datetime, grace_min: int = 60, plan: dict | None = None) -> dt.datetime | None:
-    """Erster geplanter Start des letzten fälligen Versandtags (für „seitdem gesendet?“-Prüfungen)."""
+    """Erster geplanter Start des Tags des letzten fälligen Laufs (für „seitdem gesendet?“-Prüfungen)."""
     plan = plan or load()
     due = last_due(now, grace_min, plan)
     if not due:
@@ -128,42 +110,50 @@ def next_start(now: dt.datetime, plan: dict | None = None) -> tuple[dict, dt.dat
     return None
 
 
+def runs_left(now: dt.datetime) -> int:
+    """Verbleibende stündliche Läufe des Versandtags inkl. dieses Laufs. Der Tag der Tagesmenge ist der UTC-Tag
+    (outreach.py zählt „heute gesendet“ ab 00:00 UTC), je UTC-Stunde ein Lauf."""
+    return max(1, 24 - now.astimezone(UTC).hour)
+
+
+def share(remaining: int, now: dt.datetime) -> int:
+    """Anteil dieses Laufs an der Resttagesmenge: gleichmäßig auf die verbleibenden Läufe verteilt (aufgerundet)."""
+    if remaining <= 0:
+        return 0
+    return math.ceil(remaining / runs_left(now))
+
+
 def wachhund_jobs(plan: dict | None = None, inputs: dict | None = None) -> list[dict]:
-    """Je Gruppe ein Tagesjob für den Wachhund (deutsche Zeit, nur Versandtage, Nachholen bis 15 min vor dem
-    spätesten Start, damit der nachgestartete Lauf noch im Fenster beginnt)."""
+    """Ein Stundenjob für den Wachhund: rund um die Uhr, nachstarten, wenn 80 min kein Lauf begann."""
+    return [{"wf": "send.yml", "kind": "hourly", "window": (0, 23), "max_min": 80, "cond": "versand",
+             "gruppe": "alle", "inputs": dict(inputs or {}, gruppe="auto")}]
+
+
+def plan_text(plan: dict | None = None) -> str:
     plan = plan or load()
-    out = []
-    for g in plan["laeufe"]:
-        h, m = map(int, g["spaetester_start"].split(":"))
-        until = (dt.datetime(2000, 1, 1, h, m) - dt.timedelta(minutes=15)).strftime("%H:%M")
-        out.append({"wf": "send.yml", "kind": "daily", "at": g["start"], "grace": 40, "until": until,
-                    "tz": plan.get("tz") or "Europe/Berlin", "weekdays": [d - 1 for d in plan["wochentage"]],
-                    "cond": "versand", "gruppe": g["gruppe"], "inputs": dict(inputs or {}, gruppe="auto")})
-    return out
+    return f"täglich 0–24 Uhr · stündlich :{int(plan.get('minute', 37)):02d}"
 
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--gruppe", default="auto", help="auto (nach deutscher Uhrzeit), europa, us oder alle")
+    ap.add_argument("--gruppe", default="auto", help="auto (Anteil der Tagesmenge, höchstens dauer_min Minuten) "
+                                                       "oder alle (per Hand: ohne Anteil und Zeitgrenze)")
     args = ap.parse_args(argv)
-    now = dt.datetime.now(dt.timezone.utc)
+    now = dt.datetime.now(UTC)
     plan = load()
-    if args.gruppe == "alle":  # nur per Hand (Inhaber): ohne Länder- und Zeitfilter
-        out = {"ok": "true", "gruppe": "alle", "laender": "", "bis": ""}
+    if args.gruppe == "alle":  # nur per Hand (Inhaber): ohne Anteil und Zeitgrenze
+        out = {"ok": "true", "gruppe": "alle", "laender": "", "bis": "", "minuten": "", "anteil": "false"}
+        print("Handstart: alle Länder, ohne Anteil und Zeitgrenze")
+    elif group_now(now, plan) is None:
+        nxt = next_start(now, plan)
+        print(f"Heute kein Versandtag (Plan app/lib/versandzeit.json) – nächster Lauf "
+              f"{label(nxt[1], plan) if nxt else '–'} deutscher Zeit")
+        out = {"ok": "false", "gruppe": "", "laender": "", "bis": "", "minuten": "", "anteil": "false"}
     else:
-        g = group_now(now, plan) if args.gruppe == "auto" else group(args.gruppe, plan)
-        if g is None:
-            nxt = next_start(now, plan)
-            when = f"{label(nxt[1], plan)} ({nxt[0]['name']})" if nxt else "–"
-            print(f"Außerhalb der Versandzeit (nur Di–Do, Plan app/lib/versandzeit.json) – nächster Lauf {when} "
-                  "deutscher Zeit")
-            out = {"ok": "false", "gruppe": "", "laender": "", "bis": ""}
-        else:
-            # feste Gruppe per Hand: ohne Zeitfenster (der Inhaber startet bewusst), auto: Versand nur bis „bis“
-            out = {"ok": "true", "gruppe": g["gruppe"], "laender": ",".join(g["laender"]),
-                   "bis": g["bis"] if args.gruppe == "auto" else ""}
-            print(f"Versandzeit {g['name']}: Länder {out['laender']}"
-                  + (f", Versand bis {g['bis']} deutscher Zeit" if out["bis"] else ", ohne Zeitfenster (Handstart)"))
+        out = {"ok": "true", "gruppe": "alle", "laender": "", "bis": "", "minuten": str(plan.get("dauer_min", 45)),
+               "anteil": "true"}
+        print(f"Versand rund um die Uhr ({plan_text(plan)}): alle Länder, Anteil der Tagesmenge, "
+              f"höchstens {out['minuten']} min")
     target = os.environ.get("GITHUB_OUTPUT")
     if target:
         with open(target, "a", encoding="utf-8") as f:

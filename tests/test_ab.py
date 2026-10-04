@@ -7,6 +7,7 @@ import re
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -176,7 +177,14 @@ class MailTest(unittest.TestCase):
                  "experiments": {"segment_id": "S2"}} for i in range(12)]
         start = dt.datetime(2026, 10, 6, 12, 40, tzinfo=UTC)
         until = dt.datetime(2026, 10, 6, 17, 0, tzinfo=UTC)
-        out, zeit, mid = outreach.ab_send_order(ctx, rows, until, start)
+        # Versand rund um die Uhr (Inhaber 04.10.2026): Schritt pausiert -> kein Versandzeit-Test, kein Anlegen
+        self.assertTrue(ab.step("mail_zeit").get("pausiert"))
+        self.assertEqual(outreach.ab_send_order(ctx, rows, until, start), (rows, {}, None))
+        self.assertTrue(ab.check_test("mail_zeit", "S2", "US", "fenster", "spaet", hypothese="später besser")[0]
+                        .startswith("Schritt pausiert"))
+        orig = ab.step
+        with mock.patch.object(ab, "step", side_effect=lambda k: {**(orig(k) or {}), "pausiert": None}):
+            out, zeit, mid = outreach.ab_send_order(ctx, rows, until, start)
         self.assertEqual(mid, dt.datetime(2026, 10, 6, 14, 50, tzinfo=UTC))
         kinds = [zeit[m["id"]][0] for m in out]
         self.assertEqual(kinds, sorted(kinds, key=lambda k: k == "spaet"))

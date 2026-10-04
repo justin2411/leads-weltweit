@@ -27,8 +27,8 @@ ICON = {OK: "✓", WARN: "!", FAIL: "✗"}
 
 # Geplante Läufe: Datei -> (Name, höchstes erlaubtes Alter des letzten Laufs in Stunden)
 WORKFLOWS = {
-    # Versand nur Di–Do (Inhaber 04.10.2026): erwartetes Alter aus dem Versandplan, siehe send_max_age()
-    "send.yml": ("Versand Kaltmails (Di–Do)", 27),
+    # Versand rund um die Uhr (Inhaber 04.10.2026): stündlich, erwartetes Alter aus dem Versandplan (send_max_age)
+    "send.yml": ("Versand Kaltmails (24/7)", 3),
     "taeglich.yml": ("Automatiklauf (Nachfassmails, Entwürfe)", 27),
     # läuft rund um die Uhr alle 10 min, Wachhund startet nach 20 min nach -> 1 h Toleranz (Prüfung 04.10.2026)
     "antworten.yml": ("Antwort-Assistent + Web-Proben (24/7)", 1),
@@ -77,14 +77,14 @@ class Check:
 
 # ---------------------------------------------------------------------------
 def send_max_age(now: dt.datetime) -> float:
-    """Höchstes Alter (h) des letzten send.yml-Laufs: der letzte geplante Versandstart (Di–Do, deutsche Zeit) muss
-    gelaufen sein. Fr–Mo fehlende Läufe sind kein Fehler (Inhaber 04.10.2026). Läufe, die vor dem Start endeten
-    (Cron der anderen Jahreszeit außerhalb des Fensters), zählen nicht."""
+    """Höchstes Alter (h) des letzten send.yml-Laufs: der letzte geplante stündliche Versandstart (rund um die Uhr,
+    Inhaber 04.10.2026) muss gelaufen sein."""
     from lib import versandzeit
     due = versandzeit.last_due(now)
     if not due:
         return 24 * 15
-    return (now - due[1]).total_seconds() / 3600 + 0.25
+    # + 1,5 h: ein von GitHub ausgelassener stündlicher Lauf ist noch kein Fehler (der Wachhund startet ihn nach)
+    return (now - due[1]).total_seconds() / 3600 + 1.5
 
 
 def check_workflows(c: Check) -> None:
@@ -130,7 +130,7 @@ def check_sending(c: Check, db) -> None:
     from lib.deliverability import BOUNCE_STOP, MIN_SAMPLE, count_bounces, emergency_stop, window_start
     from lib import versandzeit
     aktiv = cfg("versand.yaml", "aktiv") == "true"
-    # Versand nur Di–Do (Inhaber 04.10.2026): „gesendet?“ ab dem ersten Start des letzten fälligen Versandtags
+    # Versand rund um die Uhr (Inhaber 04.10.2026): „gesendet?“ ab dem ersten Lauf des Tags (00:37 deutscher Zeit)
     day_start = versandzeit.send_day_start(NOW) or (NOW - dt.timedelta(hours=26))
     since26 = min(day_start, NOW - dt.timedelta(hours=26)).isoformat()
     since_label = versandzeit.label(day_start)
@@ -153,10 +153,10 @@ def check_sending(c: Check, db) -> None:
     elif stop:
         c.add("Versand", FAIL, "Notbremse aktiv", stop)
     elif queue and not sent_day:
-        c.add("Versand", FAIL, f"Keine Mail seit dem letzten Versandtag gesendet ({since_label})",
+        c.add("Versand", FAIL, f"Keine Mail seit {since_label} gesendet",
               f"{len(queue)} freigegebene Mails warten")
     else:
-        c.add("Versand", OK, f"{len(sent_day)} Mails seit {since_label} gesendet (Versand Di–Do)",
+        c.add("Versand", OK, f"{len(sent_day)} Mails seit {since_label} gesendet (Versand 24/7)",
               f"{detail}; Warteschlange {len(queue)}")
     if not stop and len(sent30):
         rate = bounced / len(sent30)

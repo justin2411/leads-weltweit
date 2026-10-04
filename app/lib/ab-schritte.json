@@ -19,6 +19,7 @@
     { "key": "mail_einstieg", "station": "mail", "titel": "Einstieg/Frage", "messung": "antwort", "min_n": 100,
       "elemente": { "einstieg": { "art": "text", "max": 320 }, "frage": { "art": "text", "max": 200, "frage": true } } },
     { "key": "mail_zeit", "station": "mail", "titel": "Versandzeit", "messung": "antwort", "min_n": 100,
+      "pausiert": "Versand läuft rund um die Uhr (Inhaber 04.10.2026)",
       "elemente": { "fenster": { "art": "wahl", "werte": ["frueh", "spaet"] } } },
     { "key": "nachfass", "station": "nachfass", "titel": "Nachfassmail", "messung": "antwort", "min_n": 100,
       "elemente": { "tage": { "art": "zahl", "min": 3, "max": 10 }, "frage": { "art": "text", "max": 200, "frage": true } } },

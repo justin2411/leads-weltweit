@@ -221,7 +221,7 @@ def vorschlag(db) -> dict:
     frei = []
     for s in order:
         for st in ab.registry()["schritte"]:
-            if st["station"] != s["station"]:
+            if st["station"] != s["station"] or st.get("pausiert"):
                 continue
             for c in countries:
                 if (st["key"], c) not in running:

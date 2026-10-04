@@ -1,20 +1,23 @@
 /**
- * Versandzeit (Inhaber 04.10.2026: „übernimm alle 3 punkte“): Kalt- und Nachfassmails nur Di–Do zur Bürozeit der
- * Empfänger – UK/FR ca. 9–11 Uhr, US ab ca. 15 Uhr deutscher Zeit. Gleicher Plan wie app/lib/versandzeit.json
- * (gelesen von send.yml, Wachhund und Tagescheck über scripts/lib/versandzeit.py; versandzeit.test.ts prüft, dass
- * beide gleich sind). Reines Modul ohne Imports (testbar). Sommer-/Winterzeit über Intl (Europe/Berlin).
+ * Versand rund um die Uhr (Inhaber 04.10.2026: „es sollen immer mails rausgehen nicht nur di-do. sondern jeden tag um
+ * jede uhrzeit es soll die ganze zeit laufen“): send.yml startet jeden Tag stündlich zur Minute 37; jeder Lauf sendet
+ * seinen Anteil der Tagesmenge. Gleicher Plan wie app/lib/versandzeit.json (gelesen von send.yml, Wachhund und
+ * Tagescheck über scripts/lib/versandzeit.py; versandzeit.test.ts prüft, dass beide gleich sind). Reines Modul ohne
+ * Imports (testbar). Sommer-/Winterzeit über Intl (Europe/Berlin).
  */
-export type SendGroup = { gruppe: string; name: string; laender: string[]; start: string; spaetester_start: string; bis: string };
-export type SendPlan = { tz: string; wochentage: number[]; laeufe: SendGroup[] };
+export type SendGroup = { gruppe: string; name: string; laender: string[] };
+export type SendPlan = { tz: string; wochentage: number[]; minute: number; dauer_min: number; name: string };
 
 export const PLAN: SendPlan = {
   tz: "Europe/Berlin",
-  wochentage: [2, 3, 4],
-  laeufe: [
-    { gruppe: "europa", name: "UK/FR", laender: ["UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK"], start: "08:37", spaetester_start: "10:30", bis: "11:00" },
-    { gruppe: "us", name: "US", laender: ["US", "MX", "BR"], start: "14:37", spaetester_start: "17:30", bis: "19:00" },
-  ],
+  wochentage: [1, 2, 3, 4, 5, 6, 7],
+  minute: 37,
+  dauer_min: 45,
+  name: "alle Länder · 24/7",
 };
+
+const HOUR = 3_600_000;
+const group = (plan: SendPlan): SendGroup => ({ gruppe: "alle", name: plan.name, laender: [] });
 
 /** Wanduhr in `tz` als {y, m, d, wd (ISO 1=Mo … 7=So)} für einen Zeitpunkt. */
 function wall(t: Date, tz: string): { y: number; m: number; d: number; h: number; mi: number; s: number; wd: number } {
@@ -39,45 +42,59 @@ export function atLocal(y: number, m: number, d: number, hhmm: string, tz: strin
   return new Date(t);
 }
 
-/** Geplante Starts der nächsten bzw. letzten 15 Tage (aufsteigend). */
-function slotsAround(now: Date, plan: SendPlan, dir: 1 | -1): { g: SendGroup; at: Date }[] {
-  const out: { g: SendGroup; at: Date }[] = [];
-  const w0 = wall(now, plan.tz);
-  for (let i = 0; i < 15; i++) {
-    const c = new Date(Date.UTC(w0.y, w0.m - 1, w0.d + dir * i));  // Kalendertage, unabhängig von der Zeitumstellung
-    if (!plan.wochentage.includes(c.getUTCDay() || 7)) continue;
-    for (const g of plan.laeufe) out.push({ g, at: atLocal(c.getUTCFullYear(), c.getUTCMonth() + 1, c.getUTCDate(), g.start, plan.tz) });
+/** Stündliche Starts eines deutschen Kalendertags (wie scripts/lib/versandzeit.py slots). */
+function daySlots(y: number, m: number, d: number, plan: SendPlan): Date[] {
+  const c = new Date(Date.UTC(y, m - 1, d));
+  if (!plan.wochentage.includes(c.getUTCDay() || 7)) return [];
+  const start = atLocal(y, m, d, "00:00", plan.tz).getTime();
+  const out: Date[] = [];
+  for (let h = 0; h < 26; h++) {
+    const t = new Date(start + h * HOUR + plan.minute * 60_000);
+    const w = wall(t, plan.tz);
+    if (w.y === y && w.m === m && w.d === d) out.push(t);
   }
-  return out.sort((a, b) => a.at.getTime() - b.at.getTime());
+  return out;
+}
+
+/** Starts des i-ten Kalendertags vor/nach `now` (Kalendertage, unabhängig von der Zeitumstellung). */
+function slotsOn(now: Date, plan: SendPlan, offset: number): Date[] {
+  const w0 = wall(now, plan.tz);
+  const c = new Date(Date.UTC(w0.y, w0.m - 1, w0.d + offset));
+  return daySlots(c.getUTCFullYear(), c.getUTCMonth() + 1, c.getUTCDate(), plan);
 }
 
 /** Nächster geplanter Versandstart nach `now` (für „nächster Lauf“ im Dashboard). */
 export function nextSendStart(now: Date, plan: SendPlan = PLAN): { g: SendGroup; at: Date } | null {
-  return slotsAround(now, plan, 1).find((s) => s.at.getTime() > now.getTime()) ?? null;
+  for (let i = 0; i < 15; i++) {
+    const at = slotsOn(now, plan, i).find((t) => t.getTime() > now.getTime());
+    if (at) return { g: group(plan), at };
+  }
+  return null;
 }
 
 /** Letzter geplanter Versandstart, der (Start + Karenz) schon gelaufen sein müsste. */
 export function lastSendDue(now: Date, graceMin = 60, plan: SendPlan = PLAN): { g: SendGroup; at: Date } | null {
-  const due = slotsAround(now, plan, -1).filter((s) => s.at.getTime() + graceMin * 60_000 <= now.getTime());
-  return due.at(-1) ?? null;
+  for (let i = 0; i < 15; i++) {
+    const at = slotsOn(now, plan, -i).filter((t) => t.getTime() + graceMin * 60_000 <= now.getTime()).at(-1);
+    if (at) return { g: group(plan), at };
+  }
+  return null;
 }
 
-/** Ist heute (deutsches Datum) ein Versandtag? */
+/** Ist heute (deutsches Datum) ein Versandtag? (rund um die Uhr: jeder Tag) */
 export function isSendDay(now: Date, plan: SendPlan = PLAN): boolean {
   return plan.wochentage.includes(wall(now, plan.tz).wd);
 }
 
-/** Kurztext für das Dashboard: „Di–Do · UK/FR 08:37 · US 14:37“. */
+/** Kurztext für das Dashboard: „täglich 0–24 Uhr · stündlich :37“. */
 export function planText(plan: SendPlan = PLAN): string {
-  const names = ["", "Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
-  const days = plan.wochentage.length > 1 ? `${names[plan.wochentage[0]]}–${names[plan.wochentage.at(-1)!]}` : names[plan.wochentage[0]];
-  return [days, ...plan.laeufe.map((g) => `${g.name} ${g.start}`)].join(" · ");
+  return `täglich 0–24 Uhr · stündlich :${String(plan.minute).padStart(2, "0")}`;
 }
 
-/** Erster geplanter Start des letzten fälligen Versandtags („seitdem gesendet?“, wie scripts/lib/versandzeit.py). */
+/** Erster geplanter Start des Tags des letzten fälligen Laufs („seitdem gesendet?“, wie scripts/lib/versandzeit.py). */
 export function sendDayStart(now: Date, graceMin = 60, plan: SendPlan = PLAN): Date | null {
   const due = lastSendDue(now, graceMin, plan);
   if (!due) return null;
   const w = wall(due.at, plan.tz);
-  return atLocal(w.y, w.m, w.d, plan.laeufe[0].start, plan.tz);
+  return daySlots(w.y, w.m, w.d, plan)[0] ?? null;
 }

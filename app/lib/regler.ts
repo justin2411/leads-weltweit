@@ -37,8 +37,8 @@ export const CARDS: readonly Card[] = [
   { key: "proben-vorrat", icon: "proben", name: "Proben-Vorrat", keys: ["werke_paused", "sample_targets", "sample_max_age_hours"], werk: "proben-vorrat", start: "proben-vorrat", cron: "23 * * * *", file: "proben-vorrat.yml" },
   { key: "antworten", icon: "antworten", name: "Antwort-Assistent", keys: ["werke_paused"], werk: "antworten", start: null, cron: "*/10 * * * *", file: "antworten.yml", note: WERK_SWITCHES.antworten.note },
   { key: "nachfass", icon: "nachfass", name: "Nachfassmails", keys: ["followup_enabled", "followup_days"], werk: "nachfass", start: null, cron: "17 12 * * *", file: "taeglich.yml" },
-  // Versand nur Di–Do (Inhaber 04.10.2026): nächster Lauf aus lib/versandzeit.ts (cardNext), Cron nur zur Info
-  { key: "versand", icon: "versand", name: "Versand", keys: ["send_paused"], werk: "versand", start: null, cron: "37 6 * * 2-4", file: "send.yml" },
+  // Versand rund um die Uhr (Inhaber 04.10.2026): stündlich :37, nächster Lauf aus lib/versandzeit.ts (cardNext)
+  { key: "versand", icon: "versand", name: "Versand", keys: ["send_paused"], werk: "versand", start: null, cron: "37 * * * *", file: "send.yml" },
   { key: "kundenlieferung", icon: "lieferung", name: "Kundenlieferung", keys: ["werke_paused"], werk: "kundenlieferung", start: null, cron: "53 4 * * 1", file: "kundenlieferung.yml" },
   { key: "tagescheck", icon: "tagescheck", name: "Tagescheck", keys: ["werke_paused"], werk: "tagescheck", start: null, cron: "37 17 * * *", file: "tagescheck.yml" },
   { key: "agenten", icon: "agent", name: "Agenten-Werk", keys: ["werke_paused"], werk: "agenten", start: null, cron: "29 * * * *", file: "agenten-werk.yml" },
@@ -93,7 +93,7 @@ export function nextRun(cron: string, now: Date): Date {
   throw new Error(`cron ohne Lauf: ${cron}`);
 }
 
-/** Nächster Lauf einer Karte: Versand aus dem Versandplan (Di–Do, deutsche Zeit, Sommer-/Winterzeit), sonst Cron. */
+/** Nächster Lauf einer Karte: Versand aus dem Versandplan (rund um die Uhr, deutsche Zeit), sonst Cron. */
 export function cardNext(c: Pick<Card, "key" | "cron">, now: Date): Date {
   if (c.key === "versand") return nextSendStart(now)?.at ?? nextRun(c.cron, now);
   return nextRun(c.cron, now);

@@ -55,6 +55,8 @@ test("Freigabe-Liste: nur S2 in US/UK/FR, eine Sache, Hypothese ≤ 160", () => 
   assert.deepEqual(checkTest(REG, SCOPE, { ...ok, segment: "S2", country: "UK" }), []);
   assert.ok(checkTest(REG, SCOPE, { ...ok, segment: "S1", country: "UK" }).length);
   assert.ok(checkTest(REG, SCOPE, { ...ok, segment: "S2", country: "DE" }).length);
+  // Versand rund um die Uhr (Inhaber 04.10.2026): Versandzeit-Test pausiert
+  assert.match(checkTest(REG, SCOPE, { ...ok, segment: "S2", country: "US", step: "mail_zeit", element: "fenster", b: "spaet" })[0], /^Schritt pausiert/);
   assert.ok(checkTest(REG, SCOPE, { ...ok, segment: "S2", country: "US", element: "preis" }).length);
   assert.ok(checkTest(REG, SCOPE, { ...ok, segment: "S2", country: "US", hypothese: "x".repeat(161) }).length);
   assert.ok(checkTest(REG, SCOPE, { ...ok, segment: "S2", country: "US", a: ok.b }).includes("A und B sind gleich"));

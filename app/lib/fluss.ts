@@ -13,7 +13,9 @@ export type StationId = "lead" | "gate" | "bestand" | "proben" | "kwerk" | "kaeu
 export type StationState = "live" | "idle" | "off" | "bad";
 export type Station = { id: StationId; label: string; icon: IconName; value: string; unit?: string; sub: string; state: StationState; neck?: boolean; tip: string;
   /** Werk mit Plätzen: Autopilot an/aus (Abzeichen unten rechts am Kreis); undefined = kein Abzeichen */
-  auto?: boolean };
+  auto?: boolean;
+  /** festes Zustands-Abzeichen unten rechts (Versand: „24/7“ grün = an, „aus“ rot); kein Schalter */
+  badge?: { text: string; on: boolean; tip: string } };
 export type Edge = { from: StationId; to: StationId; perHour: number; label: string };
 
 export const ORDER: StationId[] = ["lead", "gate", "bestand", "proben", "kwerk", "kaeufer", "versand", "antworten", "wstart", "wland", "wtarif", "wstripe", "wdanke", "kunden"];

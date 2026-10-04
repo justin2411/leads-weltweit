@@ -143,6 +143,11 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     const x = werkStatus({ werk, a: act, now, maxH, pausedSince: o.since });
     return x.live ? "live" : x.cls === "t-red" ? "bad" : "idle";
   };
+  // Notbremse (wie deliverability.emergency_stop, über alle Zielgruppen): steht sie, ganz oben und rot
+  const nb = brake(liveAll, CONFIG);
+  // Versand rund um die Uhr (Inhaber 04.10.2026: „ich will es bei jarvis auch in der grafik sehen das es an ist“):
+  // grün „an · 24/7“, Ring dreht, wenn in der letzten Stunde gesendet wurde; rot „aus“ nur bei Pause/Notbremse/Datei-Stopp
+  const sendOff = own.send_paused ? "Pause" : nb.stop ? "Notbremse" : !CONFIG.versand.aktiv ? "aus" : null;
   const stations: Station[] = ([
     { id: "lead", label: "Lead-Werk", icon: "lead-werk", value: stockAll ? compact(leads24) : "…", sub: werkLine({ running: leadRun, planned: leadPlanned, paused: leadPaused }), state: state("lead-werk", "lead-werk", 4), tip: werkTip("neue Leads in 24 h", { running: leadRun, planned: leadPlanned, paused: leadPaused }), auto: autopilotOn },
     { id: "gate", label: "Freigabe", icon: "freigabe", value: gatePct === null ? "–" : `${gatePct}`, unit: gatePct === null ? "" : "%", sub: gateOk + gateBad > 0 ? `${compact(gateOk + gateBad)} geprüft/h` : "prüft vor Probe", state: act.last_gate_at && t - Date.parse(act.last_gate_at) < 15 * 60_000 ? "live" : "idle", tip: "Stichprobe bestanden (7 Tage) · jeder Lead wird vor Probe und Lieferung einzeln geprüft" },
@@ -150,7 +155,10 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     { id: "proben", label: "Proben", icon: "proben", value: `${ready}/${target}`, sub: "bereit", state: state("proben-vorrat", "proben-vorrat", 26), tip: "fertige, geprüfte Proben / Soll" },
     { id: "kwerk", label: "Kunden-Werk", icon: "kunden-werk", value: stockAll ? compact(newBuyers24) : "…", sub: "neu 24 h", state: state("kunden-werk", "kunden-werk", 5), tip: "neue mail-fähige Webagenturen in 24 h", auto: autopilotOn },
     { id: "kaeufer", label: "Käufer", icon: "kaeufer", value: stock ? compact(Object.values(freeBuyers).reduce((a, b) => a + b, 0)) : "…", sub: stock ? "frei" : "lädt", state: "idle", tip: "mail-fähige Käufer ohne Mail" },
-    { id: "versand", label: "Versand", icon: "versand", value: `${sentToday}`, unit: `/${cap}`, sub: "heute", state: own.send_paused ? "off" : isLive(act, "versand", now) ? "live" : "idle", tip: "Mails heute / Kapazität" },
+    { id: "versand", label: "Versand", icon: "versand", value: `${sentToday}`, unit: `/${cap}`, sub: sendOff ? `aus · ${sendOff}` : "an · 24/7",
+      state: sendOff ? "bad" : act.sent_60m > 0 || isLive(act, "versand", now) ? "live" : "idle",
+      tip: sendOff ? `Versand aus (${sendOff}) · Mails heute / Kapazität` : "Versand an, rund um die Uhr · Mails heute / Kapazität",
+      badge: sendOff ? { text: "aus", on: false, tip: `Versand aus: ${sendOff}` } : { text: "24/7", on: true, tip: "Versand an: jeden Tag, stündlich" } },
     { id: "antworten", label: "Antworten", icon: "antworten", value: `${w.replies}`, sub: `${w.positive} positiv`, state: state("antworten", "antworten", 30), tip: "echte Antworten 7 Tage (ohne Abwesenheit)" },
     { id: "kunden", label: "Kunden", icon: "kunden", value: `${subs.length}`, sub: `${revenue}/Mon.`, state: subs.length ? "live" : "idle", tip: "zahlende Kunden · Umsatz pro Monat" },
     ...wLine.stations,
@@ -170,8 +178,6 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   ];
 
   // ---------------------------------------------------------------- JARVIS, Ampeln, Ticker
-  // Notbremse (wie deliverability.emergency_stop, über alle Zielgruppen): steht sie, ganz oben und rot
-  const nb = brake(liveAll, CONFIG);
   // Wichtigstes zuerst (Nachtschicht 04.10.2026): Notbremse, offene Antworten, leerer Proben-Vorrat vor den Werk-Hinweisen
   const tips = rankTips([
     ...(nb.stop ? [{ level: "rot" as const, title: "Notbremse: Versand gestoppt", text: `${nb.stop}. Neustart nur nach deiner Entscheidung.`, href: "/dashboard/versand" }] : []),
@@ -239,7 +245,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
 
   // ---------------------------------------------------------------- Seitenfenster
   const back = s ? `/dashboard/jarvis?s=${s}&t=${tab}` : "/dashboard/jarvis";
-  const nx = (file: string) => { const d = nextWorkflowRun(CONFIG.workflows.find((y) => y.file === file), now); return d ? berlin(d, file === "send.yml") : "–"; };  // Versand nur Di–Do: mit Datum
+  const nx = (file: string) => { const d = nextWorkflowRun(CONFIG.workflows.find((y) => y.file === file), now); return d ? berlin(d, file === "send.yml") : "–"; };  // Versand: mit Datum
   const dispatch = canDispatch();
   // Direktstart (03.10.2026): mit Token sofort, sonst startet der Wachhund spätestens beim nächsten Lauf; Pausen gelten
   const Start = ({ wf }: { wf: StartKey }) => {
