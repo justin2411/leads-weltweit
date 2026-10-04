@@ -4,6 +4,7 @@
  * … über mein claude abo“). Server-Komponenten; Empfehlungen aus echten Zahlen (recommend()), Chat als Server Action.
  */
 import Link from "next/link";
+import type { ReactNode } from "react";
 import type { Rec } from "@/lib/leitstand";
 import { KINDS, chatThread, type AgentTask } from "@/lib/agents";
 import { chatToJarvis } from "../control-actions";
@@ -20,13 +21,14 @@ export function giveHref(agent: number, t: NonNullable<Rec["task"]>) {
   return `/dashboard/jarvis?${q}`;
 }
 
-/** 2–3 Optimierungen, je eine Zeile: Titel, kurzer Grund, Klick zur Station, „an Agent“ (vorbelegt) oder ziehen. */
-export function Empfiehlt({ recs, href, agent }: { recs: Rec[]; href: (r: Rec) => string; agent: number }) {
-  if (!recs.length) return null;
+/** 2–3 Optimierungen, je eine Karte: Titel, kurzer Grund, Klick zur Station, „an Agent“ (vorbelegt) oder ziehen.
+ *  children: weitere Hinweise (Chips) unter den Karten. */
+export function Empfiehlt({ recs, href, agent, children }: { recs: Rec[]; href: (r: Rec) => string; agent: number; children?: ReactNode }) {
+  if (!recs.length && !children) return null;
   return (
     <section className="jrec" aria-label="JARVIS empfiehlt">
       <h2><Icon name="trend-hoch" size={16} /> JARVIS empfiehlt</h2>
-      <div className="jrec-l">
+      {recs.length > 0 && <div className="jrec-l">
         {recs.map((r, i) => {
           const row = (
             <div key={i} className={`jrec-i ${r.level}`}>
@@ -40,19 +42,24 @@ export function Empfiehlt({ recs, href, agent }: { recs: Rec[]; href: (r: Rec) =
           );
           return r.task ? <DragBox key={i} task={r.task} title={r.title}>{row}</DragBox> : row;
         })}
-      </div>
+      </div>}
+      {children}
     </section>
   );
 }
 
-/** Chat: Eingabe + Verlauf der letzten Chat-Aufträge. Einklappbar; offen, sobald ein Gespräch läuft. */
-export function JarvisChat({ tasks, open }: { tasks: AgentTask[]; open: boolean }) {
-  const thread = chatThread(tasks);
+/** Chat: Verlauf der letzten Chat-Aufträge und Eingabe, als Karte (immer offen). startAt = nächste Agenten-Runde. */
+export function JarvisChat({ tasks, startAt }: { tasks: AgentTask[]; startAt?: string }) {
+  const thread = chatThread(tasks, 6, startAt);
   const waiting = thread.some((x) => x.status === "offen" || x.status === "laeuft");
+  const queued = thread.some((x) => x.status === "offen");
   return (
-    <details className="jchat" id="chat" open={open || waiting || undefined}>
-      <summary><Icon name="jarvis" size={16} /> Schreib JARVIS{waiting ? <em>wartet auf Antwort</em> : thread.length ? <em>{thread.length} im Verlauf</em> : null}</summary>
-      {thread.length > 0 && (
+    <section className="jcard jchat" id="chat" aria-label="Schreib JARVIS">
+      <header className="jcard-h">
+        <h2><Icon name="jarvis" size={18} /> Schreib JARVIS</h2>
+        {waiting ? <em>{queued && startAt ? `startet um ${startAt}` : "in Arbeit"}</em> : thread.length ? <em>{thread.length} im Verlauf</em> : null}
+      </header>
+      {thread.length > 0 ? (
         <ol className="jchat-log">
           {thread.map((x) => (
             <li key={x.id}>
@@ -61,13 +68,13 @@ export function JarvisChat({ tasks, open }: { tasks: AgentTask[]; open: boolean 
             </li>
           ))}
         </ol>
-      )}
+      ) : <p className="jchat-empty">Aufgabe oder Frage eintippen – ein freier Agent übernimmt.</p>}
       <form action={chatToJarvis} className="jchat-f">
         <Back to="/dashboard/jarvis?c=1" />
-        <textarea name="text" required minLength={3} maxLength={1000} rows={2} placeholder="Schreib JARVIS eine Aufgabe oder Frage, z. B. „UK Käufer finden“ oder „Warum keine Antworten in FR?“" />
-        <button className="go"><Icon name="weiter" size={16} /> An JARVIS</button>
+        <textarea name="text" required minLength={3} maxLength={1000} rows={2} aria-label="Nachricht an JARVIS" placeholder="z. B. „UK Käufer finden“ oder „Warum keine Antworten in FR?“" />
+        <button className="go"><Icon name="weiter" size={16} /> Senden</button>
       </form>
-      <p className="lock"><Icon name="uhr" size={14} /> Antwort kommt über dein Claude-Abo mit der nächsten Agenten-Runde (≤ 60 min). Keine API-Kosten. Agenten senden nie Mails und ändern keine Prüfregeln.</p>
-    </details>
+      <p className="lock"><Icon name="uhr" size={14} /> Über dein Claude-Abo{startAt ? `, nächste Runde ${startAt}` : ""}. Keine API-Kosten, nie Mails.</p>
+    </section>
   );
 }

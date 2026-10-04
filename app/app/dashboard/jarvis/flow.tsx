@@ -72,15 +72,16 @@ export function FlowMap(p: { stations: Station[]; edges: Edge[]; active: Station
   );
 }
 
-/** Ampel-Leiste oben: 4 Kacheln, Klick öffnet die Station. */
-export function Ampeln({ items }: { items: { label: string; value: string; sub: string; tone: "green" | "gold" | "red" | "cyan" | "grey"; href: string; task?: TipTask }[] }) {
+/** Kern-Kennzahlen oben: 4 Kacheln (Icon, Wert, Name, kurzer Zusatz), Klick öffnet die Station. */
+export type Kpi = { label: string; value: string; sub: string; tone: "green" | "gold" | "red" | "cyan" | "grey"; href: string; icon?: IconName; task?: TipTask };
+export function Ampeln({ items }: { items: Kpi[] }) {
   return (
     <div className="amps4">
       {items.map((a) => {
         const tile = (
           <Link key={a.label} href={a.href} scroll={false} className={`amp4 t-${a.tone}${a.task ? " jt-drag" : ""}`}>
-            <i className="amp4-led" aria-hidden />
-            <b>{a.value}</b><span>{a.label}</span><em>{a.sub}</em>
+            {a.icon ? <span className="amp4-ic" aria-hidden><Icon name={a.icon} size={20} /></span> : <i className="amp4-led" aria-hidden />}
+            <span className="amp4-tx"><span className="amp4-l">{a.label}</span><b>{a.value}</b><em>{a.sub}</em></span>
           </Link>
         );
         return a.task ? <DragBox key={a.label} task={a.task} title={`${a.label}: ${a.value}`}>{tile}</DragBox> : tile;
@@ -102,7 +103,8 @@ export function Drawer({ title, icon, tab, base, close, tabs, children, state }:
         <span className="drw-ic" aria-hidden><Icon name={icon} size={20} /></span><h2>{title}</h2>
         <Link href={close} scroll={false} className="drw-x" aria-label="Schließen"><Icon name="schliessen" size={16} /></Link>
       </header>
-      <nav className="drw-tabs">{[t("info", "Info", "info"), t("set", "Einstellen", "einstellungen", tabs.set), t("check", "Prüfen", "ok", tabs.check)]}</nav>
+      <nav className="drw-tabs" style={{ gridTemplateColumns: `repeat(${1 + Number(tabs.set) + Number(tabs.check)},minmax(0,1fr))` }}>
+        {[t("info", "Info", "info"), t("set", "Einstellen", "einstellungen", tabs.set), t("check", "Prüfen", "ok", tabs.check)]}</nav>
       <div className="drw-body">{children}</div>
     </aside>
   );
@@ -119,7 +121,7 @@ export function Ticker({ items }: { items: TickerItem[] }) {
   ));
   return (
     <div className="tick" aria-label="Zuletzt passiert">
-      <span className="tick-l">LIVE</span>
+      <span className="tick-l"><i aria-hidden />Live</span>
       <div className="tick-v"><div className="tick-t">{row}<span aria-hidden className="tick-dup">{row}</span></div></div>
     </div>
   );

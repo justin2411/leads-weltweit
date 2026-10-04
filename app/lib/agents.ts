@@ -120,6 +120,19 @@ export function formDefaults(o: { tasks: AgentTask[]; agent: number | null; kind
   return { agent: o.agent ?? freeAgent(o.tasks), kind, market, brief };
 }
 
+/** Minute, zu der die stündliche Agenten-Runde startet (Routine „JARVIS-Agenten“, stündlich :53, CLAUDE.md 04.10.2026). */
+export const AGENT_MINUTE = 53;
+
+/** Nächster Start der Agenten-Runde nach `now` (volle Minute :53; Berlin und UTC haben dieselbe Minute). Für die
+ *  Anzeige „startet um HH:MM“ statt „wartet“ bei offenen Aufträgen. */
+export function nextAgentRound(now: Date): Date {
+  const d = new Date(now.getTime());
+  d.setUTCSeconds(0, 0);
+  d.setUTCMinutes(AGENT_MINUTE);
+  if (d.getTime() <= now.getTime()) d.setUTCHours(d.getUTCHours() + 1);
+  return d;
+}
+
 /** Erster Agent ohne laufenden oder offenen Auftrag, sonst Agent 1. */
 export function freeAgent(tasks: AgentTask[]): number {
   for (let n = 1; n <= AGENT_COUNT; n++) if (!tasks.some((t) => t.agent === n && (t.status === "offen" || t.status === "laeuft"))) return n;
@@ -136,10 +149,10 @@ export function chatTask(text: unknown, tasks: AgentTask[]) {
 export type ChatLine = { id: string; at: string; text: string; kind: Kind; market: string | null; status: AgentTask["status"]; reply: string; agent: number };
 
 /** Gesprächsverlauf der letzten Chat-Aufträge (älteste oben): Frage des Inhabers und JARVIS-Antwort aus Status/Ergebnis. */
-export function chatThread(tasks: AgentTask[], n = 6): ChatLine[] {
+export function chatThread(tasks: AgentTask[], n = 6, startAt?: string): ChatLine[] {
   return tasks.filter((t) => t.created_by === CHAT_BY).sort((a, b) => (a.created_at < b.created_at ? 1 : -1)).slice(0, n).reverse().map((t) => ({
     id: t.id, at: t.created_at, text: t.brief, kind: t.kind, market: t.market, status: t.status, agent: t.agent,
-    reply: t.status === "offen" ? `Notiert für Agent ${t.agent} – Antwort mit der nächsten Agenten-Runde.`
+    reply: t.status === "offen" ? `Notiert für Agent ${t.agent} – ${startAt ? `startet um ${startAt}` : "Antwort mit der nächsten Agenten-Runde"}.`
       : t.status === "laeuft" ? `Agent ${t.agent} arbeitet daran (${t.progress} %)${t.step ? ` · ${t.step}` : ""}.`
       : t.status === "abgebrochen" ? "Zurückgezogen."
       : t.result?.trim() || (t.status === "fehler" ? "Konnte ich nicht erledigen." : "Erledigt."),
