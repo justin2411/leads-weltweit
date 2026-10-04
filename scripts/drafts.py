@@ -442,7 +442,7 @@ def refresh(db, dry_run: bool = False) -> int:
     n = back = 0
     col = has_variant_column(db)
     for m in db.select_all("messages", {"status": "in.(draft,approved)", "sent_at": "is.null", "kind": "eq.initial", "order": "id",
-                                         "select": "id,status,subject,body,prospects(*)"}):
+                                         "select": "id,status,subject,body,check_errors,prospects(*)"}):
         p = m.get("prospects")
         if not p:
             continue
@@ -450,7 +450,8 @@ def refresh(db, dry_run: bool = False) -> int:
         if subject == m["subject"] and body == m["body"]:
             continue
         lint = lint_draft(subject, body, lang)
-        upd = {"subject": subject, "body": body, "language": lang, "check_errors": lint.errors,
+        from lib.freshness import keep_holds  # Zurückstell-Gründe (Bounce-Analyse 05.10.2026) bleiben stehen
+        upd = {"subject": subject, "body": body, "language": lang, "check_errors": keep_holds(m.get("check_errors"), lint.errors),
                **({"subject_variant": subject_variant(p)} if col else {})}
         if m["status"] == "approved" and not lint.ok:
             upd["status"] = "draft"

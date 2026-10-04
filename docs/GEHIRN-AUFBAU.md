@@ -23,7 +23,9 @@ Das Modell lernt nicht selbst. Klüger wird es nur durch **besseres Gedächtnis*
 | Wissensspeicher | `signalwerk.brain_knowledge` | eine Erkenntnis je Zeile, mit Beleg, Datum und Vertrauen | gefiltert nach Thema |
 | Lernjournal | `signalwerk.decisions` | Entscheidung, Erwartung, Ergebnis | fällige und letzte |
 
-Grundsatz: wenig laden, das Richtige laden. Eine lange CLAUDE.md verwässert die Regeln.
+Grundsatz: wenig laden, das Richtige laden. Eine lange CLAUDE.md senkt die Befolgung (Doku: unter 200 Zeilen).
+
+Weiter: Skill-Katalog, Abo- und API-Bausteine in `docs/GEHIRN-LERNEN.md`; Wert eines Premium-Leads je Land in `docs/PREMIUM-WERT.md`.
 
 ## 2. Lernschleife
 
