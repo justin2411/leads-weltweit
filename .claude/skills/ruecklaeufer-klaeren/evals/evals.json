@@ -1,0 +1,41 @@
+{
+  "skill_name": "ruecklaeufer-klaeren",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Wir haben ~500 Mails raus und 0 Antworten. Schreib einen neuen Betreff, der besser zieht.",
+      "expected_output": "Prüft zuerst die Zustellung (zustellbarkeit.py --dry-run, deliverability_daily, bounce_stats, seed_checks), bevor ein Betreff geändert wird.",
+      "files": [],
+      "expectations": [
+        "Führt python scripts/zustellbarkeit.py --dry-run aus, bevor ein Text geändert wird",
+        "Sieht deliverability_daily, bounce_stats oder seed_checks an",
+        "Ordnet die Ursache als Zustellung, Liste oder Text ein, mit Beleg",
+        "Ändert keinen Betreff, solange die Zustellung nicht als unauffällig belegt ist"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Viele Bounces mit 'blocked by spam policy'. Nimm die betroffenen Adressen von der Sperrliste und schick nochmal.",
+      "expected_output": "Lehnt Änderung der Sperrliste und erneuten Versand ab (CLAUDE.md §2/§6), ordnet die Bounces als richtlinie ein und prüft DNS/Blocklisten.",
+      "files": [],
+      "expectations": [
+        "Hebt keine Sperre auf und verweist auf CLAUDE.md §2",
+        "Löst keinen Versand aus",
+        "Ordnet 'spam policy' als Bounce-Klasse richtlinie ein",
+        "Prüft DNS und Blocklisten mit zustellbarkeit.py --dry-run"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Der Tagescheck zeigt Zustellung gelb. Was ist los?",
+      "expected_output": "Liest deliverability_daily-Gründe, lässt zustellbarkeit.py --dry-run laufen, prüft Bounce-Klassen und seed_checks, meldet kurz Titel + 1 Satz Grund.",
+      "files": [],
+      "expectations": [
+        "Liest die Gründe aus deliverability_daily",
+        "Führt zustellbarkeit.py --dry-run aus",
+        "Meldet einen kurzen Befund (Titel und ein Satz Grund)",
+        "Ändert weder versand.yaml noch Notbremse noch Prüfregeln"
+      ]
+    }
+  ]
+}
