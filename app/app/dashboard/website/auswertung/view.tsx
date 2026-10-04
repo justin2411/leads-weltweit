@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Fold } from "../../fold";
 import { Crumbs } from "../../v2";
 import { Icon, type IconName } from "@/app/icons";
-import { density, elLabel, pct, type Device, type Source, type View } from "@/lib/website-stats";
+import { density, elLabel, pct, type Device, type View } from "@/lib/website-stats";
 
 /** Länderfarben für die dunkle Fläche (geprüft: Helligkeit, Farbsehschwäche, Kontrast). */
 export const WA_COUNTRY: Record<string, string> = { US: "#5b8fdb", UK: "#b38331", FR: "#2fa898" };
@@ -66,27 +66,6 @@ function Daily({ v }: { v: View }) {
   );
 }
 
-/** Waagrechte Balken mit Wert und Anteil. */
-function Bars({ rows, total, color = "var(--cy)" }: { rows: { key: string; label: string; icon?: IconName; n: number; tip?: string }[]; total: number; color?: string }) {
-  const max = Math.max(1, ...rows.map((r) => r.n));
-  return (
-    <ul className="wa-bars">
-      {rows.map((r) => (
-        <li key={r.key} title={r.tip ?? `${r.label}: ${nf(r.n)} (${pct(r.n, total)})`}>
-          <span className="wa-bl">{r.icon && <Icon name={r.icon} size={15} />}{r.label}</span>
-          <span className="wa-bb"><i style={{ width: `${(r.n / max) * 100}%`, background: color }} /></span>
-          <b>{nf(r.n)}</b><em>{pct(r.n, total, 0)}</em>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-const SRC: { k: Source; label: string; icon: IconName }[] = [
-  { k: "mail", label: "Mail", icon: "mail" }, { k: "direkt", label: "Direkt", icon: "pfeil" },
-  { k: "suche", label: "Suche", icon: "suche" }, { k: "andere", label: "Andere", icon: "land" },
-];
-
 type Step = { label: string; n: number; icon: IconName; tip?: string };
 
 /** Trichter mit Quote je Schritt (Balken relativ zum ersten Schritt). */
@@ -144,43 +123,6 @@ function MailAB({ v }: { v: View }) {
       <p className="wa-note">Klicks je gesendeter Mail · ohne Öffnungsmessung</p>
     </>
   );
-}
-
-/** Gerät als geteilter Balken. */
-function Devices({ v }: { v: View }) {
-  const t = v.devices.desktop + v.devices.mobil;
-  if (!t) return <Empty text="Noch keine Messung" />;
-  const d = (v.devices.desktop / t) * 100;
-  return (
-    <div className="wa-split" title={`Desktop ${nf(v.devices.desktop)} · Mobil ${nf(v.devices.mobil)}`}>
-      <div className="wa-sb"><i style={{ width: `${d}%` }} /><i style={{ width: `${100 - d}%` }} /></div>
-      <div className="wa-sl"><span><b>{pct(v.devices.desktop, t, 0)}</b> Desktop · {nf(v.devices.desktop)}</span><span><b>{pct(v.devices.mobil, t, 0)}</b> Mobil · {nf(v.devices.mobil)}</span></div>
-    </div>
-  );
-}
-
-/** Scrolltiefe als Treppe: Anteil der Aufrufe, die mindestens 25/50/75/100 % sahen. */
-function Depth({ v }: { v: View }) {
-  if (!v.tracked) return <Empty text="Noch keine Messung" />;
-  return (
-    <div className="wa-steps">
-      {v.depth.map((d) => (
-        <div key={d.at} className="wa-step" title={`${nf(d.n)} von ${nf(v.tracked)} Aufrufen sahen mindestens ${d.at} %`}>
-          <b>{pct(d.n, v.tracked, 0)}</b>
-          <span className="wa-sc"><i style={{ height: `${d.share * 100}%` }} /></span>
-          <em>{d.at} %</em>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-const DWELL_L: Record<string, string> = { "0-10": "< 10 s", "10-30": "10–30 s", "30-60": "30–60 s", "60-180": "1–3 min", "180+": "> 3 min" };
-
-function DwellBars({ v }: { v: View }) {
-  const t = v.dwell.reduce((a, d) => a + d.n, 0);
-  if (!t) return <Empty text="Noch keine Messung" />;
-  return <Bars rows={v.dwell.map((d) => ({ key: d.k, label: DWELL_L[d.k], n: d.n }))} total={t} color="var(--cy)" />;
 }
 
 /**
@@ -290,13 +232,7 @@ export function Auswertung({ v, stand, chips, device, pageLabel, trichter }: Aus
       <div className="wa-grid">
         <Card title="Landingpage-Aufrufe je Tag" sum={nf(f.views)} wide><Daily v={v} /></Card>
         <Card title="Probe" sum={f.views ? `Anfrage je Aufruf ${pct(f.req, f.views, 1)}` : undefined}><Funnel steps={probeFunnel(f)} /></Card>
-        <Card title="Herkunft" sum={v.tracked ? `${nf(v.tracked)} gemessen` : undefined}>
-          {v.tracked ? <Bars rows={SRC.map((s) => ({ key: s.k, label: s.label, icon: s.icon, n: v.sources[s.k] }))} total={v.tracked} /> : <Empty text="Noch keine Messung" />}
-        </Card>
         <Card title="Mail-Klicks je Betreff"><MailAB v={v} /></Card>
-        <Card title="Gerät"><Devices v={v} /></Card>
-        <Card title="Scrolltiefe"><Depth v={v} /></Card>
-        <Card title="Verweildauer"><DwellBars v={v} /></Card>
       </div>
       <section className="wa-card wa-hm">
         <header className="wa-h"><h2>Heatmap</h2><span className="wa-sum">{pageLabel} · {nf(v.heatTotal)} Klicks</span></header>

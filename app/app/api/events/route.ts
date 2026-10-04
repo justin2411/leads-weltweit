@@ -1,9 +1,9 @@
 import { db } from "@/lib/supabase";
 import { CLIENT_EVENTS } from "@/lib/variants";
 import { isOwner } from "@/lib/pages";
-import { RateLimiter, countryOfSlug, isBot, parseBeacon } from "@/lib/website-stats";
+import { RateLimiter, browserOf, countryOfSlug, isBot, parseBeacon } from "@/lib/website-stats";
 import { countable, isPreviewRef } from "@/lib/visitor";
-import { countryFromHeaders, endHit, recordHit, visitorKey, type VisitorKey } from "@/lib/web-hits";
+import { countryFromHeaders, endHit, recordHit, recordSignal, visitorKey, type VisitorKey } from "@/lib/web-hits";
 
 export const dynamic = "force-dynamic";
 
@@ -69,7 +69,13 @@ export async function POST(req: Request) {
     }
     if (b.kind === "hit" && b.stage === "start") {
       const key = await visitorKey(req.headers);
-      if (key) await recordHit({ key, stage: "start", country: countryFromHeaders(req.headers), pv: b.pv, device: b.device, src: b.src, ref: b.ref });
+      if (key) await recordHit({ key, stage: "start", country: countryFromHeaders(req.headers), pv: b.pv, device: b.device, src: b.src, ref: b.ref,
+                                  browser: browserOf(req.headers.get("user-agent")), um: b.um, uc: b.uc });
+      return done();
+    }
+    // Zählungen und Web Vitals der Startseite (ohne Kennung)
+    if ((b.kind === "ev" || b.kind === "vitals") && b.stage === "start") {
+      await recordSignal(b, countryFromHeaders(req.headers), null);
       return done();
     }
   } catch {
@@ -78,8 +84,13 @@ export async function POST(req: Request) {
   if (!b.variant_id) return done();
   const v = await variantInfo(b.variant_id);
   // Danke zählt auch, wenn die gekaufte Variante inzwischen nicht mehr live ist
-  if (!v.slug || (!v.live && !(b.kind === "hit" && b.stage === "danke"))) return done();
+  const danke = (b.kind === "hit" || b.kind === "ev" || b.kind === "vitals") && b.stage === "danke";
+  if (!v.slug || (!v.live && !danke)) return done();
   try {
+    if (b.kind === "ev" || b.kind === "vitals") {
+      await recordSignal(b, countryOfSlug(v.slug), v.slug);
+      return done();
+    }
     if (b.kind === "legacy") {
       await db().from("page_events").insert({ variant_id: b.variant_id, type: b.type });
     } else if (b.kind === "view") {
@@ -88,7 +99,8 @@ export async function POST(req: Request) {
         db().from("page_events").insert({ variant_id: b.variant_id, type: "view" }),
         db().from("web_views").insert({ pv: b.pv, slug: v.slug, variant_id: b.variant_id, src: b.src, subj: b.subj, device: b.device }),
         visit(key, "landing", v.slug),
-        key && recordHit({ key, stage: "landing", country: countryOfSlug(v.slug), slug: v.slug, pv: b.pv, device: b.device, src: b.src, ref: b.ref }),
+        key && recordHit({ key, stage: "landing", country: countryOfSlug(v.slug), slug: v.slug, pv: b.pv, device: b.device, src: b.src, ref: b.ref,
+                           browser: browserOf(req.headers.get("user-agent")), um: b.um, uc: b.uc }),
       ]);
     } else if (b.kind === "visit") {
       await visit(await visitorKey(req.headers), b.page, v.slug);
@@ -96,7 +108,8 @@ export async function POST(req: Request) {
       const key = await visitorKey(req.headers);
       await Promise.all([
         b.stage === "tarif" ? visit(key, "tarif", v.slug) : null,
-        key && recordHit({ key, stage: b.stage, country: countryOfSlug(v.slug), slug: v.slug, pv: b.pv, device: b.device, src: b.src, ref: b.ref }),
+        key && recordHit({ key, stage: b.stage, country: countryOfSlug(v.slug), slug: v.slug, pv: b.pv, device: b.device, src: b.src, ref: b.ref,
+                           browser: browserOf(req.headers.get("user-agent")), um: b.um, uc: b.uc }),
       ]);
     } else if (b.kind === "click") {
       await Promise.all([

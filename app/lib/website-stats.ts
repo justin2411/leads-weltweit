@@ -105,15 +105,44 @@ export function isBot(ua: string | null | undefined): boolean {
 
 export type Beacon =
   | { kind: "legacy"; variant_id: string; type: "view" | "cta_click" }
-  | { kind: "view"; variant_id: string; pv: string; src: Source; subj: "A" | "B" | null; device: Device; ref: string | null }
+  | { kind: "view"; variant_id: string; pv: string; src: Source; subj: "A" | "B" | null; device: Device; ref: string | null; um?: string | null; uc?: string | null }
   | { kind: "click"; variant_id: string; pv: string; x: number; y: number; el: ElKind; label: string | null; device: Device; cta: boolean }
   | { kind: "end"; variant_id: string; pv: string; depth: 0 | 25 | 50 | 75 | 100; dwell: Dwell; ds: number | null }
   /** Aufruf der Tarifseite /[country]/[segment]/start (älterer Beacon, nur eindeutige Besucher) */
   | { kind: "visit"; variant_id: string; page: "tarif" }
   /** Trichter-Aufruf (Startseite, Tarif, Danke): Stufe, Gerät, Herkunft; Startseite ohne Variante */
-  | { kind: "hit"; stage: HitStage; variant_id: string | null; pv: string; src: Source; ref: string | null; device: Device }
+  | { kind: "hit"; stage: HitStage; variant_id: string | null; pv: string; src: Source; ref: string | null; device: Device; um?: string | null; uc?: string | null }
   /** Ende eines Trichter-Aufrufs: sichtbare Sekunden und Scrolltiefe */
-  | { kind: "hit_end"; pv: string; ds: number; depth: 0 | 25 | 50 | 75 | 100 };
+  | { kind: "hit_end"; pv: string; ds: number; depth: 0 | 25 | 50 | 75 | 100 }
+  /** Zählung ohne Kennung: CTA, Formular begonnen/abgeschickt, Video gestartet/zu Ende */
+  | { kind: "ev"; stage: EvStage; variant_id: string | null; pv: string; ev: EvKind }
+  /** Core Web Vitals eines Aufrufs (Messwerte ohne Kennung): LCP/INP in ms, CLS × 1000 */
+  | { kind: "vitals"; stage: EvStage; variant_id: string | null; pv: string; device: Device; lcp: number | null; inp: number | null; cls: number | null };
+
+export type EvStage = "start" | "landing" | "tarif" | "danke";
+export type EvKind = "cta" | "form_start" | "form_submit" | "video_start" | "video_done";
+const EV_STAGES: EvStage[] = ["start", "landing", "tarif", "danke"];
+export const EV_KINDS: EvKind[] = ["cta", "form_start", "form_submit", "video_start", "video_done"];
+
+/** utm_medium / utm_campaign bereinigt: nur [a-z0-9._-], höchstens 40 Zeichen, sonst null. */
+export function utmKey(x: string | null | undefined): string | null {
+  const s = String(x ?? "").slice(0, 80).toLowerCase().replace(/[^a-z0-9._-]/g, "").replace(/^[._-]+/, "").slice(0, 40);
+  return s || null;
+}
+const UTM_RE = /^[a-z0-9][a-z0-9._-]{0,39}$/;
+
+export type Browser = "chrome" | "safari" | "firefox" | "edge" | "samsung" | "opera" | "andere";
+/** Browserfamilie aus dem User-Agent (nur die Klasse wird gespeichert, nie der User-Agent selbst). */
+export function browserOf(ua: string | null | undefined): Browser {
+  const s = String(ua ?? "");
+  if (/SamsungBrowser/i.test(s)) return "samsung";
+  if (/OPR\/|Opera/i.test(s)) return "opera";
+  if (/Edg(e|A|iOS)?\//i.test(s)) return "edge";
+  if (/Firefox\/|FxiOS/i.test(s)) return "firefox";
+  if (/Chrome\/|CriOS|Chromium/i.test(s)) return "chrome";
+  if (/Safari\//i.test(s) && /Version\//i.test(s)) return "safari";
+  return "andere";
+}
 
 /** Stufen, die der Browser meldet (Landingpage über „view“, Stripe serverseitig in /api/checkout). */
 export type HitStage = "start" | "tarif" | "danke";
@@ -133,6 +162,13 @@ export function refKey(utmSource: string | null | undefined, referrerHost: strin
 }
 
 const REF_RE = /^[a-z0-9][a-z0-9._-]{0,59}$/;
+/** utm_medium/utm_campaign aus dem Beacon (nur gültige, bereinigte Werte; fehlen sie, kommen keine Felder dazu). */
+function utms(b: Record<string, unknown>): { um?: string; uc?: string } {
+  const out: { um?: string; uc?: string } = {};
+  if (typeof b.um === "string" && UTM_RE.test(b.um)) out.um = b.um;
+  if (typeof b.uc === "string" && UTM_RE.test(b.uc)) out.uc = b.uc;
+  return out;
+}
 
 const int = (x: unknown): number | null => (typeof x === "number" && Number.isInteger(x) ? x : null);
 
@@ -148,7 +184,19 @@ export function parseBeacon(body: unknown): Beacon | null {
     const vid = b.variant_id === undefined || b.variant_id === null ? null : isUuid(b.variant_id) ? b.variant_id.toLowerCase() : undefined;
     if (vid === undefined || (stage !== "start" && !vid)) return null;
     const ref = typeof b.ref === "string" && REF_RE.test(b.ref) ? b.ref : null;
-    return { kind: "hit", stage, variant_id: vid, pv: (b.pv as string).toLowerCase(), src: b.src as Source, ref, device: devOk };
+    return { kind: "hit", stage, variant_id: vid, pv: (b.pv as string).toLowerCase(), src: b.src as Source, ref, device: devOk, ...utms(b) };
+  }
+  if (t === "ev" || t === "vitals") {
+    const stage = b.st as EvStage;
+    if (!EV_STAGES.includes(stage) || !isUuid(b.pv)) return null;
+    const vid = b.variant_id === undefined || b.variant_id === null ? null : isUuid(b.variant_id) ? b.variant_id.toLowerCase() : undefined;
+    if (vid === undefined || (stage !== "start" && !vid)) return null;
+    const pv = (b.pv as string).toLowerCase();
+    if (t === "ev") return EV_KINDS.includes(b.k as EvKind) ? { kind: "ev", stage, variant_id: vid, pv, ev: b.k as EvKind } : null;
+    const ms = (x: unknown, max: number) => { const n = int(x); return n === null || n < 0 ? null : Math.min(n, max); };
+    const lcp = ms(b.lcp, 60000), inp = ms(b.inp, 60000), cls = ms(b.cls, 10000);
+    if (!devOk || (lcp === null && inp === null && cls === null)) return null;
+    return { kind: "vitals", stage, variant_id: vid, pv, device: devOk, lcp, inp, cls };
   }
   if (t === "hit_end") {
     const ds = int(b.ds), depth = int(b.depth);
@@ -166,7 +214,7 @@ export function parseBeacon(body: unknown): Beacon | null {
     if (!SOURCES.includes(b.src as Source) || !device) return null;
     const subj = b.src === "mail" ? subjectOf(typeof b.sv === "string" ? b.sv : null) : null;
     const ref = typeof b.ref === "string" && REF_RE.test(b.ref) ? b.ref : null;
-    return { kind: "view", variant_id: variant_id.toLowerCase(), pv, src: b.src as Source, subj, device, ref };
+    return { kind: "view", variant_id: variant_id.toLowerCase(), pv, src: b.src as Source, subj, device, ref, ...utms(b) };
   }
   if (t === "click") {
     const x = int(b.x), y = int(b.y);

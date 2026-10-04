@@ -1,10 +1,12 @@
 import { requireOwner } from "../../actions";
-import { loadFunnelCache, loadWebsiteStats } from "@/lib/dashboard-data";
+import { loadAnalyticsCache, loadFunnelCache, loadWebsiteStats } from "@/lib/dashboard-data";
 import { berlin } from "@/lib/dashboard-logic";
 import { buildView, countryOfSlug, type Device, type WebsiteStats } from "@/lib/website-stats";
 import { AUSWERTUNG_CSS } from "./css";
 import { Auswertung, WaCrumbs, type Chip } from "./view";
 import { Trichter } from "./trichter";
+import { Analyse } from "./analyse";
+import { hints, slice, tiles, type AnalyticsCache } from "@/lib/website-analytics";
 import { FUNNEL_COUNTRIES, FUNNEL_PERIODS, funnelView, type FunnelCache, type FunnelPeriod } from "@/lib/website-funnel";
 
 export const metadata = { title: "Website-Auswertung" };
@@ -24,14 +26,15 @@ export default async function WebsiteAuswertung({ searchParams }: { searchParams
   const sp = await searchParams;
   const days = PERIODS.find((d) => String(d) === one(sp.d)) ?? 30;
   // Trichter (vorgerechnet) und Tagessummen parallel; fällt eins aus, zeigt die Seite das andere
-  const [stR, fuR] = await Promise.allSettled([loadWebsiteStats(days), loadFunnelCache()]);
+  const [stR, fuR, anR] = await Promise.allSettled([loadWebsiteStats(days), loadFunnelCache(), loadAnalyticsCache()]);
   if (stR.status === "rejected") console.error("website-auswertung:", stR.reason); // Details nur im Server-Protokoll
   const st = stR.status === "fulfilled" ? stR.value : null;
   const fu = fuR.status === "fulfilled" ? fuR.value : null;
-  return <Page st={st} fu={fu} sp={sp} days={days} />;
+  const an = anR.status === "fulfilled" ? anR.value : null;
+  return <Page st={st} fu={fu} an={an} sp={sp} days={days} />;
 }
 
-function Page({ st, fu, sp, days }: { st: WebsiteStats | null; fu: FunnelCache | null; sp: Record<string, string | string[] | undefined>; days: number }) {
+function Page({ st, fu, an, sp, days }: { st: WebsiteStats | null; fu: FunnelCache | null; an: AnalyticsCache | null; sp: Record<string, string | string[] | undefined>; days: number }) {
   const slugs = st ? [...new Set([...st.pages.filter((p) => p.st === "live").map((p) => p.s), ...st.rows.map((r) => r.s)])].sort() : [];
   const countries = [...new Set([...FUNNEL_COUNTRIES, ...slugs.map(countryOfSlug)])].sort((a, b) => ["US", "UK", "FR"].indexOf(a) - ["US", "UK", "FR"].indexOf(b) || a.localeCompare(b));
   const cRaw = one(sp.c)?.toUpperCase();
@@ -64,9 +67,15 @@ function Page({ st, fu, sp, days }: { st: WebsiteStats | null; fu: FunnelCache |
   };
   const pageLabel = page ?? (country ? `alle Seiten ${country}` : "alle Seiten");
   const fv = funnelView(fu, period, country);
+  // Analyse wie GA4 (gleicher Zeitraum und dasselbe Land wie der Trichter): Hinweise, Kacheln mit Vorzeitraum, Details
+  const sl = slice(an, period, country);
   const trichter = (
-    <Trichter v={fv} periods={FUNNEL_PERIODS.map((x) => ({ label: x.label, href: href({ t: x.id }), on: x.id === period }))}
-      stand={fv.at ? berlin(fv.at) : null} since={fv.since ? berlin(fv.since) : null} />
+    <>
+      <Trichter v={fv} periods={FUNNEL_PERIODS.map((x) => ({ label: x.label, href: href({ t: x.id }), on: x.id === period }))}
+        stand={fv.at ? berlin(fv.at) : null} since={fv.since ? berlin(fv.since) : null} />
+      <Analyse hints={hints(an, fu, period, country)} tiles={tiles(sl.cur.k, sl.prev)} cur={sl.cur}
+        periodLabel={`${FUNNEL_PERIODS.find((x) => x.id === period)?.label ?? ""}${country ? ` · ${country}` : " · alle Länder"}`} />
+    </>
   );
   if (!st) {
     return (

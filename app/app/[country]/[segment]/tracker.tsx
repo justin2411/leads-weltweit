@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { bin2, cleanLabel, depthBucket, deviceOf, dwellBucket, refHost, refKey, sourceOf, subjectOf, type ElKind } from "@/lib/website-stats";
+import { bin2, cleanLabel, depthBucket, deviceOf, dwellBucket, refHost, refKey, sourceOf, subjectOf, utmKey, type ElKind } from "@/lib/website-stats";
 
 const MAX_CLICKS = 30;
 
@@ -71,7 +71,7 @@ export function Tracker({ variantId, enabled }: { variantId: string; enabled: bo
     // Trichter: Domain der vorherigen Seite bzw. utm_source (ohne Pfad/Parameter), eigene Domain → keine
     const ref = refKey(q.get("utm_source"), host, location.host);
     const dev = deviceOf(window.innerWidth, window.matchMedia?.("(pointer:coarse)").matches ?? false);
-    send({ type: "view", src, sv: src === "mail" ? subjectOf(q.get("sv")) : null, dev, ref });
+    send({ type: "view", src, sv: src === "mail" ? subjectOf(q.get("sv")) : null, dev, ref, um: utmKey(q.get("utm_medium")), uc: utmKey(q.get("utm_campaign")) });
 
     const doc = document.documentElement;
     let depth: 0 | 25 | 50 | 75 | 100 = 0;

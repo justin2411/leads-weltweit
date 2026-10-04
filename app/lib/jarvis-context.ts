@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/supabase";
-import { CONFIG, SEGMENT, loadFunnel, loadFunnelCache, loadLive, loadOwnerSettings, loadStock } from "@/lib/dashboard-data";
+import { CONFIG, SEGMENT, loadAnalyticsCache, loadFunnel, loadFunnelCache, loadLive, loadOwnerSettings, loadStock } from "@/lib/dashboard-data";
+import { analyticsBrief, hints as webHints } from "@/lib/website-analytics";
 import { funnelBrief } from "@/lib/website-funnel";
 import { brake, mailboxes, monthly, realSubscriptions, sampleStock, type Live, type Stock } from "@/lib/dashboard-logic";
 import { budgetOf, budgetState, compactFlow, knowledgeBlock, monthStart, type Bereich, type BudgetState, type KnowledgeDoc } from "@/lib/jarvis-llm";
@@ -210,8 +211,9 @@ const line = (k: string, v: unknown) => `${k}: ${typeof v === "string" ? v : JSO
 /** Kompakter Kontext (wenige hundert Tokens): Uhrzeit, Kennzahlen, Thema der Sitzung. */
 export async function buildContext(session: ChatSession, s: Sources): Promise<string> {
   const now = s.now;
-  const [fg, en, an, top, api, wt] = await Promise.all([freigabe(), engpass(), antworten(), topic(session), loadLlmState(s.own),
-    loadFunnelCache(5 * 60_000).then(funnelBrief, () => ({ fehler: NA }))]);
+  const [fg, en, an, top, api, wt, wh] = await Promise.all([freigabe(), engpass(), antworten(), topic(session), loadLlmState(s.own),
+    loadFunnelCache(5 * 60_000).then(funnelBrief, () => ({ fehler: NA })),
+    Promise.all([loadAnalyticsCache(10 * 60_000), loadFunnelCache(5 * 60_000)]).then(([a, f]) => webHints(a, f, "7d").map((h) => `${h.title}: ${h.grund}`), () => NA)]);
   const v = versand(s) as Record<string, unknown>;
   const p = proben(s) as Record<string, unknown>;
   const k = kunden(s);
@@ -229,6 +231,8 @@ export async function buildContext(session: ChatSession, s: Sources): Promise<st
     line("Engpass", en),
     // Website-Trichter Startseite → Landingpage → Tarif → Stripe → Danke (24 h und 30 Tage, wie /dashboard/website/auswertung)
     line("Website-Trichter", wt),
+    // drei automatische Website-Hinweise (größter Abbruch, beste Quelle, langsamste Seite; 7 Tage)
+    line("Website-Hinweise", wh),
     line("API", api?.text ?? NA),
     top,
   ].join("\n");
@@ -267,17 +271,20 @@ export async function brainContext(s: Sources): Promise<string> {
   const since7 = new Date(s.now.getTime() - 7 * 86_400_000).toISOString();
   type Row = Record<string, unknown>;
   const rows = (p: PromiseLike<{ data: unknown; error: unknown }>) => Promise.resolve(p).then((r) => (r.error ? null : ((r.data ?? []) as Row[])), () => null);
-  const [an, proposed, tests, done, routines, tasks] = await Promise.all([
+  const [an, proposed, tests, done, routines, tasks, wa] = await Promise.all([
     antworten(),
     rows(db().from("decisions").select("*").eq("status", "proposed").gte("created_at", since7).order("created_at", { ascending: false }).limit(8).abortSignal(T())),
     rows(db().from("decisions").select("*").like("subject", "Test:%").order("created_at", { ascending: false }).limit(5).abortSignal(T())),
     rows(db().from("decisions").select("*").eq("status", "done").gte("created_at", since7).order("created_at", { ascending: false }).limit(8).abortSignal(T())),
     loadRoutines(),
     rows(db().from("agent_tasks").select("*").order("created_at", { ascending: false }).limit(10).abortSignal(T())),
+    Promise.all([loadAnalyticsCache(10 * 60_000), loadFunnelCache(5 * 60_000)]).then(([a, f]) => analyticsBrief(a, f), () => ({ fehler: NA })),
   ]);
   const short = (d: Row) => ({ titel: titelVon({ subject: String(d.subject ?? ""), kurz_titel: (d.kurz_titel as string | null) ?? null }), am: fmtBerlin(String(d.created_at)) });
   return [
     line("Trichter je Land seit Start", an.je_land_seit_start),
+    // Website-Analyse wie GA4 (7 Tage vs. Vorwoche, Kanäle, Einstieg/Ausstieg, Hinweise) – dashboard_cache 'website_analytics'
+    line("Website-Analyse", wa),
     line("Offene Vorschläge (7 Tage)", proposed ? proposed.map(short) : NA),
     line("A/B-Tests (letzte)", tests ? tests.map((d) => ({ ...short(d), status: d.status })) : NA),
     line("JARVIS hat umgesetzt (7 Tage)", done ? done.map(short) : NA),

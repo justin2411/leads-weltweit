@@ -97,6 +97,21 @@ man nicht löschen kann wo mir das gehirn immer updates gibt … sehr kurz und k
   steht dort – nie im öffentlichen Repo. `scripts/brain_knowledge.py add/list/get`; der Gehirn-Modus lädt alles.
   „Weiterbildung“ (oben) schreibt ihre Erkenntnisse zusätzlich dorthin.
 
+## Website-Analyse (Inhaber 04.10.2026: „mehr daten … wie google analytics … damit jarvis super auswertungen hat“)
+
+- **Quelle**: `signalwerk.dashboard_cache` `website_analytics` (`web_analytics_refresh()`, Wachhund und Seitenaufruf) und
+  `website_funnel` (`web_funnel_refresh()`); Logik `app/lib/website-analytics.ts`, Ansicht `/dashboard/website/auswertung`.
+  Je Zeitraum (24 h / 7 T / 30 T) und Land (alle, US, UK, FR) mit Vorzeitraum.
+- **Kennzahlen**: Besucher (eindeutig je Tag), Engagement (GA4: ≥ 10 s, ≥ 2 Seiten oder Checkout), Ø aktive Zeit,
+  Seiten je Besuch, Scroll ≥ 75 %, CTA-Klickrate, Formular fertig, Video zu Ende, zum Tarif, Conversion, Zeit bis
+  Checkout, Core Web Vitals p75 (LCP ≤ 2,5 s, INP ≤ 200 ms, CLS ≤ 0,1 = gut); dazu Kanäle (Art, Quelle, utm_medium/
+  utm_campaign), Einstieg/Ausstieg, Gerät/Browser/Land, Wochentag × Stunde (deutsche Zeit), A/B-Varianten.
+- **Drei Hinweise** (`hints()`, auch im JARVIS-Kontext): größter Abbruch im Trichter (ab 5 Besuchern), beste Quelle
+  (höchste Quote zum Tarif, ab 3 Besuchern), langsamste Seite (LCP p75, ab 3 Messungen). Daraus Engpass-Tests ableiten
+  (A/B-Regeln oben), z. B. Seitenüberschrift bei großem Abbruch Landingpage → Tarif.
+- **Grenzen**: ohne Cookies kein „neu vs. wiederkehrend“; Gerätewechsel zählt doppelt; CLS ist die Summe aller
+  Verschiebungen, INP die längste Interaktion. Nie Öffnungs-Pixel in Mails – nur Klicks auf Links mit `src`/UTM.
+
 ## Selbst entscheiden oder fragen (Inhaber 04.10.2026)
 
 „kann es jarvis automatisch auch selber entscheiden, wenn er meint es ist sinnvoll bringt ihn zu seinen zielen näher
