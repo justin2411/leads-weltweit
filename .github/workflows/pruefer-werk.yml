@@ -90,6 +90,12 @@ jobs:
       - run: pip install requests pyyaml
       - name: Kennzahlen (Qualität lieferbar %, geprüft 24 h)
         run: python scripts/pruefer.py kpi | tee -a "$GITHUB_STEP_SUMMARY" || true
+      - name: Nachfüller anstoßen (Mindestbelegung 30)
+        # 05.10.2026: freie Plätze sofort mit freien Lead-Linien füllen, nicht erst beim nächsten Zeitplan
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run werk-nachfuellen.yml --ref "${{ github.ref_name }}" || echo "::warning::Nachfüller nicht anstoßbar"
       - name: Nächsten Lauf starten
         env:
           GH_TOKEN: ${{ github.token }}
