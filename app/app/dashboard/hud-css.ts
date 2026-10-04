@@ -52,7 +52,7 @@ export const HUD_CSS = `
 .dash .sf-cards i,.dash .mf-box i{background:#cfefff;box-shadow:0 0 8px rgba(95,212,255,.5)}
 .dash .sf-env,.dash .sf-fly{background:#c9a86a}.dash .sf-env .flap{background:#e2c68f}
 .dash .muted,.dash .sub,.dash .small{color:var(--soft)}
-.dash .foot,.dash .bnav{background:rgba(2,8,18,.92);border-color:rgba(95,212,255,.18)}
+.dash .bnav{background:rgba(2,8,18,.92);border-color:rgba(95,212,255,.18)}
 .dash ::selection{background:rgba(95,212,255,.35)}
 .dash .tag{border-color:rgba(226,198,143,.5);color:var(--gold2)}
 
