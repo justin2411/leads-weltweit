@@ -23,6 +23,16 @@
     "S2/FR"
   ],
   "nur_fokus": true,
+  "tests": {
+    "segmente": [
+      "S2"
+    ],
+    "laender": [
+      "US",
+      "UK",
+      "FR"
+    ]
+  },
   "lead_suche": true,
   "kunden_suche": true,
   "countries": {

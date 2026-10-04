@@ -3,6 +3,9 @@
 > Aktueller Stand, Zahlen und Prioritäten: [`STRATEGIE.md`](STRATEGIE.md) (28.09.2026). Einige Punkte unten sind
 > überholt (Kaltmails laufen seit 27.09. über Strato, Rechtstexte sind live, Angebot ist landesweit statt regional).
 
+> **Seit 04.10.2026 gilt:** Tests nur Webagenturen US/UK/FR (`config/fokus.yaml` `tests`, Inhaber: „beim gehirn bei a/b tests soll er das nur für webagencys usa, fr, und uk machen nichts mehr erst wenn ich ihm das freigebe das soll überall so sein, wir brauchen erstmal nichts anderes“).
+> Preis-Tests, neue Zielgruppen und Länder unten ruhen, bis der Inhaber sie freigibt.
+
 ## Nordstern
 Wiederkehrender Umsatz aus Lead-Abos. Kennzahl: **neuer Monatsumsatz (MRR) pro Woche**. Kosten nahe null.
 

@@ -156,10 +156,18 @@ class IndividualOpenerTest(unittest.TestCase):
 class SubjectABTest(unittest.TestCase):
     def test_deterministic_and_balanced(self):
         ids = [f"00000000-0000-0000-0000-{i:012d}" for i in range(2000)]
-        v = [drafts.subject_variant({"id": i}) for i in ids]
-        self.assertEqual(v, [drafts.subject_variant({"id": i}) for i in ids])
+        v = [drafts.subject_variant({"id": i, "segment_id": "S2", "country": "US"}) for i in ids]
+        self.assertEqual(v, [drafts.subject_variant({"id": i, "segment_id": "S2", "country": "US"}) for i in ids])
         self.assertEqual(set(v), {"A", "B"})
         self.assertLess(abs(v.count("A") - 1000), 100)
+
+    def test_nur_webagenturen_us_uk_fr(self):
+        """Inhaber 04.10.2026: Betreff-A/B nur S2 in US/UK/FR, sonst immer Kontrolle A."""
+        ids = [f"id{i}" for i in range(200)]
+        for seg, co in (("S2", "UK"), ("S2", "FR")):
+            self.assertEqual({drafts.subject_variant({"id": i, "segment_id": seg, "country": co}) for i in ids}, {"A", "B"})
+        for seg, co in (("S4", "US"), ("S5", "UK"), ("S2", "SG"), ("S2", "MX"), ("S1", "FR"), (None, None)):
+            self.assertEqual({drafts.subject_variant({"id": i, "segment_id": seg, "country": co}) for i in ids}, {"A"})
 
     def test_two_subjects_per_country_within_rules(self):
         from lib.rules import EMOJI, FAKE_REPLY_SUBJECT
