@@ -185,6 +185,7 @@ jobs:
             out/cache/overture_gb_fr.parquet
             out/cache/overture_ie_nl_be_se.parquet
             out/cache/overture_fi_sg_hk_mx_br.parquet
+            out/cache/overture_fi_sg_web.parquet
             out/cache/formd
             out/cache/careers_seen.json
             out/cache/wdc_job_domains.csv
@@ -477,6 +478,7 @@ jobs:
             out/cache/overture_gb_fr.parquet
             out/cache/overture_ie_nl_be_se.parquet
             out/cache/overture_fi_sg_hk_mx_br.parquet
+            out/cache/overture_fi_sg_web.parquet
             out/cache/formd
             out/cache/careers_seen.json
             out/cache/wdc_job_domains.csv
