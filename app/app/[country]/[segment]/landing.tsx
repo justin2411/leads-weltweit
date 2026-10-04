@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { consentText, t } from "@/lib/consent";
 import VIDEOS from "@/content/videos.json";
 import { getSettings, isOwner, loadPage, pageIsPublic } from "@/lib/pages";
-import { BRAND, fitTitle, siteUrl } from "@/lib/site";
+import { BRAND, fitDesc, fitTitle, siteUrl } from "@/lib/site";
 import { checkoutMode, lineItemFor, priceLabel, stripeEnabled, type Plan } from "@/lib/stripe";
 import { fill, type Personal } from "@/lib/personalize";
 import { personalFor } from "@/lib/recipient";
@@ -307,7 +307,7 @@ export async function landingMetadata(params: LandingParams, sp: LandingSearch, 
   const P = { region: CW.land, ort: CW.land };
   return {
     title: fitTitle(localize(fill(r.variant.headline, P, r.page.language, W), r.page.country), BRAND),
-    description: r.variant.subheadline ? localize(fill(r.variant.subheadline, P, r.page.language, W), r.page.country) : undefined,
+    description: r.variant.subheadline ? fitDesc(localize(fill(r.variant.subheadline, P, r.page.language, W), r.page.country)) : undefined,
     alternates: { canonical: `${siteUrl()}/${r.slug}` },
     robots: r.isPublic ? { index: true, follow: true } : { index: false, follow: false },
   };
