@@ -6,7 +6,7 @@ const WAVE = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' 
 
 export const SPEICHER_CSS = `
 .sp{--l-frei:#5fd4ff;--l-proben:#e2c68f;--l-geliefert:#3ddc97;--l-zurueck:#ff7a6b;--l-abgelaufen:#56657e;--l-sonst:#8ba6c9;
-  --b-frei:#f2c86b;--b-sent:#8d7442;display:grid;gap:18px;min-width:0}
+  --b-frei:#f2c86b;--b-queued:#c49a4e;--b-sent:#8d7442;display:grid;gap:18px;min-width:0}
 .sp-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:4px 0 0}
 .sp-head h1{margin:0;font-family:var(--hud);font-size:28px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;color:#fff;text-shadow:0 0 22px rgba(95,212,255,.55)}
 .sp-head .sp-at{font-size:13px;color:var(--soft)}

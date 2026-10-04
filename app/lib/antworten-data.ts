@@ -76,8 +76,11 @@ export async function loadReply(id: string) {
 
 /** Wie viele fertige Proben liegen für Zielgruppe/Land bereit (dieselbe Bedingung wie claim_sample_stock)? */
 export async function stockReady(segment: string, country: string): Promise<number> {
+  // inkl. Freigabe jünger als 26 h – sonst verwirft claim_sample_stock die Probe (Prüfung 04.10.2026)
+  const now = Date.now();
   const { count, error } = await db().from("sample_stock").select("id", { count: "exact", head: true })
-    .eq("segment_id", segment).eq("country", country).eq("status", "ready").gt("expires_at", new Date().toISOString());
+    .eq("segment_id", segment).eq("country", country).eq("status", "ready").gt("expires_at", new Date(now).toISOString())
+    .gte("gate_checked_at", new Date(now - 26 * 3600_000).toISOString());
   if (error) throw new Error(error.message);
   return count ?? 0;
 }
