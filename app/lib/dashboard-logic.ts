@@ -240,17 +240,22 @@ export type BoxHealth = { box: string; sent: number; bounced: number; complained
   /** Gründe aus der Unzustellbar-Meldung (seit 04.10.2026 gespeichert), z. B. { "5.1.1": 2 } */
   codes: Record<string, number> };
 export const BOX_WARN = 0.03, BOX_FAIL = 0.05, BOX_MIN = 30;
+/** Hauptdomain: Mails ohne Absender-Eintrag stammen aus dem Hauptpostfach dort. */
+export const MAIN_DOMAIN = "nextgen-profit.de";
 
 /**
- * Bounce-Quote je Versand-Postfach (wie tagescheck.check_mailboxes, Nachtschicht 04.10.2026): Zählung wie die
+ * Bounce-Quote je Versand-Postfach (by = "box") oder je Versand-Domain (by = "domain", Auftrag 05.10.2026; wie
+ * tagescheck.check_domains) (wie tagescheck.check_mailboxes, Nachtschicht 04.10.2026): Zählung wie die
  * Notbremse (je Empfänger, vorübergehende Abweisung erst beim zweiten Mal), gelb ab 3 %, rot ab 5 % oder bei einer
  * Beschwerde, grau unter 30 Mails (zu wenig für eine Aussage). Mails ohne Absender zählen zum Hauptpostfach.
  */
 export function boxHealth(msgs: { id: string; sent_from: string | null }[],
-                          events: Pick<Ev, "type" | "bounce_type" | "bounce_status" | "to_email" | "message_id">[]): BoxHealth[] {
+                          events: Pick<Ev, "type" | "bounce_type" | "bounce_status" | "to_email" | "message_id">[],
+                          by: "box" | "domain" = "box"): BoxHealth[] {
   const key = (from: string | null) => {
     const a = (from ?? "").match(/<([^>]+)>/)?.[1] ?? from ?? "";
     const addr = a.trim().toLowerCase();
+    if (by === "domain") return addr.includes("@") ? addr.split("@").pop()! : MAIN_DOMAIN;
     return isMainBox(addr) ? "main" : addr;
   };
   const boxOf = new Map(msgs.map((m) => [m.id, key(m.sent_from)]));
@@ -264,7 +269,9 @@ export function boxHealth(msgs: { id: string; sent_from: string | null }[],
   return [...sent.entries()].sort((a, b) => b[1] - a[1]).map(([box, n]) => {
     const { bounced, complained } = countBounces(evs.get(box) ?? []);
     const rate = n ? bounced / n : 0;
-    const tone = complained ? "red" : n < BOX_MIN ? "grey" : rate >= BOX_FAIL ? "red" : rate >= BOX_WARN ? "gold" : "green";
+    // je Domain wie die Notbremse je Domain (lib.deliverability.scoped_stops): rot erst über 5 % ab 100 Mails
+    const tone = complained ? "red" : n < BOX_MIN ? "grey" : (by === "domain" ? n >= 100 && rate > BOX_FAIL : rate >= BOX_FAIL) ? "red"
+      : rate >= BOX_WARN ? "gold" : "green";
     const codes: Record<string, number> = {};
     for (const e of evs.get(box) ?? []) if (e.type === "bounced" && e.bounce_status) codes[e.bounce_status] = (codes[e.bounce_status] ?? 0) + 1;
     return { box, sent: n, bounced, complained, rate, tone, codes };

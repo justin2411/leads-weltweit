@@ -29,4 +29,6 @@ postfach_start: 60
 postfach_schritt: 15
 # Inhaber 01.10.2026: „wir sollten die Möglichkeit haben auch hochzuskalieren, Hauptdomain passt“.
 postfach_tageslimit: 150
+# Viele Domains/Postfächer (05.10.2026): Secret SMTP_BOXES (lib/mailboxes.py); neue Domain erst nach grünem postfach-test,
+# eigene Kurve je Postfach nie über postfach_tageslimit; Notbremse zusätzlich je Postfach und je Domain.
 kaufinteresse_an: justin.koch@horbach.de   # Meldungen bei Kaufinteresse/Rückfragen (Morgenbericht geht an OWNER_EMAIL)

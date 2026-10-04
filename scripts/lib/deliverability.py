@@ -79,6 +79,36 @@ def emergency_stop(sent: int, bounced: int, complained: int) -> str | None:
     return None
 
 
+def scoped_stops(sent: list[dict], events: list[dict], box_key, domain_key) -> tuple[dict, dict]:
+    """Zusätzliche, strengere Notbremse je Postfach UND je Domain (Auftrag 05.10.2026). Die globale Notbremse
+    (emergency_stop über alle Mails) bleibt unverändert davor. Gleiche Zählung (count_bounces, je Empfänger):
+      - Postfach: Bounce-Quote über 5 % ab 100 Mails dieses Postfachs, oder eine Spam-Beschwerde
+      - Domain:   Bounce-Quote über 5 % ab 100 Mails dieser Domain, oder eine Spam-Beschwerde -> alle Postfächer der
+                  Domain sofort aus
+    sent: gesendete Mails im Notbremse-Fenster (id, sent_from); events: bounced/complained mit message_id.
+    box_key(sent_from) / domain_key(sent_from) ordnen eine Mail zu. Rückgabe ({Postfach: Grund}, {Domain: Grund})."""
+    out: list[dict] = []
+    for key in (box_key, domain_key):
+        group = {m["id"]: key(m.get("sent_from")) for m in sent}
+        n: dict = {}
+        for g in group.values():
+            n[g] = n.get(g, 0) + 1
+        ev: dict = {}
+        for e in events:
+            g = group.get(e.get("message_id"))
+            if g is not None:
+                ev.setdefault(g, []).append(e)
+        stops = {}
+        for g, total in n.items():
+            bounced, complained = count_bounces(ev.get(g, []))
+            if complained >= COMPLAINT_STOP:
+                stops[g] = f"{complained} Spam-Beschwerde(n): gestoppt, Inhaber muss entscheiden"
+            elif total >= MIN_SAMPLE and bounced / total > BOUNCE_STOP:
+                stops[g] = f"Bounce-Quote {bounced}/{total} = {bounced / total:.1%} über {BOUNCE_STOP:.0%}: gestoppt"
+        out.append(stops)
+    return out[0], out[1]
+
+
 TRANSIENT_STATUS = _re.compile(r"^4\.\d{1,3}\.\d{1,3}$")
 
 

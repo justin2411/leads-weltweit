@@ -48,3 +48,26 @@ Stand: **Plan, noch nichts gekauft oder umgestellt.** Alles, was Geld kostet, st
 **Sofort und kostenlos (ohne Freigabe):** Adressprüfung vor jedem Versand schärfen, damit Rückläufer unter 2 % fallen.
 
 **Braucht Inhaber-Ja:** Zweit-Domains + Postfächer kaufen (Betrag oben), Regel „keine Zweitdomain“ aufheben.
+
+## 3. Technik bereit (05.10.2026)
+
+Inhaber 05.10.2026: „es ist unser Unternehmen Kaltmails zu schicken. Wie können wir es schaffen, möglichst viele zu schicken, wenn das Produkt läuft“. **Nichts eingeschaltet, keine Grenze erhöht, nichts gekauft.**
+
+| Baustein | Stand |
+|---|---|
+| Beliebig viele Postfächer | Secret `SMTP_BOXES` (JSON-Liste), ohne Code- oder Workflow-Änderung |
+| Domain je Postfach | aus der Absenderadresse; Hauptdomain nextgen-profit.de sendet wie heute |
+| Freischaltung | neue Domain sendet erst nach grünem `postfach-test` (DNS + Anmeldung + DKIM-Testmail) |
+| Tagesmenge je Postfach | eigene Kurve `start`/`schritt`/`limit`, nie über `postfach_tageslimit` |
+| Rotation | gleichmäßig nach Anteil der Tagesmenge über alle Postfächer |
+| Notbremse | global unverändert; zusätzlich je Postfach und je Domain (über 5 % ab 100 Mails, jede Beschwerde stoppt die Domain sofort) |
+| Anzeige | Dashboard Betrieb und Tagescheck: gesendet, Bounces, Beschwerden je Domain |
+
+### Neue Domain in 5 Schritten
+
+1. **Kaufen** (Inhaber, kostet Geld): Domain + Postfächer beim Anbieter, z. B. 3 Postfächer je Domain.
+2. **DNS setzen** beim Anbieter: MX, ein SPF-Eintrag, DKIM, DMARC (`v=DMARC1; p=none` reicht für den Start). Prüfen: `python scripts/dns_check.py neue-domain.de`.
+3. **Secret `SMTP_BOXES`** in GitHub ergänzen, je Postfach eine Zeile:
+   `{"user": "anna@neue-domain.de", "password": "…", "host": "smtp.anbieter.de", "imap_host": "imap.anbieter.de", "start": 20, "schritt": 5, "limit": 40}`
+4. **`postfach-test` starten** (GitHub Actions). Grün = Postfach ist freigeschaltet, rot = sendet nicht.
+5. **Fertig.** Der Versand nimmt das Postfach beim nächsten Lauf auf und fährt es langsam hoch. Beobachten im Dashboard „Betrieb“ unter Postfächer/Domain.
