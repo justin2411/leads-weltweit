@@ -37,6 +37,40 @@ class TagescheckTest(unittest.TestCase):
         t.check_bounce_klassen(c, db)
         self.assertEqual(c.rows[0][1], t.OK)
 
+    def test_followups_of_resting_branches_are_not_red(self):
+        # Nur Fokus-Tests werden gesendet (Inhaber 02.10.2026): liegengebliebene Nachfassmails ruhender Branchen
+        # sind Absicht, nicht rot; im Fokus bleiben sie rot (Tagescheck 04.10.2026)
+        import datetime as dt
+        old = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=40)).isoformat()
+        rest = {"id": "f1", "kind": "followup", "status": "approved", "approved_at": old, "prospect_id": "p1",
+                "experiments": {"segment_id": "S5"}, "prospects": {"country": "UK"}}
+        focus = {**rest, "id": "f2", "experiments": {"segment_id": "S2"}}
+        first = {"id": "i1", "kind": "initial", "status": "sent", "sent_at": "2026-01-01T00:00:00+00:00",
+                 "prospect_id": "p1", "to_email": "a@b.example", "experiments": {"segment_id": "S2"},
+                 "prospects": {"country": "UK"}}
+        patches = (mock.patch("lib.fokus.focus_only", return_value=True),
+                   mock.patch("lib.fokus.focus_pairs", return_value=[("S2", "UK")]))
+        with patches[0], patches[1]:
+            c = t.Check()
+            t.check_followups(c, FakeDB({"messages": [first, rest]}))
+            self.assertEqual(c.rows[0][1], t.OK)
+            c = t.Check()
+            t.check_followups(c, FakeDB({"messages": [first, rest, focus]}))
+            self.assertEqual((c.rows[0][1], c.rows[0][2]), (t.FAIL, "1 Nachfassmails seit über 30 h nicht gesendet"))
+
+    def test_sample_request_owner_informed_is_yellow(self):
+        import datetime as dt
+        from web_samples import NOTIFIED
+        old = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=5)).isoformat()
+        req = {"company_name": "A", "segment_id": "S1", "country": "DE", "status": "new", "created_at": old,
+               "note": f"{NOTIFIED}; wunsch:x"}
+        c = t.Check()
+        t.check_web_samples(c, FakeDB({"sample_requests": [req]}))
+        self.assertEqual([r[1] for r in c.rows], [t.WARN])
+        c = t.Check()
+        t.check_web_samples(c, FakeDB({"sample_requests": [req, {**req, "company_name": "B", "note": None}]}))
+        self.assertEqual(sorted(r[1] for r in c.rows), sorted([t.FAIL, t.WARN]))
+
     def test_broken_check_is_reported_not_raised(self):
         c = t.Check()
         c.guard("Kunden", lambda: 1 / 0)

@@ -232,11 +232,23 @@ def check_mailboxes(c: Check, db) -> None:
             c.add("Postfach", OK, f"{b}: Bounce-Quote {rate:.1%}", detail)
 
 
+def _resting(m: dict, pairs: set) -> bool:
+    """Mail einer ruhenden Branche: Versand nur Fokus-Tests (config/fokus.yaml nur_fokus, Inhaber 02.10.2026) – sie
+    bleibt freigegeben liegen, das ist Absicht und kein Fehler (gleiche Regel wie outreach.py send)."""
+    seg = (m.get("experiments") or {}).get("segment_id")
+    country = (m.get("prospects") or {}).get("country")
+    return bool(pairs) and (seg, country) not in pairs
+
+
 def check_followups(c: Check, db) -> None:
     from followups import NEGATIVE
+    from lib.fokus import focus_only, focus_pairs
+    pairs = set(focus_pairs()) if focus_only() else set()
+    emb = "experiments(segment_id),prospects(country)"
     cutoff = (NOW - dt.timedelta(days=5)).isoformat()   # 4 Tage + 1 Tag Puffer für den Automatiklauf
     initial = db.select_all("messages", {"status": "eq.sent", "kind": "eq.initial", "sent_at": f"lte.{cutoff}",
-                                         "select": "id,prospect_id,to_email"})
+                                         "select": f"id,prospect_id,to_email,{emb}"})
+    initial = [m for m in initial if not _resting(m, pairs)]
     if not initial:
         c.add("Nachfass", OK, "Noch keine Erstmail älter als 5 Tage")
         return
@@ -250,14 +262,19 @@ def check_followups(c: Check, db) -> None:
     missing = [m for m in initial if m["prospect_id"] not in followed and m["id"] not in neg]
     # gesperrte Adressen bekommen zu Recht keine Nachfassmail
     missing = [m for m in missing if not db.rpc("is_suppressed", {"p_email": m["to_email"]})]
-    stuck = db.select("messages", {"kind": "neq.initial", "status": "eq.approved", "approved_at": f"lte.{(NOW - dt.timedelta(hours=30)).isoformat()}",
-                                   "select": "id"})
+    stuck_all = db.select_all("messages", {"kind": "neq.initial", "status": "eq.approved",
+                                           "approved_at": f"lte.{(NOW - dt.timedelta(hours=30)).isoformat()}",
+                                           "select": f"id,{emb}"})
+    stuck = [m for m in stuck_all if not _resting(m, pairs)]
+    resting = len(stuck_all) - len(stuck)
+    note = f"{resting} Nachfassmails ruhender Branchen warten (nur Fokus-Tests werden gesendet)" if resting else ""
     if missing:
         c.add("Nachfass", FAIL, f"{len(missing)} Nachfassmails fehlen", "Erstmail > 5 Tage, keine Antwort, keine Nachfassmail")
     elif stuck:
-        c.add("Nachfass", FAIL, f"{len(stuck)} Nachfassmails seit über 30 h nicht gesendet")
+        c.add("Nachfass", FAIL, f"{len(stuck)} Nachfassmails seit über 30 h nicht gesendet", note)
     else:
-        c.add("Nachfass", OK, "Nachfassmails vollständig", f"{len(initial)} Erstmails älter als 5 Tage geprüft")
+        c.add("Nachfass", OK, "Nachfassmails vollständig",
+              f"{len(initial)} Erstmails älter als 5 Tage geprüft" + (f"; {note}" if note else ""))
 
 
 def check_replies(c: Check, db) -> None:
@@ -307,12 +324,20 @@ def check_unsubscribes(c: Check, db) -> None:
 def check_web_samples(c: Check, db) -> None:
     old = (NOW - dt.timedelta(hours=2)).isoformat()
     waiting = db.select("sample_requests", {"status": "eq.new", "created_at": f"lte.{old}",
-                                            "select": "company_name,created_at,segment_id,country"})
-    if waiting:
-        names = ", ".join(f"{w['company_name']} ({w['segment_id']}/{w['country']}, seit {ago(w['created_at']):.0f} h)"
-                          for w in waiting[:5])
-        c.add("Proben", FAIL, f"{len(waiting)} Probe-Anfragen von der Website unbeantwortet", names)
-    else:
+                                            "select": "company_name,created_at,segment_id,country,note"})
+    # Noch nicht lieferbar (keine 10 vollständigen Leads) und Inhaber schon informiert (web_samples.py): Inhaber-Punkt,
+    # kein Fehler der Pipeline – gelb. Rot nur, wenn eine Anfrage liegt, ohne dass jemand Bescheid weiß.
+    from web_samples import NOTIFIED
+    known = [w for w in waiting if NOTIFIED in (w.get("note") or "")]
+    open_ = [w for w in waiting if w not in known]
+    fmt = lambda ws: ", ".join(f"{w['company_name']} ({w['segment_id']}/{w['country']}, seit {ago(w['created_at']):.0f} h)"  # noqa: E731
+                               for w in ws[:5])
+    if open_:
+        c.add("Proben", FAIL, f"{len(open_)} Probe-Anfragen von der Website unbeantwortet", fmt(open_))
+    if known:
+        c.add("Proben", WARN, f"{len(known)} Probe-Anfragen warten auf Leads (Inhaber informiert)",
+              fmt(known) + " – noch keine 10 vollständigen Leads; persönlich melden")
+    if not waiting:
         c.add("Proben", OK, "Alle Probe-Anfragen von der Website beantwortet")
 
 
