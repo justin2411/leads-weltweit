@@ -11,7 +11,7 @@ import { chatToJarvis } from "../control-actions";
 import { Back } from "../v2";
 import { DragBox } from "./dnd";
 import { TipX } from "./dismiss";
-import { tipKey } from "@/lib/tips";
+import { tipKey, tipReactKeys } from "@/lib/tips";
 import { Icon } from "@/app/icons";
 import { chatTime, statusText } from "@/lib/jarvis-chat";
 import { sendFromJarvis } from "./chat/actions";
@@ -35,9 +35,11 @@ export function Empfiehlt({ recs, href, agent, children }: { recs: Rec[]; href: 
     <section className="jrec" aria-label="JARVIS empfiehlt">
       <h2><Icon name="trend-hoch" size={16} /> JARVIS empfiehlt</h2>
       {recs.length > 0 && <div className="jrec-l">
-        {recs.map((r, i) => {
+        {recs.map((r, i, all) => {
+          // stabiler Schlüssel statt Index: nach dem X rückt die nächste Empfehlung nicht in den versteckten Knoten
+          const key = tipReactKeys(all)[i];
           const row = (
-            <div key={i} className={`jrec-i ${r.level}`} data-tip={r.task ? undefined : ""}>
+            <div key={key} className={`jrec-i ${r.level}`} data-tip={r.task ? undefined : ""}>
               <Link href={href(r)} scroll={false} className="jrec-t"><b>{r.title}</b><span>{r.short}</span></Link>
               {r.task && (
                 <Link href={giveHref(agent, r.task)} scroll={false} className="jrec-give" title={`als Auftrag „${KINDS[r.task.kind].label}${r.task.market ? ` · ${r.task.market}` : ""}“ an Agent ${agent} – oder auf A1–A8 ziehen`}>
@@ -47,7 +49,7 @@ export function Empfiehlt({ recs, href, agent, children }: { recs: Rec[]; href: 
               <TipX k={tipKey(r)} level={r.level} title={r.title} />
             </div>
           );
-          return r.task ? <DragBox key={i} task={r.task} title={r.title} tip>{row}</DragBox> : row;
+          return r.task ? <DragBox key={key} task={r.task} title={r.title} tip>{row}</DragBox> : row;
         })}
       </div>}
       {children}

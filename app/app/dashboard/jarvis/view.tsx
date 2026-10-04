@@ -15,7 +15,7 @@ import type { StartChat } from "./chat/start";
 import { GatePanel, type GateView } from "./freigabe";
 import { DragTip } from "./dnd";
 import { UndoBar } from "./dismiss";
-import { tipKey } from "@/lib/tips";
+import { tipKey, tipReactKeys } from "@/lib/tips";
 import { Clock, Voice } from "./voice";
 
 export type JarvisProps = {
@@ -47,7 +47,7 @@ export function JarvisView(p: JarvisProps) {
       <Empfiehlt recs={p.recs} href={p.tipHref} agent={p.agent}>
         {p.rest.length > 0 && (
           <div className="jtips2">
-            {p.rest.slice(0, 4).map((x, i) => <DragTip key={i} task={x.task} title={x.title} href={p.tipHref(x)} level={x.level} tip={x.text} dkey={tipKey(x)} />)}
+            {p.rest.slice(0, 4).map((x, i, all) => <DragTip key={tipReactKeys(all)[i]} task={x.task} title={x.title} href={p.tipHref(x)} level={x.level} tip={x.text} dkey={tipKey(x)} />)}
           </div>
         )}
       </Empfiehlt>

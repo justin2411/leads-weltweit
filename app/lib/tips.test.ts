@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DismissError, MAX_DISMISSALS, activeDismissals, addDismissal, dismissUntil, isDismissed, removeDismissal, tipKey, validateKey, visibleTips } from "./tips.ts";
+import { DismissError, MAX_DISMISSALS, activeDismissals, addDismissal, dismissUntil, isDismissed, removeDismissal, tipKey, tipReactKeys, validateKey, visibleTips } from "./tips.ts";
 
 const NOW = new Date("2026-10-04T12:00:00Z");
 
@@ -57,4 +57,13 @@ test("höchstens MAX_DISMISSALS Einträge", () => {
   m = addDismissal(m, "hinweis|-|neu", "gelb", NOW);
   assert.equal(Object.keys(m).length, MAX_DISMISSALS);
   assert.ok(m["hinweis|-|neu"]);
+});
+
+test("React-Schlüssel stabil und eindeutig (nicht Listenindex)", () => {
+  const a = { level: "gelb", title: "3 Antworten offen" };
+  const b = { level: "gelb", title: "Proben-Vorrat leer" };
+  assert.deepEqual(tipReactKeys([a, b]), [tipKey(a), tipKey(b)]);
+  assert.deepEqual(tipReactKeys([b]), [tipKey(b)]); // nach dem Ausblenden von a behält b seinen Schlüssel
+  const k = tipReactKeys([a, { ...a, title: "4 Antworten offen" }]);
+  assert.equal(new Set(k).size, 2);
 });

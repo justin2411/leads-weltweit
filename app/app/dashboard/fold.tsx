@@ -6,7 +6,7 @@
  * bzw. Zahl. Der offen-Zustand je Abschnitt (id) bleibt im Browser gespeichert (localStorage, try/catch – ohne Speicher
  * gilt `open`). Für alle Listen/Tabellen/Matrizen über ~6 Zeilen im Dashboard.
  */
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 const PREFIX = "sw-fold:";
 
@@ -29,17 +29,24 @@ function write(id: string, open: boolean) {
 /**
  * id: eindeutig im Dashboard (z. B. "speicher-laender"); title: Überschrift; sum: Kurzzusammenfassung/Zahl rechts;
  * open: Standard ohne gespeicherten Zustand; className: Klassen der Hülle (z. B. "card tile" oder "sp-card");
- * head: Klassen der Kopfzeile (Standard "h2s" = Abschnittsüberschrift, in Karten z. B. "th" oder "sp-h").
+ * head: Klassen der Kopfzeile (Standard "h2s" = Abschnittsüberschrift, in Karten z. B. "th" oder "sp-h");
+ * alert: Warnzustand (fehlende Variable, ungespeicherte Änderung) – dann immer offen, auch wenn der Inhaber den
+ * Abschnitt früher zugeklappt hat (docs/DESIGN.md).
  */
-export function Fold({ id, title, sum, open = true, className = "", head = "h2s", children }: { id: string; title: ReactNode; sum?: ReactNode; open?: boolean; className?: string; head?: string; children: ReactNode }) {
+export function Fold({ id, title, sum, open = true, alert = false, className = "", head = "h2s", children }: { id: string; title: ReactNode; sum?: ReactNode; open?: boolean; alert?: boolean; className?: string; head?: string; children: ReactNode }) {
   const ref = useRef<HTMLDetailsElement>(null);
   const byUser = useRef(false); // nur echte Klicks speichern (nicht das Öffnen beim Laden)
+  // Anfangszustand fest (sonst klappt React den Abschnitt bei jeder Änderung von open/alert wieder um)
+  const [initial] = useState(open || alert);
   useEffect(() => {
     const saved = read(id);
     if (saved !== null && ref.current && ref.current.open !== saved) ref.current.open = saved;
   }, [id]);
+  useEffect(() => {
+    if (alert && ref.current && !ref.current.open) ref.current.open = true; // Warnzustand: immer sichtbar
+  }, [alert]);
   return (
-    <details ref={ref} className={`fold ${className}`.trim()} open={open} data-fold={id}
+    <details ref={ref} className={`fold ${className}`.trim()} open={initial} data-fold={id}
       onToggle={(e) => { if (byUser.current) { byUser.current = false; write(id, (e.currentTarget as HTMLDetailsElement).open); } }}>
       <summary className={head} onClick={() => { byUser.current = true; }}><span className="fold-t">{title}</span>{sum !== undefined && sum !== null && sum !== "" ? <span className="fold-s">{sum}</span> : null}</summary>
       <div className="fold-b">{children}</div>

@@ -111,7 +111,8 @@ steht in einem einklappbaren Abschnitt:
 - Offen-Zustand je Abschnitt (`id`, eindeutig, z. B. `speicher-datenbank`) bleibt im Browser (localStorage, immer mit
   try/catch; ohne Speicher gilt der Standard). Gespeichert wird nur ein echter Klick.
 - Standard offen; Abschnitte, die selten gebraucht werden (z. B. Umgebungsvariablen ohne Fehler), standardmäßig zu.
-  Wichtige Warnzustände (fehlende Variable, ungespeicherte Änderung) öffnen den Abschnitt.
+  Wichtige Warnzustände (fehlende Variable, ungespeicherte Änderung) öffnen den Abschnitt immer, auch gegen einen
+  gespeicherten Zu-Zustand (`<Fold alert>`).
 - Kurze Abschnitte (bis ~6 Zeilen) bleiben ohne Klappe.
 
 ## JARVIS: Empfehlungen ausblenden, acht Agenten (04.10.2026)

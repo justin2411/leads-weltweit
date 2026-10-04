@@ -145,7 +145,7 @@ export function Pools({ pools, rows, saved, subs, subRoute, error, newColor }: {
       </section>
 
       {/* Inhaber 04.10.2026: lange Abschnitte ein- und ausklappbar – zu, solange alles auf Gesamtbestand steht */}
-      <Fold id="speicher-bedienen" className="sp-card pl-card" head="sp-h" open={ownRoutes > 0 || changes.some((c) => c.kind === "route")}
+      <Fold id="speicher-bedienen" className="sp-card pl-card" head="sp-h" open={ownRoutes > 0} alert={changes.some((c) => c.kind === "route")}
         title={<h2>Bedienen aus</h2>} sum={<span className="sp-note">{ownRoutes ? `${ownRoutes} eigene` : "alles Gesamtbestand"}</span>}>
         <p className="fold-note">Proben und Lieferungen je Zielgruppe und Land</p>
         {!rows.length ? <p className="sp-none">Keine Zielgruppe mit Mail-Ländern.</p> : (
@@ -174,7 +174,7 @@ export function Pools({ pools, rows, saved, subs, subRoute, error, newColor }: {
         )}
       </Fold>
 
-      <Fold id="speicher-je-kunde" className="sp-card pl-card" head="sp-h" open={changes.some((c) => c.kind === "sub")}
+      <Fold id="speicher-je-kunde" className="sp-card pl-card" head="sp-h" open={false} alert={changes.some((c) => c.kind === "sub")}
         title={<h2>Je Kunde</h2>} sum={<span className="sp-note">{subs.length} Abos</span>}>
         <p className="fold-note">übersteuert Zielgruppe und Land</p>
         {!subs.length ? <p className="sp-none">Noch keine Abos.</p> : (

@@ -31,6 +31,20 @@ export function tipKey(t: TipLike): string {
   return `${kind}|${market}|${title || "ohne titel"}`;
 }
 
+/**
+ * React-Schlüssel je Hinweis (tipKey, bei Doppelten mit laufender Nummer): stabil statt Listenindex, damit nach dem
+ * Ausblenden (Karte bekommt sofort .tip-gone) der nachrückende Hinweis nicht den versteckten DOM-Knoten erbt.
+ */
+export function tipReactKeys(tips: TipLike[]): string[] {
+  const seen = new Map<string, number>();
+  return tips.map((t) => {
+    const k = tipKey(t);
+    const n = seen.get(k) ?? 0;
+    seen.set(k, n + 1);
+    return n ? `${k}#${n}` : k;
+  });
+}
+
 /** Rote Alarme (Sicherheit) lassen sich nur kurz (24 h) ausblenden. */
 export const isAlarm = (t: { level: string }) => t.level === "rot";
 

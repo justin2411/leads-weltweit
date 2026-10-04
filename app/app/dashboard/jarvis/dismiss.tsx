@@ -22,6 +22,7 @@ export function TipX({ k, level, title }: { k: string; level: string; title: str
       onClick={(e) => {
         const box = e.currentTarget.closest<HTMLElement>("[data-tip]");
         box?.classList.add("tip-gone");
+        if (box) box.dataset.goneKey = k;
         start(async () => {
           const f = new FormData();
           f.set("key", k);
@@ -63,7 +64,11 @@ export function UndoBar() {
       <button type="button" disabled={pending} onClick={() => start(async () => {
         const f = new FormData();
         f.set("key", last.key);
-        try { await undoDismissTip(f); } finally { setLast(null); }
+        try {
+          const r = await undoDismissTip(f);
+          // Noch nicht neu geladene Karte wieder zeigen (sonst bliebe sie bis zum Neuladen versteckt)
+          if (r.ok) document.querySelectorAll<HTMLElement>(".tip-gone[data-gone-key]").forEach((el) => { if (el.dataset.goneKey === last.key) el.classList.remove("tip-gone"); });
+        } finally { setLast(null); }
       })}><Icon name="rueckgaengig" size={14} /> rückgängig</button>
     </div>
   );
