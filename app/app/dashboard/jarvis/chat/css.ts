@@ -4,6 +4,15 @@
  * kein seitliches Scrollen (lange Wörter brechen um). Bewegung nur ohne prefers-reduced-motion.
  */
 export const JCHAT_CSS = `
+.dash .jc section,.dash .jc aside{margin-top:0}
+.jc{align-items:stretch}
+.jc-top{display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:1200px;margin:0 auto 12px;min-height:32px}
+.jc-crumbs{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--soft)}
+.jc-crumbs a{color:var(--soft)!important;text-decoration:none}.jc-crumbs a:hover{color:var(--cy2)!important}
+.jc-crumbs svg{color:var(--gold)}.jc-crumbs [aria-current]{color:var(--text);font-weight:600}
+.jc-back{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line);font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--cy2)!important;text-decoration:none;transition:border-color .15s,color .15s}
+.jc-back svg{transform:scaleX(-1)}
+.jc-back:hover{border-color:var(--gold);color:var(--gold)!important}
 .jc{display:grid;grid-template-columns:minmax(220px,280px) minmax(0,1fr);gap:14px;min-height:calc(100dvh - 190px);max-width:1200px;margin:0 auto;padding:4px 0 16px}
 .jc-side{display:flex;flex-direction:column;gap:8px;min-width:0;margin:0;padding:12px;border:1px solid var(--line);border-radius:12px;background:rgba(4,12,26,.72);
   -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);max-height:calc(100dvh - 190px);overflow:auto}
