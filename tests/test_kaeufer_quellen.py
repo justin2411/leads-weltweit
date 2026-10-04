@@ -129,6 +129,30 @@ class FranceNumTests(unittest.TestCase):
         with mock.patch.object(fr_francenum, "_download", return_value=items):
             self.assertEqual(fr_francenum.pool_rows(log=lambda *_: None, fetcher=f, budget_s=0), [])
 
+    def test_download_via_data_gouv_tabular_api_not_blocked_export(self):
+        # robots.txt von data.economie.gouv.fr sperrt /api/ -> Abruf nur über tabular-api.data.gouv.fr
+        self.assertTrue(fr_francenum.URL.startswith("https://tabular-api.data.gouv.fr/"))
+        self.assertNotIn("data.economie.gouv.fr", fr_francenum.URL)
+        rec = {"__id": 1, "Identifiant de la structure": "abc-1", "Nom de la structure": "PIXEL COM",
+               "Type": "Agence de communication, marketing", "Catégorie": "Privée", "Adresse": "1 RUE DE LA PAIX",
+               "Code postal": 6000, "Ville": "Nice", "Région": "PACA",
+               "Lien url (site France Num)": "https://www.francenum.gouv.fr/activateurs/pixel-com"}
+        x = fr_francenum.as_export(rec)
+        self.assertEqual(x["code_postal"], "06000")
+        self.assertTrue(fr_francenum.wanted(x))
+        pages = [{"data": [rec], "links": {"next": "https://tabular-api.data.gouv.fr/x?page=2"}},
+                 {"data": [{**rec, "Identifiant de la structure": "abc-2"}], "links": {"next": None}}]
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(fr_francenum, "CACHE", Path(tmp) / "fn.json"), \
+                mock.patch.object(fr_francenum, "_get", side_effect=pages) as get, \
+                mock.patch.object(fr_francenum.time, "sleep"):
+            data = fr_francenum._download(log=lambda *_: None)
+        self.assertEqual([d["identifiant_de_la_structure"] for d in data], ["abc-1", "abc-2"])
+        self.assertEqual(get.call_count, 2)
+
+    def test_france_num_is_active_register_source(self):
+        self.assertIn("fr_francenum", K.REGISTER_SOURCES)
+
     def test_check_one_fr_activateur_with_generic_address(self):
         d = {**self.fr(), "segment": "S2", "website": "https://www.pixel-com.fr/", "domain": "pixel-com.fr"}
         cfg = load_countries()
@@ -275,8 +299,8 @@ class PoolTests(unittest.TestCase):
 
     def test_workflow_pool_key_bumped(self):
         wf = (Path(__file__).resolve().parents[1] / ".github" / "workflows" / "kunden-werk.yml").read_text()
-        self.assertNotIn("kunden-pool-v8-", wf)
-        self.assertEqual(wf.count("kunden-pool-v9-"), 2)
+        self.assertNotIn("kunden-pool-v9-", wf)
+        self.assertEqual(wf.count("kunden-pool-v10-"), 2)
 
 
 if __name__ == "__main__":

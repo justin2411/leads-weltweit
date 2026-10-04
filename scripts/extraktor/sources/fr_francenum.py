@@ -3,7 +3,7 @@
 Kunden-Werk (Quellen-Scout 04.10.2026): France Num ist die staatliche Initiative zur Digitalisierung kleiner Firmen;
 „Activateurs“ sind private Dienstleister, die TPE/PME bei Website, Online-Sichtbarkeit und Digitalisierung helfen –
 genau unsere S2-Käufer. Das Verzeichnis ist offene Daten (data.gouv.fr / data.economie.gouv.fr, Licence Ouverte 2.0,
-ohne Schlüssel, ~4.400 Einträge; offizielle Export-Schnittstelle wie BODACC, ein Abruf je Pool-Bau): Name, Typ,
+ohne Schlüssel, ~4.400 Einträge): Name, Typ,
 Adresse, Größe und der Link auf die öffentliche Seite des Activateurs auf francenum.gouv.fr. Die eigene Website steht
 nur auf dieser Seite („Site internet“); sie wird höflich geholt (Fetcher: robots.txt erlaubt /activateurs/,
 1 Abruf/s, jede Seite einmal je Pool-Bau, Zeitbudget, Reihenfolge wechselt monatlich).
@@ -13,6 +13,11 @@ Selbständige (FR: Einzelunternehmer berufsbezogen erlaubt, `countries.yaml`). N
 Banken, Kanzleien, Bildungsträger, Beratungen, Software-Verlage. Geprüft wird danach wie jeder Käufer (eigene
 Website, Firmen-E-Mail, Rechtsform über SIRENE, unveränderte Prüfregel). Test 04.10.2026: 220 Seiten -> 192 mit
 eigener Website, 173 noch nicht in prospects; 130 geprüft -> 72 mail-fähig (55 %), 58 nur Anruf/Brief.
+
+Abruf (JARVIS-Agent 8, 04.10.2026): nicht über die Export-API von data.economie.gouv.fr (robots.txt: Disallow /api/
+für alle Bots außer Googlebot), sondern über die offizielle Tabular-API von data.gouv.fr (tabular-api.data.gouv.fr,
+kein robots.txt, gleiche Datei als von data.gouv.fr eingelesene Ressource, Licence Ouverte 2.0). Spaltennamen kommen
+dort als Beschriftungen und werden auf die Schlüssel der Export-API abgebildet.
 """
 from __future__ import annotations
 
@@ -25,7 +30,13 @@ from pathlib import Path
 
 import requests
 
-URL = "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/activateurs-france-num/exports/json"
+RESOURCE = "2d889c93-1af2-4bd5-aef3-4c0d6f407a07"  # data.gouv.fr Datensatz 62b3afa267c72a6331a1f848, CSV-Ressource
+URL = f"https://tabular-api.data.gouv.fr/api/resources/{RESOURCE}/data/"
+PAGE_SIZE = 50
+# Beschriftung in der Tabular-API -> Schlüssel wie in der Export-API (Rest des Moduls bleibt gleich)
+LABELS = {"Identifiant de la structure": "identifiant_de_la_structure", "Nom de la structure": "nom_de_la_structure",
+          "Type": "type", "Catégorie": "categorie", "Adresse": "adresse", "Code postal": "code_postal",
+          "Ville": "ville", "Région": "region", "Lien url (site France Num)": "lien_url_site_france_num"}
 CACHE = Path(__file__).resolve().parents[3] / "out" / "cache" / "activateurs_france_num.json"
 MAX_AGE = 7 * 86400
 # Typ laut Verzeichnis -> Kategorie im Kunden-Werk (FR: marketing_agency über SECOND, die anderen direkt S2)
@@ -38,21 +49,42 @@ PAGE = re.compile(r"^https://www\.francenum\.gouv\.fr/activateurs/[a-z0-9-]+/?$"
 BUDGET_S = 50 * 60  # Pool-Job hat 150 Minuten; Rest kommt beim nächsten Pool-Bau (andere Reihenfolge)
 
 
+def as_export(rec: dict) -> dict:
+    """Zeile der Tabular-API -> Schlüssel der Export-API (Postleitzahl immer als Text mit 5 Stellen)."""
+    out = {key: rec.get(label) for label, key in LABELS.items()}
+    cp = out.get("code_postal")
+    if cp is not None and not isinstance(cp, str):
+        out["code_postal"] = str(int(cp)).zfill(5)
+    return out
+
+
+def _get(url: str, log=print) -> dict:
+    for attempt in range(8):
+        try:
+            r = requests.get(url, timeout=60, headers={"User-Agent": "NextGenProfitBot/0.1"})
+            r.raise_for_status()
+            return r.json()
+        except (requests.RequestException, ValueError) as exc:
+            log(f"France Num: Abruf fehlgeschlagen ({type(exc).__name__}), Versuch {attempt + 1}/8")
+            time.sleep(min(30, 3 * (attempt + 1)))
+    raise RuntimeError("France Num (data.gouv.fr) nicht erreichbar")
+
+
 def _download(log=print) -> list[dict]:
     if CACHE.exists() and time.time() - CACHE.stat().st_mtime < MAX_AGE:
         return json.loads(CACHE.read_text())
     CACHE.parent.mkdir(parents=True, exist_ok=True)
-    for attempt in range(3):
-        try:
-            r = requests.get(URL, timeout=120, headers={"User-Agent": "NextGenProfitBot/0.1"})
-            r.raise_for_status()
-            data = r.json()
-            CACHE.write_text(json.dumps(data, ensure_ascii=False))
-            return data
-        except (requests.RequestException, ValueError) as exc:
-            log(f"France Num: Download fehlgeschlagen ({type(exc).__name__}), Versuch {attempt + 1}/3")
-            time.sleep(10 * (attempt + 1))
-    raise RuntimeError("France Num nicht erreichbar")
+    data, url = [], f"{URL}?page_size={PAGE_SIZE}&page=1"
+    while url:
+        page = _get(url, log)
+        data += [as_export(x) for x in page.get("data") or []]
+        url = (page.get("links") or {}).get("next")
+        if url:
+            time.sleep(1.0)  # höflich: höchstens 1 Abruf/s
+    if not data:
+        raise RuntimeError("France Num: leere Antwort")
+    CACHE.write_text(json.dumps(data, ensure_ascii=False))
+    return data
 
 
 def wanted(x: dict) -> bool:
