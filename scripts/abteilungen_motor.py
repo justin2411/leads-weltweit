@@ -49,7 +49,7 @@ MIN_GEPRUEFT = 20         # Fehlerquote erst ab dieser Menge bewerten
 BRIEF_MAX = 1000
 
 # Umsatznähe (Auftrag Inhaber: „Vertrieb/Antworten/Proben vor Infrastruktur“)
-GEWICHT = {"vertrieb": 1.0, "kundenservice": 1.0, "marketing": 0.9, "finanzen": 0.6, "strategie": 0.6,
+GEWICHT = {"vertrieb": 1.0, "kundenservice": 1.0, "marketing": 1.0, "finanzen": 0.6, "strategie": 0.6,
            "qualitaet": 0.5, "produktion": 0.5, "recht": 0.3}
 GEWICHT_SONST = 0.4
 
@@ -280,7 +280,8 @@ def lauf(db, t: dt.datetime, apply: bool, lage: dict | None = None, scope=None) 
         busy_roles = {b.get("rolle") for b in busy if b.get("rolle")}
         frei = [n for n in range(1, AGENT_COUNT + 1) if n not in {int(b["agent"]) for b in busy if str(b.get("agent", "")).isdigit()}]
         n_offen = len(offen)
-        for x in rows[:TOP]:
+        kandidaten = [x for x in rows if x["slug"] in VORLAGEN and (x["luecke"] or 0) >= MIN_LUECKE][:TOP]
+        for x in kandidaten:
             if len(out["neu"]) >= MAX_NEU or n_offen >= MAX_OFFEN or len(frei) <= KEEP_FREE:
                 break
             if (x["luecke"] or 0) < MIN_LUECKE:
@@ -293,7 +294,7 @@ def lauf(db, t: dt.datetime, apply: bool, lage: dict | None = None, scope=None) 
             if not a or (a.get("rolle") and a["rolle"] in busy_roles):
                 continue  # Fach-Agent arbeitet schon an etwas (z. B. Übergabe) – kein zweiter Auftrag
             row = {"agent": frei.pop(0), "status": "offen", "kind": a["kind"], "brief": a["brief"],
-                   "grund": a["grund"], "created_by": BY}
+                   "grund": a["grund"], "created_by": BY, "created_at": t.isoformat()}
             if a.get("rolle"):
                 row["rolle"] = a["rolle"]
                 busy_roles.add(a["rolle"])

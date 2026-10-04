@@ -155,5 +155,36 @@ class GrenzenTest(unittest.TestCase):
             self.assertFalse(M.sicher(t), t)
 
 
+class ZuordnungTest(unittest.TestCase):
+    """Jede Dashboard-Bereichsseite gehört zu einer Abteilung, jede Abteilung hat mindestens einen Agenten."""
+    ROOT = Path(__file__).resolve().parents[1]
+
+    def _sql(self) -> str:
+        return "\n".join(p.read_text(encoding="utf-8") for p in sorted((self.ROOT / "supabase/migrations").glob("*.sql")))
+
+    def test_seiten_zugeordnet(self):
+        import re
+        sql = self._sql()
+        block = sql[sql.index("insert into signalwerk.dashboard_bereiche"):]
+        block = block[:block.index("on conflict")]
+        seiten = dict(re.findall(r"\('([a-z0-9-]+)', '([a-z_]+)'\)", block))
+        deps = set(re.findall(r"^\s*\('([a-z_]+)', '[^']+', '[^']+', '", sql[sql.index("insert into signalwerk.departments"):], re.M))
+        pages = [p.parent.name for p in (self.ROOT / "app/app/dashboard").glob("*/page.tsx")]
+        for page in pages:
+            self.assertIn(page, seiten, f"Dashboard-Seite {page} ohne Abteilung")
+        for page, dep in seiten.items():
+            self.assertIn(dep, deps | {"premium_labor"}, page)
+
+    def test_jede_abteilung_hat_agent(self):
+        import re
+        sql = self._sql()
+        roles = set(re.findall(r"^\s*(?:\(|select )'([a-z_]+)', '[^']+', '(?:testing|qualitaet)'.*$", sql, re.M))
+        deps_mit_agent = set(re.findall(r"^\s*\d+, '([a-z_]+)'\)?,?$", sql, re.M))
+        deps_mit_agent |= set(re.findall(r"when '[a-z_]+' then '([a-z_]+)'", sql))
+        for slug in ("vertrieb", "marketing", "produktion", "qualitaet", "kundenservice", "finanzen", "recht", "strategie"):
+            self.assertIn(slug, deps_mit_agent, slug)
+        self.assertTrue({"kundenservice", "finanzen", "recht", "strategie"} <= roles)
+
+
 if __name__ == "__main__":
     unittest.main()
