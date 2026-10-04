@@ -477,16 +477,6 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - name: Nächsten Lauf starten
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          grep -Eq '^lead_suche:\s*true' config/pipeline.yaml || { echo "Schalter aus – kein Neustart"; exit 0; }
-          start=$(gh run view ${{ github.run_id }} --json createdAt -q .createdAt)
-          mins=$(( ( $(date -u +%s) - $(date -u -d "$start" +%s) ) / 60 ))
-          if [ "$mins" -lt 10 ]; then echo "Lauf nur $mins Minuten – kein Sofort-Neustart"; exit 0; fi
-          gh workflow run lead-werk.yml --ref "${{ github.ref_name }}"
-          echo "Nächster Lauf gestartet (dieser lief $mins Minuten)" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Wachhund anstoßen, wenn GitHub ihn nicht startet
         # Nachtschicht 04.10.2026: GitHub ließ die geplanten Läufe (Wachhund, Antwort-Assistent) nachts stundenlang
         # aus. Das Lead-Werk startet sich selbst neu und hält so den Wachhund am Leben; der startet dann alles
@@ -507,3 +497,13 @@ jobs:
           else
             echo "Wachhund lief vor $mins min – nichts zu tun"
           fi
+      - name: Nächsten Lauf starten
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          grep -Eq '^lead_suche:\s*true' config/pipeline.yaml || { echo "Schalter aus – kein Neustart"; exit 0; }
+          start=$(gh run view ${{ github.run_id }} --json createdAt -q .createdAt)
+          mins=$(( ( $(date -u +%s) - $(date -u -d "$start" +%s) ) / 60 ))
+          if [ "$mins" -lt 10 ]; then echo "Lauf nur $mins Minuten – kein Sofort-Neustart"; exit 0; fi
+          gh workflow run lead-werk.yml --ref "${{ github.ref_name }}"
+          echo "Nächster Lauf gestartet (dieser lief $mins Minuten)" | tee -a "$GITHUB_STEP_SUMMARY"
