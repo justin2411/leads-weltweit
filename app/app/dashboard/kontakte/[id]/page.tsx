@@ -44,7 +44,7 @@ export default async function Company({ params }: { params: Promise<{ id: string
 
   return (
     <div className="v2">
-      <Crumbs items={[["Übersicht", "/dashboard"], ["Kontakte", "/dashboard/kontakte"], [p.company_name, ""]]} />
+      <Crumbs items={[["JARVIS", "/dashboard/jarvis"], ["Kontakte", "/dashboard/kontakte"], [p.company_name, ""]]} />
       <div className="card firm">
         <h1>{p.company_name}</h1>
         <div className="cm">

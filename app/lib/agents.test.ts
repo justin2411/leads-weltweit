@@ -108,9 +108,10 @@ test("Chat: freier Agent, Auftrag, Verlauf", () => {
 });
 
 test("nächste Agenten-Runde (:53) für „startet um HH:MM“", () => {
-  assert.equal(nextAgentRound(new Date("2026-10-04T07:10:00Z")).toISOString(), "2026-10-04T07:53:00.000Z");
-  assert.equal(nextAgentRound(new Date("2026-10-04T07:53:00Z")).toISOString(), "2026-10-04T08:53:00.000Z"); // genau jetzt: nächste
-  assert.equal(nextAgentRound(new Date("2026-10-04T23:59:30Z")).toISOString(), "2026-10-05T00:53:00.000Z"); // über Mitternacht
+  assert.equal(nextAgentRound(new Date("2026-10-04T07:10:00Z")).toISOString(), "2026-10-04T07:23:00.000Z");
+  assert.equal(nextAgentRound(new Date("2026-10-04T07:40:00Z")).toISOString(), "2026-10-04T07:53:00.000Z");
+  assert.equal(nextAgentRound(new Date("2026-10-04T07:53:00Z")).toISOString(), "2026-10-04T08:08:00.000Z"); // genau jetzt: nächste
+  assert.equal(nextAgentRound(new Date("2026-10-04T23:59:30Z")).toISOString(), "2026-10-05T00:08:00.000Z"); // über Mitternacht
   const mk = (p: Partial<AgentTask>) => ({ id: "x", agent: 2, status: "offen", created_at: "1", finished_at: null, kind: "leads", market: null, brief: "x", progress: 0, step: null, result: null, numbers: {}, started_at: null, created_by: CHAT_BY, ...p }) as AgentTask;
   assert.equal(chatThread([mk({})], 6, "09:53")[0].reply, "Notiert für Agent 2 – startet um 09:53.");
 });

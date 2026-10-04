@@ -44,7 +44,7 @@ export default async function Gehirn() {
 
   return (
     <div className="v2">
-      <Crumbs items={[["Übersicht", "/dashboard"], ["Gehirn", ""]]} />
+      <Crumbs items={[["JARVIS", "/dashboard/jarvis"], ["Gehirn", ""]]} />
       {err && <div className="card bad"><Icon name="fehler" size={16} /> Gehirn-Tabellen nicht lesbar: {err.message}</div>}
       <div className="kpis2 four">
         <Kpi value={s.brain_enabled ? "an" : "aus"} label="Gehirn" tip="stündliche Sitzung nach docs/GEHIRN-SITZUNG.md" />

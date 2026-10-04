@@ -26,7 +26,7 @@ export default async function Bestand({ searchParams }: { searchParams: SP }) {
 
   return (
     <div className="v2">
-      <Crumbs items={[["Übersicht", "/dashboard"], ["Bestand", ""]]} />
+      <Crumbs items={[["JARVIS", "/dashboard/jarvis"], ["Bestand", ""]]} />
       <div className="head2">
         <span className="sub2" title="alle 10 min neu gezählt">Stand {berlin(stock.at)}</span>
         <Chips base="/dashboard/bestand" param="land" value={land} options={COUNTRY_OPTS} params={raw} dots />

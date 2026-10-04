@@ -45,7 +45,7 @@ export default async function Versand({ searchParams }: { searchParams: SP }) {
 
   return (
     <div className="v2">
-      <Crumbs items={[["Übersicht", withQuery("/dashboard", raw)], ["Versand & Ergebnisse", ""]]} />
+      <Crumbs items={[["JARVIS", withQuery("/dashboard/jarvis", raw)], ["Versand & Ergebnisse", ""]]} />
       <div className="head2">
         <Chips base="/dashboard/versand" param="z" value={z} options={PERIODS.map(([k, l]) => [k, l])} params={raw} />
         <Chips base="/dashboard/versand" param="land" value={land} options={COUNTRY_OPTS} params={raw} dots />

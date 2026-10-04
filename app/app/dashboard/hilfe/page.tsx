@@ -6,7 +6,7 @@ export default async function Hilfe() {
   await requireOwner();
   return (
     <div className="v2">
-      <Crumbs items={[["Übersicht", "/dashboard"], ["Hilfe", ""]]} />
+      <Crumbs items={[["JARVIS", "/dashboard/jarvis"], ["Hilfe", ""]]} />
       <section className="card tile" id="token">
         <header className="th"><span>Sofortstart der Werke einrichten (GitHub-Token, kostenlos, einmalig)</span></header>
         <p className="muted">Ohne Token laufen alle Werke nach Zeitplan und der Wachhund startet ausgefallene Läufe nach. Mit Token kannst du

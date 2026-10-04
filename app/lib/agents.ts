@@ -121,15 +121,21 @@ export function formDefaults(o: { tasks: AgentTask[]; agent: number | null; kind
 }
 
 /** Minute, zu der die stündliche Agenten-Runde startet (Routine „JARVIS-Agenten“, stündlich :53, CLAUDE.md 04.10.2026). */
-export const AGENT_MINUTE = 53;
+/** Minuten der JARVIS-Runden (Inhaber 04.10.2026: viermal pro Stunde statt nur :53). */
+export const AGENT_MINUTES = [8, 23, 38, 53];
 
-/** Nächster Start der Agenten-Runde nach `now` (volle Minute :53; Berlin und UTC haben dieselbe Minute). Für die
- *  Anzeige „startet um HH:MM“ statt „wartet“ bei offenen Aufträgen. */
+/** Nächster Start der Agenten-Runde nach `now` (Berlin und UTC haben dieselbe Minute). Für die Anzeige
+ *  „startet um HH:MM“ statt „wartet“ bei offenen Aufträgen. */
 export function nextAgentRound(now: Date): Date {
+  for (const m of AGENT_MINUTES) {
+    const d = new Date(now.getTime());
+    d.setUTCSeconds(0, 0);
+    d.setUTCMinutes(m);
+    if (d.getTime() > now.getTime()) return d;
+  }
   const d = new Date(now.getTime());
   d.setUTCSeconds(0, 0);
-  d.setUTCMinutes(AGENT_MINUTE);
-  if (d.getTime() <= now.getTime()) d.setUTCHours(d.getUTCHours() + 1);
+  d.setUTCHours(d.getUTCHours() + 1, AGENT_MINUTES[0]);
   return d;
 }
 

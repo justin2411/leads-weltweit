@@ -26,7 +26,7 @@ export default async function Kunden({ searchParams }: { searchParams: SP }) {
 
   return (
     <div className="v2">
-      <Crumbs items={[["Übersicht", "/dashboard"], ["Kunden & Umsatz", ""]]} />
+      <Crumbs items={[["JARVIS", "/dashboard/jarvis"], ["Kunden & Umsatz", ""]]} />
       <div className="head2"><span /><Chips base="/dashboard/kunden" param="land" value={land} options={COUNTRY_OPTS} params={raw} dots /></div>
       <div className="kpis2 four">
         <Kpi value={compact(subs.length)} label="Kunden" tip="aktive Abos ohne Testkäufe" />
