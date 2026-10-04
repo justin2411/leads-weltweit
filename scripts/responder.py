@@ -460,12 +460,31 @@ def _newest(db, params: dict, n: int, page: int = 1000) -> list[dict]:
     return out
 
 
+QUALITY_POOL = 500  # zusätzlich die am häufigsten geprüften freien Leads (Dauerprüfung), auch wenn sie älter sind
+
+
+def with_checked(db, params: dict, rows: list[dict], n: int = QUALITY_POOL) -> list[dict]:
+    """Kandidaten um die freien Leads mit dem höchsten Qualitätswert ergänzen (gleiche Filter, gleicher Speicher).
+    Ändert keine Regel: die Auswahl prüft danach wie immer Vollständigkeit, eine Firma je Probe und die Freigabe."""
+    from lib.pools import strip
+    try:
+        top = strip(_newest(db, {**params, "qualitaet_score": "not.is.null", "order": "qualitaet_score.desc,id"}, n))
+    except Exception:  # noqa: BLE001 - ohne Qualitätswerte bleibt es bei den neuesten Leads
+        return rows
+    have = {r["id"] for r in rows}
+    return rows + [r for r in top if r["id"] not in have]
+
+
 def best_first(rows: list[dict]) -> list[dict]:
-    """Aktuell beste Leads zuerst (Inhaber 03.10.2026): höchste Dringlichkeit, dann frischestes Ereignis."""
+    """Aktuell beste Leads zuerst (Inhaber 03.10.2026): höchster Qualitätswert der Dauerprüfung, dann höchste
+    Dringlichkeit, dann frischestes Ereignis."""
     from lib.leadreport import URG
+    from lib.quality import sort_key
     rows = sorted(rows, key=lambda l: str(l.get("id") or ""))
     rows.sort(key=lambda l: l.get("event_date") or "", reverse=True)
     rows.sort(key=lambda l: URG.get(l.get("urgency") or "", 3))
+    # Dauerprüfung (Inhaber 04.10.2026): öfter bestandene Prüfungen = höherer qualitaet_score zuerst (nie geprüfte zuletzt)
+    rows.sort(key=sort_key)
     return rows
 
 
@@ -489,14 +508,14 @@ def regional_sample(db, seg: str, country: str, region: str | None,
     # seitenweise zu lesen lief in einen Statement-Timeout, Probe-Anfragen blieben unbeantwortet (Audit 02.10.2026)
     params = {"segment_id": f"eq.{seg}", "country": f"eq.{country}", "status": "eq.new",
               "select": "id,event_summary,event_date,source_name,source_url,source_date,urgency,"
-                        "urgency_reason,opener,signal_type,company_id,observation_ids,"
+                        "urgency_reason,opener,signal_type,company_id,observation_ids,qualitaet_score,"
                         "watch_companies(name,legal_form,city,region,address,website,website_checked_at)",
               "order": "event_date.desc,id"}
     # Speicher (docs/BAUKASTEN-MASTER.md): ist für Zielgruppe+Land einer gesetzt (pool_routes), kommen die Kandidaten
     # NUR aus ihm – reicht er nicht für 10 verschiedene Firmen, gibt es keine Probe (kein Ausweichen, Tagescheck meldet)
     from lib.pools import pool_for, restrict, strip
     params = restrict(params, pool_for(db, seg, country))
-    rows = best_first(strip(_newest(db, params, SAMPLE_POOL)))
+    rows = best_first(with_checked(db, params, strip(_newest(db, params, SAMPLE_POOL))))
     if exclude_companies:
         rows = [r for r in rows if r.get("company_id") not in exclude_companies]
     if wish:

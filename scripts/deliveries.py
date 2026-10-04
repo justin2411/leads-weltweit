@@ -41,7 +41,7 @@ REQUIRE_CONTACT = True
 # Gleiche Felder beim Vorbereiten und beim Senden: ohne watch_companies.address verwirft
 # leadreport.complete_only jede Zeile und der Kunde bekäme eine Mail ohne Anhang.
 LEAD_SELECT = ("id,segment_id,country,signal_type,event_summary,event_date,source_name,source_url,source_date,"
-               "urgency,urgency_reason,opener,company_id,observation_ids,"
+               "urgency,urgency_reason,opener,company_id,observation_ids,qualitaet_score,"
                "watch_companies(name,legal_form,city,region,address,website,website_checked_at)")
 DELIVERED_STATUSES = ("approved", "sent")
 
@@ -88,6 +88,10 @@ def select_leads(leads: list[dict], sub: dict, already: set[str], details: dict[
     cap = int(f.get("max_per_week") or (cfilter or {}).get("max_per_week") or DEFAULT_MAX)
     pool = sub.get("_pool")  # Speicher des Abos (lib/pools.py): strikt, kein Ausweichen auf den Gesamtbestand
     prefs = f.get("agent")  # Prioritäten des Kunden-Agenten (customer_agents.py profile): sortiert, schließt nichts aus
+    # Dauerprüfung (Inhaber 04.10.2026): öfter geprüfte Leads (höherer qualitaet_score) zuerst – stabil, schließt nichts
+    # aus; die Prioritäten des Kunden-Agenten sortieren danach (Qualität entscheidet bei Gleichstand)
+    from lib.quality import sort_key
+    leads = sorted(leads, key=sort_key)
     if prefs:
         from customer_agents import lead_priority
         leads = sorted(leads, key=lambda l: -lead_priority(l, prefs, (tags or {}).get(l["id"])))  # stabil
@@ -367,6 +371,7 @@ def tag_fresh_leads(db) -> None:
 
 
 POOL_PER_MARKET = 5000  # neueste unvergebene Leads je Branche und Land (reicht für viele Kunden je Woche)
+QUALITY_PER_MARKET = 1000  # zusätzlich die am häufigsten geprüften (qualitaet_score) unvergebenen Leads je Markt
 
 
 def _load_leads(db, since: dt.date, markets: set[tuple] | None = None) -> tuple[list[dict], dict[str, dict]]:
@@ -385,8 +390,13 @@ def _load_leads(db, since: dt.date, markets: set[tuple] | None = None) -> tuple[
         by_id: dict[str, dict] = {}
         for m in sorted(markets, key=lambda m: tuple(x or "" for x in m)):
             seg, country, pool = (tuple(m) + (None,))[:3]
-            got = strip(_newest(db, restrict({**params, "segment_id": f"eq.{seg}", "country": f"eq.{country}"}, pool),
-                                POOL_PER_MARKET))
+            q = restrict({**params, "segment_id": f"eq.{seg}", "country": f"eq.{country}"}, pool)
+            got = strip(_newest(db, q, POOL_PER_MARKET))
+            try:  # dazu die am häufigsten geprüften freien Leads des Markts (Dauerprüfung, gleiche Filter)
+                got += strip(_newest(db, {**q, "qualitaet_score": "not.is.null", "order": "qualitaet_score.desc,id"},
+                                     QUALITY_PER_MARKET))
+            except Exception:  # noqa: BLE001 - ohne Qualitätswerte bleibt es bei den neuesten Leads
+                pass
             for l in got:
                 l = by_id.setdefault(l["id"], l)
                 l.setdefault("_pools", set())

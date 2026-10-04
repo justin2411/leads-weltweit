@@ -30,7 +30,8 @@ Zusätzlich zu den Prüfungen beim Erzeugen (extraktor qc/sc, contact_companies,
             check(owner_rules=False) lässt Stufe 4 weg (tägliche Stichprobe misst Datenqualität, nicht Vorlieben).
 
 Ergebnis je Lead: Verdict (ok, Stufe, Gründe „s1:…“, „s2:…“, „s3:…“, „s4:…“). persist() schreibt lead_checks und setzt
-durchgefallene Leads auf status 'held' (gehen nie raus, nichts gelöscht). Gesendet wird nur, was ok ist.
+durchgefallene Leads auf status 'held' (gehen nie raus, nichts gelöscht). Gesendet wird nur, was ok ist. persist()
+übernimmt jedes Ergebnis zusätzlich in den Qualitätswert (lib/quality.py, Dauerprüfung scripts/dauerpruefung.py).
 """
 from __future__ import annotations
 
@@ -578,6 +579,9 @@ def persist(db, verdicts: list[Verdict], context: str, hold: bool = True, log=pr
             for v in verdicts:
                 if v.lead_id in {r["lead_id"] for r in part}:
                     v.ok = False
+    # Qualitätswert (Dauerprüfung, Inhaber 04.10.2026): jede Prüfung zählt – nur Reihenfolge, nie die Freigabe selbst
+    from lib.quality import apply_leads
+    apply_leads(db, verdicts, log=log)
     if not hold:
         return
     now = dt.datetime.now(dt.timezone.utc).isoformat()
