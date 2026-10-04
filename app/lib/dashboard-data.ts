@@ -8,6 +8,7 @@ import { merge, type OwnerSettings } from "@/lib/owner-settings";
 import { EMPTY_ACTIVITY, type Activity } from "@/lib/werke-live";
 import { EMPTY_WEBSITE, type WebsiteLive, type WebsiteStats } from "@/lib/website-stats";
 import type { FunnelCache } from "@/lib/website-funnel";
+import type { AnalyticsCache } from "@/lib/website-analytics";
 import opsConfig from "@/lib/ops-config.json";
 
 /**
@@ -109,6 +110,30 @@ export async function loadFunnelCache(maxAgeMs = 2 * 60_000): Promise<FunnelCach
       after(() => refreshFunnel().catch(() => {}));
     }
     return data.value as FunnelCache;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Website-Analyse wie GA4 (Kacheln mit Vorzeitraum, Kanäle, Web Vitals …): dashboard_cache 'website_analytics'
+ * (web_analytics_refresh). Gleiches Muster wie loadFunnelCache.
+ */
+let analyticsRefreshing: Promise<unknown> | null = null;
+function refreshAnalytics(): Promise<AnalyticsCache> {
+  const p = rpc<AnalyticsCache>("web_analytics_refresh", {}, 40_000);
+  analyticsRefreshing = p.finally(() => { analyticsRefreshing = null; });
+  return p;
+}
+export async function loadAnalyticsCache(maxAgeMs = 3 * 60_000): Promise<AnalyticsCache | null> {
+  try {
+    const { data } = await db().from("dashboard_cache").select("value, updated_at").eq("name", "website_analytics")
+      .abortSignal(AbortSignal.timeout(3000)).maybeSingle();
+    if (!data) return await Promise.race([refreshAnalytics(), new Promise<null>((ok) => setTimeout(() => ok(null), 5000))]);
+    if (Date.now() - Date.parse(data.updated_at) > maxAgeMs && !analyticsRefreshing) {
+      after(() => refreshAnalytics().catch(() => {}));
+    }
+    return data.value as AnalyticsCache;
   } catch {
     return null;
   }

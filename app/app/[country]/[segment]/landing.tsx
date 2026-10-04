@@ -13,6 +13,7 @@ import { servableVariants } from "@/lib/test-scope";
 import { TEST_SCOPE } from "@/lib/test-scope-data";
 import { unstable_cache } from "next/cache";
 import { Tracker } from "./tracker";
+import { PageSignals } from "@/app/hit-beacon";
 import { segmentCopy } from "@/content/segment-words";
 import { AREA_LABEL, COUNTRY_NAME, LANDING } from "@/content/landing-v2";
 import { Field, Icon, type MapData } from "./v2";
@@ -477,6 +478,8 @@ export async function Landing({ params, sp: search, rand }: { params: LandingPar
       {preview && <div className="banner">VORSCHAU (nicht öffentlich) · Seite {page.status} · Variante {v.variant_key} ({v.status}) · keine Ereignisse gezählt</div>}
       {/* Vorschau (?vorschau=1) zählt nie mit – auch nicht auf öffentlichen Seiten (Inhaber 04.10.2026) */}
       <Tracker variantId={v.id} enabled={!preview && sp.vorschau !== "1"} />
+      {/* CTA, Formular, Video und Core Web Vitals (Zählungen ohne Kennung) */}
+      <PageSignals stage="landing" variantId={v.id} enabled={!preview && sp.vorschau !== "1"} />
       <SiteHeader links={video ? [["#video", fr ? "Vidéo" : "Film"]] : []} cta={[stepHref, fr ? "Échantillon gratuit" : "Free sample"]} />
       <LandingFx />
       <div className="lp2">

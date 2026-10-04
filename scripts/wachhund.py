@@ -267,6 +267,10 @@ def refresh_dashboard_stock(db) -> None:
         db.rpc("web_funnel_refresh", {})
     except Exception as exc:  # noqa: BLE001 - darf den Wachhund nie aufhalten
         print(f"Website-Trichter nicht aufgefrischt: {type(exc).__name__}: {str(exc)[:160]}")
+    try:  # Website-Analyse wie GA4 (Kacheln, Kanäle, Web Vitals, A/B) für Dashboard und JARVIS
+        db.rpc("web_analytics_refresh", {})
+    except Exception as exc:  # noqa: BLE001 - darf den Wachhund nie aufhalten
+        print(f"Website-Analyse nicht aufgefrischt: {type(exc).__name__}: {str(exc)[:160]}")
 
 
 def overdue(job: dict, runs: list[dict], now: dt.datetime) -> tuple[bool, str]:

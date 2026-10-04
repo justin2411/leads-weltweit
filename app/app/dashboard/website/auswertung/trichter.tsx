@@ -26,8 +26,10 @@ function reduced(): boolean {
 }
 
 /** Zahl, die einmal von 0 hochzählt (nur mit Bewegung; Server-Ausgabe = Endwert). */
-function Count({ n, format = nf, delay = 0 }: { n: number; format?: (x: number) => string; delay?: number }) {
+export function Count({ n, format = nf, delay = 0 }: { n: number; format?: (x: number) => string; delay?: number }) {
   const ref = useRef<HTMLSpanElement>(null);
+  const fmt = useRef(format);
+  fmt.current = format;
   useEffect(() => {
     const el = ref.current;
     if (!el || reduced() || !n) return;
@@ -37,13 +39,13 @@ function Count({ n, format = nf, delay = 0 }: { n: number; format?: (x: number) 
     const tick = (t: number) => {
       const p = Math.min(1, Math.max(0, (t - t0) / dur));
       const e = 1 - Math.pow(1 - p, 3);
-      el.textContent = format(n * e);
+      el.textContent = fmt.current(n * e);
       if (p < 1) raf = requestAnimationFrame(tick);
     };
-    el.textContent = format(0);
+    el.textContent = fmt.current(0);
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [n, format, delay]);
+    return () => { cancelAnimationFrame(raf); el.textContent = fmt.current(n); };
+  }, [n, delay]);
   return <span ref={ref}>{format(n)}</span>;
 }
 
