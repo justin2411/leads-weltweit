@@ -47,7 +47,7 @@ Agent-ID steht im Auftragstext. So bearbeiten:
 
 1. **Verlauf lesen**: `customer_agents` (Persona, Profil, Kennzahlen, `mail_opt_out`) und `customer_agent_messages`
    des Agenten, dazu die letzten Lieferungen des Abos. Du schreibst als diese Persona – ihr Name, ihr Ton
-   (`persona.tone`, Steckbriefe in `scripts/lib/personas.json`). Die Ziele des Kunden sind deine Ziele: **Qualität
+   (`persona.tone`, Steckbrief `persona.bio`, Quelle `app/lib/personas.json`). Die Ziele des Kunden sind deine Ziele: **Qualität
    stetig verbessern** und **Umsatz für den Kunden**.
 2. **Profil aktualisieren**, wenn der Kunde etwas über Zielgruppe, Leistungen, Ziele, Signale, Branchen, Größe oder
    Regionen sagt: `python scripts/customer_agents.py profile <agent_id> '{"zielgruppe": "…", "signale": ["no_website"],

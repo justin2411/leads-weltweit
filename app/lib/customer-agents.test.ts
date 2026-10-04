@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import {
-  agentEligible, cleanNote, fnv1a32, fullName, goalChips, initials, jarvisLabel, kpiOf, langFor, noteBrief, pickPersona, resumeStatus,
+  KUNDE_TASK_AGENT, agentEligible, cleanNote, fnv1a32, fullName, goalChips, initials, jarvisLabel, kpiOf, langFor, noteBrief, pickPersona, resumeStatus,
   roleDe, signature, statusLabel, welcomeAgentLine, type PersonaData,
 } from "./customer-agents.ts";
 import { KINDS } from "./agents.ts";
@@ -65,8 +65,25 @@ test("Namenslisten: genug Namen, Rollen und KI-Signatur je Sprache", () => {
   assert.match(signature(DATA, p), new RegExp(`^${fullName(p)} · interlocut(eur|rice) IA`));
 });
 
-test("Kopie in app/lib gleich der Quelle scripts/lib/personas.json", { skip: !existsSync(new URL("../../scripts/lib/personas.json", import.meta.url)) && "scripts/lib/personas.json fehlt (Paket A)" }, () => {
-  assert.deepEqual(read("../../scripts/lib/personas.json"), DATA);
+const PY = new URL("../../scripts/customer_agents.py", import.meta.url);
+test("Eine Persona-Quelle: Backend liest app/lib/personas.json, keine Kopie in scripts/lib", { skip: !existsSync(PY) && "scripts/customer_agents.py fehlt" }, () => {
+  assert.equal(existsSync(new URL("../../scripts/lib/personas.json", import.meta.url)), false);
+  const py = readFileSync(PY, "utf8");
+  assert.match(py, /"app" \/ "lib" \/ "personas\.json"/);
+  assert.match(py, /TASK_AGENT = (\d+)/);
+  assert.equal(Number(/TASK_AGENT = (\d+)/.exec(py)![1]), KUNDE_TASK_AGENT);
+});
+
+test("KI-Hinweis der Begrüßung je Sprache und Geschlecht, mit {owner}", () => {
+  for (const lang of ["en", "fr"] as const) for (const g of ["f", "m"] as const) {
+    const t = DATA[lang].ai_note[g];
+    assert.match(t, /\{owner\}/);
+    assert.match(t, lang === "fr" ? /\bIA\b/ : /\bAI\b/);
+  }
+});
+
+test("Kunden-Aufträge immer an Agent 9 (A1–A4 bleiben dem Inhaber)", () => {
+  assert.equal(KUNDE_TASK_AGENT, 9);
 });
 
 test("Willkommens-Absatz: ehrlich als KI, keine Preise", () => {

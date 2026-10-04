@@ -18,8 +18,9 @@ verbessern und umsatz für den kunden erzielen … wie ein normaler mitarbeiter 
 
 - Jeder Agent bekommt eine eigene Identität: Vorname + Nachname passend zu Sprache/Land des Kunden (EN: UK/US/IE,
   FR), Rolle „Ihr Ansprechpartner / Your account manager / Votre interlocuteur“, kurzer Steckbrief (Stil, Stärken).
-  Auswahl deterministisch aus festen Namenslisten (`scripts/lib/personas.json`, auch von der App gelesen), je Kunde
-  ein anderer Name, solange möglich.
+  Auswahl deterministisch aus festen Namenslisten (einzige Quelle `app/lib/personas.json`, gelesen von App und
+  `scripts/customer_agents.py`; Regel FNV-1a im `_doc` dort, gemeinsame Testfälle `tests/fixtures/persona_cases.json`),
+  je Kunde ein anderer Name, solange möglich.
 - **Immer als KI erkennbar** (EU-KI-Verordnung Art. 50, Ehrlichkeitsregel CLAUDE.md §2): Signatur
   „<Name> · KI-Ansprechpartner(in) bei NextGen Profit“ bzw. „AI account manager“ / „interlocuteur IA“, und in der
   ersten Mail ein einfacher Satz, dass der Ansprechpartner ein KI-Assistent ist und der Inhaber mitliest.
@@ -28,8 +29,10 @@ verbessern und umsatz für den kunden erzielen … wie ein normaler mitarbeiter 
 
 ## Was der Agent tut
 
-1. **Begrüßung** (gleich nach dem Kauf, in der Willkommensmail bzw. direkt danach, via Resend – Einwilligung liegt
-   vor): stellt sich vor und stellt in sehr einfacher Sprache 4 Fragen: Welche Kunden suchen Sie (Branche, Größe)?
+1. **Begrüßung** (via Resend – Einwilligung liegt vor): Die Willkommensmail (Stripe-Webhook) kündigt den
+   Ansprechpartner nur an; die eigene Begrüßung sendet `customer_agents.py ensure --welcome` in `antworten.yml`
+   (alle 10 min, frühestens 5 min nach dem Kauf, also binnen ~15–30 min). Testkäufe (Stripe-Testmodus) bekommen
+   keinen Agenten und keine Agenten-Mails. Sie stellt sich vor und stellt in sehr einfacher Sprache 4 Fragen: Welche Kunden suchen Sie (Branche, Größe)?
    Welche Leistungen verkaufen Sie? Was ist Ihr Ziel in den nächsten 3 Monaten (z. B. Anzahl Neukunden)?
    Welche Signale sind für Sie am wichtigsten? Antwort per Mail genügt; das bestehende Formular `/kunde` bleibt.
 2. **Ziele aufnehmen**: Antworten des Kunden (Mail an die Absenderadresse; `antworten.yml` liest die Postfächer und
@@ -56,13 +59,15 @@ Druck. Preis-, Vertrags-, Kündigungs- oder Beschwerdefragen → freundlich best
 ## Daten
 
 - `signalwerk.customer_agents`: id, customer_id, subscription_id (unique), status (`onboarding`, `aktiv`,
-  `pausiert`), persona jsonb {first_name, last_name, role, lang, bio, tone}, profile jsonb {zielgruppe, leistungen,
+  `pausiert`), paused_by (`inhaber` = nur der Inhaber setzt fort, `abo` = ensure setzt fort, sobald das Abo wieder
+  passt), persona jsonb {first_name, last_name, role, lang, bio, tone, gender}, profile jsonb {zielgruppe, leistungen,
   ziele, signale, regionen, notizen}, kpis jsonb, mail_opt_out bool, last_contact_at, next_checkin_at,
   created_at, updated_at.
 - `signalwerk.customer_agent_messages`: id, agent_id, created_at, direction (`in`, `out`, `notiz`), channel
   (`mail`, `dashboard`), subject, body, status (`entwurf`, `gesendet`, `fehler`, `empfangen`), message_id,
   in_reply_to.
-- `agent_tasks.kind` um `kunde` erweitert.
+- `agent_tasks.kind` um `kunde` erweitert; alle Kunden-Aufträge mit `agent = 9`, Text immer
+  „Kunden-Agent <uuid> · <Name> (<Firma>) · …“ (Kundenmail aus `inbox` bzw. Hinweis vom Inhaber aus dem Dashboard).
 
 ## Dashboard
 

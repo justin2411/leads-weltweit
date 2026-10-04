@@ -1,7 +1,7 @@
 /**
  * Kunden-Agenten (Inhaber 04.10.2026, docs/KUNDEN-AGENTEN.md): persönlicher Ansprechpartner ab Paket Pro.
  * Reine Funktionen (ohne Datenbank, ohne React): wer bekommt einen Agenten, Identität (deterministisch, gleich wie
- * scripts/lib/customer_agents.py bei gleicher Eingabe – gemeinsame Fälle in tests/fixtures/persona_cases.json),
+ * scripts/customer_agents.py bei gleicher Eingabe; einzige Persona-Quelle app/lib/personas.json – gemeinsame Fälle in tests/fixtures/persona_cases.json),
  * Kurzlabels und Stichworte fürs Dashboard. Ehrlich: jeder Agent ist als KI erkennbar (signature), nie Preise/Garantien.
  */
 import { PER_WEEK } from "./custom-price.ts";
@@ -11,10 +11,16 @@ export type Gender = "f" | "m";
 export type PersonaData = Record<Lang, {
   first_names: { name: string; g: Gender }[]; last_names: string[];
   role: Record<Gender, string>; signature: Record<Gender, string>; bios: string[]; tone: string;
+  /** KI-Hinweis der Begrüßung (Backend), {owner} = Vorname des Inhabers. */
+  ai_note: Record<Gender, string>;
 }>;
 /** customer_agents.persona (jsonb). gender nur für Rolle/Signatur in Französisch. */
 export type Persona = { first_name: string; last_name: string; role: string; lang: Lang; bio: string; tone: string; gender?: Gender };
 export type AgentStatus = "onboarding" | "aktiv" | "pausiert";
+/** customer_agents.paused_by: „inhaber“ (Dashboard, nur der Inhaber setzt fort) oder „abo“ (Kündigung/Downgrade; ensure setzt fort). */
+export type PausedBy = "inhaber" | "abo";
+/** agent_tasks.agent für alle Kunden-Aufträge (wie TASK_AGENT in scripts/customer_agents.py); A1–A4 bleiben dem Inhaber. */
+export const KUNDE_TASK_AGENT = 9;
 
 /** Agent ab Paket Pro: „pro“ immer, „custom“ ab so vielen Leads/Woche wie Pro (50). Starter und Unbekanntes nicht. */
 export function agentEligible(pkg: unknown, weekly?: unknown): boolean {
@@ -128,7 +134,10 @@ export function cleanNote(raw: unknown): string | null {
   return t.length >= 3 && t.length <= 800 ? t : null;
 }
 
-/** Auftragstext für agent_tasks (kind „kunde“, höchstens 1000 Zeichen): Agent-ID vorne, damit die Routine ihn findet. */
+/**
+ * Auftragstext für agent_tasks (kind „kunde“, höchstens 1000 Zeichen): „Kunden-Agent <uuid> · <Name> (<Firma>) · …“, Agent-ID
+ * vorne, damit Routine und Dashboard ihn finden – gleiches Format wie task_brief in scripts/customer_agents.py.
+ */
 export function noteBrief(agentId: string, name: string, company: string, note: string): string {
   const head = `Kunden-Agent ${agentId} · ${name || "?"} (${company || "?"}) · Hinweis vom Inhaber: `;
   return (head + note.replace(/\s+/g, " ")).slice(0, 1000);

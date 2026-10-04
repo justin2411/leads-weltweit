@@ -10,7 +10,10 @@ create table if not exists signalwerk.customer_agents (
   customer_id      uuid not null references signalwerk.customers(id),
   subscription_id  uuid not null unique references signalwerk.subscriptions(id),
   status           text not null default 'onboarding' check (status in ('onboarding', 'aktiv', 'pausiert')),
-  persona          jsonb not null default '{}',  -- {first_name, last_name, gender, role, lang, bio, tone} (scripts/lib/personas.json)
+  -- wer pausiert hat: 'inhaber' (Dashboard; nur der Inhaber setzt fort) oder 'abo' (Kündigung/Downgrade/Test;
+  -- customer_agents.py ensure setzt fort, sobald das Abo wieder passt); leer, solange der Agent läuft
+  paused_by        text check (paused_by is null or paused_by in ('inhaber', 'abo')),
+  persona          jsonb not null default '{}',  -- {first_name, last_name, role, lang, bio, tone, gender} (app/lib/personas.json)
   profile          jsonb not null default '{}',  -- {zielgruppe, leistungen, ziele, signale, branchen, groesse, regionen, notizen}
   kpis             jsonb not null default '{}',  -- {rueckmeldungen, gute_leads, abschluesse, checkins: [2, 4]}
   mail_opt_out     boolean not null default false,  -- keine eigenen Mails des Agenten mehr; Lieferungen laufen weiter

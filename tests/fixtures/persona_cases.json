@@ -1,5 +1,5 @@
 {
- "_doc": "Gemeinsame Fälle für die Persona-Auswahl (app/lib/customer-agents.ts pickPersona und scripts/lib/customer_agents.py). Regel: _doc in personas.json.",
+ "_doc": "Gemeinsame Fälle für die Persona-Auswahl (app/lib/customer-agents.ts pickPersona und scripts/customer_agents.py pick_persona). Regel: _doc in personas.json.",
  "fnv1a32": {
   "": 2166136261,
   "a": 3826002220,

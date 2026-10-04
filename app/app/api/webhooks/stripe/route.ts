@@ -61,9 +61,11 @@ export async function POST(req: Request) {
       if (e2) throw new Error(e2.message);
       await db().from("customer_filters").upsert({ customer_id: cust.id, segment_id: m.segment_id }, { onConflict: "customer_id", ignoreDuplicates: true });
       // Kunden-Agent ab Pro (Inhaber 04.10.2026, docs/KUNDEN-AGENTEN.md): idempotent über subscription_id, auch bei
-      // erneuter Zustellung. Fehler hier lassen den Webhook nie scheitern (wie die Willkommensmail).
+      // erneuter Zustellung. Fehler hier lassen den Webhook nie scheitern (wie die Willkommensmail). Testkäufe
+      // (Stripe-Testmodus) bekommen keinen Agenten und damit keine Agenten-Mails. Hier wird nur der Agent angelegt;
+      // die Begrüßung mit den 4 Fragen sendet allein scripts/customer_agents.py ensure --welcome (antworten.yml, alle 10 min).
       let agent: Persona | null = null;
-      try {
+      if (event.livemode) try {
         agent = await ensureCustomerAgent({ subscriptionId: subRow.id, customerId: cust.id, pkg: m.package, weekly: m.weekly, country: m.country });
       } catch (e) {
         await log("Kunden-Agent nicht angelegt", `${company}: ${(e as Error).message}`, true).catch(() => null);

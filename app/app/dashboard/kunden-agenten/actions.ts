@@ -9,9 +9,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/supabase";
-import { MARKETS, freeAgent } from "@/lib/agents";
-import { loadAgentTasks } from "@/lib/dashboard-data";
-import { cleanNote, fullName, noteBrief, resumeStatus } from "@/lib/customer-agents";
+import { MARKETS } from "@/lib/agents";
+import { KUNDE_TASK_AGENT, cleanNote, fullName, noteBrief, resumeStatus } from "@/lib/customer-agents";
 import { isUuid } from "@/lib/antworten";
 import { requireOwner } from "../actions";
 
@@ -51,7 +50,7 @@ export async function addAgentNote(f: FormData) {
   const { data: c } = await db().from("customers").select("company_name, country").eq("id", a.customer_id).maybeSingle();
   const cc = String(c?.country ?? "").toUpperCase();
   const task = {
-    agent: freeAgent(await loadAgentTasks()), kind: "kunde", market: (MARKETS as readonly string[]).includes(cc) ? cc : null,
+    agent: KUNDE_TASK_AGENT, kind: "kunde", market: (MARKETS as readonly string[]).includes(cc) ? cc : null,
     brief: noteBrief(a.id, fullName(a.persona), c?.company_name ?? "", note), created_by: BY,
   };
   const { error: e2 } = await db().from("agent_tasks").insert(task);
@@ -69,7 +68,7 @@ export async function setAgentPaused(f: FormData) {
   const pause = String(f.get("paused") ?? "") === "1";
   const status = pause ? "pausiert" : resumeStatus(a);
   if (status === a.status) go(back, "ok", pause ? "schon pausiert" : "läuft schon");
-  const { error } = await db().from("customer_agents").update({ status, updated_at: new Date().toISOString() }).eq("id", a.id);
+  const { error } = await db().from("customer_agents").update({ status, paused_by: pause ? "inhaber" : null, updated_at: new Date().toISOString() }).eq("id", a.id);
   if (error) go(back, "fehler", `nicht gespeichert: ${error.message.slice(0, 120)}`);
   await log("kunden-agent:status", a.id, status, a.status);
   revalidatePath(LIST, "layout");

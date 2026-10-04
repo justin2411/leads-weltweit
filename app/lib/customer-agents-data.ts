@@ -6,12 +6,12 @@
 import "server-only";
 import { db } from "@/lib/supabase";
 import PERSONAS from "@/lib/personas.json";
-import { agentEligible, fullName, langFor, pickPersona, type Persona, type PersonaData } from "@/lib/customer-agents";
+import { agentEligible, fullName, langFor, pickPersona, type PausedBy, type Persona, type PersonaData } from "@/lib/customer-agents";
 
 export const PERSONA_DATA = PERSONAS as unknown as PersonaData;
 
 export type CustomerAgent = {
-  id: string; customer_id: string; subscription_id: string; status: string; persona: Persona; profile: Record<string, unknown> | null;
+  id: string; customer_id: string; subscription_id: string; status: string; paused_by?: PausedBy | null; persona: Persona; profile: Record<string, unknown> | null;
   kpis: Record<string, unknown> | null; mail_opt_out: boolean | null; last_contact_at: string | null; next_checkin_at: string | null;
   created_at: string; updated_at: string | null;
 };
@@ -47,7 +47,7 @@ export async function ensureCustomerAgent(o: { subscriptionId: string; customerI
 
 /** Kündigung/Downgrade: Agent pausiert, nichts gelöscht. Gibt zurück, ob ein Agent betroffen war. */
 export async function pauseAgentForSubscription(subscriptionId: string): Promise<boolean> {
-  const { data, error } = await db().from("customer_agents").update({ status: "pausiert", updated_at: new Date().toISOString() })
+  const { data, error } = await db().from("customer_agents").update({ status: "pausiert", paused_by: "abo", updated_at: new Date().toISOString() })
     .eq("subscription_id", subscriptionId).neq("status", "pausiert").select("id");
   if (error) throw new Error(error.message);
   return (data?.length ?? 0) > 0;

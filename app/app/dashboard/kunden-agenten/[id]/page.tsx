@@ -46,7 +46,7 @@ export default async function KundenAgent({ params }: { params: Promise<{ id: st
           <h1>{name}</h1>
           <div className="ka-line">
             <span>{roleDe(a.persona)}</span>
-            <span className={`ka-chip st-${a.status}`}>{statusLabel(a.status)}</span>
+            <span className={`ka-chip st-${a.status}`}>{statusLabel(a.status)}{paused && a.paused_by === "abo" ? " · Abo" : ""}</span>
             {a.mail_opt_out && <span className="ka-chip st-pausiert"><Icon name="abmeldung" size={13} /> keine Agenten-Mails</span>}
           </div>
           <div className="ka-line">

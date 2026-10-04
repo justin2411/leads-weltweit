@@ -1,6 +1,7 @@
 """Kunden-Agenten (docs/KUNDEN-AGENTEN.md): Identität, Paket-Regel, Schreibregeln, Profil -> Filter, Kundenmails,
 Idempotenz (Inhaber 04.10.2026)."""
 import datetime as dt
+import json
 import os
 import sys
 import tempfile
@@ -34,19 +35,39 @@ def sub(i, package="pro", weekly=50, status="active", customer=None, country="UK
             "filters": {"country": country, "areas": [], "max_per_week": weekly}, "customers": c}
 
 
+ROOT = Path(__file__).resolve().parents[1]
+
+
 class PersonaTest(unittest.TestCase):
+    def test_single_source(self):
+        """Eine Persona-Quelle für App und Backend: app/lib/personas.json (keine Kopie in scripts/lib)."""
+        self.assertEqual(A.PERSONAS.resolve(), (ROOT / "app" / "lib" / "personas.json").resolve())
+        self.assertFalse((ROOT / "scripts" / "lib" / "personas.json").exists())
+
     def test_file_format(self):
         data = A.load_personas()
         for lang in ("en", "fr"):
-            self.assertGreaterEqual(len(data["names"][lang]), 24)
-            self.assertEqual(len({A.full_name(n) for n in data["names"][lang]}), len(data["names"][lang]))
-        self.assertEqual(len(data["tones"]), 6)
-        self.assertIn("AI account manager", data["signature"]["en"])
-        self.assertIn("IA", data["signature"]["fr"])
-        self.assertIn("KI", data["signature"]["de"])
+            P = data[lang]
+            self.assertGreaterEqual(len(P["first_names"]) * len(P["last_names"]), 100)
+            for g in ("f", "m"):
+                self.assertTrue(P["role"][g])
+                self.assertRegex(P["signature"][g], r"\bIA\b" if lang == "fr" else r"\bAI\b")
+                self.assertIn("{owner}", P["ai_note"][g])
+            self.assertTrue(all(f["g"] in ("f", "m") for f in P["first_names"]))
+
+    def test_same_as_app(self):
+        """Gleiche Regel wie pickPersona/fnv1a32 in app/lib/customer-agents.ts (tests/fixtures/persona_cases.json)."""
+        cases = json.loads((ROOT / "tests" / "fixtures" / "persona_cases.json").read_text(encoding="utf-8"))
+        for s, h in cases["fnv1a32"].items():
+            self.assertEqual(A.fnv1a32(s), h, s)
+        self.assertGreaterEqual(len(cases["cases"]), 10)
+        for c in cases["cases"]:
+            self.assertEqual(A.pick_persona(c["seed"], c["lang"], set(c["used"])), c["expect"],
+                             f"{c['lang']} {c['seed']} {len(c['used'])}")
 
     def test_deterministic_and_different(self):
         self.assertEqual(A.pick_persona("s1", "en"), A.pick_persona("s1", "en"))
+        self.assertEqual(A.pick_persona(" ABC-1 ", "en"), A.pick_persona("abc-1", "en"))
         taken, names = set(), []
         for i in range(20):
             p = A.pick_persona(f"sub-{i}", "en", taken)
@@ -55,12 +76,13 @@ class PersonaTest(unittest.TestCase):
         self.assertEqual(len(set(names)), 20)  # je Kunde ein anderer Name, solange frei
         fr = A.pick_persona("s1", "fr")
         self.assertEqual(fr["lang"], "fr")
-        self.assertIn(A.full_name(fr), {A.full_name(n) for n in A.load_personas()["names"]["fr"]})
-        for k in ("first_name", "last_name", "role", "lang", "bio", "tone"):
+        self.assertEqual(set(fr), {"first_name", "last_name", "role", "lang", "bio", "tone", "gender"})
+        for k in fr:
             self.assertTrue(fr[k])
 
     def test_all_taken_still_returns_a_name(self):
-        names = {A.full_name(n) for n in A.load_personas()["names"]["en"]}
+        P = A.load_personas()["en"]
+        names = {f"{f['name']} {l}" for f in P["first_names"] for l in P["last_names"]}
         self.assertIn(A.full_name(A.pick_persona("x", "en", names)), names)
 
     def test_signature_always_marks_ai(self):
@@ -240,6 +262,47 @@ class EnsureTest(unittest.TestCase):
         self.assertEqual(a1["status"], "onboarding")
         self.assertEqual(len(db.rows("customer_agents")), 2)
 
+    def test_downgrade_to_starter_pauses_and_owner_pause_sticks(self):
+        db = agents_db()
+        A.ensure(db, now=NOW)
+        a1 = next(r for r in db.rows("customer_agents") if r["subscription_id"] == "s1")
+        # Downgrade auf Starter -> pausiert (Abo), Upgrade zurück -> läuft wieder
+        db.tables["subscriptions"][0]["package"] = "starter"
+        self.assertEqual(A.ensure(db, now=NOW)["pausiert"], 1)
+        self.assertEqual((a1["status"], a1["paused_by"]), ("pausiert", "abo"))
+        db.tables["subscriptions"][0]["package"] = "pro"
+        self.assertEqual(A.ensure(db, now=NOW)["aktiviert"], 1)
+        self.assertEqual((a1["status"], a1["paused_by"]), ("onboarding", None))
+        # individuell unter 50/Woche -> pausiert
+        db.tables["subscriptions"][0].update({"package": "custom", "filters": {"country": "UK", "max_per_week": 30}})
+        self.assertEqual(A.ensure(db, now=NOW)["pausiert"], 1)
+        db.tables["subscriptions"][0].update({"package": "pro", "filters": {"country": "UK", "max_per_week": 50}})
+        A.ensure(db, now=NOW)
+        # Vom Inhaber im Dashboard pausiert: ensure setzt nie selbst fort
+        a1.update({"status": "pausiert", "paused_by": "inhaber"})
+        self.assertEqual(A.ensure(db, now=NOW)["aktiviert"], 0)
+        self.assertEqual(a1["status"], "pausiert")
+
+    def test_stripe_test_purchase_gets_no_agent(self):
+        c = {**cust(7), "status": "trial", "stripe_customer_id": "cus_test", "notes": "Stripe-Testmodus (kein echter Kunde)"}
+        db = FakeDB({"customers": [c], "subscriptions": [sub(7, "pro", 50, customer=c)]})
+        self.assertEqual(A.ensure(db, welcome=True, now=NOW)["neu"], 0)
+        self.assertEqual(db.rows("customer_agents"), [])
+
+    def test_webhook_agent_welcomed_after_welcome_mail(self):
+        """Vom Stripe-Webhook angelegt: erst nach WELCOME_GRACE (Willkommensmail zuerst), dann genau einmal."""
+        db = agents_db()
+        A.ensure(db, now=NOW)
+        for a in db.rows("customer_agents"):
+            a["created_at"] = (NOW - dt.timedelta(minutes=2)).isoformat()
+        with mock.patch.object(deliveries, "_resend", return_value="re_w") as send, \
+                mock.patch.dict(os.environ, {"MAIL_FROM": "hello@nextgen-profit.de"}):
+            self.assertEqual(A.ensure(db, welcome=True, now=NOW)["begruesst"], 0)
+            self.assertEqual(A.ensure(db, welcome=True, now=NOW + dt.timedelta(minutes=10))["begruesst"], 2)
+            self.assertEqual(A.ensure(db, welcome=True, now=NOW + dt.timedelta(minutes=20))["begruesst"], 0)
+        self.assertEqual(send.call_count, 2)
+        self.assertLess(A.WELCOME_GRACE, dt.timedelta(minutes=30))
+
     def test_dry_run_writes_nothing(self):
         db = agents_db()
         self.assertEqual(A.ensure(db, dry=True, now=NOW)["neu"], 2)
@@ -325,6 +388,9 @@ class InboxTest(unittest.TestCase):
         self.assertEqual(len(tasks), 1)
         self.assertEqual((tasks[0]["kind"], tasks[0]["created_by"], tasks[0]["market"]), ("kunde", "Kunden-Agent", "UK"))
         self.assertIn(a1["id"], tasks[0]["brief"])
+        # gleiches Format wie noteBrief in der App: „Kunden-Agent <uuid> · Name (Firma…) · …“, Agent 9
+        self.assertRegex(tasks[0]["brief"], rf"^Kunden-Agent {a1['id']} · {A.full_name(a1['persona'])} \(Studio 1 Ltd, UK\) · Kundenmail: ")
+        self.assertEqual(tasks[0]["agent"], A.TASK_AGENT)
         self.assertLessEqual(len(tasks[0]["brief"]), 1000)
         self.assertEqual(a1["kpis"]["rueckmeldungen"], 1)
         self.assertEqual(db.rows("inbound_replies")[0]["status"], "erledigt")

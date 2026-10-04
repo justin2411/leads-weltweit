@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
-import hashlib
 import json
 import re
 import sys
@@ -27,16 +26,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-PERSONAS = Path(__file__).resolve().parent / "lib" / "personas.json"
+PERSONAS = Path(__file__).resolve().parents[1] / "app" / "lib" / "personas.json"  # einzige Quelle (App + Skripte)
 PRO_WEEKLY = 50                 # Pro = bis 50 Leads/Woche; individuell ab dieser Menge bekommt auch einen Agenten
-TASK_AGENT = 9                  # agent_tasks.agent für Kunden-Aufträge (A1–A4 bleiben dem Inhaber)
+TASK_AGENT = 9                  # agent_tasks.agent für alle Kunden-Aufträge (wie KUNDE_TASK_AGENT in der App; A1–A4 bleiben dem Inhaber)
 TASK_BY = "Kunden-Agent"
 MIN_WORDS, MAX_WORDS = 40, 120
 MAX_SENTENCE_WORDS = 25
 OWN_MAIL_GAP = dt.timedelta(days=7)    # höchstens 1 eigene Mail pro Woche zusätzlich zur Lieferung
 CHECKIN_AFTER = (2, 4)                 # Nachfrage nach der 2. und 4. gesendeten Lieferung
 CHECKIN_DELAY = dt.timedelta(days=3)   # erst wenn der Kunde mit den Leads arbeiten konnte
-WELCOME_GRACE = dt.timedelta(minutes=30)  # vom Stripe-Webhook angelegte Agenten begrüßt zuerst die App
+WELCOME_GRACE = dt.timedelta(minutes=5)  # Willkommensmail der App (kündigt die Fragen an) kommt zuerst; die Fragen
+                                         # sendet ensure --welcome (antworten.yml alle 10 min) -> binnen ~15–30 min
 PROFILE_KEYS = ("zielgruppe", "leistungen", "ziele", "signale", "branchen", "groesse", "regionen", "notizen")
 LIST_KEYS = ("signale", "branchen", "regionen")
 KPI_KEYS = ("rueckmeldungen", "gute_leads", "abschluesse")
@@ -48,56 +48,73 @@ _now = lambda: dt.datetime.now(dt.timezone.utc)  # noqa: E731
 # Identität
 
 def load_personas() -> dict:
+    """Einzige Persona-Quelle: app/lib/personas.json (auch von der App gelesen)."""
     return json.loads(PERSONAS.read_text(encoding="utf-8"))
 
 
 def lang_for(country: str | None) -> str:
-    return "fr" if (country or "").upper() == "FR" else "en"
+    """Sprache des Kunden: Frankreich Französisch, sonst Englisch (wie langFor in der App)."""
+    return "fr" if (country or "").strip().upper() == "FR" else "en"
 
 
-def _digest(seed: str) -> int:
-    return int(hashlib.sha256(str(seed).encode()).hexdigest(), 16)
+def fnv1a32(s: str) -> int:
+    """FNV-1a 32 Bit über die UTF-8-Bytes (gleiche Rechnung wie fnv1a32 in app/lib/customer-agents.ts)."""
+    h = 0x811C9DC5
+    for b in str(s).encode("utf-8"):
+        h = ((h ^ b) * 0x01000193) & 0xFFFFFFFF
+    return h
 
 
 def full_name(p: dict) -> str:
-    return f"{p.get('first_name', '')} {p.get('last_name', '')}".strip()
+    return f"{(p or {}).get('first_name') or ''} {(p or {}).get('last_name') or ''}".strip()
+
+
+def _norm_name(s: str) -> str:
+    return " ".join(str(s or "").split()).lower()
 
 
 def pick_persona(seed: str, lang: str, taken: set[str] | None = None, data: dict | None = None) -> dict:
-    """Deterministische Identität aus der Abo-ID: gleicher Seed = gleiche Person; ein schon vergebener Name wird
+    """Deterministische Identität aus der Abo-ID – dieselbe Regel wie pickPersona in der App (Regel: _doc in
+    app/lib/personas.json, gemeinsame Fälle tests/fixtures/persona_cases.json). Ein schon vergebener Name wird
     übersprungen, solange noch einer frei ist (je Kunde ein anderer Name)."""
     data = data or load_personas()
-    lang = lang if lang in data["names"] else "en"
-    names, taken = data["names"][lang], taken or set()
-    h = _digest(seed)
-    start = h % len(names)
-    pick = names[start]
-    for i in range(len(names)):
-        cand = names[(start + i) % len(names)]
-        if full_name(cand) not in taken:
-            pick = cand
+    lang = lang if lang in ("en", "fr") and lang in data else "en"
+    P = data[lang]
+    V = len(P["first_names"])
+    N = V * len(P["last_names"])
+    h = fnv1a32(str(seed).strip().lower())
+    used = {_norm_name(x) for x in (taken or set())}
+
+    def at(i: int) -> tuple[dict, str]:
+        return P["first_names"][i % V], P["last_names"][i // V]
+
+    f, last = at(h % N)
+    for k in range(N):
+        cf, cl = at((h + k) % N)
+        if _norm_name(f"{cf['name']} {cl}") not in used:
+            f, last = cf, cl
             break
-    tone = data["tones"][(h // len(names)) % len(data["tones"])]
-    fem = pick.get("gender") == "f"
-    role = (data.get("role_f", {}) if fem else {}).get(lang) or data["role"][lang]
-    return {"first_name": pick["first_name"], "last_name": pick["last_name"], "gender": pick.get("gender") or "m",
-            "role": role, "lang": lang, "bio": tone["bio_de"], "tone": tone["id"]}
+    g = f["g"]
+    return {"first_name": f["name"], "last_name": last, "role": P["role"][g], "lang": lang,
+            "bio": P["bios"][(h >> 8) % len(P["bios"])], "tone": P["tone"], "gender": g}
+
+
+def _gender(persona: dict) -> str:
+    return "m" if (persona or {}).get("gender") == "m" else "f"  # wie signature() in der App: ohne Angabe „f“
 
 
 def signature_text(persona: dict, lang: str | None = None, data: dict | None = None) -> str:
     """„AI account manager at NextGen Profit“ – der KI-Hinweis steht in jeder Mail (EU-KI-Verordnung Art. 50)."""
     data = data or load_personas()
     lang = lang or persona.get("lang") or "en"
-    fem = persona.get("gender") == "f"
-    return (data.get("signature_f", {}) if fem else {}).get(lang) or data["signature"].get(lang) or data["signature"]["en"]
+    P = data.get(lang) if lang in ("en", "fr") else None
+    return (P or data["en"])["signature"][_gender(persona)]
 
 
 def ai_note(persona: dict, owner: str, data: dict | None = None) -> str:
     data = data or load_personas()
-    lang = persona.get("lang") or "en"
-    fem = persona.get("gender") == "f"
-    tpl = (data.get("ai_note_f", {}) if fem else {}).get(lang) or data["ai_note"][lang]
-    return tpl.format(owner=owner)
+    lang = persona.get("lang") if persona.get("lang") in ("en", "fr") else "en"
+    return data[lang]["ai_note"][_gender(persona)].format(owner=owner)
 
 
 CLOSING = {"en": "Best regards,", "fr": "Bien cordialement,"}
@@ -238,7 +255,7 @@ def welcome_text(persona: dict, owner: str | None = None) -> tuple[str, str]:
     first, lang = persona["first_name"], persona.get("lang") or "en"
     note = ai_note(persona, owner)
     if lang == "fr":
-        return (f"{first}, votre interlocuteur chez NextGen Profit" if persona.get("gender") != "f"
+        return (f"{first}, votre interlocuteur chez NextGen Profit" if _gender(persona) == "m"
                 else f"{first}, votre interlocutrice chez NextGen Profit",
                 f"Bonjour,\n\nJe m'appelle {full_name(persona)}. Je m'occupe de vos pistes chez NextGen Profit. {note}\n\n"
                 "Quatre petites questions pour bien choisir vos pistes :\n"
@@ -533,7 +550,10 @@ def last_own_mail(messages: list[dict]) -> str | None:
 # ---------------------------------------------------------------------------------------------------------------
 # Datenbank-Abläufe
 
-AGENT_COLS = "id,customer_id,subscription_id,status,persona,profile,kpis,mail_opt_out,last_contact_at,created_at"
+AGENT_COLS = ("id,customer_id,subscription_id,status,paused_by,persona,profile,kpis,mail_opt_out,last_contact_at,"
+              "created_at")
+PAUSED_BY_OWNER = "inhaber"      # vom Inhaber im Dashboard pausiert: ensure aktiviert nie wieder (nur der Inhaber)
+PAUSED_BY_SUB = "abo"            # Kündigung/Downgrade/Starter/Test: ensure aktiviert wieder, sobald das Abo passt
 SUB_COLS = ("id,customer_id,segment_id,filters,package,status,"
             "customers(company_name,country,billing_email,status,stripe_customer_id,notes)")
 
@@ -631,7 +651,7 @@ def ensure(db, *, welcome: bool = False, dry: bool = False, now: dt.datetime | N
             persona = pick_persona(s["id"], lang_for((s.get("filters") or {}).get("country") or c.get("country")),
                                    taken, data)
             taken.add(full_name(persona))
-            print(f"+ {name}: neuer Agent {full_name(persona)} ({persona['lang']}, {persona['tone']})")
+            print(f"+ {name}: neuer Agent {full_name(persona)} ({persona['lang']}, {persona['gender']})")
             out["neu"] += 1
             if not dry:
                 row = db.insert("customer_agents", {"customer_id": s["customer_id"], "subscription_id": s["id"],
@@ -640,19 +660,19 @@ def ensure(db, *, welcome: bool = False, dry: bool = False, now: dt.datetime | N
                 if row:
                     by_sub[s["id"]] = row[0]
                     fresh.add(row[0]["id"])
-        elif ok and a and a.get("status") == "pausiert":
+        elif ok and a and a.get("status") == "pausiert" and a.get("paused_by") != PAUSED_BY_OWNER:
             status = "aktiv" if a.get("profile") else "onboarding"
             print(f"~ {name}: Agent {full_name(a.get('persona') or {})} wieder {status}")
             out["aktiviert"] += 1
-            a["status"] = status
+            a["status"], a["paused_by"] = status, None
             if not dry:
-                db.update("customer_agents", {"id": a["id"]}, {"status": status})
+                db.update("customer_agents", {"id": a["id"]}, {"status": status, "paused_by": None})
         elif not ok and a and a.get("status") != "pausiert":
             print(f"- {name}: Agent {full_name(a.get('persona') or {})} pausiert (Abo gekündigt/Starter/Test)")
             out["pausiert"] += 1
-            a["status"] = "pausiert"  # nie ein gekündigtes/Starter-Abo im selben Lauf begrüßen
+            a["status"], a["paused_by"] = "pausiert", PAUSED_BY_SUB  # nie ein gekündigtes/Starter-Abo im selben Lauf begrüßen
             if not dry:
-                db.update("customer_agents", {"id": a["id"]}, {"status": "pausiert"})
+                db.update("customer_agents", {"id": a["id"]}, {"status": "pausiert", "paused_by": PAUSED_BY_SUB})
     if welcome:
         for sid, a in by_sub.items():
             if sid not in eligible_subs:
@@ -661,7 +681,7 @@ def ensure(db, *, welcome: bool = False, dry: bool = False, now: dt.datetime | N
                 continue
             created = a.get("created_at")
             if a["id"] not in fresh and created and _ts(created) > now - WELCOME_GRACE:
-                continue  # gerade von der App angelegt: die App begrüßt
+                continue  # gerade vom Stripe-Webhook angelegt: erst die Willkommensmail der App, dann die Fragen
             if any(m.get("direction") == "out" for m in _messages(db, a["id"])):
                 continue
             if send_welcome(db, a, dry=dry) in ("gesendet", "dry"):
@@ -680,14 +700,18 @@ def send_welcome(db, agent: dict, dry: bool = False) -> str:
 
 
 def task_brief(agent: dict, customer: dict, subject: str, topic: str | None) -> str:
+    """Auftragstext (agent_tasks kind „kunde“): gleiches Format wie noteBrief in app/lib/customer-agents.ts –
+    „Kunden-Agent <uuid> · <Name> (<Firma>) · …“, Leerraum zusammengefasst, höchstens 1000 Zeichen."""
     p = agent.get("persona") or {}
-    brief = (f"Kunde {customer.get('company_name')} ({customer.get('country')}) hat {full_name(p)} geschrieben"
-             f"{': ' + subject[:120] if subject else ''}. Verlauf lesen, Profil mit customer_agents.py profile "
-             f"aktualisieren, Antwort mit customer_agents.py reply senden (Agent {agent['id']}).")
+    country = customer.get("country")
+    head = (f"Kunden-Agent {agent['id']} · {full_name(p) or '?'} ({customer.get('company_name') or '?'}"
+            f"{', ' + country if country else ''}) · Kundenmail: ")
+    rest = (f"{subject[:120] or '(ohne Betreff)'} – Verlauf lesen, Profil mit customer_agents.py profile aktualisieren, "
+            "Antwort mit customer_agents.py reply senden.")
     if topic:
-        brief += (f" Thema {TOPIC_DE[topic]}: Inhaber ist informiert – nur freundlich bestätigen, dass er sich meldet, "
-                  "nichts zusagen.")
-    return brief[:1000]
+        rest += (f" Thema {TOPIC_DE[topic]}: Inhaber ist informiert – nur freundlich bestätigen, dass er sich meldet, "
+                 "nichts zusagen.")
+    return re.sub(r"\s+", " ", head + rest)[:1000]
 
 
 def inbox(db, *, days: int = 14, dry: bool = False) -> dict:
