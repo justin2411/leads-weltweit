@@ -147,7 +147,7 @@ def build_pool() -> Path:
 # Offene Register als zusätzliche Käuferquellen (JARVIS-Agent 5 „Käuferquellen“, 04.10.2026): gleiche Spalten wie der
 # Overture-Auszug, dazu Rechtsform laut Register (reg_form/reg_note) und Herkunft (quelle). Fällt eine Quelle aus,
 # bleibt der Pool trotzdem (Overture) – nächster Pool-Bau versucht es erneut.
-REGISTER_SOURCES = ("mx_denue", "fi_ytj")
+REGISTER_SOURCES = ("mx_denue", "fi_ytj", "fr_francenum")  # fr_francenum: Quellen-Scout 04.10.2026
 REGISTER_COLUMNS = ("reg_form", "reg_note", "quelle")
 POOL_COLUMNS = {"id": "VARCHAR", "name": "VARCHAR", "websites": "VARCHAR[]", "emails": "VARCHAR[]",
                 "phones": "VARCHAR[]", "street": "VARCHAR", "city": "VARCHAR", "postcode": "VARCHAR",
