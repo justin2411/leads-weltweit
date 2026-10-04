@@ -3,7 +3,7 @@ import { loadList } from "@/lib/dashboard-data";
 import { COUNTRY_COLOR, berlin, berlinDay, compact } from "@/lib/dashboard-logic";
 import { PERIODS, period } from "@/lib/dashboard-periods";
 import { requireOwner } from "../actions";
-import { COUNTRY_OPTS, Chips, Crumbs } from "../v2";
+import { COUNTRY_OPTS, Chips, Crumbs, Leer } from "../v2";
 import { readParams, withQuery, type SP } from "../params";
 
 const LIST_METRICS: [string, string][] = [
@@ -54,7 +54,7 @@ export default async function Liste({ searchParams }: { searchParams: SP }) {
             ? <Link key={i} href={`/dashboard/kontakte/${r.prospect_id}`} className="lrow">{inner}</Link>
             : <div key={i} className="lrow">{inner}</div>;
         })}
-        {data.rows.length === 0 && <div className="muted" style={{ padding: 10 }}>keine</div>}
+        {data.rows.length === 0 && <Leer icon="filter" text="Keine Einträge." />}
       </div>
       {data.total > data.rows.length && (
         <Link className="more-btn" href={withQuery("/dashboard/liste", { ...base, n: String(Math.min(1000, n + 200)) })}>mehr laden ({compact(data.total - data.rows.length)} weitere)</Link>

@@ -168,3 +168,14 @@ export function Ctrl({ title, tip, children, locked }: { title: string; tip: str
 export function Back({ to }: { to: string }) {
   return <input type="hidden" name="back" value={to} />;
 }
+
+/** Leerer Zustand (docs/DESIGN-KOMMANDOZENTRALE.md): Symbol + 1 kurzer Satz, überall gleich. `small` für enge Spalten. */
+export function Leer({ icon, text, small = false }: { icon: IconName; text: string; small?: boolean }) {
+  return <div className={`leer${small ? " leer-s" : ""}`} role="status"><Icon name={icon} size={small ? 18 : 26} /><span>{text}</span></div>;
+}
+
+export const EMPTY_CSS = `
+.dash .leer{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:28px 12px;color:var(--soft);font-size:var(--fs-s);text-align:center;border:1px dashed var(--line);border-radius:12px}
+.dash .leer svg{opacity:.75}
+.dash .leer-s{flex-direction:row;padding:12px 8px;gap:6px;border-radius:8px}
+`;

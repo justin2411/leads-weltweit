@@ -3,7 +3,7 @@ import { berlin } from "@/lib/dashboard-logic";
 import { db } from "@/lib/supabase";
 import { Icon } from "@/app/icons";
 import { approveDraft, logReply, rejectDraft } from "../actions";
-import { Ctrl } from "../v2";
+import { Ctrl, Leer } from "../v2";
 
 /**
  * Freigaben & Antworten (aus der alten Ansicht umgezogen, Inhaber 04.10.2026): Entwürfe freigeben/ablehnen, Antwort von
@@ -60,7 +60,7 @@ export async function Freigaben() {
             </div>
           );
         })}
-        {ds.length === 0 && <div className="muted">Keine offenen Entwürfe.</div>}
+        {ds.length === 0 && <Leer icon="ok-kreis" text="Keine offenen Entwürfe." />}
       </div>
       </Fold>
 
@@ -91,7 +91,7 @@ export async function Freigaben() {
                 </li>
               );
             })}
-            {evs.length === 0 && <li className="muted">Noch keine Ereignisse.</li>}
+            {evs.length === 0 && <li><Leer small icon="mail" text="Noch keine Ereignisse." /></li>}
           </ul>
         </Fold>
       </div>

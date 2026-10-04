@@ -5,6 +5,7 @@ import { loadProtokoll, type ProtokollDaten } from "@/lib/zentrale/protokoll-dat
 import { requireOwner } from "../actions";
 import { ZX_CSS } from "../zentrale/css";
 import { Head } from "../zentrale/ui";
+import { Leer } from "../v2";
 
 export const metadata = { title: "Protokoll" };
 type SP = Promise<Record<string, string | string[] | undefined>>;
@@ -52,7 +53,7 @@ export default async function ProtokollPage({ searchParams }: { searchParams: SP
       </nav>
       {!d && <div className="zx-err" role="alert">Protokoll gerade nicht lesbar – gleich noch einmal laden.</div>}
       {d && d.fehler.length > 0 && <div className="zx-err" role="status">Nicht lesbar: {d.fehler.join(", ")}</div>}
-      {d && !list.length && <p className="zx-none">Keine Einträge in diesem Zeitraum.</p>}
+      {d && !list.length && <Leer icon="uhr" text="Keine Einträge in diesem Zeitraum." />}
       {nachTag(list).map(([day, items]) => (
         <section key={day} className="zx-day">
           <h3>{TAG.format(new Date(`${day}T12:00:00Z`))}</h3>

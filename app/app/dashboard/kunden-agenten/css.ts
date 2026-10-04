@@ -31,7 +31,6 @@ export const KA_CSS = `
 .ka-kpi div{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0}
 .ka-kpi b{font-family:var(--mono);font-size:20px;color:#fff;line-height:1.1}
 .ka-kpi span{font-size:11px;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-.ka-empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:36px 12px;color:var(--soft);border:1px dashed var(--line);border-radius:12px;text-align:center}
 
 .ka-top{display:grid;grid-template-columns:64px minmax(0,1fr);gap:14px;align-items:center;margin:2px 0 14px}
 .ka-top h1{margin:0;font-size:22px;color:#fff;overflow-wrap:anywhere}

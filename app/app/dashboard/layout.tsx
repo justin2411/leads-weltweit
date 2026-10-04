@@ -8,6 +8,8 @@ import { HUD_CSS } from "./hud-css";
 import { LIVE_CSS } from "./live";
 import { Nav } from "./nav";
 import { Flash } from "./flash";
+import { MOBILE_FOLD_CSS, MOBILE_TABS_CSS } from "./mobile-css";
+import { EMPTY_CSS } from "./v2";
 import { db } from "@/lib/supabase";
 import { countBrauchtDich } from "@/lib/braucht-dich-data";
 
@@ -35,7 +37,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const badges = { "/dashboard/antworten": replies, "/dashboard/jarvis": bd };
   return (
     <div className={`dash ${sans.variable} ${hud.variable} ${mono.variable}`}>
-      <style dangerouslySetInnerHTML={{ __html: DASH_CSS + DASH_V2_CSS + LIVE_CSS + HUD_CSS }} />
+      <style dangerouslySetInnerHTML={{ __html: DASH_CSS + DASH_V2_CSS + LIVE_CSS + HUD_CSS + MOBILE_FOLD_CSS + MOBILE_TABS_CSS + EMPTY_CSS }} />
       <header className="top">
         <div className="in">
           <a href="/dashboard/jarvis" className="mark" style={{ color: "inherit", textDecoration: "none" }}>NextGen <i>Profit</i></a>
