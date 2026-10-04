@@ -28,5 +28,6 @@ test("Kurzfassung für JARVIS", () => {
   const b = bounceBrief(normalize(RAW)) as { quote_7t: string; schlecht: string[] };
   assert.equal(b.quote_7t, "3.8 % (10/260)");
   assert.deepEqual(b.schlecht, ["US · Overture: 7.5 % hart"]);
+  assert.equal((b as unknown as { klassen: string }).klassen, "hart 4 · weich 2 · richtlinie 1 · unbekannt 3");
   assert.equal(bounceBrief(normalize({ gesendet: 0 })), "keine Kaltmails in 7 Tagen");
 });

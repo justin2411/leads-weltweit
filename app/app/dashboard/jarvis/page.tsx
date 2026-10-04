@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadBoxHealth, loadBounceStats, loadDaily, loadFunnel, loadKpiDaily, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock, loadWebsite, loadFunnelCache } from "@/lib/dashboard-data";
+import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadBoxHealth, loadBounceStats, loadDaily, loadFunnel, loadKpiDaily, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock, loadWebsite, loadFunnelCache, loadKohorten } from "@/lib/dashboard-data";
 import { webLine, webNeck } from "@/lib/website-stats";
 import { startLive } from "@/lib/website-funnel";
 import { werkLine, werkTip } from "@/lib/werk-zeile";
@@ -81,6 +81,8 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const from7 = new Date(Date.parse(`${today}T12:00:00Z`) - 6 * 86_400_000).toISOString().slice(0, 10);
   // Überblick (Heute wichtig, Ziel-vs-Ist, Entscheidungen, Datenfluss-Alarm): parallel, jede Quelle einzeln fehlertolerant
   const ubP = loadUeberblick(SEGMENT, COUNTRIES, today);
+  // Kohorten-Trichter je Versandwoche × Land (cohort_funnel, ~0,5 s; Fehler → null = „nicht lesbar“)
+  const khP = loadKohorten(8);
   // Sparklines und Trend (7 T vs. Vor-7 T): 15 Tage bis heute, kpi_daily parallel (Fehler → leer)
   const from15 = addDays(today, -14);
   const kpiP = loadKpiDaily(from15, today);
@@ -454,7 +456,8 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     <JarvisView hello={hello} say={say} kpis={kpis} recs={recs} rest={rest} tipHref={tipHref} agent={freeAgent(agentTasks)}
       tasks={agentTasks} startAt={startAt} activeAgent={ag} stations={stations} edges={edges} activeStation={s} stationHref={href}
       drawer={drawer} gate={gateView}
-      heute={heute} ziel={{ mails: mailBars, leads: leadBars }} zeit={zeit} ticker={ticker(items)} customerAgents={await kaP} chat={await chatP} proposals={await propP} />
+      heute={heute} ziel={{ mails: mailBars, leads: leadBars }} zeit={zeit} ticker={ticker(items)} customerAgents={await kaP} chat={await chatP} proposals={await propP}
+      kohorten={{ rows: await khP, countries, today }} />
   );
 }
 

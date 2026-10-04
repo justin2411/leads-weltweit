@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { fmtRange, forecast, summary, wilson, type PrognoseIn } from "./prognose.ts";
+import { fmtRange, forecast, kurz, summary, wilson, type PrognoseIn } from "./prognose.ts";
 
 // Erfundene Zahlen – keine echten Daten.
 const base: PrognoseIn = { country: "UK", sent: 0, replies: 0, samples: 0, customers: 0, perDay: 0, freeBuyers: null, price: 129, currency: "£" };
@@ -79,4 +79,13 @@ test("gleiche Fälle wie Python (tests/fixtures/prognose_cases.json)", async () 
     assert.equal(p.mails30, c.mails30, c.name);
     assert.deepEqual([p.antworten30, p.proben30, p.kunden30, p.umsatz30], [c.antworten, c.proben, c.kunden, c.umsatz], c.name);
   }
+});
+
+test("kurz: kompakt für den Kontext, Ampelfarben aus lib/ampel.ts", () => {
+  assert.equal(kurz(forecast({ ...base, sent: 77, perDay: 10.3 })), "UK keine Basis (0/77 Antw., ~309 Mails 30T)");
+  assert.equal(kurz(forecast(base)), "UK kein Versand");
+  assert.match(kurz(forecast({ ...base, sent: 200, replies: 4, perDay: 20 })), /^UK 600 Mails→6–23 Antw\.→\? Proben→\? Kunden wenig Daten$/);
+  assert.equal(summary([forecast({ ...base, sent: 74, perDay: 10 })]).tone, "grey");
+  assert.equal(summary([forecast({ ...base, sent: 200, replies: 4, perDay: 20 })]).tone, "grey");
+  assert.equal(summary([forecast({ ...base, sent: 1000, replies: 50, samples: 20, customers: 4, perDay: 100 })]).tone, "green");
 });

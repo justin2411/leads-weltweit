@@ -7,6 +7,8 @@
  * (Wilson-Intervall 80 %), bei kleinem n entsprechend breit. Reine Funktionen, keine Datenbank.
  */
 
+import type { Ampel } from "./ampel.ts";
+
 export type PrognoseIn = {
   country: string;
   /** Erstmails gesendet seit Start (Trichter-Basis) */
@@ -95,7 +97,7 @@ export function forecast(x: PrognoseIn): Prognose {
 }
 
 /** Summe über die Länder für die Kennzahl im Dashboard. Kunden nur, wenn jedes Land mit Versand eine Basis hat. */
-export function summary(ps: Prognose[]): { value: string; sub: string; tone: "green" | "cyan" | "grey"; tip: string } {
+export function summary(ps: Prognose[]): { value: string; sub: string; tone: Ampel; tip: string } {
   const active = ps.filter((p) => p.basis !== "kein_versand");
   const mails = active.reduce((a, p) => a + p.mails30, 0);
   const tip = ps.map((p) => p.text).join(" ");
@@ -105,9 +107,17 @@ export function summary(ps: Prognose[]): { value: string; sub: string; tone: "gr
     const ans = active.filter((p) => p.antworten30);
     if (!ans.length) return { value: "–", sub: "noch keine Basis", tone: "grey", tip };
     const sum = ans.reduce<Range>((r, p) => ({ lo: r.lo + p.antworten30!.lo, mid: r.mid + p.antworten30!.mid, hi: r.hi + p.antworten30!.hi }), { lo: 0, mid: 0, hi: 0 });
-    return { value: fmtRange(sum), sub: "Antworten erwartet", tone: "cyan", tip };
+    return { value: fmtRange(sum), sub: "Antworten erwartet", tone: "grey", tip };  // Kunden ohne Basis = grau
   }
   const k = withK.reduce<Range>((r, p) => ({ lo: r.lo + p.kunden30!.lo, mid: r.mid + p.kunden30!.mid, hi: r.hi + p.kunden30!.hi }), { lo: 0, mid: 0, hi: 0 });
   const money = withK.map((p) => fmtRange(p.umsatz30, ` ${p.currency}`)).join(" + ");
-  return { value: fmtRange(k), sub: `Kunden · ${money}/Mon.${withK.length < active.length ? " (Teil)" : ""}`, tone: k.mid >= 1 ? "green" : "cyan", tip };
+  return { value: fmtRange(k), sub: `Kunden · ${money}/Mon.${withK.length < active.length ? " (Teil)" : ""}`, tone: k.mid >= 1 ? "green" : "gold", tip };
+}
+
+/** Kompakt für den JARVIS-/Gehirn-Kontext: „UK keine Basis (0/77 Antw., ~309 Mails 30T)“ bzw. „US 600 Mails→6–23 Antw.→? Proben→? Kunden“. */
+export function kurz(p: Prognose): string {
+  if (p.basis === "kein_versand") return `${p.country} kein Versand`;
+  if (p.basis === "keine") return `${p.country} keine Basis (0/${p.stages[0].n} Antw., ~${p.mails30} Mails 30T)`;
+  const q = (r: Range | null, u = "") => (r ? fmtRange(r, u) : "?");
+  return `${p.country} ${p.mails30} Mails→${q(p.antworten30)} Antw.→${q(p.proben30)} Proben→${q(p.kunden30)} Kunden${p.umsatz30 ? ` (${fmtRange(p.umsatz30, ` ${p.currency}`)}/Mon.)` : ""}${p.basis === "duenn" ? " wenig Daten" : ""}`;
 }

@@ -45,15 +45,16 @@ export function badSources(st: BounceStats): (SourceRow & { quote_hart: number }
     .sort((a, b) => b.quote_hart - a.quote_hart);
 }
 
-/** Kompakt für den JARVIS-Kontext (wenige Tokens). */
+/** Kompakt für den JARVIS-Kontext (wenige Tokens): Zeichenketten statt verschachtelter Objekte, Quellen nur mit Bounces (≤ 4). */
 export function bounceBrief(st: BounceStats | null): unknown {
   if (!st) return "nicht lesbar";
   if (!st.gesendet) return "keine Kaltmails in 7 Tagen";
+  const schlecht = badSources(st).map((q) => `${q.country} · ${q.quelle}: ${pct(q.hart, q.gesendet)} % hart`);
   return {
     quote_7t: `${pct(st.bounces, st.gesendet)} % (${st.bounces}/${st.gesendet})`,
-    klassen: st.klassen,
-    postfaecher: st.postfaecher.map((b) => ({ box: b.box, quote: `${pct(b.bounces, b.gesendet)} %`, n: b.gesendet, hart: b.hart, richtlinie: b.richtlinie })),
-    quellen: st.quellen.filter((q) => q.bounces > 0).slice(0, 6).map((q) => ({ quelle: `${q.country} · ${q.quelle}`, quote: `${pct(q.bounces, q.gesendet)} %`, n: q.gesendet, hart: q.hart })),
-    schlecht: badSources(st).map((q) => `${q.country} · ${q.quelle}: ${pct(q.hart, q.gesendet)} % hart`),
+    klassen: KLASSEN.map((k) => `${k} ${st.klassen[k]}`).join(" · "),
+    postfaecher: st.postfaecher.map((b) => `${b.box} ${pct(b.bounces, b.gesendet)} % von ${b.gesendet} (hart ${b.hart}, Richtl. ${b.richtlinie})`),
+    quellen: st.quellen.filter((q) => q.bounces > 0).slice(0, 4).map((q) => `${q.country} · ${q.quelle} ${pct(q.bounces, q.gesendet)} % von ${q.gesendet} (hart ${q.hart})`),
+    ...(schlecht.length ? { schlecht } : {}),
   };
 }
