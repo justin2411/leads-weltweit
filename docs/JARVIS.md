@@ -29,6 +29,8 @@ Preise (nach `docs/GEHIRN-SITZUNG.md`), Tagesmengen innerhalb von Notbremse und 
    Ertrag umlegen, leeren Proben-Vorrat nachbauen): direkt machen und protokollieren.
 6. **Kurzmeldung**: Jede Änderung und jeder Testentscheid steht in `decisions` und im Dashboard. Dem Inhaber
    schreibt JARVIS nur bei Kaufinteresse, Notbremse, Kosten oder Rechtsfrage.
+   **Wenig Text (Inhaber 04.10.2026):** Titel ≤ 60 Zeichen (worum es geht), Grund 1 Satz ≤ 160 Zeichen
+   (`decisions.kurz_titel`/`kurz_grund`); gilt auch für Chat-Antworten, Tagesbericht und Push. Details nur auf Klick.
 
 ## A/B-Tests (Split-Tests)
 
