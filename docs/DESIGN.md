@@ -47,6 +47,7 @@ Gold nur für Akzente (Wortmarke, Buttons, Zahlen, Icons, Hervorhebungen), nie f
 | Wünsche | `/kunde/filter?t=` | Signale als Karten, Branchen, Regionen, Ausschlüsse |
 | Rechtstexte | `/impressum`, `/privacy`, `/terms`, FR: `/mentions-legales`, `/confidentialite`, `/cgv`; DE: `/datenschutz`, `/agb` | aus `app/content/legal.ts` |
 | Dashboard | `/dashboard` (Login Inhaber) | JARVIS, Antworten, Versand (Entwürfe freigeben, Antwort erfassen, Sperren), Gehirn (`/dashboard/gehirn`) |
+| Website (Dashboard) | `/dashboard/website` | Gesundheit als Ringe je Bereich (Klick = Funde), Chatfeld „Änderungswunsch“, Website-Agenten (Vorlagen, An/Aus statt Löschen); Präfix `ws-` |
 
 Seiteninhalte (Überschrift, Signale, Preise, FAQ) kommen aus der Datenbank (`landing_pages`, `page_variants`).
 Platzhalter `{land}`, `{land_de}`, `{register}` werden je Land ersetzt (`app/lib/country.ts`).

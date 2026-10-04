@@ -9,7 +9,7 @@
  */
 import { CHAT_BY, nextAgentRound, type AgentTask } from "./agents.ts";
 
-export type SessionKind = "chat" | "bericht" | "baukasten";
+export type SessionKind = "chat" | "bericht" | "baukasten" | "website";
 export type MsgStatus = "offen" | "in_arbeit" | "fertig";
 export type ChatLink = { label: string; url: string };
 export type ChatSession = {
@@ -115,8 +115,8 @@ export function hasNew(s: Pick<ChatSession, "read_at" | "last_jarvis_at">): bool
 
 const lastOf = (s: ChatSession) => s.last_at ?? s.created_at;
 
-/** Liste links: Tagesbericht oben angeheftet, dann Chats nach letzter Nachricht (neueste zuerst). Baukasten-Sitzungen
- *  und archivierte erscheinen nicht (die stehen unter dem Baukasten bzw. im Archiv). */
+/** Liste links: Tagesbericht oben angeheftet, dann Chats nach letzter Nachricht (neueste zuerst). Baukasten- und
+ *  Website-Sitzungen und archivierte erscheinen nicht (die stehen unter dem Baukasten, auf /dashboard/website bzw. im Archiv). */
 export function orderSessions(list: ChatSession[]): ChatSession[] {
   const bericht = list.filter((s) => s.kind === "bericht").slice(0, 1);
   const chats = list.filter((s) => s.kind === "chat" && !s.archived).sort((a, b) => (lastOf(a) < lastOf(b) ? 1 : lastOf(a) > lastOf(b) ? -1 : 0));
@@ -154,7 +154,7 @@ export function toMessage(x: Record<string, unknown>): ChatMessage {
 
 /** Datenbank-Zeile → Sitzung. */
 export function toSession(x: Record<string, unknown>): ChatSession {
-  const kind: SessionKind = x.kind === "bericht" || x.kind === "baukasten" ? x.kind : "chat";
+  const kind: SessionKind = x.kind === "bericht" || x.kind === "baukasten" || x.kind === "website" ? x.kind : "chat";
   return {
     id: String(x.id), title: String(x.title ?? "") || "Sitzung", kind, flow_id: (x.flow_id as string | null) ?? null,
     created_at: String(x.created_at ?? ""), updated_at: String(x.updated_at ?? ""), read_at: (x.read_at as string | null) ?? null,
