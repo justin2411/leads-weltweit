@@ -13,7 +13,7 @@ import { Icon } from "@/app/icons";
 import { CHECK_PATH, maskIcon } from "@/lib/brand-css";
 import { agentEligible } from "@/lib/customer-agents";
 import { PlanAgentLine } from "../plan-agent";
-import { VisitBeacon } from "../tracker";
+import { HitBeacon } from "@/app/hit-beacon";
 
 export const dynamic = "force-dynamic";
 // Verkaufsseite aus dem PDF-Report: nicht in Suchmaschinen, nicht in der Navigation
@@ -208,7 +208,7 @@ export default async function StartPage({ params, searchParams }: { params: Para
   return (
     <BrandShell lang={lang} extraCss={CSS}>
       {/* Eindeutige Besucher der Tarifseite (JARVIS-Linie „Tarif“): ohne Cookies, Vorschau zählt nie */}
-      <VisitBeacon variantId={v.id} page="tarif" enabled={!preview && sp.vorschau !== "1"} />
+      <HitBeacon stage="tarif" variantId={v.id} enabled={!preview && sp.vorschau !== "1"} />
       <SiteHeader />
       <main className="start"><div className="wrap">
         <div className="eyebrow">{T.eyebrow}</div>

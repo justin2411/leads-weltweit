@@ -46,7 +46,7 @@ class WebVisitorsTest(unittest.TestCase):
         self.assertIn("isPreviewRef(", route)
         self.assertNotRegex(route, r"insert\(\{[^}]*\bip\b")
         checkout = (ROOT / "app" / "app" / "api" / "checkout" / "route.ts").read_text(encoding="utf-8")
-        self.assertIn('if (mode === "live" && !(await isOwner().catch(() => false))) await recordEvent(v.id, "checkout_started");', checkout)
+        self.assertIn('if (mode === "live" && !(await isOwner().catch(() => false))) {\n    await recordEvent(v.id, "checkout_started");', checkout)
 
 
 if __name__ == "__main__":

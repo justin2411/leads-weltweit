@@ -1,4 +1,5 @@
 import { recordEvent } from "@/lib/page-events";
+import { recordHit, visitorKey } from "@/lib/web-hits";
 import { getSettings, isOwner, pageIsPublic } from "@/lib/pages";
 import { BRAND, CONTACT, siteUrl } from "@/lib/site";
 import { checkoutMode, germanVatRate, lineItemFor, stripe, stripeEnabled, type Plan } from "@/lib/stripe";
@@ -105,7 +106,12 @@ export async function POST(req: Request) {
     return failPage(lang, pkg, page.slug, back);
   }
   // JARVIS-Station „Stripe“: gestartete Checkouts serverseitig zählen – Inhaber (Login-Cookie) nie mitzählen
-  if (mode === "live" && !(await isOwner().catch(() => false))) await recordEvent(v.id, "checkout_started");
+  if (mode === "live" && !(await isOwner().catch(() => false))) {
+    await recordEvent(v.id, "checkout_started");
+    // Website-Trichter, Stufe „Stripe“: derselbe Tages-Hash wie im Browser (IP + User-Agent, nur Hash gespeichert)
+    const key = await visitorKey(req.headers).catch(() => null);
+    if (key) await recordHit({ key, stage: "stripe", country: String(page.country ?? "").toUpperCase().slice(0, 2) || "XX", slug: page.slug });
+  }
   // Sofort-Alarm aufs Handy (Web-Push, feuern und vergessen; ändert nichts am Checkout)
   if (mode === "live") after(() => pushAlarmSafe("Checkout gestartet", `${page.slug} · ${pkg}`, "/dashboard/kunden", "checkout"));
   return Response.redirect(session.url, 303);

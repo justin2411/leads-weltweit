@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { bin2, cleanLabel, depthBucket, deviceOf, dwellBucket, refHost, sourceOf, subjectOf, type ElKind } from "@/lib/website-stats";
+import { bin2, cleanLabel, depthBucket, deviceOf, dwellBucket, refHost, refKey, sourceOf, subjectOf, type ElKind } from "@/lib/website-stats";
 
 const MAX_CLICKS = 30;
 
@@ -66,9 +66,12 @@ export function Tracker({ variantId, enabled }: { variantId: string; enabled: bo
       fetch("/api/events", { method: "POST", body, headers: { "Content-Type": "application/json" }, keepalive: true, credentials: "same-origin" }).catch(() => {});
     };
     const q = new URLSearchParams(location.search);
-    const src = sourceOf(q.get("src"), refHost(document.referrer), location.host);
+    const host = refHost(document.referrer);
+    const src = sourceOf(q.get("src"), host, location.host);
+    // Trichter: Domain der vorherigen Seite bzw. utm_source (ohne Pfad/Parameter), eigene Domain → keine
+    const ref = refKey(q.get("utm_source"), host, location.host);
     const dev = deviceOf(window.innerWidth, window.matchMedia?.("(pointer:coarse)").matches ?? false);
-    send({ type: "view", src, sv: src === "mail" ? subjectOf(q.get("sv")) : null, dev });
+    send({ type: "view", src, sv: src === "mail" ? subjectOf(q.get("sv")) : null, dev, ref });
 
     const doc = document.documentElement;
     let depth: 0 | 25 | 50 | 75 | 100 = 0;
@@ -91,7 +94,7 @@ export function Tracker({ variantId, enabled }: { variantId: string; enabled: bo
     const end = () => {
       if (since !== null) { visibleMs += performance.now() - since; since = null; }
       onScroll();
-      send({ type: "end", depth, dwell: dwellBucket(visibleMs) });
+      send({ type: "end", depth, dwell: dwellBucket(visibleMs), ds: Math.min(1800, Math.round(visibleMs / 1000)) });
       sentEnd = true;
     };
     const onVis = () => {
@@ -110,24 +113,5 @@ export function Tracker({ variantId, enabled }: { variantId: string; enabled: bo
       if (!sentEnd) end();
     };
   }, [variantId, enabled]);
-  return null;
-}
-
-/**
- * Aufruf der Tarifseite (/[country]/[segment]/start) für die eindeutigen Besucher der JARVIS-Linie „Tarif“. Sendet nur
- * Variante und Seitenart; den Tages-Besucher-Schlüssel bildet der Server (Hash, ohne Cookies, IP nicht gespeichert).
- * Das Login-Cookie des Inhabers geht mit (same-origin), damit der Server ihn ausblenden kann.
- */
-export function VisitBeacon({ variantId, page, enabled }: { variantId: string; page: "tarif"; enabled: boolean }) {
-  useEffect(() => {
-    if (!enabled || navigator.webdriver || isPreview()) return;
-    const body = JSON.stringify({ variant_id: variantId, type: "visit", pg: page });
-    try {
-      if (navigator.sendBeacon?.("/api/events", new Blob([body], { type: "application/json" }))) return;
-    } catch {
-      /* Fallback unten */
-    }
-    fetch("/api/events", { method: "POST", body, headers: { "Content-Type": "application/json" }, keepalive: true, credentials: "same-origin" }).catch(() => {});
-  }, [variantId, page, enabled]);
   return null;
 }

@@ -11,6 +11,7 @@ import { BrandShell, SiteFooter, SiteHeader } from "./chrome";
 import { HOME, HOME_LANGS, HOME_PATH, type HomeLang } from "./home-i18n";
 import { CONTACT_PATH } from "./contact/contact-i18n";
 import { HomeFx } from "./home-fx";
+import { HitBeacon } from "./hit-beacon";
 import { ContactPersonSec } from "./contact-person";
 import { DOT_MAPS } from "@/content/home-dot-maps";
 import { COUNTRIES, LEAD_COUNTRIES, type CountryCode } from "@/lib/country";
@@ -129,6 +130,8 @@ export async function Home({ lang }: { lang: HomeLang }) {
       <SiteHeader links={[["#film", "Film"], ["#contact-person", t.nav[2][1]], [contactHref, t.contact]]} cta={["#sample", t.cta]}
         langs={HOME_LANGS.map((l) => [l.toUpperCase(), HOME_PATH[l], l === lang])} />
       <HomeFx />
+      {/* Website-Trichter, Stufe „Startseite“: anonym, ohne Cookies (Datenschutz Abschnitt 5) */}
+      <HitBeacon stage="start" />
       <div className="lp2 hm hpz">
 
         <section className="hp-hero hp-grain" aria-labelledby="hero-title">

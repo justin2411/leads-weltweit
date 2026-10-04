@@ -7,7 +7,7 @@ import type { IconName } from "../app/icons";
 import type { WebStationId } from "./website-stats";
 
 export type StationId = "lead" | "gate" | "bestand" | "proben" | "kwerk" | "kaeufer" | "versand" | "antworten" | "kunden"
-  // Linie „Website“ (Inhaber 04.10.2026: „genau die websiten namen“): Landingpage → Tarif → Stripe → Danke → Kunden;
+  // Linie „Website“ (Inhaber 04.10.2026: „genau die websiten namen“): Startseite → Landingpage → Tarif → Stripe → Danke → Kunden;
   // Klick öffnet die Auswertung. Stationen und Werte: webLine() in lib/website-stats.ts
   | WebStationId;
 export type StationState = "live" | "idle" | "off" | "bad";
@@ -16,9 +16,9 @@ export type Station = { id: StationId; label: string; icon: IconName; value: str
   auto?: boolean };
 export type Edge = { from: StationId; to: StationId; perHour: number; label: string };
 
-export const ORDER: StationId[] = ["lead", "gate", "bestand", "proben", "kwerk", "kaeufer", "versand", "antworten", "wland", "wtarif", "wstripe", "wdanke", "kunden"];
+export const ORDER: StationId[] = ["lead", "gate", "bestand", "proben", "kwerk", "kaeufer", "versand", "antworten", "wstart", "wland", "wtarif", "wstripe", "wdanke", "kunden"];
 /** Stationen der Linie „Website“ – öffnen /dashboard/website/auswertung statt eines Seitenfensters. */
-export const WEB_STATIONS: StationId[] = ["wland", "wtarif", "wstripe", "wdanke"];
+export const WEB_STATIONS: StationId[] = ["wstart", "wland", "wtarif", "wstripe", "wdanke"];
 
 /**
  * Positionen in Prozent der Kartenfläche (x, y). Oben die Ware (Leads), in der Mitte die Käufer, unten die Website;
@@ -28,12 +28,13 @@ export const POS: Record<"wide" | "tall", Record<StationId, [number, number]>> =
   wide: {
     lead: [8, 16], gate: [27, 16], bestand: [46, 16], proben: [65, 16],
     kwerk: [8, 50], kaeufer: [27, 50], versand: [46, 50], antworten: [65, 50], kunden: [89, 50],
-    wland: [8, 84], wtarif: [27, 84], wstripe: [46, 84], wdanke: [65, 84],
+    // fünf Website-Stationen auf derselben Strecke wie die vier oben (8 … 70 %)
+    wstart: [8, 84], wland: [23.5, 84], wtarif: [39, 84], wstripe: [54.5, 84], wdanke: [70, 84],
   },
   tall: {
     lead: [17, 7], gate: [17, 26], bestand: [17, 45], proben: [17, 64],
     kwerk: [50, 7], kaeufer: [50, 26], versand: [50, 45], antworten: [50, 64], kunden: [50, 89],
-    wland: [83, 7], wtarif: [83, 26], wstripe: [83, 45], wdanke: [83, 64],
+    wstart: [83, 6], wland: [83, 20.5], wtarif: [83, 35], wstripe: [83, 49.5], wdanke: [83, 64],
   },
 };
 /** Größe der Zeichenfläche (viewBox) je Layout. */

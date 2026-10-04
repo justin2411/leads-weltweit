@@ -105,11 +105,34 @@ export function isBot(ua: string | null | undefined): boolean {
 
 export type Beacon =
   | { kind: "legacy"; variant_id: string; type: "view" | "cta_click" }
-  | { kind: "view"; variant_id: string; pv: string; src: Source; subj: "A" | "B" | null; device: Device }
+  | { kind: "view"; variant_id: string; pv: string; src: Source; subj: "A" | "B" | null; device: Device; ref: string | null }
   | { kind: "click"; variant_id: string; pv: string; x: number; y: number; el: ElKind; label: string | null; device: Device; cta: boolean }
-  | { kind: "end"; variant_id: string; pv: string; depth: 0 | 25 | 50 | 75 | 100; dwell: Dwell }
-  /** Aufruf der Tarifseite /[country]/[segment]/start (nur für eindeutige Besucher, ohne Heatmap) */
-  | { kind: "visit"; variant_id: string; page: "tarif" };
+  | { kind: "end"; variant_id: string; pv: string; depth: 0 | 25 | 50 | 75 | 100; dwell: Dwell; ds: number | null }
+  /** Aufruf der Tarifseite /[country]/[segment]/start (älterer Beacon, nur eindeutige Besucher) */
+  | { kind: "visit"; variant_id: string; page: "tarif" }
+  /** Trichter-Aufruf (Startseite, Tarif, Danke): Stufe, Gerät, Herkunft; Startseite ohne Variante */
+  | { kind: "hit"; stage: HitStage; variant_id: string | null; pv: string; src: Source; ref: string | null; device: Device }
+  /** Ende eines Trichter-Aufrufs: sichtbare Sekunden und Scrolltiefe */
+  | { kind: "hit_end"; pv: string; ds: number; depth: 0 | 25 | 50 | 75 | 100 };
+
+/** Stufen, die der Browser meldet (Landingpage über „view“, Stripe serverseitig in /api/checkout). */
+export type HitStage = "start" | "tarif" | "danke";
+const HIT_STAGES: HitStage[] = ["start", "tarif", "danke"];
+
+/**
+ * Herkunfts-Kennung für den Trichter: utm_source (falls gesetzt) oder die Domain der vorherigen Seite – nie Pfad oder
+ * Parameter. Eigene Domain → null. Nur [a-z0-9._-], höchstens 60 Zeichen.
+ */
+export function refKey(utmSource: string | null | undefined, referrerHost: string, ownHost: string): string | null {
+  const clean = (x: string) => x.toLowerCase().replace(/[^a-z0-9._-]/g, "").replace(/^[._-]+/, "").slice(0, 60);
+  const u = clean(String(utmSource ?? "").slice(0, 80));
+  if (u) return u;
+  const h = clean((referrerHost || "").replace(/^www\./i, ""));
+  const own = (ownHost || "").toLowerCase().split(":")[0].replace(/^www\./, "");
+  return h && h !== own ? h : null;
+}
+
+const REF_RE = /^[a-z0-9][a-z0-9._-]{0,59}$/;
 
 const int = (x: unknown): number | null => (typeof x === "number" && Number.isInteger(x) ? x : null);
 
@@ -117,18 +140,33 @@ const int = (x: unknown): number | null => (typeof x === "number" && Number.isIn
 export function parseBeacon(body: unknown): Beacon | null {
   if (!body || typeof body !== "object" || Array.isArray(body)) return null;
   const b = body as Record<string, unknown>;
+  const t = b.type;
+  const devOk = DEVICES.includes(b.dev as Device) ? (b.dev as Device) : null;
+  if (t === "hit") {
+    const stage = b.st as HitStage;
+    if (!HIT_STAGES.includes(stage) || !isUuid(b.pv) || !devOk || !SOURCES.includes(b.src as Source)) return null;
+    const vid = b.variant_id === undefined || b.variant_id === null ? null : isUuid(b.variant_id) ? b.variant_id.toLowerCase() : undefined;
+    if (vid === undefined || (stage !== "start" && !vid)) return null;
+    const ref = typeof b.ref === "string" && REF_RE.test(b.ref) ? b.ref : null;
+    return { kind: "hit", stage, variant_id: vid, pv: (b.pv as string).toLowerCase(), src: b.src as Source, ref, device: devOk };
+  }
+  if (t === "hit_end") {
+    const ds = int(b.ds), depth = int(b.depth);
+    if (!isUuid(b.pv) || ds === null || ds < 0 || depth === null || ![0, 25, 50, 75, 100].includes(depth)) return null;
+    return { kind: "hit_end", pv: (b.pv as string).toLowerCase(), ds: Math.min(ds, 1800), depth: depth as 0 | 25 | 50 | 75 | 100 };
+  }
   const variant_id = b.variant_id;
   if (!isUuid(variant_id)) return null;
-  const t = b.type;
   if ((t === "view" || t === "cta_click") && b.pv === undefined) return { kind: "legacy", variant_id: variant_id.toLowerCase(), type: t };
   if (t === "visit") return b.pg === "tarif" ? { kind: "visit", variant_id: variant_id.toLowerCase(), page: "tarif" } : null;
   if (!isUuid(b.pv)) return null;
   const pv = (b.pv as string).toLowerCase();
-  const device = DEVICES.includes(b.dev as Device) ? (b.dev as Device) : null;
+  const device = devOk;
   if (t === "view") {
     if (!SOURCES.includes(b.src as Source) || !device) return null;
     const subj = b.src === "mail" ? subjectOf(typeof b.sv === "string" ? b.sv : null) : null;
-    return { kind: "view", variant_id: variant_id.toLowerCase(), pv, src: b.src as Source, subj, device };
+    const ref = typeof b.ref === "string" && REF_RE.test(b.ref) ? b.ref : null;
+    return { kind: "view", variant_id: variant_id.toLowerCase(), pv, src: b.src as Source, subj, device, ref };
   }
   if (t === "click") {
     const x = int(b.x), y = int(b.y);
@@ -141,7 +179,9 @@ export function parseBeacon(body: unknown): Beacon | null {
   if (t === "end") {
     const depth = int(b.depth);
     if (depth === null || ![0, 25, 50, 75, 100].includes(depth) || !DWELLS.includes(b.dwell as Dwell)) return null;
-    return { kind: "end", variant_id: variant_id.toLowerCase(), pv, depth: depth as 0 | 25 | 50 | 75 | 100, dwell: b.dwell as Dwell };
+    const ds = int(b.ds);
+    return { kind: "end", variant_id: variant_id.toLowerCase(), pv, depth: depth as 0 | 25 | 50 | 75 | 100, dwell: b.dwell as Dwell,
+             ds: ds === null || ds < 0 ? null : Math.min(ds, 1800) };
   }
   return null;
 }
@@ -379,6 +419,8 @@ export type WebsiteLive = {
   views_30d: number; cta_30d: number; req_30d: number; buy_30d: number;
   mail_views_30d: number; mails_30d: number;
   visitors_since?: string | null;
+  /** Startseite (Website-Trichter, web_funnel_refresh) – fehlt ohne Messung */
+  start_60m?: number; start_24h?: number; start_30d?: number; start_land_60m?: number;
 };
 export const EMPTY_WEBSITE: WebsiteLive = {
   land_60m: 0, land_24h: 0, land_30d: 0, tarif_60m: 0, tarif_24h: 0, tarif_30d: 0, tarif_views_30d: 0, co_60m: 0, co_24h: 0, co_30d: 0,
@@ -386,11 +428,11 @@ export const EMPTY_WEBSITE: WebsiteLive = {
   views_30d: 0, cta_30d: 0, req_30d: 0, buy_30d: 0, mail_views_30d: 0, mails_30d: 0,
 };
 
-/** Stationen der Linie (Inhaber 04.10.2026: „genau die websiten namen: Landingpage, Tarif, Stripe, Danke“). */
-export type WebStationId = "wland" | "wtarif" | "wstripe" | "wdanke";
+/** Stationen der Linie (Inhaber 04.10.2026: „genau die websiten namen: Landingpage, Tarif, Stripe, Danke“; Startseite davor). */
+export type WebStationId = "wstart" | "wland" | "wtarif" | "wstripe" | "wdanke";
 export type WebNeck = WebStationId;
-export const WEB_LINE: { id: WebStationId; label: "Landingpage" | "Tarif" | "Stripe" | "Danke" }[] = [
-  { id: "wland", label: "Landingpage" }, { id: "wtarif", label: "Tarif" }, { id: "wstripe", label: "Stripe" }, { id: "wdanke", label: "Danke" },
+export const WEB_LINE: { id: WebStationId; label: "Startseite" | "Landingpage" | "Tarif" | "Stripe" | "Danke" }[] = [
+  { id: "wstart", label: "Startseite" }, { id: "wland", label: "Landingpage" }, { id: "wtarif", label: "Tarif" }, { id: "wstripe", label: "Stripe" }, { id: "wdanke", label: "Danke" },
 ];
 /** Ehrlicher Hinweis an der Linie (Inhaber: „wie zuverlässig kannst du die werte tracken“). */
 export const WEB_INFO = "eindeutig je Tag, ohne Cookies – Gerätewechsel zählt doppelt, Inhaber ausgeblendet";
@@ -408,13 +450,15 @@ export function webNeck(w: WebsiteLive): WebNeck | null {
   return null;
 }
 
-type WebStation = { id: WebStationId; label: string; icon: "website" | "tarif" | "karte" | "ok-kreis"; value: string; sub: string; state: "live" | "idle"; tip: string };
+type WebStation = { id: WebStationId; label: string; icon: "start-seite" | "website" | "tarif" | "karte" | "ok-kreis"; value: string; sub: string; state: "live" | "idle"; tip: string };
 type WebEdge = { from: WebStationId; to: WebStationId | "kunden"; perHour: number; label: string };
 
 /** Stationen und Leitungen der Linie „Website“ (Werte aus echten Zählungen; fmt = kompakte Zahl). */
 export function webLine(w: WebsiteLive, fmt: (n: number) => string = String): { stations: WebStation[]; edges: WebEdge[] } {
   const live = (n: number) => (n > 0 ? "live" : "idle") as "live" | "idle";
   const stations: WebStation[] = [
+    { id: "wstart", label: "Startseite", icon: "start-seite", value: fmt(w.start_24h ?? 0), sub: "Besucher 24 h", state: live(w.start_60m ?? 0),
+      tip: `eindeutige Besucher der Startseite in 24 h · ${WEB_INFO}` },
     { id: "wland", label: "Landingpage", icon: "website", value: fmt(w.land_24h), sub: "Besucher 24 h", state: live(w.land_60m),
       tip: `eindeutige Besucher der Landingpages in 24 h (${fmt(w.views_24h)} Aufrufe gesamt) · ${WEB_INFO}` },
     { id: "wtarif", label: "Tarif", icon: "tarif", value: fmt(w.tarif_24h), sub: "Besucher 24 h", state: live(w.tarif_60m),
@@ -425,6 +469,7 @@ export function webLine(w: WebsiteLive, fmt: (n: number) => string = String): { 
       tip: "abgeschlossene Käufe in 24 h · 30 Tage (Stripe-Webhook)" },
   ];
   const edges: WebEdge[] = [
+    { from: "wstart", to: "wland", perHour: w.start_land_60m ?? 0, label: "zur Landingpage" },
     { from: "wland", to: "wtarif", perHour: w.tarif_60m, label: "zum Tarif" },
     { from: "wtarif", to: "wstripe", perHour: w.co_60m, label: "Checkouts" },
     { from: "wstripe", to: "wdanke", perHour: w.buy_60m, label: "Käufe" },

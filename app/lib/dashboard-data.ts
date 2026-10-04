@@ -7,6 +7,7 @@ import type { DailyRow } from "@/lib/dashboard-periods";
 import { merge, type OwnerSettings } from "@/lib/owner-settings";
 import { EMPTY_ACTIVITY, type Activity } from "@/lib/werke-live";
 import { EMPTY_WEBSITE, type WebsiteLive, type WebsiteStats } from "@/lib/website-stats";
+import type { FunnelCache } from "@/lib/website-funnel";
 import opsConfig from "@/lib/ops-config.json";
 
 /**
@@ -85,6 +86,31 @@ export async function loadWebsite(): Promise<WebsiteLive> {
     return { ...EMPTY_WEBSITE, ...(data.value as Partial<WebsiteLive>) };
   } catch {
     return EMPTY_WEBSITE;
+  }
+}
+
+/**
+ * Website-Trichter Startseite → Landingpage → Tarif → Stripe → Danke (Inhaber 04.10.2026): vorgerechnet in
+ * signalwerk.dashboard_cache ('website_funnel', web_funnel_refresh) für 24 h / 7 / 30 Tage. Älter als maxAgeMs →
+ * im Hintergrund neu rechnen; fehlt die Zeile, einmal direkt (höchstens 4 s warten). Fehler → null („noch keine Messung“).
+ */
+let funnelRefreshing: Promise<unknown> | null = null;
+function refreshFunnel(): Promise<FunnelCache> {
+  const p = rpc<FunnelCache>("web_funnel_refresh", {}, 20_000);
+  funnelRefreshing = p.finally(() => { funnelRefreshing = null; });
+  return p;
+}
+export async function loadFunnelCache(maxAgeMs = 2 * 60_000): Promise<FunnelCache | null> {
+  try {
+    const { data } = await db().from("dashboard_cache").select("value, updated_at").eq("name", "website_funnel")
+      .abortSignal(AbortSignal.timeout(3000)).maybeSingle();
+    if (!data) return await Promise.race([refreshFunnel(), new Promise<null>((ok) => setTimeout(() => ok(null), 4000))]);
+    if (Date.now() - Date.parse(data.updated_at) > maxAgeMs && !funnelRefreshing) {
+      after(() => refreshFunnel().catch(() => {}));
+    }
+    return data.value as FunnelCache;
+  } catch {
+    return null;
   }
 }
 

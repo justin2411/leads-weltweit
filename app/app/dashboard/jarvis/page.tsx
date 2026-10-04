@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadBoxHealth, loadDaily, loadFunnel, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock, loadWebsite } from "@/lib/dashboard-data";
+import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadBoxHealth, loadDaily, loadFunnel, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock, loadWebsite, loadFunnelCache } from "@/lib/dashboard-data";
 import { webLine, webNeck } from "@/lib/website-stats";
+import { startLive } from "@/lib/website-funnel";
 import { werkLine, werkTip } from "@/lib/werk-zeile";
 import { berlin, berlinDay, brake, chain, compact, currencySign, greeting, mailboxes, monthly, nextWorkflowRun, onlySegment, realSubscriptions, sampleStock, stockSegment, BOX_MIN, COUNTRY_COLOR } from "@/lib/dashboard-logic";
 import { totals } from "@/lib/dashboard-periods";
@@ -65,7 +66,8 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const kaP = countCustomerAgents();
   const chatP = loadStartChat();
   const propP = loadProposals();
-  const webP = loadWebsite();
+  // Station „Startseite“ aus dem Website-Trichter (web_funnel_refresh); fehlt die Messung, bleibt sie bei 0
+  const webP = Promise.all([loadWebsite(), loadFunnelCache(5 * 60_000)]).then(([w, f]) => ({ ...w, ...startLive(f) }));
   const stockP = loadStock();
   stockP.catch(() => {});
   const today = berlinDay(new Date());
