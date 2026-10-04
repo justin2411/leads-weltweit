@@ -19,21 +19,16 @@ def flush():
 
 
 try:
-    for u in ["https://files.data.gouv.fr/robots.txt", "https://object.files.data.gouv.fr/data-pipeline-open/robots.txt"]:
-        r = requests.get(u, headers=H, timeout=60)
-        p("===", u, r.status_code, r.text[:300].replace("\n", " | "))
-    r = requests.get("https://www.data.gouv.fr/api/1/datasets/base-sirene-des-entreprises-et-de-leurs-etablissements-siren-siret/",
-                     headers=H, timeout=60)
-    d = r.json()
-    p("DS", d.get("title"), d.get("license"))
-    for res in d.get("resources", [])[:25]:
-        p("  RES", (res.get("title") or "")[:70], res.get("format"), res.get("filesize"), res.get("last_modified"), res.get("url"))
-    r = requests.get("https://recherche-entreprises.api.gouv.fr/openapi.json", headers=H, timeout=60)
-    p("openapi", r.status_code)
-    if r.ok:
-        for path, ops in r.json().get("paths", {}).items():
-            for op in ops.values():
-                p(" PATH", path, ",".join(x.get("name", "") for x in op.get("parameters", [])))
+    import re
+    B = "https://object.files.data.gouv.fr/data-pipeline-open/"
+    def ls(prefix):
+        r = requests.get(B, params={"list-type": "2", "prefix": prefix, "delimiter": "/", "max-keys": "1000"}, headers=H, timeout=60)
+        pre = re.findall(r"<Prefix>([^<]*)</Prefix>", r.text)
+        keys = re.findall(r"<Key>([^<]*)</Key><LastModified>([^<]*)</LastModified><ETag>[^<]*</ETag><Size>(\d+)", r.text)
+        return r.status_code, pre, keys, r.text[:300]
+    for pre in ["", "prod/", "siren/", "insee/", "prod/insee/", "prod/rne/", "rne/"]:
+        st, prefs, keys, raw = ls(pre)
+        p("LS", repr(pre), st, prefs[:30], [(k, s) for k, _, s in keys[-8:]], "" if (prefs or keys) else raw.replace("\n", " "))
 except Exception as e:  # noqa: BLE001
     p("FEHLER", e)
 flush()
