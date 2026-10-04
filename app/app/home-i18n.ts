@@ -116,7 +116,7 @@ export const HOME: Record<HomeLang, HomeText> = {
       "it-services": ["IT services", "Growing companies with new sites and IT roles to fill."],
     },
     pcKick: "Your personal contact",
-    pcH: ["One person who makes your leads ", "fit better every week"],
+    pcH: ["One person who makes your leads fit ", "better every week"],
     pcLede: "You are not a ticket number. Your contact looks after you only, learns which leads work for you and adjusts every delivery.",
     pcList: [
       ["user", "Only for you", "One contact who knows your firm and your goals."],
