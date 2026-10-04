@@ -31,6 +31,8 @@ import { loadProposals } from "@/lib/vorschlaege-data";
 import { AutopilotPanel } from "./autopilot";
 import { GateRings, GateSteps, Reasons, type GateView } from "./freigabe";
 import { JarvisView } from "./view";
+import { loadUeberblick } from "@/lib/ueberblick-data";
+import { bar, dayShare, heuteWichtig, judgeFlow, leadZiel, stillTip, switchedOff, zeitleiste } from "@/lib/ueberblick";
 import { Icon, type IconName } from "@/app/icons";
 import type { FunnelRow } from "@/lib/dashboard-logic";
 
@@ -74,6 +76,8 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   stockP.catch(() => {});
   const today = berlinDay(new Date());
   const from7 = new Date(Date.parse(`${today}T12:00:00Z`) - 6 * 86_400_000).toISOString().slice(0, 10);
+  // Überblick (Heute wichtig, Ziel-vs-Ist, Entscheidungen, Datenfluss-Alarm): parallel, jede Quelle einzeln fehlertolerant
+  const ubP = loadUeberblick(SEGMENT, COUNTRIES, today);
   // Sparklines und Trend (7 T vs. Vor-7 T): 15 Tage bis heute, kpi_daily parallel (Fehler → leer)
   const from15 = addDays(today, -14);
   const kpiP = loadKpiDaily(from15, today);
@@ -186,8 +190,15 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
 
   // ---------------------------------------------------------------- JARVIS, Ampeln, Ticker
   // Wichtigstes zuerst (Nachtschicht 04.10.2026): Notbremse, offene Antworten, leerer Proben-Vorrat vor den Werk-Hinweisen
+  // Datenfluss-Alarm (PR #329, wie scripts/datenfluss.py stillstand): Stationen ohne Zuwachs seit > 3× üblich
+  const ub = await ubP;
+  const stillRows = ub.flow ?? [];
+  const still = judgeFlow(stillRows, now, switchedOff({ lead_suche: CONFIG.lead_suche, kunden_suche: CONFIG.kunden_suche, versand_aktiv: CONFIG.versand.aktiv,
+    werke_paused: own.werke_paused, send_paused: own.send_paused }, stillRows));
+  const stillTips: Tip[] = still.filter((a) => a.stufe === "rot" || a.stufe === "gelb").map(stillTip);
   const tips = rankTips([
     ...(nb.stop ? [{ level: "rot" as const, title: "Notbremse: Versand gestoppt", text: `${nb.stop}. Neustart nur nach deiner Entscheidung.`, href: "/dashboard/versand" }] : []),
+    ...stillTips,
     ...alarmTips({ openReplies, samplesReady: st.length ? ready : null, samplesTarget: target }),
     // Offene Probe-Anfragen der Website (alle Zielgruppen/Länder): sofort sichtbar, ab 15 min rot
     ...(() => {
@@ -226,6 +237,27 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
       : { label: "Antworten 7 Tage", value: `${w.replies}`, sub: `${w.positive} positiv`, tone: w.positive ? "green" : w.replies ? "cyan" : "grey", href: base("antworten"), icon: "antworten" },
   ];
   const startAt = agentStartLabel(now);
+  // ---------------------------------------------------------------- Überblick
+  const stichBy = new Map<string, { country: string; candidates: number; green: number }>();
+  for (const r of sp7) { const x = stichBy.get(r.country) ?? { country: r.country, candidates: 0, green: 0 }; x.candidates += r.candidates; x.green += r.green; stichBy.set(r.country, x); }
+  const heute = heuteWichtig({
+    brake: nb.stop ?? null,
+    deliver: ub.deliver,
+    openReplies,
+    stich: [...stichBy.values()].filter((r) => countries.includes(r.country)),
+    bad: stations.filter((x) => x.state === "bad" && x.id !== "versand").map((x) => ({ id: x.id, label: x.label })),
+    neck: neck && neckLabel ? { id: neck, label: neckLabel } : null,
+    still,
+  });
+  // Mails: Tagesziel je Land = Anteil an der Postfach-Kapazität heute, höchstens das Länder-Limit (countries.yaml/Regler)
+  const share = dayShare(now);
+  const lim = Object.fromEntries(countries.map((c) => [c, effectiveLimit(CONFIG.countries[c]?.daily_limit ?? 0, own, c)]));
+  const limSum = Object.values(lim).reduce((a, b) => a + b, 0);
+  const sentBy = (c: string) => liveAll.sent_days.filter((x) => x.day === liveAll.today && x.country === c).reduce((a, x) => a + n(x.n), 0);
+  const mailBars = countries.map((c) => bar(c, sentBy(c), limSum ? Math.min(lim[c], Math.round((cap * lim[c]) / limSum)) : 0, share));
+  // Grüne Leads: Ist = kpi_daily leads_neu heute (Stand der letzten Messung), Ziel = Ø der Vortage
+  const leadBars = ub.leads ? countries.map((c) => bar(c, ub.leads!.find((r) => r.country === c && r.day === today)?.value ?? 0, leadZiel(ub.leads!, c, today), share)) : null;
+  const zeit = ub.decisions ? zeitleiste(ub.decisions, 20) : null;
   const gateView: GateView = {
     pct: gatePct, ok: gateOk, bad: gateBad, href: base("gate"), reasonsHref: `${base("gate")}&t=check&f=rot`,
     countries: countries.map((c) => { const r = sp7.find((x) => x.country === c); return { c, pct: r && r.candidates ? Math.round((r.green / r.candidates) * 1000) / 10 : null }; }),
@@ -404,7 +436,8 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   return (
     <JarvisView hello={hello} say={say} kpis={kpis} recs={recs} rest={rest} tipHref={tipHref} agent={freeAgent(agentTasks)}
       tasks={agentTasks} startAt={startAt} activeAgent={ag} stations={stations} edges={edges} activeStation={s} stationHref={href}
-      drawer={drawer} gate={gateView} ticker={ticker(items)} customerAgents={await kaP} chat={await chatP} proposals={await propP} />
+      drawer={drawer} gate={gateView}
+      heute={heute} ziel={{ mails: mailBars, leads: leadBars }} zeit={zeit} ticker={ticker(items)} customerAgents={await kaP} chat={await chatP} proposals={await propP} />
   );
 }
 

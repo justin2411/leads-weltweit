@@ -1,7 +1,7 @@
 /**
  * Aufbau der JARVIS-Startseite (Inhaber 04.10.2026: „optimiere nochmal das design bei jarvis“) – reine Darstellung,
- * alle Zahlen kommen fertig aus page.tsx. Reihenfolge: Kopf (Begrüßung, Uhr) · 4 Kern-Kennzahlen · JARVIS empfiehlt (X = ausblenden) ·
- * Agenten A1–A8 · Fluss-Karte (mit Seitenfenster) · Chat und Freigabe (unten rechts) · Live-Ticker.
+ * alle Zahlen kommen fertig aus page.tsx. Reihenfolge: Kopf (Begrüßung, Uhr) · Heute wichtig · 4 Kern-Kennzahlen · Ziel vs. Ist · JARVIS empfiehlt (X = ausblenden) ·
+ * Agenten A1–A8 · Fluss-Karte (mit Seitenfenster) · Entscheidungen · Chat und Freigabe (unten rechts) · Live-Ticker.
  * Raster in 8er-Schritten, Karten je Reihe gleich hoch, am Handy eine Spalte ohne seitliches Scrollen.
  */
 import type { ReactNode } from "react";
@@ -21,6 +21,8 @@ import { Clock, Voice } from "./voice";
 import { Vorschlaege } from "./vorschlaege";
 import { JCHAT_CSS, SOFORT_CSS } from "./chat/css";
 import type { Proposal } from "@/lib/vorschlaege";
+import type { Bar, Eintrag, Wichtig } from "@/lib/ueberblick";
+import { HeuteWichtig, ZielIst, Zeitleiste } from "./ueberblick";
 
 export type JarvisProps = {
   hello: string; say: string;
@@ -36,6 +38,10 @@ export type JarvisProps = {
   chat?: StartChat | null;
   /** Vorschläge mit Haken/Kreuz und „JARVIS hat umgesetzt“ (decisions); null = nicht lesbar */
   proposals?: { open: Proposal[]; done: Proposal[] } | null;
+  /** Überblick: Heute wichtig (≤ 3), Ziel-vs-Ist je Land, Entscheidungs-Zeitleiste (lib/ueberblick.ts) */
+  heute?: Wichtig[];
+  ziel?: { mails: Bar[]; leads: Bar[] | null };
+  zeit?: Eintrag[] | null;
 };
 
 export function JarvisView(p: JarvisProps) {
@@ -50,7 +56,9 @@ export function JarvisView(p: JarvisProps) {
         </div>
         <Clock />
       </header>
+      {p.heute && <HeuteWichtig items={p.heute} />}
       <Ampeln items={p.kpis} />
+      {p.ziel && <ZielIst mails={p.ziel.mails} leads={p.ziel.leads} href={{ mails: () => "/dashboard/jarvis?s=versand", leads: () => "/dashboard/jarvis?s=lead" }} />}
       {p.proposals && <Vorschlaege open={p.proposals.open} done={p.proposals.done} />}
       <Empfiehlt recs={p.recs} href={p.tipHref} agent={p.agent}>
         {p.rest.length > 0 && (
@@ -68,6 +76,7 @@ export function JarvisView(p: JarvisProps) {
         <FlowMap stations={p.stations} edges={p.edges} active={p.activeAgent ? null : p.activeStation} href={p.stationHref} />
         {p.drawer}
       </div>
+      {p.zeit !== undefined && <Zeitleiste items={p.zeit} />}
       <div className="jv-duo">
         <JarvisChat tasks={p.tasks} startAt={p.startAt} chat={p.chat ?? null} />
         <GatePanel g={p.gate} />
