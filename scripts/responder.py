@@ -981,6 +981,47 @@ def match_sent(db, msg, sender: str) -> tuple[dict | None, dict | None, str]:
     return None, None, ""
 
 
+_CUSTOMER_AGENTS: dict[int, dict[str, dict]] = {}
+
+
+def customer_agent_of(db, sender: str) -> dict | None:
+    """Kunde mit aktivem Kunden-Agenten (docs/KUNDEN-AGENTEN.md) zur Absenderadresse – einmal je Lauf geladen.
+    Fehlt die Tabelle noch oder ist sie nicht lesbar: None (alles wie bisher)."""
+    if id(db) not in _CUSTOMER_AGENTS:
+        found: dict[str, dict] = {}
+        try:
+            from customer_agents import agent_for_customer, norm_email
+            agents = db.select_all("customer_agents", {"status": "neq.pausiert", "select": "id,customer_id,status,created_at"})
+            if agents:
+                for c in db.select_all("customers", {"select": "id,billing_email"}):
+                    a = agent_for_customer(c["id"], agents)
+                    if a and c.get("billing_email"):
+                        found[norm_email(c["billing_email"])] = a
+        except Exception as exc:  # noqa: BLE001
+            print(f"  Hinweis: Kunden-Agenten nicht lesbar ({exc.__class__.__name__}) – Kundenmails wie bisher")
+        _CUSTOMER_AGENTS[id(db)] = found
+    return _CUSTOMER_AGENTS[id(db)].get((sender or "").lower())
+
+
+def handle_customer(db, msg, mid: str, sender: str, text: str, apply: bool, own: set[str]) -> str | None:
+    """Mail eines Kunden mit Kunden-Agent: keine automatische Antwort aus Textbausteinen, sondern ins Cockpit
+    (auto_action 'kunde'); customer_agents.py inbox ordnet sie dem Agenten zu und legt den Auftrag an.
+    Abmeldungen, Rückläufer, Systemmails und Autoresponder laufen wie bisher (Abmeldung sperrt immer)."""
+    from inbox import is_bounce, is_optout_text
+    if sender in own or not customer_agent_of(db, sender):
+        return None
+    if (is_bounce(msg) or is_system_mail(sender, msg) or is_auto_reply(msg) or subject_optout(msg.get("Subject"))
+            or is_optout_text(_raw_text(msg))):
+        return None
+    if db.select("inbound_replies", {"imap_message_id": f"eq.{mid}", "select": "id"}):
+        return "done"
+    print(f"{sender:<35} Kunde mit Kunden-Agent -> kunde ({(msg.get('Subject') or '')[:60]})")
+    if apply:
+        record_reply(db, mid, msg, sender, text, None, None,
+                     {"intent": "other", "summary_de": "Kundenmail an den Kunden-Agenten"}, "kunde")
+    return "kunde"
+
+
 def alert_title(intent: str | None) -> str:
     return {"buy": "Kaufinteresse", "question": "Frage", "sample": "Probe"}.get(intent or "", "Antwort")
 
@@ -1000,6 +1041,9 @@ def handle_message(db, msg: EmailMessage, mid: str, apply: bool, own: set[str] |
         return "ignore"
     text = _text(msg)
     from inbox import is_optout_text
+    kunde = handle_customer(db, msg, mid, sender, text, apply, own)
+    if kunde:
+        return kunde
     # Nur Antworten von Firmen, die wir angeschrieben haben: zuerst über den Mail-Verlauf, dann über die Domain
     p, m, how = match_sent(db, msg, sender)
     if not m:
@@ -1232,7 +1276,8 @@ def main(argv=None) -> int:
     # (dort nur Antworten auf unsere Mails), siehe lib/imap_boxes.py
     from lib.imap_boxes import fallback_id, read_all
     since = (dt.date.today() - dt.timedelta(days=args.days)).strftime("%d-%b-%Y")
-    handled = {"owner": 0, "sample": 0, "faq": 0, "suppress": 0, "ignore": 0, "error": 0, "paused": 0, "blocked": 0}
+    handled = {"owner": 0, "sample": 0, "faq": 0, "suppress": 0, "ignore": 0, "error": 0, "paused": 0, "blocked": 0,
+               "kunde": 0}
     own = own_addresses()
 
     def handle(acct: dict, folder: str, num: str, msg: EmailMessage) -> None:

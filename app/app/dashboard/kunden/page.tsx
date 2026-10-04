@@ -3,6 +3,7 @@ import { PACKAGES } from "@/lib/owner-settings";
 import { approveFirstDelivery, createCustomer, setSubscriptionPaused } from "../control-actions";
 import { COUNTRY_COLOR, berlin, compact, currencySign, isTestCustomer, monthly, nextRun, onlySegment, realSubscriptions } from "@/lib/dashboard-logic";
 import { requireOwner } from "../actions";
+import { Icon } from "@/app/icons";
 import { Back, COUNTRY_OPTS, Chips, Crumbs, Ctrl, Kpi } from "../v2";
 import { readParams, withQuery, type SP } from "../params";
 
@@ -27,6 +28,7 @@ export default async function Kunden({ searchParams }: { searchParams: SP }) {
   return (
     <div className="v2">
       <Crumbs items={[["JARVIS", "/dashboard/jarvis"], ["Kunden & Umsatz", ""]]} />
+      <p style={{ margin: "0 0 10px" }}><a href="/dashboard/kunden-agenten" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="ansprechpartner" size={16} /> Kunden-Agenten (KI-Ansprechpartner ab Pro)</a></p>
       <div className="head2"><span /><Chips base="/dashboard/kunden" param="land" value={land} options={COUNTRY_OPTS} params={raw} dots /></div>
       <div className="kpis2 four">
         <Kpi value={compact(subs.length)} label="Kunden" tip="aktive Abos ohne Testkäufe" />

@@ -443,6 +443,7 @@ export const HUD_CSS = `
 .ag.st-fertig{--ac:#3ddc97}.ag.st-fertig .ag-s{color:#3ddc97}
 .ag.st-fehler{--ac:#ff5e73}.ag.st-fehler .ag-s{color:#ff5e73}
 .ag-new{flex:0 0 150px;border-style:dashed;border-color:rgba(226,198,143,.5)}.ag-new .ag-orb{border-color:rgba(226,198,143,.6);background:radial-gradient(circle,#2a2416,#06101f 70%)}.ag-new .ag-orb b{font-size:24px;color:var(--gold2)}
+.ag-ka{flex:0 0 190px;border-color:rgba(226,198,143,.35)}.ag-ka .ag-orb{border-color:rgba(226,198,143,.6);background:radial-gradient(circle,#2a2416,#06101f 70%)}.ag-ka .ag-orb b{color:var(--gold2)}
 .agf{display:grid;gap:12px}.agf fieldset{border:0;margin:0;padding:0;display:grid;gap:6px}.agf legend{font-size:13px;font-weight:700;color:var(--cy2);margin-bottom:4px}
 .chips3{display:flex;flex-wrap:wrap;gap:6px}.chips3 label{cursor:pointer}.chips3 input{position:absolute;opacity:0;pointer-events:none}
 .chips3 span{display:inline-block;padding:6px 12px;border:1px solid var(--line);border-radius:999px;font-size:13.5px;font-weight:600;color:#a9c3e3;background:rgba(2,8,18,.5)}

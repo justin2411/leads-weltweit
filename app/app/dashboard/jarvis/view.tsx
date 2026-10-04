@@ -24,6 +24,7 @@ export type JarvisProps = {
   drawer: ReactNode;
   gate: GateView;
   ticker: TickerItem[];
+  customerAgents?: number | null;
 };
 
 export function JarvisView(p: JarvisProps) {
@@ -45,7 +46,7 @@ export function JarvisView(p: JarvisProps) {
           </div>
         )}
       </Empfiehlt>
-      <AgentRow tasks={p.tasks} active={p.activeAgent} startAt={p.startAt} />
+      <AgentRow tasks={p.tasks} active={p.activeAgent} startAt={p.startAt} customerAgents={p.customerAgents} />
       <div className="jv-stage">
         <FlowMap stations={p.stations} edges={p.edges} active={p.activeAgent ? null : p.activeStation} href={p.stationHref} />
         {p.drawer}

@@ -16,6 +16,8 @@ export const SECTIONS: [string, string, IconName][] = [
   ["/dashboard/kunden", "Kunden", "kunden"],
   // Inhaber 04.10.2026: alte Ansicht raus – Gehirn (Schalter, Seiten, Entscheidungen) hat eine eigene Seite
   ["/dashboard/gehirn", "Gehirn", "gehirn"],
+  // Inhaber 04.10.2026: KI-Ansprechpartner je Kunde ab Pro (docs/KUNDEN-AGENTEN.md)
+  ["/dashboard/kunden-agenten", "Kunden-Agenten", "ansprechpartner"],
 ];
 
 /** Bereiche des Dashboards: oben als Tabs, am Handy als Leiste unten. Land- und Zeitraum-Auswahl bleiben erhalten.
@@ -32,7 +34,8 @@ export function Nav({ bottom = false, badges = {} }: { bottom?: boolean; badges?
   return (
     <nav className={bottom ? "bnav" : "tabs"} aria-label="Bereiche">
       {SECTIONS.map(([href, label, icon]) => {
-        const on = href === "/dashboard" ? path === href : path.startsWith(href);
+        // „/dashboard/kunden“ darf bei „/dashboard/kunden-agenten“ nicht mit leuchten: nur gleicher Pfad oder Unterseite
+        const on = href === "/dashboard" ? path === href : path === href || path.startsWith(`${href}/`);
         const n = badges[href] ?? 0;
         return (
           <Link key={href} href={href + q} className={`${on ? "on" : ""}${href.endsWith("/jarvis") ? " jv-tab" : ""}`.trim() || undefined}

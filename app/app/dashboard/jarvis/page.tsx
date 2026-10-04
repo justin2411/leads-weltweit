@@ -19,6 +19,7 @@ import { Drawer, MiniBars, type Kpi } from "./flow";
 import { Bays, LANE_COLOR, Reactor, UtilChart, laneColor } from "./hud";
 import { Pult } from "./pult";
 import { AgentDrawer, AgentRow } from "./agents";
+import { countCustomerAgents } from "@/lib/customer-agents-data";
 import { AutopilotPanel } from "./autopilot";
 import { GateRings, GateSteps, Reasons, type GateView } from "./freigabe";
 import { JarvisView } from "./view";
@@ -56,6 +57,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const tab = (sp.t === "set" || sp.t === "check" ? sp.t : "info") as "info" | "set" | "check";
   // Agenten: ?a=1…4 oder ?a=neu öffnet das Agenten-Fenster (statt einer Station)
   const ag = typeof sp.a === "string" && /^([1-9]|neu)$/.test(sp.a) ? sp.a : null;
+  const kaP = countCustomerAgents();
   const stockP = loadStock();
   stockP.catch(() => {});
   const today = berlinDay(new Date());
@@ -366,7 +368,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   return (
     <JarvisView hello={hello} say={say} kpis={kpis} recs={recs} rest={rest} tipHref={tipHref} agent={freeAgent(agentTasks)}
       tasks={agentTasks} startAt={startAt} activeAgent={ag} stations={stations} edges={edges} activeStation={s} stationHref={href}
-      drawer={drawer} gate={gateView} ticker={ticker(items)} />
+      drawer={drawer} gate={gateView} ticker={ticker(items)} customerAgents={await kaP} />
   );
 }
 
