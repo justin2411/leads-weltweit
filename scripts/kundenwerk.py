@@ -90,7 +90,7 @@ NAME_CREATIVE_GB = r"(?i)\b(web|websites?|digital|creative|creatives|design|desi
 NAME_EXCLUDE = (r"(?i)(architect|interior|kitchen|furniture|landscap|garden|fashion|bridal|engineer|\bcad\b|3d|joinery|"
                 r"bathroom|print|sign|embroider|theatr|lighting|exhibition|product design|packaging|jewel|textile|tattoo|"
                 r"photograph|wedding|cake|floral|flower)")
-# allgemeine Overture-Kategorien (categories.primary), in denen solche Agenturen landen; leer zählt mit
+# allgemeine Overture-Grundkategorien (basic_category), in denen solche Agenturen landen; leer zählt mit
 NAME_NEUTRAL = ("design_service", "professional_service", "corporate_or_business_office", "technical_service",
                 "b2b_office_and_professional_service", "b2b_service", "media_service")
 CREATIVE = "namens_pool_kreativstudio"  # vorläufige Kategorie, wird im Lauf über Companies House bestätigt oder verworfen
@@ -147,7 +147,7 @@ def name_pool_where(cats: str) -> str:
     in GB ein Kreativ-/Designstudio (Bestätigung über Companies House im Lauf)."""
     neutral = ", ".join(f"'{c}'" for c in NAME_NEUTRAL)
     return (f"(taxonomy.primary IS NULL OR taxonomy.primary NOT IN ({cats})) AND len(websites) > 0 "
-            f"AND names.primary IS NOT NULL AND (categories.primary IS NULL OR categories.primary IN ({neutral})) AND ("
+            f"AND names.primary IS NOT NULL AND (basic_category IS NULL OR basic_category IN ({neutral})) AND ("
             f"(addresses[1].country = 'GB' AND (regexp_matches(names.primary, '{_q(NAME_WEB['GB'])}') OR "
             f"(regexp_matches(names.primary, '{_q(NAME_CREATIVE_GB)}') AND NOT regexp_matches(names.primary, '{_q(NAME_EXCLUDE)}'))))"
             f" OR (addresses[1].country = 'FR' AND regexp_matches(names.primary, '{_q(NAME_WEB['FR'])}')))")
