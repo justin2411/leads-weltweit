@@ -308,9 +308,9 @@ export const HUD_CSS = `
 .jv-stage{position:relative;display:grid;grid-template-columns:minmax(0,1fr);gap:16px;min-height:560px}
 .jv2.has-drw .fl-st:not(.on){opacity:.85}
 .fl{position:relative;border:1px solid var(--line);border-radius:14px;background:radial-gradient(600px 300px at 50% 50%,rgba(40,110,190,.12),transparent 70%),rgba(4,12,26,.45);padding:8px}
-.fl-lanes{position:absolute;inset:8px;display:grid;grid-template-rows:1fr 1fr;pointer-events:none}
+.fl-lanes{position:absolute;inset:8px;display:grid;grid-template-rows:repeat(3,1fr);pointer-events:none}
 .fl-lanes span{font-size:12px;font-weight:600;color:#4d6b91;padding:6px 10px;letter-spacing:.04em}
-.fl-lanes span+span{border-top:1px dashed rgba(95,212,255,.1);align-self:end;padding-bottom:6px}
+.fl-lanes span+span{border-top:1px dashed rgba(95,212,255,.1)}
 .fl-map{position:relative;width:100%}
 .fl-tall{display:none}
 .fl-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
