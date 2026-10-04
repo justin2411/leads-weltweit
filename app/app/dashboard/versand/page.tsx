@@ -1,8 +1,9 @@
 import { COUNTRIES, CONFIG, SEGMENT, loadActivity, loadDaily, loadLive, loadOwnerSettings } from "@/lib/dashboard-data";
 import { isLive } from "@/lib/werke-live";
+import { planText } from "@/lib/versandzeit";
 import { MailFlight } from "../live";
 import { Suspense } from "react";
-import { COUNTRY_COLOR, ago, berlin, berlinDay, brake, compact, funnel, mailboxes, nextRun, pctS, type Funnel } from "@/lib/dashboard-logic";
+import { COUNTRY_COLOR, ago, berlin, berlinDay, brake, compact, funnel, mailboxes, nextWorkflowRun, pctS, type Funnel } from "@/lib/dashboard-logic";
 import { Freigaben } from "./freigaben";
 import { PERIODS, period, revenueByCurrency, series, totals, type Metric } from "@/lib/dashboard-periods";
 import { effectiveLimit, FOLLOWUP_DAYS_RANGE } from "@/lib/owner-settings";
@@ -37,7 +38,7 @@ export default async function Versand({ searchParams }: { searchParams: SP }) {
   const cap = boxes.reduce((a, b) => a + b.cap, 0);
   const b = brake(live, CONFIG);
   const send = CONFIG.workflows.find((w) => w.file === "send.yml");
-  const next = send ? nextRun(send.crons, now) : null;
+  const next = nextWorkflowRun(send, now);
   const ser = countrySeries(countries);
   const range = `${berlin(`${p.from}T12:00:00Z`).slice(0, 6)} – ${berlin(`${p.to}T12:00:00Z`).slice(0, 6)}`;
   const eff = COUNTRIES.map((c) => ({ c, yaml: CONFIG.countries[c]?.daily_limit ?? 0, eff: effectiveLimit(CONFIG.countries[c]?.daily_limit ?? 0, own, c), set: own.send_country_limits[c] }));
@@ -78,7 +79,7 @@ export default async function Versand({ searchParams }: { searchParams: SP }) {
         <Kpi value={`${compact(boxes.reduce((a, x) => a + x.today, 0))} / ${cap}`} label="heute / Kapazität" tip="alle Postfächer zusammen, inkl. Nachfassmails" />
         <Kpi value={pctS(b.rate)} label="Bounce-Quote" tip={`${b.bounced} von ${b.sent} seit ${berlin(b.start)} · Notbremse ab 5 % (ab 100 Mails)`} />
         <Kpi value={own.send_paused ? "Pause" : CONFIG.versand.aktiv ? (b.stop ? "Stopp" : "läuft") : "aus"} label="Versand" tip={b.stop ?? "Hauptschalter im Dashboard + config/versand.yaml"} />
-        <Kpi value={next ? berlin(next) : "–"} label="nächster Lauf" tip="send.yml (deutsche Zeit)" />
+        <Kpi value={next ? berlin(next) : "–"} label="nächster Lauf" tip={`send.yml · ${planText()} (deutsche Zeit)`} />
       </div>
 
       <div className="vizgrid">

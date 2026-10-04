@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { CONFIG, SEGMENT, loadActivity, loadOwnerSettings, loadProduction, loadRuns, type Production } from "@/lib/dashboard-data";
-import { ago, berlin, berlinDay, compact, nextRun, type RunInfo } from "@/lib/dashboard-logic";
+import { ago, berlin, berlinDay, compact, nextWorkflowRun, type RunInfo } from "@/lib/dashboard-logic";
 import { PERIODS, buckets, period } from "@/lib/dashboard-periods";
 import { WERK_SWITCHES, werkOn, type OwnerSettings, type WerkKey } from "@/lib/owner-settings";
 import { isLive, lastActivity, liveParts, sampleErrorRate, werkStatus, type Activity, type WerkId } from "@/lib/werke-live";
@@ -91,7 +91,7 @@ function WerkCard({ c, act, runs, own, now, here }: { c: Card; act: Activity; ru
   const sw = c.key !== "freigabe" ? werkOn(own, c.key as WerkKey) : { on: true, since: null };
   const run = c.file ? runs?.find((r) => r.file === c.file) : undefined;
   const wf = c.file ? CONFIG.workflows.find((x) => x.file === c.file) : undefined;
-  const nx = wf ? nextRun(wf.crons, now) : null;
+  const nx = nextWorkflowRun(wf, now);
   const label = c.key === "freigabe" ? "Freigabe" : WERK_SWITCHES[c.key as WerkKey].label;
   const st = c.werk
     ? werkStatus({ werk: c.werk, a: act, now, maxH: c.maxH, pausedSince: sw.since, off: !sw.on, run })

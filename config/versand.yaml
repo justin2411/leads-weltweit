@@ -1,4 +1,5 @@
-# Täglicher automatischer Versand (jeden Tag 14:23 UTC) über .github/workflows/send.yml.
+# Automatischer Versand über .github/workflows/send.yml nur Di–Do zur Bürozeit der Empfänger (Inhaber 04.10.2026):
+# UK/FR ab 08:37 bis 11 Uhr, US ab 14:37 bis 19 Uhr deutscher Zeit (Plan app/lib/versandzeit.json). tagesziel gilt je Versandtag.
 # Gesendet werden nur freigegebene Entwürfe, mit Aufwärmphase (Ziel 100/Tag: 90 Kaltmails + 10 Reserve für Antworten), Notbremse
 # (Bounces über 5 %, bewertet ab 100 gesendeten Mails, oder 1 Spam-Beschwerde; scripts/lib/deliverability.py)
 # und Tagesgrenzen aus countries.yaml.

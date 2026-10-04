@@ -1,6 +1,6 @@
 # Mails senden. Nur freigegebene Entwürfe (Status "approved"), mit Aufwärmphase, Notbremse und MX-Prüfung.
 #  - manuell: "Run workflow" (Standard: Probelauf)
-#  - täglich automatisch NUR, wenn in config/versand.yaml "aktiv: true" steht (vom Inhaber freigegeben)
+#  - automatisch (Di–Do zur Bürozeit der Empfänger, Plan app/lib/versandzeit.json) NUR, wenn in config/versand.yaml "aktiv: true" steht (vom Inhaber freigegeben)
 #    ODER die Repository-Variable SENDEN_AKTIV = "ja" ist. Zum Stoppen: aktiv: false oder SENDEN_AKTIV = "nein".
 name: mails-senden
 on:
@@ -13,8 +13,20 @@ on:
         description: "Nur Probelauf (nichts senden)"
         type: boolean
         default: true
+      gruppe:
+        description: "Länder: auto = nach Versandzeit (Di–Do, UK/FR 9–11 Uhr, US ab 15 Uhr), europa, us oder alle"
+        type: choice
+        options: [auto, europa, us, alle]
+        default: auto
+  # Versandzeit (Inhaber 04.10.2026: „übernimm alle 3 punkte“): nur Di–Do zur Bürozeit der Empfänger, deutsche Zeit
+  # UK/FR 08:37 (Versand ca. 9–11 Uhr), US 14:37 (Versand ab ca. 15 Uhr = Vormittag US-Ostküste). Crons sind UTC:
+  # je Gruppe einer für die Sommer- und einer für die Winterzeit; scripts/lib/versandzeit.py entscheidet nach der
+  # deutschen Uhrzeit (falsche Jahreszeit = außerhalb des Fensters bzw. zweiter Durchgang für den Rest).
   schedule:
-    - cron: "23 14 * * *"   # täglich 14:23 UTC: Vormittag US-Ostküste, Nachmittag UK/FR
+    - cron: "37 6 * * 2-4"    # UK/FR, Sommerzeit (08:37 MESZ)
+    - cron: "37 7 * * 2-4"    # UK/FR, Winterzeit (08:37 MEZ)
+    - cron: "37 12 * * 2-4"   # US, Sommerzeit (14:37 MESZ)
+    - cron: "37 13 * * 2-4"   # US, Winterzeit (14:37 MEZ)
 concurrency: { group: mails-senden, cancel-in-progress: false }
 jobs:
   send:
@@ -62,15 +74,24 @@ jobs:
       UNSUBSCRIBE_MODE: link   # Abmeldelink + List-Unsubscribe-Post (CLAUDE.md §2: Abmeldelink vom System)
       APP_BASE_URL: ${{ vars.SITE_URL || 'https://www.nextgen-profit.de' }}   # persönlicher Seitenlink in der Erstmail
       FREIGABE: ${{ inputs.freigabe || 'Dauerfreigabe des Inhabers laut config/versand.yaml' }}
+      # Posteingangstest (Inhaber 04.10.2026): eigene Adressen des Inhabers, kommagetrennt; leer = kein Test
+      SEED_INBOXES: ${{ secrets.SEED_INBOXES }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
       - run: pip install -r requirements.txt
+      - name: Versandzeit (Di–Do, UK/FR 9–11 Uhr, US ab 15 Uhr deutscher Zeit)
+        id: zeit
+        run: python scripts/lib/versandzeit.py --gruppe "${{ inputs.gruppe || 'auto' }}"
       - name: Versand freigegeben?
         id: gate
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || grep -Eq '^aktiv:\s*true' config/versand.yaml || [ "${{ vars.SENDEN_AKTIV }}" = "ja" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.probelauf }}" = "true" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"   # Probelauf (sendet nichts) geht immer
+          elif [ "${{ steps.zeit.outputs.ok }}" != "true" ]; then
+            echo "Außerhalb der Versandzeit – nichts zu tun"; echo "ok=false" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] || grep -Eq '^aktiv:\s*true' config/versand.yaml || [ "${{ vars.SENDEN_AKTIV }}" = "ja" ]; then
             echo "ok=true" >> "$GITHUB_OUTPUT"
           else
             echo "Versand nicht aktiv (config/versand.yaml)"; echo "ok=false" >> "$GITHUB_OUTPUT"
@@ -95,7 +116,11 @@ jobs:
           python scripts/drafts.py --approve "$APPROVE" --max-new 300
       - name: Probelauf
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.probelauf }}
-        run: python scripts/outreach.py send
+        run: python scripts/outreach.py send ${LAENDER:+--countries "$LAENDER"}
+        env: { LAENDER: "${{ steps.zeit.outputs.laender }}" }
       - name: Senden
         if: ${{ steps.gate.outputs.ok == 'true' && ((github.event_name == 'workflow_dispatch' && !inputs.probelauf) || github.event_name == 'schedule') }}
-        run: python scripts/outreach.py send --live --owner-ok "$FREIGABE" --pause 60  # Inhaber 03.10.2026: zeitversetzt, Postfächer abwechselnd, ~1 Mail pro Minute insgesamt
+        # Inhaber 03.10.2026: zeitversetzt, Postfächer abwechselnd, ~1 Mail pro Minute insgesamt; 04.10.2026: nur die
+        # Länder der Versandzeit, bis zum Fensterende (Pausen verkürzen sich bei Bedarf, nie unter 20 s)
+        run: python scripts/outreach.py send --live --owner-ok "$FREIGABE" --pause 60 ${LAENDER:+--countries "$LAENDER"} ${BIS:+--bis "$BIS"}
+        env: { LAENDER: "${{ steps.zeit.outputs.laender }}", BIS: "${{ steps.zeit.outputs.bis }}" }
