@@ -1,11 +1,7 @@
 """Temporärer Test (wird vor dem PR entfernt). Gibt keine Lead-Daten aus. Ausgabe als Annotation."""
-import ftplib
-import socket
+import subprocess
 import sys
 
-import requests
-
-H = {"User-Agent": "signalwerk-probe/1.0 (+https://www.nextgen-profit.de)"}
 OUT = []
 
 
@@ -20,31 +16,15 @@ def flush():
         sys.stdout.write(f"::notice title=probe{i // 3800}::{chunk}\n")
 
 
-try:
-    p("DNS", socket.gethostbyname_ex("echanges.dila.gouv.fr"))
-    try:
-        f = ftplib.FTP("echanges.dila.gouv.fr", timeout=30)
-        f.login()
-        p("FTP root", f.nlst()[:40])
-        p("FTP BODACC", f.nlst("/BODACC")[:40] if "BODACC" in " ".join(f.nlst()) else "-")
-    except Exception as e:  # noqa: BLE001
-        p("FTP FEHLER", repr(e)[:200])
-    for port in (443, 80, 21):
-        s = socket.socket()
-        s.settimeout(10)
-        try:
-            s.connect(("echanges.dila.gouv.fr", port))
-            p("TCP", port, "offen")
-        except Exception as e:  # noqa: BLE001
-            p("TCP", port, repr(e)[:80])
-        finally:
-            s.close()
-    for q in ["sirene creations", "nouvelles entreprises immatriculations", "registre national des entreprises",
-              "immatriculations entreprises quotidien", "annonces commerciales"]:
-        r = requests.get("https://www.data.gouv.fr/api/1/datasets/", params={"q": q, "page_size": 6}, headers=H, timeout=60)
-        for d in r.json().get("data", []):
-            p("DS", q[:20], "|", d["id"], d["title"][:70], "|", (d.get("organization") or {}).get("name"),
-              d.get("license"), d.get("last_update", "")[:10])
-except Exception as e:  # noqa: BLE001
-    p("FEHLER", e)
+for args in (["--http1.1"], ["--http1.0"], ["--http2"],
+             ["--http1.1", "-H", "Accept: text/html,*/*", "-H", "Accept-Language: fr-FR,fr", "-A",
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129 Safari/537.36"]):
+    for u in ("https://echanges.dila.gouv.fr/robots.txt", "http://echanges.dila.gouv.fr/robots.txt"):
+        r = subprocess.run(["curl", "-sS", "-m", "30", "-o", "/tmp/o.txt", "-w", "%{http_code}", *args, u],
+                           capture_output=True, text=True)
+        body = open("/tmp/o.txt", errors="replace").read()[:500] if r.returncode == 0 else ""
+        p(args[0], u, r.returncode, r.stdout, r.stderr[:150], body.replace("\n", " | "))
+r = subprocess.run(["curl", "-sv", "-m", "30", "-o", "/dev/null", "https://echanges.dila.gouv.fr/OPENDATA/BODACC/"],
+                   capture_output=True, text=True)
+p("VERBOSE", r.stderr[-1500:])
 flush()
