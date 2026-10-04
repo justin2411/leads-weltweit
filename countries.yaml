@@ -81,15 +81,49 @@ countries:
   DK: { allowed: false, language: da, notes: "Keine Kaltmails." }
   ZA: { allowed: false, language: en, notes: "Inhaber-Tabelle 04.10.2026: keine Kaltmails (weder Einzelunternehmer noch Firmen)." }
 
-  # Noch nicht bearbeitete Länder aus der Rechts-Tabelle des Inhabers (04.10.2026, docs/KALTMAIL-RECHT.md).
-  # allowed bleibt false, bis der Quellen-Scout die zwei Tests (≥ 10 grüne Leads + Käufer im Land, Rechtsgrundlage)
-  # bestanden hat; nur Länder mit „Ja“ dürfen danach freigeschaltet werden, „bedingt“ nur mit dokumentierter Bedingung.
+  # Neue Mail-Länder (Inhaber 04.10.2026: „nimm also auch andere länder mit auf die passend sind“; Rechts-Tabelle
+  # docs/KALTMAIL-RECHT.md: Ja/eher ja, Risiko gering bzw. gering bis mittel). Freigeschaltet vom Quellen-Scout nach
+  # den zwei Tests (CLAUDE.md „Scout entscheidet allein“, Ergebnis in docs/QUELLEN-SCOUT.md, 04.10.2026):
+  # (1) ≥ 10 grüne S2-Leads (Overture, Firmen ohne Website) und mail-fähige Käufer im Land, (2) Bedingung der Tabelle
+  # technisch umgesetzt. Vorsichtig: generic_only, kleines daily_limit; Versand erst über den normalen Versandlauf.
+  FI:
+    allowed: true
+    language: en
+    generic_only: true
+    company_forms_only: true
+    daily_limit: 15
+    notes: "Inhaber-Tabelle 04.10.2026: Firmen ja (Opt-out), Einzelunternehmer nein, Risiko gering bis mittel. Tietoyhteiskuntakaari (917/2014) § 200/§ 202: Direktwerbung per E-Mail an juristische Personen ohne vorherige Einwilligung zulässig, solange nicht widersprochen wurde; Pflicht: Absender erkennbar, einfache kostenlose Abmeldung. Umsetzung: nur Oy/Oyj/Ab (company_forms_only), nur allgemeine Adressen, Abmeldelink + Postanschrift in der Fußzeile."
+  SG:
+    allowed: true
+    language: en
+    generic_only: true
+    company_forms_only: false
+    daily_limit: 15
+    subject_prefix: "<ADV> "
+    notes: "Inhaber-Tabelle 04.10.2026: ja (beide), Risiko gering. Spam Control Act 2007 (Cap. 311A) Second Schedule: unaufgeforderte kommerzielle E-Mails zulässig mit „<ADV>“ und Leerzeichen am Betreffanfang, korrektem Absender/Kopfzeilen, Kontaktangabe und funktionierender Abmeldung (Umsetzung binnen 10 Werktagen). Umsetzung: subject_prefix (drafts.subject_for, Versandprüfung outreach.send), Fußzeile mit Postanschrift und Abmeldelink. PDPA: Geschäftskontaktdaten (business contact information) ausgenommen."
+  HK:
+    allowed: true
+    language: en
+    generic_only: true
+    company_forms_only: false
+    daily_limit: 15
+    notes: "Inhaber-Tabelle 04.10.2026: ja (beide), Risiko gering. Unsolicited Electronic Messages Ordinance (Cap. 593) §§ 8, 9: Opt-out-Modell; Pflicht: klare Absenderangabe mit Kontaktmöglichkeit, Abmeldemöglichkeit mit Hinweis, Abmeldung binnen 10 Werktagen umsetzen, keine Adressen aus dem Do-not-call-Register (gilt nur für Telefon/Fax/SMS). Umsetzung: Fußzeile mit Rechtsträger, Postanschrift und Abmeldelink, Abmeldehinweis zusätzlich auf Chinesisch (lib/rules.UNSUBSCRIBE_EXTRA)."
+  BR:
+    allowed: true
+    language: pt
+    generic_only: true
+    company_forms_only: false
+    daily_limit: 15
+    notes: "Inhaber-Tabelle 04.10.2026: eher ja (beide), Risiko gering bis mittel. Kein Spezialgesetz für E-Mail-Werbung; LGPD (Lei 13.709/2018) Art. 7 IX: berechtigtes Interesse. Dokumentierte Interessenabwägung (Art. 10): Zweck = einmaliges B2B-Angebot an Webagenturen über ihre selbst veröffentlichte allgemeine Firmenadresse (contato@, comercial@ …), Inhalt passt zum Geschäft des Empfängers, keine sensiblen Daten, nur Firmendaten, Herkunft (eigene Website/öffentlicher Firmeneintrag) gespeichert in prospects.source_url, Widerspruch jederzeit per Link/Antwort, Sperre dauerhaft. CDC/Selbstregulierung (CAPEM): Opt-out, Absender und Betreff klar. Mail auf Portugiesisch."
+  MX:
+    allowed: true
+    language: es
+    generic_only: true
+    company_forms_only: false
+    daily_limit: 15
+    notes: "Inhaber-Tabelle 04.10.2026: eher ja (beide), Risiko gering. Ley Federal de Protección al Consumidor Art. 76 bis / 16–18 und LFPDPPP: Werbung ohne Einwilligung zulässig, Pflicht: Absender mit Name und Anschrift, Widerspruch (Opt-out) jederzeit möglich und beachten; Register REPEP (Profeco) betrifft Telefon/Verbraucher. Umsetzung: Fußzeile mit Rechtsträger, Postanschrift und Abmeldelink, nur allgemeine Firmenadressen (contacto@, ventas@ …). Mail auf Spanisch."
+  # Übrige Länder der Rechts-Tabelle: allowed false. „Bedingt“ (NZ, JP) nicht freischalten (Inhaber 04.10.2026);
   # Inhaber 04.10.2026: „bei sehr hoch oder hoch machen wir bitte nie etwas“ – never: true = nie freischalten.
-  FI: { allowed: false, language: en, company_forms_only: true, notes: "Tabelle: Firmen ja (Opt-out), Einzelunternehmer nein." }
-  SG: { allowed: false, language: en, notes: "Tabelle: ja (beide). Bedingung: „<ADV>“ am Betreffanfang, Opt-out." }
-  HK: { allowed: false, language: en, notes: "Tabelle: ja (beide). Bedingung: Absenderangabe, Opt-out." }
-  BR: { allowed: false, language: pt, notes: "Tabelle: eher ja (beide). Bedingung: berechtigtes Interesse dokumentieren (LGPD), Opt-out." }
-  MX: { allowed: false, language: es, notes: "Tabelle: eher ja (beide). Bedingung: Opt-out, Absenderangaben." }
   AU: { allowed: false, never: true, language: en, notes: "Tabelle: bedingt – nur an öffentlich (berufsbezogen) veröffentlichte Adressen ohne Werbeverbot; Spam Act, ACMA aktiv, hohes Risiko." }
   NZ: { allowed: false, language: en, notes: "Tabelle: bedingt wie AU (veröffentlichte Adresse, berufsbezogen)." }
   CA: { allowed: false, never: true, language: en, notes: "Tabelle: bedingt wie AU (CASL: veröffentlichte Adresse, kein Hinweis gegen Werbung, berufsbezogen; sauber dokumentieren). Sehr hohes Risiko (bis 10 Mio. CAD)." }
@@ -117,3 +151,12 @@ generic_local_parts:
   - studio
   - bonjour
   - accueil
+  # Neue Länder (04.10.2026): allgemeine Postfächer auf Portugiesisch (BR), Spanisch (MX), Finnisch (FI)
+  - contato
+  - atendimento
+  - comercial
+  - contacto
+  - ventas
+  - hola
+  - myynti
+  - toimisto

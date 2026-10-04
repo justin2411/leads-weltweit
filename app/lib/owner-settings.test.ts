@@ -54,7 +54,7 @@ test("Belegungsplan: je Linie 0 … max, Summe höchstens 38, gleiche Regeln wie
   const { readFileSync } = await import("node:fs");
   const reg = JSON.parse(readFileSync(new URL("./werk-linien.json", import.meta.url), "utf8"));
   const def = slotCounts(reg, {});
-  assert.equal(def["web-us"], 21);
+  assert.equal(def["web-us"], 20); // 1 Platz an s2-neu (neue Länder 04.10.2026)
   assert.equal(Object.values(def).reduce((a: number, b: number) => a + b, 0), 38);
   const p = validateSlotPlan({ "web-us": "10", "web-uk": "", kunden: "4" }, reg);
   assert.equal(p["web-us"], 10);
@@ -63,6 +63,6 @@ test("Belegungsplan: je Linie 0 … max, Summe höchstens 38, gleiche Regeln wie
   assert.throws(() => validateSlotPlan({ "web-us": "22" }, reg), InputError); // über max
   assert.throws(() => validateSlotPlan({ "web-uk": "21" }, reg), InputError); // Summe 54 > 38
   assert.throws(() => validateSlotPlan({ "web-us": "-1" }, reg), InputError);
-  assert.deepEqual(slotCounts(reg, { "web-us": 99 }), { ...def, "web-us": 21 }); // gekappt wie in Python
+  assert.deepEqual(slotCounts(reg, { "web-us": 99, "web-uk": 4 }), { ...def, "web-us": 21, "web-uk": 4 }); // gekappt wie in Python
   assert.deepEqual(slotCounts(reg, { "web-uk": 21 }), def); // Summe zu hoch -> Standard
 });

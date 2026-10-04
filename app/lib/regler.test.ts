@@ -74,7 +74,7 @@ test("Tempo: Summe ≤ Obergrenze, je Linie ≤ max, ganze Zahlen, anteilig, abg
   const half = scalePlan(d, reg, 15);
   assert.ok(half["web-us"] > half["web-uk"] && half["web-uk"] >= half["web-fr"]);
   // max greift: alles auf UK -> höchstens 21
-  const ukOnly = setCountry(setCountry(setCountry(d, reg, "US", false), reg, "FR", false), reg, "Nord", false);
+  const ukOnly = setCountry(setCountry(setCountry(setCountry(d, reg, "US", false), reg, "FR", false), reg, "Nord", false), reg, "Neu", false);
   assert.equal(leadMax(ukOnly, reg), 21);
   assert.equal(scalePlan(ukOnly, reg, 30)["web-uk"], 21);
   assert.equal(countryOn(scalePlan(ukOnly, reg, 30), reg, "US"), false);
@@ -100,7 +100,7 @@ test("Vorgaben Sparsam / Standard / Voll", () => {
 
 test("Länder-Chips: aus -> 0, an -> Standard, andere rücken bei Enge zusammen", () => {
   const d = defaults();
-  assert.deepEqual(LEAD_COUNTRIES.map((c) => c.id), ["US", "UK", "FR", "Nord"]);
+  assert.deepEqual(LEAD_COUNTRIES.map((c) => c.id), ["US", "UK", "FR", "Nord", "Neu"]);
   const noUs = setCountry(d, reg, "US", false);
   assert.equal(noUs["web-us"] + noUs["s2-us"] + noUs["s1-us-lca"], 0);
   assert.equal(countryOn(noUs, reg, "US"), false);
@@ -109,7 +109,7 @@ test("Länder-Chips: aus -> 0, an -> Standard, andere rücken bei Enge zusammen"
   check(full);
   const back = setCountry(full, reg, "US", true);
   check(back);
-  assert.equal(back["web-us"], 21);
+  assert.equal(back["web-us"], 20);
   assert.equal(back["s2-us"], 2);
   assert.ok(countryOn(back, reg, "UK") && countryOn(back, reg, "Nord"));
   assert.equal(leadTotal(back, reg), 30);
@@ -175,7 +175,7 @@ test("diff und toSettings: Hin- und Rückweg", () => {
 
 test("diff: Umverteilung ohne Summen-/Länderänderung wird trotzdem erkannt", () => {
   const d = draftFrom(DEFAULTS, ctx);
-  const p = { ...d.slot_plan, "web-us": 20, "web-uk": 6 };
+  const p = { ...d.slot_plan, "web-us": 19, "web-uk": 6 };
   const ch = diff(DEFAULTS, { ...d, slot_plan: p }, ctx);
   assert.deepEqual(ch.map((c) => c.part), ["belegung"]);
   assert.deepEqual(toSettings(ch, DEFAULTS, "x").slot_plan, p);
@@ -238,19 +238,19 @@ test("Zustand: noch nie geändert, wartet, start angefordert, angewandt, pausier
 
 test("Lead-Linien je Land wie werk-linien.json", () => {
   const by = Object.fromEntries(LEAD_COUNTRIES.map((c) => [c.id, leadLanes(reg).filter((l) => countryOf(l) === c.id).map((l) => l.id)]));
-  assert.deepEqual(by, { US: ["web-us", "s2-us", "s1-us-lca"], UK: ["web-uk", "s1-uk-tender"], FR: ["web-fr"], Nord: ["web-north"] });
+  assert.deepEqual(by, { US: ["web-us", "s2-us", "s1-us-lca"], UK: ["web-uk", "s1-uk-tender"], FR: ["web-fr"], Nord: ["web-north"], Neu: ["s2-neu"] });
 });
 
 test("Tempo: langsamer schaltet nie ein Land ab; Standard bringt die Standardbelegung zurück", () => {
   const d = defaults();
   const on = (p: Record<string, number>) => LEAD_COUNTRIES.map((c) => countryOn(p, reg, c.id));
   const all = on(d);
-  for (let t = 4; t <= 30; t++) {
+  for (let t = 5; t <= 30; t++) { // 5 Länder-Chips (seit „Neu“, 04.10.2026)
     const p = scalePlan(d, reg, t);
     check(p);
     assert.equal(leadTotal(p, reg), t);
     assert.deepEqual(on(p), all, `t=${t}`);
-    if (t >= 5) for (const l of leadLanes(reg)) if (d[l.id] > 0) assert.ok(p[l.id] >= 1, `t=${t} ${l.id}`);
+    if (t >= 6) for (const l of leadLanes(reg)) if (d[l.id] > 0) assert.ok(p[l.id] >= 1, `t=${t} ${l.id}`);
   }
   // Sparsam (10) -> Standard (30) und Sparsam -> + bis 30: alle Länder bleiben an
   const sp = presetPlan(d, reg, presets(d, reg)[0]);
@@ -266,8 +266,8 @@ test("Tempo: langsamer schaltet nie ein Land ab; Standard bringt die Standardbel
   assert.equal(leadTotal(noFr, reg), 30);
   check(noFr);
   // Untergrenze des Steppers: 1 Platz je Land
-  assert.equal(countriesOn(d, reg), 4);
-  assert.equal(countriesOn(setCountry(d, reg, "Nord", false), reg), 3);
+  assert.equal(countriesOn(d, reg), 5);
+  assert.equal(countriesOn(setCountry(d, reg, "Nord", false), reg), 4);
   // unter die Zahl der Länder: so viele Länder wie Plätze (nicht mehr erzwingbar)
   check(scalePlan(d, reg, 2));
 });

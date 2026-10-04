@@ -7,10 +7,10 @@ Einzelunternehmer bekommen keine automatische Nachfassmail, nur nach eigener Ant
 | Land | Einzelunternehmer ohne Einwilligung | Firmen ohne Einwilligung | Bedingung | Risiko | Stand bei uns |
 |---|---|---|---|---|---|
 | USA | Ja | Ja | Opt-out, Postanschrift, Werbekennzeichnung | gering | aktiv |
-| Singapur | Ja | Ja | „<ADV>“ im Betreff, Opt-out | gering | noch nicht bearbeitet |
-| Hongkong | Ja | Ja | Absenderangabe, Opt-out | gering | noch nicht bearbeitet |
-| Brasilien | eher ja | eher ja | berechtigtes Interesse, Opt-out | gering bis mittel | noch nicht bearbeitet |
-| Mexiko | eher ja | eher ja | Opt-out, Absenderangaben | gering | noch nicht bearbeitet |
+| Singapur | Ja | Ja | „<ADV>“ im Betreff, Opt-out | gering | aktiv seit 04.10.2026 (Test bestanden, „<ADV>“ im Betreff) |
+| Hongkong | Ja | Ja | Absenderangabe, Opt-out | gering | aktiv seit 04.10.2026 (Test bestanden, Abmeldehinweis auch Chinesisch) |
+| Brasilien | eher ja | eher ja | berechtigtes Interesse, Opt-out | gering bis mittel | aktiv seit 04.10.2026 (Test bestanden, Portugiesisch, LGPD-Abwägung in countries.yaml) |
+| Mexiko | eher ja | eher ja | Opt-out, Absenderangaben | gering | aktiv seit 04.10.2026 (Test bestanden, Spanisch) |
 | Frankreich | Ja, berufsbezogen | Ja, berufsbezogen | Bezug zum Beruf, Herkunft der Daten nennen, Opt-out | mittel, eher bei Masse | aktiv |
 | Australien | bedingt | bedingt | nur veröffentlichte Adresse, kein Werbeverbot, berufsbezogen | hoch (ACMA aktiv) | **nie** |
 | Neuseeland | bedingt | bedingt | wie Australien | mittel | gesperrt |
@@ -20,7 +20,7 @@ Einzelunternehmer bekommen keine automatische Nachfassmail, nur nach eigener Ant
 | UK | Nein | Ja | Opt-out bei Ltd/PLC/LLP | mittel (ICO) | aktiv, nur Firmen |
 | Irland | Nein | Ja | Geschäftsadresse, Opt-out | sehr hoch (Straftat, pro Mail) | **nie** (Risiko sehr hoch) |
 | Schweden | Nein | Ja | Opt-out | gering bis mittel | aktiv, nur Firmen |
-| Finnland | Nein | Ja | Opt-out | gering bis mittel | noch nicht bearbeitet |
+| Finnland | Nein | Ja | Opt-out | gering bis mittel | aktiv seit 04.10.2026 (Test bestanden, nur Oy/Oyj) |
 | Belgien | Nein | nur info@-Adressen | unpersönliche Adresse | mittel bis hoch | **nie** (Risiko hoch) |
 | Deutschland | Nein | Nein | – | Abmahnung | gesperrt |
 | Niederlande | Nein | Nein | – | ACM-Bußgeld | gesperrt (seit 04.10.2026) |
@@ -33,6 +33,10 @@ Einzelunternehmer bekommen keine automatische Nachfassmail, nur nach eigener Ant
 | Südafrika | Nein | Nein | – | mittel | gesperrt |
 
 **Risiko hoch oder sehr hoch (Inhaber 04.10.2026: „bei sehr hoch oder hoch machen wir bitte nie etwas“):** nie freischalten – IE, BE, AU, CA, IL, IT, ES (in `countries.yaml` `never: true` bzw. gesperrt).
+
+**Freigeschaltet 04.10.2026 (Quellen-Scout, beide Tests bestanden, docs/QUELLEN-SCOUT.md):** FI, SG, HK, MX, BR – je
+`generic_only`, `daily_limit` 15, Webagenturen (S2). Versand nur über den normalen Versandlauf und erst, wenn das Land
+im Fokus (`config/fokus.yaml`) steht und Probe-Leads vorliegen.
 
 **Neue Länder:** Nur „Ja“-Länder darf der Quellen-Scout nach den zwei Tests (≥ 10 grüne Leads und Käufer im Land,
 erlaubte Quelle) mit `allowed: true` freischalten; die Bedingung der Spalte muss technisch umgesetzt sein (z. B. SG

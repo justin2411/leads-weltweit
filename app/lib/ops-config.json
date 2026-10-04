@@ -87,24 +87,24 @@
       "daily_limit": 20
     },
     "FI": {
-      "allowed": false,
-      "daily_limit": 20
+      "allowed": true,
+      "daily_limit": 15
     },
     "SG": {
-      "allowed": false,
-      "daily_limit": 20
+      "allowed": true,
+      "daily_limit": 15
     },
     "HK": {
-      "allowed": false,
-      "daily_limit": 20
+      "allowed": true,
+      "daily_limit": 15
     },
     "BR": {
-      "allowed": false,
-      "daily_limit": 20
+      "allowed": true,
+      "daily_limit": 15
     },
     "MX": {
-      "allowed": false,
-      "daily_limit": 20
+      "allowed": true,
+      "daily_limit": 15
     },
     "AU": {
       "allowed": false,

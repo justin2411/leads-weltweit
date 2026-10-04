@@ -43,6 +43,15 @@ LEGAL_PATTERNS = {
     "BE": [(r"\bB\.?V\.?(?=\W|$)", "BV"), (r"\bS\.?R\.?L\.?(?=\W|$)", "SRL"), (r"\bN\.?V\.?(?=\W|$)", "NV"),
            (r"\bS\.?A\.?(?=\W|$)", "SA"), (r"\bBVBA\b", "BVBA"), (r"\bSPRL\b", "SPRL")],
     "SE": [(r"\bAB\b", "AB"), (r"\bAktiebolag(et)?\b", "AB")],
+    # Neue Länder (Inhaber 04.10.2026, docs/KALTMAIL-RECHT.md); FI nur Firmen (Oy/Oyj, schwedischsprachig Ab)
+    "FI": [(r"\bOyj\b", "Oyj"), (r"\bOy\b", "Oy"), (r"\bOsakeyhtiö\b", "Oy"), (r"\bAb\b", "Ab")],
+    "SG": [(r"\bPte\.?\s?Ltd\.?", "Pte Ltd"), (r"\bLLP\b", "LLP"), (r"\b(Ltd\.?|Limited)\b", "Ltd")],
+    "HK": [(r"\b(Ltd\.?|Limited)\b", "Ltd"), (r"有限公司", "Ltd")],
+    "MX": [(r"\bS\.?\s?A\.?\s?P\.?\s?I\.?\s?de\s?C\.?\s?V\.?", "SAPI de CV"),
+           (r"\bS\.?\s?de\s?R\.?\s?L\.?(\s?de\s?C\.?\s?V\.?)?", "S de RL"),
+           (r"\bS\.?\s?A\.?\s?de\s?C\.?\s?V\.?", "SA de CV"), (r"\bS\.?\s?C\.?(?=\W|$)", "SC")],
+    "BR": [(r"\bLtda\.?", "Ltda"), (r"\bS\.?\s?/?\s?A\.?(?=\W|$)", "SA"), (r"\bEIRELI\b", "EIRELI"),
+           (r"\bSLU\b", "SLU")],
 }
 SE_ORGNR_AB = re.compile(r"(org\.?\s*nr\.?|organisationsnummer|org\.?\s*nummer)\s*:?\s*5\d{5}-?\d{4}\b", re.I)
 FR_LEGAL_TEXT = [
@@ -78,10 +87,11 @@ def detect_legal_form(country: str, name: str, text: str) -> tuple[str | None, s
         m = re.search(r"(©|&copy;|copyright|registered|company)[^<\n]{0,120}" + pat, text, re.I)
         if m:
             return form, reg_no
-    if country in ("NL", "BE", "SE"):
-        # Impressum/Fußzeile: Rechtsform neben KvK-, BTW-/TVA- oder Organisationsnummer (Scout-Sprint 01.10.2026)
+    if country in ("NL", "BE", "SE", "FI"):
+        # Impressum/Fußzeile: Rechtsform neben KvK-, BTW-/TVA- oder Organisationsnummer (Scout-Sprint 01.10.2026);
+        # FI: neben der Y-tunnus (Unternehmens-ID)
         ctx = (r"(kvk|kamer van koophandel|btw|tva|ondernemingsnummer|num[ée]ro d'entreprise|org\.?\s*nr|"
-               r"organisationsnummer|bedrijfsgegevens|handelsregister)")
+               r"organisationsnummer|bedrijfsgegevens|handelsregister|y-tunnus|ly-tunnus|business id)")
         for pat, form in LEGAL_PATTERNS.get(country, []):
             if re.search(ctx + r"[^<\n]{0,120}" + pat, text, re.I) or re.search(pat + r"[^<\n]{0,120}" + ctx, text, re.I):
                 return form, None
