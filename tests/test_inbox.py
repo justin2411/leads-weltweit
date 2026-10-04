@@ -49,7 +49,7 @@ class MailboxTest(unittest.TestCase):
         self.assertIn("User unknown", d["diagnostic"])
         self.assertNotIn("gone-company", d["diagnostic"])  # keine Adressen im gespeicherten Text
         db = mock.Mock()
-        db.select.return_value = [{"id": "m1"}]
+        db.select.side_effect = lambda t, p: [{"id": "m1"}] if t == "messages" else []
         with mock.patch.object(mb, "suppress"):
             mb.handle_bounce(db, msg, "imap:<x>", True)
         payload = db.insert.call_args[0][1]["payload"]

@@ -372,6 +372,17 @@ export async function loadBoxHealth(days = 14): Promise<BoxHealth[] | null> {
   }
 }
 
+/** Bounce-Klassen je Postfach und Käufer-Quelle/Land (signalwerk.bounce_stats, 7 Tage); Fehler -> null. */
+export async function loadBounceStats(days = 7): Promise<import("@/lib/bounce-stats").BounceStats | null> {
+  try {
+    const { data, error } = await db().rpc("bounce_stats", { p_days: days }).abortSignal(AbortSignal.timeout(5000));
+    if (error) throw new Error(error.message);
+    return (await import("@/lib/bounce-stats")).normalize(data);
+  } catch {
+    return null;
+  }
+}
+
 /** Trichter je Land für die Zielgruppe (experiment_stats, ~50 ms); Fehler -> null (Anzeige „…“ statt falscher Nullen). */
 export async function loadFunnel(segment = SEGMENT): Promise<FunnelRow[] | null> {
   try {

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadBoxHealth, loadDaily, loadFunnel, loadKpiDaily, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock, loadWebsite, loadFunnelCache } from "@/lib/dashboard-data";
+import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadBoxHealth, loadBounceStats, loadDaily, loadFunnel, loadKpiDaily, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock, loadWebsite, loadFunnelCache } from "@/lib/dashboard-data";
 import { webLine, webNeck } from "@/lib/website-stats";
 import { startLive } from "@/lib/website-funnel";
 import { werkLine, werkTip } from "@/lib/werk-zeile";
@@ -10,7 +10,7 @@ import { stationSparks } from "@/lib/spark";
 import { loadPrognose } from "@/lib/prognose-data";
 import { summary as prognoseSummary } from "@/lib/prognose";
 import { addDays } from "@/lib/trend";
-import { alarmTips, coach, hall, laneOf, laneStats, neckTask, rankTips, recommend, running, utilization, type Beat, type Tip } from "@/lib/leitstand";
+import { alarmTips, coach, hall, laneOf, laneStats, markEmpty, neckTask, rankTips, recommend, running, utilization, type Beat, type Tip } from "@/lib/leitstand";
 import { agentStartLabel, freeAgent } from "@/lib/agents";
 import { visibleTips } from "@/lib/tips";
 import { NECK_TO_STATION, WEB_STATIONS, ticker, type Edge, type Station, type StationId, type TickerItem } from "@/lib/fluss";
@@ -33,8 +33,11 @@ import { loadProposals } from "@/lib/vorschlaege-data";
 import { AutopilotPanel } from "./autopilot";
 import { GateRings, GateSteps, Reasons, type GateView } from "./freigabe";
 import { JarvisView } from "./view";
+import { loadUeberblick } from "@/lib/ueberblick-data";
+import { bar, dayShare, heuteWichtig, judgeFlow, leadZiel, stillTip, switchedOff, zeitleiste } from "@/lib/ueberblick";
 import { Icon, type IconName } from "@/app/icons";
 import type { FunnelRow } from "@/lib/dashboard-logic";
+import { KLASSEN, KLASSE_COLOR, KLASSE_LABEL, KLASSE_TIP, badSources } from "@/lib/bounce-stats";
 
 export const metadata = { title: "JARVIS" };
 const REG = LANES as unknown as LaneRegistry;
@@ -76,12 +79,14 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   stockP.catch(() => {});
   const today = berlinDay(new Date());
   const from7 = new Date(Date.parse(`${today}T12:00:00Z`) - 6 * 86_400_000).toISOString().slice(0, 10);
+  // Überblick (Heute wichtig, Ziel-vs-Ist, Entscheidungen, Datenfluss-Alarm): parallel, jede Quelle einzeln fehlertolerant
+  const ubP = loadUeberblick(SEGMENT, COUNTRIES, today);
   // Sparklines und Trend (7 T vs. Vor-7 T): 15 Tage bis heute, kpi_daily parallel (Fehler → leer)
   const from15 = addDays(today, -14);
   const kpiP = loadKpiDaily(from15, today);
   // Prognose 30 Tage (lib/prognose.ts): Trichter-Hochrechnung je Land, ohne Antworten „keine Basis“; Fehler → null
   const progP = loadPrognose(new Date()).catch(() => null);
-  const [liveAll, own, act, rows, stockAll, daily, sent, checks, agentTasks, starts, planLog, openReplies, health, funnel] = await Promise.all([
+  const [liveAll, own, act, rows, stockAll, daily, sent, checks, agentTasks, starts, planLog, openReplies, health, funnel, bounceSt] = await Promise.all([
     loadLive(), loadOwnerSettings(), loadActivity(), loadRunRows(24),
     // Bestand: höchstens 5 s warten (Abfrage ~3,5 s, 10 min zwischengespeichert); sonst „…“ statt falscher Nullen
     Promise.race([stockP.catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 5000))]),
@@ -95,6 +100,8 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     s === "versand" ? loadBoxHealth(14) : Promise.resolve(null),
     // Trichter je Land (US/UK/FR im Vergleich) nur für die Station Antworten
     s === "antworten" ? loadFunnel() : Promise.resolve(null),
+    // Bounce-Klassen 7 Tage (hart/weich/Richtlinie/unbekannt) nur für die Station Versand
+    s === "versand" ? loadBounceStats(7) : Promise.resolve(null),
   ]);
   const live = onlySegment(liveAll, SEGMENT);
   const stock = stockSegment(stockAll, SEGMENT);
@@ -114,7 +121,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   // Plätze je Werk für die Kreis-Zeile: arbeitend (Herzschlag) / eingeplant (Belegung) – nur dieses Werk
   const leadRun = bays.filter((b) => b.state === "run" && b.werk === "lead-werk").length;
   const leadPaused = !werkOn(own, "lead-werk").on;
-  const stats = laneStats(REG, rows, t);
+  const stats = markEmpty(laneStats(REG, rows, t), [planLog["lead-werk"]?.reasons, planLog["kunden-werk"]?.reasons]);
   const firstRun = rows.reduce<number | null>((a, r) => (r.started_at && (a === null || Date.parse(r.started_at) < a) ? Date.parse(r.started_at) : a), null);
   const util = utilization(rows, beats, t, REG.total_slots, 24, 30, firstRun);
   const n = (x: number | string | null | undefined) => Number(x ?? 0);
@@ -190,8 +197,15 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
 
   // ---------------------------------------------------------------- JARVIS, Ampeln, Ticker
   // Wichtigstes zuerst (Nachtschicht 04.10.2026): Notbremse, offene Antworten, leerer Proben-Vorrat vor den Werk-Hinweisen
+  // Datenfluss-Alarm (PR #329, wie scripts/datenfluss.py stillstand): Stationen ohne Zuwachs seit > 3× üblich
+  const ub = await ubP;
+  const stillRows = ub.flow ?? [];
+  const still = judgeFlow(stillRows, now, switchedOff({ lead_suche: CONFIG.lead_suche, kunden_suche: CONFIG.kunden_suche, versand_aktiv: CONFIG.versand.aktiv,
+    werke_paused: own.werke_paused, send_paused: own.send_paused }, stillRows));
+  const stillTips: Tip[] = still.filter((a) => a.stufe === "rot" || a.stufe === "gelb").map(stillTip);
   const tips = rankTips([
     ...(nb.stop ? [{ level: "rot" as const, title: "Notbremse: Versand gestoppt", text: `${nb.stop}. Neustart nur nach deiner Entscheidung.`, href: "/dashboard/versand" }] : []),
+    ...stillTips,
     ...alarmTips({ openReplies, samplesReady: st.length ? ready : null, samplesTarget: target }),
     // Offene Probe-Anfragen der Website (alle Zielgruppen/Länder): sofort sichtbar, ab 15 min rot
     ...(() => {
@@ -235,6 +249,27 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     })(await progP),
   ];
   const startAt = agentStartLabel(now);
+  // ---------------------------------------------------------------- Überblick
+  const stichBy = new Map<string, { country: string; candidates: number; green: number }>();
+  for (const r of sp7) { const x = stichBy.get(r.country) ?? { country: r.country, candidates: 0, green: 0 }; x.candidates += r.candidates; x.green += r.green; stichBy.set(r.country, x); }
+  const heute = heuteWichtig({
+    brake: nb.stop ?? null,
+    deliver: ub.deliver,
+    openReplies,
+    stich: [...stichBy.values()].filter((r) => countries.includes(r.country)),
+    bad: stations.filter((x) => x.state === "bad" && x.id !== "versand").map((x) => ({ id: x.id, label: x.label })),
+    neck: neck && neckLabel ? { id: neck, label: neckLabel } : null,
+    still,
+  });
+  // Mails: Tagesziel je Land = Anteil an der Postfach-Kapazität heute, höchstens das Länder-Limit (countries.yaml/Regler)
+  const share = dayShare(now);
+  const lim = Object.fromEntries(countries.map((c) => [c, effectiveLimit(CONFIG.countries[c]?.daily_limit ?? 0, own, c)]));
+  const limSum = Object.values(lim).reduce((a, b) => a + b, 0);
+  const sentBy = (c: string) => liveAll.sent_days.filter((x) => x.day === liveAll.today && x.country === c).reduce((a, x) => a + n(x.n), 0);
+  const mailBars = countries.map((c) => bar(c, sentBy(c), limSum ? Math.min(lim[c], Math.round((cap * lim[c]) / limSum)) : 0, share));
+  // Grüne Leads: Ist = kpi_daily leads_neu heute (Stand der letzten Messung), Ziel = Ø der Vortage
+  const leadBars = ub.leads ? countries.map((c) => bar(c, ub.leads!.find((r) => r.country === c && r.day === today)?.value ?? 0, leadZiel(ub.leads!, c, today), share)) : null;
+  const zeit = ub.decisions ? zeitleiste(ub.decisions, 20) : null;
   const gateView: GateView = {
     pct: gatePct, ok: gateOk, bad: gateBad, href: base("gate"), reasonsHref: `${base("gate")}&t=check&f=rot`,
     countries: countries.map((c) => { const r = sp7.find((x) => x.country === c); return { c, pct: r && r.candidates ? Math.round((r.green / r.candidates) * 1000) / 10 : null }; }),
@@ -280,7 +315,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const liveByLane: Record<string, number> = {};
   for (const b of beats) if (running(b, t)) { const l = laneOf(b.werk, b.part); if (l) liveByLane[l] = (liveByLane[l] ?? 0) + 1; }
   const pultLanes = REG.lanes.map((l) => ({ id: l.id, werk: l.werk, label: l.label, short: l.short, what: l.what, max: l.max, def: l.default, cur: plan[l.id] ?? 0, color: laneColor(l.id),
-    stat: { runs: stats[l.id].runs, green: stats[l.id].green, perSlotH: stats[l.id].perSlotH, avgRunMin: stats[l.id].avgRunMin, perRun: stats[l.id].perRun, exhausted: stats[l.id].exhausted, live: liveByLane[l.id] ?? 0 } }));
+    stat: { runs: stats[l.id].runs, green: stats[l.id].green, perSlotH: stats[l.id].perSlotH, avgRunMin: stats[l.id].avgRunMin, perRun: stats[l.id].perRun, exhausted: stats[l.id].exhausted, empty: !!stats[l.id].empty, live: liveByLane[l.id] ?? 0 } }));
   const nextStart = { "lead-werk": `spätestens ${nx("lead-werk.yml")}`, "kunden-werk": `spätestens ${nx("kunden-werk.yml")}` };
   const custom = Object.keys(own.slot_plan ?? {}).length > 0;
   const checkList = (
@@ -388,6 +423,11 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
             <em>{h.bounced} von {h.sent} · 14 Tage{h.complained ? ` · ${h.complained} Beschwerde` : ""}
               {Object.keys(h.codes).length > 0 && <span title="5.1.x = Adresse unbekannt, 5.7.x = abgelehnt/blockiert"> · {Object.entries(h.codes).sort((a, b) => b[1] - a[1]).map(([c, k]) => `${c}×${k}`).join(" ")}</span>}</em></li>))}</ul>
       )}
+      {bounceSt && bounceSt.bounces > 0 && (<>
+        <p className="lock" title="Bounces je Klasse, 7 Tage">Bounces 7 T · {(bounceSt.bounces / Math.max(1, bounceSt.gesendet) * 100).toFixed(1).replace(".", ",")} %</p>
+        <MiniBars rows={KLASSEN.map((k) => ({ key: k, label: KLASSE_LABEL[k], n: bounceSt.klassen[k], color: KLASSE_COLOR[k], tip: KLASSE_TIP[k] }))} />
+        {badSources(bounceSt).slice(0, 2).map((q) => <p key={`${q.country}${q.quelle}`} className="warn" title={`${q.hart} von ${q.gesendet} Mails hart zurück (7 Tage)`}>{q.country} · {q.quelle}: {(q.quote_hart * 100).toFixed(1).replace(".", ",")} % hart</p>)}
+      </>)}
     </>);
     if (s === "antworten") body = tab === "set" ? (<>
       <div className="row-sw"><WerkSwitch werk="antworten" on={sw("antworten").on} back={back} label="Antwort-Assistent" note="Abmeldungen werden immer gesperrt" /></div>
@@ -413,7 +453,8 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   return (
     <JarvisView hello={hello} say={say} kpis={kpis} recs={recs} rest={rest} tipHref={tipHref} agent={freeAgent(agentTasks)}
       tasks={agentTasks} startAt={startAt} activeAgent={ag} stations={stations} edges={edges} activeStation={s} stationHref={href}
-      drawer={drawer} gate={gateView} ticker={ticker(items)} customerAgents={await kaP} chat={await chatP} proposals={await propP} />
+      drawer={drawer} gate={gateView}
+      heute={heute} ziel={{ mails: mailBars, leads: leadBars }} zeit={zeit} ticker={ticker(items)} customerAgents={await kaP} chat={await chatP} proposals={await propP} />
   );
 }
 

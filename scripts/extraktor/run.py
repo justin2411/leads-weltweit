@@ -145,11 +145,13 @@ def load_overture_s2(country: str, limit: int, stats: Counter, exclude: set[str]
     return cands
 
 
-def load_web(country: str, limit: int, stats: Counter, part: tuple[int, int] | None = None) -> list[dict]:
+def load_web(country: str, limit: int, stats: Counter, part: tuple[int, int] | None = None,
+             min_conf: float = website_check.HIGH_CONF, no_phone: bool = False) -> list[dict]:
     """S2 Website-Prüfung: Overture-Firmen MIT Website, die dieser Teil in den letzten RECHECK_DAYS noch nicht
     geprüft hat (Gedächtnis im Zwischenspeicher, keine Datenbank-Abfrage je Firma). part: eigener Anteil (--shard)."""
     seen = website_check.recently_checked()
-    rows = website_check.with_website(country, limit, log=log, exclude=seen, part=part)
+    rows = website_check.with_website(country, limit, log=log, exclude=seen, part=part, min_conf=min_conf,
+                                      no_phone=no_phone)
     cands = filters.dedupe([c for c in (website_check.to_candidate(d, country) for d in rows) if not filters.pre_filter(c)])
     stats[f"overture_web_{country}"] = len(cands)
     stats[f"overture_web_{country}_skipped_recent"] = len(seen)
@@ -158,7 +160,7 @@ def load_web(country: str, limit: int, stats: Counter, part: tuple[int, int] | N
 
 def process_web(c: dict, fetcher) -> str:
     """Startseite prüfen und Befunde in den Kandidaten schreiben; gibt den Grund zurück, wenn es keinen Lead gibt."""
-    res = website_check.inspect(c, fetcher)
+    res = website_check.confirmed_only(c, website_check.inspect(c, fetcher))
     website_check.remember(c["source_id"])
     website_check.count(res)
     if not res["findings"]:
@@ -185,6 +187,10 @@ def process_web(c: dict, fetcher) -> str:
             c["evidence"]["email_from"] = "website"
     if res["html"]:
         c["evidence"]["site_phones"] = W.phones_on_page(res["html"], c["country"])[0][:5]
+        if not c.get("phone") and c["evidence"]["site_phones"]:
+            # Eintrag ohne Telefon (--web-no-phone): Nummer von der eigenen, als Firmenseite belegten Startseite
+            c["phone"] = c["evidence"]["site_phones"][0]
+            c["evidence"]["phone_from"] = "website"
     if c.get("email"):
         from enrich import mx_ok
         c["evidence"]["mx"] = mx_ok(E.email_domain(c["email"]))
@@ -599,6 +605,10 @@ def main(argv=None) -> int:
     ap.add_argument("--cf-pages", type=int, default=0, help="Contracts Finder dazu: höchstens so viele Abrufe (je 100, 0 = aus)")
     ap.add_argument("--web-check", action="store_true",
                     help="S2: Firmen MIT Website prüfen (unsicher, nicht handytauglich, veraltet, kaputt) statt ohne Website")
+    ap.add_argument("--web-min-conf", type=float, default=website_check.HIGH_CONF,
+                    help="Website-Prüfung: Overture-Konfidenz ab (Standard 0.6; UK/FR 0.4 = zweite Stufe, nur belegte Befunde)")
+    ap.add_argument("--web-no-phone", action="store_true",
+                    help="Website-Prüfung UK/FR: auch Firmen ohne Telefon im Eintrag (Nummer von der eigenen Website)")
     ap.add_argument("--deadline-min", type=float, default=0,
                     help="nach N Minuten keine neuen Kandidaten mehr anfangen, Ergebnisse speichern (0 = aus)")
     args = ap.parse_args(argv)
@@ -680,7 +690,7 @@ def main(argv=None) -> int:
         website_check.load_seen()
         part = tuple(int(x) for x in args.shard.split("/")) if args.shard else None
         for co in countries:
-            p[f"S2/{co}"] = load_web(co, args.s2_limit, stats, part)
+            p[f"S2/{co}"] = load_web(co, args.s2_limit, stats, part, args.web_min_conf, args.web_no_phone)
     for co in ("UK", "FR") + S2_EXTRA + S2_NEW + (("US",) if args.us_overture else ()):
         if co in countries and "S2" in segs and not args.web_check:
             known = {i for s_, i in guard.known if s_ == "overture"}

@@ -33,6 +33,9 @@ CACHE_US_WEB = Path(os.environ.get("EXTRAKTOR_OVERTURE_US_WEB", "out/cache/overt
 # FI, SG, HK, MX, BR – nur Firmen OHNE Website und MIT E-Mail (wie US: sonst Millionen Rohbestand ohne Nutzen,
 # BR allein hätte 4,7 Mio. Orte mit Telefon). Test 04.10.2026 siehe docs/QUELLEN-SCOUT.md
 CACHE_NEW = Path(os.environ.get("EXTRAKTOR_OVERTURE_NEW", "out/cache/overture_fi_sg_hk_mx_br.parquet"))
+# Website-Prüfung UK/FR, zweite Quelle (Scout 04.10.2026: UK/FR-Vorrat mit Telefon abgearbeitet): Firmen MIT Website,
+# aber OHNE Telefon im Eintrag (~125.000 UK, ~110.000 FR mit Adresse) – die Nummer kommt dann von der eigenen Website
+CACHE_WEB_NOPHONE = Path(os.environ.get("EXTRAKTOR_OVERTURE_WEB_NOPHONE", "out/cache/overture_gb_fr_web_ohne_tel.parquet"))
 COUNTRY = {"GB": "UK", "FR": "FR", "IE": "IE", "NL": "NL", "BE": "BE", "SE": "SE", "US": "US",
            "FI": "FI", "SG": "SG", "HK": "HK", "MX": "MX", "BR": "BR"}
 # Auszug -> (Overture-Ländercodes, Bounding-Box xmin, xmax, ymin, ymax – oder mehrere Boxen, je Land eine)
@@ -40,6 +43,7 @@ GROUPS = {CACHE: (("GB", "FR"), (-8.7, 9.6, 41.3, 60.9)),
           CACHE_NORTH: (("IE", "NL", "BE", "SE"), (-10.7, 24.2, 49.4, 69.1)),
           CACHE_US: (("US",), (-180.0, -60.0, 15.0, 72.0)),
           CACHE_US_WEB: (("US",), (-180.0, -60.0, 15.0, 72.0)),
+          CACHE_WEB_NOPHONE: (("GB", "FR"), (-8.7, 9.6, 41.3, 60.9)),
           CACHE_NEW: (("FI", "SG", "HK", "MX", "BR"), ((19.0, 31.6, 59.6, 70.1), (103.55, 104.1, 1.15, 1.48),
                                                        (113.8, 114.45, 22.13, 22.58), (-118.5, -86.6, 14.4, 32.8),
                                                        (-74.1, -34.7, -33.9, 5.4)))}
@@ -51,7 +55,10 @@ NO_POSTCODE = {"HK"}
 ONLY_NO_WEBSITE = {CACHE_US, CACHE_NEW}
 EXTRA_WHERE = {CACHE_US: "AND (websites IS NULL OR len(websites) = 0)",
                CACHE_US_WEB: "AND len(websites) > 0 AND coalesce(confidence, 0) >= 0.6",
-               CACHE_NEW: "AND (websites IS NULL OR len(websites) = 0) AND len(emails) > 0"}
+               CACHE_NEW: "AND (websites IS NULL OR len(websites) = 0) AND len(emails) > 0",
+               CACHE_WEB_NOPHONE: "AND len(websites) > 0"}
+# Auszüge OHNE Telefon-Pflicht (alle anderen: nur Firmen mit Telefon)
+NO_PHONE = {CACHE_WEB_NOPHONE}
 
 
 def boxes(box) -> tuple:
@@ -71,7 +78,7 @@ def code(country: str) -> str:
 
 def cache_for(country: str) -> Path:
     cc = code(country)
-    return next(p for p, (codes, _) in GROUPS.items() if cc in codes)  # US: der Auszug ohne Website
+    return next(p for p, (codes, _) in GROUPS.items() if cc in codes and p not in NO_PHONE)  # US: der Auszug ohne Website
 # keine Käuferziele: Behörden, Schulen, Kirchen, Vereine, Parks …
 # Filialen von Ketten/Franchise-Marken: die Marke hat längst eine Website (kein S2-Anlass)
 BRANDS = re.compile(r"\b(euro ?spar|spar|premier|costcutter|londis|budgens|nisa|one stop|co-?op|tesco|sainsbury'?s|"
@@ -121,7 +128,8 @@ def build_cache(log=print, path: Path = CACHE) -> Path:
         [s.update_time FOR s IN sources] AS updated
       FROM read_parquet({files})
       WHERE {box_where(box)}
-        AND addresses[1].country IN ({listed}) AND len(phones) > 0
+        AND addresses[1].country IN ({listed})
+        AND {"(phones IS NULL OR len(phones) = 0)" if path in NO_PHONE else "len(phones) > 0"}
         {EXTRA_WHERE.get(path, "")}) TO '{path}' (FORMAT parquet)""")
     log(f"Overture: Auszug {rel} ({'/'.join(codes)}) -> {path}")
     return path

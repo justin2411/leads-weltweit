@@ -7,7 +7,10 @@ Prüft:
      Standard smtp.strato.de; zusätzlich ZUSTELL_IPS) gegen Spamhaus ZEN, SpamCop, Barracuda; die Domain gegen
      Spamhaus DBL und SURBL. Antworten 127.255.255.x (Spamhaus: Abfrage über öffentlichen Resolver abgelehnt)
      zählen nicht als Treffer, sondern als „nicht prüfbar“.
-  3. Bounce-Quote und Gründe der letzten 7 Tage (email_events: Kaltmails = 'sent' mit message_id)
+  3. Bounce-Quote und Gründe der letzten 7 Tage (email_events: Kaltmails = 'sent' mit message_id), dazu Klassen
+     (hart/weich/richtlinie/unbekannt) je Postfach und je Käufer-Quelle/Land (signalwerk.bounce_stats). Richtlinien-
+     Bounces (Spam/Blockliste) → gelb. Käufer-Quelle mit > 5 % harten Bounces (ab 20 Mails) → Vorschlag in
+     decisions (nur Vorschlag, Prüfregeln bleiben unverändert)
   4. Kontrolladressen (signalwerk.seed_checks, nur wenn SEED_INBOXES gesetzt ist oder Zeilen da sind)
   5. Zustell-Lücke „gesendet vs. delivered“ (Resend-Ereignisse mit resend_id, älter als 2 h)
 
@@ -45,6 +48,8 @@ BOUNCE_MIN_SENT = 20        # darunter ist eine Quote nicht aussagekräftig
 LUECKE_GELB = 0.10          # mehr als 10 % der Resend-Mails ohne „delivered“
 LUECKE_ALTER_H = 2          # jüngere Mails haben ihr „delivered“ evtl. noch nicht
 START_STUNDE = 6            # Cron: nicht vor 06:00 deutscher Zeit
+QUELLE_HART = 0.05          # Käufer-Quelle: mehr als 5 % harte Bounces …
+QUELLE_MIN = 20             # … ab 20 Mails in 7 Tagen -> Vorschlag
 
 
 def now() -> dt.datetime:
@@ -156,8 +161,57 @@ def bounces(db) -> dict:
     complained = db.select_all("email_events", {"type": "eq.complained", "occurred_at": f"gte.{since}", "select": "id"})
     reasons = Counter(bounce_reason(e) for e in bounced)
     n = len(sent)
-    return {"gesendet_7t": n, "bounces_7t": len(bounced), "beschwerden_7t": len(complained),
-            "quote": round(len(bounced) / n, 4) if n else None, "gruende": dict(reasons.most_common(6))}
+    out = {"gesendet_7t": n, "bounces_7t": len(bounced), "beschwerden_7t": len(complained),
+           "quote": round(len(bounced) / n, 4) if n else None, "gruende": dict(reasons.most_common(6))}
+    st = klassen_stats(db)
+    if st:
+        out.update({"klassen": st.get("klassen") or {}, "postfaecher": st.get("postfaecher") or [],
+                    "quellen": st.get("quellen") or []})
+    return out
+
+
+def klassen_stats(db, days: int = 7) -> dict:
+    """Bounce-Klassen je Postfach und je Käufer-Quelle/Land (signalwerk.bounce_stats); fehlt die Funktion: {}."""
+    try:
+        r = db.rpc("bounce_stats", {"p_days": days})
+    except Exception as e:  # noqa: BLE001 - Auswertung darf den Check nicht rot enden lassen
+        print(f"bounce_stats nicht lesbar: {type(e).__name__}: {str(e)[:120]}")
+        return {}
+    return r if isinstance(r, dict) else {}
+
+
+def schlechte_quellen(quellen: list[dict]) -> list[dict]:
+    """Käufer-Quellen mit mehr als 5 % harten Bounces bei mindestens 20 Mails (7 Tage)."""
+    out = []
+    for q in quellen or []:
+        n, hart = int(q.get("gesendet") or 0), int(q.get("hart") or 0)
+        if n >= QUELLE_MIN and hart / n > QUELLE_HART:
+            out.append({**q, "quote_hart": round(hart / n, 4)})
+    return sorted(out, key=lambda q: -q["quote_hart"])
+
+
+def quellen_vorschlagen(db, quellen: list[dict]) -> int:
+    """Je schlechter Käufer-Quelle ein Vorschlag in decisions (höchstens einmal je Kalenderwoche). Nur Vorschlag:
+    Prüfregeln, Sperrliste und Versand bleiben unverändert."""
+    from lib.kurz import insert_decisions
+    week = berlin_day().isocalendar()
+    n = 0
+    for q in schlechte_quellen(quellen):
+        name = f"{q.get('country')} · {q.get('quelle')}"
+        subject = f"Käufer-Quelle {name}: harte Bounces (KW {week[1]}/{week[0]})"
+        if db.select("decisions", {"subject": f"eq.{subject}", "select": "id", "limit": "1"}):
+            continue
+        pct = f"{q['quote_hart'] * 100:.1f}".replace(".", ",")
+        insert_decisions(db, {"type": "note", "subject": subject, "status": "proposed",
+                              "reasoning": f"{q['hart']} von {q['gesendet']} Kaltmails an Käufer aus {name} kamen in "
+                                           "7 Tagen hart zurück (Adresse/Domain fehlt). Vorschlag: Adressen dieser "
+                                           "Quelle vor dem Versand zusätzlich prüfen oder Quelle zurückstellen. "
+                                           "Prüfregeln, Sperrliste und Versand wurden nicht verändert.",
+                              "metrics": {"quelle": q},
+                              "kurz_titel": f"Käufer-Quelle {name} prüfen"[:60],
+                              "kurz_grund": f"{pct} % harte Bounces ({q['hart']} von {q['gesendet']} Mails, 7 Tage)"[:160]})
+        n += 1
+    return n
 
 
 def seeds(db, env=None) -> dict:
@@ -208,6 +262,9 @@ def bewerten(d: dict, bl: dict, bo: dict, se: dict, lu: dict) -> tuple[str, list
         gelb.append(f"{len(unklar)} Blocklisten-Abfragen nicht prüfbar")
     if bo.get("beschwerden_7t"):
         gelb.append(f"{bo['beschwerden_7t']} Spam-Beschwerden in 7 Tagen")
+    richt = int((bo.get("klassen") or {}).get("richtlinie") or 0)
+    if richt:
+        gelb.append(f"{richt} Richtlinien-Bounces (Spam/Blockliste) in 7 Tagen")
     q = bo.get("quote")
     if q is not None and bo.get("gesendet_7t", 0) >= BOUNCE_MIN_SENT and q >= BOUNCE_GELB:
         gelb.append(f"Bounce-Quote 7 T {q * 100:.1f} %")
@@ -274,6 +331,10 @@ def run(db, env=None, resolve=_resolve, rec=None, apply: bool = True, push=None)
         db.insert("deliverability_daily", row, upsert_on="day")
         if status == "rot":
             melden_rot(db, row, push)
+        try:
+            quellen_vorschlagen(db, bo.get("quellen") or [])
+        except Exception as e:  # noqa: BLE001 - Vorschlag darf den Check nicht scheitern lassen
+            print(f"Quellen-Vorschlag nicht geschrieben: {type(e).__name__}: {str(e)[:160]}")
     return row
 
 

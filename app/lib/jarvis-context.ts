@@ -1,7 +1,8 @@
 import "server-only";
 import { db } from "@/lib/supabase";
 import { loadAb } from "@/lib/ab-data";
-import { CONFIG, COUNTRIES, SEGMENT, loadAnalyticsCache, loadDaily, loadFunnel, loadFunnelCache, loadLive, loadOwnerSettings, loadStock } from "@/lib/dashboard-data";
+import { CONFIG, COUNTRIES, SEGMENT, loadAnalyticsCache, loadBounceStats, loadDaily, loadFunnel, loadFunnelCache, loadLive, loadOwnerSettings, loadStock } from "@/lib/dashboard-data";
+import { bounceBrief } from "@/lib/bounce-stats";
 import { analyticsBrief, hints as webHints } from "@/lib/website-analytics";
 import { funnelBrief } from "@/lib/website-funnel";
 import { berlinDay, brake, mailboxes, monthly, realSubscriptions, sampleStock, type Live, type Stock } from "@/lib/dashboard-logic";
@@ -254,10 +255,10 @@ const line = (k: string, v: unknown) => `${k}: ${typeof v === "string" ? v : JSO
 /** Kompakter Kontext (wenige hundert Tokens): Uhrzeit, Kennzahlen, Thema der Sitzung. */
 export async function buildContext(session: ChatSession, s: Sources): Promise<string> {
   const now = s.now;
-  const [fg, en, an, top, api, wt, wh, zu, tr, pg] = await Promise.all([freigabe(), engpass(), antworten(), topic(session), loadLlmState(s.own),
+  const [fg, en, an, top, api, wt, wh, zu, tr, bk, pg] = await Promise.all([freigabe(), engpass(), antworten(), topic(session), loadLlmState(s.own),
     loadFunnelCache(5 * 60_000).then(funnelBrief, () => ({ fehler: NA })),
     Promise.all([loadAnalyticsCache(10 * 60_000), loadFunnelCache(5 * 60_000)]).then(([a, f]) => webHints(a, f, "7d").map((h) => `${h.title}: ${h.grund}`), () => NA),
-    zustellbarkeit(), trend7(now), prognose(now)]);
+    zustellbarkeit(), trend7(now), loadBounceStats(7).then(bounceBrief, () => NA), prognose(now)]);
   const v = versand(s) as Record<string, unknown>;
   const p = proben(s) as Record<string, unknown>;
   const k = kunden(s);
@@ -268,6 +269,8 @@ export async function buildContext(session: ChatSession, s: Sources): Promise<st
     line("Versand", v.fehler ? v : { aktiv: v.aktiv, heute: `${v.heute_gesendet}/${v.tagesgrenze}`, naechster_lauf: v.naechster_lauf, notbremse: v.notbremse, nachfass: v.nachfass }),
     line("Proben", p.fehler ? p : { bereit: `${p.bereit_gesamt}/${p.soll_gesamt}`, seiten: p.seiten }),
     line("Zustellbarkeit", zu),
+    // Bounce-Klassen 7 T (hart = Adresse/Domain fehlt, weich = voll/Timeout, richtlinie = Spam/Blockliste) je Postfach und Käufer-Quelle
+    line("Bounces 7T", bk),
     line("Freigabe", fg),
     line("Kunden", k),
     line("Antworten", { offen: an.offen_im_cockpit }),

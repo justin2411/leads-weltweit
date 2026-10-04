@@ -19,4 +19,12 @@ export const SPARK_CSS = `
   .fl-wide .fl-st{width:96px;height:96px}.fl-wide .fl-st.goal{width:112px;height:112px}.fl-wide{--fl-r:48px}
   .fl-wide .fl-v{font-size:17px}.fl-wide .fl-l{font-size:12px}.fl-wide .fl-rate.fl-rate-on{font-size:14px}
 }
+/* 721–820 px (Inhaber 04.10.2026: Mengen reichten bis an die Kreise): Kreise noch kleiner, damit links und rechts der
+   Menge immer Abstand bleibt (geprüft per Screenshot bei 721, 760, 800 px) */
+@media (min-width:721px) and (max-width:820px){
+  .fl-wide .fl-st{width:76px;height:76px}.fl-wide .fl-st.goal{width:88px;height:88px}.fl-wide{--fl-r:38px}
+  .fl-wide .fl-v{font-size:14px}.fl-wide .fl-l{font-size:10.5px;letter-spacing:-.02em;white-space:nowrap}.fl-wide .fl-sp{width:40px}
+  .fl-wide .fl-tr .fl-ar:not(:only-child){display:none}
+  .fl-wide .fl-rate.fl-rate-on{font-size:15px}
+}
 `;

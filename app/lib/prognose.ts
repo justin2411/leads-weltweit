@@ -105,7 +105,7 @@ export function summary(ps: Prognose[]): { value: string; sub: string; tone: "gr
     const ans = active.filter((p) => p.antworten30);
     if (!ans.length) return { value: "–", sub: "noch keine Basis", tone: "grey", tip };
     const sum = ans.reduce<Range>((r, p) => ({ lo: r.lo + p.antworten30!.lo, mid: r.mid + p.antworten30!.mid, hi: r.hi + p.antworten30!.hi }), { lo: 0, mid: 0, hi: 0 });
-    return { value: fmtRange(sum), sub: "Antworten · Kunden offen", tone: "cyan", tip };
+    return { value: fmtRange(sum), sub: "Antworten erwartet", tone: "cyan", tip };
   }
   const k = withK.reduce<Range>((r, p) => ({ lo: r.lo + p.kunden30!.lo, mid: r.mid + p.kunden30!.mid, hi: r.hi + p.kunden30!.hi }), { lo: 0, mid: 0, hi: 0 });
   const money = withK.map((p) => fmtRange(p.umsatz30, ` ${p.currency}`)).join(" + ");
