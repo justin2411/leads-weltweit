@@ -173,10 +173,40 @@ class CheckOneTests(unittest.TestCase):
     def test_mx_listed_email_names_denue_as_source(self):
         d = {**mx(www="pixel.mx", correoelec="contacto@pixel.mx"), "segment": "S2", "website": "pixel.mx",
              "domain": "pixel.mx"}
-        with self.scan({}):
+        with self.scan({}), mock.patch.object(K, "mx_check", return_value=True):
             row = K.check_one(d, None, self.cfg, self.generic, set())
         self.assertEqual((row["email"], row["check_status"]), ("contacto@pixel.mx", "ok"))
         self.assertIn("DENUE", row["source_url"])
+
+    def fr_overture(self):
+        return {"id": "ov-fr", "name": "Pixel Com SAS", "country": "FR", "segment": "S2", "category": "web_designer",
+                "website": "http://www.pixel-com.fr/", "domain": "pixel-com.fr", "emails": ["contact@pixel-com.fr"],
+                "street": "1 rue X", "city": "Lyon", "postcode": "69001"}
+
+    def dead_scan(self):
+        return mock.patch.object(K, "site_scan", return_value={"emails": {}, "text": "", "pages": [],
+                                                                "final_domain": "", "html": "", "loaded": False})
+
+    def test_listed_email_dropped_when_site_dead_or_no_mx(self):
+        import dauerpruefung
+        d = self.fr_overture()
+        with self.dead_scan(), mock.patch.object(K, "mx_check", return_value=True), \
+                mock.patch.object(dauerpruefung, "site_state", return_value="tot"):
+            row = K.check_one(d, None, self.cfg, self.generic, set())
+        self.assertIsNone(row["email"])
+        self.assertNotEqual(row["check_status"], "ok")
+        with self.scan({}), mock.patch.object(K, "mx_check", return_value=False):
+            row = K.check_one(d, None, self.cfg, self.generic, set())
+        self.assertIsNone(row["email"])
+        self.assertNotEqual(row["check_status"], "ok")
+
+    def test_listed_email_kept_when_site_only_refused(self):
+        import dauerpruefung
+        d = self.fr_overture()
+        with self.dead_scan(), mock.patch.object(K, "mx_check", return_value=None), \
+                mock.patch.object(dauerpruefung, "site_state", return_value=None):
+            row = K.check_one(d, None, self.cfg, self.generic, set())
+        self.assertEqual(row["email"], "contact@pixel-com.fr")
 
 
 class PoolTests(unittest.TestCase):

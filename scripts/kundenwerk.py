@@ -286,7 +286,7 @@ def site_scan(website: str, fetcher) -> dict:
     base = website if website.startswith("http") else "https://" + website
     home = fetcher.get(base) or fetcher.get(base.replace("http://", "https://", 1))
     if not home:
-        return {"emails": {}, "text": "", "pages": [], "final_domain": "", "html": ""}
+        return {"emails": {}, "text": "", "pages": [], "final_domain": "", "html": "", "loaded": False}
     pages = {home[0]: home[1]}
     for sub in W.subpage_links(home[1], home[0], limit=4):
         got = fetcher.get(sub)
@@ -298,7 +298,25 @@ def site_scan(website: str, fetcher) -> dict:
             emails.setdefault(e.lower().strip("."), url)
     text = "\n".join(h[-20000:] + "\n" + h[:5000] for h in pages.values())
     return {"emails": emails, "text": text, "pages": list(pages), "final_domain": W.site_domain(home[0]),
-            "html": "\n".join(pages.values())}
+            "html": "\n".join(pages.values()), "loaded": True}
+
+
+def listed_email_usable(d: dict, res: dict, email: str, fetcher) -> bool:
+    """Firmen-E-Mail aus dem Eintrag (Overture/Register) nur, wenn sie heute noch zustellbar wirkt: Domain hat MX
+    und die Website ist nicht tot (gleiche Kriterien wie die Dauerprüfung: kein_mx, website_nicht_erreichbar).
+    Overture-Einträge sind oft veraltet – FR 04.10.2026: 6 von 28 geprüften Overture-Käufern so markiert."""
+    from lib.rules import email_domain
+    if mx_check(email_domain(email)) is False:
+        return False
+    if res.get("loaded", True) or not d.get("website"):
+        return True
+    from dauerpruefung import site_state
+    return site_state(d["website"], getattr(fetcher, "session", None)) != "tot"
+
+
+def mx_check(domain: str) -> bool | None:
+    from lib.release_gate import mx_cached
+    return mx_cached(domain)
 
 
 def check_one(d: dict, fetcher, cfg: dict, generic: set[str], blocked: set[str]) -> dict:
@@ -313,6 +331,8 @@ def check_one(d: dict, fetcher, cfg: dict, generic: set[str], blocked: set[str])
         # Firmen-E-Mail aus dem eigenen Eintrag der Firma (Overture), nur auf der eigenen Domain
         listed = {e.lower().strip() for e in d.get("emails") or [] if e}
         email, is_gen = P.pick_email(listed, d["domain"], generic)
+        if email and not listed_email_usable(d, res, email, fetcher):
+            email, is_gen = None, None
         src = (d.get("quelle") or f"https://overturemaps.org (Firmeneintrag {d['id']})") if email else None
     legal, reg_no = P.detect_legal_form(d["country"], d["name"], res["text"])
     size_note = f"Company No. {reg_no} (Website)" if reg_no else None
