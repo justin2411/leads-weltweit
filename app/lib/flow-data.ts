@@ -3,7 +3,7 @@ import { unstable_cache } from "next/cache";
 import { db } from "@/lib/supabase";
 import { FLOW_KINDS, PREVIEW_COLS, parseFlow, ruleTag, unpackRows, type Flow, type FlowKind, type Row, type RowPack } from "@/lib/flow";
 import { dedupeRows, isUuid, queryKey, toRow, type FlowStatus, type Snapshot, type SourceQuery } from "@/lib/flow-io";
-import { poolInfos, type CustomAgent, type PoolInfo, type Trigger } from "@/lib/baukasten";
+import { loadSchedule, poolInfos, type CustomAgent, type PoolInfo } from "@/lib/baukasten";
 
 /**
  * Daten des Baukastens (/dashboard/baukasten). Nur serverseitig mit dem Service-Schlüssel.
@@ -70,13 +70,12 @@ export async function loadPools(): Promise<PoolInfo[]> {
   return poolInfos(p.data ?? [], c.error ? [] : ((c.data ?? []) as { pool_id: unknown; country: unknown; n: unknown }[]));
 }
 
-const AGENT_COLS = "id, name, flow_id, trigger, at_hour, ai_brief, ai_market, enabled, last_run_at, last_result, updated_at, flows(status)";
+const AGENT_COLS = "id, name, flow_id, trigger, at_hour, at_minute, weekdays, every_hours, ai_brief, ai_market, enabled, last_run_at, last_result, updated_at, flows(status)";
 function toAgent(x: Record<string, unknown>): CustomAgent {
   const f = x.flows as { status?: unknown } | { status?: unknown }[] | null;
   const st = Array.isArray(f) ? f[0]?.status : f?.status;
   return {
-    id: String(x.id), name: String(x.name ?? ""), flow_id: String(x.flow_id ?? ""), trigger: (x.trigger as Trigger) ?? "taeglich",
-    at_hour: typeof x.at_hour === "number" ? x.at_hour : null, ai_brief: (x.ai_brief as string | null) ?? null,
+    id: String(x.id), name: String(x.name ?? ""), flow_id: String(x.flow_id ?? ""), ...loadSchedule(x), ai_brief: (x.ai_brief as string | null) ?? null,
     ai_market: (x.ai_market as string | null) ?? null, enabled: x.enabled === true, archived: st === "archiv",
     last_run_at: (x.last_run_at as string | null) ?? null, last_result: x.last_result ?? null, updated_at: (x.updated_at as string | null) ?? null,
   };

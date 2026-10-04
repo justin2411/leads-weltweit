@@ -17,8 +17,9 @@ Wünsche des Inhabers (wörtlich gekürzt):
 - `lead_pool_items(pool_id, lead_id, added_at, added_by)` PK (pool_id, lead_id); added_by = `master` | `agent:<uuid8>` | `manuell`.
 - `pool_routes(segment_id, country, pool_id)` – Proben (Vorrat) und Lieferungen für diese Zielgruppe+Land nur aus diesem Speicher.
 - `subscriptions.pool_id` – Übersteuerung je Kunde (vor pool_routes).
-- `custom_agents(id, name, flow_id, trigger stuendlich|taeglich|neue_leads, at_hour 0–23 deutsche Zeit, ai_brief ≤1000,
-  ai_market, enabled, last_run_at, last_result)`; `agent_runs(agent_id, started_at, finished_at, rows_in, result, error)`.
+- `custom_agents(id, name, flow_id, trigger taeglich|alle_stunden|neue_leads (alt: stuendlich = alle 1 Stunde),
+  at_hour 0–23 + at_minute 0/15/30/45 deutsche Zeit, weekdays ISO 1–7 (null = alle), every_hours 1/2/3/4/6/8/12,
+  ai_brief ≤1000, ai_market (ohne IE/NL/BE), enabled, last_run_at, last_result)`; `agent_runs(agent_id, started_at, finished_at, rows_in, result, error)`.
 - RPC `pool_counts()` → (pool_id, country, segment, n).
 
 ## Flow-Format (app/lib/flow.ts = scripts/lib/owner_rules.py, gemeinsame Fälle tests/fixtures/flow_cases.json)
@@ -39,8 +40,11 @@ Semantik der Master-Pipeline: `pipeline`-Ziel = Stufe 4 „Inhaber-Regeln“ wie
   (`flow_lead_rows`/`flow_buyer_rows`), Ziele: speicher → lead_pool_items (`agent:<id8>`), melden → Mail/Push an Inhaber,
   agent/ai_brief → Eintrag in `agent_tasks` (Agenten-Routine), export → Ergebnis-IDs in agent_runs.result (Download im
   Dashboard). NIE Versand an Käufer/Leads, nie Sperrliste/Prüfregeln ändern.
-- Workflow `.github/workflows/agenten-werk.yml` stündlich (+ Wachhund-Pflichtlauf), führt `pools.py fill` und
-  `agents_run.py --apply` aus; respektiert `owner_settings.werke_paused`.
+- Workflow `.github/workflows/agenten-werk.yml`: `pools.py fill` stündlich (:29, + Wachhund-Pflichtlauf), eigene
+  Agenten alle 15 min (`agents_run.py --faellig` als Vorab-Check, ohne fälligen Agenten sofort fertig, sonst
+  `agents_run.py --apply`). Fällig = letzter Termin (deutsche Zeit, Sommer/Winterzeit) nach dem letzten Lauf;
+  verpasste Termine einmal nachholen, nie doppelt (last_run_at wird vor dem Lauf bedingt gesetzt). Respektiert
+  `owner_settings.werke_paused`.
 - Bedienen: `scripts/sample_stock.py` (Vorrat) und `scripts/deliveries.py` (Lieferungen) beschränken die Kandidaten auf
   den Speicher aus `subscriptions.pool_id` bzw. `pool_routes`, falls gesetzt; sonst wie bisher. Drei-Stufen-Freigabe
   bleibt davor Pflicht. Reicht der Speicher nicht für genau 10 verschiedene Firmen → keine Probe aus diesem Speicher

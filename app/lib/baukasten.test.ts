@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   BEREICHE, MASTER_TEMPLATES, blankFlow, checkPoolName, describeTrigger, duplicateNode, hasFreigabe, logicSig, masterStart, meldenPreview,
-  parseAgentInput, parseBereich, pendingPool, poolInfos, resolvePools, resultShort, suggestMarket,
+  AGENT_MARKETS, describeWeekdays, parseAgentInput, parseBereich, pendingPool, poolInfos, resolvePools, resultShort, suggestMarket,
 } from "./baukasten.ts";
 import { GESAMTBESTAND, parseFlow, pipelineCheck, problems, runFlowRows, type Flow, type FlowNode, type Row } from "./flow.ts";
 
@@ -127,10 +127,32 @@ test("Melden-Vorschau: Anzahl und bis zu 10 Firmen", () => {
   assert.match(t, /\(\+2\)$/);
 });
 
+const pick = (a: Record<string, unknown>) =>
+  ({ trigger: a.trigger, at_hour: a.at_hour, at_minute: a.at_minute, weekdays: a.weekdays, every_hours: a.every_hours });
+
 test("Agent-Eingaben prüfen", () => {
+  // alt: nur at_hour → HH:00, alle Tage
   assert.deepEqual(parseAgentInput({ name: " UK Käufer ", trigger: "taeglich", at_hour: "7", ai_brief: "", ai_market: "uk" }),
-    { name: "UK Käufer", trigger: "taeglich", at_hour: 7, ai_brief: null, ai_market: "UK" });
-  assert.equal(parseAgentInput({ name: "a", trigger: "stuendlich", at_hour: 5 }).at_hour, null);
+    { name: "UK Käufer", trigger: "taeglich", at_hour: 7, at_minute: 0, weekdays: null, every_hours: null, ai_brief: null, ai_market: "UK" });
+  // alt: stuendlich → alle 1 Stunde
+  assert.deepEqual(pick(parseAgentInput({ name: "a", trigger: "stuendlich", at_hour: 5 })),
+    { trigger: "alle_stunden", at_hour: null, at_minute: null, weekdays: null, every_hours: 1 });
+  // neu: Uhrzeit HH:MM im 15-Minuten-Raster (abgerundet) + Wochentage
+  assert.deepEqual(pick(parseAgentInput({ name: "a", trigger: "taeglich", at_hour: 14, at_minute: 22, weekdays: [4, 2, 3, 3] })),
+    { trigger: "taeglich", at_hour: 14, at_minute: 15, weekdays: [2, 3, 4], every_hours: null });
+  assert.equal(parseAgentInput({ name: "a", trigger: "taeglich", at_hour: 9, weekdays: [1, 2, 3, 4, 5, 6, 7] }).weekdays, null);
+  assert.throws(() => parseAgentInput({ name: "a", trigger: "taeglich", at_hour: 9, weekdays: [] }), /Wochentag/);
+  assert.throws(() => parseAgentInput({ name: "a", trigger: "taeglich", at_hour: 9, weekdays: [8] }), /Wochentag/);
+  assert.throws(() => parseAgentInput({ name: "a", trigger: "taeglich", at_hour: 9, at_minute: 60 }), /Minute/);
+  assert.deepEqual(pick(parseAgentInput({ name: "a", trigger: "alle_stunden", every_hours: "3", at_hour: 9, weekdays: [1, 2, 3, 4, 5] })),
+    { trigger: "alle_stunden", at_hour: null, at_minute: null, weekdays: [1, 2, 3, 4, 5], every_hours: 3 });
+  assert.throws(() => parseAgentInput({ name: "a", trigger: "alle_stunden", every_hours: 5 }), /Stunden/);
+  assert.throws(() => parseAgentInput({ name: "a", trigger: "alle_stunden" }), /Stunden/);
+  assert.deepEqual(pick(parseAgentInput({ name: "a", trigger: "neue_leads", at_hour: 3, weekdays: [1] })),
+    { trigger: "neue_leads", at_hour: null, at_minute: null, weekdays: null, every_hours: null });
+  // Markt: IE, NL, BE dürfen wir nicht
+  for (const m of ["IE", "NL", "BE"]) assert.throws(() => parseAgentInput({ name: "a", trigger: "neue_leads", ai_market: m }), /Markt/);
+  assert.ok(!AGENT_MARKETS.some((m) => ["IE", "NL", "BE"].includes(m)) && AGENT_MARKETS.includes("UK"));
   assert.throws(() => parseAgentInput({ name: "", trigger: "taeglich", at_hour: 7 }), /Name/);
   assert.throws(() => parseAgentInput({ name: "a", trigger: "jede_minute" }), /Auslöser/);
   assert.throws(() => parseAgentInput({ name: "a", trigger: "taeglich" }), /Uhrzeit/);
@@ -146,13 +168,20 @@ test("Markt-Vorschlag aus der Quelle (UK-Käufer → UK)", () => {
   assert.equal(suggestMarket(f(["UK", "US"])), null);
   assert.equal(suggestMarket(f([])), null);
   assert.equal(suggestMarket(f(["DE"])), null);
+  assert.equal(suggestMarket(f(["IE"])), null);
   assert.equal(suggestMarket({ v: 1, nodes: [], edges: [] }), null);
 });
 
 test("Auslöser und Ergebnis kurz", () => {
-  assert.equal(describeTrigger("taeglich", 7), "täglich um 7 Uhr");
-  assert.equal(describeTrigger("stuendlich", null), "stündlich");
-  assert.equal(describeTrigger("neue_leads", null), "bei neuen Leads");
+  assert.equal(describeTrigger({ trigger: "taeglich", at_hour: 7 }), "Läuft täglich um 07:00 Uhr");
+  assert.equal(describeTrigger({ trigger: "taeglich", at_hour: 14, at_minute: 15, weekdays: [2, 3, 4] }), "Läuft Di–Do um 14:15 Uhr");
+  assert.equal(describeTrigger({ trigger: "taeglich", at_hour: 8, at_minute: 30, weekdays: [1, 3, 5] }), "Läuft Mo, Mi, Fr um 08:30 Uhr");
+  assert.equal(describeTrigger({ trigger: "taeglich", at_hour: 10, weekdays: [1, 2, 3, 4, 5, 7] }), "Läuft Mo–Fr, So um 10:00 Uhr");
+  assert.equal(describeTrigger({ trigger: "alle_stunden", every_hours: 3 }), "Läuft alle 3 Stunden");
+  assert.equal(describeTrigger({ trigger: "alle_stunden", every_hours: 2, weekdays: [6, 7] }), "Läuft Sa, So alle 2 Stunden");
+  assert.equal(describeTrigger({ trigger: "stuendlich", at_hour: null }), "Läuft stündlich");
+  assert.equal(describeTrigger({ trigger: "neue_leads" }), "Läuft bei neuen Leads");
+  assert.equal(describeWeekdays(null), "");
   assert.equal(resultShort(null), "noch nicht gelaufen");
   assert.equal(resultShort({ error: "kaputt" }), "Fehler: kaputt");
   assert.equal(resultShort({ text: "3 neue" }), "3 neue");

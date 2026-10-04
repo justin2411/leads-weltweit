@@ -6,8 +6,14 @@ agenten bauen und speichern, die dann für eine bestimmte sache immer angewendet
   python scripts/agents_run.py --apply    # fällige Agenten ausführen
   python scripts/agents_run.py --apply --agent <id>   # einen Agenten sofort (unabhängig vom Auslöser)
 
-Auslöser (custom_agents.trigger): stuendlich | taeglich (at_hour, deutsche Zeit) | neue_leads (seit dem letzten Lauf
-neue Leads im Bereich der Quelle). Zeilen über dieselben Datenbank-Funktionen wie der Baukasten (flow_lead_rows /
+  python scripts/agents_run.py --faellig  # nur zählen, wie viele fällig sind (Workflow endet sonst sofort)
+
+Auslöser (custom_agents.trigger, alles in deutscher Zeit, Inhaber 04.10.2026: „eigene zeit festlegen“):
+  taeglich     at_hour:at_minute (15-Minuten-Raster), optional weekdays (ISO 1 = Mo … 7 = So)
+  alle_stunden every_hours 1/2/3/4/6/8/12 ab 00:00, optional weekdays; 'stuendlich' (alt) = alle 1 Stunde
+  neue_leads   seit dem letzten Lauf neue Leads im Bereich der Quelle (höchstens stündlich)
+Das Agenten-Werk startet alle 15 min; fällig ist ein Agent, wenn sein letzter Termin nach dem letzten Lauf liegt.
+Verpasste Termine laufen einmal nach, nie doppelt (last_run_at wird vor dem Lauf bedingt gesetzt). Zeilen über dieselben Datenbank-Funktionen wie der Baukasten (flow_lead_rows /
 flow_buyer_rows), Ablauf wie runFlowRows (owner_rules.run_flow_rows). Ziele:
   speicher → lead_pool_items (added_by 'agent:<id8>', nur Leads)
   melden   → kurze Mail an den Inhaber (Anzahl + bis zu 10 Firmen) und Push aufs Handy
@@ -24,6 +30,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -38,7 +45,7 @@ BERLIN = ZoneInfo("Europe/Berlin")
 PAGE = 1000
 SIZES = (1000, 2000, 5000)
 EXPORT_MAX = 5000
-HOURLY_GAP_MIN = 50       # stündlich: frühestens nach so vielen Minuten wieder
+HOURLY_GAP_MIN = 50       # bei neuen Leads: frühestens nach so vielen Minuten wieder
 DEFAULT_HOUR = 7          # täglich ohne Stunde: 7 Uhr deutscher Zeit
 MARKETS = ("US", "UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK", "MX", "BR")   # wie app/lib/agents.ts MARKETS
 TASK_KINDS = ("leads", "kaeufer", "quelle", "pruefen", "frage")
@@ -104,25 +111,83 @@ def _ts(v) -> dt.datetime | None:
     return d if d.tzinfo else d.replace(tzinfo=dt.timezone.utc)
 
 
-def due(agent: dict, now: dt.datetime, has_new=None) -> tuple[bool, str]:
-    """(fällig?, Grund). has_new(agent) → bool nur für 'neue_leads' (Datenbankabfrage)."""
-    last = _ts(agent.get("last_run_at"))
+EVERY_HOURS = (1, 2, 3, 4, 6, 8, 12)
+STEP_MIN = 15             # Zeiten im 15-Minuten-Raster (Agenten-Werk läuft alle 15 min)
+LOOKBACK_DAYS = 8         # verpasste Termine höchstens so weit zurück (einmal nachholen)
+WD = ("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")
+
+
+def schedule_of(agent: dict) -> dict:
+    """Zeitplan eines Agenten, bereinigt und rückwärtskompatibel: 'stuendlich' = alle 1 Stunde, at_hour ohne Minute
+    = HH:00, fehlende Stunde = 7 Uhr, Minute aufs 15-Minuten-Raster abgerundet, Wochentage ISO 1–7 (leer = alle)."""
     trig = agent.get("trigger") or "taeglich"
-    if trig == "stuendlich":
-        if last and (now - last).total_seconds() / 60 < HOURLY_GAP_MIN:
-            return False, "lief diese Stunde schon"
-        return True, "stündlich"
+    wds = agent.get("weekdays")
+    days = sorted({int(d) for d in wds if isinstance(d, int) and 1 <= d <= 7}) if isinstance(wds, list) else []
+    days = days or list(range(1, 8))
+    m = agent.get("at_minute")
+    minute = (m // STEP_MIN) * STEP_MIN if isinstance(m, int) and 0 <= m <= 59 else 0
+    if trig in ("stuendlich", "alle_stunden"):
+        e = agent.get("every_hours")
+        every = e if trig == "alle_stunden" and e in EVERY_HOURS else 1
+        return {"kind": "alle_stunden", "every": every, "minute": 0, "weekdays": days}
     if trig == "taeglich":
         h = agent.get("at_hour")
         h = DEFAULT_HOUR if not isinstance(h, int) or not 0 <= h <= 23 else h
-        local = now.astimezone(BERLIN)
-        slot = local.replace(hour=h, minute=0, second=0, microsecond=0)
-        if local < slot:
-            return False, f"heute um {h:02d}:00 Uhr"
-        if last and last >= slot.astimezone(dt.timezone.utc):
-            return False, "heute schon gelaufen"
-        return True, f"täglich {h:02d}:00 Uhr"
-    if trig == "neue_leads":
+        return {"kind": "taeglich", "hour": h, "minute": minute, "weekdays": days}
+    return {"kind": trig}
+
+
+def _slots_on(s: dict, day: dt.date) -> list[dt.datetime]:
+    """Termine eines Tages (deutsche Zeit) als UTC. Zeitumstellung: eine fehlende Uhrzeit (Frühjahr, 02:xx) wird
+    nach der Umstellung nachgeholt, eine doppelte (Herbst) zählt einmal (erste Stunde) – zoneinfo mit fold=0."""
+    if day.isoweekday() not in s["weekdays"]:
+        return []
+    hours = [s["hour"]] if s["kind"] == "taeglich" else list(range(0, 24, s["every"]))
+    out = {dt.datetime(day.year, day.month, day.day, h, s["minute"], tzinfo=BERLIN).astimezone(dt.timezone.utc)
+           for h in hours}
+    return sorted(out)
+
+
+def last_slot(s: dict, now: dt.datetime) -> dt.datetime | None:
+    """Letzter Termin ≤ now (UTC), höchstens LOOKBACK_DAYS zurück."""
+    today = now.astimezone(BERLIN).date()
+    for back in range(LOOKBACK_DAYS + 1):
+        hits = [t for t in _slots_on(s, today - dt.timedelta(days=back)) if t <= now]
+        if hits:
+            return hits[-1]
+    return None
+
+
+def next_slot(s: dict, now: dt.datetime) -> dt.datetime | None:
+    """Nächster Termin > now (UTC)."""
+    today = now.astimezone(BERLIN).date()
+    for ahead in range(LOOKBACK_DAYS + 1):
+        hits = [t for t in _slots_on(s, today + dt.timedelta(days=ahead)) if t > now]
+        if hits:
+            return hits[0]
+    return None
+
+
+def _when(t: dt.datetime | None) -> str:
+    if t is None:
+        return "kein Termin"
+    loc = t.astimezone(BERLIN)
+    return f"{WD[loc.isoweekday() - 1]} {loc:%H:%M} Uhr"
+
+
+def due(agent: dict, now: dt.datetime, has_new=None) -> tuple[bool, str]:
+    """(fällig?, Grund). Zeitplan in deutscher Zeit; fällig, wenn der letzte Termin nach dem letzten Lauf liegt
+    (verpasste Termine laufen genau einmal nach, nie doppelt). Neue Agenten ohne Lauf starten am ersten Termin nach
+    ihrer Anlage. has_new(agent) → bool nur für 'neue_leads' (Datenbankabfrage)."""
+    last = _ts(agent.get("last_run_at"))
+    s = schedule_of(agent)
+    if s["kind"] in ("taeglich", "alle_stunden"):
+        slot = last_slot(s, now)
+        ref = last or _ts(agent.get("created_at"))
+        if slot is None or (ref is not None and ref >= slot):
+            return False, f"nächster Lauf {_when(next_slot(s, now))}"
+        return True, f"Termin {_when(slot)}" + (" (nachgeholt)" if (now - slot).total_seconds() > 30 * 60 else "")
+    if s["kind"] == "neue_leads":
         if last and (now - last).total_seconds() / 60 < HOURLY_GAP_MIN:
             return False, "lief diese Stunde schon"
         if last is None:
@@ -130,7 +195,7 @@ def due(agent: dict, now: dt.datetime, has_new=None) -> tuple[bool, str]:
         if has_new is not None and has_new(agent):
             return True, "neue Leads"
         return False, "keine neuen Leads"
-    return False, f"Auslöser unbekannt: {trig}"
+    return False, f"Auslöser unbekannt: {s['kind']}"
 
 
 # ---------------------------------------------------------------------------- Flow und Zeilen
@@ -318,12 +383,27 @@ def summary(out: dict) -> dict:
     return {"rows_in": out.get("rows_in"), "ziele": z, "auftraege": out.get("auftraege", 0)}
 
 
+def _has_new(db, agent: dict) -> bool:
+    fl = db.select("flows", {"id": f"eq.{agent['flow_id']}", "select": "def"}) or []
+    return has_new_leads(db, agent, parse_def(fl[0].get("def")) if fl else None)
+
+
+AGENT_SELECT = "id,name,flow_id,trigger,at_hour,at_minute,weekdays,every_hours,ai_brief,ai_market,last_run_at,created_at"
+
+
+def claim(db, agent: dict, started: str) -> bool:
+    """Lauf für sich beanspruchen: last_run_at nur setzen, wenn es seit dem Lesen unverändert ist. So läuft ein
+    Agent nie doppelt, auch wenn sich zwei Läufe des Agenten-Werks überschneiden."""
+    return bool(db.update("custom_agents", {"id": agent["id"], "last_run_at": agent.get("last_run_at")},
+                          {"last_run_at": started}))
+
+
 def run(db, apply: bool, log=print, now: dt.datetime | None = None, only: str | None = None) -> dict:
     now = now or dt.datetime.now(dt.timezone.utc)
     stats = {"faellig": 0, "ok": 0, "fehler": 0}
     try:
         agents = db.select("custom_agents", {"enabled": "eq.true", "order": "created_at.asc",
-                                             "select": "id,name,flow_id,trigger,at_hour,ai_brief,ai_market,last_run_at"}) or []
+                                             "select": AGENT_SELECT}) or []
     except RuntimeError as exc:
         if "PGRST205" in str(exc) or "42P01" in str(exc):
             log("custom_agents fehlt (Migration 20261004100000) – nichts zu tun")
@@ -333,19 +413,19 @@ def run(db, apply: bool, log=print, now: dt.datetime | None = None, only: str | 
         agents = [a for a in agents if str(a["id"]) == only]
     for a in agents:
         if not only:
-            def has_new(ag, a=a):
-                fl = db.select("flows", {"id": f"eq.{a['flow_id']}", "select": "def"}) or []
-                return has_new_leads(db, ag, parse_def(fl[0].get("def")) if fl else None)
-            ok, why = due(a, now, has_new)
+            ok, why = due(a, now, lambda ag: _has_new(db, ag))
             if not ok:
                 log(f"- {a.get('name')}: nicht fällig ({why})")
                 continue
         else:
             why = "Handstart"
+        started = dt.datetime.now(dt.timezone.utc).isoformat()
+        if apply and not claim(db, a, started):
+            log(f"- {a.get('name')}: läuft schon in einem anderen Lauf")
+            continue
         stats["faellig"] += 1
         log(f"> {a.get('name')}: fällig ({why})")
         run_id = None
-        started = dt.datetime.now(dt.timezone.utc).isoformat()
         if apply:
             run_id = (db.insert("agent_runs", {"agent_id": a["id"], "started_at": started}) or [{}])[0].get("id")
         try:
@@ -363,22 +443,51 @@ def run(db, apply: bool, log=print, now: dt.datetime | None = None, only: str | 
             if run_id:
                 db.update("agent_runs", {"id": run_id}, {"finished_at": fin, "rows_in": out.get("rows_in"),
                                                          "result": out, "error": err})
-            db.update("custom_agents", {"id": a["id"]}, {"last_run_at": started,
-                                                         "last_result": {"error": err} if err else summary(out)})
+            db.update("custom_agents", {"id": a["id"]}, {"last_result": {"error": err} if err else summary(out)})
         except Exception as exc:  # noqa: BLE001
             log(f"  Protokoll nicht gespeichert ({type(exc).__name__})")
     log(f"Agenten: {stats['faellig']} fällig, {stats['ok']} ok, {stats['fehler']} Fehler")
     return stats
 
 
+def count_due(db, now: dt.datetime | None = None, log=print) -> int:
+    """Wie viele eingeschaltete Agenten jetzt fällig sind (nur lesen). Für den schnellen Vorab-Check im Workflow:
+    ohne fälligen Agenten endet der Lauf sofort (spart Minuten). 'neue_leads' fragt wie der Lauf selbst nach neuen
+    Leads (eine kleine Abfrage)."""
+    now = now or dt.datetime.now(dt.timezone.utc)
+    try:
+        agents = db.select("custom_agents", {"enabled": "eq.true", "select": AGENT_SELECT}) or []
+    except RuntimeError as exc:
+        if "PGRST205" in str(exc) or "42P01" in str(exc):
+            return 0
+        raise
+    n = 0
+    for a in agents:
+        ok, why = due(a, now, lambda ag: _has_new(db, ag))
+        log(f"{'>' if ok else '-'} {a.get('name')}: {why}")
+        n += ok
+    return n
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--agent", help="nur diesen Agenten (sofort)")
+    ap.add_argument("--faellig", action="store_true",
+                    help="nur zählen, wie viele Agenten fällig sind (schreibt faellig=N nach $GITHUB_OUTPUT)")
     args = ap.parse_args(argv)
     from lib.db import DB
     from lib.owner_settings import stop_if_paused
     db = DB()
+    if args.faellig:
+        from lib.owner_settings import paused
+        n = 0 if paused(db, "agenten") else count_due(db)
+        print(f"faellig={n}")
+        out = os.environ.get("GITHUB_OUTPUT")
+        if out:
+            with open(out, "a", encoding="utf-8") as fh:
+                fh.write(f"faellig={n}\n")
+        return 0
     if args.apply and stop_if_paused(db, "agenten"):
         return 0
     run(db, args.apply, only=args.agent)

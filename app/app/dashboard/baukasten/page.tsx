@@ -109,7 +109,8 @@ export default async function Baukasten({ searchParams }: { searchParams: SP }) 
       );
     }
     initial = { id: f.id, version: f.updated_at, name: agentRow.name, flow: resolvePools(f.def, pools), kind: "agent",
-      agent: { id: agentRow.id, name: agentRow.name, trigger: agentRow.trigger, at_hour: agentRow.at_hour, ai_brief: agentRow.ai_brief,
+      agent: { id: agentRow.id, name: agentRow.name, trigger: agentRow.trigger, at_hour: agentRow.at_hour,
+        at_minute: agentRow.at_minute, weekdays: agentRow.weekdays, every_hours: agentRow.every_hours, ai_brief: agentRow.ai_brief,
         ai_market: agentRow.ai_market, enabled: agentRow.enabled, archived: agentRow.archived } };
     navKey = `agent:${agentRow.id}`;
   } else if (bereich === "master") {
