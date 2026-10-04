@@ -655,13 +655,14 @@ export const HUD_CSS = `
 .tip-x{position:absolute;top:6px;right:6px;z-index:2;display:grid;place-items:center;width:22px;height:22px;padding:0;margin:0;border:0;border-radius:50%;background:transparent;color:var(--soft);opacity:.55;cursor:pointer;transition:opacity .15s,color .15s,background-color .15s}
 .tip-x::before{content:"";position:absolute;inset:-9px}
 .tip-x svg{width:12px;height:12px}
-.tip-x:hover,.tip-x:focus-visible{opacity:1;color:#fff;background:rgba(255,94,115,.2)}
+.tip-x:hover,.tip-x:focus-visible{opacity:1;color:#ff5e73;background:none}
 .tip-x:disabled{opacity:.3;cursor:default}
 .jrec-i{position:relative}
 .jv3 .jrec-give{border-radius:0 12px 12px 0}
-.jt-wrap .tip-x{top:-7px;right:-7px;width:18px;height:18px;opacity:.85;background:#07101f;border:1px solid var(--line)}
+.jt-wrap .tip-x{top:-9px;right:-6px;width:16px;height:16px;opacity:.7;background:none;border:0}
 .jt-wrap .tip-x svg{width:10px;height:10px}
-.jt-wrap .tip-x:hover,.jt-wrap .tip-x:focus-visible{border-color:rgba(255,94,115,.6);background:#2a0f17}
+.jt-wrap .tip-x:hover,.jt-wrap .tip-x:focus-visible{background:none;color:#ff5e73}
+.dash button.tip-x,.dash button.tip-x:hover,.dash button.tip-x:focus-visible{background:none!important;border:0!important;box-shadow:none!important;padding:0;min-height:0}
 .tip-gone{display:none!important}
 .tip-undo{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:70;display:flex;align-items:center;gap:12px;max-width:calc(100vw - 32px);padding:6px 6px 6px 16px;border:1px solid rgba(226,198,143,.5);border-radius:12px;background:#07101f;box-shadow:0 16px 40px -12px rgba(0,0,0,.9),0 0 24px -10px rgba(226,198,143,.4);font-size:13.5px;color:var(--text)}
 .tip-undo>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
