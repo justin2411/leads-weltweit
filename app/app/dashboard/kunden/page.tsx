@@ -3,6 +3,7 @@ import { PACKAGES } from "@/lib/owner-settings";
 import { approveFirstDelivery, createCustomer, setSubscriptionPaused } from "../control-actions";
 import { COUNTRY_COLOR, berlin, compact, currencySign, isTestCustomer, monthly, nextRun, onlySegment, realSubscriptions } from "@/lib/dashboard-logic";
 import { requireOwner } from "../actions";
+import { Icon } from "@/app/icons";
 import { Back, COUNTRY_OPTS, Chips, Crumbs, Ctrl, Kpi } from "../v2";
 import { readParams, withQuery, type SP } from "../params";
 
@@ -10,7 +11,10 @@ import { readParams, withQuery, type SP } from "../params";
 export default async function Kunden({ searchParams }: { searchParams: SP }) {
   await requireOwner();
   const { land, countries, raw } = await readParams(searchParams);
-  const live = onlySegment(await loadLive(), SEGMENT);
+  const liveAll = await loadLive();
+  const live = onlySegment(liveAll, SEGMENT);
+  // Kontaktanfragen der Website gehören keiner Zielgruppe – daher aus dem ungefilterten Stand
+  const contacts = liveAll.contact_requests;
   const now = new Date(live.now);
   const subs = realSubscriptions(live).filter((s) => countries.includes(s.customer?.country ?? ""));
   const rev = new Map<string, number>();
@@ -23,7 +27,8 @@ export default async function Kunden({ searchParams }: { searchParams: SP }) {
 
   return (
     <div className="v2">
-      <Crumbs items={[["Übersicht", "/dashboard"], ["Kunden & Umsatz", ""]]} />
+      <Crumbs items={[["JARVIS", "/dashboard/jarvis"], ["Kunden & Umsatz", ""]]} />
+      <p style={{ margin: "0 0 10px" }}><a href="/dashboard/kunden-agenten" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="ansprechpartner" size={16} /> Kunden-Agenten (KI-Ansprechpartner ab Pro)</a></p>
       <div className="head2"><span /><Chips base="/dashboard/kunden" param="land" value={land} options={COUNTRY_OPTS} params={raw} dots /></div>
       <div className="kpis2 four">
         <Kpi value={compact(subs.length)} label="Kunden" tip="aktive Abos ohne Testkäufe" />
@@ -65,6 +70,24 @@ export default async function Kunden({ searchParams }: { searchParams: SP }) {
         })}
         {custs.length === 0 && <div className="muted">noch keine Kunden</div>}
       </div>
+      {contacts.length > 0 && (
+        <>
+          <h2 className="h2s">Kontaktanfragen</h2>
+          <div className="klist card">
+            {contacts.slice(0, 10).map((r) => (
+              <div key={r.id} className="kcard static">
+                <span className="cn">{r.company_name}</span>
+                <span className="cm">
+                  {r.country && <><i style={{ background: COUNTRY_COLOR[r.country] ?? "#c3bcae" }} />{r.country}</>}
+                  {r.industry && <span className="pill t-next">{r.industry}</span>}
+                  <span className={`pill ${r.status === "new" ? "t-gold" : "t-grey"}`}>{r.status === "new" ? "neu" : r.status}</span>
+                  <span className="ca">{berlin(r.created_at)}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <h2 className="h2s">Steuerung</h2>
       <div className="ctrls">

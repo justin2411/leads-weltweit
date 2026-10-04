@@ -226,3 +226,25 @@ export function coach(o: {
   const rank = { rot: 0, gelb: 1, gruen: 2, info: 3 } as const;
   return tips.sort((a, b) => rank[a.level] - rank[b.level]);
 }
+
+/** Erster Satz, höchstens `max` Zeichen (an Wortgrenze, mit „…“). */
+export function shortText(text: string, max = 90): string {
+  const first = (text.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? text).trim();
+  if (first.length <= max) return first;
+  const cut = first.slice(0, max - 1);
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), Math.floor(max * 0.6))).replace(/[\s,;:–-]+$/, "")}…`;
+}
+
+export type Rec = { level: Tip["level"]; title: string; short: string; href?: string; task?: TipTask };
+
+/**
+ * „JARVIS empfiehlt“ (Inhaber 04.10.2026: „das jarvis mir immer auch sagt was er optimieren würde … am anfang … kurzen
+ * knappen text“): bis zu `max` Hinweise mit fertigem Auftrag (wichtigste zuerst), aufgefüllt mit Hinweisen mit Ziel.
+ * Reine Info ohne Auftrag/Ziel (z. B. „Noch keine Laufzahlen“) zählt nicht. `rest` = übrige Hinweise für die Chips.
+ */
+export function recommend<T extends Tip>(tips: T[], max = 3): { recs: Rec[]; rest: T[] } {
+  const ranked = rankTips(tips);
+  const pick = [...ranked.filter((x) => x.task), ...ranked.filter((x) => !x.task && x.href)].slice(0, max);
+  const recs: Rec[] = ranked.filter((x) => pick.includes(x)).map((x) => ({ level: x.level, title: x.title, short: shortText(x.text), href: x.href, task: x.task }));
+  return { recs, rest: ranked.filter((x) => !pick.includes(x)) };
+}

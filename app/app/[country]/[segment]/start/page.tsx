@@ -11,6 +11,8 @@ import { basePlan, PER_WEEK } from "@/lib/custom-price";
 import { CustomPlan } from "./custom";
 import { Icon } from "@/app/icons";
 import { CHECK_PATH, maskIcon } from "@/lib/brand-css";
+import { agentEligible } from "@/lib/customer-agents";
+import { PlanAgentLine } from "../plan-agent";
 
 export const dynamic = "force-dynamic";
 // Verkaufsseite aus dem PDF-Report: nicht in Suchmaschinen, nicht in der Navigation
@@ -152,6 +154,7 @@ const CSS = `
 .bx .plan2.cu .price{font-size:clamp(30px,2.9vw,40px)}
 .bx .plan2.cu .price .amt{display:inline-block;min-width:7.6ch}.bx .plan2 .price small{font-size:15px;font-weight:600;color:var(--soft);margin-left:6px}
 .bx .plan2 ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}.bx .plan2 li{font-size:15.5px;display:flex;gap:10px}.bx .plan2 li:before{${maskIcon(CHECK_PATH, 2.8)};width:1em;height:1em;margin-top:.2em;color:var(--gold)}
+.bx .plan2 li.agl:before{display:none}.bx .plan2 li.agl .ico{flex:none;margin-top:.2em;color:var(--gold)}.bx .plan2 li.agl b{font-weight:700}
 .bx .plan2 .pl{font-size:13.5px;font-weight:700;color:#8a6a33;padding-top:12px;border-top:1px solid var(--line)}
 .bx .plan2 form,.bx .plan2 .go{margin-top:auto}.bx .plan2 .btn{width:100%;justify-content:center}
 .bx .sx-how{margin-top:56px;max-width:1080px}
@@ -224,7 +227,8 @@ export default async function StartPage({ params, searchParams }: { params: Para
               {hi && <span className="tag">{T.popular}</span>}
               <h2>{p.name}</h2>
               <div className="price">{priceLabel(p, lang)}<small>{T.per}</small></div>
-              <ul>{(T.plan[p.key] ?? (p.description ? [p.description] : [])).map((x) => <li key={x}>{x}</li>)}</ul>
+              <ul>{(T.plan[p.key] ?? (p.description ? [p.description] : [])).map((x) => <li key={x}>{x}</li>)}
+                {agentEligible(p.key) && <PlanAgentLine lang={lang} />}</ul>
               {perLead(p, lang) && <div className="pl">{T.perLead.replace("{p}", perLead(p, lang)!)}</div>}
               {online && lineItemFor(p, mode, BRAND) ? (
                 <form method="post" action="/api/checkout">

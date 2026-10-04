@@ -1,5 +1,6 @@
 import { mailText, renderMail, type MailBlock } from "./mail-html";
 import { BRAND, CONTACT, LEGAL_NAME, siteUrl } from "./site";
+import { welcomeAgentLine, type Persona } from "./customer-agents";
 
 /** Erste Lieferung: Montag mit mindestens zwei Tagen Vorlauf (Formular + Freigabe der ersten Lieferung). */
 export function firstDelivery(now = new Date()): Date {
@@ -8,7 +9,9 @@ export function firstDelivery(now = new Date()): Date {
   return d;
 }
 
-type W = { lang: "en" | "fr"; company: string; plan: string; weekly?: number; price?: string; formLink: string; test?: boolean };
+type W = { lang: "en" | "fr"; company: string; plan: string; weekly?: number; price?: string; formLink: string; test?: boolean;
+  /** Kunden-Agent ab Pro (docs/KUNDEN-AGENTEN.md): kurzer Absatz, dass der Ansprechpartner (KI) gleich 4 Fragen stellt. */
+  agent?: Persona | null };
 
 /** Willkommensmail nach dem Kauf (Einwilligung: Kunde hat gekauft). Text + gestaltete HTML-Version. */
 export function welcomeMail(w: W): { subject: string; text: string; html: string } {
@@ -31,6 +34,7 @@ export function welcomeMail(w: W): { subject: string; text: string; html: string
     { facts, title: "Votre abonnement" },
     { p: "Si ce n'est pas encore fait, indiquez-nous en deux minutes quelles pistes vous voulez : signaux, secteurs, régions et entreprises à exclure. Nous préparons votre première livraison en conséquence." },
     { button: "Définir mes préférences", href: w.formLink },
+    ...(w.agent ? [{ p: welcomeAgentLine(w.agent, w.lang) }] : []),
     { title: "Ce qui se passe ensuite", steps: [
       "Nous préparons votre première livraison selon vos préférences et la vérifions avant l'envoi.",
       `Le ${date}, vous recevez votre premier briefing PDF et le tableau (prêt pour votre CRM) : chaque entreprise avec téléphone, e-mail, interlocuteur, le déclencheur et un court briefing commercial.`,
@@ -43,6 +47,7 @@ export function welcomeMail(w: W): { subject: string; text: string; html: string
     { facts, title: "Your subscription" },
     { p: "If you haven't done so yet, take two minutes to tell us which leads you want: signals, industries, regions and any companies to leave out. We tailor your first delivery to it." },
     { button: "Set my lead preferences", href: w.formLink },
+    ...(w.agent ? [{ p: welcomeAgentLine(w.agent, w.lang) }] : []),
     { title: "What happens next", steps: [
       "We prepare your first delivery to your preferences and check it before it goes out.",
       `On ${date} you receive your first PDF briefing and spreadsheet (ready for your CRM): every company with phone, email, contact person, the trigger and a short sales briefing.`,

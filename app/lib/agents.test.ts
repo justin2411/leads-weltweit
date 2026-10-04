@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { TaskError, agentBoard, validateTask, type AgentTask } from "./agents.ts";
+import { CHAT_BY, TaskError, agentBoard, chatTask, chatThread, formDefaults, freeAgent, inferTask, nextAgentRound, validateTask, type AgentTask } from "./agents.ts";
 
 test("Auftrag prüfen", () => {
   assert.deepEqual(validateTask({ agent: "1", kind: "leads", market: "uk", brief: "  mehr  Leads " }), { agent: 1, kind: "leads", market: "UK", brief: "mehr Leads" });
@@ -21,4 +21,97 @@ test("Tafel je Agent", () => {
   assert.equal(b[2].current?.created_at, "1"); // ältester offener zuerst
   assert.equal(b[2].queued, 1);
   assert.equal(b[3].current, null);
+});
+
+const mk = (p: Partial<AgentTask>) =>
+  ({ id: "x", agent: 1, status: "offen", created_at: "2026-10-04T10:00:00Z", finished_at: null, kind: "leads", market: null, brief: "x", progress: 0, step: null, result: null, numbers: {}, started_at: null, ...p }) as AgentTask;
+
+test("Freitext: Markt erkennen", () => {
+  const m = (s: string) => inferTask(s).market;
+  assert.equal(m("er soll uk käufer finden"), "UK"); // Inhaber schreibt klein
+  assert.equal(m("gb leads"), "UK");
+  assert.equal(m("Bukarest"), null);
+  assert.equal(m("UK Käufer finden"), "UK");
+  assert.equal(m("käufer in england"), "UK");
+  assert.equal(m("Großbritannien"), "UK");
+  assert.equal(m("Grossbritannien bitte"), "UK");
+  assert.equal(m("mehr Leads USA"), "US");
+  assert.equal(m("Leads für die US"), "US");
+  assert.equal(m("Frankreich prüfen"), "FR");
+  assert.equal(m("FR"), "FR");
+  assert.equal(m("Irland"), "IE");
+  assert.equal(m("NL Quelle"), "NL");
+  assert.equal(m("Holland"), "NL");
+  assert.equal(m("Belgien"), "BE");
+  assert.equal(m("SE Leads"), "SE");
+  assert.equal(m("Schweden"), "SE");
+  assert.equal(m("hol uns mehr Leads"), null); // „us“ klein ist kein Markt
+  assert.equal(m("se, be, ie klein"), null);
+  assert.equal(m("Business"), null); // kein Treffer mitten im Wort
+  assert.equal(m("erst FR, dann UK"), "FR"); // zuerst genannter
+  assert.equal(m(""), null);
+});
+
+test("Freitext: Art erkennen", () => {
+  const k = (s: string) => inferTask(s).kind;
+  assert.equal(k("UK Käufer finden"), "kaeufer");
+  assert.equal(k("neue Kunden finden in Irland"), "kaeufer");
+  assert.equal(k("Webagenturen in NL suchen"), "kaeufer");
+  assert.equal(k("mehr Leads für Webagenturen"), "leads");
+  assert.equal(k("neue Quelle für Schweden"), "quelle");
+  assert.equal(k("Stichprobe US prüfen"), "pruefen");
+  assert.equal(k("Warum keine Antworten in Frankreich?"), "frage");
+  assert.equal(k("wie viele Leads haben wir"), "frage");
+  assert.equal(k("Lohnt sich UK?"), "frage");
+  assert.equal(k("Kannst du UK Käufer finden?"), "kaeufer"); // Bitte, keine Frage
+  assert.equal(k("Hallo"), null);
+});
+
+test("Formular schlau vorbelegen", () => {
+  // Beispiel Inhaber: offener Auftrag „Käufer finden · UK“ → Was und Markt vorausgewählt
+  const tasks = [mk({ id: "a", agent: 2, kind: "kaeufer", market: "UK", brief: "Käufer finden UK" })];
+  assert.deepEqual(formDefaults({ tasks, agent: 2 }), { agent: 2, kind: "kaeufer", market: "UK", brief: "" });
+  // Markt fehlt im Auftrag, steht aber im Text
+  const t2 = [mk({ agent: 3, kind: "quelle", market: null, brief: "Quelle für Irland" })];
+  assert.equal(formDefaults({ tasks: t2, agent: 3 }).market, "IE");
+  // ausdrücklich übergeben (Hinweis) schlägt den alten Auftrag; ungültiges wird ignoriert
+  assert.deepEqual(formDefaults({ tasks, agent: 2, kind: "quelle", market: "fr", brief: "x" }), { agent: 2, kind: "quelle", market: "FR", brief: "x" });
+  assert.equal(formDefaults({ tasks, agent: 2, kind: "senden", market: "DE" }).kind, "kaeufer");
+  // nur Text übergeben: daraus erkennen
+  assert.deepEqual(formDefaults({ tasks: [], agent: 1, brief: "Leads Schweden" }), { agent: 1, kind: "leads", market: "SE", brief: "Leads Schweden" });
+  // „Neuer Auftrag“: neuester Auftrag überhaupt, freier Agent
+  const d = formDefaults({ tasks, agent: null });
+  assert.equal(d.market, "UK");
+  assert.equal(d.agent, 1);
+  // nichts bekannt: Standard
+  assert.deepEqual(formDefaults({ tasks: [], agent: 4 }), { agent: 4, kind: "leads", market: null, brief: "" });
+});
+
+test("Chat: freier Agent, Auftrag, Verlauf", () => {
+  assert.equal(freeAgent([]), 1);
+  assert.equal(freeAgent([mk({ agent: 1, status: "laeuft" }), mk({ agent: 2, status: "offen" }), mk({ agent: 3, status: "fertig" })]), 3);
+  assert.equal(freeAgent([1, 2, 3, 4].map((a) => mk({ agent: a }))), 1);
+  assert.deepEqual(chatTask("  Warum  keine Antworten in UK? ", []), { agent: 1, kind: "frage", market: "UK", brief: "Warum keine Antworten in UK?" });
+  assert.equal(chatTask("Hallo JARVIS", []).kind, "frage"); // unklar: nur auswerten
+  assert.equal(validateTask(chatTask("UK Käufer finden", [])).kind, "kaeufer");
+  const th = chatThread([
+    mk({ id: "1", created_by: CHAT_BY, created_at: "1", status: "fertig", result: "In UK 420 neue Käufer." }),
+    mk({ id: "2", created_by: CHAT_BY, created_at: "3", status: "offen", agent: 2 }),
+    mk({ id: "3", created_by: "Inhaber Dashboard", created_at: "2" }),
+    mk({ id: "4", created_by: CHAT_BY, created_at: "2", status: "laeuft", progress: 40, step: "prüfe" }),
+  ]);
+  assert.deepEqual(th.map((x) => x.id), ["1", "4", "2"]); // nur Chat, älteste oben
+  assert.equal(th[0].reply, "In UK 420 neue Käufer.");
+  assert.match(th[1].reply, /40 %\) · prüfe/);
+  assert.match(th[2].reply, /Agent 2/);
+  assert.equal(chatThread([], 6).length, 0);
+});
+
+test("nächste Agenten-Runde (:53) für „startet um HH:MM“", () => {
+  assert.equal(nextAgentRound(new Date("2026-10-04T07:10:00Z")).toISOString(), "2026-10-04T07:23:00.000Z");
+  assert.equal(nextAgentRound(new Date("2026-10-04T07:40:00Z")).toISOString(), "2026-10-04T07:53:00.000Z");
+  assert.equal(nextAgentRound(new Date("2026-10-04T07:53:00Z")).toISOString(), "2026-10-04T08:08:00.000Z"); // genau jetzt: nächste
+  assert.equal(nextAgentRound(new Date("2026-10-04T23:59:30Z")).toISOString(), "2026-10-05T00:08:00.000Z"); // über Mitternacht
+  const mk = (p: Partial<AgentTask>) => ({ id: "x", agent: 2, status: "offen", created_at: "1", finished_at: null, kind: "leads", market: null, brief: "x", progress: 0, step: null, result: null, numbers: {}, started_at: null, created_by: CHAT_BY, ...p }) as AgentTask;
+  assert.equal(chatThread([mk({})], 6, "09:53")[0].reply, "Notiert für Agent 2 – startet um 09:53.");
 });

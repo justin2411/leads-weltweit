@@ -2,14 +2,14 @@
 export const REGLER_CSS = `
 .rg{--ok:#3ddc97;--wait:#ffb547;--now:#e2c68f;--bnav:0px;padding-bottom:40px}
 .rg.has-bar{padding-bottom:110px}
-.dash:has(.rg.has-bar) .foot{padding-bottom:calc(var(--rg-cover,220px) + 16px)}
 .rg-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:4px 0 16px}
 .rg-head h1{margin:0;font-size:26px;letter-spacing:.12em;color:#fff;text-transform:uppercase;text-shadow:0 0 22px rgba(95,212,255,.5)}
 .rg-steps{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--soft);flex-wrap:wrap}
 .rg-steps b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;border:1px solid var(--line);font-size:12px;color:var(--cy2);margin-right:4px}
 .rg-steps i{font-style:normal;color:#6e8db3}
 .rg-err{margin:0 0 14px;padding:10px 14px;border:1px solid rgba(255,94,115,.5);border-radius:10px;background:rgba(255,94,115,.12);color:#ffb3bd;font-weight:600}
-.rg-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
+/* Karten einer Zeile gleich hoch (Inhaber 04.10.2026: bündig, keine Lücken) – Fußzeile (Rail/Ruhe-Zeile) per margin-top:auto unten */
+.rg-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:stretch}
 @media (min-width:1100px){.rg-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 .rg-card{position:relative;margin:0;display:flex;flex-direction:column;gap:14px;padding:16px 16px 14px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,rgba(9,24,48,.72),rgba(4,12,26,.55));transition:border-color .2s,box-shadow .2s}

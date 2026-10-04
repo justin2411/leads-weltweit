@@ -43,6 +43,8 @@ JOBS = [
     {"wf": "antworten.yml", "kind": "hourly", "window": (0, 23), "max_min": 20, "inputs": {"probelauf": "false"}},
     # Proben-Vorrat + Web-Proben rund um die Uhr (03.10.2026: Anfrage 18:30 wartete 5 h, weil GitHub Läufe ausließ)
     {"wf": "proben-vorrat.yml", "kind": "hourly", "window": (0, 23), "max_min": 75, "inputs": {"befehl": "run"}},
+    # Agenten-Werk (04.10.2026): Master-Pipeline füllt Speicher, eigene Agenten laufen nach Auslöser
+    {"wf": "agenten-werk.yml", "kind": "hourly", "window": (0, 23), "max_min": 90, "inputs": {"probelauf": "false"}},
     {"wf": "morgenbericht.yml", "kind": "daily", "at": "04:47", "grace": 45},
     {"wf": "kaeufer.yml", "kind": "daily", "at": "05:13", "grace": 60},
     {"wf": "sync.yml", "kind": "daily", "at": "06:17", "grace": 45},
@@ -65,7 +67,7 @@ JOBS = [
 # Schalter im Dashboard (Inhaber 03.10.2026): pausierte Werke startet der Wachhund nie nach. antworten.yml bleibt
 # immer an (Abmeldungen per Antwort dürfen nie liegen bleiben; pausiert werden dort nur automatische Antworten).
 PAUSE_KEY = {"lead-werk.yml": "lead-werk", "kunden-werk.yml": "kunden-werk", "proben-vorrat.yml": "proben-vorrat",
-             "kundenlieferung.yml": "kundenlieferung", "tagescheck.yml": "tagescheck"}
+             "kundenlieferung.yml": "kundenlieferung", "tagescheck.yml": "tagescheck", "agenten-werk.yml": "agenten"}
 
 
 # Direktstart aus dem Dashboard (gleiche Liste wie app/lib/start-queue.ts START_WORKFLOWS und die DB-Prüfung in
@@ -241,6 +243,14 @@ def release_stale_held(db) -> int:
     return n
 
 
+def refresh_dashboard_stock(db) -> None:
+    """Bestandszahlen fürs Dashboard vorrechnen (signalwerk.dashboard_cache), damit JARVIS nie „…“ zeigt."""
+    try:
+        db.rpc("dashboard_stock_refresh", {})
+    except Exception as exc:  # noqa: BLE001 - darf den Wachhund nie aufhalten
+        print(f"Dashboard-Bestand nicht aufgefrischt: {type(exc).__name__}: {str(exc)[:160]}")
+
+
 def overdue(job: dict, runs: list[dict], now: dt.datetime) -> tuple[bool, str]:
     """runs: neueste zuerst, jeweils mit created_at (ISO) und status."""
     starts = [dt.datetime.fromisoformat(r["created_at"].replace("Z", "+00:00")) for r in runs]
@@ -307,6 +317,7 @@ def main(argv=None) -> int:
             print(f"Startwünsche nicht lesbar: {type(exc).__name__}: {str(exc)[:200]}")
         if args.apply:
             release_stale_held(db)
+            refresh_dashboard_stock(db)
     for job in JOBS:
         if job["wf"] in started:
             print(f"✓  {job['wf']:<22} eben auf Wunsch gestartet")

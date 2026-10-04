@@ -410,6 +410,29 @@ export async function createAgentTask(f: FormData) {
   });
 }
 
+/**
+ * JARVIS-Chat (Inhaber 04.10.2026: „ich will auch mit jarvis schreiben können und ihm direkt aufgaben per text geben
+ * … über mein claude abo“): Text → Auftrag (Art/Markt erkannt, sonst Frage) an den ersten freien Agenten. Beantwortet
+ * von der stündlichen Agenten-Routine (Claude-Abo, keine API-Kosten), Chat-Aufträge zuerst (docs/AGENTEN.md).
+ */
+export async function chatToJarvis(f: FormData) {
+  await run(f, "Notiert – Antwort kommt mit der nächsten Agenten-Runde", async () => {
+    const { CHAT_BY, chatTask, validateTask, TaskError } = await import("@/lib/agents");
+    const { loadAgentTasks } = await import("@/lib/dashboard-data");
+    if (String(f.get("text") ?? "").trim().length < 3) throw new InputError("Nachricht: 3–1000 Zeichen");
+    let t;
+    try {
+      t = validateTask(chatTask(f.get("text"), await loadAgentTasks()));
+    } catch (e) {
+      if (e instanceof TaskError) throw new InputError(e.message === "Auftrag: 3–1000 Zeichen" ? "Nachricht: 3–1000 Zeichen" : e.message);
+      throw e;
+    }
+    const { error } = await db().from("agent_tasks").insert({ ...t, created_by: CHAT_BY });
+    if (error) throw new Error(error.message);
+    await log("agent:chat", `Agent ${t.agent}`, null, t);
+  });
+}
+
 /** Offenen Auftrag zurückziehen (laufende arbeiten zu Ende). */
 export async function cancelAgentTask(f: FormData) {
   await run(f, "Auftrag zurückgezogen", async () => {

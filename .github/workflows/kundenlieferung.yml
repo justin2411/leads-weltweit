@@ -36,6 +36,11 @@ jobs:
       - name: Erste Lieferung freigeben
         if: ${{ inputs.befehl == 'approve' }}
         run: python scripts/deliveries.py approve --subscription "${{ inputs.abo }}" --freigabe "Inhaber per GitHub, ${{ github.actor }}"
+      - name: Kunden-Agenten anlegen/pausieren (ab Pro) und neue begrüßen
+        # docs/KUNDEN-AGENTEN.md: idempotent, ein Agent je Abo; ein Fehler hier hält die Lieferung nicht auf
+        if: ${{ inputs.befehl != 'approve' }}
+        continue-on-error: true
+        run: python scripts/customer_agents.py ensure --welcome
       - name: Vorbereiten
         if: ${{ inputs.befehl != 'approve' }}
         run: python scripts/deliveries.py prepare

@@ -4,8 +4,10 @@
  * und im Server, Prüfung (problems) und Vorlagen. Python (scripts/lib/owner_rules.py) wertet dieselben Bedingungen
  * je Lead aus – gleiche Semantik, gemeinsame Testfälle in tests/fixtures/flow_cases.json.
  * Inhaber-Regeln machen die Freigabe nur strenger: ein Lead im Geltungsbereich muss den Pipeline-Baustein erreichen.
+ * Master-Pipeline und eigene Agenten (docs/BAUKASTEN-MASTER.md): „freigabe“ markiert die Drei-Stufen-Freigabe (läuft immer,
+ * release_gate.py), „speicher“ legt Leads in einen eigenen Speicher, „melden“ schickt dem Inhaber eine kurze Nachricht.
  */
-import { KINDS } from "./agents.ts";
+import { KINDS, OWNER_KINDS } from "./agents.ts";
 import type { IconName } from "../app/icons.tsx";
 
 export type Source = "leads" | "kaeufer";
@@ -80,7 +82,11 @@ export type Cond = { f: string; op: Op; v?: string | number | string[] | [number
 export type Cell = string | number | boolean | null;
 export type Row = { id: string } & Record<string, Cell>;
 
-export type NodeKind = "quelle" | "filter" | "weiche" | "punkte" | "top" | "dubletten" | "statistik" | "pipeline" | "export" | "agent";
+export type NodeKind = "quelle" | "filter" | "weiche" | "punkte" | "top" | "dubletten" | "statistik" | "freigabe" | "pipeline" | "export"
+  | "agent" | "speicher" | "melden";
+/** Art eines gespeicherten Flows (signalwerk.flows.kind). */
+export type FlowKind = "test" | "master" | "agent";
+export const FLOW_KINDS: FlowKind[] = ["test", "master", "agent"];
 type Base = { id: string; x: number; y: number; title?: string };
 export type TopSort = "neueste" | "aelteste" | "punkte" | "dringlichkeit";
 export type AgentTaskKind = "leads" | "kaeufer" | "quelle" | "pruefen" | "frage";
@@ -92,9 +98,13 @@ export type FlowNode =
   | (Base & { kind: "top"; sort: TopSort; n: number })
   | (Base & { kind: "dubletten"; by: "firma_id" | "name" })
   | (Base & { kind: "statistik"; by: string })
+  | (Base & { kind: "freigabe" })
   | (Base & { kind: "pipeline"; name: string })
   | (Base & { kind: "export" })
-  | (Base & { kind: "agent"; agent: number; task: AgentTaskKind });
+  | (Base & { kind: "agent"; agent: number; task: AgentTaskKind })
+  /** pool_id null = Gesamtbestand (alle Leads, kein eigener Speicher) */
+  | (Base & { kind: "speicher"; pool_id: string | null; pool_name: string })
+  | (Base & { kind: "melden" });
 export type Port = "out" | "ja" | "nein";
 export type FlowEdge = { id: string; from: string; port: Port; to: string };
 export type Flow = { v: 1; nodes: FlowNode[]; edges: FlowEdge[] };
@@ -108,15 +118,21 @@ export const NODE_META: Record<NodeKind, { label: string; icon: IconName; color:
   top: { label: "Top", icon: "top", color: "#f2dcae", group: "schritt", hint: "sortiert und nimmt die ersten", ports: ["out"], input: true },
   dubletten: { label: "Dubletten", icon: "dubletten", color: "#a8ecff", group: "schritt", hint: "je Firma nur einmal", ports: ["out"], input: true },
   statistik: { label: "Statistik", icon: "statistik", color: "#5fd4ff", group: "schritt", hint: "zählt nach einem Feld, lässt alles durch", ports: ["out"], input: true },
+  freigabe: { label: "Freigabe", icon: "schloss", color: "#e2c68f", group: "schritt", hint: "Drei-Stufen-Freigabe – läuft immer", ports: ["out"], input: true },
   pipeline: { label: "Pipeline", icon: "pipeline", color: "#3ddc97", group: "ziel", hint: "Regel für alle neuen Leads (nur strenger)", ports: [], input: true },
   export: { label: "Export", icon: "export", color: "#5fd4ff", group: "ziel", hint: "als CSV herunterladen", ports: [], input: true },
   agent: { label: "Agent", icon: "agent", color: "#e2c68f", group: "ziel", hint: "Auftrag an Agent 1–4", ports: [], input: true },
+  speicher: { label: "Speicher", icon: "speicher", color: "#3ddc97", group: "ziel", hint: "legt Leads in einen Speicher", ports: [], input: true },
+  melden: { label: "Melden", icon: "melden", color: "#ffb547", group: "ziel", hint: "kurze Nachricht an dich", ports: [], input: true },
 };
 export const NODE_KINDS = Object.keys(NODE_META) as NodeKind[];
 export const SORT_LABELS: Record<TopSort, string> = { neueste: "neueste zuerst", aelteste: "älteste zuerst", punkte: "meiste Punkte", dringlichkeit: "dringendste zuerst" };
 const isSink = (k: NodeKind) => NODE_META[k].ports.length === 0;
 
-export const LIMITS = { nodes: 40, edges: 80, conds: 12, rules: 12, pts: 100, n: 5000, str: 200, list: 50, name: 60, title: 60, min: 10000 } as const;
+export const LIMITS = { nodes: 40, edges: 80, conds: 12, rules: 12, pts: 100, n: 5000, str: 200, list: 50, name: 60, title: 60, min: 10000, pool: 40 } as const;
+/** Name des Speichers ohne pool_id (alle Leads). */
+export const GESAMTBESTAND = "Gesamtbestand";
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Neuer Baustein mit sinnvollen Vorgaben (Felder, die es bei Leads und Käufern gibt). */
 export function newNode(kind: NodeKind, id: string, x: number, y: number): FlowNode {
@@ -129,15 +145,18 @@ export function newNode(kind: NodeKind, id: string, x: number, y: number): FlowN
     case "top": return { ...b, kind, sort: "neueste", n: 100 };
     case "dubletten": return { ...b, kind, by: "firma_id" };
     case "statistik": return { ...b, kind, by: "land" };
+    case "freigabe": return { ...b, kind };
     case "pipeline": return { ...b, kind, name: "Meine Regel" };
     case "export": return { ...b, kind };
     case "agent": return { ...b, kind, agent: 1, task: "leads" };
+    case "speicher": return { ...b, kind, pool_id: null, pool_name: GESAMTBESTAND };
+    case "melden": return { ...b, kind };
   }
 }
 
 // ---------- Strukturprüfung (Eingaben vom Browser nie blind übernehmen) ----------
 const ID_RE = /^[a-z0-9_-]{1,24}$/;
-const TASKS = Object.keys(KINDS) as AgentTaskKind[];
+const TASKS = OWNER_KINDS as AgentTaskKind[];
 type Obj = Record<string, unknown>;
 const isObj = (x: unknown): x is Obj => typeof x === "object" && x !== null && !Array.isArray(x);
 const isStr = (x: unknown, max: number = LIMITS.str): x is string => typeof x === "string" && x.length <= max;
@@ -213,6 +232,7 @@ function parseNode(x: unknown, i: number, errs: string[]): FlowNode | null {
     case "statistik":
       if (!isStr(x.by, 40) || !x.by) return bad("Feld ungültig");
       return { ...b, kind: "statistik", by: x.by };
+    case "freigabe": return { ...b, kind: "freigabe" };
     case "pipeline":
       if (!isStr(x.name)) return bad("Name ungültig");
       return { ...b, kind: "pipeline", name: x.name };
@@ -221,6 +241,11 @@ function parseNode(x: unknown, i: number, errs: string[]): FlowNode | null {
       if (!isNum(x.agent)) return bad("Agent ungültig");
       if (typeof x.task !== "string" || !TASKS.includes(x.task as AgentTaskKind)) return bad("Auftragsart ungültig");
       return { ...b, kind: "agent", agent: x.agent, task: x.task as AgentTaskKind };
+    case "speicher":
+      if (x.pool_id !== null && !(typeof x.pool_id === "string" && UUID_RE.test(x.pool_id))) return bad("Speicher ungültig");
+      if (!isStr(x.pool_name, LIMITS.pool)) return bad("Speicher-Name ungültig");
+      return { ...b, kind: "speicher", pool_id: x.pool_id === null ? null : x.pool_id.toLowerCase(), pool_name: x.pool_name };
+    case "melden": return { ...b, kind: "melden" };
   }
 }
 
@@ -455,6 +480,14 @@ export function runFlow(flow: Flow, rows: Row[]): Record<string, NodeResult> {
   return out;
 }
 
+/** Zeilen, die bei den Zielen einer Art ankommen (z. B. "speicher", "melden"): je Baustein-id der Eingang. */
+export function sinkRows(flow: Flow, rows: Row[], kind: NodeKind): Record<string, Row[]> {
+  const res = runFlowRows(flow, rows);
+  const out: Record<string, Row[]> = {};
+  for (const n of flow.nodes) if (n.kind === kind && !(n.id in out)) out[n.id] = res[n.id]?.input ?? [];
+  return out;
+}
+
 export const pipelineNode = (flow: Flow): FlowNode | null => flow.nodes.find((n) => n.kind === "pipeline") ?? null;
 
 /** Gilt die Regel für diese Zeile? Nur Leads, passende Zielgruppe und Länder (Status entscheidet die Freigabe). */
@@ -501,8 +534,9 @@ export function condProblem(c: Cond, source: Source | null): string | null {
 const nodeConds = (n: FlowNode): Cond[] =>
   n.kind === "filter" ? n.conds : n.kind === "weiche" ? (n.cond ? [n.cond] : []) : n.kind === "punkte" ? n.rules.map((r) => r.cond) : [];
 
-/** Fehler blockieren Speichern als aktiv / Pipeline, Warnungen werden nur gezeigt. */
-export function problems(flow: Flow): Problem[] {
+/** Fehler blockieren Speichern als aktiv / Pipeline, Warnungen werden nur gezeigt. `kind` = Art des Flows (Hinweise
+ *  zu Speicher, Melden und Freigabe hängen davon ab; ohne Angabe wie ein Test-Flow). */
+export function problems(flow: Flow, kind: FlowKind = "test"): Problem[] {
   const out: Problem[] = [];
   const err = (msg: string, nodeId?: string) => out.push({ nodeId, msg, level: "error" });
   const warn = (msg: string, nodeId?: string) => out.push({ nodeId, msg, level: "warn" });
@@ -515,6 +549,8 @@ export function problems(flow: Flow): Problem[] {
   const pipes = flow.nodes.filter((n) => n.kind === "pipeline");
   if (pipes.length > 1) err("nur ein Pipeline-Baustein erlaubt", pipes[1].id);
   if (pipes.length && source === "kaeufer") err("Pipeline gilt nur für Leads, nicht für Käufer", pipes[0].id);
+  // Die echte Drei-Stufen-Freigabe läuft immer (release_gate.py) – fehlt der Baustein, nur ein Hinweis.
+  if (kind === "master" && !flow.nodes.some((n) => n.kind === "freigabe")) warn("Freigabe läuft trotzdem immer (feste Regel)");
   const seenIds = new Set<string>();
   for (const n of flow.nodes) { if (seenIds.has(n.id)) err(`id doppelt: ${n.id}`, n.id); seenIds.add(n.id); }
 
@@ -582,6 +618,14 @@ export function problems(flow: Flow): Problem[] {
       }
       case "pipeline": if (n.name.trim().length < 1 || n.name.length > LIMITS.name) err(`Name: 1 bis ${LIMITS.name} Zeichen`, n.id); break;
       case "agent": if (!Number.isInteger(n.agent) || n.agent < 1 || n.agent > 4) err("Agent 1 bis 4", n.id); break;
+      case "speicher":
+        if (source === "kaeufer") err("Speicher nur für Leads, nicht für Käufer", n.id);
+        if (n.pool_id !== null && !UUID_RE.test(n.pool_id)) err("Speicher ungültig", n.id);
+        if (n.pool_id !== null && (n.pool_name.trim().length < 1 || n.pool_name.length > LIMITS.pool)) err(`Speicher-Name: 1 bis ${LIMITS.pool} Zeichen`, n.id);
+        if (n.pool_id === null) warn(`${GESAMTBESTAND} – Speicher wählen, sonst ändert sich nichts`, n.id);
+        else if (kind === "test") warn("füllt sich nur in Master-Pipeline oder Agent – hier Vorschau", n.id);
+        break;
+      case "melden": if (kind !== "agent") warn("meldet nur in einem Agenten – hier Vorschau", n.id); break;
     }
     if ((n.kind === "top" || n.kind === "dubletten") && toPipe.has(n.id))
       err(`${meta.label} entscheidet nach der ganzen Menge – nicht auf dem Weg zur Pipeline`, n.id);
@@ -642,9 +686,12 @@ export function describeNode(n: FlowNode): string {
     case "top": return `Top ${n.n} · ${SORT_LABELS[n.sort]}`;
     case "dubletten": return n.by === "firma_id" ? "je Firma einmal" : "je Firmenname einmal";
     case "statistik": return `nach ${BY_KEY.get(n.by)?.label ?? n.by}`;
+    case "freigabe": return "Drei-Stufen-Freigabe · läuft immer";
     case "pipeline": return `„${n.name}“ · gilt für neue Leads`;
     case "export": return "als CSV herunterladen";
     case "agent": return `Agent ${n.agent} · ${KINDS[n.task]?.label ?? n.task}`;
+    case "speicher": return `in „${n.pool_id === null ? GESAMTBESTAND : n.pool_name}“`;
+    case "melden": return "Anzahl und bis zu 10 Firmen an dich";
   }
 }
 

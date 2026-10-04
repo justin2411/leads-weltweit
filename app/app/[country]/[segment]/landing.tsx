@@ -41,6 +41,8 @@ import { SampleForm } from "../../sample-form";
 import { wishesFor } from "@/content/sample-wishes";
 import { localizeJob, maskCompany, maskEmail, maskPhone, pickDiverse, roleFor, seedOf, shortForm, type Part } from "@/lib/examples";
 import { Icon as LineIcon } from "@/app/icons";
+import { agentEligible } from "@/lib/customer-agents";
+import { PlanAgentLine } from "./plan-agent";
 
 
 const SHOW_SAMPLE_TILES = false;
@@ -545,6 +547,7 @@ export async function Landing({ params, sp: search, rand }: { params: LandingPar
             <div className="rs" style={{ margin: "20px 0 0" }}>{buyable.map((pl, k) => (
               <form className="box" key={pl.key} method="post" action="/api/checkout" data-rv style={i(k)}>
                 <h3>{pl.name}</h3><p className="small">{priceLabel(pl)} {L.perMonth}</p>{pl.description && <p className="lede2">{pl.description}</p>}
+                {agentEligible(pl.key) && <PlanAgentLine lang={lang} as="p" className="lede2" />}
                 <input type="hidden" name="variant_id" value={v.id} /><input type="hidden" name="package" value={pl.key} />
                 {preview && <input type="hidden" name="vorschau" value="1" />}
                 <button className="btn gold" type="submit" data-cta>{L.subscribe}</button>

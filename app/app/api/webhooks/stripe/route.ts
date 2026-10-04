@@ -7,6 +7,8 @@ import { STATUS_MAP, stripeKeys, verifyStripeSignature } from "@/lib/stripe";
 import { db } from "@/lib/supabase";
 import { filterToken } from "@/lib/tokens";
 import { vatMismatch } from "@/lib/billing";
+import { ensureCustomerAgent, pauseAgentForSubscription } from "@/lib/customer-agents-data";
+import { fullName, type Persona } from "@/lib/customer-agents";
 
 export const dynamic = "force-dynamic";
 
@@ -51,13 +53,23 @@ export async function POST(req: Request) {
         .select("id")
         .single();
       if (e1) throw new Error(e1.message);
-      const { error: e2 } = await db().from("subscriptions").upsert({
+      const { data: subRow, error: e2 } = await db().from("subscriptions").upsert({
         stripe_subscription_id: o.subscription, customer_id: cust.id, segment_id: m.segment_id, package: m.package,
         page_variant_id: m.variant_id || null, amount_cents: o.amount_total, currency: o.currency, status: "active",
         filters: { country: m.country, ...(Number(m.weekly) > 0 ? { max_per_week: Number(m.weekly) } : {}) }, updated_at: new Date().toISOString(),
-      }, { onConflict: "stripe_subscription_id" });
+      }, { onConflict: "stripe_subscription_id" }).select("id").single();
       if (e2) throw new Error(e2.message);
       await db().from("customer_filters").upsert({ customer_id: cust.id, segment_id: m.segment_id }, { onConflict: "customer_id", ignoreDuplicates: true });
+      // Kunden-Agent ab Pro (Inhaber 04.10.2026, docs/KUNDEN-AGENTEN.md): idempotent über subscription_id, auch bei
+      // erneuter Zustellung. Fehler hier lassen den Webhook nie scheitern (wie die Willkommensmail). Testkäufe
+      // (Stripe-Testmodus) bekommen keinen Agenten und damit keine Agenten-Mails. Hier wird nur der Agent angelegt;
+      // die Begrüßung mit den 4 Fragen sendet allein scripts/customer_agents.py ensure --welcome (antworten.yml, alle 10 min).
+      let agent: Persona | null = null;
+      if (event.livemode) try {
+        agent = await ensureCustomerAgent({ subscriptionId: subRow.id, customerId: cust.id, pkg: m.package, weekly: m.weekly, country: m.country });
+      } catch (e) {
+        await log("Kunden-Agent nicht angelegt", `${company}: ${(e as Error).message}`, true).catch(() => null);
+      }
       if (existing) {
         await log(`Checkout erneut zugestellt: ${company}`, `Abo ${o.subscription} existiert schon – keine zweite Willkommensmail`, true);
         return new Response("ok", { status: 200 });
@@ -76,7 +88,7 @@ export async function POST(req: Request) {
         : undefined;
       const planName = m.package === "custom" ? (o.locale === "fr" ? "Sur mesure" : "Custom") : m.package ? m.package[0].toUpperCase() + m.package.slice(1) : "";
       const weekly = Number(m.weekly) || ({ starter: 15, pro: 50 } as Record<string, number>)[m.package] || undefined;
-      const wm = welcomeMail({ lang: o.locale === "fr" ? "fr" : "en", company, plan: planName, weekly, price, formLink: link, test: !event.livemode });
+      const wm = welcomeMail({ lang: o.locale === "fr" ? "fr" : "en", company, plan: planName, weekly, price, formLink: link, test: !event.livemode, agent });
       // Zahlungsbestätigung als PDF (keine Rechnung – die stellt Stripe aus; Inhaber 02.10.2026)
       const money = (c: number) => new Intl.NumberFormat(o.locale === "fr" ? "fr-FR" : "en-GB", { style: "currency", currency: String(o.currency ?? "gbp").toUpperCase(), maximumFractionDigits: c % 100 ? 2 : 0 }).format(c / 100);
       const files = price ? await receiptPdf({ lang: o.locale === "fr" ? "fr" : "en", company, email, plan: planName, weekly, amount: price,
@@ -105,21 +117,29 @@ export async function POST(req: Request) {
         `Land/Segment:   ${m.country ?? "?"} / ${m.segment_id ?? "?"}`,
         `Stripe-Kunde:   https://dashboard.stripe.com/${event.livemode ? "" : "test/"}customers/${o.customer}`,
         `Abo:            ${o.subscription}`,
-        `Rechnungsland:  gewählt ${m.billing ?? "?"}, Adresse ${actualCountry ?? "?"}`, "",
+        `Rechnungsland:  gewählt ${m.billing ?? "?"}, Adresse ${actualCountry ?? "?"}`,
+        ...(agent ? [`Kunden-Agent:   ${fullName(agent)} (KI) – Dashboard → Kunden-Agenten`] : []), "",
         ...(vatNote ? [vatNote, ""] : []),
         "Der Kunde hat die Willkommensmail mit dem Formular bekommen. Die erste Lieferung kommt als Vorschau zu dir und geht erst nach deiner Freigabe raus.",
       ].join("\n")).catch(async (e) => {
         await log("Verkaufsmeldung fehlgeschlagen", `${company}: ${(e as Error).message}`, true);
       });
       await log(`Neuer Kunde: ${company}`, `Checkout abgeschlossen (${event.livemode ? "live" : "Testmodus"})`, true,
-                { segment_id: m.segment_id, country: m.country, package: m.package, amount_cents: o.amount_total, currency: o.currency });
+                { segment_id: m.segment_id, country: m.country, package: m.package, amount_cents: o.amount_total, currency: o.currency,
+                  ...(agent ? { kunden_agent: fullName(agent) } : {}) });
     } else if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
       const status = event.type.endsWith("deleted") ? "cancelled" : (STATUS_MAP[o.status] ?? "incomplete");
       const { data: sub } = await db().from("subscriptions")
         .update({ status, current_period_end: o.current_period_end ? new Date(o.current_period_end * 1000).toISOString() : null,
                   ...(status === "cancelled" ? { cancelled_on: new Date().toISOString().slice(0, 10) } : {}),
                   updated_at: new Date().toISOString() })
-        .eq("stripe_subscription_id", o.id).select("customer_id").maybeSingle();
+        .eq("stripe_subscription_id", o.id).select("id, customer_id").maybeSingle();
+      // Kündigung: Kunden-Agent pausiert (nichts gelöscht); Fehler zählen nicht als Webhook-Fehler
+      if (sub && status === "cancelled") {
+        await pauseAgentForSubscription(sub.id).catch(async (e) => {
+          await log("Kunden-Agent nicht pausiert", `${o.id}: ${(e as Error).message}`, true).catch(() => null);
+        });
+      }
       if (sub && status === "cancelled") {
         const { count } = await db().from("subscriptions").select("id", { count: "exact", head: true })
           .eq("customer_id", sub.customer_id).in("status", ["active", "past_due"]);

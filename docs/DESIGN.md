@@ -46,7 +46,7 @@ Gold nur für Akzente (Wortmarke, Buttons, Zahlen, Icons, Hervorhebungen), nie f
 | Danke | `/danke` (Demo `/danke?demo=1`) | Zusammenfassung, erster Liefertermin, Wunsch-Formular |
 | Wünsche | `/kunde/filter?t=` | Signale als Karten, Branchen, Regionen, Ausschlüsse |
 | Rechtstexte | `/impressum`, `/privacy`, `/terms`, FR: `/mentions-legales`, `/confidentialite`, `/cgv`; DE: `/datenschutz`, `/agb` | aus `app/content/legal.ts` |
-| Dashboard | `/dashboard` (Login Inhaber) | Entwürfe, Antworten, Sperren, Gehirn |
+| Dashboard | `/dashboard` (Login Inhaber) | JARVIS, Antworten, Versand (Entwürfe freigeben, Antwort erfassen, Sperren), Gehirn (`/dashboard/gehirn`) |
 
 Seiteninhalte (Überschrift, Signale, Preise, FAQ) kommen aus der Datenbank (`landing_pages`, `page_variants`).
 Platzhalter `{land}`, `{land_de}`, `{register}` werden je Land ersetzt (`app/lib/country.ts`).

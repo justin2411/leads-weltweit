@@ -45,3 +45,14 @@ Semantik der Master-Pipeline: `pipeline`-Ziel = Stufe 4 „Inhaber-Regeln“ wie
   den Speicher aus `subscriptions.pool_id` bzw. `pool_routes`, falls gesetzt; sonst wie bisher. Drei-Stufen-Freigabe
   bleibt davor Pflicht. Reicht der Speicher nicht für genau 10 verschiedene Firmen → keine Probe aus diesem Speicher
   (Regel „Probe immer genau 10“), Hinweis im Tagescheck.
+
+## Laufzeit – umgesetzt (Paket B)
+- `scripts/pools.py fill [--apply]`: Merkzettel `job_cursors` 'pools:master' (Migration 20261004110000, noch nicht
+  angewendet – ohne Tabelle schaut der Lauf 6 h zurück, idempotent). Erster Lauf/geänderter Flow: letzte 7 Tage neu.
+  Zeilen aus `release_gate.load_items` + `owner_rules.flat_row` (dieselbe Quelle wie Stufe 4).
+- `scripts/agents_run.py [--apply] [--agent <id>]`: Auslöser in deutscher Zeit; höchstens ein offener Auftrag je
+  Agent in `agent_tasks` (created_by „Agent <Name>“); Markt: ai_market → genau ein Land der Quelle → aus dem Text
+  erkannt („uk käufer finden“ → UK). Meldungen nur bei Treffern.
+- Speicher beim Bedienen strikt (`scripts/lib/pools.py`): Abo-Speicher vor Route; ohne beides Gesamtbestand. Fertige
+  Proben außerhalb des gesetzten Speichers verwirft der Proben-Vorrat; Tagescheck „Speicher X reicht nicht“.
+- Schalter `werke_paused.agenten` (Dashboard „Agenten-Werk“), Wachhund-Pflichtlauf stündlich.

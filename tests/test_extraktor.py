@@ -743,6 +743,48 @@ class WebAgencyFocusTests(unittest.TestCase):
                     "internet_marketing_service"):
             self.assertEqual(K.CATEGORIES[cat], "S2", cat)
 
+    def test_kundenwerk_name_pool_web_agencies(self):
+        import re
+        import duckdb
+        import kundenwerk as K
+        gb, fr = re.compile(K.NAME_WEB["GB"][4:], re.I), re.compile(K.NAME_WEB["FR"][4:], re.I)
+        for n in ("Stack Web Design", "Leicester Web Designer", "The London SEO Company", "Webgel Digital Agency"):
+            self.assertTrue(gb.search(n), n)
+        for n in ("Webster Bakery", "Digital Dental Lab", "Rose Garden Cafe"):
+            self.assertFalse(gb.search(n), n)
+        self.assertTrue(fr.search("Agence Web Lumière"))
+        self.assertTrue(fr.search("Création de sites internet Dupont"))
+        self.assertFalse(fr.search("Boulangerie du Web"))
+        con = duckdb.connect()
+        con.execute("""CREATE TABLE t AS SELECT * FROM (VALUES
+          ('1', {'primary': 'Stack Web Design'}, {'primary': NULL}, 'design_service', [{'country': 'GB'}], ['https://a.co.uk']),
+          ('2', {'primary': 'Whitehot Creative'}, {'primary': NULL}, NULL, [{'country': 'GB'}], ['https://b.co.uk']),
+          ('3', {'primary': 'Agence Web Lumière'}, {'primary': 'professional_service'}, NULL, [{'country': 'FR'}], ['https://c.fr']),
+          ('4', {'primary': 'Kitchen Design Studio'}, {'primary': NULL}, NULL, [{'country': 'GB'}], ['https://d.co.uk']),
+          ('5', {'primary': 'Joe Web Design'}, {'primary': 'web_designer'}, NULL, [{'country': 'GB'}], ['https://e.co.uk']),
+          ('6', {'primary': 'Power SEO'}, {'primary': NULL}, 'restaurant', [{'country': 'GB'}], ['https://f.co.uk']),
+          ('7', {'primary': 'London SEO Co'}, {'primary': NULL}, NULL, [{'country': 'GB'}], ['https://g.co.uk']),
+          ('8', {'primary': 'Studio Créatif'}, {'primary': NULL}, NULL, [{'country': 'FR'}], ['https://h.fr']),
+          ('9', {'primary': 'Bright Web Design'}, {'primary': NULL}, NULL, [{'country': 'US'}], ['https://i.com'])
+        ) v(id, names, taxonomy, basic_category, addresses, websites)""")
+        cats = ", ".join(f"'{c}'" for c in K.CATEGORIES)
+        got = con.execute(f"SELECT id, {K.name_category_sql()} FROM t WHERE {K.name_pool_where(cats)} ORDER BY id").fetchall()
+        # 4 Küchenstudio, 5 schon im Kategorie-Pool, 6 Restaurant, 8 FR ohne Webagentur-Wort, 9 nur GB/FR
+        self.assertEqual(got, [("1", "web_designer"), ("2", K.CREATIVE), ("3", "web_designer"),
+                               ("7", "internet_marketing_service")])
+
+    def test_kundenwerk_creative_studio_needs_companies_house_branch(self):
+        import kundenwerk as K
+        self.assertEqual(K.CATEGORIES[K.CREATIVE], "S2")
+        d = {"category": K.CREATIVE, "country": "UK"}
+        self.assertFalse(K.creative_fit(dict(d), None))  # kein eindeutiger Registertreffer
+        self.assertFalse(K.creative_fit(dict(d), {"number": "1", "sic": {"62020"}}))  # IT-Beratung = S3
+        self.assertFalse(K.creative_fit({**d, "country": "FR"}, {"number": "1", "sic": {"74100"}}))
+        ok = dict(d)
+        self.assertTrue(K.creative_fit(ok, {"number": "1", "sic": {"74100", "73110"}}))
+        self.assertEqual(ok["category"], "graphic_designer")
+        self.assertTrue(K.creative_fit({"category": "web_designer", "country": "FR"}, None))  # andere unberührt
+
     def test_kundenwerk_marketing_agencies_s2_outside_s12_countries(self):
         import kundenwerk as K
         segs = {"S2": {"US", "UK", "FR", "NL"}, "S12": {"US", "UK"}, "S1": {"US"}}

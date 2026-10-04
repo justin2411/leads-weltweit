@@ -1,5 +1,6 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
+import { after } from "next/server";
 import { db } from "@/lib/supabase";
 import { boxHealth, funnelByCountry, type BoxHealth, type Days, type FunnelRow, type Live, type OpsConfig, type RawStock, type RunInfo, type Stock } from "@/lib/dashboard-logic";
 import type { DailyRow } from "@/lib/dashboard-periods";
@@ -38,10 +39,28 @@ export async function loadDays(n = 14): Promise<Days> {
   return rpc<Days>("dashboard_days", { p_days: n }, 8000);
 }
 
-export const loadStock = unstable_cache(async () => rpc<Stock>("dashboard_stock", {}, 40_000), ["dashboard-stock-v1"], {
-  revalidate: 600,
-  tags: ["dashboard-stock"],
-});
+/**
+ * Bestand immer sofort (Inhaber 04.10.2026: „ich will immer alles sehen“): letzter Stand aus signalwerk.dashboard_cache
+ * (eine Zeile). Älter als 5 min → im Hintergrund auffrischen (after), die Seite wartet nicht darauf. Nur wenn noch nie
+ * ein Stand gespeichert wurde, wird direkt gerechnet. Der Wachhund frischt zusätzlich alle 15 min auf.
+ */
+const STOCK_FRESH_MS = 5 * 60_000;
+let stockRefreshing: Promise<unknown> | null = null;
+function refreshStock(): Promise<Stock> {
+  const p = rpc<Stock>("dashboard_stock_refresh", {}, 40_000);
+  stockRefreshing = p.finally(() => { stockRefreshing = null; });
+  return p;
+}
+
+export async function loadStock(): Promise<Stock> {
+  const { data } = await db().from("dashboard_cache").select("value, updated_at").eq("name", "stock")
+    .abortSignal(AbortSignal.timeout(4000)).maybeSingle();
+  if (!data) return refreshStock();
+  if (Date.now() - Date.parse(data.updated_at) > STOCK_FRESH_MS && !stockRefreshing) {
+    after(() => refreshStock().catch(() => {}));
+  }
+  return data.value as Stock;
+}
 
 export const loadRawStock = unstable_cache(async () => rpc<RawStock>("dashboard_raw_stock", {}, 70_000), ["dashboard-raw-stock-v1"], {
   revalidate: 3600,
