@@ -757,16 +757,16 @@ class WebAgencyFocusTests(unittest.TestCase):
         self.assertFalse(fr.search("Boulangerie du Web"))
         con = duckdb.connect()
         con.execute("""CREATE TABLE t AS SELECT * FROM (VALUES
-          ('1', {'primary': 'Stack Web Design'}, {'primary': NULL}, {'primary': 'design_service'}, [{'country': 'GB'}], ['https://a.co.uk']),
-          ('2', {'primary': 'Whitehot Creative'}, {'primary': NULL}, {'primary': NULL}, [{'country': 'GB'}], ['https://b.co.uk']),
-          ('3', {'primary': 'Agence Web Lumière'}, {'primary': 'professional_service'}, {'primary': NULL}, [{'country': 'FR'}], ['https://c.fr']),
-          ('4', {'primary': 'Kitchen Design Studio'}, {'primary': NULL}, {'primary': NULL}, [{'country': 'GB'}], ['https://d.co.uk']),
-          ('5', {'primary': 'Joe Web Design'}, {'primary': 'web_designer'}, {'primary': NULL}, [{'country': 'GB'}], ['https://e.co.uk']),
-          ('6', {'primary': 'Power SEO'}, {'primary': NULL}, {'primary': 'restaurant'}, [{'country': 'GB'}], ['https://f.co.uk']),
-          ('7', {'primary': 'London SEO Co'}, {'primary': NULL}, {'primary': NULL}, [{'country': 'GB'}], ['https://g.co.uk']),
-          ('8', {'primary': 'Studio Créatif'}, {'primary': NULL}, {'primary': NULL}, [{'country': 'FR'}], ['https://h.fr']),
-          ('9', {'primary': 'Bright Web Design'}, {'primary': NULL}, {'primary': NULL}, [{'country': 'US'}], ['https://i.com'])
-        ) v(id, names, taxonomy, categories, addresses, websites)""")
+          ('1', {'primary': 'Stack Web Design'}, {'primary': NULL}, 'design_service', [{'country': 'GB'}], ['https://a.co.uk']),
+          ('2', {'primary': 'Whitehot Creative'}, {'primary': NULL}, NULL, [{'country': 'GB'}], ['https://b.co.uk']),
+          ('3', {'primary': 'Agence Web Lumière'}, {'primary': 'professional_service'}, NULL, [{'country': 'FR'}], ['https://c.fr']),
+          ('4', {'primary': 'Kitchen Design Studio'}, {'primary': NULL}, NULL, [{'country': 'GB'}], ['https://d.co.uk']),
+          ('5', {'primary': 'Joe Web Design'}, {'primary': 'web_designer'}, NULL, [{'country': 'GB'}], ['https://e.co.uk']),
+          ('6', {'primary': 'Power SEO'}, {'primary': NULL}, 'restaurant', [{'country': 'GB'}], ['https://f.co.uk']),
+          ('7', {'primary': 'London SEO Co'}, {'primary': NULL}, NULL, [{'country': 'GB'}], ['https://g.co.uk']),
+          ('8', {'primary': 'Studio Créatif'}, {'primary': NULL}, NULL, [{'country': 'FR'}], ['https://h.fr']),
+          ('9', {'primary': 'Bright Web Design'}, {'primary': NULL}, NULL, [{'country': 'US'}], ['https://i.com'])
+        ) v(id, names, taxonomy, basic_category, addresses, websites)""")
         cats = ", ".join(f"'{c}'" for c in K.CATEGORIES)
         got = con.execute(f"SELECT id, {K.name_category_sql()} FROM t WHERE {K.name_pool_where(cats)} ORDER BY id").fetchall()
         # 4 Küchenstudio, 5 schon im Kategorie-Pool, 6 Restaurant, 8 FR ohne Webagentur-Wort, 9 nur GB/FR
