@@ -139,7 +139,12 @@
   },
   "rules": {
     "signal_max_age_days": 45,
-    "sample_size": 10
+    "sample_size": 10,
+    "signatur_exklusiv": [
+      "scripts/drafts.py",
+      "scripts/lib/html_email.py",
+      "app/lib/welcome-mail.ts"
+    ]
   },
   "workflows": [
     {

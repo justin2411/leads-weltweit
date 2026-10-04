@@ -9,6 +9,7 @@ import { LIVE_CSS } from "./live";
 import { Nav } from "./nav";
 import { Flash } from "./flash";
 import { db } from "@/lib/supabase";
+import { countBrauchtDich } from "@/lib/braucht-dich-data";
 
 // Inhaber-Bereich (Inhaber 03.10.2026): nur nach Anmeldung über /login, ohne Sitzung 404, nie indexiert, nie gecacht.
 export const dynamic = "force-dynamic";
@@ -29,7 +30,9 @@ async function openReplies(): Promise<number> {
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   await requireOwner();
-  const badges = { "/dashboard/antworten": await openReplies() };
+  // JARVIS-Zähler = Punkte „Braucht dich“ (nur der Inhaber kann sie erledigen)
+  const [replies, bd] = await Promise.all([openReplies(), countBrauchtDich()]);
+  const badges = { "/dashboard/antworten": replies, "/dashboard/jarvis": bd };
   return (
     <div className={`dash ${sans.variable} ${hud.variable} ${mono.variable}`}>
       <style dangerouslySetInnerHTML={{ __html: DASH_CSS + DASH_V2_CSS + LIVE_CSS + HUD_CSS }} />
