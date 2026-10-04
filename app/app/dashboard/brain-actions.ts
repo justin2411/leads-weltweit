@@ -26,7 +26,7 @@ export async function updateSetting(formData: FormData) {
   const { error } = await db().from("settings").update({ [key]: value, updated_at: new Date().toISOString(), updated_by: "owner-dashboard" }).eq("id", 1);
   if (error) throw new Error(error.message);
   await db().from("decisions").insert({ type: "note", subject: `Schalter ${key} = ${value}`, reasoning: "vom Inhaber im Dashboard gesetzt", status: "done" });
-  revalidatePath("/dashboard");
+  revalidatePath("/dashboard", "layout");
 }
 
 const STATUSES = new Set(["draft", "review", "live", "retired"]);
@@ -44,7 +44,7 @@ export async function setStatus(formData: FormData) {
   const { error } = await db().from(table).update(upd).eq("id", id);
   if (error) throw new Error(error.message);
   await db().from("decisions").insert({ type: "note", subject: `${table === "landing_pages" ? "Seite" : "Variante"} ${id} -> ${status}`, reasoning: "vom Inhaber im Dashboard gesetzt", status: "done" });
-  revalidatePath("/dashboard");
+  revalidatePath("/dashboard", "layout");
 }
 
 /** Entscheidungsvorschlag des Gehirns annehmen oder ablehnen. */
@@ -54,5 +54,5 @@ export async function reviewDecision(formData: FormData) {
   const status = String(formData.get("status")) === "done" ? "done" : "rejected";
   const { error } = await db().from("decisions").update({ status }).eq("id", id).eq("status", "proposed");
   if (error) throw new Error(error.message);
-  revalidatePath("/dashboard");
+  revalidatePath("/dashboard", "layout");
 }

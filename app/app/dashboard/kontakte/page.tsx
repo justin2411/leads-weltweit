@@ -50,7 +50,7 @@ export default async function Kontakte({ searchParams }: { searchParams: SP }) {
     const col = cols.find((c) => c.id === focus)!;
     return (
       <div className="v2">
-        <Crumbs items={[["Übersicht", withQuery("/dashboard", raw)], ["Kontakte", withQuery("/dashboard/kontakte", prm)], [col.label, ""]]} />
+        <Crumbs items={[["JARVIS", withQuery("/dashboard/jarvis", raw)], ["Kontakte", withQuery("/dashboard/kontakte", prm)], [col.label, ""]]} />
         <div className="head2">
           <Chips base="/dashboard/kontakte" param="stufe" value={focus} options={STAGES.map(([k, l]) => [k, l])} params={base} />
           <Chips base="/dashboard/kontakte" param="land" value={land} options={COUNTRY_OPTS} params={base} dots />
@@ -70,7 +70,7 @@ export default async function Kontakte({ searchParams }: { searchParams: SP }) {
 
   return (
     <div className="v2">
-      <Crumbs items={[["Übersicht", withQuery("/dashboard", raw)], ["Kontakte", ""]]} />
+      <Crumbs items={[["JARVIS", withQuery("/dashboard/jarvis", raw)], ["Kontakte", ""]]} />
       <div className="head2">{zChips("/dashboard/kontakte", prm)}<Chips base="/dashboard/kontakte" param="land" value={land} options={COUNTRY_OPTS} params={prm} dots /></div>
       <div className="kanban">
         {cols.map((col) => (

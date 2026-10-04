@@ -62,6 +62,7 @@ export function Pools({ pools, rows, saved, subs, subRoute, error, newColor }: {
   }, [savedKey, saved]);
 
   const changes = useMemo(() => poolChanges(saved, draft), [saved, draft]);
+  const ownRoutes = Object.values(draft.routes).filter((v) => v && v !== ALL_POOL).length;
   const pending = changes.length > 0;
   const name = useMemo(() => {
     const m = new Map(pools.map((p) => [p.id, p.name]));
@@ -142,8 +143,10 @@ export function Pools({ pools, rows, saved, subs, subRoute, error, newColor }: {
         </div>
       </section>
 
-      <section className="sp-card pl-card" aria-label="Bedienen aus">
-        <div className="sp-h"><h2>Bedienen aus</h2><span className="sp-note">Proben und Lieferungen je Zielgruppe und Land</span></div>
+      {/* Inhaber 04.10.2026: lange Abschnitte ein- und ausklappbar – zu, solange alles auf Gesamtbestand steht */}
+      <details className="sp-card pl-card pl-fold" aria-label="Bedienen aus"
+        open={ownRoutes > 0 || changes.some((c) => c.kind === "route") || undefined}>
+        <summary className="sp-h"><h2>Bedienen aus</h2><span className="sp-note">Proben und Lieferungen je Zielgruppe und Land · {ownRoutes ? `${ownRoutes} eigene` : "alles Gesamtbestand"}</span></summary>
         {!rows.length ? <p className="sp-none">Keine Zielgruppe mit Mail-Ländern.</p> : (
           <div className="pl-matrix">
             {rows.map((r) => (
@@ -168,10 +171,10 @@ export function Pools({ pools, rows, saved, subs, subRoute, error, newColor }: {
             ))}
           </div>
         )}
-      </section>
+      </details>
 
-      <section className="sp-card pl-card" aria-label="Je Kunde">
-        <div className="sp-h"><h2>Je Kunde</h2><span className="sp-note">übersteuert Zielgruppe und Land</span></div>
+      <details className="sp-card pl-card pl-fold" aria-label="Je Kunde" open={changes.some((c) => c.kind === "sub") || undefined}>
+        <summary className="sp-h"><h2>Je Kunde</h2><span className="sp-note">übersteuert Zielgruppe und Land · {subs.length} Abos</span></summary>
         {!subs.length ? <p className="sp-none">Noch keine Abos.</p> : (
           <div className="pl-subs">
             {subs.map((s) => {
@@ -191,7 +194,7 @@ export function Pools({ pools, rows, saved, subs, subRoute, error, newColor }: {
             })}
           </div>
         )}
-      </section>
+      </details>
 
       {pending && (
         <div className="pl-bar" role="region" aria-label="Änderungen übernehmen">

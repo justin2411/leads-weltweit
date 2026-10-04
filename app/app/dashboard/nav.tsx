@@ -14,6 +14,8 @@ export const SECTIONS: [string, string, IconName][] = [
   ["/dashboard/speicher", "Speicher", "speicher"],
   ["/dashboard/kontakte", "Kontakte", "kontakte"],
   ["/dashboard/kunden", "Kunden", "kunden"],
+  // Inhaber 04.10.2026: alte Ansicht raus – Gehirn (Schalter, Seiten, Entscheidungen) hat eine eigene Seite
+  ["/dashboard/gehirn", "Gehirn", "gehirn"],
   // Inhaber 04.10.2026: KI-Ansprechpartner je Kunde ab Pro (docs/KUNDEN-AGENTEN.md)
   ["/dashboard/kunden-agenten", "Kunden-Agenten", "ansprechpartner"],
 ];

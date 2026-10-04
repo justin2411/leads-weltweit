@@ -50,7 +50,6 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       </header>
       <Suspense><Flash /></Suspense>
       <main>{children}</main>
-      <footer className="foot"><a href="/dashboard/alt" title="Bisherige Detailansicht mit allen Branchen, Freigaben und Gehirn">Alte Ansicht</a></footer>
       <Suspense><Nav bottom badges={badges} /></Suspense>
     </div>
   );
