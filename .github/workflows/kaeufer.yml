@@ -9,7 +9,35 @@ on:
         description: "Höchstzahl gefundener Adressen je Zielgruppe/Land"
         default: "100"
 jobs:
+  doppelt:
+    # Prüfung 04.10.2026: fiel der geplante Lauf aus, startet ihn der Wachhund nach (workflow_dispatch); kommt der
+    # verspätete Cron-Lauf danach doch noch, endet er hier sauber statt alles doppelt zu machen. Fehler -> normal laufen.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    outputs:
+      skip: ${{ steps.d.outputs.skip }}
+    steps:
+      - name: Heute schon nachgestartet?
+        id: d
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SEIT: "05:13"   # geplante Zeit (UTC) wie im Cron oben
+        run: |
+          since="$(date -u +%Y-%m-%d)T${SEIT}:00Z"
+          n=$(gh api -X GET "repos/${{ github.repository }}/actions/workflows/kaeufer.yml/runs" \
+                -f event=workflow_dispatch -f "created=>=$since" --jq .total_count 2>/dev/null || echo 0)
+          case "$n" in ''|*[!0-9]*) n=0 ;; esac
+          if [ "$n" -gt 0 ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Heute schon nachgestartet ($n Lauf seit $since) – geplanter Lauf endet ohne Arbeit" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
   suchen:
+    needs: doppelt
+    if: needs.doppelt.outputs.skip != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 240
     strategy:
@@ -28,13 +56,21 @@ jobs:
         with: { python-version: "3.11" }
       - run: pip install -r requirements.txt
       - name: Kandidaten aus OpenStreetMap
+        # Prüfung 04.10.2026: ein hängender Overpass-Abruf hielt den Job 4 h fest; nach 45 min abbrechen und mit
+        # dem weitermachen, was schon da ist (Folgeschritte prüfen nur vorhandene Kandidaten)
+        timeout-minutes: 45
+        continue-on-error: true
         run: python scripts/osm.py --segment "${COMBO%-*}" --country "${COMBO#*-}" --out-dir candidates/osm
       - name: Websites prüfen (Adresse, Rechtsform)
-        run: python scripts/prospects.py --max "$MAX" candidates/osm/${COMBO}.csv
+        run: |
+          [ -f "candidates/osm/${COMBO}.csv" ] || { echo "Keine Kandidaten (OpenStreetMap abgebrochen)" | tee -a "$GITHUB_STEP_SUMMARY"; exit 0; }
+          python scripts/prospects.py --max "$MAX" "candidates/osm/${COMBO}.csv"
       - name: Prüfregeln
         run: python scripts/outreach.py check --db
 
   arbeitgeber:
+    needs: doppelt
+    if: needs.doppelt.outputs.skip != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 240
     strategy:
