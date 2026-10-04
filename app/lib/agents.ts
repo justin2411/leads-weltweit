@@ -21,7 +21,7 @@ export const KINDS = {
 export type Kind = keyof typeof KINDS;
 /** Arten, die der Inhaber im Auftragsformular, im Chat und im Baukasten wählt („kunde“ nur über Kunden-Agenten). */
 export const OWNER_KINDS = (Object.keys(KINDS) as Kind[]).filter((k) => k !== "kunde");
-export const MARKETS = ["US", "UK", "FR", "IE", "NL", "BE", "SE"] as const;
+export const MARKETS = ["US", "UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK", "MX", "BR"] as const;
 
 export type AgentTask = {
   id: string; created_at: string; agent: number; kind: Kind; market: string | null; brief: string;
@@ -71,6 +71,11 @@ const MARKET_NAMES: Record<string, { code: RegExp; words: RegExp }> = {
   NL: { code: /NL/, words: /niederlande|holland|netherlands|niederländisch/ },
   BE: { code: /BE/, words: /belgien|belgium|belgisch/ },
   SE: { code: /SE/, words: /schweden|sweden|schwedisch/ },
+  FI: { code: /FI/, words: /finnland|finland|finnisch/ },
+  SG: { code: /SG/, words: /singapur|singapore/ },
+  HK: { code: /HK/, words: /hongkong|hong kong/ },
+  MX: { code: /MX/, words: /mexiko|mexico|méxico|mexikanisch/ },
+  BR: { code: /BR/, words: /brasilien|brazil|brasil|brasilianisch/ },
 };
 const edge = (r: RegExp, flags: string) => new RegExp(`(?<![\\p{L}\\d])(?:${r.source})(?![\\p{L}\\d])`, `${flags}u`);
 const MARKET_RX = Object.entries(MARKET_NAMES).map(([m, x]) => ({ m, code: edge(x.code, ""), words: edge(x.words, "i") }));

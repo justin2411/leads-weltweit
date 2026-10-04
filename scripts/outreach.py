@@ -200,7 +200,9 @@ NOTBREMSE_EVERY = 20  # Notbremse während des Versands alle 20 gesendeten Mails
 
 
 LANDING_LINE = {"en": "How it works in under a minute, and your free sample with one click: {url}",
-                "fr": "Comment ça marche en une minute, et votre échantillon gratuit en un clic : {url}"}
+                "fr": "Comment ça marche en une minute, et votre échantillon gratuit en un clic : {url}",
+                "pt": "Como funciona em menos de um minuto, e sua amostra gratuita com um clique: {url}",
+                "es": "Cómo funciona en menos de un minuto, y su muestra gratuita con un clic: {url}"}
 
 
 def landing_link(db, cache: dict, segment_id: str, country: str, token: str) -> str | None:
@@ -226,9 +228,12 @@ def unsubscribe_headers(unsub_url: str | None) -> dict:
 
 def _country_area(country: str) -> str | None:
     """Landesweit statt regional (Inhaber 27.09.2026): 'the UK', 'toute la France' für den Probe-Knopf."""
-    from drafts import LAND
+    from drafts import LAND, LAND_LOCAL, mail_lang
     if (country or "").upper() == "FR":
         return "toute la France"
+    lang = mail_lang(country)
+    if lang in LAND_LOCAL:  # BR/MX: Landesname in der Mail-Sprache („Brasil“, „México“)
+        return LAND_LOCAL[lang].get((country or "").upper())
     return LAND.get((country or "").upper())
 
 
@@ -440,6 +445,14 @@ def cmd_send(args) -> int:
             problems.append(f"Rechtsform '{p.get('legal_form') or '?'}' ist keine Kapitalgesellschaft in {country}")
         if role_address(m["to_email"]):
             problems.append("Funktionsadresse ohne Vertriebsbezug (z. B. privacy@, support@)")
+        # Pflicht-Kennzeichnung im Betreff (SG Spam Control Act: „<ADV> “) und Sprache des Landes (BR pt, MX es),
+        # neue Länder 04.10.2026 – fehlt etwas, wird nicht gesendet
+        prefix = rules.get("subject_prefix") or ""
+        if prefix and not (m.get("subject") or "").startswith(prefix):
+            problems.append(f"Betreff muss in {country} mit „{prefix.strip()}“ beginnen")
+        want = rules.get("language") or "en"
+        if want in ("pt", "es") and (m.get("language") or "en") != want:
+            problems.append(f"Mail-Sprache {m.get('language') or 'en'} statt {want} für {country}")
         kind = m.get("kind") or "initial"
         lint = lint_draft(m["subject"], m["body"], m.get("language") or "en",
                           **({} if kind == "initial" else {"min_words": 30, "max_words": 120, "require_sample": False}))
@@ -498,7 +511,7 @@ def cmd_send(args) -> int:
         footer = render_footer(m.get("language") or "en",
                                sender_name=legal_name(),
                                postal_address=postal_address(),
-                               company=p["company_name"], unsubscribe_url=unsub)
+                               company=p["company_name"], unsubscribe_url=unsub, country=country)
         body = m["body"].rstrip()
         # Nachfassmail: derselbe Knopf zur Landingpage wie die Erstmail (Inhaber 02.10.2026, Schritt 3)
         link = (landing_link(db, pages, e["segment_id"], country, m["unsubscribe_token"])
@@ -583,7 +596,7 @@ def cmd_test(args) -> int:
     lint = lint_draft(subject, body, lang)
     footer = render_footer(lang, sender_name=legal_name(),
                            postal_address=postal_address(), company=name,
-                           unsubscribe_url=unsubscribe_target("test"))
+                           unsubscribe_url=unsubscribe_target("test"), country=args.country)
     from lib.db import DB
     link = landing_link(DB(), {}, args.segment, args.country, "test")
     if link:
@@ -616,7 +629,7 @@ def _test_followup(args, name: str) -> int:
     lint = lint_draft(subject, body, lang, min_words=30, max_words=120, require_sample=False)
     footer = render_footer(lang, sender_name=legal_name(),
                            postal_address=postal_address(), company=name,
-                           unsubscribe_url=unsubscribe_target("test"))
+                           unsubscribe_url=unsubscribe_target("test"), country=args.country)
     text = body.rstrip() + "\n\n" + footer
     print(f"Prüfung: {lint.summary()}\n\nBetreff: [TEST] {subject}\n\n{text}\n")
     files = [b] if args.art == "probe-nachfass" and (b := brochure(args.segment, args.country)) else None

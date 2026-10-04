@@ -47,7 +47,7 @@ WEB_FINDINGS = {"no_https", "website_not_mobile", "website_outdated", "website_b
 NO_SITE = {"no_website"}
 INCORPORATION = {"new_incorporation"}
 SEGMENT_SIGNALS = {"S2": WEB_FINDINGS | NO_SITE | INCORPORATION}
-DELIVERY_COUNTRIES = {"US", "UK", "FR", "IE", "NL", "BE", "SE"}
+DELIVERY_COUNTRIES = {"US", "UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK", "MX", "BR"}  # FI…BR: 04.10.2026
 NEVER_COUNTRIES = {"DE", "AT", "CH", "IT", "ES", "PL", "DK"}
 LANG = {"FR": "fr"}
 

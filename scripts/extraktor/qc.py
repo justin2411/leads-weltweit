@@ -69,7 +69,8 @@ def zip_matches_state(zip5: str, state: str) -> bool | None:
     return any(a <= z <= b for a, b in ZIP3[state])
 
 
-REGION = {"US": "US", "UK": "GB", "FR": "FR", "IE": "IE", "NL": "NL", "BE": "BE", "SE": "SE"}
+REGION = {"US": "US", "UK": "GB", "FR": "FR", "IE": "IE", "NL": "NL", "BE": "BE", "SE": "SE",
+          "FI": "FI", "SG": "SG", "HK": "HK", "MX": "MX", "BR": "BR"}
 UK_POSTCODE = re.compile(r"^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$")
 
 
@@ -151,7 +152,11 @@ def postcode_ok(c: dict) -> bool | None:
 
 
 # NL: 1234 AB, BE: 4 Ziffern, SE: 123 45 (IE: Eircode fehlt oft oder steht als Grafschaft -> nicht prüfen)
-POSTCODE_FORMAT = {"NL": r"\d{4}\s?[A-Z]{2}", "BE": r"\d{4}", "SE": r"\d{3}\s?\d{2}"}
+# FI: 5 Ziffern, SG: 6 Ziffern, MX: 5 Ziffern, BR: CEP 12345-678 (neue Länder 04.10.2026)
+POSTCODE_FORMAT = {"NL": r"\d{4}\s?[A-Z]{2}", "BE": r"\d{4}", "SE": r"\d{3}\s?\d{2}",
+                   "FI": r"\d{5}", "SG": r"\d{6}", "MX": r"\d{5}", "BR": r"\d{5}-?\d{3}"}
+# Hongkong hat keine Postleitzahlen: vollständige Adresse = Straße + Ort (Bezirk), PLZ wird dort nicht verlangt
+NO_POSTCODE = {"HK"}
 
 
 def run(c: dict, seg: str, shared: dict | None = None) -> dict:
@@ -265,7 +270,8 @@ def run(c: dict, seg: str, shared: dict | None = None) -> dict:
         blocking.append(prob)
 
     # Adresse
-    if not (c.get("street") and c.get("city") and c.get("zip") and (c.get("state") or country != "US")):
+    if not (c.get("street") and c.get("city") and (c.get("zip") or country in NO_POSTCODE)
+            and (c.get("state") or country != "US")):
         missing.append("address")
     else:
         zm = postcode_ok(c)

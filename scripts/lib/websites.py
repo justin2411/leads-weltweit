@@ -29,7 +29,9 @@ GENERIC = {"the", "and", "uk", "gb", "group", "holdings", "holding", "services",
            "de", "du", "des", "d", "et", "of", "societe", "civile", "nyc", "ny", "usa", "us", "europe", "france",
            "paris", "london", "hq"}
 TLDS = {"UK": ["co.uk", "uk", "com"], "IE": ["ie", "com"], "FR": ["fr", "com"], "US": ["com", "net", "us"],
-        "NL": ["nl", "com"], "BE": ["be", "com"], "SE": ["se", "com"]}
+        "NL": ["nl", "com"], "BE": ["be", "com"], "SE": ["se", "com"],
+        "FI": ["fi", "com"], "SG": ["sg", "com.sg", "com"], "HK": ["hk", "com.hk", "com"], "MX": ["mx", "com.mx", "com"],
+        "BR": ["com.br", "br", "com"]}
 MAX_CANDIDATES = 16
 # Branchen-Endungen (echte gTLDs): kleine Firmen nutzen sie oft statt .com, z. B. 202main.coffee (Inhaber 02.10.2026:
 # Lead „ohne Website“ hatte eine). Schlüssel = Wort im Namen oder in der Overture-Kategorie.
@@ -49,7 +51,8 @@ CAT_TLDS = {"coffee": ["coffee", "cafe"], "cafe": ["cafe", "coffee"], "espresso"
             "accounting": ["accountants"], "pet": ["pet"], "dog": ["dog"], "farm": ["farm"], "golf": ["golf"],
             "church": ["church"], "school": ["school"], "academy": ["academy"], "events": ["events"],
             "catering": ["catering"], "wine": ["wine"], "beer": ["beer"], "tattoo": ["tattoo"], "garden": ["garden"]}
-GENERIC_TLDS = {"US": ["co", "biz"], "UK": ["co"], "IE": [], "FR": [], "NL": [], "BE": [], "SE": []}
+GENERIC_TLDS = {"US": ["co", "biz"], "UK": ["co"], "IE": [], "FR": [], "NL": [], "BE": [], "SE": [],
+                "FI": [], "SG": [], "HK": [], "MX": [], "BR": []}
 
 
 def ascii_fold(s: str) -> str:
@@ -198,7 +201,27 @@ def site_domain(url: str) -> str:
 # ---------------------------------------------------------------------------
 # Telefon
 # ---------------------------------------------------------------------------
-CC = {"UK": "44", "IE": "353", "FR": "33", "US": "1", "NL": "31", "BE": "32", "SE": "46", "DE": "49"}
+CC = {"UK": "44", "IE": "353", "FR": "33", "US": "1", "NL": "31", "BE": "32", "SE": "46", "DE": "49",
+      "FI": "358", "SG": "65", "HK": "852", "MX": "52", "BR": "55"}
+# Neue Länder (04.10.2026): SG/HK/MX wählen ohne Verkehrsausscheidungsziffer 0, BR mit Anbieterkennzahl -> dort
+# entscheidet die Nummernbibliothek (phonenumbers, Metadaten der ITU-Nummernpläne), ob die Nummer gültig ist
+PHONE_LIB = {"FI": "FI", "SG": "SG", "HK": "HK", "MX": "MX", "BR": "BR"}
+
+
+def _normalize_lib(s: str, country: str) -> tuple[str | None, str]:
+    import phonenumbers
+    region = PHONE_LIB[country]
+    try:
+        n = phonenumbers.parse(s, region)
+    except phonenumbers.NumberParseException:
+        return None, "invalid"
+    if phonenumbers.region_code_for_number(n) != region:
+        return None, "foreign" if phonenumbers.is_valid_number(n) else "invalid"
+    if not phonenumbers.is_valid_number(n):
+        return None, "invalid"
+    return phonenumbers.format_number(n, phonenumbers.PhoneNumberFormat.E164), "ok"
+
+
 NY_AREA = {"212", "315", "332", "347", "363", "516", "518", "585", "607", "631", "646", "680", "716", "718", "838",
            "845", "914", "917", "929", "934"}
 TEL_LINK = re.compile(r'href=["\']tel:([^"\']+)["\']', re.I)
@@ -219,6 +242,8 @@ def normalize_phone(raw: str, country: str) -> tuple[str | None, str]:
     cc = CC.get(country)
     if not cc or not d:
         return None, "invalid"
+    if country in PHONE_LIB:
+        return _normalize_lib(("+" + d) if plus else d, country)
     if country == "US":
         if plus:
             if not d.startswith("1"):

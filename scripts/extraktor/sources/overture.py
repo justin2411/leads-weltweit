@@ -29,16 +29,39 @@ CACHE_US = Path(os.environ.get("EXTRAKTOR_OVERTURE_US", "out/cache/overture_us_s
 # Hälfte nach ~1,5 Tagen abgearbeitet und die 21 Teile liefen leer (Scout R22). Jetzt der ganze Bestand (~1 GB);
 # das Gedächtnis der Teile (120 Tage) überspringt die schon geprüfte Hälfte
 CACHE_US_WEB = Path(os.environ.get("EXTRAKTOR_OVERTURE_US_WEB", "out/cache/overture_us_web.parquet"))
-COUNTRY = {"GB": "UK", "FR": "FR", "IE": "IE", "NL": "NL", "BE": "BE", "SE": "SE", "US": "US"}
-# Auszug -> (Overture-Ländercodes, Bounding-Box xmin, xmax, ymin, ymax)
+# Neue Mail-Länder (Inhaber 04.10.2026: „nimm also auch andere länder mit auf die passend sind“, docs/KALTMAIL-RECHT.md):
+# FI, SG, HK, MX, BR – nur Firmen OHNE Website und MIT E-Mail (wie US: sonst Millionen Rohbestand ohne Nutzen,
+# BR allein hätte 4,7 Mio. Orte mit Telefon). Test 04.10.2026 siehe docs/QUELLEN-SCOUT.md
+CACHE_NEW = Path(os.environ.get("EXTRAKTOR_OVERTURE_NEW", "out/cache/overture_fi_sg_hk_mx_br.parquet"))
+COUNTRY = {"GB": "UK", "FR": "FR", "IE": "IE", "NL": "NL", "BE": "BE", "SE": "SE", "US": "US",
+           "FI": "FI", "SG": "SG", "HK": "HK", "MX": "MX", "BR": "BR"}
+# Auszug -> (Overture-Ländercodes, Bounding-Box xmin, xmax, ymin, ymax – oder mehrere Boxen, je Land eine)
 GROUPS = {CACHE: (("GB", "FR"), (-8.7, 9.6, 41.3, 60.9)),
           CACHE_NORTH: (("IE", "NL", "BE", "SE"), (-10.7, 24.2, 49.4, 69.1)),
           CACHE_US: (("US",), (-180.0, -60.0, 15.0, 72.0)),
-          CACHE_US_WEB: (("US",), (-180.0, -60.0, 15.0, 72.0))}
+          CACHE_US_WEB: (("US",), (-180.0, -60.0, 15.0, 72.0)),
+          CACHE_NEW: (("FI", "SG", "HK", "MX", "BR"), ((19.0, 31.6, 59.6, 70.1), (103.55, 104.1, 1.15, 1.48),
+                                                       (113.8, 114.45, 22.13, 22.58), (-118.5, -86.6, 14.4, 32.8),
+                                                       (-74.1, -34.7, -33.9, 5.4)))}
+# Länder, in denen S2 ohne Website nur Firmen MIT E-Mail nimmt (US und die neuen Länder)
+EMAIL_ONLY = {"US", "FI", "SG", "HK", "MX", "BR"}
+# Hongkong hat keine Postleitzahlen: dort reicht Straße + Ort (qc.postcode_ok prüft HK nicht)
+NO_POSTCODE = {"HK"}
 # zusätzliche Bedingung je Auszug
-ONLY_NO_WEBSITE = {CACHE_US}
+ONLY_NO_WEBSITE = {CACHE_US, CACHE_NEW}
 EXTRA_WHERE = {CACHE_US: "AND (websites IS NULL OR len(websites) = 0)",
-               CACHE_US_WEB: "AND len(websites) > 0 AND coalesce(confidence, 0) >= 0.6"}
+               CACHE_US_WEB: "AND len(websites) > 0 AND coalesce(confidence, 0) >= 0.6",
+               CACHE_NEW: "AND (websites IS NULL OR len(websites) = 0) AND len(emails) > 0"}
+
+
+def boxes(box) -> tuple:
+    """Eine Bounding-Box oder mehrere (je Land eine) -> Tupel von Boxen."""
+    return (box,) if isinstance(box[0], (int, float)) else tuple(box)
+
+
+def box_where(box) -> str:
+    return "(" + " OR ".join(f"(bbox.xmin BETWEEN {x0} AND {x1} AND bbox.ymin BETWEEN {y0} AND {y1})"
+                             for x0, x1, y0, y1 in boxes(box)) + ")"
 
 
 def code(country: str) -> str:
@@ -61,7 +84,13 @@ BRANDS = re.compile(r"\b(euro ?spar|spar|premier|costcutter|londis|budgens|nisa|
                     # (nur eindeutige Kettennamen; Allerweltswörter wie „Action“ oder „Plus“ würden echte Firmen treffen)
                     r"dunnes stores|supervalu|applegreen|circle k|albert heijn|jumbo supermarkt|kruidvat|etos|"
                     r"blokker|delhaize|colruyt|carrefour express|ica (?:kvantum|supermarket|maxi|nära)|hemk[öo]p|"
-                    r"willys|pressbyr[åa]n|7-eleven|systembolaget|apoteket|max hamburgare)\b", re.I)
+                    r"willys|pressbyr[åa]n|7-eleven|systembolaget|apoteket|max hamburgare|"
+                    # FI/SG/HK/MX/BR (neue Länder 04.10.2026)
+                    r"k-market|k-supermarket|k-citymarket|s-market|prisma|r-kioski|alko|neste|"
+                    r"fairprice|cheers|guardian|watsons|wellcome|parknshop|mannings|"
+                    r"oxxo|pemex|bodega aurrera|soriana|chedraui|elektra|coppel|banco azteca|farmacias guadalajara|"
+                    r"farmacias del ahorro|farmacias similares|drogasil|droga raia|pague menos|ipiranga|petrobras|"
+                    r"casas bahia|magazine luiza|o botic[aá]rio|cacau show|lojas americanas)\b", re.I)
 SKIP_CAT = re.compile(r"place_of_worship|government|school|place_of_learning|park|community|sport_league|"
                       r"social_or_community|hospital|public_|military|embassy|cemetery|library|post_office|"
                       r"atm|bank|charity|non_profit|political|police|fire_station", re.I)
@@ -77,7 +106,7 @@ def latest_release() -> str:
 def build_cache(log=print, path: Path = CACHE) -> Path:
     """Länder-Auszug (alle Firmen mit Telefon) aus der neuesten Overture-Veröffentlichung."""
     import duckdb
-    codes, (x0, x1, y0, y1) = GROUPS[path]
+    codes, box = GROUPS[path]
     rel = latest_release()
     xml = requests.get(BUCKET + f"?list-type=2&prefix={rel}theme=places/type=place/", timeout=60).text
     files = [BUCKET + k for k in re.findall(r"<Key>([^<]+parquet)</Key>", xml)]
@@ -91,7 +120,7 @@ def build_cache(log=print, path: Path = CACHE) -> Path:
         taxonomy.primary AS cat2, confidence, operating_status, [s.dataset FOR s IN sources] AS datasets,
         [s.update_time FOR s IN sources] AS updated
       FROM read_parquet({files})
-      WHERE bbox.xmin BETWEEN {x0} AND {x1} AND bbox.ymin BETWEEN {y0} AND {y1}
+      WHERE {box_where(box)}
         AND addresses[1].country IN ({listed}) AND len(phones) > 0
         {EXTRA_WHERE.get(path, "")}) TO '{path}' (FORMAT parquet)""")
     log(f"Overture: Auszug {rel} ({'/'.join(codes)}) -> {path}")
@@ -115,15 +144,15 @@ def no_website(country: str, limit: int, log=print, exclude: set[str] | None = N
           AND coalesce(operating_status, 'open') NOT IN ('permanently_closed', 'temporarily_closed')
           AND name IS NOT NULL AND lower(name) NOT IN (SELECT n FROM chains)
           AND coalesce(confidence, 0) >= 0.6
-          AND (? <> 'US' OR len(emails) > 0)  -- US: nur mit E-Mail (sonst Millionen Rohbestand ohne Nutzen)
+          AND (NOT ? OR len(emails) > 0)  -- US/neue Länder: nur mit E-Mail (sonst Millionen Rohbestand ohne Nutzen)
         ORDER BY (len(emails) > 0) DESC, (len(socials) > 0) DESC, confidence DESC
-        LIMIT ?""", [cc, cc, limit * 3 + len(exclude or ())]).fetchall()
+        LIMIT ?""", [cc, country in EMAIL_ONLY, limit * 3 + len(exclude or ())]).fetchall()
     cols = ["id", "name", "phones", "emails", "socials", "street", "city", "postcode", "category", "datasets",
             "updated", "confidence", "region"]
     out = []
     for r in rows:
         d = dict(zip(cols, r))
-        if (exclude and d["id"] in exclude) or SKIP_CAT.search(d["category"] or "none") or not (d["street"] and d["postcode"]):
+        if (exclude and d["id"] in exclude) or SKIP_CAT.search(d["category"] or "none") or not (d["street"] and (d["postcode"] or country in NO_POSTCODE)):
             continue
         if BRANDS.search(d["name"] or ""):
             continue
@@ -150,7 +179,8 @@ def to_candidate(d: dict, country: str) -> dict:
         source_date=dt.date.today(), event_date=dt.date.today(),
         name=re.sub(r"\s+", " ", d["name"]).strip(), legal_name="",
         street=d["street"] or "", city=d["city"] or "", state=(d.get("region") or "") if country == "US" else "",
-        zip=(d["postcode"] or "").upper(),
+        # HK: keine Postleitzahlen (Overture führt dort Platzhalter wie „000000“) -> leer
+        zip="" if country in NO_POSTCODE else (d["postcode"] or "").upper(),
         phone=(d["phones"] or [""])[0], email=((d.get("emails") or [""])[0] or "").lower(),
         facts={"category": (d["category"] or "").replace("_", " "), "social": social_kind(d.get("socials")),
                "social_url": (d.get("socials") or [""])[0], "listed_by": [x for x in (d.get("datasets") or []) if x],

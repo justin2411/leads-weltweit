@@ -39,7 +39,9 @@ from lib.rules import check_prospect, country_rules, load_countries, normalize_d
 TARGET = 1_000_000  # Inhaber 01.10.2026: „Kundenwerk soll erst bei 1mio Kunden aufhören“
 POOL = Path(os.environ.get("KUNDENWERK_POOL", "out/cache/kunden_pool.parquet"))
 # Länder, aus denen wir Leads liefern können (Overture-Code -> unser Code); IE/NL/BE/SE: Scout-Sprint 01.10.2026
-COUNTRIES = {"US": "US", "GB": "UK", "FR": "FR", "IE": "IE", "NL": "NL", "BE": "BE", "SE": "SE"}
+# FI/SG/HK/MX/BR: neue Mail-Länder (Inhaber 04.10.2026, docs/KALTMAIL-RECHT.md, Test in docs/QUELLEN-SCOUT.md)
+COUNTRIES = {"US": "US", "GB": "UK", "FR": "FR", "IE": "IE", "NL": "NL", "BE": "BE", "SE": "SE",
+             "FI": "FI", "SG": "SG", "HK": "HK", "MX": "MX", "BR": "BR"}
 # Overture-Kategorie (taxonomy.primary) -> Zielgruppe
 CATEGORIES = {
     "employment_agency": "S1",
@@ -72,7 +74,7 @@ CATEGORIES = {
 # in FR/IE/NL/BE/SE gibt es S12 nicht, dort sind sie Käufer für S2 (bauen Websites für kleine Firmen, wie
 # b2b_advertising_and_marketing_service/media_agency). Test: 95 Firmen -> 10 ok (FR 7/30, SE 3/15).
 SECOND = {"marketing_agency": "S2", "advertising_agency": "S2", "b2b_marketing_consultant": "S2"}
-SECOND_COUNTRIES = {"FR", "IE", "NL", "BE", "SE"}  # nicht UK/US: dort bleibt S12 eigener Test, auch im S2-Fokuslauf
+SECOND_COUNTRIES = {"FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK", "MX", "BR"}  # nicht UK/US: dort bleibt S12 eigener Test, auch im S2-Fokuslauf
 # Namens-Pool (JARVIS-Agent „Käufer finden · UK/FR“, 04.10.2026): Overture-Orte AUSSERHALB der Kategorien oben
 # (Kategorie leer oder allgemein wie professional_service/design_service), deren Name eindeutig eine Webagentur nennt.
 # Test 04.10.2026 (ohne Speichern): UK 10/150, FR 3/48 mail-fähig; Rest meist Einzelunternehmer (nur Anruf/Brief).

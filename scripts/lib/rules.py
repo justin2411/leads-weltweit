@@ -31,6 +31,12 @@ COMPANY_FORMS = {
     "BE": {"bv", "srl", "nv", "sa", "cv", "sc", "bvba", "sprl", "vzw", "asbl"},
     "FR": {"sas", "sasu", "sarl", "eurl", "sa", "sca", "snc", "sci", "scop"},
     "US": {"inc", "llc", "corp", "corporation", "co", "pc", "pllc", "lp", "llp", "ltd"},
+    # Neue Länder (Inhaber 04.10.2026, docs/KALTMAIL-RECHT.md)
+    "FI": {"oy", "oyj", "ab"},
+    "SG": {"pteltd", "ltd", "limited", "llp"},
+    "HK": {"ltd", "limited"},
+    "MX": {"sadecv", "sderl", "sapidecv", "sc"},
+    "BR": {"ltda", "sa", "eireli", "slu"},
 }
 
 # Wörter, die nach Garantie, Druck oder Übertreibung klingen (Abschnitt 7).
@@ -46,6 +52,17 @@ FORBIDDEN_PATTERNS = {
         r"\bgaranti\w*", r"\burgent\w*", r"\bimmédiatement\b", r"\bdernière chance\b", r"\boffre exclusive\b",
         r"\bsans risque\b", r"\bnuméro ?1\b", r"\b100 ?%", r"\brévolution\w*", r"\bne ratez pas\b",
         r"\bdépêchez\w*", r"\bdurée limitée\b",
+    ],
+    # Neue Mail-Länder BR (Portugiesisch) und MX (Spanisch), Inhaber 04.10.2026
+    "pt": [
+        r"\bgarant\w*", r"\burgent\w*", r"\bimediatamente\b", r"\búltima chance\b", r"\boferta exclusiva\b",
+        r"\bsem risco\b", r"\bnúmero ?1\b", r"\b100 ?%", r"\brevolucion\w*", r"\bnão perca\b", r"\bcorra\b",
+        r"\bpor tempo limitado\b", r"\bsó hoje\b",
+    ],
+    "es": [
+        r"\bgarant\w*", r"\burgent\w*", r"\binmediatamente\b", r"\búltima oportunidad\b", r"\boferta exclusiva\b",
+        r"\bsin riesgo\b", r"\bnúmero ?1\b", r"\b100 ?%", r"\brevolucion\w*", r"\bno se lo pierda\b",
+        r"\bdate prisa\b", r"\bpor tiempo limitado\b", r"\bsolo hoy\b",
     ],
 }
 
@@ -123,7 +140,7 @@ def is_company_form(country: str, legal_form: str | None) -> bool:
 
 # Personengesellschaften in COMPANY_FORMS (US: Limited Partnership, „& Co“) – keine juristische Person im Sinne
 # der Nachfass-Regel (Inhaber 04.10.2026)
-PARTNERSHIP_FORMS = {"US": {"lp", "llp", "co"}}
+PARTNERSHIP_FORMS = {"US": {"lp", "llp", "co"}, "SG": {"llp"}}
 
 
 def is_legal_person(country: str, legal_form: str | None) -> bool:
@@ -234,7 +251,7 @@ def lint_draft(subject: str, body: str, language: str = "en", min_words: int = 7
     if re.search(r"https?://|www\.", re.sub(r"(https?://)?(www\.)?nextgen-profit\.de/?", "", body, flags=re.IGNORECASE),
                  flags=re.IGNORECASE):
         errors.append("keine Links im Text (nur die Abmeldung in der Fußzeile)")
-    if re.search(r"unsubscribe|désinscri|abmeld", body, flags=re.IGNORECASE):
+    if re.search(r"unsubscribe|désinscri|abmeld|descadastr|darse de baja", body, flags=re.IGNORECASE):
         warnings.append("Abmeldehinweis steht im Text; die Fußzeile kommt vom System")
 
     # Zahlen außer der 10 (Probe) müssen belegt sein -> Hinweis für die Prüfung
@@ -251,7 +268,8 @@ def lint_draft(subject: str, body: str, language: str = "en", min_words: int = 7
     if any(len(p.split()) > 60 for p in paragraphs):
         warnings.append("ein Absatz ist länger als 60 Wörter")
 
-    sample_words = {"en": r"\b(free|no[- ]cost)\b.*\bsample\b|\bsample\b", "fr": r"\béchantillon\b|\bgratuit"}
+    sample_words = {"en": r"\b(free|no[- ]cost)\b.*\bsample\b|\bsample\b", "fr": r"\béchantillon\b|\bgratuit",
+                    "pt": r"\bamostra\b|\bgratuit", "es": r"\bmuestra\b|\bgratuit"}
     if require_sample and not re.search(sample_words.get(language, sample_words["en"]), body, flags=re.IGNORECASE):
         warnings.append("Angebot der kostenlosen Probe mit 10 Leads fehlt")
 
@@ -291,6 +309,16 @@ FOOTER = {
         "Vous recevez ce message car {company} publie cette adresse comme contact professionnel. "
         "{unsubscribe_url}"
     ),
+    "pt": (
+        "—\n{sender_name} · {postal_address}\n"
+        "Você recebe este e-mail porque {company} publica este endereço como contato comercial. "
+        "{unsubscribe_url}"
+    ),
+    "es": (
+        "—\n{sender_name} · {postal_address}\n"
+        "Recibe este correo porque {company} publica esta dirección como contacto comercial. "
+        "{unsubscribe_url}"
+    ),
 }
 
 
@@ -298,6 +326,8 @@ FOOTER = {
 UNSUBSCRIBE_BY_REPLY = {
     "en": "If you would rather not hear from us, reply \"unsubscribe\" and we will not contact {company} again.",
     "fr": "Pour ne plus recevoir de messages, répondez « désinscrire » et nous ne contacterons plus {company}.",
+    "pt": "Se preferir não receber mais mensagens, responda \"descadastrar\" e não entraremos mais em contato com {company}.",
+    "es": "Si prefiere no recibir más mensajes, responda \"baja\" y no volveremos a contactar a {company}.",
 }
 # Fußzeile für Mails, die der Empfänger selbst angefordert hat (z. B. die Probe)
 FOOTER_REQUESTED = {
@@ -305,18 +335,31 @@ FOOTER_REQUESTED = {
           "{unsubscribe_url}",
     "fr": "—\n{sender_name} · {postal_address}\nVous recevez ce message car vous nous avez demandé un échantillon gratuit. "
           "{unsubscribe_url}",
+    "pt": "—\n{sender_name} · {postal_address}\nVocê recebe este e-mail porque nos pediu uma amostra gratuita. "
+          "{unsubscribe_url}",
+    "es": "—\n{sender_name} · {postal_address}\nRecibe este correo porque nos solicitó una muestra gratuita. "
+          "{unsubscribe_url}",
 }
-UNSUBSCRIBE_LINK = {"en": "To opt out: {url}", "fr": "Pour vous désinscrire : {url}"}
+UNSUBSCRIBE_LINK = {"en": "To opt out: {url}", "fr": "Pour vous désinscrire : {url}",
+                    "pt": "Para cancelar o recebimento: {url}", "es": "Para darse de baja: {url}"}
+# Hongkong (UEMO, Cap. 593): Abmeldehinweis zusätzlich auf Chinesisch (Mail selbst auf Englisch), Inhaber 04.10.2026
+UNSUBSCRIBE_EXTRA = {
+    "HK": {"link": "取消訂閱：{url}", "reply": "如不希望再收到我們的電郵，請回覆「unsubscribe」。"},
+}
 
 
 def render_footer(language: str, *, sender_name: str, postal_address: str, company: str,
-                  unsubscribe_url: str | None, requested: bool = False) -> str:
-    """Pflichtfußzeile. Ohne unsubscribe_url: Abmeldung per Antwort. requested: vom Empfänger angefordert."""
+                  unsubscribe_url: str | None, requested: bool = False, country: str | None = None) -> str:
+    """Pflichtfußzeile. Ohne unsubscribe_url: Abmeldung per Antwort. requested: vom Empfänger angefordert.
+    country: Land des Empfängers für landesspezifische Zusätze (HK: Abmeldehinweis auch auf Chinesisch)."""
     if not sender_name or not postal_address:
         raise ValueError("Absendername und Postanschrift sind Pflicht für die Fußzeile")
     lang = language if language in FOOTER else "en"
     target = (UNSUBSCRIBE_LINK[lang].format(url=unsubscribe_url) if unsubscribe_url
               else UNSUBSCRIBE_BY_REPLY[lang].format(company=company))
+    extra = UNSUBSCRIBE_EXTRA.get((country or "").upper())
+    if extra:
+        target += " " + (extra["link"].format(url=unsubscribe_url) if unsubscribe_url else extra["reply"])
     return (FOOTER_REQUESTED if requested else FOOTER)[lang].format(
         sender_name=sender_name, postal_address=postal_address, company=company, unsubscribe_url=target
     )

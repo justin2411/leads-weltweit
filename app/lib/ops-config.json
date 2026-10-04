@@ -35,11 +35,11 @@
       "daily_limit": 100
     },
     "IE": {
-      "allowed": true,
+      "allowed": false,
       "daily_limit": 30
     },
     "NL": {
-      "allowed": true,
+      "allowed": false,
       "daily_limit": 30
     },
     "SE": {
@@ -47,7 +47,7 @@
       "daily_limit": 20
     },
     "BE": {
-      "allowed": true,
+      "allowed": false,
       "daily_limit": 15
     },
     "FR": {
@@ -79,6 +79,50 @@
       "daily_limit": 20
     },
     "DK": {
+      "allowed": false,
+      "daily_limit": 20
+    },
+    "ZA": {
+      "allowed": false,
+      "daily_limit": 20
+    },
+    "FI": {
+      "allowed": true,
+      "daily_limit": 15
+    },
+    "SG": {
+      "allowed": true,
+      "daily_limit": 15
+    },
+    "HK": {
+      "allowed": true,
+      "daily_limit": 15
+    },
+    "BR": {
+      "allowed": true,
+      "daily_limit": 15
+    },
+    "MX": {
+      "allowed": true,
+      "daily_limit": 15
+    },
+    "AU": {
+      "allowed": false,
+      "daily_limit": 20
+    },
+    "NZ": {
+      "allowed": false,
+      "daily_limit": 20
+    },
+    "CA": {
+      "allowed": false,
+      "daily_limit": 20
+    },
+    "JP": {
+      "allowed": false,
+      "daily_limit": 20
+    },
+    "IL": {
       "allowed": false,
       "daily_limit": 20
     }

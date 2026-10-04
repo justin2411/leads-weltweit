@@ -44,13 +44,17 @@ def shared_contacts(candidates: list[dict], extra: list[dict] | None = None) -> 
     return Counter({k: len(v) for k, v in seen.items()})
 
 
+# Länder mit Lead-Quellen; FI/SG/HK/MX/BR neu (Inhaber 04.10.2026, docs/KALTMAIL-RECHT.md)
+TARGET_COUNTRIES = ("US", "UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK", "MX", "BR")
+
+
 def pre_filter(c: dict) -> str | None:
     """Grund zum Aussortieren oder None."""
     if PUBLIC.search(c["name"]) or PUBLIC.search(c.get("legal_name") or ""):
         return "public_or_nonprofit"
     if JUNK.search(c["name"]):
         return "placeholder_name"
-    if c.get("country") not in ("US", "UK", "FR", "IE", "NL", "BE", "SE") or (c.get("country") == "US" and not c.get("state")):
+    if c.get("country") not in TARGET_COUNTRIES or (c.get("country") == "US" and not c.get("state")):
         return "outside_target_country"
     return None
 
