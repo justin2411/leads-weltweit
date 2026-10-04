@@ -1,14 +1,12 @@
-"""Temporärer Test (wird vor dem PR entfernt). Gibt keine Lead-Daten aus (nur Datumsverteilungen). Ausgabe als Annotation."""
-import collections
+"""Temporärer Test (wird vor dem PR entfernt). Gibt keine Lead-Daten aus. Ausgabe als Annotation."""
 import sys
-import time
 import traceback
 
 import requests
 
 H = {"User-Agent": "signalwerk-probe/1.0 (+https://www.nextgen-profit.de)"}
 OUT = []
-API = "https://recherche-entreprises.api.gouv.fr/search"
+T = "https://tabular-api.data.gouv.fr/api/resources/"
 
 
 def p(*a):
@@ -23,22 +21,28 @@ def flush():
 
 
 try:
-    for params in ({"departement": "75", "nature_juridique": "5710"},
-                   {"departement": "75", "nature_juridique": "5710", "etat_administratif": "A"},
-                   {"code_postal": "69003", "etat_administratif": "A", "sort_by_size": "false"},
-                   {"q": "2026", "departement": "75"}):
-        dates = []
-        tot = None
-        for page in (1, 2, 400, 401):
-            r = requests.get(API, params={**params, "per_page": 25, "page": page, "minimal": "true"}, headers=H, timeout=60)
-            if not r.ok:
-                p(params, page, r.status_code, r.text[:200])
-                continue
-            j = r.json()
-            tot = j.get("total_results"), j.get("total_pages")
-            dates += [(x.get("date_creation") or "")[:7] for x in j.get("results", [])]
-            time.sleep(0.3)
-        p(params, "total", tot, "Monate:", collections.Counter(dates).most_common(8))
+    seen = set()
+    for q in ["bodacc annonces commerciales", "annonces-commerciales", "bodacc", "sirene unite legale",
+              "base sirene", "creations entreprises sirene", "immatriculations rcs"]:
+        for page in (1, 2):
+            r = requests.get("https://www.data.gouv.fr/api/1/datasets/", params={"q": q, "page_size": 20, "page": page},
+                             headers=H, timeout=60)
+            for d in r.json().get("data", []):
+                if d["id"] in seen:
+                    continue
+                seen.add(d["id"])
+                for res in d.get("resources", []):
+                    fmt = (res.get("format") or "").lower()
+                    if fmt not in ("csv", "xlsx", "xls", "parquet", "json", "csv.gz"):
+                        continue
+                    rid = res["id"]
+                    pr = requests.get(T + rid + "/data/", params={"page_size": 1}, headers=H, timeout=30)
+                    if pr.ok:
+                        j = pr.json()
+                        p("TAB", q[:12], "|", d["title"][:60], "|", (d.get("organization") or {}).get("name"), "|",
+                          (res.get("title") or "")[:50], "|", rid, "| total", (j.get("meta") or {}).get("total"),
+                          "| cols", list((j.get("data") or [{}])[0].keys())[:25], "| upd", d.get("last_update", "")[:10])
 except Exception:  # noqa: BLE001
     p("FEHLER", traceback.format_exc()[-800:])
+p("ENDE", len(seen), "Datensätze geprüft")
 flush()
