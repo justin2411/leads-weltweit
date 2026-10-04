@@ -315,6 +315,8 @@ export type View = {
   dwell: { k: Dwell; n: number }[];
   /** Mail-Klicks (Aufrufe mit src=mail) je Land und Betreff-Variante, dazu gesendete Mails */
   mail: { country: string; A: number; B: number; other: number; sentA: number; sentB: number; sentOther: number }[];
+  /** Probe-Weg je Land (Landingpage-Aufrufe → Probe-Klick → Probe-Anfrage → Checkout) */
+  byCountry: { country: string; views: number; cta: number; req: number; checkout: number }[];
   heat: { x: number; y: number; n: number }[];
   heatMax: number;
   heatTotal: number;
@@ -335,11 +337,18 @@ export function buildView(st: WebsiteStats, f: Filter): View {
   const depthN = new Map<number, number>();
   const dwellN = new Map<string, number>();
   const mailBy = new Map<string, { A: number; B: number; other: number }>();
+  const pc = new Map<string, { views: number; cta: number; req: number; checkout: number }>();
   let tracked = 0;
   for (const r of rows) {
     const n = Number(r.n) || 0;
     const c = countryOfSlug(r.s);
     if (r.m === "pe") {
+      const x = pc.get(c) ?? { views: 0, cta: 0, req: 0, checkout: 0 };
+      if (r.k === "view") x.views += n;
+      else if (r.k === "cta_click") x.cta += n;
+      else if (r.k === "sample_request") x.req += n;
+      else if (r.k === "checkout_started") x.checkout += n;
+      pc.set(c, x);
       if (r.k === "view") {
         const m = per.get(r.d) ?? {};
         m[c] = (m[c] ?? 0) + n;
@@ -392,8 +401,9 @@ export function buildView(st: WebsiteStats, f: Filter): View {
     const m = mailBy.get(country) ?? { A: 0, B: 0, other: 0 }, s = sentBy.get(country) ?? { A: 0, B: 0, other: 0 };
     return { country, A: m.A, B: m.B, other: m.other, sentA: s.A, sentB: s.B, sentOther: s.other };
   });
+  const byCountry = [...pc].filter(([, x]) => x.views + x.cta + x.req + x.checkout > 0).sort(([a], [b]) => order(a, b)).map(([country, x]) => ({ country, ...x }));
   const { cells, max, total } = heatCells(st.heat, f);
-  return { days, perDay, countries: cs, funnel, tracked, sources, devices, depth, dwell, mail, heat: cells, heatMax: max, heatTotal: total, targets: topTargets(st.heat, f) };
+  return { days, perDay, countries: cs, funnel, tracked, sources, devices, depth, dwell, mail, byCountry, heat: cells, heatMax: max, heatTotal: total, targets: topTargets(st.heat, f) };
 }
 
 const ORDER_C = ["US", "UK", "FR"];

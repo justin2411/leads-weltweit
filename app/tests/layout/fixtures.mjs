@@ -88,6 +88,20 @@ export function makeFixtures(nowMs = Date.now()) {
   ];
   const website = { at: iso(2), land_60m: 6, land_24h: 120, land_30d: 2400, tarif_60m: 1, tarif_24h: 20, tarif_30d: 380, tarif_views_30d: 420, co_60m: 0, co_24h: 2, co_30d: 18,
     views_60m: 9, cta_60m: 1, req_60m: 0, buy_60m: 0, views_24h: 160, cta_24h: 12, req_24h: 2, buy_24h: 0, views_30d: 3100, cta_30d: 210, req_30d: 26, buy_30d: 1, mail_views_30d: 700, mails_30d: 2700 };
+  // Website-Auswertung (website_stats): Tagessummen je Landingpage, Klickdichte, gesendete Mails
+  const slug = (c) => `${c.toLowerCase()}/web-agencies`;
+  const webStats = {
+    now: iso(0), days: 30, since: days[0], today: day(0),
+    rows: days.flatMap((d, i) => C.flatMap((c, j) => [
+      { d, s: slug(c), m: "pe", k: "view", n: 6 + ((i + j) % 5) }, { d, s: slug(c), m: "pe", k: "cta_click", n: (i + j) % 3 === 0 ? 1 : 0 },
+      { d, s: slug(c), m: "pe", k: "sample_request", n: (i + j) % 7 === 0 ? 1 : 0 }, { d, s: slug(c), m: "pe", k: "checkout_started", n: (i + j) % 5 === 0 ? 1 : 0 },
+      { d, s: slug(c), m: "tv", k: "all", n: 3 }, { d, s: slug(c), m: "src", k: "mail", n: 2 }, { d, s: slug(c), m: "dev", k: "desktop", n: 3 },
+      { d, s: slug(c), m: "depth", k: "75", n: 1 }, { d, s: slug(c), m: "dwell", k: "10-30", n: 2 }, { d, s: slug(c), m: "mail", k: i % 2 ? "A" : "B", n: 1 },
+    ])),
+    heat: C.flatMap((c) => [{ s: slug(c), m: "hm", k: "desktop|40|14", n: 4 }, { s: slug(c), m: "tg", k: "desktop|cta|Get my free sample", n: 4 }]),
+    sent: C.flatMap((c) => [{ c, g: "S2", v: "A", n: 200 }, { c, g: "S2", v: "B", n: 200 }]),
+    pages: C.map((c) => ({ s: slug(c), g: "S2", c, st: "live" })),
+  };
   const expStats = C.map((c, i) => ({ segment_id: "S2", country: c, sent: 300 + i * 50, delivered: 0, bounced: 8, replies: 4 + i, positive: 1, samples: 1, customers: 0 }));
   // Fach-Agenten (JARVIS „Team“): erfundene Kennzahlen, je ein Auftrag
   const role = (slug, name, gruppe, typ, kennzahl, richtung, einheit, gut, knapp, min_n, takt, sort, routine_id = null) => ({ slug, name, gruppe, typ,
@@ -138,7 +152,7 @@ export function makeFixtures(nowMs = Date.now()) {
         { station: "proben", last_at: iso(600), active_hours: 20, extra: 0 }, { station: "mails", last_at: iso(10), active_hours: 40, extra: null },
         { station: "antworten", last_at: iso(90), active_hours: 30, extra: null },
       ],
-      website_refresh: website, dashboard_raw_stock: { at: iso(10), by_country: { US: 90000, UK: 40000, FR: 52000 } },
+      website_refresh: website, website_stats: webStats, dashboard_raw_stock: { at: iso(10), by_country: { US: 90000, UK: 40000, FR: 52000 } },
     },
     tables: {
       dashboard_cache: [{ name: "stock", value: stock, updated_at: iso(1) }, { name: "website", value: website, updated_at: iso(1) }],

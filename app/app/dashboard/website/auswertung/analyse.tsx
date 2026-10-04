@@ -22,9 +22,9 @@ const BR_L: Record<string, string> = { chrome: "Chrome", safari: "Safari", firef
 const DV_L: Record<string, string> = { desktop: "Desktop", mobil: "Mobil", "-": "unbekannt" };
 const C_COLOR: Record<string, string> = { US: "#5b8fdb", UK: "#b38331", FR: "#2fa898" };
 
-function Card({ title, sum, children, wide, span2 }: { title: string; sum?: string; children: React.ReactNode; wide?: boolean; span2?: boolean }) {
+function Card({ title, sum, children, wide, span2, fill2 }: { title: string; sum?: string; children: React.ReactNode; wide?: boolean; span2?: boolean; fill2?: boolean }) {
   return (
-    <section className={`wa-card${wide ? " wide" : ""}${span2 ? " span2" : ""}`}>
+    <section className={`wa-card${wide ? " wide" : ""}${span2 ? " span2" : ""}${fill2 ? " fill2" : ""}`}>
       <header className="wa-h"><h2>{title}</h2>{sum && <span className="wa-sum">{sum}</span>}</header>
       {children}
     </section>
@@ -117,7 +117,7 @@ export function Analyse({ hints, tiles, cur, periodLabel }: AnalyseProps) {
         </Card>
         <Card title="Einstieg"><Bars rows={ranked(cur.en, pageLabel).slice(0, 6)} /></Card>
         <Card title="Ausstieg"><Bars rows={ranked(cur.ex, pageLabel).slice(0, 6)} /></Card>
-        <Card title="Scrolltiefe">
+        <Card title="Scrolltiefe" fill2>
           {sc.length ? (
             <ul className="an-sc">
               {sc.map((r) => (
