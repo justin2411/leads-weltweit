@@ -21,7 +21,11 @@ export type StorageData = {
 export type SegmentInfo = { id: string; email_countries: string[] | null };
 
 export const DB_LIMIT_BYTES = 8 * 1024 ** 3; // Supabase Pro: 8 GB inklusive
-export const LEAD_COUNTRIES = ["US", "UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK", "MX", "BR"] as const;
+export const LEAD_COUNTRIES = ["US", "UK", "FR", "SE", "FI", "SG", "HK", "MX", "BR"] as const;
+/** Länder ohne Kaltmail-Erlaubnis (countries.yaml allowed: false, „nie“) – im Speicher ausgeblendet (Inhaber 04.10.2026:
+ *  „nimm niederlande und belgien raus, wenn wir die eh nicht dürfen“; IE ebenso „nie“). Daten bleiben unverändert. */
+export const HIDDEN_COUNTRIES = ["IE", "NL", "BE"] as const;
+const hidden = (c: string) => (HIDDEN_COUNTRIES as readonly string[]).includes(c);
 export const ALL = "alle";
 
 const num = (x: unknown) => (Number.isFinite(Number(x)) ? Number(x) : 0);
@@ -92,7 +96,7 @@ export function leadTanks(d: StorageData, seg: string): LeadTank[] {
   };
   for (const c of LEAD_COUNTRIES) tank(c);
   for (const r of d.leads) {
-    if (!r.country || (seg !== ALL && r.segment !== seg)) continue;
+    if (!r.country || hidden(r.country) || (seg !== ALL && r.segment !== seg)) continue;
     const t = tank(r.country);
     t.layers[layerOf(r.status)] += num(r.n);
     t.total += num(r.n);
@@ -121,7 +125,7 @@ export function buyerTanks(d: StorageData, segments: SegmentInfo[], seg: string)
   };
   for (const c of LEAD_COUNTRIES) tank(c);
   for (const r of d.buyers) {
-    if (!r.country || !r.segment || (seg !== ALL && r.segment !== seg)) continue;
+    if (!r.country || hidden(r.country) || !r.segment || (seg !== ALL && r.segment !== seg)) continue;
     const t = tank(r.country);
     const mailOk = mailOf.get(r.segment)?.has(r.country) ?? false;
     if (mailOk) t.mailCountry = true;
