@@ -150,9 +150,9 @@ export const jarvisLabel = (n: number | null) => (n == null ? "Kunden-Agenten" :
  *  „individueller ansprechpartner, nichts mit ai oder ki“ – neutral benannt; die KI-Kennzeichnung steht in jeder Mail des
  *  Ansprechpartners (Signatur, erste Mail), wo das Gespräch stattfindet (EU-KI-Verordnung Art. 50). */
 export const PLAN_AGENT_LINE: Record<"en" | "fr" | "de", { title: string; text: string }> = {
-  en: { title: "Personal account manager", text: "learns your goals and picks your leads for you" },
-  fr: { title: "Interlocuteur dédié", text: "apprend vos objectifs et choisit vos pistes pour vous" },
-  de: { title: "Persönlicher Ansprechpartner", text: "lernt Ihre Ziele und wählt Ihre Leads gezielt aus" },
+  en: { title: "Personal account manager", text: "learns your goals and picks the right leads to increase your revenue" },
+  fr: { title: "Interlocuteur dédié", text: "apprend vos objectifs et choisit les bonnes pistes pour augmenter votre chiffre d'affaires" },
+  de: { title: "Persönlicher Ansprechpartner", text: "lernt Ihre Ziele und wählt die passenden Leads, um Ihren Umsatz zu steigern" },
 };
 export const planAgentLine = (lang: unknown) => PLAN_AGENT_LINE[lang === "fr" || lang === "de" ? lang : "en"];
 

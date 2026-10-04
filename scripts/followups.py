@@ -23,7 +23,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from drafts import LAND, build, has_variant_column, short_name, signature, subject_variant  # noqa: E402
+from drafts import (AREA_LOCAL, LAND, LAND_LOCAL, _opener_name, build, has_variant_column, short_name,  # noqa: E402
+                    signature, subject_variant)
 from lib.rules import is_legal_person, lint_draft  # noqa: E402
 
 NEGATIVE = {"bounced", "complained", "failed", "reply", "reply_positive", "reply_negative", "sample_requested",
@@ -39,10 +40,39 @@ SIGNAL = {
 }
 
 
+# Nachfassmails BR (Portugiesisch) und MX (Spanisch), Inhaber 04.10.2026: gleicher Aufbau wie EN/FR
+LOCAL_FOLLOWUP = {
+    "pt": {"signal": "empresas locais {land} que ainda não têm site",
+           "greet": "Olá, equipe {short},", "greet_anon": "Olá,", "bye": "Atenciosamente,",
+           "body": ("{greet}\n\nSó um breve retorno sobre minha mensagem a respeito de {about}.\n\n"
+                    "Sua amostra gratuita com 10 leads atuais está pronta: empresa, telefone, e-mail, com quem falar e "
+                    "uma frase de abordagem. Sem compromisso, e em poucos minutos você vê se faz sentido.\n\n"
+                    "Posso enviar?\n\n{bye}\n{sig}"),
+           "sample": ("Olá,\n\nVocê conseguiu dar uma olhada nos 10 leads que enviei?\n\n"
+                      "Se um ou dois chamaram sua atenção, você recebe uma nova lista como esta toda segunda-feira, "
+                      "{land}, reservada para a sua empresa.\n\n{step}\n\n"
+                      "Começamos na próxima segunda-feira?\n\n{bye}\n{sig}"),
+           "plan": "Escolha seu plano: {url}", "reply": "Basta responder a este e-mail e nós cuidamos do resto."},
+    "es": {"signal": "negocios locales {land} que todavía no tienen sitio web",
+           "greet": "Hola, equipo de {short}:", "greet_anon": "Hola:", "bye": "Saludos cordiales,",
+           "body": ("{greet}\n\nLe escribo brevemente para dar seguimiento a mi mensaje sobre {about}.\n\n"
+                    "Su muestra gratuita de 10 leads actuales está lista: empresa, teléfono, correo, a quién preguntar "
+                    "y una frase de apertura. Sin compromiso, y en pocos minutos verá si le sirve.\n\n"
+                    "¿Se la envío?\n\n{bye}\n{sig}"),
+           "sample": ("Hola:\n\n¿Pudo revisar los 10 leads que le envié?\n\n"
+                      "Si uno o dos le llamaron la atención, recibe una lista nueva como esta cada lunes, "
+                      "{land}, reservada para su empresa.\n\n{step}\n\n"
+                      "¿Empezamos el próximo lunes?\n\n{bye}\n{sig}"),
+           "plan": "Elija su plan: {url}", "reply": "Solo responda a este correo y nosotros nos encargamos del resto."},
+}
+
+
 def _land(p: dict, lang: str) -> str:
     """Landesweit statt regional (Inhaber 27.09.2026): 'across the UK' / 'partout en France'."""
     if lang == "fr":
         return "partout en France"
+    if lang in AREA_LOCAL:
+        return AREA_LOCAL[lang].get((p.get("country") or "").upper(), "")
     return "across " + LAND.get((p.get("country") or "").upper(), "your country")
 
 
@@ -51,7 +81,8 @@ def followup_subject(p: dict, parent_subject: str | None, lang: str) -> tuple[st
     damit die Mail im selben Verlauf bleibt. Alte Erstmails nannten Regionen („Greater Manchester“, „Queens“);
     dann den aktuellen landesweiten Betreff des Käufers (A/B wie die Kaltmail). Variante None = Betreff der
     Erstmail übernommen (Variante steht dort)."""
-    land = "France" if lang == "fr" else LAND.get((p.get("country") or "").upper(), "")
+    co = (p.get("country") or "").upper()
+    land = "France" if lang == "fr" else LAND_LOCAL[lang].get(co, "") if lang in LAND_LOCAL else LAND.get(co, "")
     if parent_subject and land and land.lower() in parent_subject.lower():
         return parent_subject, None
     return build(p)[0], subject_variant(p)
@@ -61,6 +92,12 @@ def followup_text(p: dict, lang: str) -> tuple[str, str]:
     """Eine Nachfassmail nach 4 Tagen ohne Antwort; gleicher Aufbau wie die Kaltmail (docs/KALTMAIL-VORLAGE.md)."""
     land = _land(p, lang)
     en, fr = SIGNAL.get(p["segment_id"], ("companies with a current reason to buy", "entreprises avec un besoin actuel"))
+    if lang in LOCAL_FOLLOWUP:
+        t = LOCAL_FOLLOWUP[lang]
+        short = _opener_name(p["company_name"]) and short_name(p["company_name"])
+        body = t["body"].format(greet=t["greet"].format(short=short) if short else t["greet_anon"],
+                                about=t["signal"].format(land=land), bye=t["bye"], sig=signature(lang))
+        return body, land
     if lang == "fr":
         body = (f"Bonjour,\n\nJe reviens brièvement vers vous au sujet des {fr} {land}.\n\n"
                 f"Votre échantillon gratuit de 10 pistes actuelles est prêt : entreprise, téléphone, e-mail, la "
@@ -80,6 +117,10 @@ def followup_text(p: dict, lang: str) -> tuple[str, str]:
 def sample_followup_text(p: dict, lang: str, plan_url: str | None = None) -> str:
     """Nachfrage 3 Tage nach der Probe; mit Link zur Buchungsseite, wenn es eine gibt (wie die Probe-Mail)."""
     land = _land(p, lang)
+    if lang in LOCAL_FOLLOWUP:
+        t = LOCAL_FOLLOWUP[lang]
+        step = t["plan"].format(url=plan_url) if plan_url else t["reply"]
+        return t["sample"].format(land=land, step=step, bye=t["bye"], sig=signature(lang))
     if lang == "fr":
         step = (f"Choisissez votre formule : {plan_url}" if plan_url
                 else "Répondez simplement à cet e-mail et nous nous occupons du reste.")

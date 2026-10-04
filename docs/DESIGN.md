@@ -89,6 +89,7 @@ Alle 1280×720, 25 fps, H.264 (crf ~26, faststart), AAC. Zuordnung in `app/conte
 - **Ehrlich:** keine erfundenen Zahlen, Kundenstimmen, Logos, Erfolgsquoten, Garantien, keine künstliche Dringlichkeit.
 - **Konkret:** Anlass, Quelle, Datum, warum jetzt, erster Satz.
 - **Kurz:** wenig Text, klare Sätze, eine Frage am Schluss (Ja/Nein).
+- **Wenig Text an den Inhaber (04.10.2026):** überall Titel ≤ 60 Zeichen (worum es geht) und 1 Satz Grund ≤ 160 Zeichen; Details nur auf Klick (Dashboard, Entscheidungen, Vorschläge, Agenten, Chat, Tagesbericht, Tagescheck-Mail, Push).
 - **Sprache des Landes:** FR Französisch, sonst Englisch; Deutschland nur Anruflisten/Briefe.
 - **Landesweit:** „across the UK“, „across the US“, „partout en France“, „in ganz Deutschland“.
 - **Überschriften ohne Satzzeichen (Inhaber 02.10.2026):** keine Punkte, Kommas, Doppelpunkte oder Ausrufezeichen in Überschriften; nur das Fragezeichen bei echten Fragen.

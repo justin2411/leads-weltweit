@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { legalTextsReady } from "@/lib/legal";
 import { db } from "@/lib/supabase";
+import { insertDecision } from "@/lib/kurz-schreiben";
 import { requireOwner } from "./actions";
 
 const BOOL_KEYS = new Set(["brain_enabled", "auto_publish_pages", "auto_merge_content", "legal_ready"]);
@@ -25,7 +26,7 @@ export async function updateSetting(formData: FormData) {
   }
   const { error } = await db().from("settings").update({ [key]: value, updated_at: new Date().toISOString(), updated_by: "owner-dashboard" }).eq("id", 1);
   if (error) throw new Error(error.message);
-  await db().from("decisions").insert({ type: "note", subject: `Schalter ${key} = ${value}`, reasoning: "vom Inhaber im Dashboard gesetzt", status: "done" });
+  await insertDecision(db(), { type: "note", subject: `Schalter ${key} = ${value}`, reasoning: "vom Inhaber im Dashboard gesetzt", status: "done" });
   revalidatePath("/dashboard", "layout");
 }
 
@@ -43,7 +44,7 @@ export async function setStatus(formData: FormData) {
   if (table === "landing_pages" && status === "live") upd.published_at = new Date().toISOString();
   const { error } = await db().from(table).update(upd).eq("id", id);
   if (error) throw new Error(error.message);
-  await db().from("decisions").insert({ type: "note", subject: `${table === "landing_pages" ? "Seite" : "Variante"} ${id} -> ${status}`, reasoning: "vom Inhaber im Dashboard gesetzt", status: "done" });
+  await insertDecision(db(), { type: "note", subject: `${table === "landing_pages" ? "Seite" : "Variante"} ${id} -> ${status}`, reasoning: "vom Inhaber im Dashboard gesetzt", status: "done" });
   revalidatePath("/dashboard", "layout");
 }
 

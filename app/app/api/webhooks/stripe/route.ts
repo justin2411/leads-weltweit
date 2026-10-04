@@ -5,6 +5,7 @@ import { recordEvent } from "@/lib/page-events";
 import { BRAND, siteUrl } from "@/lib/site";
 import { STATUS_MAP, stripeKeys, verifyStripeSignature } from "@/lib/stripe";
 import { db } from "@/lib/supabase";
+import { insertDecision } from "@/lib/kurz-schreiben";
 import { filterToken } from "@/lib/tokens";
 import { vatMismatch } from "@/lib/billing";
 import { ensureCustomerAgent, pauseAgentForSubscription } from "@/lib/customer-agents-data";
@@ -18,7 +19,7 @@ function saleNotifyAddress(): string | undefined {
 }
 
 async function log(subject: string, reasoning: string, ok: boolean, metrics: Record<string, unknown> = {}) {
-  await db().from("decisions").insert({ type: "webhook", subject, reasoning, metrics, status: ok ? "done" : "rejected" });
+  await insertDecision(db(), { type: "webhook", subject, reasoning, metrics, status: ok ? "done" : "rejected" });
 }
 
 /** Stripe: Abschluss -> Kunde + Abo + Willkommensmail; Änderungen, Kündigungen, fehlgeschlagene Zahlungen. */

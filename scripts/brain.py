@@ -28,6 +28,7 @@ LANG = {"UK": "en", "US": "en", "IE": "en", "FR": "fr"}
 
 
 from lib.stats import delivered  # noqa: E402
+from lib.kurz import insert_decisions  # noqa: E402
 
 
 def content_for(segment: str) -> tuple[str, dict] | None:
@@ -253,7 +254,7 @@ def main(argv=None) -> int:
     # 7. Tagesnotiz
     decide("daily_note", f"Tagesnotiz {now:%d.%m.%Y}", "Gehirn " + ("aktiv" if enabled else "AUS – nur beobachten"), metrics)
     if args.apply:
-        db.insert("decisions", log)
+        insert_decisions(db, log)
     else:
         print("\nProbelauf – mit --apply übernehmen.")
     return 0

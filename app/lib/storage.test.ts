@@ -76,7 +76,7 @@ test("Lead-Tanks: Status → Schichten, Zielgruppe, Länder", () => {
   assert.equal(layerOf("expired"), "abgelaufen");
   assert.equal(layerOf("xyz"), "sonst");
   const s2 = leadTanks(D, "S2");
-  assert.deepEqual(s2.map((t) => t.country), ["US", "UK", "FR", "IE", "NL", "BE", "SE"]);
+  assert.deepEqual(s2.map((t) => t.country), ["US", "UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK", "MX", "BR"]);
   const us = s2[0];
   assert.equal(us.total, 1076);
   assert.deepEqual(us.layers, { frei: 1000, proben: 50, geliefert: 20, zurueck: 3, abgelaufen: 2, sonst: 1 });

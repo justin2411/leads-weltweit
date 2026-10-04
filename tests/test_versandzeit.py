@@ -60,7 +60,7 @@ class PlanTest(unittest.TestCase):
             self.assertIsNone(vz.group_now(utc(f"{day}T06:37")), day)
             self.assertIsNone(vz.group_now(utc(f"{day}T12:37")), day)
         self.assertEqual(vz.group("europa")["laender"][:2], ["UK", "FR"])
-        self.assertEqual(vz.group("us")["laender"], ["US"])
+        self.assertEqual(vz.group("us")["laender"], ["US", "MX", "BR"])  # MX/BR: neue Länder 04.10.2026
 
     def test_deadline_and_due(self):
         g = vz.group("europa")
@@ -78,7 +78,7 @@ class PlanTest(unittest.TestCase):
             vz.main(["--gruppe", "us"])
             vz.main(["--gruppe", "alle"])
             out = f.read()
-        self.assertIn("ok=true\ngruppe=us\nlaender=US\nbis=\n", out)   # feste Gruppe per Hand: ohne Zeitfenster
+        self.assertIn("ok=true\ngruppe=us\nlaender=US,MX,BR\nbis=\n", out)   # feste Gruppe per Hand: ohne Zeitfenster
         self.assertIn("ok=true\ngruppe=alle\nlaender=\nbis=\n", out)
 
 

@@ -652,11 +652,16 @@ export const HUD_CSS = `
 @media (max-width:720px){.fold-s{font-size:12px}.fold>summary{padding-right:28px}}
 
 /* ---- JARVIS: Empfehlungen ausblenden (X) und „ausgeblendet · rückgängig“ (Inhaber 04.10.2026) */
-.tip-x{flex:none;display:grid;place-items:center;width:40px;min-height:40px;padding:0;margin:0;border:0;border-left:1px solid var(--line);background:transparent;color:var(--soft);cursor:pointer;border-radius:0 12px 12px 0;transition:color .15s,background-color .15s}
-.tip-x:hover,.tip-x:focus-visible{color:#fff;background:rgba(255,94,115,.14)}
-.tip-x:disabled{opacity:.5;cursor:default}
-.jv3 .jrec-give{border-radius:0}
-.jt-wrap .tip-x{width:32px;height:32px;min-height:0;border:1px solid var(--line);border-radius:50%;background:rgba(8,18,36,.8)}
+.tip-x{position:absolute;top:6px;right:6px;z-index:2;display:grid;place-items:center;width:22px;height:22px;padding:0;margin:0;border:0;border-radius:50%;background:transparent;color:var(--soft);opacity:.55;cursor:pointer;transition:opacity .15s,color .15s,background-color .15s}
+.tip-x::before{content:"";position:absolute;inset:-9px}
+.tip-x svg{width:12px;height:12px}
+.tip-x:hover,.tip-x:focus-visible{opacity:1;color:#fff;background:rgba(255,94,115,.2)}
+.tip-x:disabled{opacity:.3;cursor:default}
+.jrec-i{position:relative}
+.jv3 .jrec-give{border-radius:0 12px 12px 0}
+.jt-wrap .tip-x{top:-7px;right:-7px;width:18px;height:18px;opacity:.85;background:#07101f;border:1px solid var(--line)}
+.jt-wrap .tip-x svg{width:10px;height:10px}
+.jt-wrap .tip-x:hover,.jt-wrap .tip-x:focus-visible{border-color:rgba(255,94,115,.6);background:#2a0f17}
 .tip-gone{display:none!important}
 .tip-undo{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:70;display:flex;align-items:center;gap:12px;max-width:calc(100vw - 32px);padding:6px 6px 6px 16px;border:1px solid rgba(226,198,143,.5);border-radius:12px;background:#07101f;box-shadow:0 16px 40px -12px rgba(0,0,0,.9),0 0 24px -10px rgba(226,198,143,.4);font-size:13.5px;color:var(--text)}
 .tip-undo>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

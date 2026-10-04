@@ -35,7 +35,9 @@ HTML + Text (multipart).
   Satzzeichen (DESIGN.md).
 - Keine Bilder, keine externen Ressourcen, keine Tracking-Pixel; Grafiken nur als HTML-Tabelle.
 - Landesweit („across the UK“, „toute la France“), nie Städte oder Regionen.
-- Sprache des Landes: FR Französisch, sonst Englisch.
+- Sprache des Landes: FR Französisch, BR Portugiesisch, MX Spanisch (seit 04.10.2026), sonst Englisch.
+- SG: Betreff beginnt immer mit „<ADV> “ (Spam Control Act, `countries.yaml` `subject_prefix`, Versandprüfung).
+  HK: Abmeldehinweis in der Fußzeile zusätzlich auf Chinesisch (`lib/rules.UNSUBSCRIBE_EXTRA`).
 - Versand nur in Länder mit `allowed: true` (countries.yaml), nur über Strato-SMTP, nie über Resend.
 
 ## 3. Neue Branche anlegen (Checkliste)
@@ -64,7 +66,9 @@ HTML + Text (multipart).
 2. `drafts.LAND` um den Ländernamen ergänzen („the Netherlands“, „Ireland“ …).
 3. Rechtsformen des Landes in `drafts._clean_name()` ergänzen, damit sie nicht in der Anrede stehen.
 4. Eigene Sprache? Dann den ganzen Block wie FR übersetzen: Betreff, 3 Sätze, Button, Hinweis, Ablauf-Grafik,
-   Gruß, Signatur-Slogan, Etikett. Sonst Englisch.
+   Gruß, Signatur-Slogan, Etikett. Sonst Englisch. Vorbild für neue Sprachen: PT (BR) und ES (MX) in
+   `drafts.LOCAL_TEXT`, `html_email.LOCAL`, `followups.LOCAL_FOLLOWUP`, Fußzeile/verbotene Wörter in `lib/rules.py`,
+   Abmelde-Erkennung in `inbox.OPTOUT`; `drafts.MAIL_LANG` muss zu `countries.yaml language` passen (Test).
 5. Landingpage `/{land}/{branche}` mit Video (`app/content/videos.json`) und Beispiel-Leads aus diesem Land.
 6. Testmail, Abnahme durch den Inhaber, dann Entwürfe.
 
