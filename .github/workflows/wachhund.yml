@@ -46,3 +46,11 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Engpass-Protokoll (JARVIS-Plan W1-2): höchstens 1×/h ein Eintrag „Engpass: <Station>“ in decisions; hält
+      # dieselbe Station ≥ 6 der letzten 8 Einträge und ≥ 24 h ohne laufenden Test, genau ein Agenten-Auftrag
+      # „Test vorschlagen und anlegen“ (nur Webagenturen US/UK/FR). Sendet nichts; Fehler stoppen den Wachhund nie
+      - run: python scripts/ab.py engpass-log
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

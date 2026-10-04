@@ -1,0 +1,27 @@
+# KPI-Tageswerte (JARVIS-Plan W1-1): täglich 23:50 deutscher Zeit je Land × Kennzahl nach signalwerk.kpi_daily
+# (scripts/kpi_snapshot.py, Upsert, wiederholbar). Zwei Crons für Sommer- und Winterzeit; das Skript schreibt beim
+# Zeitplan nur um 23:xx deutscher Zeit. Von Hand (workflow_dispatch) immer sofort für heute. Liest Rohdaten, schreibt
+# nur kpi_daily, sendet nichts, löscht nichts. Kosten 0 (öffentliches Repo).
+name: kpi-tag
+on:
+  schedule:
+    - cron: "50 21 * * *"   # 23:50 MESZ (Sommerzeit)
+    - cron: "50 22 * * *"   # 23:50 MEZ (Winterzeit)
+  workflow_dispatch:
+concurrency: { group: kpi-tag, cancel-in-progress: false }
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install requests
+      - name: KPI-Tageswerte speichern
+        run: python scripts/kpi_snapshot.py ${{ github.event_name == 'schedule' && '--nur-abends' || '' }}
