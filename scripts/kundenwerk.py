@@ -314,6 +314,20 @@ def listed_email_usable(d: dict, res: dict, email: str, fetcher) -> bool:
     return site_state(d["website"], getattr(fetcher, "session", None)) != "tot"
 
 
+def address_ok(email: str) -> bool:
+    """Gültige Käufer-Adresse: kein „%20“/kodiertes Zeichen, kein Leerzeichen, Form wie in der Prüfregel."""
+    from lib.rules import EMAIL_RE
+    e = (email or "").strip()
+    return bool(e) and "%" not in e and not re.search(r"\s", email or "") and bool(EMAIL_RE.match(e))
+
+
+def mail_domain_ok(email: str) -> bool:
+    """Alle Mail-Länder (US, UK, FR, SE …), jede Quelle (Website oder Eintrag): Domain ohne MX = nicht zustellbar.
+    US 04.10.2026: 8 von 11 Bounces, 97 von 1.829 US-Domains ohne MX. Nicht prüfbar (None) bleibt wie bisher."""
+    from lib.rules import email_domain
+    return mx_check(email_domain(email)) is not False
+
+
 def mx_check(domain: str) -> bool | None:
     from lib.release_gate import mx_cached
     return mx_cached(domain)
@@ -322,6 +336,7 @@ def mx_check(domain: str) -> bool | None:
 def check_one(d: dict, fetcher, cfg: dict, generic: set[str], blocked: set[str]) -> dict:
     import prospects as P
     res = site_scan(d["website"], fetcher)
+    res = {**res, "emails": {e: u for e, u in (res.get("emails") or {}).items() if address_ok(e)}}
     email, is_gen = P.pick_email(set(res["emails"]), d["domain"], generic)
     if not email and res.get("final_domain") and res["final_domain"] != d["domain"]:
         # Website leitet auf die heutige Domain der Firma um: deren Adresse zählt
@@ -329,11 +344,13 @@ def check_one(d: dict, fetcher, cfg: dict, generic: set[str], blocked: set[str])
     src = res["emails"].get(email) if email else None
     if not email:
         # Firmen-E-Mail aus dem eigenen Eintrag der Firma (Overture), nur auf der eigenen Domain
-        listed = {e.lower().strip() for e in d.get("emails") or [] if e}
+        listed = {e.lower().strip() for e in d.get("emails") or [] if e and address_ok(e)}
         email, is_gen = P.pick_email(listed, d["domain"], generic)
         if email and not listed_email_usable(d, res, email, fetcher):
             email, is_gen = None, None
         src = (d.get("quelle") or f"https://overturemaps.org (Firmeneintrag {d['id']})") if email else None
+    if email and not mail_domain_ok(email):
+        email, is_gen, src = None, None, None
     legal, reg_no = P.detect_legal_form(d["country"], d["name"], res["text"])
     size_note = f"Company No. {reg_no} (Website)" if reg_no else None
     if d.get("ch_number") and not legal:
