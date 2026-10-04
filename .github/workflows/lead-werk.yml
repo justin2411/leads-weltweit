@@ -192,10 +192,11 @@ jobs:
             out/cache/find_tender_ch.json
             out/cache/contracts_finder.json
             out/cache/usaspending.json
+            out/cache/fr_rge.json
           key: lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-${{ github.run_id }}
           restore-keys: |
             lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-
-            lead-werk-${{ startsWith(matrix.name, 'web-uk') && 's2-uk-0' || startsWith(matrix.name, 'web-fr') && 's2-fr-0' || startsWith(matrix.name, 'web-north') && 's2-north-0' || matrix.name == 's2-north-0' && 's2-ie-0' || matrix.name }}-${{ steps.m.outputs.monat }}-
+            lead-werk-${{ startsWith(matrix.name, 's2-ukfr') && 'web-uk-0' || startsWith(matrix.name, 'web-uk') && 's2-uk-0' || startsWith(matrix.name, 'web-fr') && 's2-fr-0' || startsWith(matrix.name, 'web-north') && 's2-north-0' || matrix.name == 's2-north-0' && 's2-ie-0' || matrix.name }}-${{ steps.m.outputs.monat }}-
       # Gedächtnis der Website-Prüfung (geprüfte Firmen, 120 Tage): das ALLER Teile desselben Landes laden, damit eine
       # geänderte Aufteilung keine Seite am selben Tag erneut abruft (je Teil gesichert, hier nacheinander geholt)
       - name: Gedächtnis der Website-Prüfung – Land bestimmen
@@ -483,6 +484,7 @@ jobs:
             out/cache/find_tender_ch.json
             out/cache/contracts_finder.json
             out/cache/usaspending.json
+            out/cache/fr_rge.json
           key: lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-${{ github.run_id }}
       - name: Gedächtnis der Website-Prüfung sichern
         if: always() && steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')

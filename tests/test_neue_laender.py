@@ -249,7 +249,7 @@ class FairShareTest(unittest.TestCase):
             clock["t"] = deadline  # schöpft seinen Anteil ganz aus (großer Vorrat)
             return []
 
-        def fake_pool(co, limit, stats, known):
+        def fake_pool(co, limit, stats, known, *_):
             return [{"source": "overture", "source_id": f"{co}{i}", "country": co} for i in range(3)]
 
         import types
