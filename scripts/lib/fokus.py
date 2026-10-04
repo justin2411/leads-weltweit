@@ -52,3 +52,27 @@ def test_allowed(segment: str | None, country: str | None, scope: tuple[list[str
     """True nur für Segment × Land aus der Freigabe-Liste config/fokus.yaml `tests` (A/B, Varianten, Preise …)."""
     segs, countries = test_scope() if scope is None else scope
     return (segment or "").upper() in segs and (country or "").upper() in countries
+
+
+def laender_vorrang(path: Path = FILE) -> dict | None:
+    """Länder-Vorrang im Lead-Werk (config/fokus.yaml `laender_vorrang`, Inhaber 04.10.2026): {segment, vor, nach,
+    faktor} oder None (fehlt/unvollständig = kein Vorrang)."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    block = re.search(r"^laender_vorrang:\s*\n((?:[ \t]+.*\n?)*)", text, re.M)
+    if not block:
+        return None
+    b = block.group(1)
+
+    def lst(key: str) -> list[str]:
+        m = re.search(rf"^\s+{key}:\s*\[([^\]]*)\]", b, re.M)
+        return [x.strip().strip("'\"").upper() for x in m.group(1).split(",") if x.strip()] if m else []
+
+    seg = re.search(r"^\s+segment:\s*(S\d+)\s*$", b, re.M)
+    fak = re.search(r"^\s+faktor:\s*([0-9]+(?:\.[0-9]+)?)\s*$", b, re.M)
+    vor, nach = lst("vor"), lst("nach")
+    if not (seg and fak and vor and nach) or float(fak.group(1)) <= 0:
+        return None
+    return {"segment": seg.group(1), "vor": vor, "nach": nach, "faktor": float(fak.group(1))}

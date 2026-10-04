@@ -305,6 +305,25 @@ beantworten** – der Inhaber ist schon informiert (Mail + Push); der Agent best
 sich persönlich meldet. Drei-Stufen-Freigabe, „jeder Lead einmal pro Abo“ und die Freigabe der ersten Lieferung
 durch den Inhaber bleiben unberührt. Mails nur an den Kunden selbst, nie an Dritte, nie Kaltmails.
 
+## Prüf-Agenten (ohne Tokens)
+
+Inhaber 04.10.2026: „Qualitätsagenten bitte mehrere, auch die die Kunden-Leads immer nochmal dauerhaft überprüfen …
+effizient, nicht extrem viele unnötige Tokens“. Die Dauerprüfung ist reines Python (`scripts/dauerpruefung.py`,
+`.github/workflows/dauerpruefung.yml`, stündlich zur Minute 47, Wachhund startet nach 2 h nach, Schalter
+`werke_paused.dauerpruefung`). Budget und Abstände in `config/pruefung.yaml`.
+
+- **Lead-Prüfer:** je Lauf fällige Nachprüfungen, dann noch nie geprüfte vollständige Leads (Kunden-Märkte, dann
+  S2 US/UK/FR …) durch die unveränderte Drei-Stufen-Freigabe. Bestanden: `pruef_anzahl` + 1, nächste Prüfung nach
+  1 → 3 → 7 → 14 → 30 Tagen, `qualitaet_score` steigt (Prüfungen + Alter). Durchgefallen: `held` + Grund in `lead_checks`.
+  Auch Probe, Vorrat, Lieferung und Stichprobe zählen in den Wert (`release_gate.persist`).
+- **Käufer-Prüfer:** mail-fähige Käufer mit derselben Prüfung wie `outreach.py check` (nur strenger: `call_only`/
+  `rejected`, nie zurück auf ok); MX, Website und Bounce-Historie nur als `pruef_hinweis` markiert.
+- **Auswahl:** Proben-Vorrat und Lieferungen nehmen öfter geprüfte Leads zuerst; alle Regeln (genau 10 Firmen, Land,
+  einmal pro Abo, Freigabe) bleiben.
+- **Für LLM-Agenten:** nie einzelne Leads nachprüfen lassen. Nur die Tageszusammenfassung lesen:
+  `python scripts/dauerpruefung.py zusammenfassung` bzw. `select signalwerk.pruef_kpi(1)` (Summen, Bestand, Ausreißer
+  > 5 % Abweichung) oder die Sicht `signalwerk.pruef_stats_daily`. Handeln nur bei Ausreißern (Quelle/Land ansehen).
+
 ## Berechtigungen (Inhaber 04.10.2026: „gib den agents wirklich jede berechtigung“)
 
 Agenten dürfen alles selbst machen, was die Hauptsitzung darf – ohne Rückfrage:

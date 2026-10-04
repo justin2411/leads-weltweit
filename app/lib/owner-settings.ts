@@ -57,6 +57,8 @@ export const WERK_SWITCHES = {
   tagescheck: { label: "Tagescheck", via: "werke_paused" },
   /** Master-Pipeline füllt Speicher + eigene Agenten (agenten-werk.yml, docs/BAUKASTEN-MASTER.md) */
   agenten: { label: "Agenten-Werk", via: "werke_paused" },
+  /** Prüf-Agenten ohne Tokens: Leads und Käufer rollierend nachprüfen (scripts/dauerpruefung.py, 04.10.2026) */
+  dauerpruefung: { label: "Dauerprüfung", via: "werke_paused" },
 } as const;
 export type WerkKey = keyof typeof WERK_SWITCHES;
 

@@ -39,6 +39,21 @@ from lib.rules import (  # noqa: E402
 RESEND_URL = "https://api.resend.com/emails"
 
 
+def check_values(p: dict, cfg: dict, suppressed: bool):
+    """Die Käufer-Prüfung für eine prospects-Zeile: (Ergebnis, Werte für prospects). Einzige Stelle, die check_status
+    setzt (outreach.py check und die Dauerprüfung scripts/dauerpruefung.py nutzen beide genau diese Logik)."""
+    res = check_prospect(email=p.get("email"), country=p["country"], website=p.get("website"),
+                         legal_form=p.get("legal_form"), source_url=p.get("source_url"),
+                         size_note=p.get("size_note"), suppressed=suppressed, cfg=cfg)
+    return res, {
+        "check_status": "ok" if res.ok else "rejected",
+        "check_reason": res.summary(),
+        "email_is_generic": None if not p.get("email") else p["email"].split("@")[0].lower()
+        in {x.lower() for x in cfg.get("generic_local_parts", [])},
+        "checked_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+    }
+
+
 def cmd_check(args) -> int:
     cfg = load_countries()
     if not args.db:
@@ -55,16 +70,8 @@ def cmd_check(args) -> int:
     for p in rows:
         suppressed = bool(p.get("email")) and db.is_suppressed(p["email"])
         suppressed = suppressed or bool(db.select("suppression", {"kind": "eq.domain", "value": f"eq.{p['domain']}"}))
-        res = check_prospect(email=p.get("email"), country=p["country"], website=p.get("website"),
-                             legal_form=p.get("legal_form"), source_url=p.get("source_url"),
-                             size_note=p.get("size_note"), suppressed=suppressed, cfg=cfg)
-        db.update("prospects", {"id": p["id"]}, {
-            "check_status": "ok" if res.ok else "rejected",
-            "check_reason": res.summary(),
-            "email_is_generic": None if not p.get("email") else p["email"].split("@")[0].lower()
-            in {x.lower() for x in cfg.get("generic_local_parts", [])},
-            "checked_at": dt.datetime.now(dt.timezone.utc).isoformat(),
-        })
+        res, values = check_values(p, cfg, suppressed)
+        db.update("prospects", {"id": p["id"]}, values)
         bad += 0 if res.ok else 1
         print(f"{p['company_name']:<40} {p['country']}  {res.summary()}")
     print(f"\n{len(rows)} geprüft, {bad} abgelehnt")
