@@ -1,11 +1,13 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadBoxHealth, loadDaily, loadFunnel, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock, loadWebsite, loadFunnelCache } from "@/lib/dashboard-data";
+import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadBoxHealth, loadDaily, loadFunnel, loadKpiDaily, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock, loadWebsite, loadFunnelCache } from "@/lib/dashboard-data";
 import { webLine, webNeck } from "@/lib/website-stats";
 import { startLive } from "@/lib/website-funnel";
 import { werkLine, werkTip } from "@/lib/werk-zeile";
 import { berlin, berlinDay, brake, chain, compact, currencySign, greeting, mailboxes, monthly, nextWorkflowRun, onlySegment, realSubscriptions, sampleStock, stockSegment, BOX_MIN, COUNTRY_COLOR } from "@/lib/dashboard-logic";
 import { totals } from "@/lib/dashboard-periods";
+import { stationSparks } from "@/lib/spark";
+import { addDays } from "@/lib/trend";
 import { alarmTips, coach, hall, laneOf, laneStats, neckTask, rankTips, recommend, running, utilization, type Beat, type Tip } from "@/lib/leitstand";
 import { agentStartLabel, freeAgent } from "@/lib/agents";
 import { visibleTips } from "@/lib/tips";
@@ -72,11 +74,14 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   stockP.catch(() => {});
   const today = berlinDay(new Date());
   const from7 = new Date(Date.parse(`${today}T12:00:00Z`) - 6 * 86_400_000).toISOString().slice(0, 10);
+  // Sparklines und Trend (7 T vs. Vor-7 T): 15 Tage bis heute, kpi_daily parallel (Fehler → leer)
+  const from15 = addDays(today, -14);
+  const kpiP = loadKpiDaily(from15, today);
   const [liveAll, own, act, rows, stockAll, daily, sent, checks, agentTasks, starts, planLog, openReplies, health, funnel] = await Promise.all([
     loadLive(), loadOwnerSettings(), loadActivity(), loadRunRows(24),
     // Bestand: höchstens 5 s warten (Abfrage ~3,5 s, 10 min zwischengespeichert); sonst „…“ statt falscher Nullen
     Promise.race([stockP.catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 5000))]),
-    loadDaily(from7, today), loadRecentSent(12), s === "lead" || s === "gate" ? loadGateChecks(14, s === "gate" && tab === "check" && sp.f === "rot") : Promise.resolve([]),
+    loadDaily(from15, today), loadRecentSent(12), s === "lead" || s === "gate" ? loadGateChecks(14, s === "gate" && tab === "check" && sp.f === "rot") : Promise.resolve([]),
     loadAgentTasks(), s === "lead" || s === "kwerk" || s === "proben" ? loadStarts() : Promise.resolve([] as StartRequest[]),
     loadPlanLog(),
     // offene Antworten im Cockpit (null = nicht lesbar, dann bleibt die Ampel wie bisher)
@@ -135,6 +140,8 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const wLine = webLine(web, compact);
 
   // ---------------------------------------------------------------- Stationen
+  // 7-Tage-Linie je Station (JARVIS-Plan W1-3): kpi_daily, wo es ≥ 2 Punkte hat, sonst dashboard_daily
+  const sparks = stationSparks(daily, await kpiP, today, countries);
   const sw = (k: Parameters<typeof werkOn>[1]) => werkOn(own, k);
   const state = (key: Parameters<typeof werkOn>[1], werk: Parameters<typeof isLive>[1] | null, maxH: number): Station["state"] => {
     const o = sw(key);
@@ -162,7 +169,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     { id: "antworten", label: "Antworten", icon: "antworten", value: `${w.replies}`, sub: `${w.positive} positiv`, state: state("antworten", "antworten", 30), tip: "echte Antworten 7 Tage (ohne Abwesenheit)" },
     { id: "kunden", label: "Kunden", icon: "kunden", value: `${subs.length}`, sub: `${revenue}/Mon.`, state: subs.length ? "live" : "idle", tip: "zahlende Kunden · Umsatz pro Monat" },
     ...wLine.stations,
-  ] as Station[]).map((x) => ({ ...x, neck: x.id === neck || x.id === wNeck }));
+  ] as Station[]).map((x) => ({ ...x, neck: x.id === neck || x.id === wNeck, spark: sparks[x.id] }));
   const edges: Edge[] = [
     { from: "lead", to: "gate", perHour: act.leads_60m, label: "neue Leads" },
     // grüne Leads gehen direkt in den Bestand; die Drei-Stufen-Freigabe prüft jeden Lead erst vor Probe/Lieferung

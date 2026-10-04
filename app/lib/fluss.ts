@@ -5,6 +5,7 @@
  */
 import type { IconName } from "../app/icons";
 import type { WebStationId } from "./website-stats";
+import type { Spark } from "./spark";
 
 export type StationId = "lead" | "gate" | "bestand" | "proben" | "kwerk" | "kaeufer" | "versand" | "antworten" | "kunden"
   // Linie „Website“ (Inhaber 04.10.2026: „genau die websiten namen“): Startseite → Landingpage → Tarif → Stripe → Danke → Kunden;
@@ -15,7 +16,9 @@ export type Station = { id: StationId; label: string; icon: IconName; value: str
   /** Werk mit Plätzen: Autopilot an/aus (Abzeichen unten rechts am Kreis); undefined = kein Abzeichen */
   auto?: boolean;
   /** festes Zustands-Abzeichen unten rechts (Versand: „24/7“ grün = an, „aus“ rot); kein Schalter */
-  badge?: { text: string; on: boolean; tip: string } };
+  badge?: { text: string; on: boolean; tip: string };
+  /** 7-Tage-Linie und Trend „7 T vs. Vor-7 T“ (JARVIS-Plan W1-3, lib/spark.ts); fehlt = nur der Wert */
+  spark?: Spark };
 export type Edge = { from: StationId; to: StationId; perHour: number; label: string };
 
 export const ORDER: StationId[] = ["lead", "gate", "bestand", "proben", "kwerk", "kaeufer", "versand", "antworten", "wstart", "wland", "wtarif", "wstripe", "wdanke", "kunden"];

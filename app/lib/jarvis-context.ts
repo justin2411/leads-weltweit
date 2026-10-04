@@ -1,10 +1,10 @@
 import "server-only";
 import { db } from "@/lib/supabase";
 import { loadAb } from "@/lib/ab-data";
-import { CONFIG, SEGMENT, loadAnalyticsCache, loadFunnel, loadFunnelCache, loadLive, loadOwnerSettings, loadStock } from "@/lib/dashboard-data";
+import { CONFIG, COUNTRIES, SEGMENT, loadAnalyticsCache, loadDaily, loadFunnel, loadFunnelCache, loadLive, loadOwnerSettings, loadStock } from "@/lib/dashboard-data";
 import { analyticsBrief, hints as webHints } from "@/lib/website-analytics";
 import { funnelBrief } from "@/lib/website-funnel";
-import { brake, mailboxes, monthly, realSubscriptions, sampleStock, type Live, type Stock } from "@/lib/dashboard-logic";
+import { berlinDay, brake, mailboxes, monthly, realSubscriptions, sampleStock, type Live, type Stock } from "@/lib/dashboard-logic";
 import { budgetOf, budgetState, compactFlow, knowledgeBlock, monthStart, type Bereich, type BudgetState, type KnowledgeDoc } from "@/lib/jarvis-llm";
 import { nextRun, scheduleLabel, toRoutine, whenLabel, type BrainRoutine } from "@/lib/brain-routines";
 import { titelVon } from "@/lib/kurz";
@@ -14,6 +14,7 @@ import { WERK_SWITCHES, slotCounts, werkOn, type OwnerSettings, type WerkKey } f
 import { REG } from "@/lib/regler-data";
 import { fmtBerlin } from "@/lib/start-queue";
 import { nextSendStart, planText } from "@/lib/versandzeit";
+import { addDays, neckStreak, trendLine } from "@/lib/trend";
 
 /**
  * Kompakter Kontext für die Sofort-Antworten (lib/jarvis-ask.ts) und die lesenden Werkzeuge (lib/jarvis-tools.ts).
@@ -152,11 +153,29 @@ function werke(s: Sources) {
 async function engpass() {
   try {
     const { data, error } = await db().from("decisions").select("subject, created_at, metrics").like("subject", "Engpass:%")
-      .order("created_at", { ascending: false }).limit(3).abortSignal(T());
+      .order("created_at", { ascending: false }).limit(24).abortSignal(T());
     if (error) throw new Error(error.message);
-    return { letzte: (data ?? []).map((d) => ({ station: String(d.subject).replace(/^Engpass:\s*/, ""), am: fmtBerlin(String(d.created_at)) })) };
+    const rows = data ?? [];
+    const station = (d: { subject: unknown; metrics: unknown }) =>
+      String((d.metrics as { station?: string } | null)?.station ?? String(d.subject).replace(/^Engpass:\s*/, "")) || null;
+    // „Engpass seit x Läufen“ (Protokoll aus ab.py engpass-log, höchstens 1×/h): dieselbe Station ohne Unterbrechung
+    const st = neckStreak(rows.map(station));
+    return {
+      letzte: rows.slice(0, 3).map((d) => ({ station: String(d.subject).replace(/^Engpass:\s*/, ""), am: fmtBerlin(String(d.created_at)) })),
+      ...(st ? { seit_laeufen: `${st.station} seit ${st.runs}${st.runs >= rows.length ? "+" : ""} Läufen` } : {}),
+    };
   } catch {
     return { fehler: NA };
+  }
+}
+
+/** „Trend 7T“: je Land Mails, Bounce-, Antwortquote, positive Antworten, Proben – 7 volle Tage (Vor-7 T in Klammern). */
+async function trend7(now: Date): Promise<string> {
+  try {
+    const today = berlinDay(now);
+    return trendLine(await loadDaily(addDays(today, -14), addDays(today, -1)), today, COUNTRIES);
+  } catch {
+    return NA;
   }
 }
 
@@ -212,9 +231,10 @@ const line = (k: string, v: unknown) => `${k}: ${typeof v === "string" ? v : JSO
 /** Kompakter Kontext (wenige hundert Tokens): Uhrzeit, Kennzahlen, Thema der Sitzung. */
 export async function buildContext(session: ChatSession, s: Sources): Promise<string> {
   const now = s.now;
-  const [fg, en, an, top, api, wt, wh] = await Promise.all([freigabe(), engpass(), antworten(), topic(session), loadLlmState(s.own),
+  const [fg, en, an, top, api, wt, wh, tr] = await Promise.all([freigabe(), engpass(), antworten(), topic(session), loadLlmState(s.own),
     loadFunnelCache(5 * 60_000).then(funnelBrief, () => ({ fehler: NA })),
-    Promise.all([loadAnalyticsCache(10 * 60_000), loadFunnelCache(5 * 60_000)]).then(([a, f]) => webHints(a, f, "7d").map((h) => `${h.title}: ${h.grund}`), () => NA)]);
+    Promise.all([loadAnalyticsCache(10 * 60_000), loadFunnelCache(5 * 60_000)]).then(([a, f]) => webHints(a, f, "7d").map((h) => `${h.title}: ${h.grund}`), () => NA),
+    trend7(now)]);
   const v = versand(s) as Record<string, unknown>;
   const p = proben(s) as Record<string, unknown>;
   const k = kunden(s);
@@ -230,6 +250,8 @@ export async function buildContext(session: ChatSession, s: Sources): Promise<st
     line("Bestand", b.laender ? b.laender.map((x) => ({ land: x.land, leads_neu_24h: x.leads_neu_24h, kaeufer_ok: x.kaeufer_mailfaehig, kaeufer_frei: x.kaeufer_noch_nicht_angeschrieben })) : b),
     line("Werke", { ...w.werke, autopilot: w.autopilot_plaetze, plaetze: w.plaetze_gesamt }),
     line("Engpass", en),
+    // 7 volle Tage vs. die 7 davor (lib/trend.ts); unter n=20 „zu wenig Daten“
+    line("Trend 7T (Vor-7T)", tr),
     // Website-Trichter Startseite → Landingpage → Tarif → Stripe → Danke (24 h und 30 Tage, wie /dashboard/website/auswertung)
     line("Website-Trichter", wt),
     // drei automatische Website-Hinweise (größter Abbruch, beste Quelle, langsamste Seite; 7 Tage)
@@ -283,6 +305,7 @@ export async function brainContext(s: Sources): Promise<string> {
   ]);
   const short = (d: Row) => ({ titel: titelVon({ subject: String(d.subject ?? ""), kurz_titel: (d.kurz_titel as string | null) ?? null }), am: fmtBerlin(String(d.created_at)) });
   return [
+    // Trend 7T (Vor-7T) steht schon im Grundkontext (buildContext), der im Gehirn-Modus immer mitkommt
     line("Trichter je Land seit Start", an.je_land_seit_start),
     // Website-Analyse wie GA4 (7 Tage vs. Vorwoche, Kanäle, Einstieg/Ausstieg, Hinweise) – dashboard_cache 'website_analytics'
     line("Website-Analyse", wa),

@@ -4,6 +4,7 @@ import { after } from "next/server";
 import { db } from "@/lib/supabase";
 import { boxHealth, funnelByCountry, type BoxHealth, type Days, type FunnelRow, type Live, type OpsConfig, type RawStock, type RunInfo, type Stock } from "@/lib/dashboard-logic";
 import type { DailyRow } from "@/lib/dashboard-periods";
+import type { KpiRow } from "@/lib/spark";
 import { merge, type OwnerSettings } from "@/lib/owner-settings";
 import { EMPTY_ACTIVITY, type Activity } from "@/lib/werke-live";
 import { EMPTY_WEBSITE, type WebsiteLive, type WebsiteStats } from "@/lib/website-stats";
@@ -188,6 +189,18 @@ export const COUNTRIES = CONFIG.fokus.filter((k) => k.startsWith(`${SEGMENT}/`))
 /** Tageswerte (deutsche Zeit) der Zielgruppe zwischen from und to: Mails, Bounces, Antworten, Proben, Kunden. */
 export async function loadDaily(from: string, to: string): Promise<DailyRow[]> {
   return rpc<DailyRow[]>("dashboard_daily", { p_segment: SEGMENT, p_from: from, p_to: to }, 10_000);
+}
+
+/** KPI-Tageswerte (signalwerk.kpi_daily, seit 04.10.2026) der Zielgruppe zwischen from und to; Fehler/fehlende Tabelle → leer. */
+export async function loadKpiDaily(from: string, to: string): Promise<KpiRow[]> {
+  try {
+    const { data, error } = await db().from("kpi_daily").select("day, country, metric, value")
+      .eq("segment_id", SEGMENT).gte("day", from).lte("day", to).limit(5000).abortSignal(AbortSignal.timeout(4000));
+    if (error) throw new Error(error.message);
+    return (data ?? []) as KpiRow[];
+  } catch {
+    return [];
+  }
 }
 
 export type ContactCard = { id: string; stage: "contacted" | "replied" | "sample" | "out"; country: string; company: string; domain: string; first_sent: string; last_at: string; positive: boolean };

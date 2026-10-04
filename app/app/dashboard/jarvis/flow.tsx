@@ -10,6 +10,7 @@ import type { TipTask } from "@/lib/leitstand";
 import { WEB_INFO } from "@/lib/website-stats";
 import { DragBox } from "./dnd";
 import { AutoBadge } from "./auto-badge";
+import { SPARK_CSS, StationSpark, sparkText } from "./spark";
 import { Icon, type IconName } from "@/app/icons";
 
 const fmtRate = (n: number) => (n >= 1000 ? `${(n / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Tsd./h` : `${n.toLocaleString("de-DE")}/h`);
@@ -51,9 +52,10 @@ function Map({ layout, stations, edges, active, href }: { layout: "wide" | "tall
         const [x, y] = POS[layout][s.id];
         return (
           <Link key={s.id} href={href(s.id)} scroll={false} className={`fl-st ${s.state} ${s.badge?.on ? "go" : ""} ${s.neck ? "neck" : ""} ${active === s.id ? "on" : ""} ${s.id === "kunden" ? "goal" : ""} ${WEB_STATIONS.includes(s.id) ? "web" : ""}`}
-            style={{ left: `${x}%`, top: `${y}%` }} title={s.tip} aria-label={`${s.label}: ${s.value}${s.unit ?? ""} – ${s.sub}`}>
+            style={{ left: `${x}%`, top: `${y}%` }} title={s.tip} aria-label={`${s.label}: ${s.value}${s.unit ?? ""} – ${s.sub}${s.spark && sparkText(s.spark) ? ` · ${sparkText(s.spark)}` : ""}`}>
             <span className="fl-ring" aria-hidden><i /><i /></span>
             <b className="fl-v">{s.value}{s.unit && <small>{s.unit}</small>}</b>
+            {s.spark && <StationSpark s={s.spark} />}
             <span className="fl-l">{s.label}</span>
             <span className="fl-s">{s.sub}</span>
             {s.neck && <em className="fl-neck">Engpass</em>}
@@ -76,6 +78,7 @@ function Map({ layout, stations, edges, active, href }: { layout: "wide" | "tall
 export function FlowMap(p: { stations: Station[]; edges: Edge[]; active: StationId | null; href: (id: StationId) => string }) {
   return (
     <div className="fl">
+      <style dangerouslySetInnerHTML={{ __html: SPARK_CSS }} />
       <div className="fl-lanes"><span aria-hidden>Ware · Leads</span><span aria-hidden>Käufer · Webagenturen</span>
         <span><span aria-hidden>Website · Besucher</span><i className="fl-info" title={WEB_INFO} aria-label={`Website: ${WEB_INFO}`} tabIndex={0}><Icon name="info" size={13} /></i></span></div>
       <p className="fl-info-m"><Icon name="info" size={13} /> Website: {WEB_INFO}</p>
