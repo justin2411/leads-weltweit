@@ -4,13 +4,15 @@
   python scripts/drafts.py            # für alle prospects mit check_status=ok ohne Mail im Experiment v1
   python scripts/drafts.py --dry-run  # nur anzeigen
 
-Eine Botschaft pro Experiment (v1): gleicher Kern, individueller erster Satz (Spezialisierung, Ort).
+Eine Botschaft pro Experiment (v1): gleicher Kern, individueller erster Satz (Firmenname, Kategorie; landesweit,
+kein Ort) und zwei Betreffe je Land (A/B, fest je Käufer, messages.subject_variant).
 Jeder Entwurf wird gegen die Schreibregeln geprüft; Fehler landen in messages.check_errors.
 """
 from __future__ import annotations
 
 import argparse
 import datetime as dt
+import hashlib
 import os
 import re
 import sys
@@ -19,7 +21,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lib import catalog  # noqa: E402
-from lib.rules import brand, lint_draft  # noqa: E402
+from lib.rules import brand, lint_draft, word_count  # noqa: E402
+
+MAX_WORDS = 120  # Schreibregel §7 (lint_draft)
 
 GENERIC_SPEC = {"recruitment", "general recruitment", "financial advice", "independent financial advice",
                 "web design", "small business websites", "unverified", "", "it support", "commercial insurance",
@@ -74,6 +78,105 @@ def signature(lang: str) -> str:
     return "\n".join(lines)
 
 
+# Erster Satz (CLAUDE.md §7: „Erster Satz zeigt, dass wir die Firma kennen“; Auftrag 04.10.2026): aus echten Daten des
+# Käufers (Firmenname + Kategorie aus der Käuferquelle), ohne erfundene Fakten und ohne Ort/Region (landesweit).
+# Kategorie -> Mehrzahl, so wie wir den Käufer gesucht haben („while looking at web design studios“).
+SPEC_PLURAL = {
+    "en": {
+        "web designer": "web design studios", "graphic designer": "graphic design studios",
+        "social media agency": "social media agencies", "web hosting service": "web hosting providers",
+        "internet marketing service": "online marketing agencies", "software development": "software developers",
+        "advertising agency": "advertising agencies", "marketing agency": "marketing agencies",
+        "media agency": "media agencies", "b2b advertising and marketing service": "B2B marketing agencies",
+        "b2b marketing consultant": "B2B marketing consultants", "e commerce service": "e-commerce agencies",
+        "employment agency": "recruitment agencies", "recruitment": "recruitment agencies",
+        "general recruitment": "recruitment agencies", "insurance agency": "insurance brokers",
+        "commercial insurance": "commercial insurance brokers", "accountant": "accountants",
+        "accounting": "accounting firms", "bookkeeper": "bookkeepers", "payroll service": "payroll providers",
+        "tax service": "tax advisers", "financial advising": "financial advisers", "financial advice": "financial advisers",
+        "independent financial advice": "financial advisers", "it support": "IT support firms",
+    },
+    "fr": {
+        "web designer": "agences de création de sites web", "graphic designer": "studios de design graphique",
+        "social media agency": "agences de réseaux sociaux", "web hosting service": "hébergeurs web",
+        "internet marketing service": "agences de marketing digital",
+        "software development": "sociétés de développement logiciel", "advertising agency": "agences de publicité",
+        "marketing agency": "agences marketing", "media agency": "agences média",
+        "b2b advertising and marketing service": "agences de marketing B2B",
+        "b2b marketing consultant": "consultants en marketing B2B", "e commerce service": "agences e-commerce",
+        "employment agency": "cabinets de recrutement", "recruitment": "cabinets de recrutement",
+        "insurance agency": "courtiers en assurance", "commercial insurance": "courtiers en assurance",
+        "accountant": "experts-comptables", "accounting": "cabinets comptables", "bookkeeper": "cabinets comptables",
+        "financial advising": "conseillers en gestion de patrimoine",
+        "financial advice": "conseillers en gestion de patrimoine",
+    },
+}
+
+
+def _opener_name(company_name: str | None) -> str:
+    """Firmenname für den ersten Satz: Kurzname wie in der Anrede, sonst bereinigter Name bis 5 Wörter.
+    Leer, wenn kein brauchbarer Name da ist (zu lang, wie ein Link geschrieben)."""
+    raw = (company_name or "").strip()
+    if not raw:
+        return ""
+    name = short_name(raw) or _clean_name(raw)
+    if len(name.split()) > 5 or re.search(r"https?://|www\.|\.(com|net|org|io|co|uk|fr|ie|nl|be|se)\b", name, re.I):
+        return ""
+    return name
+
+
+def opener(p: dict, lang: str) -> str:
+    """Individueller erster Satz aus echten Daten (Firmenname, Kategorie); ehrlich: wir sind bei der Suche nach
+    Firmen dieser Art auf sie gestoßen (so finden wir Käufer). Ohne Kategorie: neutraler Satz mit Firmenname."""
+    name = _opener_name(p.get("company_name"))
+    spec = SPEC_PLURAL["fr" if lang == "fr" else "en"].get((p.get("specialization") or "").strip().lower())
+    if lang == "fr":
+        if spec:
+            return f"J'ai découvert {name or 'votre entreprise'} en cherchant des {spec}."
+        return f"Je me permets d'écrire directement à {name}." if name else "Je me permets de vous écrire directement."
+    if spec:
+        return f"I came across {name or 'your firm'} while looking at {spec}."
+    return f"I'm writing to the team at {name} directly." if name else "I'm writing to your team directly."
+
+
+# Zwei Betreffe je Land (A/B-Test, Auftrag 04.10.2026): landesweit, ≤ 60 Zeichen, keine Emojis, kein „Re:“.
+# A = bisheriger Betreff (Vergleichsbasis), B = Variante. Zuteilung fest je Käufer (subject_variant).
+SUBJECTS = {
+    "en": {
+        "S1": ("Employers across {area} who need recruitment help", "Recruitment leads: employers hiring across {area}"),
+        "S2": ("Local businesses across {area} without a website", "No website yet: local businesses across {area}"),
+        "S3": ("Growing businesses across {area}", "IT leads: growing businesses across {area}"),
+        "S4": ("New businesses across {area} that need cover", "Insurance leads: new businesses across {area}"),
+        "S5": ("New companies across {area} needing an accountant", "Accounting leads: new companies across {area}"),
+        "S9": ("New company directors across {area}", "Advice leads: new company directors across {area}"),
+        "": ("Companies across {area} with a reason to buy", "Trigger leads: companies across {area}"),
+    },
+    "fr": {
+        "S1": ("Employeurs en France qui cherchent de l'aide pour recruter",
+               "Pistes de recrutement : employeurs partout en France"),
+        "S2": ("Entreprises en France sans site web", "Pas encore de site web : entreprises partout en France"),
+        "": ("Nouveaux dirigeants en France", "Pistes : nouveaux dirigeants partout en France"),
+    },
+}
+
+
+def subject_variant(p: dict) -> str:
+    """'A' oder 'B', 50/50 und fest je Käufer (Hash der Käufer-ID), damit ein neu geschriebener Entwurf denselben
+    Betreff behält und Antworten je Variante gemessen werden können."""
+    key = str(p.get("id") or p.get("email") or p.get("company_name") or "")
+    return "AB"[hashlib.sha256(key.encode("utf-8")).digest()[0] % 2]
+
+
+def subject_for(p: dict, lang: str, variant: str | None = None) -> str:
+    """Betreff der Variante (A/B) für Segment und Land des Käufers."""
+    table = SUBJECTS["fr" if lang == "fr" else "en"]
+    pair = table.get(p.get("segment_id") or "", table[""])
+    subject = pair[(variant or subject_variant(p)) == "B"].format(area=LAND.get(p.get("country") or "", "your country"))
+    if len(subject) > 60:
+        subject = subject[:57].rsplit(" ", 1)[0]
+    return subject
+
+
 def _example_line(example: dict | None, lang: str) -> str:
     """Ein echter Probe-Lead als Beleg (Firma, Ort, Datum, Quelle)."""
     if not example:
@@ -101,14 +204,13 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
     # Lieferung und Exklusivität in einem Satz, Probe als fertiges Geschenk, Ja/Nein-Frage.
     me = (os.environ.get("SENDER_NAME") or "").split(" ")[0]
     if fr:
-        need, kind, subject = {
+        # Betreff: subject_for() (A/B je Käufer, SUBJECTS)
+        need, kind = {
             "S1": (f"des employeurs de toute la France qui ont en ce moment un vrai besoin de recrutement, par exemple un poste "
-                   "ouvert depuis des semaines ou plusieurs embauches à la fois", "cabinet",
-                   "Employeurs en France qui cherchent de l'aide pour recruter"),
-            "S2": (f"des entreprises de toute la France tout juste créées qui ont encore besoin de leur site web", "agence",
-                   "Nouvelles entreprises en France sans site web"),
+                   "ouvert depuis des semaines ou plusieurs embauches à la fois", "cabinet"),
+            "S2": (f"des entreprises de toute la France tout juste créées qui ont encore besoin de leur site web", "agence"),
         }.get(seg, (f"des dirigeants de toute la France qui viennent de créer leur entreprise et se posent leurs premières "
-                    "questions de retraite et de prévoyance", "cabinet", "Nouveaux dirigeants en France"))
+                    "questions de retraite et de prévoyance", "cabinet"))
         intro = (f"Je suis {me}, fondateur de {brand()}." if me else f"Je suis le fondateur de {brand()}.")
         first = f"{intro} Nous livrons des pistes qui se transforment en chiffre d'affaires : {need}."
         core = (f"Elles arrivent chaque lundi en briefing PDF et en tableau, avec téléphone, e-mail, interlocuteur et une "
@@ -118,7 +220,6 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
         if seg == "S2":
             # Webagenturen (Inhaber 02.10.2026): Leads sind Firmen ohne Website (Overture), nicht unbedingt neu gegründet;
             # Ansprechperson nicht immer mit Namen; keine Exklusivitätszusage in der Kaltmail
-            subject = "Entreprises en France sans site web"
             first = (f"{intro} Nous trouvons des entreprises locales de toute la France qui n'ont toujours pas de site web, "
                      "une bonne raison pour elles de parler à une agence web.")
             core = ("Chaque lundi, vous recevez un court briefing PDF et un tableau : entreprise, téléphone, e-mail, "
@@ -127,21 +228,17 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
             ex = ""
         greet, bye = "Bonjour,", "Bien cordialement,"
     else:
-        need, kind, subject = {
+        # Betreff: subject_for() (A/B je Käufer, SUBJECTS)
+        need, kind = {
             "S1": (f"employers across {area} with a real need for recruitment help right now, such as roles open for weeks "
-                   "or several hires at once", "agency", f"Employers across {area} who need recruitment help"),
-            "S2": (f"companies across {area} that were just founded and still need their website", "web agency",
-                   f"New businesses across {area} that need a website"),
-            "S3": (f"companies across {area} that are growing fast and will soon need IT support", "IT firm",
-                   f"Growing businesses across {area}"),
-            "S4": (f"new businesses across {area} that need their first liability, property and employer cover", "broker",
-                   f"New businesses across {area} that need cover"),
-            "S5": (f"companies across {area} that were just founded and still need an accountant", "practice",
-                   f"New companies across {area} needing an accountant"),
+                   "or several hires at once", "agency"),
+            "S2": (f"companies across {area} that were just founded and still need their website", "web agency"),
+            "S3": (f"companies across {area} that are growing fast and will soon need IT support", "IT firm"),
+            "S4": (f"new businesses across {area} that need their first liability, property and employer cover", "broker"),
+            "S5": (f"companies across {area} that were just founded and still need an accountant", "practice"),
             "S9": (f"new company directors across {area} facing pension and protection questions for the first time",
-                   "advice firm", f"New company directors across {area}"),
-        }.get(seg, (f"companies across {area} with a concrete reason to buy right now", "firm",
-                    f"Companies across {area} with a reason to buy"))
+                   "advice firm"),
+        }.get(seg, (f"companies across {area} with a concrete reason to buy right now", "firm"))
         intro = f"I'm {me}, founder of {brand()}." if me else f"I'm the founder of {brand()}."
         first = f"{intro} We deliver leads you can turn into revenue: {need}."
         core = (f"They arrive every Monday as a short PDF briefing and a spreadsheet, each with phone, email, the contact person "
@@ -151,20 +248,39 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
         if seg == "S2":
             # Webagenturen (Inhaber 02.10.2026): Leads sind Firmen ohne Website (Overture), nicht unbedingt neu gegründet;
             # Ansprechperson nicht immer mit Namen; keine Exklusivitätszusage in der Kaltmail; kurze Anrede
-            subject = f"Local businesses across {area} without a website"
             first = (f"{intro} We find local businesses across {area} that still have no website, a clear reason for "
                      "them to talk to a web agency.")
             core = ("Every Monday you get a short PDF briefing and a spreadsheet: company, phone, email, who to ask for "
                     "and an opening line.")
             ask = f"I've put together a free sample of 10 current leads from across {area}. Shall I send it over?"
-            short = short_name(p["company_name"])
+            short = _opener_name(p["company_name"]) and short_name(p["company_name"])  # nie wie ein Link
             greet = f"Hi {short} team," if short else "Hi there,"
             ex = ""
-    parts = [greet, first] + ([ex] if ex else []) + [core, ask, f"{bye}\n{sender or signature(lang)}"]
-    body = "\n\n".join(parts)
-    if len(subject) > 60:
-        subject = subject[:57].rsplit(" ", 1)[0]
+    # Betreff A/B je Käufer; erster Satz individuell aus echten Daten (Auftrag 04.10.2026)
+    subject = subject_for(p, lang)
+    tail = ([ex] if ex else []) + [core, ask, f"{bye}\n{sender or signature(lang)}"]
+    body = "\n\n".join([greet, f"{opener(p, lang)} {first}"] + tail)
+    if word_count(body) > MAX_WORDS:
+        # längere Texte (S1, Beleg-Satz) bleiben im Rahmen von 70–120 Wörtern: dann ohne Einstiegssatz wie bisher
+        body = "\n\n".join([greet, first] + tail)
     return subject, body, lang
+
+
+def has_variant_column(db) -> bool:
+    """Gibt es messages.subject_variant schon (Migration 20261004130000)? Bis sie angewendet ist, schreiben die
+    Skripte die Variante nicht mit; sie bleibt dann über subject_variant(prospect) bzw. den Betreff ablesbar."""
+    cached = getattr(db, "_subject_variant_col", None)
+    if cached is None:
+        try:
+            db.select("messages", {"select": "subject_variant", "limit": "1"})
+            cached = True
+        except Exception:  # noqa: BLE001 – Spalte fehlt (PostgREST 400) oder Attrappe ohne select
+            cached = False
+        try:
+            db._subject_variant_col = cached
+        except Exception:  # noqa: BLE001
+            pass
+    return cached
 
 
 def regional_counts(db) -> dict:
@@ -210,6 +326,7 @@ def refresh(db, dry_run: bool = False) -> int:
     """Offene Entwürfe neu schreiben (gleicher Käufer, aktueller Text). Verstößt der neue Text gegen eine Regel,
     geht ein freigegebener Entwurf zurück auf draft – nie umgekehrt."""
     n = back = 0
+    col = has_variant_column(db)
     for m in db.select_all("messages", {"status": "in.(draft,approved)", "sent_at": "is.null", "kind": "eq.initial", "order": "id",
                                          "select": "id,status,subject,body,prospects(*)"}):
         p = m.get("prospects")
@@ -219,7 +336,8 @@ def refresh(db, dry_run: bool = False) -> int:
         if subject == m["subject"] and body == m["body"]:
             continue
         lint = lint_draft(subject, body, lang)
-        upd = {"subject": subject, "body": body, "language": lang, "check_errors": lint.errors}
+        upd = {"subject": subject, "body": body, "language": lang, "check_errors": lint.errors,
+               **({"subject_variant": subject_variant(p)} if col else {})}
         if m["status"] == "approved" and not lint.ok:
             upd["status"] = "draft"
             back += 1
@@ -242,7 +360,11 @@ def main(argv=None) -> int:
     from lib.db import DB
     db = DB()
     if args.refresh:
-        return refresh(db, dry_run=args.dry_run)
+        rc = refresh(db, dry_run=args.dry_run)
+        # offene Nachfassmails ebenso auf den aktuellen Stand (landesweiter Betreff, aktueller Text)
+        from followups import refresh_open
+        refresh_open(db, dry_run=args.dry_run)
+        return rc
     # nur laufende Experimente (gestoppte und abgeschlossene bekommen keine neuen Entwürfe)
     exps = {(e["segment_id"], e["country"]): e for e in db.select("experiments", {"variant": f"eq.{args.variant}"})
             if e.get("decision") != "killed" and e.get("status") != "done"}
@@ -261,6 +383,7 @@ def main(argv=None) -> int:
     n = bad = 0
     total_cap = int(os.environ.get("MAX_TOTAL_MAILS", "100000"))  # Inhaber 26.09.2026: 250 pro Tag fortlaufend
     total = len(db.select_all("messages", {"select": "id"}))
+    col = has_variant_column(db)
     # Je Experiment einmal laden statt je Käufer abfragen (03.10.2026: der tägliche Lauf brach nach Stunden ab,
     # weil für ~70.000 Käufer je eine Abfrage lief); höchstens --max-new neue Entwürfe je Experiment und Lauf
     for key in keys:
@@ -297,6 +420,7 @@ def main(argv=None) -> int:
                                                "to_email": p["email"], "subject": subject, "body": body,
                                                "language": lang, "status": "approved" if approve else "draft",
                                                "check_errors": lint.errors,
+                                               **({"subject_variant": subject_variant(p)} if col else {}),
                                                **({"approved_at": dt.datetime.now(dt.timezone.utc).isoformat(),
                                                    "approved_by": f"Inhaber: {args.approve}"} if approve else {})},
                                   upsert_on="prospect_id,experiment_id,kind", ignore_duplicates=True)

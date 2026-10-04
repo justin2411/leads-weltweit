@@ -18,7 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from drafts import LAND, short_name, signature  # noqa: E402
+from drafts import LAND, build, has_variant_column, short_name, signature, subject_variant  # noqa: E402
 from lib.rules import lint_draft  # noqa: E402
 
 NEGATIVE = {"bounced", "complained", "failed", "reply", "reply_positive", "reply_negative", "sample_requested",
@@ -39,6 +39,17 @@ def _land(p: dict, lang: str) -> str:
     if lang == "fr":
         return "partout en France"
     return "across " + LAND.get((p.get("country") or "").upper(), "your country")
+
+
+def followup_subject(p: dict, parent_subject: str | None, lang: str) -> tuple[str, str | None]:
+    """(Betreff, Variante) der Nachfassmail: der Betreff der Erstmail, wenn er landesweit ist (nennt das Land),
+    damit die Mail im selben Verlauf bleibt. Alte Erstmails nannten Regionen („Greater Manchester“, „Queens“);
+    dann den aktuellen landesweiten Betreff des Käufers (A/B wie die Kaltmail). Variante None = Betreff der
+    Erstmail übernommen (Variante steht dort)."""
+    land = "France" if lang == "fr" else LAND.get((p.get("country") or "").upper(), "")
+    if parent_subject and land and land.lower() in parent_subject.lower():
+        return parent_subject, None
+    return build(p)[0], subject_variant(p)
 
 
 def followup_text(p: dict, lang: str) -> tuple[str, str]:
@@ -76,6 +87,46 @@ def sample_followup_text(p: dict, lang: str, plan_url: str | None = None) -> str
             f"If one or two of them caught your eye, you get a fresh list like this every Monday, {land}, "
             f"reserved for your firm.\n\n{step}\n\n"
             f"Shall we start next Monday?\n\nBest regards,\n{signature(lang)}")
+
+
+def _variant_field(parent: dict, variant: str | None) -> dict:
+    """Betreff-Variante für die Nachfassmail, nur wenn es die Spalte gibt (die Erstmail kommt mit select=* und hat
+    dann den Schlüssel subject_variant)."""
+    if "subject_variant" not in parent:
+        return {}
+    return {"subject_variant": variant or parent.get("subject_variant")}
+
+
+def refresh_open(db, dry_run: bool = False) -> int:
+    """Offene Nachfassmails (draft/approved, nicht gesendet) auf den aktuellen Stand bringen: Betreff landesweit
+    (alte Entwürfe erbten Regionen wie „Greater Manchester“ aus der Erstmail), Erinnerung mit aktuellem Text.
+    Nichts wird gelöscht; verstößt der neue Text gegen eine Regel, geht ein freigegebener Entwurf zurück auf draft."""
+    n = back = 0
+    col = has_variant_column(db)
+    for m in db.select_all("messages", {"status": "in.(draft,approved)", "sent_at": "is.null",
+                                         "kind": "in.(followup,sample_followup)", "order": "id",
+                                         "select": "id,kind,status,subject,body,language,prospects(*)"}):
+        p = m.get("prospects")
+        if not p:
+            continue
+        lang = m.get("language") or "en"
+        subject, var = followup_subject(p, m["subject"], lang)
+        # Text der Probe-Nachfrage enthält den Link zur Buchungsseite – nur den Betreff angleichen
+        body = followup_text(p, lang)[0] if m["kind"] == "followup" else m["body"]
+        if subject == m["subject"] and body == m["body"]:
+            continue
+        upd = {"subject": subject, **({"subject_variant": var} if col and var else {})}
+        if m["kind"] == "followup":  # Probe-Nachfrage wird wie bisher nicht geprüft (Link zur Buchungsseite)
+            lint = lint_draft(subject, body, lang, min_words=30, max_words=120, require_sample=False)
+            upd.update(body=body, check_errors=lint.errors)
+            if m["status"] == "approved" and not lint.ok:
+                upd["status"] = "draft"
+                back += 1
+        n += 1
+        if not dry_run:
+            db.update("messages", {"id": m["id"]}, upd)
+    print(f"{n} Nachfassmails neu geschrieben, {back} wegen Regelverstoß zurück auf draft")
+    return 0
 
 
 def answered(db, prospect_id: str, since: str | None = None) -> bool:
@@ -126,13 +177,14 @@ def main(argv=None) -> int:
             continue
         lang = m.get("language") or "en"
         body, _ = followup_text(p, lang)
-        lint = lint_draft(m["subject"], body, lang, min_words=30, max_words=120, require_sample=False)
+        subj, var = followup_subject(p, m["subject"], lang)
+        lint = lint_draft(subj, body, lang, min_words=30, max_words=120, require_sample=False)
         print(f"FOLLOWUP {m['to_email']:<40} {lint.summary()}")
         n1 += 1
         if args.apply and lint.ok:
             db.insert("messages", {"prospect_id": p["id"], "experiment_id": m["experiment_id"], "to_email": m["to_email"],
-                                   "subject": m["subject"], "body": body, "language": lang, "kind": "followup",
-                                   "parent_id": m["id"], "status": "approved",
+                                   "subject": subj, "body": body, "language": lang, "kind": "followup",
+                                   **_variant_field(m, var), "parent_id": m["id"], "status": "approved",
                                    "approved_at": now.isoformat(), "approved_by": note})
 
     s_cut = (now - dt.timedelta(days=3)).isoformat()
@@ -153,12 +205,13 @@ def main(argv=None) -> int:
         lang = m.get("language") or "en"
         from responder import booking_url
         body = sample_followup_text(p, lang, booking_url(p["segment_id"], p.get("country")))
+        subj, var = followup_subject(p, m["subject"], lang)
         print(f"PROBE-NACHFASS {m['to_email']}")
         n2 += 1
         if args.apply:
             db.insert("messages", {"prospect_id": p["id"], "experiment_id": m["experiment_id"], "to_email": m["to_email"],
-                                   "subject": m["subject"], "body": body, "language": lang, "kind": "sample_followup",
-                                   "parent_id": m["id"], "status": "approved",
+                                   "subject": subj, "body": body, "language": lang, "kind": "sample_followup",
+                                   **_variant_field(m, var), "parent_id": m["id"], "status": "approved",
                                    "approved_at": now.isoformat(), "approved_by": note})
     print(f"\n{n1} Nachfassmails, {n2} Nachfragen nach Probe" + ("" if args.apply else " (Probelauf)"))
     return 0
