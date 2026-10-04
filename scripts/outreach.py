@@ -119,7 +119,9 @@ def total_limit() -> int | None:
 ROLE_BLOCK = {"privacy", "gdpr", "dpo", "dataprotection", "legal", "compliance", "abuse", "security", "postmaster",
               "hostmaster", "noreply", "no-reply", "donotreply", "do-not-reply", "support", "help", "helpdesk",
               "billing", "invoices", "invoice", "accounts", "payments", "careers", "jobs", "hr", "recruiting",
-              "press", "media", "unsubscribe", "bounce", "bounces", "mailer-daemon"}
+              "press", "media", "unsubscribe", "bounce", "bounces", "mailer-daemon",
+              # Technik-Adressen (Rückläufer-Analyse 05.10.2026: webmaster@ 1 von 2 zurück)
+              "webmaster", "root", "noc", "dns", "domains", "sysadmin", "devnull", "nobody"}
 
 
 def role_address(email: str) -> bool:
@@ -542,6 +544,7 @@ def cmd_send(args) -> int:
                 raise SystemExit(f"{var} fehlt")
 
     from lib.deliverability import domain_accepts_mail, interleave, is_m365, mx_hosts
+    from lib import address_risk
     from drafts import subject_variant  # Betreff-Variante für den Mail-Link (?sv=), falls die Spalte fehlt
 
     stop = notbremse(db)
@@ -753,6 +756,18 @@ def cmd_send(args) -> int:
             if live:
                 db.update("messages", {"id": m["id"]}, {"status": "blocked", "blocked_reason": "kein MX-Eintrag"})
             continue
+        if kind == "initial":
+            # Adressprüfung aus frischem DNS (lib/address_risk.py, Rückläufer-Analyse 05.10.2026, nur strenger)
+            risk = address_risk.check(m["to_email"])
+            if risk == [address_risk.UNKLAR]:
+                print(f"NICHT GESENDET {m['to_email']}: DNS nicht eindeutig, nächster Lauf prüft erneut")
+                continue
+            if risk:
+                print(f"BLOCKIERT {m['to_email']}: {'; '.join(risk)}")
+                if live:
+                    db.update("messages", {"id": m["id"]}, {"status": "blocked",
+                              "blocked_reason": "Adressprüfung: " + "; ".join(risk)})
+                continue
         limit = country_limit(int(rules.get("daily_limit", cfg["defaults"]["daily_limit"])), owner_limits, country, owner_off)
         if sent_today.get(country, 0) >= limit:
             print(f"Tageslimit {country} ({limit}) erreicht, Rest morgen")

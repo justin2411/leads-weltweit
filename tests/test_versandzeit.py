@@ -134,6 +134,7 @@ class OutreachTest(unittest.TestCase):
         out = io.StringIO()
         with mock.patch("lib.db.DB", return_value=db), mock.patch.object(outreach, "total_limit", return_value=None), \
                 mock.patch("lib.deliverability.domain_accepts_mail", return_value=True), \
+                mock.patch("lib.address_risk.check", return_value=[]), \
                 mock.patch("lib.fokus.focus_only", return_value=False), \
                 mock.patch.object(outreach, "lint_draft", return_value=mock.Mock(errors=[])), \
                 contextlib.redirect_stdout(out):
