@@ -45,6 +45,7 @@ WORKFLOWS = {
     "agenten-werk.yml": ("Agenten-Werk (Speicher + eigene Agenten)", 3),
     "dauerpruefung.yml": ("Dauerprüfung (Prüf-Agenten ohne Tokens)", 3),
     "pruefer-werk.yml": ("Prüfer-Werk (4 Prüfer, 24/7)", 3),
+    "kontakt-werk.yml": ("Kontakt-Werk (Register + Website, 24/7)", 3),
     "zustellbarkeit.yml": ("Zustellbarkeits-Check (06:10)", 27),
 }
 
@@ -932,6 +933,17 @@ def kurz_pruefung(kpi: dict | None) -> str:
     return _cut("Dauerprüfung heute: " + ("; ".join(parts) or "nichts geprüft") + tail)
 
 
+def kurz_kontakt(rows: list[dict] | None) -> str:
+    """Kontakt-Werk der letzten 24 h (View signalwerk.kontakt_kpi): gegengeprüft, bestätigt, Personen neu."""
+    rows = [r for r in (rows or []) if int(r.get("geprueft_24h") or 0) > 0]
+    if not rows:
+        return "Kontakt-Werk: in 24 h nichts gegengeprüft"
+    n = sum(int(r["geprueft_24h"]) for r in rows)
+    ok = sum(int(r.get("bestaetigt_24h") or 0) for r in rows)
+    neu = sum(int(r.get("personen_neu_24h") or 0) for r in rows)
+    return _cut(f"Kontakt-Werk 24 h: {n} gegengeprüft, {ok} bestätigt, {neu} Ansprechpersonen neu")
+
+
 def kurz_pruefer(rows: list[dict] | None) -> str:
     """Prüfer-Werk der letzten 24 h (View signalwerk.pruefer_kpi): geprüft, Qualität lieferbar %, gehalten je Land."""
     rows = [r for r in (rows or []) if int(r.get("geprueft_24h") or 0) > 0]
@@ -1016,6 +1028,7 @@ def collect_kurz(c: Check, db) -> None:
     line("Gehirn", gehirn)
     line("Dauerprüfung", lambda: kurz_pruefung(db.rpc("pruef_kpi", {"p_days": 1})))
     line("Prüfer-Werk", lambda: kurz_pruefer(db.select("pruefer_kpi", {"select": "*"})))
+    line("Kontakt-Werk", lambda: kurz_kontakt(db.select("kontakt_kpi", {"select": "*"})))
 
 
 def collect_geschaeft(c: Check, db) -> None:

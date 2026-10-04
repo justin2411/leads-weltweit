@@ -45,6 +45,8 @@ export const CARDS: readonly Card[] = [
   { key: "dauerpruefung", icon: "freigabe", name: "Dauerprüfung", keys: ["werke_paused"], werk: "dauerpruefung", start: null, cron: "47 * * * *", file: "dauerpruefung.yml" },
   // Prüfer-Werk (Inhaber 05.10.2026: „4 dauerhafte Prüfer der Leads“): Plätze der Linie „pruefer“, rund um die Uhr
   { key: "pruefer-werk", icon: "freigabe", name: "Prüfer-Werk", keys: ["werke_paused", "slot_plan"], werk: "pruefer-werk", start: null, cron: "11 * * * *", file: "pruefer-werk.yml" },
+  // Kontakt-Werk (Inhaber 05.10.2026): Register + Firmenwebsite gegenprüfen, Plätze der Linie „kontakt“
+  { key: "kontakt-werk", icon: "freigabe", name: "Kontakt-Werk", keys: ["werke_paused", "slot_plan"], werk: "kontakt-werk", start: null, cron: "23 * * * *", file: "kontakt-werk.yml" },
 ];
 export const cardOf = (k: CardKey): Card => CARDS.find((c) => c.key === k)!;
 export const isCardKey = (x: unknown): x is CardKey => typeof x === "string" && CARDS.some((c) => c.key === x);
@@ -388,6 +390,12 @@ export function diff(saved: OwnerSettings, draft: Draft, ctx: ReglerCtx): Change
       for (const l of reg.lanes.filter((x) => x.werk === "pruefer-werk")) {
         const a = at(base.slot_plan, l.id), b = at(draft.slot_plan, l.id);
         if (a !== b) add({ card: c.key, key: "slot_plan", part: `linie:${l.id}`, label: "Prüfer", from: a, to: b, text: `Prüfer ${a} → ${b}`, value: plan });
+      }
+    }
+    if (c.key === "kontakt-werk") {
+      for (const l of reg.lanes.filter((x) => x.werk === "kontakt-werk")) {
+        const a = at(base.slot_plan, l.id), b = at(draft.slot_plan, l.id);
+        if (a !== b) add({ card: c.key, key: "slot_plan", part: `linie:${l.id}`, label: "Kontakt", from: a, to: b, text: `Kontakt ${a} → ${b}`, value: plan });
       }
     }
     if (c.key === "kunden-werk") {

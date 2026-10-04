@@ -74,6 +74,8 @@ JOBS = [
     # Nachfüller (Inhaber 05.10.2026: „mind. 30 gleichzeitig“): startet freie Lead-Linien sofort neu; GitHub lässt
     # seinen 10-min-Zeitplan unter Last aus -> nach 15 min ohne Lauf nachstarten. Pause/Schalter prüft er selbst.
     {"wf": "werk-nachfuellen.yml", "kind": "hourly", "window": (0, 23), "max_min": 15, "cond": "lead_suche"},
+    # Kontakt-Werk (Inhaber 05.10.2026): Register + Website gegenprüfen, rund um die Uhr
+    {"wf": "kontakt-werk.yml", "kind": "continuous", "min_gap": 20},
 ]
 
 
@@ -82,7 +84,7 @@ JOBS = [
 PAUSE_KEY = {"lead-werk.yml": "lead-werk", "kunden-werk.yml": "kunden-werk", "proben-vorrat.yml": "proben-vorrat",
              "kundenlieferung.yml": "kundenlieferung", "tagescheck.yml": "tagescheck", "agenten-werk.yml": "agenten",
              "dauerpruefung.yml": "dauerpruefung", "pruefer-werk.yml": "pruefer-werk",
-             "werk-nachfuellen.yml": "lead-werk"}
+             "werk-nachfuellen.yml": "lead-werk", "kontakt-werk.yml": "kontakt-werk"}
 
 
 # Direktstart aus dem Dashboard (gleiche Liste wie app/lib/start-queue.ts START_WORKFLOWS und die DB-Prüfung in
