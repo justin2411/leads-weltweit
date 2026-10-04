@@ -18,3 +18,13 @@ fokus:
 tests:
   segmente: [S2]
   laender: [US, UK, FR]
+
+# Länder-Vorrang im Lead-Werk (Inhaber 04.10.2026: „Wenn wir genug us leads haben dann schau das wir noch uk und fr
+# holen bitte“). Hat jedes Nachrang-Land mindestens faktor × den Bestand jedes Vorrang-Landes (lieferbare Leads des
+# Segments, kpi_daily leads_lieferbar), behalten seine Linien 1 Wachplatz und die Plätze gehen an die Vorrang-Länder.
+# Gelesen von scripts/werk_plan.py (Autopilot), Grund steht in werk_plan_log. Ausschalten: Block entfernen.
+laender_vorrang:
+  segment: S2
+  vor: [UK, FR]
+  nach: [US]
+  faktor: 3
