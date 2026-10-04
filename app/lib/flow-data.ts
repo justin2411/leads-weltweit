@@ -1,7 +1,7 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
 import { db } from "@/lib/supabase";
-import { PREVIEW_COLS, parseFlow, ruleTag, unpackRows, type Flow, type Row, type RowPack } from "@/lib/flow";
+import { FLOW_KINDS, PREVIEW_COLS, parseFlow, ruleTag, unpackRows, type Flow, type FlowKind, type Row, type RowPack } from "@/lib/flow";
 import { dedupeRows, isUuid, queryKey, toRow, type FlowStatus, type Snapshot, type SourceQuery } from "@/lib/flow-io";
 
 /**
@@ -14,18 +14,21 @@ import { dedupeRows, isUuid, queryKey, toRow, type FlowStatus, type Snapshot, ty
  */
 export type FlowRow = {
   id: string; name: string; status: FlowStatus; note: string | null; created_at: string; updated_at: string;
+  /** test | master | agent (Migration 20261004100000); Unbekanntes gilt als test */
+  kind: FlowKind;
   activated_at: string | null; snapshot: Snapshot | null;
   /** geprüfter Flow; null = gespeicherter Inhalt unlesbar (errors sagt warum) */
   def: Flow | null; errors?: string[];
 };
 
-const COLS = "id, name, status, note, created_at, updated_at, activated_at, snapshot, def";
+const COLS = "id, name, status, kind, note, created_at, updated_at, activated_at, snapshot, def";
 const PAGE = 1000;
 
 function toFlowRow(x: Record<string, unknown>): FlowRow {
   const p = parseFlow(x.def);
   return {
     id: String(x.id), name: String(x.name ?? ""), status: x.status as FlowStatus, note: (x.note as string | null) ?? null,
+    kind: FLOW_KINDS.includes(x.kind as FlowKind) ? (x.kind as FlowKind) : "test",
     created_at: String(x.created_at), updated_at: String(x.updated_at), activated_at: (x.activated_at as string | null) ?? null,
     snapshot: (x.snapshot as Snapshot | null) ?? null, def: p.ok ? p.flow : null, ...(p.ok ? {} : { errors: p.errors }),
   };

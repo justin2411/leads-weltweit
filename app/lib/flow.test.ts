@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   FIELDS, OPS, NODE_META, NODE_KINDS, TEMPLATES, PREVIEW_COLS, countBy, describeCond, describeNode, evalCond, fieldDef, fieldsFor,
-  inScope, newNode, packRows, parseFlow, pipelineCheck, pipelineNode, problems, reaches, ruleTag, runFlow, runFlowRows, unpackRows,
+  inScope, newNode, packRows, parseFlow, pipelineCheck, pipelineNode, problems, reaches, ruleTag, runFlow, runFlowRows, sinkRows, unpackRows,
   type Cond, type Flow, type FlowEdge, type FlowNode, type Row,
 } from "./flow.ts";
 
@@ -90,6 +90,74 @@ test("Gemeinsame Testfälle mit Python (tests/fixtures/flow_cases.json)", () => 
     assert.ok(pipelineNode(parsed.flow), `Flow ${i + 1} ohne Pipeline`);
     for (const r of f.rows) assert.equal(pipelineCheck(parsed.flow, r), f.pipeline[r.id], `Flow ${i + 1}, Zeile ${r.id}`);
   }
+});
+
+test("Gemeinsame Ablauf-Fälle über eine Menge (runs) mit Python", () => {
+  const fx = JSON.parse(readFileSync(new URL("../../tests/fixtures/flow_cases.json", import.meta.url), "utf8"));
+  assert.ok(fx.runs.length >= 3);
+  const ids = (rs: Row[] | undefined) => (rs ?? []).map((r) => r.id);
+  for (const c of fx.runs) {
+    const parsed = parseFlow(c.flow);
+    assert.ok(parsed.ok, c.name);
+    if (!parsed.ok) continue;
+    const res = runFlowRows(parsed.flow, c.rows);
+    assert.deepEqual(Object.keys(res).sort(), Object.keys(c.expect).sort(), c.name);
+    for (const [id, e] of Object.entries(c.expect) as [string, Record<string, unknown>][]) {
+      const r = res[id], w = `${c.name} / ${id}`;
+      assert.equal(r.connected, e.connected, w);
+      assert.deepEqual(ids(r.input), e.in, w);
+      assert.deepEqual(ids(r.out), e.out, w);
+      if ("ja" in e) { assert.deepEqual(ids(r.ja), e.ja, w); assert.deepEqual(ids(r.nein), e.nein, w); } else assert.equal(r.ja, undefined, w);
+      const pts = Object.fromEntries(r.out.filter((x) => "punkte" in x).map((x) => [x.id, x.punkte]));
+      assert.deepEqual(pts, e.punkte ?? {}, w);
+      assert.deepEqual(r.stats, e.stats, w);
+    }
+    for (const [kind, exp] of Object.entries(c.sinks) as [string, Record<string, string[]>][]) {
+      const got = sinkRows(parsed.flow, c.rows, kind as FlowNode["kind"]);
+      assert.deepEqual(Object.fromEntries(Object.entries(got).map(([k, v]) => [k, ids(v)])), exp, `${c.name} / ${kind}`);
+    }
+  }
+});
+
+const ROWS_X: Row[] = [row("a", { land: "US", segment: "S2", hat_telefon: true }), row("b", { land: "US", segment: "S2", hat_telefon: false })];
+
+test("Freigabe, Speicher, Melden: Format, Prüfung, Texte", () => {
+  const POOL = "0F0E0D0C-0B0A-4000-8000-000000000001";
+  const G: FlowNode = { id: "g", x: 0, y: 0, kind: "freigabe" };
+  const S = (over: Record<string, unknown> = {}) => ({ id: "sp", x: 0, y: 0, kind: "speicher", pool_id: POOL, pool_name: "US Beste", ...over }) as FlowNode;
+  const M: FlowNode = { id: "m", x: 0, y: 0, kind: "melden" };
+  assert.equal(NODE_META.freigabe.color, "#e2c68f");
+  assert.equal(NODE_META.freigabe.icon, "schloss");
+  assert.deepEqual([NODE_META.speicher.group, NODE_META.melden.group, NODE_META.freigabe.group], ["ziel", "ziel", "schritt"]);
+  // Pool-id wird klein geschrieben, Gesamtbestand = null
+  const p = parseFlow({ v: 1, nodes: [Q(), G, S(), M], edges: [E("e1", "q", "g"), E("e2", "g", "sp"), E("e3", "g", "m")] });
+  assert.ok(p.ok);
+  if (p.ok) assert.equal((p.flow.nodes[2] as Extract<FlowNode, { kind: "speicher" }>).pool_id, POOL.toLowerCase());
+  assert.ok(parseFlow({ v: 1, nodes: [S({ pool_id: null, pool_name: "Gesamtbestand" })], edges: [] }).ok);
+  for (const bad of [{ pool_id: "x" }, { pool_id: 5 }, { pool_id: "'; drop" }, { pool_name: "x".repeat(41) }, { pool_name: null }])
+    assert.equal(parseFlow({ v: 1, nodes: [S(bad)], edges: [] }).ok, false, JSON.stringify(bad));
+  // Freigabe auf dem Weg zur Pipeline ist erlaubt und lässt alles durch
+  const pf = flow([Q(), G, F("f", [{ f: "hat_telefon", op: "ja" }]), P], [E("e1", "q", "g"), E("e2", "g", "f"), E("e3", "f", "p")]);
+  assert.deepEqual(errs(pf), []);
+  assert.equal(pipelineCheck(pf, ROWS_X[0]), true);
+  assert.equal(pipelineCheck(pf, ROWS_X[1]), false);
+  // Speicher nur für Leads; Hinweise je Art des Flows
+  assert.ok(errs(flow([Q({ source: "kaeufer" }), S()], [E("e1", "q", "sp")])).some((m) => m.includes("Speicher nur für Leads")));
+  const fs = flow([Q(), G, S(), M], [E("e1", "q", "g"), E("e2", "g", "sp"), E("e3", "g", "m")]);
+  assert.deepEqual(errs(fs), []);
+  assert.ok(warns(fs).some((m) => m.includes("Vorschau")));
+  assert.ok(warns(fs).some((m) => m.includes("meldet nur")));
+  assert.ok(!problems(fs, "agent").some((x) => x.msg.includes("meldet nur") || x.msg.includes("füllt sich nur")));
+  assert.ok(problems(flow([Q(), S({ pool_id: null })], [E("e1", "q", "sp")]), "master").some((x) => x.msg.includes("Gesamtbestand")));
+  assert.ok(problems(flow([Q(), S()], [E("e1", "q", "sp")]), "master").some((x) => x.msg.includes("läuft trotzdem immer")));
+  assert.ok(!problems(fs, "master").some((x) => x.msg.includes("läuft trotzdem immer")));
+  assert.ok(errs(flow([Q(), S({ pool_name: " " })], [E("e1", "q", "sp")])).some((m) => m.includes("Speicher-Name")));
+  // Ziele haben keinen Ausgang
+  assert.ok(errs(flow([Q(), S(), F("f", [])], [E("e1", "q", "sp"), E("e2", "sp", "f")])).some((m) => m.includes("keinen Ausgang")));
+  assert.equal(describeNode(G), "Drei-Stufen-Freigabe · läuft immer");
+  assert.equal(describeNode(S()), "in „US Beste“");
+  assert.equal(describeNode(S({ pool_id: null })), "in „Gesamtbestand“");
+  assert.ok(describeNode(M).includes("10"));
 });
 
 const ROWS: Row[] = [

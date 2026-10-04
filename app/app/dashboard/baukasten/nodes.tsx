@@ -34,6 +34,7 @@ export const portCount = (r: NodeRows | undefined, port: Port) => (!r?.connected
 const VERB: Record<FlowNode["kind"], string> = {
   quelle: "in der Stichprobe", filter: "durch", weiche: "geprüft", punkte: "durch", top: "genommen", dubletten: "einzeln",
   statistik: "gezählt", pipeline: "erreichen die Regel", export: "zum Herunterladen", agent: "für den Agenten",
+  freigabe: "durch", speicher: "in den Speicher", melden: "gemeldet",
 };
 
 function NodeCard({ id, data, selected }: NodeProps<BkNode>) {

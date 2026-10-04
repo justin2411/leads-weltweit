@@ -6,7 +6,7 @@
  */
 import type { LucideIcon } from "lucide-react";
 import {
-  Archive, ArrowDown, ArrowRight, ArrowUpWideNarrow, Ban, Blocks, Bot, Cable, ChartColumn, Check, ChevronDown, ChevronRight,
+  Archive, ArrowDown, ArrowRight, ArrowUpWideNarrow, Ban, Bell, Blocks, Bot, Cable, ChartColumn, Check, ChevronDown, ChevronRight,
   ChevronUp, CircleAlert, CircleCheck, CircleX, ClipboardCheck, Clock, Contact, CopyX, Database, Delete, Download, Ellipsis,
   Factory, Filter, Flag, Forward, Gift, Globe, GripVertical, HardDrive, Hourglass, House, Info, Lock, Magnet, Mail, MailX,
   Menu, MessageSquare, Minus, MousePointerClick, Move, Package, Pause, Phone, Pickaxe, Play, Plus, Radar, RefreshCw, Repeat,
@@ -43,6 +43,7 @@ const ICONS = {
   pipeline: Workflow,
   export: Download,
   agent: Bot,
+  melden: Bell,
   "an-agent": Forward,
   neu: Sparkles,
   verbinden: Cable,
