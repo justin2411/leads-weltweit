@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/lib/supabase";
 import { loadAb } from "@/lib/ab-data";
-import { CONFIG, COUNTRIES, SEGMENT, loadAnalyticsCache, loadBounceStats, loadDaily, loadFunnel, loadFunnelCache, loadLive, loadOwnerSettings, loadStock } from "@/lib/dashboard-data";
+import { CONFIG, COUNTRIES, SEGMENT, loadAnalyticsCache, loadBounceStats, loadDaily, loadFunnel, loadFunnelCache, loadKohorten, loadLive, loadOwnerSettings, loadStock } from "@/lib/dashboard-data";
 import { bounceBrief } from "@/lib/bounce-stats";
 import { analyticsBrief, hints as webHints } from "@/lib/website-analytics";
 import { funnelBrief } from "@/lib/website-funnel";
@@ -16,6 +16,8 @@ import { REG } from "@/lib/regler-data";
 import { fmtBerlin } from "@/lib/start-queue";
 import { nextSendStart, planText } from "@/lib/versandzeit";
 import { addDays, neckStreak, trendLine } from "@/lib/trend";
+import { kohortenBrief } from "@/lib/kohorten";
+import { hintsKurz, line, probenKurz, type ProbeSeite } from "@/lib/kontext-kurz";
 
 /**
  * Kompakter Kontext für die Sofort-Antworten (lib/jarvis-ask.ts) und die lesenden Werkzeuge (lib/jarvis-tools.ts).
@@ -239,15 +241,22 @@ async function topic(session: ChatSession): Promise<string> {
   return head;
 }
 
-const line = (k: string, v: unknown) => `${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`;
+/** Kohorten-Trichter je Versandwoche × Land (letzte 4 Wochen, kompakt); Fehler → „nicht lesbar“. */
+async function kohorten(now: Date): Promise<unknown> {
+  return kohortenBrief(await loadKohorten(4).catch(() => null), COUNTRIES, berlinDay(now), 4);
+}
 
-/** Kompakter Kontext (wenige hundert Tokens): Uhrzeit, Kennzahlen, Thema der Sitzung. */
+/**
+ * Kompakter Kontext (wenige hundert Tokens): Uhrzeit, dann die Engpass-Zahlen (Engpass, Versand/Notbremse, Zustellbarkeit,
+ * Kohorten, Bounces, Trend), danach Kunden, Antworten, Proben, Freigabe, Bestand, Werke, Website, API, Thema der Sitzung.
+ * Leere Felder fallen weg (lib/kontext-kurz.ts); jede Zahl, die vorher drin war, bleibt erhalten.
+ */
 export async function buildContext(session: ChatSession, s: Sources): Promise<string> {
   const now = s.now;
-  const [fg, en, an, top, api, wt, wh, zu, tr, bk] = await Promise.all([freigabe(), engpass(), antworten(), topic(session), loadLlmState(s.own),
+  const [fg, en, an, top, api, wt, wh, zu, tr, bk, kh] = await Promise.all([freigabe(), engpass(), antworten(), topic(session), loadLlmState(s.own),
     loadFunnelCache(5 * 60_000).then(funnelBrief, () => ({ fehler: NA })),
     Promise.all([loadAnalyticsCache(10 * 60_000), loadFunnelCache(5 * 60_000)]).then(([a, f]) => webHints(a, f, "7d").map((h) => `${h.title}: ${h.grund}`), () => NA),
-    zustellbarkeit(), trend7(now), loadBounceStats(7).then(bounceBrief, () => NA)]);
+    zustellbarkeit(), trend7(now), loadBounceStats(7).then(bounceBrief, () => NA), kohorten(now)]);
   const v = versand(s) as Record<string, unknown>;
   const p = proben(s) as Record<string, unknown>;
   const k = kunden(s);
@@ -255,23 +264,26 @@ export async function buildContext(session: ChatSession, s: Sources): Promise<st
   const w = werke(s);
   return [
     `Jetzt: ${new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", dateStyle: "full", timeStyle: "short" }).format(now)} (deutsche Zeit). Nächster Agenten-Lauf: ${nextRunAt(now)}.`,
+    // Engpass-Zahlen zuerst: wo hängt es, darf versendet werden, kommt die Mail an, was wird aus jeder Versandwoche
+    line("Engpass", en),
     line("Versand", v.fehler ? v : { aktiv: v.aktiv, heute: `${v.heute_gesendet}/${v.tagesgrenze}`, naechster_lauf: v.naechster_lauf, notbremse: v.notbremse, nachfass: v.nachfass }),
-    line("Proben", p.fehler ? p : { bereit: `${p.bereit_gesamt}/${p.soll_gesamt}`, seiten: p.seiten }),
     line("Zustellbarkeit", zu),
+    // Kohorten je Versandwoche (ISO, Erstmail) × Land: gesendet→zugestellt→Antwort→positiv→Probe→Kunde; „jung“ = < 14 T, ab Antwort offen
+    line("Kohorten", kh),
     // Bounce-Klassen 7 T (hart = Adresse/Domain fehlt, weich = voll/Timeout, richtlinie = Spam/Blockliste) je Postfach und Käufer-Quelle
     line("Bounces 7T", bk),
-    line("Freigabe", fg),
-    line("Kunden", k),
-    line("Antworten", { offen: an.offen_im_cockpit }),
-    line("Bestand", b.laender ? b.laender.map((x) => ({ land: x.land, leads_neu_24h: x.leads_neu_24h, kaeufer_ok: x.kaeufer_mailfaehig, kaeufer_frei: x.kaeufer_noch_nicht_angeschrieben })) : b),
-    line("Werke", { ...w.werke, autopilot: w.autopilot_plaetze, plaetze: w.plaetze_gesamt }),
-    line("Engpass", en),
     // 7 volle Tage vs. die 7 davor (lib/trend.ts); unter n=20 „zu wenig Daten“
     line("Trend 7T (Vor-7T)", tr),
+    line("Kunden", k),
+    line("Antworten", { offen: an.offen_im_cockpit }),
+    line("Proben", p.fehler ? p : { bereit: `${p.bereit_gesamt}/${p.soll_gesamt}`, ...probenKurz(p.seiten as ProbeSeite[], SEGMENT) }),
+    line("Freigabe", fg),
+    line("Bestand", b.laender ? b.laender.map((x) => `${x.land}: Leads neu 24 h ${x.leads_neu_24h}, Käufer ok ${x.kaeufer_mailfaehig}, frei ${x.kaeufer_noch_nicht_angeschrieben}`) : b),
+    line("Werke", { ...w.werke, autopilot: w.autopilot_plaetze, plaetze: w.plaetze_gesamt }),
     // Website-Trichter Startseite → Landingpage → Tarif → Stripe → Danke (24 h und 30 Tage, wie /dashboard/website/auswertung)
     line("Website-Trichter", wt),
     // drei automatische Website-Hinweise (größter Abbruch, beste Quelle, langsamste Seite; 7 Tage)
-    line("Website-Hinweise", wh),
+    line("Website-Hinweise", hintsKurz(wh)),
     line("API", api?.text ?? NA),
     top,
   ].join("\n");
@@ -322,7 +334,9 @@ export async function brainContext(s: Sources): Promise<string> {
   const short = (d: Row) => ({ titel: titelVon({ subject: String(d.subject ?? ""), kurz_titel: (d.kurz_titel as string | null) ?? null }), am: fmtBerlin(String(d.created_at)) });
   return [
     // Trend 7T (Vor-7T) steht schon im Grundkontext (buildContext), der im Gehirn-Modus immer mitkommt
-    line("Trichter je Land seit Start", an.je_land_seit_start),
+    // gesendet→zugestellt→Antwort→positiv→Probe→Kunde; je Versandwoche steht im Grundkontext („Kohorten“)
+    line("Trichter je Land seit Start", Array.isArray(an.je_land_seit_start)
+      ? an.je_land_seit_start.map((f) => `${f.land} ${f.mails}→${f.zugestellt}→${f.antworten}→${f.positiv}→${f.proben}→${f.kunden}`) : an.je_land_seit_start),
     // Website-Analyse wie GA4 (7 Tage vs. Vorwoche, Kanäle, Einstieg/Ausstieg, Hinweise) – dashboard_cache 'website_analytics'
     line("Website-Analyse", wa),
     line("Offene Vorschläge (7 Tage)", proposed ? proposed.map(short) : NA),
@@ -335,7 +349,7 @@ export async function brainContext(s: Sources): Promise<string> {
     line("JARVIS hat umgesetzt (7 Tage)", done ? done.map(short) : NA),
     line("Gehirn-Routinen", routines.length ? routines.map((r) => ({ id: r.id, name: r.name, plan: scheduleLabel(r), aktiv: r.aktiv, naechster: whenLabel(nextRun(r, s.now), s.now), ergebnis: r.last_result })) : "keine"),
     line("Letzte Aufträge", tasks ? tasks.map((t) => ({ agent: t.agent, art: t.kind, status: t.status, von: fromBrain(t as { created_by?: string | null }) ? "Gehirn" : t.created_by ?? null,
-      grund: t.grund ?? null, auftrag: String(t.brief ?? "").slice(0, 100), ergebnis: t.result ? String(t.result).slice(0, 160) : null, gelernt: !!t.gelernt_at,
+      grund: t.grund ?? null, auftrag: String(t.brief ?? "").slice(0, 100), ergebnis: t.result ? String(t.result).slice(0, 160) : null, gelernt: t.gelernt_at ? true : null,
       // Lernschleife (scripts/datenfluss.py wirkung): 72 h nach Abschluss Kennzahl vorher/nachher aus kpi_daily
       wirkung: (t.wirkung as { bewertung?: string } | null)?.bewertung ?? null })) : NA),
   ].join("\n");

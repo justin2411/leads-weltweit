@@ -383,6 +383,17 @@ export async function loadBounceStats(days = 7): Promise<import("@/lib/bounce-st
   }
 }
 
+/** Kohorten-Trichter je Versandwoche und Land (signalwerk.cohort_funnel, ~0,5 s); Fehler -> null. */
+export async function loadKohorten(weeks = 8, segment = SEGMENT): Promise<import("@/lib/kohorten").KohorteRow[] | null> {
+  try {
+    const { data, error } = await db().rpc("cohort_funnel", { p_segment: segment, p_countries: [...COUNTRIES], p_weeks: weeks }).abortSignal(AbortSignal.timeout(5000));
+    if (error) throw new Error(error.message);
+    return (await import("@/lib/kohorten")).normalizeRows(data);
+  } catch {
+    return null;
+  }
+}
+
 /** Trichter je Land für die Zielgruppe (experiment_stats, ~50 ms); Fehler -> null (Anzeige „…“ statt falscher Nullen). */
 export async function loadFunnel(segment = SEGMENT): Promise<FunnelRow[] | null> {
   try {

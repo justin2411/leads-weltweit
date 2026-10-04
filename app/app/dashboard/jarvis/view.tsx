@@ -1,7 +1,7 @@
 /**
  * Aufbau der JARVIS-Startseite (Inhaber 04.10.2026: „optimiere nochmal das design bei jarvis“) – reine Darstellung,
  * alle Zahlen kommen fertig aus page.tsx. Reihenfolge: Kopf (Begrüßung, Uhr) · Heute wichtig · 4 Kern-Kennzahlen · Ziel vs. Ist · JARVIS empfiehlt (X = ausblenden) ·
- * Agenten A1–A8 · Fluss-Karte (mit Seitenfenster) · Entscheidungen · Chat und Freigabe (unten rechts) · Live-Ticker.
+ * Agenten A1–A8 · Fluss-Karte (mit Seitenfenster) · Kohorten-Trichter (aufklappbar) · Entscheidungen · Chat und Freigabe (unten rechts) · Live-Ticker.
  * Raster in 8er-Schritten, Karten je Reihe gleich hoch, am Handy eine Spalte ohne seitliches Scrollen.
  */
 import type { ReactNode } from "react";
@@ -23,6 +23,8 @@ import { JCHAT_CSS, SOFORT_CSS } from "./chat/css";
 import type { Proposal } from "@/lib/vorschlaege";
 import type { Bar, Eintrag, Wichtig } from "@/lib/ueberblick";
 import { HeuteWichtig, ZielIst, Zeitleiste } from "./ueberblick";
+import { KOHORTEN_CSS, Kohorten } from "./kohorten";
+import type { KohorteRow } from "@/lib/kohorten";
 
 export type JarvisProps = {
   hello: string; say: string;
@@ -42,12 +44,14 @@ export type JarvisProps = {
   heute?: Wichtig[];
   ziel?: { mails: Bar[]; leads: Bar[] | null };
   zeit?: Eintrag[] | null;
+  /** Kohorten-Trichter je Versandwoche × Land (aufklappbar unter der Fluss-Karte); rows null = nicht lesbar */
+  kohorten?: { rows: KohorteRow[] | null; countries: readonly string[]; today: string };
 };
 
 export function JarvisView(p: JarvisProps) {
   return (
     <div className={`jv jv2 jv3 ${p.drawer ? "has-drw" : ""}`}>
-      <style dangerouslySetInnerHTML={{ __html: JCHAT_CSS + SOFORT_CSS }} />
+      <style dangerouslySetInnerHTML={{ __html: JCHAT_CSS + SOFORT_CSS + KOHORTEN_CSS }} />
       <header className="jv-top">
         <span className="jv-logo" aria-hidden><i /><i /><i /></span>
         <div className="jv-hi">
@@ -76,6 +80,7 @@ export function JarvisView(p: JarvisProps) {
         <FlowMap stations={p.stations} edges={p.edges} active={p.activeAgent ? null : p.activeStation} href={p.stationHref} />
         {p.drawer}
       </div>
+      {p.kohorten && <Kohorten rows={p.kohorten.rows} countries={p.kohorten.countries} today={p.kohorten.today} />}
       {p.zeit !== undefined && <Zeitleiste items={p.zeit} />}
       <div className="jv-duo">
         <JarvisChat tasks={p.tasks} startAt={p.startAt} chat={p.chat ?? null} />
