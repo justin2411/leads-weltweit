@@ -417,6 +417,12 @@ function Editor({ initial, flows, pools: poolsIn, onNav, notice }: {
       setStale(null);
       return;
     }
+    if (!r.pending && r.def && sig(r.name, r.def) === base) {
+      // eigenes Speichern (gleicher Inhalt wie zuletzt gespeichert), danach weiter bearbeitet: kein Chat-Hinweis
+      if (master) setVersion(r.version);
+      setStale(null);
+      return;
+    }
     if (touched) { setStale(r); return; }
     takeRemote(r);
   };

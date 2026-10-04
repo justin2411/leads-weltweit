@@ -130,6 +130,23 @@ class BerichtTest(unittest.TestCase):
         self.assertEqual(len(rows), 2)
         self.assertTrue(all(m["role"] == "jarvis" and m["status"] is None for m in rows))
 
+    def test_reply_in_bericht_session_does_not_block_report(self):
+        db = db_with()
+        db.tables["jarvis_messages"].append({"id": "q1", "session_id": "sb", "created_at": ISO(-3), "role": "inhaber",
+                                             "body": "Warum weniger Proben?", "status": "offen"})
+        with mock.patch.object(J, "now", return_value=T0):
+            J.antwort(db, "sb", "Weil der Vorrat leer war.", [])
+            self.assertIsNotNone(J.bericht(db, "Tagesbericht"))  # Antwort zählt nicht als Bericht
+            self.assertIsNone(J.bericht(db, "nochmal"))
+
+    def test_stale_check_parses_times(self):
+        # als Zeit verglichen, auch mit „Z“ statt „+00:00“ (Textvergleich wäre hier falsch)
+        for started in ("2026-10-04T08:00:00+00:00", "2026-10-04T08:00:00Z", "2026-10-04T10:00:00+02:00"):
+            m = {"status": "in_arbeit", "started_at": started}
+            self.assertFalse(J._is_open(m, dt.datetime(2026, 10, 4, 9, 59, 59, tzinfo=dt.timezone.utc)), started)
+            self.assertTrue(J._is_open(m, dt.datetime(2026, 10, 4, 10, 0, 1, tzinfo=dt.timezone.utc)), started)
+        self.assertFalse(J._is_open({"status": "fertig"}, T0))
+
     def test_creates_session_if_missing(self):
         db = FakeDB({"jarvis_sessions": [], "jarvis_messages": []})
         with mock.patch.object(J, "now", return_value=T0):

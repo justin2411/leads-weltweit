@@ -75,11 +75,23 @@ def berlin_day_start(t: dt.datetime) -> dt.datetime:
     return dt.datetime(local.year, local.month, local.day, tzinfo=BERLIN).astimezone(dt.timezone.utc)
 
 
+def _ts(x) -> dt.datetime | None:
+    """Zeitstempel aus PostgREST („…+00:00“, mit/ohne Bruchteile) oder ISO mit „Z“ → datetime (UTC); ungültig → None."""
+    try:
+        d = dt.datetime.fromisoformat(str(x).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return d if d.tzinfo else d.replace(tzinfo=dt.timezone.utc)
+
+
 def _is_open(m: dict, t: dt.datetime) -> bool:
     if m.get("status") == "offen":
         return True
-    started = str(m.get("started_at") or "")
-    return m.get("status") == "in_arbeit" and (not started or started < (t - STALE).isoformat())
+    if m.get("status") != "in_arbeit":
+        return False
+    started = _ts(m.get("started_at")) if m.get("started_at") else None
+    # als Zeit vergleichen, nicht als Text (PostgREST lässt z. B. „.000000“ weg)
+    return started is None or started < t - STALE
 
 
 def history(db, session_id: str) -> list[dict]:
@@ -154,12 +166,15 @@ def bericht(db, body: str) -> dict | None:
         s = (db.insert("jarvis_sessions", {"title": "Tagesbericht", "kind": "bericht"}) or [None])[0]
     if not s:
         raise RuntimeError("Sitzung Tagesbericht fehlt")
+    # Nur echte Tagesberichte zählen (done_at gesetzt) – Antworten auf Rückfragen des Inhabers in dieser Sitzung
+    # (`antwort`, done_at leer) sperren den Bericht des Tages nicht.
     since = berlin_day_start(now()).isoformat()
     if db.select("jarvis_messages", {"session_id": f"eq.{s['id']}", "role": "eq.jarvis", "created_at": f"gte.{since}",
-                                     "select": "id", "limit": "1"}):
+                                     "done_at": "not.is.null", "select": "id", "limit": "1"}):
         return None
+    t = now().isoformat()
     row = db.insert("jarvis_messages", {"session_id": s["id"], "role": "jarvis", "body": body, "status": None, "links": [],
-                                        "created_at": now().isoformat()})
+                                        "created_at": t, "done_at": t})
     return {"id": (row or [{}])[0].get("id"), "session_id": s["id"]}
 
 

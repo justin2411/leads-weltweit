@@ -41,7 +41,7 @@ create table if not exists signalwerk.jarvis_messages (
   body        text not null check (char_length(btrim(body)) between 1 and 8000),
   status      text default 'offen' check (status in ('offen', 'in_arbeit', 'fertig')),
   started_at  timestamptz,
-  done_at     timestamptz,
+  done_at     timestamptz,                   -- Inhaber: erledigt; JARVIS: gesetzt nur beim Tagesbericht (jarvis_chat.py bericht)
   links       jsonb not null default '[]'::jsonb check (jsonb_typeof(links) = 'array'),
   -- JARVIS-Antworten tragen keinen Status (ausdrücklich null setzen), Inhaber-Nachrichten immer einen
   constraint jarvis_messages_status_role check ((role = 'inhaber') = (status is not null))
