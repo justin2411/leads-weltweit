@@ -24,6 +24,7 @@ import datetime as dt
 import re
 import unicodedata
 
+from lib import premium as P
 from lib import websites as W
 
 VERSION = 1
@@ -34,9 +35,9 @@ UK_SOURCE = "Companies House"
 PARTICLES = {"de", "du", "des", "la", "le", "van", "von", "der", "den", "da", "di", "del", "mc", "st"}
 PERSON_WIDERSPRUCH = {"plz_register_abweichend", "register_inaktiv", "person_website_abweichend",
                       "person_bestand_abweichend"}
-# Premium-Punkte wie scripts/lib/premium.py (Ansprechperson 15, Premium ab 70 und frisch); dort maßgeblich
-PREMIUM_PERSON = 15
-PREMIUM_MIN = 70
+# Premium-Punkte aus scripts/lib/premium.py (Ansprechperson 15, Premium ab 70 und frisch)
+PREMIUM_PERSON = P.POINTS["person"]
+PREMIUM_MIN = P.PREMIUM_MIN
 
 
 def fold(s: str | None) -> str:
