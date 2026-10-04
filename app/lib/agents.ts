@@ -6,7 +6,8 @@
  */
 import type { IconName } from "../app/icons";
 
-export const AGENT_COUNT = 4;
+/** Agenten des Inhabers A1–A8 (Inhaber 04.10.2026: „nicht nur 4 freie agenten … sondern 8“); 9 = Kunden-Agenten. */
+export const AGENT_COUNT = 8;
 /** icon = Name eines Linien-Icons (app/icons.tsx), gerendert mit <Icon name=…/> – keine Emojis/Glyphen. */
 export const KINDS = {
   leads: { label: "Leads holen", icon: "lead-werk", hint: "mehr Leads für einen Markt" },
@@ -33,7 +34,7 @@ export const CHAT_BY = "JARVIS-Chat";
 
 export class TaskError extends Error {}
 
-/** Auftrag aus dem Formular prüfen: Agent 1–4, bekannte Art, Markt optional aus der Liste, Text 3–1000 Zeichen. */
+/** Auftrag aus dem Formular prüfen: Agent 1–8, bekannte Art, Markt optional aus der Liste, Text 3–1000 Zeichen. */
 export function validateTask(f: { agent?: unknown; kind?: unknown; market?: unknown; brief?: unknown }) {
   const agent = Number(f.agent);
   if (!Number.isInteger(agent) || agent < 1 || agent > AGENT_COUNT) throw new TaskError("Agent wählen");
@@ -125,23 +126,34 @@ export function formDefaults(o: { tasks: AgentTask[]; agent: number | null; kind
   return { agent: o.agent ?? freeAgent(o.tasks), kind, market, brief };
 }
 
-/** Minute, zu der die stündliche Agenten-Runde startet (Routine „JARVIS-Agenten“, stündlich :53, CLAUDE.md 04.10.2026). */
-/** Minuten der JARVIS-Runden (Inhaber 04.10.2026: viermal pro Stunde statt nur :53). */
+/** Minuten der JARVIS-Runden (Inhaber 04.10.2026: viermal pro Stunde, :08, :23, :38, :53 deutsche Zeit). */
 export const AGENT_MINUTES = [8, 23, 38, 53];
 
-/** Nächster Start der Agenten-Runde nach `now` (Berlin und UTC haben dieselbe Minute). Für die Anzeige
- *  „startet um HH:MM“ statt „wartet“ bei offenen Aufträgen. */
-export function nextAgentRound(now: Date): Date {
-  for (const m of AGENT_MINUTES) {
-    const d = new Date(now.getTime());
-    d.setUTCSeconds(0, 0);
-    d.setUTCMinutes(m);
-    if (d.getTime() > now.getTime()) return d;
+/** Minute-Stunde in Europe/Berlin (MEZ/MESZ) – über Intl, damit Sommer-/Winterzeit stimmt. */
+function berlinParts(d: Date): { h: number; m: number } {
+  const p = new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(d);
+  return { h: Number(p.find((x) => x.type === "hour")?.value), m: Number(p.find((x) => x.type === "minute")?.value) };
+}
+
+/**
+ * Nächster Start der JARVIS-Runde nach `now` (streng später): die nächste volle Minute, deren Berliner Minute in
+ * AGENT_MINUTES liegt. Für „startet um HH:MM“ statt „wartet“ (Agenten-Leiste, Auftragsfenster, Status).
+ */
+export function nextAgentRun(now: Date): Date {
+  const t = Math.floor(now.getTime() / 60_000) * 60_000 + 60_000; // nächste volle Minute
+  for (let i = 0; i < 24 * 60; i++) {
+    const d = new Date(t + i * 60_000);
+    if (AGENT_MINUTES.includes(berlinParts(d).m)) return d;
   }
-  const d = new Date(now.getTime());
-  d.setUTCSeconds(0, 0);
-  d.setUTCHours(d.getUTCHours() + 1, AGENT_MINUTES[0]);
-  return d;
+  return new Date(t);
+}
+/** @deprecated Name vor 04.10.2026 – gleich nextAgentRun. */
+export const nextAgentRound = nextAgentRun;
+
+/** „startet um 09:53“-Uhrzeit (deutsche Zeit) der nächsten Runde. */
+export function agentStartLabel(now: Date): string {
+  const { h, m } = berlinParts(nextAgentRun(now));
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
 /** Erster Agent ohne laufenden oder offenen Auftrag, sonst Agent 1. */

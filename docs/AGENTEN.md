@@ -1,8 +1,16 @@
 # Agenten – Aufträge aus dem Dashboard
 
 Inhaber 03.10.2026: „einzelne agenten nutzen die sachen für mich machen, z.b. ich beauftrage agent 1 neue leads zu
-holen für den markt“. Der Inhaber erteilt Aufträge in JARVIS (Agenten-Leiste, „+ Auftrag“, oder einen gelben Hinweis bzw. den Engpass auf A1–A4 ziehen – dann steht der Auftragstext schon fertig drin). Eine Claude-Sitzung
-(Routine „Agenten“, stündlich) bearbeitet sie nach dieser Anleitung. CLAUDE.md gilt immer zuerst.
+holen für den markt“. Der Inhaber erteilt Aufträge in JARVIS (Agenten-Leiste, „+ Auftrag“, oder einen gelben Hinweis bzw. den Engpass auf A1–A8 ziehen – dann steht der Auftragstext schon fertig drin). Eine Claude-Sitzung
+(Routine „JARVIS-Agenten“, viermal pro Stunde) bearbeitet sie nach dieser Anleitung. CLAUDE.md gilt immer zuerst.
+
+**Acht Agenten** (Inhaber 04.10.2026: „nicht nur 4 freie agenten … sondern 8“): A1–A8 gehören dem Inhaber
+(`agent_tasks.agent` 1–8, Prüfung `app/lib/agents.ts` `AGENT_COUNT`), Agent 9 ist für Kunden-Aufträge reserviert
+(Spalte erlaubt 1–9). Freier Agent = erster ohne offenen oder laufenden Auftrag.
+
+**Laufzeiten** (Inhaber 04.10.2026): Die Runde startet viermal pro Stunde, Minute **:08, :23, :38 und :53** deutscher
+Zeit. Das Dashboard zeigt bei offenen Aufträgen nie „wartet“, sondern „startet um HH:MM“ mit dem nächsten dieser
+Zeitpunkte (`nextAgentRun(now)` / `agentStartLabel(now)` in `app/lib/agents.ts`, Europe/Berlin, mit Tests).
 
 Nach den Aufträgen macht jede Sitzung den JARVIS-Lauf nach `docs/JARVIS.md` (Engpass protokollieren, A/B-Tests
 auswerten und bei anhaltendem Engpass selbst starten).

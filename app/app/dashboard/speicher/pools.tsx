@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState, useTransition, type CSSProperties
 import {
   ALL_POOL, changeText, effectivePool, poolChanges, routeKey, type Pool, type PoolDraft,
 } from "@/lib/pools";
+import { Fold } from "../fold";
 import { fmtBerlin } from "@/lib/start-queue";
 import { Icon } from "@/app/icons";
 import { applyPools, createPool, updatePool } from "./actions";
@@ -144,9 +145,9 @@ export function Pools({ pools, rows, saved, subs, subRoute, error, newColor }: {
       </section>
 
       {/* Inhaber 04.10.2026: lange Abschnitte ein- und ausklappbar – zu, solange alles auf Gesamtbestand steht */}
-      <details className="sp-card pl-card pl-fold" aria-label="Bedienen aus"
-        open={ownRoutes > 0 || changes.some((c) => c.kind === "route") || undefined}>
-        <summary className="sp-h"><h2>Bedienen aus</h2><span className="sp-note">Proben und Lieferungen je Zielgruppe und Land · {ownRoutes ? `${ownRoutes} eigene` : "alles Gesamtbestand"}</span></summary>
+      <Fold id="speicher-bedienen" className="sp-card pl-card" head="sp-h" open={ownRoutes > 0 || changes.some((c) => c.kind === "route")}
+        title={<h2>Bedienen aus</h2>} sum={<span className="sp-note">{ownRoutes ? `${ownRoutes} eigene` : "alles Gesamtbestand"}</span>}>
+        <p className="fold-note">Proben und Lieferungen je Zielgruppe und Land</p>
         {!rows.length ? <p className="sp-none">Keine Zielgruppe mit Mail-Ländern.</p> : (
           <div className="pl-matrix">
             {rows.map((r) => (
@@ -171,10 +172,11 @@ export function Pools({ pools, rows, saved, subs, subRoute, error, newColor }: {
             ))}
           </div>
         )}
-      </details>
+      </Fold>
 
-      <details className="sp-card pl-card pl-fold" aria-label="Je Kunde" open={changes.some((c) => c.kind === "sub") || undefined}>
-        <summary className="sp-h"><h2>Je Kunde</h2><span className="sp-note">übersteuert Zielgruppe und Land · {subs.length} Abos</span></summary>
+      <Fold id="speicher-je-kunde" className="sp-card pl-card" head="sp-h" open={changes.some((c) => c.kind === "sub")}
+        title={<h2>Je Kunde</h2>} sum={<span className="sp-note">{subs.length} Abos</span>}>
+        <p className="fold-note">übersteuert Zielgruppe und Land</p>
         {!subs.length ? <p className="sp-none">Noch keine Abos.</p> : (
           <div className="pl-subs">
             {subs.map((s) => {
@@ -194,7 +196,7 @@ export function Pools({ pools, rows, saved, subs, subRoute, error, newColor }: {
             })}
           </div>
         )}
-      </details>
+      </Fold>
 
       {pending && (
         <div className="pl-bar" role="region" aria-label="Änderungen übernehmen">

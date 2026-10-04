@@ -82,7 +82,7 @@ test("KI-Hinweis der Begrüßung je Sprache und Geschlecht, mit {owner}", () => 
   }
 });
 
-test("Kunden-Aufträge immer an Agent 9 (A1–A4 bleiben dem Inhaber)", () => {
+test("Kunden-Aufträge immer an Agent 9 (A1–A8 bleiben dem Inhaber)", () => {
   assert.equal(KUNDE_TASK_AGENT, 9);
 });
 

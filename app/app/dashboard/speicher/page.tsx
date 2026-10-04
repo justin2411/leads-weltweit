@@ -13,6 +13,7 @@ import { requireOwner } from "../actions";
 import { Icon } from "@/app/icons";
 import { SPEICHER_CSS } from "./css";
 import { Pools } from "./pools";
+import { Fold } from "../fold";
 
 export const metadata = { title: "Speicher" };
 type SP = Promise<Record<string, string | string[] | undefined>>;
@@ -187,8 +188,8 @@ function Body({ d, seg, proben, brake }: { d: Storage; seg: string; proben: Prob
       </section>
 
       <div className="sp-row3">
-        <section className={`sp-card sp-lvl-${db.level}`}>
-          <div className="sp-h"><h2>Datenbank</h2><span className="sp-big">{Math.round(db.pct * 100)} %</span><span className="sp-note">{fmtBytes(db.used)} von 8 GB</span></div>
+        <Fold id="speicher-datenbank" className={`sp-card sp-lvl-${db.level}`} head="sp-h" title={<h2>Datenbank</h2>}
+          sum={<><span className="sp-big">{Math.round(db.pct * 100)} %</span><span className="sp-note">{fmtBytes(db.used)} von 8 GB</span></>}>
           <div className="sp-db">
             <Tank h={Math.min(1, db.pct)} tk={dbTicks} layers={[{ c: dbColor, n: db.used, title: "belegt" }]} n={fmtBytes(db.free)} label="frei"
               title={`${fmtBytes(db.used)} belegt · ${fmtBytes(db.free)} frei bis 8 GB`} />
@@ -202,10 +203,10 @@ function Body({ d, seg, proben, brake }: { d: Storage; seg: string; proben: Prob
           <p className="sp-cost" title="Stufen: ab 5,5 GB Hinweis · ab 6 GB höchstens 8 Lead-Plätze · ab 7 GB kein Rohbestand mehr · ab 7,5 GB Lead-Werk gestoppt · zurück erst 0,2 GB darunter">
             <Icon name="speicher" size={14} /> Speicher-Bremse: <b>{brake ? BREMSE[brake.level] ?? brake.level : "noch keine Messung"}</b>
             {brake && <> · geprüft {berlin(brake.at)}</>}</p>
-        </section>
+        </Fold>
 
-        <section className="sp-card">
-          <div className="sp-h"><h2>Proben-Vorrat</h2>{pb && <><span className="sp-big">{pb.ready}/{pb.target}</span><span className="sp-note">fertig / Soll</span></>}</div>
+        <Fold id="speicher-proben" className="sp-card" head="sp-h" title={<h2>Proben-Vorrat</h2>}
+          sum={pb ? <><span className="sp-big">{pb.ready}/{pb.target}</span><span className="sp-note">fertig / Soll</span></> : null}>
           {!pb ? <p className="sp-none">Vorrat gerade nicht erreichbar.</p> : !pb.rows.length ? <p className="sp-none">Keine Live-Seite.</p> : (
             <div className="tk-row small">
               {pb.rows.map((r) => {
@@ -217,10 +218,10 @@ function Body({ d, seg, proben, brake }: { d: Storage; seg: string; proben: Prob
               })}
             </div>
           )}
-        </section>
+        </Fold>
 
-        <section className="sp-card">
-          <div className="sp-h"><h2>Freigabe</h2><span className="sp-note">Drei-Stufen-Prüfung je Land</span></div>
+        <Fold id="speicher-freigabe" className="sp-card" head="sp-h" title={<h2>Freigabe</h2>} sum={<span className="sp-note">{gate.length ? `${gate.length} Länder` : "Drei-Stufen-Prüfung"}</span>}>
+          <p className="fold-note">Drei-Stufen-Prüfung je Land</p>
           {!gate.length ? <p className="sp-none">Noch keine Prüfungen.</p> : (
             <div className="sp-gate">
               {gate.map((g) => (
@@ -232,7 +233,7 @@ function Body({ d, seg, proben, brake }: { d: Storage; seg: string; proben: Prob
               ))}
             </div>
           )}
-        </section>
+        </Fold>
       </div>
     </>
   );

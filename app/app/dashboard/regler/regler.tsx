@@ -5,6 +5,7 @@
  * auch übernommen werden“). Alles wird erst lokal gestellt (Entwurf); gespeichert wird nur über die Leiste unten
  * („Übernehmen“). Danach lädt die Seite 3 min lang alle 20 s neu (sonst jede Minute), bis jedes Werk quittiert hat.
  */
+import { Fold } from "../fold";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
@@ -246,6 +247,7 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
     </>);
     }
     if (k === "proben-vorrat") return (<>
+      <Fold id="regler-proben-soll" head="rg-fold-h" open={ctx.pages.length <= 6} title="Soll je Seite" sum={`${ctx.pages.length} Seiten`}>
       <div className="rg-pages">{ctx.pages.map((p) => (
         <div key={p} className="rg-page">
           <div><b>{p.split("/")[1]}</b><em title="fertige Proben / gespeichertes Soll">bereit {ready[p] ?? 0}/{base.sample_targets[p] ?? 0}</em></div>
@@ -255,6 +257,7 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
           </div>
         </div>))}
       </div>
+      </Fold>
       {maxAgeMatters(ctx.pages) ? (
         <div className="rg-k"><span>Verfall</span>
           <Stepper label="Verfall (Stunden)" value={draft.sample_max_age_hours} min={MAX_AGE_RANGE[0]} max={MAX_AGE_RANGE[1]} step={12} unit="h" changed={changedPart(k, "verfall")} disabled={locked}
@@ -305,8 +308,7 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
         })}
       </div>
 
-      <section className="rg-hist" aria-label="Verlauf">
-        <h2>Verlauf</h2>
+      <Fold id="regler-verlauf" className="rg-hist" head="rg-hist-h" title={<h2>Verlauf</h2>} sum={history.length ? `${history.length} Änderungen` : "keine"}>
         {history.length ? (
           <ul>{history.map((h) => (
             <li key={h.id}>
@@ -317,7 +319,7 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
           </ul>
         ) : <span className="none">noch keine Änderungen</span>}
         {!dispatch && <p className="rg-lock" style={{ marginTop: 10 }}>„Jetzt anwenden“ startet spätestens in 15 min (Wachhund).</p>}
-      </section>
+      </Fold>
 
       {pending && (
         <div className="rg-bar" role="region" aria-label="Änderungen übernehmen">

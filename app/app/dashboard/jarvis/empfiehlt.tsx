@@ -10,6 +10,8 @@ import { KINDS, chatThread, type AgentTask } from "@/lib/agents";
 import { chatToJarvis } from "../control-actions";
 import { Back } from "../v2";
 import { DragBox } from "./dnd";
+import { TipX } from "./dismiss";
+import { tipKey } from "@/lib/tips";
 import { Icon } from "@/app/icons";
 import { chatTime, statusText } from "@/lib/jarvis-chat";
 import { sendFromJarvis } from "./chat/actions";
@@ -24,7 +26,8 @@ export function giveHref(agent: number, t: NonNullable<Rec["task"]>) {
   return `/dashboard/jarvis?${q}`;
 }
 
-/** 2–3 Optimierungen, je eine Karte: Titel, kurzer Grund, Klick zur Station, „an Agent“ (vorbelegt) oder ziehen.
+/** 2–3 Optimierungen, je eine Karte: Titel, kurzer Grund, Klick zur Station, „an Agent“ (vorbelegt) oder ziehen,
+ *  X = ausblenden (7 Tage, rote Alarme 24 h; lib/tips.ts).
  *  children: weitere Hinweise (Chips) unter den Karten. */
 export function Empfiehlt({ recs, href, agent, children }: { recs: Rec[]; href: (r: Rec) => string; agent: number; children?: ReactNode }) {
   if (!recs.length && !children) return null;
@@ -34,16 +37,17 @@ export function Empfiehlt({ recs, href, agent, children }: { recs: Rec[]; href: 
       {recs.length > 0 && <div className="jrec-l">
         {recs.map((r, i) => {
           const row = (
-            <div key={i} className={`jrec-i ${r.level}`}>
+            <div key={i} className={`jrec-i ${r.level}`} data-tip={r.task ? undefined : ""}>
               <Link href={href(r)} scroll={false} className="jrec-t"><b>{r.title}</b><span>{r.short}</span></Link>
               {r.task && (
-                <Link href={giveHref(agent, r.task)} scroll={false} className="jrec-give" title={`als Auftrag „${KINDS[r.task.kind].label}${r.task.market ? ` · ${r.task.market}` : ""}“ an Agent ${agent} – oder auf A1–A4 ziehen`}>
+                <Link href={giveHref(agent, r.task)} scroll={false} className="jrec-give" title={`als Auftrag „${KINDS[r.task.kind].label}${r.task.market ? ` · ${r.task.market}` : ""}“ an Agent ${agent} – oder auf A1–A8 ziehen`}>
                   <Icon name="an-agent" size={16} /><span>an A{agent}</span>
                 </Link>
               )}
+              <TipX k={tipKey(r)} level={r.level} title={r.title} />
             </div>
           );
-          return r.task ? <DragBox key={i} task={r.task} title={r.title}>{row}</DragBox> : row;
+          return r.task ? <DragBox key={i} task={r.task} title={r.title} tip>{row}</DragBox> : row;
         })}
       </div>}
       {children}

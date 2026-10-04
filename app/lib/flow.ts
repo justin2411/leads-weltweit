@@ -121,7 +121,7 @@ export const NODE_META: Record<NodeKind, { label: string; icon: IconName; color:
   freigabe: { label: "Freigabe", icon: "schloss", color: "#e2c68f", group: "schritt", hint: "Drei-Stufen-Freigabe – läuft immer", ports: ["out"], input: true },
   pipeline: { label: "Pipeline", icon: "pipeline", color: "#3ddc97", group: "ziel", hint: "Regel für alle neuen Leads (nur strenger)", ports: [], input: true },
   export: { label: "Export", icon: "export", color: "#5fd4ff", group: "ziel", hint: "als CSV herunterladen", ports: [], input: true },
-  agent: { label: "Agent", icon: "agent", color: "#e2c68f", group: "ziel", hint: "Auftrag an Agent 1–4", ports: [], input: true },
+  agent: { label: "Agent", icon: "agent", color: "#e2c68f", group: "ziel", hint: `Auftrag an Agent 1–${AGENT_COUNT}`, ports: [], input: true },
   speicher: { label: "Speicher", icon: "speicher", color: "#3ddc97", group: "ziel", hint: "legt Leads in einen Speicher", ports: [], input: true },
   melden: { label: "Melden", icon: "melden", color: "#ffb547", group: "ziel", hint: "kurze Nachricht an dich", ports: [], input: true },
 };

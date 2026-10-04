@@ -98,3 +98,27 @@ Alle 1280×720, 25 fps, H.264 (crf ~26, faststart), AAC. Zuordnung in `app/conte
 Rechts im blauen Kopf aller HTML-Mails ein Etikett „✓ Certified“ (FR „✓ Certifié“), Goldrand, reiner Text, kein Bild.
 Inhaber 02.10.2026 im Chat: „nimm certified“, auf Nachfrage „doch das haben wir“ und „echtes Prüfsiegel“.
 Name und Aussteller des Siegels liegen beim Inhaber; sobald bekannt, hier eintragen und ggf. „Certified by …“.
+
+## Dashboard: lange Abschnitte immer einklappbar (04.10.2026, feste Regel)
+Inhaber 04.10.2026: „solchen langen sektionen immer zum ein und ausklappen“. Jede Liste, Tabelle oder Matrix im
+Dashboard mit mehr als etwa 6 Zeilen (z. B. Speicher, Bestand, Proben, Versand, Kunden, Gehirn, Regler-Feinsteuerung)
+steht in einem einklappbaren Abschnitt:
+
+- Baustein `<Fold>` aus `app/app/dashboard/fold.tsx` (details/summary), gemeinsame Klasse `.fold` in
+  `app/app/dashboard/hud-css.ts` – keine eigenen Klappen je Seite.
+- Kopfzeile: Titel links, rechts eine Kurzzusammenfassung oder Zahl („7 Länder“, „3 offen · 12“), Chevron ganz rechts
+  (Linie, dreht beim Öffnen), mindestens 36 px hoch, gut treffbar am Handy, kein Überlauf bei 390 px.
+- Offen-Zustand je Abschnitt (`id`, eindeutig, z. B. `speicher-datenbank`) bleibt im Browser (localStorage, immer mit
+  try/catch; ohne Speicher gilt der Standard). Gespeichert wird nur ein echter Klick.
+- Standard offen; Abschnitte, die selten gebraucht werden (z. B. Umgebungsvariablen ohne Fehler), standardmäßig zu.
+  Wichtige Warnzustände (fehlende Variable, ungespeicherte Änderung) öffnen den Abschnitt.
+- Kurze Abschnitte (bis ~6 Zeilen) bleiben ohne Klappe.
+
+## JARVIS: Empfehlungen ausblenden, acht Agenten (04.10.2026)
+- Jede Karte in „JARVIS empfiehlt“ und jede Hinweis-Pille hat ein kleines X (Linien-Icon `schliessen`, Trefferfläche
+  ≥ 32 px). Klick blendet aus: 7 Tage, rote Alarme (Notbremse, Spam, Freigabe rot) nur 24 h; danach unten kurz
+  „… ausgeblendet · rückgängig“. Schlüssel = Art + Markt + Titel ohne Zahlen (`app/lib/tips.ts`), gespeichert in
+  `owner_settings.dismissed_tips`, protokolliert in `owner_log` (`tip:dismiss`, `tip:undo`).
+- Agenten-Leiste A1–A8: Desktop 4 × 2 plus Spalte „Auftrag erteilen“ / „Kunden-Agenten“, bis 1100 px 4 Spalten,
+  am Handy 2 Spalten – immer bündig. Freie Agenten kompakt (gestrichelt, kleinere Kugel).
+- Offene Aufträge zeigen nie „wartet“, sondern „startet um HH:MM“ (nächste Runde :08/:23/:38/:53 deutscher Zeit).

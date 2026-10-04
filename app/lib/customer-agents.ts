@@ -19,7 +19,7 @@ export type Persona = { first_name: string; last_name: string; role: string; lan
 export type AgentStatus = "onboarding" | "aktiv" | "pausiert";
 /** customer_agents.paused_by: „inhaber“ (Dashboard, nur der Inhaber setzt fort) oder „abo“ (Kündigung/Downgrade; ensure setzt fort). */
 export type PausedBy = "inhaber" | "abo";
-/** agent_tasks.agent für alle Kunden-Aufträge (wie TASK_AGENT in scripts/customer_agents.py); A1–A4 bleiben dem Inhaber. */
+/** agent_tasks.agent für alle Kunden-Aufträge (wie TASK_AGENT in scripts/customer_agents.py); A1–A8 bleiben dem Inhaber. */
 export const KUNDE_TASK_AGENT = 9;
 
 /** Agent ab Paket Pro: „pro“ immer, „custom“ ab so vielen Leads/Woche wie Pro (50). Starter und Unbekanntes nicht. */
