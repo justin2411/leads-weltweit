@@ -12,6 +12,7 @@ wirkung    – Lernschleife Auftrag → Wirkung: 72 h nach einem fertigen Auftra
              aus kpi_daily vorher (bis 3 Tage vor dem Auftrag) und nachher (bis 3 Tage nach Abschluss) je Tag
              vergleichen; Ergebnis in agent_tasks.wirkung (+ numbers.wirkung) und als Wissensnotiz „auftrag-wirkung“
              (brain_knowledge, angehängt, mit Bilanz je Auftragsart) – so sieht das Gehirn, welche Aufträge wirken.
+             Aufträge von Fach-Agenten (agent_tasks.rolle) werden an ihrer Ziel-Kennzahl gemessen (agent_role_kpi).
 
 Sendet nie Mails, ändert keine Sperrliste, Prüfregeln oder Kosten.
 
@@ -241,6 +242,53 @@ def measure(task: dict, kpi: list[dict]) -> dict:
     return out
 
 
+# Fach-Agenten (agent_roles, JARVIS „Team“): Wirkung über ihre Ziel-Kennzahl aus agent_role_kpi (k/n je Tag).
+# Reihe je Fach-Agent und ob weniger besser ist (Bounce-, Fehlerquote).
+ROLE_SERIES = {"test": "test", "trichter": "test", "qualitaet": "qualitaet", "lead_pruefer": "qualitaet",
+               "zustellung": "zustellung", "kaeufer_pruefer": "zustellung", "quellen": "quellen"}
+ROLE_LOWER_BETTER = {"qualitaet", "zustellung"}
+ROLE_NAME = {"test": "Test-Agent", "trichter": "Trichter-Agent", "qualitaet": "Qualitäts-Agent", "lead_pruefer": "Lead-Prüfer",
+             "kaeufer_pruefer": "Käufer-Prüfer", "zustellung": "Zustell-Agent", "quellen": "Quellen-Agent"}
+
+
+def measure_role(task: dict, rows: list[dict]) -> dict:
+    """Vorher/Nachher der Ziel-Kennzahl eines Fach-Agenten: Σk/Σn bis 3 Tage vor dem Auftrag bzw. bis 3 Tage nach
+    Abschluss (rows = agent_role_kpi: rolle, day, k, n). Besser = ≥ 10 % in die gute Richtung."""
+    series = ROLE_SERIES.get(str(task.get("rolle") or ""))
+    start = _ts(task.get("started_at")) or _ts(task.get("created_at"))
+    end = _ts(task.get("finished_at"))
+    d0, d1 = _day(start), _day(end)
+    before = {d0 - dt.timedelta(days=i) for i in range(1, WINDOW_DAYS + 1)}
+    after = {d1 + dt.timedelta(days=i) for i in range(1, WINDOW_DAYS + 1)}
+    out: dict = {"kennzahlen": {}, "laender": "alle", "rolle": task.get("rolle")}
+    if not series:
+        out["bewertung"] = "keine Vergleichsdaten"
+        return out
+
+    def win(days):
+        xs = [r for r in rows if r.get("rolle") == series and dt.date.fromisoformat(str(r["day"])[:10]) in days
+              and float(r.get("n") or 0) > 0]
+        k, n = sum(float(r.get("k") or 0) for r in xs), sum(float(r.get("n") or 0) for r in xs)
+        return len(xs), (k / n if n else None)
+
+    tb, vb = win(before)
+    ta, va = win(after)
+    m = {"tage_vorher": tb, "tage_nachher": ta, "vorher": None if vb is None else round(vb, 4),
+         "nachher": None if va is None else round(va, 4)}
+    verdict = None
+    if vb is not None and va is not None:
+        lower = series in ROLE_LOWER_BETTER
+        m["delta_pct"] = round((va - vb) / vb * 100, 1) if vb else None
+        if not vb:
+            verdict = ("neutral" if va == 0 else "sinkt") if lower else ("wirkt" if va > 0 else "neutral")
+        else:
+            gain = -m["delta_pct"] if lower else m["delta_pct"]
+            verdict = "wirkt" if gain >= 10 else "sinkt" if gain <= -10 else "neutral"
+    out["kennzahlen"][series] = m
+    out["bewertung"] = verdict or "keine Vergleichsdaten"
+    return out
+
+
 def ready(m: dict, t: dt.datetime, finished: dt.datetime) -> bool:
     """Genug Daten (je Kennzahl ≥ 1 Tag vorher und ≥ 2 Tage nachher) oder zu lange gewartet."""
     if t - finished >= GIVE_UP:
@@ -259,7 +307,8 @@ def line(task: dict, m: dict) -> str:
         parts.append(f"{metric}/Tag {k['vorher']:g} → {k['nachher']:g}{d}")
     land = ",".join(m["laender"]) if isinstance(m["laender"], list) else "alle Länder"
     brief = re.sub(r"\s+", " ", str(task.get("brief") or ""))[:80]
-    return f"- **{KIND_NAME.get(task.get('kind'), task.get('kind'))}** A{task.get('agent')} ({land}): " \
+    name = ROLE_NAME.get(task.get("rolle")) or KIND_NAME.get(task.get("kind"), task.get("kind"))
+    return f"- **{name}** A{task.get('agent')} ({land}): " \
            f"{m['bewertung']} · {' · '.join(parts)} · „{brief}“"
 
 
@@ -270,12 +319,34 @@ def bilanz(rows: list[dict]) -> str:
         w = (r.get("wirkung") or {}).get("bewertung")
         if not w or w == "keine Vergleichsdaten":
             continue
-        a = acc.setdefault(r.get("kind"), [0, 0])
+        a = acc.setdefault(r.get("rolle") or r.get("kind"), [0, 0])
         a[0] += w == "wirkt"
         a[1] += 1
     if not acc:
         return "Bilanz: noch keine Aufträge mit Vergleichsdaten."
-    return "Bilanz: " + " · ".join(f"{KIND_NAME.get(k, k)} {w}/{n} wirkt" for k, (w, n) in sorted(acc.items()))
+    return "Bilanz: " + " · ".join(f"{ROLE_NAME.get(k) or KIND_NAME.get(k, k)} {w}/{n} wirkt" for k, (w, n) in sorted(acc.items()))
+
+
+def role_tasks(db, t: dt.datetime) -> list[dict]:
+    """Fertige Aufträge von Fach-Agenten (agent_tasks.rolle) ≥ 72 h nach Abschluss, noch ohne Wirkung."""
+    try:
+        return db.select("agent_tasks", {"status": "eq.fertig", "rolle": "not.is.null", "wirkung_at": "is.null",
+                                         "finished_at": f"lte.{(t - WAIT).isoformat()}",
+                                         "select": "id,agent,kind,rolle,market,brief,numbers,created_at,started_at,finished_at",
+                                         "order": "finished_at.asc", "limit": "50"}) or []
+    except Exception:  # noqa: BLE001 - Spalte fehlt (ältere Datenbank): nur die bisherigen Aufträge
+        return []
+
+
+def role_kpi(db, t: dt.datetime) -> list[dict]:
+    """agent_role_kpi über 21 Tage (Webagenturen, Fokus-Länder); Fehler → leer (= keine Vergleichsdaten)."""
+    try:
+        from lib.fokus import test_scope
+        segs, countries = test_scope()
+        return db.rpc("agent_role_kpi", {"p_segment": (segs or ["S2"])[0], "p_countries": list(countries or ["US", "UK", "FR"]),
+                                         "p_days": 21}) or []
+    except Exception:  # noqa: BLE001
+        return []
 
 
 def wirkung(db, t: dt.datetime | None = None, apply: bool = False) -> list[dict]:
@@ -288,11 +359,27 @@ def wirkung(db, t: dt.datetime | None = None, apply: bool = False) -> list[dict]
                                       "wirkung_at": "is.null", "finished_at": f"lte.{(t - WAIT).isoformat()}",
                                       "select": "id,agent,kind,market,brief,numbers,created_at,started_at,finished_at",
                                       "order": "finished_at.asc", "limit": "50"}) or []
+    seen = {x["id"] for x in tasks}
+    tasks += [x for x in role_tasks(db, t) if x["id"] not in seen]
+    role_rows: list[dict] | None = None
     done = []
     for task in tasks:
         end = _ts(task.get("finished_at"))
         start = _ts(task.get("started_at")) or _ts(task.get("created_at"))
         if not end or not start:
+            continue
+        if task.get("rolle"):
+            if role_rows is None:
+                role_rows = role_kpi(db, t)
+            m = measure_role(task, role_rows)
+            if not ready(m, t, end):
+                continue
+            m["gemessen_am"] = t.isoformat()
+            done.append({"task": task, "wirkung": m, "zeile": line(task, m)})
+            if apply:
+                nums = task.get("numbers") if isinstance(task.get("numbers"), dict) else {}
+                db.update("agent_tasks", {"id": task["id"]},
+                          {"wirkung": m, "wirkung_at": t.isoformat(), "numbers": {**nums, "wirkung": m["bewertung"]}})
             continue
         lo = _day(start) - dt.timedelta(days=WINDOW_DAYS)
         hi = _day(end) + dt.timedelta(days=WINDOW_DAYS)
@@ -311,7 +398,7 @@ def wirkung(db, t: dt.datetime | None = None, apply: bool = False) -> list[dict]
                       {"wirkung": m, "wirkung_at": t.isoformat(), "numbers": {**nums, "wirkung": m["bewertung"]}})
     if apply and done:
         import brain_knowledge
-        rated = db.select("agent_tasks", {"wirkung_at": "not.is.null", "select": "kind,wirkung", "limit": "2000"}) or []
+        rated = db.select("agent_tasks", {"wirkung_at": "not.is.null", "select": "kind,rolle,wirkung", "limit": "2000"}) or []
         md = "\n".join([d["zeile"] for d in done] + ["", bilanz(rated),
                         "", "_Vorher = Ø je Tag bis 3 Tage vor dem Auftrag, nachher = Ø bis 3 Tage nach Abschluss "
                         "(kpi_daily). Wirkt = ≥ +10 %._"])

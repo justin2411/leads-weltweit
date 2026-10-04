@@ -36,6 +36,9 @@ Preise (nach `docs/GEHIRN-SITZUNG.md`), Tagesmengen innerhalb von Notbremse und 
 4. **Anhaltender Engpass → A/B-Test starten**: Ist dieselbe Station in mindestens 6 der letzten 8 Läufe
    **und** seit mindestens 24 h der Engpass und läuft für sie noch kein Test, startet JARVIS selbst einen A/B-Test –
    nur in der Test-Freigabe `config/fokus.yaml` `tests` (Webagenturen US/UK/FR).
+   **Fach-Agenten** (`docs/AGENTEN.md` „Fach-Agenten“, JARVIS „Team“): Test- und Trichter-Agent arbeiten genau
+   hieran, Qualitäts-, Zustell- und Quellen-Agent an der Lead-Qualität. JARVIS beauftragt sie bei Bedarf selbst
+   (Auftrag mit `rolle`), statt dieselbe Auswertung doppelt zu machen.
 5. **Kleine sichere Anpassungen** (ohne Test, wenn das Ergebnis eindeutig ist, z. B. Plätze auf eine Linie mit
    Ertrag umlegen, leeren Proben-Vorrat nachbauen): direkt machen und protokollieren.
 6. **Kurzmeldung**: Jede Änderung und jeder Testentscheid steht in `decisions` und im Dashboard. Dem Inhaber

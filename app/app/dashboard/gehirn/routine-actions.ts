@@ -11,6 +11,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/supabase";
 import { BRAIN_BY, RoutineError, routineBrief, toRoutine, validateRoutine } from "@/lib/brain-routines";
 import { freeAgent } from "@/lib/agents";
+import { roleBrief, toRolle } from "@/lib/fach-agenten";
 import { loadAgentTasks } from "@/lib/dashboard-data";
 import { requireOwner } from "../actions";
 
@@ -78,7 +79,11 @@ export async function runRoutineNow(f: FormData) {
     if (t && (t.status === "offen" || t.status === "laeuft")) back("läuft schon");
   }
   const agent = freeAgent(await loadAgentTasks());
-  const { data: task, error } = await db().from("agent_tasks").insert({ agent, kind: "gehirn", market: null, brief: routineBrief(r), created_by: BRAIN_BY })
+  // Routine eines Fach-Agenten (agent_roles.routine_id): Auftrag mit dessen Text und Zuordnung (JARVIS „Team“)
+  const { data: role } = await db().from("agent_roles").select("*").eq("routine_id", id).eq("aktiv", true).maybeSingle()
+    .then((x) => x, () => ({ data: null }));
+  const brief = role ? roleBrief(toRolle(role), r.dauer_min, r.aufgabe) : routineBrief(r);
+  const { data: task, error } = await db().from("agent_tasks").insert({ agent, kind: "gehirn", market: null, brief, created_by: BRAIN_BY, ...(role ? { rolle: role.slug } : {}) })
     .select("id").single();
   if (error) { console.error("gehirn routine jetzt:", error.message); back("nicht gestartet"); }
   await db().from("brain_routines").update({ last_run_at: new Date().toISOString(), last_task_id: task!.id }).eq("id", id);

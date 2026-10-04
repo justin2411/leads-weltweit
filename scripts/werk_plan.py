@@ -332,7 +332,10 @@ def autopilot(reg: dict, werk: str, base: dict[str, int], stats: dict[str, dict]
             why[k] += f" – +{n} {vtxt.split(' (')[0]}"
     # über der Summe: zuerst Wachplätze behalten, dann nach Ertrag kürzen
     if sum(plan.values()) > cap:
-        order = sorted(plan, key=lambda k: (stats.get(k, {}).get("per_slot_h", 0.0)), reverse=True)
+        # Vorrang-Linien (UK/FR) zuerst behalten, sonst würden frisch zurückgesetzte Linien ohne Laufzahlen
+        # als erste gekürzt (Lauf 04.10.2026: web-fr 17 -> 11, web-north behielt 6)
+        vor_ids = {l["id"] for l in vor_lanes}
+        order = sorted(plan, key=lambda k: (k in vor_ids, stats.get(k, {}).get("per_slot_h", 0.0)), reverse=True)
         left, fixed = cap, {}
         for k in order:  # 1 je aktiver Linie, solange Platz ist
             fixed[k] = 1 if plan[k] > 0 and left > 0 else 0
