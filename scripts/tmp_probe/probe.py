@@ -1,5 +1,4 @@
 """Temporärer Test (wird vor dem PR entfernt). Gibt keine Lead-Daten aus. Ausgabe als Annotation."""
-import re
 import sys
 
 import requests
@@ -20,22 +19,21 @@ def flush():
 
 
 try:
-    for u in ["https://www.data.gouv.fr/robots.txt", "https://static.data.gouv.fr/robots.txt"]:
+    for u in ["https://files.data.gouv.fr/robots.txt", "https://object.files.data.gouv.fr/data-pipeline-open/robots.txt"]:
         r = requests.get(u, headers=H, timeout=60)
-        p("===", u, r.status_code, " | ".join(ln for ln in r.text.splitlines() if not re.search(r"/(en|fr|es)/", ln)))
-    for u in ["https://echanges.dila.gouv.fr/robots.txt", "http://echanges.dila.gouv.fr/robots.txt",
-              "https://echanges.dila.gouv.fr/OPENDATA/BODACC/", "http://echanges.dila.gouv.fr/OPENDATA/BODACC/"]:
-        for ua in (H["User-Agent"], "Mozilla/5.0 (X11; Linux x86_64) signalwerk"):
-            try:
-                r = requests.get(u, headers={"User-Agent": ua}, timeout=30)
-                p("===", u, ua[:12], r.status_code, r.text[:400].replace("\n", " "))
-            except Exception as e:  # noqa: BLE001
-                p("===", u, ua[:12], "FEHLER", str(e)[:120])
-    r = requests.get("https://www.data.gouv.fr/api/1/datasets/?q=bodacc&page_size=6", headers=H, timeout=60)
-    for d in r.json().get("data", []):
-        p("DS", d["id"], d["title"][:80], (d.get("organization") or {}).get("name"), d.get("license"))
-        for res in d.get("resources", [])[:5]:
-            p("   RES", (res.get("title") or "")[:60], res.get("format"), res.get("url"))
+        p("===", u, r.status_code, r.text[:300].replace("\n", " | "))
+    r = requests.get("https://www.data.gouv.fr/api/1/datasets/base-sirene-des-entreprises-et-de-leurs-etablissements-siren-siret/",
+                     headers=H, timeout=60)
+    d = r.json()
+    p("DS", d.get("title"), d.get("license"))
+    for res in d.get("resources", [])[:25]:
+        p("  RES", (res.get("title") or "")[:70], res.get("format"), res.get("filesize"), res.get("last_modified"), res.get("url"))
+    r = requests.get("https://recherche-entreprises.api.gouv.fr/openapi.json", headers=H, timeout=60)
+    p("openapi", r.status_code)
+    if r.ok:
+        for path, ops in r.json().get("paths", {}).items():
+            for op in ops.values():
+                p(" PATH", path, ",".join(x.get("name", "") for x in op.get("parameters", [])))
 except Exception as e:  # noqa: BLE001
     p("FEHLER", e)
 flush()
