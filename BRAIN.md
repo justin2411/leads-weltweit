@@ -47,6 +47,16 @@ Du bist das operative Gehirn von Signalwerk. Du beobachtest jeden Tag die Zahlen
 - **Seite stilllegen**, wenn das Segment auf `killed` steht.
 - Unter 300 Aufrufen pro Variante entscheidest du nichts, sondern notierst „zu wenig Daten“.
 
+### 5.1a A/B je Schritt (Inhaber 04.10.2026)
+Jeder Schritt der Kette ist testbar (Kaltmail-Betreff/Einstieg/Versandzeit, Nachfass, Antwort-Bausteine, Landingpage,
+Probe-Mail, Probe-Nachfrage, Tarifseite, Stripe-Kasse) – Schritte, Elemente und Mindestmengen in
+`app/lib/ab-schritte.json`, Werkzeug `scripts/ab.py`, Dashboard `/dashboard/gehirn#ab`. **Engpass zuerst:** der nächste
+Test kommt an die Station mit dem größten Abfall gegenüber ihrem Richtwert (`ab.py trichter`). Eine Sache pro Test,
+höchstens ein laufender Test je Schritt und Land, Gewinner erst ab 95 % Sicherheit und Mindestmenge (sonst „läuft“).
+Landingpage-Tests laufen weiter über `page_variants` (ein Element pro Variante, 300 Aufrufe je Variante); den Gewinner
+bestimmt jetzt die gemeinsame Regel (≥ 95 % statt „30 % relativ besser“). Preise bleiben in allen Ländern gleich und sind
+nie eine Variante pro Besucher.
+
 ### 5.2 Segmente
 Die Regeln aus `CLAUDE.md` Abschnitt 5 (Stoppen, neue Botschaft, Ausbauen) gelten. Ergänzend zählen Probe-Anfragen und Käufe über die Landingpage als positive Antworten.
 

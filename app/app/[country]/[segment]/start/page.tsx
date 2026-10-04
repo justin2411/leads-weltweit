@@ -16,13 +16,15 @@ import { CHECK_PATH, maskIcon } from "@/lib/brand-css";
 import { agentEligible } from "@/lib/customer-agents";
 import { PlanAgentLine } from "../plan-agent";
 import { HitBeacon } from "@/app/hit-beacon";
+import { headers } from "next/headers";
+import { abPick, unitKey } from "@/lib/ab-data";
 
 export const dynamic = "force-dynamic";
 // Verkaufsseite aus dem PDF-Report: nicht in Suchmaschinen, nicht in der Navigation
 export const metadata: Metadata = { title: `Start | ${BRAND}`, robots: { index: false, follow: false } };
 
 type Params = Promise<{ country: string; segment: string }>;
-type Search = Promise<{ vorschau?: string; v?: string; r?: string }>;
+type Search = Promise<{ vorschau?: string; v?: string; r?: string; ab?: string }>;
 
 const TXT = {
   en: {
@@ -207,16 +209,27 @@ export default async function StartPage({ params, searchParams }: { params: Para
   const online = stripeEnabled(mode);
   const howVideo = HOW_VIDEO[String(page.country).toLowerCase()];
   const who = await personalFor(sp.r, page);
+  // A/B je Schritt (Tarifseite): Titel oder Einleitung je Besucher fest zugewiesen (?r= bzw. Hash der Anfrage, kein
+  // Cookie); übernommene Gewinner gelten für alle. Inhaber-Vorschau sieht immer den Standard und zählt nie.
+  const unit = preview ? "" : unitKey(sp.r, await headers());
+  const [abTitle, abLede] = preview ? [null, null] : await Promise.all([
+    abPick("tarif", "titel", page.segment_id, page.country, unit), abPick("tarif", "lede", page.segment_id, page.country, unit)]);
+  const title = typeof abTitle?.value === "string" ? abTitle.value : T.title;
+  const lede = typeof abLede?.value === "string" ? abLede.value : T.lede;
+  const mark = abTitle?.mark ?? abLede?.mark ?? null;
+  const abTag = mark ? `${mark.testId}.${mark.variant}` : undefined;
+  // Klick aus der Probe-Mail (?ab=<test>.<variante>, nur die Variante, keine Person) → zählt für den Probe-Mail-Test
+  const fromProbe = typeof sp.ab === "string" ? sp.ab.slice(0, 60) : undefined;
 
   return (
     <BrandShell lang={lang} extraCss={CSS}>
       {/* Eindeutige Besucher der Tarifseite (JARVIS-Linie „Tarif“): ohne Cookies, Vorschau zählt nie */}
-      <HitBeacon stage="tarif" variantId={v.id} enabled={!preview && sp.vorschau !== "1"} />
+      <HitBeacon stage="tarif" variantId={v.id} enabled={!preview && sp.vorschau !== "1"} ab={abTag} abFrom={fromProbe} />
       <SiteHeader />
       <main className="start"><div className="wrap">
         <div className="eyebrow">{T.eyebrow}</div>
-        <h1>{T.title}</h1>
-        <p className="lede">{T.lede}</p>
+        <h1>{title}</h1>
+        <p className="lede">{lede}</p>
         {who?.firma && <div className="for">{T.for} {who.firma}</div>}
 
         <div className="sx-how"><div className="hd">{T.how}</div>
@@ -254,6 +267,7 @@ export default async function StartPage({ params, searchParams }: { params: Para
                   <input type="hidden" name="billing" value={isoOf(page.country)} />
                   {preview && <input type="hidden" name="vorschau" value="1" />}
                   {sp.r && <input type="hidden" name="r" value={sp.r} />}
+                  {abTag && <input type="hidden" name="ab" value={abTag} />}
                   <button className={`btn ${hi ? "gold" : "line"} big`} type="submit">{T.pick} {p.name} <span className="ar"><Icon name="pfeil" size={18} /></span></button>
                 </form>
               ) : (
@@ -263,7 +277,7 @@ export default async function StartPage({ params, searchParams }: { params: Para
         })}
           {basePlan(plans) ? (
             <CustomPlan base={basePlan(plans)!} variantId={v.id} preview={preview} r={who ? sp.r : undefined} online={online}
-              offerHref={offerMail(lang, country.toLowerCase(), segment.toLowerCase(), who?.firma)} T={T.cu} lang={lang} />
+              offerHref={offerMail(lang, country.toLowerCase(), segment.toLowerCase(), who?.firma)} T={T.cu} lang={lang} ab={abTag} />
           ) : (
           <section className="plan2 cu">
             <h2>{T.custom}</h2>

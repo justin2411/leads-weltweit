@@ -202,8 +202,12 @@ def main(argv=None) -> int:
                                             "sample_leads": example, "cta_label": text["cta_label"],
                                             "faq": text.get("faq", []), "status": "review", "traffic_share": 100})
 
-        # 5.1 Varianten und Gewinner
-        for d in page_decisions(pstats):
+        # 5.1 Varianten und Gewinner – Seiten mit laufendem A/B-Test (scripts/ab.py, Schritt landing) entscheidet die
+        # gemeinsame Auswertung (≥ 95 % und Mindestmenge), nicht diese Regel
+        from lib import ab as ablib
+        in_ab = {str(v.get("variant_id")) for t in ablib.Ctx(db).tests if t.get("step") == "landing"
+                 and t.get("status") == "laeuft" for v in t.get("varianten") or []}
+        for d in page_decisions([x for x in pstats if str(x.get("variant_id")) not in in_ab]):
             if d["kind"] == "info":
                 decide(d["type"], d["subject"], d["reasoning"], d["metrics"])
                 continue

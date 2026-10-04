@@ -111,7 +111,9 @@ export type Beacon =
   /** Aufruf der Tarifseite /[country]/[segment]/start (älterer Beacon, nur eindeutige Besucher) */
   | { kind: "visit"; variant_id: string; page: "tarif" }
   /** Trichter-Aufruf (Startseite, Tarif, Danke): Stufe, Gerät, Herkunft; Startseite ohne Variante */
-  | { kind: "hit"; stage: HitStage; variant_id: string | null; pv: string; src: Source; ref: string | null; device: Device; um?: string | null; uc?: string | null }
+  | { kind: "hit"; stage: HitStage; variant_id: string | null; pv: string; src: Source; ref: string | null; device: Device; um?: string | null; uc?: string | null;
+      /** A/B je Schritt (nur Tarifseite): Marke der gesehenen Variante und Klick aus der Probe-Mail („<test>.<A|B>“, keine Person) */
+      ab?: string; abc?: string }
   /** Ende eines Trichter-Aufrufs: sichtbare Sekunden und Scrolltiefe */
   | { kind: "hit_end"; pv: string; ds: number; depth: 0 | 25 | 50 | 75 | 100 }
   /** Zählung ohne Kennung: CTA, Formular begonnen/abgeschickt, Video gestartet/zu Ende */
@@ -173,6 +175,11 @@ function utms(b: Record<string, unknown>): { um?: string; uc?: string } {
 const int = (x: unknown): number | null => (typeof x === "number" && Number.isInteger(x) ? x : null);
 
 /** Prüft ein Ereignis aus dem Browser streng; alles Unbekannte → null (wird verworfen). */
+/** A/B-Marke „<test-uuid>.<A|B>“ (Variante, keine Person) bereinigt; alles andere null. */
+const AB_MARK = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[AB]$/i;
+const abMark = (x: unknown): string | null =>
+  typeof x === "string" && AB_MARK.test(x) ? `${x.slice(0, 36).toLowerCase()}.${x.slice(37).toUpperCase()}` : null;
+
 export function parseBeacon(body: unknown): Beacon | null {
   if (!body || typeof body !== "object" || Array.isArray(body)) return null;
   const b = body as Record<string, unknown>;
@@ -184,7 +191,9 @@ export function parseBeacon(body: unknown): Beacon | null {
     const vid = b.variant_id === undefined || b.variant_id === null ? null : isUuid(b.variant_id) ? b.variant_id.toLowerCase() : undefined;
     if (vid === undefined || (stage !== "start" && !vid)) return null;
     const ref = typeof b.ref === "string" && REF_RE.test(b.ref) ? b.ref : null;
-    return { kind: "hit", stage, variant_id: vid, pv: (b.pv as string).toLowerCase(), src: b.src as Source, ref, device: devOk, ...utms(b) };
+    const ab = stage === "tarif" ? abMark(b.ab) : null, abc = stage === "tarif" ? abMark(b.abc) : null;
+    return { kind: "hit", stage, variant_id: vid, pv: (b.pv as string).toLowerCase(), src: b.src as Source, ref, device: devOk, ...utms(b),
+             ...(ab ? { ab } : {}), ...(abc ? { abc } : {}) };
   }
   if (t === "ev" || t === "vitals") {
     const stage = b.st as EvStage;

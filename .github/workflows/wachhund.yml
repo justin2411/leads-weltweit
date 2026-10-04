@@ -39,3 +39,10 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # A/B je Schritt (Inhaber 04.10.2026): laufende Tests auswerten – Gewinner (≥ 95 % und Mindestmenge) übernehmen,
+      # nach 21 Tagen ohne Entscheidung stoppen; Meldung in decisions und im Gehirn-Chat. Fehler stoppen den Wachhund nie
+      - run: python scripts/ab.py auswerten --apply
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

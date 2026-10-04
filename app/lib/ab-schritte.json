@@ -1,0 +1,45 @@
+{
+  "_info": "A/B je Schritt (Inhaber 04.10.2026: „das gehirn soll jeden einzelnen unserer steps a/b splittesten können, damit es mit den quoten immer genau schauen kann wo es KPIs weiter optimieren kann“). Eine Datei für Python (scripts/lib/ab.py) und App (app/lib/ab.ts, Gleichheit per Test). stationen = Trichter (Quote von → zu, richtwert = Orientierung für den Engpass, keine Zusage). schritte = testbare Stellen: je Schritt die erlaubten Elemente (immer nur EINES pro Test), Messgröße und Mindestmenge je Variante. Gewinner erst bei sicherheit (Bayes, Beta-Verteilung) und Mindestmenge; nach max_tage ohne Entscheidung gestoppt (A bleibt). verboten = Wörter, die nie in einer Variante stehen dürfen (Garantien, Druck, Preise); Zahlen außer 10 sind immer verboten.",
+  "sicherheit": 0.95,
+  "max_tage": 21,
+  "engpass_min_n": 20,
+  "stationen": [
+    { "key": "mail", "titel": "Kaltmail", "von": "Erstmails", "zu": "Antworten", "richtwert": 0.05 },
+    { "key": "nachfass", "titel": "Nachfass", "von": "Nachfassmails", "zu": "Antworten", "richtwert": 0.03 },
+    { "key": "antwort", "titel": "Antwort-Assistent", "von": "Auto-Antworten", "zu": "Probe/Kauf", "richtwert": 0.2 },
+    { "key": "landing", "titel": "Landingpage", "von": "Aufrufe", "zu": "Probe-Anfragen", "richtwert": 0.05 },
+    { "key": "probe", "titel": "Probe-Mail", "von": "Proben", "zu": "Tarifseite", "richtwert": 0.3 },
+    { "key": "probe_nachfrage", "titel": "Probe-Nachfrage", "von": "Nachfragen", "zu": "Antworten", "richtwert": 0.1 },
+    { "key": "tarif", "titel": "Tarifseite", "von": "Besucher", "zu": "Stripe-Start", "richtwert": 0.1 },
+    { "key": "checkout", "titel": "Stripe", "von": "Checkouts", "zu": "Käufe", "richtwert": 0.5 }
+  ],
+  "schritte": [
+    { "key": "mail_betreff", "station": "mail", "titel": "Betreff", "messung": "antwort", "min_n": 100,
+      "elemente": { "betreff": { "art": "text", "max": 60 } } },
+    { "key": "mail_einstieg", "station": "mail", "titel": "Einstieg/Frage", "messung": "antwort", "min_n": 100,
+      "elemente": { "einstieg": { "art": "text", "max": 320 }, "frage": { "art": "text", "max": 200, "frage": true } } },
+    { "key": "mail_zeit", "station": "mail", "titel": "Versandzeit", "messung": "antwort", "min_n": 100,
+      "elemente": { "fenster": { "art": "wahl", "werte": ["frueh", "spaet"] } } },
+    { "key": "nachfass", "station": "nachfass", "titel": "Nachfassmail", "messung": "antwort", "min_n": 100,
+      "elemente": { "tage": { "art": "zahl", "min": 3, "max": 10 }, "frage": { "art": "text", "max": 200, "frage": true } } },
+    { "key": "antwort", "station": "antwort", "titel": "Antwort-Bausteine", "messung": "positiv", "min_n": 50,
+      "elemente": { "faq_frage": { "art": "text", "max": 200, "frage": true } } },
+    { "key": "landing", "station": "landing", "titel": "Landingpage", "messung": "probe", "min_n": 300,
+      "elemente": { "headline": { "art": "text", "max": 120 }, "subheadline": { "art": "text", "max": 240 }, "cta_label": { "art": "text", "max": 40 } } },
+    { "key": "probe_mail", "station": "probe", "titel": "Probe-Mail", "messung": "ereignis", "min_n": 50,
+      "elemente": { "tipp": { "art": "text", "max": 240 }, "schluss": { "art": "text", "max": 200 } } },
+    { "key": "probe_nachfrage", "station": "probe_nachfrage", "titel": "Probe-Nachfrage", "messung": "antwort", "min_n": 50,
+      "elemente": { "tage": { "art": "zahl", "min": 2, "max": 7 }, "frage": { "art": "text", "max": 200, "frage": true } } },
+    { "key": "tarif", "station": "tarif", "titel": "Tarifseite", "messung": "ereignis", "min_n": 100,
+      "elemente": { "titel": { "art": "text", "max": 80 }, "lede": { "art": "text", "max": 260 } } },
+    { "key": "checkout", "station": "checkout", "titel": "Stripe-Kasse", "messung": "ereignis", "min_n": 30,
+      "elemente": { "hinweis": { "art": "text", "max": 300 } } }
+  ],
+  "verboten": [
+    "guarant", "garanti", "garant", "urgent", "act now", "limited time", "don't miss", "dont miss", "hurry", "last chance",
+    "risk-free", "risk free", "no-brainer", "no brainer", "number one", "#1", "revolution", "game chang", "game-chang",
+    "skyrocket", "only today", "immediately", "immédiatement", "dernière chance", "sans risque", "durée limitée",
+    "dépêchez", "ne ratez pas", "numéro 1", "offre exclusive", "exclusive offer", "100 %", "100%", "free money",
+    "double your", "triple your", "€", "$", "£", "usd", "gbp", "price", "prix", "discount", "remise", "rabais"
+  ]
+}

@@ -222,6 +222,15 @@ test("Tarif-Beacon: nur Variante + Seitenart, alles andere verworfen", () => {
   assert.equal(parseBeacon({ variant_id: V, type: "visit", pg: "landing" }), null);
   assert.equal(parseBeacon({ variant_id: V, type: "visit" }), null);
   assert.equal(parseBeacon({ variant_id: "x", type: "visit", pg: "tarif" }), null);
+  // A/B je Schritt: nur Marken „<test>.<A|B>“, sonst weg (keine Person, keine freien Texte)
+  const M = "4f0c3a8e-1b2d-4c5e-9f00-112233445566";
+  const hit = { type: "hit", st: "tarif", pv: PV, dev: "desktop", src: "direkt", variant_id: V };
+  assert.deepEqual(parseBeacon({ ...hit, ab: `${M.toUpperCase()}.b`, abc: `${M}.A` }),
+    { kind: "hit", stage: "tarif", variant_id: V, pv: PV, src: "direkt", ref: null, device: "desktop", ab: `${M}.B`, abc: `${M}.A` });
+  assert.deepEqual(parseBeacon({ ...hit, ab: "x@y.de", abc: `${M}.C` }),
+    { kind: "hit", stage: "tarif", variant_id: V, pv: PV, src: "direkt", ref: null, device: "desktop" });
+  // nur auf der Tarifseite
+  assert.equal((parseBeacon({ ...hit, st: "danke", ab: `${M}.A` }) as { ab?: string }).ab, undefined);
 });
 
 test("Auswertung: eindeutige Besucher (uv) und Tarif-Aufrufe (av) im Trichter", () => {

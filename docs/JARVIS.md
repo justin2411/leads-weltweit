@@ -39,16 +39,31 @@ Preise (nach `docs/GEHIRN-SITZUNG.md`), Tagesmengen innerhalb von Notbremse und 
   Engpass – nur für Segment × Land aus `config/fokus.yaml` `tests` (`scripts/lib/fokus.py` `test_allowed`).
   Liegt der Engpass woanders, nur protokollieren, keinen Test starten. Liste erweitern = Inhaber.
 
+- **A/B je Schritt** (Inhaber 04.10.2026: „das gehirn soll jeden einzelnen unserer steps a/b splittesten können … damit
+  am ende mehr kunden bei rauskommen“): ein Gerüst für die ganze Kette, `signalwerk.ab_tests`/`ab_events`, Sicht
+  `ab_results`, Trichter `ab_funnel()`, Werkzeug `python scripts/ab.py` (Chat: `ab_lesen`, `ab_test`), Dashboard
+  `/dashboard/gehirn#ab`. Schritte (app/lib/ab-schritte.json): Kaltmail-Betreff, Einstieg/Frage, Versandzeit (früh/spät
+  im erlaubten Fenster), Nachfass (Abstand/Frage), Antwort-Bausteine, Landingpage (über `page_variants`), Probe-Mail
+  (Tipp/Schluss, Klick zur Tarifseite), Probe-Nachfrage (Abstand/Frage), Tarifseite (Titel/Einleitung), Stripe-Kasse
+  (nur Hinweis-Text). Zuweisung fest je Empfänger/Besucher per Hash (`?r=`-Token, Käufer-ID oder Tages-Besucher-Hash) –
+  nie Cookie/Browser-Speicher. **Engpass zuerst**: `ab.py trichter` / `vorschlag` zeigen die Station mit dem größten
+  Abfall gegenüber ihrem Richtwert; dort den nächsten Test anlegen (`ab.py anlegen … --starten`). Gewinner nur bei
+  ≥ 95 % Sicherheit (Bayes) **und** Mindestmenge je Variante, sonst „läuft“; nach 21 Tagen ohne Entscheidung gestoppt.
+  Die Auswertung läuft im Wachhund (`ab.py auswerten --apply`); ein Gewinner B gilt danach für alle. Höchstens 1
+  laufender Test je Schritt und Land (Datenbank-Index). Nie als Variante: Drei-Stufen-Freigabe, Sperrliste,
+  Abmeldelink/Pflichtfußzeile, Notbremse, Länder-/Prüfregeln, Preise (pro Besucher nie verschieden). Mail-Varianten
+  müssen `lint_draft` bestehen, sonst bekommt die Mail die Kontrolle und zählt nicht.
 - **Eine Sache pro Test** (CLAUDE.md §5): z. B. Betreff, Einstiegssatz, Signal-Auswahl, Probe-Zusammenstellung,
   Seitenüberschrift, Preis, Nachfass-Zeitpunkt, Quelle oder Belegung einer Linie. Kontrolle (A) bleibt unverändert.
 - **Anlegen**: Mails und Botschaften als `experiments` (Hypothese in einem Satz, Variante, geplante Menge),
   Seiten über `page_variants`, alles andere als `decisions` (type `note`, subject `Test: <Station> · <Änderung>`,
   `metrics` mit Start, Aufteilung, Mindestmenge, Messgröße).
 - **Aufteilung**: 50/50, zufällig je Empfänger, Käufer, Lead oder Seitenaufruf.
-- **Mindestmenge vor Entscheidung**: Mails 100 je Variante (zugestellt), Seiten 300 Aufrufe je Variante,
-  Leads/Quellen 200 je Variante; höchstens 21 Tage Laufzeit.
-- **Entscheidung**: B gewinnt, wenn die Messgröße mindestens 20 % relativ besser ist und die Qualität
-  (Bounces, Beschwerden, Freigabe-Fehlerquote) nicht schlechter wird. Sonst A behalten. Ergebnis mit echten
+- **Mindestmenge vor Entscheidung**: wie `app/lib/ab-schritte.json` `min_n` (Mails 100 je Variante, Landingpage 300
+  Aufrufe, Probe-Mail/-Nachfrage/Antworten 50, Tarifseite 100, Kasse 30), Leads/Quellen 200 je Variante; höchstens
+  21 Tage Laufzeit.
+- **Entscheidung**: die führende Variante gewinnt erst bei ≥ 95 % Sicherheit und Mindestmenge je Variante, und nur
+  wenn die Qualität (Bounces, Beschwerden, Freigabe-Fehlerquote) nicht schlechter wird. Sonst A behalten. Ergebnis mit echten
   Zahlen in `decisions` (subject `Test-Ergebnis: …`), Gewinner sofort übernehmen.
 - **Sofort abbrechen**, wenn eine Variante Spam-Beschwerden, mehr Bounces oder eine höhere Freigabe-Fehlerquote
   bringt.

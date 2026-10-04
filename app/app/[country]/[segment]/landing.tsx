@@ -9,6 +9,8 @@ import { fill, type Personal } from "@/lib/personalize";
 import { personalFor } from "@/lib/recipient";
 import { db } from "@/lib/supabase";
 import { pickVariant } from "@/lib/variants";
+import { berlinDayKey, hashRand } from "@/lib/ab";
+import { headers } from "next/headers";
 import { servableVariants } from "@/lib/test-scope";
 import { TEST_SCOPE } from "@/lib/test-scope-data";
 import { unstable_cache } from "next/cache";
@@ -283,8 +285,22 @@ const countrySamples = (page: { segment_id: string; country: string }) =>
 const loadPageCached = unstable_cache(loadPage, ["landing-page-v1"], { revalidate: 120 });
 const getSettingsCached = unstable_cache(getSettings, ["landing-settings-v1"], { revalidate: 120 });
 
-/** rand: Zufallszahl für die Variantenwahl (statische Fassung: fester Wert je Eimer, sonst je Aufruf neu). */
-async function resolve({ country, segment }: LandingParams, sp: LandingSearch, rand: number = Math.random()) {
+/**
+ * Feste „Zufallszahl“ für die Variantenwahl ohne Cookie (A/B je Schritt, Inhaber 04.10.2026): persönlicher Link aus der
+ * Mail (?r=) → immer dieselbe Variante für diesen Empfänger; sonst IP|Browser|Tag gehasht (nichts gespeichert).
+ */
+async function requestRand(sp: LandingSearch): Promise<number> {
+  if (sp.r) return hashRand(`r:${sp.r}`);
+  try {
+    const h = await headers();
+    const ip = (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || (h.get("x-real-ip") ?? "").trim();
+    if (ip) return hashRand(`v:${ip}|${(h.get("user-agent") ?? "").slice(0, 200)}|${berlinDayKey()}`);
+  } catch { /* außerhalb einer Anfrage */ }
+  return Math.random();
+}
+
+/** rand: Zufallszahl für die Variantenwahl (statische Fassung: fester Wert je Eimer, sonst fest je Besucher). */
+async function resolve({ country, segment }: LandingParams, sp: LandingSearch, rand?: number) {
   const slug = `${country}/${segment}`.toLowerCase();
   if (!/^[a-z]{2}\/[a-z0-9-]+$/.test(slug)) return null;
   const [data, settings] = await Promise.all([loadPageCached(slug), getSettingsCached()]);
@@ -295,7 +311,8 @@ async function resolve({ country, segment }: LandingParams, sp: LandingSearch, r
   // Split-Test nur in der Freigabe-Liste (config/fokus.yaml tests, Inhaber 04.10.2026), sonst nur die Kontrolle
   const live = data.variants.filter((v: any) => (preview ? v.status !== "retired" : v.status === "live"));
   const candidates = preview ? live : servableVariants(TEST_SCOPE, data.page, live);
-  const variant = (preview && sp.v && candidates.find((v: any) => v.variant_key === sp.v)) || pickVariant(candidates, rand);
+  const variant = (preview && sp.v && candidates.find((v: any) => v.variant_key === sp.v))
+    || pickVariant(candidates, candidates.length > 1 ? rand ?? (await requestRand(sp)) : 0);
   if (!variant) return null;
   return { ...data, variant, settings, preview, isPublic, sp, slug };
 }

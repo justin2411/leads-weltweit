@@ -1,12 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySession } from "@/lib/auth";
 import { BUCKETS } from "@/lib/landing-buckets";
+import { berlinDayKey, hashRand } from "@/lib/ab";
 
 /**
  * Ladezeit (Inhaber 03.10.2026): öffentliche Seiten kommen aus dem Cache, nur Aufrufe mit persönlichen oder
  * einmaligen Suchparametern werden pro Aufruf gerendert.
  * - Landingpage /<land>/<zielgruppe> ohne Vorschau, ?r=, ?angefragt=, ?fehler=, ?schritt=, ?v= → zwischengespeicherte
- *   Fassung /<land>/<zielgruppe>/s/<eimer>; der Eimer wird je Aufruf zufällig gezogen (A/B-Test bleibt je Aufruf verteilt).
+ *   Fassung /<land>/<zielgruppe>/s/<eimer>. Der Eimer (= Variante im A/B-Test) ist fest je Besucher und Tag: Hash aus
+ *   IP, Browser und deutschem Tag (A/B je Schritt, Inhaber 04.10.2026) – nur zur Auswahl, nichts gespeichert, kein
+ *   Cookie. Ohne IP zufällig.
  * - Kontaktseiten mit ?gesendet= oder ?fehler= → dynamische Fassung /contact/q/<sprache> (sonst statisch).
  */
 const LANDING_DYNAMIC = ["vorschau", "v", "angefragt", "fehler", "r", "schritt"];
@@ -50,8 +53,15 @@ export function proxy(req: NextRequest) {
   if (NOT_LANDING.has(pathname) || !/^\/[a-z]{2}\/[a-z0-9-]+$/.test(pathname)) return NextResponse.next();
   if (LANDING_DYNAMIC.some((k) => searchParams.has(k))) return NextResponse.next();
   const url = req.nextUrl.clone();
-  url.pathname = `${pathname}/s/${Math.floor(Math.random() * BUCKETS)}`;
+  url.pathname = `${pathname}/s/${landingBucket(req)}`;
   return NextResponse.rewrite(url);
+}
+
+/** Eimer 0 … BUCKETS-1 fest je Besucher und Tag (IP|Browser|Tag, gehasht, nie gespeichert); ohne IP zufällig. */
+function landingBucket(req: { headers: { get(name: string): string | null } }, rand: () => number = Math.random): number {
+  const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || (req.headers.get("x-real-ip") ?? "").trim();
+  const r = ip ? hashRand(`v:${ip}|${(req.headers.get("user-agent") ?? "").slice(0, 200)}|${berlinDayKey()}`) : rand();
+  return Math.min(BUCKETS - 1, Math.floor(r * BUCKETS));
 }
 
 export const config = {

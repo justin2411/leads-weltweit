@@ -159,16 +159,31 @@ def wish_match(db, seg: str, leads: list[dict]) -> dict[str, int]:
     return out
 
 
-def build_payload(seg: str, country: str, files: list[tuple[str, bytes]]) -> dict | None:
+def probe_ab(abx, seg: str, country: str, unit: str) -> dict:
+    """A/B „Probe-Mail“ (scripts/lib/ab.py): Variante je fertiger Probe (der Empfänger ist beim Bauen noch unbekannt).
+    Gezählt wird beim Versand (App, sample_stock → ab_events), Ziel = Klick zur Tarifseite (?ab=…)."""
+    out: dict = {"marks": {}}
+    for el in ("tipp", "schluss"):
+        v, mark = abx.value("probe_mail", el, seg, country, unit)
+        if isinstance(v, str) and v:
+            out[el] = v
+        out["marks"].update(mark)
+    return out
+
+
+def build_payload(seg: str, country: str, files: list[tuple[str, bytes]], abx=None) -> dict | None:
     """Fertige Probe-Mail ohne Empfänger – gleiche Funktionen und Inhalte wie web_samples.py."""
+    import uuid
     from responder import reply_content, sample_mail, sample_subject
     lang = "fr" if country == "FR" else "en"
-    body, blocks = sample_mail(lang, None, files, True, seg, country)
+    ab = probe_ab(abx, seg, country, uuid.uuid4().hex) if abx is not None else None
+    body, blocks = sample_mail(lang, None, files, True, seg, country, ab=ab)
     if not body:
         return None
     content = reply_content(PLACEHOLDER, sample_subject(lang, None, country), body, None, lang, files, blocks,
                             requested=True)
-    return {"version": 1, "placeholder": PLACEHOLDER, "lang": lang, **content}
+    return {"version": 1, "placeholder": PLACEHOLDER, "lang": lang, **content,
+            **({"ab": ab["marks"]} if ab and ab["marks"] else {})}
 
 
 def build_one(db, seg: str, country: str, wish: list[str], exclude: set[str], hours: int, apply: bool,
@@ -186,7 +201,8 @@ def build_one(db, seg: str, country: str, wish: list[str], exclude: set[str], ho
     cos = [l["company_id"] for l in picked]
     if not files or len(set(ids)) != SAMPLE_SIZE or len(set(cos)) != SAMPLE_SIZE:
         return None
-    payload = build_payload(seg, country, files)
+    from lib import ab as ablib
+    payload = build_payload(seg, country, files, ablib.Ctx(db))
     if not payload:
         return None
     dates = sorted(str(l.get("event_date") or "")[:10] for l in picked if l.get("event_date"))

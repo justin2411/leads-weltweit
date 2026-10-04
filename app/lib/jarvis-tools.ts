@@ -14,6 +14,8 @@ import { startWerk } from "@/lib/start-werk";
 import { area, bestand, loadKnowledge, loadRoutines, type Sources } from "@/lib/jarvis-context";
 import { RoutineError, nextRun, scheduleLabel, toRoutine, validateRoutine, whenLabel } from "@/lib/brain-routines";
 import type { ChatLink, ChatMode } from "@/lib/jarvis-chat";
+import { loadAb } from "@/lib/ab-data";
+import { AbActionError, createAbTest, startAbTest, stopAbTest } from "@/lib/ab-actions";
 
 /**
  * Werkzeuge der Sofort-Antworten (Opus). Nur feste, sichere Server-Funktionen – kein freies SQL:
@@ -241,9 +243,38 @@ export async function runTool(t: ToolInput, s: Sources, ctx: ToolCtx = { mode: "
       }
       case "an_routine_uebergeben":
         return { text: "übergeben – ein Agent übernimmt beim nächsten Lauf", routine: t.grund };
+      case "ab_lesen": {
+        const d = await loadAb(s.now);
+        if (d.error) return no("A/B-Daten gerade nicht lesbar");
+        return ok({
+          trichter_tage: d.days,
+          trichter: d.funnel.map((f) => ({ station: f.key, von: f.von, zu: f.zu, n: f.n, k: f.k, quote: Math.round(f.rate * 10000) / 10000, richtwert: f.richtwert, engpass: f.engpass })),
+          tests: d.tests.map((x) => ({ id: x.id, schritt: x.step, land: x.country, element: x.element, status: x.status, hypothese: x.hypothese,
+            A: { n: x.variants[0].n, k: x.variants[0].k, wert: x.variants[0].wert }, B: { n: x.variants[1].n, k: x.variants[1].k, wert: x.variants[1].wert },
+            sicherheit: x.eval?.sicherheit ?? null, stand: x.eval?.grund ?? x.grund, gewinner: x.gewinner })),
+        });
+      }
+      case "ab_test": {
+        if (t.aktion === "anlegen") {
+          const row = await createAbTest({ step: t.step, country: t.country, element: t.element, b: t.b, a: t.a, hypothese: t.hypothese, by: BY });
+          await log("ab:anlegen", row.id, null, { schritt: t.step, land: t.country, element: t.element });
+          revalidatePath("/dashboard/gehirn");
+          return ok({ angelegt: row.id, status: "entwurf", naechster_schritt: "ab_test starten" }, `Test ${t.step} ${t.country} angelegt`, "/dashboard/gehirn#ab");
+        }
+        if (t.aktion === "starten") {
+          const row = await startAbTest(t.id);
+          await log("ab:starten", t.id, { status: "entwurf" }, { status: "laeuft" });
+          revalidatePath("/dashboard/gehirn");
+          return ok({ gestartet: row.id, schritt: row.step, land: row.country }, `Test ${row.step} ${row.country} läuft`, "/dashboard/gehirn#ab");
+        }
+        const row = await stopAbTest(t.id, t.grund);
+        await log("ab:beenden", t.id, { status: "laeuft" }, { status: "gestoppt", grund: t.grund });
+        revalidatePath("/dashboard/gehirn");
+        return ok({ gestoppt: row.id }, `Test ${row.step} ${row.country} gestoppt`, "/dashboard/gehirn#ab");
+      }
     }
   } catch (e) {
-    if (e instanceof InputError || e instanceof FlowEditError || e instanceof TaskError || e instanceof RoutineError) return no(e.message);
+    if (e instanceof InputError || e instanceof FlowEditError || e instanceof TaskError || e instanceof RoutineError || e instanceof AbActionError) return no(e.message);
     const ref = Math.random().toString(36).slice(2, 8);
     console.error(`jarvis-tool ${t.name} [${ref}]:`, e instanceof Error ? e.message.slice(0, 200) : "Fehler");
     return no(`technischer Fehler (${ref}) – nichts geändert`);

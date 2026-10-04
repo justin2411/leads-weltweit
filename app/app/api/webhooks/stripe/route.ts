@@ -2,6 +2,8 @@ import { sendConsentMail } from "@/lib/mail";
 import { welcomeMail } from "@/lib/welcome-mail";
 import { receiptPdf } from "@/lib/receipt-pdf";
 import { recordEvent } from "@/lib/page-events";
+import { recordAb } from "@/lib/ab-data";
+import { parseAbParam as parseMark } from "@/lib/ab";
 import { BRAND, siteUrl } from "@/lib/site";
 import { STATUS_MAP, stripeKeys, verifyStripeSignature } from "@/lib/stripe";
 import { db } from "@/lib/supabase";
@@ -75,7 +77,11 @@ export async function POST(req: Request) {
         await log(`Checkout erneut zugestellt: ${company}`, `Abo ${o.subscription} existiert schon – keine zweite Willkommensmail`, true);
         return new Response("ok", { status: 200 });
       }
-      if (event.livemode) await recordEvent(m.variant_id, "purchase");
+      if (event.livemode) {
+        await recordEvent(m.variant_id, "purchase");
+        // A/B je Schritt: Kauf zählt für die Kassen-Variante (Einheit = Checkout-ID wie beim Start)
+        await recordAb(parseMark(m.ab), o.id, "conversion");
+      }
       // Steuer-Abgleich (lib/billing.ts): gewähltes Rechnungsland vs. echte Rechnungsadresse
       const actualCountry = o.customer_details?.address?.country ?? null;
       const vatNote = m.billing && vatMismatch(m.billing, actualCountry)

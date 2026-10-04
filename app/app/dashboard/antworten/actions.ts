@@ -14,6 +14,7 @@ import { revalidatePath } from "next/cache";
 import { db, suppressEmail } from "@/lib/supabase";
 import { sendConsentMail } from "@/lib/mail";
 import { sendFromStock } from "@/lib/sample-stock";
+import { recordAbMarks } from "@/lib/ab-data";
 import { LEGAL_NAME } from "@/lib/site";
 import { InputError } from "@/lib/owner-settings";
 import { hadSample, stockDeps, stockReady } from "@/lib/antworten-data";
@@ -222,6 +223,7 @@ export async function sendSample(f: FormData) {
       await log("antwort:probe", r.id, { result: "none" });
       throw new InputError(`Kein fertiger Vorrat für ${p.country} – nichts gesendet`);
     }
+    if (res.status === "sent") await recordAbMarks(res.ab, req.id, "exposure"); // A/B „Probe-Mail“
     if (res.status !== "sent") {
       const detail = ("detail" in res && res.detail) || "Fehler";
       // Anfrage schließen: sonst übernimmt web_samples.py sie nach 15 Minuten und sendet doch noch eine Probe

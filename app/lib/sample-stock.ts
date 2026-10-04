@@ -21,6 +21,8 @@ export type StockPayload = {
   html: string;
   headers?: Record<string, string>;
   attachments?: { filename: string; content: string }[];
+  /** A/B „Probe-Mail“ (scripts/sample_stock.py probe_ab): {test_id: A|B} – der Aufrufer zählt den Kontakt */
+  ab?: Record<string, string>;
 };
 
 export type StockDeps = {
@@ -30,7 +32,9 @@ export type StockDeps = {
   env: { RESEND_API_KEY?: string; MAIL_FROM?: string; REPLY_TO?: string };
 };
 
-export type StockResult = { status: "sent" | "none" | "error"; stockId?: string; resendId?: string | null; detail?: string };
+export type StockResult = { status: "sent" | "none" | "error"; stockId?: string; resendId?: string | null; detail?: string;
+  /** A/B-Marken der gesendeten Probe (nur bei „sent“) */
+  ab?: Record<string, string> };
 
 /** Wie lib.rules.normalize_domain in Python: Domain der Adresse, klein, ohne www. */
 export function recipientDomain(email: string): string {
@@ -102,7 +106,7 @@ export async function sendFromStock(deps: StockDeps, req: { id: string; segment:
   }
   const resendId = ((await res.json().catch(() => ({}))) as { id?: string }).id ?? null;
   await finish(true, false, "Sofortversand nach dem Klick", resendId);
-  return { status: "sent", stockId: s.id, resendId };
+  return { status: "sent", stockId: s.id, resendId, ...(payload.ab && Object.keys(payload.ab).length ? { ab: payload.ab } : {}) };
 }
 
 /**

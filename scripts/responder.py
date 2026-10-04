@@ -692,9 +692,11 @@ def brochure(segment: str | None, country: str | None) -> tuple[str, bytes] | No
 
 
 def sample_text(lang: str, region: str | None, has_files: bool, regional: bool = True, preview: str = "",
-                contacts: bool = False, segment: str | None = None, url: str | None = None) -> str | None:
+                contacts: bool = False, segment: str | None = None, url: str | None = None,
+                tipp: str | None = None, schluss: str | None = None) -> str | None:
     """Mail mit der Probe, im Namen des Inhabers (Inhaber 02.10.2026). Ziel: Abo über die Buchungsseite.
-    Keine Preise im Text (stehen im PDF und auf der Seite), keine Zusagen, landesweit, keine Regionen."""
+    Keine Preise im Text (stehen im PDF und auf der Seite), keine Zusagen, landesweit, keine Regionen.
+    tipp/schluss = Variante aus dem A/B-Test „Probe-Mail“ (scripts/lib/ab.py, geprüft), sonst Standard."""
     if not has_files:
         return None
     need_en, need_fr = SHORT_NEED.get(segment or "", ("a reason to buy from you right now",
@@ -705,9 +707,9 @@ def sample_text(lang: str, region: str | None, has_files: bool, regional: bool =
             "Voici vos 10 pistes gratuites de toute la France, en court briefing PDF et en tableau pour votre CRM.",
             f"Chaque piste est une entreprise locale avec {need_fr}, avec téléphone, e-mail, la personne à demander "
             "et une phrase d'accroche.",
-            "Mon conseil : commencez par les pistes en priorité haute et utilisez la phrase d'accroche pour la "
-            "première minute de l'appel.",
-            "Si elles vous conviennent, vous recevez de nouvelles pistes comme celles-ci chaque lundi.",
+            tipp or "Mon conseil : commencez par les pistes en priorité haute et utilisez la phrase d'accroche pour "
+                    "la première minute de l'appel.",
+            schluss or "Si elles vous conviennent, vous recevez de nouvelles pistes comme celles-ci chaque lundi.",
         ]
         parts.append(f"Choisissez votre formule : {url}" if url else
                      "Répondez simplement à cet e-mail et nous mettons tout en place.")
@@ -720,8 +722,9 @@ def sample_text(lang: str, region: str | None, has_files: bool, regional: bool =
             "Hello,",
             f"Here are your 10 free leads from across {area}, as a short PDF briefing and a spreadsheet for your CRM.",
             f"Each one is a local business with {need_en}, with phone, email, who to ask for and an opening line.",
-            "My tip: start with the leads marked high priority and use the opening line for the first minute of the call.",
-            "If they work for you, you get fresh leads like these every Monday.",
+            tipp or "My tip: start with the leads marked high priority and use the opening line for the first minute of "
+                    "the call.",
+            schluss or "If they work for you, you get fresh leads like these every Monday.",
         ]
         parts.append(f"Choose your plan: {url}" if url else "Just reply to this email and we will set it up.")
         if url:
@@ -731,13 +734,21 @@ def sample_text(lang: str, region: str | None, has_files: bool, regional: bool =
 
 
 def sample_mail(lang: str, region: str | None, files: list[tuple[str, bytes]], regional: bool,
-                segment: str | None = None, country: str | None = None) -> tuple[str | None, dict]:
+                segment: str | None = None, country: str | None = None,
+                ab: dict | None = None) -> tuple[str | None, dict]:
     """(Text, HTML-Blöcke) für die Probe-Mail. Hängt die Erklär-PDF an (falls vorhanden) und macht aus der
-    Zeile „Choose your plan: …“ im HTML einen Button zur Buchungsseite."""
+    Zeile „Choose your plan: …“ im HTML einen Button zur Buchungsseite.
+    ab = A/B „Probe-Mail“: {"tipp"/"schluss": Text, "marks": {test_id: A|B}} – der Link zur Tarifseite trägt dann
+    ?ab=<test>.<variante> (nur Variante, keine Person), damit die Tarifseite den Klick der Variante zuordnen kann."""
     from drafts import LAND
     url = booking_url(segment, country)
+    marks = (ab or {}).get("marks") or {}
+    if url and marks:
+        tid, v = next(iter(marks.items()))
+        url = f"{url}?ab={tid}.{v}"
     area = LAND.get((country or "").upper()) if lang != "fr" else None
-    text = sample_text(lang, area, bool(files), regional, contacts=has_contacts(files), segment=segment, url=url)
+    text = sample_text(lang, area, bool(files), regional, contacts=has_contacts(files), segment=segment, url=url,
+                       tipp=(ab or {}).get("tipp"), schluss=(ab or {}).get("schluss"))
     blocks = {}
     if text and files is not None:
         b = brochure(segment, country)
@@ -768,17 +779,31 @@ def hold_text(lang: str) -> str:
             f"Best regards,\n{signature(lang)}")
 
 
-def faq_text(lang: str, keys: list[str]) -> str:
-    """Antwort nur aus den festen FAQ-Bausteinen plus Frage nach der kostenlosen Probe."""
+def faq_text(lang: str, keys: list[str], frage: str | None = None) -> str:
+    """Antwort nur aus den festen FAQ-Bausteinen plus Frage nach der kostenlosen Probe. frage = Variante aus dem
+    A/B-Test „Antwort-Bausteine“ (scripts/lib/ab.py, geprüft: Ja/Nein-Frage, ohne Preise/Zusagen), sonst Standard."""
     table = FAQ[lang if lang in FAQ else "en"]
     answers = "\n\n".join(table[k] for k in keys if k in table)
     if lang == "fr":
+        ask = frage or "Souhaitez-vous recevoir l'échantillon gratuit de 10 pistes actuelles ? Il suffit de répondre « oui »."
         return (f"Bonjour,\n\nMerci pour votre "
-                f"question.\n\n{answers}\n\nSouhaitez-vous recevoir l'échantillon gratuit de 10 pistes "
-                f"actuelles ? Il suffit de répondre « oui ».\n\nBien cordialement,\n{signature(lang)}")
+                f"question.\n\n{answers}\n\n{ask}\n\nBien cordialement,\n{signature(lang)}")
+    ask = frage or "Would you like me to send you the free sample of 10 current leads? A simple \"yes\" is enough."
     return (f"Hello,\n\nThank you for your question."
-            f"\n\n{answers}\n\nWould you like me to send you the free sample of 10 current leads? "
-            f"A simple \"yes\" is enough.\n\nBest regards,\n{signature(lang)}")
+            f"\n\n{answers}\n\n{ask}\n\nBest regards,\n{signature(lang)}")
+
+
+def _ab_ctx(db):
+    """Laufende A/B-Tests einmal je Lauf (am DB-Objekt zwischengespeichert)."""
+    cached = getattr(db, "_ab_ctx", None)
+    if cached is None:
+        from lib import ab as ablib
+        cached = ablib.Ctx(db)
+        try:
+            db._ab_ctx = cached
+        except AttributeError:
+            pass
+    return cached
 
 
 def booking_text(lang: str, url: str) -> str:
@@ -1212,7 +1237,12 @@ def handle_message(db, msg: EmailMessage, mid: str, apply: bool, own: set[str] |
                            push_title=f"Bitte ansehen: {p['company_name']}"[:80], push_body=c.get("summary_de"))
         elif action == "faq":
             keys = [k for k in c["faq"] if k in FAQ[lang if lang in FAQ else 'en']]
-            reply(sender, subject, faq_text(lang, keys), mid, lang)
+            # A/B „Antwort-Bausteine“ (scripts/lib/ab.py): Schlussfrage je Käufer fest zugewiesen, Kontakt zählt
+            frage, mark = _ab_ctx(db).value("antwort", "faq_frage", p.get("segment_id"), p.get("country"), p.get("id"))
+            reply(sender, subject, faq_text(lang, keys, frage if isinstance(frage, str) else None), mid, lang)
+            if mark and not state.get("already"):
+                from lib import ab as ablib
+                ablib.record(db, mark, p.get("id"))
         elif action == "owner":
             alert_once(db, row, f"[Leads] Interessent: {p['company_name']} – {c['summary_de'][:80]}",
                        f"{p['company_name']} ({p['segment_id']}/{p['country']}, {p.get('region') or ''}) "

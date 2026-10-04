@@ -36,6 +36,12 @@ in `signalwerk.decisions`. Ziel: **möglichst viele zahlende Kunden und maximale
      `tagesziel`, `countries.yaml` Tageslimits) – nur innerhalb der Notbremse (Bounces/Beschwerden) und der Grenze des
      Mail-Anbieters. Nach einer Spam-Beschwerde oder ausgelöster Notbremse Mengen senken, nie erhöhen.
    - **Käufer-Leads:** kostenlose Quellen (OpenStreetMap, Register) über die Abläufe `kaeufer`/`recherche` anstoßen.
+4a. **A/B je Schritt – Engpass zuerst** (Inhaber 04.10.2026): `python scripts/ab.py trichter` (Quote je Station,
+   Engpass = größter Abfall gegenüber Richtwert) und `python scripts/ab.py liste`. Läuft am Engpass in einem Land noch
+   kein Test, einen anlegen und starten: `python scripts/ab.py anlegen <schritt> <land> <element> --b "<neu>"
+   --hypothese "<≤ 160 Zeichen>" --starten` (eine Sache, Text in Landessprache nach §7, keine Garantien/Preise/Zahlen
+   außer 10; nur S2 US/UK/FR). Auswertung und Gewinner-Übernahme macht `ab.py auswerten --apply` (Wachhund) selbst;
+   Meldungen landen in `decisions` und im Gehirn-Chat. Höchstens 1 laufender Test je Schritt und Land.
 4b. **Agenten nutzen** (Inhaber 04.10.2026: „das gehirn die agents selber nutzt und beauftragt für seine ziele“):
    zuerst `python scripts/brain_routines.py ergebnisse` auswerten (Gelerntes mit `brain_knowledge.py add`, dann
    `gelernt <id>`), dann für den größten Hebel einen freien Agenten beauftragen:

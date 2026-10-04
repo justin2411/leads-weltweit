@@ -1,0 +1,305 @@
+{
+ "_info": "Gemeinsame Fälle für scripts/lib/ab.py (tests/test_ab.py) und app/lib/ab.ts (lib/ab.test.ts): Zuweisung, P(B > A), Regeln für Varianten, Auswertung.",
+ "assign": [
+  {
+   "salt": "",
+   "unit": "4f0c3a8e-1b2d-4c5e-9f00-112233445566",
+   "v": "B"
+  },
+  {
+   "salt": "",
+   "unit": "x1",
+   "v": "A"
+  },
+  {
+   "salt": "abc123",
+   "unit": "x1",
+   "v": "A"
+  },
+  {
+   "salt": "abc123",
+   "unit": "vh-7",
+   "v": "A"
+  },
+  {
+   "salt": "9f8e",
+   "unit": "sess_42",
+   "v": "B"
+  },
+  {
+   "salt": "",
+   "unit": "p-2",
+   "v": "B"
+  },
+  {
+   "salt": "abc123",
+   "unit": "p-3",
+   "v": "A"
+  },
+  {
+   "salt": "9f8e",
+   "unit": "p-4",
+   "v": "B"
+  }
+ ],
+ "p_b": [
+  {
+   "nA": 0,
+   "kA": 0,
+   "nB": 0,
+   "kB": 0,
+   "p": 0.5
+  },
+  {
+   "nA": 100,
+   "kA": 5,
+   "nB": 100,
+   "kB": 5,
+   "p": 0.5
+  },
+  {
+   "nA": 100,
+   "kA": 2,
+   "nB": 100,
+   "kB": 10,
+   "p": 0.9879
+  },
+  {
+   "nA": 300,
+   "kA": 6,
+   "nB": 300,
+   "kB": 15,
+   "p": 0.9727
+  },
+  {
+   "nA": 50,
+   "kA": 10,
+   "nB": 50,
+   "kB": 2,
+   "p": 0.0086
+  },
+  {
+   "nA": 1000,
+   "kA": 40,
+   "nB": 1000,
+   "kB": 55,
+   "p": 0.941
+  },
+  {
+   "nA": 20,
+   "kA": 1,
+   "nB": 20,
+   "kB": 3,
+   "p": 0.8176
+  }
+ ],
+ "check": [
+  {
+   "step": "mail_betreff",
+   "element": "betreff",
+   "value": "No website yet: local businesses across the US",
+   "ok": true
+  },
+  {
+   "step": "mail_betreff",
+   "element": "betreff",
+   "value": "Re: your website",
+   "ok": false
+  },
+  {
+   "step": "mail_betreff",
+   "element": "betreff",
+   "value": "Guaranteed leads for agencies",
+   "ok": false
+  },
+  {
+   "step": "mail_betreff",
+   "element": "betreff",
+   "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "ok": false
+  },
+  {
+   "step": "mail_einstieg",
+   "element": "frage",
+   "value": "Shall I send the 10 leads over?",
+   "ok": true
+  },
+  {
+   "step": "mail_einstieg",
+   "element": "frage",
+   "value": "Shall I send them over.",
+   "ok": false
+  },
+  {
+   "step": "mail_einstieg",
+   "element": "frage",
+   "value": "Want 25 leads?",
+   "ok": false
+  },
+  {
+   "step": "tarif",
+   "element": "titel",
+   "value": "Start for only $99",
+   "ok": false
+  },
+  {
+   "step": "tarif",
+   "element": "titel",
+   "value": "Your weekly leads, ready on Monday",
+   "ok": true
+  },
+  {
+   "step": "nachfass",
+   "element": "tage",
+   "value": 5,
+   "ok": true
+  },
+  {
+   "step": "nachfass",
+   "element": "tage",
+   "value": 12,
+   "ok": false
+  },
+  {
+   "step": "mail_zeit",
+   "element": "fenster",
+   "value": "spaet",
+   "ok": true
+  },
+  {
+   "step": "mail_zeit",
+   "element": "fenster",
+   "value": "nachts",
+   "ok": false
+  },
+  {
+   "step": "landing",
+   "element": "preis",
+   "value": "x",
+   "ok": false
+  },
+  {
+   "step": "checkout",
+   "element": "hinweis",
+   "value": "Visit https://example.com",
+   "ok": false
+  },
+  {
+   "step": "checkout",
+   "element": "hinweis",
+   "value": "Act now, limited time",
+   "ok": false
+  },
+  {
+   "step": "probe_mail",
+   "element": "tipp",
+   "value": "Mon conseil : appelez d'abord les entreprises en priorité haute.",
+   "ok": true
+  }
+ ],
+ "evaluate": [
+  {
+   "min_n": 100,
+   "days": 3,
+   "rows": [
+    {
+     "variant": "A",
+     "n": 50,
+     "k": 2
+    },
+    {
+     "variant": "B",
+     "n": 50,
+     "k": 9
+    }
+   ],
+   "status": "laeuft",
+   "gewinner": null,
+   "sicherheit": 0.9838
+  },
+  {
+   "min_n": 100,
+   "days": 5,
+   "rows": [
+    {
+     "variant": "A",
+     "n": 200,
+     "k": 4
+    },
+    {
+     "variant": "B",
+     "n": 200,
+     "k": 16
+    }
+   ],
+   "status": "gewonnen",
+   "gewinner": "B",
+   "sicherheit": 0.9961
+  },
+  {
+   "min_n": 100,
+   "days": 5,
+   "rows": [
+    {
+     "variant": "A",
+     "n": 200,
+     "k": 10
+    },
+    {
+     "variant": "B",
+     "n": 200,
+     "k": 12
+    }
+   ],
+   "status": "laeuft",
+   "gewinner": null,
+   "sicherheit": 0.6635
+  },
+  {
+   "min_n": 100,
+   "days": 22,
+   "rows": [
+    {
+     "variant": "A",
+     "n": 200,
+     "k": 10
+    },
+    {
+     "variant": "B",
+     "n": 200,
+     "k": 12
+    }
+   ],
+   "status": "gestoppt",
+   "gewinner": null,
+   "sicherheit": 0.6635
+  },
+  {
+   "min_n": 100,
+   "days": 5,
+   "rows": [
+    {
+     "variant": "A",
+     "n": 200,
+     "k": 20
+    },
+    {
+     "variant": "B",
+     "n": 200,
+     "k": 6
+    }
+   ],
+   "status": "gewonnen",
+   "gewinner": "A",
+   "sicherheit": 0.9972
+  },
+  {
+   "min_n": 30,
+   "days": 2,
+   "rows": [],
+   "status": "laeuft",
+   "gewinner": null,
+   "sicherheit": 0.5
+  }
+ ]
+}
