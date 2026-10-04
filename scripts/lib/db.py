@@ -17,7 +17,7 @@ import requests
 
 SCHEMA = "signalwerk"
 RETRY_STATUS = {429, 502, 503, 504}
-READ_ONLY_RPC = {"is_suppressed"}
+READ_ONLY_RPC = {"is_suppressed", "flow_lead_rows", "flow_buyer_rows", "pool_counts"}
 RETRY_WAIT = (2, 5, 15)  # Sekunden; danach gibt der Aufruf den Fehler weiter
 
 
@@ -114,8 +114,10 @@ class DB:
         return self._check(self._send("PATCH", f"{self.base}/{table}", safe=True, params=params, json=clean(values),
                                       headers={"Prefer": "return=representation"}))
 
-    def rpc(self, fn: str, args: dict) -> Any:
-        return self._check(self._send("POST", f"{self.base}/rpc/{fn}", safe=fn in READ_ONLY_RPC, json=clean(args)))
+    def rpc(self, fn: str, args: dict, params: dict | None = None) -> Any:
+        """params: PostgREST-Parameter auf das Ergebnis (order, limit, offset) – zum Blättern über 1000 Zeilen."""
+        return self._check(self._send("POST", f"{self.base}/rpc/{fn}", safe=fn in READ_ONLY_RPC, json=clean(args),
+                                      params=params or {}))
 
     def is_suppressed(self, email: str) -> bool:
         return bool(self.rpc("is_suppressed", {"p_email": email}))

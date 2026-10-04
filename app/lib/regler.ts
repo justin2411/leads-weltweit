@@ -39,6 +39,7 @@ export const CARDS: readonly Card[] = [
   { key: "versand", icon: "versand", name: "Versand", keys: ["send_paused"], werk: "versand", start: null, cron: "23 14 * * *", file: "send.yml" },
   { key: "kundenlieferung", icon: "lieferung", name: "Kundenlieferung", keys: ["werke_paused"], werk: "kundenlieferung", start: null, cron: "53 4 * * 1", file: "kundenlieferung.yml" },
   { key: "tagescheck", icon: "tagescheck", name: "Tagescheck", keys: ["werke_paused"], werk: "tagescheck", start: null, cron: "37 17 * * *", file: "tagescheck.yml" },
+  { key: "agenten", icon: "agent", name: "Agenten-Werk", keys: ["werke_paused"], werk: "agenten", start: null, cron: "29 * * * *", file: "agenten-werk.yml" },
 ];
 export const cardOf = (k: CardKey): Card => CARDS.find((c) => c.key === k)!;
 export const isCardKey = (x: unknown): x is CardKey => typeof x === "string" && CARDS.some((c) => c.key === x);

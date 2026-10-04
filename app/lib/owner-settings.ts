@@ -46,6 +46,8 @@ export const WERK_SWITCHES = {
   antworten: { label: "Antwort-Assistent", via: "werke_paused", note: "Abmeldungen per Antwort werden trotzdem immer gesperrt – pausiert werden nur automatische Antworten." },
   kundenlieferung: { label: "Kundenlieferung", via: "werke_paused" },
   tagescheck: { label: "Tagescheck", via: "werke_paused" },
+  /** Master-Pipeline füllt Speicher + eigene Agenten (agenten-werk.yml, docs/BAUKASTEN-MASTER.md) */
+  agenten: { label: "Agenten-Werk", via: "werke_paused" },
 } as const;
 export type WerkKey = keyof typeof WERK_SWITCHES;
 

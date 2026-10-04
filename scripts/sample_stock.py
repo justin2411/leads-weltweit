@@ -262,6 +262,28 @@ def verify_stock(db, apply: bool, log=print, max_hours: int = RECHECK_HOURS, fet
     return res
 
 
+def drop_off_pool(db, apply: bool, log=print) -> int:
+    """Speicher (pool_routes) gesetzt oder geändert: fertige Proben, deren Leads nicht alle im Speicher ihrer
+    Zielgruppe+Land liegen, verwerfen (Leads wieder frei) – sie werden im selben Lauf aus dem Speicher neu gebaut."""
+    from lib.pools import members, routes
+    known = routes(db)
+    if not known:
+        return 0
+    n = 0
+    for r in stock_rows(db, "ready"):
+        pid = known.get((r["segment_id"], r["country"]))
+        ids = r.get("lead_ids") or []
+        if not pid or (ids and members(db, pid, ids) == set(ids)):
+            continue
+        if not apply:
+            log(f"  würde verwerfen: Probe {r['segment_id']}/{r['country']} (nicht aus dem Speicher)")
+            n += 1
+        elif db.rpc("discard_sample_stock", {"p_stock": r["id"], "p_note": "Speicher geändert"}):
+            log(f"  Probe {r['segment_id']}/{r['country']} verworfen: nicht aus dem gesetzten Speicher")
+            n += 1
+    return n
+
+
 def cleanup_files(db, log=print) -> int:
     """Dateien verworfener Proben sofort, gesendeter nach 30 Tagen aus dem Storage löschen."""
     old = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=30)).isoformat()
@@ -303,6 +325,8 @@ def run(db, apply: bool, log=print) -> dict:
         if n:
             log(f"{n} Proben verfallen (älter als {cfg['max_alter_stunden']} h, ohne {', '.join(NO_EXPIRY)}) – Leads freigegeben")
         cleanup_files(db, log)
+    if drop_off_pool(db, apply, log):
+        log("Proben außerhalb des gesetzten Speichers verworfen")
     v = verify_stock(db, apply, log)
     if v["geprueft"]:
         log(f"Freigabe fertiger Proben: {v['geprueft']} geprüft, {v['bestanden']} bestanden, {v['verworfen']} verworfen")
