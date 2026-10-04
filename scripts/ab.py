@@ -97,7 +97,7 @@ def _landing_setup(db, t: dict) -> list[dict]:
     key = next(k for k in "BCDEFGHIJKLMNOPQRSTUVWXYZ" if k not in used)
     b_val = ab.variant_value(t, "B")
     a_val = ab.variant_value(t, "A")
-    copy_cols = ("headline", "subheadline", "signals", "sample_leads", "pricing", "cta_label", "faq")
+    copy_cols = ("headline", "subheadline", "signals", "sample_leads", "pricing", "cta_label", "faq", "value_block")
     new = {c: base.get(c) for c in copy_cols}
     new.update({"page_id": pages[0]["id"], "variant_key": key, t["element"]: b_val, "status": "live",
                 "traffic_share": 50, "changed_element": t["element"], "created_by": "brain"})

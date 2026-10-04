@@ -62,7 +62,7 @@ async function landingSetup(t: AbTest) {
   const used = new Set((vs ?? []).map((v) => v.variant_key));
   const key = "BCDEFGHIJKLMNOPQRSTUVWXYZ".split("").find((k) => !used.has(k))!;
   const b = variantValue(t, "B");
-  const copy = Object.fromEntries(["headline", "subheadline", "signals", "sample_leads", "pricing", "cta_label", "faq"].map((c) => [c, base[c]]));
+  const copy = Object.fromEntries(["headline", "subheadline", "signals", "sample_leads", "pricing", "cta_label", "faq", "value_block"].map((c) => [c, base[c]]));
   const { data: nv, error } = await db().from("page_variants").insert({ ...copy, page_id: page.id, variant_key: key, [t.element]: b, status: "live",
     traffic_share: 50, changed_element: t.element, created_by: "brain" }).select("id").single();
   if (error) throw new Error(error.message);

@@ -35,7 +35,8 @@ DEFAULT_MAX = 15         # Leads pro Woche, falls im Abo nichts steht
 # Reihenfolge so, wie der Kunde arbeitet: wer, wie erreichbar, worum es geht, was sagen, woher belegt.
 CSV_HEADER = ["company", "phone", "email", "website", "location", "company_profile", "event", "event_date",
               "why_now", "priority", "signal", "sales_tip", "question_to_ask", "opening_line",
-              "source", "checked_on", "legal_form", "industry", "address", "contact_name", "contact_role"]
+              "source", "checked_on", "legal_form", "industry", "address", "contact_name", "contact_role",
+              "source_url", "contact_source"]  # Beleg-Link und Quelle der Ansprechperson (Lead-Karte im PDF, 05.10.2026)
 # Kunde bekommt nur vollständige Leads: Telefon, Sammel-E-Mail, Website, Adresse, Ansprechperson (Inhaber 27.09.2026).
 REQUIRE_CONTACT = True
 # Gleiche Felder beim Vorbereiten und beim Senden: ohne watch_companies.address verwirft
@@ -231,6 +232,7 @@ def add_contacts(db, leads: list[dict], known: dict[str, dict] | None = None) ->
     for l in leads:
         pp = people.get(l.get("company_id")) or {}
         l["_person"], l["_person_role"] = pp.get("name") or "", pp.get("role") or ""
+        l["_person_source"] = pp.get("source") or ""
         k, c = known.get(l.get("company_id")) or {}, sites.get(l.get("company_id")) or {}
         l["_phone"] = k.get("phone") or c.get("phone_main") or ""
         l["_email"] = k.get("email") or ""
@@ -269,7 +271,8 @@ def to_csv(leads: list[dict], lang: str = "en", area: str | None = None) -> byte
                     company_profile(l, lang), l["event_summary"], l.get("event_date") or "", l["urgency_reason"],
                     l["urgency"], l.get("signal_type") or "", l.get("_tip", ""), l.get("_question", ""), l["opener"],
                     l["source_name"], l["source_date"], co.get("legal_form") or legal_form_of(co.get("name", "")),
-                    l.get("_industry", ""), co.get("address") or "", l.get("_person", ""), l.get("_person_role", "")])
+                    l.get("_industry", ""), co.get("address") or "", l.get("_person", ""), l.get("_person_role", ""),
+                    l.get("source_url") or "", l.get("_person_source", "")])
     # BOM, damit Excel Umlaute und Akzente richtig anzeigt
     return ("\ufeff" + buf.getvalue()).encode("utf-8")
 
