@@ -145,3 +145,26 @@ function nice(s: string): string {
   if (s !== s.toUpperCase()) return s;
   return s.toLowerCase().replace(/\b([a-z])/g, (c) => c.toUpperCase()).replace(/\bLlp\b/g, "LLP").replace(/\bPlc\b/g, "PLC");
 }
+
+/**
+ * Probe-Formular der Startseite (Inhaber 04.10.2026: „nur die sachen auswählbar machen, die wir aktuell als proben
+ * bereit haben … wenn wir neue sachen haben können wir auch die nehmen“): je Branche (segKey) die Länder, für die
+ * eine fertige, frisch freigegebene Probe im Vorrat liegt – gleiche Bedingung wie claim_sample_stock (Freigabe < 26 h).
+ */
+export async function readySampleCountries(): Promise<Record<string, string[]>> {
+  const since = new Date(Date.now() - 26 * 3600 * 1000).toISOString();
+  const [{ data: pages }, { data: stock }] = await Promise.all([
+    db().from("landing_pages").select("slug, segment_id").eq("status", "live"),
+    db().from("sample_stock").select("segment_id, country").eq("status", "ready")
+      .gt("expires_at", new Date().toISOString()).gte("gate_checked_at", since).limit(2000),
+  ]);
+  const segOf = new Map<string, Set<string>>();          // segment_id -> segKeys
+  for (const p of (pages ?? []) as { slug: string; segment_id: string }[]) {
+    segOf.set(p.segment_id, (segOf.get(p.segment_id) ?? new Set()).add(segKey(p.slug)));
+  }
+  const out: Record<string, Set<string>> = {};
+  for (const s of (stock ?? []) as { segment_id: string; country: string }[]) {
+    for (const k of segOf.get(s.segment_id) ?? []) (out[k] ??= new Set()).add(s.country);
+  }
+  return Object.fromEntries(Object.entries(out).map(([k, v]) => [k, [...v].sort()]));
+}

@@ -6,7 +6,7 @@ import { consentText } from "@/lib/consent";
 import { HOME_SPRITE, HOME_STAT_ART } from "@/lib/home-v2-css";
 import { SampleForm } from "./sample-form";
 import { industryOptions } from "./industry-options";
-import { homeStats, publicPages, type PublicPage } from "@/lib/site-pages";
+import { homeStats, publicPages, readySampleCountries, type PublicPage } from "@/lib/site-pages";
 import { BrandShell, SiteFooter, SiteHeader } from "./chrome";
 import { HOME, HOME_LANGS, HOME_PATH, type HomeLang } from "./home-i18n";
 import { CONTACT_PATH } from "./contact/contact-i18n";
@@ -93,15 +93,20 @@ export async function Home({ lang }: { lang: HomeLang }) {
   // Statische Seite (revalidate): fällt die Datenbank beim Neu-Rendern im Hintergrund aus, Fehler werfen –
   // dann bleibt die zuletzt gespeicherte Fassung stehen statt leerer Branchen und Zahl 0. Beim Build wie bisher.
   const building = process.env.NEXT_PHASE === "phase-production-build";
-  const [pages, stats] = await Promise.all([
+  const [pages, ready, stats] = await Promise.all([
     publicPages().catch((e) => { if (!building) throw e; return [] as PublicPage[]; }),
+    readySampleCountries().catch(() => null),
     homeStats().catch((e) => { if (!building) throw e; return { companies: 0, signals: 0, signals24h: 0 }; }),
   ]);
   const V = VIDEOS as Record<string, { src: string; poster: string; seconds: number }>;
   const video = V[`${lang}:home`] ?? V["en:home"];
   // Probe-Formular: Branche und Lieferland getrennt (Inhaber 03.10.2026), Länder nur dort, wo wir Leads haben
-  const industries = industryOptions(lang, pages);
-  const leadCountries = LEAD_COUNTRIES.map((x) => ({ code: x.code, label: x.name[lang] }));
+  // Nur Branche+Land mit fertiger Probe im Vorrat wählbar (Inhaber 04.10.2026); Vorrat nicht lesbar = wie bisher
+  const industries = industryOptions(lang, pages)
+    .map((o) => (ready ? { ...o, ready: ready[o.value] ?? [] } : o))
+    .filter((o) => !ready || (o.ready?.length ?? 0) > 0);
+  const leadCountries = LEAD_COUNTRIES.map((x) => ({ code: x.code, label: x.name[lang] }))
+    .filter((c) => !ready || industries.some((o) => o.ready?.includes(c.code)));
   const contactHref = CONTACT_PATH[lang];
   const ld = {
     "@context": "https://schema.org", "@type": "Organization", name: BRAND, legalName: LEGAL_NAME, url: siteUrl(), email: CONTACT,

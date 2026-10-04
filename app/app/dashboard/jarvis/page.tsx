@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadAgentTasks, loadBoxHealth, loadDaily, loadFunnel, loadGateChecks, loadLive, loadOwnerSettings, loadPlanLog, loadRecentSent, loadRunRows, loadStock } from "@/lib/dashboard-data";
 import { berlin, berlinDay, brake, chain, compact, currencySign, greeting, mailboxes, monthly, nextRun, onlySegment, realSubscriptions, sampleStock, stockSegment, BOX_MIN, COUNTRY_COLOR } from "@/lib/dashboard-logic";
 import { totals } from "@/lib/dashboard-periods";
-import { alarmTips, coach, hall, laneOf, laneStats, neckTask, rankTips, running, utilization, type Beat } from "@/lib/leitstand";
+import { alarmTips, coach, hall, laneOf, laneStats, neckTask, rankTips, running, utilization, type Beat, type Tip } from "@/lib/leitstand";
 import { NECK_TO_STATION, ticker, type Edge, type Station, type StationId, type TickerItem } from "@/lib/fluss";
 import { effectiveLimit, slotCounts, werkOn, type LaneRegistry, type WerkKey } from "@/lib/owner-settings";
 import { START_WORKFLOWS, startState, type StartKey, type StartRequest } from "@/lib/start-queue";
@@ -152,6 +152,15 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   const tips = rankTips([
     ...(nb.stop ? [{ level: "rot" as const, title: "Notbremse: Versand gestoppt", text: `${nb.stop}. Neustart nur nach deiner Entscheidung.`, href: "/dashboard/versand" }] : []),
     ...alarmTips({ openReplies, samplesReady: st.length ? ready : null, samplesTarget: target }),
+    // Offene Probe-Anfragen der Website (alle Zielgruppen/Länder): sofort sichtbar, ab 15 min rot
+    ...(() => {
+      const open = liveAll.sample_requests.filter((r) => r.status === "new" && !r.is_test);
+      if (!open.length) return [];
+      const late = open.some((r) => t - Date.parse(r.created_at) > 15 * 60_000);
+      const names = open.slice(0, 3).map((r) => `${r.company_name} (${r.segment_id}/${r.country}${/Warteliste/.test(r.note ?? "") ? ", nicht lieferbar" : ""})`).join(", ");
+      return [{ level: late ? "rot" as const : "gelb" as const, title: open.length === 1 ? "1 Probe-Anfrage offen" : `${open.length} Probe-Anfragen offen`,
+        text: `${names}. Proben gehen normalerweise sofort raus – offen heißt: noch keine passende fertige Probe.`, href: "/dashboard/proben" } as Tip];
+    })(),
     ...coach({ reg: REG, plan, stats, util: util.rate, queue, freeBuyers, leads: leadsNew, capPerDay: cap, kundenNew24h: stockAll ? newBuyers24 : null, stockKnown: !!stock, autopilot: autopilotOn,
     failed: beats.filter((b) => /^abgebrochen/.test(b.note ?? "") && t - Date.parse(b.beat_at) < 6 * 3_600_000).map((b) => `${b.werk} ${b.part} · ${berlin(b.beat_at)}`),
     countedHours: firstRun ? Math.min(24, (t - firstRun) / 3_600_000) : 0 }),
@@ -171,6 +180,12 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     { label: "Engpass", value: neck ? stations.find((x) => x.id === neck)!.label : "keiner", sub: "hier ansetzen", tone: neck ? "red" : "green", href: neck ? base(neck) : "/dashboard/jarvis", task: neck ? neckTask(stations.find((x) => x.id === neck)!.label) : undefined },
   ] as { label: string; value: string; sub: string; tone: "green" | "gold" | "red" | "cyan" | "grey"; href: string }[];
   const items: TickerItem[] = [
+    // Probe-Anfragen der Website live (Inhaber 04.10.2026: „muss immer auch live eingetragen werden im dashboard“) –
+    // alle Zielgruppen und Länder, nicht nur der gewählte Fokus
+    ...liveAll.sample_requests.filter((r) => !r.is_test && t - Date.parse(r.created_at) < 48 * 3_600_000).slice(0, 10).map((r) => ({
+      at: r.status === "sent" && r.sent_at ? r.sent_at : r.created_at, icon: "proben" as IconName,
+      text: `${r.company_name} · Probe ${r.segment_id}/${r.country}${r.status === "sent" ? " gesendet" : /Warteliste/.test(r.note ?? "") ? " · nicht lieferbar" : " · offen"}`,
+      tone: (r.status === "sent" ? "green" : "red") as TickerItem["tone"], href: "/dashboard/antworten" })),
     ...sent.map((m) => ({ at: m.sent_at, icon: "mail" as IconName, text: `${m.prospects?.company_name ?? "?"} ${m.prospects?.country ?? ""}`, tone: "cyan" as const, href: m.prospects ? `/dashboard/kontakte/${m.prospects.id}` : undefined })),
     ...live.events.filter((e) => ["reply", "reply_positive", "reply_negative", "sample_requested", "unsubscribed", "bounced"].includes(e.type)).slice(0, 10).map((e) => ({
       at: e.occurred_at, icon: ({ reply: "antwort", reply_positive: "stern", reply_negative: "antwort", sample_requested: "proben", unsubscribed: "abmeldung", bounced: "bounce" } as Record<string, IconName>)[e.type] ?? "info",
