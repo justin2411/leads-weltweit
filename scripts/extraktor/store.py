@@ -35,11 +35,10 @@ SOURCE_NAME = {
     "find_tender": "UK public contract award notice (Find a Tender / Contracts Finder)",
     "us_award": "US federal contract award (USAspending.gov)",
     "rge": "Liste des entreprises RGE (ADEME, official register)",
-    "bodacc_move": "BODACC (Bulletin officiel) – transfert",
 }
 EVENT_KEY = {"fmcsa": "fmcsa_registration", "sec_form_d": "form_d", "companies_house": "incorporation",
              "bodacc": "immatriculation", "overture": "no_website", "rge": "no_website", "careers": "open_roles", "ats_jobs": "open_roles",
-             "overture_web": "website_check", "bodacc_move": "relocation",
+             "overture_web": "website_check",
              "find_tender": "contract_award", "us_award": "contract_award"}
 INDUSTRY = {"fmcsa": "Motor carrier"}
 
