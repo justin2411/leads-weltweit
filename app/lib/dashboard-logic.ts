@@ -222,16 +222,17 @@ export function isTransient(e: Pick<Ev, "bounce_type" | "bounce_status">): boole
 /** Bounces und Beschwerden je Empfängeradresse (deliverability.count_bounces). */
 export function countBounces(events: Pick<Ev, "type" | "bounce_type" | "bounce_status" | "to_email" | "message_id">[]): { bounced: number; complained: number } {
   const hard = new Set<string>();
-  const soft = new Map<string, number>();
+  // vorübergehend: verschiedene gesendete Mails je Adresse; dieselbe Mail mehrfach gemeldet = ein Vorfall
+  const soft = new Map<string, Set<string>>();
   const complained = new Set<string>();
-  for (const e of events) {
+  events.forEach((e, i) => {
     const who = (e.to_email || e.message_id || "").toLowerCase();
-    if (e.type === "complained") { complained.add(who); continue; }
-    if (e.type !== "bounced") continue;
-    if (isTransient(e)) soft.set(who, (soft.get(who) ?? 0) + 1);
+    if (e.type === "complained") { complained.add(who); return; }
+    if (e.type !== "bounced") return;
+    if (isTransient(e)) soft.set(who, (soft.get(who) ?? new Set<string>()).add(e.message_id || `#${i}`));
     else hard.add(who);
-  }
-  for (const [w, n] of soft) if (n >= 2) hard.add(w);
+  });
+  for (const [w, n] of soft) if (n.size >= 2) hard.add(w);
   return { bounced: hard.size, complained: complained.size };
 }
 

@@ -110,6 +110,11 @@ jobs:
         run: |
           APPROVE=$(grep -E '^freigabe:' config/versand.yaml | cut -d'"' -f2)
           python scripts/drafts.py --approve "$APPROVE" --max-new 300
+      - name: "Rückläufer-Risiko zurückstellen (Syntax 5.1.3, Microsoft 365 5.4.1; Bounce-Analyse 05.10.2026)"
+        if: ${{ steps.gate.outputs.ok == 'true' && !(github.event_name == 'workflow_dispatch' && inputs.probelauf) }}
+        continue-on-error: true  # der Versand prüft beides ohnehin je Mail noch einmal
+        timeout-minutes: 15
+        run: python scripts/zurueckstellen.py --apply --seit-stunden 3 --bestaetigen 20
       - name: Probelauf
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.probelauf }}
         run: python scripts/outreach.py send ${LAENDER:+--countries "$LAENDER"}

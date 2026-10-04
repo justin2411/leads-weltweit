@@ -141,7 +141,7 @@ class Parsen(unittest.TestCase):
                          ("4.4.1", "weich", "mail.reach-media.com", "dsn"))
         # 4.x.x = vorübergehend (RFC 3463, Bounce-Analyse 05.10.2026): zählt erst beim zweiten Mal je Adresse
         self.assertEqual(d["type"], "Transient")
-        self.assertEqual(count_bounces([{"type": "bounced", "to_email": "x", "payload": {"bounce": d}}]), (1, 0))
+        self.assertEqual(count_bounces([{"type": "bounced", "to_email": "x", "payload": {"bounce": d}}]), (0, 0))
 
     def test_dsn_ohne_felder_nimmt_grund_aus_text(self):
         d = B.details(msg(STRATO_BARE))["hello@gone-agency.com"]

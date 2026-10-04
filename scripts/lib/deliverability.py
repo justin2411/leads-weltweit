@@ -94,9 +94,9 @@ def count_bounces(events: list[dict]) -> tuple[int, int]:
     dieselbe Adresse zählt nur einmal, eine vorübergehende Abweisung („Transient“, Postfach existiert)
     (oder Status 4.x.x) erst, wenn sie bei derselben Adresse wiederholt auftritt. Ereignisse: type, payload, to_email (oder message_id)."""
     hard: set[str] = set()
-    soft: dict[str, int] = {}
+    soft: dict[str, set[str]] = {}
     complained: set[str] = set()
-    for e in events:
+    for i, e in enumerate(events):
         who = (e.get("to_email") or e.get("message_id") or "").lower()
         if e.get("type") == "complained":
             complained.add(who)
@@ -105,10 +105,12 @@ def count_bounces(events: list[dict]) -> tuple[int, int]:
             continue
         bounce = ((e.get("payload") or {}).get("bounce") or {}) if isinstance(e.get("payload"), dict) else {}
         if is_transient(bounce):
-            soft[who] = soft.get(who, 0) + 1
+            # je Adresse verschiedene gesendete Mails zählen: dieselbe Mail, mehrfach gemeldet (Posteingang + Spam,
+            # zwei Postfächer, Strato-Meldung + Wiederholung), ist nur ein Vorfall (Bounce-Analyse 05.10.2026)
+            soft.setdefault(who, set()).add(str(e.get("message_id") or e.get("dedupe_key") or f"#{i}"))
         else:
             hard.add(who)
-    hard |= {w for w, n in soft.items() if n >= 2}
+    hard |= {w for w, n in soft.items() if len(n) >= 2}
     return len(hard), len(complained)
 
 
@@ -123,6 +125,32 @@ def interleave(messages: list[dict], key: str = "experiment_id") -> list[dict]:
             if q:
                 out.append(q.pop(0))
     return out
+
+
+M365_MX = ("mail.protection.outlook.com", "mx.microsoft")  # Exchange Online / Microsoft 365
+_MX_HOSTS: dict[str, list[str] | None] = {}
+
+
+def mx_hosts(domain: str) -> list[str] | None:
+    """MX-Ziele der Domain (klein, ohne Punkt am Ende); None = nicht prüfbar. Je Lauf zwischengespeichert."""
+    d = (domain or "").strip().lower()
+    if d in _MX_HOSTS:
+        return _MX_HOSTS[d]
+    try:
+        import dns.resolver
+        out: list[str] | None = [str(r.exchange).rstrip(".").lower() for r in dns.resolver.resolve(d, "MX", lifetime=8)]
+    except ImportError:  # pragma: no cover
+        out = None
+    except Exception as e:  # noqa: BLE001
+        out = [] if type(e).__name__ in ("NXDOMAIN", "NoAnswer") else None
+    _MX_HOSTS[d] = out
+    return out
+
+
+def is_m365(hosts: list[str] | None) -> bool:
+    """Empfänger bei Microsoft 365: 5 von 25 Rückläufern bis 05.10.2026 waren 5.4.1 „Recipient address rejected:
+    Access denied“ (Exchange Online lehnt unbekannte Postfächer schon am Eingang ab)."""
+    return any(h.endswith(M365_MX) for h in hosts or [])
 
 
 def domain_accepts_mail(domain: str) -> bool:

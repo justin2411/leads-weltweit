@@ -90,7 +90,8 @@ def cmd_lint(args) -> int:
     rows = db.select("messages", {"status": "eq.draft", "limit": str(args.limit)})
     for m in rows:
         res = lint_draft(m["subject"], m["body"], m.get("language") or "en")
-        db.update("messages", {"id": m["id"]}, {"check_errors": res.errors})
+        from lib.freshness import keep_holds
+        db.update("messages", {"id": m["id"]}, {"check_errors": keep_holds(m.get("check_errors"), res.errors)})
         print(f"{m['to_email']:<40} {res.summary()}")
     return 0
 
@@ -504,7 +505,7 @@ def cmd_send(args) -> int:
             if not os.environ.get(var):
                 raise SystemExit(f"{var} fehlt")
 
-    from lib.deliverability import domain_accepts_mail, interleave
+    from lib.deliverability import domain_accepts_mail, interleave, is_m365, mx_hosts
     from drafts import subject_variant  # Betreff-Variante für den Mail-Link (?sv=), falls die Spalte fehlt
 
     stop = notbremse(db)
@@ -706,9 +707,20 @@ def cmd_send(args) -> int:
         if sent_today.get(country, 0) >= limit:
             print(f"Tageslimit {country} ({limit}) erreicht, Rest morgen")
             continue
-        if kind == "initial" and freshness.needs_rescan(p) and not live:
+        # Microsoft-365-Empfänger (5.4.1, Bounce-Analyse 05.10.2026): nur mit frischem, wörtlichem Fund auf der
+        # eigenen Website; Adresse auf fremder Domain/Freemail -> zurückstellen (draft + Grund), nichts gelöscht
+        m365 = kind == "initial" and is_m365(mx_hosts(m["to_email"].split("@")[-1]))
+        if m365 and not freshness.own_domain_address(m["to_email"], p):
+            print(f"ZURÜCKGESTELLT {m['to_email']}: Microsoft 365, Adresse nicht auf der eigenen Firmendomain")
+            if live:
+                db.update("messages", {"id": m["id"]}, {"status": "draft", "check_errors": freshness.keep_holds(
+                    m.get("check_errors"), [freshness.M365_REASON])})
+            continue
+        rescan = kind == "initial" and (freshness.needs_rescan(p)
+                                        or (m365 and not freshness.m365_proof_ok(m["to_email"], p)))
+        if rescan and not live:
             print(f"Frischeprüfung im echten Lauf: {m['to_email']} (Website wird dann einmal abgerufen)")
-        elif kind == "initial" and freshness.needs_rescan(p):
+        elif rescan:
             # Adresse muss heute noch auf der eigenen Website stehen (Inhaber 03.10.2026: Bounce-Quote senken).
             # Nur im echten Lauf abrufen: der Probelauf davor im selben Workflow würde die Seite sonst zweimal holen.
             if fetcher is None:
@@ -720,6 +732,12 @@ def cmd_send(args) -> int:
                 if live:
                     db.update("messages", {"id": m["id"]}, {"status": "blocked",
                               "blocked_reason": "Frischeprüfung: Adresse nicht (mehr) auf der Website"})
+                continue
+            if m365 and freshness.host_of(url or "") != m["to_email"].rsplit("@", 1)[-1].lower():
+                print(f"ZURÜCKGESTELLT {m['to_email']}: Microsoft 365, Fundseite nicht auf der Firmendomain")
+                if live:
+                    db.update("messages", {"id": m["id"]}, {"status": "draft", "check_errors": freshness.keep_holds(
+                        m.get("check_errors"), [freshness.M365_REASON])})
                 continue
             if live:
                 db.update("prospects", {"id": p["id"]}, {"source_url": url,

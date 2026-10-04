@@ -83,5 +83,47 @@ class PriorityTest(unittest.TestCase):
                            score({"to_email": "info@x.com", "prospects": old}))
 
 
+class DuplicateMessageTest(unittest.TestCase):
+    def test_same_message_reported_twice_is_one_transient(self):
+        a = dict(ev("d@x.com", "4.4.1"), message_id="m1")
+        self.assertEqual(count_bounces([a, dict(a), dict(a)]), (0, 0))
+        self.assertEqual(count_bounces([a, dict(a, message_id="m2")]), (1, 0))
+
+
+class M365Test(unittest.TestCase):
+    def setUp(self):
+        from lib import freshness
+        self.f = freshness
+        self.now = dt.datetime.now(dt.timezone.utc)
+        self.p = {"website": "https://www.acme.com", "domain": "acme.com", "source_url": "https://acme.com/contact",
+                  "checked_at": (self.now - dt.timedelta(days=2)).isoformat()}
+
+    def test_detect(self):
+        from lib.deliverability import is_m365
+        self.assertTrue(is_m365(["acme-com.mail.protection.outlook.com"]))
+        self.assertTrue(is_m365(["acme-com.l-v1.mx.microsoft"]))
+        self.assertFalse(is_m365(["aspmx.l.google.com"]))
+        self.assertFalse(is_m365(None))
+
+    def test_proof(self):
+        f, p = self.f, self.p
+        self.assertTrue(f.m365_proof_ok("info@acme.com", p))
+        self.assertFalse(f.m365_proof_ok("info@acme.com", dict(p, checked_at=(self.now - dt.timedelta(days=8)).isoformat())))
+        self.assertFalse(f.m365_proof_ok("info@acme.com", dict(p, source_url="https://overturemaps.org/x")))
+        self.assertFalse(f.m365_proof_ok("info@acme.com", dict(p, source_url="https://directory.example/acme")))
+        self.assertFalse(f.m365_proof_ok("acme@gmail.com", p))
+        self.assertFalse(f.m365_proof_ok("info@acme.com", dict(p, checked_at=None)))
+
+    def test_reasons_and_keep(self):
+        from zurueckstellen import reasons
+        f, p = self.f, self.p
+        self.assertEqual(reasons({"to_email": ".info@acme.com", "prospects": p}, False), [f.SYNTAX_REASON])
+        self.assertEqual(reasons({"to_email": "info@acme.com", "prospects": p}, True), [])
+        old = dict(p, checked_at=(self.now - dt.timedelta(days=20)).isoformat())
+        self.assertEqual(reasons({"to_email": "info@acme.com", "prospects": old}, True), [f.M365_REASON])
+        self.assertEqual(reasons({"to_email": "info@acme.com", "prospects": old}, False), [])
+        self.assertEqual(f.keep_holds([f.M365_REASON, "alt"], ["neu"]), ["neu", f.M365_REASON])
+
+
 if __name__ == "__main__":
     unittest.main()
