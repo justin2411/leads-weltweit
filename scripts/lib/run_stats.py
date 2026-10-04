@@ -6,7 +6,7 @@ from __future__ import annotations
 import os
 import sys
 
-WERKE = {"lead-werk", "kunden-werk", "proben-vorrat", "freigabe", "stichprobe"}
+WERKE = {"lead-werk", "kunden-werk", "proben-vorrat", "freigabe", "stichprobe", "dauerpruefung"}
 
 
 def _part() -> str:

@@ -20,6 +20,14 @@ läuft weiter; Prüfung 04.10.2026: die Datenbank wuchs ~1,3 GB/Tag und hätte 8
 0,2 GB unter der Grenze. GB = 1024³ Byte wie die Speicher-Seite (app/lib/storage.ts). Jede gestartete Belegung steht
 mit Gründen in signalwerk.werk_plan_log. Jeder Fehler -> Belegung wie bisher (der Plan verhindert nie einen Lauf).
 
+Zurücksetzen (Inhaber 04.10.2026, neue Quelle für web-uk/web-fr): owner_settings.lane_reset = {Linie: Zeitpunkt} –
+Läufe vor dem Zeitpunkt zählen für diese Linie nicht mehr, eine „Vorrat leer“-Meldung davor verfällt; bis zum
+ersten neuen Lauf gilt die Belegung des Inhabers. Länder-Vorrang (Inhaber 04.10.2026: „Wenn wir genug us leads haben
+dann schau das wir noch uk und fr holen“, config/fokus.yaml `laender_vorrang`): hat ein Nachrang-Land (US) mindestens
+faktor × den Bestand jedes Vorrang-Landes (UK, FR; lieferbare Leads des Segments laut kpi_daily), behalten dessen
+Linien des Segments 1 Wachplatz und bekommen keine Zusatzplätze; die frei gewordenen Plätze gehen an aktive Linien
+der Vorrang-Länder (bis max der Linie und die Summe). Gilt nur, solange eine Vorrang-Linie aktiv ist.
+
   python scripts/werk_plan.py lead-werk      # schreibt matrix=… und teile=… nach $GITHUB_OUTPUT
   python scripts/werk_plan.py kunden-werk --dry
 """
@@ -93,9 +101,11 @@ def _ts(x) -> dt.datetime | None:
         return None
 
 
-def lane_stats(rows: list[dict], werk: str, runs: int = 2) -> dict[str, dict]:
+def lane_stats(rows: list[dict], werk: str, runs: int = 2, reset: dict | None = None) -> dict[str, dict]:
     """run_stats-Zeilen (mehrere je Teil: eine je Zielgruppe/Land) -> je Linie die letzten `runs` Läufe:
-    Teile im letzten Lauf, leere Teile, Ø/Max-Laufzeit (min), grüne, grüne je Platz-Stunde, Kandidaten."""
+    Teile im letzten Lauf, leere Teile, Ø/Max-Laufzeit (min), grüne, grüne je Platz-Stunde, Kandidaten.
+    reset = {Linie: Zeitpunkt}: Läufe, die vorher begonnen haben, zählen für diese Linie nicht."""
+    cut = {k: _ts(v) for k, v in (reset or {}).items() if _ts(v)}
     parts: dict[tuple[str, str], dict] = {}
     for r in rows:
         if r.get("werk") not in (None, werk):
@@ -103,6 +113,10 @@ def lane_stats(rows: list[dict], werk: str, runs: int = 2) -> dict[str, dict]:
         lane = lane_of(werk, r.get("part"))
         if not lane:
             continue
+        if lane in cut:
+            st0 = _ts(r.get("started_at"))
+            if st0 is None or st0 < cut[lane]:
+                continue
         k = (str(r.get("run_id") or r.get("started_at")), str(r.get("part")))
         p = parts.setdefault(k, {"lane": lane, "run": k[0], "start": None, "end": None, "cand": 0, "proc": 0, "green": 0})
         st, en = _ts(r.get("started_at")), _ts(r.get("finished_at"))
@@ -169,14 +183,42 @@ def _hours_since(iso: str | None, now: dt.datetime) -> float:
     return (now - t).total_seconds() / 3600 if t else float("inf")
 
 
+def lane_segments(l: dict) -> set[str]:
+    m = re.search(r"--segments\s+(\S+)", l.get("args") or "")
+    return {x.strip().upper() for x in m.group(1).split(",")} if m else set()
+
+
+def lane_countries(l: dict) -> set[str]:
+    return {x.strip().upper() for x in str(l.get("country") or "").split(",") if x.strip()}
+
+
+def vorrang_active(rule: dict | None, stock: dict[str, float] | None) -> tuple[bool, str]:
+    """Länder-Vorrang an? (an, Begründung). Aus, wenn Regel oder Bestand fehlt."""
+    if not rule or not stock:
+        return False, ""
+    vor, nach, f = rule.get("vor") or [], rule.get("nach") or [], float(rule.get("faktor") or 0)
+    vor_n = [stock.get(c) for c in vor]
+    nach_n = [stock.get(c) for c in nach]
+    if not vor or not nach or f <= 0 or any(v is None for v in vor_n + nach_n):
+        return False, ""
+    top = max(vor_n)
+    on = all(n >= f * top for n in nach_n)
+    txt = (f"Länder-Vorrang {'/'.join(vor)} vor {'/'.join(nach)} "
+           f"({', '.join(f'{c} {int(stock[c]):,}'.replace(',', '.') for c in nach + vor)}; ≥ {f:g}×)")
+    return on, txt
+
+
 def autopilot(reg: dict, werk: str, base: dict[str, int], stats: dict[str, dict], locks: dict | None = None,
               other: dict[str, int] | None = None, brake: str = "aus", prev: dict | None = None,
-              now: dt.datetime | None = None) -> tuple[dict[str, int], dict[str, str]]:
+              now: dt.datetime | None = None, reset: dict | None = None, vorrang: dict | None = None,
+              stock: dict[str, float] | None = None) -> tuple[dict[str, int], dict[str, str]]:
     """Belegung der Linien von `werk` nach Ertrag. base = Belegung des Inhabers bzw. Standard; other = aktuelle
-    Belegung des anderen Werks (für die Summe); prev = Gründe der letzten Belegung dieses Werks (leere Linien).
-    Gibt (Plätze je Linie des Werks, Grund je Linie)."""
+    Belegung des anderen Werks (für die Summe); prev = Gründe der letzten Belegung dieses Werks (leere Linien);
+    reset = zurückgesetzte Linien {Linie: Zeitpunkt}; vorrang/stock = Länder-Vorrang (config/fokus.yaml) und
+    lieferbare Leads je Land. Gibt (Plätze je Linie des Werks, Grund je Linie)."""
     locks = locks if isinstance(locks, dict) else {}
     prev = prev if isinstance(prev, dict) else {}
+    reset = reset if isinstance(reset, dict) else {}
     now = now or dt.datetime.now(dt.timezone.utc)
     freed = 0  # Plätze leerer/erschöpfter Linien (gehen an ertragreiche Linien)
     lanes = [l for l in reg["lanes"] if l["werk"] == werk]
@@ -198,6 +240,9 @@ def autopilot(reg: dict, werk: str, base: dict[str, int], stats: dict[str, dict]
             plan[lid], why[lid] = 0, "von dir auf 0 gesetzt"
             continue
         s = stats.get(lid)
+        if lid in reset and _ts(reset[lid]) and not s:
+            plan[lid], why[lid] = min(b, mx), "zurückgesetzt (neue Quelle) – wie eingestellt bis zum ersten Lauf"
+            continue
         was_empty = str(prev.get(lid) or "").startswith(EMPTY_WHY)
         if is_empty(s, was_empty) or (not s and was_empty):
             n = (s or {}).get("runs_all", 0)
@@ -249,6 +294,42 @@ def autopilot(reg: dict, werk: str, base: dict[str, int], stats: dict[str, dict]
         else:
             plan[lid] = min(last, mx)
             why[lid] = f"läuft ({round(s['avg_min'])} min je Teil) – unverändert"
+    # Länder-Vorrang: Linien der Nachrang-Länder (Segment der Regel) auf 1 Wachplatz, Plätze an Vorrang-Linien
+    on, vtxt = vorrang_active(vorrang, stock)
+    seg = str((vorrang or {}).get("segment") or "").upper()
+    def _in(l, cs):
+        return (not seg or seg in lane_segments(l)) and lane_countries(l) and lane_countries(l) <= set(cs)
+    vor_lanes = [l for l in lanes if on and _in(l, vorrang.get("vor") or []) and plan.get(l["id"], 0) > 0
+                 and not why[l["id"]].startswith(EMPTY_WHY) and "Wachplatz" not in why[l["id"]]
+                 and "durchgeprüft" not in why[l["id"]]]
+    nach_ids: set[str] = set()
+    if vor_lanes:
+        vgain: dict[str, int] = {}
+        for l in lanes:
+            k = l["id"]
+            if k in locks or not _in(l, vorrang.get("nach") or []) or plan.get(k, 0) <= 0:
+                continue
+            nach_ids.add(k)
+            want.pop(k, None)
+            if plan[k] > 1:
+                freed += plan[k] - 1
+                plan[k] = 1
+                why[k] = f"{vtxt} – 1 Wachplatz"
+            else:
+                why[k] += f" – {vtxt}"
+        give_v = min(freed, cap - sum(plan.values()))
+        vroom = {l["id"]: int(l["max"]) - plan[l["id"]] for l in vor_lanes if int(l["max"]) > plan[l["id"]]}
+        while give_v > 0 and vroom:
+            k = min(vroom, key=lambda x: (plan[x], x))  # gleichmäßig auffüllen
+            plan[k] += 1
+            vgain[k] = vgain.get(k, 0) + 1
+            give_v -= 1
+            freed -= 1
+            vroom[k] -= 1
+            if vroom[k] <= 0:
+                del vroom[k]
+        for k, n in vgain.items():
+            why[k] += f" – +{n} {vtxt.split(' (')[0]}"
     # über der Summe: zuerst Wachplätze behalten, dann nach Ertrag kürzen
     if sum(plan.values()) > cap:
         order = sorted(plan, key=lambda k: (stats.get(k, {}).get("per_slot_h", 0.0)), reverse=True)
@@ -282,7 +363,8 @@ def autopilot(reg: dict, werk: str, base: dict[str, int], stats: dict[str, dict]
     room = {}
     for l in lanes:
         k, s = l["id"], stats.get(l["id"])
-        if k in locks or not s or plan.get(k, 0) <= 0 or not s.get("green_last") or why[k].startswith(EMPTY_WHY):
+        if k in locks or k in nach_ids or not s or plan.get(k, 0) <= 0 or not s.get("green_last") \
+                or why[k].startswith(EMPTY_WHY):
             continue
         if "Wachplatz" in why[k] or "durchgeprüft" in why[k]:
             continue
@@ -350,7 +432,7 @@ def read_inputs(werk: str, hours: int = 8) -> dict:
         return out
     seen = dt.datetime.now(dt.timezone.utc).isoformat()  # Lesezeitpunkt (nicht Quittungszeit)
     try:
-        rows = db.select("owner_settings", {"select": "key,value", "key": "in.(slot_plan,slot_autopilot)"}) or []
+        rows = db.select("owner_settings", {"select": "key,value", "key": "in.(slot_plan,slot_autopilot,lane_reset)"}) or []
         out["settings"] = {r["key"]: r["value"] for r in rows}
         out["settings_seen"] = seen
     except BaseException as e:  # noqa: BLE001
@@ -362,6 +444,20 @@ def read_inputs(werk: str, hours: int = 8) -> dict:
                                               "select": "werk,part,run_id,started_at,finished_at,candidates,processed,green"}) or []
     except BaseException as e:  # noqa: BLE001
         print(f"Laufzahlen nicht lesbar ({type(e).__name__}) – ohne Autopilot", file=sys.stderr)
+    try:
+        from lib.fokus import laender_vorrang
+        rule = laender_vorrang()
+        if rule and werk == "lead-werk":
+            cs = sorted(set(rule["vor"]) | set(rule["nach"]))
+            rows = db.select("kpi_daily", {"select": "day,country,value", "metric": "eq.leads_lieferbar",
+                                           "segment_id": f"eq.{rule['segment']}", "country": f"in.({','.join(cs)})",
+                                           "order": "day.desc", "limit": "50"}) or []
+            stock: dict[str, float] = {}
+            for r in rows:  # neuester Tag je Land
+                stock.setdefault(r["country"], float(r["value"] or 0))
+            out["vorrang"], out["stock"] = rule, stock
+    except BaseException as e:  # noqa: BLE001
+        print(f"Länder-Vorrang nicht lesbar ({type(e).__name__}) – ohne Vorrang", file=sys.stderr)
     try:
         out["db_bytes"] = int(db.rpc("db_size_bytes", {}))
     except BaseException as e:  # noqa: BLE001
@@ -394,8 +490,11 @@ def decide(reg: dict, werk: str, inp: dict) -> dict:
     plan = dict(own)
     if settings is not None and ap.get("on") is not False:
         try:
-            plan, reasons = autopilot(reg, werk, own, lane_stats(inp.get("rows") or [], werk), ap.get("locks"), other, brake,
-                                      prev=inp.get("prev_reasons"))
+            reset = (settings or {}).get("lane_reset")
+            reset = reset if isinstance(reset, dict) else {}
+            plan, reasons = autopilot(reg, werk, own, lane_stats(inp.get("rows") or [], werk, reset=reset),
+                                      ap.get("locks"), other, brake, prev=inp.get("prev_reasons"), reset=reset,
+                                      vorrang=inp.get("vorrang"), stock=inp.get("stock"))
             mode = "autopilot"
         except Exception as e:  # noqa: BLE001 – Autopilot darf nie einen Lauf verhindern
             print(f"Autopilot-Fehler ({type(e).__name__}: {e}) – Belegung wie eingestellt", file=sys.stderr)

@@ -37,6 +37,40 @@ class TagescheckTest(unittest.TestCase):
         t.check_bounce_klassen(c, db)
         self.assertEqual(c.rows[0][1], t.OK)
 
+    def test_followups_of_resting_branches_are_not_red(self):
+        # Nur Fokus-Tests werden gesendet (Inhaber 02.10.2026): liegengebliebene Nachfassmails ruhender Branchen
+        # sind Absicht, nicht rot; im Fokus bleiben sie rot (Tagescheck 04.10.2026)
+        import datetime as dt
+        old = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=40)).isoformat()
+        rest = {"id": "f1", "kind": "followup", "status": "approved", "approved_at": old, "prospect_id": "p1",
+                "experiments": {"segment_id": "S5"}, "prospects": {"country": "UK"}}
+        focus = {**rest, "id": "f2", "experiments": {"segment_id": "S2"}}
+        first = {"id": "i1", "kind": "initial", "status": "sent", "sent_at": "2026-01-01T00:00:00+00:00",
+                 "prospect_id": "p1", "to_email": "a@b.example", "experiments": {"segment_id": "S2"},
+                 "prospects": {"country": "UK"}}
+        patches = (mock.patch("lib.fokus.focus_only", return_value=True),
+                   mock.patch("lib.fokus.focus_pairs", return_value=[("S2", "UK")]))
+        with patches[0], patches[1]:
+            c = t.Check()
+            t.check_followups(c, FakeDB({"messages": [first, rest]}))
+            self.assertEqual(c.rows[0][1], t.OK)
+            c = t.Check()
+            t.check_followups(c, FakeDB({"messages": [first, rest, focus]}))
+            self.assertEqual((c.rows[0][1], c.rows[0][2]), (t.FAIL, "1 Nachfassmails seit über 30 h nicht gesendet"))
+
+    def test_sample_request_owner_informed_is_yellow(self):
+        import datetime as dt
+        from web_samples import NOTIFIED
+        old = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=5)).isoformat()
+        req = {"company_name": "A", "segment_id": "S1", "country": "DE", "status": "new", "created_at": old,
+               "note": f"{NOTIFIED}; wunsch:x"}
+        c = t.Check()
+        t.check_web_samples(c, FakeDB({"sample_requests": [req]}))
+        self.assertEqual([r[1] for r in c.rows], [t.WARN])
+        c = t.Check()
+        t.check_web_samples(c, FakeDB({"sample_requests": [req, {**req, "company_name": "B", "note": None}]}))
+        self.assertEqual(sorted(r[1] for r in c.rows), sorted([t.FAIL, t.WARN]))
+
     def test_broken_check_is_reported_not_raised(self):
         c = t.Check()
         c.guard("Kunden", lambda: 1 / 0)
@@ -241,6 +275,15 @@ class KurzzeilenTest(unittest.TestCase):
         self.assertTrue(line.startswith("Gehirn: still seit 8 h"))
         self.assertTrue(t.kurz_gehirn(False, [], None, [], NOW_FIX).startswith("Gehirn: abgeschaltet"))
 
+    def test_pruefung(self):
+        kpi = {"letzter_lauf": "2026-10-04T15:47:00+00:00",
+               "tage": [{"tag": "2026-10-04", "art": "lead", "geprueft": 200, "bestanden": 190},
+                        {"tag": "2026-10-04", "art": "kaeufer", "geprueft": 300, "bestanden": 290}],
+               "ausreisser": [{"segment_id": "S2", "country": "FR"}]}
+        self.assertEqual(t.kurz_pruefung(kpi), "Dauerprüfung heute: Leads 200 geprüft, 10 abweichend; "
+                                               "Käufer 300 geprüft, 10 abweichend · Ausreißer: S2/FR")
+        self.assertEqual(t.kurz_pruefung(None), "Dauerprüfung: noch kein Lauf")
+
     def test_lines_never_change_traffic_light(self):
         db = FakeDB({"deliverability_daily": FIX["deliverability_daily"], "werk_plan_log": FIX["werk_plan_log"][:1],
                      "settings": [{"brain_enabled": True}], "jarvis_sessions": [], "decisions": [], "agent_tasks": []})
@@ -253,7 +296,8 @@ class KurzzeilenTest(unittest.TestCase):
                 mock.patch("lib.fokus.test_scope", return_value=(["S2"], ["US", "UK", "FR"])), \
                 mock.patch("prognose.load", return_value=[{"country": "US", "basis": "keine"}]):
             t.collect_kurz(c, db)
-        self.assertEqual(len(c.kurz), 6)
+        self.assertEqual(len(c.kurz), 7)
+        self.assertEqual(c.kurz[6], "Dauerprüfung: noch kein Lauf")
         self.assertEqual(c.kurz[3], "Trichter: nicht messbar")
         self.assertTrue(all(len(k) <= t.KURZ_MAX and "\n" not in k for k in c.kurz))
         self.assertEqual(c.worst, t.OK)
