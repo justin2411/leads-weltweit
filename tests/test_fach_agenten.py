@@ -15,7 +15,7 @@ import datenfluss as df  # noqa: E402
 from fakedb import FakeDB  # noqa: E402
 
 UTC = dt.timezone.utc
-MIG = ROOT / "supabase" / "migrations" / "20261005040000_signalwerk_agent_roles.sql"
+MIG = ROOT / "supabase" / "migrations" / "20261005050000_signalwerk_agent_roles.sql"
 ROLE = {"slug": "test", "name": "Test-Agent", "auftrag": "Test-Agent: ab.py auswerten.", "routine_id": "r1", "aktiv": True}
 
 

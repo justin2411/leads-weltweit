@@ -170,3 +170,20 @@ $$;
 
 revoke all on function signalwerk.agent_role_kpi(text, text[], int) from public, anon, authenticated;
 grant execute on function signalwerk.agent_role_kpi(text, text[], int) to service_role;
+
+-- Bestand der token-freien Prüfer (Dauerprüfung, Migration 20261005040000): je Art geprüfter Bestand, Ø Qualitäts-Wert
+-- und Anteil mehrfach geprüfter (pruef_anzahl ≥ 2) – für die JARVIS-Karten Lead-Prüfer/Käufer-Prüfer.
+-- Nutzt die Teilindizes leads_qualitaet / prospects_qualitaet (nur Zeilen mit qualitaet_score).
+create or replace function signalwerk.pruef_bestand(p_segment text, p_countries text[])
+returns table (art text, geprueft integer, score_avg numeric, mehrfach integer)
+language sql stable set search_path = signalwerk, public as $$
+  select 'lead'::text, count(*)::int, round(avg(qualitaet_score), 1), count(*) filter (where pruef_anzahl >= 2)::int
+    from signalwerk.leads
+   where qualitaet_score is not null and status = 'new' and segment_id = p_segment and country = any(p_countries)
+  union all
+  select 'kaeufer', count(*)::int, round(avg(qualitaet_score), 1), count(*) filter (where pruef_anzahl >= 2)::int
+    from signalwerk.prospects
+   where qualitaet_score is not null and check_status = 'ok' and segment_id = p_segment and country = any(p_countries);
+$$;
+revoke all on function signalwerk.pruef_bestand(text, text[]) from public, anon, authenticated;
+grant execute on function signalwerk.pruef_bestand(text, text[]) to service_role;

@@ -3,7 +3,7 @@
  * leadqualität. Bau die bitte direkt in jarvis alle rein“; „Bei Lead-Qualität mehrere Agenten … Massenprüfung immer
  * token-frei“). Reine Funktionen (testbar): Ampel und 7-Tage-Trend der Ziel-Kennzahl je Fach-Agent, Engpass aus den
  * Kohorten (Trichter-Agent), Tageswerte der token-freien Prüfer, Karteninhalt.
- * Daten: signalwerk.agent_roles, agent_role_kpi(), cohort_funnel, pruef_stats_daily (Migration 20261005040000).
+ * Daten: signalwerk.agent_roles, agent_role_kpi(), cohort_funnel, pruef_kpi()/pruef_bestand() (Migration 20261005050000).
  */
 import type { Ampel } from "./ampel.ts";
 import { SCHRITTE, SCHWELLE, gesamt, isJung, kohorte, type KohorteRow, type Schritt } from "./kohorten.ts";
@@ -181,13 +181,36 @@ export function normalizePruef(raw: unknown): PruefTag[] {
   return out;
 }
 
+/** Bestand je Prüfer-Art (signalwerk.pruef_bestand): geprüfter Bestand, Ø Qualitäts-Wert, mehrfach geprüft. */
+export type PruefBestand = { art: PruefTag["art"]; geprueft: number; score: number | null; mehrfach: number };
+
+export function normalizeBestand(raw: unknown): PruefBestand[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((x) => x && typeof x === "object" && ((x as { art?: unknown }).art === "lead" || (x as { art?: unknown }).art === "kaeufer")).map((x) => {
+    const o = x as Record<string, unknown>;
+    const sc = num(o.score_avg);
+    return { art: o.art as PruefTag["art"], geprueft: fin(o.geprueft), score: Number.isFinite(sc) ? sc : null, mehrfach: fin(o.mehrfach) };
+  });
+}
+
+/** Tageszeilen der Dauerprüfung (pruef_kpi.tage bzw. pruef_stats_daily) auf Zielgruppe und Länder begrenzen. */
+export function pruefTage(raw: unknown, segment: string, countries: readonly string[]): PruefTag[] {
+  const list = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as { tage?: unknown }).tage : raw;
+  if (!Array.isArray(list)) return [];
+  return normalizePruef(list.filter((x) => {
+    const o = (x ?? {}) as Record<string, unknown>;
+    return (o.segment_id === undefined || o.segment_id === segment) && (o.country === undefined || countries.includes(String(o.country)));
+  }));
+}
+
 export type PrueferBild = { heute: { geprueft: number; bestanden: number | null; gehalten: number; score: number | null; mehrfach: number | null } | null };
 
 /** Kennzahl „bestanden“ (7 Tage) + Kacheln für heute. Ohne Zeilen: null = „noch keine Daten“. */
-export function prueferBild(r: Rolle, rows: PruefTag[] | null, today: string): (Kennzahl & PrueferBild) | null {
+export function prueferBild(r: Rolle, rows: PruefTag[] | null, today: string, bestand: PruefBestand[] = []): (Kennzahl & PrueferBild) | null {
   const art = PRUEFER[r.slug];
   const mine = (rows ?? []).filter((x) => x.art === art);
   if (!mine.length) return null;
+  const b = bestand.find((x) => x.art === art && x.geprueft > 0);
   const k = seriesKennzahl(r, mine.map((x) => ({ day: x.day, k: x.bestanden, n: x.geprueft })), today);
   const h = mine.filter((x) => x.day === today);
   const g = h.reduce((a, x) => a + x.geprueft, 0);
@@ -197,7 +220,8 @@ export function prueferBild(r: Rolle, rows: PruefTag[] | null, today: string): (
     return w ? s / w : null;
   };
   return { ...k, heute: h.length ? { geprueft: g, bestanden: g ? h.reduce((a, x) => a + x.bestanden, 0) / g : null,
-    gehalten: h.reduce((a, x) => a + x.gehalten, 0), score: avg((x) => x.score), mehrfach: avg((x) => x.mehrfach) } : null };
+    gehalten: h.reduce((a, x) => a + x.gehalten, 0), score: avg((x) => x.score) ?? b?.score ?? null,
+    mehrfach: avg((x) => x.mehrfach) ?? (b ? b.mehrfach / b.geprueft : null) } : null };
 }
 
 // ------------------------------------------------------------------------------------------ Karte
@@ -223,7 +247,7 @@ export function kurz(text: string | null | undefined, max = 90): string {
 
 export function karten(o: {
   roles: Rolle[]; routines: BrainRoutine[]; tasks: RoleTask[]; kpi: KpiTag[]; kohorten: KohorteRow[] | null;
-  pruef: PruefTag[] | null; today: string; now: Date;
+  pruef: PruefTag[] | null; bestand?: PruefBestand[]; today: string; now: Date;
 }): Karte[] {
   return o.roles.filter((r) => r.aktiv).sort((a, b) => a.sort - b.sort).map((r) => {
     const mine = o.tasks.filter((t) => t.rolle === r.slug).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
@@ -231,7 +255,7 @@ export function karten(o: {
     let kz: Kennzahl | null;
     let pruefer: PrueferBild["heute"] | undefined;
     if (r.slug in PRUEFER) {
-      const p = prueferBild(r, o.pruef, o.today);
+      const p = prueferBild(r, o.pruef, o.today, o.bestand ?? []);
       kz = p;
       pruefer = p?.heute ?? null;
     } else if (r.slug === "trichter") {

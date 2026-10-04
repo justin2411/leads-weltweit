@@ -45,7 +45,7 @@ function Card({ c }: { c: Karte }) {
       </div>
       {py ? (
         <dl className="tm-grid">
-          <div><dt>geprüft heute</dt><dd>{c.pruefer ? c.pruefer.geprueft.toLocaleString("de-DE") : "–"}</dd></div>
+          <div><dt>heute</dt><dd>{c.pruefer ? c.pruefer.geprueft.toLocaleString("de-DE") : "–"}</dd></div>
           <div><dt>bestanden</dt><dd>{c.pruefer?.bestanden != null ? fmtWert(c.pruefer.bestanden, "quote") : "–"}</dd></div>
           <div><dt>gehalten</dt><dd>{c.pruefer ? c.pruefer.gehalten.toLocaleString("de-DE") : "–"}</dd></div>
           <div><dt>Ø Score</dt><dd>{c.pruefer?.score != null ? fmtWert(c.pruefer.score, "zahl") : "–"}</dd></div>
@@ -96,7 +96,7 @@ export const TEAM_CSS = `
 .jv .tm-h{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-size:var(--fs-m);color:#fff}
 .jv .tm-g{margin:8px 0 0}
 .jv .tm-g h3{margin:0 0 8px;font-size:var(--fs-s);font-weight:600;color:var(--soft);text-transform:none}
-.jv .tm-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;align-items:stretch}
+.jv .tm-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;align-items:stretch}
 .jv .tm-c{display:flex;flex-direction:column;gap:8px;min-width:0;margin:0;padding:12px;border:1px solid var(--line);border-radius:12px;background:rgba(2,8,20,.55);box-shadow:inset 3px 0 0 var(--ac)}
 .jv .tm-c header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0;padding:0;border:0;background:none}
 .jv .tm-c header b{color:#fff;font-size:var(--fs-m);font-weight:700}
@@ -105,9 +105,9 @@ export const TEAM_CSS = `
 .jv .tm-rolle{margin:0;color:var(--soft);font-size:var(--fs-s);line-height:1.35;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .jv .tm-kz{display:flex;align-items:center;gap:10px;min-height:44px}
 .jv .tm-v{font-size:22px;font-weight:700;color:var(--ac);font-variant-numeric:tabular-nums;white-space:nowrap}
-.jv .tm-l{display:flex;flex-direction:column;font-size:var(--fs-s);color:var(--text);line-height:1.25;min-width:0}
+.jv .tm-l{display:flex;flex-direction:column;flex:1;font-size:var(--fs-s);color:var(--text);line-height:1.25;min-width:0}
 .jv .tm-l small{font-size:var(--fs-xs);color:var(--ac)}
-.jv .tm-tr{display:flex;align-items:center;gap:6px;margin-left:auto}
+.jv .tm-tr{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex:none}
 .jv .tm-sp{width:${W}px;height:${H}px;overflow:visible}
 .jv .tm-sp path{fill:none;stroke:var(--ac);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 .jv .tm-sp circle{fill:var(--ac)}

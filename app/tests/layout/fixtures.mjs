@@ -85,10 +85,10 @@ export function makeFixtures(nowMs = Date.now()) {
     { rolle: "test", day: d, k: i % 3 === 0 ? 2 : 1, n: 60 }, { rolle: "zustellung", day: d, k: 2, n: 70 + i },
     { rolle: "qualitaet", day: d, k: 3, n: 300 }, { rolle: "quellen", day: d, k: 4000 + i * 40, n: 20 },
   ]);
-  const pruef = days.flatMap((d, i) => [
-    { day: d, art: "lead", geprueft: 4000 + i * 10, bestanden: 3880 + i * 10, gehalten: 120, score_avg: 86.4, mehrfach_anteil: 0.31 },
-    { day: d, art: "kaeufer", geprueft: 1500, bestanden: 1290, gehalten: 210, score_avg: 78.2, mehrfach_anteil: 0.12 },
-  ]);
+  const pruef = days.flatMap((d, i) => C.flatMap((c) => [
+    { tag: d, art: "lead", segment_id: "S2", country: c, geprueft: 1300 + i * 10, bestanden: 1260 + i * 10, gehalten: 40 },
+    { tag: d, art: "kaeufer", segment_id: "S2", country: c, geprueft: 500, bestanden: 430, gehalten: 70 },
+  ]));
   const roleTask = (id, rolle, status, result, minAgo, wirkung = null) => ({ id, rolle, agent: 1, kind: "gehirn", market: null, brief: `${rolle} Auftrag`, status, progress: status === "laeuft" ? 40 : 100,
     step: null, result, numbers: {}, created_at: iso(minAgo), started_at: iso(minAgo - 2), finished_at: status === "fertig" ? iso(minAgo - 20) : null, created_by: "Gehirn-Routine", wirkung });
   const tasks = [
@@ -100,7 +100,8 @@ export function makeFixtures(nowMs = Date.now()) {
   const cohorts = [3, 2, 1, 0].flatMap((w) => C.map((c, i) => ({ week: isoWeek(nowMs - w * 7 * 86_400_000), country: c, sent: 80 + i * 10, delivered: 78 + i * 10, replies: 1, positive: 0, samples: 0, customers: 0 })));
   return {
     rpc: {
-      agent_role_kpi: roleKpi, cohort_funnel: cohorts,
+      agent_role_kpi: roleKpi, cohort_funnel: cohorts, pruef_kpi: { now: iso(0), tage: pruef, leads: [], kaeufer: [], ausreisser: [] },
+      pruef_bestand: [{ art: "lead", geprueft: 42000, score_avg: 71.4, mehrfach: 13000 }, { art: "kaeufer", geprueft: 9000, score_avg: 64.2, mehrfach: 1100 }],
       dashboard_live: live, dashboard_stock_refresh: stock, dashboard_activity: activity, dashboard_daily: daily,
       dashboard_days: { sent: days.flatMap((d) => C.map((c) => ({ day: d, country: c, segment_id: "S2", n: 25 }))), events: [] },
       dashboard_contacts: { counts: C.map((c) => ({ stage: "sent", country: c, n: 300 })), cards: [] },
@@ -115,7 +116,7 @@ export function makeFixtures(nowMs = Date.now()) {
     tables: {
       dashboard_cache: [{ name: "stock", value: stock, updated_at: iso(1) }, { name: "website", value: website, updated_at: iso(1) }],
       kpi_daily: kpi, experiment_stats: expStats,
-      agent_roles: roles, pruef_stats_daily: pruef, agent_tasks: tasks,
+      agent_roles: roles, agent_tasks: tasks,
       brain_routines: [routine("r-test", "A/B-Prüfung", "18:20"), routine("r-trichter", "KPI-Diagnose", "07:40"), routine("r-qual", "Qualität", "07:50"),
         routine("r-zust", "Zustellung", "06:30"), routine("r-quell", "Quellen", "12:10")],
     },
