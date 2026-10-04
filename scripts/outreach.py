@@ -538,9 +538,15 @@ def cmd_send(args) -> int:
     if only and exp_ids:
         # je Fokus-Experiment eigener Anteil, damit interleave() alle Länder mischen kann (US/UK/FR gleichrangig)
         per = max(50, args.limit // len(exp_ids))
-        initial = [m for x in exp_ids for m in db.select("messages", {
-            "status": "eq.approved", "kind": "eq.initial", "experiment_id": f"eq.{x}",
-            "order": "approved_at.asc", "limit": str(per), "select": sel})]
+        # beste Entwürfe zuerst (lib/send_priority.py): nur Reihenfolge, Menge und alle Prüfungen unverändert
+        from lib.send_priority import best_ids, rank
+        initial = []
+        for x in exp_ids:
+            ids = best_ids(db, x, per)
+            full = [m for k in range(0, len(ids), 100)
+                    for m in db.select("messages", {"id": "in.(" + ",".join(ids[k:k + 100]) + ")",
+                                                    "status": "eq.approved", "select": sel})]
+            initial += rank(full)
     else:
         initial = db.select("messages", {"status": "eq.approved", "kind": "eq.initial",
                                          "order": "approved_at.asc", "limit": str(args.limit), "select": sel, **only})
