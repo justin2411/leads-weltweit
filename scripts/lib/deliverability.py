@@ -127,7 +127,7 @@ def interleave(messages: list[dict], key: str = "experiment_id") -> list[dict]:
     return out
 
 
-M365_MX = ("mail.protection.outlook.com", "mx.microsoft")  # Exchange Online / Microsoft 365
+M365_MX = ("mail.protection.outlook.com", "mail.eo.outlook.com", "mx.microsoft")  # Exchange Online / Microsoft 365
 _MX_HOSTS: dict[str, list[str] | None] = {}
 
 
