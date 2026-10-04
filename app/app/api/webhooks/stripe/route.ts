@@ -88,7 +88,7 @@ export async function POST(req: Request) {
         ? new Intl.NumberFormat(o.locale === "fr" ? "fr-FR" : "en-GB", { style: "currency", currency: String(o.currency ?? "gbp").toUpperCase(), maximumFractionDigits: o.amount_total % 100 ? 2 : 0 }).format(o.amount_total / 100)
         : undefined;
       const planName = m.package === "custom" ? (o.locale === "fr" ? "Sur mesure" : "Custom") : m.package ? m.package[0].toUpperCase() + m.package.slice(1) : "";
-      const weekly = Number(m.weekly) || ({ starter: 15, pro: 50 } as Record<string, number>)[m.package] || undefined;
+      const weekly = Number(m.weekly) || ({ starter: 15, pro: 40 } as Record<string, number>)[m.package] || undefined;
       const wm = welcomeMail({ lang: o.locale === "fr" ? "fr" : "en", company, plan: planName, weekly, price, formLink: link, test: !event.livemode, agent });
       // Zahlungsbestätigung als PDF (keine Rechnung – die stellt Stripe aus; Inhaber 02.10.2026)
       const money = (c: number) => new Intl.NumberFormat(o.locale === "fr" ? "fr-FR" : "en-GB", { style: "currency", currency: String(o.currency ?? "gbp").toUpperCase(), maximumFractionDigits: c % 100 ? 2 : 0 }).format(c / 100);

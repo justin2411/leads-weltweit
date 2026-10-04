@@ -116,9 +116,9 @@
     "name": "Pro",
     "price": "$249",
     "per": "per month",
-    "text": "Up to **50** new leads per week, all matching signals. Every lead exclusive to your firm.",
-    "perLead": 1.15,
-    "perLeadLabel": "From about $1.15",
+    "text": "Up to **40** new leads per week, all matching signals. Every lead exclusive to your firm.",
+    "perLead": 1.44,
+    "perLeadLabel": "From about $1.44",
     "highlight": true
    },
    {

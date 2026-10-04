@@ -23,7 +23,7 @@ export type AgentCustomer = { id: string; company_name: string | null; country: 
 export type AgentSubscription = { id: string; package: string | null; status: string | null; filters: Record<string, unknown> | null };
 
 /**
- * Agent zum Abo anlegen, wenn das Paket passt (Pro, individuell ab 50/Woche). Idempotent über subscription_id: gibt es
+ * Agent zum Abo anlegen, wenn das Paket passt (Pro, individuell ab 40/Woche). Idempotent über subscription_id: gibt es
  * ihn schon, kommt seine Persona zurück. Name: je Kunde ein anderer, solange möglich (vergebene Namen aus der Tabelle).
  */
 export async function ensureCustomerAgent(o: { subscriptionId: string; customerId: string; pkg: unknown; weekly?: unknown; country: unknown }): Promise<Persona | null> {

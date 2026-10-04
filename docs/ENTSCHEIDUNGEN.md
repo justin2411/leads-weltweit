@@ -73,6 +73,12 @@ Laufende Entscheidungen des Gehirns (Preise, Seitenvarianten) stehen zusätzlich
   Ansprechperson, Website, Adresse); keine Leads ohne E-Mail oder Namen.
 - Rest (Lead-Suche neu, Companies-House-Schlüssel, Versand wieder starten) später.
 
+## 04.10.2026
+
+- **Pro = bis 40 Leads/Woche:** „stell noch ein für 249 das es 40 leads gibt pro woche und passe es auch bei custom in den preisen an“
+  → Pro 249 bis 40 (vorher 50), Starter unverändert 129/15. „Your volume“ an Pro 249 = 40/Woche verankert (Exponent 0,66,
+  10.000/Woche bleiben unter 10.000 pro Monat); persönlicher Ansprechpartner individuell ab 40/Woche. Bestehende Abos behalten ihre Menge.
+
 ## 28.09.2026
 
 - **Versand gestoppt:** „bitte schick noch keine mails raus, stoppe das noch“ → `config/versand.yaml aktiv: false`.

@@ -22,7 +22,7 @@ export type PausedBy = "inhaber" | "abo";
 /** agent_tasks.agent für alle Kunden-Aufträge (wie TASK_AGENT in scripts/customer_agents.py); A1–A8 bleiben dem Inhaber. */
 export const KUNDE_TASK_AGENT = 9;
 
-/** Agent ab Paket Pro: „pro“ immer, „custom“ ab so vielen Leads/Woche wie Pro (50). Starter und Unbekanntes nicht. */
+/** Agent ab Paket Pro: „pro“ immer, „custom“ ab so vielen Leads/Woche wie Pro (40). Starter und Unbekanntes nicht. */
 export function agentEligible(pkg: unknown, weekly?: unknown): boolean {
   if (pkg === "pro") return true;
   if (pkg !== "custom") return false;
@@ -146,7 +146,7 @@ export function noteBrief(agentId: string, name: string, company: string, note: 
 /** Kurzlabel für den JARVIS-Link: „Kunden-Agenten (3)“, ohne Zahl wenn unbekannt. */
 export const jarvisLabel = (n: number | null) => (n == null ? "Kunden-Agenten" : `Kunden-Agenten (${n})`);
 
-/** Zeile auf der Tarifseite bei Pro und individuell ab 50/Woche (docs/KUNDEN-AGENTEN.md „Tarifseite“). Inhaber 04.10.2026:
+/** Zeile auf der Tarifseite bei Pro und individuell ab 40/Woche (docs/KUNDEN-AGENTEN.md „Tarifseite“). Inhaber 04.10.2026:
  *  „individueller ansprechpartner, nichts mit ai oder ki“ – neutral benannt; die KI-Kennzeichnung steht in jeder Mail des
  *  Ansprechpartners (Signatur, erste Mail), wo das Gespräch stattfindet (EU-KI-Verordnung Art. 50). */
 export const PLAN_AGENT_LINE: Record<"en" | "fr" | "de", { title: string; text: string }> = {

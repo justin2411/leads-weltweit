@@ -13,14 +13,15 @@ const CASES = read("../../tests/fixtures/persona_cases.json") as {
   fnv1a32: Record<string, number>; cases: { lang: "en" | "fr"; seed: string; used: string[]; expect: Record<string, string> }[];
 };
 
-test("Paket-Regel: Agent ab Pro, individuell ab 50/Woche, Starter nie", () => {
+test("Paket-Regel: Agent ab Pro, individuell ab 40/Woche (Pro-Menge), Starter nie", () => {
   assert.equal(agentEligible("pro"), true);
   assert.equal(agentEligible("pro", 3), true);
   assert.equal(agentEligible("starter"), false);
   assert.equal(agentEligible("starter", 500), false);
+  assert.equal(agentEligible("custom", 40), true);
   assert.equal(agentEligible("custom", 50), true);
   assert.equal(agentEligible("custom", "150"), true);
-  assert.equal(agentEligible("custom", 49), false);
+  assert.equal(agentEligible("custom", 39), false);
   assert.equal(agentEligible("custom", undefined), false);
   assert.equal(agentEligible("custom", "abc"), false);
   assert.equal(agentEligible(undefined), false);
