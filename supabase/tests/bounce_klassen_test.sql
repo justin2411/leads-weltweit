@@ -21,12 +21,12 @@ begin
   values ('S2', 'Alpha Ltd', 'UK', 'alpha-bk.co.uk', 'https://alpha-bk.co.uk/contact', 'Company No. 1 (Website)') returning id into p1;
   insert into signalwerk.prospects (segment_id, company_name, country, domain, source_url)
   values ('S2', 'Beta Inc', 'US', 'beta-bk.com', 'https://overturemaps.org (Firmeneintrag x)') returning id into p2;
-  insert into signalwerk.messages (experiment_id, prospect_id, to_email, subject, body, status, sent_at, sent_from)
-  values (ex, p1, 'info@alpha-bk.co.uk', 's', 'b', 'sent', now() - interval '1 day', 'NextGen <info@nextgen-profit.de>') returning id into m1;
-  insert into signalwerk.messages (experiment_id, prospect_id, to_email, subject, body, status, sent_at, sent_from)
-  values (ex, p2, 'hello@beta-bk.com', 's', 'b', 'sent', now() - interval '1 day', 'webagency@nextgen-profit.de') returning id into m2;
-  insert into signalwerk.messages (experiment_id, prospect_id, to_email, subject, body, status, sent_at, sent_from)
-  values (ex, p2, 'sales@beta-bk.com', 's', 'b', 'sent', now() - interval '1 day', 'webagency@nextgen-profit.de') returning id into m3;
+  insert into signalwerk.messages (experiment_id, prospect_id, to_email, subject, body, status, sent_at, sent_from, unsubscribe_token)
+  values (ex, p1, 'info@alpha-bk.co.uk', 's', 'b', 'sent', now() - interval '1 day', 'NextGen <info@nextgen-profit.de>', 'bk-tok-1') returning id into m1;
+  insert into signalwerk.messages (experiment_id, prospect_id, to_email, subject, body, status, sent_at, sent_from, unsubscribe_token)
+  values (ex, p2, 'hello@beta-bk.com', 's', 'b', 'sent', now() - interval '1 day', 'webagency@nextgen-profit.de', 'bk-tok-2') returning id into m2;
+  insert into signalwerk.messages (experiment_id, prospect_id, to_email, subject, body, status, sent_at, sent_from, unsubscribe_token, kind)
+  values (ex, p2, 'sales@beta-bk.com', 's', 'b', 'sent', now() - interval '1 day', 'webagency@nextgen-profit.de', 'bk-tok-3', 'followup') returning id into m3;
   insert into signalwerk.email_events (message_id, type, dedupe_key, payload)
   values (m2, 'bounced', 'bk-test-1', '{"bounce":{"status":"5.1.1","diagnostic":"User unknown"}}') returning bounce_class into k;
   if k <> 'hart' then raise exception 'Trigger: %', k; end if;
