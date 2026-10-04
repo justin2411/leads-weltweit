@@ -5,7 +5,7 @@
  */
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import { AGENT_COUNT, KINDS, MARKETS, OWNER_KINDS, agentBoard, formDefaults, type AgentTask } from "@/lib/agents";
+import { AGENT_COUNT, FORM_MARKETS, KINDS, OWNER_KINDS, agentBoard, formDefaults, marketLabel, marketList, type AgentTask } from "@/lib/agents";
 import { cancelAgentTask, createAgentTask } from "../control-actions";
 import { Back } from "../v2";
 import { AgentDrop } from "./dnd";
@@ -29,9 +29,9 @@ export function AgentRow({ tasks, active, startAt, customerAgents }: { tasks: Ag
           <AgentDrop key={a.n} n={a.n}>
           <Link href={active === String(a.n) ? "/dashboard/jarvis" : `/dashboard/jarvis?a=${a.n}`} scroll={false} className={`ag st-${st} ${active === String(a.n) ? "on" : ""}`}
             style={{ "--p": `${c?.status === "laeuft" ? c.progress : c?.status === "fertig" ? 100 : 0}` } as V}
-            title={c ? `Agent ${a.n}: ${KINDS[c.kind].label}${c.market ? ` ${c.market}` : ""} – ${statusText(c.status, startAt)}` : `Agent ${a.n}: frei`}>
+            title={c ? `Agent ${a.n}: ${KINDS[c.kind].label}${c.market ? ` ${marketLabel(c.market)}` : ""} – ${statusText(c.status, startAt)}` : `Agent ${a.n}: frei`}>
             <span className="ag-orb" aria-hidden><i className="ag-ring" /><i className="ag-arc" /><b>A{a.n}</b></span>
-            <span className="ag-t">{c ? <><Icon name={KINDS[c.kind].icon} size={16} /> {KINDS[c.kind].label}{c.market ? ` · ${c.market}` : ""}</> : "frei"}</span>
+            <span className="ag-t">{c ? <><Icon name={KINDS[c.kind].icon} size={16} /> {KINDS[c.kind].label}{c.market ? ` · ${marketLabel(c.market)}` : ""}</> : "frei"}</span>
             <span className="ag-s">{c ? (c.status === "laeuft" ? `${c.progress} %${c.step ? ` · ${c.step}` : ""}` : statusText(c.status, startAt)) : "bereit"}{a.queued > 0 ? ` · +${a.queued}` : ""}</span>
           </Link>
           </AgentDrop>
@@ -66,8 +66,9 @@ function NewTask({ agent, back, tasks, pre }: { agent: number | null; back: stri
         {OWNER_KINDS.map((k) => <label key={k} title={KINDS[k].hint}><input type="radio" name="kind" value={k} defaultChecked={d.kind === k} /><span><Icon name={KINDS[k].icon} size={16} /> {KINDS[k].label}</span></label>)}
       </div></fieldset>
       <fieldset><legend>Markt</legend><div className="chips3">
-        <label><input type="radio" name="market" value="" defaultChecked={!d.market} /><span>alle</span></label>
-        {MARKETS.map((m) => <label key={m}><input type="radio" name="market" value={m} defaultChecked={d.market === m} /><span>{m}</span></label>)}
+        {/* mehrere Länder wählbar; keins gewählt = alle */}
+        <label><input type="checkbox" name="market" value="alle" defaultChecked={!d.market} /><span>alle</span></label>
+        {FORM_MARKETS.map((m) => <label key={m}><input type="checkbox" name="market" value={m} defaultChecked={marketList(d.market).includes(m)} /><span>{m}</span></label>)}
       </div></fieldset>
       <input name="brief" maxLength={1000} defaultValue={d.brief} placeholder="Notiz (optional), z. B. „nur Firmen ohne Website“" />
       <button className="go">Beauftragen</button>
@@ -95,7 +96,7 @@ export function AgentDrawer({ which, tasks, pre = {}, startAt }: { which: string
       <div className="drw-body">
         {cur && (
           <div className={`agc st-${cur.status}`}>
-            <div className="agc-h"><b><Icon name={KINDS[cur.kind].icon} size={16} /> {KINDS[cur.kind].label}{cur.market ? ` · ${cur.market}` : ""}</b><em>{statusText(cur.status, startAt)}</em></div>
+            <div className="agc-h"><b><Icon name={KINDS[cur.kind].icon} size={16} /> {KINDS[cur.kind].label}{cur.market ? ` · ${marketLabel(cur.market)}` : ""}</b><em>{statusText(cur.status, startAt)}</em></div>
             {cur.brief && <p className="agc-b">{cur.brief}</p>}
             {(cur.status === "laeuft" || cur.status === "fertig") && <div className="agc-bar"><i style={{ width: `${cur.status === "fertig" ? 100 : cur.progress}%` }} /></div>}
             {cur.step && cur.status === "laeuft" && <p className="agc-step">{cur.step}</p>}
@@ -108,7 +109,7 @@ export function AgentDrawer({ which, tasks, pre = {}, startAt }: { which: string
         <NewTask agent={n} back={back} tasks={tasks} pre={pre} />
         {mine.length > 1 && (
           <ul className="chk">{mine.filter((t) => t.id !== cur?.id).slice(0, 6).map((t) => (
-            <li key={t.id} className={t.status === "fehler" ? "bad" : "ok"} title={t.result ?? t.brief}><i aria-hidden><Icon name={KINDS[t.kind].icon} size={16} /></i><b>{KINDS[t.kind].label}{t.market ? ` · ${t.market}` : ""}</b><span>{when(t.created_at)}</span><em>{statusText(t.status, startAt)}{t.result ? ` · ${t.result.slice(0, 60)}` : ""}</em></li>
+            <li key={t.id} className={t.status === "fehler" ? "bad" : "ok"} title={t.result ?? t.brief}><i aria-hidden><Icon name={KINDS[t.kind].icon} size={16} /></i><b>{KINDS[t.kind].label}{t.market ? ` · ${marketLabel(t.market)}` : ""}</b><span>{when(t.created_at)}</span><em>{statusText(t.status, startAt)}{t.result ? ` · ${t.result.slice(0, 60)}` : ""}</em></li>
           ))}</ul>
         )}
       </div>

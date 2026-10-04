@@ -447,7 +447,7 @@ export async function createAgentTask(f: FormData) {
     const { validateTask, TaskError } = await import("@/lib/agents");
     let t;
     try {
-      t = validateTask({ agent: f.get("agent"), kind: f.get("kind"), market: f.get("market"), brief: f.get("brief") });
+      t = validateTask({ agent: f.get("agent"), kind: f.get("kind"), market: f.getAll("market").map(String), brief: f.get("brief") });
     } catch (e) {
       if (e instanceof TaskError) throw new InputError(e.message);
       throw e;

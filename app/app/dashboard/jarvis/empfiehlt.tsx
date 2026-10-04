@@ -6,7 +6,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Rec } from "@/lib/leitstand";
-import { KINDS, chatThread, type AgentTask } from "@/lib/agents";
+import { KINDS, chatThread, type AgentTask, marketLabel } from "@/lib/agents";
 import { chatToJarvis } from "../control-actions";
 import { Back } from "../v2";
 import { DragBox } from "./dnd";
@@ -41,7 +41,7 @@ export function Empfiehlt({ recs, href, agent, children }: { recs: Rec[]; href: 
             <div key={key} className={`jrec-i ${r.level}`} data-tip={r.task ? undefined : ""}>
               <Link href={href(r)} scroll={false} className="jrec-t"><b>{r.title}</b><span>{r.short}</span></Link>
               {r.task && (
-                <Link href={giveHref(agent, r.task)} scroll={false} className="jrec-give" title={`als Auftrag „${KINDS[r.task.kind].label}${r.task.market ? ` · ${r.task.market}` : ""}“ an Agent ${agent} – oder auf A1–A8 ziehen`}>
+                <Link href={giveHref(agent, r.task)} scroll={false} className="jrec-give" title={`als Auftrag „${KINDS[r.task.kind].label}${r.task.market ? ` · ${marketLabel(r.task.market)}` : ""}“ an Agent ${agent} – oder auf A1–A8 ziehen`}>
                   <Icon name="an-agent" size={16} /><span>an A{agent}</span>
                 </Link>
               )}
@@ -73,7 +73,7 @@ export function JarvisChat({ tasks, startAt, chat = null }: { tasks: AgentTask[]
         <ol className="jchat-log">
           {thread.map((x) => (
             <li key={x.id}>
-              <p className="me"><span>{x.text}</span><time>{when(x.at)} · {KINDS[x.kind].label}{x.market ? ` · ${x.market}` : ""}</time></p>
+              <p className="me"><span>{x.text}</span><time>{when(x.at)} · {KINDS[x.kind].label}{x.market ? ` · ${marketLabel(x.market)}` : ""}</time></p>
               <p className={`bot st-${x.status}`}><b>JARVIS</b> {x.reply}</p>
             </li>
           ))}
