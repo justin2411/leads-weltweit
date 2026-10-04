@@ -2,6 +2,8 @@ import { loadAgentTasks } from "@/lib/dashboard-data";
 import { LEGACY_ID, hasNew, isSessionId, lastUsed, legacyMessages, orderSessions, type ChatMessage, type ChatSession } from "@/lib/jarvis-chat";
 import { ChatMissing, loadMessages, loadSession, loadSessions, markRead } from "@/lib/jarvis-chat-data";
 import { requireOwner } from "../../actions";
+import Link from "next/link";
+import { Icon } from "@/app/icons";
 import { ChatApp } from "./chat-ui";
 import { JCHAT_CSS } from "./css";
 
@@ -63,6 +65,10 @@ export default async function JarvisChatPage({ searchParams }: { searchParams: S
   return (
     <>
       {css}
+      <div className="jc-top">
+        <nav className="jc-crumbs" aria-label="Pfad"><Link href="/dashboard/jarvis">JARVIS</Link><Icon name="weiter" size={14} /><span aria-current="page">Chat</span></nav>
+        <Link href="/dashboard/jarvis" className="jc-back"><Icon name="weiter" size={14} />Zurück</Link>
+      </div>
       <ChatApp now={now.toISOString()} sessions={list} archived={showArchive ? archived : null} selected={selected} messages={messages}
         mode={mode} legacyCount={legacy.length} />
     </>
