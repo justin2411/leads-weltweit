@@ -64,9 +64,9 @@ class SendUsesCountryLimitTest(unittest.TestCase):
     def _db(self, limits, **extra):
         rows = [{"key": "send_country_limits", "value": limits}] + [{"key": k, "value": v} for k, v in extra.items()]
         return FakeDB({"owner_settings": rows,
-                       "messages": [msg("a1", "initial", "approved", to="a@x.co.uk"),
-                                    msg("a2", "initial", "approved", to="b@y.co.uk"),
-                                    msg("a3", "initial", "approved", to="c@z.co.uk")]})
+                       "messages": [msg("a1", "initial", "approved", to="info@x.co.uk"),
+                                    msg("a2", "initial", "approved", to="hello@y.co.uk"),
+                                    msg("a3", "initial", "approved", to="contact@z.co.uk")]})
 
     def test_dashboard_limit_applies(self):
         out = run_send(self._db({"UK": 1}))
@@ -96,7 +96,7 @@ class FollowupSettingsTest(unittest.TestCase):
         from unittest import mock
         import followups
         from test_outreach_send import RECENT
-        sent = msg("s1", "initial", "sent", to="a@x.co.uk")
+        sent = msg("s1", "initial", "sent", to="info@x.co.uk")
         for enabled, days, expect in [(True, None, 1), (False, None, 0), (True, 8, 0)]:
             rows = [{"key": "followup_enabled", "value": enabled}] + ([{"key": "followup_days", "value": days}] if days else [])
             db = FakeDB({"owner_settings": rows, "messages": [dict(sent, sent_at=RECENT)], "email_events": []})
@@ -113,7 +113,7 @@ class FollowupSettingsTest(unittest.TestCase):
         from unittest import mock
         import followups
         from test_outreach_send import RECENT
-        sent = msg("s1", "initial", "sent", to="a@x.co.uk")
+        sent = msg("s1", "initial", "sent", to="info@x.co.uk")
         pid = sent["prospects"]["id"]
         for replies, expect in [([], 1), ([{"id": "r1", "prospect_id": pid, "received_at": RECENT}], 0)]:
             db = FakeDB({"owner_settings": [{"key": "followup_enabled", "value": True}],

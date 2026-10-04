@@ -31,7 +31,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lib.rules import (  # noqa: E402
-    brand, check_prospect, legal_name, postal_address, country_rules, lint_draft, load_countries, render_footer, suppress,
+    brand, check_prospect, legal_name, postal_address, country_rules, is_company_form, is_generic, lint_draft,
+    load_countries, render_footer, suppress,
 )
 
 RESEND_URL = "https://api.resend.com/emails"
@@ -122,7 +123,7 @@ FOLLOWUP_MAX_DAYS = 11  # Nachfassmail spätestens 11 Tage nach der Erstmail (ge
 def followup_block_reason(db, m: dict) -> str | None:
     """Nachfassmails beim Versand erneut prüfen: seit dem Anlegen kann eine Antwort, Probe-Anfrage oder ein Bounce
     eingegangen sein. Grund zum Blockieren oder None."""
-    from followups import NEGATIVE
+    from followups import NEGATIVE, answered
     kind = m.get("kind") or "initial"
     if kind == "initial":
         return None
@@ -139,6 +140,10 @@ def followup_block_reason(db, m: dict) -> str | None:
         if db.select("sample_requests", {"email": f"eq.{m['to_email'].lower()}", "status": "in.(new,sent)",
                                          "select": "id"}):
             return "Nachfassmail überholt: Probe über die Landingpage angefordert"
+        # Antwort, die nur im Antworten-Cockpit steht (andere Adresse, Pause des Assistenten); nicht lesbar =
+        # blockieren (Prüfung 04.10.2026)
+        if answered(db, m["prospect_id"]):
+            return "Nachfassmail überholt: Antwort im Antworten-Cockpit"
         # Nachfassen nur zeitnah: eine Woche nach dem geplanten Tag (4 Tage nach der Erstmail) wirkt sie wie Spam
         sent = db.select("messages", {"id": f"eq.{parent_id}", "select": "sent_at"}) if parent_id else []
         sent_at = (sent[0].get("sent_at") if sent else None) or ""
@@ -152,14 +157,39 @@ def followup_block_reason(db, m: dict) -> str | None:
                                       "bounced")})
     if later:
         return f"Nachfrage zur Probe überholt: Ereignis {', '.join(later)} nach der Probe"
+    if answered(db, m["prospect_id"], sample_at):  # Prüfung 04.10.2026, wie followups.py
+        return "Nachfrage zur Probe überholt: Antwort im Antworten-Cockpit nach der Probe"
     return None
 
 
 def unsubscribe_target(token: str) -> str | None:
-    """Link zur Abmeldung, oder None = Abmeldung per Antwort (UNSUBSCRIBE_MODE=reply, Standard)."""
-    if os.environ.get("UNSUBSCRIBE_MODE", "reply") == "link":
-        return f"{os.environ['APP_BASE_URL'].rstrip('/')}/api/unsubscribe?t={token}"
+    """Link zur Abmeldung (Standard, Prüfung 04.10.2026), oder None = Abmeldung per Antwort (UNSUBSCRIBE_MODE=reply,
+    nur für Testmails an den Inhaber; der echte Versand bricht dann ab)."""
+    if unsubscribe_mode() == "link":
+        base = os.environ.get("APP_BASE_URL") or os.environ.get("SITE_URL") or "https://www.nextgen-profit.de"
+        return f"{base.rstrip('/')}/api/unsubscribe?t={token}"
     return None
+
+
+def unsubscribe_mode() -> str:
+    return (os.environ.get("UNSUBSCRIBE_MODE") or "link").strip().lower()
+
+
+def notbremse(db) -> str | None:
+    """Notbremse über die letzten 30 Tage, über alle Experimente; je Adresse gezählt (Inhaber 03.10.2026). Grund
+    zum Stoppen oder None. Wird vor und während des Versands geprüft (Prüfung 04.10.2026)."""
+    from lib.deliverability import count_bounces, emergency_stop, window_start
+    since = window_start(dt.datetime.now(dt.timezone.utc)).isoformat()
+    recent = db.select("messages", {"status": "eq.sent", "sent_at": f"gte.{since}", "select": "id"})
+    ev = db.select("email_events", {"created_at": f"gte.{since}", "type": "in.(bounced,complained)",
+                                    "select": "message_id,type,payload,messages(to_email)"})
+    for e in ev:
+        e["to_email"] = (e.get("messages") or {}).get("to_email")
+    bounced, complained = count_bounces(ev)
+    return emergency_stop(len(recent), bounced, complained)
+
+
+NOTBREMSE_EVERY = 20  # Notbremse während des Versands alle 20 gesendeten Mails erneut prüfen (Prüfung 04.10.2026)
 
 
 LANDING_LINE = {"en": "How it works in under a minute, and your free sample with one click: {url}",
@@ -300,23 +330,18 @@ def cmd_send(args) -> int:
             raise SystemExit("Kaltmails über Resend sind verboten (Resend-Bedingungen, Inhaber 26.09.2026) – "
                              "MAIL_TRANSPORT=smtp mit eigenem Postfach verwenden")
         needed = ["MAIL_FROM", "SENDER_NAME"]  # Anschrift fest in lib.rules (03.10.2026)
-        needed += ["APP_BASE_URL"] if os.environ.get("UNSUBSCRIBE_MODE", "reply") == "link" else ["REPLY_TO"]
+        # Kaltmails immer mit Abmeldelink (CLAUDE.md §2, Prüfung 04.10.2026)
+        if unsubscribe_mode() != "link":
+            raise SystemExit("Kaltmails nur mit Abmeldelink: UNSUBSCRIBE_MODE=link setzen (reply nur für Testmails)")
+        needed += ["APP_BASE_URL"]
         needed += ["SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD"] if transport == "smtp" else ["RESEND_API_KEY"]
         for var in needed:
             if not os.environ.get(var):
                 raise SystemExit(f"{var} fehlt")
 
-    from lib.deliverability import count_bounces, domain_accepts_mail, emergency_stop, interleave, window_start
+    from lib.deliverability import domain_accepts_mail, interleave
 
-    # Notbremse über die letzten 30 Tage, über alle Experimente; je Adresse gezählt (Inhaber 03.10.2026)
-    since = window_start(dt.datetime.now(dt.timezone.utc)).isoformat()
-    recent = db.select("messages", {"status": "eq.sent", "sent_at": f"gte.{since}", "select": "id"})
-    ev = db.select("email_events", {"created_at": f"gte.{since}", "type": "in.(bounced,complained)",
-                                    "select": "message_id,type,payload,messages(to_email)"})
-    for e in ev:
-        e["to_email"] = (e.get("messages") or {}).get("to_email")
-    bounced, complained = count_bounces(ev)
-    stop = emergency_stop(len(recent), bounced, complained)
+    stop = notbremse(db)
     if stop:
         print(f"NOTBREMSE: {stop}")
         return 2
@@ -401,6 +426,11 @@ def cmd_send(args) -> int:
             problems.append(f"Land {country} nicht erlaubt")
         if db.is_suppressed(m["to_email"]):
             problems.append("gesperrt")
+        # Länderregeln beim Versand erneut prüfen, gleiche Logik wie check_prospect (Prüfung 04.10.2026)
+        if rules.get("generic_only") and not is_generic(m["to_email"], cfg):
+            problems.append("in diesem Land nur allgemeine Firmenadressen (info@, hello@ ...)")
+        if rules.get("company_forms_only") and not is_company_form(country, p.get("legal_form")):
+            problems.append(f"Rechtsform '{p.get('legal_form') or '?'}' ist keine Kapitalgesellschaft in {country}")
         if role_address(m["to_email"]):
             problems.append("Funktionsadresse ohne Vertriebsbezug (z. B. privacy@, support@)")
         kind = m.get("kind") or "initial"
@@ -510,6 +540,12 @@ def cmd_send(args) -> int:
         initial_total += kind == "initial"
         n_sent += 1
         print(f"GESENDET {m['to_email']}" + (f" (Postfach {box['n']})" if len(boxes) > 1 else ""))
+        if n_sent % NOTBREMSE_EVERY == 0:
+            # Rückläufer kommen während des stundenlangen Versands an (antworten.yml liest alle 10 min die Postfächer)
+            stop = notbremse(db)
+            if stop:
+                print(f"NOTBREMSE während des Versands nach {n_sent} Mails: {stop}")
+                return 2
         if args.pause:
             import random
             import time

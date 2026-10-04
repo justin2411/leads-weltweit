@@ -116,6 +116,8 @@ Reply text:
 KEYWORDS = [
     ("unsubscribe", r"\b(unsubscribe|remove (me|us)|stop (emailing|contacting)|do not (contact|email)|opt[- ]?out|"
                     r"désinscri\w*|ne plus (me|nous) contacter)\b"),
+    # Absage vor Kaufinteresse: „not interested in a call“ ist eine Absage (Prüfung 04.10.2026)
+    ("not_interested", r"\b(not interested|no thanks|no thank you|not for us|pas intéressé|non merci)\b"),
     ("out_of_office", r"\b(out of (the )?office|on (annual )?leave|away until|absent|congés?|automatic reply|"
                       r"auto(matic|mated)?[- ]?(reply|response)|(office|we) (will be|is|are) closed|closed until|"
                       r"(no|not have|limited) access to (my |our )?e-?mail|upon (my|our) return|when i return|"
@@ -124,7 +126,6 @@ KEYWORDS = [
                       r"réponse automatique|de retour le)\b"),
     ("buy", r"\b(price|pricing|cost|how much|subscribe|subscription|contract|invoice|call|meeting|demo|tarif|prix|"
             r"abonnement|rendez-vous|weekly|per week|every week|regular(ly)?|more leads|par semaine|chaque semaine)\b"),
-    ("not_interested", r"\b(not interested|no thanks|no thank you|pas intéressé|non merci)\b"),
     ("sample", r"\b(yes|sure|please send|send (it|the sample|over)|interested|happy to (see|take a look)|oui|volontiers|"
                r"envoyez|would like to receive|glad to receive|(free )?sample request|souhaitons recevoir|heureux de recevoir|"
                r"merci d'envoyer|"
@@ -224,6 +225,11 @@ def classify(text: str, subject: str = "") -> dict:
     if subject_optout(subject):
         return {"intent": "unsubscribe", "faq": ["none"], "needs_owner": False,
                 "summary_de": "Abmeldung (Betreff)", "by": "rules"}
+    # Regel-Fallback: Abmeldung zuerst mit derselben Erkennung wie inbox.py (Prüfung 04.10.2026)
+    from inbox import OPTOUT
+    if OPTOUT.search(body):
+        return {"intent": "unsubscribe", "faq": ["none"], "needs_owner": False,
+                "summary_de": "Regel-Einordnung: unsubscribe", "by": "rules"}
     low = body.lower()
     for intent, pat in KEYWORDS:
         if re.search(pat, low):
@@ -249,17 +255,25 @@ def decide(c: dict) -> str:
     return "owner"
 
 
-def _text(msg: EmailMessage) -> str:
+def _raw_text(msg: EmailMessage) -> str:
+    """Ganzer Text der Mail (Text-Teil, sonst HTML ohne Tags), mit zitiertem Verlauf."""
     part = msg.get_body(preferencelist=("plain", "html"))
     try:
         t = part.get_content() if part else ""
     except (LookupError, KeyError):
         return ""
     if part is not None and part.get_content_type() == "text/html":
+        # zitierter Verlauf in HTML (Outlook/Gmail) als Trennlinie markieren, Zeilen erhalten (Prüfung 04.10.2026)
+        t = re.sub(r"<(blockquote|div[^>]*(divRplyFwdMsg|gmail_quote|appendonsend))", "\n________\n<\\1", t, flags=re.I)
+        t = re.sub(r"<br\s*/?>|</(p|div|tr|li)>", "\n", t, flags=re.I)
         t = re.sub(r"<[^>]+>", " ", t)
-    # zitierten Verlauf abschneiden
-    t = re.split(r"\n>|\nOn .{5,80} wrote:|\nLe .{5,80} a écrit|\n-{2,}\s*Original Message", t)[0]
-    return t.strip()
+    return t
+
+
+def _text(msg: EmailMessage) -> str:
+    # zitierten Verlauf abschneiden – gleiche Erkennung wie inbox.py (Outlook-Kopfblock, „wrote:“ …, Prüfung 04.10.2026)
+    from inbox import strip_quoted
+    return strip_quoted(_raw_text(msg))
 
 
 def owner_name() -> str:
@@ -282,7 +296,7 @@ def signer(lang: str) -> None:
 
 def reply_content(company: str, subject: str, text: str, in_reply_to: str | None, lang: str,
                   attachments: list[tuple[str, bytes]] | None = None, blocks: dict[str, str] | None = None,
-                  requested: bool = False) -> dict:
+                  requested: bool = False, references: str | None = None) -> dict:
     """Inhalt einer Antwort-Mail ohne Absender/Empfänger: Betreff, Text, HTML, Kopfzeilen, Anhänge (Base64).
     company: Domain des Empfängers für die Fußzeile (Proben-Vorrat: Platzhalter, die App setzt sie beim Versand)."""
     from lib.html_email import render
@@ -292,7 +306,8 @@ def reply_content(company: str, subject: str, text: str, in_reply_to: str | None
     full = text.rstrip() + "\n\n" + footer
     headers = {}
     if in_reply_to:
-        headers = {"In-Reply-To": in_reply_to, "References": in_reply_to}
+        # References = ganzer Verlauf, damit das Mailprogramm die Antwort einsortiert (Prüfung 04.10.2026)
+        headers = {"In-Reply-To": in_reply_to, "References": references or in_reply_to}
     # "Re:" nur bei echten Antworten (nie gefälscht)
     subj = subject if not in_reply_to or subject.lower().startswith(("re:", "aw:")) else f"Re: {subject}"
     out = {"subject": subj, "text": full, "html": render(text, footer, lang, signer=signer(lang), blocks=blocks),
@@ -315,12 +330,23 @@ def resend_post(payload: dict, idempotency_key: str | None = None) -> str | None
 
 def send_reply(to: str, subject: str, text: str, in_reply_to: str | None, lang: str,
                attachments: list[tuple[str, bytes]] | None = None, blocks: dict[str, str] | None = None,
-               requested: bool = False, idempotency_key: str | None = None) -> str | None:
+               requested: bool = False, idempotency_key: str | None = None, references: str | None = None) -> str | None:
     content = reply_content(normalize_domain(to.split("@")[-1]), subject, text, in_reply_to, lang, attachments,
-                            blocks, requested)
+                            blocks, requested, references)
     payload = {"from": os.environ["MAIL_FROM"], "to": [to], **content,
                "reply_to": os.environ.get("REPLY_TO") or os.environ["MAIL_FROM"]}
     return resend_post(payload, idempotency_key)
+
+
+def thread_references(msg, m: dict | None, mid: str) -> str:
+    """References-Kopfzeile für unsere Antwort (RFC 5322): References der eingehenden Mail, sonst unsere gesendete
+    Mail (smtp_message_id), dazu die eingehende Mail selbst (Prüfung 04.10.2026)."""
+    from inbox import MSGID
+    refs = MSGID.findall(msg.get("References") or "") or MSGID.findall(msg.get("In-Reply-To") or "")
+    if not refs and (m or {}).get("smtp_message_id"):
+        refs = MSGID.findall(m["smtp_message_id"])
+    out = [r for i, r in enumerate(refs) if r not in refs[:i] and r != mid]
+    return " ".join([*out[-20:], mid])
 
 
 def alert_address() -> str | None:
@@ -360,20 +386,24 @@ def push(title: str, body: str, url: str, kind: str) -> bool:
 def notify_owner(subject: str, text: str, reply_id: str | None = None, kind: str | None = None,
                  push_title: str | None = None, push_body: str | None = None) -> None:
     """Mail an den Inhaber. Mit kind (buy/question/unclear/…) zusätzlich Push aufs Handy; beides mit Deep-Link ins
-    Antworten-Cockpit, wenn kind oder reply_id gesetzt ist. Der Push geht vor der Mail raus und wirft nie."""
-    if kind or reply_id:
-        link = reply_link(reply_id)
+    Antworten-Cockpit, wenn kind oder reply_id gesetzt ist. Die Mail geht zuerst raus (verlässlicher Weg, Push hat
+    evtl. kein Gerät), der Push danach und wirft nie (Prüfung 04.10.2026)."""
+    link = reply_link(reply_id) if (kind or reply_id) else None
+    if link:
         text = f"{text}\n\nIm Cockpit ansehen und antworten: {link}"
-        if kind:
-            push(push_title or subject.replace("[Leads] ", "")[:80], (push_body or "")[:160], link, kind)
     owner = alert_address()
     if not owner:
         print("  WARNUNG: OWNER_EMAIL fehlt – Meldung nur im Protokoll")
-        return
-    r = requests.post("https://api.resend.com/emails", timeout=30,
-                      headers={"Authorization": f"Bearer {os.environ['RESEND_API_KEY']}"},
-                      json={"from": os.environ["MAIL_FROM"], "to": [owner], "subject": subject, "text": text})
-    r.raise_for_status()
+    else:
+        r = requests.post("https://api.resend.com/emails", timeout=30,
+                          headers={"Authorization": f"Bearer {os.environ['RESEND_API_KEY']}"},
+                          json={"from": os.environ["MAIL_FROM"], "to": [owner], "subject": subject, "text": text})
+        r.raise_for_status()
+    if kind:
+        try:
+            push(push_title or subject.replace("[Leads] ", "")[:80], (push_body or "")[:160], link, kind)
+        except Exception as exc:  # noqa: BLE001 - Push ist Zusatz, die Mail ist schon raus
+            print(f"  Hinweis: Push fehlgeschlagen ({exc.__class__.__name__})")
 
 
 def sample_delay_text(lang: str) -> str:
@@ -921,7 +951,7 @@ def auto_replies_paused(db) -> bool:
 
 
 PROSPECT_COLS = "id,company_name,segment_id,country,region"
-MESSAGE_COLS = "id,subject,language,experiment_id,prospect_id"
+MESSAGE_COLS = "id,subject,language,experiment_id,prospect_id,to_email,smtp_message_id"  # Prüfung 04.10.2026
 
 
 def match_sent(db, msg, sender: str) -> tuple[dict | None, dict | None, str]:
@@ -962,6 +992,7 @@ def handle_message(db, msg: EmailMessage, mid: str, apply: bool, own: set[str] |
     if "@" not in sender:
         return "ignore"
     text = _text(msg)
+    from inbox import is_optout_text
     # Nur Antworten von Firmen, die wir angeschrieben haben: zuerst über den Mail-Verlauf, dann über die Domain
     p, m, how = match_sent(db, msg, sender)
     if not m:
@@ -970,6 +1001,11 @@ def handle_message(db, msg: EmailMessage, mid: str, apply: bool, own: set[str] |
     if subject_optout(msg.get("Subject")):
         c = {"intent": "unsubscribe", "faq": ["none"], "needs_owner": False,
              "summary_de": "Abmeldung (Betreff)", "by": "subject"}
+    elif is_optout_text(_raw_text(msg)):
+        # gleiche Abmelde-Erkennung wie inbox.py (eigene Worte, ohne zitierten Abmelde-Hinweis): sperrt immer,
+        # unabhängig von der Einordnung durch Claude (Prüfung 04.10.2026)
+        c = {"intent": "unsubscribe", "faq": ["none"], "needs_owner": False,
+             "summary_de": "Abmeldung (Text)", "by": "rules"}
     elif is_auto_reply(msg):
         c = {"intent": "out_of_office", "faq": ["none"], "needs_owner": False,
              "summary_de": "Automatische Antwort (Kopfzeilen)", "by": "headers"}
@@ -998,7 +1034,21 @@ def handle_message(db, msg: EmailMessage, mid: str, apply: bool, own: set[str] |
         if apply and human:
             row = record_reply(db, mid, msg, sender, text, p, m, c, "paused",
                                draft=draft or owner_draft(c, lang, p))
-            if row and not row.get("alert_sent_at") and c["intent"] != "unsubscribe":
+            if row and not row.get("alert_sent_at") and c["intent"] in ("buy", "question", "other"):
+                # Kaufinteresse/Frage/Unklares: Mail + Push (Push allein erreicht ohne registriertes Gerät niemanden,
+                # Prüfung 04.10.2026); scheitert die Mail, versucht es der nächste Lauf erneut
+                try:
+                    alert_once(db, row, f"[Leads] {alert_title(c['intent'])} (Assistent pausiert): {p['company_name']}",
+                               f"{p['company_name']} ({p['segment_id']}/{p['country']}) hat geantwortet. Der "
+                               f"Antwort-Assistent ist pausiert, es ging keine automatische Antwort raus.\n\n"
+                               f"Einordnung: {c['intent']} – {c.get('summary_de') or ''}\n\n"
+                               f"Antwort von {sender}:\n\n{text[:3000]}",
+                               reply_id=row.get("id"), kind=alert_kind(c["intent"]),
+                               push_title=f"{alert_title(c['intent'])}: {p['company_name']}"[:80],
+                               push_body=c.get("summary_de") or "")
+                except Exception as exc:  # noqa: BLE001
+                    print(f"  FEHLER Meldung an den Inhaber: {exc.__class__.__name__}: {str(exc)[:200]}")
+            elif row and not row.get("alert_sent_at") and c["intent"] != "unsubscribe":
                 if push(f"{alert_title(c['intent'])}: {p['company_name']}"[:80], c.get("summary_de") or "",
                         reply_link(row.get("id")), alert_kind(c["intent"])):
                     mark_alerted(db, row)
@@ -1021,6 +1071,27 @@ def handle_message(db, msg: EmailMessage, mid: str, apply: bool, own: set[str] |
 
     event_type = {"buy": "reply_positive", "sample": "sample_requested", "not_interested": "reply_negative",
                   "unsubscribe": "reply_negative", "out_of_office": "auto_reply"}.get(c["intent"], "reply")
+    # Sperrliste vor jeder automatischen Antwort, wie beim Versand (Prüfung 04.10.2026): Absender oder angeschriebene
+    # Adresse gesperrt -> nichts automatisch senden, nur den Inhaber informieren
+    blocked = action not in ("suppress", "ignore") and suppressed_any(db, sender, m.get("to_email"))
+    if blocked:
+        print(f"  Sperrliste: {sender} / {m.get('to_email')} gesperrt – keine automatische Antwort")
+        if event_type == "sample_requested":
+            event_type = "reply_positive"  # keine Probe gesendet
+        note = f"{c['summary_de']} | Aktion: {action} | gesperrt (Sperrliste): keine automatische Antwort"
+        if human:
+            try:
+                alert_once(db, row, f"[Leads] Antwort von gesperrter Adresse: {p['company_name']}",
+                           f"{p['company_name']} ({p['segment_id']}/{p['country']}) hat geantwortet, die Adresse "
+                           f"steht aber auf der Sperrliste. Ich habe nicht geantwortet.\n\n"
+                           f"Einordnung: {c['intent']} – {c['summary_de']}\n\nAntwort von {sender}:\n\n{text[:3000]}",
+                           reply_id=rid, kind=alert_kind(c["intent"]),
+                           push_title=f"Gesperrt: {p['company_name']}"[:80], push_body=c.get("summary_de"))
+            except Exception as exc:  # noqa: BLE001 - nächster Lauf versucht es erneut
+                print(f"  FEHLER Meldung an den Inhaber: {exc.__class__.__name__}: {str(exc)[:200]}")
+                return "error"
+        record_event(db, m["id"], event_type, dedupe, note, c)
+        return "blocked"
     files = body = blocks = None
     picked: list[dict] = []
     if action in ("sample", "sample_owner"):
@@ -1035,26 +1106,41 @@ def handle_message(db, msg: EmailMessage, mid: str, apply: bool, own: set[str] |
             # Probe, die nie ankam.
             event_type = "reply_positive"
     state = {"replied": False}
+    refs = thread_references(msg, m, mid)
+    # Kaufinteresse nicht von Claude eingeordnet (Schlüsselwörter, Cockpit-Cache) ist unsicher: keine Eingangsbestätigung, nur Inhaber
+    # (Prüfung 04.10.2026)
+    hold_ok = c["intent"] == "question" or (c["intent"] == "buy" and c.get("by") == "claude")
 
     def perform() -> None:
         subject = msg.get("Subject") or m["subject"]
 
-        def reply(*a, **kw):
-            send_reply(*a, **kw)
+        def reply(*a, kind: str = "", **kw):
+            # Idempotenz-Schlüssel je Mail und Aktion: scheitert danach das Speichern, schickt Resend beim nächsten
+            # Lauf keine zweite Antwort (Prüfung 04.10.2026)
+            try:
+                send_reply(*a, references=refs, idempotency_key=f"reply-{mid}-{action}{kind}"[:256], **kw)
+            except RuntimeError as exc:
+                if not str(exc).startswith("Resend 409"):
+                    raise
+                # gleicher Schlüssel mit anderem Inhalt (z. B. neu gebaute Probe): die Antwort ging schon raus
+                print(f"  Antwort ging schon raus (Resend 409, Idempotenz) – nicht erneut gesendet")
+                state["already"] = True
             state["replied"] = True
 
         if action == "suppress":
-            for addr in {sender}:
+            # Absender UND die angeschriebene Adresse sperren (Prüfung 04.10.2026), wie inbox.py und das Cockpit
+            for addr in {sender, (m.get("to_email") or "").lower()} - {""}:
                 suppress(db, addr, "reply_optout", "responder")
         elif action in ("sample", "sample_owner"):
             if body:
                 reply(sender, subject, body, mid, lang, files, blocks, requested=True)
-                state["sample_sent"] = True
-                if event_type != "sample_requested":
-                    db.insert("email_events", {"message_id": m["id"], "type": "sample_requested",
-                                               "note": "Probe automatisch gesendet"})
+                if not state.get("already"):
+                    state["sample_sent"] = True
+                    if event_type != "sample_requested":
+                        db.insert("email_events", {"message_id": m["id"], "type": "sample_requested",
+                                                   "note": "Probe automatisch gesendet"})
             else:
-                reply(sender, subject, sample_delay_text(lang), mid, lang)
+                reply(sender, subject, sample_delay_text(lang), mid, lang, kind="-wait")
             if action == "sample_owner" or not body:
                 alert_once(db, row, f"[Leads] Bitte ansehen: {p['company_name']}",
                            f"{p['company_name']} ({p['segment_id']}/{p['country']}) hat geantwortet.\n\n"
@@ -1071,17 +1157,18 @@ def handle_message(db, msg: EmailMessage, mid: str, apply: bool, own: set[str] |
                        f"hat geantwortet.\n\nEinordnung: {c['intent']} – {c['summary_de']}\n\n"
                        f"Antwort von {sender}:\n\n{text[:3000]}\n\n"
                        f"Bitte selbst antworten (im Cockpit liegt ein Entwurf bereit)."
-                       + (" Ich habe nur eine kurze Eingangsbestätigung geschickt." if c["intent"] in ("buy", "question")
+                       + (" Ich habe nur eine kurze Eingangsbestätigung geschickt." if hold_ok
                           else " Ich habe nicht geantwortet."),
                        reply_id=rid, kind=alert_kind(c["intent"]),
                        push_title=f"{alert_title(c['intent'])}: {p['company_name']}"[:80],
                        push_body=c.get("summary_de"))
-            if c["intent"] not in ("buy", "question"):
-                return  # unklar: nur den Inhaber informieren, keine Zusage an den Absender
+            if not hold_ok:
+                return  # unklar oder nur per Regel erkannt: nur den Inhaber informieren, keine Zusage an den Absender
             hold = hold_text(lang)
             reply(sender, subject, hold, mid, lang)
 
     note = f"{c['summary_de']} | Aktion: {action}"
+    failed = False
     try:
         perform()
     except Exception as exc:  # noqa: BLE001 - nicht abbrechen, nächste Mail bearbeiten
@@ -1091,9 +1178,37 @@ def handle_message(db, msg: EmailMessage, mid: str, apply: bool, own: set[str] |
         if not state["replied"]:
             return "error"  # nichts beim Absender angekommen: kein Ereignis, nächster Lauf versucht es erneut
         note += f" | Fehler nach der Antwort: {exc.__class__.__name__}"
-    db.insert("email_events", {"message_id": m["id"], "type": event_type, "dedupe_key": dedupe, "note": note,
-                               "payload": {"intent": c["intent"], "faq": c.get("faq"), "by": c["by"]}})
+        failed = True
+    else:
+        if state.get("already") and not state.get("sample_sent"):
+            release_sampled(db, picked)  # neu gebaute Probe ging nicht raus (die frühere schon)
+    if not failed and row and row.get("id") and (action == "faq" or (action == "sample" and body)):
+        # Automatisch vollständig erledigt: im Cockpit unter „Erledigt“ (bleibt sichtbar, Prüfung 04.10.2026)
+        try:
+            db.update("inbound_replies", {"id": row["id"]}, {"status": "erledigt"})
+        except Exception as exc:  # noqa: BLE001
+            print(f"  WARNUNG: Cockpit-Status nicht gesetzt ({exc.__class__.__name__})")
+    record_event(db, m["id"], event_type, dedupe, note, c)
     return action
+
+
+def suppressed_any(db, *addrs: str | None) -> bool:
+    """Steht eine der Adressen (oder ihre Domain) auf der Sperrliste? Nicht lesbar = gesperrt (Prüfung 04.10.2026)."""
+    for a in {(x or "").strip().lower() for x in addrs} - {""}:
+        try:
+            if db.is_suppressed(a):
+                return True
+        except Exception as exc:  # noqa: BLE001 - im Zweifel nichts automatisch senden
+            print(f"  Sperrliste nicht lesbar ({exc.__class__.__name__}) – keine automatische Antwort")
+            return True
+    return False
+
+
+def record_event(db, message_id: str, event_type: str, dedupe: str, note: str, c: dict) -> None:
+    """Ereignis zur Antwort speichern; derselbe dedupe_key nie doppelt (Prüfung 04.10.2026)."""
+    db.insert("email_events", {"message_id": message_id, "type": event_type, "dedupe_key": dedupe, "note": note,
+                               "payload": {"intent": c["intent"], "faq": c.get("faq"), "by": c["by"]}},
+              upsert_on="dedupe_key", ignore_duplicates=True)
 
 
 def main(argv=None) -> int:
@@ -1110,7 +1225,7 @@ def main(argv=None) -> int:
     # (dort nur Antworten auf unsere Mails), siehe lib/imap_boxes.py
     from lib.imap_boxes import fallback_id, read_all
     since = (dt.date.today() - dt.timedelta(days=args.days)).strftime("%d-%b-%Y")
-    handled = {"owner": 0, "sample": 0, "faq": 0, "suppress": 0, "ignore": 0, "error": 0, "paused": 0}
+    handled = {"owner": 0, "sample": 0, "faq": 0, "suppress": 0, "ignore": 0, "error": 0, "paused": 0, "blocked": 0}
     own = own_addresses()
 
     def handle(acct: dict, folder: str, num: str, msg: EmailMessage) -> None:
