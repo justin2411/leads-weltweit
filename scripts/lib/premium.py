@@ -49,9 +49,16 @@ def _date(v) -> dt.date | None:
         return None
 
 
+def _dated_event(details: dict | None) -> bool:
+    """Beleg eines datierten Ereignisses aus der Quelle selbst (z. B. RGE: neue Qualifikation laut ADEME,
+    Premium-Jagd 05.10.2026): {"dated_event": {"kind": …, "date": "JJJJ-MM-TT"}}."""
+    ev = (details or {}).get("dated_event")
+    return isinstance(ev, dict) and bool(ev.get("kind")) and _date(ev.get("date")) is not None
+
+
 def is_dated(signal_type: str, source_name: str = "", details: dict | None = None) -> bool:
     """Ist das Ereignisdatum dieses Leads ein echtes Geschehen (nicht nur das Prüfdatum)?"""
-    if (details or {}).get("radar_event"):
+    if (details or {}).get("radar_event") or _dated_event(details):
         return True
     return signal_type in DATED_SIGNALS or bool(DATED_SOURCES.search(source_name or ""))
 
@@ -93,7 +100,7 @@ def score(lead: dict, today: dt.date | None = None) -> dict:
     # Website; Radar-/Umzugs-Leads tragen die Befunde der Website in details.findings/also.
     st = states(sig, details)
     registry_state = sig in STATE_SIGNALS and not details.get("radar_event") \
-        and bool(DATED_SOURCES.search(lead.get("source_name") or ""))
+        and (bool(DATED_SOURCES.search(lead.get("source_name") or "")) or _dated_event(details))
     if dated and (st - {sig} or (st and registry_state)):
         pts += POINTS["combo"]
         reasons.append("kombi:" + "+".join(sorted(st)))

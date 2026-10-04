@@ -351,6 +351,23 @@ def texts_rge(c: dict) -> dict:
     f, name = c["facts"], c["name"]
     today = f["checked_on"]
     metier = (f.get("category") or "").split(",")[0].strip().lower()
+    new = f.get("rge_new") or {}
+    if new.get("date"):
+        # Premium-Jagd 05.10.2026: neue Qualifikation (Startdatum von der ADEME) + keine Website = Kombi-Anlass
+        when = dt.date.fromisoformat(new["date"])
+        quoi = ((new.get("domaines") or [""])[0] or "").strip().lower()
+        quoi = quoi if len(quoi) <= 60 else ""
+        signal = (f"Aucun site web trouvé pour {name}, qui a obtenu une nouvelle qualification RGE"
+                  + (f" ({quoi})" if quoi else "") + f" valable depuis le {jour(when)} (annuaire officiel ADEME), "
+                  f"mais nous n'avons trouvé aucun site propre (vérifié le {jour(today)}).")
+        info = (f"{name} : entreprise nouvellement qualifiée RGE" + (f" ({metier})" if metier else "")
+                + f" à {c['city']} ({c['zip']}).")
+        opener = (f"Bonjour, félicitations pour votre qualification RGE – je n'ai pas trouvé de site web pour {name} : "
+                  f"un site simple pour la mettre en avant auprès des particuliers vous intéresserait-il ?")
+        why = ("Une nouvelle qualification RGE donne accès aux travaux aidés : les particuliers vérifient en ligne, "
+               "et sans site web l'entreprise reste peu visible.")
+        return {"signal": signal, "signal_date": when, "company_info": info, "opener": opener, "urgency": "high",
+                "urgency_reason": why}
     signal = (f"Aucun site web trouvé pour {name} : l'entreprise figure dans l'annuaire officiel des professionnels "
               f"RGE (ADEME) avec un numéro de téléphone" + (" et une adresse e-mail" if c.get("email") else "")
               + f", mais nous n'avons trouvé aucun site propre (vérifié le {jour(today)}).")
