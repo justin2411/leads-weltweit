@@ -297,5 +297,79 @@ class RadarBelegTest(unittest.TestCase):
         self.assertIn("The same check on 5 October 2026 also found that the homepage is not built for phones", why)
 
 
+class _Page:
+    def __init__(self, text, status=200):
+        self.text, self.status_code = text, status
+
+
+class RadarLegalPersonTest(unittest.TestCase):
+    """Premium-Labor 05.10.2026: Radar-Leads holen die Ansprechperson aus dem Impressum (nur mit Label, robots.txt)."""
+    HOME = '<html lang="fr"><body>Atelier <a href="/mentions-legales/">Mentions légales</a></body></html>'
+    LEGAL = "<p>Le directeur de la publication du site Internet est Monsieur Christophe Durand, en qualité de gérant.</p>"
+
+    def run_lp(self, pages, home=None, robots=("ok", _Page(""), None), url="https://atelier.example.fr/"):
+        from extraktor.sources import website_check as wc
+        calls = []
+
+        def get(_f, u):
+            calls.append(u)
+            return (_Page(pages[u]) if u in pages else _Page("", 404)), None
+        with mock.patch.object(wc, "_get", get), mock.patch.object(wc, "_robots", lambda f, root: robots):
+            return radar.legal_person(url, self.HOME if home is None else home, object()), calls
+
+    def test_sentence_form_of_publication_director(self):
+        from lib import websites as W
+        p = W.person_from_legal_notice(W.page_text(self.LEGAL))
+        self.assertEqual(p["name"], "Christophe Durand")
+        self.assertEqual(p["role"], "Directeur de la publication")
+
+    def test_finds_name_on_linked_legal_page(self):
+        p, calls = self.run_lp({"https://atelier.example.fr/mentions-legales/": self.LEGAL})
+        self.assertEqual(p["name"], "Christophe Durand")
+        self.assertEqual(p["source_url"], "https://atelier.example.fr/mentions-legales/")
+        self.assertLessEqual(len(calls), radar.LEGAL_PAGES_MAX)
+
+    def test_french_default_path_when_not_linked(self):
+        p, calls = self.run_lp({"https://atelier.example.fr/mentions-legales/": self.LEGAL},
+                               home='<html lang="fr"><body>Atelier</body></html>')
+        self.assertEqual(p["name"], "Christophe Durand")
+        self.assertEqual(calls, ["https://atelier.example.fr/mentions-legales/"])
+
+    def test_no_guess_for_english_page_and_no_label_no_name(self):
+        p, calls = self.run_lp({}, home="<html><body>Harbour Bakes, run by Ann Lee</body></html>",
+                               url="https://harbourbakes.example.co.uk/")
+        self.assertIsNone(p)
+        self.assertEqual(calls, [])
+
+    def test_robots_denied_fetches_nothing(self):
+        p, calls = self.run_lp({"https://atelier.example.fr/mentions-legales/": self.LEGAL}, robots=("deny", None, None))
+        self.assertIsNone(p)
+        self.assertEqual(calls, [])
+
+    def test_found_person_counts_for_premium_and_is_saved(self):
+        r = row(person={"name": None, "role": "Owner (ask for the owner)"})
+        ev = {"signal_type": "cert_expiring", "detail": "cert_expiring", "event_date": TODAY,
+              "not_after": TODAY + dt.timedelta(days=12), "days_left": 12, "key": "k", "findings": [], "also": []}
+        out = {"res": res(), "cert": None, "event": ev}
+        _, before = radar.lead_row(r, ev, out, TODAY)
+        self.assertNotIn("person", before["premium"]["reasons"])
+        found = {"name": "Ann Lee", "role": "Director", "source": "Company website (legal notice)",
+                 "source_url": "https://harbourbakes.example.co.uk/about/"}
+        _, after = radar.lead_row(r, ev, {**out, "person": found}, TODAY)
+        self.assertIn("person", after["premium"]["reasons"])
+        self.assertEqual(after["premium_score"], before["premium_score"] + premium.POINTS["person"])
+        o = radar.person_obs("c1", found, TODAY)
+        self.assertEqual((o["kind"], o["key"], o["details"]["name"]), ("other", "person", "Ann Lee"))
+        self.assertEqual(o["details"]["source_url"], found["source_url"])
+
+    def test_known_name_skips_lookup(self):
+        with mock.patch.object(radar, "legal_person") as lp, \
+                mock.patch("extraktor.sources.website_check.inspect", return_value=res([BROKEN], final="")), \
+                mock.patch.object(radar, "detect", return_value={"signal_type": "website_broken"}):
+            out = radar.check_one(row(), object(), TODAY)
+        lp.assert_not_called()
+        self.assertIsNone(out["person"])
+
+
 if __name__ == "__main__":
     unittest.main()

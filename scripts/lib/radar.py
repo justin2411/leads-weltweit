@@ -25,6 +25,7 @@ offener Lead – jede Firma geht nur an einen Käufer). Die Drei-Stufen-Freigabe
 from __future__ import annotations
 
 import datetime as dt
+import re
 import time
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
@@ -253,7 +254,56 @@ def check_one(row: dict, fetcher, today: dt.date) -> dict:
         host = wc.host_of(final if final.startswith("https://") else c["facts"]["listed_website"])
         fetcher._throttle("https://" + host + "/")
         cert = tls_info.read(host)
-    return {"res": res, "cert": cert, "event": detect(row, res, cert, today), "error": ""}
+    ev = detect(row, res, cert, today)
+    person = None
+    if ev and not ((row.get("person") or {}).get("name") or "").strip():
+        try:
+            person = legal_person(res.get("final_url") or c["facts"]["listed_website"], res.get("html") or "", fetcher)
+        except Exception:  # noqa: BLE001 - die Personensuche darf das Ereignis nie verhindern
+            person = None
+    return {"res": res, "cert": cert, "event": ev, "error": "", "person": person}
+
+
+LEGAL_PAGE = re.compile(r"mentions|legal|imprint|impressum|about|propos|qui[-_ ]sommes|contact|team", re.I)
+LEGAL_NOTICE = re.compile(r"mentions|legal|imprint|impressum", re.I)
+FRENCH_PAGE = re.compile(r"<html[^>]*\blang=[\"']?fr|^https?://[^/]+\.fr(?:/|$)", re.I)
+LEGAL_PAGES_MAX = 2  # höchstens 2 Unterseiten je Ereignis (nur bei einem Ereignis, nicht bei jeder Radar-Prüfung)
+
+
+def legal_person(home_url: str, home_html: str, fetcher) -> dict | None:
+    """Ansprechperson mit Namen für einen Radar-Lead (Premium-Labor 05.10.2026: 0 % der UK/FR-Premium-Leads hatten
+    einen Namen). Nur mit ausdrücklichem Label aus Startseite, mentions légales/Impressum, Über-uns- oder
+    Kontaktseite derselben Domain (websites.person_from_legal_notice – dieselbe Regel wie die Anreicherung).
+    robots.txt wird beachtet, höchstens LEGAL_PAGES_MAX Unterseiten. Nichts wird erraten."""
+    from extraktor.sources import website_check as wc
+    from lib import websites as W
+    if not home_url or not home_html:
+        return None
+    p = W.person_from_legal_notice(W.without_hosting(W.page_text(home_html[:200000])))
+    if p:
+        return {**p, "source_url": home_url}
+    root = re.match(r"^https?://[^/]+", home_url)
+    links = [u for u in W.subpage_links(home_html, home_url, limit=4) if LEGAL_PAGE.search(u)]
+    if root and not any(LEGAL_NOTICE.search(u) for u in links) and FRENCH_PAGE.search(home_html[:5000] + " " + home_url):
+        # mentions légales sind in Frankreich Pflicht (LCEN Art. 6), oft nur per Skript-Menü verlinkt: Standardpfad
+        links.insert(0, root.group(0) + "/mentions-legales/")
+    links = links[:LEGAL_PAGES_MAX]
+    if not links:
+        return None
+    st, r, _ = wc._robots(fetcher, root.group(0)) if root else ("error", None, None)
+    if st != "ok":
+        return None
+    robots_txt = r.text if r is not None and r.status_code < 400 else ""
+    for url in links:
+        if W.site_domain(url) != W.site_domain(home_url) or not wc._robots_ok(robots_txt, url):
+            continue
+        page, _ = wc._get(fetcher, url)
+        if page is None or page.status_code >= 400:
+            continue
+        p = W.person_from_legal_notice(W.without_hosting(W.page_text((page.text or "")[:200000])))
+        if p:
+            return {**p, "source_url": url}
+    return None
 
 
 def radar_details(row: dict, out: dict, today: dt.date) -> dict:
@@ -307,7 +357,7 @@ def lead_row(row: dict, ev: dict, out: dict, today: dt.date) -> tuple[dict, dict
            "title": t["event_summary"], "source_name": SOURCE_NAME, "source_url": url,
            "posted_on": ev["event_date"].isoformat(), "first_seen": today.isoformat(), "last_seen": today.isoformat(),
            "details": details}
-    contact, person = row.get("contact") or {}, row.get("person") or {}
+    contact, person = row.get("contact") or {}, out.get("person") or row.get("person") or {}
     lead = {"company_id": row["company_id"], "segment_id": "S2", "country": row["country"],
             "signal_type": ev["signal_type"], "event_summary": t["event_summary"],
             "event_date": ev["event_date"].isoformat(), "source_name": SOURCE_NAME, "source_url": url,
@@ -318,6 +368,15 @@ def lead_row(row: dict, ev: dict, out: dict, today: dt.date) -> tuple[dict, dict
                                "person_name": person.get("name") or "", "phone": contact.get("phone") or row.get("phone_main") or "",
                                "email": contact.get("email") or ""}, today)}
     return obs, lead
+
+
+def person_obs(company_id: str, p: dict, today: dt.date) -> dict:
+    """Beobachtung kind=other key=person wie im Extraktor (name, role, source) plus Seite des Belegs."""
+    return {"company_id": company_id, "kind": "other", "key": "person", "title": None,
+            "source_name": p.get("source") or "Company website (legal notice)", "source_url": p.get("source_url"),
+            "posted_on": None, "first_seen": today.isoformat(), "last_seen": today.isoformat(),
+            "details": {"name": p["name"], "role": p.get("role"), "source": p.get("source"),
+                        "source_url": p.get("source_url"), "found_by": "radar", "checked_on": today.isoformat()}}
 
 
 def given_out(db, company_id: str) -> bool:
@@ -331,6 +390,10 @@ def save_event(db, row: dict, ev: dict, out: dict, today: dt.date) -> dict | Non
         return None
     obs, lead = lead_row(row, ev, out, today)
     o = db.insert("observations", [obs], upsert_on="company_id,kind,key")
+    found = out.get("person")
+    if found and found.get("name") and not ((row.get("person") or {}).get("name") or "").strip():
+        # Name aus dem Impressum der eigenen Website: ersetzt nur die Rolle ohne Namen („Owner (ask for the owner)“)
+        db.insert("observations", [person_obs(row["company_id"], found, today)], upsert_on="company_id,kind,key")
     lead["observation_ids"] = [o[0]["id"]] if o else []
     try:
         got = db.insert("leads", [lead])

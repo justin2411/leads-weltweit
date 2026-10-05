@@ -96,6 +96,8 @@ Proben-Vorrat und Kundenlieferung nehmen Premium zuerst; später gibt es neben d
 
 Premium-Stufe: ≥ 70 Punkte und datiertes Ereignis ≤ 14 Tage (Premium-Labor 05.10.2026: vorher zählte der Code bis 30 Tage, lockerer als die Definition oben; 15–30 Tage gibt weiter 20 Punkte, steht damit oben im Standard). Website-Zustände ohne Ereignisdatum (veraltet, nicht handytauglich, Overture ohne Website) sind nie Premium – deshalb das Radar: es macht aus einem Zustand eine Veränderung mit Datum.
 
+Ansprechperson im Radar (Premium-Labor 05.10.2026): Ein Radar-Ereignis ohne bekannten Namen sucht den Namen auf der Startseite und höchstens 2 Unterseiten derselben Domain (mentions légales/Impressum, Über uns, Kontakt; FR-Seiten auch `/mentions-legales/`), nur mit ausdrücklichem Label (`websites.person_from_legal_notice`), robots.txt beachtet; gefunden → Beobachtung `person` mit Beleg-Seite (`lib/radar.py` `legal_person`). Vorher hatten 0 % der UK/FR-Premium-Leads einen Namen; Live-Stichprobe 2/15 FR, 0/15 UK, 0/10 US.
+
 ### Länder (nur Mail-Länder aus `countries.yaml`)
 
 | Schritt | Länder | Versand |
