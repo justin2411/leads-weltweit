@@ -104,6 +104,10 @@ jobs:
         run: python scripts/inbox.py --days 14 --apply
       - name: Offene Entwürfe auf den aktuellen Text bringen
         if: ${{ steps.gate.outputs.ok == 'true' && !(github.event_name == 'workflow_dispatch' && inputs.probelauf) }}
+        # Betrieb 05.10.2026: eine Datenbank-Zeitüberschreitung hier ließ den ganzen Versandlauf scheitern (23:27 UTC).
+        # Der Versand prüft jede Mail ohnehin noch einmal (outreach.py lint_draft) -> Fehler hier stoppen ihn nicht
+        continue-on-error: true
+        timeout-minutes: 20
         run: python scripts/drafts.py --refresh
       - name: "Neue Entwürfe für die Fokus-Tests (Inhaber 03.10.2026, UK und FR sollen nicht leerlaufen)"
         if: ${{ steps.gate.outputs.ok == 'true' && !(github.event_name == 'workflow_dispatch' && inputs.probelauf) }}

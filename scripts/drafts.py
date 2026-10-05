@@ -436,13 +436,28 @@ def load_examples(db) -> dict:
     return out
 
 
+def _open_initial(db, page: int = 250):
+    """Offene Erstmail-Entwürfe seitenweise nach id (Keyset statt offset): offset 2000 mit eingebetteten Käufern lief
+    in die Zeitüberschreitung der Datenbank und ließ den Versandlauf scheitern (Betrieb 05.10.2026)."""
+    last = None
+    while True:
+        params = {"status": "in.(draft,approved)", "sent_at": "is.null", "kind": "eq.initial", "order": "id",
+                  "select": "id,status,subject,body,check_errors,prospects(*)", "limit": str(page)}
+        if last is not None:
+            params["id"] = f"gt.{last}"
+        rows = db.select("messages", params) or []
+        yield from rows
+        if len(rows) < page:
+            return
+        last = rows[-1]["id"]
+
+
 def refresh(db, dry_run: bool = False) -> int:
     """Offene Entwürfe neu schreiben (gleicher Käufer, aktueller Text). Verstößt der neue Text gegen eine Regel,
     geht ein freigegebener Entwurf zurück auf draft – nie umgekehrt."""
     n = back = 0
     col = has_variant_column(db)
-    for m in db.select_all("messages", {"status": "in.(draft,approved)", "sent_at": "is.null", "kind": "eq.initial", "order": "id",
-                                         "select": "id,status,subject,body,check_errors,prospects(*)"}):
+    for m in _open_initial(db):
         p = m.get("prospects")
         if not p:
             continue
