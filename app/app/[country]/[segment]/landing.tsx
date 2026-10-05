@@ -330,7 +330,10 @@ async function resolve({ country, segment }: LandingParams, sp: LandingSearch, r
   // Split-Test nur in der Freigabe-Liste (config/fokus.yaml tests, Inhaber 04.10.2026), sonst nur die Kontrolle
   const live = data.variants.filter((v: any) => (preview ? v.status !== "retired" : v.status === "live"));
   const candidates = preview ? live : servableVariants(TEST_SCOPE, data.page, live);
-  const variant = (preview && sp.v && candidates.find((v: any) => v.variant_key === sp.v))
+  // Live-Vorschau im Dashboard: Inhaber sieht mit ?vorschau=1&v=… auch auf öffentlichen Seiten genau diese Variante
+  // (zählt nie: Tracker/Signale sind bei vorschau=1 aus)
+  const pinned = preview || (isPublic && sp.vorschau === "1" && !!sp.v && (await isOwner()));
+  const variant = (pinned && sp.v && candidates.find((v: any) => v.variant_key === sp.v))
     || pickVariant(candidates, candidates.length > 1 ? rand ?? (await requestRand(sp)) : 0);
   if (!variant) return null;
   return { ...data, variant, settings, preview, isPublic, sp, slug };

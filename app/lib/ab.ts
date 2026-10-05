@@ -191,7 +191,9 @@ export function funnelView(reg: AbRegistry, rows: FunnelRow[]): FunnelStation[] 
 
 export type TestView = {
   id: string; step: string; stepTitel: string; station: string; country: string; element: string; hypothese: string; status: AbStatus;
-  variants: { key: string; n: number; k: number; rate: number; wert: string | null }[];
+  /** voll = ganzer Wert (Live-Vorschau, ab-vorschau.ts); pageKey = Seiten-Variante (page_variants.variant_key) */
+  variants: { key: string; n: number; k: number; rate: number; wert: string | null; voll: string | null; variantId: string | null; pageKey?: string | null }[];
+  segment: string;
   eval: AbEval | null; gewinner: AbKey | null; grund: string | null; gestartet: string | null; beendet: string | null;
 };
 
@@ -204,10 +206,14 @@ export function testsView(reg: AbRegistry, tests: AbTest[], results: AbResult[],
     const rows = AB_KEYS.map((key) => {
       const r = results.find((x) => x.test_id === t.id && x.variant === key);
       const n = Number(r?.n) || 0, k = Number(r?.k) || 0;
-      return { key, n, k, rate: rate(n, k), wert: short(variantValue(t, key)) };
+      const raw = variantValue(t, key);
+      const vid = (t.varianten ?? []).find((x) => x.key === key)?.variant_id;
+      return { key, n, k, rate: rate(n, k), wert: short(raw), voll: raw === undefined || raw === null ? null : String(raw).slice(0, 600),
+        variantId: typeof vid === "string" ? vid : null };
     });
     return {
       id: t.id, step: t.step, stepTitel: s?.titel ?? t.step, station: s?.station ?? "", country: t.country, element: t.element,
+      segment: t.segment_id,
       hypothese: t.hypothese, status: t.status, variants: rows,
       eval: t.status === "laeuft" ? evaluate(reg, t, rows.map((r) => ({ variant: r.key, n: r.n, k: r.k })), now) : null,
       gewinner: t.gewinner ?? null, grund: t.grund ?? null, gestartet: t.gestartet ?? null, beendet: t.beendet ?? null,
