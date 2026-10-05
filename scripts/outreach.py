@@ -343,9 +343,25 @@ def ab_after_send(db, m: dict, p: dict, orig: tuple[str, str], marks: dict, sv: 
     ablib.record(db, marks, p.get("id"))
 
 
-def seed_inboxes() -> list[str]:
-    """Kontrolladressen des Inhabers (Secret SEED_INBOXES, kommagetrennt) für den Posteingangstest."""
-    return [a.strip() for a in os.environ.get("SEED_INBOXES", "").split(",") if "@" in a]
+def seed_inboxes(db=None) -> list[str]:
+    """Kontrolladressen des Inhabers für den Posteingangstest: Secret SEED_INBOXES (kommagetrennt) und/oder
+    owner_settings key 'seed_inboxes' (Liste oder kommagetrennt; Inhaber 05.10.2026 „mach es selber“ – die eigenen
+    Adressen des Inhabers stehen in der Datenbank statt im öffentlichen Repo)."""
+    raw = [os.environ.get("SEED_INBOXES", "")]
+    if db is not None:
+        try:
+            rows = db.select("owner_settings", {"key": "eq.seed_inboxes", "select": "value", "limit": "1"}) or []
+            v = rows[0].get("value") if rows else None
+            raw += v if isinstance(v, list) else [str(v or "")]
+        except Exception:  # noqa: BLE001 – ohne Einstellung gilt nur das Secret
+            pass
+    out: list[str] = []
+    for part in raw:
+        for a in str(part or "").split(","):
+            a = a.strip().lower()
+            if "@" in a and a not in out:
+                out.append(a)
+    return out
 
 
 def seed_copy(db, m: dict, country: str, subject: str, text: str, html: str | None, box: dict | None,
@@ -354,7 +370,7 @@ def seed_copy(db, m: dict, country: str, subject: str, text: str, html: str | No
     Kontrolladresse – gleicher Betreff, Text, Postfach. Keine Kaltmail: nicht in messages, zählt nicht für Limits
     oder Notbremse; Nachweis in signalwerk.seed_checks (placement später per Hand/IMAP). Der persönliche
     Abmelde-/Seitenlink des Käufers wird in der Kopie unschädlich gemacht."""
-    seeds = seed_inboxes()
+    seeds = seed_inboxes(db)
     if not seeds or country in done:
         return
     done.add(country)
