@@ -659,6 +659,66 @@ def _fmt(n: int | None) -> str:
     return "nicht messbar" if n is None else str(n)
 
 
+RUNWAY_WARN_DAYS = 21  # Käufer-Reichweite je Fokus-Land: darunter gelb, unter RUNWAY_FAIL_DAYS rot (Gehirn 05.10.2026)
+RUNWAY_FAIL_DAYS = 7
+RUNWAY_SENT_DAYS = 3   # Tagesmenge = Erstmails der letzten 3 Tage ÷ 3
+
+
+def runway_days(free: int | None, sent: int | None, days: int = RUNWAY_SENT_DAYS) -> float | None:
+    """Wie viele Tage reichen die freien mail-fähigen Käufer beim aktuellen Erstmail-Tempo? None = nicht messbar;
+    ohne Versand unendlich (kein Verbrauch)."""
+    if free is None or sent is None:
+        return None
+    per_day = sent / max(1, days)
+    return float("inf") if per_day <= 0 else max(0, free) / per_day
+
+
+def _count_join(db, table: str, select: str, params: dict) -> int | None:
+    """Exakte Zahl mit eingebettetem Filter (z. B. messages über prospects!inner); Zeitüberschreitung = None."""
+    try:
+        r = db.s.get(f"{db.base}/{table}", params={**params, "select": select, "limit": "1"},
+                     headers={"Prefer": "count=exact"}, timeout=db.timeout)
+        r.raise_for_status()
+        return int((r.headers.get("content-range") or "*/0").split("/")[-1] or 0)
+    except (requests.RequestException, RuntimeError, ValueError) as e:
+        print(f"Zählung {table} {params} nicht messbar: {type(e).__name__}: {str(e)[:120]}")
+        return None
+
+
+def runway_counts(db, seg: str, co: str) -> tuple[int | None, int | None]:
+    """(freie Käufer, Erstmails der letzten RUNWAY_SENT_DAYS Tage) für Segment × Land. Frei = check_status ok und
+    noch nie eine Erstmail gesendet. Käufer zählen nur mit ok (Inhaber 02.10.2026)."""
+    ok = _safe_count(db, "prospects", {"check_status": "eq.ok", "segment_id": f"eq.{seg}", "country": f"eq.{co}"})
+    join = {"kind": "eq.initial", "status": "eq.sent", "prospects.segment_id": f"eq.{seg}",
+            "prospects.country": f"eq.{co}"}
+    sel = "id,prospects!inner(segment_id,country,check_status)"
+    used = _count_join(db, "messages", sel, {**join, "prospects.check_status": "eq.ok"})
+    since = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=RUNWAY_SENT_DAYS)).isoformat()
+    sent = _count_join(db, "messages", sel, {**join, "sent_at": f"gte.{since}"})
+    free = None if ok is None or used is None else max(0, ok - used)
+    return free, sent
+
+
+def check_buyer_runway(c: Check, db, focus: list[tuple[str, str]], segs: dict) -> dict:
+    """Käufer-Reichweite je Fokus-Paar mit Mail-Erlaubnis: freie ok-Käufer ÷ Erstmails pro Tag. Engpass ist nicht
+    der Zufluss, sondern ob der Vorrat reicht. {(Segment, Land): Tage | None}."""
+    out = {}
+    for seg, co in focus:
+        if co not in (segs.get(seg) or []):
+            continue
+        free, sent = runway_counts(db, seg, co)
+        days = runway_days(free, sent)
+        out[(seg, co)] = days
+        if days is None:
+            c.add("Kunden-Werk", WARN, f"{seg}/{co}: Käufer-Reichweite nicht messbar")
+            continue
+        label = "kein Versand" if days == float("inf") else f"{days:.0f} Tage"
+        status = OK if days >= RUNWAY_WARN_DAYS else (WARN if days >= RUNWAY_FAIL_DAYS else FAIL)
+        c.add("Kunden-Werk", status, f"{seg}/{co}: Käufer reichen {label}",
+              f"{free} freie mail-fähige Käufer, {sent} Erstmails in {RUNWAY_SENT_DAYS} Tagen")
+    return out
+
+
 BUYERS_NEW_MIN = 50  # neue mail-fähige Fokus-Käufer je 24 h, darunter gelb (Prüfung 04.10.2026)
 
 
@@ -713,6 +773,11 @@ def check_werke(c: Check, db) -> None:
         detail += "; nicht messbar: " + ", ".join(unknown)
     title = f"{mail} mail-fähige Käufer" + (" (unvollständig)" if unknown else "")
     c.add("Kunden-Werk", OK if new or (stock or 0) >= 1_000_000 else WARN, title, detail)
+    try:  # Reichweite darf den Rest der Werke-Prüfung nie abbrechen
+        runway = check_buyer_runway(c, db, focus, segs)
+    except Exception as e:  # noqa: BLE001
+        runway = {}
+        c.add("Kunden-Werk", WARN, "Käufer-Reichweite nicht messbar", f"{type(e).__name__}: {str(e)[:120]}")
     # Nachschub im Fokus: neue mail-fähige Käufer je Fokus-Zielgruppe in 24 h (Prüfung 04.10.2026)
     for seg in sorted({s for s, _ in focus}):
         countries = segs.get(seg) or []
@@ -720,7 +785,11 @@ def check_werke(c: Check, db) -> None:
             continue
         n = _safe_count(db, "prospects", {"check_status": "eq.ok", "segment_id": f"eq.{seg}",
                                           "country": f"in.({','.join(countries)})", "checked_at": f"gte.{since}"})
-        if n is not None and n < BUYERS_NEW_MIN:
+        # Zufluss allein ist kein Engpass: reicht der Vorrat (Reichweite), bleibt es grün (Gehirn 05.10.2026:
+        # Kunden-Werk lief leer, Vorrat reichte aber 25–190 Tage – falscher Alarm lenkte Agenten ab)
+        short = [co for co in countries if (seg, co) in focus and (runway.get((seg, co)) is None
+                                                                    or runway[(seg, co)] < RUNWAY_WARN_DAYS)]
+        if n is not None and n < BUYERS_NEW_MIN and short:
             c.add("Kunden-Werk", WARN, f"{seg}-Käufer: < {BUYERS_NEW_MIN} neu in 24 h",
                   f"{n} neue mail-fähige Käufer ({', '.join(countries)}) – Kunden-Werk/Quellen prüfen")
 

@@ -6,6 +6,15 @@
 > **Seit 04.10.2026 gilt:** Tests nur Webagenturen US/UK/FR (`config/fokus.yaml` `tests`, Inhaber: „beim gehirn bei a/b tests soll er das nur für webagencys usa, fr, und uk machen nichts mehr erst wenn ich ihm das freigebe das soll überall so sein, wir brauchen erstmal nichts anderes“).
 > Preis-Tests, neue Zielgruppen und Länder unten ruhen, bis der Inhaber sie freigibt.
 
+## Lagebild (05.10.2026, 05:30 Berliner Zeit)
+- **Käufer-Nachschub ist kein Engpass** (gegengeprüft): freie ok-Käufer S2 (nie Erstmail) US 28.620, UK 2.485, FR 1.239;
+  Tempo ~41/40/33 Erstmails pro Tag → Reichweite US ≈ 700, UK ≈ 57, FR ≈ 38 Tage. Dazu ~1.300 freigegebene Entwürfe je Land.
+  Kunden-Werk „leer“ heißt nur: kaum neue Overture-Kandidaten – FR kam trotzdem +519 in 24 h.
+- Der Alarm „< 50 neue Käufer in 24 h“ war ein Fehlalarm. Tagescheck zeigt jetzt die Reichweite je Land
+  (gelb < 21, rot < 7 Tage); der Zufluss-Hinweis kommt nur noch, wenn ein Land knapp wird.
+- Rückläufer 04.10. 9 % (14/153) – fast alles vor #394 (Adressprüfung, 01:40); danach 0 von 15. Beobachten.
+- Engpass bleibt: 0 menschliche Antworten. Laufend: Betreff-Test (Mi), Premium-Proben (Di), Beleg im Lead (#410, Labor).
+
 ## Lagebild (05.10.2026, 04:45 Berliner Zeit)
 - **Proben fast ohne Premium:** S2 10/10-Premium-Proben US 1/50, UK 1/30, FR 0/30. Ursache: Der Austausch brach beim
   ersten Wunsch ohne Premium-Nachschub ab (US „not_mobile“ = 0 Premium-Firmen) – „no_website“ (2.624 frei) kam nie dran.
@@ -26,6 +35,7 @@
 - Käufer ok (S2): US 28.782, UK 2.623, FR 1.285. DB 5,1 GB.
 
 ## Nächster Schritt
+- **Prüfpunkt Mo 12.10.:** Käufer-Reichweite UK und FR ≥ 21 Tage (Tagescheck). Darunter: Kunden-Werk-Plätze auf UK/FR-Quellen.
 - Zustellbarkeits-Check zählt Link-Scanner-Abmeldungen (< 2 min) getrennt, gelb ab > 50 %.
 - **Prüfpunkt Di 06.10., 12:00:** S2/US ≥ 25 von 50 Proben mit 10/10 Premium (angepasst von 40: Obergrenze ≈ 29
   wegen Wunsch-Mix). Darunter: Austausch-Log prüfen. Danach: Premium-Anlass für „not_mobile“/„website_outdated“ suchen.

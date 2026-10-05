@@ -113,6 +113,32 @@ class TagescheckTest(unittest.TestCase):
         # Nachschub: keine neuen S2-Käufer in 24 h -> gelber Hinweis
         self.assertIn((t.WARN, "S2-Käufer: < 50 neu in 24 h"), [(r[1], r[2]) for r in c.rows])
 
+    def test_runway_days(self):
+        self.assertEqual(t.runway_days(300, 30), 30)  # 10 Erstmails/Tag
+        self.assertEqual(t.runway_days(5, 0), float("inf"))
+        self.assertIsNone(t.runway_days(None, 30))
+        self.assertIsNone(t.runway_days(100, None))
+
+    def test_runway_silences_inflow_warning_when_stock_lasts(self):
+        # Kunden-Werk findet kaum Neue, aber der Vorrat reicht 100 Tage -> grün, kein Zufluss-Alarm (Gehirn 05.10.2026)
+        db = FakeDB({"segments": [{"id": "S2", "email_countries": ["US", "UK"]}], "prospects": [], "leads": []})
+        count = lambda db_, table, params: len(db_.select(table, params))  # noqa: E731
+        counts = {("S2", "US"): (3000, 90), ("S2", "UK"): (100, 150)}  # US 100 Tage, UK 2 Tage
+        with mock.patch.object(t, "cfg", return_value="true"), mock.patch.object(t, "_count", side_effect=count), \
+                mock.patch.object(t, "runway_counts", side_effect=lambda db_, s, co: counts[(s, co)]), \
+                mock.patch("lib.fokus.focus_pairs", return_value=[("S2", "US"), ("S2", "UK")]):
+            t.check_werke(c := t.Check(), db)
+        got = {r[2]: r[1] for r in c.rows}
+        self.assertEqual(got["S2/US: Käufer reichen 100 Tage"], t.OK)
+        self.assertEqual(got["S2/UK: Käufer reichen 2 Tage"], t.FAIL)
+        self.assertEqual(got["S2-Käufer: < 50 neu in 24 h"], t.WARN)  # UK knapp -> Zufluss-Hinweis bleibt
+        counts[("S2", "UK")] = (2000, 90)
+        with mock.patch.object(t, "cfg", return_value="true"), mock.patch.object(t, "_count", side_effect=count), \
+                mock.patch.object(t, "runway_counts", side_effect=lambda db_, s, co: counts[(s, co)]), \
+                mock.patch("lib.fokus.focus_pairs", return_value=[("S2", "US"), ("S2", "UK")]):
+            t.check_werke(c := t.Check(), db)
+        self.assertNotIn("S2-Käufer: < 50 neu in 24 h", [r[2] for r in c.rows])
+
     def test_werke_timeout_is_not_measurable_not_crash(self):
         db = FakeDB({"segments": [{"id": "S2", "email_countries": ["US"]}], "prospects": [], "leads": []})
 
