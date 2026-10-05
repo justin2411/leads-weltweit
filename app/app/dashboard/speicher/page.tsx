@@ -2,8 +2,8 @@ import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
 import { berlin } from "@/lib/dashboard-logic";
 import {
-  ALL, LAYERS, baukastenHref, big, buyerTanks, checkRows, dbFill, fmtBytes, layerShares, leadTanks, logHeight, probenSummary,
-  scaleTop, ticks, type LayerKey, type ProbeRow,
+  ALL, LAYERS, PREMIUM_FOCUS, baukastenHref, big, buyerTanks, checkRows, dbFill, dbRing, fmtBytes, layerShares, leadTanks, logHeight,
+  premiumFree, premiumProben, premiumTanks, probenSummary, scaleTop, ticks, type LayerKey, type PremiumTank, type ProbeRow,
 } from "@/lib/storage";
 import { loadProben, loadStorage, type Storage } from "@/lib/storage-data";
 import { loadPlanLog } from "@/lib/dashboard-data";
@@ -16,6 +16,7 @@ import { SPEICHER_CSS } from "./css";
 import { Pools } from "./pools";
 import { TankScroller } from "./scroller";
 import { Fold } from "../fold";
+import { CountUp } from "./count-up";
 
 export const metadata = { title: "Speicher" };
 type SP = Promise<Record<string, string | string[] | undefined>>;
@@ -24,7 +25,10 @@ type SP = Promise<Record<string, string | string[] | undefined>>;
 const STACK: LayerKey[] = ["sonst", "abgelaufen", "zurueck", "geliefert", "proben", "frei"];
 const LAYER = Object.fromEntries(LAYERS.map((l) => [l.key, l]));
 
-type Layer = { c: string; n: number; title: string };
+type Layer = { c: string; n: number; title: string; pr?: boolean };
+/** feste Funkel-Punkte der Premium-Schicht (x %, y %, Verzögerung s) – kein Zufall, damit Server und Browser gleich rendern */
+const SPARKS = [[18, 30, 0], [62, 55, 0.7], [40, 78, 1.3], [80, 22, 1.9], [28, 62, 2.4], [70, 85, 0.4]] as const;
+const Sparks = () => <>{SPARKS.map(([x, y, d], i) => <b key={i} className="sk" style={{ left: `${x}%`, top: `${y}%`, animationDelay: `${d}s` }} />)}</>;
 type Tick = { at: number; label: string };
 
 /** Glas-Tank: Füllhöhe h (0…1), Schichten anteilig, Welle in der Farbe der obersten Schicht. Ganzer Tank = Link. */
@@ -41,7 +45,11 @@ function Tank({ href, h, layers, tk = [], n, label, sub, call, off, title }: {
         {tk.map((t) => <div key={t.label} className={`tk-tick${t.at > 0.94 ? " top" : ""}`} style={{ bottom: `${t.at * 100}%` }}><span>{t.label}</span></div>)}
         {h > 0 && top ? (
           <div className="tk-liq" style={{ height: `${Math.max(h, 0.025) * 100}%`, "--wc": top.c } as CSSProperties}>
-            {shown.map((l, i) => <i key={i} className={i === shown.length - 1 ? "tk-top" : undefined} style={{ "--c": l.c, flex: `0 0 ${l.share * 100}%` } as CSSProperties} />)}
+            {shown.map((l, i) => (
+              <i key={i} className={[i === shown.length - 1 ? "tk-top" : "", l.pr ? "tk-pr" : ""].join(" ").trim() || undefined} style={{ "--c": l.c, flex: `0 0 ${l.share * 100}%` } as CSSProperties}>
+                {l.pr && <Sparks />}
+              </i>
+            ))}
             <div className="tk-wave b" /><div className="tk-wave" /><div className="tk-glow" />
           </div>
         ) : <div className="tk-empty">leer</div>}
@@ -99,7 +107,8 @@ export default async function Speicher({ searchParams }: { searchParams: SP }) {
   return (
     <div className="sp">
       <style dangerouslySetInnerHTML={{ __html: SPEICHER_CSS }} />
-      <PageHead title="Speicher" icon="speicher" at={st.ok ? `Stand ${berlin(st.d.at, false)}` : undefined}>{chips}</PageHead>
+      <PageHead title="Speicher" icon="speicher" at={st.ok ? `Stand ${berlin(st.d.at, false)}` : undefined}
+        crumbs={[["JARVIS", "/dashboard/jarvis"], ["Büro", "/dashboard/buero"], ["Speicher", ""]]}>{chips}</PageHead>
       {st.ok ? <Body d={st.d} seg={seg} proben={pr} brake={brake} /> : (
         <section className="sp-card sp-err"><p className="sp-none">Speicher-Zahlen gerade nicht erreichbar – gleich noch einmal laden.</p></section>
       )}
@@ -131,6 +140,7 @@ const BREMSE: Record<string, string> = { aus: "aus", hinweis: "Hinweis (ab 5,5 G
 function Body({ d, seg, proben, brake }: { d: Storage; seg: string; proben: ProbeRow[] | null; brake: { level: string; at: string } | null }) {
   // ------------------------------------------------------------- Kunden-Leads
   const lt = leadTanks(d, seg);
+  const pt = premiumTanks(d, seg);
   const lTop = scaleTop(Math.max(0, ...lt.map((t) => t.total)));
   const lTicks = ticks(lTop);
   const freeAll = lt.reduce((a, t) => a + t.layers.frei, 0);
@@ -143,14 +153,14 @@ function Body({ d, seg, proben, brake }: { d: Storage; seg: string; proben: Prob
 
   // ------------------------------------------------------------- Datenbank, Proben, Freigabe
   const db = dbFill(d);
-  const dbTicks = [2, 4, 6, 8].map((g) => ({ at: g / 8, label: `${g} GB` }));
-  const dbColor = db.level === "rot" ? "var(--red)" : db.level === "gelb" ? "var(--amber)" : "var(--cy)";
   const pb = proben ? probenSummary(proben, seg) : null;
   const gate = checkRows(d, seg);
   const gMax = Math.max(1, ...gate.map((g) => g.released + g.failed));
 
   return (
     <>
+      <PremiumHero tanks={pt} seg={seg} />
+
       <section className="sp-card">
         <div className="sp-h">
           <h2>Kunden-Leads</h2><span className="sp-big">{big(freeAll)}</span><span className="sp-note">frei</span>
@@ -159,12 +169,12 @@ function Body({ d, seg, proben, brake }: { d: Storage; seg: string; proben: Prob
         <TankScroller className="tk-row" style={{ "--n": lt.length } as CSSProperties}>
           {lt.map((t) => (
             <Tank key={t.country} href={baukastenHref(t.country, seg)} h={logHeight(t.total, lTop)} tk={lTicks}
-              layers={STACK.map((k) => ({ c: `var(--l-${k})`, n: t.layers[k], title: LAYER[k].label }))}
+              layers={leadLayers(t.layers, Math.min(t.layers.frei, premiumFree(d, seg, t.country)))}
               n={big(t.layers.frei)} label={t.country}
               sub={t.total > t.layers.frei ? <>von <b>{big(t.total)}</b></> : undefined} />
           ))}
         </TankScroller>
-        <Legend items={STACK.slice().reverse().filter((k) => k !== "sonst" || lt.some((t) => t.layers.sonst > 0)).map((k) => ({ c: `var(--l-${k})`, label: LAYER[k].label }))} />
+        <Legend items={[{ c: "var(--pr)", label: "Premium frei" }, ...STACK.slice().reverse().filter((k) => k !== "sonst" || lt.some((t) => t.layers.sonst > 0)).map((k) => ({ c: `var(--l-${k})`, label: LAYER[k].label }))]} />
       </section>
 
       <section className="sp-card">
@@ -189,8 +199,7 @@ function Body({ d, seg, proben, brake }: { d: Storage; seg: string; proben: Prob
         <Fold id="speicher-datenbank" className={`sp-card sp-lvl-${db.level}`} head="sp-h" title={<h2>Datenbank</h2>}
           sum={<><span className="sp-big">{Math.round(db.pct * 100)} %</span><span className="sp-note">{fmtBytes(db.used)} von 8 GB</span></>}>
           <div className="sp-db">
-            <Tank h={Math.min(1, db.pct)} tk={dbTicks} layers={[{ c: dbColor, n: db.used, title: "belegt" }]} n={fmtBytes(db.free)} label="frei"
-              title={`${fmtBytes(db.used)} belegt · ${fmtBytes(db.free)} frei bis 8 GB`} />
+            <DbRing used={db.used} />
             <div className="sp-tbl">
               {db.tables.map((t) => (
                 <div key={t.name} title={t.name}><span>{t.label}</span><b>{fmtBytes(t.bytes)}</b><em><i style={{ width: `${Math.max(2, t.pct * 100)}%` }} /></em></div>
@@ -204,14 +213,19 @@ function Body({ d, seg, proben, brake }: { d: Storage; seg: string; proben: Prob
         </Fold>
 
         <Fold id="speicher-proben" className="sp-card" head="sp-h" title={<h2>Proben-Vorrat</h2>}
-          sum={pb ? <><span className="sp-big">{pb.ready}/{pb.target}</span><span className="sp-note">fertig / Soll</span></> : null}>
+          sum={pb ? <><span className="sp-big">{pb.ready}/{pb.target}</span><span className="sp-note">fertig / Soll · <Icon name="premium" size={12} /> {pb.rows.reduce((a, r) => a + Math.min(r.ready, premiumProben(d, r.key) ?? 0), 0)} Premium</span></> : null}>
           {!pb ? <p className="sp-none">Vorrat gerade nicht erreichbar.</p> : !pb.rows.length ? <p className="sp-none">Keine Live-Seite.</p> : (
             <div className="tk-row small">
               {pb.rows.map((r) => {
                 const [s, c] = r.key.split("/");
+                const prem = Math.min(r.ready, premiumProben(d, r.key) ?? 0);
+                const col = r.ready >= r.target ? "var(--green)" : r.ready ? "var(--amber)" : "var(--red)";
                 return (
-                  <Tank key={r.key} href={baukastenHref(c, s)} h={r.pct} layers={[{ c: r.ready >= r.target ? "var(--green)" : r.ready ? "var(--amber)" : "var(--red)", n: r.ready, title: "fertig" }]}
-                    n={<>{r.ready}<small>/{r.target}</small></>} label={seg === ALL ? r.key : c} title={`${r.slug ?? r.key}: ${r.ready} fertig, Soll ${r.target}`} />
+                  <Tank key={r.key} href={baukastenHref(c, s)} h={r.pct}
+                    layers={[{ c: col, n: r.ready - prem, title: "fertig" }, { c: "var(--pr)", n: prem, title: "Premium-Proben", pr: true }]}
+                    n={<>{r.ready}<small>/{r.target}</small></>} label={seg === ALL ? r.key : c}
+                    sub={prem > 0 ? <span className="tk-prn"><Icon name="premium" size={12} />{prem}</span> : undefined}
+                    title={`${r.slug ?? r.key}: ${r.ready} fertig (davon ${prem} Premium-Proben), Soll ${r.target}`} />
                 );
               })}
             </div>
@@ -234,5 +248,79 @@ function Body({ d, seg, proben, brake }: { d: Storage; seg: string; proben: Prob
         </Fold>
       </div>
     </>
+  );
+}
+
+/** Schichten eines Lead-Tanks: freie Leads geteilt in Standard (cyan) und Premium (Gold, funkelt, ganz oben). */
+function leadLayers(l: Record<LayerKey, number>, prem: number): Layer[] {
+  return [
+    ...STACK.map((k) => ({ c: `var(--l-${k})`, n: k === "frei" ? l.frei - prem : l[k], title: k === "frei" ? "frei (Standard)" : LAYER[k].label })),
+    { c: "var(--pr)", n: prem, title: "Premium frei", pr: true },
+  ];
+}
+
+/**
+ * Premium frei je Land (Inhaber 05.10.2026: „auch mit premium leads angezeigt“): große Zahl = freie Premium-Firmen
+ * (wie premium_status), Balken frei / in Proben / geliefert, darunter fertige Premium-Proben. Kriterium in der DB.
+ */
+function PremiumHero({ tanks, seg }: { tanks: PremiumTank[]; seg: string }) {
+  const total = tanks.reduce((a, t) => a + t.frei, 0);
+  const andere = tanks.reduce((a, t) => a + t.andere, 0);
+  return (
+    <section className="sp-card pr-card" aria-label="Premium frei">
+      <div className="sp-h">
+        <h2><Icon name="premium" size={16} /> Premium frei</h2><span className="sp-big pr-big"><CountUp to={total} fmt="int" /></span>
+        <span className="sp-note">{seg === ALL ? "alle Zielgruppen" : seg === PREMIUM_FOCUS ? "Webagenturen" : seg}</span>
+        <span className="sp-sp" />
+        {andere > 0 && <span className="sp-note" title="freie Premium-Firmen in anderen Zielgruppen (zusammengefasst)">+{big(andere)} andere Zielgruppen</span>}
+      </div>
+      <div className="pr-grid">
+        {tanks.map((t) => {
+          const sum = t.frei + t.proben + t.geliefert;
+          const w = (n: number) => `${sum ? (n / sum) * 100 : 0}%`;
+          const tip = `${t.country}: ${t.frei.toLocaleString("de-DE")} frei · ${t.proben.toLocaleString("de-DE")} in Proben · ${t.geliefert.toLocaleString("de-DE")} geliefert`
+            + ` · ${t.zurueck.toLocaleString("de-DE")} zurückgehalten · Premium-Proben ${t.probenPremium}/${t.probenFertig}`
+            + (t.andere ? ` · ${t.andere.toLocaleString("de-DE")} frei in anderen Zielgruppen` : "");
+          return (
+            <Link key={t.country} href={baukastenHref(t.country, seg)} className={`pr-c${t.frei ? "" : " leer"}`} title={tip}>
+              <span className="pr-gem" aria-hidden><Icon name="premium" size={26} /><Sparks /></span>
+              <span className="pr-land">{t.country}</span>
+              <b className="pr-n"><CountUp to={t.frei} /></b>
+              <span className="pr-bar" aria-hidden><i className="f" style={{ width: w(t.frei) }} /><i className="p" style={{ width: w(t.proben) }} /><i className="g" style={{ width: w(t.geliefert) }} /></span>
+              <span className="pr-s pr-det"><span><b>{big(t.proben)}</b> in Proben</span><span>·</span><span><b>{big(t.geliefert)}</b> geliefert</span></span>
+              <span className="pr-s pr-pb" title="fertige Proben, davon reine Premium-Proben (10 von 10)"><Icon name="proben" size={13} /><span><b>{t.probenPremium}</b>/{t.probenFertig}</span><span className="pr-w">Premium-Proben</span></span>
+            </Link>
+          );
+        })}
+      </div>
+      <Legend items={[{ c: "var(--pr)", label: "frei" }, { c: "var(--pr-p)", label: "in Proben" }, { c: "var(--l-geliefert)", label: "geliefert" }]} />
+    </section>
+  );
+}
+
+/** Datenbank als Ring gegen 8 GB mit Marken Bremse 6 GB / Stopp 7,5 GB / Grenze 8 GB. */
+function DbRing({ used }: { used: number }) {
+  const r = dbRing(used);
+  const R = 52, C = 2 * Math.PI * R;
+  const pt = (at: number, rr: number) => {
+    const a = at * 2 * Math.PI - Math.PI / 2;
+    return [60 + rr * Math.cos(a), 60 + rr * Math.sin(a)] as const;
+  };
+  return (
+    <div className={`sp-ring lvl-${r.level}`} title={`${fmtBytes(used)} belegt · noch ${fmtBytes(r.toBrake)} bis zur Bremse (6 GB)`}>
+      <svg viewBox="0 0 120 120" role="img" aria-label={`Datenbank ${fmtBytes(used)} von 8 GB`}>
+        <circle className="rg-bg" cx="60" cy="60" r={R} />
+        <circle className="rg-zone" cx="60" cy="60" r={R} style={{ strokeDasharray: `${C * 0.25} ${C}`, strokeDashoffset: -C * 0.75 }} />
+        <circle className="rg-fg" cx="60" cy="60" r={R} style={{ strokeDasharray: `${C * r.pct} ${C}`, "--c0": `${C}` } as CSSProperties} />
+        {r.marks.map((m) => {
+          const [x1, y1] = pt(m.at, R - 9), [x2, y2] = pt(m.at, R + 9);
+          return <line key={m.gb} className={`rg-mk m${String(m.gb).replace(".", "")}`} x1={x1} y1={y1} x2={x2} y2={y2} />;
+        })}
+      </svg>
+      <div className="rg-in"><b>{r.gb.toLocaleString("de-DE", { maximumFractionDigits: 1 })}</b><span>von 8 GB</span></div>
+      <div className="rg-lg">
+        {r.marks.map((m) => <span key={m.gb} className={`m${String(m.gb).replace(".", "")}`}><i />{m.gb.toLocaleString("de-DE")} {m.label}</span>)}
+      </div>
+    </div>
   );
 }
