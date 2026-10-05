@@ -131,6 +131,17 @@ def fits(seg: str, c: dict) -> tuple[bool, str]:
         if not (f.get("bio_new") or {}).get("date"):
             return False, "no dated first organic certification"
         return True, "newly certified organic business without a website"
+    if c["source"] == "diagnostiqueurs":
+        # FR: neu zertifizierter Diagnostiqueur immobilier (DGALN-Verzeichnis) ohne Website (Quellen-Scout R40)
+        if seg != "S2":
+            return False, "source only carries the new-diagnostiqueur signal"
+        if c.get("website"):
+            return False, "a verified website exists"
+        if c.get("email") and not is_freemail(c["email"]):
+            return False, "uses an own email domain (likely has a site)"
+        if not (f.get("diag_new") or {}).get("date"):
+            return False, "no dated first certification"
+        return True, "newly certified property diagnostician without a website"
     if c["source"] == "charity_commission":
         # UK: neu registrierte Charity (Charity Commission) ohne Website (Quellen-Scout R38), gleiche Regel wie RGE
         if seg != "S2":
@@ -423,6 +434,24 @@ def texts_bio(c: dict) -> dict:
             "urgency_reason": why}
 
 
+def texts_diag(c: dict) -> dict:
+    """FR: neu zertifizierter Diagnostiqueur immobilier (erstmals im DGALN-Verzeichnis) ohne Website – Französisch."""
+    f, name = c["facts"], c["name"]
+    today = f["checked_on"]
+    new = f.get("diag_new") or {}
+    when = dt.date.fromisoformat(new["date"])
+    signal = (f"Aucun site web trouvé pour {name} : diagnostiqueur immobilier nouvellement certifié depuis le "
+              f"{jour(when)} (annuaire officiel des diagnostiqueurs immobiliers, ministère du Logement) ; "
+              f"nous n'avons trouvé aucun site propre (vérifié le {jour(today)}).")
+    info = f"{name} : diagnostiqueur immobilier nouvellement certifié à {c['city']} ({c['zip']})."
+    opener = (f"Bonjour, félicitations pour votre certification de diagnostiqueur – je n'ai pas trouvé de site web "
+              f"pour {name} : un site simple pour recevoir des demandes de diagnostic vous intéresserait-il ?")
+    why = ("Un diagnostiqueur qui démarre cherche ses premiers clients (particuliers, agences, notaires) : sans site "
+           "web, il reste peu visible pour ceux qui cherchent un diagnostic en ligne.")
+    return {"signal": signal, "signal_date": when, "company_info": info, "opener": opener, "urgency": "high",
+            "urgency_reason": why}
+
+
 def texts_charity(c: dict) -> dict:
     """UK: neu registrierte Charity (Charity Commission, Datum der Eintragung) ohne Website – Englisch (Lieferland UK)."""
     f, name = c["facts"], c["name"]
@@ -629,6 +658,8 @@ def texts(seg: str, c: dict) -> dict:
         return texts_bio(c)
     if c["source"] == "charity_commission":
         return texts_charity(c)
+    if c["source"] == "diagnostiqueurs":
+        return texts_diag(c)
     if c["source"] == "overture_web":
         return texts_website(c)
     if c["source"] == "companies_house":
