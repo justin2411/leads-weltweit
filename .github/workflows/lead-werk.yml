@@ -15,7 +15,10 @@
 # fertige Linien warten nicht mehr auf Nachzügler anderer Linien. Ohne Eingabe (Zeitplan, Wachhund, Dashboard) plant
 # der Lauf alle Linien wie bisher. Der Plan-Job lässt Linien aus, die ein anderer Lauf belegt (nie doppelt).
 name: lead-werk
-run-name: ${{ inputs.linien && format('lead-werk · Linie {0}', inputs.linien) || 'lead-werk' }}
+# Teile-Läufe (05.10.2026, Mindestbelegung 30): jede Linie hat eine feste Aufteilung --shard i/K (K = max der Linie,
+# scripts/werk_plan.py lane_k). „· Teile“ im Titel kennzeichnet sie; der Nachfüller startet freie Teile einer laufenden
+# Linie als weiteren Lauf (Eingabe shards), der Plan-Job lässt Teile aus, die ein anderer Lauf belegt (nie doppelt).
+run-name: ${{ inputs.linien && format('lead-werk · Linie {0} · Teile {1}', inputs.linien, inputs.shards) || 'lead-werk · Teile' }}
 on:
   schedule:
     - cron: "23 */3 * * *"
@@ -27,6 +30,10 @@ on:
         default: ""
       teile:
         description: "Teile je Linie, z. B. web-us:3 (vom Nachfüller)"
+        required: false
+        default: ""
+      shards:
+        description: "Teil-Nummern der Linie, z. B. 3,4,5 (feste Aufteilung, vom Nachfüller)"
         required: false
         default: ""
 # Linien-Läufe nebeneinander (Doppelbelegung verhindert der Plan-Job), Läufe für alle Linien nacheinander wie bisher
@@ -167,6 +174,7 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       GH_TOKEN: ${{ github.token }}
       TEILE: ${{ inputs.teile }}
+      SHARDS: ${{ inputs.shards }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -176,7 +184,7 @@ jobs:
         # --github: Linien, die ein anderer aktiver Lauf belegt, auslassen; --teile: nur die Linien des Nachfüllers
         run: |
           if [ -n "$TEILE" ]; then
-            python scripts/werk_plan.py lead-werk --github --teile "$TEILE"
+            python scripts/werk_plan.py lead-werk --github --teile "$TEILE" --shards "$SHARDS"
           else
             python scripts/werk_plan.py lead-werk --github
           fi
