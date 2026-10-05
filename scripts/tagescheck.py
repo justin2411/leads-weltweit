@@ -1024,7 +1024,8 @@ def kurz_pruefung(kpi: dict | None) -> str:
             a = agg.setdefault(t.get("art") or "lead", [0, 0])
             a[0] += int(t.get("geprueft") or 0)
             a[1] += int(t.get("geprueft") or 0) - int(t.get("bestanden") or 0)
-    parts = [f"{'Leads' if k == 'lead' else 'Käufer'} {v[0]} geprüft, {v[1]} abweichend" for k, v in sorted(agg.items(), reverse=True)]
+    names = {"lead": "Leads", "kaeufer": "Käufer", "kaeufer_altlast": "Käufer-Altbestand"}
+    parts = [f"{names.get(k, k)} {v[0]} geprüft, {v[1]} abweichend" for k, v in sorted(agg.items(), reverse=True)]
     out = kpi.get("ausreisser") or []
     tail = f" · Ausreißer: {', '.join(str(o.get('segment_id')) + '/' + str(o.get('country')) for o in out[:3])}" if out else ""
     return _cut("Dauerprüfung heute: " + ("; ".join(parts) or "nichts geprüft") + tail)

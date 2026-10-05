@@ -101,7 +101,9 @@ def regeln(lage: dict, countries: list[str], t: dt.datetime, lanes: list[dict] |
     for a in lage.get("ausreisser") or []:
         land, art = str(a.get("country") or "").upper(), str(a.get("art") or "lead")
         q = float(a.get("fehlerquote") or 0)
-        if land not in focus or str(a.get("segment_id") or segment) != segment or q <= FEHLER_MAX:
+        # nur die Stichprobe (lead/kaeufer); gezielt vorgezogener Altbestand (kaeufer_altlast) ist keine Quellenqualität
+        if art not in ("lead", "kaeufer") or land not in focus or str(a.get("segment_id") or segment) != segment \
+                or q <= FEHLER_MAX:
             continue
         was = "Käufer" if art == "kaeufer" else "Leads"
         out.append(_h("fehlerquote", "qualitaet", "produktion", f"fehlerquote:{art}:{land}:{tag}",
