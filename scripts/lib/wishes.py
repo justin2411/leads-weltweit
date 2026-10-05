@@ -56,6 +56,21 @@ def _no_website(l: dict) -> bool:
             or (not co.get("website") and bool(co.get("website_checked_at"))))
 
 
+# Radar-Leads (lib/radar.py also_text): datiertes Ereignis + am selben Tag bestätigter Befund „veraltet“/„nicht mobil“
+# im Text. Nur dieser Zusatzsatz zählt (Quellen-Scout 05.10.2026), nie geraten.
+ALSO_MARK = re.compile(r"(The same check also found that |Le même contrôle a aussi relevé que )(.*)$", re.S)
+ALSO_MOBILE = re.compile(r"not built for phones|pas adaptée aux mobiles")
+ALSO_OUTDATED = re.compile(r"copyright|old version|Adobe Flash|ancienne version")
+RADAR_TYPES = ("cert_expiring", "no_https")
+
+
+def _also(l: dict, pat: re.Pattern) -> bool:
+    if (l.get("signal_type") or "") not in RADAR_TYPES:
+        return False
+    m = ALSO_MARK.search(l.get("event_summary") or "")
+    return bool(m and pat.search(m.group(2)))
+
+
 def matches(key: str, l: dict, sic: str | None = None) -> bool:
     """Passt der Lead zum Wunsch? sic: SIC-Code der Beobachtung (nur für fleet_warehouse nötig)."""
     st = l.get("signal_type") or ""
@@ -64,7 +79,7 @@ def matches(key: str, l: dict, sic: str | None = None) -> bool:
         return st == key
     if key == "website_outdated":
         # Website-Prüfung (02.10.2026): kaputt oder veraltet gehört zum Wunsch „veraltete Website“
-        return st in ("website_outdated", "website_broken")
+        return st in ("website_outdated", "website_broken") or _also(l, ALSO_OUTDATED)
     if key == "broken":
         return st == "website_broken"
     if key == "security":
@@ -81,7 +96,8 @@ def matches(key: str, l: dict, sic: str | None = None) -> bool:
         # Firmen ohne Website (Overture, Signal no_website) und Neugründungen ohne gefundene Website
         return st == "no_website" or (st == "new_incorporation" and _no_website(l))
     if key == "not_mobile":
-        return st == "website_not_mobile" or (st == "website_outdated" and "mobile" in ev.lower())
+        return (st == "website_not_mobile" or (st == "website_outdated" and "mobile" in ev.lower())
+                or _also(l, ALSO_MOBILE))
     if key == "fleet_warehouse":
         return st in ("new_incorporation", "new_location") and (
             bool(sic and str(sic)[:2] in FLEET_SIC) or bool(FLEET_WORDS.search(ev)))
@@ -93,8 +109,8 @@ SIGNAL_TYPES = {
     "job_open_30d": ["job_open_30d"], "jobs_3plus": ["jobs_3plus"], "new_location": ["new_location"],
     "new_incorporation": ["new_incorporation"], "new_director": ["new_incorporation"], "growth": ["jobs_3plus"],
     "expansion": ["new_location", "jobs_3plus", "relocation"], "finance_roles": ["job_open_30d", "jobs_3plus"],
-    "no_website": ["no_website", "new_incorporation"], "website_outdated": ["website_outdated", "website_broken"],
-    "not_mobile": ["website_not_mobile", "website_outdated"], "security": ["no_https", "cert_expiring"], "broken": ["website_broken"],
+    "no_website": ["no_website", "new_incorporation"], "website_outdated": ["website_outdated", "website_broken", *RADAR_TYPES],
+    "not_mobile": ["website_not_mobile", "website_outdated", *RADAR_TYPES], "security": ["no_https", "cert_expiring"], "broken": ["website_broken"],
     "fleet_warehouse": ["new_incorporation", "new_location"],
 }
 
