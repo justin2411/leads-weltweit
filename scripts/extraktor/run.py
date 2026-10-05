@@ -167,6 +167,16 @@ def load_bio(limit: int, stats: Counter, exclude: set[str] | None = None) -> lis
     return cands
 
 
+def load_diag(limit: int, stats: Counter, exclude: set[str] | None = None) -> list[dict]:
+    """S2 FR Premium: neu zertifizierte Diagnostiqueurs immobiliers (DGALN-Verzeichnis, erstmals im Verzeichnis,
+    ≤ 30 Tage) ohne Website (Quellen-Scout R40). exclude: schon gespeicherte IDs."""
+    from extraktor.sources import fr_diag
+    cands = fr_diag.load(None, log=log, exclude=exclude, skip_phones=overture.phones("FR"))
+    cands = filters.dedupe([c for c in cands if not filters.pre_filter(c) and segments.fits("S2", c)[0]])[:limit]
+    stats["diag_FR"] = len(cands)
+    return cands
+
+
 def load_charity(limit: int, stats: Counter, exclude: set[str] | None = None) -> list[dict]:
     """S2 UK Premium: neu registrierte Charities (Charity Commission, ≤ 30 Tage) ohne Website (Quellen-Scout R38).
     Telefon schon in Overture UK = dort schon bearbeitet. exclude: schon gespeicherte Charity-Nummern."""
@@ -519,6 +529,11 @@ def dated_event(l: dict) -> str:
         return json.dumps({"dated_event": {"kind": "charity_registration", "date": ch["date"],
                                            "type": ch.get("type") or ""},
                            "checked_on": str(l["facts"].get("checked_on") or "")}, ensure_ascii=False)
+    dg = (l.get("facts") or {}).get("diag_new") or {}
+    if dg.get("date"):
+        return json.dumps({"dated_event": {"kind": "diagnostiqueur_certification", "date": dg["date"],
+                                           "organisme": dg.get("organisme") or ""},
+                           "checked_on": str(l["facts"].get("checked_on") or "")}, ensure_ascii=False)
     bio = (l.get("facts") or {}).get("bio_new") or {}
     if bio.get("date"):
         return json.dumps({"dated_event": {"kind": "bio_first_engagement", "date": bio["date"],
@@ -662,6 +677,9 @@ def main(argv=None) -> int:
                     help="S2 FR: so viele Firmen ohne Website aus dem RGE-Verzeichnis (ADEME) laden (0 = aus)")
     ap.add_argument("--bio", type=int, default=0,
                     help="S2 FR: so viele neue Bio-Betriebe ohne Website aus dem Agence-Bio-Verzeichnis (0 = aus)")
+    ap.add_argument("--diag", type=int, default=None,
+                    help="S2 FR: so viele neu zertifizierte Diagnostiqueurs ohne Website (DGALN-Verzeichnis, 0 = aus; "
+                         "ohne Angabe 2000, wenn --bio läuft = Linie s2-ukfr)")
     ap.add_argument("--charity", type=int, default=0,
                     help="S2 UK: so viele neu registrierte Charities ohne Website (Charity Commission, 0 = aus)")
     ap.add_argument("--store", action="store_true", help="grüne Leads direkt in die Datenbank schreiben (mit --db)")
@@ -692,6 +710,8 @@ def main(argv=None) -> int:
     ap.add_argument("--deadline-min", type=float, default=0,
                     help="nach N Minuten keine neuen Kandidaten mehr anfangen, Ergebnisse speichern (0 = aus)")
     args = ap.parse_args(argv)
+    if args.diag is None:
+        args.diag = 2000 if args.bio > 0 else 0
     deadline = time.monotonic() + args.deadline_min * 60 if args.deadline_min else 0
     countries = [x.strip().upper() for x in args.countries.split(",") if x.strip()]
     segs = [s.strip().upper() for s in args.segments.split(",") if s.strip()]
@@ -710,7 +730,8 @@ def main(argv=None) -> int:
             hb = Heartbeat(db0, "lead-werk", os.environ.get("RUN_PART") or args.shard or ",".join(countries)).__enter__()
         guard = filters.Guard(DB(), preload=("overture",) + (("rge",) if args.rge else ())
                                 + (("agence_bio",) if args.bio else ())
-                                + (("charity_commission",) if args.charity else ()))
+                                + (("charity_commission",) if args.charity else ())
+                                + (("diagnostiqueurs",) if args.diag else ()))
         log(f"Datenbank: {len(guard.known)} Firmen schon bekannt")
     us = "US" in countries
     # --fmcsa-days 0 / --formd-days 0 = Quelle aus (Teile anderer Quellen laden sie nicht mit: spart Zeit und
@@ -790,6 +811,10 @@ def main(argv=None) -> int:
         # neue Bio-Betriebe (datiertes Ereignis, Quellen-Scout R37): ganz nach vorn, wie neue RGE-Qualifikationen
         bio = load_bio(args.bio, stats, {i for s_, i in guard.known if s_ == "agence_bio"})
         p["S2/FR"] = bio + p.get("S2/FR", [])
+    if "FR" in countries and "S2" in segs and args.diag > 0:
+        # neu zertifizierte Diagnostiqueurs (datiertes Ereignis, Quellen-Scout R40): ganz nach vorn
+        dg = load_diag(args.diag, stats, {i for s_, i in guard.known if s_ == "diagnostiqueurs"})
+        p["S2/FR"] = dg + p.get("S2/FR", [])
     if "UK" in countries and "S2" in segs and args.charity > 0:
         # neu registrierte Charities (datiertes Ereignis, Quellen-Scout R38): ganz nach vorn
         ch = load_charity(args.charity, stats, {i for s_, i in guard.known if s_ == "charity_commission"})
