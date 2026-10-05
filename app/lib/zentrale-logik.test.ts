@@ -119,7 +119,9 @@ test("Modell ohne Daten: grau statt Fehler (leerer Zustand)", () => {
   assert.equal(w.lead.zahl, "–");
   assert.equal(w.kontakt.fehlt, false);
   assert.equal(w.kontakt.puls, "grau");
-  assert.equal(w.feedback.fehlt, true);
+  assert.equal(w.feedback.fehlt, false);
+  assert.equal(w.feedback.puls, "grau");
+  assert.equal(w.radar.zahl, "–");
   assert.ok(kantenBild(null, null).every((k) => k.proStunde === 0));
   assert.ok(bereicheBild(null).every((b) => b.ton === "grau"));
   assert.ok(leitplankenBild(null, null, []).some((p) => p.id === "notbremse" && p.wort === "unbekannt"));

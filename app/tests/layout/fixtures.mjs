@@ -204,6 +204,10 @@ export function makeFixtures(nowMs = Date.now()) {
     lern: { messen: 0, lehre: 1, erwartungen: 2, eval: { created_at: iso(60), faelle: 32, richtig: 32, score: 100 }, last_decision: iso(12), messen_liste: [],
       lehre_liste: [{ at: iso(40), titel: "Premium-Punktzahl sinkt mit dem Ereignisalter", vertrauen: 0.8 }] },
     storage: { db_bytes: 5.16e9, at: iso(30) }, llm_heute: 0.17, sperre: { gesamt: 68, neu_24h: 7 }, cache_wachhund: iso(30),
+    // KPI-Leiste und Werke-Karte (zentrale_extra, 05.10.2026): erfundene Zahlen
+    extra: { at: iso(5), premium: 7322, premium_land: { US: 7300, UK: 22 }, radar_24h: 182, bewertet_24h: 24565, premium_24h: 141,
+      feedback: { n_7d: 3, gut_7d: 2, schlecht_7d: 1, won_30d: 0, links_7d: 16, letzte: iso(60) },
+      p: { "7": { sent: 368, bounced: 19, complained: 0, antworten: 4, positiv: 1, proben: 2 }, "30": { sent: 1508, bounced: 45, complained: 0, antworten: 12, positiv: 3, proben: 5 } } },
   };
   return {
     rpc: {
@@ -228,7 +232,7 @@ export function makeFixtures(nowMs = Date.now()) {
       firma_lage: { at: iso(0), mrr: 1290, kunden: 3, mails_24h: 90, antworten_7d: 6, positiv_7d: 2, proben_7d: 3, gruen_7d: 9000, vorrat: 12,
         vorrat_land: { US: 4, UK: 4, FR: 4 }, bestanden: 0.97, bestanden_n: 130, spam_30d: 0, spam_neu: [], heiss_offen: 1, heiss: [],
         laender: { US: { erstmails: 40, antworten: 2 } }, leer: [], ausreisser: [] },
-      website_refresh: website, website_stats: webStats, dashboard_raw_stock: { at: iso(10), by_country: { US: 90000, UK: 40000, FR: 52000 } },
+      website_refresh: website, website_stats: webStats, web_scanner: { at: iso(0), since: iso(7 * 1440), rows: [{ s: "us/web-agencies", besuche: 12, views: 12, klick: 1, anfrage: 0, checkout: 0 }] }, dashboard_raw_stock: { at: iso(10), by_country: { US: 90000, UK: 40000, FR: 52000 } },
     },
     tables: {
       dashboard_cache: [{ name: "zentrale", value: zLangsam, updated_at: iso(3) }, { name: "stock", value: stock, updated_at: iso(1) }, { name: "website", value: website, updated_at: iso(1) }],

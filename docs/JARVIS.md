@@ -196,10 +196,11 @@ Leitplanken.** Raster 12 Spalten (Karte 9 + Leitplanken 3), am Handy eine senkre
 |---|---|
 | B0 Kopfzeile | Marke, Uhr (Berlin, Minutentakt), Live-Punkt (Abruf < 20 s, sonst „Stand 01:25“), Lage in einem Satz (`department_gaps` Rang 1, Grund beim Antippen), „Braucht dich“, Antworten (Gold-Punkt bei Kaufinteresse), Abmelden |
 | B1 Ziel-Ringe | Umsatz/Monat (Gold), Kunden, Antwortquote, Fehlerquote; Ziel mit Quelle „vorschlag“ gestrichelt + „Ziel unbestätigt“ → Büro › Ziele |
+| B1a Kennzahlen | KPI-Leiste (10 Kacheln, 7/30 T), Ziel-Ring 25.000 €/Monat (101 Punkte = Pro-Kunden), Website-Trichter Besucher → Probe-Klick → Probe-Anfrage → Checkout → Kunde je Land mit Quellen/Seiten (docs/DESIGN-KOMMANDOZENTRALE.md „JARVIS-Kennzahlen“) |
 | B2 Du | Kreis „Du“ (gelber Ruf bei „Braucht dich“), 5 Lämpchen nur Anzeige (Werke, Versand, Nachfass, Gehirn, Autopilot → Regler) |
 | B3 Gehirn | Zustandswort ARBEITET/WARTET/BEREIT/AUS, Score, nächste Runde; Lernring Zahlen → Lücke → Auftrag → Umsetzen → Messen → Lehre (0 = schraffiert grau) |
 | B4 Bereiche + Agenten | 9 Bereiche aus `firma-karte.json` (Ampel: Rang 1 rot, 2–3 gelb, sonst grün), Fach-Agenten als Punkte, Übergaben als wandernder Punkt, Quellen-Scout an Produktion, Spur A1–A8 |
-| B5 Werke | Bahn Leads (Lead → Prüfer/Stichprobe → Proben → Lieferung, Äste Radar, Premium, Kontakt-Werk am Prüfer) und Bahn Käufer (Kunden → Versand → Antworten → Lieferung → UMSATZ), Rahmen Wachhund; Feedback grau „noch nicht gebaut“. Durchsatz kurz (z. B. „4,2k/h“) über/unter der Bahn, Takte aus cron_utc in Berliner Zeit; Kunden-Werk zählt nur mail-fähige Käufer S2 × US/UK/FR |
+| B5 Werke | Bahn Leads (Lead → Prüfer/Stichprobe → Proben → Lieferung, Äste Radar, Premium, Kontakt-Werk am Prüfer) und Bahn Käufer (Kunden → Versand → Antworten → Lieferung → UMSATZ), Rahmen Wachhund; Feedback-Werk hinter der Lieferung (Bewertungen 7 T, Puls aus letztem Link/Bewertung < 8 T, Schleife zurück zur Premium-Bewertung). Äste mit Zahl im Chip: Radar neu 24 h (Puls Lead-Werk), Premium bereit (Puls Proben-Vorrat), Kontakt bestätigt 24 h (eigener Herzschlag). Durchsatz kurz (z. B. „4,2k/h“) über/unter der Bahn, Takte aus cron_utc in Berliner Zeit; Kunden-Werk zählt nur mail-fähige Käufer S2 × US/UK/FR |
 | B6 Leitplanken | Freigabe, Notbremse, Sperrliste & Abmeldung, Kaltmail-Recht, Speicher, Geld – nur Anzeige, nie ein Lockern-Schalter |
 | B7 Ticker | letzte 5 Ereignisse mit Berliner Zeit; Chat = schwebender Knopf |
 

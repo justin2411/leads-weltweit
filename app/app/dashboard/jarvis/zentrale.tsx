@@ -26,11 +26,13 @@ import { Ticker } from "./ticker";
 import { BereichFenster, DuFenster, LernFenster, PlankeFenster, WerkFenster, ZielFenster, sVonWerk, werkVonS } from "./seitenfenster";
 import { ChatKnopf } from "./kopf";
 import { agentStartLabel } from "@/lib/agents";
+import type { TrichterPaket } from "@/lib/jarvis-kpi";
+import { Kennzahlen } from "./kennzahlen";
 
-const RUN_NAME: Record<string, string> = { lead: "lead-werk", pruefer: "pruefer-werk", proben: "proben-vorrat", kunden: "kunden-werk", stichprobe: "dauerpruefung", kontakt: "kontakt-werk" };
+const RUN_NAME: Record<string, string> = { lead: "lead-werk", pruefer: "pruefer-werk", proben: "proben-vorrat", kunden: "kunden-werk", stichprobe: "dauerpruefung", kontakt: "kontakt-werk", radar: "lead-werk", premium: "proben-vorrat" };
 
-export function Zentrale({ initial, recht, agentDrawer, chatNeu }: {
-  initial: ZentraleDaten; recht: { c: string; allowed: boolean }[]; agentDrawer: ReactNode; chatNeu: number;
+export function Zentrale({ initial, recht, agentDrawer, chatNeu, trichter }: {
+  initial: ZentraleDaten; recht: { c: string; allowed: boolean }[]; agentDrawer: ReactNode; chatNeu: number; trichter: TrichterPaket | null;
 }) {
   const z = useZentrale(initial);
   const sp = useSearchParams();
@@ -106,7 +108,7 @@ export function Zentrale({ initial, recht, agentDrawer, chatNeu }: {
       aktivWerk = sParam;
       const w = werke[id];
       const rn = RUN_NAME[id];
-      const letzter = (rn && (l?.runs?.[rn]?.last ?? s?.beats.find((b) => b.werk === rn)?.last_beat)) || (id === "versand" ? s?.msg.last_sent_at ?? null : id === "wachhund" ? l?.stand ?? null : null);
+      const letzter = (rn && (l?.runs?.[rn]?.last ?? s?.beats.find((b) => b.werk === rn)?.last_beat)) || (id === "versand" ? s?.msg.last_sent_at ?? null : id === "wachhund" ? l?.stand ?? null : id === "feedback" ? l?.extra?.feedback?.letzte ?? null : null);
       fenster = <WerkFenster w={w} tab={t} s={sParam} now={now} letzter={letzter ?? null} paused={!!owner.send_paused}
         kanten={kanten.filter((k) => k.von === id || k.an === id).map((k) => ({ was: k.was, proStunde: k.proStunde }))} />;
     }
@@ -123,6 +125,8 @@ export function Zentrale({ initial, recht, agentDrawer, chatNeu }: {
   return (
     <div className={`jz${fenster ? " has-drw" : ""}`} ref={root}>
       <Kopfzeile abruf={z.abruf} ok={z.ok} lage={satz} bd={bdN} antworten={s ? s.replies.offen : null} heiss={s?.replies.heiss ?? 0} />
+      <Kennzahlen initial={trichter} extra={l?.extra} mrr={l?.mrr ?? null} kunden={l?.kunden ?? null} bestanden={l?.lage?.bestanden}
+        laufend={s ? pl.laufend : null} gesamt={pl.gesamt} bewegung={bewegung} />
       <ZielRinge ziele={ziele} />
       <div className="jz-raster">
         <div className="jz-links">

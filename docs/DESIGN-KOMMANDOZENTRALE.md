@@ -51,3 +51,44 @@ Stand 04.10.2026. Ergänzt `docs/DESIGN.md` (Farben, Schriftskala) für `/dashbo
   `@keyframes`, am Handy keine Schrift < 12 px, Raster 12/9+3), `npm run layout` im Browser (bündig, X mittig, kein
   seitliches Scrollen, Abzeichen über Text) und **vor jedem Merge Bildschirmfotos in 390 px und 1440 px** für jarvis,
   regler, buero und gehirn (`LAYOUT_SHOTS=… npm run layout` oder `ansicht.yml`).
+
+## Designsystem (verbindlich, 05.10.2026)
+
+Gilt für JARVIS, Büro und alle Dashboard-Seiten. Token in `app/app/dashboard/hud-css.ts` (`--ds-*`), die Zentrale
+(`zentrale-css.ts`) leitet ihre Kurz-Variablen (`--cy`, `--gd`, `--ln` …) daraus ab. Neue Bausteine nutzen die Token.
+
+| Bereich | Regel | Token |
+|---|---|---|
+| Fläche | Nachtblau, Kästen halbtransparent | `--ds-night`, `--ds-night2`, `--ds-flaeche` |
+| Cyan | **läuft**, Info, Fluss (Partikel, aktive Auswahl) | `--ds-cy`, Klasse `ds-laeuft` |
+| Gold | **nur Geld**: MRR, Umsatz, Preise, Umsatz-Ziel. Einzige Ausnahme: das Premium-Kennzeichen (höherer Lead-Wert) | `--ds-gold`, `ds-geld` |
+| Rot/Gelb/Grün | **nur Status** (Ampel `lib/ampel.ts`), nie Schmuck | `--ds-rot`, `--ds-gelb`, `--ds-gruen` |
+| Grau | aus oder keine Daten; gestrichelt = nicht gebaut | `--ds-grau` |
+| Linien | 1 px, `--ds-linie`; Radius 12 px | `--ds-line-w`, `--ds-r` |
+| Zahlen | Monospace, `tabular-nums` (`b.z`, `.mono`, `.ds-zahl`) | `--ds-mono` |
+| Raster | Abstände im 8-px-Raster (8/16/24); 4 px nur innerhalb kleiner Bausteine | `--ds-u` |
+| Schrift | 12/13/15/18/24 px (`--fs-*`), am Handy nie < 12 px | |
+
+**Animationen nur mit Bedeutung** (Dauer 150–300 ms, `ease-out`):
+
+| Bewegung | Bedeutung |
+|---|---|
+| Puls (Ring um den Punkt) | das Werk lebt (Herzschlag < 6 min bzw. Ersatzquelle `~`) |
+| Fluss-Tempo (Partikel, Lichtpunkt im Trichter) | Durchsatz je Stunde: Dauer = clamp(8 s ÷ log10(1 + n/h), 0,8 s, 8 s) |
+| Ring/Balken füllen | einmal beim Laden (300 ms), danach Gleiten zum neuen Wert (150 ms) |
+| Abprallen | blockierte Mails / zurückgehaltene Leads der letzten Stunde |
+| Goldener Funke | neue Zahlung |
+
+`prefers-reduced-motion: reduce` schaltet jede Animation und jeden Übergang ab (globaler Gegenblock in `hud-css.ts`),
+versteckter Tab hält sie an (`.jv-paused`). Keine Animation ohne Eintrag in dieser Tabelle.
+
+### JARVIS-Kennzahlen (05.10.2026)
+
+- **KPI-Leiste** (10 Kacheln, Handy 2 Spalten): Mails, Zustellung, Rückläufer, Antworten, Proben, Kunden, MRR (Gold),
+  Premium-Leads, Qualität %, Werke belegt/40. Zeitraum 7/30 T wie der Trichter. Ampel nur bei Zustellung (≥ 97 % grün,
+  ≥ 95 % gelb), Rückläufer (≤ 2 % grün, ≤ 5 % gelb = Notbremse) und Qualität (≥ 95 % grün, ≥ 90 % gelb). Fehlende Daten „–“ grau.
+- **Ziel-Ring 25.000 €/Monat** (Gold): MRR, Lücke, Weg als 101 Punkte (ein Punkt = ein Pro-Kunde zu 249).
+- **Website-Trichter**: Besucher → Probe-Klick → Probe-Anfrage → Checkout → Kunde, Länder Alle/US/UK/FR, 7/30 T, Quellen
+  und Seiten. Nur eigene, anonyme Messung (`website_stats`, Stripe-Käufe aus `website_funnel`), kein Pixel, kein externer Tracker.
+- Daten: `lib/jarvis-kpi.ts` (reine Regeln, Tests), `GET /api/jarvis/trichter`, Zusatz-Zahlen `zentrale_extra()` im
+  Zwischenspeicher `zentrale` (Wachhund alle 15 min).

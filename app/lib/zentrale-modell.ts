@@ -62,9 +62,10 @@ export function werkeBild(s: Schnell | null, l: Langsam | null, now: number): Re
   const plan = new Map<string, Record<string, number>>();
   for (const p of s?.plan_log ?? []) if (!plan.has(p.werk)) plan.set(p.werk, p.plan ?? {});
   const am = agentenAmWerk(s?.tasks ?? []);
+  const ex = l?.extra ?? null;
   const out: Record<string, WerkBild> = {};
   for (const w of WERKE) {
-    const puls = pulsStatus(w, now, { beats, lastSent: s?.msg.last_sent_at, acks: s?.acks, cacheAt: l?.stand, runsLast, mrr: l?.mrr });
+    const puls = pulsStatus(w, now, { beats, lastSent: s?.msg.last_sent_at, acks: s?.acks, cacheAt: l?.stand, runsLast, mrr: l?.mrr, feedback: ex?.feedback?.letzte });
     let z = "–", unter = "";
     const r = runs(l, RUN_NAME[w.id] ?? "");
     switch (w.id) {
@@ -85,7 +86,10 @@ export function werkeBild(s: Schnell | null, l: Langsam | null, now: number): Re
       case "lieferung": z = (w.cron_utc?.[0] && cronBerlin(w.cron_utc[0], now)) || "–"; unter = "nächste"; break;
       case "umsatz": z = l?.mrr === null || l?.mrr === undefined ? "–" : zahl(l.mrr); unter = "MRR · Soll 1.290"; break;
       case "wachhund": z = l?.stand ? uhr(l.stand, now) : "–"; unter = "alle 15 min"; break;
-      case "radar": case "premium": z = ""; unter = w.id === "radar" ? "Linie im Lead-Werk" : "Schritt im Proben-Vorrat"; break;
+      // Äste und Feedback: Zahlen aus zentrale_extra (Zwischenspeicher, alle 15 min), Puls aus dem Herzschlag des Trägers
+      case "radar": z = ex ? zahl(n(ex.radar_24h)) : "–"; unter = "neu 24 h"; break;
+      case "premium": z = ex ? zahl(n(ex.premium)) : "–"; unter = "Premium bereit"; break;
+      case "feedback": z = ex ? zahl(n(ex.feedback?.n_7d)) : "–"; unter = "Bewertungen 7 T"; break;
     }
     let plaetze: WerkBild["plaetze"] = null;
     if (w.linien_werk) {

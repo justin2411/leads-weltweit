@@ -13,6 +13,19 @@ export const HUD_CSS = `
   --hud-soft:#8ba6c9;--hud-mute:#8095b2;--gold-hi:#f2dcae;
   /* feste Ampel (lib/ampel.ts): grün gut, gelb knapp, rot schlecht, grau keine Basis */
   ${AMPEL_VARS}}
+/* Designsystem Kommandozentrale (docs/DESIGN-KOMMANDOZENTRALE.md „Designsystem“, verbindlich seit 05.10.2026):
+   Fläche Nachtblau, Cyan = läuft/Info/Fluss, Gold nur Geld, Rot/Gelb/Grün nur Status, Grau = aus/keine Daten.
+   Linien 1 px, Zahlen Monospace (tabular-nums), Abstände im 8-px-Raster (4 nur innerhalb kleiner Bausteine).
+   Bewegung nur mit Bedeutung: Puls = lebt, Fluss-Tempo = Durchsatz, Ringe/Balken füllen einmal (300 ms), Gleiten 150 ms;
+   prefers-reduced-motion schaltet alles ab (Gegenblock unten). */
+:root,.dash{--ds-night:#02060f;--ds-night2:#0a1a33;--ds-flaeche:rgba(9,24,48,.62);--ds-linie:rgba(95,212,255,.18);--ds-line-w:1px;
+  --ds-cy:#5fd4ff;--ds-gold:#e2c68f;--ds-gruen:var(--amp-green);--ds-gelb:var(--amp-gold);--ds-rot:var(--amp-red);--ds-grau:#5d7290;
+  --ds-text:#d9ecff;--ds-leise:#8ba6c9;--ds-u:8px;--ds-r:12px;--ds-mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  --ds-t-fill:300ms;--ds-t-glide:150ms;--ds-ease:ease-out}
+.dash .ds-zahl{font-family:var(--ds-mono);font-variant-numeric:tabular-nums}
+.dash .ds-kasten{border:var(--ds-line-w) solid var(--ds-linie);border-radius:var(--ds-r);background:var(--ds-flaeche);padding:var(--ds-u) calc(var(--ds-u) * 2)}
+.dash .ds-geld{color:var(--ds-gold)}.dash .ds-laeuft{color:var(--ds-cy)}
+.dash .ds-ok{color:var(--ds-gruen)}.dash .ds-achtung{color:var(--ds-gelb)}.dash .ds-alarm{color:var(--ds-rot)}.dash .ds-aus{color:var(--ds-grau)}
 .dash{--ink:#020812;--ink2:#0a1a33;--paper:#02060f;--card:rgba(9,24,48,.62);--text:#d9ecff;--soft:var(--hud-soft);--line:rgba(95,212,255,.16);
   --gold:#e2c68f;--gold2:var(--gold-hi);--red:var(--amp-red);--red-bg:rgba(255,94,115,.12);--amber:var(--amp-gold);--amber-bg:rgba(255,181,71,.12);
   --green:var(--amp-green);--green-bg:rgba(61,220,151,.12);--blue:#5fd4ff;--blue-bg:rgba(95,212,255,.1);

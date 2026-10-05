@@ -78,7 +78,7 @@
      "schreibt": ["handoffs", "department_gaps", "agent_tasks", "decisions", "brain_knowledge", "selbstopt_changes", "start_requests", "dashboard_cache"], "liest": ["firma_lage", "kpi_daily", "owner_settings"]},
     {"id": "kontakt", "nr": 11, "name": "Kontakt-Werk", "workflow": "kontakt-werk.yml", "cron_utc": ["23 * * * *"], "takt": "durchgehend (startet sich selbst neu)", "linien_werk": "kontakt-werk", "pause_key": "kontakt-werk", "teil_von": "pruefer", "bahn": "ast", "puls": "heartbeat", "status": "laeuft",
      "skripte": ["kontaktwerk.py"], "schreibt": ["leads", "werk_heartbeat", "run_stats", "kpi_daily"], "liest": ["leads", "suppression", "owner_settings"]},
-    {"id": "feedback", "nr": 12, "name": "Feedback-Werk", "workflow": null, "bahn": "lead", "pos": 4, "status": "fehlt", "auftrag": "A4"},
+    {"id": "feedback", "nr": 12, "name": "Feedback-Werk", "workflow": null, "bahn": "lead", "pos": 4, "puls": "ersatz:lead_feedback<8d", "status": "laeuft", "takt": "mit jeder Lieferung und Probe", "skripte": ["deliveries.py", "sample_stock.py"], "schreibt": ["lead_feedback_links", "lead_feedback"]},
     {"id": "website-check", "nr": null, "name": "Website-Check", "workflow": "website-check.yml", "cron_utc": ["23 4 * * *"], "takt": "täglich", "bahn": "buero", "schreibt": ["website_checks", "website_fixes", "agent_tasks"]},
     {"id": "agenten-werk", "nr": null, "name": "Agenten-Werk", "workflow": "agenten-werk.yml", "cron_utc": ["29 * * * *", "3,18,33,48 * * * *"], "takt": ":29 Speicher · alle 15 min eigene Agenten", "bahn": "buero", "schreibt": ["lead_pool_items", "agent_runs", "agent_tasks", "job_cursors"]}
   ],

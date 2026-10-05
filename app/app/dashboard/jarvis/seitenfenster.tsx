@@ -51,6 +51,7 @@ const DETAIL: Record<string, [string, string]> = {
   proben: ["/dashboard/proben", "Proben"], kunden: ["/dashboard/kontakte", "Käufer & Kontakte"], versand: ["/dashboard/versand", "Versand"],
   antworten: ["/dashboard/antworten", "Antworten-Cockpit"], lieferung: ["/dashboard/kunden", "Kunden"], umsatz: ["/dashboard/finanzen", "Finanzen"],
   wachhund: ["/dashboard/betrieb", "Betrieb"], radar: ["/dashboard/buero/werke", "Werke-Details"], premium: ["/dashboard/proben", "Proben"],
+  kontakt: ["/dashboard/buero/werke", "Werke-Details"], feedback: ["/dashboard/buero/bereich/qualitaet", "Kunden-Feedback"],
 };
 const ANKER: Record<string, string> = { lead: "plaetze", pruefer: "werke", stichprobe: "werke", proben: "proben", kunden: "laender", versand: "versand",
   antworten: "werke", lieferung: "werke", wachhund: "werke" };

@@ -1,7 +1,8 @@
 /**
  * B5 Werke-Karte (immer sichtbar): obere Bahn Leads (Lead-Werk → Prüfer/Stichprobe → Proben → Lieferung, Äste Radar und
  * Premium-Bewertung), untere Bahn Käufer (Kunden-Werk → Versand → Antworten → Lieferung → UMSATZ, die einzige goldene
- * Kachel), Rahmenlinie Wachhund mit Tick alle 15 min, Kontakt-Werk als Ast am Prüfer, grau gestrichelt das noch nicht gebaute Feedback-Werk.
+ * Kachel), Rahmenlinie Wachhund mit Tick alle 15 min, Kontakt-Werk als Ast am Prüfer, Feedback-Werk hinter der Lieferung
+ * (Lernschleife zurück zur Premium-Bewertung). Äste zeigen ihre Zahl im Chip (Radar neu 24 h, Premium bereit, Kontakt bestätigt).
  * Partikel = echter Durchsatz der letzten 60 min (lib/zentrale-logik partikel), Stau-Halo ab Faktor 50, abprallende
  * Punkte = blockierte Mails / zurückgehaltene Leads der letzten Stunde, Agent-Kürzel = laufender Auftrag nutzt das Werk.
  */
@@ -15,7 +16,7 @@ const VIEW: Record<L, [number, number]> = { breit: [1000, 480], hoch: [360, 960]
 /** Mittelpunkte je Werk (Einheiten des viewBox). Gleiche Position = eine Kachel (Prüfer + Stichprobe). */
 export const POS: Record<L, Record<string, [number, number]>> = {
   breit: {
-    radar: [110, 38], lead: [110, 135], pruefer: [310, 135], stichprobe: [310, 135], premium: [510, 38], proben: [510, 135], feedback: [710, 135],
+    radar: [110, 38], lead: [110, 135], pruefer: [310, 135], stichprobe: [310, 135], premium: [600, 38], proben: [510, 135], feedback: [710, 135],
     kontakt: [410, 230], kunden: [110, 325], versand: [310, 325], antworten: [510, 325], lieferung: [710, 325], umsatz: [895, 325], wachhund: [110, 452],
   },
   hoch: {
@@ -73,7 +74,9 @@ function Karte({ l, werke, kanten, href, aktiv, hervor, bewegung, handy, abprall
         <path d={pfad(l, "premium", "proben")} className="k ast" />
         {/* Kontakt-Werk: prüft freigegebene Leads gegen Register + Firmenwebsite (Ast am Prüfer) */}
         <path d={pfad(l, "pruefer", "kontakt")} className={`k ast${werke.kontakt?.fehlt ? " grau" : ""}`} />
-        <path d={pfad(l, "lieferung", "feedback")} className="k grau" />
+        {/* Feedback-Werk: Kunden bewerten gelieferte Leads → Premium-Reihenfolge lernt (Schleife nur breit, hoch läge sie über den Proben) */}
+        <path d={pfad(l, "lieferung", "feedback")} className={`k ast${werke.feedback?.fehlt ? " grau" : ""}`} />
+        {l === "breit" && werke.feedback && !werke.feedback.fehlt && <path d={pfad(l, "feedback", "premium")} className="k ast" />}
         {kanten.map((k, i) => {
           const d = pfad(l, k.von, k.an);
           const p = bewegung ? parts[i] : null;
@@ -122,6 +125,7 @@ function Karte({ l, werke, kanten, href, aktiv, hervor, bewegung, handy, abprall
               {grp.map((g) => <i key={g.id} className={`jz-pp ${g.puls === "live~" ? "live-" : g.puls}`} aria-hidden />)}
               {grp.some((g) => g.puls === "live~") && <span className="tl" title="Puls aus Ersatzquelle">~</span>}
               <span>{chip && w.id === "premium" ? <><Icon name="premium" size={12} /> {name}</> : name}</span>
+              {chip && id !== "wachhund" && w.zahl && <b className="cz" title={`${w.zahl} ${w.unter}`}>{w.zahl}</b>}
               {w.plaetze && <MiniRing p={w.plaetze} />}
             </span>
             {w.fehlt ? <em>noch nicht gebaut · {w.auftrag}</em> : !chip && (<>
