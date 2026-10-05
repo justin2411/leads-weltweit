@@ -12,6 +12,8 @@ import type { AbData } from "@/lib/ab-data";
 import { Icon, type IconName } from "@/app/icons";
 import { Fold } from "./fold";
 import { Tip } from "./tips";
+import { AbPeek } from "./ab-peek";
+import { AB_PEEK_CSS } from "./ab-peek-css";
 
 type V = CSSProperties & Record<`--${string}`, string | number>;
 
@@ -53,7 +55,10 @@ function TestCard({ t }: { t: TestView }) {
   const sure = t.eval?.sicherheit ?? null;
   const lead = t.status === "gewonnen" ? t.gewinner : t.eval?.leader ?? null;
   const min = Math.min(...t.variants.map((v) => v.n));
+  const peek = { id: t.id, step: t.step, stepTitel: t.stepTitel, country: t.country, segment: t.segment, element: t.element,
+    status: t.status, gestartet: t.gestartet, variants: t.variants.map((v) => ({ key: v.key, n: v.n, voll: v.voll, pageKey: v.pageKey ?? null })) };
   return (
+    <AbPeek t={peek} label={`${t.stepTitel} ${t.country}: Vorschau A und B`}>
     <article className={`ab-card s-${t.status}`}>
       <header>
         <b title={t.hypothese}>{t.stepTitel}</b>
@@ -66,14 +71,12 @@ function TestCard({ t }: { t: TestView }) {
       <p className="ab-hyp" title={t.hypothese}>{short(t.hypothese, 160)}</p>
       <div className="ab-vs">
         {t.variants.map((v) => (
-          <Tip key={v.key} className={`ab-v${lead === v.key ? " lead" : ""}`} label={`Variante ${v.key}: ${pct(v.rate)} (${v.k} von ${v.n})`}
-            tip={<div className="gh-pop wide"><div className="gh-pop-h"><b>Variante {v.key}</b><span>{v.k} von {v.n}</span></div>
-              <p>{v.wert ? short(v.wert, 160) : "heutiger Stand (unverändert)"}</p></div>}>
+          <div key={v.key} className={`ab-v${lead === v.key ? " lead" : ""}`} title={`Variante ${v.key}: ${pct(v.rate)} (${v.k} von ${v.n})`}>
             <span className="ab-k">{v.key}</span>
             <span className="ab-track"><i style={{ "--w": `${v.n ? Math.max(3, Math.round((100 * v.rate) / max)) : 0}%` } as V} /></span>
             <b>{v.n ? pct(v.rate) : "–"}</b>
             <small>n {compact(v.n)}</small>
-          </Tip>
+          </div>
         ))}
       </div>
       <footer>
@@ -86,6 +89,7 @@ function TestCard({ t }: { t: TestView }) {
         {t.status === "laeuft" && <span className="ab-min" title={t.eval?.grund}>{min < 1 ? "wartet auf Daten" : `${compact(min)} je Variante`}</span>}
       </footer>
     </article>
+    </AbPeek>
   );
 }
 
@@ -146,7 +150,7 @@ export function AbSection({ data }: { data: AbData | null }) {
   );
 }
 
-export const GH_AB_CSS = `
+export const GH_AB_CSS = AB_PEEK_CSS + `
 .dash .ab-head{display:flex;justify-content:space-between;align-items:center;gap:8px 16px;flex-wrap:wrap;margin:0 0 10px;font-size:12px;color:var(--soft);letter-spacing:.04em}
 .dash .ab-legend{display:inline-flex;align-items:center;gap:6px}
 .dash .ab-legend i{display:inline-block;width:14px;height:6px;border-radius:3px;margin-left:8px}
@@ -184,7 +188,7 @@ export const GH_AB_CSS = `
 .dash .ab-win{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;color:#1a1206;background:linear-gradient(90deg,#c9a86a,#f2dcae);font-weight:700}
 .dash .ab-hyp{margin:0;font-size:12px;line-height:1.35;color:var(--soft);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .dash .ab-vs{display:grid;gap:5px;align-content:start}
-.dash .gh button.ab-v{display:grid;grid-template-columns:16px minmax(0,1fr) 54px 48px;align-items:center;gap:8px;width:100%;text-align:left}
+.dash .gh .ab-v{display:grid;grid-template-columns:16px minmax(0,1fr) 54px 48px;align-items:center;gap:8px;width:100%;text-align:left}
 .dash .ab-k{font-family:var(--mono);font-weight:700;color:var(--cy2)}
 .dash .ab-track{position:relative;height:10px;background:rgba(2,8,18,.7);border:1px solid rgba(95,212,255,.18);overflow:hidden}
 .dash .ab-track i{position:absolute;left:0;top:0;bottom:0;width:var(--w);background:linear-gradient(90deg,#1b6fa0,var(--cy));transform-origin:left}
