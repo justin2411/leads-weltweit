@@ -22,7 +22,7 @@ countries:
     language: en
     generic_only: false
     company_forms_only: false
-    daily_limit: 110
+    daily_limit: 260   # Inhaber 05.10.2026: 140 je Postfach (3 × 140 = 420 = US 260 + UK 100 + FR 60)
     notes: "CAN-SPAM: Opt-out-Modell. Pflicht: korrekter Absender, nicht irreführender Betreff, Postanschrift, funktionierende Abmeldung (Umsetzung binnen 10 Werktagen)."
   UK:
     allowed: true
