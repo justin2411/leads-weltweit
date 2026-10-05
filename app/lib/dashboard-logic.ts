@@ -27,6 +27,8 @@ export type OpsConfig = {
   kunden_suche: boolean;
   countries: Record<string, { allowed: boolean; daily_limit: number }>;
   workflows: { file: string; name: string; crons: string[] }[];
+  /** alle Workflows mit Cron (scripts/ops-config.mjs zeitplan) – Zeitplan der Gehirn-Seite */
+  zeitplan?: { file: string; crons: string[] }[];
   rules?: { signal_max_age_days: number | null; sample_size: number | null };
   /** Proben-Soll aus dem Dashboard (owner_settings.sample_targets), überschreibt proben.yaml */
   sample_overrides?: Record<string, number>;

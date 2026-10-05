@@ -7,7 +7,7 @@
  * (Build ohne Dateien außerhalb des Root-Verzeichnisses), bleibt die eingecheckte JSON-Datei unverändert.
  * Nur einfache Schlüssel/Wert-Zeilen werden gelesen – keine YAML-Abhängigkeit.
  */
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -129,6 +129,14 @@ const WORKFLOWS = {
 export const SIGNATUR_FILES = ["scripts/drafts.py", "scripts/lib/html_email.py", "app/lib/welcome-mail.ts"];
 export const SIGNATUR_RE = /Exclusive trigger leads|Pistes exclusives/;
 
+/** Alle Workflows mit Zeitplan (Datei + Crons), sortiert; Workflows ohne `schedule` fallen weg. */
+function zeitplan() {
+  const dir = join(ROOT, ".github/workflows");
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir).filter((f) => f.endsWith(".yml")).sort()
+    .map((file) => ({ file, crons: parseCrons(read(`.github/workflows/${file}`)) })).filter((w) => w.crons.length > 0);
+}
+
 function build() {
   const versand = read("config/versand.yaml");
   if (versand === null) return null;
@@ -170,6 +178,8 @@ function build() {
     },
     recht: { laender: parseCountryRules(read("countries.yaml")), tabelle: parseRechtTabelle(read("docs/KALTMAIL-RECHT.md")) },
     workflows: Object.entries(WORKFLOWS).map(([file, name]) => ({ file, name, crons: parseCrons(read(`.github/workflows/${file}`)) })),
+    // Zeitplan der Gehirn-Seite: alle Workflows mit Cron, automatisch aus .github/workflows gelesen
+    zeitplan: zeitplan(),
   };
 }
 

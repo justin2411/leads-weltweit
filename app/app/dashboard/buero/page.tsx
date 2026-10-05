@@ -37,10 +37,10 @@ export default async function Buero() {
       { href: "/dashboard/proben", titel: "Proben", icon: "proben", zahl: tank === null ? "–" : `${zahl(tank)} bereit`, tip: "fertige, geprüfte Proben" },
     ] },
     { slug: "produktion", kacheln: [
+      { href: "/dashboard/speicher", titel: "Speicher", icon: "speicher", zahl: gb, tip: "Leads, Premium, Käufer, Proben, Datenbank je Land" },
       { href: "/dashboard/buero/werke", titel: "Werke-Details", icon: "werk", zahl: `${plaetze} Plätze`, tip: "Läufe, Herzschläge, Prüfstufen" },
       { href: "/dashboard/bestand", titel: "Bestand", icon: "bestand", zahl: l?.runs["lead-werk"] ? `+${zahl(l.runs["lead-werk"].green_24h)}` : "–", tip: "lieferbare Leads und Käufer" },
       { href: "/dashboard/liste", titel: "Liste", icon: "filter", zahl: "Leads", tip: "Leads und Käufer als Liste" },
-      { href: "/dashboard/speicher", titel: "Speicher", icon: "speicher", zahl: gb, tip: "Datenbank-Größe, Bremse 6 GB" },
       { href: "/dashboard/baukasten", titel: "Baukasten", icon: "baukasten", zahl: "Flows", tip: "eigene Regeln (Stufe 4 der Freigabe)" },
     ] },
     { slug: "qualitaet", kacheln: [

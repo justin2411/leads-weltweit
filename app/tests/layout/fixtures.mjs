@@ -221,7 +221,12 @@ export function makeFixtures(nowMs = Date.now()) {
         buyer_reasons: [], runs: [], run_reasons: [], run_stages: [] },
       dashboard_storage_refresh: { at: iso(5), db_bytes: 3.2e9, tables: [{ name: "observations", bytes: 1.4e9 }, { name: "leads", bytes: 0.9e9 }],
         leads: C.map((c) => ({ segment: "S2", country: c, status: "new", n: 14000 })), buyers: C.map((c) => ({ segment: "S2", country: c, check_status: "ok", n: 5000, sent: 400 })),
-        stock: C.map((c) => ({ segment: "S2", country: c, status: "ready", n: 4 })), checks: C.map((c) => ({ segment: "S2", country: c, released: 900, failed: 20 })) },
+        stock: C.map((c) => ({ segment: "S2", country: c, status: "ready", n: 4 })), checks: C.map((c) => ({ segment: "S2", country: c, released: 900, failed: 20 })),
+        // Premium (05.10.2026): erfundene Zahlen
+        premium: C.flatMap((c, i) => [{ segment: "S2", country: c, status: "new", n: 2400 - i * 900, firms: 2400 - i * 900 },
+          { segment: "S2", country: c, status: "reserved", n: 260 - i * 100, firms: 260 - i * 100 }, { segment: "S2", country: c, status: "delivered", n: 40, firms: 40 },
+          { segment: "S4", country: c, status: "new", n: 120, firms: 120 }]),
+        stock_premium: C.map((c, i) => ({ segment: "S2", country: c, ready: 4, premium: Math.max(0, 3 - i) })) },
       pool_counts: [],
       premium_status: [{ segment_id: "S2", country: "FR", premium_frei: 142, proben: 30, proben_premium: 0, premium_in_proben: 0, zu_klein: true },
         { segment_id: "S2", country: "UK", premium_frei: 317, proben: 30, proben_premium: 1, premium_in_proben: 10, zu_klein: true },

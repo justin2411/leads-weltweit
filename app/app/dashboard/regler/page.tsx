@@ -7,6 +7,7 @@ import { requireOwner } from "../actions";
 import { setPaused, toggleAutopilot } from "../control-actions";
 import { updateSetting } from "../brain-actions";
 import { loadSchnell } from "@/lib/zentrale-data";
+import Link from "next/link";
 import { Icon } from "@/app/icons";
 import { REGLER_CSS } from "./css";
 import { Regler, type CardView } from "./regler";
@@ -69,7 +70,7 @@ function Schaltstelle({ paused, brain, autopilot }: { paused: boolean; brain: bo
           <button className="rg-stop" title="wirkt sofort"><Icon name="pause" size={16} /> Versand pausieren</button></form>}
       </section>
       <section id="gehirn" className="rg-card" aria-label="Gehirn">
-        <div className="rg-h"><span className="rg-ic" aria-hidden><Icon name="gehirn" size={22} /></span><div style={{ minWidth: 0 }}><h2>Gehirn</h2>
+        <div className="rg-h"><Link href="/dashboard/gehirn" className="rg-ic rg-hl" aria-label="Gehirn öffnen" title="Gehirn öffnen"><Icon name="gehirn" size={22} /></Link><div style={{ minWidth: 0 }}><h2><Link href="/dashboard/gehirn" className="rg-hl" title="Gehirn öffnen">Gehirn</Link></h2>
           <span className="rg-eff">{brain === null ? "nicht lesbar" : brain ? "an" : "aus"} · Autopilot {autopilot ? "an" : "aus"}</span></div></div>
         <div className="rg-row2">
           {brain !== null && <form action={updateSetting}><input type="hidden" name="key" value="brain_enabled" /><input type="hidden" name="value" value={brain ? "false" : "true"} />
