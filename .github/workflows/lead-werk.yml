@@ -214,6 +214,61 @@ jobs:
           path: out/cache/fr_bio.json
           key: fr-bio-data-${{ steps.d.outputs.tag }}
 
+  uk-charity:
+    # Premium UK (Quellen-Scout R38, scripts/extraktor/sources/uk_charity.py): neu registrierte Charities laut
+    # Charity Commission (Registrierung ≤ 30 Tage) mit Vorsitz der Trustees. Täglicher Massendownload (OGL v3, ohne Schlüssel):
+    # Merker je Tag VOR dem Abruf, jede Datei höchstens 1×/Tag. Die Teile (s2-ukfr) lesen nur den Zwischenspeicher.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - id: d
+        run: echo "tag=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+      - id: done
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/uk_charity_tag.txt
+          key: uk-charity-tag-${{ steps.d.outputs.tag }}
+          lookup-only: true
+      - uses: actions/checkout@v4
+        if: steps.done.outputs.cache-hit != 'true'
+      - name: Schalter Lead-Suche (config/pipeline.yaml)
+        id: gate
+        if: steps.done.outputs.cache-hit != 'true'
+        run: |
+          if grep -Eq '^lead_suche:\s*true' config/pipeline.yaml || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            mkdir -p out/cache && echo "${{ steps.d.outputs.tag }}" > out/cache/uk_charity_tag.txt
+            echo "an=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Lead-Suche pausiert (config/pipeline.yaml: lead_suche: false)" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Merker sichern (vor dem Abruf)
+        if: steps.gate.outputs.an == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: out/cache/uk_charity_tag.txt
+          key: uk-charity-tag-${{ steps.d.outputs.tag }}
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.an == 'true'
+        with: { python-version: "3.11" }
+      - run: pip install requests
+        if: steps.gate.outputs.an == 'true'
+      - name: Charity Commission laden (nur frische Einträge behalten)
+        id: dl
+        if: steps.gate.outputs.an == 'true'
+        continue-on-error: true  # Merker bleibt gesetzt: kein zweiter Abruf am selben Tag
+        env:
+          PYTHONPATH: scripts
+          EXTRAKTOR_CHARITY: out/cache/uk_charity.json
+        run: |
+          python -m extraktor.sources.uk_charity | tee -a "$GITHUB_STEP_SUMMARY"
+          python -c "import json; print('neu registrierte Charities (≤ 30 Tage):', len(json.load(open('out/cache/uk_charity.json'))))" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Ergebnis sichern
+        if: steps.dl.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: out/cache/uk_charity.json
+          key: uk-charity-data-${{ steps.d.outputs.tag }}
+
   plan:
     # Belegungsplan (Inhaber 03.10.2026: Plätze je Linie im Leitstand einstellen): app/lib/werk-linien.json +
     # owner_settings.slot_plan -> Matrix. Ohne Einstellung/Datenbank: Standardbelegung (wie bisher fest eingetragen).
@@ -331,6 +386,14 @@ jobs:
           restore-keys: |
             lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-
             lead-werk-${{ startsWith(matrix.name, 's2-ukfr') && 'web-uk-0' || startsWith(matrix.name, 'web-uk') && 's2-uk-0' || startsWith(matrix.name, 'web-fr') && 's2-fr-0' || startsWith(matrix.name, 'web-north') && 's2-north-0' || matrix.name == 's2-north-0' && 's2-ie-0' || matrix.name }}-${{ steps.m.outputs.monat }}-
+      - name: Neue Charities UK (Tagesabruf aus Job uk-charity, neuester Stand)
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 's2-ukfr')
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/uk_charity.json
+          key: uk-charity-data-${{ steps.m.outputs.monat }}-nie
+          restore-keys: |
+            uk-charity-data-
       - name: Neue Bio-Betriebe FR (Tagesabruf aus Job fr-bio, neuester Stand)
         if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 's2-ukfr')
         uses: actions/cache/restore@v4
