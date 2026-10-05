@@ -13,11 +13,12 @@ aufwaermphase: false
 # Schwelle 5 %, Mindestmenge 100 und Sofort-Stopp bei Spam-Beschwerde bleiben unverändert.
 notbremse_ab: 2026-10-03T06:52:00Z
 # Inhaber 03.10.2026: „wir starten mit 90 mails pro tag“; vor jeder Erstmail Frischeprüfung der Adresse (lib/freshness.py)
-tagesziel: 90
+# Inhaber 05.10.2026 (Chat): „ich will pro postfach 140 mails pro tag rausschicken, kaltmails sind gerade unser engpass gib dem gehirn diese freiheit“
+tagesziel: 140
 # Hauptpostfach steigt wie die neuen Postfächer jeden Tag um 15 bis 150 (Inhaber 03.10.2026: „haupt soll auch bis auf 150 hochgehen“)
 tagesziel_ab: 2026-10-03
 tagesziel_schritt: 15
-tagesziel_max: 150
+tagesziel_max: 140
 freigabe: "Justin Koch, Chat 03.10.2026: '1 bis 3 genauso umsetzen 4. wir starten mit 90 mails pro tag'"
 gesamtgrenze: 5000   # Inhaber 03.10.2026: Gesamtgrenze erste Welle von 1000 auf 5000 („1. ja“)
 # Tagesgrenze des Mail-Postfachs für Kaltmails (SMTP, Strato). 10 Reserve für Antworten.
@@ -25,10 +26,10 @@ anbieter_tageslimit: 160
 # Weitere Postfächer (SMTP_USER_2 … in GitHub-Secrets, scripts/lib/mailboxes.py) fahren je mit eigener Steigerung
 # hoch bis höchstens zu dieser Tagesmenge je Postfach. Inhaber 03.10.2026 (leads@nextgen-profit.de als Postfach 2):
 # „starte bei dem neuen postfach auch mit 60 und geh jeden tag höher bis auf 150“ -> 60, 75, 90 … 150 ab Tag 7.
-postfach_start: 60
+postfach_start: 140   # Inhaber 05.10.2026: sofort 140 je Postfach
 postfach_schritt: 15
 # Inhaber 01.10.2026: „wir sollten die Möglichkeit haben auch hochzuskalieren, Hauptdomain passt“.
-postfach_tageslimit: 150
+postfach_tageslimit: 140
 # Viele Domains/Postfächer (05.10.2026): Secret SMTP_BOXES (lib/mailboxes.py); neue Domain erst nach grünem postfach-test,
 # eigene Kurve je Postfach nie über postfach_tageslimit; Notbremse zusätzlich je Postfach und je Domain.
 kaufinteresse_an: justin.koch@horbach.de   # Meldungen bei Kaufinteresse/Rückfragen (Morgenbericht geht an OWNER_EMAIL)
