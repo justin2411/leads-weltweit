@@ -54,7 +54,7 @@ export const PREMIUM: Record<"en" | "fr", { title: string; items: [string, strin
 const EN: Record<string, SegmentCopy> = {
   accountants: {
     words: { beruf: "accountants", team: "your practice", zielkunden: "new businesses", leistung: "bookkeeping, VAT and payroll", anlass: "a first VAT return, payroll set-up or year-end" },
-    chips: ["New directors", "No accountant yet", "First payroll", "Finance roles open"],
+    chips: ["New directors", "No accountant yet", "First payroll", "Owner named"],
     stepsTitle: "How {firma} could win the first call",
     steps: [
       "We monitor public business sources across {land} every day.",
@@ -64,7 +64,7 @@ const EN: Record<string, SegmentCopy> = {
     getsTitle: "What {firma} would receive every Monday",
     gets: [
       "Companies registered across {land} in recent weeks, with registered address and date",
-      "Local firms hiring for bookkeeping or payroll roles",
+      "The owner or director to ask for, from the public register",
       "The public source for every lead",
       "The company's phone number and email, a short profile and a sales tip for {beruf} with every lead",
       "A short opening line that refers to {anlass}",

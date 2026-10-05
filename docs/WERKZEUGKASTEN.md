@@ -99,6 +99,8 @@ prüft, dass jeder Pfad hier existiert und jede MD-Datei des Repos hier steht.
 | `scripts/premium_score.py` | Premium-Bewertung offener Leads (`--apply`) |
 | `scripts/lib/premium.py` | Premium-Definition (≥ 70 Punkte, Ereignis ≤ 14 Tage) |
 | `scripts/freigabe.py` | Drei-Stufen-Freigabe von der Kommandozeile (`stichprobe --segment … --countries … --apply`) |
+| `scripts/premium_freigabe.py` | Freigabe nur für frische, ungeprüfte Premium-Leads einer Zielgruppe (`S5 US,UK --apply`) – Tore neuer Zielgruppen |
+| `scripts/premium_quer.py` | Quer-Verwertung: frische Neugründungen anderer Zielgruppen (UK Companies House, US DOT) als S5-Leads, nur Premium |
 | `scripts/lib/release_gate.py` | Drei-Stufen-Freigabe + Stufe 4 – nie abschalten, nur strenger |
 | `scripts/pruefer.py` | Prüfer-Werk der lieferbaren Leads |
 | `scripts/dauerpruefung.py` | Dauerprüfung ohne Tokens |
