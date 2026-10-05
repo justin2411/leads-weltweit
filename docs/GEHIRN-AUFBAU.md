@@ -100,6 +100,8 @@ Radar-Zeit gewichtet (Premium-Labor 05.10.2026): `--radar-countries FR,UK:2,US` 
 
 Ansprechperson im Radar (Premium-Labor 05.10.2026): Ein Radar-Ereignis ohne bekannten Namen sucht den Namen auf der Startseite und höchstens 2 Unterseiten derselben Domain (mentions légales/Impressum, Über uns, Kontakt; FR-Seiten auch `/mentions-legales/`), nur mit ausdrücklichem Label (`websites.person_from_legal_notice`), robots.txt beachtet; gefunden → Beobachtung `person` mit Beleg-Seite (`lib/radar.py` `legal_person`). Vorher hatten 0 % der UK/FR-Premium-Leads einen Namen; Live-Stichprobe 2/15 FR, 0/15 UK, 0/10 US.
 
+Kontakt-Punkte nur mit Beleg (Premium-Labor 05.10.2026): Liest das Kontakt-Werk die Website und findet dort weder Telefon noch E-Mail (Stufe „leer“), entfallen die 15 Kontakt-Punkte (`lib/kontakt.py` `premium_nachtrag`, Grund `kontakt_unbelegt`); ein späterer Beleg gibt sie zurück. Betraf 35 % (UK) bis 56 % (FR) der Radar-Premium-Leads. Nur strenger, Freigabe unverändert.
+
 ### Länder (nur Mail-Länder aus `countries.yaml`)
 
 | Schritt | Länder | Versand |
