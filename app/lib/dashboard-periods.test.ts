@@ -68,7 +68,7 @@ test("Wer ist wo: jede Firma in ihrer weitesten Stufe, Land-Filter, Website-Prob
     ["US", "UK"],
   );
   const by = Object.fromEntries(cols.map((c) => [c.id, c]));
-  assert.deepEqual(cols.map((c) => c.id), ["contacted", "replied", "requested", "sample", "customer", "out"]);
+  assert.deepEqual(cols.map((c) => c.id), ["contacted", "viewed", "replied", "requested", "sample", "customer", "out"]);
   assert.equal(by.contacted.count, 131);
   assert.equal(by.replied.count, 0);
   assert.equal(by.requested.count, 1);
