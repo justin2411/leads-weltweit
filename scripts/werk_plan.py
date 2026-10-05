@@ -882,7 +882,10 @@ def decide(reg: dict, werk: str, inp: dict) -> dict:
     nur_premium = pct >= 100
     mix_locks = {**(ap.get("locks") if isinstance(ap.get("locks"), dict) else {}), **{k: 0 for k in ruht}}
     if nur_premium and werk == "lead-werk" and brake != "stopp":
-        cap = int(reg["total_slots"]) - int(reg["reserve"]) - sum(other.values())
+        # andere Werke mindestens mit der Belegung des Inhabers rechnen: das Lead-Werk nimmt ihnen nie Plätze weg,
+        # nur weil sie gerade kleiner liefen (Kunden/Kontakt ~4–6, Prüfer 8 bleiben erreichbar)
+        cap = int(reg["total_slots"]) - int(reg["reserve"]) - sum(max(int(v), int(base.get(k, 0)))
+                                                                  for k, v in other.items())
         if brake in ("drossel", "ohne-rohbestand"):
             cap = min(cap, BRAKE_LEAD_MAX)
         premium_only_plan(reg, werk, plan, reasons, mix_locks, cap, stats)
