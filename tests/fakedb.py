@@ -34,6 +34,9 @@ def _match(row: dict, key: str, cond) -> bool:
     elif op == "like":  # PostgREST: * = beliebige Zeichen
         import fnmatch
         ok = val is not None and fnmatch.fnmatchcase(str(val), arg)
+    elif op == "match":  # PostgREST: Postgres-Regex (~), POSIX-Klassen wie [[:space:]] grob nachgebildet
+        import re
+        ok = val is not None and re.search(arg.replace("[[:space:]]", r"\s"), str(val)) is not None
     elif op == "is":
         ok = val is None if arg == "null" else str(val).lower() == arg
     else:
