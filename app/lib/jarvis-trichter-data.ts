@@ -1,12 +1,12 @@
 import "server-only";
 import { loadFunnelCache, loadWebsiteStats } from "@/lib/dashboard-data";
 import { db } from "@/lib/supabase";
-import { trichterPaket, type ScannerZeile, type Tage, type TrichterPaket } from "@/lib/jarvis-kpi";
+import { kaufSchluessel, trichterPaket, type ScannerZeile, type Tage, type TrichterPaket } from "@/lib/jarvis-kpi";
 
 /**
  * Website-Trichter der JARVIS-Zentrale (Seite /dashboard/jarvis und GET /api/jarvis/trichter). Nur lesen, gleiche
  * Quellen wie /dashboard/website/auswertung: website_stats(tage) (Tagessummen je Landingpage) und der Trichter-Cache
- * 'website_funnel' (Stripe-Käufe je Land), Link-Scanner aus web_scanner(tage) (abgezogen; fehlt die Messung → nichts abgezogen). Ergebnis 60 s im Speicher je Zeitraum; Ausfall → null (Oberfläche „keine Messung“).
+ * 'website_funnel' (Stripe-Käufe je Land), Link-Scanner aus web_scanner(tage) (abgezogen; fehlt die Messung → nichts abgezogen). Zeitraum 1 = „Heute“ seit 00:00 Berlin (website_stats(1), web_scanner(1), buy.heute). Ergebnis 60 s im Speicher je Zeitraum; Ausfall → null (Oberfläche „keine Messung“).
  */
 const MERK_MS = 60_000;
 const merk: Partial<Record<Tage, { at: number; p: Promise<TrichterPaket | null> }>> = {};
@@ -21,7 +21,7 @@ async function scanner(tage: Tage): Promise<ScannerZeile[] | null> {
 async function rechne(tage: Tage): Promise<TrichterPaket | null> {
   const [st, fu, sc] = await Promise.allSettled([loadWebsiteStats(tage), loadFunnelCache(), scanner(tage)]);
   if (st.status === "rejected") { console.error("jarvis-trichter:", st.reason); return null; }
-  const kaeufe = fu.status === "fulfilled" ? fu.value?.buy?.[tage === 7 ? "7d" : "30d"] ?? null : null;
+  const kaeufe = fu.status === "fulfilled" ? fu.value?.buy?.[kaufSchluessel(tage)] ?? null : null;
   return trichterPaket(st.value, kaeufe, tage, st.value?.now ?? new Date().toISOString(), sc.status === "fulfilled" ? sc.value : null);
 }
 

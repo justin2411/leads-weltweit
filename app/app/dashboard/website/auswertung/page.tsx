@@ -12,13 +12,14 @@ import { FUNNEL_COUNTRIES, FUNNEL_PERIODS, funnelView, type FunnelCache, type Fu
 export const metadata = { title: "Website-Auswertung" };
 type SP = Promise<Record<string, string | string[] | undefined>>;
 
-const PERIODS = [7, 30, 90] as const;
+/** 1 = „Heute“ seit 00:00 Berlin (website_stats(1)). */
+const PERIODS = [1, 7, 30, 90] as const;
 const one = (x: string | string[] | undefined) => (typeof x === "string" ? x : undefined);
 
 /**
  * Website-Auswertung (Inhaber 04.10.2026: „grafiken zu den websitenaufrufen … heatmaps … brauch ich dafür google
  * analytics“ – nein): eigene, anonyme Messung. Oben der große Trichter Startseite → Landingpage → Tarif → Stripe → Danke
- * (eindeutige Besucher, Aufrufe, Absprung, Ø Zeit, Weiter-Quote; ?t=24h|7d|30d), darunter Aufrufe je Tag und Land, Herkunft, Probe-Weg,
+ * (eindeutige Besucher, Aufrufe, Absprung, Ø Zeit, Weiter-Quote; ?t=heute|24h|7d|30d), darunter Aufrufe je Tag und Land, Herkunft, Probe-Weg,
  * Mail-Klicks je Betreff-Variante, Gerät, Scrolltiefe, Verweildauer, Heatmap je Seite. Filter über Chips (?d=&c=&p=&g=).
  */
 export default async function WebsiteAuswertung({ searchParams }: { searchParams: SP }) {
@@ -60,7 +61,7 @@ function Page({ st, fu, an, sp, days }: { st: WebsiteStats | null; fu: FunnelCac
     ? [{ label: "alle", href: href({ p: null }), on: !page }, ...slugs.filter((s) => countryOfSlug(s) === country).map((s) => ({ label: s.slice(3), href: href({ p: s }), on: page === s }))]
     : [];
   const chips = {
-    period: PERIODS.map((d) => ({ label: `${d} T`, href: href({ d }), on: d === days })),
+    period: PERIODS.map((d) => ({ label: d === 1 ? "Heute" : `${d} T`, href: href({ d }), on: d === days })),
     country: [{ label: "alle", href: href({ c: null, p: null }), on: !country }, ...countries.map((c) => ({ label: c, href: href({ c, p: null }), on: c === country }))],
     page: pageChips,
     device: (["desktop", "mobil"] as Device[]).map((g) => ({ label: g === "desktop" ? "Desktop" : "Mobil", href: href({ g }), on: g === device })),

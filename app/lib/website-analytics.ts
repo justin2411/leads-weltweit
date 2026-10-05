@@ -201,7 +201,7 @@ export function eventsByStage(ev: AnalyticsCalc["ev"]): { st: string; label: str
 
 export type Hint = { id: "abbruch" | "quelle" | "langsam"; title: string; grund: string; tone: "gold" | "green" | "red" | "grey"; href?: string };
 
-const PERIOD_L: Record<FunnelPeriod, string> = { "24h": "24 h", "7d": "7 Tagen", "30d": "30 Tagen" };
+const PERIOD_L: Record<FunnelPeriod, string> = { heute: "heute", "24h": "24 h", "7d": "7 Tagen", "30d": "30 Tagen" };
 const T = (s: string) => kuerzen(s, 60);
 const G = (s: string) => kuerzen(s, 160);
 

@@ -16,8 +16,24 @@ import { PACKAGES } from "./owner-settings.ts";
 /** Umsatz-Ziel (Inhaber 05.10.2026) und der Preis, an dem der Weg gemessen wird (Pro). */
 export const ZIEL_MRR = 25_000;
 export const PRO_PREIS: number = PACKAGES.pro.price;
-export const TRICHTER_TAGE = [7, 30] as const;
+/** Zeiträume des Trichters und der KPI-Leiste; 1 = „Heute“ seit 00:00 Europe/Berlin (Inhaber 05.10.2026), nicht 24 h. */
+export const TRICHTER_TAGE = [1, 7, 30] as const;
 export type Tage = (typeof TRICHTER_TAGE)[number];
+/** Knopf-Beschriftung: „Heute“, „7 T“, „30 T“. */
+export const tageLabel = (t: Tage) => (t === 1 ? "Heute" : `${t} T`);
+/** Zeitraum im Fließtext: „heute“, „in 7 Tagen“. */
+export const tageText = (t: Tage) => (t === 1 ? "heute" : `in ${t} Tagen`);
+/** Abfrage ?d=1|7|30 → Zeitraum; alles andere 7. */
+export const tageAus = (x: string | null | undefined): Tage => (TRICHTER_TAGE.find((t) => String(t) === x) ?? 7);
+/** Schlüssel der Stripe-Käufe im Trichter-Cache 'website_funnel' (buy.heute / 7d / 30d). */
+/** Stunden im Zeitraum (Lichtpunkt-Tempo = Durchsatz je Stunde): „Heute“ = seit 00:00 Berlin, mindestens 1. */
+export function stundenIm(t: Tage, jetzt: Date = new Date()): number {
+  if (t !== 1) return t * 24;
+  const [h, m] = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+    .format(jetzt).split(":").map(Number);
+  return Math.max(1, h + m / 60);
+}
+export const kaufSchluessel = (t: Tage) => (t === 1 ? "heute" : t === 7 ? "7d" : "30d");
 export const TRICHTER_LAENDER = ["US", "UK", "FR"] as const;
 export type LandWahl = "alle" | (typeof TRICHTER_LAENDER)[number];
 
@@ -152,8 +168,8 @@ export type KpiEingabe = {
 
 /** Die zehn Kacheln der KPI-Leiste. Fehlende Daten: „–“ und grau (nie 0 erfinden). */
 export function kpiLeiste(e: KpiEingabe): Kpi[] {
-  const p = e.extra?.p?.[String(e.tage) as "7" | "30"] ?? null;
-  const T = `${e.tage} T`;
+  const p = e.extra?.p?.[String(e.tage) as "1" | "7" | "30"] ?? null;
+  const T = e.tage === 1 ? "heute" : `${e.tage} T`;
   const sent = p ? num(p.sent) : null;
   const bounced = p ? num(p.bounced) : null;
   const zust = sent ? (sent - (bounced ?? 0)) / sent : null;
@@ -161,10 +177,10 @@ export function kpiLeiste(e: KpiEingabe): Kpi[] {
   const q = e.bestanden === null || e.bestanden === undefined ? null : num(e.bestanden);
   const leer = (x: number | null | undefined) => x === null || x === undefined;
   return [
-    { id: "mails", label: "Mails", wert: leer(sent) ? "–" : de(sent!), unter: `gesendet ${T}`, ton: leer(sent) ? "grau" : "cy", anteil: null, href: "/dashboard/versand", tip: `Erstmails und Nachfass, gesendet in ${e.tage} Tagen` },
+    { id: "mails", label: "Mails", wert: leer(sent) ? "–" : de(sent!), unter: `gesendet ${T}`, ton: leer(sent) ? "grau" : "cy", anteil: null, href: "/dashboard/versand", tip: `Erstmails und Nachfass, gesendet ${tageText(e.tage)}` },
     { id: "zustellung", label: "Zustellung", wert: zust === null ? "–" : pct(zust), unter: "zugestellt", ton: quotenTon(zust, 0.97, 0.95), anteil: zust, href: "/dashboard/versand", tip: "gesendet minus Rückläufer, geteilt durch gesendet" },
     { id: "rueck", label: "Rückläufer", wert: leer(bounced) ? "–" : de(bounced!), unter: rueck === null ? T : pct(rueck), ton: quotenTon(rueck, 0.02, 0.05, false), anteil: rueck, href: "/dashboard/versand", tip: "Notbremse ab 5 % (ab 100 Mails)" },
-    { id: "antworten", label: "Antworten", wert: p ? de(num(p.antworten)) : "–", unter: p ? `positiv ${de(num(p.positiv))}` : T, ton: p ? "cy" : "grau", anteil: null, href: "/dashboard/antworten", tip: `menschliche Antworten in ${e.tage} Tagen (ohne Abwesenheit)` },
+    { id: "antworten", label: "Antworten", wert: p ? de(num(p.antworten)) : "–", unter: p ? `positiv ${de(num(p.positiv))}` : T, ton: p ? "cy" : "grau", anteil: null, href: "/dashboard/antworten", tip: `menschliche Antworten ${tageText(e.tage)} (ohne Abwesenheit)` },
     { id: "proben", label: "Proben", wert: p ? de(num(p.proben)) : "–", unter: `angefragt ${T}`, ton: p ? "cy" : "grau", anteil: null, href: "/dashboard/proben", tip: "Probe-Anfragen (Formular und per Mail), ohne Tests" },
     { id: "kunden", label: "Kunden", wert: leer(e.kunden) ? "–" : de(num(e.kunden)), unter: "zahlend", ton: leer(e.kunden) ? "grau" : "cy", anteil: null, href: "/dashboard/kunden", tip: "aktive Abos (ohne Testkunden)" },
     { id: "mrr", label: "MRR", wert: leer(e.mrr) ? "–" : `${de(num(e.mrr))} €`, unter: "pro Monat", ton: leer(e.mrr) ? "grau" : "gold", anteil: leer(e.mrr) ? null : Math.min(1, num(e.mrr) / ZIEL_MRR), href: "/dashboard/finanzen", tip: "monatlicher Umsatz aus Abos" },
