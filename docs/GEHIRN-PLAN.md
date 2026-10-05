@@ -26,6 +26,17 @@ Visualisierung = JARVIS-Trichter ohne Scanner, Ziel-Ring 25.000 € mit Zeitstra
 **Offen beim Inhaber:** `SEED_INBOXES` (ja), Bestätigungsknopf Abmeldeseite (ja), Zweit-Domains (nach 1. Antwort),
 Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 
+## Lagebild (05.10.2026, 08:40 Berliner Zeit)
+- **Engpass bleibt zugestellt → Antwort:** ~405 Erstmails seit 03.10., 0 menschliche Antworten (12 Abwesenheitsnotizen).
+  Rückläufer 16/405 = 4,0 %; seit der Adressprüfung (#394) 0 von 30 – Notbremse nicht in Gefahr.
+- **Beleg-Einstieg vorbereitet (Start frühestens Do 08.10.):** Premium frei US 2.700, UK 317, FR 142. 100 Mails × 2 Belege
+  = 200 reservierte Leads; die Hälfte des Bestands bleibt für Proben → Start nur US, UK/FR erst ab 400 frei.
+  Einstiegssatz nur mit Kapitalgesellschaften (keine Personennamen), `scripts/lib/belege.py`. Einbau in den Versand +
+  Reservierung je Käufer: Auftrag c5da4536 (ergänzt).
+- Proben S2 mit 10/10 Premium: US 21/50 (Ziel Di 25), UK 1/30, FR 0/30.
+- Auftrag „SG Webagenturen, 10.000 Leads“ ruht (fehler mit Grund): SG außerhalb Fokus, Versand nur US/UK/FR.
+  Der Inhaber-Agent legt ihn täglich neu an – bis SG in `fokus.yaml` steht, gleich behandeln.
+
 ## Lagebild (05.10.2026, 06:40 Berliner Zeit)
 - **„Ohne HTTPS“ war der fehleranfälligste Anlass – Ursache gefunden:** Zertifikatsfehler fallen in der Freigabe nur
   zu 0,6 % durch, „gar kein HTTPS“ dagegen zu 14 % (US 77/566, UK 67/469, FR 8 %), fast alle „seite_in_ordnung“
@@ -62,6 +73,7 @@ Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 - Käufer ok (S2): US 28.782, UK 2.623, FR 1.285. DB 5,1 GB.
 
 ## Nächster Schritt
+- **Prüfpunkt Do 08.10., 20:00:** Beleg-Einstieg in US läuft (Variante B mit 2 Belegen, ≥ 20 B-Mails gesendet); Erfolg bis 21.10.: Antwortquote B ≥ 1 % bei ≥ 100.
 - **Prüfpunkt Do 08.10.:** Freigabe-Durchfall „no_https“ (Detail none, neue Leads ab 05.10.) < 3 % je Land; sonst Fund-Protokoll prüfen.
 - **Prüfpunkt Mo 12.10.:** Käufer-Reichweite UK und FR ≥ 21 Tage (Tagescheck). Darunter: Kunden-Werk-Plätze auf UK/FR-Quellen.
 - Zustellbarkeits-Check zählt Link-Scanner-Abmeldungen (< 2 min) getrennt, gelb ab > 50 %.
