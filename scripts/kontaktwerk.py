@@ -15,6 +15,7 @@ einmal in 20 h – watch_companies.website_fetched_at, und nie am Tag einer Live
 lib.kontakt.merge. Ergebnis in leads.kontakt/kontakt_at. Eine Person mit zwei Belegen ohne Widerspruch wird als
 Ansprechperson gespeichert, wenn der Bestand noch keinen Namen hat (observations person, nichts überschrieben).
 Premium-Punkt „Ansprechperson+Kontakt“: bestätigt -> premium_score + Personen-Punkte (lib.kontakt.premium_nachtrag).
+Website gelesen, Kontakt dort nicht belegt (Stufe „leer“) -> Kontakt-Punkte entfallen, bis ein Beleg kommt (nur strenger).
 
 Sendet nichts, ändert keine Sperrliste, lockert keine Prüfregel (die Drei-Stufen-Freigabe prüft jeden Lead weiter
 vor Probe und Lieferung), schreibt keine Lead-Daten ins Repo (nur Zahlen). Pause im Dashboard (werke_paused

@@ -143,6 +143,30 @@ class PremiumTests(unittest.TestCase):
         s2, p2 = K.premium_nachtrag(60, {"reasons": ["kontakt"]}, k)
         self.assertEqual((s2, p2["tier"]), (75, "standard"))  # ohne frisches Ereignis nie premium
 
+    def test_premium_nachtrag_kontakt_unbelegt(self):
+        # Premium-Labor 05.10.2026: Website gelesen, Kontakt dort nicht belegt -> Kontakt-Punkte entfallen (nur strenger)
+        leer = {"stufe": "leer", "premium_punkt": False, "quellen": ["Company website"],
+                "phone": {"belegt": []}, "email": {"belegt": []}}
+        radar = {"tier": "premium", "reasons": ["frisch_0_tage", "kombi:website_outdated", "beleg", "kontakt"]}
+        s, p = K.premium_nachtrag(85, radar, leer)
+        self.assertEqual((s, p["tier"]), (70, "premium"))
+        self.assertIn("kontakt_unbelegt", p["reasons"])
+        self.assertNotIn("kontakt", p["reasons"])
+        self.assertIsNone(K.premium_nachtrag(s, p, leer))  # nur einmal
+        # ohne Beleg-Link fällt der Lead unter 70 -> Standard
+        s2, p2 = K.premium_nachtrag(75, {"tier": "premium", "reasons": ["frisch_1_tage", "kombi:x", "kontakt"]}, leer)
+        self.assertEqual((s2, p2["tier"]), (60, "standard"))
+        # Website nicht gelesen (Seite kaputt/gesperrt): keine Aussage, nichts ändern
+        self.assertIsNone(K.premium_nachtrag(85, radar, {**leer, "quellen": []}))
+        # spätere Prüfung belegt die E-Mail -> Punkte kommen zurück
+        ok = {"stufe": "teilweise", "premium_punkt": False, "quellen": ["Company website"],
+              "phone": {"belegt": []}, "email": {"belegt": ["domain"]}}
+        s3, p3 = K.premium_nachtrag(s, p, ok)
+        self.assertEqual((s3, p3["tier"]), (85, "premium"))
+        self.assertIn("kontakt", p3["reasons"])
+        # teilweise belegt und schon mit Kontakt-Punkten: nichts zu tun
+        self.assertIsNone(K.premium_nachtrag(85, radar, ok))
+
 
 class FakeSources:
     def __init__(self, reg=None, pages=None):

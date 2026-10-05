@@ -37,6 +37,7 @@ PERSON_WIDERSPRUCH = {"plz_register_abweichend", "register_inaktiv", "person_web
                       "person_bestand_abweichend"}
 # Premium-Punkte aus scripts/lib/premium.py (Ansprechperson 15, Premium ab 70 und frisch)
 PREMIUM_PERSON = P.POINTS["person"]
+PREMIUM_CONTACT = P.POINTS["contact"]
 PREMIUM_MIN = P.PREMIUM_MIN
 
 
@@ -283,25 +284,48 @@ def merge(company: dict, contact: dict | None, person_now: dict | None, register
             "quellen": sorted({x for x in ((register or {}).get("source"), "Company website" if site_ok else None) if x})}
 
 
+def _contact_unbelegt(kontakt: dict) -> bool:
+    """Website gelesen, aber weder Telefon noch E-Mail dort/auf der Domain belegt und keine Person (Stufe „leer“).
+    Premium-Labor 05.10.2026: 35 % (UK) bis 56 % (FR) der Radar-Premium-Leads – bekamen trotzdem 15 Kontakt-Punkte."""
+    return kontakt.get("stufe") == "leer" and "Company website" in (kontakt.get("quellen") or [])
+
+
+def _contact_belegt(kontakt: dict) -> bool:
+    return bool(((kontakt.get("phone") or {}).get("belegt")) or ((kontakt.get("email") or {}).get("belegt")))
+
+
 def premium_nachtrag(score, premium, kontakt: dict) -> tuple[int, dict] | None:
-    """Premium-Punkt „Ansprechperson+Kontakt“: hat der Lead schon eine Premium-Bewertung und ist die Person jetzt
-    bestätigt (vorher ohne Namen bewertet), kommen die Personen-Punkte dazu. Stufe wie lib/premium.py: premium nur ab
-    PREMIUM_MIN und mit frischem Ereignis. Gibt (score, premium) oder None (nichts zu ändern). Nur Reihenfolge."""
-    if not isinstance(score, (int, float)) or not kontakt.get("premium_punkt"):
+    """Premium-Punkte nach der Kontakt-Prüfung. Hat der Lead schon eine Premium-Bewertung:
+    - Person jetzt bestätigt (vorher ohne Namen bewertet) -> Personen-Punkte dazu („Ansprechperson+Kontakt“).
+    - Website gelesen und Kontakt dort nicht belegt (Stufe „leer“) -> die Kontakt-Punkte entfallen (Grund
+      „kontakt_unbelegt“; nur strenger). Belegt eine spätere Prüfung Telefon oder E-Mail, kommen sie zurück.
+    Stufe wie lib/premium.py: premium nur ab PREMIUM_MIN und mit frischem Ereignis. Gibt (score, premium) oder None
+    (nichts zu ändern). Ändert nur Reihenfolge/Stufe, nie die Drei-Stufen-Freigabe."""
+    if not isinstance(score, (int, float)) or not isinstance(kontakt, dict):
         return None
     p = dict(premium) if isinstance(premium, dict) else {}
     reasons = list(p.get("reasons") or [])
+    score = int(score)
     changed = False
-    if "person" not in reasons:
-        score = min(100, int(score) + PREMIUM_PERSON)
-        reasons.append("person")
+    if kontakt.get("premium_punkt"):
+        if "person" not in reasons:
+            score = min(100, score + PREMIUM_PERSON)
+            reasons.append("person")
+            changed = True
+        if "kontakt_geprueft" not in reasons:
+            reasons.append("kontakt_geprueft")
+            changed = True
+    if "kontakt" in reasons and _contact_unbelegt(kontakt):
+        score = max(0, score - PREMIUM_CONTACT)
+        reasons[reasons.index("kontakt")] = "kontakt_unbelegt"
         changed = True
-    if "kontakt_geprueft" not in reasons:
-        reasons.append("kontakt_geprueft")
+    elif "kontakt_unbelegt" in reasons and _contact_belegt(kontakt):
+        score = min(100, score + PREMIUM_CONTACT)
+        reasons[reasons.index("kontakt_unbelegt")] = "kontakt"
         changed = True
     if not changed:
         return None
     fresh = any((m := re.fullmatch(r"frisch_(\d+)_tage", str(r))) and int(m.group(1)) <= P.PREMIUM_MAX_AGE
                 for r in reasons)
     p.update(reasons=reasons, tier="premium" if score >= PREMIUM_MIN and fresh else "standard")
-    return int(score), p
+    return score, p
