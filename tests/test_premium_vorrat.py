@@ -92,5 +92,75 @@ class ScoreScriptTest(unittest.TestCase):
         self.assertIn("kontakt", s["reasons"])
 
 
+class SwapTest(unittest.TestCase):
+    """Premium-Austausch: alte Proben nur ersetzen, wenn die neue mehr Premium hat; Vorrat bleibt gleich groß."""
+
+    def _db(self, supply):
+        db = mock.Mock()
+        db.rpc.side_effect = lambda fn, args: ([{"segment_id": "S2", "country": "US", "premium_frei": supply}]
+                                               if fn == "premium_status" else True)
+        return db
+
+    def _stock(self):
+        return [{"id": "old1", "segment_id": "S2", "country": "US", "premium_n": None, "built_at": "2026-10-03",
+                 "company_ids": ["c1"], "wish": []},
+                {"id": "old2", "segment_id": "S2", "country": "US", "premium_n": 2, "built_at": "2026-10-02",
+                 "company_ids": ["c2"], "wish": ["x"]},
+                {"id": "good", "segment_id": "S2", "country": "US", "premium_n": 10, "built_at": "2026-10-04",
+                 "company_ids": ["c3"], "wish": []}]
+
+    def test_swaps_worst_first_and_discards_old(self):
+        import sample_stock as S
+        db = self._db(500)
+        with mock.patch.object(S, "stock_rows", return_value=self._stock()), \
+             mock.patch.object(S, "build_one", side_effect=[{"id": "n1", "premium_n": 10}, {"id": "n2", "premium_n": 9}]) as b:
+            got = S.swap_for_premium(db, [("S2", "US")], True, log=lambda *_: None)
+        self.assertEqual(got, {"S2/US": 2})
+        self.assertEqual(b.call_count, 2)  # die volle Probe "good" bleibt
+        discarded = [c.args[1]["p_stock"] for c in db.rpc.call_args_list if c.args[0] == "discard_sample_stock"]
+        self.assertEqual(discarded, ["old1", "old2"])
+
+    def test_no_gain_discards_new_and_stops(self):
+        import sample_stock as S
+        db = self._db(500)
+        with mock.patch.object(S, "stock_rows", return_value=self._stock()), \
+             mock.patch.object(S, "build_one", return_value={"id": "n1", "premium_n": 0}):
+            got = S.swap_for_premium(db, [("S2", "US")], True, log=lambda *_: None)
+        self.assertEqual(got, {})
+        discarded = [c.args[1]["p_stock"] for c in db.rpc.call_args_list if c.args[0] == "discard_sample_stock"]
+        self.assertEqual(discarded, ["n1"])
+
+    def test_no_supply_no_build(self):
+        import sample_stock as S
+        db = self._db(5)
+        with mock.patch.object(S, "stock_rows", return_value=self._stock()), mock.patch.object(S, "build_one") as b:
+            self.assertEqual(S.swap_for_premium(db, [("S2", "US")], True, log=lambda *_: None), {})
+        b.assert_not_called()
+
+    def test_limit_and_dry_run(self):
+        import sample_stock as S
+        db = self._db(500)
+        with mock.patch.object(S, "stock_rows", return_value=self._stock()), \
+             mock.patch.object(S, "build_one", return_value={"premium_n": 10}) as b:
+            got = S.swap_for_premium(db, [("S2", "US")], False, log=lambda *_: None, limit=1)
+        self.assertEqual(got, {"S2/US": 1})
+        self.assertEqual(b.call_count, 1)
+        self.assertFalse([c for c in db.rpc.call_args_list if c.args[0] == "discard_sample_stock"])
+
+
+class WishOrderTest(unittest.TestCase):
+    def test_wish_extra_does_not_push_premium_back(self):
+        import responder
+        today = dt.date.today()
+        prem = [lead(i, age=10, event_date=(today - dt.timedelta(days=10)).isoformat(), signal_type="no_website")
+                for i in range(10)]
+        extra = [lead(100 + i, tier="standard", score=20, event_date=today.isoformat(), signal_type="no_website")
+                 for i in range(10)]
+        got = responder.merge_wish_extra(extra + prem[:1], prem, {"c105"})
+        self.assertEqual({r["id"] for r in got[:10]}, {p["id"] for p in prem})
+        self.assertEqual(premium.count(got[:10]), 10)
+        self.assertEqual(len(got), 19)  # Dublette l0 und ausgeschlossene Firma c105 nicht doppelt/drin
+
+
 if __name__ == "__main__":
     unittest.main()

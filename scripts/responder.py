@@ -498,6 +498,15 @@ def best_first(rows: list[dict], fb_weights: dict[str, float] | None = None) -> 
     return rows
 
 
+def merge_wish_extra(extra: list[dict], rows: list[dict], exclude_companies: set[str] | None = None,
+                     fb_weights: dict[str, float] | None = None) -> list[dict]:
+    """Nachgeladene Wunsch-Kandidaten mit den übrigen gemeinsam sortieren (Premium zuerst). Vorher standen sie
+    vorangestellt vor allen Premium-Leads – Wunsch-Proben hatten 0/10 Premium (Gehirn 05.10.2026). Nur Reihenfolge."""
+    have = {r["id"] for r in rows}
+    add = [r for r in extra if r["id"] not in have and r.get("company_id") not in (exclude_companies or ())]
+    return best_first(add + rows, fb_weights)
+
+
 def regional_sample(db, seg: str, country: str, region: str | None,
                     wish: list[str] | None = None, mark: bool = True, picked_out: list | None = None,
                     exclude_companies: set[str] | None = None, gate_context: str = "probe"
@@ -535,10 +544,8 @@ def regional_sample(db, seg: str, country: str, region: str | None,
         from lib.wishes import signal_types
         types = signal_types(wish)
         if types:  # seltene Wunsch-Signale stehen evtl. nicht unter den neuesten Leads: gezielt nachladen
-            have = {r["id"] for r in rows}
             extra = strip(_newest(db, {**params, "signal_type": f"in.({','.join(types)})"}, SAMPLE_POOL // 2))
-            rows = [r for r in best_first(extra, fbw) if r["id"] not in have
-                    and r.get("company_id") not in (exclude_companies or ())] + rows
+            rows = merge_wish_extra(extra, rows, exclude_companies, fbw)
         rows = prefer(rows, wish, _sic_lookup(db, rows) if "fleet_warehouse" in wish else None)
     # Vollständigkeit nur blockweise für die nächsten Kandidaten prüfen (bei 90.000+ Leads war die Prüfung aller
     # Firmen zu langsam; Test 01.10.2026)
