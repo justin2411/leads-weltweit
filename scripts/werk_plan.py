@@ -31,6 +31,10 @@ faktor × den Bestand jedes Vorrang-Landes (UK, FR; lieferbare Leads des Segment
 Linien des Segments 1 Wachplatz und bekommen keine Zusatzplätze; die frei gewordenen Plätze gehen an aktive Linien
 der Vorrang-Länder (bis max der Linie und die Summe). Gilt nur, solange eine Vorrang-Linie aktiv ist.
 
+Lead-Werk hoch (Inhaber 05.10.2026): bei Mischung 100 % füllt das Lead-Werk bis cap nach gemessenem Premium-Ertrag
+(premium_only_plan/premium_yield), Radar-Basis bis BASIS_MAX, Kunden-/Kontakt-Werk lassen ihm LEAD_MIN_PREMIUM Plätze
+(yield_to_lead). Speicher-Bremse unverändert.
+
   python scripts/werk_plan.py lead-werk      # schreibt matrix=… und teile=… nach $GITHUB_OUTPUT
   python scripts/werk_plan.py kunden-werk --dry
 """
@@ -86,6 +90,15 @@ EMPTY_WHY = "Vorrat leer"  # Anfang des Grundes leerer Linien (Dashboard erkennt
 PROBE_H = 4           # leere Linie: alle 4 h ein Prüfplatz (findet er Kandidaten, gilt wieder die Belegung)
 MIN_BELEGT = 30       # Inhaber 05.10.2026: „Werke immer laufen lassen, mind. 30 gleichzeitig“ (beide Werke zusammen)
 MIN_WHY = "Mindestbelegung 30"
+# Lead-Werk hoch (Inhaber 05.10.2026: „ne lead werk soll hochgefahren werden“): bei Mischung 100 % bekommt das Lead-Werk
+# mindestens LEAD_MIN_PREMIUM Plätze (Kunden-/Kontakt-Werk geben dafür ab, je aktiver Linie bleibt 1), verteilt nach
+# gemessenem Premium-Ertrag je Platz-Stunde (Höchstzahlverfahren). Radar-Basis (web-uk/web-fr) höchstens BASIS_MAX
+# Plätze: sie füllt den Kandidaten-Vorrat des Radars; ihr Gewicht = grüne je Platz·h × gemessene Radar-Trefferquote
+# (Premium je geprüfter Firma). Speicher-Bremse unverändert (ab 6 GB höchstens BRAKE_LEAD_MAX).
+LEAD_MIN_PREMIUM = 20
+BASIS_MAX = 6
+RADAR_HIT_FALLBACK = 0.005  # Premium je Radar-Prüfung, solange keine Laufzahlen vorliegen (gemessen 05.10.: 0,009)
+LEAD_MIN_WHY = "Lead-Werk hoch (Inhaber 05.10.2026)"
 
 
 def lane_of(werk: str, part: str | None) -> str | None:
@@ -163,7 +176,8 @@ def lane_stats(rows: list[dict], werk: str, runs: int = 2, reset: dict | None = 
                      "empty_last": sum(1 for x in lp if work(x) == 0), "avg_last": sum(lmins) / len(lmins),
                      "max_last": max(lmins), "premium_all": sum(x["premium"] for x in every),
                      "premium_last": sum(x["premium"] for x in lp),
-                     "premium_per_slot_h": sum(x["premium"] for x in ps) / slot_h if slot_h > 0 else 0.0}
+                     "premium_per_slot_h": sum(x["premium"] for x in ps) / slot_h if slot_h > 0 else 0.0,
+                     "green_per_slot_h": green / slot_h if slot_h > 0 else 0.0}
     return out
 
 
@@ -260,26 +274,90 @@ def mix_plan(reg: dict, werk: str, plan: dict[str, int], why: dict[str, str], lo
     return moved
 
 
+def lane_limit(l: dict, nur_premium: bool = False) -> int:
+    """Höchstzahl einer Linie: max aus werk-linien.json, Radar-Basis bei Nur-Premium höchstens BASIS_MAX."""
+    mx = int(l["max"])
+    return min(mx, BASIS_MAX) if nur_premium and l.get("premium") == "basis" else mx
+
+
+def radar_hit(reg: dict, stats: dict[str, dict]) -> float:
+    """Gemessene Trefferquote des Radars: Premium-Leads je geprüfter Firma (Radar-Linien im Fenster)."""
+    ids = [l["id"] for l in reg["lanes"] if l["werk"] == "lead-werk" and "--radar " in (l.get("args") or "")]
+    cand = sum(int((stats.get(k) or {}).get("cand_all") or 0) for k in ids)
+    prem = sum(int((stats.get(k) or {}).get("premium_all") or 0) for k in ids)
+    return prem / cand if cand > 0 and prem > 0 else RADAR_HIT_FALLBACK
+
+
+def premium_yield(reg: dict, stats: dict[str, dict]) -> dict[str, float]:
+    """Gewicht je Lead-Linie für die Nur-Premium-Verteilung (Premium je Platz·h, gemessen):
+    Premium-Linien = gemessener Premium-Ertrag; ohne Laufzahlen wie die beste gemessene Premium-Linie (neue Linie
+    bekommt eine faire Probe). Radar-Basis = grüne je Platz·h × Radar-Trefferquote (künftige Premium aus dem Vorrat).
+    Nie unter 0,1 (jede aktive Linie bleibt im Verfahren)."""
+    lanes = [l for l in reg["lanes"] if l["werk"] == "lead-werk"]
+    measured = [float(stats[l["id"]].get("premium_per_slot_h") or 0.0) for l in lanes
+                if l.get("premium") == "ja" and stats.get(l["id"]) and stats[l["id"]].get("premium_all")]
+    best = max(measured, default=1.0)
+    hit = radar_hit(reg, stats)
+    out: dict[str, float] = {}
+    for l in lanes:
+        k, s, flag = l["id"], stats.get(l["id"]), l.get("premium")
+        if flag == "ja":
+            w = float(s.get("premium_per_slot_h") or 0.0) if s else best
+        elif flag == "basis":
+            w = float(s.get("green_per_slot_h") or 0.0) * hit if s else 1.0
+        else:
+            continue
+        out[k] = max(w, 0.1)
+    return out
+
+
 def premium_only_plan(reg: dict, werk: str, plan: dict[str, int], why: dict[str, str], locks: dict | None,
-                      cap: int) -> int:
-    """Nur-Premium-Belegung des Lead-Werks (in place): Linien ohne Premium auf 0, Radar-Basis höchstens 1, freie
-    Plätze an aktive Premium-Linien (gleichmäßig, bis max, nie über cap). Gibt die Zahl umverteilter Plätze."""
+                      cap: int, stats: dict[str, dict] | None = None) -> int:
+    """Nur-Premium-Belegung des Lead-Werks (in place): Linien ohne Premium auf 0, Radar-Basis höchstens BASIS_MAX.
+    Mit Laufzahlen (Autopilot an): alle Plätze bis cap neu nach gemessenem Premium-Ertrag verteilen – jede aktive
+    Linie 1, dann Höchstzahlverfahren bis lane_limit (festgesetzte, leere und erschöpfte Linien behalten ihren Wert).
+    Ohne Laufzahlen: freie Plätze gleichmäßig an aktive Premium-Linien. Gibt die Zahl umverteilter Plätze."""
     if werk != "lead-werk":
         return 0
     locks = locks if isinstance(locks, dict) else {}
     lanes = [l for l in reg["lanes"] if l["werk"] == werk]
+    before = dict(plan)
     for l in lanes:
         k, flag = l["id"], l.get("premium")
         if k in locks or flag == "ja":
             continue
-        lim = 1 if flag == "basis" else 0
+        lim = lane_limit(l, True) if flag == "basis" else 0
         if plan.get(k, 0) > lim:
             plan[k] = lim
-            why[k] = (f"{PREMIUM_WHY}: Radar-Basis – höchstens 1 Platz" if lim
+            why[k] = (f"{PREMIUM_WHY}: Radar-Basis – höchstens {lim} Plätze" if lim
                       else f"{PREMIUM_WHY}: Linie ohne Premium – 0 Plätze")
-    room = {l["id"]: int(l["max"]) - plan.get(l["id"], 0) for l in lanes
+    if stats:
+        w = premium_yield(reg, stats)
+        flex = [l for l in lanes if l["id"] in w and l["id"] not in locks and plan.get(l["id"], 0) > 0
+                and not str(why.get(l["id"]) or "").startswith(EMPTY_WHY)
+                and not any(x in str(why.get(l["id"]) or "") for x in ("Wachplatz", "durchgeprüft"))]
+        ids = {l["id"] for l in flex}
+        budget = cap - sum(v for k, v in plan.items() if k not in ids)
+        if flex and budget >= len(flex):
+            lim = {l["id"]: lane_limit(l, True) for l in flex}
+            new = {k: 1 for k in ids}
+            left = budget - len(flex)
+            while left > 0:
+                room = [k for k in ids if new[k] < lim[k]]
+                if not room:
+                    break
+                k = max(room, key=lambda x: (w[x] / (new[x] + 1), x))
+                new[k] += 1
+                left -= 1
+            for k, n in new.items():
+                if n != before.get(k, 0):
+                    why[k] = (str(why.get(k) or "").split(f" – {LEAD_MIN_WHY}")[0]
+                              + f" – {LEAD_MIN_WHY}: {n} Plätze nach Premium-Ertrag ({w[k]:.1f} je Platz·h)")
+                plan[k] = n
+            return sum(max(0, plan[k] - before.get(k, 0)) for k in plan)
+    room = {l["id"]: lane_limit(l, True) - plan.get(l["id"], 0) for l in lanes
             if l.get("premium") == "ja" and l["id"] not in locks and plan.get(l["id"], 0) > 0
-            and int(l["max"]) > plan.get(l["id"], 0)}
+            and lane_limit(l, True) > plan.get(l["id"], 0)}
     free, gain = cap - sum(plan.values()), {}
     while free > 0 and room:
         k = min(room, key=lambda x: (plan[x], x))
@@ -292,6 +370,30 @@ def premium_only_plan(reg: dict, werk: str, plan: dict[str, int], why: dict[str,
     for k, n in gain.items():
         why[k] = str(why.get(k) or "") + f" – +{n} {PREMIUM_WHY}"
     return sum(gain.values())
+
+
+def yield_to_lead(reg: dict, werk: str, plan: dict[str, int], why: dict[str, str], other: dict[str, int],
+                  locks: dict | None) -> int:
+    """Nur Premium (Inhaber 05.10.2026 „lead werk hochfahren“): Kunden- und Kontakt-Werk lassen dem Lead-Werk
+    mindestens LEAD_MIN_PREMIUM Plätze (in place; je aktive Linie bleibt 1, festgesetzte Linien bleiben). Prüfer-Werk
+    und Lead-Werk selbst unverändert; Summe nie über total_slots - reserve. Gibt die Zahl abgegebener Plätze."""
+    if werk not in ("kunden-werk", "kontakt-werk"):
+        return 0
+    locks = locks if isinstance(locks, dict) else {}
+    lead_ids = {l["id"] for l in reg["lanes"] if l["werk"] == "lead-werk"}
+    lead = sum(int(v) for k, v in other.items() if k in lead_ids)
+    rest = sum(int(v) for k, v in other.items() if k not in lead_ids and k not in plan)
+    room = int(reg["total_slots"]) - int(reg["reserve"]) - rest - max(lead, LEAD_MIN_PREMIUM)
+    given = 0
+    while sum(plan.values()) > max(0, room):
+        give = [k for k in plan if k not in locks and plan[k] > 1]
+        if not give:
+            break
+        k = max(give, key=lambda x: (plan[x], x))
+        plan[k] -= 1
+        given += 1
+        why[k] = str(why.get(k) or "").split(f" – {LEAD_MIN_WHY}")[0] + f" – {LEAD_MIN_WHY}: Plätze ans Lead-Werk"
+    return given
 
 
 def brake_level(db_bytes: int | None, last: str = "aus") -> str:
@@ -545,10 +647,10 @@ def autopilot(reg: dict, werk: str, base: dict[str, int], stats: dict[str, dict]
 def _min_tier(l: dict, s: dict | None, nur_premium: bool = False) -> int | None:
     """Rang einer Linie für die Mindestbelegung (kleiner = zuerst), None = nicht auffüllen.
     1 Premium-/Website-Linien US/UK/FR, 2 Kunden, 3 Prüfer, 4 andere Linien mit Vorrat im letzten Lauf.
-    nur_premium: Lead-Linien ohne `premium: ja` füllen nie auf (Inhaber 05.10.2026)."""
+    nur_premium: Lead-Linien ohne `premium` (ja/basis) füllen nie auf (Inhaber 05.10.2026); Radar-Basis bis BASIS_MAX."""
     lid = l["id"]
     if nur_premium and l.get("werk") == "lead-werk":
-        return 1 if l.get("premium") == "ja" else None
+        return 1 if l.get("premium") in ("ja", "basis") else None
     if (s or {}).get("premium_last") or "premium" in lid or \
             (lid.startswith("web-") and lane_countries(l) and lane_countries(l) <= {"US", "UK", "FR"}):
         return 1
@@ -579,7 +681,7 @@ def fill_minimum(lanes: list[dict], plan: dict[str, int], why: dict[str, str], s
         k = l["id"]
         r = str(why.get(k) or "")
         if k in locks or k in skip or plan.get(k, 0) <= 0 or r.startswith(EMPTY_WHY) or "Wachplatz" in r \
-                or "durchgeprüft" in r or plan[k] >= int(l["max"]):
+                or "durchgeprüft" in r or plan[k] >= lane_limit(l, nur_premium):
             continue
         t = _min_tier(l, stats.get(k), nur_premium)
         if t is not None:
@@ -588,7 +690,7 @@ def fill_minimum(lanes: list[dict], plan: dict[str, int], why: dict[str, str], s
     for t in sorted(tiers):
         group = tiers[t]
         while need > 0:
-            open_ = [l for l in group if plan[l["id"]] < int(l["max"])]
+            open_ = [l for l in group if plan[l["id"]] < lane_limit(l, nur_premium)]
             if not open_:
                 break
             for l in open_:
@@ -783,9 +885,11 @@ def decide(reg: dict, werk: str, inp: dict) -> dict:
         cap = int(reg["total_slots"]) - int(reg["reserve"]) - sum(other.values())
         if brake in ("drossel", "ohne-rohbestand"):
             cap = min(cap, BRAKE_LEAD_MAX)
-        premium_only_plan(reg, werk, plan, reasons, mix_locks, cap)
+        premium_only_plan(reg, werk, plan, reasons, mix_locks, cap, stats)
     elif werk == "lead-werk" and brake != "stopp":
         mix_plan(reg, werk, plan, reasons, mix_locks, pct)
+    if nur_premium and brake not in ("drossel", "ohne-rohbestand", "stopp"):
+        yield_to_lead(reg, werk, plan, reasons, other, ap.get("locks"))
     if werk == "lead-werk" and brake in ("drossel", "ohne-rohbestand") and sum(plan.values()) > BRAKE_LEAD_MAX:
         # Bremse auch ohne Autopilot: die Linien mit den meisten Plätzen kürzen, jede aktive behält 1
         while sum(plan.values()) > BRAKE_LEAD_MAX and any(v > 1 for v in plan.values()):

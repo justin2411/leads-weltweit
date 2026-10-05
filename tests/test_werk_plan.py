@@ -1,4 +1,6 @@
 """Belegungsplan der Werke (Inhaber 03.10.2026: Plätze je Linie im Leitstand steuern)."""
+import datetime as dt
+import re
 import json
 import os
 import sys
@@ -509,7 +511,7 @@ class LeadMixTests(unittest.TestCase):
             if flag is None:
                 self.assertEqual(n, 0, k)
             elif flag == "basis":
-                self.assertLessEqual(n, 1, k)
+                self.assertLessEqual(n, W.BASIS_MAX, k)
         self.assertGreater(sum(n for k, n in res["plan"].items() if lanes[k].get("premium") == "ja"), 0)
         cap = self.reg["total_slots"] - self.reg["reserve"]
         self.assertLessEqual(sum(res["plan"].values()) + sum(l["default"] for l in self.reg["lanes"]
@@ -543,6 +545,134 @@ class LeadMixTests(unittest.TestCase):
     def test_min_tier_skips_standard_lanes_in_premium_mode(self):
         lanes = {l["id"]: l for l in self.reg["lanes"]}
         self.assertIsNone(W._min_tier(lanes["web-us"], None, nur_premium=True))
-        self.assertIsNone(W._min_tier(lanes["web-uk"], None, nur_premium=True))
+        self.assertEqual(W._min_tier(lanes["web-uk"], None, nur_premium=True), 1)  # Radar-Basis (bis BASIS_MAX)
         self.assertEqual(W._min_tier(lanes["radar"], None, nur_premium=True), 1)
         self.assertEqual(W._min_tier(lanes["kunden"], None, nur_premium=True), 2)
+
+
+class LeadWerkHochTests(unittest.TestCase):
+    """Lead-Werk hoch (Inhaber 05.10.2026): Nur Premium füllt das Lead-Werk nach Premium-Ertrag, Radar je Land."""
+
+    def setUp(self):
+        self.reg = W.load_lines()
+        self.lanes = {l["id"]: l for l in self.reg["lanes"]}
+        self.now = dt.datetime(2026, 10, 5, 9, 0, tzinfo=dt.timezone.utc)
+
+    def _stats(self):
+        rows = []
+        for lane, parts, prem, cand, green in (("radar", 2, 60, 9000, 70), ("radar-uk", 4, 160, 30000, 190),
+                                                ("radar-us", 6, 240, 50000, 300), ("s2-ukfr", 6, 2, 9000, 900),
+                                                ("web-uk", 1, 0, 9000, 350), ("web-fr", 1, 0, 9000, 480)):
+            for i in range(parts):
+                for run in ("r1", "r2"):
+                    rows.append({"werk": "lead-werk", "part": f"{lane}-{i}", "run_id": run,
+                                 "started_at": "2026-10-05T07:00:00+00:00" if run == "r1" else "2026-10-05T08:00:00+00:00",
+                                 "finished_at": "2026-10-05T07:58:00+00:00" if run == "r1" else "2026-10-05T08:58:00+00:00",
+                                 "candidates": cand // parts, "processed": cand // parts, "green": green // parts,
+                                 "extra": {"premium": prem // parts}})
+        return W.lane_stats(rows, "lead-werk")
+
+    def test_radar_split_by_country_with_own_partitions(self):
+        radar = [l for l in self.reg["lanes"] if "--radar " in l.get("args", "")]
+        self.assertEqual({l["id"] for l in radar}, {"radar", "radar-uk", "radar-us"})
+        seen = set()
+        for l in radar:
+            m = re.search(r"--radar-countries (\S+)", l["args"])
+            self.assertIsNotNone(m, l["id"])
+            cs = set(m.group(1).split(","))
+            self.assertEqual(len(cs), 1, l["id"])  # ein Land je Linie
+            self.assertFalse(cs & seen, l["id"])   # kein Land doppelt
+            seen |= cs
+            self.assertEqual(l["premium"], "ja")
+        self.assertEqual(seen, {"US", "UK", "FR"})
+        # jeder Platz bekommt einen eigenen Teil (--shard i/K, K = max), nie dieselben Firmen
+        rows = W.matrix(self.reg, "lead-werk", {}, shards={"radar-us": list(range(6))})
+        self.assertEqual([r["args"].split("--shard ")[1] for r in rows], [f"{i}/6" for i in range(6)])
+
+    def test_fmcsa_max_stays_small(self):
+        # 14-Tage-Fenster ~5.400 Neuzugänge; jeder Teil lädt den ganzen Datensatz von Socrata -> 2 reichen
+        self.assertEqual(self.lanes["fmcsa-us"]["max"], 2)
+
+    def test_basis_up_to_basis_max(self):
+        self.assertEqual(W.lane_limit(self.lanes["web-uk"], True), W.BASIS_MAX)
+        self.assertEqual(W.lane_limit(self.lanes["web-uk"], False), 21)
+        self.assertEqual(W.lane_limit(self.lanes["radar-us"], True), 6)
+        plan = {l["id"]: 0 for l in self.reg["lanes"] if l["werk"] == "lead-werk"}
+        plan.update({"web-uk": 15, "web-us": 9})
+        why = {}
+        W.premium_only_plan(self.reg, "lead-werk", plan, why, {}, 30)
+        self.assertEqual(plan["web-uk"], W.BASIS_MAX)
+        self.assertEqual(plan["web-us"], 0)
+
+    def test_yield_weights_measured(self):
+        st = self._stats()
+        hit = W.radar_hit(self.reg, st)
+        self.assertAlmostEqual(hit, 460 / 89000, places=4)
+        w = W.premium_yield(self.reg, st)
+        self.assertGreater(w["radar-us"], w["web-fr"])
+        self.assertGreater(w["web-fr"], w["s2-ukfr"])  # Basis-Vorrat schlägt eine Premium-Linie ohne Ertrag
+        self.assertNotIn("web-us", w)
+        self.assertEqual(w["fmcsa-us"], max(w["radar"], w["radar-uk"], w["radar-us"]))  # neu = wie die beste
+
+    def test_lead_werk_fills_to_min_by_yield(self):
+        st = self._stats()
+        plan = {l["id"]: 0 for l in self.reg["lanes"] if l["werk"] == "lead-werk"}
+        plan.update({"radar": 1, "radar-uk": 1, "radar-us": 1, "fmcsa-us": 1, "s2-ukfr": 6, "web-uk": 1, "web-fr": 1})
+        why = {}
+        W.premium_only_plan(self.reg, "lead-werk", plan, why, {}, 22, st)
+        self.assertEqual(sum(plan.values()), 22)
+        self.assertGreaterEqual(sum(plan.values()), W.LEAD_MIN_PREMIUM)
+        self.assertEqual((plan["radar"], plan["radar-uk"], plan["radar-us"], plan["fmcsa-us"]), (2, 4, 6, 2))
+        self.assertGreater(plan["web-fr"], plan["s2-ukfr"])
+        self.assertTrue(all(plan[k] <= W.lane_limit(self.lanes[k], True) for k in plan))
+        self.assertIn(W.LEAD_MIN_WHY, why["radar-us"])
+
+    def test_locked_and_exhausted_lanes_keep_value(self):
+        st = self._stats()
+        plan = {l["id"]: 0 for l in self.reg["lanes"] if l["werk"] == "lead-werk"}
+        plan.update({"radar": 1, "radar-uk": 1, "radar-us": 1, "web-uk": 3, "web-fr": 1})
+        why = {"radar-uk": "Vorrat erschöpft (2/4 Teile leer, Ø 6 min) – 1 Wachplatz"}
+        W.premium_only_plan(self.reg, "lead-werk", plan, why, {"web-uk": 3}, 20, st)
+        self.assertEqual(plan["web-uk"], 3)
+        self.assertEqual(plan["radar-uk"], 1)
+        self.assertLessEqual(sum(plan.values()), 20)
+
+    def test_other_werke_yield_to_lead_min(self):
+        other = {l["id"]: 0 for l in self.reg["lanes"] if l["werk"] != "kunden-werk"}
+        other.update({"radar-us": 6, "radar-uk": 4, "pruefer": 8, "kontakt": 6})  # Lead-Werk erst bei 10
+        plan, why = {"kunden": 12}, {}
+        W.yield_to_lead(self.reg, "kunden-werk", plan, why, other, {})
+        cap = self.reg["total_slots"] - self.reg["reserve"]
+        self.assertEqual(plan["kunden"], cap - 8 - 6 - W.LEAD_MIN_PREMIUM)
+        self.assertIn(W.LEAD_MIN_WHY, why["kunden"])
+        # festgesetzt bleibt, und nie unter 1
+        plan = {"kunden": 12}
+        W.yield_to_lead(self.reg, "kunden-werk", plan, {}, other, {"kunden": 12})
+        self.assertEqual(plan["kunden"], 12)
+        plan = {"kunden": 5}
+        W.yield_to_lead(self.reg, "kunden-werk", plan, {}, {**other, "pruefer": 8, "kontakt": 16}, {})
+        self.assertEqual(plan["kunden"], 1)
+        self.assertEqual(W.yield_to_lead(self.reg, "pruefer-werk", {"pruefer": 8}, {}, other, {}), 0)
+
+    def test_decide_owner_plan_reaches_lead_min(self):
+        sp = {"radar": 2, "radar-uk": 4, "radar-us": 6, "fmcsa-us": 2, "s2-ukfr": 2, "web-uk": 3, "web-fr": 3,
+              "kunden": 4, "pruefer": 8, "kontakt": 4}
+        sp.update({l["id"]: 0 for l in self.reg["lanes"] if l["id"] not in sp})
+        settings = {"slot_plan": sp, "slot_autopilot": {"on": True, "locks": {}}, "lead_mix": {"premium_pct": 100}}
+        res = W.decide(self.reg, "lead-werk", {"settings": settings, "rows": [], "db_bytes": int(5.4 * W.GB)})
+        self.assertGreaterEqual(sum(res["plan"].values()), W.LEAD_MIN_PREMIUM)
+        self.assertLessEqual(sum(res["plan"].values()) + 16, self.reg["total_slots"] - self.reg["reserve"])
+        kun = W.decide(self.reg, "kunden-werk", {"settings": settings, "rows": [], "db_bytes": int(5.4 * W.GB),
+                                                 "other": res["plan"]})
+        self.assertLessEqual(sum(kun["plan"].values()) + sum(res["plan"].values()) + 12,
+                             self.reg["total_slots"] - self.reg["reserve"])
+
+    def test_storage_brake_unchanged(self):
+        sp = {l["id"]: 0 for l in self.reg["lanes"]}
+        sp.update({"radar-us": 6, "radar-uk": 4, "radar": 2, "web-uk": 6, "web-fr": 6, "kunden": 4, "pruefer": 8})
+        settings = {"slot_plan": sp, "slot_autopilot": {"on": True, "locks": {}}}
+        res = W.decide(self.reg, "lead-werk", {"settings": settings, "rows": [], "db_bytes": int(6.1 * W.GB)})
+        self.assertLessEqual(sum(res["plan"].values()), W.BRAKE_LEAD_MAX)
+        res = W.decide(self.reg, "lead-werk", {"settings": settings, "rows": [], "db_bytes": int(7.6 * W.GB)})
+        self.assertEqual(sum(res["plan"].values()), 0)
+        self.assertEqual((W.BRAKE_LEAD_MAX, dict(W.BRAKE)["drossel"], dict(W.BRAKE)["stopp"]), (8, 6.0, 7.5))
