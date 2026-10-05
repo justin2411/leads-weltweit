@@ -50,7 +50,9 @@ const TEXT = {
 const STYLE =
   "body{font:16px/1.5 system-ui,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem;color:#222;background:#fff}" +
   "h1{margin:0 0 .75rem;font-size:1.5rem}p{margin:0 0 1.25rem}" +
-  "button{font:inherit;padding:.6rem 1.2rem;border:1px solid #222;border-radius:6px;background:#222;color:#fff;cursor:pointer}";
+  "button{display:block;width:100%;min-height:3.5rem;font:inherit;font-size:1.15rem;font-weight:600;padding:.9rem 1.2rem;" +
+  "border:1px solid #222;border-radius:8px;background:#222;color:#fff;cursor:pointer}" +
+  "button:focus-visible{outline:3px solid #2563eb;outline-offset:2px}";
 
 function esc(s: string) {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
