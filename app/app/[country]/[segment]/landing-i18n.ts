@@ -5,7 +5,9 @@
  * keine erfundenen Zahlen); Quellen und Signalarten entsprechen den Quellen, aus denen die Werke tatsächlich liefern.
  */
 export type LLang = "en" | "fr";
-export type Seg = "web-agencies" | "recruitment" | "accountants" | "insurance-brokers" | "financial-advisers";
+export type Seg = "web-agencies" | "recruitment" | "accountants" | "insurance-brokers" | "financial-advisers" | "marketing-agencies";
+/** Branchen mit eigenen Quellen/Beispielen; Marketing-/SEO-Agenturen (S12) nutzen die der Webagenturen (gleiche Leads). */
+type BaseSeg = Exclude<Seg, "marketing-agencies">;
 export type Cc = "UK" | "US" | "FR";
 
 /** Beispiel-Signal im Hero: Stadt (echte Stadt im Land), Datum, Quelle, Ereignis. */
@@ -52,7 +54,7 @@ export function project(cc: Cc, lat: number, lon: number): [number, number] {
 const W_UK = "Website check", W_FR = "Contrôle du site";
 
 /** 3–4 typische Signale je Branche und Land (Illustration, Datum Sept./Okt. 2026). */
-export const HERO_SIGNALS: Record<Seg, Record<Cc, HeroSig[]>> = {
+const HERO_BASE: Record<BaseSeg, Record<Cc, HeroSig[]>> = {
   "web-agencies": {
     UK: [
       { place: "Leeds", date: "3 Oct 2026", source: W_UK, event: "The homepage is not built for phones: it has no mobile viewport setting." },
@@ -154,10 +156,11 @@ export const HERO_SIGNALS: Record<Seg, Record<Cc, HeroSig[]>> = {
     ],
   },
 };
+export const HERO_SIGNALS: Record<Seg, Record<Cc, HeroSig[]>> = { ...HERO_BASE, "marketing-agencies": HERO_BASE["web-agencies"] };
 
 type SrcRow = [string, string, string];
 /** Quellen je Land und Branche („Checked every day“), ohne Flaggen. [Symbol, Name, Was wir lesen] */
-export const SOURCES: Record<Seg, Record<Cc, SrcRow[]>> = {
+const SOURCES_BASE: Record<BaseSeg, Record<Cc, SrcRow[]>> = {
   "web-agencies": {
     UK: [["globe", "Website checks", "Company homepages"], ["landmark", "Company registers", "Companies House"], ["doc", "Open business listings", "Phone, email, social pages"], ["lock", "Security certificates", "Every website we check"]],
     US: [["globe", "Website checks", "Company homepages"], ["doc", "Open business listings", "Phone, email, social pages"], ["landmark", "State business registers", "New York and Connecticut"], ["lock", "Security certificates", "Every website we check"]],
@@ -184,6 +187,7 @@ export const SOURCES: Record<Seg, Record<Cc, SrcRow[]>> = {
     FR: [["doc", "BODACC", "Créations et dirigeants"], ["landmark", "Registre SIRENE", "Données d'entreprise"], ["globe", "Sites des entreprises", "Téléphone et e-mail"]],
   },
 };
+export const SOURCES: Record<Seg, Record<Cc, SrcRow[]>> = { ...SOURCES_BASE, "marketing-agencies": SOURCES_BASE["web-agencies"] };
 
 /** Branchentexte der Methode: Schritte (Symbol, Titel, Text), Momente im Radar, Liste am Montag. */
 export type MethodText = {
@@ -232,9 +236,17 @@ const EN: Record<Seg, MethodText> = {
     moments: [["user", "A new company director"], ["building", "A newly formed company"], ["users", "A growing employer"]],
     mail: [["user", "New director"], ["building", "New company"], ["users", "Growing employer"]], tag: "New director",
   },
+  "marketing-agencies": {
+    steps: [["search", "We check the websites", "Every day we check company homepages {across}: missing sites, old software, pages that fail on phones, broken certificates."],
+      ["target", "We spot the gap", "No website or a weak one: hard to find, hard to trust. Each finding is recorded with the date we checked it."],
+      ["filter", "We filter and rate", "Only businesses you can reach by phone or email. Every lead is rated for freshness and clarity of the finding, weak ones are left out."],
+      ["inbox", "You get the list", "Every Monday: company, phone and email, the website finding, date, source, a sales tip and an opening line. Each lead goes to only one firm."]],
+    moments: [["globe", "No website at all"], ["calendar", "An outdated website"], ["lock", "A security warning"]],
+    mail: [["globe", "No website"], ["calendar", "Outdated website"], ["lock", "Security gap"]], tag: "Website finding",
+  },
 };
 
-const FR: Record<Seg, MethodText> = {
+const FR: Record<BaseSeg, MethodText> = {
   "web-agencies": {
     steps: [["search", "Nous vérifions les sites", "Chaque jour, nous vérifions les pages d'accueil des entreprises {across} : sites absents, logiciels anciens, pages inadaptées au mobile, certificats défaillants."],
       ["target", "Nous repérons le manque", "Pas de site, un site vieillissant ou en panne, un avertissement de sécurité. Chaque constat est enregistré avec sa date de vérification."],
@@ -277,7 +289,7 @@ const FR: Record<Seg, MethodText> = {
   },
 };
 
-export const METHOD: Record<LLang, Record<Seg, MethodText>> = { en: EN, fr: FR };
+export const METHOD: Record<LLang, Record<Seg, MethodText>> = { en: EN, fr: { ...FR, "marketing-agencies": FR["web-agencies"] } };
 
 /** Feste Texte der neuen Abschnitte (Rest kommt aus HOME[lang]). */
 export const LZ: Record<LLang, {
@@ -308,7 +320,7 @@ export const LZ: Record<LLang, {
 
 /** Branchenschlüssel der Seite (segKey) auf die Inhalte abbilden; unbekannte Branchen wie Neugründungen behandeln. */
 export function segOf(key: string): Seg {
-  return (["web-agencies", "recruitment", "accountants", "insurance-brokers", "financial-advisers"] as Seg[]).includes(key as Seg) ? key as Seg : "accountants";
+  return (["web-agencies", "recruitment", "accountants", "insurance-brokers", "financial-advisers", "marketing-agencies"] as Seg[]).includes(key as Seg) ? key as Seg : "accountants";
 }
 export function ccOf(c: string): Cc {
   return c === "US" || c === "FR" ? c : "UK";

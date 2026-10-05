@@ -37,6 +37,7 @@ SIGNAL = {
     "S4": ("newly registered and expanding businesses", "sociétés nouvellement créées"),
     "S5": ("newly registered companies", "sociétés nouvellement créées"),
     "S9": ("new and growing companies", "entreprises nouvelles et en croissance"),
+    "S12": ("local businesses {land} with no website or a weak one", "entreprises locales sans site web ou avec un site faible"),
 }
 
 

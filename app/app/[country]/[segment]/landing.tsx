@@ -51,6 +51,7 @@ import { PlanAgentLine } from "./plan-agent";
 import { WertBlock } from "./wert-block";
 import { wertBlockAn } from "@/lib/premium-wert";
 import { testAllowed } from "@/lib/test-scope";
+import { leadSegment } from "@/lib/lead-segment";
 
 
 const SHOW_SAMPLE_TILES = false;
@@ -198,8 +199,10 @@ function countrySamplesRaw(page: { segment_id: string; country: string }): Promi
 }
 
 async function countrySamplesFetch(page: { segment_id: string; country: string }, ck: string): Promise<Sample[]> {
+  // S12 (Marketing/SEO) zeigt Leads aus dem S2-Bestand (gleiche Firmen, lib/lead-segment.ts)
+  const ls = leadSegment(page.segment_id);
   const sel = "event_summary, event_date, source_name, signal_type, urgency, opener, company_id, observation_ids, premium, premium_score, watch_companies!inner(name, legal_form, website, website_checked_at, industry)";
-  const base = () => db().from("leads").select(sel).eq("segment_id", page.segment_id).eq("country", page.country)
+  const base = () => db().from("leads").select(sel).eq("segment_id", ls).eq("country", page.country)
     .in("status", ["sample", "new"]).order("event_date", { ascending: false });
   const ago = (d: number) => new Date(Date.now() - d * 864e5).toISOString().slice(0, 10);
   // Tage relativ zum neuesten Lead (Register liefern teils mit Verzug), damit auch ältere Tage zur Auswahl stehen
@@ -215,20 +218,20 @@ async function countrySamplesFetch(page: { segment_id: string; country: string }
     base().lte("event_date", ago(20)).limit(30),
     base().eq("urgency", "medium").limit(30),
     // Nur noch Premium (Inhaber 05.10.2026): Premium-Leads zuerst als Beispiele
-    db().from("leads").select(sel).eq("segment_id", page.segment_id).eq("country", page.country)
+    db().from("leads").select(sel).eq("segment_id", ls).eq("country", page.country)
       .in("status", ["sample", "new"]).gte("premium_score", 70).gte("event_date", ago(PREMIUM_FRESH_DAYS))
       .order("premium_score", { ascending: false }).limit(60),
-    ...(page.segment_id === "S2" ? [base().in("signal_type", WEB_SIGNALS.slice(1)).limit(60),
+    ...(ls === "S2" ? [base().in("signal_type", WEB_SIGNALS.slice(1)).limit(60),
       base().eq("signal_type", "no_website").ilike("source_name", "Overture%").limit(60)] : []),
   ])];
   const seen = new Set<string>();
   const all = res.flatMap((r) => (r.data ?? []) as any[]);
   // Webagenturen: Beispiele wie in der Probe (Website-Befunde), nicht Neugründungen aus Verkehrs- oder Firmenregistern
   // (ohne Verkehrsregister FMCSA: dort liefern wir für Webagenturen keine Proben)
-  const webOnly = page.segment_id === "S2"
+  const webOnly = ls === "S2"
     ? all.filter((l) => WEB_SIGNALS.includes(l.signal_type) && !/FMCSA/i.test(String(l.source_name))) : [];
   // Premium zuerst: reichen die frischen Premium-Leads für die Beispiele, nur sie; sonst wie bisher (Übergang)
-  const premiumOnly = all.filter((l) => isPremiumNow(l, Date.now()) && !(page.segment_id === "S2" && /FMCSA/i.test(String(l.source_name))));
+  const premiumOnly = all.filter((l) => isPremiumNow(l, Date.now()) && !(ls === "S2" && /FMCSA/i.test(String(l.source_name))));
   const rows = (premiumOnly.length >= 3 ? premiumOnly : webOnly.length >= 3 ? webOnly : all).filter((l) => {
     const k = `${l.company_id}|${l.signal_type}|${l.event_date}`;
     if (seen.has(k)) return false;
@@ -415,12 +418,12 @@ export async function Landing({ params, sp: search, rand }: { params: LandingPar
 
   // ---- Landingpage im Design der Lead-PDF (Inhaber 02.10.2026) ----
   const T2 = LANDING[wl];
-  const MAP = MAPS[`${page.segment_id}:${page.country}`];
+  const MAP = MAPS[`${leadSegment(page.segment_id)}:${page.country}`]; // S12: Karte der S2-Probe (gleiche Firmen)
   const cname = COUNTRY_NAME[page.country]?.[wl] ?? CW.land;
   const goldFrom = headline.search(/\(/);
   const goldWords = goldFrom >= 0 ? headline.slice(goldFrom).split(/\s+/).map((w) => w.toLowerCase().replace(/[.,!?]/g, "")) : [];
   const KIND: Record<string, string> = { no_website: "nosite", no_https: "insecure", website_outdated: "outdated", website_not_mobile: "outdated", website_broken: "outdated" };
-  const S2 = page.segment_id === "S2";
+  const S2 = leadSegment(page.segment_id) === "S2";
   const sigIcons = S2 ? ["nosite", "outdated", "insecure"] : ["target", "bolt", "lock"];
   const signals = ((v.signals ?? []) as { title: string; text: string }[]).slice(0, 3);
   const st = MAP?.stats;

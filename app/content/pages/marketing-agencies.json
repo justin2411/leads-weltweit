@@ -1,0 +1,48 @@
+{
+  "segment_id": "S12",
+  "en": {
+    "headline": "Businesses across {land} that are hard to find online (your next clients)",
+    "subheadline": "Every Monday, {firma} would receive local businesses across {land} with no website, an outdated site or security gaps, each with phone, email and a short sales briefing for marketing agencies.",
+    "cta_label": "Get 10 free leads from across {land}",
+    "signals": [
+      {
+        "title": "No website",
+        "text": "Reachable by phone and email, but no website of their own. Your pitch: a Google profile, local SEO and a first campaign."
+      },
+      {
+        "title": "Outdated or not mobile",
+        "text": "An old site or one that fails on phones. Your pitch: visibility that brings enquiries, not just traffic."
+      },
+      {
+        "title": "Security gaps",
+        "text": "Browsers warn visitors away. Your pitch: fix trust first, then ads and SEO that convert."
+      }
+    ],
+    "faq": [
+      {
+        "q": "Which companies would {firma} receive?",
+        "a": "Local businesses from across {land} with no website, an outdated or non-mobile site or security gaps. Each lead goes to only one firm."
+      },
+      {
+        "q": "Where does the data come from?",
+        "a": "From public business sources and the companies' own websites, which we check and combine ourselves. We do not use LinkedIn, Google Maps or other platforms whose terms forbid it."
+      },
+      {
+        "q": "Is there personal data in the leads?",
+        "a": "Only what the business publishes: company name, address, phone and email, plus the owner's name where public sources list it."
+      },
+      {
+        "q": "How does this fit a marketing or SEO agency?",
+        "a": "Every lead is a business that is hard to find or hard to trust online, so {firma} calls with a concrete reason: local SEO, a Google profile, ads or social media."
+      },
+      {
+        "q": "What does the free sample include?",
+        "a": "10 current leads from across {land}, with the same fields as the weekly delivery: a PDF briefing and a spreadsheet."
+      },
+      {
+        "q": "Is the sample really free?",
+        "a": "Yes. The sample is free and without obligation: no card, no subscription. It gives you a first impression of the leads and how well they fit {firma}."
+      }
+    ]
+  }
+}

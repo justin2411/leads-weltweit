@@ -533,7 +533,11 @@ def regional_sample(db, seg: str, country: str, region: str | None,
     # die danach als sample markiert und nie wieder ausgegeben werden – weder in einer anderen Probe noch in einer Lieferung.
     # Nur die neuesten Kandidaten laden (Index segment_id, country, status, event_date): alle 200.000 S2/US-Leads
     # seitenweise zu lesen lief in einen Statement-Timeout, Probe-Anfragen blieben unbeantwortet (Audit 02.10.2026)
-    params = {"segment_id": f"eq.{seg}", "country": f"eq.{country}", "status": "eq.new",
+    # Zielgruppen ohne eigene Leads lesen den Bestand einer anderen (S12 -> S2, lib/leadsegment.py); der Status
+    # (new -> sample/reserved/delivered) hält jeden Lead auch dann bei genau einem Käufer
+    from lib.leadsegment import lead_segment
+    lseg = lead_segment(seg)
+    params = {"segment_id": f"eq.{lseg}", "country": f"eq.{country}", "status": "eq.new",
               "select": "id,event_summary,event_date,source_name,source_url,source_date,urgency,"
                         "urgency_reason,opener,signal_type,company_id,observation_ids,qualitaet_score,"
                         "premium_score,premium,"
@@ -573,7 +577,7 @@ def regional_sample(db, seg: str, country: str, region: str | None,
         co = l["watch_companies"]
         if known is not None and n >= checked:
             block = sorted({r["company_id"] for r in rows[n:n + 300]})
-            known.update(contact_companies(db, website_optional=(seg == "S2"), only=block))
+            known.update(contact_companies(db, website_optional=(lseg == "S2"), only=block))
             checked = n + 300
         if known is not None and l["company_id"] not in known:
             continue

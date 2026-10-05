@@ -7,7 +7,7 @@
 import { wishesFor } from "./sample-wishes";
 
 export const SEG_KEY: Record<string, string> = {
-  S1: "recruitment", S2: "web-agencies", S4: "insurance-brokers", S5: "accountants", S9: "financial-advisers",
+  S1: "recruitment", S2: "web-agencies", S4: "insurance-brokers", S5: "accountants", S9: "financial-advisers", S12: "marketing-agencies",
 };
 
 type L = { en: string; fr: string };
@@ -41,6 +41,13 @@ const BY_SEG: Record<string, Partial<Q>> = {
   "web-agencies": {
     signals: { en: "Which website situations do you want to sell into?", fr: "Sur quelles situations web voulez-vous intervenir ?" },
     signalsHint: { en: "Tick what you offer: a first website, a redesign, a mobile fix, security or rescue of a broken site.", fr: "Cochez ce que vous proposez : premier site, refonte, version mobile, sécurité ou réparation d'un site en panne." },
+    industries: { en: "Which kinds of businesses are your best clients?", fr: "Quels types d'entreprises sont vos meilleurs clients ?" },
+    industriesPh: { en: "e.g. restaurants, trades, salons, dental practices", fr: "ex. restaurants, artisans, salons, cabinets dentaires" },
+    exclusionsPh: { en: "e.g. your existing clients, competitors, franchises", fr: "ex. vos clients actuels, concurrents, franchises" },
+  },
+  "marketing-agencies": {
+    signals: { en: "Which online gaps do you want to sell into?", fr: "Sur quels manques en ligne voulez-vous intervenir ?" },
+    signalsHint: { en: "Tick what fits your services: no website, an outdated or non-mobile site, security warnings or a broken site.", fr: "Cochez ce qui correspond à vos services : pas de site, site ancien ou non mobile, alertes de sécurité ou site en panne." },
     industries: { en: "Which kinds of businesses are your best clients?", fr: "Quels types d'entreprises sont vos meilleurs clients ?" },
     industriesPh: { en: "e.g. restaurants, trades, salons, dental practices", fr: "ex. restaurants, artisans, salons, cabinets dentaires" },
     exclusionsPh: { en: "e.g. your existing clients, competitors, franchises", fr: "ex. vos clients actuels, concurrents, franchises" },
