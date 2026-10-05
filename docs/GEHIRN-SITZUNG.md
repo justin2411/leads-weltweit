@@ -21,6 +21,8 @@ in `signalwerk.decisions`. Ziel: **möglichst viele zahlende Kunden und maximale
 - Prognose 30 Tage je Land: `python scripts/prognose.py [--json]` (ohne Antworten „noch keine Basis“).
 - „Vorrat leer“: Autopilot gibt leeren Linien 0 Plätze (`python scripts/werk_plan.py lead-werk --dry`); Abhilfe = Agent `quelle`.
 - A/B je Schritt: `python scripts/ab.py trichter | liste | vorschlag | anlegen … --starten` (siehe 4a).
+- Neue Zielgruppe/neues Land: `docs/ABLAUFPLAN-NEUE-ZIELGRUPPE.md`, Bereitschaft `python scripts/zielgruppe_bereit.py S5 US`;
+  alle Anleitungen, Skills und Skripte: `docs/WERKZEUGKASTEN.md`.
 - Gehirn-Routinen und Aufträge: `python scripts/brain_routines.py faellig | ergebnisse | auftrag …` (siehe 4b).
 - Meta-Review und Gehirn-Score: `python scripts/brain_meta.py lauf | score | vorrang | vorschlaege` (siehe 4c und
   „Selbstverbesserung“). Score täglich in `kpi_daily` (Land `ALL`, Kennzahl `gehirn_score`, Teile `gs_*`).
@@ -75,6 +77,10 @@ in `signalwerk.decisions`. Ziel: **möglichst viele zahlende Kunden und maximale
    (≥ 5 Läufe), erhöht den Takt wirksamer (höchstens 4×/Tag), schreibt Gelerntes und Fehlermuster als Wissen und
    höchstens 3 Verbesserungsvorschläge. Ohne Basis ändert es nichts. Zurücknehmen: `brain_meta.py zurueck <decision_id>`.
    Bei der Wahl der Auftragsart in 4b zuerst `python scripts/brain_meta.py vorrang` lesen.
+4d. **Neue Zielgruppe prüfen** (Inhaber 05.10.2026, Plan): sieht das Gehirn in einer anderen Branche oder einem anderen
+   Land größeren Bedarf, arbeitet es `docs/ABLAUFPLAN-NEUE-ZIELGRUPPE.md` ab (Werkzeuge: `docs/WERKZEUGKASTEN.md`).
+   Stand jederzeit: `python scripts/zielgruppe_bereit.py <Segment> <Land>`. Vorbereiten darf es alles selbst (nur
+   Vorschau); Versand und `config/fokus.yaml` erst nach dem Klick des Inhabers auf den Freigabe-Antrag.
 5. **Recherche:** 1–3 gezielte Fragen, die die nächste Entscheidung besser machen (z. B. „was zahlen Recruiter in UK
    für Lead-Listen“). Ergebnis kurz als `decisions` (type `note`, subject „Recherche: …“) mit Quellen-URLs.
 6. **Plan:** `docs/GEHIRN-PLAN.md` höchstens einmal am Tag per Pull Request aktualisieren (nicht jede Stunde).
