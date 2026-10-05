@@ -2,14 +2,14 @@
   "versand": {
     "aktiv": true,
     "notbremse_ab": "2026-10-03T06:52:00Z",
-    "tagesziel": 90,
+    "tagesziel": 140,
     "tagesziel_ab": "2026-10-03",
     "tagesziel_schritt": 15,
-    "tagesziel_max": 150,
+    "tagesziel_max": 140,
     "anbieter_tageslimit": 160,
-    "postfach_start": 60,
+    "postfach_start": 140,
     "postfach_schritt": 15,
-    "postfach_tageslimit": 150,
+    "postfach_tageslimit": 140,
     "gesamtgrenze": 5000
   },
   "proben": {
@@ -38,7 +38,7 @@
   "countries": {
     "US": {
       "allowed": true,
-      "daily_limit": 110
+      "daily_limit": 260
     },
     "UK": {
       "allowed": true,
@@ -153,7 +153,7 @@
         "never": false,
         "generic_only": false,
         "company_forms_only": false,
-        "daily_limit": 110,
+        "daily_limit": 260,
         "open_question": null
       },
       "UK": {
