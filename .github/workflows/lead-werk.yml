@@ -110,6 +110,47 @@ jobs:
           pip install -r requirements.txt
           python -c "import sys; sys.path.insert(0, 'scripts'); from extraktor.sources import us_dol_lca as l; l.build()"
 
+  uk-psc:
+    # Premium-Radar UK (Quellen-Scout 05.10.2026, scripts/lib/uk_psc_radar.py): Eigentümerwechsel laut Companies House
+    # (PSC-Snapshot, ≤ 30 Tage) bei UK-S2-Firmen im Bestand + heute bestätigter Website-Zustand -> Premium-Leads.
+    # Höchstens einmal am Tag (Merker im Zwischenspeicher je Tag, vor dem Abruf gesetzt): jede Registerdatei und jede
+    # Startseite höchstens 1×/Tag. Nur im Zeitplan-Lauf (nie doppelt neben Linien-Läufen). Sendet nichts.
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      EXTRAKTOR_CACHE_CH: out/cache/ch
+    steps:
+      - uses: actions/checkout@v4
+      - id: d
+        run: echo "tag=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+      - id: done
+        uses: actions/cache@v4
+        with:
+          path: out/cache/uk_psc_tag.txt
+          key: uk-psc-${{ steps.d.outputs.tag }}
+      - name: Schalter Lead-Suche (config/pipeline.yaml)
+        id: gate
+        if: steps.done.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p out/cache && echo "${{ steps.d.outputs.tag }}" > out/cache/uk_psc_tag.txt
+          if grep -Eq '^lead_suche:\s*true' config/pipeline.yaml; then
+            echo "an=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Lead-Suche pausiert (config/pipeline.yaml: lead_suche: false)" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.an == 'true'
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+        if: steps.gate.outputs.an == 'true'
+      - name: Eigentümerwechsel UK prüfen und speichern
+        if: steps.gate.outputs.an == 'true'
+        continue-on-error: true  # Merker bleibt gesetzt: kein zweiter Abruf am selben Tag
+        run: python scripts/uk_psc_radar.py --apply | tee -a "$GITHUB_STEP_SUMMARY"
+
   plan:
     # Belegungsplan (Inhaber 03.10.2026: Plätze je Linie im Leitstand einstellen): app/lib/werk-linien.json +
     # owner_settings.slot_plan -> Matrix. Ohne Einstellung/Datenbank: Standardbelegung (wie bisher fest eingetragen).

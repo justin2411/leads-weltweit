@@ -247,6 +247,7 @@ def details(numbers: set[str], log=print) -> dict[str, dict]:
             street = ", ".join(x for x in (row[ix["RegAddress.AddressLine1"]], row[ix["RegAddress.AddressLine2"]]) if x)
             out[row[ix["CompanyNumber"]]] = {
                 "legal_name": title_case(row[ix["CompanyName"]]), "street": title_case(street),
-                "city": title_case(row[ix["RegAddress.PostTown"]]), "zip": row[ix["RegAddress.PostCode"]].upper()}
+                "city": title_case(row[ix["RegAddress.PostTown"]]), "zip": row[ix["RegAddress.PostCode"]].upper(),
+                "incorporated_on": _date(row[ix["IncorporationDate"]])}
     log(f"UK: {len(out)} von {len(numbers)} Firmennummern aktiv im Register")
     return out
