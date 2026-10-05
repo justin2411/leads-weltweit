@@ -99,6 +99,9 @@ export const BUERO_CSS = `
   .buero .bu-saeulen{width:34px;height:30px}
   .buero .bu-ring{width:38px;height:38px}
 }
+.buero .bu-kopf{display:flex;gap:8px;margin-left:auto}
+.buero .bu-kopf a{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 12px;border:1px solid rgba(201,182,255,.45);border-radius:10px;color:#e3d9ff;text-decoration:none}
+.buero .bu-kopf a:hover,.buero .bu-kopf a:focus-visible{border-color:#c9b6ff}
 @media (prefers-reduced-motion:reduce){
   .buero .bu-t,.buero .bu-t::after,.buero .bu-bar i,.buero .bu-saeulen i{animation:none;transition:none}
   .buero .bu-t:hover,.buero .bu-t:focus-visible{transform:none}

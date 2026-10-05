@@ -78,6 +78,13 @@ in `signalwerk.decisions`. Ziel: **möglichst viele zahlende Kunden und maximale
 5. **Recherche:** 1–3 gezielte Fragen, die die nächste Entscheidung besser machen (z. B. „was zahlen Recruiter in UK
    für Lead-Listen“). Ergebnis kurz als `decisions` (type `note`, subject „Recherche: …“) mit Quellen-URLs.
 6. **Plan:** `docs/GEHIRN-PLAN.md` höchstens einmal am Tag per Pull Request aktualisieren (nicht jede Stunde).
+6b. **Strategie-Seite pflegen** (`/dashboard/strategie`, Inhaber 05.10.2026: „regelmäßig geupdatet“; Inhalte nur in der
+   Datenbank, nie im Repo): bei jeder Änderung der Lage `python scripts/strategie.py zusammenfassung set "<1 Satz>"
+   --stufe <1–4> "<Kernsatz>" … (3–5 Sätze, aktuelle Stufe der Skalier-Treppe aus `strategie-skalierung`)`;
+   Meilensteine `python scripts/strategie.py meilenstein set <key> --status geplant|erreicht|verfehlt [--ziel JJJJ-MM-TT]`
+   (messbare – erste Antwort, erste Probe aus Mail, Kunden 1/10/25/100 – setzt der Wachhund selbst);
+   Erreichtes als Rückblick `python scripts/strategie.py rueckblick add "<Titel ≤ 60>" --grund "<1 Satz>" --art
+   schritt|versand|premium|quelle|lehre [--zahl N]` – nur Zahlen und Titel, nie Lead-Inhalte.
 7. **Tagesnotiz** in `decisions` (type `daily_note`) nur in der ersten Sitzung nach 06:00 Uhr deutscher Zeit;
    montags zusätzlich Wochenbericht nach CLAUDE.md.
 8. **Wenig Text (Inhaber 04.10.2026, CLAUDE.md §8a):** jeder `decisions`-Eintrag bekommt `kurz_titel` (≤ 60 Zeichen,

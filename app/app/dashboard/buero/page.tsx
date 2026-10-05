@@ -93,7 +93,12 @@ export default async function Buero() {
   return (
     <div className="v2 buero">
       <style dangerouslySetInnerHTML={{ __html: BUERO_CSS }} />
-      <PageHead title="Büro" icon="buero" sub="Alle Bereiche auf einen Blick" crumbs={[["JARVIS", "/dashboard/jarvis"], ["Büro", ""]]} />
+      <PageHead title="Büro" icon="buero" sub="Alle Bereiche auf einen Blick" crumbs={[["JARVIS", "/dashboard/jarvis"], ["Büro", ""]]}>
+        <nav className="bu-kopf" aria-label="Schnellwege">
+          <Link href="/dashboard/strategie" title="Strategie, Plan und Rückblick"><Icon name="stern" size={16} />Strategie</Link>
+          <Link href="/dashboard/hilfe" title={canDispatch() ? "Hilfe · Sofortstart eingerichtet" : "Hilfe · Sofortstart einrichten"}><Icon name="frage" size={16} />Hilfe</Link>
+        </nav>
+      </PageHead>
       <div className="bu-grid">
         {gruppen.map((g) => (
           <section key={g.slug} className={`bu-g n${g.kacheln.length}`} aria-label={g.name} style={{ ["--ac" as string]: g.farbe }}>

@@ -140,12 +140,11 @@ export function bueroGruppen(s: Schnell | null, l: Langsam | null, e: Extras): G
         ton: !goals.length ? "grau" : best === goals.length ? "gruen" : "gelb" }),
     ] },
     { slug: "strategie", kacheln: [
+      k({ href: "/dashboard/strategie", titel: "Strategie", icon: "stern", wert: l?.mrr ?? null, nach: " €", unter: "von 25.000 €/Monat",
+        tip: "Strategie, Skalier-Treppe, Meilensteine, Rückblick", viz: l?.mrr == null ? null : { art: "ring", anteil: anteil(n(l.mrr), 25_000) }, ton: l?.mrr == null ? "grau" : "gruen", gold: true }),
       k({ href: "/dashboard/gehirn", titel: "Gehirn", icon: "gehirn", wert: null, text: countdown(next, e.now), bis: next,
         unter: "nächste Sitzung", tip: score ? `Lernschleife · Score ${n(score.value).toLocaleString("de-DE", { maximumFractionDigits: 1 })}` : "Lernschleife, Lehren, Prüffälle",
         viz: null, ton: s?.brain_enabled === false ? "gelb" : "gruen" }),
-      k({ href: "/dashboard/hilfe", titel: "Hilfe", icon: "frage", tip: "Hilfe und Einrichtung", wert: null, text: e.dispatch ? "bereit" : "offen",
-        unter: e.dispatch ? "Sofortstart eingerichtet" : "Sofortstart einrichten", viz: { art: "ampel", ton: e.dispatch ? "gruen" : "gelb" },
-        ton: e.dispatch ? "gruen" : "gelb" }),
     ] },
   ];
   const amp = new Map(bereicheBild(s).map((x) => [x.slug, x.ton]));

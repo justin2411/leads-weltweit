@@ -10,6 +10,8 @@ import { Lernschleife } from "./lernschleife";
 import { loadAb } from "@/lib/ab-data";
 import { loadAufbau } from "@/lib/gehirn-aufbau-data";
 import { Aufbau } from "./aufbau";
+import Link from "next/link";
+import { Icon } from "@/app/icons";
 
 type SP = Promise<Record<string, string | string[] | undefined>>;
 
@@ -33,6 +35,11 @@ export default async function Gehirn({ searchParams }: { searchParams: SP }) {
     loadAb().catch(() => null), loadAufbau()]);
   const one = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string).slice(0, 200) : null);
   return (<>
+    <nav className="gh-strat" aria-label="Strategie" style={{ display: "flex", justifyContent: "flex-end", margin: "0 0 8px" }}>
+      <Link href="/dashboard/strategie" style={{ display: "inline-flex", alignItems: "center", gap: 6, minHeight: 44, padding: "0 12px", border: "1px solid rgba(95,212,255,.35)", borderRadius: 10, textDecoration: "none", color: "#a8ecff" }}>
+        <Icon name="stern" size={16} />Strategie und Plan<Icon name="weiter" size={14} />
+      </Link>
+    </nav>
     <Aufbau d={aufbau} />
     <Lernschleife />
     <GehirnView now={new Date()} {...brain} tasks={tasks} workflows={CONFIG.workflows} env={envStatus()}
