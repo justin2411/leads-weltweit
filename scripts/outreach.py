@@ -449,17 +449,16 @@ def html_version(body: str, footer: str, lang: str, company: str | None = None,
                  region: str | None = None, url: str | None = None, segment: str | None = None,
                  plan: bool = False) -> str | None:
     """Gestaltete HTML-Alternative (ohne Bilder/Tracking). EMAIL_HTML=0 schaltet sie ab.
-    segment S2: kleine Ablauf-Grafik unter der Signatur (Inhaber 02.10.2026).
+    Keine Ablauf-Grafik unter der Signatur (Inhaber 05.10.2026: „überall raus“).
     plan: url ist die Buchungsseite (Nachfrage nach der Probe) -> Knopf „Choose your plan“."""
     if os.environ.get("EMAIL_HTML", "1") == "0":
         return None
-    from lib.html_email import cta_button, page_button, plan_button, process_strip, render
-    extra = process_strip(lang) if segment == "S2" else ""
+    from lib.html_email import cta_button, page_button, plan_button, render
     if url:  # Knopf zur persönlichen Landingpage; die Textzeile mit dem nackten Link entfällt im HTML
         body = "\n\n".join(p for p in re.split(r"\n\s*\n", body) if url not in p)
-        return render(body, footer, lang, plan_button(url, lang) if plan else page_button(url, lang), extra=extra)
+        return render(body, footer, lang, plan_button(url, lang) if plan else page_button(url, lang))
     cta = cta_button(company, region, lang) if company else ""
-    return render(body, footer, lang, cta, extra=extra)
+    return render(body, footer, lang, cta)
 
 
 def _plan_url(body: str) -> str | None:
