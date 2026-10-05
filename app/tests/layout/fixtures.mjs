@@ -251,7 +251,32 @@ export function makeFixtures(nowMs = Date.now()) {
       website_refresh: website, website_stats: webStats, web_scanner: { at: iso(0), since: iso(7 * 1440), rows: [{ s: "us/web-agencies", besuche: 12, views: 12, klick: 1, anfrage: 0, checkout: 0 }] }, dashboard_raw_stock: { at: iso(10), by_country: { US: 90000, UK: 40000, FR: 52000 } },
     },
     tables: {
-      dashboard_cache: [{ name: "zentrale", value: zLangsam, updated_at: iso(3) }, { name: "stock", value: stock, updated_at: iso(1) }, { name: "website", value: website, updated_at: iso(1) }],
+      dashboard_cache: [{ name: "zentrale", value: zLangsam, updated_at: iso(3) }, { name: "stock", value: stock, updated_at: iso(1) }, { name: "website", value: website, updated_at: iso(1) },
+        // Strategie-Seite: erfundene Testwerte (echte Inhalte nur in der Datenbank)
+        { name: "strategie", updated_at: iso(2), value: {
+          at: iso(2), seeds: { inbox: 3, spam: 1 }, sent_total: 1234, sent_erst: iso(9 * 1440), sent_24h: 210,
+          p30: { sent: 900, bounced: 30, complained: 0, antworten: 2, proben: 1 },
+          meilensteine: [
+            { key: "t_start", titel: "Testmeilenstein erreicht", grund: "Testgrund.", ziel_datum: null, status: "erreicht", erreicht_am: iso(9 * 1440), kennzahl: null, updated_by: "test" },
+            { key: "t_a", titel: "Testmeilenstein A mit etwas längerem Titel", grund: "Testgrund A.", ziel_datum: "2026-10-01", status: "verfehlt", erreicht_am: null, kennzahl: "antwort", updated_by: "auto" },
+            { key: "t_b", titel: "Testmeilenstein B", grund: "Testgrund B.", ziel_datum: "2099-11-06", status: "geplant", erreicht_am: null, kennzahl: "kunden:1", updated_by: "test" },
+            { key: "t_c", titel: "Testmeilenstein C", grund: null, ziel_datum: "2099-12-31", status: "geplant", erreicht_am: null, kennzahl: "kunden:10", updated_by: "test" },
+          ],
+          rueckblick: [
+            { tag: "2026-10-05", titel: "Testeintrag Meilenstein", grund: null, art: "meilenstein", zahl: null },
+            { tag: "2026-10-05", titel: "Testeintrag Versand mit Zahl", grund: "Testgrund in einem Satz.", art: "versand", zahl: 420 },
+            { tag: "2026-10-05", titel: "Testeintrag Lehre", grund: null, art: "lehre", zahl: null },
+            ...Array.from({ length: 6 }, (_, i) => ({ tag: "2026-10-04", titel: `Testschritt ${i + 1} mit einem recht langen Titel für die Breite`, grund: i % 2 ? "Testgrund." : null, art: "schritt", zahl: null })),
+            { tag: "2026-09-27", titel: "Testeintrag Premium", grund: null, art: "premium", zahl: 3007 },
+          ],
+          zaehler: { lehren: 17, entscheidungen: 111, tage: 7 },
+        } }],
+      brain_knowledge: [
+        { slug: "strategie-zusammenfassung", titel: "Teststrategie", quelle: "routine", status: "aktiv", updated_at: iso(5),
+          markdown: "Satz: Testsatz für die Strategie in einem Satz, etwas länger damit er umbricht.\nStufe: 1\n- Testkernsatz eins.\n- Testkernsatz zwei mit mehr Text.\n- Testkernsatz drei." },
+        { slug: "strategie-skalierung", titel: "Testskalierung", quelle: "inhaber", status: "aktiv", updated_at: iso(60),
+          markdown: "**Grundsatz:** Test.\n1. **Teststufe eins.** x\n   - Weiter wenn: Testbedingung eins.\n2. **Teststufe zwei.**\n3. **Teststufe drei.**\n4. **Teststufe vier.**" },
+      ],
       kpi_daily: kpi, experiment_stats: expStats, company_goals: goals, customers, subscriptions, inbound_replies: replies,
       agent_roles: roles,
       // Feedback-Werk (Büro Qualität): erfundene Testzahlen

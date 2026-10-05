@@ -23,7 +23,7 @@ export const PAGES = [
   // JARVIS-Zentrale (05.10.2026): Seitenfenster, Büro und Bereichs-Büros
   "/dashboard/jarvis?bereich=vertrieb", "/dashboard/jarvis?s=lern&p=messen", "/dashboard/jarvis?s=planke&p=notbremse", "/dashboard/jarvis?s=du",
   "/dashboard/buero", "/dashboard/buero/werke", "/dashboard/buero/bereich/vertrieb", "/dashboard/buero/bereich/qualitaet?p=rolle-test",
-  "/dashboard/buero/bereich/strategie", "/dashboard/buero/bereich/produktion", "/dashboard/kunden?tab=agenten",
+  "/dashboard/buero/bereich/strategie", "/dashboard/strategie", "/dashboard/buero/bereich/produktion", "/dashboard/kunden?tab=agenten",
 ];
 const TOL = 1;
 

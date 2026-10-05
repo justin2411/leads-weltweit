@@ -55,6 +55,7 @@ export default async function Buero() {
       { href: "/dashboard/recht", titel: "Recht", icon: "recht", zahl: l ? `${zahl(l.sperre.gesamt)} gesperrt` : "–", tip: "Kaltmail-Recht, Sperrliste" },
     ] },
     { slug: "strategie", kacheln: [
+      { href: "/dashboard/strategie", titel: "Strategie", icon: "stern", zahl: "Plan · Rückblick", tip: "Strategie, Skalier-Treppe, Meilensteine, Erfolge" },
       { href: "/dashboard/gehirn", titel: "Gehirn", icon: "gehirn", zahl: score ? `Score ${n(score.value).toLocaleString("de-DE", { maximumFractionDigits: 1 })}` : "–", tip: "Lernschleife, Lehren, Prüffälle" },
       { href: "/dashboard/hilfe", titel: "Hilfe", icon: "frage", zahl: "Anleitung", tip: "Hilfe und Einrichtung" },
     ] },
@@ -68,7 +69,8 @@ export default async function Buero() {
           const b = BEREICHE.find((x) => x.slug === g.slug)!;
           return (
             <section key={g.slug} className="bu-g" aria-label={b.name}>
-              <h2><Link href={`/dashboard/buero/bereich/${g.slug}`} title={`Büro ${b.name}: Team, Kohorten, Vorschläge`}>{b.name}<Icon name="weiter" size={14} /></Link></h2>
+              <h2><Link href={`/dashboard/buero/bereich/${g.slug}`} title={`Büro ${b.name}: Team, Kohorten, Vorschläge`}>{b.name}<Icon name="weiter" size={14} /></Link>
+                {g.slug === "strategie" && <Link href="/dashboard/strategie" className="bu-kl" title="Strategie, Plan und Rückblick">Strategie<Icon name="weiter" size={14} /></Link>}</h2>
               <div className="bu-k">
                 {g.kacheln.map((k) => (
                   <Link key={k.href} href={k.href} className="bu-t" title={k.tip}>
@@ -88,6 +90,8 @@ const BUERO_CSS = `
 .buero .bu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px;align-items:stretch}
 .buero .bu-g{margin:0;padding:8px 16px 16px;border:1px solid rgba(95,212,255,.18);border-radius:12px;background:rgba(9,24,48,.62);display:flex;flex-direction:column}
 .buero .bu-g h2{margin:0 0 8px;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.buero .bu-g h2{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.buero .bu-g h2 .bu-kl{padding:0 10px;border:1px solid rgba(95,212,255,.35);border-radius:999px;font-size:12px}
 .buero .bu-g h2 a{display:inline-flex;align-items:center;gap:6px;min-height:44px;color:#a8ecff;text-decoration:none}
 .buero .bu-k{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;align-items:stretch;flex:1}
 .buero .bu-t{display:flex;flex-direction:column;gap:4px;min-height:88px;padding:12px;border:1px solid rgba(95,212,255,.18);border-radius:10px;background:rgba(4,14,30,.6);color:#d9ecff;text-decoration:none}
