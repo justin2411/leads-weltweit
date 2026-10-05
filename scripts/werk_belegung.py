@@ -9,6 +9,12 @@ jedem fertigen Werk-Lauf, vom Wachhund und per Zeitplan angestoßen) startet jed
 nicht läuft. Liegt die Belegung (alle laufenden/wartenden Jobs) danach unter MIN_BELEGT, bekommen die neu
 gestarteten Linien mehr Teile (werk_plan.fill_minimum: Premium/Website US/UK/FR, Kunden, Prüfer, Linien mit Vorrat).
 
+Alle Werke (05.10.2026, nachts nur 11 Jobs): Kunden-, Kontakt- und Prüfer-Werk startet der Nachfüller ebenfalls, wenn
+sie brach liegen (Plätze im Plan, keine Pause, kein aktiver/wartender Lauf; Kunden-Werk nur mit kunden_suche).
+fill_minimum stockt nur NEU gestartete Lead-Linien auf; eine laufende Linie bekommt keinen zweiten Lauf (die
+Aufteilung --shard i/k gilt je Lauf, ein zweiter Lauf würde dieselben Teile bearbeiten). Fehlt danach noch etwas bis
+MIN_BELEGT, ist das Kunden-Werk der Puffer (Eingabe `teile`, bis max seiner Linie).
+
 Grenzen (nie gelockert): Plätze je Linie höchstens max, alle Jobs zusammen höchstens total_slots - reserve,
 Speicher-Bremse aus dem Belegungsplan (stopp = keine Lead-Linie), Schalter config/pipeline.yaml lead_suche und
 Pause im Dashboard (owner_settings.werke_paused „lead-werk“; nicht lesbar = nichts starten). Keine doppelte
@@ -165,6 +171,58 @@ def fill_plan(reg: dict, res: dict, stats: dict, busy_lanes: set[str], busy: int
     return start, {k: why.get(k, "") for k in start}
 
 
+# Weitere Werke (05.10.2026, Nacht 04:07 MESZ: nur 11 Jobs belegt, kunden/kontakt/pruefer lagen brach – GitHub löste
+# ihre Crons nicht aus und der Nachfüller kannte nur Linien des Lead-Werks). Je Werk: (Werk, Linie, Workflow).
+OTHER_WERKE = (("kunden-werk", "kunden", "kunden-werk.yml"), ("kontakt-werk", "kontakt", "kontakt-werk.yml"),
+               ("pruefer-werk", "pruefer", "pruefer-werk.yml"))
+TEILE_INPUT = {"kunden-werk"}  # Workflows mit Eingabe `teile` (Puffer für die Mindestbelegung)
+BUFFER = "kunden-werk"        # Lead-Linien laufen nie doppelt (Aufteilung --shard je Lauf) -> Puffer = Kunden-Werk
+
+
+def other_allowed(werk: str, settings: dict | None, pipeline_txt: str) -> tuple[bool, str]:
+    """Darf der Nachfüller dieses Werk starten? Pause im Dashboard (nicht lesbar = nein); Kunden-Werk zusätzlich
+    config/pipeline.yaml kunden_suche (ein Dispatch umgeht den Schalter im Workflow, darum hier)."""
+    if settings is None:
+        return False, "Pause-Schalter nicht lesbar – nicht gestartet"
+    if (settings.get("werke_paused") or {}).get(werk):
+        return False, "pausiert durch Inhaber"
+    if werk == "kunden-werk" and not re.search(r"^kunden_suche:\s*true", pipeline_txt or "", re.M):
+        return False, "Kunden-Suche aus (config/pipeline.yaml)"
+    return True, ""
+
+
+def other_plan(werke: list[dict], reg: dict, busy: int, lead_sum: int, min_belegt: int = W.MIN_BELEGT
+               ) -> tuple[dict[str, int], dict[str, str]]:
+    """Welche weiteren Werke jetzt starten. werke = [{werk, lane, plan, active, ok, why}] (plan = Plätze laut
+    werk_plan.decide). Gestartet wird ein Werk nur, wenn erlaubt, kein Lauf aktiv/wartend und plan > 0; nie über
+    total_slots - reserve. Liegt die Belegung danach unter min_belegt, bekommt der Puffer (Kunden-Werk, nur wenn er
+    ohnehin startet) zusätzliche Teile bis max seiner Linie. Rückgabe ({Werk: Teile}, {Werk: Grund})."""
+    lanes = {l["id"]: l for l in reg["lanes"]}
+    room = int(reg["total_slots"]) - int(reg["reserve"]) - busy - lead_sum
+    start, why = {}, {}
+    for w in werke:
+        k, n = w["werk"], int(w.get("plan") or 0)
+        if not w.get("ok"):
+            why[k] = w.get("why") or "nicht erlaubt"
+        elif w.get("active"):
+            why[k] = "läuft schon oder wartet"
+        elif n <= 0:
+            why[k] = "0 Plätze im Plan"
+        elif room <= 0:
+            why[k] = "keine freien Plätze"
+        else:
+            n = min(n, int(lanes[w["lane"]]["max"]), room)
+            start[k], room, why[k] = n, room - n, f"lag brach – {n} Teile laut Plan"
+    short = min_belegt - busy - lead_sum - sum(start.values())
+    if short > 0 and BUFFER in start:
+        lane = next(w["lane"] for w in werke if w["werk"] == BUFFER)
+        add = max(0, min(short, int(lanes[lane]["max"]) - start[BUFFER], room))
+        if add:
+            start[BUFFER] += add
+            why[BUFFER] += f" +{add} {W.MIN_WHY}"
+    return start, why
+
+
 def parse_teile(s: str | None) -> dict[str, int]:
     """„web-us:3,s2-ukfr:6“ -> {Linie: Teile}; ungültige Einträge fallen weg."""
     out: dict[str, int] = {}
@@ -282,6 +340,7 @@ def cmd_nachfuellen(gh: GitHub, apply: bool, ref: str = "main") -> int:
     busy = busy_jobs(runs, gh.jobs)
     if not ok:
         print(f"belegt {busy} – {why}")
+        fill_others(gh, reg, runs, busy, 0, apply, ref)  # Lead-Werk aus: die anderen Werke trotzdem nachfüllen
         return 0
     res = W.decide(reg, "lead-werk", inp)
     all_lanes = {l["id"] for l in reg["lanes"] if l["werk"] == "lead-werk"}
@@ -302,12 +361,42 @@ def cmd_nachfuellen(gh: GitHub, apply: bool, ref: str = "main") -> int:
                 gh.dispatch(LEAD_WF, {"linien": k, "teile": f"{k}:{n}"}, ref=ref)
             except Exception as e:  # noqa: BLE001
                 print(f"  Start {k} fehlgeschlagen: {e}")
+    ostart = fill_others(gh, reg, runs, busy, sum(start.values()), apply, ref)
     summ = os.environ.get("GITHUB_STEP_SUMMARY")
     if summ:
         with open(summ, "a", encoding="utf-8") as f:
             f.write(f"Nachfüller: belegt {busy}, gestartet " +
-                    (", ".join(f"{k} {n}" for k, n in start.items()) or "nichts") + "\n")
+                    (", ".join(f"{k} {n}" for k, n in {**start, **ostart}.items()) or "nichts") + "\n")
     return 0
+
+
+def fill_others(gh: GitHub, reg: dict, runs: list[dict], busy: int, lead_sum: int, apply: bool,
+                ref: str = "main") -> dict[str, int]:
+    """Kunden-, Kontakt- und Prüfer-Werk starten, wenn sie brach liegen (Plätze im Plan, keine Pause). Fehler
+    beim Lesen eines Werks = dieses Werk nicht starten."""
+    txt = (ROOT / "config" / "pipeline.yaml").read_text(encoding="utf-8")
+    werke = []
+    for werk, lane, wf in OTHER_WERKE:
+        w = {"werk": werk, "lane": lane, "wf": wf, "plan": 0, "active": True, "ok": False}
+        try:
+            inp = W.read_inputs(werk)
+            w["ok"], w["why"] = other_allowed(werk, read_pause(inp.get("db")), txt)
+            w["plan"] = int(W.decide(reg, werk, inp)["plan"].get(lane, 0))
+            w["active"] = any(r.get("status") in ACTIVE_RUN and
+                              (r.get("path", "").endswith(wf) or r.get("name") == werk) for r in runs)
+        except Exception as e:  # noqa: BLE001
+            w["ok"], w["why"] = False, f"nicht lesbar ({type(e).__name__})"
+        werke.append(w)
+    start, why = other_plan(werke, reg, busy, lead_sum)
+    for w in werke:
+        k = w["werk"]
+        print(f"  {k}: {'starte ' + str(start[k]) + ' Teile – ' if k in start else ''}{why.get(k, '')}")
+        if apply and k in start:
+            try:
+                gh.dispatch(w["wf"], {"teile": f"{w['lane']}:{start[k]}"} if k in TEILE_INPUT else {}, ref=ref)
+            except Exception as e:  # noqa: BLE001
+                print(f"  Start {k} fehlgeschlagen: {e}")
+    return start
 
 
 def main(argv: list[str] | None = None) -> int:

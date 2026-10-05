@@ -675,6 +675,21 @@ def run_counts(reg: dict, res: dict, teile: dict[str, int] | None, taken: set[st
     return out, note
 
 
+def buffer_teile(reg: dict, werk: str, res: dict, teile: dict[str, int]) -> None:
+    """Puffer-Teile vom Nachfüller (scripts/werk_belegung.py, Mindestbelegung 30) für Kunden-/Kontakt-/Prüfer-Werk:
+    erhöht nur (nie unter den Plan), höchstens max der Linie; nie für Linien, die der Inhaber auf 0 gesetzt oder
+    festgesetzt hat (in place)."""
+    locks = (res.get("autopilot") or {}).get("locks") or {}
+    for l in reg["lanes"]:
+        k = l["id"]
+        if l["werk"] != werk or k not in teile or k in locks or int(res["plan"].get(k, 0)) <= 0:
+            continue
+        n = min(int(teile[k]), int(l["max"]))
+        if n > res["plan"][k]:
+            res["reasons"][k] = f"{res['reasons'].get(k, '')} – {MIN_WHY}: {n} Teile (Nachfüller)"
+            res["plan"][k] = n
+
+
 def log_plan(db, werk: str, res: dict, db_bytes: int | None) -> None:
     """Gestartete Belegung protokollieren (JARVIS/Regler zeigen sie); Fehler stoppen nie den Lauf."""
     if db is None:
@@ -691,7 +706,8 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("werk", choices=["lead-werk", "kunden-werk", "pruefer-werk", "kontakt-werk"])
     ap.add_argument("--dry", action="store_true", help="nur anzeigen (nichts protokollieren, nichts quittieren)")
-    ap.add_argument("--teile", default=None, help="Linien-Lauf (Lead-Werk): „web-us:3,s2-ukfr:6“ – nur diese Linien")
+    ap.add_argument("--teile", default=None, help="Linien-Lauf (Lead-Werk): „web-us:3,s2-ukfr:6“ – nur diese Linien; andere Werke: "
+                         "„kunden:12“ = Puffer-Teile vom Nachfüller (nur mehr, nie über max)")
     ap.add_argument("--github", action="store_true",
                     help="Lead-Werk: Linien, die ein anderer aktiver Lauf belegt, auslassen (GitHub-API)")
     a = ap.parse_args(argv)
@@ -716,6 +732,10 @@ def main(argv: list[str] | None = None) -> int:
         run_plan, note = run_counts(reg, res, teile, taken)
         for k, v in note.items():
             print(f"  {k}: {v}")
+    if a.werk != "lead-werk" and a.teile:
+        import werk_belegung as B
+        buffer_teile(reg, a.werk, res, B.parse_teile(a.teile))
+        run_plan = res["plan"]
     db = inp.get("db")
     if db is not None and not a.dry and inp.get("settings") is not None:
         # Quittung (settings_ack): dieses Werk hat Belegungsplan und Autopilot-Schalter gelesen

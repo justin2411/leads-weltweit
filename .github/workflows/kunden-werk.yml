@@ -11,6 +11,11 @@ on:
   schedule:
     - cron: "41 */2 * * *"
   workflow_dispatch:
+    inputs:
+      teile:
+        description: "Puffer vom Nachfüller (Mindestbelegung 30), z. B. kunden:12 – nur mehr Teile, nie über max"
+        required: false
+        default: ""
 concurrency: { group: kunden-werk, cancel-in-progress: false }
 permissions:
   contents: read
@@ -116,7 +121,9 @@ jobs:
         with: { python-version: "3.11" }
       - run: pip install requests
       - id: p
-        run: python scripts/werk_plan.py kunden-werk
+        env:
+          TEILE: ${{ inputs.teile }}
+        run: python scripts/werk_plan.py kunden-werk ${TEILE:+--teile "$TEILE"}
 
   pruefen:
     needs: [pool, plan]

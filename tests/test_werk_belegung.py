@@ -189,5 +189,73 @@ class Workflows(unittest.TestCase):
         self.assertIn("kunden-pool-v10-", str(_wf("kunden-pool.yml")))
 
 
+class OtherWerke(unittest.TestCase):
+    """Nachfüller deckt alle Werke ab (05.10.2026: nachts lagen kunden/kontakt/pruefer brach, 11 Jobs belegt)."""
+    REG = W.load_lines()
+
+    def w(self, werk, lane, plan, active=False, ok=True, why=""):
+        return {"werk": werk, "lane": lane, "plan": plan, "active": active, "ok": ok, "why": why}
+
+    def test_brach_liegende_werke_starten_puffer_kunden(self):
+        werke = [self.w("kunden-werk", "kunden", 14), self.w("kontakt-werk", "kontakt", 6),
+                 self.w("pruefer-werk", "pruefer", 6)]
+        start, why = B.other_plan(werke, self.REG, busy=1, lead_sum=0)
+        self.assertEqual(start["kontakt-werk"], 6)
+        self.assertEqual(start["pruefer-werk"], 6)
+        self.assertEqual(start["kunden-werk"], 16)  # 14 + Puffer, nie über max 16
+        self.assertIn(W.MIN_WHY, why["kunden-werk"])
+
+    def test_puffer_nur_bis_mindestbelegung(self):
+        start, _ = B.other_plan([self.w("kunden-werk", "kunden", 4)], self.REG, busy=20, lead_sum=0)
+        self.assertEqual(start["kunden-werk"], 10)  # 20 + 10 = 30
+
+    def test_nie_doppelt_pause_null_plaetze(self):
+        werke = [self.w("kunden-werk", "kunden", 14, active=True),
+                 self.w("kontakt-werk", "kontakt", 6, ok=False, why="pausiert durch Inhaber"),
+                 self.w("pruefer-werk", "pruefer", 0)]
+        start, why = B.other_plan(werke, self.REG, busy=5, lead_sum=0)
+        self.assertEqual(start, {})
+        self.assertIn("läuft", why["kunden-werk"])
+        self.assertIn("pausiert", why["kontakt-werk"])
+        self.assertIn("0 Plätze", why["pruefer-werk"])
+
+    def test_nie_ueber_summe(self):
+        cap = self.REG["total_slots"] - self.REG["reserve"]
+        werke = [self.w("kunden-werk", "kunden", 14), self.w("kontakt-werk", "kontakt", 6)]
+        start, _ = B.other_plan(werke, self.REG, busy=cap - 8, lead_sum=0)
+        self.assertEqual(sum(start.values()), 8)
+
+    def test_lead_starts_zaehlen_mit(self):
+        start, _ = B.other_plan([self.w("kunden-werk", "kunden", 4)], self.REG, busy=10, lead_sum=20)
+        self.assertEqual(start["kunden-werk"], 4)  # 10 + 20 + 4 >= 30: kein Puffer
+
+    def test_allowed(self):
+        on = "lead_suche: true\nkunden_suche: true\n"
+        self.assertEqual(B.other_allowed("kunden-werk", {"werke_paused": {}}, on), (True, ""))
+        self.assertFalse(B.other_allowed("kunden-werk", None, on)[0])
+        self.assertFalse(B.other_allowed("kontakt-werk", {"werke_paused": {"kontakt-werk": "x"}}, on)[0])
+        self.assertFalse(B.other_allowed("kunden-werk", {"werke_paused": {}}, "kunden_suche: false\n")[0])
+        self.assertTrue(B.other_allowed("pruefer-werk", {"werke_paused": {}}, "kunden_suche: false\n")[0])
+
+    def test_buffer_teile_nur_mehr_nie_ueber_max_nie_bei_null(self):
+        r = {"plan": {"kunden": 4}, "reasons": {"kunden": "x"}, "autopilot": {"locks": {}}}
+        W.buffer_teile(self.REG, "kunden-werk", r, {"kunden": 40})
+        self.assertEqual(r["plan"]["kunden"], 16)
+        r = {"plan": {"kunden": 10}, "reasons": {}, "autopilot": {"locks": {}}}
+        W.buffer_teile(self.REG, "kunden-werk", r, {"kunden": 3})
+        self.assertEqual(r["plan"]["kunden"], 10)
+        r = {"plan": {"kunden": 0}, "reasons": {}, "autopilot": {"locks": {}}}
+        W.buffer_teile(self.REG, "kunden-werk", r, {"kunden": 12})
+        self.assertEqual(r["plan"]["kunden"], 0)
+        r = {"plan": {"kunden": 4}, "reasons": {}, "autopilot": {"locks": {"kunden": 4}}}
+        W.buffer_teile(self.REG, "kunden-werk", r, {"kunden": 12})
+        self.assertEqual(r["plan"]["kunden"], 4)
+
+    def test_kunden_workflow_reicht_teile_durch(self):
+        txt = (ROOT / ".github" / "workflows" / "kunden-werk.yml").read_text(encoding="utf-8")
+        self.assertIn("inputs.teile", txt)
+        self.assertIn('--teile "$TEILE"', txt)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,6 +1,6 @@
 # Nachfüller der Werke (Inhaber 05.10.2026: „Werke immer laufen lassen, mind. 30 gleichzeitig“).
 # Startet jede eingeplante Lead-Werk-Linie, die gerade nicht läuft, als eigenen Lauf (lead-werk.yml mit linien/teile)
-# und füllt bis 30 belegte Jobs auf (scripts/werk_belegung.py). Angestoßen von jedem fertigen Werk-Lauf (Job „weiter“),
+# startet brachliegende Kunden-, Kontakt- und Prüfer-Werke (Kunden-Werk = Puffer) und füllt bis 30 belegte Jobs auf (scripts/werk_belegung.py). Angestoßen von jedem fertigen Werk-Lauf (Job „weiter“),
 # vom Wachhund und alle 10 min per Zeitplan. Grenzen unverändert: max je Linie, total_slots - reserve, Speicher-Bremse,
 # lead_suche (config/pipeline.yaml), Pause im Dashboard. Sendet nie, startet nie den Versand, lädt keine Lead-Daten hoch.
 name: werk-nachfuellen
