@@ -5,8 +5,9 @@ import { DEFAULTS, InputError, merge, validateSlotPlan, type LaneRegistry, type 
 import {
   CARDS, LEAD_COUNTRIES, capHint, capOf, countriesOn, countryOf, countryOn, diff, draftFrom, fmtBerlin, fmtWhen, laneRoom, leadLanes, leadMax,
   leadTotal, maxAgeMatters, nextRun, presetChips, presetPlan, presets, prevRun, scalePlan, setCountry, setLane, status, switchPreview, toSettings,
-  validateValue, versandStopText, type Ack, type ReglerCtx,
+  premiumDefault, premiumShort, validateValue, versandStopText, type Ack, type ReglerCtx,
 } from "./regler.ts";
+import { undoValue } from "./regler-verlauf.ts";
 
 const reg: LaneRegistry = JSON.parse(readFileSync(new URL("./werk-linien.json", import.meta.url), "utf8"));
 const ctx: ReglerCtx = {
@@ -346,4 +347,30 @@ test("Autopilot: an/aus als Änderung, Sperren bleiben, Prüfung streng", () => 
   assert.throws(() => validateValue("slot_autopilot", { on: true, locks: { "web-us": 99 } }, ctx), InputError);
   assert.throws(() => validateValue("slot_autopilot", { on: true, locks: { unbekannt: 1 } }, ctx), InputError);
   assert.equal(draftFrom(DEFAULTS, ctx).autopilot, true);  // Inhaber 03.10.2026: Standard an
+});
+
+test("Premium-Proben: Soll je Land, Diff, Prüfung, Hinweis, Rückgängig", () => {
+  const c2: ReglerCtx = { ...ctx, proben: { ...ctx.proben, premium: { US: 10, UK: 2, FR: 1, andere: 0 } } };
+  assert.equal(premiumDefault("S2/US", c2), 10);
+  assert.equal(premiumDefault("S4/US", { ...c2, proben: { ...c2.proben, premium: { andere: 0 } } }), 0);
+  assert.equal(premiumDefault("S2/UK", ctx), 0); // ohne Konfiguration: 0
+  const saved = S({ sample_premium_targets: { "S2/UK": 3 } });
+  const d0 = draftFrom(saved, c2);
+  assert.deepEqual(d0.sample_premium_targets, { "S2/US": 10, "S2/UK": 3, "S2/FR": 1, "S4/US": 10 });
+  assert.deepEqual(diff(saved, d0, c2), []);
+  const d = structuredClone(d0);
+  d.sample_premium_targets["S2/US"] = 12;
+  const ch = diff(saved, d, c2);
+  assert.deepEqual(ch.map((c) => [c.card, c.key, c.part, c.text]), [["proben-vorrat", "sample_premium_targets", "premium:S2/US", "Premium S2/US 10 → 12"]]);
+  const next = toSettings(ch, saved, "2026-10-05T10:00:00.000Z");
+  assert.deepEqual(next.sample_premium_targets, { "S2/UK": 3, "S2/US": 12 }); // nur Geändertes + Gespeichertes
+  assert.deepEqual(validateValue("sample_premium_targets", next.sample_premium_targets, c2, saved), { "S2/UK": 3, "S2/US": 12 });
+  assert.throws(() => validateValue("sample_premium_targets", { "S2/US": 101 }, c2, saved), InputError);
+  assert.throws(() => validateValue("sample_premium_targets", { "S9/XX": 1 }, c2, saved), /Seite/);
+  assert.ok(CARDS.find((c) => c.key === "proben-vorrat")!.keys.includes("sample_premium_targets"));
+  // gelber Hinweis: Soll × 10 > frei
+  assert.equal(premiumShort(2, 317), false);
+  assert.equal(premiumShort(32, 317), true);
+  assert.equal(premiumShort(1, null), false);
+  assert.deepEqual(undoValue("sample_premium_targets", { "S2/UK": 3 }, { "S2/UK": 3, "S2/US": 12 }, { "S2/UK": 3, "S2/US": 12, "S2/FR": 0 }, "x"), { "S2/UK": 3, "S2/FR": 0 });
 });

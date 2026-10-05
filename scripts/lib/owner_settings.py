@@ -20,6 +20,8 @@ DEFAULTS = {
     "followup_enabled": True,
     "followup_days": None,
     "sample_targets": {},
+    # Premium-Proben je Seite ({"S2/US": 10}, Inhaber 05.10.2026): davon Proben mit 10/10 Premium-Leads
+    "sample_premium_targets": {},
     "sample_max_age_hours": None,
     "buyer_countries_off": [],
     # Werke an/aus per Klick (Inhaber 03.10.2026: „alles direkt per click an und ausschalten können jedes werk“):
@@ -136,6 +138,12 @@ def _clamp(v, lo: int, hi: int, default):
 
 def sample_target(default: int, overrides: dict, segment: str, country: str) -> int:
     """Soll-Bestand einer Seite: Wert aus dem Dashboard (0–100), sonst config/proben.yaml."""
+    return _clamp((overrides or {}).get(f"{segment}/{country}"), 0, MAX_SAMPLE_TARGET, default)
+
+
+def premium_target(default: int, overrides: dict, segment: str, country: str) -> int:
+    """Premium-Soll einer Seite (Proben mit 10/10 Premium-Leads): Wert aus dem Dashboard (0–100), sonst
+    config/proben.yaml (premium_<land>, sonst premium_andere)."""
     return _clamp((overrides or {}).get(f"{segment}/{country}"), 0, MAX_SAMPLE_TARGET, default)
 
 

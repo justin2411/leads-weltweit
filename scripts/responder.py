@@ -509,14 +509,17 @@ def merge_wish_extra(extra: list[dict], rows: list[dict], exclude_companies: set
 
 def regional_sample(db, seg: str, country: str, region: str | None,
                     wish: list[str] | None = None, mark: bool = True, picked_out: list | None = None,
-                    exclude_companies: set[str] | None = None, gate_context: str = "probe"
-                    ) -> tuple[list[tuple[str, bytes]], bool]:
+                    exclude_companies: set[str] | None = None, gate_context: str = "probe",
+                    premium_only: bool = False) -> tuple[list[tuple[str, bytes]], bool]:
     """10 vollständige Leads aus dem ganzen Land (Inhaber 27.09.2026). (Dateien, True) – sonst ([], False).
 
     wish: Signal-Schlüssel aus dem Probe-Formular (lib/wishes.py). Passende vollständige Leads kommen zuerst,
     aufgefüllt mit anderen vollständigen Leads der Branche; nie unvollständige.
     picked_out: bekommt die 10 gewählten Leads (Proben-Vorrat reserviert sie selbst, mark=False).
-    exclude_companies: Firmen, die schon in einer vorbereiteten Probe stehen (eine Firma nie in zwei Proben)."""
+    exclude_companies: Firmen, die schon in einer vorbereiteten Probe stehen (eine Firma nie in zwei Proben).
+    premium_only: Premium-Probe (Proben-Vorrat, Inhaber 05.10.2026): nur Leads, die heute Premium sind
+    (lib/premium.tier_now) – gibt es keine 10, keine Probe (nie mit Standard auffüllen). Alle übrigen Prüfungen
+    (Vollständigkeit, eine Firma je Probe, Drei-Stufen-Freigabe) bleiben unverändert."""
     from deliveries import REQUIRE_CONTACT, _lang, contact_companies, enrich, to_csv
     from lib.regions import area_of, lead_matches
     from lib.wishes import prefer
@@ -533,6 +536,12 @@ def regional_sample(db, seg: str, country: str, region: str | None,
               "order": "event_date.desc,id"}
     # Speicher (docs/BAUKASTEN-MASTER.md): ist für Zielgruppe+Land einer gesetzt (pool_routes), kommen die Kandidaten
     # NUR aus ihm – reicht er nicht für 10 verschiedene Firmen, gibt es keine Probe (kein Ausweichen, Tagescheck meldet)
+    if premium_only:  # nur Kandidaten, die Premium sein können (≥ 70 Punkte, Ereignis ≤ 14 Tage + 1 Tag Zeitzone)
+        import datetime as _dt
+        from lib.premium import PREMIUM_MAX_AGE, PREMIUM_MIN
+        params = {**params, "premium_score": f"gte.{PREMIUM_MIN}",
+                  "event_date": f"gte.{(_dt.date.today() - _dt.timedelta(days=PREMIUM_MAX_AGE + 1)).isoformat()}"}
+        wish = None  # Premium-Proben: die besten Leads allgemein
     from lib.pools import pool_for, restrict, strip
     params = restrict(params, pool_for(db, seg, country))
     from lib.feedback import load_weights
@@ -540,6 +549,9 @@ def regional_sample(db, seg: str, country: str, region: str | None,
     rows = best_first(with_checked(db, params, strip(_newest(db, params, SAMPLE_POOL))), fbw)
     if exclude_companies:
         rows = [r for r in rows if r.get("company_id") not in exclude_companies]
+    if premium_only:
+        from lib.premium import tier_now
+        rows = [r for r in rows if tier_now(r) == "premium"]
     if wish:
         from lib.wishes import signal_types
         types = signal_types(wish)

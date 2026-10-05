@@ -16,7 +16,7 @@ export type Entry = { id: number; at: string; key: SettingKey; texts: string[]; 
 
 const LABEL: Record<SettingKey, string> = {
   send_paused: "Versand", send_countries_off: "Versand-Länder", send_country_limits: "Mails pro Tag", followup_enabled: "Nachfassmails",
-  followup_days: "Nachfass-Tage", sample_targets: "Proben-Soll", sample_max_age_hours: "Proben-Verfall", buyer_countries_off: "Käufer-Länder",
+  followup_days: "Nachfass-Tage", sample_targets: "Proben-Soll", sample_premium_targets: "Premium-Proben", sample_max_age_hours: "Proben-Verfall", buyer_countries_off: "Käufer-Länder",
   werke_paused: "Werke an/aus", slot_plan: "Plätze", slot_autopilot: "Autopilot", dismissed_tips: "Ausgeblendete Hinweise",
   llm_budget_eur: "API-Grenze",
   website_autofix: "Website Auto-Fix", website_ignored: "Ausgeblendete Website-Funde",
@@ -55,7 +55,7 @@ export function undoValue(key: SettingKey, oldV: unknown, newV: unknown, cur: un
     }
     return out;
   }
-  if (key === "sample_targets") {
+  if (key === "sample_targets" || key === "sample_premium_targets") {
     const o = rec(oldV), n = rec(newV), out = { ...rec(cur) };
     for (const k of new Set([...Object.keys(o), ...Object.keys(n)])) {
       if (o[k] === n[k]) continue;

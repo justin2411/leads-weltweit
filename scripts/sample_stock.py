@@ -79,6 +79,23 @@ def targets(pages: list[dict], cfg: dict, focus: list[tuple[str, str]],
     return out
 
 
+def premium_targets(pages: list[dict], cfg: dict, overrides: dict | None = None) -> dict[tuple[str, str], int]:
+    """Premium-Soll je (Segment, Land) der Live-Seiten: so viele fertige Proben mit 10/10 Premium-Leads (Inhaber
+    05.10.2026). `overrides` = Regler ({"S2/US": 10}), sonst config/proben.yaml premium_<land> bzw. premium_andere."""
+    from lib.owner_settings import premium_target
+    out: dict[tuple[str, str], int] = {}
+    for p in pages:
+        key = (p["segment_id"], p["country"])
+        default = cfg.get(f"premium_{p['country'].lower()}", cfg.get("premium_andere", 0))
+        out[key] = premium_target(default, overrides or {}, *key)
+    return out
+
+
+def is_premium_sample(row: dict) -> bool:
+    """Premium-Probe = alle 10 Leads heute Premium (premium_n, beim Bauen und bei jedem Lauf neu gezählt)."""
+    return int(row.get("premium_n") or 0) >= 10
+
+
 def wish_keys(slug: str, text: str | None = None) -> list[str]:
     """Wunsch-Schlüssel des Formulars für diese Seite (gleiche Quelle wie das Formular: sample-wishes.ts)."""
     if text is None:
@@ -191,13 +208,15 @@ def build_payload(seg: str, country: str, files: list[tuple[str, bytes]], abx=No
 
 
 def build_one(db, seg: str, country: str, wish: list[str], exclude: set[str], hours: int, apply: bool,
-              log=print) -> dict | None:
-    """Eine Probe bauen, hochladen und ihre 10 Leads reservieren. None, wenn keine 10 vollständigen Leads."""
+              log=print, premium_only: bool = False) -> dict | None:
+    """Eine Probe bauen, hochladen und ihre 10 Leads reservieren. None, wenn keine 10 vollständigen Leads.
+    premium_only: Premium-Probe – nur Leads, die heute Premium sind; gibt es keine 10, keine Probe (nichts aufgefüllt)."""
     from lib.leadreport import SAMPLE_SIZE
     from responder import regional_sample
     picked: list[dict] = []
     files, _ = regional_sample(db, seg, country, None, wish=wish or None, mark=False, picked_out=picked,
-                               exclude_companies=exclude, gate_context="vorrat")
+                               exclude_companies=exclude, gate_context="vorrat",
+                               **({"premium_only": True} if premium_only else {}))
     if files and not any(n.endswith(".pdf") for n, _ in files):
         # ohne Lead-Report (PDF) keine fertige Probe – die Mail verspricht ihn (Leads bleiben frei)
         raise RuntimeError("PDF-Report nicht erstellt")
@@ -205,6 +224,9 @@ def build_one(db, seg: str, country: str, wish: list[str], exclude: set[str], ho
     cos = [l["company_id"] for l in picked]
     if not files or len(set(ids)) != SAMPLE_SIZE or len(set(cos)) != SAMPLE_SIZE:
         return None
+    from lib import premium
+    if premium_only and premium.count(picked) != SAMPLE_SIZE:
+        return None  # Sicherheitsnetz: eine Premium-Probe hat genau 10 Premium-Leads (nichts reserviert)
     from lib import ab as ablib
     from lib import feedback
     fb = feedback.create_link(db, "probe", ids, country, seg) if apply else None
@@ -212,7 +234,6 @@ def build_one(db, seg: str, country: str, wish: list[str], exclude: set[str], ho
     if not payload:
         return None
     dates = sorted(str(l.get("event_date") or "")[:10] for l in picked if l.get("event_date"))
-    from lib import premium
     prem = premium.count(picked)  # Inhaber 05.10.2026: nur Premium – Standard füllt nur auf (Übergang)
     row = {"premium_n": prem, "segment_id": seg, "country": country, "lang": payload["lang"], "wish": wish,
            "wish_match": wish_match(db, seg, picked), "signal_types": sorted({l.get("signal_type") or "" for l in picked} - {""}),
@@ -235,7 +256,7 @@ def build_one(db, seg: str, country: str, wish: list[str], exclude: set[str], ho
     # alle 10 Leads haben eben die Drei-Stufen-Freigabe bestanden (regional_sample): Zeitpunkt an der Probe merken
     db.rpc("mark_sample_stock_checked", {"p_stock": row["id"]})
     exclude.update(cos)
-    log(f"  gebaut: {seg}/{country} Wunsch {','.join(wish) or '-'} Score {row['score']} Premium {prem}/10 ({path})")
+    log(f"  gebaut{' Premium' if premium_only else ''}: {seg}/{country} Wunsch {','.join(wish) or '-'} Score {row['score']} Premium {prem}/10 ({path})")
     return row
 
 
@@ -283,6 +304,36 @@ def verify_stock(db, apply: bool, log=print, max_hours: int = RECHECK_HOURS, fet
         from lib.run_stats import record
         record(db, "freigabe", [{**x, "extra": {**x["extra"], "kontext": "vorrat-nachpruefung"}}
                                 for x in G.stats_rows(res["verdicts"])], None, log)
+    return res
+
+
+def refresh_premium_n(db, apply: bool, log=print, today: dt.date | None = None) -> dict:
+    """premium_n aller fertigen Proben neu zählen (Stufe heute, lib/premium.tier_now): trägt fehlende Werte nach
+    (Proben von vor der Premium-Bewertung) und stuft Proben herab, deren Ereignisse älter als 14 Tage wurden.
+    Ändert nur die Zahl – keine Probe wird verworfen, kein Lead freigegeben."""
+    from lib import premium
+    rows = stock_rows(db, "ready")
+    ids = sorted({i for r in rows for i in (r.get("lead_ids") or [])})
+    leads: dict[str, dict] = {}
+    for i in range(0, len(ids), 150):
+        part = ids[i:i + 150]
+        for l in db.select("leads", {"id": f"in.({','.join(part)})", "select": "id,premium,event_date"}) or []:
+            leads[l["id"]] = l
+    res = {"nachgetragen": 0, "geaendert": 0}
+    for r in rows:
+        got = [leads[i] for i in (r.get("lead_ids") or []) if i in leads]
+        if len(got) != len(r.get("lead_ids") or []):
+            continue  # Leads nicht lesbar: alten Wert lassen
+        n = premium.count(got, today)
+        old = r.get("premium_n")
+        if old is not None and int(old) == n:
+            continue
+        res["nachgetragen" if old is None else "geaendert"] += 1
+        r["premium_n"] = n
+        if apply:
+            db.update("sample_stock", {"id": r["id"]}, {"premium_n": n})
+    if res["nachgetragen"] or res["geaendert"]:
+        log(f"Premium-Zahl fertiger Proben: {res['nachgetragen']} nachgetragen, {res['geaendert']} aktualisiert")
     return res
 
 
@@ -340,7 +391,7 @@ def run(db, apply: bool, log=print) -> dict:
         log(f"proben-vorrat: pausiert durch Inhaber (seit {owner_paused(db, 'proben-vorrat', owner)}) – baut und prüft nichts")
         return {"built": 0, "missing": {}, "summary": {}, "paused": True}
     if apply:  # Quittung fürs Dashboard: Soll und Verfall gelesen und angewandt
-        ack(db, "proben-vorrat", ["sample_targets", "sample_max_age_hours"], owner)
+        ack(db, "proben-vorrat", ["sample_targets", "sample_premium_targets", "sample_max_age_hours"], owner)
     cfg = settings()
     cfg["max_alter_stunden"] = max_age_hours(cfg["max_alter_stunden"], owner["sample_max_age_hours"])
     t0 = time.monotonic()
@@ -354,25 +405,43 @@ def run(db, apply: bool, log=print) -> dict:
     v = verify_stock(db, apply, log)
     if v["geprueft"]:
         log(f"Freigabe fertiger Proben: {v['geprueft']} geprüft, {v['bestanden']} bestanden, {v['verworfen']} verworfen")
+    refresh_premium_n(db, apply, log)
     pages = live_pages(db)
     slug_of = {}
     for p in pages:  # Wunsch-Schlüssel stehen unter dem englischen Seitennamen (FR-Seiten: gleiche Branche)
         if p["country"] != "FR" or p["segment_id"] not in slug_of:
             slug_of[p["segment_id"]] = p["slug"]
     want = targets(pages, cfg, focus_pairs(), owner["sample_targets"])
+    want_prem = premium_targets(pages, cfg, owner.get("sample_premium_targets"))
+    # Premium-Proben gehören zum Vorrat („davon Premium“); ist das Premium-Soll größer, wächst der Vorrat mit
+    want = {k: max(t, want_prem.get(k, 0)) for k, t in want.items()}
     ready = stock_rows(db, "ready,claimed")
     have = {k: sum(r["segment_id"] == k[0] and r["country"] == k[1] and r["status"] == "ready" for r in ready)
             for k in want}
-    built, missing, prem_built = {}, {}, {}
+    have_prem = {k: sum(r["segment_id"] == k[0] and r["country"] == k[1] and r["status"] == "ready"
+                        and is_premium_sample(r) for r in ready) for k in want}
+    built, missing, prem_built, prem_samples = {}, {}, {}, {}
     for (seg, cc), target in want.items():
         exclude = {c for r in ready if r["segment_id"] == seg and r["country"] == cc for c in (r["company_ids"] or [])}
+        prem_open = True  # keine 10 freien Premium-Leads mehr -> in diesem Lauf normale Proben
         for wish in plan(have[(seg, cc)], target, wish_keys(slug_of.get(seg, ""))):
             if (time.monotonic() - t0) / 60 > cfg["laufzeit_minuten"]:
                 log("Laufzeit erreicht – Rest im nächsten Lauf")
                 missing[(seg, cc)] = missing.get((seg, cc), 0) + 1
                 continue
+            row = None
+            if prem_open and have_prem[(seg, cc)] + prem_samples.get((seg, cc), 0) < want_prem.get((seg, cc), 0):
+                try:
+                    row = build_one(db, seg, cc, [], exclude, cfg["max_alter_stunden"], apply, log, premium_only=True)
+                except Exception as exc:  # noqa: BLE001
+                    log(f"  FEHLER Premium {seg}/{cc}: {type(exc).__name__}: {str(exc)[:200]}")
+                if row is None:
+                    prem_open = False
+                    log(f"  {seg}/{cc}: keine 10 freien Premium-Leads – normale Probe")
+                else:
+                    prem_samples[(seg, cc)] = prem_samples.get((seg, cc), 0) + 1
             try:
-                row = build_one(db, seg, cc, wish, exclude, cfg["max_alter_stunden"], apply, log)
+                row = row or build_one(db, seg, cc, wish, exclude, cfg["max_alter_stunden"], apply, log)
             except Exception as exc:  # noqa: BLE001 – eine Zielgruppe darf die anderen nicht aufhalten
                 log(f"  FEHLER {seg}/{cc}: {type(exc).__name__}: {str(exc)[:200]}")
                 row = None
@@ -382,10 +451,15 @@ def run(db, apply: bool, log=print) -> dict:
                 break
             built[(seg, cc)] = built.get((seg, cc), 0) + 1
             prem_built[(seg, cc)] = prem_built.get((seg, cc), 0) + int(row.get("premium_n") or 0)
+    need = {k: max(0, want_prem.get(k, 0) - have_prem[k] - prem_samples.get(k, 0)) for k in want}
     swapped = swap_for_premium(db, list(want), apply, log,
                                time_left=lambda: (time.monotonic() - t0) / 60 <= cfg["laufzeit_minuten"],
-                               hours=cfg["max_alter_stunden"])
+                               hours=cfg["max_alter_stunden"], need=need)
     summary = {f"{s}/{c}": {"soll": t, "vorher": have[(s, c)], "neu": built.get((s, c), 0),
+                            "premium_soll": want_prem.get((s, c), 0),
+                            "premium_bereit": have_prem[(s, c)] + prem_samples.get((s, c), 0)
+                            + swapped.get(f"{s}/{c}", 0),
+                            "premium_neu": prem_samples.get((s, c), 0),
                             "premium_leads_neu": prem_built.get((s, c), 0),
                             "premium_getauscht": swapped.get(f"{s}/{c}", 0)} for (s, c), t in want.items()}
     short = premium_short(summary, built)
@@ -398,13 +472,11 @@ def run(db, apply: bool, log=print) -> dict:
     return {"built": sum(built.values()), "missing": missing, "summary": summary, "premium_zu_klein": short}
 
 
-# Premium-Austausch (Gehirn 05.10.2026): S2-Proben verfallen nie nach Alter, der Vorrat war mit 110 Proben von vor
-# der Premium-Bewertung voll (premium_n leer) – neue Premium-Proben entstanden nie. Je Lauf höchstens so viele alte
-# Proben ersetzen: erst eine neue Probe bauen (volle Drei-Stufen-Freigabe), nur wenn sie mehr Premium-Leads hat,
-# die alte verwerfen (Leads wieder frei, nichts gelöscht). Sonst die neue verwerfen.
-# Gehirn 05.10.2026 (d): Ein Fehlschlag sperrt nur diesen Wunsch für den Lauf, nicht das ganze Land. Vorher brach
-# der Austausch beim ersten Wunsch ohne Premium-Nachschub ab (US „not_mobile“: 0 Premium-Firmen) – die
-# „no_website“-Proben mit ~2.600 freien Premium-Firmen kamen nie dran (Stand 05.10.: 1 von 50 US-Proben 10/10).
+# Premium-Austausch (Gehirn 05.10.2026, begrenzt durch das Premium-Soll seit Inhaber 05.10.2026): S2-Proben verfallen
+# nie nach Alter – ist der Vorrat voll, entstehen Premium-Proben nur, indem eine normale Probe ersetzt wird. Erst eine
+# neue Premium-Probe bauen (volle Drei-Stufen-Freigabe, 10/10 Premium), dann die schwächste normale Probe verwerfen
+# (Leads wieder frei, nichts gelöscht). Nur bis zum Premium-Soll je Seite (`need`) – vorher ersetzte der Austausch
+# jede normale Probe und verbrauchte freie Premium-Leads, die Lieferungen und Mail-Tests (Beleg-Einstieg) brauchen.
 PREMIUM_SWAP_PER_RUN = 8
 
 
@@ -418,47 +490,42 @@ def premium_supply(db) -> dict[tuple[str, str], int]:
 
 
 def swap_for_premium(db, pairs, apply: bool, log=print, time_left=lambda: True, hours: int = 48,
-                     limit: int = PREMIUM_SWAP_PER_RUN) -> dict[str, int]:
-    """Alte Proben mit weniger als 10 Premium-Leads durch bessere ersetzen, solange freie Premium-Firmen da sind."""
+                     limit: int = PREMIUM_SWAP_PER_RUN, need: dict | None = None) -> dict[str, int]:
+    """Normale Proben durch Premium-Proben ersetzen, bis je Seite das Premium-Soll erreicht ist (`need` = fehlende
+    Premium-Proben je (Segment, Land)). Ersetzt wird zuerst die Probe ohne Wunsch mit den wenigsten Premium-Leads."""
+    need = {tuple(k): int(v) for k, v in (need or {}).items() if int(v) > 0}
+    if not need:
+        return {}
     supply = premium_supply(db)
     ready = stock_rows(db, "ready")
     out: dict[str, int] = {}
     left = limit
     # größter Premium-Nachschub zuerst: das knappe Bau-Budget je Lauf geht dorthin, wo Premium-Proben möglich sind
     for seg, cc in sorted(pairs, key=lambda p: -supply.get(tuple(p), 0)):
-        if left <= 0 or supply.get((seg, cc), 0) < 10:
+        todo = need.get((seg, cc), 0)
+        if left <= 0 or todo <= 0 or supply.get((seg, cc), 0) < 10:
             continue
         mine = [r for r in ready if r["segment_id"] == seg and r["country"] == cc]
-        old = sorted((r for r in mine if int(r.get("premium_n") or 0) < 10),
-                     key=lambda r: (int(r.get("premium_n") or 0), str(r.get("built_at") or "")))
+        old = sorted((r for r in mine if not is_premium_sample(r)),
+                     key=lambda r: (bool(r.get("wish")), int(r.get("premium_n") or 0), str(r.get("built_at") or "")))
         exclude = {c for r in mine for c in (r.get("company_ids") or [])}
-        failed: set[tuple[str, ...]] = set()  # Wünsche ohne Premium-Gewinn in diesem Lauf
         for r in old:
-            if left <= 0 or not time_left():
+            if left <= 0 or todo <= 0 or not time_left():
                 break
-            wish_key = tuple(sorted(r.get("wish") or []))
-            if wish_key in failed:
-                continue
             try:
-                row = build_one(db, seg, cc, list(r.get("wish") or []), exclude, hours, apply, log)
+                row = build_one(db, seg, cc, [], exclude, hours, apply, log, premium_only=True)
             except Exception as exc:  # noqa: BLE001
                 log(f"  Austausch {seg}/{cc}: {type(exc).__name__}: {str(exc)[:200]}")
                 break
             if row is None:
+                log(f"  Austausch {seg}/{cc}: keine 10 freien Premium-Leads mehr")
                 break
             left -= 1
-            if int(row.get("premium_n") or 0) <= int(r.get("premium_n") or 0):
-                if apply and row.get("id"):
-                    db.rpc("discard_sample_stock", {"p_stock": row["id"], "p_note": "Austausch: kein Premium-Gewinn"})
-                failed.add(wish_key)
-                log(f"  Austausch {seg}/{cc}: Wunsch {','.join(wish_key) or '-'} ohne Premium-Gewinn – nächster Wunsch")
-                continue
+            todo -= 1
             if apply:
-                db.rpc("discard_sample_stock", {"p_stock": r["id"],
-                                                "p_note": f"ersetzt durch Premium-Probe ({row.get('premium_n')}/10)"})
+                db.rpc("discard_sample_stock", {"p_stock": r["id"], "p_note": "ersetzt durch Premium-Probe (10/10)"})
             out[f"{seg}/{cc}"] = out.get(f"{seg}/{cc}", 0) + 1
-            log(f"  Austausch {seg}/{cc}: alte Probe ({int(r.get('premium_n') or 0)}/10) ersetzt durch "
-                f"{row.get('premium_n')}/10")
+            log(f"  Austausch {seg}/{cc}: normale Probe ({int(r.get('premium_n') or 0)}/10) ersetzt durch Premium-Probe")
     return out
 
 

@@ -223,6 +223,9 @@ export function makeFixtures(nowMs = Date.now()) {
         leads: C.map((c) => ({ segment: "S2", country: c, status: "new", n: 14000 })), buyers: C.map((c) => ({ segment: "S2", country: c, check_status: "ok", n: 5000, sent: 400 })),
         stock: C.map((c) => ({ segment: "S2", country: c, status: "ready", n: 4 })), checks: C.map((c) => ({ segment: "S2", country: c, released: 900, failed: 20 })) },
       pool_counts: [],
+      premium_status: [{ segment_id: "S2", country: "FR", premium_frei: 142, proben: 30, proben_premium: 0, premium_in_proben: 0, zu_klein: true },
+        { segment_id: "S2", country: "UK", premium_frei: 317, proben: 30, proben_premium: 1, premium_in_proben: 10, zu_klein: true },
+        { segment_id: "S2", country: "US", premium_frei: 2700, proben: 50, proben_premium: 21, premium_in_proben: 224, zu_klein: true }],
       datenfluss_stand: [
         { station: "leads", last_at: iso(5), active_hours: 140, extra: null }, { station: "kaeufer", last_at: iso(30), active_hours: 90, extra: null },
         { station: "proben", last_at: iso(600), active_hours: 20, extra: 0 }, { station: "mails", last_at: iso(10), active_hours: 40, extra: null },

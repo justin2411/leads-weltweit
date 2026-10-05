@@ -20,7 +20,7 @@ export type OpsConfig = {
     tagesziel_max: number; anbieter_tageslimit: number; postfach_start: number; postfach_schritt: number;
     postfach_tageslimit: number; gesamtgrenze: number;
   };
-  proben: { fokus_je_seite: number; andere_je_seite: number; max_alter_stunden: number };
+  proben: { fokus_je_seite: number; andere_je_seite: number; max_alter_stunden: number; premium?: Record<string, number> };
   fokus: string[];
   nur_fokus: boolean;
   lead_suche: boolean;

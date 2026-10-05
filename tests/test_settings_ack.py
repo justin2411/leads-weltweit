@@ -144,7 +144,7 @@ class ConsumersAckTest(unittest.TestCase):
             with self.assertRaises(Stop):
                 sample_stock.run(db, apply=True, log=lambda *a: None)
         got = acks(db, "proben-vorrat")
-        self.assertEqual(set(got), {"werke_paused", "sample_targets", "sample_max_age_hours"})
+        self.assertEqual(set(got), {"werke_paused", "sample_targets", "sample_premium_targets", "sample_max_age_hours"})
         self.assertEqual(got["sample_targets"]["value"], {"S2/US": 50})
 
     def test_kundenwerk_acks_buyer_countries(self):

@@ -15,7 +15,13 @@
   "proben": {
     "fokus_je_seite": 6,
     "andere_je_seite": 3,
-    "max_alter_stunden": 48
+    "max_alter_stunden": 48,
+    "premium": {
+      "US": 10,
+      "UK": 2,
+      "FR": 1,
+      "andere": 0
+    }
   },
   "fokus": [
     "S2/US",

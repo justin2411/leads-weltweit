@@ -57,6 +57,10 @@ export const REGLER_CSS = `
 .rg-page em{font-style:normal;font-size:13px;color:var(--soft);font-variant-numeric:tabular-nums}
 .rg-soll{display:grid;justify-items:center;gap:2px}.rg-soll>span{font-size:13px;font-weight:600;color:var(--soft)}
 .rg-page .rg-st{grid-template-columns:40px minmax(54px,auto) 40px}.rg-page .rg-st button{width:40px;height:40px}
+.rg-prem{display:grid;justify-items:center;gap:2px;width:100%;padding-top:4px;border-top:1px dashed var(--line)}
+.rg-prem>div:first-child{display:flex;gap:6px;align-items:baseline}.rg-prem span{font-size:13px;font-weight:600;color:var(--gold,var(--soft))}
+.rg-free{margin:0;font-size:12px;color:var(--soft);text-align:center;font-variant-numeric:tabular-nums}
+.rg-free.warn{color:var(--amber);background:var(--amber-bg);border-radius:6px;padding:2px 6px}
 .rg-lock{margin:0;font-size:13px;color:var(--soft)}
 .rg-fine{display:inline-flex;align-items:center;gap:4px;min-height:40px;font-size:13.5px;font-weight:600;color:var(--gold2)!important;text-decoration:none;justify-self:start}
 
@@ -135,6 +139,10 @@ export const REGLER_CSS = `
   .rg-page>div:first-child{flex-direction:column;gap:0}
   .rg-soll{display:flex;align-items:center;gap:6px}
   .rg-page .rg-st{grid-template-columns:44px 64px 44px;width:auto}.rg-page .rg-st button{width:44px;height:44px}
+  .rg-prem{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:6px}
+  .rg-prem .rg-st{flex:none}
+  .rg-prem>div:first-child{flex-direction:column;gap:0}
+  .rg-free{grid-column:1/-1;text-align:left}
   .rg-rail{gap:6px}
   .rg-rail li{grid-template-columns:1fr;gap:3px}
   .rg-rail li>i{grid-row:auto}
