@@ -510,7 +510,7 @@ def merge_wish_extra(extra: list[dict], rows: list[dict], exclude_companies: set
 def regional_sample(db, seg: str, country: str, region: str | None,
                     wish: list[str] | None = None, mark: bool = True, picked_out: list | None = None,
                     exclude_companies: set[str] | None = None, gate_context: str = "probe",
-                    premium_only: bool = False) -> tuple[list[tuple[str, bytes]], bool]:
+                    premium_only: bool | None = None) -> tuple[list[tuple[str, bytes]], bool]:
     """10 vollständige Leads aus dem ganzen Land (Inhaber 27.09.2026). (Dateien, True) – sonst ([], False).
 
     wish: Signal-Schlüssel aus dem Probe-Formular (lib/wishes.py). Passende vollständige Leads kommen zuerst,
@@ -519,7 +519,12 @@ def regional_sample(db, seg: str, country: str, region: str | None,
     exclude_companies: Firmen, die schon in einer vorbereiteten Probe stehen (eine Firma nie in zwei Proben).
     premium_only: Premium-Probe (Proben-Vorrat, Inhaber 05.10.2026): nur Leads, die heute Premium sind
     (lib/premium.tier_now) – gibt es keine 10, keine Probe (nie mit Standard auffüllen). Alle übrigen Prüfungen
-    (Vollständigkeit, eine Firma je Probe, Drei-Stufen-Freigabe) bleiben unverändert."""
+    (Vollständigkeit, eine Firma je Probe, Drei-Stufen-Freigabe) bleiben unverändert.
+    None (Standard) = Schalter config/pipeline.yaml nur_premium (Inhaber 05.10.2026 „nur noch premium leads“): dann ist
+    jede Probe – Vorrat, Warteschlange, Antwort-Assistent – eine Premium-Probe."""
+    if premium_only is None:
+        from lib.premium import only_premium
+        premium_only = only_premium(db)
     from deliveries import REQUIRE_CONTACT, _lang, contact_companies, enrich, to_csv
     from lib.regions import area_of, lead_matches
     from lib.wishes import prefer

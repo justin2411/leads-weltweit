@@ -198,10 +198,14 @@ def _one(db, cid: str, key: str) -> dict:
     return (r[0].get("details") or {}) if r else {}
 
 
-def run(db, fetcher, today: dt.date | None = None, apply: bool = True, log=print) -> dict:
+def run(db, fetcher, today: dt.date | None = None, apply: bool = True, log=print,
+        premium_only: bool | None = None) -> dict:
     from extraktor.sources import uk_ch
     from extraktor.sources import website_check as wc
     today = today or dt.date.today()
+    if premium_only is None:
+        from lib.premium import only_premium
+        premium_only = only_premium(db)
     st: Counter = Counter()
     comps = uk_companies(db)
     st["firmen_bestand"] = len(comps)
@@ -257,6 +261,9 @@ def run(db, fetcher, today: dt.date | None = None, apply: bool = True, log=print
         obs, lead = lead_row(row, ev, num, sig, findings, url, today, checked)
         st["kandidaten"] += 1
         st[f"stufe:{lead['premium']['tier']}"] += 1
+        if premium_only and lead["premium"]["tier"] != "premium":
+            st["verworfen_standard"] += 1  # Nur Premium (Inhaber 05.10.2026)
+            continue
         if not apply:
             continue
         try:

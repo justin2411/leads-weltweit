@@ -32,6 +32,9 @@ DEFAULTS = {
     # Autopilot der Plätze (Inhaber 03.10.2026: „Ja, Autopilot an“): verteilt bei jedem Start nach Ertrag um,
     # innerhalb aller Grenzen; locks = Linien, die der Inhaber festsetzt ({"web-us": 4}). Gelesen von werk_plan.py
     "slot_autopilot": {"on": True, "locks": {}},
+    # Mischung im Lead-Werk (Inhaber 05.10.2026: „möchte auch beim lead werk einstellen wv normale leads und premium
+    # leads gemacht werden“; Standard „nur premium“): Premium-Anteil 0–100 %, gelesen von extraktor/run.py, werk_plan.py
+    "lead_mix": {"premium_pct": 100},
     # Website Auto-Fix (Inhaber 04.10.2026: „jarvis soll das aber eigentlich alles selber machen und entscheiden“):
     # an = scripts/website_agents.py autofix legt für neue Website-Funde selbst Aufträge an
     "website_autofix": True,

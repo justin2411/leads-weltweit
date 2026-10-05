@@ -277,10 +277,11 @@ class AutopilotTests(unittest.TestCase):
 
     def test_decide_falls_back_and_applies_brake(self):
         # Einstellungen nicht lesbar -> Belegung wie bisher (kein Autopilot)
-        res = W.decide(self.reg, "lead-werk", {"settings": None, "rows": []})
+        res = W.decide(self.reg, "lead-werk", {"settings": None, "rows": [], "mix_pct": 0})
         self.assertEqual(res["plan"], self.lead)
         # Autopilot aus -> Belegung des Inhabers
-        res = W.decide(self.reg, "lead-werk", {"settings": {"slot_autopilot": {"on": False}}, "rows": _rows("web-us", "r1", 21, 1, 0)})
+        res = W.decide(self.reg, "lead-werk", {"settings": {"slot_autopilot": {"on": False}, "lead_mix": {"premium_pct": 0}},
+                                               "rows": _rows("web-us", "r1", 21, 1, 0)})
         self.assertEqual((res["mode"], res["plan"]["web-us"]), ("standard", 18))
         # Bremse ab 7 GB: höchstens 8 Lead-Plätze und ohne Rohbestand
         res = W.decide(self.reg, "lead-werk", {"settings": {"slot_autopilot": {"on": False}}, "rows": [],
@@ -467,7 +468,7 @@ class VorrangResetTests(unittest.TestCase):
     def test_decide_passes_reset_and_vorrang(self):
         res = W.decide(self.reg, "lead-werk", {
             "settings": {"slot_plan": dict(self.lead, kunden=1),
-                         "lane_reset": {"web-uk": "2026-10-04T14:40:00+00:00"}},
+                         "lane_reset": {"web-uk": "2026-10-04T14:40:00+00:00"}, "lead_mix": {"premium_pct": 0}},
             "rows": self.old_empty_rows(), "prev_reasons": {"web-uk": W.EMPTY_WHY + " (7 Läufe)"},
             "vorrang": self.rule, "stock": {"US": 446356, "UK": 91920, "FR": 68970}})
         self.assertGreaterEqual(res["plan"]["web-uk"], 8)
@@ -490,3 +491,58 @@ class VorrangResetTests(unittest.TestCase):
     def test_fokus_config_has_rule(self):
         from lib.fokus import laender_vorrang
         self.assertEqual(laender_vorrang(), self.rule)
+
+
+class LeadMixTests(unittest.TestCase):
+    """Mischung im Lead-Werk (Inhaber 05.10.2026): 100 % = nur Premium, 1–99 % = Plätze im Verhältnis."""
+
+    def setUp(self):
+        self.reg = W.load_lines()
+
+    def test_default_is_only_premium(self):
+        res = W.decide(self.reg, "lead-werk", {"settings": {"slot_autopilot": {"on": False}}, "rows": []})
+        self.assertTrue(res["nur_premium"])
+        self.assertEqual(res["mix_pct"], 100)
+        lanes = {l["id"]: l for l in self.reg["lanes"] if l["werk"] == "lead-werk"}
+        for k, n in res["plan"].items():
+            flag = lanes[k].get("premium")
+            if flag is None:
+                self.assertEqual(n, 0, k)
+            elif flag == "basis":
+                self.assertLessEqual(n, 1, k)
+        self.assertGreater(sum(n for k, n in res["plan"].items() if lanes[k].get("premium") == "ja"), 0)
+        cap = self.reg["total_slots"] - self.reg["reserve"]
+        self.assertLessEqual(sum(res["plan"].values()) + sum(l["default"] for l in self.reg["lanes"]
+                                                           if l["werk"] != "lead-werk"), cap)
+
+    def test_locked_lane_stays(self):
+        res = W.decide(self.reg, "lead-werk", {"settings": {"slot_autopilot": {"on": True, "locks": {"web-us": 3}}},
+                                               "rows": []})
+        self.assertEqual(res["plan"]["web-us"], 3)
+
+    def test_unreadable_mix_is_strict(self):
+        self.assertEqual(W.mix_from({"lead_mix": {"premium_pct": "x"}}), 100)
+        self.assertEqual(W.mix_from(None), 100)
+        self.assertEqual(W.mix_from({"lead_mix": {"premium_pct": 140}}), 100)
+        self.assertEqual(W.mix_from({"lead_mix": {"premium_pct": 30}}), 30)
+
+    def test_mix_shares_slots(self):
+        plan = {l["id"]: 0 for l in self.reg["lanes"] if l["werk"] == "lead-werk"}
+        plan.update({"web-us": 8, "radar": 1, "s2-ukfr": 1})
+        why = {}
+        W.mix_plan(self.reg, "lead-werk", plan, why, {}, 50)
+        self.assertEqual(sum(plan.values()), 10)
+        prem = plan["radar"] + plan["s2-ukfr"]
+        self.assertGreater(prem, 2)
+        self.assertLessEqual(prem, 5)
+        # 0 % und 100 % ändern hier nichts
+        p0 = dict(plan)
+        self.assertEqual(W.mix_plan(self.reg, "lead-werk", p0, {}, {}, 0), 0)
+        self.assertEqual(W.mix_plan(self.reg, "lead-werk", p0, {}, {}, 100), 0)
+
+    def test_min_tier_skips_standard_lanes_in_premium_mode(self):
+        lanes = {l["id"]: l for l in self.reg["lanes"]}
+        self.assertIsNone(W._min_tier(lanes["web-us"], None, nur_premium=True))
+        self.assertIsNone(W._min_tier(lanes["web-uk"], None, nur_premium=True))
+        self.assertEqual(W._min_tier(lanes["radar"], None, nur_premium=True), 1)
+        self.assertEqual(W._min_tier(lanes["kunden"], None, nur_premium=True), 2)

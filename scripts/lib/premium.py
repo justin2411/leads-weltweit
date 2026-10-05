@@ -18,9 +18,10 @@ Tage alt – wie die Definition „Premium = frisch ≤ 14 Tage“ (docs/GEHIRN-
 zählte der Code bis 30 Tage, das war lockerer als die Definition). 15–30 Tage alte Ereignisse bekommen weiter 20 Punkte
 und stehen damit oben im Standard, heißen aber nicht Premium.
 
-Der Wert ändert nie, OB ein Lead rausgeht – das entscheidet allein die Drei-Stufen-Freigabe (lib/release_gate.py).
-Er ändert nur die Reihenfolge (Proben-Vorrat, Lieferungen, Landingpage-Beispiele: premium zuerst, Standard nur als
-Auffüllung, solange es keine 10 Premium-Leads gibt – Inhaber 05.10.2026 „nur noch premium leads“).
+Die Drei-Stufen-Freigabe (lib/release_gate.py) entscheidet weiter allein, ob ein Lead rausgehen DARF. Die Stufe ist
+nur zusätzlich strenger: Mischung 100 % (owner_settings.lead_mix, Standard; Inhaber 05.10.2026 „nur noch premium
+leads“) = neue Standard-Leads werden nicht gespeichert, Proben und Lieferungen nur aus Premium-Leads (keine 10 Premium
+= keine Probe). Unter 100 % ändert die Stufe nur die Reihenfolge (premium zuerst, Standard füllt auf).
 """
 from __future__ import annotations
 
@@ -40,6 +41,44 @@ DATED_SIGNALS = {"relocation", "cert_expiring", "new_incorporation", "incorporat
 # Quellen, deren Ereignisdatum ein Registereintrag ist (auch wenn das Signal „keine Website“ heißt)
 DATED_SOURCES = re.compile(r"FMCSA|Connecticut|Companies House|BODACC|SEC EDGAR|change radar|contract award",
                            re.I)
+
+
+MIX_DEFAULT = 100  # Inhaber 05.10.2026: „ab sofort brauchen wir nur noch premium leads“ = 100 % Premium
+
+
+def mix_value(v) -> int:
+    """Premium-Anteil aus owner_settings.lead_mix ({"premium_pct": 0–100}); ungültig/fehlend = MIX_DEFAULT."""
+    try:
+        n = int((v or {}).get("premium_pct")) if isinstance(v, dict) else MIX_DEFAULT
+    except (TypeError, ValueError):
+        return MIX_DEFAULT
+    return max(0, min(100, n))
+
+
+def mix_pct(db=None) -> int:
+    """Mischung im Lead-Werk (Inhaber 05.10.2026: „möchte auch beim lead werk einstellen wv normale leads und premium
+    leads gemacht werden“, Regler Karte Lead-Werk): Premium-Anteil 0–100 %, Standard 100 = nur Premium.
+    Ohne Datenbank oder bei einem Lesefehler gilt der Standard (nur strenger, nie lockerer)."""
+    if db is None:
+        return MIX_DEFAULT
+    try:
+        rows = db.select("owner_settings", {"key": "eq.lead_mix", "select": "value"}) or []
+    except BaseException:  # noqa: BLE001 - auch SystemExit der Datenbank-Schicht
+        return MIX_DEFAULT
+    return mix_value(rows[0].get("value") if rows else None)
+
+
+def only_premium(db=None) -> bool:
+    """Nur Premium (Mischung 100 %): Lead-Werk, Radar und UK-PSC speichern nur neue Leads mit Stufe premium, keinen
+    Rohbestand; Proben und Lieferungen nur aus Premium-Leads. Unter 100 % gilt die Mischung über die Plätze
+    (scripts/werk_plan.py: Anteil Premium-Linien / übrige Linien)."""
+    return mix_pct(db) >= 100
+
+
+def is_premium(cols: dict) -> bool:
+    """Ergebnis von columns() (bzw. ein Lead mit Spalte premium): Stufe premium?"""
+    p = cols.get("premium") if isinstance(cols, dict) else None
+    return isinstance(p, dict) and p.get("tier") == "premium"
 
 
 def _date(v) -> dt.date | None:

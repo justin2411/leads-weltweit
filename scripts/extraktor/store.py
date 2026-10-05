@@ -238,10 +238,12 @@ def _store_raw_once(db, block: list[dict], today: str) -> int:
     return len(db.insert("raw_candidates", rows, upsert_on="source,source_id", ignore_duplicates=True) or [])
 
 
-def store_new(db, guard, rows: list[dict], raw: bool = True) -> dict:
+def store_new(db, guard, rows: list[dict], raw: bool = True, premium_only: bool = False) -> dict:
     """Noch unbekannte Firmen (Quelle + ID) schreiben: grüne als Lead, gelbe/rote in den Rohbestand (kompakt).
-    Je Firma ein Eintrag; grün geht vor (erste Branche gewinnt). raw=False: Speicher-Bremse ab 7 GB (--no-raw) –
-    dann nur grüne Leads."""
+    Je Firma ein Eintrag; grün geht vor (erste Branche gewinnt). raw=False: Speicher-Bremse ab 7 GB (--no-raw) oder
+    Nur Premium – dann kein Rohbestand. premium_only (Inhaber 05.10.2026 „nur noch premium leads“): nur grüne Leads mit
+    Stufe premium (lib/premium.py) werden gespeichert, Standard wird verworfen (`verworfen_standard`). Verworfene Firmen
+    gelten im Lauf als gesehen, bleiben aber unbekannt – ein späterer Lauf kann sie als Premium speichern."""
     rows = [{k: (v.isoformat() if isinstance(v, (dt.date, dt.datetime)) else v) for k, v in r.items()} for r in rows]
     order = {"green": 0, "yellow": 1, "red": 2}
     rows = sorted((r for r in rows if r.get("ampel") in order), key=lambda r: order[r["ampel"]])
@@ -254,10 +256,22 @@ def store_new(db, guard, rows: list[dict], raw: bool = True) -> dict:
             continue  # Filiale einer Kette (ältere Läufe ohne Markenfilter)
         seen.add(k)
         (new if r["ampel"] == "green" else raw_rows).append(r)
+    dropped = 0
+    if premium_only:
+        from lib import premium
+        keep = [r for r in new if premium.is_premium(_premium(r))]
+        dropped, new = len(new) - len(keep), keep
+        seen -= {(r["source"], r["source_id"]) for r in raw_rows}
+        raw = False
     n = store_many(db, new) if new else 0
     m = store_raw(db, raw_rows) if raw_rows and raw else 0
     guard.known.update(seen)
-    return {"neu": n, "rohbestand": m, "schon_da": len({(r["source"], r["source_id"]) for r in rows}) - n - m}
+    out = {"neu": n, "rohbestand": m, "schon_da": len({(r["source"], r["source_id"]) for r in rows}) - n - m - dropped
+           - (len(raw_rows) if premium_only else 0)}
+    if premium_only:
+        out["verworfen_standard"] = dropped
+        out["verworfen_unvollstaendig"] = len(raw_rows)
+    return out
 
 
 def main(argv=None) -> int:

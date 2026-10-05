@@ -259,7 +259,8 @@ def fill_plan(reg: dict, res: dict, stats: dict, busy_lanes, busy: int,
     free = {k: W.lane_k(lanes[k]) - act.get(k, 0) for k in lanes}
     cand = [k for k, v in plan.items() if v > 0 and k in lanes and claims.get(k, set()) is not None
             and free[k] > 0 and not resting(stats.get(k), now) and not recently_short(k, recent or [], now)]
-    tier = lambda k: W._min_tier(lanes[k], stats.get(k)) or 9  # noqa: E731
+    np_ = bool(res.get("nur_premium"))
+    tier = lambda k: W._min_tier(lanes[k], stats.get(k), np_) or 9  # noqa: E731
     cand.sort(key=lambda k: (tier(k), -int(plan[k]), k))
     start: dict[str, int] = {}
     room = cap
@@ -277,7 +278,7 @@ def fill_plan(reg: dict, res: dict, stats: dict, busy_lanes, busy: int,
         mine = sum(act.get(k, 0) for k in tot)
         nach = set(res.get("nach") or ())
         W.fill_minimum([lanes[k] for k in tot], tot, why, stats, (res.get("autopilot") or {}).get("locks") or {},
-                       cap + mine, busy - mine, min_belegt, set(), nach)
+                       cap + mine, busy - mine, min_belegt, set(), nach, nur_premium=np_)
         start = {k: tot[k] - act.get(k, 0) for k in tot if tot[k] - act.get(k, 0) > 0}
     return start, {k: why.get(k, "") for k in start}
 

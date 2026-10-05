@@ -208,15 +208,18 @@ def build_payload(seg: str, country: str, files: list[tuple[str, bytes]], abx=No
 
 
 def build_one(db, seg: str, country: str, wish: list[str], exclude: set[str], hours: int, apply: bool,
-              log=print, premium_only: bool = False) -> dict | None:
+              log=print, premium_only: bool | None = None) -> dict | None:
     """Eine Probe bauen, hochladen und ihre 10 Leads reservieren. None, wenn keine 10 vollständigen Leads.
     premium_only: Premium-Probe – nur Leads, die heute Premium sind; gibt es keine 10, keine Probe (nichts aufgefüllt)."""
     from lib.leadreport import SAMPLE_SIZE
     from responder import regional_sample
+    if premium_only is None:  # Nur Premium (Inhaber 05.10.2026, config/pipeline.yaml): jede Probe 10/10 Premium
+        from lib.premium import only_premium
+        premium_only = only_premium(db)
     picked: list[dict] = []
     files, _ = regional_sample(db, seg, country, None, wish=wish or None, mark=False, picked_out=picked,
                                exclude_companies=exclude, gate_context="vorrat",
-                               **({"premium_only": True} if premium_only else {}))
+                               premium_only=premium_only)
     if files and not any(n.endswith(".pdf") for n, _ in files):
         # ohne Lead-Report (PDF) keine fertige Probe – die Mail verspricht ihn (Leads bleiben frei)
         raise RuntimeError("PDF-Report nicht erstellt")
@@ -415,6 +418,10 @@ def run(db, apply: bool, log=print) -> dict:
     want_prem = premium_targets(pages, cfg, owner.get("sample_premium_targets"))
     # Premium-Proben gehören zum Vorrat („davon Premium“); ist das Premium-Soll größer, wächst der Vorrat mit
     want = {k: max(t, want_prem.get(k, 0)) for k, t in want.items()}
+    from lib.premium import only_premium
+    nur_premium = only_premium(db)
+    if nur_premium:  # Nur Premium (Inhaber 05.10.2026): jede Probe im Vorrat ist eine Premium-Probe
+        want_prem = dict(want)
     ready = stock_rows(db, "ready,claimed")
     have = {k: sum(r["segment_id"] == k[0] and r["country"] == k[1] and r["status"] == "ready" for r in ready)
             for k in want}
@@ -437,9 +444,14 @@ def run(db, apply: bool, log=print) -> dict:
                     log(f"  FEHLER Premium {seg}/{cc}: {type(exc).__name__}: {str(exc)[:200]}")
                 if row is None:
                     prem_open = False
-                    log(f"  {seg}/{cc}: keine 10 freien Premium-Leads – normale Probe")
+                    log(f"  {seg}/{cc}: keine 10 freien Premium-Leads"
+                        + (" – keine Probe (nur Premium)" if nur_premium else " – normale Probe"))
                 else:
                     prem_samples[(seg, cc)] = prem_samples.get((seg, cc), 0) + 1
+            if row is None and nur_premium:
+                # Nur Premium: nie eine normale Probe bauen, nie mit Standard auffüllen
+                missing[(seg, cc)] = target - have[(seg, cc)] - built.get((seg, cc), 0)
+                break
             try:
                 row = row or build_one(db, seg, cc, wish, exclude, cfg["max_alter_stunden"], apply, log)
             except Exception as exc:  # noqa: BLE001 – eine Zielgruppe darf die anderen nicht aufhalten

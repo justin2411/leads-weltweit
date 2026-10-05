@@ -7,6 +7,19 @@
 export const MAX_SAMPLE_TARGET = 100;
 export const MAX_AGE_RANGE = [24, 96] as const;
 export const FOLLOWUP_DAYS_RANGE = [3, 10] as const;
+/** Mischung im Lead-Werk: Premium-Anteil in Schritten von 10 % (Standard 100 = nur Premium, Inhaber 05.10.2026). */
+export const LEAD_MIX_STEP = 10;
+export const LEAD_MIX_DEFAULT = 100;
+/** Premium-Anteil aus dem Gespeicherten (fehlend/ungültig = 100, wie lib/premium.mix_value). */
+export function mixPct(v: unknown): number {
+  const n = v && typeof v === "object" ? Number((v as { premium_pct?: unknown }).premium_pct) : NaN;
+  return Number.isFinite(n) ? Math.max(0, Math.min(100, Math.round(n))) : LEAD_MIX_DEFAULT;
+}
+export function validateLeadMix(v: unknown): { premium_pct: number } {
+  const n = v && typeof v === "object" ? (v as { premium_pct?: unknown }).premium_pct : undefined;
+  if (typeof n !== "number" || !Number.isInteger(n) || n < 0 || n > 100 || n % LEAD_MIX_STEP !== 0) throw new InputError("Mischung: 0–100 % in 10er-Schritten");
+  return { premium_pct: n };
+}
 
 export type OwnerSettings = {
   send_paused: boolean;
@@ -25,6 +38,9 @@ export type OwnerSettings = {
   slot_plan: Record<string, number>;
   /** Autopilot der Plätze (Inhaber 03.10.2026: „Ja, Autopilot an“): scripts/werk_plan.py verteilt bei jedem Start um. */
   slot_autopilot: { on: boolean; locks: Record<string, number> };
+  /** Mischung im Lead-Werk (Inhaber 05.10.2026: „wv normale leads und premium leads“): Premium-Anteil 0–100 %, Standard
+   * 100 = nur Premium. Gelesen von scripts/extraktor/run.py und scripts/werk_plan.py (lib/premium.mix_value). */
+  lead_mix: { premium_pct: number };
   /** Ausgeblendete JARVIS-Empfehlungen/Hinweise (Inhaber 04.10.2026): Schlüssel (lib/tips.ts tipKey) -> bis (ISO). */
   dismissed_tips: Record<string, string>;
   /** Monatsgrenze der Sofort-Antworten über die Claude-API in Euro (Inhaber 04.10.2026: „vorerst 30 €“). */
@@ -40,7 +56,7 @@ export type SettingKey = keyof OwnerSettings;
 export const DEFAULTS: OwnerSettings = {
   send_paused: false, send_countries_off: [], send_country_limits: {}, followup_enabled: true, followup_days: null,
   sample_targets: {}, sample_premium_targets: {}, sample_max_age_hours: null, buyer_countries_off: [], werke_paused: {}, slot_plan: {},
-  slot_autopilot: { on: true, locks: {} }, dismissed_tips: {}, llm_budget_eur: 30, website_autofix: true, website_ignored: {},
+  slot_autopilot: { on: true, locks: {} }, lead_mix: { premium_pct: 100 }, dismissed_tips: {}, llm_budget_eur: 30, website_autofix: true, website_ignored: {},
 };
 
 /**

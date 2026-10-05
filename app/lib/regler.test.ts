@@ -5,7 +5,7 @@ import { DEFAULTS, InputError, merge, validateSlotPlan, type LaneRegistry, type 
 import {
   CARDS, LEAD_COUNTRIES, capHint, capOf, countriesOn, countryOf, countryOn, diff, draftFrom, fmtBerlin, fmtWhen, laneRoom, leadLanes, leadMax,
   leadTotal, maxAgeMatters, nextRun, presetChips, presetPlan, presets, prevRun, scalePlan, setCountry, setLane, status, switchPreview, toSettings,
-  premiumDefault, premiumShort, validateValue, versandStopText, type Ack, type ReglerCtx,
+  cardOf, mixLabel, premiumDefault, premiumShort, validateValue, versandStopText, type Ack, type ReglerCtx,
 } from "./regler.ts";
 import { undoValue } from "./regler-verlauf.ts";
 
@@ -239,7 +239,7 @@ test("Zustand: noch nie geändert, wartet, start angefordert, angewandt, pausier
 
 test("Lead-Linien je Land wie werk-linien.json", () => {
   const by = Object.fromEntries(LEAD_COUNTRIES.map((c) => [c.id, leadLanes(reg).filter((l) => countryOf(l) === c.id).map((l) => l.id)]));
-  assert.deepEqual(by, { US: ["web-us", "radar", "s2-us", "s1-us-lca"], UK: ["web-uk", "s2-ukfr", "s1-uk-tender"], FR: ["web-fr"], Nord: ["web-north"], Neu: ["s2-neu"] });
+  assert.deepEqual(by, { US: ["web-us", "radar", "fmcsa-us", "s2-us", "s1-us-lca"], UK: ["web-uk", "s2-ukfr", "s1-uk-tender"], FR: ["web-fr"], Nord: ["web-north"], Neu: ["s2-neu"] });
 });
 
 test("Tempo: langsamer schaltet nie ein Land ab; Standard bringt die Standardbelegung zurück", () => {
@@ -373,4 +373,22 @@ test("Premium-Proben: Soll je Land, Diff, Prüfung, Hinweis, Rückgängig", () =
   assert.equal(premiumShort(32, 317), true);
   assert.equal(premiumShort(1, null), false);
   assert.deepEqual(undoValue("sample_premium_targets", { "S2/UK": 3 }, { "S2/UK": 3, "S2/US": 12 }, { "S2/UK": 3, "S2/US": 12, "S2/FR": 0 }, "x"), { "S2/UK": 3, "S2/FR": 0 });
+});
+
+test("Mischung im Lead-Werk: Standard nur Premium, Änderung nur mit Übernehmen, Grenzen 0–100 in 10er-Schritten", () => {
+  const ctx0 = ctx;
+  const base = draftFrom({ ...DEFAULTS }, ctx0);
+  assert.equal(base.lead_mix, 100);
+  assert.deepEqual(diff({ ...DEFAULTS }, base, ctx0).filter((c) => c.key === "lead_mix"), []);
+  const ch = diff({ ...DEFAULTS }, { ...base, lead_mix: 70 }, ctx0).filter((c) => c.key === "lead_mix");
+  assert.equal(ch.length, 1);
+  assert.equal(ch[0].text, "Mischung nur Premium → 70/30");
+  assert.deepEqual(ch[0].value, { premium_pct: 70 });
+  assert.deepEqual(validateValue("lead_mix", { premium_pct: 70 }, ctx0), { premium_pct: 70 });
+  for (const bad of [{ premium_pct: 75 }, { premium_pct: 110 }, { premium_pct: -10 }, { premium_pct: "50" }, null]) {
+    assert.throws(() => validateValue("lead_mix", bad, ctx0));
+  }
+  assert.equal(draftFrom({ ...DEFAULTS, lead_mix: { premium_pct: "x" as unknown as number } }, ctx0).lead_mix, 100);
+  assert.equal(mixLabel(70), "Premium 70 % · Normal 30 %");
+  assert.ok(cardOf("lead-werk").keys.includes("lead_mix"));
 });
