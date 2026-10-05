@@ -26,6 +26,15 @@ Visualisierung = JARVIS-Trichter ohne Scanner, Ziel-Ring 25.000 € mit Zeitstra
 **Offen beim Inhaber:** `SEED_INBOXES` (ja), Bestätigungsknopf Abmeldeseite (ja), Zweit-Domains (nach 1. Antwort),
 Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 
+## Lagebild (05.10.2026, 12:30 Berliner Zeit)
+- **Versand nur halb so groß wie erlaubt:** Postfach 3 durch die Postfach-Notbremse gestoppt (über 5 % Rückläufer seit
+  03.10.), Selbstoptimierung ×0,5 (3-Tage-Quote über 3 %) → 140 statt 420 Erstmails/Tag. Nichts gelockert.
+- Ursache geprüft: harte Rückläufer sind meist tote Postfächer, die weiter auf der Firmenwebsite stehen – kostenlose
+  Prüfungen senken den Boden kaum. Postfach 3 erholt sich ohne Versand nicht → Entscheidung beim Inhaber („Braucht dich“).
+- Kontrollmails laufen: erste 6 Kopien 10:58–11:00 (US/UK/FR), noch nicht eingeordnet.
+- Länder-Vorrang drückte radar-us nur kurz (10:47–10:58 auf 1, 11:21 auf 2), sonst 6 Plätze.
+- Mail-Besuche auf den S2-Seiten 3 T: 43 (US 13, UK 14, FR 16), 1 Klick auf „Probe“, 0 Probe-Anfragen.
+
 ## Lagebild (05.10.2026, 10:30 Berliner Zeit)
 - **Engpass bleibt zugestellt → Antwort:** 405 Erstmails seit 03.10. (US 155, UK 142, FR 108), 0 menschliche Antworten.
   Rückläufer 16/405 = 4,0 %, Notbremse nicht in Gefahr. 1 Probe-Anfrage in 7 T (DE, nicht lieferbar).
@@ -81,6 +90,7 @@ Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 - Käufer ok (S2): US 28.782, UK 2.623, FR 1.285. DB 5,1 GB.
 
 ## Nächster Schritt
+- **Prüfpunkt Mi 07.10., 12:00:** ≥ 140 Erstmails/Tag gehalten; Postfach 3 nach Inhaber-Entscheidung wieder an oder bewusst aus.
 - **Prüfpunkt Mi 07.10., 20:00:** ≥ 6 Kontrollmails eingeordnet (seed_checks.placement). Liegt > 30 % im Spam:
   Zustellbarkeit vor Text (Beleg-Einstieg verschieben, DMARC/Inhalt prüfen).
 - **Prüfpunkt Do 08.10., 20:00:** Beleg-Einstieg in US läuft (Variante B mit 2 Belegen, ≥ 20 B-Mails gesendet); Erfolg bis 21.10.: Antwortquote B ≥ 1 % bei ≥ 100.
