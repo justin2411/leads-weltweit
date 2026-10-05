@@ -116,6 +116,32 @@ class Lauf(unittest.TestCase):
             O.lauf(db, T + dt.timedelta(hours=2), apply=True)     # gleicher Tag: keine zweite Stufe
             self.assertEqual(S.versand_faktor(db), 0.9)
 
+    def test_protokoll_fehlt_trotzdem_einmal_je_tag(self):
+        # 04.10.2026: decisions.id (Zahl) im uuid-Feld -> Protokoll scheiterte, fünf Stufen in drei Stunden
+        self.assertIsNone(O._uuid_or_none(98))
+        self.assertEqual(O._uuid_or_none("0b8f2a4e-1c2d-4e5f-8a9b-0c1d2e3f4a5b"), "0b8f2a4e-1c2d-4e5f-8a9b-0c1d2e3f4a5b")
+        db = make_db()
+        boom = {"n": 0}
+        orig = db.insert
+
+        def insert(table, rows, **kw):
+            if table == "selbstopt_changes":
+                boom["n"] += 1
+                raise RuntimeError("400")
+            return orig(table, rows, **kw)
+        db.insert = insert
+        with Patch(versand=(0.045, 120)):
+            with self.assertRaises(RuntimeError):
+                O.lauf(db, T, apply=True)
+            self.assertEqual(S.versand_faktor(db), 0.9)
+            for h in (1, 2, 5):
+                try:
+                    O.lauf(db, T + dt.timedelta(hours=h), apply=True)
+                except RuntimeError:
+                    pass
+            self.assertEqual(S.versand_faktor(db), 0.9)            # keine zweite Stufe am selben Tag
+            self.assertEqual(boom["n"], 1)
+
     def test_lockerung_ohne_wirkung_wird_zurueckgenommen(self):
         db = make_db(selbstopt_state=[{"schraube": "versand_menge", "wert": {"faktor": 0.7}}])
         with Patch(versand=(0.01, 120)):

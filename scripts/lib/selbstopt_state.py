@@ -30,6 +30,20 @@ def get(db, schraube: str) -> dict:
         return {}
 
 
+def updated_at(db, schraube: str):
+    """Zeitpunkt der letzten Änderung (datetime, UTC) oder None."""
+    import datetime as dt
+    try:
+        rows = db.select("selbstopt_state", {"schraube": f"eq.{schraube}", "select": "updated_at"}) or []
+        raw = rows[0].get("updated_at") if rows else None
+        if not raw:
+            return None
+        t = dt.datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        return t if t.tzinfo else t.replace(tzinfo=dt.timezone.utc)
+    except Exception:  # noqa: BLE001 - ohne Zeitstempel: nur das Protokoll zählt
+        return None
+
+
 def versand_faktor(db=None, wert: dict | None = None) -> float:
     w = wert if wert is not None else get(db, "versand_menge")
     return _clamp(w.get("faktor", 1.0), VERSAND_MIN, VERSAND_MAX, 1.0)
