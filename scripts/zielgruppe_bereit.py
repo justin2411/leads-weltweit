@@ -129,8 +129,9 @@ def http_abfrage(db):
 
 
 def lead_params(seg: str, land: str, premium: bool, heute: dt.date) -> dict:
+    from lib.leadsegment import lead_segment  # S12 nutzt den S2-Bestand (gleiche Firmen, Status hält Exklusivität)
     p = {"select": "company_id,lead_checks!inner(result)", "lead_checks.result": "eq.released",
-         "segment_id": f"eq.{seg}", "country": f"eq.{land}", "status": "eq.new", "limit": str(ABRUF_MAX)}
+         "segment_id": f"eq.{lead_segment(seg)}", "country": f"eq.{land}", "status": "eq.new", "limit": str(ABRUF_MAX)}
     if premium:
         p.update({"premium_score": f"gte.{PREMIUM_MIN_PUNKTE}", "premium->>tier": "eq.premium",
                   "event_date": f"gte.{(heute - dt.timedelta(days=PREMIUM_MAX_TAGE)).isoformat()}"})
@@ -208,6 +209,7 @@ def bewerten(seg: str, land: str, z: dict, land_info: dict, fokus: dict | None =
             "mindestens": [k for k, v in (("premium", z["premium"]["mindestens"]),
                                           ("probe", z["freigegeben"]["mindestens"]),
                                           ("kaeufer", z.get("kaeufer_mindestens"))) if v],
+            "leads_aus": _lead_seg(seg),
             "proben_vorrat": z["proben_vorrat"], "seite": seite.get("slug"), "seite_status": seite.get("status"),
             "experiment_status": (z.get("experiment") or {}).get("status"),
             "im_fokus": bool(fokus.get("im_fokus")), "test_freigabe": bool(fokus.get("test_freigabe")),
@@ -216,6 +218,11 @@ def bewerten(seg: str, land: str, z: dict, land_info: dict, fokus: dict | None =
         },
         "versand": "läuft bereits (Fokus)" if fokus.get("im_fokus") else "erst nach Klick des Inhabers (Freigabe-Antrag)",
     }
+
+
+def _lead_seg(seg: str) -> str:
+    from lib.leadsegment import lead_segment
+    return lead_segment(seg)
 
 
 def _zahl(v) -> str:
@@ -252,7 +259,9 @@ def antrag(e: dict) -> dict:
         "kurz_titel": f"Freigabe nötig: {name} {land}"[:60],
         "kurz_grund": f"Alle Tore grün: {zahlen}."[:160],
         "reasoning": (f"Ablaufplan neue Zielgruppe (docs/ABLAUFPLAN-NEUE-ZIELGRUPPE.md): {seg}/{land} ist vorbereitet. "
-                      f"{zahlen}. Seite, Video, Probe, Entwürfe und Experiment liegen als Vorschau bereit."),
+                      f"{zahlen}. Seite, Video, Probe, Entwürfe und Experiment liegen als Vorschau bereit."
+                      + (f" Leads aus dem {e['info']['leads_aus']}-Bestand (jeder Lead geht nur an einen Käufer)."
+                         if e["info"].get("leads_aus") not in (None, seg) else "")),
         "action": (f"Annehmen/Erledigt = Freigabe: Gehirn trägt {seg}/{land} in config/fokus.yaml ein (fokus + tests), "
                    f"schaltet die Seite live und startet 50 Mails nach §5. Ablehnen = bleibt vorbereitet."),
         "metrics": {"freigabe": "zielgruppe", "segment": seg, "land": land,

@@ -212,6 +212,43 @@ const EN: Record<string, SegmentCopy> = {
       ["Clients anywhere", "Websites are built remotely, so {firma} can win businesses across {land}."],
     ],
   },
+  // Marketing-/SEO-Agenturen (S12, Inhaber 05.10.2026): dieselben Firmen wie Webagenturen (keine oder schwache Website)
+  "marketing-agencies": {
+    words: { beruf: "marketing agencies", team: "your agency", zielkunden: "local businesses", leistung: "local SEO, Google profiles, ads and social media", anlass: "a missing or weak web presence" },
+    chips: ["No website", "Outdated website", "Not mobile-friendly", "Security gaps"],
+    stepsTitle: "How {firma} could win the next client",
+    steps: [
+      "We check local businesses across {land} every week: is there a website, and does it still hold up?",
+      "We keep businesses with no website, an outdated or non-mobile site or security gaps: hard to find and hard to trust online.",
+      "As a client, {firma} would get the list every Monday, with phone, email and an opening line written for {beruf}.",
+    ],
+    getsTitle: "What {firma} would receive every Monday",
+    gets: [
+      "Local businesses across {land} with no website, an outdated site or security gaps",
+      "What we found when we checked their website, and when",
+      "The company's phone number and email, the owner's name where public sources list it",
+      "A short profile and a sales tip for {beruf} with every lead",
+      "A short opening line that refers to {anlass}",
+    ],
+    sampleTitle: "10 free leads from across {land}",
+    why: {
+      new_incorporation: "A company that is just starting: how it will win its first customers is still open.",
+      no_website: "Customers search online first. Without a website, this business is hard to find.",
+      website_outdated: "An old site that hurts trust and rarely brings in enquiries.",
+      website_not_mobile: "Most visitors arrive on a phone, and this site does not work there.",
+      no_https: "Browsers warn visitors that this site is not secure, and many leave.",
+      website_broken: "The website is down or parked, so people who search find nothing.",
+      job_open_30d: "A business hiring for weeks: better visibility could help it reach people.",
+      jobs_3plus: "A growing business usually needs more customers to keep the new team busy.",
+    },
+    revenueTitle: "How {firma} could turn this into clients",
+    revenue: [
+      ["A visible gap", "A business that is hard to find online needs {leistung}. Reaching it first would put {firma} in the conversation."],
+      ["Checked, not guessed", "We check each company's own website, so {team} would know the gap before calling."],
+      ["From setup to retainer", "A Google profile or a first campaign often leads to monthly SEO, ads or social media work."],
+      ["Clients anywhere", "Marketing works remotely, so {firma} can win businesses across {land}."],
+    ],
+  },
 };
 
 const EN_DEFAULT: SegmentCopy = {

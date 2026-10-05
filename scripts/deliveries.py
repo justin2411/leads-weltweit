@@ -83,6 +83,7 @@ def select_leads(leads: list[dict], sub: dict, already: set[str], details: dict[
 
     tags/cfilter (BRAIN.md 5.3): Qualitätswert ab 60 und Abgleich mit customer_filters, falls vorhanden.
     """
+    from lib.leadsegment import lead_segment  # S12 bekommt S2-Leads (lib/leadsegment.py)
     if match is None:
         from lib.regions import lead_matches as match
     f = sub.get("filters") or {}
@@ -111,7 +112,7 @@ def select_leads(leads: list[dict], sub: dict, already: set[str], details: dict[
         leads = [l for l in leads if tier_now(l) == "premium"]
     picked, per = [], {}
     for l in leads:
-        if l["id"] in already or l["segment_id"] != sub["segment_id"] or l["country"] != country:
+        if l["id"] in already or l["segment_id"] != lead_segment(sub["segment_id"]) or l["country"] != country:
             continue
         if pool and pool not in (l.get("_pools") or ()):
             continue
@@ -402,11 +403,12 @@ def _load_leads(db, since: dt.date, markets: set[tuple] | None = None) -> tuple[
         # Nur Märkte mit aktiven Abos und je Markt die neuesten: alle frischen Leads (200.000+ allein S2/US)
         # seitenweise zu laden lief in einen Statement-Timeout (Audit 02.10.2026)
         from responder import _newest
+        from lib.leadsegment import lead_segment  # S12 liest den S2-Bestand (Status hält jeden Lead bei einem Käufer)
         from lib.pools import restrict, strip
         by_id: dict[str, dict] = {}
         for m in sorted(markets, key=lambda m: tuple(x or "" for x in m)):
             seg, country, pool = (tuple(m) + (None,))[:3]
-            q = restrict({**params, "segment_id": f"eq.{seg}", "country": f"eq.{country}"}, pool)
+            q = restrict({**params, "segment_id": f"eq.{lead_segment(seg)}", "country": f"eq.{country}"}, pool)
             got = strip(_newest(db, q, POOL_PER_MARKET))
             try:  # dazu die am häufigsten geprüften freien Leads des Markts (Dauerprüfung, gleiche Filter)
                 got += strip(_newest(db, {**q, "qualitaet_score": "not.is.null", "order": "qualitaet_score.desc,id"},
@@ -692,9 +694,11 @@ def cmd_test_mail(args) -> int:
     from lib.html_email import render
     from lib.leadreport import attachments
     db = DB()
-    cand = db.select("leads", {"segment_id": f"eq.{args.segment}", "country": f"eq.{args.country}", "status": "eq.new",
+    from lib.leadsegment import lead_segment
+    lseg = lead_segment(args.segment)  # S12 -> S2-Bestand
+    cand = db.select("leads", {"segment_id": f"eq.{lseg}", "country": f"eq.{args.country}", "status": "eq.new",
                                "select": LEAD_SELECT, "order": "created_at.desc", "limit": "400"})
-    known = contact_companies(db, website_optional=args.segment == "S2",
+    known = contact_companies(db, website_optional=lseg == "S2",
                               only=sorted({l["company_id"] for l in cand if l.get("company_id")}))
     leads, seen = [], set()
     for l in cand:

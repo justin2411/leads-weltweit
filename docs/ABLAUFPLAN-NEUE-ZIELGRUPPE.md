@@ -72,6 +72,11 @@ python scripts/zielgruppe_bereit.py S5 US
   Fokus-Liste selbst zu ändern (Lücke, siehe unten).
 - **Lead-Qualität:** Fehlerquote der Stichprobe > 5 % = rot → erst Quelle verbessern (`docs/QUELLEN-SCOUT.md`).
 
+**Zielgruppe ohne eigene Leads:** verkauft sie an dieselben Firmen wie eine andere (z. B. S12 Marketing/SEO an die
+S2-Firmen ohne oder mit schwacher Website), Eintrag in `scripts/lib/leadsegment.py` `LEAD_SEGMENT` (+ Spiegel
+`app/lib/lead-segment.ts`). Tore, Probe, Lieferung und Beispiel-Leads lesen dann diesen Bestand; der Lead-Status
+(`sample`/`reserved`/`delivered`) hält jeden Lead bei genau einem Käufer, über beide Zielgruppen hinweg.
+
 Erst wenn alle vier Tore grün sind, weiter mit Schritt 3. Sonst: Notiz in `decisions` („Zielgruppe S5/US: Premium
 30/50“) und später erneut prüfen.
 

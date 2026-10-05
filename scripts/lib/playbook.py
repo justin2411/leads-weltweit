@@ -18,7 +18,8 @@ try:
     HINTS = json.loads((HERE.parents[1] / "app" / "content" / "industry-hints.json").read_text(encoding="utf-8"))
 except OSError:
     HINTS = {"groups": {}, "hints": {}}
-SLUG = {"S5": "accountants", "S4": "insurance-brokers", "S2": "web-agencies", "S9": "financial-advisers"}
+SLUG = {"S5": "accountants", "S4": "insurance-brokers", "S2": "web-agencies", "S9": "financial-advisers",
+        "S12": "marketing-agencies"}
 
 # Branche der Lead-Firma aus SIC-Code oder Branchentext
 GROUP_WORDS = [

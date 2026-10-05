@@ -553,7 +553,8 @@ def complete_only(data: bytes, segment: str | None = None) -> bytes:
     rows = list(csv.DictReader(io.StringIO(data.decode("utf-8-sig", "replace"))))
     if not rows or not all(k in rows[0] for k in REQUIRED):
         return data
-    need = [k for k in REQUIRED if not (segment == "S2" and k == "website")]
+    from lib.leadsegment import lead_segment  # S12 bekommt S2-Leads: gleiche Regel (Website nicht Pflicht)
+    need = [k for k in REQUIRED if not (lead_segment(segment) == "S2" and k == "website")]
     # Ansprechperson: Name, sonst Rolle („Fehlt ein Name, steht die Rolle“, CLAUDE.md §9) – wie contact_companies
     has = lambda r, k: (r.get(k) or "").strip() or (k == "contact_name" and (r.get("contact_role") or "").strip())  # noqa: E731
     keep = [r for r in rows if all(has(r, k) for k in need)]

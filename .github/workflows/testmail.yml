@@ -4,10 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       an:
-        description: "Empfänger (deine eigene Adresse)"
+        description: "Empfänger (deine eigene Adresse; inhaber = Secret OWNER_EMAIL)"
         required: true
+        default: inhaber
       segment:
-        description: "S1, S2 oder S9"
+        description: "S1, S2, S9 oder S12"
         default: S1
       land:
         description: "UK, US oder FR"
@@ -26,7 +27,7 @@ jobs:
       SENDER_NAME: ${{ secrets.SENDER_NAME }}
       SENDER_POSTAL_ADDRESS: ${{ secrets.SENDER_POSTAL_ADDRESS }}
       UNSUBSCRIBE_MODE: reply
-      AN: ${{ inputs.an }}
+      AN: ${{ inputs.an == 'inhaber' && secrets.OWNER_EMAIL || inputs.an }}
       SEGMENT: ${{ inputs.segment }}
       LAND: ${{ inputs.land }}
       ART: ${{ inputs.art }}

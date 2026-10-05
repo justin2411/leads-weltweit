@@ -1,5 +1,5 @@
 {
- "_doc": "Verkaufs-Playbook je Käufer-Zielgruppe (S1, S2, S4, S5, S9) und Branche der Lead-Firma. needs = was die Firma jetzt wahrscheinlich braucht, offer = konkretes Einstiegsangebot, ask = Frage fürs erste Gespräch. Allgemeine Branchenkenntnis, keine Fakten über einzelne Firmen.",
+ "_doc": "Verkaufs-Playbook je Käufer-Zielgruppe (S1, S2, S4, S5, S9, S12) und Branche der Lead-Firma. needs = was die Firma jetzt wahrscheinlich braucht, offer = konkretes Einstiegsangebot, ask = Frage fürs erste Gespräch. Allgemeine Branchenkenntnis, keine Fakten über einzelne Firmen.",
  "S5": {
   "construction": {
    "needs": [
@@ -437,6 +437,100 @@
    ],
    "offer": "Help with the first two or three hires, fixed fee per placement.",
    "ask": "Who is the first person you need to hire?"
+  }
+ },
+ "S12": {
+  "construction": {
+   "needs": [
+    "A Google Business Profile with project photos and reviews",
+    "Local search visibility for their trade",
+    "A simple way to turn searches into quote requests"
+   ],
+   "offer": "Local search setup with a review routine and a quote-request page.",
+   "ask": "Where do your enquiries come from at the moment?"
+  },
+  "retail": {
+   "needs": [
+    "Being found on Google Maps and local search",
+    "Social posts that bring people into the shop",
+    "Reviews that build trust with new customers"
+   ],
+   "offer": "Local search and social media setup to bring more people through the door.",
+   "ask": "How do new customers hear about the shop today?"
+  },
+  "hospitality": {
+   "needs": [
+    "Google Maps presence, photos and reviews",
+    "Social media that fills quiet days",
+    "Online booking or a menu people can find"
+   ],
+   "offer": "A local visibility package: Google profile, reviews and social posts.",
+   "ask": "How do most new guests find you?"
+  },
+  "transport": {
+   "needs": [
+    "Being found by B2B customers searching for transport",
+    "A profile that shows coverage and reliability",
+    "Quote requests from search, not only referrals"
+   ],
+   "offer": "B2B search visibility with a quote-request page and listings.",
+   "ask": "How do new customers request a quote today?"
+  },
+  "property": {
+   "needs": [
+    "Visibility for listings beyond the big portals",
+    "Lead capture for tenants, buyers or sellers",
+    "A brand that looks established online"
+   ],
+   "offer": "Local search and lead capture for listings and valuations.",
+   "ask": "Where do your new instructions come from right now?"
+  },
+  "tech": {
+   "needs": [
+    "Search visibility for what the product does",
+    "Landing pages and campaigns that convert",
+    "Content that explains the product simply"
+   ],
+   "offer": "A search and campaign setup with landing pages they can measure.",
+   "ask": "How do potential customers find you today?"
+  },
+  "professional": {
+   "needs": [
+    "Ranking for their services in local search",
+    "Reviews and a profile that build trust",
+    "A steady flow of consultation requests"
+   ],
+   "offer": "Local SEO and a review routine that bring in consultation requests.",
+   "ask": "How do potential clients find you today?"
+  },
+  "health": {
+   "needs": [
+    "Local search and Google Maps visibility",
+    "Reviews that reassure new patients",
+    "Online booking that people can find"
+   ],
+   "offer": "Local visibility for the practice: Google profile, reviews and booking.",
+   "ask": "How do new patients find the practice?"
+  },
+  "services": {
+   "needs": [
+    "A Google Business Profile and local search presence",
+    "Reviews that build trust",
+    "A simple online presence that brings enquiries"
+   ],
+   "offer": "A starter local marketing package: Google profile, reviews and a simple online presence.",
+   "ask": "How do new customers find you at the moment?"
+  },
+  "_roles": {
+   "sales": {
+    "needs": [
+     "New sales people need a steady flow of leads",
+     "Campaigns that keep up with a growing team",
+     "Online enquiries that take pressure off sales"
+    ],
+    "offer": "Lead generation campaigns that support the new sales hires.",
+    "ask": "How many enquiries come in online each month?"
+   }
   }
  }
 }

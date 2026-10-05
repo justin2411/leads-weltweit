@@ -208,6 +208,9 @@ SUBJECTS = {
         "S4": ("New businesses across {area} that need cover", "Insurance leads: new businesses across {area}"),
         "S5": ("New companies across {area} needing an accountant", "Accounting leads: new companies across {area}"),
         "S9": ("New company directors across {area}", "Advice leads: new company directors across {area}"),
+        # Marketing-/SEO-Agenturen (Inhaber 05.10.2026): dieselben Firmen wie S2 (keine oder schwache Website)
+        "S12": ("Local businesses across {area} with a weak web presence",
+                "Marketing leads: local businesses across {area}"),
         "": ("Companies across {area} with a reason to buy", "Trigger leads: companies across {area}"),
     },
     "fr": {
@@ -359,11 +362,15 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
                 f"and an opening line. Each lead goes to one {kind} only.")
         ask = f"I've put together a free sample of 10 current leads from across {area} for you. Shall I send it over?"
         greet, bye = f"Hi {firm} team,", "Best regards,"
-        if seg == "S2":
+        if seg in ("S2", "S12"):
             # Webagenturen (Inhaber 02.10.2026): Leads sind Firmen ohne Website (Overture), nicht unbedingt neu gegründet;
-            # Ansprechperson nicht immer mit Namen; keine Exklusivitätszusage in der Kaltmail; kurze Anrede
+            # Ansprechperson nicht immer mit Namen; keine Exklusivitätszusage in der Kaltmail; kurze Anrede.
+            # Marketing-/SEO-Agenturen (S12, Inhaber 05.10.2026): gleiche Leads (S2-Bestand: keine, veraltete, nicht
+            # mobile oder unsichere Website), daher „no website or a weak one“; Aufbau 1:1 nach KALTMAIL-VORLAGE.md
             first = (f"{intro} We find local businesses across {area} that still have no website, a clear reason for "
-                     "them to talk to a web agency.")
+                     "them to talk to a web agency.") if seg == "S2" else (
+                     f"{intro} We find local businesses across {area} with no website or a weak one, a clear reason "
+                     "for them to talk to a marketing agency.")
             core = ("Every Monday you get a short PDF briefing and a spreadsheet: company, phone, email, who to ask for "
                     "and an opening line.")
             ask = f"I've put together a free sample of 10 current leads from across {area}. Shall I send it over?"
@@ -516,8 +523,9 @@ def main(argv=None) -> int:
     col = has_variant_column(db)
     # Je Experiment einmal laden statt je Käufer abfragen (03.10.2026: der tägliche Lauf brach nach Stunden ab,
     # weil für ~70.000 Käufer je eine Abfrage lief); höchstens --max-new neue Entwürfe je Experiment und Lauf
+    from lib.leadsegment import lead_segment  # S12 nutzt S2-Proben/Leads (lib/leadsegment.py)
     for key in keys:
-        if key not in ready:
+        if (lead_segment(key[0]), key[1]) not in ready:
             continue
         e = exps[key]
         have = {m["prospect_id"] for m in db.select_all("messages", {"experiment_id": f"eq.{e['id']}",

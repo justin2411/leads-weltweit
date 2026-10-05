@@ -25,6 +25,14 @@ export const WISHES: Record<string, Wish[]> = {
     { key: "broken", en: "Broken website", fr: "Site en panne", de: "Kaputte Website" },
     // „Neu gegründet“ entfernt (Audit 02.10.2026): S2-Neugründungen haben keine Kontaktdaten, nicht lieferbar
   ],
+  // Marketing-/SEO-Agenturen (S12): gleiche Schlüssel wie Webagenturen (gleiche Leads, scripts/lib/wishes.py)
+  "marketing-agencies": [
+    { key: "no_website", en: "No website", fr: "Sans site web", de: "Ohne Website" },
+    { key: "website_outdated", en: "Outdated website", fr: "Site vieillissant", de: "Veraltete Website" },
+    { key: "not_mobile", en: "Not mobile-friendly", fr: "Site non adapté au mobile", de: "Nicht mobilfähig" },
+    { key: "security", en: "Security gaps", fr: "Failles de sécurité", de: "Sicherheitslücken" },
+    { key: "broken", en: "Broken website", fr: "Site en panne", de: "Kaputte Website" },
+  ],
   "insurance-brokers": [
     { key: "new_incorporation", en: "Newly registered", fr: "Création récente", de: "Neu gegründet" },
     { key: "expansion", en: "Expansion or new site", fr: "Expansion ou nouveau site", de: "Expansion oder neuer Standort" },
