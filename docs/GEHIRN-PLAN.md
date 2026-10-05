@@ -6,6 +6,26 @@
 > **Seit 04.10.2026 gilt:** Tests nur Webagenturen US/UK/FR (`config/fokus.yaml` `tests`, Inhaber: „beim gehirn bei a/b tests soll er das nur für webagencys usa, fr, und uk machen nichts mehr erst wenn ich ihm das freigebe das soll überall so sein, wir brauchen erstmal nichts anderes“).
 > Preis-Tests, neue Zielgruppen und Länder unten ruhen, bis der Inhaber sie freigibt.
 
+## Strategie 05.10.
+**In einem Satz:** Erst beweisen, dass echte Menschen antworten – dann jede Antwort mit einer 10/10-Premium-Probe
+in einen Kunden verwandeln. Masse erst danach.
+
+**Drei Hebel:**
+1. **Zustellung vor Botschaft:** 0 menschliche Antworten auf ~490 Erstmails – erst Posteingang messen (`SEED_INBOXES`), dann Texte.
+2. **Beleg statt Behauptung:** echter, datierter Premium-Anlass aus dem Land des Käufers direkt in der Mail (Beleg-Einstieg).
+3. **US trägt die Menge:** dort reichen Käufer und Premium-Leads für Monate; UK/FR bleiben Testmärkte, bis Quellen reichen.
+
+**Ziel 25.000 €/Monat (≈ 100 × Pro 249), Meilensteine (Quoten = Annahmen):** erste Antwort Fr 09.10. · erste
+Probe-Anfrage Fr 16.10. · erster Kunde Fr 06.11. · 10 Kunden Jan 2027 · 25 Kunden Mär 2027 (nur mit Zweit-Domains,
+Inhaber-Ja) · 100 Kunden Sep 2027.
+
+**Säulen:** Qualität = Premium-Proben US ≥ 25/50 (Di 06.10. 12:00), datierte Anlässe für UK/FR (Scout), Fehlerquote ≤ 2 %.
+Umsatz = Betreff-Test (Mi 07.10. 20:00, ≥ 0,3 %), Beleg-Einstieg ab Do 08.10. (≥ 1 % bis 21.10.), Probe ≤ 1 h nach Antwort.
+Visualisierung = JARVIS-Trichter ohne Scanner, Ziel-Ring 25.000 € mit Zeitstrahl, Premium-Karte je Land (A4, bis Fr 09.10.).
+
+**Offen beim Inhaber:** `SEED_INBOXES` (ja), Bestätigungsknopf Abmeldeseite (ja), Zweit-Domains (nach 1. Antwort),
+Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
+
 ## Lagebild (05.10.2026, 05:30 Berliner Zeit)
 - **Käufer-Nachschub ist kein Engpass** (gegengeprüft): freie ok-Käufer S2 (nie Erstmail) US 28.620, UK 2.485, FR 1.239;
   Tempo ~41/40/33 Erstmails pro Tag → Reichweite US ≈ 700, UK ≈ 57, FR ≈ 38 Tage. Dazu ~1.300 freigegebene Entwürfe je Land.
