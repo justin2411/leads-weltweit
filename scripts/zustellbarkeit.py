@@ -13,6 +13,9 @@ Prüft:
      decisions (nur Vorschlag, Prüfregeln bleiben unverändert)
   4. Kontrolladressen (signalwerk.seed_checks, nur wenn SEED_INBOXES gesetzt ist oder Zeilen da sind)
   5. Zustell-Lücke „gesendet vs. delivered“ (Resend-Ereignisse mit resend_id, älter als 2 h)
+  6. Link-Scanner: Abmeldungen weniger als 2 min nach dem Versand stammen fast immer von Sicherheits-Scannern
+     der Empfänger (kein Mensch klickt in Sekunden). Nur gezählt, damit Antwort-/Klick-Quoten ehrlich bleiben –
+     die Abmeldung bleibt IMMER wirksam (Sperrliste unverändert).
 
 Ergebnis: eine Zeile je Tag (deutsche Zeit) in signalwerk.deliverability_daily (grün/gelb/rot + Gründe).
 Rot (Blocklisten-Treffer, DMARC/SPF fehlt) → kurzes Update in den Gehirn-Chat und ein decisions-Eintrag.
@@ -50,6 +53,8 @@ LUECKE_ALTER_H = 2          # jüngere Mails haben ihr „delivered“ evtl. noc
 START_STUNDE = 6            # Cron: nicht vor 06:00 deutscher Zeit
 QUELLE_HART = 0.05          # Käufer-Quelle: mehr als 5 % harte Bounces …
 QUELLE_MIN = 20             # … ab 20 Mails in 7 Tagen -> Vorschlag
+SCANNER_SEK = 120           # Abmeldung so kurz nach dem Versand = Link-Scanner, kein Mensch
+SCANNER_GELB = 0.5          # gelb, wenn mehr als die Hälfte der Abmeldungen (ab 4) Scanner sind
 
 
 def now() -> dt.datetime:
@@ -227,6 +232,35 @@ def seeds(db, env=None) -> dict:
     return {"aktiv": True, "gesendet_7t": len(rows), "platzierung": dict(pl)}
 
 
+def _ts(x) -> dt.datetime | None:
+    try:
+        t = dt.datetime.fromisoformat(str(x).replace("Z", "+00:00").replace(" ", "T"))
+    except ValueError:
+        return None
+    return t if t.tzinfo else t.replace(tzinfo=dt.timezone.utc)
+
+
+def scanner(db) -> dict:
+    """Abmeldungen (7 T) mit Abstand zum Versand: < SCANNER_SEK = Link-Scanner. Nur zählen, nie entsperren."""
+    ev = db.select_all("email_events", {"type": "eq.unsubscribed", "occurred_at": f"gte.{_since(7)}",
+                                        "message_id": "not.is.null", "select": "message_id,occurred_at"})
+    if not ev:
+        return {"abmeldungen_7t": 0, "scanner_7t": 0, "mensch_7t": 0, "quote": None}
+    ids = sorted({e["message_id"] for e in ev})
+    sent = {}
+    for i in range(0, len(ids), 100):
+        part = ids[i:i + 100]
+        for m in db.select("messages", {"id": f"in.({','.join(part)})", "select": "id,sent_at"}):
+            sent[m["id"]] = _ts(m.get("sent_at"))
+    n_scan = 0
+    for e in ev:
+        a, b = sent.get(e["message_id"]), _ts(e.get("occurred_at"))
+        if a and b and 0 <= (b - a).total_seconds() < SCANNER_SEK:
+            n_scan += 1
+    return {"abmeldungen_7t": len(ev), "scanner_7t": n_scan, "mensch_7t": len(ev) - n_scan,
+            "quote": round(n_scan / len(ev), 4)}
+
+
 def luecke(db) -> dict:
     """Resend-Mails (resend_id) der letzten 7 Tage, älter als 2 h: wie viele haben kein 'delivered'?"""
     cut = (now() - dt.timedelta(hours=LUECKE_ALTER_H)).isoformat()
@@ -244,7 +278,7 @@ def luecke(db) -> dict:
 
 
 # --------------------------------------------------------------------------------------------- Bewertung
-def bewerten(d: dict, bl: dict, bo: dict, se: dict, lu: dict) -> tuple[str, list[str]]:
+def bewerten(d: dict, bl: dict, bo: dict, se: dict, lu: dict, sc: dict | None = None) -> tuple[str, list[str]]:
     rot, gelb = [], []
     hits = sorted(k for k, v in bl.items() if v["ergebnis"] == "treffer")
     if hits:
@@ -273,6 +307,9 @@ def bewerten(d: dict, bl: dict, bo: dict, se: dict, lu: dict) -> tuple[str, list
     spam = (se.get("platzierung") or {}).get("spam", 0)
     if spam:
         gelb.append(f"{spam} Kontrollmails im Spam")
+    sc = sc or {}
+    if sc.get("abmeldungen_7t", 0) >= 4 and (sc.get("quote") or 0) > SCANNER_GELB:
+        gelb.append(f"{sc['scanner_7t']} von {sc['abmeldungen_7t']} Abmeldungen durch Link-Scanner (< 2 min)")
     status = "rot" if rot else "gelb" if gelb else "gruen"
     return status, rot + gelb
 
@@ -324,7 +361,11 @@ def run(db, env=None, resolve=_resolve, rec=None, apply: bool = True, push=None)
     ips = sender_ips(env, resolve)
     bl = blocklists(ips, domain, resolve)
     bo, se, lu = bounces(db), seeds(db, env), luecke(db)
-    status, gruende = bewerten(d, bl, bo, se, lu)
+    try:
+        bo["scanner"] = scanner(db)
+    except Exception as e:  # noqa: BLE001 - reine Zählung, darf den Check nicht scheitern lassen
+        print(f"Scanner-Zählung nicht möglich: {type(e).__name__}: {str(e)[:160]}")
+    status, gruende = bewerten(d, bl, bo, se, lu, bo.get("scanner"))
     row = {"day": berlin_day().isoformat(), "at": now().isoformat(), "status": status, "gruende": gruende,
            "dns": d, "blocklists": {"ips": ips, "ergebnisse": bl}, "bounces": bo, "seeds": se, "luecke": lu}
     if apply:
