@@ -76,6 +76,8 @@ the homepage is not built for phones.“ bzw. „Our earlier check on 28 Septemb
 (nur strenger). Website-Befund mit datiertem Registereintrag (Companies-House-Eigentümerwechsel): Beleg-Link im PDF ist
 der Registereintrag, nicht die Website (`premium_wert.beleg`). Vorher fehlte der Zustand bei ~25 % der Radar-Premium-Leads.
 
+**Wert-Argument je Kombi-Lead (Premium-Labor 05.10.2026):** Radar-Leads mit Zertifikat + Website-Zustand fragen im Einstieg nach einer neuen Website (z. B. „…runs out on 20 October 2026, and the homepage is not built for phones. Would a mobile-friendly site be worth a short chat?“), nicht nach Verlängerung (`lib/radar.py` `combo_value`).
+
 ### Probe-PDF
 
 - Pro Lead eine **Lead-Karte**: Anlass, Datum mit Alter („vor 6 Tagen“), Beleg-Link mit Abrufdatum, Ansprechperson mit Quelle, geprüfter Kontakt, Einstiegssatz.

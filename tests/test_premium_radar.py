@@ -208,6 +208,55 @@ class RadarLeadPassesGateTest(unittest.TestCase):
             self.assertTrue(reasons[0].startswith("nachpruefung_fehler"))
 
 
+class RadarComboValueTest(unittest.TestCase):
+    """Premium-Labor 05.10.2026 (Wert-Argument): Zertifikat + belegter Website-Zustand -> Einstieg und Begründung
+    sprechen von einer neuen Website statt nur von der Verlängerung; Texte bestehen die Freigabe."""
+
+    item = RadarLeadPassesGateTest.item
+    F = [{"type": "website_not_mobile", "detail": "no_viewport", "value": ""},
+         {"type": "website_outdated", "detail": "copyright", "value": "2014"}]
+
+    def test_combo_opener_and_reason_en_fr(self):
+        for co in ("UK", "US", "FR"):
+            it = self.item(co, findings=self.F)
+            if co == "FR":
+                self.assertIn("n'est pas adaptée aux mobiles. Un site adapté aux mobiles vous intéresserait-il ?",
+                              it["opener"])
+                self.assertIn("n'est pas non plus adapté aux mobiles ni à jour", it["urgency_reason"])
+            else:
+                self.assertIn("the homepage is not built for phones. Would a mobile-friendly site be worth a short chat?",
+                              it["opener"])
+                self.assertIn("not only a certificate renewal", it["urgency_reason"])
+            self.assertNotIn("(", it["opener"])
+            self.assertEqual(G.stage1(it, TODAY), [], co)
+            self.assertEqual(G.stage3(it, {"allowed_status": ("new",)}), [], co)
+
+    def test_expired_cert_combo(self):
+        it = self.item("UK", signal_type="no_https", detail="certificate_expired", event_date=TODAY - dt.timedelta(days=4),
+                       not_after=TODAY - dt.timedelta(days=4), findings=self.F[1:])
+        self.assertIn("also, the copyright notice on the homepage dates from 2014", it["opener"])
+        self.assertIn("not only a certificate fix", it["urgency_reason"])
+        self.assertEqual(G.stage3(it, {"allowed_status": ("new",)}), [])
+
+    def test_no_combo_keeps_texts(self):
+        it = self.item("UK")
+        self.assertIn("Would help keeping the site secure", it["opener"])
+        self.assertTrue(it["urgency_reason"].startswith("When a certificate runs out"))
+        t = radar.texts({"name": "Example Ltd", "country": "UK"},
+                        {"signal_type": "website_broken", "detail": "parked", "last_ok": dt.date(2026, 10, 2),
+                         "findings": self.F, "event_date": TODAY}, "example.com", TODAY)
+        self.assertNotIn("natural point", t["urgency_reason"])
+
+    def test_earlier_state_only_reason_not_opener(self):
+        ev = {"signal_type": "cert_expiring", "not_after": dt.date(2026, 10, 20), "days_left": 15, "findings": [],
+              "also": ["website_outdated"], "event_date": TODAY}
+        t = radar.texts({"name": "Example Inc", "country": "US", "lead_checked": "2026-09-28"}, ev, "example.com", TODAY)
+        self.assertIn("also not up to date", t["urgency_reason"])
+        self.assertIn("Would help keeping the site secure", t["opener"])
+        t = radar.texts({"name": "Example Inc", "country": "US"}, ev, "example.com", TODAY)  # ohne Prüfdatum
+        self.assertNotIn("natural point", t["urgency_reason"])
+
+
 class RadarAlsoWishTest(unittest.TestCase):
     """Radar-Ereignis + am selben Tag bestätigter Befund „veraltet“/„nicht mobil“ -> passt zum Wunsch (Scout 05.10.2026)."""
 
