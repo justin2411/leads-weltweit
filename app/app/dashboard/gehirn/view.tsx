@@ -173,7 +173,7 @@ export function GehirnView({ now, settings: s, pages: pg, decisions: rawDec, rep
         </div>
 
         {/* ---------------------------------------------------------------- Gehirn */}
-        <Fold name="gehirn" aliases={["ablaeufe", "agenten"]} open title="Gehirn" icon={<Icon name="gehirn" size={16} />} className="gh-main"
+        <Fold name="gehirn" aliases={["ablaeufe", "agenten"]} open={false} title="Gehirn-Uhr" icon={<Icon name="gehirn" size={16} />} className="gh-main"
           summary={<span className={`gh-live m-${brain.mode}`}><i />{brain.label}</span>}>
           <div className="gh-stage">
             <div className="gh-center">
