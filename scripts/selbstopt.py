@@ -197,12 +197,30 @@ def record(db, t: dt.datetime, schraube: str, art: str, vorher: dict, nachher: d
     row = {"schraube": schraube, "ziel": ziel, "art": art, "status": "offen", "vorher": vorher, "nachher": nachher,
            "messgroesse": messgroesse, "basis": basis, "basis_n": basis_n, "kurz_titel": titel, "kurz_grund": grund,
            "bewerten_ab": (t + dt.timedelta(days=tage)).isoformat(), "created_at": t.isoformat(),
-           "decision_id": dec.get("id")}
+           "decision_id": _uuid_or_none(dec.get("id"))}
     return (db.insert("selbstopt_changes", row) or [row])[0]
 
 
-def _recent(changes: list[dict], schraube: str, t: dt.datetime) -> bool:
-    return any(c["schraube"] == schraube and (_ts(c.get("created_at")) or t) > t - JE_TAG for c in changes)
+def _uuid_or_none(x) -> str | None:
+    """decisions.id ist bigint, selbstopt_changes.decision_id uuid: eine Zahl dort ließ jedes Protokoll mit 400
+    scheitern (05.10.2026) – damit fehlte die Sperre „eine Stufe je Tag“. Verknüpfung steht in decisions.metrics."""
+    import uuid
+    try:
+        return str(uuid.UUID(str(x)))
+    except (TypeError, ValueError):
+        return None
+
+
+def _recent(changes: list[dict], schraube: str, t: dt.datetime, db=None) -> bool:
+    """Höchstens eine Stufe je Stellschraube und Tag: aus dem Protokoll UND aus selbstopt_state.updated_at – fehlt
+    das Protokoll (Schreibfehler), hält die Sperre trotzdem (04.10.2026: fünf Stufen 1,0 → 0,5 in drei Stunden)."""
+    eigene = [c for c in changes if c["schraube"] == schraube]
+    if any((_ts(c.get("created_at")) or t) > t - JE_TAG for c in eigene):
+        return True
+    if eigene or db is None:   # Protokoll vorhanden: es allein zählt (eine Rücknahme darf sofort nachsteuern)
+        return False
+    zuletzt = S.updated_at(db, schraube)
+    return bool(zuletzt and t - JE_TAG < zuletzt <= t + dt.timedelta(minutes=5))
 
 
 # ------------------------------------------------------------------------------------------------ Lauf
@@ -280,7 +298,7 @@ def adjust(db, t: dt.datetime, apply: bool, changes: list[dict]) -> list[dict]:
     open_ = {c["schraube"] for c in changes if c.get("status") == "offen"}
 
     # 1. Versand-Tagesmenge nach Bounce-Quote
-    if not _recent(changes, "versand_menge", t):
+    if not _recent(changes, "versand_menge", t, db):
         cur = S.get(db, "versand_menge")
         f = S.versand_faktor(wert=cur)
         q, n = mess_versand(db, t - dt.timedelta(days=V_FENSTER), t)
@@ -295,7 +313,7 @@ def adjust(db, t: dt.datetime, apply: bool, changes: list[dict]) -> list[dict]:
                 record(db, t, "versand_menge", art, {"faktor": f}, {"faktor": nf}, "Bounce-Quote", q, n, V_TAGE, titel, grund)
 
     # 2. Dauerprüfung: Budget und Prüfabstände nach Fehlerquote
-    if not _recent(changes, "dauerpruefung", t):
+    if not _recent(changes, "dauerpruefung", t, db):
         cur = S.get(db, "dauerpruefung")
         b, i = S.pruef_faktoren(wert=cur)
         q, n = mess_pruefung(db, t - dt.timedelta(days=P_FENSTER), t)
@@ -312,7 +330,7 @@ def adjust(db, t: dt.datetime, apply: bool, changes: list[dict]) -> list[dict]:
                        "Lead-Fehlerquote", q, n, P_TAGE, titel, grund)
 
     # 3. Käufer-Kategorien im Kunden-Werk nach ok-Quote
-    if not _recent(changes, "kaeufer_kategorien", t):
+    if not _recent(changes, "kaeufer_kategorien", t, db):
         cur = S.get(db, "kaeufer_kategorien")
         hinten = S.kategorien_hinten(wert=cur)
         pause = {k for k, bis in (cur.get("pause") or {}).items() if (_ts(bis) or t) > t}

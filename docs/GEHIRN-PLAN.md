@@ -26,6 +26,13 @@ Visualisierung = JARVIS-Trichter ohne Scanner, Ziel-Ring 25.000 € mit Zeitstra
 **Offen beim Inhaber:** `SEED_INBOXES` (ja), Bestätigungsknopf Abmeldeseite (ja), Zweit-Domains (nach 1. Antwort),
 Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 
+## Lagebild (05.10.2026, 14:50 Berliner Zeit)
+- **Versand-Halbierung war ein Fehler der Selbstoptimierung:** Sie protokollierte keine Stufe (Feldtyp passte nicht,
+  jedes Protokoll scheiterte) – damit fehlte die Sperre „eine Stufe je Tag“: 1,0 → 0,5 in drei Stunden am 04.10.
+  Behoben (Sperre hält auch ohne Protokoll), Faktor auf die regelgerechte Stufe 0,8 gesetzt; Notbremse unverändert.
+- Kontrollmails: alle 6 im Posteingang (Gmail). Menschen lesen: Abmeldungen mit Bestätigungsklick seit heute früh,
+  einzelne Seitenbesuche – aber 0 menschliche Antworten. Engpass bleibt Botschaft/Angebot (Tests Mi/Do laufen).
+
 ## Lagebild (05.10.2026, 12:30 Berliner Zeit)
 - **Versand nur halb so groß wie erlaubt:** Postfach 3 durch die Postfach-Notbremse gestoppt (über 5 % Rückläufer seit
   03.10.), Selbstoptimierung ×0,5 (3-Tage-Quote über 3 %) → 140 statt 420 Erstmails/Tag. Nichts gelockert.
@@ -90,6 +97,8 @@ Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 - Käufer ok (S2): US 28.782, UK 2.623, FR 1.285. DB 5,1 GB.
 
 ## Nächster Schritt
+- **Prüfpunkt Di 06.10., 15:00:** Erstmails S2 in 24 h ≥ 180 (Faktor 0,8, Postfach 3 aus); selbstopt_changes hat Zeilen;
+  höchstens eine Versand-Stufe je Tag. Bounce-Quote 3 T ≤ 4,5 % – sonst senkt die Regel selbst weiter.
 - **Prüfpunkt Mi 07.10., 12:00:** ≥ 140 Erstmails/Tag gehalten; Postfach 3 nach Inhaber-Entscheidung wieder an oder bewusst aus.
 - **Prüfpunkt Mi 07.10., 20:00:** ≥ 6 Kontrollmails eingeordnet (seed_checks.placement). Liegt > 30 % im Spam:
   Zustellbarkeit vor Text (Beleg-Einstieg verschieben, DMARC/Inhalt prüfen).
