@@ -220,8 +220,32 @@ def fresh_prospects(db, n: int, rng: random.Random, seg: str | None = None, coun
     return list(out.values())[:n]
 
 
+# Sichtbar kaputte Adressen im mail-fähigen Altbestand (vor #365): „%20“/kodierte Zeichen, Leerzeichen.
+# Qualitäts-Agent 05.10.2026: 315 Käufer mit check_status = ok (US: S4 67, S5 47, S3 47, S2 43 …) kamen per Zufall
+# kaum dran; eine US-Mail an „%20service@…“ kam hart zurück. Diese zuerst prüfen (die Prüfung selbst bleibt gleich).
+BAD_ADDRESS_PATTERNS = ("%[0-9A-Fa-f]{2}", "[[:space:]]")
+
+
+def broken_prospects(db, n: int) -> list[dict]:
+    out: dict[str, dict] = {}
+    for pat in BAD_ADDRESS_PATTERNS:
+        if len(out) >= n:
+            break
+        try:
+            rows = db.select("prospects", {"check_status": "eq.ok", "email": f"match.{pat}", "order": "id",
+                                           "limit": str(n - len(out)), "select": P_FIELDS})
+        except Exception as exc:  # noqa: BLE001 – Vorziehen ist nur Beschleunigung, der Lauf geht normal weiter
+            print(f"Vorziehen kaputter Adressen übersprungen: {type(exc).__name__}: {str(exc)[:200]}")
+            continue
+        for r in rows:
+            out.setdefault(r["id"], r)
+    return list(out.values())[:n]
+
+
 def plan_prospects(db, budget: int, cfg: dict, rng: random.Random, now: dt.datetime) -> tuple[list[dict], int]:
-    chosen = {r["id"]: r for r in due_prospects(db, budget, now)}
+    chosen = {r["id"]: r for r in broken_prospects(db, budget // 2)}  # höchstens halbes Budget, Fällige laufen weiter
+    for r in due_prospects(db, budget - len(chosen), now):
+        chosen.setdefault(r["id"], r)
     due = len(chosen)
     rest = budget - due
     markets = _pairs(cfg.get("maerkte"))

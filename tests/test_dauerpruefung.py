@@ -308,3 +308,27 @@ class WiringTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BrokenAddressFirstTest(unittest.TestCase):
+    """Qualitäts-Agent 05.10.2026: mail-fähige Käufer mit „%20“/Leerzeichen in der Adresse zuerst prüfen."""
+
+    def _p(self, i, email, **kw):
+        return {"id": f"p{i:03d}", "check_status": "ok", "email": email, "segment_id": "S4", "country": "US",
+                "zuletzt_geprueft": "2026-10-02T00:00:00+00:00", "naechste_pruefung": "2026-10-20T00:00:00+00:00", **kw}
+
+    def test_broken_first_capped_at_half_budget(self):
+        rows = [self._p(i, f"%20info{i}@x{i}.com") for i in range(5)] + [self._p(9, "a b@y.com"),
+                                                                         self._p(10, "info@ok.com"),
+                                                                         self._p(11, "%20x@z.com", check_status="call_only")]
+        db = FakeDB({"prospects": rows})
+        got = D.broken_prospects(db, 10)
+        self.assertEqual({r["id"] for r in got}, {"p000", "p001", "p002", "p003", "p004", "p009"})
+        chosen, _ = D.plan_prospects(db, 4, {"maerkte": []}, random.Random(1), NOW)
+        self.assertEqual(len(chosen), 2)  # 4 // 2, nie mehr als das halbe Budget
+        self.assertTrue(all("%20" in r["email"] or " " in r["email"] for r in chosen))
+
+    def test_broken_address_is_rejected_by_unchanged_rule(self):
+        v = D.prospect_verdict({"id": "p1", "email": "%20service@soapeffect.com", "country": "US", "segment_id": "S2",
+                                "website": "https://soapeffect.com", "legal_form": "LLC"}, CFG, set(), (set(), set()))
+        self.assertEqual(v["result"], "abgelehnt")
