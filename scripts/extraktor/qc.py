@@ -241,7 +241,7 @@ def run(c: dict, seg: str, shared: dict | None = None) -> dict:
         cn = [w for w in W.core_words(c["name"]) if len(w) >= 3]
         if any(p in local for p in pn) or any(w in local for w in cn):
             evidence.append("email_matches_person_or_company")
-        elif c.get("source") in ("overture", "rge", "agence_bio", "charity_commission") and c["email_type"] == "freemail":
+        elif c.get("source") in ("overture", "rge", "agence_bio", "charity_commission", "diagnostiqueurs") and c["email_type"] == "freemail":
             warnings.append("email_not_obviously_the_company (check before use)")
 
     # Ansprechperson

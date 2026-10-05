@@ -17,6 +17,7 @@ import {
 } from "@/lib/owner-settings";
 import LANES from "@/lib/werk-linien.json";
 import { COND_LABEL, RECENT_START_MIN, START_WORKFLOWS, fmtBerlin, isStartKey, nextPickup, type StartKey } from "@/lib/start-queue";
+import { zentraleNeuRechnen } from "@/lib/zentrale-refresh-server";
 import { requireOwner } from "./actions";
 
 const BY = "Inhaber Dashboard";
@@ -55,6 +56,7 @@ async function run(f: FormData, okMsg: string | (() => string), fn: () => Promis
     if (e instanceof InputError) go(to, "fehler", e.message);
     throw e;
   }
+  zentraleNeuRechnen(); // JARVIS-Cache sofort neu (Einstellungen, Plätze, Proben-Soll, Bereiche …)
   revalidatePath("/dashboard", "layout");
   go(to, "ok", typeof okMsg === "function" ? okMsg() : okMsg);
 }
