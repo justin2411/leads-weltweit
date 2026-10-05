@@ -242,8 +242,41 @@ def broken_prospects(db, n: int) -> list[dict]:
     return list(out.values())[:n]
 
 
+# Overture-Altbestand vor den Eingangsregeln (#358/#360, live 04.10.2026 ~20:35 MESZ): Eintrags-Mail ohne MX- und
+# Website-Prüfung übernommen. Agent 05.10.2026 (Auftrag efbcdb71): in 30 h fielen bei S2/US 54 von 195 geprüften
+# Overture-Käufern aus dem Altbestand durch (28 %), bei Website-Käufern 55 von 977 (5,6 %); von 110 Abgängen stammten
+# 108 aus dem Altbestand 01.–02.10. Diese Käufer zuerst prüfen (gleiche Prüfung, nur früher).
+ALTLAST_BIS = "2026-10-04T18:35:00+00:00"
+ALTLAST_QUELLE = "*overturemaps.org*"
+# Gezielt vorgezogene Verdachtsfälle zählen in run_stats als eigene Art: die Fehlerquote „kaeufer“ misst so weiter die
+# Stichprobe (Fällige + Zufall) und nicht die absichtlich herausgesuchten Problemfälle (Messfehler 05.10.2026: 10,5 %).
+ART_VORGEZOGEN = "kaeufer_altlast"
+
+
+def altlast_prospects(db, n: int, markets: list[tuple[str, str]]) -> list[dict]:
+    out: dict[str, dict] = {}
+    for i, (seg, country) in enumerate(markets):
+        if len(out) >= n:
+            break
+        share = -(-(n - len(out)) // (len(markets) - i))
+        try:
+            rows = db.select("prospects", {"check_status": "eq.ok", "zuletzt_geprueft": "is.null", "segment_id": f"eq.{seg}",
+                                           "country": f"eq.{country}", "source_url": f"like.{ALTLAST_QUELLE}",
+                                           "created_at": f"lt.{ALTLAST_BIS}", "order": "id", "limit": str(share),
+                                           "select": P_FIELDS})
+        except Exception as exc:  # noqa: BLE001 – Vorziehen ist nur Beschleunigung
+            print(f"Vorziehen Overture-Altbestand übersprungen: {type(exc).__name__}: {str(exc)[:200]}")
+            continue
+        for r in rows:
+            out.setdefault(r["id"], r)
+    return list(out.values())[:n]
+
+
 def plan_prospects(db, budget: int, cfg: dict, rng: random.Random, now: dt.datetime) -> tuple[list[dict], int]:
-    chosen = {r["id"]: r for r in broken_prospects(db, budget // 2)}  # höchstens halbes Budget, Fällige laufen weiter
+    """Auswahl je Lauf. Vorgezogene Verdachtsfälle tragen "_vorgezogen" (nur für die Statistik, wird nie gespeichert)."""
+    chosen = {r["id"]: {**r, "_vorgezogen": True} for r in broken_prospects(db, budget // 2)}  # höchstens halbes Budget
+    for r in altlast_prospects(db, budget // 3, _pairs(cfg.get("maerkte"))):
+        chosen.setdefault(r["id"], {**r, "_vorgezogen": True})
     for r in due_prospects(db, budget - len(chosen), now):
         chosen.setdefault(r["id"], r)
     due = len(chosen)
@@ -407,7 +440,8 @@ def run_kaeufer(db, budget: int, *, apply: bool, live: bool, rng: random.Random,
     by_id = {p["id"]: p for p in rows}
     for v in out:
         p = by_id[v["id"]]
-        g = groups.setdefault((p.get("segment_id"), p.get("country")), Counter())
+        art = ART_VORGEZOGEN if p.get("_vorgezogen") else "kaeufer"
+        g = groups.setdefault((p.get("segment_id"), p.get("country"), art), Counter())
         g["geprueft"] += 1
         g[v["result"]] += 1
         if v["result"] == "hinweis":
@@ -435,16 +469,18 @@ def run_kaeufer(db, budget: int, *, apply: bool, live: bool, rng: random.Random,
     Q.apply_prospects(db, [{"id": v["id"], "result": v["result"], "hinweis": v["hinweis"]} for v in out], log=log)
     from lib.run_stats import record
     stat_rows = []
-    for (seg, c), g in sorted(groups.items(), key=lambda x: tuple(y or "" for y in x[0])):
+    for (seg, c, art), g in sorted(groups.items(), key=lambda x: tuple(y or "" for y in x[0])):
         stat_rows.append({"segment_id": seg, "country": c, "candidates": g["geprueft"], "processed": g["geprueft"],
                           "green": g["ok"], "yellow": g["hinweis"], "red": g["abgelehnt"],
                           "reasons": {k[2:]: n for k, n in g.items() if k.startswith("r:")},
-                          "extra": {"art": "kaeufer", "faellig": due}})
+                          "extra": {"art": art, "faellig": due}})
     record(db, WERK, stat_rows, now.isoformat(), log)
     return res
 
 
 # ------------------------------------------------------------------------------------------------ Zusammenfassung
+ART_NAME = {"lead": "Leads", "kaeufer": "Käufer", ART_VORGEZOGEN: "Käufer-Altbestand (vorgezogen)"}
+
 def summary_text(kpi: dict) -> str:
     """Tageszusammenfassung für die LLM-Qualitäts-Agenten: nur Summen und Ausreißer, keine einzelnen Leads."""
     today = {}
@@ -457,9 +493,9 @@ def summary_text(kpi: dict) -> str:
                 a[k] += int(t.get(k) or 0)
     lines = [f"Dauerprüfung {last or '–'}:"]
     for art, a in sorted(today.items()):
-        name = "Leads" if art == "lead" else "Käufer"
+        name = ART_NAME.get(art, art)
         rate = (a["geprueft"] - a["bestanden"]) / a["geprueft"] if a["geprueft"] else 0
-        extra = f", {a['markiert']} markiert" if art == "kaeufer" else ""
+        extra = f", {a['markiert']} markiert" if art != "lead" else ""
         lines.append(f"- {name}: {a['geprueft']} geprüft, {a['bestanden']} bestanden{extra}, {a['gehalten']} gehalten "
                      f"({rate:.1%} Abweichung)")
     for k, name in (("leads", "Leads"), ("kaeufer", "Käufer")):

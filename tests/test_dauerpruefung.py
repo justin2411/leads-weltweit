@@ -332,3 +332,35 @@ class BrokenAddressFirstTest(unittest.TestCase):
         v = D.prospect_verdict({"id": "p1", "email": "%20service@soapeffect.com", "country": "US", "segment_id": "S2",
                                 "website": "https://soapeffect.com", "legal_form": "LLC"}, CFG, set(), (set(), set()))
         self.assertEqual(v["result"], "abgelehnt")
+
+
+class AltlastTest(unittest.TestCase):
+    """Auftrag efbcdb71 (05.10.2026): Overture-Altbestand vor #358/#360 zuerst prüfen, getrennt messen."""
+
+    def _p(self, i, created, src="https://overturemaps.org (Firmeneintrag x)", **kw):
+        return {"id": f"p{i:03d}", "check_status": "ok", "email": f"info@x{i}.com", "segment_id": "S2", "country": "US",
+                "created_at": created, "source_url": src, **kw}
+
+    def test_altlast_selection(self):
+        rows = [self._p(1, "2026-10-02T10:00:00+00:00"), self._p(2, "2026-10-04T18:00:00+00:00"),
+                self._p(3, "2026-10-05T10:00:00+00:00"),                                   # nach den Eingangsregeln
+                self._p(4, "2026-10-02T10:00:00+00:00", src="https://x4.com/contact"),     # Website-Quelle
+                self._p(5, "2026-10-02T10:00:00+00:00", zuletzt_geprueft="2026-10-04T00:00:00+00:00"),
+                self._p(6, "2026-10-02T10:00:00+00:00", check_status="call_only"),
+                self._p(7, "2026-10-02T10:00:00+00:00", country="UK")]
+        db = FakeDB({"prospects": rows})
+        got = D.altlast_prospects(db, 10, [("S2", "US"), ("S2", "UK")])
+        self.assertEqual({r["id"] for r in got}, {"p001", "p002", "p007"})
+        chosen, _ = D.plan_prospects(db, 3, {"maerkte": ["S2/US"]}, random.Random(1), NOW)
+        self.assertEqual([r["id"] for r in chosen if r.get("_vorgezogen")], ["p001"])   # höchstens ein Drittel
+
+    def test_vorgezogen_counts_separately(self):
+        rows = [{**prospect("p1"), "_vorgezogen": True}, prospect("p2", email="info@acme2.com")]
+        db = FakeDB({"prospects": rows})
+        with mock.patch.object(D, "plan_prospects", return_value=(rows, 0)), \
+                mock.patch("lib.rules.load_countries", return_value=CFG):
+            D.run_kaeufer(db, 2, apply=True, live=False, rng=random.Random(1), cfg={}, log=lambda *_: None)
+        arts = sorted(r["extra"]["art"] for r in db.rows("run_stats"))
+        self.assertEqual(arts, ["kaeufer", "kaeufer_altlast"])
+        calls = [a for f, a in db.rpcs if f == "prospect_quality_apply"]
+        self.assertTrue(all("_vorgezogen" not in r for r in calls[0]["p_rows"]))
