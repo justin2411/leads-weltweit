@@ -433,6 +433,10 @@ _MR = r"(?:(?:M\.|Mme|Monsieur|Madame|Mr\.?|Mrs\.?|Ms\.?)\s+)?"
 PERSON_PATTERNS = [
     (re.compile(r"(?i:directeur|directrice|responsable)\s+(?i:de)\s+(?i:la\s+)?(?i:publication)\s*:?\s*" + _MR + _NAME),
      "Directeur de la publication"),
+    # „Le directeur de la publication du site Internet est Monsieur …“ (Premium-Labor 05.10.2026)
+    (re.compile(r"(?i:directeur|directrice|responsable)\s+(?i:de)\s+(?i:la\s+)?(?i:publication)"
+                r"(?:\s+(?i:du|de\s+ce)\s+(?i:site)(?:\s+(?i:internet|web))?)?\s+(?i:est)\s+" + _MR + _NAME),
+     "Directeur de la publication"),
     (re.compile(r"\b(?i:g[ée]rante?)\s*:\s*" + _MR + _NAME), "Gérant"),
     (re.compile(r"\b(?i:pr[ée]sidente?)\s*:\s*" + _MR + _NAME), "Président"),
     (re.compile(r"\b(?i:managing director)\s*:\s*" + _MR + _NAME), "Managing Director"),
