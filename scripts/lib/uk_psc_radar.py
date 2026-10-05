@@ -199,7 +199,7 @@ def _one(db, cid: str, key: str) -> dict:
 
 
 def run(db, fetcher, today: dt.date | None = None, apply: bool = True, log=print,
-        premium_only: bool | None = None) -> dict:
+        premium_only: bool | None = None, comps: list[dict] | None = None) -> dict:
     from extraktor.sources import uk_ch
     from extraktor.sources import website_check as wc
     today = today or dt.date.today()
@@ -207,7 +207,7 @@ def run(db, fetcher, today: dt.date | None = None, apply: bool = True, log=print
         from lib.premium import only_premium
         premium_only = only_premium(db)
     st: Counter = Counter()
-    comps = uk_companies(db)
+    comps = comps if comps is not None else uk_companies(db)
     st["firmen_bestand"] = len(comps)
     cands = [{"source_id": c["id"], "name": c["name"], "zip": postcode(c.get("address") or "")} for c in comps]
     nums = uk_ch.match_companies([c for c in cands if c["zip"]], log=log)

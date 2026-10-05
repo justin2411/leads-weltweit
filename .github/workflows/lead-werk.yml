@@ -120,6 +120,8 @@ jobs:
   uk-psc:
     # Premium-Radar UK (Quellen-Scout 05.10.2026, scripts/lib/uk_psc_radar.py): Eigentümerwechsel laut Companies House
     # (PSC-Snapshot, ≤ 30 Tage) bei UK-S2-Firmen im Bestand + heute bestätigter Website-Zustand -> Premium-Leads.
+    # Dazu neue Abfall-Beförderer laut Environment Agency (Quellen-Scout R44, scripts/lib/uk_ea_radar.py, je Tag der
+    # letzten 14 Tage genau ein Registerabruf), gleicher Bestand, gleiche Prüfung.
     # Höchstens einmal am Tag (Merker im Zwischenspeicher je Tag, vor dem Abruf gesetzt): jede Registerdatei und jede
     # Startseite höchstens 1×/Tag. Nur im Zeitplan-Lauf (nie doppelt neben Linien-Läufen). Sendet nichts.
     if: github.event_name == 'schedule'
