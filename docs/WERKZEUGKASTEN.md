@@ -42,6 +42,8 @@ prüft, dass jeder Pfad hier existiert und jede MD-Datei des Repos hier steht.
 | `docs/KUNDEN-AGENTEN.md` | persönlicher KI-Ansprechpartner ab Pro – bei Kunden-Betreuung |
 | `drafts/S1-FR.md` | Entwurfsvorlage S1 Frankreich – Muster für neue FR-Vorlagen |
 | `drafts/S1-UK.md` | Entwurfsvorlage S1 UK – Muster für englische Vorlagen |
+| `drafts/S12-UK.md` | Entwurfsvorlage S12 UK (Vorschau) – Marketing-/SEO-Agenturen UK, nur Ltd/LLP/PLC |
+| `drafts/S12-US.md` | Entwurfsvorlage S12 USA (Vorschau) – Marketing-/SEO-Agenturen US |
 | `drafts/S2-FR.md` | Entwurfsvorlage S2 Frankreich (aktiv) – Webagenturen FR |
 | `drafts/S2-US.md` | Entwurfsvorlage S2 USA (aktiv) – Webagenturen US |
 | `drafts/S9-FR.md` | Entwurfsvorlage S9 Frankreich – Finanzberater FR |
@@ -82,6 +84,7 @@ prüft, dass jeder Pfad hier existiert und jede MD-Datei des Repos hier steht.
 | `scripts/lib/laender.py` | aktive Märkte der Werke (`producing`, `pair_producing`) – warum ein Markt ruht |
 | `scripts/lib/rules.py` | Prüfregeln Käufer und Entwürfe (`check_prospect`, `lint_draft`, Fußzeile) – nie lockern |
 | `scripts/lib/kurz.py` | `insert_decisions` mit Kurztitel/-grund – jede Entscheidung, jeder Antrag |
+| `scripts/lib/leadsegment.py` | Zielgruppen ohne eigene Leads (S12 -> S2-Bestand), Spiegel `app/lib/lead-segment.ts` |
 
 ## Leads erzeugen und prüfen
 
