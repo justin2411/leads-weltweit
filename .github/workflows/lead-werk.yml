@@ -163,33 +163,45 @@ jobs:
   fr-decp:
     # Premium-Radar FR (Quellen-Scout R50, scripts/lib/fr_decp_radar.py): öffentlicher Auftrag laut DECP
     # (data.gouv.fr Tabular-API, Zuschlag an PME ≤ 14 Tage) bei FR-S2-Firmen im Bestand + heute bestätigter
-    # Website-Zustand bzw. „keine Website“ -> Premium-Leads. Höchstens einmal am Tag (Merker je Tag, vor dem Abruf
-    # gesetzt), nur im Zeitplan-Lauf, kein Platz im Linienplan. Sendet nichts.
-    if: github.event_name == 'schedule'
+    # Website-Zustand bzw. „keine Website“ -> Premium-Leads. Kein Platz im Linienplan. Sendet nichts.
+    # Läuft in jedem Lauf (Agent 1, 05.10.2026: Zeitplan-Läufe fielen fast alle aus, DECP lief nach dem Einbau nie),
+    # aber höchstens einmal am Tag: Merker je Tag wird VOR dem Abruf gesichert wie bei fr-bio (jede API-Seite
+    # höchstens 1×/Tag, auch wenn mehrere Linien-Läufe gleichzeitig starten oder der Abruf scheitert).
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
-      - uses: actions/checkout@v4
       - id: d
         run: echo "tag=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
       - id: done
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: out/cache/fr_decp_tag.txt
-          key: fr-decp-${{ steps.d.outputs.tag }}
+          key: fr-decp-tag-${{ steps.d.outputs.tag }}
+          lookup-only: true
+      - uses: actions/checkout@v4
+        if: steps.done.outputs.cache-hit != 'true'
       - name: Schalter Lead-Suche (config/pipeline.yaml)
         id: gate
         if: steps.done.outputs.cache-hit != 'true'
         run: |
-          mkdir -p out/cache && echo "${{ steps.d.outputs.tag }}" > out/cache/fr_decp_tag.txt
-          if grep -Eq '^lead_suche:\s*true' config/pipeline.yaml; then
+          # Scout-Test R50 hat DECP und die Startseiten am 05.10. schon abgerufen -> erster Werk-Abruf erst ab 06.10.
+          if [[ "${{ steps.d.outputs.tag }}" < "2026-10-06" ]]; then
+            echo "DECP heute schon im Scout-Test abgerufen – erster Lauf ab 06.10. (1 Abruf/Tag)" | tee -a "$GITHUB_STEP_SUMMARY"
+          elif grep -Eq '^lead_suche:\s*true' config/pipeline.yaml; then
+            mkdir -p out/cache && echo "${{ steps.d.outputs.tag }}" > out/cache/fr_decp_tag.txt
             echo "an=true" >> "$GITHUB_OUTPUT"
           else
             echo "Lead-Suche pausiert (config/pipeline.yaml: lead_suche: false)" | tee -a "$GITHUB_STEP_SUMMARY"
           fi
+      - name: Merker sichern (vor dem Abruf)
+        if: steps.gate.outputs.an == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: out/cache/fr_decp_tag.txt
+          key: fr-decp-tag-${{ steps.d.outputs.tag }}
       - uses: actions/setup-python@v5
         if: steps.gate.outputs.an == 'true'
         with: { python-version: "3.11" }
