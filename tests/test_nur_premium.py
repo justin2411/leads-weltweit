@@ -101,6 +101,52 @@ class RadarTests(unittest.TestCase):
         self.assertEqual(rep["UK"]["verworfen_standard"], 1)
         self.assertTrue(any(t == "observations" for t, _ in db.inserts) or db.tables.get("observations"))
 
+    def test_mark_due_after_check(self):
+        """Lead-Werk hoch: geprüfte Leads bekommen radar_due = heute + 2 (schnelle Kandidaten-Abfrage)."""
+        from lib import radar
+        calls = []
+
+        class DB:
+            def rpc(self, fn, args):
+                calls.append((fn, args))
+                return len(args.get("p_ids") or [])
+
+            def insert(self, *a, **k):
+                return []
+
+        rows = [{"company_id": f"c{i}", "lead_id": f"l{i}", "country": "UK", "website": "x.co.uk"} for i in range(3)]
+        with mock.patch.object(radar, "candidates", side_effect=[rows, []]), \
+                mock.patch.object(radar, "_check_rows", return_value=([], [], 2)):
+            radar.run(DB(), ["UK"], 10, None, log=lambda *a: None, today=dt.date(2026, 10, 5))
+        self.assertEqual(calls, [("radar_skip_rechecked", {"p_country": "UK", "p_limit": 5000}),
+                                 ("radar_mark_due", {"p_ids": ["l0", "l1"], "p_due": "2026-10-07"})])
+        self.assertLessEqual(radar.CHUNK, 300)  # bleibt unter statement_timeout 8 s (v6, kalt ~3,6 ms je Zeile)
+
+    def test_mark_due_error_never_stops(self):
+        from lib import radar
+
+        class DB:
+            def rpc(self, fn, args):
+                raise RuntimeError("down")
+        st = radar.Counter()
+        self.assertEqual(radar.mark_due(DB(), ["l1"], dt.date(2026, 10, 7), st, log=lambda *a: None), 0)
+        self.assertEqual(st["fehler_faellig"], 1)
+        self.assertEqual(radar.mark_due(DB(), [None, ""], dt.date(2026, 10, 7)), 0)
+        self.assertEqual(radar.skip_rechecked(DB(), "UK", st, log=lambda *a: None), 0)
+        self.assertEqual(st["fehler_verschieben"], 1)
+
+    def test_radar_v6_keeps_lock_and_signature(self):
+        """v6 (Lead-Werk hoch): gleiche Signatur, Sperre „höchstens alle 2 Tage“ und Prüfer-heute-Filter bleiben."""
+        from pathlib import Path
+        sql = (Path(__file__).resolve().parents[1] / "supabase" / "migrations"
+               / "20261006090000_signalwerk_radar_due.sql").read_text(encoding="utf-8")
+        fn = sql[sql.index("create or replace function signalwerk.radar_candidates"):]
+        self.assertIn("radar_candidates(p_country text, p_limit int, p_min_days int default 7,", fn)
+        self.assertIn("r0.last_seen > current_date - %s", fn)
+        self.assertIn("k.rechecked and k.checked_at >= current_date", fn)
+        self.assertIn("mod(abs(hashtext(l.company_id::text)), %s) = %s", fn)
+        self.assertNotIn("drop ", sql.lower())
+
 
 if __name__ == "__main__":
     unittest.main()
