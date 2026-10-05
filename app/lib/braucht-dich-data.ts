@@ -3,7 +3,7 @@ import { cache } from "react";
 import { db } from "@/lib/supabase";
 import { LEGAL } from "@/content/legal";
 import opsConfig from "@/lib/ops-config.json";
-import { brauchtDich, type BdDecision, type BdPunkt } from "@/lib/braucht-dich";
+import { brauchtDich, type BdDecision, type BdPunkt, type BdSeed } from "@/lib/braucht-dich";
 
 /**
  * Daten für „Braucht dich“ (lib/braucht-dich.ts): jede Quelle einzeln fehlertolerant (Fehler → Punkt entfällt
@@ -16,7 +16,7 @@ const safe = async <X>(f: () => PromiseLike<X>, dflt: X): Promise<X> => { try { 
 export const loadBrauchtDich = cache(async (): Promise<BdPunkt[]> => {
   const now = new Date();
   const since = new Date(now.getTime() - 8 * 86_400_000).toISOString();
-  const [decisions, seedRows, legalReady, slotPlan, signaturDecided] = await Promise.all([
+  const [decisions, seedRows, legalReady, slotPlan, signaturDecided, seedOpen] = await Promise.all([
     safe(async () => {
       const r = await db().from("decisions").select("id, subject, reasoning, action, kurz_titel, kurz_grund")
         .eq("needs_owner", true).eq("status", "proposed").order("created_at", { ascending: false }).limit(10).abortSignal(T());
@@ -44,10 +44,19 @@ export const loadBrauchtDich = cache(async (): Promise<BdPunkt[]> => {
       if (r.error) throw new Error(r.error.message);
       return (r.data ?? []).length > 0;
     }, true),
+    safe(async () => {
+      // Kontrollmails ohne Einordnung: älter als 20 min (Zustellung), höchstens 3 Tage (danach nicht mehr auffindbar)
+      const r = await db().from("seed_checks").select("id, country, seed, at, subject").is("placement", null)
+        .gte("at", new Date(now.getTime() - 3 * 86_400_000).toISOString())
+        .lte("at", new Date(now.getTime() - 20 * 60_000).toISOString())
+        .order("at", { ascending: false }).limit(30).abortSignal(T());
+      if (r.error) throw new Error(r.error.message);
+      return (r.data ?? []) as BdSeed[];
+    }, null as BdSeed[] | null),
   ]);
   const rules = (opsConfig as { rules?: { signatur_exklusiv?: string[] } }).rules;
   return brauchtDich({
-    decisions, seedRows, legalReady, slotPlan, signaturDecided,
+    decisions, seedRows, legalReady, slotPlan, signaturDecided, seedOpen,
     dispatch: !!process.env.GH_DISPATCH_TOKEN?.trim(),
     legalOpen: Object.values(LEGAL).filter((d) => d.placeholder || d.body.trim().length <= 200).length,
     signaturFiles: rules?.signatur_exklusiv ?? [],

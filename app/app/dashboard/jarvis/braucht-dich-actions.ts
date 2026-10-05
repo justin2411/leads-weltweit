@@ -10,6 +10,7 @@ import { db } from "@/lib/supabase";
 import { freeAgent, validateTask } from "@/lib/agents";
 import { loadAgentTasks } from "@/lib/dashboard-data";
 import { insertDecision } from "@/lib/kurz-schreiben";
+import { SEED_PLACEMENTS, type SeedPlacement } from "@/lib/braucht-dich";
 import { requireOwner } from "../actions";
 
 const BY = "Inhaber Dashboard";
@@ -61,5 +62,23 @@ export async function decideSignatur(choice: "behalten" | "aendern"): Promise<R>
     return { ok: true, text: choice === "behalten" ? "bleibt so" : `Agent ${agent} ändert` };
   } catch (e) {
     return fail("Entscheiden", e);
+  }
+}
+
+/** Kontrollmail einordnen (Posteingangstest): placement nur setzen, wenn noch leer – nichts wird überschrieben. */
+export async function setSeedPlacement(id: string, placement: SeedPlacement): Promise<R> {
+  await requireOwner();
+  if (!/^[0-9a-f-]{36}$/i.test(String(id ?? ""))) return { ok: false, error: "unbekannte Kontrollmail" };
+  if (!SEED_PLACEMENTS.includes(placement)) return { ok: false, error: "unbekannte Einordnung" };
+  try {
+    const { data, error } = await db().from("seed_checks").update({ placement, checked_at: new Date().toISOString() })
+      .eq("id", id).is("placement", null).select("id");
+    if (error) throw new Error(error.message);
+    if (!data?.length) return { ok: false, error: "schon eingeordnet" };
+    await db().from("owner_log").insert({ action: "braucht-dich:kontrollmail", target: `seed_checks ${id}`, old_value: null, new_value: { placement }, created_by: BY });
+    revalidatePath("/dashboard", "layout");
+    return { ok: true, text: "eingeordnet" };
+  } catch (e) {
+    return fail("Einordnen", e);
   }
 }
