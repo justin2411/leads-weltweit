@@ -62,8 +62,6 @@ LOCAL = {
     "pt": {"page": "Ver meus 10 leads gratuitos", "plan": "Escolher meu plano", "secure": "Link seguro para {dom}",
            "title": "Fundador",
            "tagline": "Leads exclusivos no momento certo para prestadores B2B",
-           "steps": [("ENCONTRAMOS", "Um motivo para ligar"), ("VERIFICAMOS", "Cada contato"),
-                     ("VOCÊ RECEBE", "Toda segunda-feira"), ("VOCÊ GANHA", "Novos clientes")],
            "cta": "Enviem meus 10 leads gratuitos", "cta_subj": "Pedido de amostra: 10 leads{area}",
            "cta_body": ("Olá{first},\n\nObrigado pela mensagem. Teremos prazer em receber a amostra gratuita de 10 leads"
                         "{area}.\n\nEmpresa: {company}\nRegião atendida: {area_or}\nNossos serviços: \n\n"
@@ -72,8 +70,6 @@ LOCAL = {
     "es": {"page": "Ver mis 10 leads gratuitos", "plan": "Elegir mi plan", "secure": "Enlace seguro a {dom}",
            "title": "Fundador",
            "tagline": "Leads exclusivos en el momento justo para empresas de servicios B2B",
-           "steps": [("ENCONTRAMOS", "Un motivo para llamar"), ("VERIFICAMOS", "Cada contacto"),
-                     ("USTED RECIBE", "Cada lunes"), ("USTED GANA", "Nuevos clientes")],
            "cta": "Envíenme mis 10 leads gratuitos", "cta_subj": "Solicitud de muestra: 10 leads{area}",
            "cta_body": ("Hola{first}:\n\nGracias por su mensaje. Con gusto recibiremos la muestra gratuita de 10 leads"
                         "{area}.\n\nEmpresa: {company}\nZona que atendemos: {area_or}\nNuestros servicios: \n\n"
@@ -160,29 +156,6 @@ def page_button(url: str, lang: str, label: str | None = None) -> str:
             f'font-size:15px;font-weight:500;color:{NAVY};text-decoration:none;white-space:nowrap;">{html.escape(label)} &rarr;</a>'
             f'</td></tr></table>'
             f'<p style="margin:0 0 24px 4px;font-family:{FONT};font-size:12px;line-height:17px;color:{MUTED};">{note}</p>')
-
-
-def process_strip(lang: str = "en") -> str:
-    """Kleine Ablauf-Grafik für Webagenturen (wie im PDF), nur HTML-Tabelle: keine Bilder, keine externen
-    Ressourcen (Inhaber 02.10.2026). „Leads every Monday“ statt „Exclusive leads“: keine Exklusivitätszusage in Kaltmails."""
-    steps = (LOCAL[lang]["steps"] if lang in LOCAL else
-             [("ON TROUVE", "Une raison d'appeler"), ("ON VÉRIFIE", "Chaque contact"),
-              ("VOUS RECEVEZ", "Chaque lundi"), ("VOUS GAGNEZ", "Nouveaux clients")] if lang == "fr" else
-             [("WE FIND", "A reason to call"), ("WE CHECK", "Every contact"),
-              ("YOU GET", "Leads every Monday"), ("YOU WIN", "New clients")])
-    cells = []
-    for i, (k, v) in enumerate(steps):
-        if i:
-            cells.append(f'<td style="padding:0 3px;font-family:{FONT};font-size:13px;color:{GOLD};">&rarr;</td>')
-        last = i == len(steps) - 1
-        cells.append(
-            f'<td style="background:{NAVY if last else "#F4F1EA"};border-radius:8px;padding:8px 6px;text-align:center;">'
-            f'<div style="font-family:{FONT};font-size:9px;letter-spacing:1px;font-weight:700;'
-            f'color:{GOLD};">{html.escape(k)}</div>'
-            f'<div style="font-family:{FONT};font-size:12px;line-height:16px;font-weight:600;'
-            f'color:{"#FFFFFF" if last else NAVY};margin-top:2px;">{html.escape(v)}</div></td>')
-    return (f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:22px 0 0 0;">'
-            f'<tr>{"".join(cells)}</tr></table>')
 
 
 def render(body_text: str, footer_text: str, lang: str = "en", cta: str = "",

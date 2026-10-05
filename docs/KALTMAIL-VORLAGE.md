@@ -19,7 +19,7 @@ gilt CLAUDE.md.
 | 7 | **Button** | Land mit Landingpage: „See my 10 free leads →“ (FR „Voir mes 10 pistes gratuites →“), führt auf `/{land}/{branche}?r=<token>`. Land ohne Landingpage: „Send me my 10 free leads“ (öffnet fertige Antwortmail) | `html_email.page_button()` / `cta_button()` |
 | 8 | **Hinweis unter dem Button** | goldenes ✓ + „Secure link to **nextgen-profit.de**“ (Domain grau, nicht blau). Kein Schloss-Emoji, kein Zusatz | `page_button()` |
 | 9 | **Gruß + Unterschrift** | „Best regards,“, Unterschrift in Schreibschrift, 12 px Abstand, darunter Goldbalken mit „Founder, NextGen Profit“, Slogan, Website | `render()` |
-| 10 | **Ablauf-Grafik** | 4 Kästchen, letztes dunkel: **WE FIND** A reason to call → **WE CHECK** Every contact → **YOU GET** Leads every Monday → **YOU WIN** New clients. FR: ON TROUVE Une raison d'appeler → ON VÉRIFIE Chaque contact → VOUS RECEVEZ Chaque lundi → VOUS GAGNEZ Nouveaux clients | `html_email.process_strip()` |
+| 10 | ~~Ablauf-Grafik~~ | **entfällt** (Inhaber 05.10.2026: „überall raus“). Unter der Signatur steht keine Grafik mehr; nicht wieder einbauen. | – |
 | 11 | **Pflichtfußzeile** | Firma, Anschrift, Grund des Kontakts, Abmeldung („reply unsubscribe“ bzw. Link). Kommt immer vom System | `lib/rules.render_footer()` |
 
 Textfassung: Bausteine 2–6 und 9 als reiner Text, ohne Button-Gestaltung und ohne Grafik. Jede Mail ist
@@ -49,9 +49,7 @@ HTML + Text (multipart).
    - **Käufer:** „talk to a {Käufer}“
    - Satz 2, Satz 3 und der Button bleiben wörtlich gleich.
 2. EN und FR jeweils ausformulieren und mit `lint_draft` prüfen (Wortzahl, verbotene Wörter).
-3. Ablauf-Grafik: Sie erscheint nur für Segmente, die in `outreach.html_version()` freigeschaltet sind (heute
-   `segment == "S2"`). Neue Branche dort ergänzen. Die vier Schritte bleiben gleich, weil sie für alle
-   Trigger-Leads stimmen.
+3. Keine Ablauf-Grafik unter der Signatur (Inhaber 05.10.2026: „überall raus“), auch nicht für neue Branchen.
 4. Landingpage `/{land}/{branche}` live schalten (`landing_pages`, Status `live`). Erst dann zeigt die Mail den
    „See my 10 free leads“-Button, vorher den Antwort-Button.
 5. Testmail an den Inhaber: Workflow `testmail.yml` (an, segment, land, art=kaltmail). Gmail prüfen
@@ -65,7 +63,7 @@ HTML + Text (multipart).
    nach CLAUDE.md. Nie DE/AT/CH/IT/ES/PL/DK.
 2. `drafts.LAND` um den Ländernamen ergänzen („the Netherlands“, „Ireland“ …).
 3. Rechtsformen des Landes in `drafts._clean_name()` ergänzen, damit sie nicht in der Anrede stehen.
-4. Eigene Sprache? Dann den ganzen Block wie FR übersetzen: Betreff, 3 Sätze, Button, Hinweis, Ablauf-Grafik,
+4. Eigene Sprache? Dann den ganzen Block wie FR übersetzen: Betreff, 3 Sätze, Button, Hinweis,
    Gruß, Signatur-Slogan, Etikett. Sonst Englisch. Vorbild für neue Sprachen: PT (BR) und ES (MX) in
    `drafts.LOCAL_TEXT`, `html_email.LOCAL`, `followups.LOCAL_FOLLOWUP`, Fußzeile/verbotene Wörter in `lib/rules.py`,
    Abmelde-Erkennung in `inbox.OPTOUT`; `drafts.MAIL_LANG` muss zu `countries.yaml language` passen (Test).

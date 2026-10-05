@@ -140,12 +140,12 @@ class FooterTest(unittest.TestCase):
         self.assertFalse(inbox.OPTOUT.search("Sí, envíela por favor"))
 
     def test_html_localized(self):
-        from lib.html_email import page_button, process_strip, render
+        from lib.html_email import page_button, render
         html = render("Olá,\n\nTexto.\n\nAtenciosamente,\nJustin", self.footer("pt", "BR"), "pt",
-                      page_button("https://www.nextgen-profit.de/br/x", "pt"), extra=process_strip("pt"))
-        for w in ("Ver meus 10 leads gratuitos", "Link seguro", "ENCONTRAMOS"):
+                      page_button("https://www.nextgen-profit.de/br/x", "pt"))
+        for w in ("Ver meus 10 leads gratuitos", "Link seguro"):
             self.assertIn(w, html)
-        self.assertIn("ENCONTRAMOS", process_strip("es"))
+        self.assertNotIn("ENCONTRAMOS", html)  # keine Ablauf-Grafik (Inhaber 05.10.2026)
 
     def test_html_kein_siegel_ohne_aussteller(self):
         # §7: kein „✓ Certified“ ohne Aussteller (Inhaber 05.10.2026)
