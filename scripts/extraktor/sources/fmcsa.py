@@ -41,16 +41,29 @@ SELECT = ",".join([
 OOS_URL = "https://data.transportation.gov/resource/p2mt-9ige.json"
 
 
-def _get(s: requests.Session, params: dict, tries: int = 3, url: str = URL) -> requests.Response:
-    """Socrata (data.transportation.gov) antwortet zeitweise sehr langsam: zweimal wiederholen statt den Lauf zu
-    beenden (Lesezugriff, Wiederholung unbedenklich)."""
+def _get(s: requests.Session, params: dict, tries: int = 5, url: str = URL,
+         sleep=time.sleep) -> requests.Response:
+    """Socrata (data.transportation.gov) antwortet zeitweise sehr langsam oder mit 429 (Drosselung, wenn mehrere
+    FMCSA-Teile gleichzeitig laufen): mit wachsender Pause wiederholen statt den Lauf zu beenden (Lesezugriff,
+    Wiederholung unbedenklich). Retry-After wird beachtet; nach dem letzten Versuch geht die Antwort zurück und
+    raise_for_status meldet den Fehler wie bisher (kein Filter wird übersprungen)."""
     for attempt in range(tries):
+        last = attempt == tries - 1
         try:
-            return s.get(url, params=params, timeout=180)
+            r = s.get(url, params=params, timeout=180)
         except (requests.ConnectionError, requests.Timeout):
-            if attempt == tries - 1:
+            if last:
                 raise
-            time.sleep(10 * (attempt + 1))
+            sleep(10 * (attempt + 1))
+            continue
+        if (r.status_code == 429 or r.status_code >= 500) and not last:
+            try:
+                wait = min(float(r.headers.get("Retry-After") or 0), 300)
+            except ValueError:
+                wait = 0
+            sleep(max(wait, 30 * (attempt + 1)))
+            continue
+        return r
     raise AssertionError("unreachable")
 
 

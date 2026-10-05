@@ -997,3 +997,37 @@ class S4ZweitleadTests(unittest.TestCase):
         self.assertEqual(len(new), 1)
         self.assertEqual((new[0]["segment_id"], new[0]["signal_type"], new[0]["observation_ids"]), ("S4", "new_fleet", ["o1"]))
         self.assertEqual(new[0]["premium"]["tier"], "premium")
+
+
+def test_fmcsa_get_retries_on_429_then_succeeds():
+    from extraktor.sources import fmcsa
+
+    class R:
+        def __init__(self, code, headers=None):
+            self.status_code, self.headers = code, headers or {}
+
+    answers = [R(429, {"Retry-After": "5"}), R(503), R(200)]
+    calls, waits = [], []
+
+    class S:
+        def get(self, url, params=None, timeout=None):
+            calls.append(url)
+            return answers[len(calls) - 1]
+
+    r = fmcsa._get(S(), {}, sleep=waits.append)
+    assert r.status_code == 200 and len(calls) == 3 and waits == [30, 60]
+
+
+def test_fmcsa_get_returns_last_429_for_raise():
+    from extraktor.sources import fmcsa
+
+    class R:
+        status_code, headers = 429, {}
+
+    class S:
+        def get(self, url, params=None, timeout=None):
+            return R()
+
+    waits = []
+    assert fmcsa._get(S(), {}, tries=3, sleep=waits.append).status_code == 429
+    assert len(waits) == 2
