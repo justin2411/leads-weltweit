@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Premium-Radar UK: Eigentümerwechsel (Companies House PSC) bei UK-S2-Firmen im Bestand -> datierte Premium-Leads.
-Einmal am Tag (Job uk-psc im Lead-Werk). Sendet nichts. Details: scripts/lib/uk_psc_radar.py.
+"""Premium-Radar UK: Eigentümerwechsel (Companies House PSC) und neue Abfall-Beförderer (Environment Agency) bei
+UK-S2-Firmen im Bestand -> datierte Premium-Leads. Einmal am Tag (Job uk-psc im Lead-Werk), der Bestand wird einmal
+geladen. Sendet nichts. Details: scripts/lib/uk_psc_radar.py, scripts/lib/uk_ea_radar.py.
 
   python scripts/uk_psc_radar.py            # zählen, nichts schreiben
   python scripts/uk_psc_radar.py --apply    # Leads schreiben
@@ -22,13 +23,20 @@ def main(argv=None) -> int:
     from enrich import Fetcher
     from lib.db import DB
     from lib.owner_settings import stop_if_paused
-    from lib import uk_psc_radar
+    from lib import uk_ea_radar, uk_psc_radar
     db = DB()
     if args.apply and stop_if_paused(db, "lead-werk"):
         return 0
-    rep = uk_psc_radar.run(db, Fetcher(), apply=args.apply)
+    comps = uk_psc_radar.uk_companies(db)
+    fetcher = Fetcher()
+    rep = {}
+    for name, mod in (("psc", uk_psc_radar), ("ea", uk_ea_radar)):
+        try:  # eine Quelle darf die andere nicht aufhalten
+            rep[name] = mod.run(db, fetcher, apply=args.apply, comps=comps)
+        except Exception as exc:  # noqa: BLE001
+            rep[name] = {"fehler": type(exc).__name__}
     print(json.dumps(rep, ensure_ascii=False, sort_keys=True))
-    return 0
+    return 0 if all("fehler" not in r for r in rep.values()) else 1
 
 
 if __name__ == "__main__":
