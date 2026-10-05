@@ -26,6 +26,13 @@ Visualisierung = JARVIS-Trichter ohne Scanner, Ziel-Ring 25.000 € mit Zeitstra
 **Offen beim Inhaber:** `SEED_INBOXES` (ja), Bestätigungsknopf Abmeldeseite (ja), Zweit-Domains (nach 1. Antwort),
 Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 
+## Lagebild (05.10.2026, 16:30 Berliner Zeit)
+- **Versand wieder voll:** 237 Erstmails in 24 h (US 82, UK 81, FR 74), Postfach 3 sendet wieder. Prüfpunkt Di (≥ 180) schon erreicht.
+- **Antworten weiter 0** (Cockpit leer seit Start, nur Abwesenheitsnotizen); Antwort-Erkennung läuft. Zustellung Posteingang (Kontrollmails).
+- **Nachfassmails ab Mi 07.10. werden der zweite große Kanal** (~130 aus der ersten Welle fällig, Text besteht die Prüfung).
+  Bisher kamen sie aus einem beliebigen Postfach und ohne Bezug zur Erstmail – jetzt vom Postfach der Erstmail und im
+  selben Verlauf (In-Reply-To, Betreff ohne „Re:“). Mengen, Notbremse und Prüfungen unverändert.
+
 ## Lagebild (05.10.2026, 14:50 Berliner Zeit)
 - **Versand-Halbierung war ein Fehler der Selbstoptimierung:** Sie protokollierte keine Stufe (Feldtyp passte nicht,
   jedes Protokoll scheiterte) – damit fehlte die Sperre „eine Stufe je Tag“: 1,0 → 0,5 in drei Stunden am 04.10.
@@ -97,6 +104,8 @@ Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 - Käufer ok (S2): US 28.782, UK 2.623, FR 1.285. DB 5,1 GB.
 
 ## Nächster Schritt
+- **Prüfpunkt Do 08.10., 18:00:** Nachfassmails S2 gesendet ≥ 50, davon ≥ 90 % vom Postfach der Erstmail; Erfolg bis
+  15.10.: mindestens 1 menschliche Antwort auf eine Nachfassmail.
 - **Prüfpunkt Di 06.10., 15:00:** Erstmails S2 in 24 h ≥ 180 (Faktor 0,8, Postfach 3 aus); selbstopt_changes hat Zeilen;
   höchstens eine Versand-Stufe je Tag. Bounce-Quote 3 T ≤ 4,5 % – sonst senkt die Regel selbst weiter.
 - **Prüfpunkt Mi 07.10., 12:00:** ≥ 140 Erstmails/Tag gehalten; Postfach 3 nach Inhaber-Entscheidung wieder an oder bewusst aus.

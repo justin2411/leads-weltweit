@@ -189,6 +189,16 @@ def pick(boxes: list[dict], caps: dict[int, int], sent: dict[int, int]) -> dict 
     return min(free, key=lambda b: (sent.get(b["n"], 0) / caps[b["n"]], -(caps[b["n"]] - sent.get(b["n"], 0)), b["n"]))
 
 
+def pick_for(boxes: list[dict], caps: dict[int, int], sent: dict[int, int], prefer_from: str | None) -> dict | None:
+    """Wie pick(), aber zuerst das Postfach der Erstmail (Nachfassmail vom selben Absender wie die Erstmail, Gehirn
+    05.10.2026). Nur wenn es noch Platz hat (Tagesmenge, Postfach-Notbremse setzt caps auf 0) – sonst pick()."""
+    a = address(prefer_from or "")
+    for b in boxes:
+        if a and a == address(b["from"]) and caps.get(b["n"], 0) - sent.get(b["n"], 0) > 0:
+            return b
+    return pick(boxes, caps, sent)
+
+
 def box_of(sent_from: str | None, boxes: list[dict]) -> int:
     """Nummer des Postfachs zu einer gesendeten Mail (ältere Mails ohne sent_from: Postfach 1)."""
     a = address(sent_from or "")

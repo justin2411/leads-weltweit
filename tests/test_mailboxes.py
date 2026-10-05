@@ -67,6 +67,16 @@ class MailboxTests(unittest.TestCase):
         self.assertEqual(sorted(order), [1, 1, 1, 2, 2])
         self.assertEqual(order[0], 1)
 
+    def test_pick_for_prefers_parent_box_only_with_room(self):
+        # Nachfassmail vom Postfach der Erstmail – aber nie über dessen Tagesmenge oder bei Notbremse (cap 0)
+        boxes = mb.mailboxes(ENV)
+        b2 = boxes[1]["from"]
+        self.assertEqual(mb.pick_for(boxes, {1: 3, 2: 2}, {}, b2)["n"], 2)
+        self.assertEqual(mb.pick_for(boxes, {1: 3, 2: 2}, {2: 2}, b2)["n"], 1)
+        self.assertEqual(mb.pick_for(boxes, {1: 3, 2: 0}, {}, b2)["n"], 1)
+        self.assertIsNone(mb.pick_for(boxes, {1: 0, 2: 0}, {}, b2))
+        self.assertEqual(mb.pick_for(boxes, {1: 3, 2: 2}, {}, None)["n"], mb.pick(boxes, {1: 3, 2: 2}, {})["n"])
+
     def test_box_of_maps_old_mails_to_main_box(self):
         boxes = mb.mailboxes(ENV)
         self.assertEqual(mb.box_of(None, boxes), 1)

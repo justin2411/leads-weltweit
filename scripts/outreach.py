@@ -475,8 +475,21 @@ def _plan_url(body: str) -> str | None:
     return m.group(0) if m else None
 
 
+def followup_parent(db, m: dict) -> dict:
+    """Erstmail zur Nachfassmail (sent_from, smtp_message_id); leer, wenn sie fehlt oder nicht lesbar ist."""
+    if not m.get("parent_id"):
+        return {}
+    try:
+        rows = db.select("messages", {"id": f"eq.{m['parent_id']}", "status": "eq.sent",
+                                      "select": "sent_from,smtp_message_id"})
+    except Exception:  # noqa: BLE001 - ohne Verlauf senden wie bisher
+        return {}
+    return rows[0] if rows else {}
+
+
 def deliver(to: str, subject: str, text: str, unsub_url: str | None, html: str | None = None,
-            mailbox: dict | None = None, attachments: list[tuple[str, bytes]] | None = None) -> dict:
+            mailbox: dict | None = None, attachments: list[tuple[str, bytes]] | None = None,
+            in_reply_to: str | None = None) -> dict:
     """Sendet eine reine Textmail. MAIL_TRANSPORT=smtp (z. B. Strato) oder resend.
     mailbox: eines der Postfächer aus lib.mailboxes (Standard: Postfach 1 aus SMTP_*/MAIL_FROM).
 
@@ -510,6 +523,10 @@ def deliver(to: str, subject: str, text: str, unsub_url: str | None, html: str |
         msg["Reply-To"] = reply_to
     msg["Date"] = formatdate(localtime=False)
     msg["Message-ID"] = make_msgid(domain=sender.rsplit("@", 1)[-1].strip(">"))
+    if in_reply_to:
+        # Nachfassmail im Verlauf der eigenen Erstmail (echter Bezug, Betreff ohne „Re:“, Gehirn 05.10.2026)
+        msg["In-Reply-To"] = in_reply_to
+        msg["References"] = in_reply_to
     for k, v in headers.items():
         msg[k] = v
     msg.set_content(text)  # Text-Version immer dabei; HTML ohne Bilder, kein Öffnungs-Tracking
@@ -576,7 +593,7 @@ def cmd_send(args) -> int:
         return 2
 
     # Postfächer (lib/mailboxes.py): jedes mit eigener Tagesmenge, zusammen die Tagesgrenze
-    from lib.mailboxes import box_cap, box_of, mailboxes, pick
+    from lib.mailboxes import box_cap, box_of, mailboxes, pick, pick_for
     boxes = mailboxes() or [{"n": 1, "from": os.environ.get("MAIL_FROM", "")}]
     firsts: dict[int, dt.date] = {}
     for row in db.select_all("messages", {"status": "eq.sent", "select": "sent_at,sent_from", "order": "sent_at.asc"}):
@@ -854,7 +871,9 @@ def cmd_send(args) -> int:
             lang = m.get("language") if m.get("language") in LANDING_LINE else "en"
             body += "\n\n" + LANDING_LINE[lang].format(url=link)
         text = body + "\n\n" + footer
-        box = pick(boxes, caps, sent_box)
+        # Nachfassmail: vom Postfach der Erstmail und im selben Verlauf (nur Wahl des Postfachs, Mengen unverändert)
+        parent = followup_parent(db, m) if kind != "initial" else {}
+        box = pick_for(boxes, caps, sent_box, parent.get("sent_from"))
         if box is None:
             print(f"Alle Postfächer haben ihre Tagesmenge erreicht ({cap}), Rest folgt an den nächsten Tagen")
             break
@@ -873,7 +892,8 @@ def cmd_send(args) -> int:
                                 _country_area(country), link or plan_url,
                                 segment=e["segment_id"] if kind == "initial" else None, plan=bool(plan_url))
             provider_fields = deliver(m["to_email"], m["subject"], text, unsub, html,
-                                      mailbox=box if box.get("user") else None, attachments=files)
+                                      mailbox=box if box.get("user") else None, attachments=files,
+                                      in_reply_to=parent.get("smtp_message_id"))
         except Exception as exc:  # noqa: BLE001 - Versandfehler melden, nicht abbrechen
             print(f"FEHLER Versand {m['to_email']}: {exc}")
             continue
