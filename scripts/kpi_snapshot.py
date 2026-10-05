@@ -78,12 +78,30 @@ def _num(v):
     return int(f) if f.is_integer() else round(f, 4)
 
 
+TIMEOUT_RETRIES = 3   # 05.10.2026: Abschluss scheiterte an „statement timeout“ (57014), als leads ohne Vacuum lief
+
+
+def _kpi_day(db, day: dt.date, segment: str, country: str, sleep=None) -> list[dict]:
+    """Ein Land; bei Zeitüberschreitung der Datenbank (57014) bis zu 3 Versuche mit Pause, sonst Fehler weitergeben."""
+    import time
+    sleep = sleep or time.sleep
+    for i in range(TIMEOUT_RETRIES):
+        try:
+            return db.rpc("kpi_day", {"p_day": day.isoformat(), "p_segment": segment, "p_countries": [country]}) or []
+        except RuntimeError as e:
+            if "57014" not in str(e) or i == TIMEOUT_RETRIES - 1:
+                raise
+            print(f"kpi_day {country}: Zeitüberschreitung, Versuch {i + 2} von {TIMEOUT_RETRIES}", flush=True)
+            sleep(20 * (i + 1))
+    return []
+
+
 def rows_for(db, day: dt.date, segment: str, countries: list[str], t: dt.datetime) -> list[dict]:
     """Zeilen für kpi_daily aus signalwerk.kpi_day (nur bekannte Kennzahlen, je Schlüssel einmal). Ein Aufruf je Land:
     alle drei auf einmal dauerten 6 s (Grenze der Schnittstelle 8 s), einzeln je 0,2–0,6 s."""
     raw = []
     for c in countries:
-        raw += db.rpc("kpi_day", {"p_day": day.isoformat(), "p_segment": segment, "p_countries": [c]}) or []
+        raw += _kpi_day(db, day, segment, c)
     out: dict[tuple, dict] = {}
     for r in raw:
         metric, country = str(r.get("metric") or ""), str(r.get("country") or "").upper()
