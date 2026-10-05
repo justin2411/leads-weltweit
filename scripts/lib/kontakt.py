@@ -27,7 +27,7 @@ import unicodedata
 from lib import premium as P
 from lib import websites as W
 
-VERSION = 2  # 2: Registersuche Name+PLZ auch für Radar-Firmen (overture_web), Premium-Labor 05.10.2026
+VERSION = 3  # 2: Registersuche Name+PLZ auch für Radar-Firmen (overture_web); 3: Overture-ID nicht als Registernummer abgleichen (match_company), beides Premium-Labor 05.10.2026
 MIN_BELEGE_PERSON = 2
 RECHECK_DAYS = 30
 FR_SOURCE = "Registre national des entreprises"
@@ -161,8 +161,32 @@ def uk_pick(items: list[dict], name: str, pc: str) -> dict | None:
 
 
 # ------------------------------------------------------------------------------------------------ Website
-def site_facts(pages: dict[str, str], site_url: str, company: dict, person_name: str | None) -> dict:
+# Quellen, deren registry_id keine Registernummer ist (Overture-ID, UUID)
+NO_REGISTER_SOURCES = ("overture", "overture_web")
+_UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I)
+
+
+def match_company(company: dict, register: dict | None = None) -> dict:
+    """Firma für den Website-Abgleich (lib.websites.score_match): registry_id nur, wenn sie eine Registernummer ist.
+
+    Premium-Labor 05.10.2026: Radar-Firmen (overture_web) tragen die Overture-ID als registry_id. score_match verglich
+    sie mit der Companies-House-Nummer/SIREN auf der Website und meldete „other_registry_id“ – bei 23 % der UK/FR-Radar-
+    Premium-Leads; dann zählte die Website gar nicht (keine Person aus dem Impressum, keine Kontakt-Belege). Jetzt gilt
+    statt der Overture-ID die Nummer, die das Register selbst für diese Firma geliefert hat (Suche Name + PLZ): steht
+    auf der Website dieselbe Nummer, ist das ein starker Beleg; steht dort eine andere, bleibt es ein Widerspruch.
+    Ohne Registertreffer wird keine Nummer verglichen (Name, Domain, PLZ, Telefon entscheiden wie bei jeder Firma
+    ohne Nummer). Nur Belegabgleich im Kontakt-Werk – die Drei-Stufen-Freigabe bleibt unverändert."""
+    rid = str(company.get("registry_id") or "").strip()
+    if company.get("registry_source") not in NO_REGISTER_SOURCES and not _UUID.match(rid):
+        return company
+    reg_id = str((register or {}).get("id") or "").strip()
+    return {**company, "registry_id": reg_id if reg_id and not _UUID.match(reg_id) else ""}
+
+
+def site_facts(pages: dict[str, str], site_url: str, company: dict, person_name: str | None,
+               register: dict | None = None) -> dict:
     """Was die eigene Website zeigt: Nummern, Adressen, Person im Impressum, Beleg, dass die Seite zur Firma gehört."""
+    company = match_company(company, register)
     country = company.get("country") or ""
     text = "\n".join(W.without_hosting(W.page_text(p)) for p in pages.values())
     phones: list[str] = []
