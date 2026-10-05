@@ -8,7 +8,7 @@ on:
         required: true
         default: inhaber
       segment:
-        description: "S1, S2, S5, S9 oder S12"
+        description: "S1, S2, S4, S5, S9 oder S12"
         default: S1
       land:
         description: "UK, US oder FR"

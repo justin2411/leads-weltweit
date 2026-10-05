@@ -239,7 +239,7 @@ test("Zustand: noch nie geändert, wartet, start angefordert, angewandt, pausier
 
 test("Lead-Linien je Land wie werk-linien.json", () => {
   const by = Object.fromEntries(LEAD_COUNTRIES.map((c) => [c.id, leadLanes(reg).filter((l) => countryOf(l) === c.id).map((l) => l.id)]));
-  assert.deepEqual(by, { US: ["web-us", "radar-us", "fmcsa-us", "s2-us", "s1-us-lca"], UK: ["web-uk", "radar-uk", "s2-ukfr", "s1-uk-tender"], FR: ["web-fr", "radar"], Nord: ["web-north"], Neu: ["s2-neu"] });
+  assert.deepEqual(by, { US: ["web-us", "radar-us", "fmcsa-us", "fmcsa-s4-us", "s2-us", "s1-us-lca"], UK: ["web-uk", "radar-uk", "s2-ukfr", "s1-uk-tender"], FR: ["web-fr", "radar"], Nord: ["web-north"], Neu: ["s2-neu"] });
 });
 
 test("Tempo: langsamer schaltet nie ein Land ab; Standard bringt die Standardbelegung zurück", () => {

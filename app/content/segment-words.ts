@@ -84,8 +84,10 @@ const EN: Record<string, SegmentCopy> = {
     ],
   },
   "insurance-brokers": {
-    words: { beruf: "brokers", team: "your brokerage", zielkunden: "new and growing businesses", leistung: "liability, property and employer cover", anlass: "first premises, first employees or a growing team" },
-    chips: ["Newly trading", "First employees", "Growing teams", "Cover to arrange"],
+    // Nur lieferbare Anlässe (Startpaket S4/US 05.10.2026): Neuregistrierungen (US DOT, Register), keine Einstellungs-
+    // oder Wachstumssignale – die liefern die S4-Quellen nicht
+    words: { beruf: "brokers", team: "your brokerage", zielkunden: "newly registered businesses", leistung: "liability, property and vehicle cover", anlass: "a fresh registration, first vehicles or first jobs" },
+    chips: ["Newly registered", "New fleets", "Owner named", "Cover to arrange"],
     stepsTitle: "How {firma} could reach them first",
     steps: [
       "We monitor public business sources across {land} every day.",
@@ -95,7 +97,7 @@ const EN: Record<string, SegmentCopy> = {
     getsTitle: "What {firma} would receive every Monday",
     gets: [
       "Businesses registered across {land} in recent weeks, with registered address and date",
-      "Local firms hiring several people or expanding",
+      "New carriers and businesses in sectors that need cover from day one",
       "The official record for every lead",
       "The company's phone number and email, a short profile and a sales tip for {beruf} with every lead",
       "A short opening line that refers to {anlass}",
@@ -110,7 +112,7 @@ const EN: Record<string, SegmentCopy> = {
     revenue: [
       ["Before renewal habits form", "A new business has not settled on a broker yet. Reaching it early would put {firma} in the first quote, not the last."],
       ["More than one policy", "Liability, property, employers' liability and later fleet or cyber. One client relationship can grow into several policies."],
-      ["Reviews that are due", "Growing firms outgrow their cover. A dated hiring or expansion signal gives {team} a genuine reason to offer a review."],
+      ["A dated reason to call", "Every lead comes with the registration date and the official record, so {team} has a genuine reason to get in touch."],
       ["Nationwide reach", "Commercial cover can be arranged by phone and email, so {firma} can win clients across {land}."],
     ],
   },

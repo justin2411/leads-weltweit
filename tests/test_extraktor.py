@@ -945,3 +945,55 @@ class LcaCellTests(unittest.TestCase):
         self.assertEqual(_cell(5551234567.0, "EMPLOYER_PHONE"), "5551234567")
         self.assertEqual(_cell("Acme", "EMPLOYER_NAME"), "Acme")
         self.assertEqual(_cell(3, "NEW_EMPLOYMENT"), "3")
+
+
+class S4ZweitleadTests(unittest.TestCase):
+    """S4/US (Startpaket 05.10.2026): jeder neue FMCSA-Carrier auch als S4-Lead, auch an schon gespeicherten Firmen."""
+
+    def test_pools_s4_all_takes_freemail_and_keeps_own_domain_first(self):
+        import extraktor.run as R
+        own = fm_candidate()
+        free = fm_candidate(dot_number="4000002", legal_name="ROAD FREE LLC", email_address="roadfree@gmail.com")
+        p = R.pools(["S4"], [free, own], [], distinct=True, s4_all=True)
+        self.assertEqual([c["source_id"] for c in p["S4"]], [own["source_id"], free["source_id"]])
+        self.assertTrue(all(c.get("zweitlead") for c in p["S4"]))
+        # ohne Schalter wie bisher: nur eigene Domain in S4, kein Zweit-Lead-Merker
+        p0 = R.pools(["S4"], [free, own], [], distinct=True)
+        self.assertEqual([c["source_id"] for c in p0["S4"]], [own["source_id"]])
+        self.assertFalse(any(c.get("zweitlead") for c in p0["S4"]))
+
+    def test_guard_lets_zweitlead_through_but_not_others(self):
+        g = filters.Guard(None)
+        g.db = type("D", (), {"rpc": lambda self, fn, args: False})()
+        g.known = {("fmcsa", "1")}
+        self.assertEqual(g.problem({"source": "fmcsa", "source_id": "1"}), "already_in_database")
+        self.assertIsNone(g.problem({"source": "fmcsa", "source_id": "1", "zweitlead": True}))
+
+    def test_store_zweit_attaches_lead_to_existing_company_once(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from fakedb import FakeDB
+        from extraktor import store as S
+        db = FakeDB({"watch_companies": [{"id": "c1", "registry_source": "fmcsa", "registry_id": "77"},
+                                         {"id": "c2", "registry_source": "fmcsa", "registry_id": "88"}],
+                     "leads": [{"company_id": "c2", "segment_id": "S4"}],
+                     "observations": [{"id": "o1", "company_id": "c1", "kind": "filing"}]})
+        ev = TODAY.isoformat()
+        base = {"segment": "S4", "country": "US", "source": "fmcsa", "signal": "X (USDOT 77) registered", "signal_date": ev,
+                "source_url": "https://safer.fmcsa.dot.gov/x", "urgency": "high", "urgency_reason": "r", "opener": "o",
+                "contact_name": "Jo Doe", "phone": "+1 402 555 0100", "email": "jo@x.com", "ampel": "green"}
+        rows = [dict(base, source_id="77"), dict(base, source_id="88"), dict(base, source_id="99")]
+
+        class G:
+            known = {("fmcsa", "77")}  # 88 kennt der Lauf nicht vorab, die Firma steht aber im Register-Index
+
+        orig = S.store_many
+        S.store_many = lambda db, rows: len(rows)
+        try:
+            res = S.store_new(db, G(), rows, raw=False, premium_only=True, zweit={"S4"})
+        finally:
+            S.store_many = orig
+        self.assertEqual((res["neu"], res["zweitlead"], res["zweit_schon_da"]), (1, 1, 1))
+        new = [l for l in db.rows("leads") if l["company_id"] == "c1"]
+        self.assertEqual(len(new), 1)
+        self.assertEqual((new[0]["segment_id"], new[0]["signal_type"], new[0]["observation_ids"]), ("S4", "new_fleet", ["o1"]))
+        self.assertEqual(new[0]["premium"]["tier"], "premium")

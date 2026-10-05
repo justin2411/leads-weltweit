@@ -279,12 +279,20 @@ def subject_variant(p: dict) -> str:
     return "AB"[hashlib.sha256(key.encode("utf-8")).digest()[0] % 2]
 
 
+# Betreff je Land, wo der Anlass im Land ein anderer ist (Vorrang vor SUBJECTS): S4/US = frisch registrierte Firmen
+# (Startpaket Gewerbeversicherung USA 05.10.2026); A = Standard, B nur in der Test-Freigabe (config/fokus.yaml tests)
+SUBJECTS_COUNTRY = {
+    ("en", "S4", "US"): ("Newly registered businesses across {area} that need cover",
+                         "Insurance leads: new registrations across {area}"),
+}
+
+
 def subject_for(p: dict, lang: str, variant: str | None = None) -> str:
     """Betreff der Variante (A/B) für Segment und Land des Käufers. SG: Pflicht-Präfix „<ADV> “ (Spam Control Act)
     aus countries.yaml subject_prefix, zählt bei den 60 Zeichen mit."""
     table = SUBJECTS.get(lang, SUBJECTS["en"])
-    pair = table.get(p.get("segment_id") or "", table[""])
     co = (p.get("country") or "").upper()
+    pair = SUBJECTS_COUNTRY.get((lang, p.get("segment_id") or "", co)) or table.get(p.get("segment_id") or "", table[""])
     subject = pair[(variant or subject_variant(p)) == "B"].format(
         area=AREA_LOCAL.get(lang, {}).get(co) or LAND.get(co, "your country"), land=LAND_LOCAL.get(lang, {}).get(co, ""))
     prefix = subject_prefix(co)
@@ -373,6 +381,18 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
                 f"and an opening line. Each lead goes to one {kind} only.")
         ask = f"I've put together a free sample of 10 current leads from across {area} for you. Shall I send it over?"
         greet, bye = f"Hi {firm} team,", "Best regards,"
+        if seg == "S4" and country == "US":
+            # Gewerbeversicherung USA (Startpaket 05.10.2026): 1:1 nach docs/KALTMAIL-VORLAGE.md wie S2, es ändern
+            # sich nur Betreff und Satz 1. Wahr: Premium-Leads sind frisch registrierte Firmen (FMCSA-Neuregistrierung
+            # mit US-DOT-Nummer, Connecticut-Register); keine Exklusivitätszusage, „who to ask for“
+            first = (f"{intro} We find businesses across {area} that have just registered, such as trucking companies "
+                     "with a new US DOT number, a clear reason for them to talk to a commercial insurance broker.")
+            core = ("Every Monday you get a short PDF briefing and a spreadsheet: company, phone, email, who to ask for "
+                    "and an opening line.")
+            ask = f"I've put together a free sample of 10 current leads from across {area}. Shall I send it over?"
+            short = _opener_name(p["company_name"]) and short_name(p["company_name"])
+            greet = f"Hi {short} team," if short else "Hi there,"
+            ex = ""
         if seg in ("S2", "S12"):
             # Webagenturen (Inhaber 02.10.2026): Leads sind Firmen ohne Website (Overture), nicht unbedingt neu gegründet;
             # Ansprechperson nicht immer mit Namen; keine Exklusivitätszusage in der Kaltmail; kurze Anrede.
