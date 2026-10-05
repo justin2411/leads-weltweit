@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { CONFIG, loadAgentTasks } from "@/lib/dashboard-data";
 import { loadZentrale } from "@/lib/zentrale-data";
+import { loadTrichter } from "@/lib/jarvis-trichter-data";
 import { rechtLaender } from "@/lib/zentrale-modell";
 import { agentStartLabel } from "@/lib/agents";
 import { requireOwner } from "../actions";
@@ -26,10 +27,12 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   if (sp.teil === "mehr") redirect("/dashboard/buero");
   // Agenten-Fenster: ?a=1…9 oder ?a=neu (Auftrag erteilen, Vorbelegung k/m/b)
   const ag = typeof sp.a === "string" && /^([1-9]|neu)$/.test(sp.a) ? sp.a : null;
-  const [initial, chat, tasks] = await Promise.all([
+  const [initial, chat, tasks, trichter] = await Promise.all([
     loadZentrale("alle"),
     loadStartChat().catch(() => null),
     ag ? loadAgentTasks() : Promise.resolve([]),
+    // Website-Trichter 7 T (website_stats, ~0,5 s); höchstens 4 s warten, sonst lädt der Browser nach
+    Promise.race([loadTrichter(7), new Promise<null>((ok) => setTimeout(() => ok(null), 4000))]),
   ]);
   // Leitplanke „Kaltmail-Recht“: alle Länder aus countries.yaml / ops-config.json (frei = allowed: true)
   const recht = rechtLaender(CONFIG.countries);
@@ -37,7 +40,7 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: KOPF_CSS }} />
-      <Suspense><Zentrale initial={initial} recht={recht} agentDrawer={agentDrawer} chatNeu={chat?.gehirnUnread ?? 0} /></Suspense>
+      <Suspense><Zentrale initial={initial} recht={recht} agentDrawer={agentDrawer} chatNeu={chat?.gehirnUnread ?? 0} trichter={trichter} /></Suspense>
     </>
   );
 }

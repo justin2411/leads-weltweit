@@ -59,6 +59,22 @@ export type LangsamDb = {
   llm_heute: number;
   sperre: { gesamt: number; neu_24h: number };
   cache_wachhund: string | null;
+  /** Zusatz für KPI-Leiste und Werke-Karte (zentrale_extra(), Migration 20261005160000); fehlt bei altem Cache → null */
+  extra?: Extra | null;
+};
+
+/** Zahlen je Zeitraum (7/30 Tage) für die KPI-Leiste. */
+export type ExtraPeriode = { sent: number; bounced: number; complained: number; antworten: number; positiv: number; proben: number };
+export type Extra = {
+  at: string;
+  /** lieferbare Premium-Leads S2 × US/UK/FR */
+  premium: number;
+  premium_land: Record<string, number>;
+  radar_24h: number;
+  bewertet_24h: number;
+  premium_24h: number;
+  feedback: { n_7d: number; gut_7d?: number; schlecht_7d?: number; won_30d?: number; links_7d: number; letzte: string | null };
+  p: Partial<Record<"7" | "30", ExtraPeriode>>;
 };
 
 /** Notbremse genau wie deliverability.emergency_stop (App-Spiegel lib/dashboard-logic brake). */

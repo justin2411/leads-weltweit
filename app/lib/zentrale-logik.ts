@@ -21,7 +21,7 @@ export const GRUND_MAX = 160;
 // ------------------------------------------------------------------------------------------------- Puls
 export type Puls = "live" | "live~" | "still" | "grau";
 /** Herzschlag-Name (werk_heartbeat.werk) je Werk der Firma-Karte. */
-export const BEAT_NAME: Record<string, string> = { lead: "lead-werk", pruefer: "pruefer-werk", proben: "proben-vorrat", kunden: "kunden-werk", stichprobe: "dauerpruefung", radar: "lead-werk", kontakt: "kontakt-werk" };
+export const BEAT_NAME: Record<string, string> = { lead: "lead-werk", pruefer: "pruefer-werk", proben: "proben-vorrat", kunden: "kunden-werk", stichprobe: "dauerpruefung", radar: "lead-werk", premium: "proben-vorrat", kontakt: "kontakt-werk" };
 export type PulsDaten = {
   beats: Record<string, string | null | undefined>;
   lastSent?: string | null;
@@ -29,6 +29,8 @@ export type PulsDaten = {
   cacheAt?: string | null;
   runsLast?: Record<string, string | null | undefined>;
   mrr?: number | null;
+  /** Feedback-Werk: letzter ausgegebener Bewertungs-Link oder letzte Bewertung (zentrale_extra) */
+  feedback?: string | null;
 };
 const jung = (iso: string | null | undefined, now: number, ms: number) => !!iso && now - Date.parse(iso) < ms;
 const daten = (iso: string | null | undefined) => !!iso && !Number.isNaN(Date.parse(iso));
@@ -47,6 +49,7 @@ export function pulsStatus(w: Pick<Werk, "id" | "status" | "puls">, now: number,
       const last = [d.runsLast?.stichprobe, d.runsLast?.dauerpruefung].filter(daten).sort().pop();
       return jung(last, now, STICHPROBE_H * 60 * MIN) ? "live~" : daten(last) ? "still" : "grau";
     }
+    case "feedback": return jung(d.feedback, now, LIEFERUNG_TAGE * 1440 * MIN) ? "live~" : daten(d.feedback) ? "still" : "grau";
     case "umsatz": return d.mrr === null || d.mrr === undefined ? "grau" : d.mrr > 0 ? "live" : "still";
   }
   return daten(beat) ? "still" : "grau";

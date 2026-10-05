@@ -86,3 +86,22 @@ test("Raster 12 Spalten: Karte 9, Leitplanken 3; Handy eine Spalte", () => {
   assert.match(ZENTRALE, /\.jz-planken\{grid-column:10\/13\}/);
   assert.match(ZENTRALE, /\.jz-raster\{grid-template-columns:minmax\(0,1fr\)\}/);
 });
+
+test("Designsystem: Token in hud-css, Zentrale leitet ihre Farben daraus ab (docs/DESIGN-KOMMANDOZENTRALE.md)", () => {
+  for (const t of ["--ds-night", "--ds-cy", "--ds-gold", "--ds-gruen", "--ds-gelb", "--ds-rot", "--ds-grau", "--ds-linie", "--ds-line-w:1px", "--ds-u:8px", "--ds-mono", "--ds-t-fill:300ms", "--ds-t-glide:150ms"]) {
+    assert.ok(HUD.includes(t), `${t} fehlt in hud-css`);
+  }
+  assert.match(ZENTRALE, /\.jz\{--cy:var\(--ds-cy/);
+  assert.match(ZENTRALE, /--gd:var\(--ds-gold/);
+  // Übergänge der Zentrale bleiben im Bereich 150–300 ms
+  for (const m of ZENTRALE.matchAll(/transition:[^;}]*?\.(\d+)s/g)) assert.ok(Number(`0.${m[1]}`) >= 0.15 && Number(`0.${m[1]}`) <= 0.3, `Übergang 0.${m[1]} s`);
+  const doc = readFileSync(new URL("../../docs/DESIGN-KOMMANDOZENTRALE.md", import.meta.url), "utf8");
+  assert.match(doc, /## Designsystem \(verbindlich/);
+  assert.match(doc, /Gold \| \*\*nur Geld\*\*/);
+});
+
+test("JARVIS-Kennzahlen: KPI-Leiste und Umsatz-Zeile bündig, Handy-Klickflächen ≥ 44 px", () => {
+  assert.match(ZENTRALE, /\.jz-kpi\{display:grid;grid-template-columns:repeat\(10,minmax\(0,1fr\)\);gap:8px;align-items:stretch\}/);
+  assert.match(ZENTRALE, /\.jz-umsatz\{display:grid;grid-template-columns:repeat\(12,minmax\(0,1fr\)\);gap:8px;align-items:stretch\}/);
+  assert.match(ZENTRALE.slice(ZENTRALE.indexOf("@media (max-width:759px)")), /\.jz-wahl button\{min-height:44px;min-width:44px\}/);
+});
