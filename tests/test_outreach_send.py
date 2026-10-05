@@ -197,3 +197,37 @@ class HauptpostfachSteigerungTests(unittest.TestCase):
             self.assertEqual(D.warmup_cap(None, day), 90)
             self.assertEqual(D.warmup_cap(None, day + dt.timedelta(days=2)), 120)
             self.assertEqual(D.warmup_cap(None, day + dt.timedelta(days=10)), 150)
+
+
+class FollowupThreadTest(unittest.TestCase):
+    """Nachfassmail im Verlauf der Erstmail: In-Reply-To/References, kein „Re:“ (Gehirn 05.10.2026)."""
+
+    def test_parent_lookup(self):
+        db = FakeDB({"messages": [msg("s1", "initial", "sent", smtp_message_id="<abc@nextgen-profit.de>",
+                                      sent_from="NextGen <leads@nextgen-profit.de>")]})
+        par = outreach.followup_parent(db, {"parent_id": "s1"})
+        self.assertEqual(par["smtp_message_id"], "<abc@nextgen-profit.de>")
+        self.assertEqual(outreach.followup_parent(db, {"parent_id": None}), {})
+
+    def test_headers_set(self):
+        sent = {}
+
+        class S:
+            def __init__(self, *a, **k): pass
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def login(self, *a): pass
+            def starttls(self): pass
+            def send_message(self, m): sent["m"] = m
+
+        box = {"n": 1, "from": "NextGen <leads@nextgen-profit.de>", "host": "h", "port": 465, "user": "u",
+               "password": "p"}
+        with mock.patch("smtplib.SMTP_SSL", S), mock.patch.dict(os.environ, {"MAIL_TRANSPORT": "smtp", "MAIL_FROM": "leads@nextgen-profit.de"}):
+            outreach.deliver("a@b.com", "Subject", "Text", None, mailbox=box, in_reply_to="<abc@nextgen-profit.de>")
+        m = sent["m"]
+        self.assertEqual(m["In-Reply-To"], "<abc@nextgen-profit.de>")
+        self.assertEqual(m["References"], "<abc@nextgen-profit.de>")
+        self.assertFalse(m["Subject"].lower().startswith("re:"))
+        with mock.patch("smtplib.SMTP_SSL", S), mock.patch.dict(os.environ, {"MAIL_TRANSPORT": "smtp", "MAIL_FROM": "leads@nextgen-profit.de"}):
+            outreach.deliver("a@b.com", "Subject", "Text", None, mailbox=box)
+        self.assertIsNone(sent["m"]["In-Reply-To"])
