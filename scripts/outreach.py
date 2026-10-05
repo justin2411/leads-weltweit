@@ -241,10 +241,18 @@ def box_stops(db, boxes: list[dict]) -> dict[int, str]:
     """Zusätzliche Notbremse je Postfach und je Domain (lib.deliverability.scoped_stops, Auftrag 05.10.2026):
     {Postfach-Nummer: Grund} für jedes Postfach, das selbst oder dessen Domain gestoppt ist. Gleiches Fenster wie die
     globale Notbremse (notbremse_ab). Die globale Notbremse bleibt unverändert und wird vorher geprüft."""
-    from lib.deliverability import scoped_stops, window_start
+    from lib.deliverability import box_reset, scoped_stops, window_start
     from lib.mailboxes import box_of, domain_of
     since = window_start(dt.datetime.now(dt.timezone.utc)).isoformat()
-    sent = db.select_all("messages", {"status": "eq.sent", "sent_at": f"gte.{since}", "select": "id,sent_from"})
+    sent = db.select_all("messages", {"status": "eq.sent", "sent_at": f"gte.{since}", "select": "id,sent_from,sent_at"})
+    # Postfach-Neustart (postfach_neu_ab_<n>): ältere Mails dieses Postfachs zählen nicht mehr mit
+    resets = {b["n"]: r for b in boxes if (r := box_reset(b["n"]))}
+    if resets:
+        def _alt(m: dict) -> bool:
+            r = resets.get(box_of(m.get("sent_from"), boxes))
+            ts = m.get("sent_at")
+            return bool(r and ts and dt.datetime.fromisoformat(str(ts).replace("Z", "+00:00")) < r)
+        sent = [m for m in sent if not _alt(m)]
     ev = db.select_all("email_events", {"created_at": f"gte.{since}", "type": "in.(bounced,complained)",
                                         "select": "message_id,type,payload,messages(to_email)"})
     for e in ev:
