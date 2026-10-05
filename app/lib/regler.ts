@@ -145,9 +145,9 @@ export type LeadCountry = "US" | "UK" | "FR" | "Nord" | "Neu";
 export const LEAD_COUNTRIES: { id: LeadCountry; label: string; title: string }[] = [
   { id: "US", label: "US", title: "USA" }, { id: "UK", label: "UK", title: "Großbritannien" },
   { id: "FR", label: "FR", title: "Frankreich" }, { id: "Nord", label: "Nord", title: "IE · NL · BE · SE" },
-  { id: "Neu", label: "Neu", title: "FI · SG · HK · MX · BR" },
+  { id: "Neu", label: "Neu", title: "FI · SG · MX · BR" },
 ];
-/** Land-Chip einer Lead-Linie: mehrere Länder (IE,NL,BE,SE) = „Nord“, neue Mail-Länder (FI,SG,HK,MX,BR, 04.10.2026) = „Neu“,
+/** Land-Chip einer Lead-Linie: mehrere Länder (IE,NL,BE,SE) = „Nord“, neue Mail-Länder (FI,SG,MX,BR, 04.10.2026; HK raus 05.10.2026) = „Neu“,
  *  UK und FR gemeinsam (s2-ukfr, Scout 04.10.2026) = „UK“ (erstes Land); Radar US·UK·FR (05.10.2026) = „US“. */
 const CORE = ["US", "UK", "FR"];
 export const countryOf = (l: Lane): LeadCountry => {

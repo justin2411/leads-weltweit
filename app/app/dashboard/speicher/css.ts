@@ -20,6 +20,11 @@ export const SPEICHER_CSS = `
 .sp-h h2{margin:0;font-family:var(--hud);font-size:15px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--cy2)}
 .sp-h .sp-big{font-size:26px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;text-shadow:0 0 14px rgba(95,212,255,.4)}
 .sp-h .sp-note{font-size:13px;color:var(--soft)}
+.sp-ruht{margin-top:10px;font-size:13px;color:var(--soft)}
+.sp-ruht summary{cursor:pointer;list-style:revert}
+.sp-ruht summary span{opacity:.75}
+.sp-ruht div{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px}
+.sp-ruht a{color:inherit;text-decoration:none}
 .sp-h .sp-sp{flex:1}
 .sp-legend{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:13px;color:var(--soft);margin:12px 0 0}
 .sp-legend span{display:inline-flex;align-items:center;gap:6px}

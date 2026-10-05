@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  ALL, DB_LIMIT_BYTES, baukastenHref, big, buyerTanks, checkRows, dbFill, fmtBytes, layerOf, layerShares, leadTanks,
+  ALL, DB_LIMIT_BYTES, activeCountries, splitActive, baukastenHref, big, buyerTanks, checkRows, dbFill, fmtBytes, layerOf, layerShares, leadTanks,
   logHeight, probenSummary, scaleTop, ticks, type StorageData, dbRing, premiumFree, premiumProben, premiumTanks,
 } from "./storage.ts";
 
@@ -76,7 +76,10 @@ test("Lead-Tanks: Status → Schichten, Zielgruppe, Länder", () => {
   assert.equal(layerOf("expired"), "abgelaufen");
   assert.equal(layerOf("xyz"), "sonst");
   const s2 = leadTanks(D, "S2");
-  assert.deepEqual(s2.map((t) => t.country), ["US", "UK", "FR", "SE", "FI", "SG", "HK", "MX", "BR"]);
+  assert.deepEqual(s2.map((t) => t.country), ["US", "UK", "FR", "SE", "FI", "SG", "MX", "BR"]);
+  // HK raus (Inhaber 05.10.2026); mit Zielgruppen: Länder ohne Mail-Erlaubnis und ohne Leads ausgeblendet
+  assert.deepEqual(leadTanks({ ...D, leads: [...D.leads, { segment: "S2", country: "HK", status: "new", n: 4 }] }, "S2", SEGS)
+    .map((t) => t.country), ["US", "UK", "FR"]);
   const us = s2[0];
   assert.equal(us.total, 1076);
   assert.deepEqual(us.layers, { frei: 1000, proben: 50, geliefert: 20, zurueck: 3, abgelaufen: 2, sonst: 1 });
@@ -94,6 +97,9 @@ test("Käufer: nur ok im Mail-Land zählt, Anruf/Brief getrennt", () => {
   assert.equal(de.callOnly, 11);
   assert.equal(de.mailCountry, false);
   assert.equal(s2.find((t) => t.country === "IE"), undefined); // nie-Länder ausgeblendet
+  assert.equal(s2.find((t) => t.country === "SE"), undefined); // kein Mail-Land, kein Bestand -> ausgeblendet
+  const hk = buyerTanks({ ...D, buyers: [...D.buyers, { segment: "S2", country: "HK", check_status: "call_only", n: 277, sent: 0 }] }, SEGS, "S2");
+  assert.equal(hk.find((t) => t.country === "HK"), undefined); // HK raus (Inhaber 05.10.2026), Daten bleiben
   // alle Zielgruppen: S4/US ist kein Mail-Land von S4 -> nur Anruf/Brief; S4/FR zählt, sent gekappt
   const all = buyerTanks(D, SEGS, ALL);
   const usAll = all.find((t) => t.country === "US")!;
@@ -215,4 +221,15 @@ test("dbRing: Marken 6 / 7,5 / 8 GB, Stufen grün/gelb/rot", () => {
   assert.equal(dbRing(9 * g).pct, 1);
   assert.equal(dbRing(9 * g).toBrake, 0);
   assert.equal(DB_LIMIT_BYTES, 8 * g);
+});
+
+test("aktive Märkte groß, ruhende eingeklappt (Inhaber 05.10.2026)", () => {
+  const act = activeCountries(["S2/US", "S2/UK", "S2/FR", "S4/SE", "S2/HK"], "S2");
+  assert.deepEqual([...act], ["US", "UK", "FR"]);
+  assert.deepEqual([...activeCountries(["S2/US", "S4/SE"], ALL)], ["US", "SE"]);
+  const lt = leadTanks(D, "S2");
+  const { active, resting } = splitActive(lt, act);
+  assert.deepEqual(active.map((t) => t.country), ["US", "UK", "FR"]);
+  assert.ok(resting.every((t) => !act.has(t.country)) && resting.length === lt.length - 3);
+  assert.equal(splitActive(lt, new Set()).resting.length, 0); // ohne Fokus-Liste: alles aktiv
 });

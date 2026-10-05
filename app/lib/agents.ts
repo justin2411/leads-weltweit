@@ -28,7 +28,7 @@ export type Kind = keyof typeof KINDS;
 /** Arten, die der Inhaber im Auftragsformular, im Chat und im Baukasten wählt („kunde“ nur über Kunden-Agenten,
  *  „website“ nur über Website-Agenten, „gehirn“ nur über Gehirn-Routinen). */
 export const OWNER_KINDS = (Object.keys(KINDS) as Kind[]).filter((k) => k !== "kunde" && k !== "website" && k !== "gehirn");
-export const MARKETS = ["US", "UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK", "MX", "BR"] as const;
+export const MARKETS = ["US", "UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "MX", "BR"] as const;  // HK raus (Inhaber 05.10.2026)
 
 export type AgentTask = {
   id: string; created_at: string; agent: number; kind: Kind; market: string | null; brief: string;
@@ -151,7 +151,6 @@ const MARKET_NAMES: Record<string, { code: RegExp; words: RegExp }> = {
   SE: { code: /SE/, words: /schweden|sweden|schwedisch/ },
   FI: { code: /FI/, words: /finnland|finland|finnisch/ },
   SG: { code: /SG/, words: /singapur|singapore/ },
-  HK: { code: /HK/, words: /hongkong|hong kong/ },
   MX: { code: /MX/, words: /mexiko|mexico|méxico|mexikanisch/ },
   BR: { code: /BR/, words: /brasilien|brazil|brasil|brasilianisch/ },
 };
@@ -252,7 +251,7 @@ export function freeAgent(tasks: AgentTask[]): number {
   return (board.find((a) => !a.current) ?? board.find(isIdle) ?? board[0]).n;
 }
 
-/** Alle genannten Märkte (Kürzel oder Ländernamen, z. B. „Ohne Website FI·SG·HK“) in Listen-Reihenfolge, ohne IE/NL/BE;
+/** Alle genannten Märkte (Kürzel oder Ländernamen, z. B. „Ohne Website FI·SG·MX“) in Listen-Reihenfolge, ohne IE/NL/BE;
  *  keiner erkannt = null (alle). */
 export function marketsIn(text: string): string | null {
   const t = String(text ?? "");

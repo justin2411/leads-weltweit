@@ -18,6 +18,7 @@ from lib.rules import check_prospect, country_rules, is_company_form, lint_draft
 
 CFG = load_countries()
 NEW = ("FI", "SG", "HK", "MX", "BR")
+NEW_ACTIVE = tuple(c for c in NEW if c != "HK")  # HK raus (Inhaber 05.10.2026, lib/laender.INACTIVE)
 NEVER = ("IE", "BE", "AU", "CA", "IL", "IT", "ES")
 
 
@@ -182,7 +183,9 @@ class PipelineTest(unittest.TestCase):
         for co in NEW:
             self.assertEqual(overture.cache_for(co), overture.CACHE_NEW)
             self.assertIn(co, overture.EMAIL_ONLY)
+        for co in NEW_ACTIVE:
             self.assertIsNone(filters.pre_filter({"name": "Pixel", "country": co}))
+        self.assertEqual(filters.pre_filter({"name": "Pixel", "country": "HK"}), "outside_target_country")
         self.assertIn("bbox.xmin BETWEEN 19.0 AND 31.6", overture.box_where(overture.GROUPS[overture.CACHE_NEW][1]))
         self.assertEqual(overture.box_where((-8.7, 9.6, 41.3, 60.9)).count("OR"), 0)
         d = {"id": "x", "name": "Rings Coffee", "street": "8 Nga Tsin Long Rd", "city": "Kowloon", "postcode": "000000",
@@ -193,7 +196,9 @@ class PipelineTest(unittest.TestCase):
         import kundenwerk as K
         from lib.release_gate import DELIVERY_COUNTRIES
         segs = {"S2": set(NEW)}
-        for co in NEW:
+        self.assertNotIn("HK", K.COUNTRIES.values())  # HK raus (Inhaber 05.10.2026)
+        self.assertNotIn("HK", DELIVERY_COUNTRIES)
+        for co in NEW_ACTIVE:
             self.assertEqual(K.COUNTRIES[co], co)
             self.assertIn(co, DELIVERY_COUNTRIES)
             self.assertEqual(K.segment_for("web_designer", co, segs), ("S2", co))
@@ -203,7 +208,7 @@ class PipelineTest(unittest.TestCase):
         import json
         lanes = {l["id"]: l for l in json.loads((Path(__file__).resolve().parents[1] / "app/lib/werk-linien.json")
                                                 .read_text(encoding="utf-8"))["lanes"]}
-        self.assertIn("--countries FI,SG,HK,MX,BR", lanes["s2-neu"]["args"])
+        self.assertIn("--countries FI,SG,MX,BR", lanes["s2-neu"]["args"])
 
 
 class SendCheckTest(unittest.TestCase):
@@ -270,15 +275,16 @@ class FairShareTest(unittest.TestCase):
                 mock.patch.object(run.time, "monotonic", lambda: clock["t"]), \
                 mock.patch.object(run, "load_overture_s2", fake_pool), \
                 mock.patch.object(run.segments, "fits", lambda seg, c: (True, "")), \
-                mock.patch.object(run, "run_segment", fake_segment):
+                mock.patch.object(run, "run_segment", fake_segment), \
+                mock.patch("lib.laender.focus_pairs", return_value=[]):  # ohne Fokus-Liste: alle außer HK
             run.main(["--segments", "S2", "--countries", "FI,SG,HK,MX,BR", "--fmcsa-days", "0", "--formd-days", "0",
                       "--deadline-min", "75", "--out", d])
-        self.assertEqual([c for c, _, _ in seen], ["FI", "SG", "HK", "MX", "BR"])
+        self.assertEqual([c for c, _, _ in seen], ["FI", "SG", "MX", "BR"])  # HK raus (Inhaber 05.10.2026)
         end = 1000.0 + 75 * 60
         for c, start, dl in seen:
             self.assertGreater(dl, start, c)  # jedes Land bekommt Zeit
             self.assertLessEqual(dl, end + 1e-6, c)
-        self.assertAlmostEqual(seen[0][2] - seen[0][1], 15 * 60)  # 75 min / 5 Länder
+        self.assertAlmostEqual(seen[0][2] - seen[0][1], 75 * 60 / 4)  # 75 min / 4 Länder
         self.assertAlmostEqual(seen[-1][2], end)
 
 

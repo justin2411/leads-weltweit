@@ -56,8 +56,10 @@ class LimitLogicTest(unittest.TestCase):
     def test_targets_use_dashboard_values(self):
         pages = [{"segment_id": "S2", "country": "US"}, {"segment_id": "S1", "country": "UK"}]
         cfg = {"fokus_je_seite": 6, "andere_je_seite": 3}
-        self.assertEqual(sample_stock.targets(pages, cfg, [("S2", "US")]), {("S2", "US"): 6, ("S1", "UK"): 3})
-        self.assertEqual(sample_stock.targets(pages, cfg, [("S2", "US")], {"S2/US": 20}), {("S2", "US"): 20, ("S1", "UK"): 3})
+        # nur aktive Märkte (Fokus) bekommen ein Soll (Inhaber 05.10.2026); ohne Fokus-Liste alle
+        self.assertEqual(sample_stock.targets(pages, cfg, [("S2", "US")]), {("S2", "US"): 6})
+        self.assertEqual(sample_stock.targets(pages, cfg, [("S2", "US")], {"S2/US": 20}), {("S2", "US"): 20})
+        self.assertEqual(sample_stock.targets(pages, cfg, [], {"S1/UK": 4}), {("S2", "US"): 3, ("S1", "UK"): 4})
 
 
 class SendUsesCountryLimitTest(unittest.TestCase):

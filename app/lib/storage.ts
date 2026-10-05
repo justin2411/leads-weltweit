@@ -26,10 +26,11 @@ export type StorageData = {
 export type SegmentInfo = { id: string; email_countries: string[] | null };
 
 export const DB_LIMIT_BYTES = 8 * 1024 ** 3; // Supabase Pro: 8 GB inklusive
-export const LEAD_COUNTRIES = ["US", "UK", "FR", "SE", "FI", "SG", "HK", "MX", "BR"] as const;
+export const LEAD_COUNTRIES = ["US", "UK", "FR", "SE", "FI", "SG", "MX", "BR"] as const;
 /** Länder ohne Kaltmail-Erlaubnis (countries.yaml allowed: false, „nie“) – im Speicher ausgeblendet (Inhaber 04.10.2026:
- *  „nimm niederlande und belgien raus, wenn wir die eh nicht dürfen“; IE ebenso „nie“). Daten bleiben unverändert. */
-export const HIDDEN_COUNTRIES = ["IE", "NL", "BE"] as const;
+ *  „nimm niederlande und belgien raus, wenn wir die eh nicht dürfen“; IE ebenso „nie“; HK raus, Inhaber 05.10.2026:
+ *  „hier dann eher rausnehmen, weil wir HK nicht easy nutzen dürfen“). Daten bleiben unverändert. */
+export const HIDDEN_COUNTRIES = ["IE", "NL", "BE", "HK"] as const;
 const hidden = (c: string) => (HIDDEN_COUNTRIES as readonly string[]).includes(c);
 export const ALL = "alle";
 
@@ -93,7 +94,7 @@ export function layerShares(counts: number[], min = 0.03): number[] {
 export type LeadTank = { country: string; total: number; layers: Record<LayerKey, number> };
 
 /** Lead-Tanks je Land: Zielgruppe `seg` (oder alle), Länder = die sieben Märkte + weitere mit Leads. */
-export function leadTanks(d: StorageData, seg: string): LeadTank[] {
+export function leadTanks(d: StorageData, seg: string, segments?: SegmentInfo[]): LeadTank[] {
   const by = new Map<string, LeadTank>();
   const tank = (c: string) => {
     if (!by.has(c)) by.set(c, { country: c, total: 0, layers: { frei: 0, proben: 0, geliefert: 0, zurueck: 0, abgelaufen: 0, sonst: 0 } });
@@ -107,8 +108,31 @@ export function leadTanks(d: StorageData, seg: string): LeadTank[] {
     t.total += num(r.n);
   }
   const fixed = LEAD_COUNTRIES as readonly string[];
-  return [...by.values()].filter((t) => fixed.includes(t.country) || t.total > 0)
+  // mit Zielgruppen-Info: feste Länder ohne Mail-Erlaubnis und ohne Leads ausblenden (Inhaber 05.10.2026)
+  const mails = segments && new Set(segments.filter((s) => seg === ALL || s.id === seg).flatMap((s) => s.email_countries ?? []));
+  return [...by.values()].filter((t) => t.total > 0 || (fixed.includes(t.country) && (!mails || mails.has(t.country))))
     .sort((a, b) => (fixed.includes(a.country) ? fixed.indexOf(a.country) : 99) - (fixed.includes(b.country) ? fixed.indexOf(b.country) : 99) || b.total - a.total);
+}
+
+// --------------------------------------------------------------------------------------------- aktiv / ruht
+/**
+ * Aktive Märkte (Inhaber 05.10.2026: „wenn wir z.b. gerade nur mails an us uk und fr rausschicken braucht es die anderen
+ * speicher nicht befüllen, immer das was wir gerade aktiv machen und was umsatz bringt“): Länder der Fokus-Paare aus
+ * config/fokus.yaml (ops-config.json `fokus`, „S2/US“) für Zielgruppe `seg` (oder alle). Python: scripts/lib/laender.py.
+ */
+export function activeCountries(fokus: string[], seg: string): Set<string> {
+  const out = new Set<string>();
+  for (const p of fokus) {
+    const [s, c] = String(p).split("/");
+    if (c && !hidden(c) && (seg === ALL || s === seg)) out.add(c);
+  }
+  return out;
+}
+
+/** Tanks teilen: aktive groß (Reihenfolge bleibt), ruhende eingeklappt („ruht“). Ohne Fokus-Liste ist alles aktiv. */
+export function splitActive<T extends { country: string }>(tanks: T[], active: Set<string>): { active: T[]; resting: T[] } {
+  if (!active.size) return { active: tanks, resting: [] };
+  return { active: tanks.filter((t) => active.has(t.country)), resting: tanks.filter((t) => !active.has(t.country)) };
 }
 
 // --------------------------------------------------------------------------------------------- Premium
@@ -238,7 +262,8 @@ export function buyerTanks(d: StorageData, segments: SegmentInfo[], seg: string)
     t.free = t.mail - t.sent - t.queued;
   }
   const fixed = LEAD_COUNTRIES as readonly string[];
-  return [...by.values()].filter((t) => fixed.includes(t.country) || t.mail + t.callOnly > 0)
+  // Länder ohne Mail-Erlaubnis und ohne Bestand ausblenden (leerer Tank ohne Nutzen, Inhaber 05.10.2026)
+  return [...by.values()].filter((t) => t.mail + t.callOnly > 0 || (fixed.includes(t.country) && t.mailCountry))
     .sort((a, b) => (fixed.includes(a.country) ? fixed.indexOf(a.country) : 99) - (fixed.includes(b.country) ? fixed.indexOf(b.country) : 99) || b.mail - a.mail);
 }
 

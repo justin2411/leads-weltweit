@@ -192,7 +192,7 @@ class BuildTest(unittest.TestCase):
                 mock.patch.object(ss, "cleanup_files", return_value=0):
             res = ss.run(self.db, True, log=lambda *a: None)
         self.assertEqual(res["built"], 2)  # S2/US 2 Proben; S5/UK hat keine Leads
-        self.assertEqual(res["summary"]["S5/UK"]["neu"], 0)
+        self.assertNotIn("S5/UK", res["summary"])  # ruhender Markt (nicht im Fokus): nicht befüllt
         self.assertEqual(ss.inventory(self.db), {"S2/US": 2})
         self.assertEqual(self.db.rows("sample_stock")[1]["wish"], ["no_website"])  # zweite Probe: erster Wunsch
 
@@ -312,7 +312,9 @@ class PlanTest(unittest.TestCase):
     def test_targets_focus_first(self):
         pages = [{"segment_id": "S5", "country": "UK"}, {"segment_id": "S2", "country": "US"}]
         t = ss.targets(pages, {"fokus_je_seite": 6, "andere_je_seite": 3}, [("S2", "US")])
-        self.assertEqual(list(t.items()), [(("S2", "US"), 6), (("S5", "UK"), 3)])
+        self.assertEqual(list(t.items()), [(("S2", "US"), 6)])  # S5/UK ruht (nicht im Fokus, Inhaber 05.10.2026)
+        t = ss.targets(pages, {"fokus_je_seite": 6, "andere_je_seite": 3}, [])  # ohne Fokus-Liste: alle
+        self.assertEqual(list(t.items()), [(("S2", "US"), 3), (("S5", "UK"), 3)])
 
     def test_plan_cycles_wishes(self):
         self.assertEqual(ss.plan(0, 3, ["a", "b"]), [[], ["a"], ["b"]])
@@ -439,11 +441,11 @@ class TagescheckStockTest(unittest.TestCase):
         with mock.patch("lib.fokus.focus_pairs", return_value=[("S2", "US")]):
             tagescheck.check_sample_stock(c, db)
         area, status, title, detail = c.rows[0]
-        self.assertEqual(status, tagescheck.WARN)  # S5/UK leer, Fokus hat Vorrat
+        self.assertEqual(status, tagescheck.OK)  # S5/UK ruht (nicht im Fokus), zählt nicht als leer
         self.assertIn("1 fertige Proben", title)
         self.assertIn("1 in 24 h sofort gesendet", title)
         self.assertIn("S2/US 1/6", detail)
-        self.assertIn("leer: S5/UK", detail)
+        self.assertNotIn("S5/UK", detail)
 
 
 if __name__ == "__main__":
