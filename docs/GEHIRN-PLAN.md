@@ -26,6 +26,14 @@ Visualisierung = JARVIS-Trichter ohne Scanner, Ziel-Ring 25.000 € mit Zeitstra
 **Offen beim Inhaber:** `SEED_INBOXES` (ja), Bestätigungsknopf Abmeldeseite (ja), Zweit-Domains (nach 1. Antwort),
 Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 
+## Lagebild (05.10.2026, 10:30 Berliner Zeit)
+- **Engpass bleibt zugestellt → Antwort:** 405 Erstmails seit 03.10. (US 155, UK 142, FR 108), 0 menschliche Antworten.
+  Rückläufer 16/405 = 4,0 %, Notbremse nicht in Gefahr. 1 Probe-Anfrage in 7 T (DE, nicht lieferbar).
+- **Posteingangstest war blind:** Kopien an die Kontrolladressen gehen raus, aber niemand trug die Lage ein (Postfächer
+  des Inhabers nicht per IMAP lesbar). #441: Ein-Klick-Einordnung in „Braucht dich“ (Posteingang/Werbung/Spam/Fehlt).
+- Meilenstein „Erste Probe aus Mail“ geprüft: echt (UK-Personalvermittler S1, 27.09.), kein Test – noch nicht S2.
+- Probe-Anfrage DE (S1) nicht lieferbar, Inhaber informiert, Antwortvorschlag in „Braucht dich“ (Weckruf erledigt).
+
 ## Lagebild (05.10.2026, 08:40 Berliner Zeit)
 - **Engpass bleibt zugestellt → Antwort:** ~405 Erstmails seit 03.10., 0 menschliche Antworten (12 Abwesenheitsnotizen).
   Rückläufer 16/405 = 4,0 %; seit der Adressprüfung (#394) 0 von 30 – Notbremse nicht in Gefahr.
@@ -73,6 +81,8 @@ Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 - Käufer ok (S2): US 28.782, UK 2.623, FR 1.285. DB 5,1 GB.
 
 ## Nächster Schritt
+- **Prüfpunkt Mi 07.10., 20:00:** ≥ 6 Kontrollmails eingeordnet (seed_checks.placement). Liegt > 30 % im Spam:
+  Zustellbarkeit vor Text (Beleg-Einstieg verschieben, DMARC/Inhalt prüfen).
 - **Prüfpunkt Do 08.10., 20:00:** Beleg-Einstieg in US läuft (Variante B mit 2 Belegen, ≥ 20 B-Mails gesendet); Erfolg bis 21.10.: Antwortquote B ≥ 1 % bei ≥ 100.
 - **Prüfpunkt Do 08.10.:** Freigabe-Durchfall „no_https“ (Detail none, neue Leads ab 05.10.) < 3 % je Land; sonst Fund-Protokoll prüfen.
 - **Prüfpunkt Mo 12.10.:** Käufer-Reichweite UK und FR ≥ 21 Tage (Tagescheck). Darunter: Kunden-Werk-Plätze auf UK/FR-Quellen.
@@ -80,7 +90,7 @@ Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 - **Prüfpunkt Di 06.10., 12:00:** S2/US ≥ 25 von 50 Proben mit 10/10 Premium (angepasst von 40: Obergrenze ≈ 29
   wegen Wunsch-Mix). Darunter: Austausch-Log prüfen. Danach: Premium-Anlass für „not_mobile“/„website_outdated“ suchen.
 - **Prüfpunkt Mi 07.10., 20:00:** Antwortquote ≥ 0,3 % (nur Menschen); sonst Beleg-Einstieg-Test.
-- Offen beim Inhaber: `SEED_INBOXES` (Posteingangstest); Abmelde-Seite mit Bestätigungsklick gegen Scanner (Abmelderegel = Inhaber).
+- Offen beim Inhaber: Kontrollmails einordnen (Braucht dich); Abmelde-Seite mit Bestätigungsklick gegen Scanner (Abmelderegel = Inhaber).
 - Offen: Premium-Quelle FR (Labor klärt).
 
 ## Nordstern
