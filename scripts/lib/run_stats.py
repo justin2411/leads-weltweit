@@ -59,7 +59,8 @@ def rows_from_stock_summary(summary: dict) -> list[dict]:
         seg, _, country = key.partition("/")
         out.append({"segment_id": seg, "country": country, "candidates": int(r.get("soll") or 0),
                     "processed": int(r.get("vorher") or 0), "green": int(r.get("neu") or 0), "reasons": {},
-                    "extra": {"premium": int(r.get("premium_leads_neu") or 0)} if r.get("neu") else {}})
+                    "extra": ({"premium": int(r.get("premium_leads_neu") or 0)} if r.get("neu") else {})
+                    | ({"premium_getauscht": int(r["premium_getauscht"])} if r.get("premium_getauscht") else {})})
     return out
 
 
