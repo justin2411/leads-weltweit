@@ -121,10 +121,10 @@ jobs:
     # Premium-Radar UK (Quellen-Scout 05.10.2026, scripts/lib/uk_psc_radar.py): Eigentümerwechsel laut Companies House
     # (PSC-Snapshot, ≤ 30 Tage) bei UK-S2-Firmen im Bestand + heute bestätigter Website-Zustand -> Premium-Leads.
     # Dazu neue Abfall-Beförderer laut Environment Agency (Quellen-Scout R44, scripts/lib/uk_ea_radar.py, je Tag der
-    # letzten 14 Tage genau ein Registerabruf), gleicher Bestand, gleiche Prüfung.
-    # Höchstens einmal am Tag (Merker im Zwischenspeicher je Tag, vor dem Abruf gesetzt): jede Registerdatei und jede
-    # Startseite höchstens 1×/Tag. Nur im Zeitplan-Lauf (nie doppelt neben Linien-Läufen). Sendet nichts.
-    if: github.event_name == 'schedule'
+    # letzten 14 Tage genau ein Registerabruf), gleicher Bestand, gleiche Prüfung. Sendet nichts.
+    # Läuft in jedem Lauf (Scout R51, 05.10.2026: Zeitplan-Läufe fielen 01.–04.10. alle aus, gleiche Ursache wie
+    # fr-decp #472), aber höchstens einmal am Tag: Merker je Tag wird VOR dem Abruf gesichert (jede Registerdatei und
+    # jede Startseite höchstens 1×/Tag, auch wenn mehrere Linien-Läufe gleichzeitig starten oder der Abruf scheitert).
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -132,24 +132,35 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       EXTRAKTOR_CACHE_CH: out/cache/ch
     steps:
-      - uses: actions/checkout@v4
       - id: d
         run: echo "tag=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
       - id: done
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: out/cache/uk_psc_tag.txt
-          key: uk-psc-${{ steps.d.outputs.tag }}
+          key: uk-psc-tag-${{ steps.d.outputs.tag }}
+          lookup-only: true
+      - uses: actions/checkout@v4
+        if: steps.done.outputs.cache-hit != 'true'
       - name: Schalter Lead-Suche (config/pipeline.yaml)
         id: gate
         if: steps.done.outputs.cache-hit != 'true'
         run: |
-          mkdir -p out/cache && echo "${{ steps.d.outputs.tag }}" > out/cache/uk_psc_tag.txt
-          if grep -Eq '^lead_suche:\s*true' config/pipeline.yaml; then
+          # Am 05.10. lief uk-psc schon im Zeitplan-Lauf (alter Merker) -> neuer Merker erst ab 06.10. (1 Abruf/Tag)
+          if [[ "${{ steps.d.outputs.tag }}" < "2026-10-06" ]]; then
+            echo "UK-PSC/EA heute schon gelaufen – neuer Ablauf ab 06.10. (1 Abruf/Tag)" | tee -a "$GITHUB_STEP_SUMMARY"
+          elif grep -Eq '^lead_suche:\s*true' config/pipeline.yaml; then
+            mkdir -p out/cache && echo "${{ steps.d.outputs.tag }}" > out/cache/uk_psc_tag.txt
             echo "an=true" >> "$GITHUB_OUTPUT"
           else
             echo "Lead-Suche pausiert (config/pipeline.yaml: lead_suche: false)" | tee -a "$GITHUB_STEP_SUMMARY"
           fi
+      - name: Merker sichern (vor dem Abruf)
+        if: steps.gate.outputs.an == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: out/cache/uk_psc_tag.txt
+          key: uk-psc-tag-${{ steps.d.outputs.tag }}
       - uses: actions/setup-python@v5
         if: steps.gate.outputs.an == 'true'
         with: { python-version: "3.11" }
