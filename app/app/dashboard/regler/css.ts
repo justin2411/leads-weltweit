@@ -18,6 +18,9 @@ export const REGLER_CSS = `
 .rg-card.off .rg-knobs{opacity:.5}
 .rg-h{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:12px;align-items:center}
 .rg-ic{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;font-size:22px;color:var(--cy2);background:radial-gradient(circle at 50% 35%,#1d4a7a,#06101f 70%);border:1px solid rgba(95,212,255,.35)}
+/* Gehirn-Karte: Icon und Titel öffnen /dashboard/gehirn (Inhaber 05.10.2026) */
+.rg-hl{color:inherit;text-decoration:none}a.rg-ic.rg-hl:hover,a.rg-ic.rg-hl:focus-visible{border-color:var(--cy);box-shadow:0 0 14px rgba(95,212,255,.45)}
+h2 .rg-hl:hover,h2 .rg-hl:focus-visible{color:var(--cy);text-decoration:underline}
 .rg-card.off .rg-ic{filter:grayscale(1);opacity:.6}
 .rg-h h2{margin:0;font-family:var(--sans);font-size:18px;font-weight:700;letter-spacing:0;color:#fff}
 .rg-eff{display:block;margin-top:2px;font-size:13.5px;color:var(--cy2);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
