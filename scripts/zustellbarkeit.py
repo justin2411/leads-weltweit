@@ -222,6 +222,11 @@ def quellen_vorschlagen(db, quellen: list[dict]) -> int:
 def seeds(db, env=None) -> dict:
     env = os.environ if env is None else env
     configured = bool((env.get("SEED_INBOXES") or "").strip())
+    if not configured:
+        try:
+            configured = bool(db.select("owner_settings", {"key": "eq.seed_inboxes", "select": "key", "limit": "1"}))
+        except RuntimeError:
+            pass
     try:
         rows = db.select("seed_checks", {"at": f"gte.{_since(7)}", "select": "country,placement", "limit": "500"})
     except RuntimeError:
