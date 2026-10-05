@@ -96,11 +96,16 @@ def alter(iso: str, heute: dt.date, lang: str) -> str:
     return t["karte_alter_0"] if n == 0 else t["karte_alter_1"] if n == 1 else fuell(t["karte_alter_n"], n=n)
 
 
-def beleg(signal: str, website: str, source_url: str, source_date: str, lang: str) -> dict | None:
-    """Beleg-Link einer Lead-Karte: Website-Befund → die geprüfte Website selbst, sonst der Quell-Link; mit Abrufdatum."""
+def beleg(signal: str, website: str, source_url: str, source_date: str, lang: str, source_name: str = "") -> dict | None:
+    """Beleg-Link einer Lead-Karte: Website-Befund → die geprüfte Website selbst, sonst der Quell-Link; mit Abrufdatum.
+    Website-Befund mit datiertem Registereintrag (z. B. Companies-House-Eigentümerwechsel): der Registereintrag ist
+    der Anlass und damit der Beleg (Premium-Labor 05.10.2026); den Website-Zustand nennt der Lead-Text mit Prüfdatum."""
+    from lib.premium import DATED_SOURCES
     site = (website or "").strip()
     url = (source_url or "").strip()
-    if signal in WEB_SIGNALS and site and signal != "no_website":
+    register = bool(DATED_SOURCES.search(source_name or "")) and "radar" not in (source_name or "").lower() \
+        and bool(re.match(r"^https?://", url))
+    if signal in WEB_SIGNALS and site and signal != "no_website" and not register:
         url = site if re.match(r"^https?://", site) else f"https://{site}"
     if not re.match(r"^https?://", url):
         return None

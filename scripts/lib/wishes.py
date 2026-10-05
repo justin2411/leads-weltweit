@@ -58,7 +58,11 @@ def _no_website(l: dict) -> bool:
 
 # Radar-Leads (lib/radar.py also_text): datiertes Ereignis + am selben Tag bestätigter Befund „veraltet“/„nicht mobil“
 # im Text. Nur dieser Zusatzsatz zählt (Quellen-Scout 05.10.2026), nie geraten.
-ALSO_MARK = re.compile(r"(The same check also found that |Le même contrôle a aussi relevé que )(.*)$", re.S)
+# Mit Prüfdatum (Premium-Labor 05.10.2026): „The same check on <Datum> also found that …“, „Our earlier check on
+# <Datum> found that …“ (und FR); ältere Leads ohne Datum im Satz passen weiter.
+ALSO_MARK = re.compile(r"(The same check(?: on [^.;:]+?)? also found that |Le même contrôle(?: du [^.;:]+?)? a aussi "
+                       r"relevé que |Our earlier check on [^.;:]+? found that |Notre contrôle du [^.;:]+? avait relevé que )"
+                       r"(.*)$", re.S)
 ALSO_MOBILE = re.compile(r"not built for phones|pas adaptée aux mobiles")
 ALSO_OUTDATED = re.compile(r"copyright|old version|Adobe Flash|ancienne version")
 RADAR_TYPES = ("cert_expiring", "no_https")
