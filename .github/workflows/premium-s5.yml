@@ -1,0 +1,60 @@
+# Premium-Linie Buchhaltung S5 US/UK (Branchen-Test, Inhaber 05.10.2026: „Buchhaltung in US und UK … Es fehlen aber
+# noch Premium-Leads … die kämen aus Neugründungen“). Eigene kleine Linie außerhalb von slot_plan und config/fokus.yaml,
+# einmal täglich: (1) US frische Neugründungen der letzten 14 Tage (Connecticut-Register, US DOT/FMCSA, SEC Form D) ->
+# Anreicherung -> nur Premium-Leads speichern (Mischung 100 %, kein Rohbestand); (2) Quer-Verwertung: frische
+# Neugründungen, die das Lead-Werk schon einer anderen Zielgruppe zugeteilt hat (UK Companies House S4/S9, US DOT S2/S4),
+# bekommen zusätzlich einen S5-Lead aus denselben gespeicherten Daten (scripts/premium_quer.py, kein neuer Abruf);
+# (3) Drei-Stufen-Freigabe für die neuen Premium-Leads (scripts/premium_freigabe.py). UK-Neugründungen selbst lädt das
+# Lead-Werk schon vollständig (alle bekannt), darum hier kein eigener UK-Abruf.
+# Sendet nichts, startet keinen Versand, lädt keine Lead-Daten hoch (öffentliches Repo). Speicher-Bremse und
+# Werke-Schalter gelten (run.py beendet sich bei Pause). robots.txt, 1 Abruf/s je Domain, bekannte Firmen übersprungen.
+name: premium-s5
+on:
+  schedule: [{ cron: "41 4 * * *" }]   # 06:41 MESZ
+  workflow_dispatch:
+concurrency: { group: premium-s5, cancel-in-progress: false }
+permissions:
+  contents: read
+jobs:
+  linie:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RUN_PART: premium-s5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - name: Speicher-Bremse prüfen
+        id: speicher
+        run: |
+          python - <<'EOF' >> "$GITHUB_OUTPUT"
+          import sys; sys.path.insert(0, "scripts")
+          from lib.db import DB
+          try:
+              from werk_plan import brake_level
+              lvl = brake_level(int(DB().rpc("db_size_bytes", {})))
+          except Exception as e:  # noqa: BLE001 - ohne Messung lieber anhalten (nur strenger)
+              print(f"Speicher unbekannt: {type(e).__name__}", file=sys.stderr); lvl = "unbekannt"
+          # nur unter 6 GB (Stufe aus/hinweis); ab „drossel“ läuft die Linie nicht
+          lvl = "ok" if lvl in ("aus", "hinweis") else lvl
+          print(f"stufe={lvl}")
+          EOF
+      - name: S5 US
+        if: steps.speicher.outputs.stufe == 'ok'
+        continue-on-error: true
+        run: |
+          python scripts/extraktor/run.py --segments S5 --countries US --per 60 --fmcsa-days 14 --formd-days 14 \
+            --ct-days 14 --max-tries 1500 --db --store --no-raw --deadline-min 30 --out out/premium-s5-us
+      - name: Quer-Verwertung frischer Neugründungen (UK Companies House, US DOT) als S5-Leads
+        if: steps.speicher.outputs.stufe == 'ok'
+        run: python scripts/premium_quer.py US,UK --apply --max 80
+      - name: Drei-Stufen-Freigabe für neue Premium-Leads
+        run: python scripts/premium_freigabe.py S5 US,UK --apply
+      - name: Tore
+        if: always()
+        run: |
+          for c in US UK; do python scripts/zielgruppe_bereit.py S5 $c --kurz || true; done | tee -a "$GITHUB_STEP_SUMMARY"

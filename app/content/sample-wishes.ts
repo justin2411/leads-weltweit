@@ -14,8 +14,8 @@ export const WISHES: Record<string, Wish[]> = {
   ],
   accountants: [
     { key: "new_incorporation", en: "Newly registered", fr: "Création récente", de: "Neu gegründet" },
-    { key: "growth", en: "Fast growth", fr: "Forte croissance", de: "Starkes Wachstum" },
-    { key: "finance_roles", en: "Finance roles open", fr: "Postes en finance ouverts", de: "Finanzstellen offen" },
+    { key: "new_director", en: "New company directors", fr: "Nouveaux dirigeants", de: "Neue Geschäftsführer" },
+    // „Fast growth“ und „Finance roles open“ entfernt (Branchen-Test S5 05.10.2026): dafür gibt es keine S5-Leads
   ],
   "web-agencies": [
     { key: "no_website", en: "No website", fr: "Sans site web", de: "Ohne Website" },

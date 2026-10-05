@@ -231,6 +231,17 @@ SUBJECTS = {
 }
 
 
+# Satz 1 der Buchhaltungs-Mail (S5) je Land, Bauplan docs/KALTMAIL-VORLAGE.md §3 (Branchen-Test 05.10.2026):
+# nur, was die Quellen wirklich liefern – UK: Neugründungen aus Companies House; US: Neueintragungen (Register, US DOT)
+# und junge Firmen mit einer frischen SEC-Form-D-Meldung
+S5_FIRST = {
+    "UK": "We find companies across the UK that were incorporated in recent weeks, a clear reason for them to talk to "
+          "an accountant.",
+    "US": "We find new businesses across the US that just registered or just raised capital, a clear reason for them "
+          "to talk to an accountant.",
+}
+
+
 # Bausteine 3–6 und 9 der Kaltmail-Vorlage für BR (Portugiesisch) und MX (Spanisch), Inhaber 04.10.2026:
 # Wortlaut wie EN/FR („1:1 nachbauen“), landesweit, nur wahre Aussagen, keine Exklusivitätszusage
 LOCAL_TEXT = {
@@ -375,6 +386,16 @@ def build(p: dict, sender: str | None = None, example: dict | None = None) -> tu
                     "and an opening line.")
             ask = f"I've put together a free sample of 10 current leads from across {area}. Shall I send it over?"
             short = _opener_name(p["company_name"]) and short_name(p["company_name"])  # nie wie ein Link
+            greet = f"Hi {short} team," if short else "Hi there,"
+            ex = ""
+        elif seg == "S5" and country in S5_FIRST:
+            # Buchhaltung (Branchen-Test 05.10.2026): 1:1 wie S2 (docs/KALTMAIL-VORLAGE.md), nur Satz 1 und Käufer
+            # anders; nur was die Quellen liefern (UK Companies House, US Register/FMCSA/SEC Form D), keine Exklusivität
+            first = f"{intro} {S5_FIRST[country]}"
+            core = ("Every Monday you get a short PDF briefing and a spreadsheet: company, phone, email, who to ask for "
+                    "and an opening line.")
+            ask = f"I've put together a free sample of 10 current leads from across {area}. Shall I send it over?"
+            short = _opener_name(p["company_name"]) and short_name(p["company_name"])
             greet = f"Hi {short} team," if short else "Hi there,"
             ex = ""
     # Betreff A/B je Käufer; erster Satz individuell aus echten Daten (Auftrag 04.10.2026)

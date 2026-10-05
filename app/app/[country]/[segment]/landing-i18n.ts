@@ -172,8 +172,8 @@ const SOURCES_BASE: Record<BaseSeg, Record<Cc, SrcRow[]>> = {
     FR: [["users", "Pages carrières", "Offres d'emploi datées"], ["landmark", "Registre SIRENE", "Données d'entreprise"], ["doc", "BODACC", "Annonces officielles"]],
   },
   accountants: {
-    UK: [["landmark", "Companies House", "New incorporations"], ["doc", "Company websites", "Phone and email"], ["users", "Company careers pages", "Finance roles"]],
-    US: [["landmark", "NY Department of State", "New registrations"], ["landmark", "Connecticut business registry", "New registrations"], ["doc", "SEC EDGAR", "Form D filings"]],
+    UK: [["landmark", "Companies House", "New incorporations"], ["doc", "Company websites", "Phone and email"], ["users", "PSC register", "Owners and directors"]],
+    US: [["landmark", "Connecticut business registry", "New registrations"], ["doc", "US DOT (FMCSA)", "New transport businesses"], ["doc", "SEC EDGAR", "Form D filings"]],
     FR: [["doc", "BODACC", "Créations d'entreprises"], ["landmark", "Registre SIRENE", "Données d'entreprise"], ["globe", "Sites des entreprises", "Téléphone et e-mail"]],
   },
   "insurance-brokers": {
@@ -217,8 +217,8 @@ const EN: Record<Seg, MethodText> = {
       ["target", "We spot the moment", "A newly registered company, before it has chosen an accountant. Each event is recorded with its date and source."],
       ["filter", "We filter and rate", "Only companies with a phone number or email you can use. Every lead is rated for freshness and completeness, weak ones are left out."],
       ["inbox", "You get the list", "Every Monday: company, phone and email, its activity, date, source, a sales tip and an opening line. Each lead goes to only one firm."]],
-    moments: [["building", "A newly registered company"], ["users", "A growing employer"], ["calendar", "A first funding round"]],
-    mail: [["building", "New company"], ["building", "New company"], ["users", "Growing employer"]], tag: "New company",
+    moments: [["building", "A newly registered company"], ["user", "A new director or owner"], ["calendar", "A fresh funding filing (US)"]],
+    mail: [["building", "New company"], ["building", "New company"], ["user", "New director"]], tag: "New company",
   },
   "insurance-brokers": {
     steps: [["search", "We read the registers", "Every day we read official company and fleet registers {across}."],
