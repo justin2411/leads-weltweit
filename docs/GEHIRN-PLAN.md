@@ -26,6 +26,14 @@ Visualisierung = JARVIS-Trichter ohne Scanner, Ziel-Ring 25.000 € mit Zeitstra
 **Offen beim Inhaber:** `SEED_INBOXES` (ja), Bestätigungsknopf Abmeldeseite (ja), Zweit-Domains (nach 1. Antwort),
 Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 
+## Lagebild (05.10.2026, 20:40 Berliner Zeit)
+- **Erste S2-Probe aus einer Kaltmail (FR):** Mail → Seite → Probe in 16 Minuten, Probe 10/10 Premium.
+  Probe-Nachfrage am Do 08.10. ist richtig verknüpft (Ereignis an der Erstmail). Engpass bleibt Mail → Seitenbesuch.
+- **Lücke „Nur Premium“ beim Abruf geschlossen:** Der Vorrat hatte FR-Wunsch-Proben ohne Premium; der Abruf gab
+  Premium nur zuerst heraus. Jetzt bei Mischung 100 % nur 10/10-Premium-Proben, sonst Warteschlange. Nichts gelöscht.
+- **Hinweis Tageszeit (nur Beobachtung):** Seitenbesuche kamen am Montag fast nur von Mails, die werktags 8–17 Uhr
+  Ortszeit ankamen. Ein Tag ist zu wenig; Versandzeit bleibt 24/7 (Inhaber), A/B „Versandzeit“ bleibt pausiert.
+
 ## Lagebild (05.10.2026, 18:20 Berliner Zeit)
 - **Zustellung ist nicht der Engpass:** Blocklisten frei, Kontrollmails im Posteingang, keine Richtlinien-Rückläufer.
   US-Rückläufer sind tote Postfächer, die frisch (≤ 4 T) auf der Firmenwebsite standen – strengere Frischeprüfung hilft nicht.
@@ -110,6 +118,10 @@ Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 - Käufer ok (S2): US 28.782, UK 2.623, FR 1.285. DB 5,1 GB.
 
 ## Nächster Schritt
+- **Prüfpunkt Mo 12.10.:** 0 rausgegangene Proben mit weniger als 10/10 Premium seit 05.10. (sample_stock sent/claimed).
+- **Prüfpunkt Mi 07.10., 20:00:** Seitenbesuch je Erstmail werktags 8–17 Uhr Ortszeit vs. übrige Zeiten (3 Werktage).
+  Hält der Abstand (≥ 3×, ≥ 300 Mails je Gruppe), dem Inhaber vorschlagen: Länder-Anteil je Stunde nach Ortszeit
+  gewichten – weiter 24/7 und alle Länder in jedem Lauf. Nicht selbst umstellen.
 - **Prüfpunkt Mo 12.10., 12:00:** `zustellbarkeit.py --dry-run --anbieter`: liegt ein Land × Anbieter mit ≥ 150 Erstmails
   über 5 % hart, eine strengere Adressregel nur dafür bauen (nie lockern); sonst US-Rückläufer als Grundrauschen abhaken.
 - **Prüfpunkt Do 08.10., 18:00:** Nachfassmails S2 gesendet ≥ 50, davon ≥ 90 % vom Postfach der Erstmail; Erfolg bis

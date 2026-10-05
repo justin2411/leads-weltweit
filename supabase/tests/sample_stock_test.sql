@@ -15,6 +15,10 @@ insert into signalwerk.sample_requests (id, company_name, email, segment_id, cou
   values ('20000000-0000-0000-0000-000000000001', 'A', 'a@b.com', 'SX', 'US', 'c', now(), 'new'),
          ('20000000-0000-0000-0000-000000000002', 'B', 'b@b.com', 'SX', 'US', 'c', now(), 'new');
 
+-- Grundtests prüfen die Mechanik ohne Premium-Filter (Mischung 0 %); Nur-Premium-Abruf in Test 12
+insert into signalwerk.owner_settings (key, value) values ('lead_mix', '{"premium_pct": 0}')
+  on conflict (key) do update set value = excluded.value;
+
 create function pg_temp.stock(p_order text, p_path text, p_wish jsonb default '[]', p_match jsonb default '{}')
 returns uuid language sql as $$
   select signalwerk.add_sample_stock(jsonb_build_object('segment_id', 'SX', 'country', 'US', 'lang', 'en',
@@ -126,6 +130,25 @@ begin
   update signalwerk.sample_stock set segment_id = 'S2', built_at = now() - interval '100 hours' where storage_path = 'h.json';
   n := signalwerk.expire_sample_stock(48);
   assert (select status from signalwerk.sample_stock where storage_path = 'h.json') = 'ready', 'S2-Probe verfallen';
+
+  -- 12) Nur Premium (lead_mix 100 %, Migration 20261006120000): Standard-Probe wird übersprungen (bleibt bereit),
+  --     10/10-Premium-Probe wird vergeben
+  update signalwerk.owner_settings set value = '{"premium_pct": 100}' where key = 'lead_mix';
+  update signalwerk.sample_stock set status = 'expired' where status = 'ready';
+  update signalwerk.leads set status = 'new' where segment_id in ('SX', 'S2') and status <> 'expired';
+  update signalwerk.leads set segment_id = 'SX' where segment_id = 'S2';
+  perform pg_temp.stock('desc', 'i.json');
+  perform pg_temp.release('i.json');
+  select count(*) into n from signalwerk.claim_sample_stock('SX', 'US', '{}', null);
+  assert n = 0, 'Standard-Probe trotz Nur-Premium vergeben';
+  assert (select status from signalwerk.sample_stock where storage_path = 'i.json') = 'ready', 'Standard-Probe verworfen';
+  update signalwerk.sample_stock set premium_n = 10 where storage_path = 'i.json';
+  select * into got from signalwerk.claim_sample_stock('SX', 'US', '{}', null);
+  assert got.storage_path = 'i.json', 'Premium-Probe nicht vergeben';
+  delete from signalwerk.owner_settings where key = 'lead_mix';
+  update signalwerk.sample_stock set status = 'ready', premium_n = null where storage_path = 'i.json';
+  select count(*) into n from signalwerk.claim_sample_stock('SX', 'US', '{}', null);
+  assert n = 0, 'ohne Eintrag muss Nur-Premium gelten';
   raise notice 'Vorrats-Tests ok';
 end $$;
 rollback;
