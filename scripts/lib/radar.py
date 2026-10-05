@@ -440,19 +440,44 @@ def _check_rows(rows: list[dict], fetcher, today: dt.date, workers: int, until: 
     return states, events, done
 
 
+def share(w: dict[str, float], left: list[str]) -> float:
+    """Anteil des ersten offenen Landes an der Restzeit (gewichtet; das letzte bekommt alles). Rein, für Tests."""
+    total = sum(w.get(c, 1.0) for c in left)
+    return 1.0 if len(left) <= 1 or total <= 0 else w.get(left[0], 1.0) / total
+
+
+def parse_countries(spec: str) -> tuple[list[str], dict[str, float]]:
+    """„FR,UK:2,US“ -> (["FR", "UK", "US"], {"UK": 2.0}). Ohne Gewicht = 1."""
+    countries, weights = [], {}
+    for part in (spec or "").split(","):
+        code, _, wt = part.strip().partition(":")
+        code = code.strip().upper()
+        if not code:
+            continue
+        countries.append(code)
+        if wt.strip():
+            weights[code] = float(wt)
+    return countries, weights
+
+
 def run(db, countries: list[str], limit: int, fetcher, deadline: float = 0, workers: int = 16, log=print,
         today: dt.date | None = None, apply: bool = True, min_days: int = RECHECK_DAYS,
-        shard: tuple[int, int] = (0, 1)) -> dict:
-    """Radar je Land (gerechter Anteil am Zeitfenster). Ergebnis je Land: Kandidaten, geprüft, Zustände,
-    Ereignisse je Art, neue Leads, davon premium. apply=False: nur prüfen, nichts speichern (Test)."""
+        shard: tuple[int, int] = (0, 1), weights: dict[str, float] | None = None) -> dict:
+    """Radar je Land (gewichteter Anteil am Zeitfenster). Ergebnis je Land: Kandidaten, geprüft, Zustände,
+    Ereignisse je Art, neue Leads, davon premium. apply=False: nur prüfen, nichts speichern (Test).
+
+    weights: Zeitgewicht je Land (Standard 1). Premium-Labor 05.10.2026: UK/FR haben wenig Premium, das Radar ist dort
+    die Hauptquelle; Länder mit kleinem Bestand zuerst, damit ihre Restzeit an die folgenden geht. Ändert nur die
+    Reihenfolge/Zeit, nie Prüfregeln oder Abrufgrenzen (1 Abruf je Seite und Tag, robots.txt)."""
     today = today or dt.date.today()
+    w = {c: max(0.0, float((weights or {}).get(c, 1.0))) for c in countries}
     report: dict = {}
     for n, co in enumerate(countries):
         stats: Counter = Counter()
         if deadline and time.monotonic() >= deadline:
             log(f"Radar {co}: Zeitfenster vorbei")
             break
-        until = time.monotonic() + max(0.0, deadline - time.monotonic()) / max(1, len(countries) - n) if deadline else 0
+        until = time.monotonic() + max(0.0, deadline - time.monotonic()) * share(w, countries[n:]) if deadline else 0
         seen: set[str] = set()
         while stats["geprueft"] < limit and not (until and time.monotonic() >= until):
             try:

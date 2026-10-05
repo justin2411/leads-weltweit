@@ -373,3 +373,15 @@ class RadarLegalPersonTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_radar_weighted_time_share():
+    from lib import radar
+    rc, rw = radar.parse_countries("fr, UK:2 ,US")
+    assert rc == ["FR", "UK", "US"] and rw == {"UK": 2.0}
+    w = {c: rw.get(c, 1.0) for c in rc}
+    assert radar.share(w, rc) == 0.25            # FR 1 von 4
+    assert abs(radar.share(w, rc[1:]) - 2 / 3) < 1e-9  # UK bekommt 2/3 der Restzeit
+    assert radar.share(w, rc[2:]) == 1.0         # letztes Land: alles
+    # ohne Gewichte wie bisher gerecht geteilt
+    assert radar.share({}, ["US", "UK", "FR"]) == 1 / 3
