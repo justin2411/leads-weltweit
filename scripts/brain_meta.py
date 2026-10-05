@@ -510,11 +510,14 @@ def main(argv: list[str]) -> int:
     if cmd == "score":
         tag = _opt(args, "--tag")
         t = now()
-        if "--nur-abends" in args and t.astimezone(BERLIN).hour != 23:
-            print("score: übersprungen (nur 23:xx deutscher Zeit)")
-            return 0
-        print(json.dumps(score_cmd(db, dt.date.fromisoformat(tag) if tag else berlin_day(t), "--apply" in args, t),
-                         ensure_ascii=False, indent=1))
+        day = dt.date.fromisoformat(tag) if tag else berlin_day(t)
+        if "--nur-abends" in args:  # gleicher Abschluss-Tag wie kpi_snapshot (verspätete Zeitplan-Läufe = gestern)
+            from kpi_snapshot import abschluss_tag
+            day = abschluss_tag(t)
+            if day is None:
+                print("score: übersprungen (Abschluss nur 23:00–05:59 deutscher Zeit)")
+                return 0
+        print(json.dumps(score_cmd(db, day, "--apply" in args, t), ensure_ascii=False, indent=1))
         return 0
     if cmd == "vorschlaege":
         print(json.dumps(offene(db), ensure_ascii=False, indent=1, default=str))

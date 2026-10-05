@@ -10,7 +10,8 @@ löscht nichts.
 
   python scripts/kpi_snapshot.py                      # heute (deutsche Zeit) speichern
   python scripts/kpi_snapshot.py --tag 2026-10-04     # bestimmten Tag (Bestandswerte = jetzt)
-  python scripts/kpi_snapshot.py --nur-abends         # nur zwischen 23:00 und 23:59 deutscher Zeit (Zeitplan)
+  python scripts/kpi_snapshot.py --nur-abends         # Tagesabschluss (Zeitplan/Wachhund): 23:xx deutscher Zeit
+                                                      # = heute; verspätet 00:00–05:59 = gestern, falls noch offen
   python scripts/kpi_snapshot.py --zeigen             # nur anzeigen, nichts schreiben
 
 Kennzahlen: leads_lieferbar, leads_neu, leads_alter_median_tage, kaeufer_ok, kaeufer_frei, kaeufer_neu,
@@ -45,6 +46,26 @@ def berlin_day(t: dt.datetime) -> dt.date:
 def evening(t: dt.datetime) -> bool:
     """Zeitplan läuft mit Sommer- und Winterzeit-Cron; nur der Lauf um 23:xx deutscher Zeit schreibt."""
     return t.astimezone(BERLIN).hour == 23
+
+
+def abschluss_tag(t: dt.datetime) -> dt.date | None:
+    """Welchen Tag schließt ein Zeitplan-Lauf ab? 23:xx deutscher Zeit = heute. GitHub startet geplante Läufe oft
+    Stunden zu spät (05.10.2026: 02:12 und 03:18 statt 23:50 MESZ, beide übersprungen, 04.10. ohne Abschluss) –
+    darum 00:00–05:59 = gestern (Bestandswerte dann vom Laufzeitpunkt). Sonst None (nichts schreiben)."""
+    b = t.astimezone(BERLIN)
+    if b.hour == 23:
+        return b.date()
+    if b.hour < 6:
+        return b.date() - dt.timedelta(days=1)
+    return None
+
+
+def abgeschlossen(db, day: dt.date) -> bool:
+    """Gibt es für diesen Tag schon einen Abschluss (Schnappschuss ab 23:00 deutscher Zeit)?"""
+    since = dt.datetime.combine(day, dt.time(23, 0), tzinfo=BERLIN).astimezone(dt.timezone.utc)
+    rows = db.select("kpi_daily", {"select": "day", "day": f"eq.{day.isoformat()}", "metric": "eq.leads_lieferbar",
+                                   "updated_at": f"gte.{since.isoformat()}", "limit": "1"})
+    return bool(rows)
 
 
 def _num(v):
@@ -101,13 +122,19 @@ def main(argv: list[str]) -> int:
         print(__doc__)
         return 1
     t = now()
-    if "--nur-abends" in argv and not evening(t):
-        print(f"kpi_snapshot: übersprungen ({t.astimezone(BERLIN):%H:%M} deutscher Zeit, Lauf nur 23:xx)")
-        return 0
     tag = _opt(argv, "--tag")
     day = dt.date.fromisoformat(tag) if tag else None
     from lib.db import DB
-    rows = snapshot(DB(), day, write="--zeigen" not in argv, t=t)
+    db = DB()
+    if "--nur-abends" in argv:
+        day = abschluss_tag(t)
+        if day is None:
+            print(f"kpi_snapshot: übersprungen ({t.astimezone(BERLIN):%H:%M} deutscher Zeit, Abschluss 23:00–05:59)")
+            return 0
+        if day < berlin_day(t) and abgeschlossen(db, day):
+            print(f"kpi_snapshot: {day} schon abgeschlossen")
+            return 0
+    rows = snapshot(db, day, write="--zeigen" not in argv, t=t)
     print(f"kpi_snapshot: {len(rows)} Werte für {day or berlin_day(t)}")
     print(summary(rows))
     return 0

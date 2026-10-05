@@ -26,6 +26,15 @@ Visualisierung = JARVIS-Trichter ohne Scanner, Ziel-Ring 25.000 € mit Zeitstra
 **Offen beim Inhaber:** `SEED_INBOXES` (ja), Bestätigungsknopf Abmeldeseite (ja), Zweit-Domains (nach 1. Antwort),
 Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 
+## Lagebild (05.10.2026, 22:40 Berliner Zeit)
+- **Zeitplan-Ausfall trifft alle Jobs, nicht nur das Lead-Werk:** GitHub startete seit 03.10. nur einen Bruchteil der
+  geplanten Läufe (Versand 5 von ~32 in 34 h, Antworten 6 von ~200). Der Wachhund fängt das für Versand, Antworten,
+  Werke und die meisten Tagesjobs auf. Ohne Nachstart waren: KPI-Tagesabschluss, Aufräumen, Premium-S5, Zustellbarkeit.
+- **KPI-Verlauf hatte Lücken:** der Abschluss kam 02:12/03:18 statt 23:50 und wurde verworfen – kpi_daily hat nur 04./05.10.
+  Behoben: Abschluss 23:20, verspätet bis 05:59 = Vortag (falls offen), Wachhund startet ab 23:40 nach; die vier Tagesjobs
+  stehen jetzt im Wachhund. Gehirn-Score nutzt denselben Abschluss-Tag.
+- Heute Abend zusätzlich GitHub-Störung (Actions „degraded“): 13 Läufe in der Warteschlange, Werke kurz unter 30 Plätzen.
+
 ## Lagebild (05.10.2026, 20:40 Berliner Zeit)
 - **Erste S2-Probe aus einer Kaltmail (FR):** Mail → Seite → Probe in 16 Minuten, Probe 10/10 Premium.
   Probe-Nachfrage am Do 08.10. ist richtig verknüpft (Ereignis an der Erstmail). Engpass bleibt Mail → Seitenbesuch.
@@ -118,6 +127,8 @@ Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 - Käufer ok (S2): US 28.782, UK 2.623, FR 1.285. DB 5,1 GB.
 
 ## Nächster Schritt
+- **Prüfpunkt Mi 07.10., 12:00:** kpi_daily hat für 05.10. und 06.10. je einen Abschluss (updated_at ab 23:00 deutscher
+  Zeit oder Nachtrag bis 05:59); aufraeumen/premium-s5/zustellbarkeit je ≥ 1 Lauf am 06. und 07.10.
 - **Prüfpunkt Mo 12.10.:** 0 rausgegangene Proben mit weniger als 10/10 Premium seit 05.10. (sample_stock sent/claimed).
 - **Prüfpunkt Mi 07.10., 20:00:** Seitenbesuch je Erstmail werktags 8–17 Uhr Ortszeit vs. übrige Zeiten (3 Werktage).
   Hält der Abstand (≥ 3×, ≥ 300 Mails je Gruppe), dem Inhaber vorschlagen: Länder-Anteil je Stunde nach Ortszeit

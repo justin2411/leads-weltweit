@@ -38,6 +38,23 @@ class SnapshotTest(unittest.TestCase):
         self.assertTrue(K.evening(dt.datetime(2026, 11, 4, 22, 50, tzinfo=UTC)))      # 23:50 MEZ
         self.assertFalse(K.evening(dt.datetime(2026, 11, 4, 21, 50, tzinfo=UTC)))     # 22:50 MEZ
 
+    def test_abschluss_tag_late_runs_close_yesterday(self):
+        self.assertEqual(K.abschluss_tag(dt.datetime(2026, 10, 4, 21, 20, tzinfo=UTC)), dt.date(2026, 10, 4))  # 23:20
+        self.assertEqual(K.abschluss_tag(dt.datetime(2026, 10, 5, 0, 12, tzinfo=UTC)), dt.date(2026, 10, 4))   # 02:12
+        self.assertEqual(K.abschluss_tag(dt.datetime(2026, 10, 5, 3, 59, tzinfo=UTC)), dt.date(2026, 10, 4))   # 05:59
+        self.assertIsNone(K.abschluss_tag(dt.datetime(2026, 10, 5, 4, 0, tzinfo=UTC)))                         # 06:00
+        self.assertIsNone(K.abschluss_tag(dt.datetime(2026, 10, 5, 20, 59, tzinfo=UTC)))                       # 22:59
+
+    def test_late_run_skips_closed_day(self):
+        db = FakeDB()
+        db.rpc_handlers["kpi_day"] = fake_kpi
+        day = dt.date(2026, 10, 4)
+        self.assertFalse(K.abgeschlossen(db, day))
+        K.snapshot(db, day, scope=SCOPE, t=dt.datetime(2026, 10, 4, 15, 44, tzinfo=UTC))   # Tageslauf zählt nicht
+        self.assertFalse(K.abgeschlossen(db, day))
+        K.snapshot(db, day, scope=SCOPE, t=dt.datetime(2026, 10, 4, 21, 25, tzinfo=UTC))   # 23:25 MESZ
+        self.assertTrue(K.abgeschlossen(db, day))
+
     def test_upsert_idempotent(self):
         db = FakeDB()
         db.rpc_handlers["kpi_day"] = fake_kpi
@@ -63,9 +80,24 @@ class FilesTest(unittest.TestCase):
     def test_workflow_crons_summer_and_winter_not_full_hour(self):
         wf = yaml.safe_load((ROOT / ".github" / "workflows" / "kpi-tag.yml").read_text())
         crons = [c["cron"] for c in wf[True]["schedule"]]
-        self.assertEqual(sorted(crons), ["50 21 * * *", "50 22 * * *"])
-        self.assertIn("workflow_dispatch", wf[True])
-        self.assertIn("--nur-abends", wf["jobs"]["snapshot"]["steps"][-1]["run"])
+        self.assertEqual(sorted(crons), ["20 21 * * *", "20 22 * * *"])
+        self.assertIn("abschluss", wf[True]["workflow_dispatch"]["inputs"])
+        run = [s.get("run", "") for s in wf["jobs"]["snapshot"]["steps"] if "kpi_snapshot" in s.get("run", "")][0]
+        self.assertIn("--nur-abends", run)
+        self.assertIn("inputs.abschluss", run)
+
+    def test_wachhund_holds_kpi_closing(self):
+        import wachhund as W
+        job = [j for j in W.JOBS if j["wf"] == "kpi-tag.yml"][0]
+        self.assertEqual(job["inputs"], {"abschluss": "true"})
+        late, _ = W.overdue(job, [], dt.datetime(2026, 10, 5, 21, 45, tzinfo=UTC))      # 23:45 MESZ, kein Lauf
+        self.assertTrue(late)
+        late, _ = W.overdue(job, [], dt.datetime(2026, 10, 5, 21, 30, tzinfo=UTC))      # 23:30 MESZ, Karenz
+        self.assertFalse(late)
+        ran = [{"created_at": "2026-10-05T21:21:00Z", "status": "completed"}]
+        self.assertFalse(W.overdue(job, ran, dt.datetime(2026, 10, 5, 21, 50, tzinfo=UTC))[0])
+        for wf in ("aufraeumen.yml", "premium-s5.yml", "zustellbarkeit.yml"):
+            self.assertIn(wf, {j["wf"] for j in W.JOBS})
 
     def test_migration_non_destructive_with_rls(self):
         sql = next((ROOT / "supabase" / "migrations").glob("*_signalwerk_kpi_daily.sql")).read_text(encoding="utf-8")
