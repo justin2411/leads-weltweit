@@ -401,7 +401,10 @@ def run(db, apply: bool, log=print) -> dict:
 # Premium-Austausch (Gehirn 05.10.2026): S2-Proben verfallen nie nach Alter, der Vorrat war mit 110 Proben von vor
 # der Premium-Bewertung voll (premium_n leer) – neue Premium-Proben entstanden nie. Je Lauf höchstens so viele alte
 # Proben ersetzen: erst eine neue Probe bauen (volle Drei-Stufen-Freigabe), nur wenn sie mehr Premium-Leads hat,
-# die alte verwerfen (Leads wieder frei, nichts gelöscht). Sonst die neue verwerfen und aufhören.
+# die alte verwerfen (Leads wieder frei, nichts gelöscht). Sonst die neue verwerfen.
+# Gehirn 05.10.2026 (d): Ein Fehlschlag sperrt nur diesen Wunsch für den Lauf, nicht das ganze Land. Vorher brach
+# der Austausch beim ersten Wunsch ohne Premium-Nachschub ab (US „not_mobile“: 0 Premium-Firmen) – die
+# „no_website“-Proben mit ~2.600 freien Premium-Firmen kamen nie dran (Stand 05.10.: 1 von 50 US-Proben 10/10).
 PREMIUM_SWAP_PER_RUN = 8
 
 
@@ -421,16 +424,21 @@ def swap_for_premium(db, pairs, apply: bool, log=print, time_left=lambda: True, 
     ready = stock_rows(db, "ready")
     out: dict[str, int] = {}
     left = limit
-    for seg, cc in pairs:
+    # größter Premium-Nachschub zuerst: das knappe Bau-Budget je Lauf geht dorthin, wo Premium-Proben möglich sind
+    for seg, cc in sorted(pairs, key=lambda p: -supply.get(tuple(p), 0)):
         if left <= 0 or supply.get((seg, cc), 0) < 10:
             continue
         mine = [r for r in ready if r["segment_id"] == seg and r["country"] == cc]
         old = sorted((r for r in mine if int(r.get("premium_n") or 0) < 10),
                      key=lambda r: (int(r.get("premium_n") or 0), str(r.get("built_at") or "")))
         exclude = {c for r in mine for c in (r.get("company_ids") or [])}
+        failed: set[tuple[str, ...]] = set()  # Wünsche ohne Premium-Gewinn in diesem Lauf
         for r in old:
             if left <= 0 or not time_left():
                 break
+            wish_key = tuple(sorted(r.get("wish") or []))
+            if wish_key in failed:
+                continue
             try:
                 row = build_one(db, seg, cc, list(r.get("wish") or []), exclude, hours, apply, log)
             except Exception as exc:  # noqa: BLE001
@@ -442,8 +450,9 @@ def swap_for_premium(db, pairs, apply: bool, log=print, time_left=lambda: True, 
             if int(row.get("premium_n") or 0) <= int(r.get("premium_n") or 0):
                 if apply and row.get("id"):
                     db.rpc("discard_sample_stock", {"p_stock": row["id"], "p_note": "Austausch: kein Premium-Gewinn"})
-                log(f"  Austausch {seg}/{cc}: neue Probe nicht besser – Ende")
-                break
+                failed.add(wish_key)
+                log(f"  Austausch {seg}/{cc}: Wunsch {','.join(wish_key) or '-'} ohne Premium-Gewinn – nächster Wunsch")
+                continue
             if apply:
                 db.rpc("discard_sample_stock", {"p_stock": r["id"],
                                                 "p_note": f"ersetzt durch Premium-Probe ({row.get('premium_n')}/10)"})

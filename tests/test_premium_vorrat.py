@@ -122,15 +122,48 @@ class SwapTest(unittest.TestCase):
         discarded = [c.args[1]["p_stock"] for c in db.rpc.call_args_list if c.args[0] == "discard_sample_stock"]
         self.assertEqual(discarded, ["old1", "old2"])
 
-    def test_no_gain_discards_new_and_stops(self):
+    def test_no_gain_discards_new_and_tries_each_wish_once(self):
         import sample_stock as S
         db = self._db(500)
         with mock.patch.object(S, "stock_rows", return_value=self._stock()), \
-             mock.patch.object(S, "build_one", return_value={"id": "n1", "premium_n": 0}):
+             mock.patch.object(S, "build_one", return_value={"id": "n1", "premium_n": 0}) as b:
             got = S.swap_for_premium(db, [("S2", "US")], True, log=lambda *_: None)
         self.assertEqual(got, {})
+        self.assertEqual(b.call_count, 2)  # Wunsch [] und Wunsch ["x"] je einmal
         discarded = [c.args[1]["p_stock"] for c in db.rpc.call_args_list if c.args[0] == "discard_sample_stock"]
-        self.assertEqual(discarded, ["n1"])
+        self.assertEqual(discarded, ["n1", "n1"])
+
+    def test_largest_supply_first(self):
+        import sample_stock as S
+        db = mock.Mock()
+        db.rpc.side_effect = lambda fn, args: ([{"segment_id": "S2", "country": "UK", "premium_frei": 60},
+                                                {"segment_id": "S2", "country": "US", "premium_frei": 2700}]
+                                               if fn == "premium_status" else True)
+        stock = [{"id": cc, "segment_id": "S2", "country": cc, "premium_n": 0, "built_at": "2026-10-03",
+                  "company_ids": [cc], "wish": []} for cc in ("UK", "US")]
+        with mock.patch.object(S, "stock_rows", return_value=stock), \
+             mock.patch.object(S, "build_one", return_value={"id": "n", "premium_n": 10}) as b:
+            S.swap_for_premium(db, [("S2", "UK"), ("S2", "US")], False, log=lambda *_: None, limit=1)
+        self.assertEqual(b.call_args.args[2], "US")
+
+    def test_failed_wish_skipped_other_wish_swapped(self):
+        # 05.10.2026: US „not_mobile“ ohne Premium darf „no_website“ nicht blockieren
+        import sample_stock as S
+        db = self._db(500)
+        stock = [{"id": f"m{i}", "segment_id": "S2", "country": "US", "premium_n": 0, "built_at": f"2026-10-0{i}",
+                  "company_ids": [f"m{i}"], "wish": ["not_mobile"]} for i in (1, 2, 3)]
+        stock.append({"id": "nw", "segment_id": "S2", "country": "US", "premium_n": 0, "built_at": "2026-10-04",
+                      "company_ids": ["nw"], "wish": ["no_website"]})
+
+        def build(db_, seg, cc, wish, *a, **k):
+            return {"id": "new", "premium_n": 10 if wish == ["no_website"] else 0}
+        with mock.patch.object(S, "stock_rows", return_value=stock), \
+             mock.patch.object(S, "build_one", side_effect=build) as b:
+            got = S.swap_for_premium(db, [("S2", "US")], True, log=lambda *_: None)
+        self.assertEqual(got, {"S2/US": 1})
+        self.assertEqual(b.call_count, 2)  # not_mobile nur einmal versucht
+        discarded = [c.args[1]["p_stock"] for c in db.rpc.call_args_list if c.args[0] == "discard_sample_stock"]
+        self.assertEqual(discarded, ["new", "nw"])
 
     def test_no_supply_no_build(self):
         import sample_stock as S
