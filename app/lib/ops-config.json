@@ -617,5 +617,155 @@
         "26,56 * * * *"
       ]
     }
+  ],
+  "zeitplan": [
+    {
+      "file": "agenten-werk.yml",
+      "crons": [
+        "29 * * * *",
+        "3,18,33,48 * * * *"
+      ]
+    },
+    {
+      "file": "anreichern.yml",
+      "crons": [
+        "41 2,8,15,20 * * *"
+      ]
+    },
+    {
+      "file": "antworten.yml",
+      "crons": [
+        "*/10 * * * *"
+      ]
+    },
+    {
+      "file": "aufraeumen.yml",
+      "crons": [
+        "41 2 * * *"
+      ]
+    },
+    {
+      "file": "dauerpruefung.yml",
+      "crons": [
+        "47 * * * *"
+      ]
+    },
+    {
+      "file": "freigabe-stichprobe.yml",
+      "crons": [
+        "7 5 * * *"
+      ]
+    },
+    {
+      "file": "kaeufer.yml",
+      "crons": [
+        "13 5 * * *"
+      ]
+    },
+    {
+      "file": "kontakt-werk.yml",
+      "crons": [
+        "23 * * * *"
+      ]
+    },
+    {
+      "file": "kpi-tag.yml",
+      "crons": [
+        "50 21 * * *",
+        "50 22 * * *"
+      ]
+    },
+    {
+      "file": "kunden-werk.yml",
+      "crons": [
+        "41 */2 * * *"
+      ]
+    },
+    {
+      "file": "kundenlieferung.yml",
+      "crons": [
+        "53 4 * * 1"
+      ]
+    },
+    {
+      "file": "lead-werk.yml",
+      "crons": [
+        "23 */3 * * *"
+      ]
+    },
+    {
+      "file": "morgenbericht.yml",
+      "crons": [
+        "47 4 * * *"
+      ]
+    },
+    {
+      "file": "proben-vorrat.yml",
+      "crons": [
+        "23 * * * *"
+      ]
+    },
+    {
+      "file": "pruefer-werk.yml",
+      "crons": [
+        "11 * * * *"
+      ]
+    },
+    {
+      "file": "send.yml",
+      "crons": [
+        "37 * * * *"
+      ]
+    },
+    {
+      "file": "sync.yml",
+      "crons": [
+        "17 6 * * *"
+      ]
+    },
+    {
+      "file": "taeglich.yml",
+      "crons": [
+        "17 12 * * *"
+      ]
+    },
+    {
+      "file": "tagescheck.yml",
+      "crons": [
+        "37 17 * * *"
+      ]
+    },
+    {
+      "file": "wachhund.yml",
+      "crons": [
+        "11,41 * * * *",
+        "26,56 * * * *"
+      ]
+    },
+    {
+      "file": "website-check.yml",
+      "crons": [
+        "23 4 * * *"
+      ]
+    },
+    {
+      "file": "werk-nachfuellen.yml",
+      "crons": [
+        "4,14,24,34,44,54 * * * *"
+      ]
+    },
+    {
+      "file": "werk-takt.yml",
+      "crons": [
+        "17 * * * *"
+      ]
+    },
+    {
+      "file": "zustellbarkeit.yml",
+      "crons": [
+        "10 4 * * *",
+        "10 5 * * *"
+      ]
+    }
   ]
 }

@@ -1,0 +1,9 @@
+{
+  "_info": "Claude-Routinen (geplante Claude-Sitzungen, nicht in der Datenbank). Cron in UTC; die Gehirn-Seite rechnet in deutsche Zeit um. Bei jeder Änderung einer Routine (create_trigger/update_trigger) hier mitpflegen – sonst zeigt /dashboard/gehirn falsche Zeiten.",
+  "routinen": [
+    { "key": "gehirn", "name": "Gehirn-Sitzung", "icon": "gehirn", "crons": ["17 */2 * * *"] },
+    { "key": "agent", "name": "Agent", "icon": "agent", "crons": ["8 * * * *", "23 * * * *", "38 * * * *", "53 * * * *"] },
+    { "key": "scout", "name": "Quellen-Scout", "icon": "suche", "crons": ["40 * * * *"] },
+    { "key": "premium", "name": "Premium-Labor", "icon": "premium", "crons": ["10 1-23/2 * * *"] }
+  ]
+}
