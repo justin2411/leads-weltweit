@@ -47,7 +47,11 @@ class PremiumTest(unittest.TestCase):
         mid = self.base(event_date="2026-09-15", person_name="")
         self.assertEqual(premium.score(mid, TODAY)["tier"], "standard")  # 20 + 10 + 15 = 45
         mid["details"] = {"findings": [{"type": "no_https"}]}
-        self.assertEqual(premium.score(mid, TODAY)["tier"], "premium")  # + 25 = 70
+        s = premium.score(mid, TODAY)
+        # + 25 = 70 Punkte, aber 15–30 Tage alt: nur Reihenfolge, nie Premium (Premium = frisch ≤ 14 Tage)
+        self.assertEqual((s["score"], s["tier"]), (70, "standard"))
+        mid["event_date"] = (TODAY - __import__("datetime").timedelta(days=premium.PREMIUM_MAX_AGE)).isoformat()
+        self.assertEqual(premium.score(mid, TODAY)["tier"], "premium")  # 35 + 25 + 10 + 15 = 85
 
     def test_registry_no_website_is_combo(self):
         s = premium.score(self.base(signal_type="no_website", source_name="FMCSA Company Census (US DOT)"), TODAY)

@@ -301,6 +301,7 @@ def premium_nachtrag(score, premium, kontakt: dict) -> tuple[int, dict] | None:
         changed = True
     if not changed:
         return None
-    fresh = any(str(r).startswith("frisch_") for r in reasons)
+    fresh = any((m := re.fullmatch(r"frisch_(\d+)_tage", str(r))) and int(m.group(1)) <= P.PREMIUM_MAX_AGE
+                for r in reasons)
     p.update(reasons=reasons, tier="premium" if score >= PREMIUM_MIN and fresh else "standard")
     return int(score), p

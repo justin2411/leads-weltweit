@@ -3,7 +3,7 @@
 Punktzahl 0–100 aus belegbaren Merkmalen des einzelnen Leads, Stufe `premium` oder `standard`:
 
   Frische       35  datiertes Ereignis höchstens FRESH_HIGH (14) Tage alt
-                20  datiertes Ereignis höchstens FRESH_MID (30) Tage alt
+                20  datiertes Ereignis höchstens FRESH_MID (30) Tage alt (nur Reihenfolge innerhalb Standard)
   Kombi-Anlass  25  datiertes Ereignis UND ein Website-Zustand (Website-Befund oder keine Website), z. B.
                     Neugründung + keine Website, Umzug + veraltete Website, Zertifikat läuft ab + alte Technik
   Beleg         10  Quelle mit Link, Name der Quelle und Datum
@@ -13,7 +13,10 @@ Punktzahl 0–100 aus belegbaren Merkmalen des einzelnen Leads, Stufe `premium` 
 Datiert ist ein Ereignis nur, wenn sein Datum ein echtes Geschehen ist (Registereintrag, Umzugsmeldung,
 Ablaufdatum eines Zertifikats, vom Radar festgestellte Veränderung). Ein Website-Zustand, der beim Prüfen gesehen
 wurde (veraltet, nicht handytauglich, keine Website laut Overture), hat kein Ereignisdatum – sein Prüfdatum zählt
-nicht als Frische. Premium = mindestens PREMIUM_MIN Punkte UND ein frisches datiertes Ereignis.
+nicht als Frische. Premium = mindestens PREMIUM_MIN Punkte UND ein datiertes Ereignis höchstens PREMIUM_MAX_AGE (14)
+Tage alt – wie die Definition „Premium = frisch ≤ 14 Tage“ (docs/GEHIRN-AUFBAU.md, Premium-Labor 05.10.2026: vorher
+zählte der Code bis 30 Tage, das war lockerer als die Definition). 15–30 Tage alte Ereignisse bekommen weiter 20 Punkte
+und stehen damit oben im Standard, heißen aber nicht Premium.
 
 Der Wert ändert nie, OB ein Lead rausgeht – das entscheidet allein die Drei-Stufen-Freigabe (lib/release_gate.py).
 Er ändert nur die Reihenfolge (Proben-Vorrat, Lieferungen, Landingpage-Beispiele: premium zuerst, Standard nur als
@@ -25,6 +28,7 @@ import datetime as dt
 import re
 
 FRESH_HIGH, FRESH_MID = 14, 30
+PREMIUM_MAX_AGE = FRESH_HIGH  # Premium nur mit Ereignis ≤ 14 Tage (nie lockern)
 PREMIUM_MIN = 70
 POINTS = {"fresh_high": 35, "fresh_mid": 20, "combo": 25, "evidence": 10, "person": 15, "contact": 15}
 
@@ -94,8 +98,7 @@ def score(lead: dict, today: dt.date | None = None) -> dict:
             fresh = True
         elif 0 <= age <= FRESH_MID:
             pts += POINTS["fresh_mid"]
-            reasons.append(f"frisch_{age}_tage")
-            fresh = True
+            reasons.append(f"frisch_{age}_tage")  # Punkte für die Reihenfolge, aber nicht Premium-fähig
     # Kombi: datiertes Ereignis + Website-Zustand. Registerquellen mit Signal „keine Website“ = Neugründung + keine
     # Website; Radar-/Umzugs-Leads tragen die Befunde der Website in details.findings/also.
     st = states(sig, details)
@@ -126,14 +129,14 @@ def columns(lead: dict, today: dt.date | None = None) -> dict:
 
 
 def tier_now(row: dict, today: dt.date | None = None) -> str:
-    """Stufe eines gespeicherten Leads heute: „premium“ nur, solange das Ereignis höchstens FRESH_MID Tage alt ist
+    """Stufe eines gespeicherten Leads heute: „premium“ nur, solange das Ereignis höchstens PREMIUM_MAX_AGE Tage alt ist
     (die Stufe wird beim Speichern berechnet und veraltet sonst unbemerkt)."""
     p = row.get("premium") or {}
     if not isinstance(p, dict) or p.get("tier") != "premium":
         return "standard"
     ev = _date(row.get("event_date"))
     # -1: Ereignisdatum aus einer anderen Zeitzone (Lauf kurz nach Mitternacht UTC) gilt als heute
-    if ev is None or not -1 <= ((today or dt.date.today()) - ev).days <= FRESH_MID:
+    if ev is None or not -1 <= ((today or dt.date.today()) - ev).days <= PREMIUM_MAX_AGE:
         return "standard"
     return "premium"
 
