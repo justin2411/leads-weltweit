@@ -3,7 +3,7 @@ import { db } from "@/lib/supabase";
 import { CONFIG, COUNTRIES, SEGMENT, loadLive, loadOwnerSettings } from "@/lib/dashboard-data";
 import { brake, mailboxes, monthly, realSubscriptions, sampleStock } from "@/lib/dashboard-logic";
 import { loadBrauchtDich } from "@/lib/braucht-dich-data";
-import type { Langsam, LangsamDb, Schnell, ZentraleDaten } from "@/lib/zentrale-typen";
+import type { Goal, Langsam, LangsamDb, Schnell, ZentraleDaten } from "@/lib/zentrale-typen";
 
 /**
  * Daten der JARVIS-Zentrale an einer Stelle (Seite /dashboard/jarvis und GET /api/jarvis/zentrale). Nur lesen:
@@ -48,14 +48,28 @@ async function langsamDb(): Promise<{ v: LangsamDb; at: string } | null> {
   return v ? { v, at: v.at } : null;
 }
 
+/** Ziele live (kleine Tabelle, < 20 Zeilen): bestätigt/unbestätigt nie aus einem alten Cache (Bug 05.10.2026). */
+async function goalsLive(): Promise<Goal[] | null> {
+  try {
+    const { data, error } = await db().from("company_goals").select("key, titel, einheit, soll, richtung, sort, quelle, updated_at")
+      .order("sort").abortSignal(AbortSignal.timeout(T_SCHNELL));
+    if (error || !data?.length) return null;
+    return data as Goal[];
+  } catch {
+    return null;
+  }
+}
+
 export async function loadLangsam(): Promise<Langsam | null> {
-  const [base, live, own, bd] = await Promise.all([
+  const [base, live, own, bd, goals] = await Promise.all([
     langsamDb(),
     mitLimit(loadLive().then((x) => x as Awaited<ReturnType<typeof loadLive>> | null), 4000, null),
     mitLimit(loadOwnerSettings(), 2000, null),
     mitLimit(loadBrauchtDich(), 2000, []),
+    goalsLive(),
   ]);
   if (!base) return null;
+  if (goals) base.v = { ...base.v, goals };
   let bremse: Langsam["bremse"] = null, kap: number | null = null, mrr: number | null = null, kunden: number | null = null;
   const tank_soll: Record<string, number> = {};
   if (live) {
