@@ -26,6 +26,16 @@ Visualisierung = JARVIS-Trichter ohne Scanner, Ziel-Ring 25.000 € mit Zeitstra
 **Offen beim Inhaber:** `SEED_INBOXES` (ja), Bestätigungsknopf Abmeldeseite (ja), Zweit-Domains (nach 1. Antwort),
 Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 
+## Lagebild (06.10.2026, 00:40 Berliner Zeit)
+- **GitHub-Störung abgeklungen:** Werke, Nachfüller, Antworten und Wachhund laufen wieder (Status noch „minor“).
+  CI auf main war bei 3d8089a rot (App-Build); lokal grün, fehlgeschlagener Job neu gestartet.
+- **KPI-Abschluss 05.10. scheiterte nicht an GitHub, sondern an der Datenbank:** kpi_day lief in den Zeitüberschreitung
+  (8 s), weil leads ohne Vacuum lief (Index-only las fast jede Zeile aus der Tabelle). Manuelles VACUUM: 13 s → 0,3 s;
+  Abschluss 05.10. und Gehirn-Score nachgeholt. Dauerhaft: Autovacuum ab 2 % (leads, lead_checks, prospects) und 3
+  Versuche bei Zeitüberschreitung im Schnappschuss.
+- **FR-Proben lieferbar:** 11 abrufbare 10/10-Premium-Proben FR im Vorrat (UK 30, US 50) – eine FR-Anfrage geht sofort raus.
+- Engpass bleibt die Kaltmail (0 menschliche Antworten); Betreff-Test (Mi) und Beleg-Einstieg (Do) bleiben der Plan.
+
 ## Lagebild (05.10.2026, 22:40 Berliner Zeit)
 - **Zeitplan-Ausfall trifft alle Jobs, nicht nur das Lead-Werk:** GitHub startete seit 03.10. nur einen Bruchteil der
   geplanten Läufe (Versand 5 von ~32 in 34 h, Antworten 6 von ~200). Der Wachhund fängt das für Versand, Antworten,
@@ -127,6 +137,7 @@ Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 - Käufer ok (S2): US 28.782, UK 2.623, FR 1.285. DB 5,1 GB.
 
 ## Nächster Schritt
+- **Prüfpunkt Mi 07.10., 12:00:** kpi-tag-Läufe 06.10. ohne Zeitüberschreitung; leads last_autovacuum < 24 h alt.
 - **Prüfpunkt Mi 07.10., 12:00:** kpi_daily hat für 05.10. und 06.10. je einen Abschluss (updated_at ab 23:00 deutscher
   Zeit oder Nachtrag bis 05:59); aufraeumen/premium-s5/zustellbarkeit je ≥ 1 Lauf am 06. und 07.10.
 - **Prüfpunkt Mo 12.10.:** 0 rausgegangene Proben mit weniger als 10/10 Premium seit 05.10. (sample_stock sent/claimed).

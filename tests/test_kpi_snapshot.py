@@ -99,6 +99,34 @@ class FilesTest(unittest.TestCase):
         for wf in ("aufraeumen.yml", "premium-s5.yml", "zustellbarkeit.yml"):
             self.assertIn(wf, {j["wf"] for j in W.JOBS})
 
+    def test_kpi_day_retries_on_statement_timeout(self):
+        calls, sleeps = [], []
+
+        class DB:
+            def rpc(self, fn, args):
+                calls.append(args["p_countries"])
+                if len(calls) < 3:
+                    raise RuntimeError("Supabase POST rpc/kpi_day: 500 {\"code\":\"57014\"}")
+                return [{"country": "US", "metric": "leads_neu", "value": 1}]
+
+        rows = K._kpi_day(DB(), dt.date(2026, 10, 5), "S2", "US", sleep=sleeps.append)
+        self.assertEqual(len(calls), 3)
+        self.assertEqual(sleeps, [20, 40])
+        self.assertEqual(rows[0]["metric"], "leads_neu")
+
+    def test_kpi_day_other_errors_and_last_timeout_raise(self):
+        class DB:
+            def __init__(self, msg):
+                self.msg = msg
+
+            def rpc(self, fn, args):
+                raise RuntimeError(self.msg)
+
+        with self.assertRaises(RuntimeError):
+            K._kpi_day(DB("500 other"), dt.date(2026, 10, 5), "S2", "US", sleep=lambda s: None)
+        with self.assertRaises(RuntimeError):
+            K._kpi_day(DB("57014"), dt.date(2026, 10, 5), "S2", "US", sleep=lambda s: None)
+
     def test_migration_non_destructive_with_rls(self):
         sql = next((ROOT / "supabase" / "migrations").glob("*_signalwerk_kpi_daily.sql")).read_text(encoding="utf-8")
         self.assertIn("enable row level security", sql)
