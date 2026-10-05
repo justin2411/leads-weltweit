@@ -6,7 +6,9 @@ Rund um die Uhr über .github/workflows/kontakt-werk.yml (Linie „kontakt“ in
 Leitstand, Autopilot nach Ertrag). Jeder Teil bearbeitet seinen ID-Ausschnitt (--shard i/n) der lieferbaren S2-Leads
 US/UK/FR in dieser Reihenfolge (SQL signalwerk.kontakt_candidates):
   premium   Leads mit Premium-Bewertung (höchste zuerst)
-  nachholen frische Premium-Leads UK/FR aus dem Radar (overture_web), die vor Kontakt-Version 2 ohne Registersuche
+  nachholen frische Premium-Leads UK/FR aus dem Radar (overture_web, offen oder im Proben-Vorrat), die vor Kontakt-
+            Version 3 geprüft wurden; FR ohne Person auch ohne Website-Fenster (dann nur Person aus dem Register)
+            – ursprünglich: vor Kontakt-Version 2 ohne Registersuche
             geprüft wurden – einmal neu, nur wenn die Website im selben Lauf gelesen werden darf
   register  Registernummer bekannt: FR SIREN/SIRET (RGE, BODACC), UK Companies House, NY DOS
   name      UK/FR ohne Nummer: Registersuche nach Name UND Postleitzahl, nur bei genau einem Treffer
@@ -275,16 +277,24 @@ def save(db, row: dict, res: dict, person_now: dict) -> list[str]:
             db.update("watch_companies", {"id": row["company_id"]}, {"website_fetched_at": _now().isoformat()})
         except RuntimeError:
             pass
-    p = k.get("person") or {}
-    if k.get("person_neu") and p.get("name") and not (person_now or {}).get("name"):
-        today = _now().date().isoformat()
-        db.insert("observations", {"company_id": row["company_id"], "kind": "other", "key": "person",
-                                   "first_seen": today, "last_seen": today, "source_name": p.get("source") or "Register",
-                                   "details": {"name": p["name"], "role": p.get("role"), "source": p.get("source"),
-                                               "belege": p.get("belege"), "by": WERK}},
-                  upsert_on="company_id,kind,key")
+    if save_person(db, row, k, person_now):
         notes.append("person_neu")
     return notes
+
+
+def save_person(db, row: dict, k: dict, person_now: dict) -> bool:
+    """Neue Ansprechperson als Beobachtung speichern – nur mit Belegen laut lib.kontakt.merge (person_neu) und nur, wenn die
+    Firma noch keine Person mit Namen hat (nichts überschrieben). True = gespeichert."""
+    p = k.get("person") or {}
+    if not (k.get("person_neu") and p.get("name")) or (person_now or {}).get("name"):
+        return False
+    today = _now().date().isoformat()
+    db.insert("observations", {"company_id": row["company_id"], "kind": "other", "key": "person",
+                               "first_seen": today, "last_seen": today, "source_name": p.get("source") or "Register",
+                               "details": {"name": p["name"], "role": p.get("role"), "source": p.get("source"),
+                                           "belege": p.get("belege"), "by": WERK}},
+              upsert_on="company_id,kind,key")
+    return True
 
 
 # ------------------------------------------------------------------------------------------------ Lauf
@@ -346,6 +356,15 @@ def run(db, shard: tuple[int, int], *, deadline_min: float, batch: int, apply: b
             c = per.setdefault(row["country"], Counter())
             k = res["kontakt"]
             if group == "nachholen" and not res.get("fetched"):
+                # Premium-Labor 06.10.2026: Registersuche ohne Website-Abruf (FR) – nur die Person speichern; Kontakt,
+                # Kontakt-Version und Premium-Punkte bleiben bis zur Website-Prüfung unverändert (keine Belege verloren).
+                if apply and res.get("register"):
+                    try:
+                        if save_person(db, row, k, person.get(row["company_id"]) or {}):
+                            c["person_neu"] += 1
+                            total["person_neu"] += 1
+                    except RuntimeError as e:
+                        log(f"Person nicht gespeichert ({row['lead_id']}): {str(e)[:120]}")
                 c["web_spaeter"] += 1  # ohne frische Website-Belege würde die Neuprüfung Telefon/E-Mail-Belege verlieren
                 total["web_spaeter"] += 1
                 skipped[group] += 1
