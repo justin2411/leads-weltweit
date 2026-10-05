@@ -15,6 +15,14 @@ am Tag abgerufen. Je Firma höchstens ein Startseiten-Abruf (website_check.inspe
 Ein Treffer wird ein neuer S2-Lead (wie das Radar: eigene Beobachtung filing/psc_change, bisheriger offener Lead der
 Firma -> expired, Firmen, die schon an einen Käufer gingen, bleiben unberührt). Die Drei-Stufen-Freigabe prüft ihn wie
 jeden anderen. Ansprechperson: die neu gemeldete natürliche Person, nur wenn die Firma noch keine hat.
+
+Inhaber-Namen für offene Leads (Quellen-Scout R54, 05.10.2026; Premium-Labor: UK-Radar-Premium-Leads hatten fast nie
+eine Ansprechperson mit Namen, das Kontakt-Werk sucht UK nur mit Companies-House-Schlüssel, der fehlt): Derselbe
+Snapshot-Durchgang liefert für jede eindeutig gefundene Firma die aktuellen natürlichen Personen mit maßgeblichem
+Einfluss (Eigentümer ab 25 %, nicht ausgeschieden). Hat eine UK-Firma mit offenem S2-Lead noch keine Ansprechperson,
+wird der Inhaber mit dem stärksten Anteil als Ansprechperson gespeichert (CLAUDE.md §8a: Inhaber aus öffentlichem
+Register; Abgleich Name + Sitz-PLZ, nur eindeutige Treffer, nichts erraten, nichts überschrieben) und die
+Premium-Punkte für die Ansprechperson nachgetragen. Kein zusätzlicher Abruf.
 """
 from __future__ import annotations
 
@@ -77,6 +85,42 @@ def event_of(entries: list[dict], incorporated: dt.date | None, today: dt.date) 
     people = sorted({n for _, n in added if n})
     return {"date": date, "added": len(added), "ceased": len(ceased), "people": people,
             "person": people[0] if len(people) == 1 else ""}
+
+
+SHARE_RANK = (("75-to-100", 3), ("50-to-75", 2), ("25-to-50", 1))
+OWNER_ROLE = "Owner (person with significant control, Companies House)"
+OWNER_SOURCE = "Companies House PSC register"
+
+
+def _share(d: dict) -> int:
+    nat = " ".join(d.get("natures_of_control") or [])
+    return next((r for k, r in SHARE_RANK if "ownership-of-shares-" + k in nat), 0)
+
+
+def owner_of(entries: list[dict]) -> dict | None:
+    """Aktuelle natürliche Person mit dem größten Anteil (bei Gleichstand die zuerst gemeldete, dann der Name) ->
+    {"name", "role", "source"}; None ohne natürliche Person (nur Firmen/Erklärungen, alle ausgeschieden)."""
+    people = [d for d in entries or [] if not d.get("ceased_on") and person_name(d)]
+    if not people:
+        return None
+    best = sorted(people, key=lambda d: (-_share(d), d.get("notified_on") or "9999", person_name(d)))[0]
+    return {"name": person_name(best), "role": OWNER_ROLE, "source": OWNER_SOURCE}
+
+
+def with_person_points(score, prem) -> tuple[int, dict] | None:
+    """Premium-Punkte für eine nachträglich belegte Ansprechperson (lib/premium.py: 15 Punkte „person“), Stufe wie
+    lib/kontakt.premium_nachtrag (premium nur ab PREMIUM_MIN und mit Ereignis ≤ 14 Tage). None = nichts zu ändern."""
+    from lib import premium as P
+    if not isinstance(score, (int, float)) or not isinstance(prem, dict):
+        return None
+    reasons = list(prem.get("reasons") or [])
+    if "person" in reasons:
+        return None
+    score = min(100, int(score) + P.POINTS["person"])
+    reasons.append("person")
+    fresh = any((m := re.fullmatch(r"frisch_(\d+)_tage", str(r))) and int(m.group(1)) <= P.PREMIUM_MAX_AGE
+                for r in reasons) and "frist_vorbei" not in reasons
+    return score, {**prem, "reasons": reasons, "tier": "premium" if score >= P.PREMIUM_MIN and fresh else "standard"}
 
 
 def _change_text(ev: dict, d) -> str:
@@ -151,9 +195,10 @@ def lead_row(row: dict, ev: dict, num: str, sig: str, findings: list[dict], url:
 
 
 # ---------------------------------------------------------------------------- Register (Netz)
-def psc_entries(numbers: set[str], log=print) -> dict[str, list[dict]]:
+def psc_entries(numbers: set[str], log=print, owners: dict | None = None) -> dict[str, list[dict]]:
     """PSC-Einträge mit Meldung oder Austritt in den letzten FRESH_DAYS Tagen je Firmennummer (alle Snapshot-Teile,
-    jeder Teil nach dem Lesen gelöscht, außer EXTRAKTOR_KEEP_PSC=1)."""
+    jeder Teil nach dem Lesen gelöscht, außer EXTRAKTOR_KEEP_PSC=1). owners: wird mit den aktuellen natürlichen
+    Personen je Firmennummer gefüllt (nicht ausgeschieden, mit Namen) – für owner_of, im selben Durchgang."""
     from extraktor.sources import uk_ch
     since = (dt.date.today() - dt.timedelta(days=FRESH_DAYS + 1)).isoformat()
     out: dict[str, list[dict]] = {}
@@ -172,6 +217,8 @@ def psc_entries(numbers: set[str], log=print) -> dict[str, list[dict]]:
                     continue
                 if (d.get("notified_on") or "") >= since or (d.get("ceased_on") or "") >= since:
                     out.setdefault(cn.group(1), []).append(d)
+                if owners is not None and not d.get("ceased_on") and person_name(d):
+                    owners.setdefault(cn.group(1), []).append(d)
         if os.environ.get("EXTRAKTOR_KEEP_PSC") != "1":
             path.unlink(missing_ok=True)
     log(f"UK-PSC: {len(out)} von {len(numbers)} Firmen mit Meldung seit {since} (Snapshot {stamp})")
@@ -198,6 +245,49 @@ def _one(db, cid: str, key: str) -> dict:
     return (r[0].get("details") or {}) if r else {}
 
 
+def owner_names(db, nums: dict[str, str], owners: dict[str, list[dict]], today: dt.date, apply: bool = True,
+                log=print) -> Counter:
+    """Inhaber aus dem PSC-Register als Ansprechperson für UK-Firmen mit offenem S2-Lead ohne Namen. Schreibt nur,
+    wenn noch keine Person mit Namen da ist (nichts überschrieben); Premium-Punkte „person“ für offene Leads."""
+    st: Counter = Counter()
+    todo = [(cid, num) for cid, num in nums.items() if owner_of(owners.get(num) or [])]
+    st["inhaber_im_register"] = len(todo)
+    for i in range(0, len(todo), 100):
+        part = dict(todo[i:i + 100])
+        ids = ",".join(part)
+        open_: dict[str, list[dict]] = {}
+        for x in db.select("leads", {"company_id": f"in.({ids})", "segment_id": "eq.S2", "status": "eq.new",
+                                     "select": "id,company_id,premium_score,premium"}):
+            open_.setdefault(x["company_id"], []).append(x)
+        named = {o["company_id"] for o in db.select("observations", {"company_id": f"in.({ids})", "kind": "eq.other",
+                                                                      "key": "eq.person", "select": "company_id,details"})
+                 if ((o.get("details") or {}).get("name") or "").strip()}
+        for cid, num in part.items():
+            if cid not in open_:
+                continue
+            if cid in named:
+                st["inhaber_schon_person"] += 1
+                continue
+            own = owner_of(owners[num])
+            st["inhaber_neu"] += 1
+            ups = [(x, r) for x in open_[cid] if (r := with_person_points(x.get("premium_score"), x.get("premium")))]
+            st["inhaber_punkte"] += len(ups)
+            st["inhaber_premium_neu"] += sum(1 for x, r in ups if r[1]["tier"] == "premium"
+                                             and (x.get("premium") or {}).get("tier") != "premium")
+            if not apply:
+                continue
+            src = PSC_URL.format(num=num)
+            db.insert("observations", [{"company_id": cid, "kind": "other", "key": "person", "source_name": OWNER_SOURCE,
+                                        "source_url": src, "first_seen": today.isoformat(), "last_seen": today.isoformat(),
+                                        "details": {**own, "source_url": src, "company_number": num,
+                                                    "found_by": "uk-psc", "checked_on": today.isoformat()}}],
+                      upsert_on="company_id,kind,key")
+            for x, (score, prem) in ups:
+                db.update("leads", {"id": x["id"], "status": "new"}, {"premium_score": score, "premium": prem})
+    log(f"UK-PSC Inhaber: {dict(st)}")
+    return st
+
+
 def run(db, fetcher, today: dt.date | None = None, apply: bool = True, log=print,
         premium_only: bool | None = None, comps: list[dict] | None = None) -> dict:
     from extraktor.sources import uk_ch
@@ -213,8 +303,14 @@ def run(db, fetcher, today: dt.date | None = None, apply: bool = True, log=print
     nums = uk_ch.match_companies([c for c in cands if c["zip"]], log=log)
     st["im_register"] = len(nums)
     info = uk_ch.details(set(nums.values()), log=log)
-    entries = psc_entries(set(info), log=log)
+    owners: dict[str, list[dict]] = {}
+    entries = psc_entries(set(info), log=log, owners=owners)
     by_id = {c["id"]: c for c in comps}
+    try:  # Inhaber-Namen für offene Leads; darf die Wechsel-Suche nie aufhalten
+        st.update(owner_names(db, nums, owners, today, apply=apply, log=log))
+    except Exception as exc:  # noqa: BLE001
+        st["inhaber_fehler"] += 1
+        log(f"UK-PSC: Inhaber-Namen nicht gespeichert ({type(exc).__name__})")
     for cid, num in nums.items():
         if num not in entries:
             continue
