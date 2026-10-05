@@ -6,6 +6,8 @@ Rund um die Uhr über .github/workflows/kontakt-werk.yml (Linie „kontakt“ in
 Leitstand, Autopilot nach Ertrag). Jeder Teil bearbeitet seinen ID-Ausschnitt (--shard i/n) der lieferbaren S2-Leads
 US/UK/FR in dieser Reihenfolge (SQL signalwerk.kontakt_candidates):
   premium   Leads mit Premium-Bewertung (höchste zuerst)
+  nachholen frische Premium-Leads UK/FR aus dem Radar (overture_web), die vor Kontakt-Version 2 ohne Registersuche
+            geprüft wurden – einmal neu, nur wenn die Website im selben Lauf gelesen werden darf
   register  Registernummer bekannt: FR SIREN/SIRET (RGE, BODACC), UK Companies House, NY DOS
   name      UK/FR ohne Nummer: Registersuche nach Name UND Postleitzahl, nur bei genau einem Treffer
   web       eigene Website der Firma: Startseite + Kontakt/Impressum/Über uns
@@ -45,7 +47,10 @@ from lib import kontakt as K  # noqa: E402
 WERK = "kontakt-werk"
 SEGMENT = "S2"
 COUNTRIES = ["US", "UK", "FR"]
-GROUPS = ("premium", "register", "name", "web", "alt")
+GROUPS = ("premium", "nachholen", "register", "name", "web", "alt")
+# Quellen ohne Registernummer, die über Name + PLZ im Register gesucht werden. overture_web = Basis des Radars
+# (Premium-Labor 05.10.2026: vorher nur „overture“ – 0 von 491 Radar-Premium-Leads UK/FR bekamen so eine Person).
+NAME_SOURCES = ("overture", "overture_web")
 STATS_EVERY_MIN = 15
 FR_API = "https://recherche-entreprises.api.gouv.fr/search"
 CH_API = "https://api.company-information.service.gov.uk"
@@ -130,7 +135,7 @@ class Sources:
             q = rid if len(rid) == 14 and rid.isdigit() else siren  # SIRET: Niederlassung mit eigener PLZ
             res = [r for r in self._fr({"q": q, "per_page": 1}) if r.get("siren") == siren]
             return K.fr_record(res[0], "id") if res else None
-        if country == "FR" and src == "overture":
+        if country == "FR" and src in NAME_SOURCES:
             pc = K.lead_postcode(row)
             if not pc or not K.core_name(row.get("name")):
                 return None
@@ -144,7 +149,7 @@ class Sources:
             return {"name": off.get("name"), "role": off.get("role"), "source": K.UK_SOURCE, "via": "id", "id": rid,
                     "postcode": (prof.get("registered_office_address") or {}).get("postal_code") or "",
                     "active": prof.get("company_status") == "active"}
-        if country == "UK" and src == "overture" and self.ch_key:
+        if country == "UK" and src in NAME_SOURCES and self.ch_key:
             pc = K.lead_postcode(row)
             if not pc or not K.core_name(row.get("name")):
                 return None
@@ -340,6 +345,11 @@ def run(db, shard: tuple[int, int], *, deadline_min: float, batch: int, apply: b
         for row, res in zip(rows, results):
             c = per.setdefault(row["country"], Counter())
             k = res["kontakt"]
+            if group == "nachholen" and not res.get("fetched"):
+                c["web_spaeter"] += 1  # ohne frische Website-Belege würde die Neuprüfung Telefon/E-Mail-Belege verlieren
+                total["web_spaeter"] += 1
+                skipped[group] += 1
+                continue
             if res.get("web_spaeter") and not res.get("register") and k["stufe"] in ("leer", "teilweise"):
                 c["web_spaeter"] += 1  # Website heute schon gelesen: nicht als geprüft markieren
                 total["web_spaeter"] += 1

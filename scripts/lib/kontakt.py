@@ -27,7 +27,7 @@ import unicodedata
 from lib import premium as P
 from lib import websites as W
 
-VERSION = 1
+VERSION = 2  # 2: Registersuche Name+PLZ auch für Radar-Firmen (overture_web), Premium-Labor 05.10.2026
 MIN_BELEGE_PERSON = 2
 RECHECK_DAYS = 30
 FR_SOURCE = "Registre national des entreprises"

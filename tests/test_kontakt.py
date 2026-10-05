@@ -220,5 +220,70 @@ class RunTests(unittest.TestCase):
         self.assertTrue(KW.web_allowed({"lead_id": "x", "website": "https://a.fr"}, set(), KW._now()))
 
 
+class RadarRegisterTests(unittest.TestCase):
+    """Premium-Labor 05.10.2026: Radar-Firmen (registry_source overture_web) werden wie Overture-Firmen über
+    Name + PLZ im Register gesucht – vorher hatte keiner der Radar-Premium-Leads UK/FR eine Person aus dem Register."""
+
+    def _src(self):
+        import kontaktwerk as KW
+        src = KW.Sources.__new__(KW.Sources)
+        src.ch_key = "k"
+        src.queries = []
+        src._fr = lambda params: (src.queries.append(params) or [FR_RES])
+        src._ch = lambda path, params=None: {"items": [{"title": "BRIGHT PIXEL DESIGN LTD", "company_number": "12345678",
+                                                        "company_status": "active",
+                                                        "address": {"postal_code": "EC1A 1BB"}}]}
+        src.uk_officer = lambda number: {"name": "Sarah Thompson", "role": "Director"}
+        return src
+
+    def test_fr_radar_company_gets_dirigeant_by_name_and_postcode(self):
+        src = self._src()
+        row = {**FR_CO, "registry_source": "overture_web", "registry_id": None}
+        rec = src.register(row)
+        self.assertEqual((rec["name"], rec["via"]), ("Luc Morel", "name_plz"))
+        self.assertEqual(src.queries[0]["code_postal"], "26000")
+        # ohne PLZ keine Suche (nie raten)
+        self.assertIsNone(src.register({**row, "address": "Valence"}))
+
+    def test_uk_radar_company_gets_director(self):
+        src = self._src()
+        rec = src.register({**UK_CO, "registry_source": "overture_web", "registry_id": None})
+        self.assertEqual((rec["name"], rec["via"], rec["id"]), ("Sarah Thompson", "name_plz", "12345678"))
+        src.ch_key = None
+        self.assertIsNone(src.register({**UK_CO, "registry_source": "overture_web", "registry_id": None}))
+
+    def test_radar_register_person_with_website_is_confirmed(self):
+        reg = K.fr_record(FR_RES, "name_plz")
+        k = K.merge(FR_CO, FR_CONTACT, {}, reg, None, TODAY)
+        self.assertEqual(k["person"]["name"], "Luc Morel")
+        self.assertEqual(sorted(k["person"]["belege"])[:2], ["email_name", "plz"])
+        self.assertEqual(k["v"], 2)
+
+
+class NachholenTests(unittest.TestCase):
+    def test_nachholen_only_saves_when_website_was_read(self):
+        import kontaktwerk as KW
+        self.assertEqual(KW.GROUPS[:2], ("premium", "nachholen"))
+        lead = {"lead_id": "L1", "company_id": "C1", "country": "FR", "premium_score": 85,
+                "premium": {"tier": "premium", "reasons": ["frisch_2_tage", "kombi:x", "beleg", "kontakt"]},
+                "name": FR_CO["name"], "address": FR_CO["address"], "website": "https://example.fr",
+                "phone_main": FR_CO["phone_main"], "registry_source": "overture_web", "registry_id": None,
+                "website_fetched_at": KW._now().isoformat()}
+        db = FakeDB({"leads": [{"id": "L1", "company_id": "C1"}], "observations": [], "lead_checks": [],
+                     "owner_settings": []})
+        db.rpc_handlers["kontakt_candidates"] = lambda a, p=None: [lead] if a["p_group"] == "nachholen" else []
+        total = KW.run(db, (0, 1), deadline_min=1, batch=10, apply=True, ch_key=None, log=lambda *a: None,
+                       src=FakeSources(reg=K.fr_record(FR_RES, "name_plz")))
+        self.assertEqual((total.get("geprueft", 0), total.get("web_spaeter")), (0, 1))
+        self.assertNotIn("kontakt", db.tables["leads"][0])
+
+    def test_migration_has_nachholen_group(self):
+        mig = Path(__file__).resolve().parents[1] / "supabase/migrations/20261006100000_signalwerk_kontakt_radar_register.sql"
+        sql = mig.read_text()
+        self.assertIn("p_group = 'nachholen'", sql)
+        self.assertIn("'overture_web'", sql)
+        self.assertNotIn("delete ", sql.lower())
+
+
 if __name__ == "__main__":
     unittest.main()
