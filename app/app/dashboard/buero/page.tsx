@@ -1,99 +1,114 @@
 import Link from "next/link";
-import { Icon, type IconName } from "@/app/icons";
-import { BEREICHE } from "@/lib/firma-karte";
+import { Icon } from "@/app/icons";
+import { bueroGruppen, type Kachel, type Viz } from "@/lib/buero-kacheln";
+import { canDispatch, loadFunnelCache } from "@/lib/dashboard-data";
+import { db } from "@/lib/supabase";
 import { loadZentrale } from "@/lib/zentrale-data";
-import { zahl } from "@/lib/zentrale-logik";
+import type { Ton } from "@/lib/zentrale-logik";
+import { nowMs } from "@/lib/zentrale-modell";
 import { requireOwner } from "../actions";
 import { PageHead } from "../v2";
+import { BUERO_CSS } from "./buero-css";
+import { Countdown, ZahlHoch } from "./zahl";
 
 export const metadata = { title: "Büro" };
 export const dynamic = "force-dynamic";
 
-type Kachel = { href: string; titel: string; icon: IconName; zahl: string; tip: string };
-
 /**
- * Büro (JARVIS-Zentrale 05.10.2026): alle Detail-Seiten als Kacheln, nach Bereichen aus firma-karte.json gruppiert
- * (höchstens 18). Je Kachel Symbol, Titel, eine Zahl. Die Bereichs-Überschrift führt ins Büro des Bereichs
- * (Team, Kohorten, Gehirn lernt, Vorschläge). Ersetzt das frühere „Mehr“-Blatt und ?teil=mehr.
+ * Büro (JARVIS-Zentrale 05.10.2026, hochwertig 05.10.2026): alle Detail-Seiten als Kacheln nach Bereichen
+ * (firma-karte.json). Je Kachel eine Live-Kennzahl groß + Mini-Grafik (lib/buero-kacheln.ts), je Bereich Akzentfarbe
+ * und Ampel. Nur Caches und kleine Zählungen mit Zeitlimit – fällt etwas aus, steht „–“ statt einer falschen Zahl.
  */
+const mitLimit = <T,>(p: Promise<T>, ms: number, dflt: T): Promise<T> =>
+  Promise.race([p.catch(() => dflt), new Promise<T>((ok) => setTimeout(() => ok(dflt), ms))]);
+
+async function flowsAnzahl(): Promise<number | null> {
+  const { count, error } = await db().from("flows").select("id", { count: "exact", head: true }).neq("status", "archiv")
+    .abortSignal(AbortSignal.timeout(1500));
+  return error ? null : count ?? null;
+}
+
+const TON_WORT: Record<Ton, string> = { gruen: "läuft", gelb: "Achtung", rot: "Engpass", grau: "keine Messung" };
+
+function VizBild({ v }: { v: Viz }) {
+  if (v.art === "ring") {
+    const r = 17, u = 2 * Math.PI * r;
+    return (
+      <svg className="bu-ring" viewBox="0 0 44 44" width="44" height="44" aria-hidden="true">
+        <circle cx="22" cy="22" r={r} className="bg" />
+        <circle cx="22" cy="22" r={r} className="fg" strokeDasharray={`${(v.anteil * u).toFixed(1)} ${u.toFixed(1)}`} transform="rotate(-90 22 22)" />
+        <text x="22" y="26" textAnchor="middle">{Math.round(v.anteil * 100)}%</text>
+      </svg>
+    );
+  }
+  if (v.art === "saeulen") {
+    const max = Math.max(1, ...v.werte);
+    return (
+      <span className="bu-saeulen" aria-hidden="true">
+        {v.werte.map((w, i) => (
+          <i key={i} title={`${v.namen[i]}: ${Math.round(w).toLocaleString("de-DE")}`}
+            style={{ height: `${Math.max(8, (w / max) * 100)}%`, opacity: 0.55 + 0.45 * ((i + 1) / v.werte.length) }} />
+        ))}
+      </span>
+    );
+  }
+  if (v.art === "ampel") return <span className={`bu-ampel t-${v.ton}`} aria-hidden="true"><i /><i /><i /></span>;
+  return null;
+}
+
+function KachelBild({ k, i }: { k: Kachel; i: number }) {
+  const balken = k.viz?.art === "balken" ? k.viz.anteil : null;
+  const seite = k.viz && k.viz.art !== "balken" ? k.viz : null;
+  return (
+    <Link href={k.href} className={`bu-t t-${k.ton}${k.gold ? " gold" : ""}`} title={k.tip} style={{ ["--i" as string]: i }}>
+      <span className="bu-th">
+        <span className="ic"><Icon name={k.icon} size={16} /></span>
+        <b>{k.titel}</b>
+        <span className={`dot t-${k.ton}`} title={TON_WORT[k.ton]} />
+      </span>
+      <span className="bu-tm">
+        <span className={`z${k.text.length > 7 ? " lang" : ""}`}>
+          {k.bis ? <Countdown bis={k.bis} text={k.text} /> : k.wert !== null ? <ZahlHoch wert={k.wert} dez={k.dez} vor={k.vor} nach={k.nach} /> : k.text}
+        </span>
+        {seite && <VizBild v={seite} />}
+      </span>
+      <span className="u">{k.unter}</span>
+      {balken !== null && <span className="bu-bar" aria-hidden="true"><i style={{ width: `${Math.round(balken * 100)}%` }} /></span>}
+    </Link>
+  );
+}
+
 export default async function Buero() {
   await requireOwner();
-  const { schnell: s, langsam: l } = await loadZentrale("alle");
-  const n = (x: unknown) => Number(x ?? 0) || 0;
-  const gb = l?.storage?.db_bytes ? `${(n(l.storage.db_bytes) / 1024 ** 3).toLocaleString("de-DE", { maximumFractionDigits: 1 })} GB` : "–";
-  const fehler = s?.gaps.find((g) => g.ziel_key === "lead_fehler")?.ist;
-  const score = [...(l?.kpi ?? [])].filter((k) => k.metric === "gehirn_score").pop();
-  const unb = (l?.goals ?? []).filter((g) => !g.quelle || g.quelle === "vorschlag").length;
-  const tank = l ? Object.values(l.tank).reduce((a, b) => a + n(b), 0) : null;
-  const plaetze = (s?.beats ?? []).reduce((a, b) => a + n(b.plaetze), 0);
-  const GRUPPEN: { slug: string; kacheln: Kachel[] }[] = [
-    { slug: "vertrieb", kacheln: [
-      { href: "/dashboard/versand", titel: "Versand", icon: "versand", zahl: s ? `${zahl(s.msg.sent_heute)} heute` : "–", tip: "Freigaben, Postfächer, Zustellung" },
-      { href: "/dashboard/kontakte", titel: "Kontakte", icon: "kontakte", zahl: s ? `${zahl(s.msg.sent_24h)} / 24 h` : "–", tip: "angeschriebene Käufer" },
-      { href: "/dashboard/vertrieb", titel: "Vertrieb", icon: "trend-hoch", zahl: s ? `${zahl(n(s.ev24.reply_positive))} positiv` : "–", tip: "Trichter je Land" },
-    ] },
-    { slug: "marketing", kacheln: [
-      { href: "/dashboard/website", titel: "Website", icon: "website", zahl: "Flow · Auswertung", tip: "Gesundheit, Website-Agenten, Trichter" },
-      { href: "/dashboard/proben", titel: "Proben", icon: "proben", zahl: tank === null ? "–" : `${zahl(tank)} bereit`, tip: "fertige, geprüfte Proben" },
-    ] },
-    { slug: "produktion", kacheln: [
-      { href: "/dashboard/speicher", titel: "Speicher", icon: "speicher", zahl: gb, tip: "Leads, Premium, Käufer, Proben, Datenbank je Land" },
-      { href: "/dashboard/buero/werke", titel: "Werke-Details", icon: "werk", zahl: `${plaetze} Plätze`, tip: "Läufe, Herzschläge, Prüfstufen" },
-      { href: "/dashboard/bestand", titel: "Bestand", icon: "bestand", zahl: l?.runs["lead-werk"] ? `+${zahl(l.runs["lead-werk"].green_24h)}` : "–", tip: "lieferbare Leads und Käufer" },
-      { href: "/dashboard/liste", titel: "Liste", icon: "filter", zahl: "Leads", tip: "Leads und Käufer als Liste" },
-      { href: "/dashboard/baukasten", titel: "Baukasten", icon: "baukasten", zahl: "Flows", tip: "eigene Regeln (Stufe 4 der Freigabe)" },
-    ] },
-    { slug: "qualitaet", kacheln: [
-      { href: "/dashboard/betrieb", titel: "Betrieb", icon: "freigabe", zahl: fehler === undefined || fehler === null ? "–" : `${n(fehler).toLocaleString("de-DE")} % Fehler`, tip: "Prüfungen, Läufe, Fehlerquote" },
-      { href: "/dashboard/protokoll", titel: "Protokoll", icon: "dokument", zahl: l?.lern.last_decision ? "Entscheidungen" : "–", tip: "Entscheidungen und Änderungen" },
-    ] },
-    { slug: "finanzen", kacheln: [
-      { href: "/dashboard/finanzen", titel: "Finanzen", icon: "trend-hoch", zahl: l?.mrr === null || l?.mrr === undefined ? "–" : `${zahl(l.mrr)} MRR`, tip: "Umsatz, Kosten" },
-      { href: "/dashboard/ziele", titel: "Ziele", icon: "stern", zahl: unb ? `${unb} unbestätigt` : "bestätigt", tip: "Ziele bestätigen" },
-    ] },
-    { slug: "recht", kacheln: [
-      { href: "/dashboard/recht", titel: "Recht", icon: "recht", zahl: l ? `${zahl(l.sperre.gesamt)} gesperrt` : "–", tip: "Kaltmail-Recht, Sperrliste" },
-    ] },
-    { slug: "strategie", kacheln: [
-      { href: "/dashboard/gehirn", titel: "Gehirn", icon: "gehirn", zahl: score ? `Score ${n(score.value).toLocaleString("de-DE", { maximumFractionDigits: 1 })}` : "–", tip: "Lernschleife, Lehren, Prüffälle" },
-      { href: "/dashboard/hilfe", titel: "Hilfe", icon: "frage", zahl: "Anleitung", tip: "Hilfe und Einrichtung" },
-    ] },
-  ];
+  const [z, funnel, flows] = await Promise.all([
+    loadZentrale("alle"),
+    mitLimit(loadFunnelCache(), 2500, null),
+    mitLimit(flowsAnzahl(), 2000, null),
+  ]);
+  const { schnell: s, langsam: l } = z;
+  const all = (p: "24h" | "7d" | "30d") => { const x = funnel?.p?.[p]?.all; return typeof x === "number" ? x : null; };
+  const besucher = funnel?.p ? { h24: all("24h"), d7: all("7d"), d30: all("30d") } : null;
+  const gruppen = bueroGruppen(s, l, { besucher, flows, dispatch: canDispatch(), now: nowMs(s, z.abruf) });
+  let i = 0;
   return (
     <div className="v2 buero">
       <style dangerouslySetInnerHTML={{ __html: BUERO_CSS }} />
-      <PageHead title="Büro" icon="buero" sub="Alle Details, nach Bereichen" crumbs={[["JARVIS", "/dashboard/jarvis"], ["Büro", ""]]} />
+      <PageHead title="Büro" icon="buero" sub="Alle Bereiche auf einen Blick" crumbs={[["JARVIS", "/dashboard/jarvis"], ["Büro", ""]]} />
       <div className="bu-grid">
-        {GRUPPEN.map((g) => {
-          const b = BEREICHE.find((x) => x.slug === g.slug)!;
-          return (
-            <section key={g.slug} className="bu-g" aria-label={b.name}>
-              <h2><Link href={`/dashboard/buero/bereich/${g.slug}`} title={`Büro ${b.name}: Team, Kohorten, Vorschläge`}>{b.name}<Icon name="weiter" size={14} /></Link></h2>
-              <div className="bu-k">
-                {g.kacheln.map((k) => (
-                  <Link key={k.href} href={k.href} className="bu-t" title={k.tip}>
-                    <Icon name={k.icon} size={22} /><b>{k.titel}</b><span className="z">{k.zahl}</span>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          );
-        })}
+        {gruppen.map((g) => (
+          <section key={g.slug} className={`bu-g n${g.kacheln.length}`} aria-label={g.name} style={{ ["--ac" as string]: g.farbe }}>
+            <h2>
+              <Link href={`/dashboard/buero/bereich/${g.slug}`} title={`Büro ${g.name}: Team, Kohorten, Vorschläge`}>
+                <span className="ic"><Icon name={g.icon} size={16} /></span><span className="nm">{g.name}</span><Icon name="weiter" size={14} />
+              </Link>
+              <span className={`dot t-${g.ton}`} title={`Bereich: ${TON_WORT[g.ton]}`} role="img" aria-label={`Bereich: ${TON_WORT[g.ton]}`} />
+            </h2>
+            <div className="bu-k">
+              {g.kacheln.map((k) => <KachelBild key={k.href} k={k} i={i++} />)}
+            </div>
+          </section>
+        ))}
       </div>
     </div>
   );
 }
-
-const BUERO_CSS = `
-.buero .bu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px;align-items:stretch}
-.buero .bu-g{margin:0;padding:8px 16px 16px;border:1px solid rgba(95,212,255,.18);border-radius:12px;background:rgba(9,24,48,.62);display:flex;flex-direction:column}
-.buero .bu-g h2{margin:0 0 8px;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
-.buero .bu-g h2 a{display:inline-flex;align-items:center;gap:6px;min-height:44px;color:#a8ecff;text-decoration:none}
-.buero .bu-k{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;align-items:stretch;flex:1}
-.buero .bu-t{display:flex;flex-direction:column;gap:4px;min-height:88px;padding:12px;border:1px solid rgba(95,212,255,.18);border-radius:10px;background:rgba(4,14,30,.6);color:#d9ecff;text-decoration:none}
-.buero .bu-t:hover,.buero .bu-t:focus-visible{border-color:#5fd4ff}
-.buero .bu-t svg{color:#5fd4ff}
-.buero .bu-t b{font-size:15px}
-.buero .bu-t .z{font-family:var(--monof,ui-monospace),monospace;font-size:13px;color:#8ba6c9}
-@media (max-width:759px){.buero .bu-grid{grid-template-columns:minmax(0,1fr)}.buero .bu-k{grid-template-columns:repeat(2,minmax(0,1fr))}}
-`;

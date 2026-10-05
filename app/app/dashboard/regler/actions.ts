@@ -9,6 +9,7 @@
  * Lead-/Kunden-Werk und Proben-Vorrat (START_WORKFLOWS), nie bei Pause.
  */
 import { revalidatePath } from "next/cache";
+import { zentraleNeuRechnen } from "@/lib/zentrale-refresh-server";
 import { db } from "@/lib/supabase";
 import { InputError, type OwnerSettings, type SettingKey } from "@/lib/owner-settings";
 import { cardOf, diff, draftFrom, isCardKey, toSettings, validateValue, type Change } from "@/lib/regler";
@@ -79,6 +80,7 @@ export async function applySettings(changes: Change[], startNow: boolean, seen: 
         }
       }
     }
+    zentraleNeuRechnen();
     revalidatePath("/dashboard", "layout");
     return { ok: true, at, applied, started };
   } catch (e) {
@@ -93,6 +95,7 @@ export async function startNow(card: string): Promise<{ ok: true; text: string }
     if (!isCardKey(card) || !cardOf(card).start) throw new InputError("dieses Werk startet nach Zeitplan");
     const { saved } = await loadSettingsStrict();
     const text = await startWerk(cardOf(card).start!, saved);
+    zentraleNeuRechnen();
     revalidatePath("/dashboard", "layout");
     return { ok: true, text };
   } catch (e) {
@@ -118,6 +121,7 @@ export async function undoChange(logId: number): Promise<ApplyResult> {
     await write({ [key]: value }, saved, at, `rückgängig #${logId}`);
     const after = { ...saved, [key]: value } as OwnerSettings;
     const applied = diff(saved, draftFrom(after, ctx), ctx).map((c) => ({ card: c.card, text: c.text }));
+    zentraleNeuRechnen();
     revalidatePath("/dashboard", "layout");
     return { ok: true, at, applied, started: [] };
   } catch (e) {
@@ -140,6 +144,7 @@ export async function setAutopilot(on: boolean): Promise<{ ok: true; on: boolean
     if ((cur.on !== false) === on) return { ok: true, on };
     const value = validateValue("slot_autopilot", { on, locks: cur.locks && typeof cur.locks === "object" ? cur.locks : {} }, reglerCtx(), saved);
     await write({ slot_autopilot: value }, saved, new Date().toISOString(), "JARVIS");
+    zentraleNeuRechnen();
     revalidatePath("/dashboard", "layout");
     return { ok: true, on };
   } catch (e) {
