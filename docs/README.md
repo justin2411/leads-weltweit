@@ -13,6 +13,8 @@ Hier liegt alles, was eine neue Sitzung (oder ein Mensch) wissen muss. **Zuerst 
 | [`EINRICHTUNG.md`](EINRICHTUNG.md) | Zugänge, die der Inhaber einmal einrichtet, und ihr Status |
 | [`PRUEFUNG-2026-09-28.md`](PRUEFUNG-2026-09-28.md) | Prüfung des Vertriebsprozesses vom 28.09. mit Befunden und Status |
 | [`workflow/NextGen-Profit-Workflow.pdf`](workflow/NextGen-Profit-Workflow.pdf) | grafischer Ablauf mit allen Kontaktpunkten |
+| [`ABLAUFPLAN-NEUE-ZIELGRUPPE.md`](ABLAUFPLAN-NEUE-ZIELGRUPPE.md) | neue Zielgruppe/neues Land: Bedarf → Tore → Vorbereitung → Freigabe-Klick |
+| [`WERKZEUGKASTEN.md`](WERKZEUGKASTEN.md) | alle Anleitungen, Skills, Skripte und Generatoren mit einer Zeile Zweck |
 | [`GEHIRN-SITZUNG.md`](GEHIRN-SITZUNG.md), [`GEHIRN-PLAN.md`](GEHIRN-PLAN.md), [`../BRAIN.md`](../BRAIN.md) | Arbeitsweise des autonomen „Gehirns“ |
 
 ## Pflege

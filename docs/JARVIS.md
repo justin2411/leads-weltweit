@@ -46,6 +46,14 @@ Preise (nach `docs/GEHIRN-SITZUNG.md`), Tagesmengen innerhalb von Notbremse und 
    **Wenig Text (Inhaber 04.10.2026):** Titel ≤ 60 Zeichen (worum es geht), Grund 1 Satz ≤ 160 Zeichen
    (`decisions.kurz_titel`/`kurz_grund`); gilt auch für Chat-Antworten, Tagesbericht und Push. Details nur auf Klick.
 
+## Neue Zielgruppe oder neues Land (Inhaber 05.10.2026)
+
+Sieht JARVIS (oder das Gehirn) anderswo größeren Bedarf: `docs/ABLAUFPLAN-NEUE-ZIELGRUPPE.md` abarbeiten – Bedarf
+belegen, Lieferfähigkeit (`python scripts/zielgruppe_bereit.py <Segment> <Land>`: ≥ 50 Premium-Firmen nach Freigabe,
+Probe 10, ≥ 200 mail-fähige Käufer, Land erlaubt), alles als Vorschau vorbereiten, dann ein Freigabe-Antrag
+(`decisions`, `needs_owner`). Versand und `config/fokus.yaml` erst nach dem Klick des Inhabers. Alle Werkzeuge:
+`docs/WERKZEUGKASTEN.md`.
+
 ## A/B-Tests (Split-Tests)
 
 - **Nur Webagenturen US/UK/FR** (Inhaber 04.10.2026: „beim gehirn bei a/b tests soll er das nur für webagencys usa, fr, und uk machen nichts mehr erst wenn ich ihm das freigebe das soll überall so sein, wir brauchen erstmal nichts anderes“): Jeder Test – auch der automatische bei anhaltendem
