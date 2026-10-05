@@ -50,7 +50,9 @@ class StockDB(FakeDB):
             wish = args["p_wish"] or []
             cand = [s for s in stock if s["segment_id"] == args["p_segment"] and s["country"] == args["p_country"]
                     and s["status"] == "ready"]
-            cand.sort(key=lambda s: (-sum((s.get("wish_match") or {}).get(k, 0) for k in wish), -s.get("score", 0)))
+            # wie die SQL-Funktion: Premium-Proben zuerst (premium_n), dann Wunsch, dann Score
+            cand.sort(key=lambda s: (-int(s.get("premium_n") or 0),
+                                     -sum((s.get("wish_match") or {}).get(k, 0) for k in wish), -s.get("score", 0)))
             for s in cand:
                 if sum(leads[i]["status"] == "reserved" for i in s["lead_ids"]) != 10:
                     s["status"] = "expired"
@@ -102,6 +104,9 @@ def fake_regional(db, seg, country, region, wish=None, mark=True, picked_out=Non
     """Wie responder.regional_sample: nur freie Leads (new), je Firma einer, genau 10 – sonst nichts."""
     free = [l for l in db.tables["leads"] if l["segment_id"] == seg and l["country"] == country
             and l["status"] == "new" and l["company_id"] not in (exclude_companies or set())]
+    if kw.get("premium_only"):  # wie responder.regional_sample(premium_only=True): nur Leads, die heute Premium sind
+        from lib.premium import tier_now
+        free = [l for l in free if tier_now(l) == "premium"]
     # mit Wunsch passende zuerst; ohne Wunsch kommen (wie bei echten S2-Leads) die dringlicheren Website-Mängel zuerst
     free.sort(key=lambda l: (l["signal_type"] != "no_website") if wish else (l["signal_type"] == "no_website"))
     if len(free) < 10:
@@ -192,7 +197,118 @@ class BuildTest(unittest.TestCase):
         self.assertEqual(self.db.rows("sample_stock")[1]["wish"], ["no_website"])  # zweite Probe: erster Wunsch
 
 
+def make_premium(leads, n):
+    """Die ersten n Leads heute Premium (frisch, Stufe premium)."""
+    import datetime as dt
+    for l in leads[:n]:
+        l.update(premium={"tier": "premium"}, premium_score=85,
+                 event_date=(dt.date.today() - dt.timedelta(days=2)).isoformat())
+    return leads
+
+
+@mock.patch.dict(os.environ, ENV)
+class PremiumStockTest(unittest.TestCase):
+    """Premium-Proben (Inhaber 05.10.2026): 10 verschiedene Firmen, alle Premium, sonst keine Premium-Probe."""
+
+    def setUp(self):
+        self.db = StockDB({"leads": make_premium(make_leads(30), 14), "landing_pages": [],
+                           "settings": [{"legal_ready": True}]})
+        self.uploads = {}
+        for p in (mock.patch.object(ss, "upload", side_effect=lambda db, path, data: self.uploads.__setitem__(path, data)),
+                  mock.patch.object(ss, "remove", side_effect=lambda db, paths: [self.uploads.pop(x, None) for x in paths]),
+                  mock.patch.object(ss, "download", side_effect=lambda db, path: self.uploads[path]),
+                  mock.patch.object(responder, "regional_sample", side_effect=fake_regional)):
+            p.start()
+            self.addCleanup(p.stop)
+
+    def test_premium_sample_all_ten_premium(self):
+        ex = set()
+        row = ss.build_one(self.db, "S2", "US", [], ex, 48, True, log=lambda *a: None, premium_only=True)
+        self.assertEqual(row["premium_n"], 10)
+        self.assertEqual(len(set(row["company_ids"])), 10)
+        prem = {l["id"] for l in self.db.rows("leads") if (l.get("premium") or {}).get("tier") == "premium"}
+        self.assertTrue(set(row["lead_ids"]) <= prem)
+        # nur noch 4 freie Premium-Leads: keine zweite Premium-Probe, nichts aufgefüllt, nichts reserviert
+        self.assertIsNone(ss.build_one(self.db, "S2", "US", [], ex, 48, True, log=lambda *a: None, premium_only=True))
+        self.assertEqual(sum(l["status"] == "reserved" for l in self.db.rows("leads")), 10)
+
+    def test_premium_only_rejects_mixed_selection(self):
+        # Sicherheitsnetz: liefert die Auswahl doch Standard-Leads, entsteht keine Premium-Probe
+        with mock.patch.object(responder, "regional_sample",
+                               side_effect=lambda *a, **k: fake_regional(*a, **{**k, "premium_only": False})):
+            for l in self.db.rows("leads")[:14]:
+                l["premium"] = {"tier": "standard"}
+            self.assertIsNone(ss.build_one(self.db, "S2", "US", [], set(), 48, True, log=lambda *a: None,
+                                           premium_only=True))
+        self.assertFalse(self.uploads)
+        self.assertFalse([l for l in self.db.rows("leads") if l["status"] == "reserved"])
+
+    def _run(self, cfg_extra, owner=None):
+        self.db.tables["landing_pages"] = [{"segment_id": "S2", "country": "US", "slug": "us/web-agencies", "status": "live"}]
+        if owner is not None:
+            self.db.tables["owner_settings"] = [{"key": "sample_premium_targets", "value": owner}]
+        cfg = {"fokus_je_seite": 2, "andere_je_seite": 1, "max_alter_stunden": 48, "laufzeit_minuten": 40, **cfg_extra}
+        with mock.patch("lib.fokus.focus_pairs", return_value=[("S2", "US")]), \
+                mock.patch.object(ss, "settings", return_value=cfg), \
+                mock.patch.object(ss, "cleanup_files", return_value=0):
+            return ss.run(self.db, True, log=lambda *a: None)
+
+    def test_run_builds_premium_up_to_soll(self):
+        res = self._run({"premium_us": 1})
+        self.assertEqual(res["built"], 2)
+        self.assertEqual(sorted(r["premium_n"] for r in self.db.rows("sample_stock")), [4, 10])
+        self.assertEqual(res["summary"]["S2/US"]["premium_soll"], 1)
+        self.assertEqual(res["summary"]["S2/US"]["premium_bereit"], 1)
+
+    def test_owner_premium_target_and_too_few_premium(self):
+        # Regler-Soll 2 > Premium-Vorrat (14 Leads = 1 Probe): zweite Probe normal, nichts aufgeweicht
+        res = self._run({"premium_us": 0}, owner={"S2/US": 2})
+        self.assertEqual(res["summary"]["S2/US"]["premium_soll"], 2)
+        self.assertEqual(sum(r["premium_n"] == 10 for r in self.db.rows("sample_stock")), 1)
+        self.assertEqual(res["built"], 2)
+
+    def test_claim_prefers_premium_sample(self):
+        ex = set()
+        prem = ss.build_one(self.db, "S2", "US", [], ex, 48, True, log=lambda *a: None, premium_only=True)
+        normal = ss.build_one(self.db, "S2", "US", ["no_website"], ex, 48, True, log=lambda *a: None)
+        self.assertGreater(normal["wish_match"].get("no_website", 0), prem["wish_match"].get("no_website", 0))
+        self.assertLess(normal["premium_n"], 10)
+        got = self.db.rpc("claim_sample_stock", {"p_segment": "S2", "p_country": "US", "p_wish": ["no_website"],
+                                                 "p_request": "r1"})
+        self.assertEqual(got[0]["id"], prem["id"])
+
+    def test_refresh_premium_n_backfills_and_downgrades(self):
+        import datetime as dt
+        ex = set()
+        a = ss.build_one(self.db, "S2", "US", [], ex, 48, True, log=lambda *a: None, premium_only=True)
+        b = ss.build_one(self.db, "S2", "US", [], ex, 48, True, log=lambda *a: None)
+        stock = {r["id"]: r for r in self.db.rows("sample_stock")}
+        stock[b["id"]]["premium_n"] = None  # Probe von vor der Premium-Bewertung
+        later = dt.date.today() + dt.timedelta(days=20)  # Ereignisse älter als 14 Tage: keine Premium-Probe mehr
+        res = ss.refresh_premium_n(self.db, True, log=lambda *a: None, today=later)
+        self.assertEqual(res, {"nachgetragen": 1, "geaendert": 1})
+        self.assertEqual(stock[a["id"]]["premium_n"], 0)
+        self.assertEqual(stock[b["id"]]["premium_n"], 0)
+        self.assertEqual(stock[a["id"]]["status"], "ready")  # nichts verworfen
+
+    def test_claim_sql_orders_premium_first(self):
+        # die zuletzt angelegte Fassung von claim_sample_stock sortiert zuerst nach premium_n
+        import re
+        mig = sorted((Path(__file__).resolve().parents[1] / "supabase" / "migrations").glob("*.sql"))
+        last = [m for m in mig if "function signalwerk.claim_sample_stock" in m.read_text(encoding="utf-8").lower()][-1]
+        body = last.read_text(encoding="utf-8").lower().split("function signalwerk.claim_sample_stock")[-1]
+        order = re.search(r"order by\s+([^\n]+)", body).group(1)
+        self.assertTrue(order.startswith("coalesce(s.premium_n, 0) desc"), order)
+
+
 class PlanTest(unittest.TestCase):
+    def test_premium_targets_default_and_override(self):
+        pages = [{"segment_id": "S2", "country": "US"}, {"segment_id": "S2", "country": "UK"},
+                 {"segment_id": "S2", "country": "FR"}, {"segment_id": "S5", "country": "SE"}]
+        cfg = ss.settings()
+        t = ss.premium_targets(pages, cfg, {"S2/UK": 5})
+        self.assertEqual(t, {("S2", "US"): 10, ("S2", "UK"): 5, ("S2", "FR"): 1, ("S5", "SE"): 0})
+
     def test_targets_focus_first(self):
         pages = [{"segment_id": "S5", "country": "UK"}, {"segment_id": "S2", "country": "US"}]
         t = ss.targets(pages, {"fokus_je_seite": 6, "andere_je_seite": 3}, [("S2", "US")])

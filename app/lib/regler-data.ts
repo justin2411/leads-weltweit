@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "@/lib/supabase";
-import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadLive } from "@/lib/dashboard-data";
+import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadActivity, loadLive, loadPremium } from "@/lib/dashboard-data";
 import { mailboxes } from "@/lib/dashboard-logic";
 import { running, type Beat } from "@/lib/leitstand";
 import { merge, type LaneRegistry, type OwnerSettings, type SettingKey } from "@/lib/owner-settings";
@@ -42,6 +42,8 @@ export type ReglerData = {
   pages: string[];
   /** fertige Proben je Seite */
   ready: Record<string, number>;
+  /** Premium je Seite: fertige Premium-Proben (10/10) und freie Premium-Leads (premium_status); null = nicht lesbar */
+  premium: Record<string, { ready: number; free: number }> | null;
   /** laufende Teile je Werk (Herzschlag ≤ 6 min) */
   running: Record<string, number>;
   versand: { aktiv: boolean; today: number; cap: number } | null;
@@ -61,7 +63,7 @@ async function safe<T>(p: PromiseLike<{ data: unknown; error: { message: string 
 
 export async function loadRegler(): Promise<ReglerData> {
   const since = new Date(Date.now() - 3 * 3_600_000).toISOString();
-  const [settings, acks, starts, log, live, act] = await Promise.all([
+  const [settings, acks, starts, log, live, act, prem] = await Promise.all([
     loadSettingsStrict().then((x) => ({ ...x, error: null as string | null }), (e: Error) => ({ saved: merge([]), updatedAt: {}, error: e.message || "Einstellungen nicht lesbar" })),
     safe<Ack[]>(db().from("settings_ack").select("werk, key, seen_at, value").abortSignal(AbortSignal.timeout(5000)), []),
     safe<StartRequest[]>(db().from("start_requests").select("id, created_at, workflow, status, started_at, note").gte("created_at", since)
@@ -70,7 +72,9 @@ export async function loadRegler(): Promise<ReglerData> {
       .order("created_at", { ascending: false }).limit(8).abortSignal(AbortSignal.timeout(5000)), []),
     loadLive().catch(() => null),
     loadActivity(),
+    loadPremium(),
   ]);
+  const premium = prem ? Object.fromEntries(prem.map((r) => [`${r.segment_id}/${r.country}`, { ready: r.proben_premium, free: r.premium_frei }])) : null;
   const livePages = live ? new Set(live.pages.map((p) => `${p.segment_id}/${p.country}`)) : null;
   const pages = livePages ? FOCUS_PAGES.filter((k) => livePages.has(k)) : FOCUS_PAGES;
   const ready = Object.fromEntries(FOCUS_PAGES.map((k) => {
@@ -83,7 +87,7 @@ export async function loadRegler(): Promise<ReglerData> {
   const boxes = live ? mailboxes(live, CONFIG) : null;
   return {
     now: new Date().toISOString(), error: settings.error, saved: settings.saved, updatedAt: settings.updatedAt,
-    acks, starts, pages, ready, running: run, log,
+    acks, starts, pages, ready, premium, running: run, log,
     versand: boxes ? { aktiv: CONFIG.versand.aktiv !== false, today: boxes.reduce((a, b) => a + b.today, 0), cap: boxes.reduce((a, b) => a + b.cap, 0) } : null,
     dispatch: canDispatch(),
   };
