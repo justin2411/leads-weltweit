@@ -227,8 +227,8 @@ export async function loadKpiDaily(from: string, to: string): Promise<KpiRow[]> 
   }
 }
 
-export type ContactCard = { id: string; stage: "contacted" | "replied" | "sample" | "out"; country: string; company: string; domain: string; first_sent: string; last_at: string; positive: boolean };
-export type Contacts = { counts: { stage: string; country: string; n: number }[]; cards: ContactCard[] };
+export type ContactCard = { id: string; stage: "contacted" | "viewed" | "replied" | "sample" | "out"; country: string; company: string; domain: string; first_sent: string; last_at: string; positive: boolean; viewed?: boolean };
+export type Contacts = { counts: { stage: string; country: string; n: number }[]; cards: ContactCard[]; viewed?: { country: string; n: number }[] };
 
 /** Angeschriebene Firmen der Zielgruppe mit ihrer weitesten Stufe (Anzahl je Stufe/Land + neueste Karten). */
 export async function loadContacts(perStage = 30, from: string | null = null, to: string | null = null): Promise<Contacts> {

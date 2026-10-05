@@ -5,6 +5,7 @@ import { RateLimiter, browserOf, countryOfSlug, isBot, parseBeacon } from "@/lib
 import { countable, isPreviewRef } from "@/lib/visitor";
 import { countryFromHeaders, endHit, recordHit, recordSignal, visitorKey, type VisitorKey } from "@/lib/web-hits";
 import { recordAb, validMark } from "@/lib/ab-data";
+import { recordPageViewed } from "@/lib/page-viewed-data";
 
 export const dynamic = "force-dynamic";
 
@@ -102,6 +103,11 @@ export async function POST(req: Request) {
   try {
     if (b.kind === "ev" || b.kind === "vitals") {
       await recordSignal(b, countryOfSlug(v.slug), v.slug);
+      return done();
+    }
+    // „Seite angesehen“ je Firma (Mail-Link ?r=, nur per JS-Beacon, Link-Scanner gefiltert; lib/page-viewed.ts)
+    if (b.kind === "seen") {
+      await recordPageViewed(b.r, v.slug, req.headers);
       return done();
     }
     if (b.kind === "legacy") {

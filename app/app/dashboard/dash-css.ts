@@ -217,12 +217,12 @@ export const DASH_V2_CSS = `
 .dash .bb{height:14px}.dash .bb i{display:block;height:100%;border-radius:0 4px 4px 0}
 .dash .bv{text-align:right;font-weight:700;white-space:nowrap}
 .dash .big1{font-size:15px;color:var(--soft)}.dash .big1 b{font-size:34px;color:var(--text);margin-right:6px}
-.dash .kanban{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;align-items:start}
-.dash .kcol{background:#efe9de;border-radius:14px;padding:8px;display:grid;gap:8px}
+.dash .kanban{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;align-items:stretch}
+.dash .kcol{background:#efe9de;border-radius:14px;padding:8px;display:grid;gap:8px;align-content:start;margin:0}
 .dash .kcol.out{opacity:.75}
 .dash .kh{display:flex;flex-direction:column;align-items:flex-start;padding:6px 8px;color:inherit;text-decoration:none}
 .dash .kh b{font-size:28px;line-height:1.1}.dash .kh span{font-size:12px;color:var(--soft);font-weight:600}
-.dash .kc{display:grid;gap:6px}
+.dash .kc{display:grid;gap:6px;align-content:start}
 .dash .kcard{display:grid;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;color:inherit;text-decoration:none;font-size:13px}
 .dash a.kcard:hover{border-color:var(--gold)}
 .dash .cn{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
