@@ -24,7 +24,8 @@ begin
    where variant_id = '56a4fb83-3796-4abe-a39f-a47fdac512ab' and type = 'checkout_started'
      and created_at >= timestamp '2026-10-02 10:12:00' at time zone 'Europe/Berlin'
      and created_at <  timestamp '2026-10-02 20:11:00' at time zone 'Europe/Berlin';
-  if n <> 12 then raise exception 'erwartet 12 Test-Checkouts, gefunden %', n; end if;
+  -- leere Datenbank (CI) = 0; sonst genau 12, sonst nichts markieren
+  if n not in (0, 12) then raise exception 'erwartet 12 Test-Checkouts, gefunden %', n; end if;
   update signalwerk.page_events set is_test = true
    where variant_id = '56a4fb83-3796-4abe-a39f-a47fdac512ab' and type = 'checkout_started'
      and created_at >= timestamp '2026-10-02 10:12:00' at time zone 'Europe/Berlin'

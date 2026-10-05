@@ -64,7 +64,7 @@ test("Test-Checkouts: Kennzeichen auto=1 oder Headless/Bot zählen nicht", () =>
 test("Migration: genau 12 Test-Checkouts, alle Auswertungen lesen page_events_echt (is_test ausgeschlossen)", () => {
   const sql = readFileSync(new URL("../../supabase/migrations/20261005200000_signalwerk_seite_angesehen.sql", import.meta.url), "utf8");
   assert.match(sql, /add column if not exists is_test boolean not null default false/);
-  assert.match(sql, /if n <> 12 then raise exception/);
+  assert.match(sql, /if n not in \(0, 12\) then raise exception/);
   assert.match(sql, /56a4fb83-3796-4abe-a39f-a47fdac512ab/);
   assert.match(sql, /page_events_echt[\s\S]*where not is_test/);
   assert.match(sql, /'page_viewed'\)\)/);
