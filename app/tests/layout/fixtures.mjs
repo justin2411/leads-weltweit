@@ -254,6 +254,12 @@ export function makeFixtures(nowMs = Date.now()) {
       dashboard_cache: [{ name: "zentrale", value: zLangsam, updated_at: iso(3) }, { name: "stock", value: stock, updated_at: iso(1) }, { name: "website", value: website, updated_at: iso(1) }],
       kpi_daily: kpi, experiment_stats: expStats, company_goals: goals, customers, subscriptions, inbound_replies: replies,
       agent_roles: roles,
+      // Versand · Entwürfe: Fokus (S2) mit/ohne Prüffehler, ruhend (S4), alt
+      messages: [
+        { id: "m1", status: "draft", to_email: "hello@beispiel-studio.co.uk", subject: "Web leads across the UK – free sample?", body: "Hello,\n\nwe track new UK companies without a website …\n\nWould a free sample of 10 leads help?", check_errors: [], created_at: iso(120), prospects: { company_name: "Beispiel Studio Ltd", country: "UK" }, experiments: { segment_id: "S2", variant: "A" } },
+        { id: "m2", status: "draft", to_email: "contact@muster-agence-web-tres-longue-raison-sociale.fr", subject: "Entreprises sans site partout en France", body: "Bonjour,\n\n…", check_errors: ["Zurückgestellt: Microsoft-365-Empfänger ohne frischen Beleg auf eigener Website (5.4.1)", "zurückgestellt: Bounce-Analyse 04.10.2026 (Adresse ungültig)"], created_at: iso(60 * 24 * 3), prospects: { company_name: "Muster Agence Web Très Longue Raison Sociale SARL", country: "FR" }, experiments: { segment_id: "S2", variant: "A" } },
+        { id: "m3", status: "draft", to_email: "info@mockenhaupt-benefits.com", subject: "New US companies needing commercial cover", body: "Hello,\n\n…", check_errors: ["verbotene Formulierung im Text: 'Guaranteed'"], created_at: iso(60 * 24 * 4), prospects: { company_name: "Mockenhaupt Benefits Group", country: "US" }, experiments: { segment_id: "S4", variant: "A" } },
+      ],
       // Feedback-Werk (Büro Qualität): erfundene Testzahlen
       lead_feedback_stats: [
         { signal_type: "no_website", country: "US", bewertungen: 9, gut: 7, schlecht: 2, gewonnen: 1, gut_pct: 77.8 },

@@ -243,8 +243,32 @@ export const DASH_V2_CSS = `
 /* Gehirn + Freigaben (Inhaber 04.10.2026: alte Ansicht raus) */
 .dash .swrow{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px}
 .dash .swrow .sw button{padding:5px 12px;font-size:13px}
-.dash .klist .kcard.stack{grid-template-columns:minmax(0,1fr);align-items:start}
-.dash .kcard.stack .acts2 input{width:150px;min-width:0;font-size:13px;padding:6px 10px}
+/* Entwürfe (Versand): eigene Klassen – früher .kcard.stack, das mit dem Balken-.stack (width 24px, flex-column) kollidierte */
+.dash .drafts{display:grid;gap:0;padding:8px 14px}
+.dash .drafts .dtabs{padding:4px 0 8px;border-bottom:1px solid var(--line)}
+.dash .drafts .dtabs b{font-weight:700;opacity:.8}
+.dash .dr{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:16px;row-gap:4px;align-items:center;padding:10px 2px;border-bottom:1px solid var(--line);font-size:13px;min-width:0}
+.dash .dr:last-of-type{border-bottom:0}
+.dash .dr>*{grid-column:1;min-width:0}
+.dash .dr .dh{display:flex;align-items:center;gap:8px;min-width:0}
+.dash .dr .dn{min-width:0;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dash .dr .pill{font-size:11px;padding:1px 8px;white-space:nowrap;flex:none}
+.dash .dr .dd{margin-left:auto;color:var(--soft);font-size:12px;white-space:nowrap;flex:none}
+.dash .dr .dw{color:var(--red);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help}
+.dash .dr .dto{color:var(--soft)}
+.dash .dr details.why pre{white-space:pre-wrap}
+.dash .dr ul.bad{margin:6px 0 0;padding-left:18px;font-size:12px}
+.dash .dr .dact{grid-column:2;grid-row:1/span 3;align-self:center;display:flex;align-items:center;gap:6px;flex-wrap:nowrap}
+.dash .dr .drej{display:flex;align-items:center;gap:6px}
+.dash .dr .dact input{width:140px;min-width:0;font-size:13px;padding:6px 10px}
+.dash .dr .dact button{font-size:13px;white-space:nowrap}
+.dash .drafts .dmore{margin:8px 2px 2px;font-size:12px}
+@media (max-width:760px){
+  .dash .dr{grid-template-columns:minmax(0,1fr)}
+  .dash .dr .dact{grid-column:1;grid-row:auto;flex-wrap:wrap}
+  .dash .dr .dh{flex-wrap:wrap}.dash .dr .dw{white-space:normal}
+  .dash .dr .drej{flex:1 1 220px}.dash .dr .dact input{flex:1;width:auto}
+}
 .dash .tile .klist{padding:0}.dash .tile .klist .kcard>.cm{grid-column:1/-1}
 .dash details.why>summary{cursor:pointer;font-size:12px;color:var(--soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dash details.why p,.dash details.why pre{font-size:13px;margin:6px 0 0;overflow-wrap:anywhere}
