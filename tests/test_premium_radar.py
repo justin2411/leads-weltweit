@@ -257,6 +257,51 @@ class RadarComboValueTest(unittest.TestCase):
         self.assertNotIn("natural point", t["urgency_reason"])
 
 
+class RadarRefreshComboTest(unittest.TestCase):
+    """Premium-Labor 05.10.2026 23:10: Wert-Argument für gespeicherte Radar-Leads nachtragen – nur aus den Belegen
+    der Ereignis-Beobachtung und nur, wenn der Zustand schon im Lead-Text steht."""
+
+    F = RadarComboValueTest.F
+
+    def old_lead(self, country="UK", findings=None):
+        it = RadarComboValueTest.item(RadarLeadPassesGateTest(), country, findings=self.F if findings is None else findings)
+        name = it["company"]["name"]
+        old = radar._texts({"name": name, "country": country},
+                           {"signal_type": "cert_expiring", "not_after": TODAY + dt.timedelta(days=12), "days_left": 12},
+                           "x", TODAY)
+        lead = {**it, "opener": old["opener"], "urgency_reason": old["urgency_reason"]}
+        details = {"findings": self.F if findings is None else findings, "checked_on": TODAY.isoformat(),
+                   "cert_not_after": (TODAY + dt.timedelta(days=12)).isoformat()}
+        return lead, details, name, it
+
+    def test_refresh_matches_new_texts_and_passes_gate(self):
+        for co in ("UK", "US", "FR"):
+            lead, details, name, fresh = self.old_lead(co)
+            new = radar.refresh_combo(lead, details, name)
+            self.assertEqual(new["opener"], fresh["opener"], co)
+            self.assertEqual(new["urgency_reason"], fresh["urgency_reason"], co)
+            it = {**lead, **new}
+            self.assertEqual(G.stage1(it, TODAY), [], co)
+            self.assertEqual(G.stage3(it, {"allowed_status": ("new",)}), [], co)
+
+    def test_no_refresh_without_state_in_text(self):
+        lead, details, name, _ = self.old_lead()
+        lead["event_summary"] = lead["event_summary"].split(" The same check")[0]
+        self.assertEqual(radar.refresh_combo(lead, details, name), {})
+
+    def test_no_refresh_without_evidence(self):
+        lead, details, name, _ = self.old_lead()
+        self.assertEqual(radar.refresh_combo(lead, {**details, "checked_on": None}, name), {})
+        self.assertEqual(radar.refresh_combo(lead, {**details, "findings": []}, name), {})
+        self.assertEqual(radar.refresh_combo({**lead, "source_name": "FMCSA Company Census (US DOT)"}, details, name), {})
+        self.assertEqual(radar.refresh_combo({**lead, "signal_type": "website_broken"}, details, name), {})
+
+    def test_already_current_is_empty(self):
+        lead, details, name, fresh = self.old_lead()
+        self.assertEqual(radar.refresh_combo({**lead, "opener": fresh["opener"],
+                                              "urgency_reason": fresh["urgency_reason"]}, details, name), {})
+
+
 class RadarAlsoWishTest(unittest.TestCase):
     """Radar-Ereignis + am selben Tag bestätigter Befund „veraltet“/„nicht mobil“ -> passt zum Wunsch (Scout 05.10.2026)."""
 

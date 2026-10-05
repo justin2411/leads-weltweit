@@ -240,6 +240,37 @@ def combo_value(row: dict, ev: dict, domain: str, today: dt.date) -> dict:
     return out
 
 
+def refresh_combo(lead: dict, details: dict | None, name: str) -> dict:
+    """Wert-Argument für gespeicherte Radar-Leads nachtragen (Premium-Labor 05.10.2026, 23:10): Leads vor #452
+    haben den Kombi-Zustand im Text, fragen im Einstieg aber nur nach der Verlängerung. Ergebnis {opener,
+    urgency_reason} oder {}. Nur aus den gespeicherten Belegen der Ereignis-Beobachtung (Befunde vom Prüftag,
+    Ablaufdatum) und nur, wenn der im Einstieg genannte Zustand wörtlich schon im Lead-Text steht – kein neuer
+    Befund, kein neues Datum, nichts ohne Beleg. Frühere Zustände ohne Prüfdatum zählen nicht (nur strenger)."""
+    from extraktor.segments import WEB_EN, WEB_FR
+    from lib.websites import site_domain
+    d = details if isinstance(details, dict) else {}
+    sig = lead.get("signal_type")
+    if lead.get("source_name") != SOURCE_NAME or sig not in ("cert_expiring", "no_https") or not name:
+        return {}
+    na, on = _date(d.get("cert_not_after")), _date(d.get("checked_on"))
+    findings = [f for f in d.get("findings") or [] if isinstance(f, dict)]
+    if na is None or on is None or not findings:
+        return {}
+    words = WEB_FR if lead.get("country") == "FR" else WEB_EN
+    dom = site_domain(lead.get("source_url") or "")
+    ev = {"signal_type": sig, "not_after": na, "findings": findings, "also": []}
+    out = combo_value({"name": name, "country": lead.get("country")}, ev, dom, on)
+    if not out.get("opener"):
+        return {}
+    summary = lead.get("event_summary") or ""
+    shown = [words[f["detail"]].format(domain=dom, value=f.get("value") or "") for f in findings
+             if f.get("type") in COMBO_ORDER and not _same_event(ev, f) and f.get("detail") in words]
+    # der Zustand im neuen Einstieg muss wörtlich (mit Klammerzusatz) schon im Lead-Text stehen = Beleg mit Prüfdatum
+    if not any(s in summary and re.sub(r"\s*\([^)]*\)", "", s) in out["opener"] for s in shown):
+        return {}
+    return {k: out[k] for k in ("opener", "urgency_reason") if out.get(k) and out[k] != lead.get(k)}
+
+
 def texts(row: dict, ev: dict, domain: str, today: dt.date) -> dict:
     t = _texts(row, ev, domain, today)
     t["event_summary"] += also_text(ev, row["country"] == "FR", domain, row, today)
