@@ -177,9 +177,73 @@ def also_text(ev: dict, fr: bool, domain: str, row: dict | None = None, today: d
     return out
 
 
+# Wert-Argument des Kombi-Anlasses (Premium-Labor 05.10.2026, Rotation „Wert-Argument“): Zertifikat + belegter
+# Website-Zustand ist für eine Webagentur ein Anlass für eine neue Website, nicht nur für eine Verlängerung (die der
+# Hoster oft selbst erledigt). Nur belegte Zustände (heute gesehen oder frühere Prüfung mit Datum), keine Zahlen.
+COMBO_ORDER = ("website_not_mobile", "website_outdated", "no_https")
+COMBO_SHORT_EN = {"website_not_mobile": "not built for phones", "website_outdated": "not up to date",
+                  "no_https": "without working HTTPS"}
+COMBO_SHORT_FR = {"website_not_mobile": "adapté aux mobiles", "website_outdated": "à jour",
+                  "no_https": "chiffré en HTTPS"}  # nach „n'est pas non plus …“, verbunden mit „ni“
+COMBO_WANT_EN = {"website_not_mobile": "a mobile-friendly site", "website_outdated": "an up-to-date site",
+                 "no_https": "a secure, current site"}
+COMBO_WANT_FR = {"website_not_mobile": "un site adapté aux mobiles", "website_outdated": "un site à jour",
+                 "no_https": "un site sécurisé et à jour"}
+
+
+def combo_value(row: dict, ev: dict, domain: str, today: dt.date) -> dict:
+    """Opener und Begründung mit Wert-Argument, wenn ein Zertifikats-Ereignis (läuft ab / abgelaufen) einen belegten
+    Website-Zustand hat. {} = kein Kombi-Anlass, Texte bleiben. Einstieg nur mit heute gesehenem Zustand (Beleg im
+    selben Lauf); Begründung auch mit früherem Zustand, wenn dessen Prüfdatum belegt ist (wie also_text)."""
+    from extraktor.segments import WEB_EN, WEB_FR, day, jour, uk_day
+    sig = ev.get("signal_type")
+    if sig not in ("cert_expiring", "no_https") or not ev.get("not_after"):
+        return {}
+    now_types, old_types, old_on = also_split(ev, row)
+    dated = [t for t in COMBO_ORDER if t in now_types or (old_on and t in old_types)]
+    if not dated:
+        return {}
+    fr, us = row.get("country") == "FR", row.get("country") == "US"
+    d = jour if fr else (day if us else uk_day)
+    name, na = row["name"], ev["not_after"]
+    shorts = [(COMBO_SHORT_FR if fr else COMBO_SHORT_EN)[t] for t in dated[:2]]
+    want = (COMBO_WANT_FR if fr else COMBO_WANT_EN)[dated[0]]
+    if fr:
+        w = (("Le certificat doit de toute façon être renouvelé" if sig == "cert_expiring"
+              else "Les navigateurs avertissent déjà les visiteurs")
+             + f", et le site n'est pas non plus {' ni '.join(shorts)} : l'occasion de parler d'{want}"
+             + (" plutôt que d'un simple renouvellement." if sig == "cert_expiring"
+                else " plutôt que de la seule réparation du certificat."))
+    else:
+        w = (("The certificate has to be renewed anyway" if sig == "cert_expiring"
+              else "Browsers already warn visitors")
+             + f", and the site is also {' and '.join(shorts)}: a natural point to talk about {want}, "
+             + ("not only a certificate renewal." if sig == "cert_expiring" else "not only a certificate fix."))
+    out = {"urgency_reason": w}
+    words = WEB_FR if fr else WEB_EN
+    seen = next((f for t in COMBO_ORDER if t in now_types for f in ev.get("findings") or []
+                 if isinstance(f, dict) and f.get("type") == t and not _same_event(ev, f) and f.get("detail") in words),
+                None)
+    if seen:
+        state = re.sub(r"\s*\([^)]*\)", "", words[seen["detail"]].format(domain=domain, value=seen.get("value") or ""))
+        want_now = (COMBO_WANT_FR if fr else COMBO_WANT_EN)[seen["type"]]
+        if fr:
+            o = (f"Bonjour, j'ai remarqué que le certificat de sécurité du site de {name} expire le {d(na)} et que "
+                 if sig == "cert_expiring" else
+                 f"Bonjour, le certificat de sécurité du site de {name} a expiré le {d(na)} ; de plus, ")
+            out["opener"] = o + f"{state}. {want_now[0].upper() + want_now[1:]} vous intéresserait-il ?"
+        else:
+            o = (f"Hi, I noticed the security certificate of the {name} website runs out on {d(na)}, and "
+                 if sig == "cert_expiring" else
+                 f"Hi, the security certificate of the {name} website expired on {d(na)}; also, ")
+            out["opener"] = o + f"{state}. Would {want_now} be worth a short chat?"
+    return out
+
+
 def texts(row: dict, ev: dict, domain: str, today: dt.date) -> dict:
     t = _texts(row, ev, domain, today)
     t["event_summary"] += also_text(ev, row["country"] == "FR", domain, row, today)
+    t.update(combo_value(row, ev, domain, today))
     return t
 
 

@@ -102,6 +102,8 @@ Ansprechperson im Radar (Premium-Labor 05.10.2026): Ein Radar-Ereignis ohne beka
 
 Kontakt-Punkte nur mit Beleg (Premium-Labor 05.10.2026): Liest das Kontakt-Werk die Website und findet dort weder Telefon noch E-Mail (Stufe „leer“), entfallen die 15 Kontakt-Punkte (`lib/kontakt.py` `premium_nachtrag`, Grund `kontakt_unbelegt`); ein späterer Beleg gibt sie zurück. Betraf 35 % (UK) bis 56 % (FR) der Radar-Premium-Leads. Nur strenger, Freigabe unverändert.
 
+Wert-Argument im Kombi-Anlass (Premium-Labor 05.10.2026): Zertifikat läuft ab/abgelaufen + belegter Website-Zustand → Einstieg nennt den heute gesehenen Zustand und fragt nach einer neuen (mobilfähigen/aktuellen) Website statt nach Verlängerung; Begründung „Zertifikat muss ohnehin erneuert werden, und die Seite ist auch … – Anlass für eine neue Website“ (`lib/radar.py` `combo_value`, nur belegte Zustände, keine Zahlen). Vorher fragte jeder Radar-Premium-Lead nur nach „secure and up to date“ – das erledigt oft der Hoster. Gilt für neue Radar-Leads; Punkte und Freigabe unverändert.
+
 ### Länder (nur Mail-Länder aus `countries.yaml`)
 
 | Schritt | Länder | Versand |
