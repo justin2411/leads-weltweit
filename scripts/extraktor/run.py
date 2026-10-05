@@ -688,7 +688,7 @@ def main(argv=None) -> int:
                     help="Website-Prüfung UK/FR: auch Firmen ohne Telefon im Eintrag (Nummer von der eigenen Website)")
     ap.add_argument("--radar", type=int, default=0,
                     help="S2: Veränderungs-Radar – so viele bekannte Firmen mit Website je Land neu prüfen (0 = aus)")
-    ap.add_argument("--radar-countries", default="US,UK,FR", help="Länder für --radar")
+    ap.add_argument("--radar-countries", default="US,UK,FR", help="Länder für --radar, optional mit Zeitgewicht (FR,UK:2,US)")
     ap.add_argument("--deadline-min", type=float, default=0,
                     help="nach N Minuten keine neuen Kandidaten mehr anfangen, Ergebnisse speichern (0 = aus)")
     args = ap.parse_args(argv)
@@ -819,11 +819,11 @@ def main(argv=None) -> int:
     radar_rep = {}
     if args.radar > 0 and "S2" in segs and guard.db is not None:
         from lib import radar
-        rc = [x.strip().upper() for x in args.radar_countries.split(",") if x.strip()]
+        rc, rw = radar.parse_countries(args.radar_countries)
         # Radar bekommt seinen Anteil am Zeitfenster wie eine weitere Branche
         shard = tuple(int(x) for x in args.shard.split("/")) if args.shard else (0, 1)
         radar_rep = radar.run(guard.db, rc, args.radar, fetcher, deadline=fair_deadline(deadline, len(keys) + 1),
-                              workers=args.workers, log=log, apply=args.store, shard=shard)
+                              workers=args.workers, log=log, apply=args.store, shard=shard, weights=rw)
         stats["radar"] = radar_rep
     for n, key in enumerate(keys):
         if deadline and time.monotonic() >= deadline:

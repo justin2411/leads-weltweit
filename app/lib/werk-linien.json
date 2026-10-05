@@ -17,7 +17,7 @@
       "args": "--segments S2 --countries IE,NL,BE,SE,FI,SG --web-check --s2-limit 2500 --per 60000 --max-tries 60000" },
     { "id": "radar", "werk": "lead-werk", "label": "Veränderungs-Radar + Umzüge FR", "short": "RADAR", "segment": "S2", "country": "US,UK,FR", "default": 1, "max": 2, "workers": 32,
       "what": "Bekannte Firmen mit Website neu prüfen: Website seit Datum kaputt, Zertifikat abgelaufen oder läuft bald ab; dazu Umzüge aus dem BODACC (Frankreich)",
-      "args": "--segments S2 --countries FR --fmcsa-days 0 --formd-days 0 --s2-limit 0 --radar 8000 --radar-countries US,UK,FR --per 40000 --max-tries 40000" },
+      "args": "--segments S2 --countries FR --fmcsa-days 0 --formd-days 0 --s2-limit 0 --radar 8000 --radar-countries FR,UK:2,US --per 40000 --max-tries 40000" },
     { "id": "s2-us", "werk": "lead-werk", "label": "Ohne Website USA (Overture)", "short": "OHNE·US", "segment": "S2", "country": "US", "default": 2, "max": 21, "workers": 16,
       "what": "US-Firmen ohne Website mit E-Mail aus Overture (Neuzugänge im Monatsauszug)",
       "args": "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000" },
