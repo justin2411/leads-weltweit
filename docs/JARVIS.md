@@ -199,7 +199,7 @@ Leitplanken.** Raster 12 Spalten (Karte 9 + Leitplanken 3), am Handy eine senkre
 | B2 Du | Kreis „Du“ (gelber Ruf bei „Braucht dich“), 5 Lämpchen nur Anzeige (Werke, Versand, Nachfass, Gehirn, Autopilot → Regler) |
 | B3 Gehirn | Zustandswort ARBEITET/WARTET/BEREIT/AUS, Score, nächste Runde; Lernring Zahlen → Lücke → Auftrag → Umsetzen → Messen → Lehre (0 = schraffiert grau) |
 | B4 Bereiche + Agenten | 9 Bereiche aus `firma-karte.json` (Ampel: Rang 1 rot, 2–3 gelb, sonst grün), Fach-Agenten als Punkte, Übergaben als wandernder Punkt, Quellen-Scout an Produktion, Spur A1–A8 |
-| B5 Werke | Bahn Leads (Lead → Prüfer/Stichprobe → Proben → Lieferung, Äste Radar, Premium) und Bahn Käufer (Kunden → Versand → Antworten → Lieferung → UMSATZ), Rahmen Wachhund; Kontakt/Feedback grau „noch nicht gebaut“ |
+| B5 Werke | Bahn Leads (Lead → Prüfer/Stichprobe → Proben → Lieferung, Äste Radar, Premium, Kontakt-Werk am Prüfer) und Bahn Käufer (Kunden → Versand → Antworten → Lieferung → UMSATZ), Rahmen Wachhund; Feedback grau „noch nicht gebaut“. Durchsatz kurz (z. B. „4,2k/h“) über/unter der Bahn, Takte aus cron_utc in Berliner Zeit; Kunden-Werk zählt nur mail-fähige Käufer S2 × US/UK/FR |
 | B6 Leitplanken | Freigabe, Notbremse, Sperrliste & Abmeldung, Kaltmail-Recht, Speicher, Geld – nur Anzeige, nie ein Lockern-Schalter |
 | B7 Ticker | letzte 5 Ereignisse mit Berliner Zeit; Chat = schwebender Knopf |
 

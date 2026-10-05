@@ -8,7 +8,7 @@ import type { GehirnBild } from "@/lib/zentrale-modell";
 import type { LernPhase, LernSegment } from "@/lib/zentrale-logik";
 import { LernRing } from "./lern-ring";
 
-export type Lampe = { key: string; name: string; an: boolean | null; anker: string };
+export type Lampe = { key: string; name: string; kurz?: string; an: boolean | null; anker: string };
 
 export function GehirnKern({ g, lern, aktiv, bd, lampen, ack, offen, laeuft }: {
   g: GehirnBild; lern: LernSegment[]; aktiv: LernPhase | null; bd: number; lampen: Lampe[]; ack: boolean; offen: number; laeuft: number;
@@ -17,7 +17,7 @@ export function GehirnKern({ g, lern, aktiv, bd, lampen, ack, offen, laeuft }: {
     <Link href="/dashboard/gehirn" className="jz-kernfeld" title="Gehirn öffnen">
       <b className="w">{g.wort}</b>
       {g.still ? <span>{g.still}</span> : <span className="z mono">Score {g.score}</span>}
-      <span>nächste Runde {g.runde}</span>
+      <span className="rd">Runde {g.runde}</span>
     </Link>
   );
   return (
@@ -29,7 +29,7 @@ export function GehirnKern({ g, lern, aktiv, bd, lampen, ack, offen, laeuft }: {
         <div className="jz-lampen" aria-label="Schalter (nur Anzeige)">
           {lampen.map((l) => (
             <Link key={l.key} href={`/dashboard/regler#${l.anker}`} className={l.an === null ? "" : l.an ? "an" : "aus"} title={`${l.name}: ${l.an === null ? "unbekannt" : l.an ? "an" : "aus"} – im Regler feinjustieren`}>
-              <i aria-hidden />
+              <i aria-hidden /><small>{l.kurz ?? l.name}</small>
             </Link>
           ))}
         </div>

@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
 import { Icon, isIconName, type IconName } from "@/app/icons";
 import { BEREICHE, WERKE, agentenVonBereich, agentenVonWerk, werkeVonBereich } from "@/lib/firma-karte";
 import type { BereichBild, PlankeBild, WerkBild, ZielBild } from "@/lib/zentrale-modell";
-import { LERN_WORT, uhr, zahl, type LernPhase } from "@/lib/zentrale-logik";
+import { LERN_WORT, taktAnzeige, uhr, zahl, type LernPhase } from "@/lib/zentrale-logik";
 import type { BdPunkt } from "@/lib/braucht-dich";
 import { requestStart, setPaused } from "../control-actions";
 import { BrauchtDich } from "./braucht-dich";
@@ -55,6 +55,7 @@ const DETAIL: Record<string, [string, string]> = {
 const ANKER: Record<string, string> = { lead: "plaetze", pruefer: "werke", stichprobe: "werke", proben: "proben", kunden: "laender", versand: "versand",
   antworten: "werke", lieferung: "werke", wachhund: "werke" };
 const START: Record<string, "lead-werk" | "kunden-werk" | "proben-vorrat" | "freigabe-stichprobe"> = {
+  // Prüfer-Werk selbst ist nicht direkt startbar: an seiner Kachel startet nur die Freigabe-Stichprobe (so beschriftet)
   lead: "lead-werk", kunden: "kunden-werk", proben: "proben-vorrat", pruefer: "freigabe-stichprobe", stichprobe: "freigabe-stichprobe",
 };
 const PULS_TEXT = { live: "lebt (Herzschlag < 6 min)", "live~": "lebt laut Ersatzquelle (~)", still: "steht gerade", grau: "keine Daten oder nicht gebaut" } as const;
@@ -80,7 +81,7 @@ export function WerkFenster({ w, tab, s, now, letzter, paused, kanten }: {
       </>) : tab === "info" ? (<>
         <div><p className="big">{w.zahl}</p><p className="lock">{w.unter}</p></div>
         <p className="lock"><i className={`jz-pp ${w.puls === "live~" ? "live-" : w.puls}`} style={{ display: "inline-block", marginRight: 6 }} />{PULS_TEXT[w.puls]}</p>
-        <p className="lock">Letzter Lauf: {letzter ? uhr(letzter, now) : "–"}{WERKE.find((x) => x.id === w.id)?.takt ? ` · Takt ${WERKE.find((x) => x.id === w.id)!.takt}` : ""}</p>
+        <p className="lock">Letzter Lauf: {letzter ? uhr(letzter, now) : "–"}{(() => { const m = WERKE.find((x) => x.id === w.id); const t = m ? taktAnzeige(m, now) : ""; return t ? ` · Takt ${t}` : ""; })()}</p>
         {kanten.length > 0 && <ul className="l">{kanten.map((k) => <li key={k.was}><b>{k.was}</b><span>{k.proStunde > 0 ? `${zahl(k.proStunde)} pro Stunde` : "gerade kein Durchfluss"}</span></li>)}</ul>}
         {w.plaetze && <p className="lock">Plätze: Ist {w.plaetze.ist} (Autopilot) · Soll {w.plaetze.soll} (du) · max {w.plaetze.max}</p>}
         {ag.length > 0 && <p className="lock">Genutzt von: {ag.map((a) => a.name).join(", ")}</p>}
@@ -94,7 +95,7 @@ export function WerkFenster({ w, tab, s, now, letzter, paused, kanten }: {
           {w.id === "versand" && paused && <p className="warn">Versand pausiert · Wiederanlauf im Regler</p>}
           {start && (
             <form action={requestStart}><input type="hidden" name="back" value={back} /><input type="hidden" name="wf" value={start} />
-              <button className="go"><Icon name="start" size={16} /> Jetzt starten</button></form>
+              <button className="go"><Icon name="start" size={16} /> {start === "freigabe-stichprobe" ? "Stichprobe starten" : "Jetzt starten"}</button></form>
           )}
         </div>
         <Lnk to={`/dashboard/regler#${ANKER[w.id] ?? "werke"}`}>Feinjustieren</Lnk>

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Icon } from "@/app/icons";
 import { logout } from "../actions";
 
-const UHR = new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", weekday: "short", hour: "2-digit", minute: "2-digit" });
+const WTAG = new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", weekday: "short" });
 const HM = new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit" });
 
 export function Kopfzeile({ abruf, ok, lage, bd, antworten, heiss }: {
@@ -26,9 +26,9 @@ export function Kopfzeile({ abruf, ok, lage, bd, antworten, heiss }: {
     <header className="jz-kopf">
       <div className="jz-marke">
         <b>JARVIS</b>
-        <span className="jz-uhr" suppressHydrationWarning>{jetzt !== null ? UHR.format(new Date(jetzt)) : ""}</span>
+        <span className="jz-uhr" suppressHydrationWarning>{jetzt !== null ? <><span className="wt">{WTAG.format(new Date(jetzt))} </span>{HM.format(new Date(jetzt))}</> : ""}</span>
         <span className={`jz-live${live ? " an" : ""}`} title={live ? "live · Abruf alle 10 s" : "kein frischer Abruf"} suppressHydrationWarning>
-          <i aria-hidden />{live ? "live" : `Stand ${HM.format(new Date(abruf))}`}
+          <i aria-hidden /><span className="lt">{live ? "live" : `Stand ${HM.format(new Date(abruf))}`}</span>
         </span>
       </div>
       <button type="button" className="jz-lage" aria-expanded={offen} onClick={() => setOffen((x) => !x)} title={lage.grund || lage.titel}>

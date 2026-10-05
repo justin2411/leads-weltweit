@@ -37,7 +37,7 @@ export function Leitplanken({ planken }: { planken: PlankeBild[] }) {
               <span className="ic" aria-hidden><Icon name={ICON[p.id] ?? "schloss"} size={20} /></span>
               <b className="nm">{p.name}</b>
               <span className="wd">{p.wort}</span>
-              <b className="z">{p.zahl}</b>
+              <b className={`z${p.zahlTon === "rot" || p.zahlTon === "gelb" ? ` zt t-${p.zahlTon}` : ""}`}>{p.zahl}</b>
               <em>{p.unter}</em>
             </Link>
           </li>

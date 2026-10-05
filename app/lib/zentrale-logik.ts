@@ -21,7 +21,7 @@ export const GRUND_MAX = 160;
 // ------------------------------------------------------------------------------------------------- Puls
 export type Puls = "live" | "live~" | "still" | "grau";
 /** Herzschlag-Name (werk_heartbeat.werk) je Werk der Firma-Karte. */
-export const BEAT_NAME: Record<string, string> = { lead: "lead-werk", pruefer: "pruefer-werk", proben: "proben-vorrat", kunden: "kunden-werk", stichprobe: "dauerpruefung", radar: "lead-werk" };
+export const BEAT_NAME: Record<string, string> = { lead: "lead-werk", pruefer: "pruefer-werk", proben: "proben-vorrat", kunden: "kunden-werk", stichprobe: "dauerpruefung", radar: "lead-werk", kontakt: "kontakt-werk" };
 export type PulsDaten = {
   beats: Record<string, string | null | undefined>;
   lastSent?: string | null;
@@ -105,7 +105,7 @@ export function lernSegmente(z: LernZahlen): LernSegment[] {
     const v = z[key];
     const grau = !v;
     const tip = { luecke: "Bereiche mit Lücke zum Ziel", auftrag: "offene Aufträge", umsetzen: "laufende Aufträge", messen: "Wirkung gemessen (7 Tage)", lehre: "Lehren mit Vertrauen ≥ 0,7" }[key];
-    return { key, wort: LERN_WORT[key], zahl: grau && (key === "messen" || key === "lehre") ? `0 ${key === "messen" ? "gemessen" : "Lehren"}` : n(v), grau, tip };
+    return { key, wort: LERN_WORT[key], zahl: grau && (key === "messen" || key === "lehre") ? "0" : n(v), grau, tip };
   });
 }
 
@@ -194,3 +194,52 @@ export function zahl(n: number | null | undefined): string {
 
 /** Ist der Stand älter als 20 min? (Oberfläche zeigt dann „Stand 01:25“.) */
 export const veraltet = (iso: string | null | undefined, now = Date.now()) => !jung(iso, now, CACHE_MIN * MIN);
+
+/** Durchsatz kurz (≤ 6 Zeichen) für die Kanten der Werke-Karte: 4.200 → „4,2k/h“, 12.500 → „13k/h“, 6 → „6/h“. */
+export function rateKurz(proStunde: number): string {
+  const p = Number(proStunde);
+  if (!Number.isFinite(p) || p <= 0) return "0/h";
+  if (p >= 1e6) return `${Math.round(p / 1e6)}M/h`;
+  if (p >= 1e4) return `${Math.round(p / 1000)}k/h`;
+  if (p >= 1000) return `${(p / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })}k/h`;
+  return `${Math.round(p)}/h`;
+}
+
+// ------------------------------------------------------------------------------------------------- Takt (Cron → Berlin)
+const WT = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+const BERLIN_HM = new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit" });
+const BERLIN_WT = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Berlin", weekday: "short" });
+const WT_EN: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+const ganz = (x: string) => /^\d+$/.test(x);
+
+/** Nächster Lauf eines festen Crons (Minute, Stunde und ggf. Wochentag als Zahl, UTC) nach `now`; sonst null. */
+export function naechsterLauf(cron: string, now: number): Date | null {
+  const [mi, h, dom, mon, dow] = cron.trim().split(/\s+/);
+  if (!ganz(mi) || !ganz(h) || dom !== "*" || mon !== "*" || !(dow === "*" || ganz(dow))) return null;
+  const d0 = new Date(now);
+  for (let i = 0; i <= 8; i++) {
+    const t = new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), d0.getUTCDate() + i, Number(h), Number(mi)));
+    if (t.getTime() > now && (dow === "*" || t.getUTCDay() === Number(dow) % 7)) return t;
+  }
+  return null;
+}
+
+/** Takt eines Crons in Berliner Zeit (Sommer-/Winterzeit zur Laufzeit): „Mo 06:53“, „07:07“, „stündlich :47“; null = Intervall. */
+export function cronBerlin(cron: string, now: number): string | null {
+  const [mi, h, dom, mon, dow] = cron.trim().split(/\s+/);
+  if (ganz(mi) && h === "*" && dom === "*" && mon === "*" && dow === "*") return `stündlich :${mi.padStart(2, "0")}`;
+  const t = naechsterLauf(cron, now);
+  if (!t) return null;
+  const hm = BERLIN_HM.format(t);
+  return dow === "*" ? hm : `${WT[WT_EN[BERLIN_WT.format(t)] ?? t.getUTCDay()]} ${hm}`;
+}
+
+/** Takt-Anzeige eines Werks: feste Crons in Berliner Zeit, reine Intervalle aus „takt“ (firma-karte.json). */
+export function taktAnzeige(w: { cron_utc?: string[]; takt?: string }, now: number): string {
+  const cs = w.cron_utc ?? [];
+  // nur wenn ein Cron eine feste Stunde hat, hängt die Anzeige von der Zeitzone ab; reine Intervalle beschreibt „takt“
+  if (!cs.some((c) => naechsterLauf(c, now))) return w.takt ?? "";
+  const xs = cs.map((c) => cronBerlin(c, now));
+  if (xs.every((x) => x !== null)) return xs.join(" · ");
+  return w.takt ?? "";
+}

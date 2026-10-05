@@ -2,8 +2,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   ampelLuecke, begrenzePartikel, freigabeTon, kurz, lernPhase, lernSegmente, notbremseAnzeige, partikel, plaetzeDiff, pulsStatus, speicherTon, staus, zielRing,
+  cronBerlin, naechsterLauf, rateKurz, taktAnzeige,
 } from "./zentrale-logik.ts";
-import { bereicheBild, kantenBild, lage, leitplankenBild, werkeBild } from "./zentrale-modell.ts";
+import { bereicheBild, kantenBild, lage, leitplankenBild, plaetzeBild, rechtLaender, werkeBild } from "./zentrale-modell.ts";
+import OPS from "./ops-config.json" with { type: "json" };
 import type { Langsam, Schnell } from "./zentrale-typen.ts";
 
 const NOW = Date.parse("2026-10-05T10:00:00Z");
@@ -46,7 +48,7 @@ test("Partikel: 0/h keine, 6/h langsam, 100.000/h schnell, Handy begrenzt", () =
 test("Lernring: nur Daten der ersten 4 Schritte → Messen und Lehre grau", () => {
   const seg = lernSegmente({ zahlen: "08:10", luecke: 5, auftrag: 2, umsetzen: 1, messen: 0, lehre: 0 });
   assert.deepEqual(seg.map((s) => s.grau), [false, false, false, false, true, true]);
-  assert.equal(seg[4].zahl, "0 gemessen");
+  assert.equal(seg[4].zahl, "0");
   assert.equal(lernSegmente({ zahlen: null, luecke: null, auftrag: null, umsetzen: null, messen: null, lehre: null })[0].grau, true);
 });
 
@@ -115,7 +117,9 @@ test("Modell ohne Daten: grau statt Fehler (leerer Zustand)", () => {
   const w = werkeBild(null, null, NOW);
   assert.equal(w.lead.puls, "grau");
   assert.equal(w.lead.zahl, "–");
-  assert.equal(w.kontakt.fehlt, true);
+  assert.equal(w.kontakt.fehlt, false);
+  assert.equal(w.kontakt.puls, "grau");
+  assert.equal(w.feedback.fehlt, true);
   assert.ok(kantenBild(null, null).every((k) => k.proStunde === 0));
   assert.ok(bereicheBild(null).every((b) => b.ton === "grau"));
   assert.ok(leitplankenBild(null, null, []).some((p) => p.id === "notbremse" && p.wort === "unbekannt"));
@@ -135,4 +139,57 @@ test("Modell mit Daten: Stau am Versand, Lage aus Rang 1", () => {
   assert.equal(lage(s).titel, "Antworten fehlen");
   assert.equal(werkeBild(s, null, NOW).lead.puls, "live");
   assert.equal(bereicheBild(s).find((b) => b.slug === "vertrieb")!.ton, "rot");
+});
+
+test("Notbremse-Karte: Zahl eigene Farbe (7 % rot, 4,3 % gelb, unter 100 Mails ohne Farbe)", () => {
+  const nb = (bounced: number, sent: number) =>
+    leitplankenBild({ ev24: { bounced, sent }, gaps: [] } as unknown as Schnell, { bremse: { stop: null }, sperre: { gesamt: 0, neu_24h: 0 } } as unknown as Langsam, []).find((p) => p.id === "notbremse")!;
+  assert.equal(nb(11, 156).zahlTon, "rot");
+  assert.equal(nb(11, 156).ton, "gruen");
+  assert.equal(nb(13, 300).zahlTon, "gelb");
+  assert.equal(nb(3, 50).zahlTon, "grau");
+});
+
+test("Kaltmail-Recht: so viele freie Länder wie allowed: true in ops-config.json", () => {
+  const countries = (OPS as unknown as { countries: Record<string, { allowed?: boolean }> }).countries;
+  const frei = Object.values(countries).filter((c) => c.allowed === true).length;
+  const r = leitplankenBild(null, null, rechtLaender(countries)).find((p) => p.id === "recht")!;
+  assert.equal(r.zahl, String(frei));
+  assert.ok(frei >= 3);
+  for (const c of ["DE", "IE", "BE", "NL"]) assert.equal(rechtLaender(countries).find((x) => x.c === c)?.allowed, false, c);
+});
+
+test("Takt in Berliner Zeit: Sommer und Winter (Cron bleibt UTC)", () => {
+  const sommer = Date.parse("2026-10-05T10:00:00Z"), winter = Date.parse("2026-11-02T10:00:00Z");
+  assert.equal(cronBerlin("53 4 * * 1", sommer), "Mo 06:53");
+  assert.equal(cronBerlin("53 4 * * 1", winter), "Mo 05:53");
+  assert.equal(cronBerlin("47 * * * *", winter), "stündlich :47");
+  assert.equal(cronBerlin("*/10 * * * *", winter), null);
+  assert.equal(naechsterLauf("53 4 * * 1", Date.parse("2026-10-05T04:54:00Z"))!.toISOString(), "2026-10-12T04:53:00.000Z");
+  assert.equal(taktAnzeige({ cron_utc: ["7 5 * * *", "47 * * * *"], takt: "x" }, winter), "06:07 · stündlich :47");
+  assert.equal(taktAnzeige({ cron_utc: ["23 */3 * * *"], takt: "alle 3 h :23" }, winter), "alle 3 h :23");
+  assert.equal(taktAnzeige({ cron_utc: ["11 * * * *"], takt: "durchgehend" }, winter), "durchgehend");
+  assert.equal(werkeBild(null, null, winter).lieferung.zahl, "Mo 05:53");
+  assert.equal(werkeBild(null, null, sommer).lieferung.zahl, "Mo 06:53");
+});
+
+test("Durchsatz kurz: höchstens 6 Zeichen", () => {
+  assert.equal(rateKurz(4200), "4,2k/h");
+  assert.equal(rateKurz(7900), "7,9k/h");
+  assert.equal(rateKurz(12_500), "13k/h");
+  assert.equal(rateKurz(6), "6/h");
+  assert.equal(rateKurz(0), "0/h");
+  for (const n of [0.4, 9, 999, 1000, 9999, 99_999, 2_500_000]) assert.ok(rateKurz(n).length <= 6, rateKurz(n));
+});
+
+test("Plätze: je Werk die letzte Verteilung (Kunden-Werk zählt mit), Diff zwischen zwei verschiedenen Plänen", () => {
+  const s = { beats: [], tasks: [], acks: {}, owner: {}, msg: { sent_60m: 0, sent_24h: 0, sent_heute: 0, last_sent_at: null, blocked_60m: 0 }, replies: { offen: 0, heiss: 0 }, plan_log: [
+    { werk: "lead-werk", at: ago(10), mode: "autopilot", bremse: "aus", plan: { "web-us": 4 }, reasons: { "web-us": "mehr grün" } },
+    { werk: "kunden-werk", at: ago(20), mode: "autopilot", bremse: "aus", plan: { kunden: 3 }, reasons: null },
+    { werk: "lead-werk", at: ago(200), mode: "autopilot", bremse: "aus", plan: { "web-us": 2 }, reasons: null },
+  ] } as unknown as Schnell;
+  const p = plaetzeBild(s);
+  assert.equal(p.geplant, 7);
+  assert.deepEqual(p.diffs.map((d) => [d.werk, d.linie, d.von, d.nach]), [["lead-werk", "web-us", 2, 4]]);
+  assert.equal(werkeBild(s, null, NOW).kunden.plaetze!.ist, 3);
 });

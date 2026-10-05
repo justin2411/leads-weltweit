@@ -145,6 +145,7 @@ export function makeFixtures(nowMs = Date.now()) {
       { werk: "kunden-werk", last_beat: iso(3), plaetze: 1, processed_60m: 900, green_60m: 300 },
       { werk: "proben-vorrat", last_beat: iso(30), plaetze: 0, processed_60m: 15, green_60m: 0 },
       { werk: "dauerpruefung", last_beat: iso(20), plaetze: 0, processed_60m: 500, green_60m: 480 },
+      { werk: "kontakt-werk", last_beat: iso(2), plaetze: 4, processed_60m: 120, green_60m: 6 },
     ],
     tasks: [
       { id: "z1", agent: 1, rolle: "quellen", kind: "leads", market: "US", brief: "Leads US nachfüllen", status: "laeuft", progress: 40, step: "Quellen prüfen", created_by: "Abteilungs-Motor", created_at: iso(8), started_at: iso(5), finished_at: null, grund: "Vorrat knapp" },
@@ -165,7 +166,10 @@ export function makeFixtures(nowMs = Date.now()) {
     plan_log: [
       { werk: "lead-werk", at: iso(40), mode: "autopilot", bremse: "aus", plan: { "web-us": 4, "web-uk": 3, "web-fr": 3 }, reasons: { "web-us": "mehr grüne Leads je Lauf" } },
       { werk: "lead-werk", at: iso(220), mode: "autopilot", bremse: "aus", plan: { "web-us": 2, "web-uk": 4, "web-fr": 4 }, reasons: {} },
+      { werk: "kunden-werk", at: iso(50), mode: "autopilot", bremse: "aus", plan: { kunden: 4 }, reasons: null },
+      { werk: "kontakt-werk", at: iso(30), mode: "inhaber", bremse: "aus", plan: { kontakt: 4 }, reasons: null },
     ],
+    scout_last: iso(30),
     msg: { sent_60m: 6, sent_24h: 153, sent_heute: 20, last_sent_at: iso(12), blocked_60m: 4, freigegeben: 9389 },
     ev24: { sent: 156, bounced: 11, unsubscribed: 7, delivered: 3 },
     replies: { offen: 2, heiss: 1 },
@@ -184,7 +188,8 @@ export function makeFixtures(nowMs = Date.now()) {
     runs: {
       "lead-werk": { processed_60m: 50000, green_60m: 4200, processed_24h: 2600000, green_24h: 241000, red_24h: 38000, last: iso(25) },
       "pruefer-werk": { processed_60m: 8000, green_60m: 7900, processed_24h: 8100, green_24h: 8000, red_24h: 100, last: iso(2) },
-      "kunden-werk": { processed_60m: 0, green_60m: 0, processed_24h: 37000, green_24h: 13000, red_24h: 1100, last: iso(160) },
+      "kunden-werk": { processed_60m: 0, green_60m: 0, processed_24h: 4200, green_24h: 1970, red_24h: 130, last: iso(160) },
+      "kontakt-werk": { processed_60m: 120, green_60m: 6, processed_24h: 2400, green_24h: 310, red_24h: 12, last: iso(20) },
       stichprobe: { processed_60m: 0, green_60m: 0, processed_24h: 592, green_24h: 584, red_24h: 8, last: iso(600) },
     },
     tank: { US: 50, UK: 30, FR: 30 }, tank_24h: 3,

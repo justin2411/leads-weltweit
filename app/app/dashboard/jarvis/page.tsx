@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { CONFIG, loadAgentTasks } from "@/lib/dashboard-data";
 import { loadZentrale } from "@/lib/zentrale-data";
+import { rechtLaender } from "@/lib/zentrale-modell";
 import { agentStartLabel } from "@/lib/agents";
 import { requireOwner } from "../actions";
 import { AgentDrawer } from "./agents";
@@ -12,9 +13,6 @@ import { Zentrale } from "./zentrale";
 export const metadata = { title: "JARVIS" };
 export const dynamic = "force-dynamic";
 type SP = Promise<Record<string, string | string[] | undefined>>;
-
-/** Länder der Leitplanke „Kaltmail-Recht“: die Test-Märkte frei, IE/BE/NL immer gesperrt (countries.yaml / ops-config.json). */
-const RECHT_LAENDER = ["US", "UK", "FR", "IE", "BE", "NL"];
 
 /**
  * JARVIS-Zentrale „Organigramm live“ (Inhaber 04.10.2026: „ich will das neue system ganz einfach visuell verstehen …
@@ -33,7 +31,8 @@ export default async function Jarvis({ searchParams }: { searchParams: SP }) {
     loadStartChat().catch(() => null),
     ag ? loadAgentTasks() : Promise.resolve([]),
   ]);
-  const recht = RECHT_LAENDER.map((c) => ({ c, allowed: !!CONFIG.countries[c]?.allowed }));
+  // Leitplanke „Kaltmail-Recht“: alle Länder aus countries.yaml / ops-config.json (frei = allowed: true)
+  const recht = rechtLaender(CONFIG.countries);
   const agentDrawer = ag ? <AgentDrawer which={ag} tasks={tasks} pre={{ k: sp.k, m: sp.m, b: sp.b, r: sp.r }} startAt={agentStartLabel(new Date())} /> : null;
   return (
     <>

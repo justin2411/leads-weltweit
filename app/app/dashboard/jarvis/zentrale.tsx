@@ -27,7 +27,7 @@ import { BereichFenster, DuFenster, LernFenster, PlankeFenster, WerkFenster, Zie
 import { ChatKnopf } from "./kopf";
 import { agentStartLabel } from "@/lib/agents";
 
-const RUN_NAME: Record<string, string> = { lead: "lead-werk", pruefer: "pruefer-werk", proben: "proben-vorrat", kunden: "kunden-werk", stichprobe: "dauerpruefung" };
+const RUN_NAME: Record<string, string> = { lead: "lead-werk", pruefer: "pruefer-werk", proben: "proben-vorrat", kunden: "kunden-werk", stichprobe: "dauerpruefung", kontakt: "kontakt-werk" };
 
 export function Zentrale({ initial, recht, agentDrawer, chatNeu }: {
   initial: ZentraleDaten; recht: { c: string; allowed: boolean }[]; agentDrawer: ReactNode; chatNeu: number;
@@ -79,7 +79,7 @@ export function Zentrale({ initial, recht, agentDrawer, chatNeu }: {
     { key: "versand", name: "Versand", an: s ? !owner.send_paused : null, anker: "versand" },
     { key: "nachfass", name: "Nachfass", an: s ? owner.followup_enabled !== false : null, anker: "nachfass" },
     { key: "gehirn", name: "Gehirn", an: s ? s.brain_enabled !== false : null, anker: "gehirn" },
-    { key: "autopilot", name: "Autopilot", an: s ? owner.slot_autopilot?.on !== false : null, anker: "plaetze" },
+    { key: "autopilot", name: "Autopilot", kurz: "Auto", an: s ? owner.slot_autopilot?.on !== false : null, anker: "plaetze" },
   ];
   const ack = !!s && Object.values(s.acks).some((a) => now - Date.parse(a) < 2 * 60_000);
   const tasks = (s?.tasks ?? []) as unknown as AgentTask[];
@@ -116,6 +116,9 @@ export function Zentrale({ initial, recht, agentDrawer, chatNeu }: {
   }
 
   const bewegung = !wenig;
+  // Quellen-Scout: eigenes Signal (scout_last), nicht der Herzschlag des Lead-Werks; ohne Signal grau = keine Messung
+  const scoutLast = s?.scout_last ?? null;
+  const scout: "an" | "aus" | "grau" = !scoutLast ? "grau" : now - Date.parse(scoutLast) < 75 * 60_000 ? "an" : "aus";
   const veraltet = istVeraltet(l, now);
   return (
     <div className={`jz${fenster ? " has-drw" : ""}`} ref={root}>
@@ -126,7 +129,7 @@ export function Zentrale({ initial, recht, agentDrawer, chatNeu }: {
           <GehirnKern g={gehirn} lern={lern.segmente} aktiv={lern.aktiv} bd={bdN} lampen={lampen} ack={ack}
             offen={(s?.tasks ?? []).filter((x) => x.status === "offen").length} laeuft={(s?.tasks ?? []).filter((x) => x.status === "laeuft").length} />
           <Bereiche bereiche={bereiche} aktiv={bereich} handoffs={s?.handoffs ?? []} tasks={tasks} startAt={agentStartLabel(new Date(now))} neu={neu}
-            handy={handy} bewegung={bewegung} scoutAn={(s?.beats ?? []).some((b) => b.werk === "lead-werk" && b.last_beat && now - Date.parse(b.last_beat) < 6 * 60_000)} agent={agent} />
+            handy={handy} bewegung={bewegung} scout={scout} agent={agent} />
           <WerkeKarte werke={werke} kanten={kanten} href={(w) => (aktivWerk === sVonWerk(w) ? "/dashboard/jarvis" : `/dashboard/jarvis?s=${sVonWerk(w)}`)}
             aktiv={aktivWerk} hervor={hervor} bewegung={bewegung} handy={handy} abprall={{ versand: s?.msg.blocked_60m ?? 0, pruefer: s?.held_60m ?? 0 }}
             wachTick={werke.wachhund?.puls === "live~" || werke.wachhund?.puls === "live"} plaetze={pl} wander={wander} />

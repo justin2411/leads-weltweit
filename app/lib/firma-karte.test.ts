@@ -75,3 +75,16 @@ test("Python liest dieselbe Datei (scripts/lib/firma_karte.py)", () => {
   const py = readFileSync(new URL("../../scripts/lib/firma_karte.py", import.meta.url), "utf8");
   assert.match(py, /app" \/ "lib" \/ "firma-karte\.json"/);
 });
+
+test("jede Linie und jedes *-werk.yml gehört zu einem gebauten Werk (status ≠ fehlt)", () => {
+  for (const werk of new Set(linien.lanes.map((l) => l.werk))) {
+    const w = WERKE.find((x) => x.linien_werk === werk);
+    assert.ok(w, `Linie ${werk}: kein Werk mit linien_werk`);
+    assert.notEqual(w!.status, "fehlt", `${werk} läuft, steht aber als „fehlt“`);
+  }
+  for (const f of readdirSync(WF).filter((x) => x.endsWith("-werk.yml"))) {
+    const w = WERKE.find((x) => x.workflow === f);
+    assert.ok(w, `${f}: kein Werk in der Karte`);
+    assert.notEqual(w!.status, "fehlt", `${f} läuft, steht aber als „fehlt“`);
+  }
+});

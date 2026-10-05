@@ -1,38 +1,46 @@
 /**
  * B5 Werke-Karte (immer sichtbar): obere Bahn Leads (Lead-Werk → Prüfer/Stichprobe → Proben → Lieferung, Äste Radar und
  * Premium-Bewertung), untere Bahn Käufer (Kunden-Werk → Versand → Antworten → Lieferung → UMSATZ, die einzige goldene
- * Kachel), Rahmenlinie Wachhund mit Tick alle 15 min, grau gestrichelt die noch nicht gebauten Werke (Kontakt, Feedback).
+ * Kachel), Rahmenlinie Wachhund mit Tick alle 15 min, Kontakt-Werk als Ast am Prüfer, grau gestrichelt das noch nicht gebaute Feedback-Werk.
  * Partikel = echter Durchsatz der letzten 60 min (lib/zentrale-logik partikel), Stau-Halo ab Faktor 50, abprallende
  * Punkte = blockierte Mails / zurückgehaltene Leads der letzten Stunde, Agent-Kürzel = laufender Auftrag nutzt das Werk.
  */
 import Link from "next/link";
 import type { KanteBild, WerkBild } from "@/lib/zentrale-modell";
-import { begrenzePartikel, kantenDicke, partikel, zahl } from "@/lib/zentrale-logik";
+import { begrenzePartikel, kantenDicke, partikel, rateKurz, zahl } from "@/lib/zentrale-logik";
 import { Icon } from "@/app/icons";
 
 type L = "breit" | "hoch";
-const VIEW: Record<L, [number, number]> = { breit: [1000, 460], hoch: [360, 820] };
+const VIEW: Record<L, [number, number]> = { breit: [1000, 480], hoch: [360, 960] };
 /** Mittelpunkte je Werk (Einheiten des viewBox). Gleiche Position = eine Kachel (Prüfer + Stichprobe). */
 export const POS: Record<L, Record<string, [number, number]>> = {
   breit: {
     radar: [110, 38], lead: [110, 135], pruefer: [310, 135], stichprobe: [310, 135], premium: [510, 38], proben: [510, 135], feedback: [710, 135],
-    kontakt: [410, 230], kunden: [110, 325], versand: [310, 325], antworten: [510, 325], lieferung: [710, 325], umsatz: [895, 325], wachhund: [500, 425],
+    kontakt: [410, 230], kunden: [110, 325], versand: [310, 325], antworten: [510, 325], lieferung: [710, 325], umsatz: [895, 325], wachhund: [110, 452],
   },
   hoch: {
-    radar: [95, 34], lead: [95, 112], pruefer: [95, 262], stichprobe: [95, 262], premium: [95, 340], proben: [95, 412], feedback: [95, 562],
-    kunden: [265, 112], versand: [265, 262], kontakt: [265, 338], antworten: [265, 412], lieferung: [265, 562], umsatz: [265, 712], wachhund: [180, 792],
+    radar: [95, 34], lead: [95, 120], pruefer: [95, 290], stichprobe: [95, 290], premium: [95, 398], proben: [95, 490], feedback: [95, 660],
+    kunden: [265, 120], versand: [265, 290], kontakt: [265, 398], antworten: [265, 490], lieferung: [265, 660], umsatz: [265, 820], wachhund: [180, 920],
   },
 };
 const CHIP = new Set(["radar", "premium", "kontakt", "wachhund"]);
 const GRUPPE: Record<string, string[]> = { pruefer: ["pruefer", "stichprobe"] };
 /** Kurze Namen auf den Kacheln (voller Name im Tooltip und im Seitenfenster). */
-const KURZ: Record<string, string> = { pruefer: "Prüfer", proben: "Proben", kunden: "Kunden-Werk", lieferung: "Lieferung", premium: "Premium", feedback: "Feedback", kontakt: "Kontakt" };
+const KURZ: Record<string, string> = { lead: "Leads", pruefer: "Prüfer", proben: "Proben", kunden: "Käufer", lieferung: "Lieferung", premium: "Premium", feedback: "Feedback", kontakt: "Kontakt" };
 
 function pfad(l: L, a: string, b: string): string {
   const [x1, y1] = POS[l][a], [x2, y2] = POS[l][b];
   if (y1 === y2 || x1 === x2) return `M${x1} ${y1} L${x2} ${y2}`;
   const my = (y1 + y2) / 2;
   return `M${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}`;
+}
+
+/** Durchsatz-Text frei von Kacheln und Chips: breit über der oberen bzw. unter der unteren Bahn (zwischen den Kacheln ist
+ *  nur Platz für die Linie), Kurven in der Mitte; hoch rechts neben der senkrechten Kante, direkt unter der Quell-Kachel. */
+function rateY(l: L, y1: number, y2: number): number {
+  if (l === "hoch") return y1 + 67;
+  if (y1 !== y2) return (y1 + y2) / 2 - 8;
+  return y1 < 230 ? y1 - 76 : y1 + 84;
 }
 
 function MiniRing({ p }: { p: NonNullable<WerkBild["plaetze"]> }) {
@@ -63,7 +71,8 @@ function Karte({ l, werke, kanten, href, aktiv, hervor, bewegung, handy, abprall
         {/* Äste und nicht gebaute Werke */}
         <path d={pfad(l, "radar", "lead")} className="k ast" />
         <path d={pfad(l, "premium", "proben")} className="k ast" />
-        <path d={l === "breit" ? `M${POS.breit.versand[0]} ${POS.breit.versand[1]} C 330 260, 390 230, ${POS.breit.kontakt[0]} ${POS.breit.kontakt[1]}` : pfad(l, "versand", "kontakt")} className="k grau" />
+        {/* Kontakt-Werk: prüft freigegebene Leads gegen Register + Firmenwebsite (Ast am Prüfer) */}
+        <path d={pfad(l, "pruefer", "kontakt")} className={`k ast${werke.kontakt?.fehlt ? " grau" : ""}`} />
         <path d={pfad(l, "lieferung", "feedback")} className="k grau" />
         {kanten.map((k, i) => {
           const d = pfad(l, k.von, k.an);
@@ -79,7 +88,7 @@ function Karte({ l, werke, kanten, href, aktiv, hervor, bewegung, handy, abprall
                   <animateMotion dur={`${p.dauer}s`} begin={`${-(j * p.dauer) / p.n}s`} repeatCount="indefinite" path={d} />
                 </circle>
               ))}
-              <text x={(x1 + x2) / 2} y={(y1 + y2) / 2 - 8} className="rate">{k.proStunde > 0 ? `${zahl(k.proStunde)}/h` : "0/h"}</text>
+              <text x={l === "breit" ? (x1 + x2) / 2 : x1 + 8} y={rateY(l, y1, y2)} className={`rate${l === "hoch" ? " seite" : ""}`}>{rateKurz(k.proStunde)}</text>
             </g>
           );
         })}

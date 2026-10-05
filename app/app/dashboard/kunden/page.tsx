@@ -14,7 +14,11 @@ import { readParams, withQuery, type SP } from "../params";
 export default async function Kunden({ searchParams }: { searchParams: SP }) {
   await requireOwner();
   // Reiter „Agenten“ (Kunden-Agenten ab Pro, früher eigener Menüpunkt)
-  if ((await searchParams).tab === "agenten") return (<><KundenTabs on="agenten" /><KundenAgentenListe /></>);
+  const sp0 = await searchParams;
+  if (sp0.tab === "agenten") {
+    const one = (v: unknown) => (typeof v === "string" ? v.slice(0, 160) : undefined);
+    return (<><KundenTabs on="agenten" /><KundenAgentenListe ok={one(sp0.ok)} fehler={one(sp0.fehler)} /></>);
+  }
   const { land, countries, raw } = await readParams(searchParams);
   const liveAll = await loadLive();
   const live = onlySegment(liveAll, SEGMENT);

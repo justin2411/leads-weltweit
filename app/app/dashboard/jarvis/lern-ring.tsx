@@ -40,11 +40,11 @@ export function LernRing({ segmente, aktiv, drehen, href, kern, wort, herz }: {
         </g>
         {segmente.map((s, i) => {
           const m = (i + 0.5) * step;
-          const [x, y] = pt(152, m);
+          const [x, y] = pt(150, m);
           return (
             <g key={`t-${s.key}`}>
-              <text x={x} y={y - 9} className="w">{s.wort}</text>
-              <text x={x} y={y + 9} className="n">{s.zahl}</text>
+              <text x={x} y={y - 10} className="w">{s.wort}</text>
+              <text x={x} y={y + 10} className="n">{s.zahl}</text>
             </g>
           );
         })}

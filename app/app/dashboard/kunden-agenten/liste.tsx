@@ -14,7 +14,7 @@ const DIR: Record<string, [IconName, string]> = { in: ["antwort", "Kunde"], out:
  * Kunden-Agenten-Liste (Inhaber 04.10.2026; seit der Zentrale 05.10.2026 Reiter „Agenten“ auf /dashboard/kunden): jeder Kunde ab Pro hat einen KI-Ansprechpartner. Karten mit Name, Kunde, Status,
  * Zielen in Stichworten, letzter Nachricht und den Kennzahlen des Kunden (Rückmeldungen, gute Leads, Abschlüsse).
  */
-export async function KundenAgentenListe() {
+export async function KundenAgentenListe({ ok, fehler }: { ok?: string; fehler?: string } = {}) {
   const res = await loadCustomerAgents().then((r) => ({ ...r, error: null as string | null }))
     .catch((e) => ({ agents: [] as CustomerAgent[], customers: new Map<string, AgentCustomer>(), subs: new Map<string, AgentSubscription>(),
       last: new Map<string, AgentMessage>(), error: String((e as Error)?.message ?? e) }));
@@ -27,6 +27,8 @@ export async function KundenAgentenListe() {
       <PageHead title="Kunden-Agenten" icon="ansprechpartner" sub="Ab Pro · KI-Ansprechpartner je Kunde · Ziel: bessere Leads und Umsatz für den Kunden" crumbs={[["Kunden", "/dashboard/kunden"], ["Agenten", ""]]}>
         {agents.length > 0 && <span className="ka-chip st-aktiv">{active} aktiv</span>}
       </PageHead>
+      {fehler && <div className="ka-err" role="alert"><Icon name="fehler" size={16} /> {fehler}</div>}
+      {ok && <p className="ok" role="status">{ok}</p>}
       {error && <div className="ka-err" role="alert"><Icon name="fehler" size={16} /> Nicht lesbar: {error.slice(0, 160)}</div>}
 
       <div className="ka-grid">

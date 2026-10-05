@@ -76,7 +76,8 @@ test("Handy-Regeln der Zentrale: keine Schrift unter 12 px, Ziele ≥ 44 px", ()
   for (const m of handy.matchAll(/font(?:-size)?:[^;}]*?(\d+(?:\.\d+)?)px/g)) assert.ok(Number(m[1]) >= 12, `Schrift ${m[1]} px`);
   for (const m of ZENTRALE.matchAll(/font-size:(\d+)px/g)) assert.ok(Number(m[1]) >= 12, `Schrift ${m[1]} px`);
   assert.match(ZENTRALE, /\.jz-zaehl a,\.jz-zaehl button\{[^}]*min-height:44px/);
-  assert.match(ZENTRALE, /\.jz-lampen a\{[^}]*width:44px;height:44px/);
+  const lampe = ZENTRALE.match(/\.jz-lampen a\{[^}]*width:(\d+)px;min-height:(\d+)px/);
+  assert.ok(lampe && Number(lampe[1]) >= 44 && Number(lampe[2]) >= 44, "Lämpchen kleiner als 44 px");
 });
 
 test("Raster 12 Spalten: Karte 9, Leitplanken 3; Handy eine Spalte", () => {

@@ -25,6 +25,8 @@ export type Schnell = {
     sample_targets?: Record<string, number>; slot_autopilot?: { on?: boolean } };
   brain_enabled: boolean | null;
   plan_log: PlanLogRow[];
+  /** Letztes eigenes Signal des Quellen-Scouts (Entscheidung/Auftrag/Start mit „Scout“); null = keine Messung. */
+  scout_last?: string | null;
   msg: { sent_60m: number; sent_24h: number; sent_heute: number; last_sent_at: string | null; blocked_60m: number; freigegeben?: number };
   ev24: Record<string, number>;
   replies: { offen: number; heiss: number };

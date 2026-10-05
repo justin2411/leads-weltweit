@@ -35,7 +35,7 @@ export function ZielRinge({ ziele }: { ziele: ZielBild[] }) {
           <span style={{ minWidth: 0 }}>
             <b className="z">{z.ist} <small>/ {z.soll}</small></b>
             <span>{z.titel}</span>
-            {z.unbestaetigt && <em>Ziel unbestätigt</em>}
+            {z.unbestaetigt && <em>unbestätigt</em>}
             {z.spark && <Spark v={z.spark} />}
           </span>
         </Link>

@@ -5,7 +5,7 @@
  */
 import { AGENTEN, BEREICHE, WERKE, aeste, bahn, bereichVon, werkeVonBereich, type Werk } from "./firma-karte.ts";
 import {
-  BEAT_NAME, ampelLuecke, freigabeTon, kurz, lernPhase, lernSegmente, notbremseAnzeige, plaetzeDiff, pulsStatus, speicherTon, staus, uhr,
+  BEAT_NAME, ampelLuecke, cronBerlin, freigabeTon, kurz, lernPhase, lernSegmente, notbremseAnzeige, plaetzeDiff, pulsStatus, speicherTon, staus, taktAnzeige, uhr,
   veraltet, zahl, zielRing, type LernPhase, type Puls, type Ton,
 } from "./zentrale-logik.ts";
 import { agentStartLabel } from "./agents.ts";
@@ -26,7 +26,9 @@ export type WerkBild = {
 export type KanteBild = { id: string; von: string; an: string; proStunde: number; was: string; stau: boolean };
 export type BereichBild = { slug: string; name: string; icon: string; gold: boolean; ton: Ton; rang: number | null; titel: string; grund: string;
   ist: number | null; soll: number | null; luecke: number | null; agenten: { id: string; name: string; laeuft: boolean }[]; laeuft: number; offen: number };
-export type PlankeBild = { id: string; name: string; ton: Ton; wort: string; zahl: string; unter: string; greift: boolean; regel: string; tip: string };
+export type PlankeBild = { id: string; name: string; ton: Ton; wort: string; zahl: string; unter: string; greift: boolean; regel: string; tip: string;
+  /** eigene Farbe der Zahl (Notbremse: Bounce-Quote gelb ab 4 %, rot ab 5 % bei ≥ 100 Mails); fehlt = wie die Karte */
+  zahlTon?: Ton };
 export type GehirnBild = { wort: "ARBEITET" | "WARTET" | "BEREIT" | "AUS"; takt: number | null; score: string; runde: string; still: string | null };
 export type ZielBild = { key: string; titel: string; ist: string; soll: string; anteil: number; unbestaetigt: boolean; leer: boolean; gold: boolean; spark: number[] | null };
 
@@ -34,7 +36,7 @@ const n = (x: unknown) => (typeof x === "number" && Number.isFinite(x) ? x : Num
 const runs = (l: Langsam | null, w: string) => l?.runs?.[w];
 
 /** Werk-Name im Herzschlag/Lauf (werk_heartbeat, run_stats). */
-const RUN_NAME: Record<string, string> = { lead: "lead-werk", pruefer: "pruefer-werk", proben: "proben-vorrat", kunden: "kunden-werk", stichprobe: "stichprobe" };
+const RUN_NAME: Record<string, string> = { lead: "lead-werk", pruefer: "pruefer-werk", proben: "proben-vorrat", kunden: "kunden-werk", stichprobe: "stichprobe", kontakt: "kontakt-werk" };
 
 export function nowMs(s: Schnell | null, abruf: string): number {
   const t = Date.parse(s?.now ?? abruf);
@@ -67,7 +69,8 @@ export function werkeBild(s: Schnell | null, l: Langsam | null, now: number): Re
     const r = runs(l, RUN_NAME[w.id] ?? "");
     switch (w.id) {
       case "lead": z = r ? zahl(r.green_24h) : "–"; unter = "grün 24 h"; break;
-      case "kunden": z = r ? zahl(r.green_24h) : "–"; unter = "ok 24 h"; break;
+      case "kunden": z = r ? zahl(r.green_24h) : "–"; unter = "mail-fähig 24 h"; break;
+      case "kontakt": z = r ? zahl(r.green_24h) : "–"; unter = "bestätigt 24 h"; break;
       case "pruefer": { const p = runs(l, "pruefer-werk"); z = p ? zahl(p.processed_24h) : "–"; unter = "geprüft 24 h"; break; }
       case "stichprobe": { const a = runs(l, "stichprobe"), b = runs(l, "dauerpruefung"); z = a || b ? zahl(n(a?.processed_24h) + n(b?.processed_24h)) : "–"; unter = "Stichprobe 24 h"; break; }
       case "proben": {
@@ -79,7 +82,7 @@ export function werkeBild(s: Schnell | null, l: Langsam | null, now: number): Re
       }
       case "versand": z = s ? `${zahl(s.msg.sent_heute)}${l?.kap ? `/${zahl(l.kap)}` : ""}` : "–"; unter = "heute / Tagesziel"; break;
       case "antworten": z = s ? zahl(s.replies.offen) : "–"; unter = "offen"; break;
-      case "lieferung": z = "Mo 06:53"; unter = "nächste"; break;
+      case "lieferung": z = (w.cron_utc?.[0] && cronBerlin(w.cron_utc[0], now)) || "–"; unter = "nächste"; break;
       case "umsatz": z = l?.mrr === null || l?.mrr === undefined ? "–" : zahl(l.mrr); unter = "MRR · Soll 1.290"; break;
       case "wachhund": z = l?.stand ? uhr(l.stand, now) : "–"; unter = "alle 15 min"; break;
       case "radar": case "premium": z = ""; unter = w.id === "radar" ? "Linie im Lead-Werk" : "Schritt im Proben-Vorrat"; break;
@@ -99,14 +102,15 @@ export function werkeBild(s: Schnell | null, l: Langsam | null, now: number): Re
     out[w.id] = {
       id: w.id, name: w.name, puls, zahl: z, unter, gold: !!w.gold, grau: fehlt || puls === "grau", status: w.status, plaetze,
       station: w.station ?? null, fehlt, auftrag: w.auftrag, agenten: (am[w.id] ?? []).sort((a, b) => a - b),
-      tip: fehlt ? `${w.name}: noch nicht gebaut · ${w.auftrag ?? ""}` : `${w.name} · ${w.takt ?? ""}${puls === "live~" ? " · Puls aus Ersatzquelle (~)" : ""}`,
+      tip: fehlt ? `${w.name}: noch nicht gebaut · ${w.auftrag ?? ""}` : `${w.name} · ${taktAnzeige(w, now)}${puls === "live~" ? " · Puls aus Ersatzquelle (~)" : ""}`,
     };
   }
   return out;
 }
 
 export function kantenBild(s: Schnell | null, l: Langsam | null): KanteBild[] {
-  const g60 = (w: string) => n(runs(l, w)?.green_60m) || n(s?.beats.find((b) => b.werk === w)?.green_60m);
+  // Kunden-Werk: nur die gefilterten Läufe (S2 × US/UK/FR, mail-fähig) – der Herzschlag zählt alle Länder und fällt daher weg
+  const g60 = (w: string) => n(runs(l, w)?.green_60m) || (w === "kunden-werk" ? 0 : n(s?.beats.find((b) => b.werk === w)?.green_60m));
   const k: KanteBild[] = [
     { id: "lead-pruefer", von: "lead", an: "pruefer", proStunde: g60("lead-werk"), was: "neue Leads", stau: false },
     { id: "pruefer-proben", von: "pruefer", an: "proben", proStunde: g60("pruefer-werk"), was: "freigegebene Leads", stau: false },
@@ -184,6 +188,11 @@ export function bereicheBild(s: Schnell | null): BereichBild[] {
   });
 }
 
+/** Länder der Leitplanke „Kaltmail-Recht“ aus der Länderliste (countries.yaml): frei nur bei allowed: true. */
+export function rechtLaender(countries: Record<string, { allowed?: unknown } | undefined>): { c: string; allowed: boolean }[] {
+  return Object.entries(countries).map(([c, v]) => ({ c, allowed: v?.allowed === true }));
+}
+
 export function leitplankenBild(s: Schnell | null, l: Langsam | null, recht: { c: string; allowed: boolean }[]): PlankeBild[] {
   const fehler = s?.gaps.find((g) => g.ziel_key === "lead_fehler")?.ist ?? null;
   const fTon = freigabeTon(fehler === null ? null : n(fehler));
@@ -191,17 +200,19 @@ export function leitplankenBild(s: Schnell | null, l: Langsam | null, recht: { c
   const gb = l?.storage?.db_bytes ? n(l.storage.db_bytes) / GB : null;
   const sTon = speicherTon(gb);
   const offen = recht.filter((r) => r.allowed).map((r) => r.c);
+  const zu = recht.filter((r) => !r.allowed).map((r) => r.c);
   return [
     { id: "freigabe", name: "Freigabe", ton: fTon, wort: fTon === "grau" ? "keine Daten" : "an", zahl: fehler === null ? "–" : `${n(fehler).toLocaleString("de-DE", { maximumFractionDigits: 2 })} %`,
       unter: "Fehler · Soll ≤ 2 %", greift: false, regel: "Jeder Lead besteht 3 Stufen vor Probe und Lieferung – nie abschaltbar.", tip: "Stichprobe: gelb über 2 %, rot über 5 %" },
-    { id: "notbremse", name: "Notbremse", ton: nb.statusTon, wort: nb.status, zahl: nb.zahl, unter: "Bounce 24 h", greift: nb.greift,
+    { id: "notbremse", name: "Notbremse", ton: nb.statusTon, wort: nb.status, zahl: nb.zahl, zahlTon: nb.zahlTon, unter: "Bounce 24 h", greift: nb.greift,
       regel: "Stoppt den Versand bei Spam-Beschwerde oder über 5 % Bounces (ab 100 Mails). Neustart nur mit dir.",
       tip: `Status = Bewertung wie deliverability · Zahl: gelb ab 4 %, rot ab 5 % bei ≥ 100 Mails${nb.zahlTon !== "grau" ? "" : " (noch zu wenig Mails)"}`, },
     { id: "sperrliste", name: "Sperrliste", ton: n(s?.ev24.complained) ? "rot" : l ? "gruen" : "grau", wort: "an", zahl: l ? zahl(l.sperre.gesamt) : "–",
       unter: `+${zahl(n(l?.sperre.neu_24h))} / 24 h · Spam ${zahl(n(s?.ev24.complained))}`, greift: false,
       regel: "Abmeldung, Bounce und Beschwerde sperren für immer. Nie aufhebbar.", tip: "nur Anzeige" },
     { id: "recht", name: "Kaltmail-Recht", ton: "gruen", wort: offen.join(" ") || "–", zahl: `${offen.length}`, unter: "Länder frei",
-      greift: false, regel: "Kaltmails nur in erlaubte Länder (countries.yaml); IE, BE, NL nie.", tip: recht.map((r) => `${r.c} ${r.allowed ? "frei" : "gesperrt"}`).join(" · ") },
+      greift: false, regel: "Kaltmails nur in erlaubte Länder (countries.yaml); IE, BE, NL nie.",
+      tip: `frei: ${offen.join(" ") || "–"} · nie: ${zu.length > 6 ? `${zu.slice(0, 6).join(" ")} … (${zu.length})` : zu.join(" ") || "–"}` },
     { id: "speicher", name: "Speicher", ton: sTon, wort: sTon === "rot" ? "Stopp" : sTon === "gelb" ? "Bremse" : sTon === "grau" ? "keine Daten" : "ok",
       zahl: gb === null ? "–" : `${gb.toLocaleString("de-DE", { maximumFractionDigits: 1 })} GB`, unter: "Bremse 6 · Stopp 7,5", greift: sTon === "rot",
       regel: "Ab 6 GB bremst das Lead-Werk, ab 7,5 GB stoppt es. Aufräumen entscheidest du.", tip: "Supabase Pro: 8 GB inklusive" },
