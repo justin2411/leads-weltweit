@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   ALL, DB_LIMIT_BYTES, baukastenHref, big, buyerTanks, checkRows, dbFill, fmtBytes, layerOf, layerShares, leadTanks,
-  logHeight, probenSummary, scaleTop, ticks, type StorageData,
+  logHeight, probenSummary, scaleTop, ticks, type StorageData, dbRing, premiumFree, premiumProben, premiumTanks,
 } from "./storage.ts";
 
 // Erfundene Zählungen – keine echten Lead-Daten im Repo.
@@ -147,4 +147,72 @@ test("Proben, Freigabe, Datenbank", () => {
   assert.equal(big(9_999), "9.999");
   assert.equal(baukastenHref("US", "S2"), "/dashboard/baukasten?land=US&seg=S2");
   assert.equal(baukastenHref("UK", ALL, "kaeufer"), "/dashboard/baukasten?land=UK&quelle=kaeufer");
+});
+
+// --------------------------------------------------------------------------------------------- Premium (05.10.2026)
+
+const P: StorageData = {
+  ...D,
+  premium: [
+    { segment: "S2", country: "US", status: "new", n: 120, firms: 110 },     // frei = Firmen (wie premium_status)
+    { segment: "S2", country: "US", status: "reserved", n: 30, firms: 30 },
+    { segment: "S2", country: "US", status: "delivered", n: 4, firms: 4 },
+    { segment: "S2", country: "US", status: "sample", n: 6, firms: 6 },
+    { segment: "S2", country: "US", status: "held", n: 2, firms: 2 },
+    { segment: "S4", country: "US", status: "new", n: 9, firms: 9 },         // andere Zielgruppe -> zusammengefasst
+    { segment: "S4", country: "UK", status: "reserved", n: 5, firms: 5 },    // andere, nicht frei -> zählt nicht
+    { segment: "S2", country: "SE", status: "new", n: 12 },                  // weiteres Land mit Bestand, ohne firms
+    { segment: "S2", country: "NL", status: "new", n: 50, firms: 50 },       // ausgeblendetes Land
+  ],
+  stock_premium: [
+    { segment: "S2", country: "US", ready: 50, premium: 25 },
+    { segment: "S2", country: "UK", ready: 30, premium: 31 },                // premium > ready wird gekappt
+    { segment: "S4", country: "US", ready: 3, premium: 1 },
+  ],
+};
+
+test("premiumTanks: S2-Fokus, frei = Firmen, andere Zielgruppen zusammengefasst, Proben davon Premium", () => {
+  const t = premiumTanks(P, "S2");
+  assert.deepEqual(t.map((x) => x.country), ["US", "UK", "FR", "SE"]);
+  const us = t[0];
+  assert.equal(us.frei, 110);
+  assert.equal(us.proben, 30);
+  assert.equal(us.geliefert, 10);
+  assert.equal(us.zurueck, 2);
+  assert.equal(us.andere, 9);
+  assert.deepEqual([us.probenFertig, us.probenPremium], [50, 25]);
+  assert.deepEqual([t[1].probenFertig, t[1].probenPremium, t[1].frei, t[1].andere], [30, 30, 0, 0]);
+  assert.equal(t[3].frei, 12);
+});
+
+test("premiumTanks: alle Zielgruppen ohne „andere“; ohne Feld (alter Stand) leer statt Fehler", () => {
+  const t = premiumTanks(P, ALL);
+  assert.equal(t[0].frei, 119);
+  assert.equal(t[0].andere, 0);
+  assert.equal(t[0].probenFertig, 53);
+  const old = premiumTanks(D, "S2");
+  assert.deepEqual(old.map((x) => [x.country, x.frei]), [["US", 0], ["UK", 0], ["FR", 0]]);
+});
+
+test("premiumFree zählt Leads mit Status new (Schicht im Tank), premiumProben je Seite", () => {
+  assert.equal(premiumFree(P, "S2", "US"), 120);
+  assert.equal(premiumFree(P, ALL, "US"), 129);
+  assert.equal(premiumProben(P, "S2/US"), 25);
+  assert.equal(premiumProben(P, "S2/UK"), 30);
+  assert.equal(premiumProben(P, "S2/FR"), 0);
+  assert.equal(premiumProben(D, "S2/US"), null);
+});
+
+test("dbRing: Marken 6 / 7,5 / 8 GB, Stufen grün/gelb/rot", () => {
+  const g = 1024 ** 3;
+  const r = dbRing(4 * g);
+  assert.equal(r.pct, 0.5);
+  assert.equal(r.level, "gruen");
+  assert.deepEqual(r.marks.map((m) => m.at), [0.75, 0.9375, 1]);
+  assert.equal(r.toBrake, 2 * g);
+  assert.equal(dbRing(6 * g).level, "gelb");
+  assert.equal(dbRing(7.5 * g).level, "rot");
+  assert.equal(dbRing(9 * g).pct, 1);
+  assert.equal(dbRing(9 * g).toBrake, 0);
+  assert.equal(DB_LIMIT_BYTES, 8 * g);
 });

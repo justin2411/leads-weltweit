@@ -17,6 +17,11 @@ export type StorageData = {
   buyers: { segment: string | null; country: string | null; check_status: string | null; n: number; sent: number; used?: number }[];
   stock: { segment: string | null; country: string | null; status: string; n: number }[];
   checks: { segment?: string | null; country: string | null; released: number; failed: number }[];
+  /** Premium-Leads je Zielgruppe × Land × Status (seit 20261005170000; ältere Stände ohne Feld) – Kriterium wie
+   *  signalwerk.premium_status() / scripts/lib/premium.py: premium_score ≥ 70, Stufe premium, Ereignis ≤ 14 Tage. */
+  premium?: { segment: string | null; country: string | null; status: string; n: number; firms?: number }[];
+  /** fertige Proben (ready, nicht abgelaufen) je Zielgruppe × Land, davon reine Premium-Proben (premium_n = 10) */
+  stock_premium?: { segment: string | null; country: string | null; ready: number; premium: number }[];
 };
 export type SegmentInfo = { id: string; email_countries: string[] | null };
 
@@ -104,6 +109,96 @@ export function leadTanks(d: StorageData, seg: string): LeadTank[] {
   const fixed = LEAD_COUNTRIES as readonly string[];
   return [...by.values()].filter((t) => fixed.includes(t.country) || t.total > 0)
     .sort((a, b) => (fixed.includes(a.country) ? fixed.indexOf(a.country) : 99) - (fixed.includes(b.country) ? fixed.indexOf(b.country) : 99) || b.total - a.total);
+}
+
+// --------------------------------------------------------------------------------------------- Premium
+/** Fokus-Zielgruppe der Premium-Ansicht (Inhaber 04.10.2026: Tests nur Webagenturen) – andere werden zusammengefasst. */
+export const PREMIUM_FOCUS = "S2";
+export const PREMIUM_COUNTRIES = ["US", "UK", "FR"] as const;
+
+export type PremiumTank = {
+  country: string;
+  /** frei = Firmen mit Status new (wie premium_status.premium_frei) */
+  frei: number; proben: number; geliefert: number; zurueck: number; abgelaufen: number;
+  /** freie Premium-Firmen in anderen Zielgruppen (nur bei Fokus S2, sonst 0) */
+  andere: number;
+  /** fertige Proben gesamt / davon reine Premium-Proben (10 von 10) */
+  probenFertig: number; probenPremium: number;
+};
+
+/**
+ * Premium je Land: Zielgruppe `seg` (Standard S2) oder alle. frei = verschiedene Firmen (count distinct wie
+ * premium_status), übrige Schichten = Leads. Länder: US/UK/FR immer, weitere nur mit Bestand; ausgeblendete Länder nie.
+ */
+export function premiumTanks(d: StorageData, seg: string): PremiumTank[] {
+  const by = new Map<string, PremiumTank>();
+  const tank = (c: string) => {
+    if (!by.has(c)) by.set(c, { country: c, frei: 0, proben: 0, geliefert: 0, zurueck: 0, abgelaufen: 0, andere: 0, probenFertig: 0, probenPremium: 0 });
+    return by.get(c)!;
+  };
+  for (const c of PREMIUM_COUNTRIES) tank(c);
+  for (const r of d.premium ?? []) {
+    if (!r.country || hidden(r.country)) continue;
+    const mine = seg === ALL || r.segment === seg;
+    if (!mine) {
+      if (r.status === "new") tank(r.country).andere += num(r.firms ?? r.n);
+      continue;
+    }
+    const t = tank(r.country);
+    const k = layerOf(r.status);
+    if (k === "frei") t.frei += num(r.firms ?? r.n);
+    else if (k === "proben") t.proben += num(r.n);
+    else if (k === "geliefert") t.geliefert += num(r.n);
+    else if (k === "zurueck") t.zurueck += num(r.n);
+    else if (k === "abgelaufen") t.abgelaufen += num(r.n);
+  }
+  for (const r of d.stock_premium ?? []) {
+    if (!r.country || hidden(r.country) || (seg !== ALL && r.segment !== seg)) continue;
+    const t = tank(r.country);
+    t.probenFertig += num(r.ready);
+    t.probenPremium += Math.min(num(r.premium), num(r.ready));
+  }
+  const fixed = PREMIUM_COUNTRIES as readonly string[];
+  const has = (t: PremiumTank) => t.frei + t.proben + t.geliefert + t.zurueck + t.abgelaufen + t.andere + t.probenFertig > 0;
+  return [...by.values()].filter((t) => fixed.includes(t.country) || has(t))
+    .sort((a, b) => (fixed.includes(a.country) ? fixed.indexOf(a.country) : 99) - (fixed.includes(b.country) ? fixed.indexOf(b.country) : 99) || b.frei - a.frei);
+}
+
+/** Premium-Anteil der freien Leads eines Lead-Tanks (für die goldene Schicht): höchstens die freien Leads selbst. */
+export function premiumFree(d: StorageData, seg: string, country: string): number {
+  let n = 0;
+  for (const r of d.premium ?? []) {
+    if (r.country !== country || r.status !== "new" || (seg !== ALL && r.segment !== seg)) continue;
+    n += num(r.n);
+  }
+  return n;
+}
+
+/** Proben-Vorrat einer Seite „S2/US“: davon reine Premium-Proben (aus stock_premium). */
+export function premiumProben(d: Pick<StorageData, "stock_premium">, key: string): number | null {
+  if (!d.stock_premium) return null;
+  const [s, c] = key.split("/");
+  return d.stock_premium.filter((r) => r.segment === s && r.country === c).reduce((a, r) => a + Math.min(num(r.premium), num(r.ready)), 0);
+}
+
+// --------------------------------------------------------------------------------------------- DB-Ring
+export const DB_MARKS = [
+  { gb: 6, label: "Bremse" },
+  { gb: 7.5, label: "Stopp" },
+  { gb: 8, label: "Grenze" },
+] as const;
+
+/** Ring 0…1 gegen 8 GB mit Marken; Stufe: unter 6 GB grün, ab 6 GB gelb (Bremse), ab 7,5 GB rot (Stopp). */
+export function dbRing(usedBytes: number, limit = DB_LIMIT_BYTES) {
+  const used = Math.max(0, num(usedBytes));
+  const gb = used / 1024 ** 3;
+  return {
+    pct: Math.min(1, used / limit),
+    gb,
+    level: (gb >= 7.5 ? "rot" : gb >= 6 ? "gelb" : "gruen") as "rot" | "gelb" | "gruen",
+    marks: DB_MARKS.map((m) => ({ ...m, at: Math.min(1, (m.gb * 1024 ** 3) / limit) })),
+    toBrake: Math.max(0, 6 * 1024 ** 3 - used),
+  };
 }
 
 // --------------------------------------------------------------------------------------------- Käufer
