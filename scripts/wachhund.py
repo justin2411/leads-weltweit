@@ -65,6 +65,14 @@ JOBS = [
     {"wf": "website-check.yml", "kind": "daily", "at": "04:23", "grace": 90},
     {"wf": "kundenlieferung.yml", "kind": "daily", "at": "04:53", "grace": 60, "weekdays": [0], "until": "12:00"},
     {"wf": "anreichern.yml", "kind": "daily", "at": "08:41", "grace": 60, "cond": "lead_suche"},
+    # Tagesjobs ohne Nachstart (Gehirn 05.10.2026: GitHub startete Zeitplan-Läufe Stunden zu spät oder gar nicht –
+    # kpi-tag kam 02:12/03:18 statt 23:50 und schrieb nichts; premium-s5 lief nie per Zeitplan). KPI-Abschluss in
+    # deutscher Zeit (23:20, nachstarten ab 23:40, abschluss=true = gleiche Regel wie der Zeitplan).
+    {"wf": "kpi-tag.yml", "kind": "daily", "at": "23:20", "tz": "Europe/Berlin", "grace": 20,
+     "inputs": {"abschluss": "true"}},
+    {"wf": "aufraeumen.yml", "kind": "daily", "at": "02:41", "grace": 120},
+    {"wf": "premium-s5.yml", "kind": "daily", "at": "04:41", "grace": 90},
+    {"wf": "zustellbarkeit.yml", "kind": "daily", "at": "04:10", "grace": 90},
     # Werke (24/7): GitHub ließ am 01.10.2026 die ersten geplanten Kunden-Werk-Läufe aus. Inhaber 01.10.2026: „Er soll
     # schon eher wieder starten damit es immer zuverlässig durchläuft“ -> Dauerbetrieb: ist kein Lauf aktiv, startet
     # der nächste sofort (Wachhund prüft alle 15 min); min_gap verhindert Dauerschleifen bei sofortigem Absturz.
