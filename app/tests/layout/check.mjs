@@ -16,7 +16,7 @@ import { execSync } from "node:child_process";
 export const WIDTHS = [1440, 1180, 760, 721, 390];
 export const PAGES = [
   "/dashboard/jarvis", "/dashboard/jarvis?s=versand", "/dashboard/jarvis?s=versand&t=set", "/dashboard/jarvis?teil=mehr", "/dashboard", "/dashboard/gehirn", "/dashboard/website", "/dashboard/website/auswertung", "/dashboard/baukasten",
-  "/dashboard/regler", "/dashboard/speicher", "/dashboard/antworten", "/dashboard/versand", "/dashboard/kunden", "/dashboard/kunden-agenten",
+  "/dashboard/regler", "/dashboard/speicher", "/dashboard/antworten", "/dashboard/versand", "/dashboard/versand?entw=andere", "/dashboard/kunden", "/dashboard/kunden-agenten",
   "/dashboard/bestand", "/dashboard/proben", "/dashboard/hilfe", "/dashboard/kontakte",
   "/dashboard/finanzen", "/dashboard/vertrieb", "/dashboard/ziele",
   "/dashboard/recht", "/dashboard/betrieb", "/dashboard/protokoll", "/dashboard/firma",
