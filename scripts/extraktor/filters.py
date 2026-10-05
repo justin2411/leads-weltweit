@@ -168,7 +168,7 @@ class Guard:
     def problem(self, c: dict) -> str | None:
         if self.db is None:
             return None
-        if (c["source"], c["source_id"]) in self.known:
+        if (c["source"], c["source_id"]) in self.known and not c.get("zweitlead"):
             return "already_in_database"
         if c.get("email") and self.db.rpc("is_suppressed", {"p_email": c["email"]}):
             return "suppressed"

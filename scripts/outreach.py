@@ -948,7 +948,9 @@ def cmd_test(args) -> int:
                "S12": ("Harbor Lane Marketing LLC", "marketing agency", "Austin, TX"),
                # Buchhaltung (Branchen-Test 05.10.2026): erfundene, neutrale Beispiel-Kanzlei, je Land passende Rechtsform
                "S5": ("Brightledger Accounting " + ("LLC" if args.country == "US" else "Ltd"),
-                      "accountant", "")}
+                      "accountant", ""),
+               # Gewerbeversicherung (Startpaket S4/US 05.10.2026): erfundene, klar als Test markierte Käufer-Firma
+               "S4": ("Harbor Point Insurance Agency LLC", "insurance agency", "")}
     name, spec, region = example[args.segment]
     if getattr(args, "art", "kaltmail") == "probe":
         return _test_sample(args, region)
@@ -1124,7 +1126,7 @@ def main(argv=None) -> int:
 
     t = sub.add_parser("test", help="Testmail an den Inhaber (nicht an Käufer)")
     t.add_argument("--to", required=True)
-    t.add_argument("--segment", default="S1", choices=["S1", "S2", "S5", "S9", "S12"])
+    t.add_argument("--segment", default="S1", choices=["S1", "S2", "S4", "S5", "S9", "S12"])
     t.add_argument("--country", default="UK")
     t.add_argument("--art", default="kaltmail", choices=["kaltmail", "probe", "nachfass", "probe-nachfass"],
                    help="kaltmail = Erstkontakt, probe = Mail mit den 10 Probe-Leads, nachfass = 4 Tage ohne Antwort, "

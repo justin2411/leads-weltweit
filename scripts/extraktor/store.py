@@ -162,6 +162,73 @@ def _store_block(db, block: list[dict], today: str, once=None) -> int:
     return _store_block(db, block[:half], today, once) + _store_block(db, block[half:], today, once)
 
 
+def lead_row(cid: str, r: dict, obs_id: str | None) -> dict:
+    """Zeile für signalwerk.leads aus einer grünen Extraktor-Zeile (CSV-Format)."""
+    return {"company_id": cid, "segment_id": r["segment"], "country": r["country"],
+            "signal_type": signal_type(r["segment"], r["source"], r.get("signal_type") or ""), "event_summary": r["signal"],
+            "event_date": r["signal_date"], "source_name": SOURCE_NAME.get(r["source"], r["source"]),
+            "source_url": r["source_url"], "source_date": r["signal_date"], "urgency": r["urgency"],
+            "urgency_reason": r["urgency_reason"], "opener": r["opener"],
+            "observation_ids": [obs_id] if obs_id else [], "status": "new", **_premium(r)}
+
+
+def registered(db, rows: list[dict], chunk: int = 150) -> set[tuple[str, str]]:
+    """(Quelle, ID) der Zeilen, deren Firma schon in watch_companies steht (Index registry_source, registry_id)."""
+    out: set[tuple[str, str]] = set()
+    by_src: dict[str, list[str]] = {}
+    for r in rows:
+        by_src.setdefault(r["source"], []).append(str(r["source_id"]).replace('"', ""))
+    for src, ids in by_src.items():
+        ids = sorted(set(ids))
+        for i in range(0, len(ids), chunk):
+            listed = ",".join(f'"{x}"' for x in ids[i:i + chunk])
+            out.update((src, str(c["registry_id"])) for c in db.select(
+                "watch_companies", {"registry_source": f"eq.{src}", "registry_id": f"in.({listed})",
+                                    "select": "registry_id"}) or [])
+    return out
+
+
+def store_zweit(db, rows: list[dict], chunk: int = 100) -> dict:
+    """Zweit-Lead an einer schon gespeicherten Firma (--s4-zweitlead, S4/US 05.10.2026): dieselbe Firma, dasselbe
+    datierte Ereignis (Beleg = vorhandene Register-Beobachtung), aber eine andere Käufergruppe. Nur wenn die Firma
+    für dieses Segment noch keinen Lead hat; legt keine Firma und keine Beobachtung neu an, löscht nichts."""
+    out = {"zweitlead": 0, "zweit_schon_da": 0, "zweit_ohne_firma": 0}
+    for i in range(0, len(rows), chunk):
+        block = rows[i:i + chunk]
+        by_src: dict[str, list[dict]] = {}
+        for r in block:
+            by_src.setdefault(r["source"], []).append(r)
+        for src, part in by_src.items():
+            listed = ",".join(f'"{r["source_id"]}"' for r in part)
+            cos = db.select("watch_companies", {"registry_source": f"eq.{src}", "registry_id": f"in.({listed})",
+                                                "select": "id,registry_id"}) or []
+            cid = {str(c["registry_id"]): c["id"] for c in cos}
+            out["zweit_ohne_firma"] += sum(1 for r in part if str(r["source_id"]) not in cid)
+            part = [r for r in part if str(r["source_id"]) in cid]
+            if not part:
+                continue
+            ids = ",".join(sorted({cid[str(r["source_id"])] for r in part}))
+            segs = ",".join(sorted({r["segment"] for r in part}))
+            have = {(x["company_id"], x["segment_id"]) for x in db.select(
+                "leads", {"company_id": f"in.({ids})", "segment_id": f"in.({segs})", "select": "company_id,segment_id"}) or []}
+            obs = {}
+            for o in db.select("observations", {"company_id": f"in.({ids})", "kind": "eq.filing",
+                                                "select": "id,company_id"}) or []:
+                obs.setdefault(o["company_id"], o["id"])
+            new, seen = [], set()
+            for r in part:
+                c = cid[str(r["source_id"])]
+                if (c, r["segment"]) in have or (c, r["segment"]) in seen:
+                    out["zweit_schon_da"] += 1
+                    continue
+                seen.add((c, r["segment"]))
+                new.append(lead_row(c, r, obs.get(c)))
+            if new:
+                db.insert("leads", new)
+                out["zweitlead"] += len(new)
+    return out
+
+
 def _store_block_once(db, block: list[dict], today: str) -> int:
     part, ids = _insert_companies(db, block, company_row)
     if not ids:
@@ -186,13 +253,7 @@ def _store_block_once(db, block: list[dict], today: str) -> int:
             ]
         written = db.insert("observations", obs)
         ev = {o["company_id"]: o["id"] for o in written if o["kind"] == "filing"}
-        leads = [{"company_id": cid, "segment_id": r["segment"], "country": r["country"],
-                  "signal_type": signal_type(r["segment"], r["source"], r.get("signal_type") or ""), "event_summary": r["signal"],
-                  "event_date": r["signal_date"], "source_name": SOURCE_NAME.get(r["source"], r["source"]),
-                  "source_url": r["source_url"], "source_date": r["signal_date"], "urgency": r["urgency"],
-                  "urgency_reason": r["urgency_reason"], "opener": r["opener"],
-                  "observation_ids": [ev[cid]] if cid in ev else [], "status": "new", **_premium(r)}
-                 for cid, r in zip(ids, part)]
+        leads = [lead_row(cid, r, ev.get(cid)) for cid, r in zip(ids, part)]
         db.insert("leads", leads)
     except Exception:
         # Block unvollständig: angelegte Firmen wieder entfernen, damit keine Firma ohne Lead stehen bleibt
@@ -240,7 +301,8 @@ def _store_raw_once(db, block: list[dict], today: str) -> int:
     return len(db.insert("raw_candidates", rows, upsert_on="source,source_id", ignore_duplicates=True) or [])
 
 
-def store_new(db, guard, rows: list[dict], raw: bool = True, premium_only: bool = False) -> dict:
+def store_new(db, guard, rows: list[dict], raw: bool = True, premium_only: bool = False,
+              zweit: set[str] | frozenset[str] = frozenset()) -> dict:
     """Noch unbekannte Firmen (Quelle + ID) schreiben: grüne als Lead, gelbe/rote in den Rohbestand (kompakt).
     Je Firma ein Eintrag; grün geht vor (erste Branche gewinnt). raw=False: Speicher-Bremse ab 7 GB (--no-raw) oder
     Nur Premium – dann kein Rohbestand. premium_only (Inhaber 05.10.2026 „nur noch premium leads“): nur grüne Leads mit
@@ -249,9 +311,15 @@ def store_new(db, guard, rows: list[dict], raw: bool = True, premium_only: bool 
     rows = [{k: (v.isoformat() if isinstance(v, (dt.date, dt.datetime)) else v) for k, v in r.items()} for r in rows]
     order = {"green": 0, "yellow": 1, "red": 2}
     rows = sorted((r for r in rows if r.get("ampel") in order), key=lambda r: order[r["ampel"]])
-    new, raw_rows, seen = [], [], set()
+    new, raw_rows, seen, twice = [], [], set(), []
+    # Zweit-Leads: gespeicherte Firmen direkt im Register-Index nachschlagen (der Lauf schlägt sie vorab nicht nach,
+    # guard.known kennt sie dann nicht – Testlauf 05.10.2026: 274 grüne S4-Leads bekannter Firmen sonst verworfen)
+    reg = registered(db, [r for r in rows if r.get("segment") in zweit and r["ampel"] == "green"]) if zweit else set()
     for r in rows:
         k = (r["source"], r["source_id"])
+        if zweit and r.get("segment") in zweit and r["ampel"] == "green" and (k in reg or k in guard.known):
+            twice.append(r)  # Firma schon gespeichert (andere Branche): Zweit-Lead an der vorhandenen Firma
+            continue
         if k in guard.known or k in seen:
             continue
         if r["source"] in ("overture", "overture_web") and BRANDS.search(r["company"] or ""):
@@ -263,13 +331,18 @@ def store_new(db, guard, rows: list[dict], raw: bool = True, premium_only: bool 
         from lib import premium
         keep = [r for r in new if premium.is_premium(_premium(r))]
         dropped, new = len(new) - len(keep), keep
+        keep2 = [r for r in twice if premium.is_premium(_premium(r))]
+        dropped, twice = dropped + len(twice) - len(keep2), keep2
         seen -= {(r["source"], r["source_id"]) for r in raw_rows}
         raw = False
     n = store_many(db, new) if new else 0
     m = store_raw(db, raw_rows) if raw_rows and raw else 0
     guard.known.update(seen)
+    z = store_zweit(db, twice) if twice else None
     out = {"neu": n, "rohbestand": m, "schon_da": len({(r["source"], r["source_id"]) for r in rows}) - n - m - dropped
            - (len(raw_rows) if premium_only else 0)}
+    if z:
+        out.update(z)
     if premium_only:
         out["verworfen_standard"] = dropped
         out["verworfen_unvollstaendig"] = len(raw_rows)

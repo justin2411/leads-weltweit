@@ -421,10 +421,18 @@ def eu_pools(segs: list[str], cands: list[dict], country: str) -> dict[str, list
     return p
 
 
-def pools(segs: list[str], fm: list[dict], fd: list[dict], distinct: bool) -> dict[str, list[dict]]:
+def pools(segs: list[str], fm: list[dict], fd: list[dict], distinct: bool, s4_all: bool = False) -> dict[str, list[dict]]:
     """Kandidaten je Branche, vor der Anreicherung. FMCSA: eigene Domain -> S4, Freemail -> S2.
-    Form D: S1 (ab $1M) vor S5 (junge kleine Firmen) vor S9 (Geschäftsführung) – mit distinct jede Firma nur einmal."""
+    Form D: S1 (ab $1M) vor S5 (junge kleine Firmen) vor S9 (Geschäftsführung) – mit distinct jede Firma nur einmal.
+    s4_all (--s4-zweitlead, S4/US 05.10.2026): JEDER neue Carrier, der zu S4 passt, kommt zusätzlich in S4 – auch mit
+    Freemail-Adresse und auch, wenn er schon als S2/S5-Lead gespeichert ist (Gewerbeversicherung braucht jeder neue
+    Carrier, unabhängig von der Website; andere Käufergruppe, darum ein eigener Lead derselben Firma)."""
     p: dict[str, list[dict]] = defaultdict(list)
+    if s4_all and "S4" in segs:
+        # eigene E-Mail-Domain zuerst: S4 braucht eine geprüfte Website (qc REQUIRED), Freemail-Carrier haben selten eine
+        p["S4"] = sorted(({**c, "zweitlead": True} for c in fm if segments.fits("S4", c)[0]),
+                         key=lambda c: not (c.get("email") and not E.is_freemail(c["email"])))
+        segs = [s for s in segs if s != "S4"]
     for i, c in enumerate(fm):
         own = c.get("email") and not E.is_freemail(c["email"])
         if own:
@@ -701,6 +709,8 @@ def main(argv=None) -> int:
     ap.add_argument("--ico", type=int, default=None,
                     help="S2 UK: so viele neu beim ICO eingetragene Verantwortliche ohne Website (0 = aus; ohne Angabe "
                          "2000, wenn --charity läuft = Linie s2-ukfr)")
+    ap.add_argument("--s4-zweitlead", action="store_true",
+                    help="S4/US: jeder neue FMCSA-Carrier auch als S4-Lead (auch Freemail und schon als S2/S5 gespeicherte)")
     ap.add_argument("--store", action="store_true", help="grüne Leads direkt in die Datenbank schreiben (mit --db)")
     ap.add_argument("--no-raw", action="store_true",
                     help="Speicher-Bremse ab 7 GB (werk_plan.py): nur grüne Leads speichern, keinen Rohbestand")
@@ -782,7 +792,7 @@ def main(argv=None) -> int:
                   if us and args.fmcsa_days > 0 and any(s in segs for s in FMCSA_SEGMENTS) else ([], Counter()))
     fd = (load_formd(args.formd_days, args.formd_max_docs, stats)
           if us and args.formd_days > 0 and any(s in segs for s in FORM_D_SEGMENTS) else [])
-    p = pools(segs, fm, fd, distinct=not args.no_distinct) if us else {}
+    p = pools(segs, fm, fd, distinct=not args.no_distinct, s4_all=args.s4_zweitlead) if us else {}
     if us and args.ct_days:
         for k, v in ct_pools(segs, load_ct(args.ct_days, stats)).items():
             p.setdefault(k, [])
@@ -867,7 +877,9 @@ def main(argv=None) -> int:
         ic = load_ico(args.ico, stats, {i for s_, i in guard.known if s_ == "ico_register"})
         p["S2/UK"] = ic + p.get("S2/UK", [])
     if guard.known:
-        p = {k: [c for c in v if (c["source"], c["source_id"]) not in guard.known] for k, v in p.items()}
+        # --s4-zweitlead: bekannte Carrier bleiben im S4-Vorrat (eigener S4-Lead an der vorhandenen Firma)
+        p = {k: [c for c in v if c.get("zweitlead") or (c["source"], c["source_id"]) not in guard.known]
+             for k, v in p.items()}
     if args.shard:
         i, n = (int(x) for x in args.shard.split("/"))
         # fest nach Quell-ID verteilt: parallele Teile bekommen nie dieselbe Firma, auch wenn ihre Listen abweichen
@@ -880,7 +892,8 @@ def main(argv=None) -> int:
         # Website-Prüfung: kein Abgleich je Firma (Datenbank schonen) – das Gedächtnis des Teils verhindert doppelte
         # Prüfungen, der eindeutige Domain-Index beim Speichern doppelte Firmen
         web = website_check.SOURCE
-        p = {k: [c for c in v if c["source"] == web] + guard.drop_known([c for c in v if c["source"] != web])
+        p = {k: [c for c in v if c["source"] == web or c.get("zweitlead")]
+             + guard.drop_known([c for c in v if c["source"] != web and not c.get("zweitlead")])
              for k, v in p.items()}
         log(f"Datenbank-Abgleich: {before - sum(len(v) for v in p.values())} schon gespeichert, übersprungen")
     keys = [k for k in p if p[k]]
@@ -913,7 +926,7 @@ def main(argv=None) -> int:
         if args.store and guard.db is not None:
             from extraktor.store import store_new
             try:
-                log(f"{key}: Datenbank {store_new(guard.db, guard, [row(l) for l in part if l['ampel'] != 'skip'], raw=not args.no_raw and not only_prem, premium_only=only_prem and not args.radar_basis)}")
+                log(f"{key}: Datenbank {store_new(guard.db, guard, [row(l) for l in part if l['ampel'] != 'skip'], raw=not args.no_raw and not only_prem, premium_only=only_prem and not args.radar_basis, zweit={'S4'} if args.s4_zweitlead else set())}")
             except Exception as exc:  # noqa: BLE001 - eine Branche darf die übrigen nicht mitreißen
                 failed.append(key)
                 log(f"{key}: Speichern fehlgeschlagen ({type(exc).__name__}: {str(exc)[:200]}), weiter mit der nächsten")
