@@ -179,3 +179,21 @@ class Teile(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AnbieterTabelle(unittest.TestCase):
+    def test_je_land_und_anbieter(self):
+        mx = {"a.com": ["aspmx.l.google.com"], "b.com": ["mail.b.com"], "c.co.uk": ["x.mail.protection.outlook.com"]}.get
+        rows = [{"country": "US", "to_email": "hello@a.com", "hart": True},
+                {"country": "US", "to_email": "info@a.com", "hart": False},
+                {"country": "US", "to_email": "info@b.com", "hart": False},
+                {"country": "UK", "to_email": "info@c.co.uk", "hart": False}]
+        t = Z.anbieter_tabelle(rows, mx)
+        self.assertEqual(t[0], {"land": "UK", "anbieter": "m365", "gesendet": 1, "hart": 0, "quote_hart": 0.0})
+        us = {x["anbieter"]: x for x in t if x["land"] == "US"}
+        self.assertEqual((us["google"]["gesendet"], us["google"]["hart"]), (2, 1))
+        self.assertEqual(us["klein"]["gesendet"], 1)
+
+    def test_mx_unklar_zaehlt_als_klein(self):
+        t = Z.anbieter_tabelle([{"country": "FR", "to_email": "x@d.fr", "hart": False}], lambda d: None)
+        self.assertEqual(t[0]["anbieter"], "klein")

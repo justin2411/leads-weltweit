@@ -185,6 +185,39 @@ def klassen_stats(db, days: int = 7) -> dict:
     return r if isinstance(r, dict) else {}
 
 
+def anbieter_tabelle(rows: list[dict], mx) -> list[dict]:
+    """Harte Rückläufer je Land × Postfach-Anbieter des Empfängers (MX, lib/address_risk.provider; „klein“ = eigener
+    Server). rows: {country, to_email, hart}. Nur Messung (Gehirn 05.10.2026: US-Rückläufer einordnen), keine Regel."""
+    from lib.address_risk import provider
+    agg: dict[tuple[str, str], list[int]] = {}
+    for r in rows:
+        dom = (r.get("to_email") or "").rsplit("@", 1)[-1].strip().lower()
+        prov = provider(mx(dom)) or "klein"
+        a = agg.setdefault((r.get("country") or "?", prov), [0, 0])
+        a[0] += 1
+        a[1] += 1 if r.get("hart") else 0
+    out = [{"land": k[0], "anbieter": k[1], "gesendet": n, "hart": h, "quote_hart": round(h / n, 4)}
+           for k, (n, h) in agg.items()]
+    return sorted(out, key=lambda x: (x["land"], -x["gesendet"]))
+
+
+def anbieter_stats(db, days: int = 7, mx=None) -> list[dict]:
+    """Erstmails der letzten `days` Tage mit Land und harter Rückläufer-Klasse, ausgewertet je Land × Anbieter."""
+    if mx is None:
+        from lib.deliverability import mx_hosts as mx
+    msgs = db.select_all("messages", {"status": "eq.sent", "kind": "eq.initial", "sent_at": f"gte.{_since(days)}",
+                                      "select": "id,to_email,prospects(country)"})
+    hart = {e["message_id"] for e in db.select_all("email_events", {
+        "type": "eq.bounced", "bounce_class": "eq.hart", "occurred_at": f"gte.{_since(days)}",
+        "select": "message_id"}) if e.get("message_id")}
+    rows = []
+    for m in msgs:
+        pr = m.get("prospects")
+        pr = pr[0] if isinstance(pr, list) and pr else pr
+        rows.append({"country": (pr or {}).get("country"), "to_email": m.get("to_email"), "hart": m["id"] in hart})
+    return anbieter_tabelle(rows, mx)
+
+
 def schlechte_quellen(quellen: list[dict]) -> list[dict]:
     """Käufer-Quellen mit mehr als 5 % harten Bounces bei mindestens 20 Mails (7 Tage)."""
     out = []
@@ -387,6 +420,7 @@ def run(db, env=None, resolve=_resolve, rec=None, apply: bool = True, push=None)
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--anbieter", action="store_true", help="harte Rückläufer je Land × Empfänger-Anbieter (DNS, nur Anzeige)")
     ap.add_argument("--geplant", action="store_true", help="Cron-Lauf: nur ab 06:00 deutscher Zeit, einmal je Tag")
     args = ap.parse_args(argv)
     from lib.db import DB
@@ -398,6 +432,9 @@ def main(argv=None) -> int:
     print(kurz(row["status"], row["gruende"]))
     print(json.dumps({k: row[k] for k in ("bounces", "seeds", "luecke")}, ensure_ascii=False))
     print("Blocklisten: " + ", ".join(f"{k}={v['ergebnis']}" for k, v in row["blocklists"]["ergebnisse"].items()))
+    if args.anbieter:
+        for a in anbieter_stats(db):
+            print(f"  {a['land']} {a['anbieter']}: {a['hart']}/{a['gesendet']} hart ({a['quote_hart']:.1%})")
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
         with open(summary, "a", encoding="utf-8") as fh:
