@@ -9,9 +9,10 @@
  */
 
 export type FunnelStage = "start" | "landing" | "tarif" | "stripe" | "danke";
-export type FunnelPeriod = "24h" | "7d" | "30d";
+/** „heute“ = seit 00:00 Europe/Berlin (Inhaber 05.10.2026), „24h“ rollierend. */
+export type FunnelPeriod = "heute" | "24h" | "7d" | "30d";
 export const FUNNEL_PERIODS: { id: FunnelPeriod; label: string }[] = [
-  { id: "24h", label: "24 h" }, { id: "7d", label: "7 T" }, { id: "30d", label: "30 T" },
+  { id: "heute", label: "Heute" }, { id: "24h", label: "24 h" }, { id: "7d", label: "7 T" }, { id: "30d", label: "30 T" },
 ];
 export const FUNNEL_COUNTRIES = ["US", "UK", "FR"] as const;
 

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { fmtDwell, fmtRate, funnelBrief, funnelView, geoCountry, nextStage, stageWidths, startLive, type FunnelCache } from "./website-funnel.ts";
+import { FUNNEL_PERIODS, fmtDwell, fmtRate, funnelBrief, funnelView, geoCountry, nextStage, stageWidths, startLive, type FunnelCache } from "./website-funnel.ts";
 import { parseBeacon, refKey, webLine, EMPTY_WEBSITE } from "./website-stats.ts";
 
 const PV = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
@@ -128,4 +128,12 @@ test("Herkunft: nur Domain oder utm_source, eigene Domain zählt nicht", () => {
   assert.equal(refKey(null, "www.nextgen-profit.de", "nextgen-profit.de"), null);
   assert.equal(refKey(null, "", "nextgen-profit.de"), null);
   assert.ok((refKey("x".repeat(200), "", "a.de") ?? "").length <= 60);
+});
+
+test("Trichter-Zeitraum „Heute“: erster Chip, eigener Cache-Eimer, ohne Eimer ehrlich leer", () => {
+  assert.deepEqual(FUNNEL_PERIODS.map((x) => x.id), ["heute", "24h", "7d", "30d"]);
+  assert.equal(FUNNEL_PERIODS[0].label, "Heute");
+  const h = funnelView({ ...CACHE, p: { heute: CACHE.p!["7d"] } }, "heute", null);
+  assert.equal(h.total, funnelView(CACHE, "7d", null).total);
+  assert.equal(funnelView({ ...CACHE, p: { "7d": CACHE.p!["7d"] } }, "heute", null).total, 0);
 });

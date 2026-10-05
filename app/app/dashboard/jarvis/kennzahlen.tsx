@@ -2,7 +2,7 @@
 /**
  * JARVIS-Zentrale, Kennzahlen (Inhaber 05.10.2026: „alle benötigten KPIs sehen … Website-Daten wie bei Google Analytics
  * mit einem Trichter“ + Ziel 25.000 €/Monat). Drei Teile, alle live aus der Datenbank, wenig Text, große Grafik:
- *  - KPI-Leiste: zehn Kacheln (Mails … Werke belegt/40), Zeitraum wie der Trichter (7/30 T)
+ *  - KPI-Leiste: zehn Kacheln (Mails … Werke belegt/40), Zeitraum wie der Trichter (Heute/7/30 T)
  *  - Ziel-Ring 25.000 €/Monat (Gold = Geld): MRR, Lücke und Weg als Punkte – ein Punkt = ein Pro-Kunde (249)
  *  - Website-Trichter Besucher → Probe-Klick → Probe-Anfrage → Checkout → Kunde je Land, Quellen und Seiten
  * Bewegung nur mit Bedeutung: Balken und Ring füllen einmal (300 ms), Lichtpunkt-Tempo im Trichter = Durchsatz je Stunde;
@@ -12,7 +12,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "@/app/icons";
 import {
-  STUFEN, TRICHTER_LAENDER, kpiLeiste, stufenBreite, zielWeg, type Kpi, type LandWahl, type Tage, type TrichterPaket,
+  STUFEN, TRICHTER_LAENDER, TRICHTER_TAGE, tageLabel, stundenIm, kpiLeiste, stufenBreite, zielWeg, type Kpi, type LandWahl, type Tage, type TrichterPaket,
 } from "@/lib/jarvis-kpi";
 import { partikel } from "@/lib/zentrale-logik";
 import type { Extra } from "@/lib/zentrale-typen";
@@ -86,7 +86,7 @@ function WebTrichter({ paket, tage, setTage, land, setLand, laedt, bewegung, da 
       <h2><Icon name="website" size={16} />Website-Trichter
         <span className="r jz-wahl">
           <span className="grp" role="group" aria-label="Zeitraum">
-            {([7, 30] as Tage[]).map((d) => <button key={d} type="button" className={d === tage ? "on" : ""} aria-pressed={d === tage} onClick={() => setTage(d)}>{d} T</button>)}
+            {TRICHTER_TAGE.map((d) => <button key={d} type="button" className={d === tage ? "on" : ""} aria-pressed={d === tage} onClick={() => setTage(d)}>{tageLabel(d)}</button>)}
           </span>
           <span className="grp" role="group" aria-label="Land">
             {(["alle", ...TRICHTER_LAENDER] as LandWahl[]).map((l) => (
@@ -98,7 +98,7 @@ function WebTrichter({ paket, tage, setTage, land, setLand, laedt, bewegung, da 
       </h2>
       <ol className="stufen">
         {stufen.map((s, i) => {
-          const p = bewegung && s.n > 0 ? partikel(s.n / (tage * 24)) : null;
+          const p = bewegung && s.n > 0 ? partikel(s.n / stundenIm(tage)) : null;
           return (
             <li key={s.id} className={`tst${s.id === "kunde" ? " gold" : ""}`} title={s.tip}>
               <span className="nm">{s.label}</span>

@@ -74,7 +74,7 @@ export type Extra = {
   bewertet_24h: number;
   premium_24h: number;
   feedback: { n_7d: number; gut_7d?: number; schlecht_7d?: number; won_30d?: number; links_7d: number; letzte: string | null };
-  p: Partial<Record<"7" | "30", ExtraPeriode>>;
+  p: Partial<Record<"1" | "7" | "30", ExtraPeriode>>;
 };
 
 /** Notbremse genau wie deliverability.emergency_stop (App-Spiegel lib/dashboard-logic brake). */

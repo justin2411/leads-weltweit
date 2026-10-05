@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { PRO_PREIS, ZIEL_MRR, kpiLeiste, quotenTon, stufenBreite, trichterAus, trichterPaket, zielWeg } from "./jarvis-kpi.ts";
+import { PRO_PREIS, TRICHTER_TAGE, ZIEL_MRR, kaufSchluessel, kpiLeiste, stundenIm, tageAus, tageLabel, quotenTon, stufenBreite, trichterAus, trichterPaket, zielWeg } from "./jarvis-kpi.ts";
 import { pulsStatus } from "./zentrale-logik.ts";
 import { werkeBild } from "./zentrale-modell.ts";
 import type { WebsiteStats } from "./website-stats.ts";
@@ -145,4 +145,42 @@ test("Trichter-Endpunkt: Inhaber-Sitzung, nur lesen, kein Zwischenspeicher", () 
   const sql = readFileSync(new URL("../../supabase/migrations/20261005160000_signalwerk_jarvis_kpi.sql", import.meta.url), "utf8");
   assert.match(sql, /v := v \|\| jsonb_build_object\('extra', x\)/);
   assert.doesNotMatch(sql, /\bdrop\b|\bdelete\b|\btruncate\b/i);
+});
+
+test("Zeitraum „Heute“: erster Knopf, seit 00:00 Berlin, eigener Käufe- und KPI-Eimer", () => {
+  assert.deepEqual([...TRICHTER_TAGE], [1, 7, 30]);
+  assert.deepEqual(TRICHTER_TAGE.map(tageLabel), ["Heute", "7 T", "30 T"]);
+  assert.equal(tageAus("1"), 1);
+  assert.equal(tageAus("30"), 30);
+  assert.equal(tageAus("24"), 7);
+  assert.equal(tageAus(null), 7);
+  assert.deepEqual(TRICHTER_TAGE.map(kaufSchluessel), ["heute", "7d", "30d"]);
+  // 10:00 UTC = 12:00 MESZ → 12 Stunden seit Mitternacht Berlin; kurz nach Mitternacht mindestens 1
+  assert.equal(stundenIm(1, new Date(NOW)), 12);
+  assert.equal(stundenIm(1, new Date("2026-10-04T22:10:00Z")), 1);
+  assert.equal(stundenIm(7, new Date(NOW)), 168);
+  // website_stats(1): since = heute → nur die Zeilen von heute
+  const heute: WebsiteStats = { ...st, days: 1, since: "2026-10-05", rows: [
+    ...st.rows, { d: "2026-10-05", s: "fr/agences-web", m: "uv", k: "landing", n: 3 },
+  ] };
+  const h = trichterPaket(heute, { FR: 1 }, 1, heute.now);
+  assert.equal(h.tage, 1);
+  assert.deepEqual(h.je.alle.stufen.map((s) => s.n), [3, 0, 0, 0, 1]);
+  const ex = { ...extra, p: { ...extra.p, "1": { sent: 42, bounced: 0, complained: 0, antworten: 0, positiv: 0, proben: 0 } } } as Extra;
+  const k = Object.fromEntries(kpiLeiste({ tage: 1, extra: ex, mrr: 0, kunden: 0, bestanden: null, laufend: null, gesamt: 40 }).map((x) => [x.id, x]));
+  assert.equal(k.mails.wert, "42");
+  assert.equal(k.mails.unter, "gesendet heute");
+  assert.match(k.mails.tip, /gesendet heute/);
+  assert.equal(k.proben.unter, "angefragt heute");
+});
+
+test("Heute-Migration: nur create or replace, Filter bleiben, Heute = 00:00 Europe/Berlin", () => {
+  const sql = readFileSync(new URL("../../supabase/migrations/20261005220000_signalwerk_trichter_heute.sql", import.meta.url), "utf8");
+  assert.doesNotMatch(sql, /\bdrop\b|\bdelete\b|\btruncate\b|alter table/i);
+  assert.match(sql, /'heute', signalwerk\.web_funnel_calc\(lo0, hi\)/);
+  assert.match(sql, /lo0 timestamptz := today::timestamp at time zone 'Europe\/Berlin'/);
+  assert.match(sql, /'heute', coalesce\(jsonb_object_agg\(c, n0\)/);
+  assert.match(sql, /signalwerk\.page_events_echt pe/);
+  assert.match(sql, /not coalesce\(is_test, false\)/);
+  assert.match(sql, /select '1'::text as k, \(\(\(now\(\) at time zone 'Europe\/Berlin'\)::date\)::timestamp at time zone 'Europe\/Berlin'\)/);
 });
