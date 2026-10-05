@@ -17,6 +17,9 @@ import requests
 
 SCHEMA = "signalwerk"
 RETRY_STATUS = {429, 502, 503, 504}
+# Unter Last bricht Postgres eine Abfrage mit 500 + Code 57014 ab (statement timeout). Lesezugriffe dann wiederholen
+# (mails-senden 04.10.2026 23:27 UTC: drafts.py --refresh brach beim Blättern über messages so ab).
+STATEMENT_TIMEOUT = "57014"
 READ_ONLY_RPC = {"is_suppressed", "radar_candidates", "premium_status", "bounce_stats", "flow_lead_rows", "flow_buyer_rows", "pool_counts", "pruef_kpi"}
 RETRY_WAIT = (2, 5, 15)  # Sekunden; danach gibt der Aufruf den Fehler weiter
 
@@ -71,7 +74,8 @@ class DB:
                     raise
             else:
                 retry = RETRY_STATUS if safe else {429, 503}
-                if r.status_code not in retry or wait is None:
+                timed_out = safe and r.status_code == 500 and STATEMENT_TIMEOUT in (r.text or "")
+                if (r.status_code not in retry and not timed_out) or wait is None:
                     return r
             time.sleep(wait)
         raise AssertionError("unreachable")

@@ -46,5 +46,31 @@ class StableOrderTests(unittest.TestCase):
         self.assertNotIn("order", seen[1])  # ohne Sortierung bleibt es wie bisher
 
 
+class StatementTimeoutRetryTests(unittest.TestCase):
+    """mails-senden 04.10.2026 23:27 UTC: 500/57014 (statement timeout) beim Lesen beendete drafts.py --refresh."""
+
+    @staticmethod
+    def _resp(code, text):
+        return mock.Mock(status_code=code, text=text)
+
+    def test_read_retries_statement_timeout(self):
+        d = dbmod.DB(url="https://x.supabase.co", key="k")
+        bad = self._resp(500, '{"code":"57014","message":"canceling statement due to statement timeout"}')
+        ok = self._resp(200, "[]")
+        with mock.patch.object(d.s, "request", side_effect=[bad, ok]) as req, mock.patch.object(dbmod.time, "sleep"):
+            self.assertIs(d._send("GET", "u", safe=True), ok)
+        self.assertEqual(req.call_count, 2)
+
+    def test_write_and_other_500_not_retried(self):
+        d = dbmod.DB(url="https://x.supabase.co", key="k")
+        bad = self._resp(500, '{"code":"57014"}')
+        with mock.patch.object(d.s, "request", side_effect=[bad]) as req, mock.patch.object(dbmod.time, "sleep"):
+            self.assertIs(d._send("PATCH", "u", safe=False), bad)  # Schreiben nie doppelt
+        other = self._resp(500, '{"code":"XX000"}')
+        with mock.patch.object(d.s, "request", side_effect=[other]) as req2, mock.patch.object(dbmod.time, "sleep"):
+            self.assertIs(d._send("GET", "u", safe=True), other)
+        self.assertEqual(req.call_count + req2.call_count, 2)
+
+
 if __name__ == "__main__":
     unittest.main()
