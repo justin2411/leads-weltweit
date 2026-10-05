@@ -676,3 +676,14 @@ class LeadWerkHochTests(unittest.TestCase):
         res = W.decide(self.reg, "lead-werk", {"settings": settings, "rows": [], "db_bytes": int(7.6 * W.GB)})
         self.assertEqual(sum(res["plan"].values()), 0)
         self.assertEqual((W.BRAKE_LEAD_MAX, dict(W.BRAKE)["drossel"], dict(W.BRAKE)["stopp"]), (8, 6.0, 7.5))
+
+    def test_lead_cap_respects_owner_plan_of_other_werke(self):
+        sp = {l["id"]: 0 for l in self.reg["lanes"]}
+        sp.update({"radar": 2, "radar-uk": 4, "radar-us": 1, "web-uk": 5, "web-fr": 4, "s2-ukfr": 6, "kunden": 4, "pruefer": 8,
+                   "kontakt": 4})
+        settings = {"slot_plan": sp, "slot_autopilot": {"on": True, "locks": {}}}
+        # andere Werke liefen zuletzt kleiner (Kunden 1, Kontakt 0) -> Lead-Werk bleibt bei 38 - 16 = 22
+        res = W.decide(self.reg, "lead-werk", {"settings": settings, "rows": [], "db_bytes": int(5.4 * W.GB),
+                                               "other": {"kunden": 1, "kontakt": 0, "pruefer": 8}})
+        self.assertLessEqual(sum(res["plan"].values()), self.reg["total_slots"] - self.reg["reserve"] - 16)
+        self.assertGreaterEqual(sum(res["plan"].values()), W.LEAD_MIN_PREMIUM)
