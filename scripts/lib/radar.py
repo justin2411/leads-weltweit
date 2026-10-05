@@ -409,7 +409,8 @@ def save_event(db, row: dict, ev: dict, out: dict, today: dt.date) -> dict | Non
     return got[0] if got else None
 
 
-CHUNK = 1000  # Kandidaten je Datenbank-Abruf (PostgREST-Höchstzahl; Abfrage ~2 s; gespeicherte Zustände fallen beim nächsten Abruf raus)
+CHUNK = 300  # Kandidaten je Datenbank-Abruf: v6 liest den Fälligkeits-Index, kalt ~3,6 ms je Zeile (gemessen 05.10.2026:
+# 1.000 Zeilen 3,6 s, bei mehreren Teilen nahe am statement_timeout 8 s) – 300 bleibt sicher darunter
 
 
 def _check_rows(rows: list[dict], fetcher, today: dt.date, workers: int, until: float, stats: Counter,
@@ -438,6 +439,39 @@ def _check_rows(rows: list[dict], fetcher, today: dt.date, workers: int, until: 
                     stats[f"ereignis:{out['event']['signal_type']}"] += 1
                     events.append((row, out))
     return states, events, done
+
+
+def skip_rechecked(db, country: str, stats: Counter | None = None, log=print) -> int:
+    """Heute vom Prüfer nachgeprüfte Leads (Website heute schon abgerufen) auf morgen schieben (radar_skip_rechecked):
+    das Radar darf sie heute ohnehin nicht prüfen (1 Abruf je Seite und Tag), so muss die Kandidaten-Abfrage sie nicht
+    überspringen. Fehler stoppen das Radar nie."""
+    try:
+        n = int(db.rpc("radar_skip_rechecked", {"p_country": country, "p_limit": 5000}) or 0)
+    except Exception as exc:  # noqa: BLE001
+        if stats is not None:
+            stats["fehler_verschieben"] += 1
+        log(f"Radar {country}: Prüfer-Leads nicht verschoben ({type(exc).__name__}: {str(exc)[:160]})")
+        return 0
+    if stats is not None and n:
+        stats["verschoben_pruefer"] += n
+    return n
+
+
+def mark_due(db, lead_ids: list, due: dt.date, stats: Counter | None = None, log=print) -> int:
+    """Nächste Radar-Prüfung der geprüften Leads (leads.radar_due, Lead-Werk hoch 05.10.2026): hält die Kandidaten-
+    Abfrage schnell (Fälligkeits-Index statt Überspringen schon geprüfter Firmen). Nur Reihenfolge/Tempo – die Sperre
+    „höchstens alle 2 Tage“ bleibt observations.last_seen. Fehler stoppen das Radar nie."""
+    ids = [str(x) for x in lead_ids if x]
+    n = 0
+    for i in range(0, len(ids), 500):
+        try:
+            n += int(db.rpc("radar_mark_due", {"p_ids": ids[i:i + 500], "p_due": due.isoformat()}) or 0)
+        except Exception as exc:  # noqa: BLE001
+            if stats is not None:
+                stats["fehler_faellig"] += 1
+            log(f"Radar: Fälligkeit nicht gespeichert ({type(exc).__name__}: {str(exc)[:160]})")
+            break
+    return n
 
 
 def share(w: dict[str, float], left: list[str]) -> float:
@@ -483,6 +517,8 @@ def run(db, countries: list[str], limit: int, fetcher, deadline: float = 0, work
             break
         until = time.monotonic() + max(0.0, deadline - time.monotonic()) * share(w, countries[n:]) if deadline else 0
         seen: set[str] = set()
+        if apply:
+            skip_rechecked(db, co, stats, log)
         while stats["geprueft"] < limit and not (until and time.monotonic() >= until):
             try:
                 # parallele Teile prüfen getrennte Firmen (Aufteilung in der Datenbank-Funktion): nie zwei Abrufe je Seite
@@ -506,6 +542,7 @@ def run(db, countries: list[str], limit: int, fetcher, deadline: float = 0, work
                     db.insert("observations", states[i:i + 200], upsert_on="company_id,kind,key")
                 except Exception as exc:  # noqa: BLE001
                     log(f"Radar {co}: Zustand nicht gespeichert ({type(exc).__name__}: {str(exc)[:160]})")
+            mark_due(db, [r.get("lead_id") for r in rows[:done]], today + dt.timedelta(days=min_days), stats, log)
             for row, out in events:
                 if premium_only:
                     try:
