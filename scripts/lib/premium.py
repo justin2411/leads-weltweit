@@ -18,6 +18,11 @@ Tage alt – wie die Definition „Premium = frisch ≤ 14 Tage“ (docs/GEHIRN-
 zählte der Code bis 30 Tage, das war lockerer als die Definition). 15–30 Tage alte Ereignisse bekommen weiter 20 Punkte
 und stehen damit oben im Standard, heißen aber nicht Premium.
 
+Frist des Anlasses (Premium-Labor 05.10.2026): „Zertifikat läuft ab“ ist nur bis zum Ablaufdatum ein Anlass – danach
+ist es erneuert (Aussage falsch) oder abgelaufen (eigenes Radar-Ereignis). Ein solcher Lead ist nur Premium, solange
+heute vor details.cert_not_after liegt; das Datum steht als premium.gilt_bis am Lead (tier_now prüft es täglich).
+Vorher blieb er 14 Tage ab Prüfung Premium, auch wenn das Zertifikat schon nach 0–13 Tagen ablief. Nur strenger.
+
 Die Drei-Stufen-Freigabe (lib/release_gate.py) entscheidet weiter allein, ob ein Lead rausgehen DARF. Die Stufe ist
 nur zusätzlich strenger: Mischung 100 % (owner_settings.lead_mix, Standard; Inhaber 05.10.2026 „nur noch premium
 leads“) = neue Standard-Leads werden nicht gespeichert, Proben und Lieferungen nur aus Premium-Leads (keine 10 Premium
@@ -156,22 +161,42 @@ def score(lead: dict, today: dt.date | None = None) -> dict:
         pts += POINTS["contact"]
         reasons.append("kontakt")
     pts = min(100, pts)
+    until = valid_until(sig, details)
+    if until is not None and today >= until:
+        fresh = False  # Anlass vorbei (Frist abgelaufen) – Punkte bleiben für die Reihenfolge
+        reasons.append("frist_vorbei")
     tier = "premium" if pts >= PREMIUM_MIN and fresh else "standard"
-    return {"score": pts, "tier": tier, "reasons": reasons}
+    out = {"score": pts, "tier": tier, "reasons": reasons}
+    if until is not None:
+        out["gilt_bis"] = until.isoformat()
+    return out
+
+
+def valid_until(signal_type: str, details: dict | None) -> dt.date | None:
+    """Letzter Tag (exklusiv), an dem der Anlass noch stimmt: bei „Zertifikat läuft ab“ das Ablaufdatum."""
+    if signal_type != "cert_expiring":
+        return None
+    return _date((details or {}).get("cert_not_after"))
 
 
 def columns(lead: dict, today: dt.date | None = None) -> dict:
     """Spalten für signalwerk.leads: premium_score, premium (Stufe + Gründe)."""
     s = score(lead, today)
-    return {"premium_score": s["score"], "premium": {"tier": s["tier"], "reasons": s["reasons"],
-                                                     "on": (today or dt.date.today()).isoformat()}}
+    p = {"tier": s["tier"], "reasons": s["reasons"], "on": (today or dt.date.today()).isoformat()}
+    if s.get("gilt_bis"):
+        p["gilt_bis"] = s["gilt_bis"]
+    return {"premium_score": s["score"], "premium": p}
 
 
 def tier_now(row: dict, today: dt.date | None = None) -> str:
     """Stufe eines gespeicherten Leads heute: „premium“ nur, solange das Ereignis höchstens PREMIUM_MAX_AGE Tage alt ist
-    (die Stufe wird beim Speichern berechnet und veraltet sonst unbemerkt)."""
+    (die Stufe wird beim Speichern berechnet und veraltet sonst unbemerkt) und solange die Frist des Anlasses
+    (premium.gilt_bis, z. B. Ablaufdatum des Zertifikats) noch nicht erreicht ist."""
     p = row.get("premium") or {}
     if not isinstance(p, dict) or p.get("tier") != "premium":
+        return "standard"
+    until = _date(p.get("gilt_bis"))
+    if until is not None and (today or dt.date.today()) >= until:
         return "standard"
     ev = _date(row.get("event_date"))
     # -1: Ereignisdatum aus einer anderen Zeitzone (Lauf kurz nach Mitternacht UTC) gilt als heute

@@ -434,3 +434,47 @@ def test_radar_weighted_time_share():
     assert radar.share(w, rc[2:]) == 1.0         # letztes Land: alles
     # ohne Gewichte wie bisher gerecht geteilt
     assert radar.share({}, ["US", "UK", "FR"]) == 1 / 3
+
+
+class CertDeadlineTest(unittest.TestCase):
+    """Frist des Anlasses: „Zertifikat läuft ab“ ist nur bis zum Ablaufdatum Premium (Premium-Labor 05.10.2026)."""
+
+    def lead(self, not_after):
+        return {"signal_type": "cert_expiring", "event_date": TODAY.isoformat(), "source_name": "Signalwerk change radar",
+                "source_url": "https://example.com/", "person_name": "", "phone": "+10000000000",
+                "email": "info@example.com",
+                "details": {"radar_event": "expiring:x", "cert_not_after": not_after,
+                            "also": ["website_not_mobile"],
+                            "findings": [{"type": "website_not_mobile"}]}}
+
+    def test_deadline_stored_and_respected(self):
+        cols = premium.columns(self.lead("2026-10-09"), TODAY)
+        self.assertEqual(cols["premium"]["tier"], "premium")
+        self.assertEqual(cols["premium"]["gilt_bis"], "2026-10-09")
+        row = {"event_date": TODAY.isoformat(), "premium": cols["premium"]}
+        self.assertEqual(premium.tier_now(row, dt.date(2026, 10, 8)), "premium")
+        self.assertEqual(premium.tier_now(row, dt.date(2026, 10, 9)), "standard")
+
+    def test_expiring_today_is_not_premium(self):
+        s = premium.score(self.lead(TODAY.isoformat()), TODAY)
+        self.assertEqual(s["tier"], "standard")
+        self.assertIn("frist_vorbei", s["reasons"])
+
+    def test_other_signals_have_no_deadline(self):
+        cols = premium.columns({"signal_type": "relocation", "event_date": "2026-09-30",
+                                "source_name": "BODACC", "source_url": "https://example.fr/x",
+                                "details": {"cert_not_after": "2026-10-01"}, "person_name": "A B",
+                                "phone": "1", "email": "a@example.fr"}, TODAY)
+        self.assertNotIn("gilt_bis", cols["premium"])
+        self.assertEqual(cols["premium"]["tier"], "premium")
+
+    def test_score_script_backfills_and_demotes(self):
+        import premium_score as P
+        old = {"signal_type": "cert_expiring", "event_date": "2026-10-01",
+               "premium": {"tier": "premium", "reasons": [], "on": "2026-10-01"}}
+        new = P.with_deadline(old, {"cert_not_after": "2026-10-20"}, TODAY)
+        self.assertEqual((new["tier"], new["gilt_bis"]), ("premium", "2026-10-20"))
+        gone = P.with_deadline(old, {"cert_not_after": "2026-10-04"}, TODAY)
+        self.assertEqual(gone["tier"], "standard")
+        self.assertIsNone(P.with_deadline(old, {}, TODAY))
+        self.assertIsNone(P.with_deadline({**old, "premium": new}, {}, TODAY))

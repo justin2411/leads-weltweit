@@ -5,7 +5,9 @@ Neue Leads bekommen die Bewertung beim Speichern (extraktor/store.py, lib/radar.
   1. bewertet offene Leads (Status new) mit datiertem Ereignis der letzten FRESH_MID Tage, die noch keine
      Bewertung haben (Bestand vor dem 05.10.2026) – Ansprechperson und Kontakt aus den Beobachtungen der Firma,
      Belege (Website-Befunde) aus der Ereignis-Beobachtung;
-  2. stuft Leads, deren Ereignis inzwischen älter als PREMIUM_MAX_AGE (14) Tage ist, auf „standard“ zurück.
+  2. stuft Leads, deren Ereignis inzwischen älter als PREMIUM_MAX_AGE (14) Tage ist, auf „standard“ zurück;
+  3. trägt bei offenen Premium-Leads „Zertifikat läuft ab“ die Frist (premium.gilt_bis = Ablaufdatum aus der
+     Ereignis-Beobachtung) nach und stuft sie ab dem Ablaufdatum zurück (Premium-Labor 05.10.2026).
 Nur Reihenfolge – ob ein Lead rausgeht, entscheidet allein die Drei-Stufen-Freigabe. Nichts wird gelöscht.
 
   python scripts/premium_score.py            # zählen, nichts schreiben
@@ -51,6 +53,21 @@ def demote(l: dict, today: dt.date) -> dict | None:
     if isinstance(p, dict) and p.get("tier") == "premium" and premium.tier_now(l, today) != "premium":
         return {**p, "tier": "standard", "aged_out": today.isoformat()}
     return None
+
+
+def with_deadline(l: dict, evidence: dict | None, today: dt.date) -> dict | None:
+    """Neue premium-Spalte mit Frist (gilt_bis) für einen Premium-Lead ohne Frist bzw. mit erreichter Frist, sonst
+    None. Ohne belegtes Ablaufdatum bleibt alles, wie es ist."""
+    p = l.get("premium") or {}
+    if not isinstance(p, dict) or p.get("tier") != "premium":
+        return None
+    until = p.get("gilt_bis") or premium.valid_until(l.get("signal_type") or "", evidence)
+    if not until:
+        return None
+    new = {**p, "gilt_bis": str(until)[:10]}
+    if premium.tier_now({**l, "premium": new}, today) != "premium":
+        new = {**new, "tier": "standard", "frist_vorbei": today.isoformat()}
+    return new if new != p else None
 
 
 def _company_obs(db, ids: list[str]) -> tuple[dict, dict]:
@@ -126,6 +143,18 @@ def run(db, apply: bool, limit: int = 50000, today: dt.date | None = None, log=p
         new = demote(l, today)
         if new:
             stats["zurueckgestuft"] += 1
+            if apply:
+                db.update("leads", {"id": l["id"]}, {"premium": new})
+    # Frist des Anlasses (Zertifikat läuft ab): nachtragen und ab dem Ablaufdatum zurückstufen
+    cert = db.select_all("leads", {"status": "eq.new", "signal_type": "eq.cert_expiring",
+                                   "premium->>tier": "eq.premium",
+                                   "select": "id,signal_type,event_date,observation_ids,premium"})
+    ev = _evidence(db, sorted({(r.get("observation_ids") or [None])[0] for r in cert
+                               if not (r.get("premium") or {}).get("gilt_bis")} - {None}))
+    for l in cert:
+        new = with_deadline(l, ev.get((l.get("observation_ids") or [None])[0]), today)
+        if new:
+            stats["frist_nachgetragen" if new.get("tier") == "premium" else "frist_vorbei"] += 1
             if apply:
                 db.update("leads", {"id": l["id"]}, {"premium": new})
     log(json.dumps(dict(stats), ensure_ascii=False, sort_keys=True))
