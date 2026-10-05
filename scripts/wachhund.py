@@ -270,6 +270,10 @@ def refresh_dashboard_stock(db) -> None:
         db.rpc("dashboard_storage_refresh", {})
     except Exception as exc:  # noqa: BLE001 - darf den Wachhund nie aufhalten
         print(f"Speicher-Zahlen nicht aufgefrischt: {type(exc).__name__}: {str(exc)[:160]}")
+    try:  # JARVIS-Zentrale: langsamer Teil (Läufe, Ziele, Lernschleife, Speicher …) als dashboard_cache 'zentrale'
+        db.rpc("zentrale_cache_refresh", {})
+    except Exception as exc:  # noqa: BLE001 - darf den Wachhund nie aufhalten (Migration evtl. noch nicht angewendet)
+        print(f"Zentrale-Zahlen nicht aufgefrischt: {type(exc).__name__}: {str(exc)[:160]}")
     try:  # Website-Kennzahlen für die JARVIS-Linie „Website“ (Tagessummen + letzte Stunde/24 h/30 Tage)
         db.rpc("website_refresh", {})
     except Exception as exc:  # noqa: BLE001 - darf den Wachhund nie aufhalten (Migration evtl. noch nicht angewendet)

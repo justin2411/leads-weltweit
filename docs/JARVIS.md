@@ -181,25 +181,71 @@ nur wenn er sich unsicher ist oder es geld kostet soll er bei mir nachfragen“
 
 ## Firma (Inhaber 04.10.2026)
 
-JARVIS führt acht Bereiche (`signalwerk.departments`, Seite `/dashboard/firma`): Vertrieb, Marketing, Produktion, Qualität,
-Kundenservice, Finanzen, Recht (nur Wache), Strategie. Jeder Bereich hat Leitung, Hauptziel mit Ampel und eine Wirkungszahl
+JARVIS führt neun Bereiche (`signalwerk.departments`, Zuordnung `app/lib/firma-karte.json`, Bild in der Zentrale): Vertrieb, Marketing, Produktion, Qualität,
+Kundenservice, Finanzen, Recht (nur Wache), Strategie, Premium-Labor (Gold). Jeder Bereich hat Leitung, Hauptziel mit Ampel und eine Wirkungszahl
 Richtung Umsatz. Feste Übergaben zwischen Bereichen legt `scripts/uebergaben.py` token-frei als Aufträge an
 (`signalwerk.handoffs`, Details in `docs/AGENTEN.md` „Firma“). JARVIS liest vor Entscheidungen `firma_lage()` und den
 Geschäftsbericht und arbeitet am Bereich mit der schlechtesten Ampel zuerst; Übergaben nie doppelt von Hand anlegen.
 
-### Startseite und Bereichs-Offices (Inhaber 04.10.2026: „aus 5 metern sehen ob was läuft“, „wirkt zu voll“)
+### Zentrale „Organigramm live“ (05.10.2026, Inhaber: „ich will das neue system ganz einfach visuell verstehen“)
 
-- `/dashboard/jarvis` hat nur noch 4 Blöcke: **Puls** (5 Ströme Leads, Käufer, Versand, Antworten, Umsatz – großer Ring,
-  eine Zahl; grün pulsiert = läuft, gelb = langsam, rot = steht; `lib/puls.ts`), **Braucht dich** (nur wenn offen),
-  **Firma** (8 Bereichs-Kacheln mit Icon, Ampel, 1 Zahl → Office) und **Werke & Agenten** (A1–A8 + Fluss-Karte, immer
-  offen). Chat = schwebender Knopf → `/dashboard/jarvis/chat`. `?teil=mehr`: Heute wichtig, Kennzahlen mit Prognose,
-  Ziel vs. Ist, JARVIS empfiehlt, Mini-Chat, Ticker.
-- `/dashboard/firma/<bereich>` = **Office**: Ziel mit Ring und Ampel, Arbeitsplätze (Mitglieder + `agent_roles.department`,
-  Status arbeitet/wartet/fertig aus `agent_tasks`, `brain_routines`, `website_agents`, Werk-Lebenszeichen; `lib/office.ts`),
-  Klick zeigt die letzten Aufträge je 1 Zeile, Übergaben als Pfeile, „Auftrag geben“ (`assignBereich`, Text mit Präfix
-  „Bereich <Name>:“, Rolle = Leitung). Dazu je Bereich: Team-Karten seiner Fach-Agenten, Vertrieb Kohorten, Qualität
-  Freigabe, Strategie „Optimiert sich selbst“ + Vorschläge, Produktion/Vertrieb Link zur Fluss-Karte. Entscheidungen
-  stehen im Protokoll. Neue Inhalte für einen Bereich gehören ins Office, nicht auf die Startseite.
+`/dashboard/jarvis` zeigt die Firma als ein Bild: **Du → Gehirn → Bereiche + Agenten (+ Scout) → Werke, rechts die
+Leitplanken.** Raster 12 Spalten (Karte 9 + Leitplanken 3), am Handy eine senkrechte Kette. Blöcke:
+
+| Block | Inhalt |
+|---|---|
+| B0 Kopfzeile | Marke, Uhr (Berlin, Minutentakt), Live-Punkt (Abruf < 20 s, sonst „Stand 01:25“), Lage in einem Satz (`department_gaps` Rang 1, Grund beim Antippen), „Braucht dich“, Antworten (Gold-Punkt bei Kaufinteresse), Abmelden |
+| B1 Ziel-Ringe | Umsatz/Monat (Gold), Kunden, Antwortquote, Fehlerquote; Ziel mit Quelle „vorschlag“ gestrichelt + „Ziel unbestätigt“ → Büro › Ziele |
+| B2 Du | Kreis „Du“ (gelber Ruf bei „Braucht dich“), 5 Lämpchen nur Anzeige (Werke, Versand, Nachfass, Gehirn, Autopilot → Regler) |
+| B3 Gehirn | Zustandswort ARBEITET/WARTET/BEREIT/AUS, Score, nächste Runde; Lernring Zahlen → Lücke → Auftrag → Umsetzen → Messen → Lehre (0 = schraffiert grau) |
+| B4 Bereiche + Agenten | 9 Bereiche aus `firma-karte.json` (Ampel: Rang 1 rot, 2–3 gelb, sonst grün), Fach-Agenten als Punkte, Übergaben als wandernder Punkt, Quellen-Scout an Produktion, Spur A1–A8 |
+| B5 Werke | Bahn Leads (Lead → Prüfer/Stichprobe → Proben → Lieferung, Äste Radar, Premium) und Bahn Käufer (Kunden → Versand → Antworten → Lieferung → UMSATZ), Rahmen Wachhund; Kontakt/Feedback grau „noch nicht gebaut“ |
+| B6 Leitplanken | Freigabe, Notbremse, Sperrliste & Abmeldung, Kaltmail-Recht, Speicher, Geld – nur Anzeige, nie ein Lockern-Schalter |
+| B7 Ticker | letzte 5 Ereignisse mit Berliner Zeit; Chat = schwebender Knopf |
+
+Seitenfenster über die URL: `?s=<Station/Werk>&t=info|set`, `?bereich=<slug>`, `?s=du|ziel|planke`, `?s=lern&p=<schritt>`,
+`?a=1…9|neu`. „Einstellen“ zeigt nur „Feinjustieren →“ im Regler; einzige Ausnahme „Versand pausieren“ (sofort, kann nur
+stoppen). „Jetzt starten“ nur Lead, Kunden, Proben, Stichprobe.
+
+**Bedeutung der Bewegungen** (Grundsatz: was sich nicht bewegt, läuft nicht):
+
+| Bewegung | Bedeutung | Regel (`app/lib/zentrale-logik.ts`) |
+|---|---|---|
+| Puls Cyan | Werk/Agent lebt | Herzschlag < 6 min |
+| Puls mit „~“ | lebt laut Ersatzquelle | Versand letzte Mail < 70 min · Antworten Quittung < 15 min · Lieferung < 8 Tage · Wachhund Cache < 20 min · Stichprobe Lauf < 26 h |
+| kein Puls / grau gestrichelt | steht / keine Daten oder nicht gebaut | – |
+| Partikel auf Werk-Kante | Daten unterwegs | Dauer = clamp(8 s ÷ log10(1 + n/h), 0,8–8 s), Anzahl = ceil(log10(1 + n/h) × 1,5), ≤ 3 je Kante, ≤ 40 gesamt (Handy 2/20) |
+| Partikel auf Agent | neuer Auftrag < 15 min (Gold bei Umsatz/Premium) | `agent_tasks.created_at` |
+| wandernder Punkt zwischen Bereichen | Übergabe | `handoffs` wartet/beauftragt |
+| Agent-Kürzel gestrichelt am Werk | laufender Auftrag nutzt das Werk | `nutzt_werke` |
+| Stau-Halo | Eingang ≥ 50 × Ausgang in 24 h | z. B. freigegebene Mails gegen gesendete |
+| abprallende Punkte | Leitplanke greift | blockierte Mails / zurückgehaltene Leads letzte Stunde |
+| Ring dreht (60 s) | Gehirn arbeitet | nur ARBEITET |
+| Klötzchen wandern | Autopilot verteilt Plätze um | Unterschied der letzten zwei `werk_plan_log` |
+| Aufleuchten 300 ms | Statuswechsel einer Leitplanke | kein Blinken in Schleife |
+
+**Einzige Quelle für die Zuordnung:** `app/lib/firma-karte.json` (Bereiche → Agenten → Werke → Flüsse, Übergaben,
+Leitplanken). Gelesen von `app/lib/firma-karte.ts` und `scripts/lib/firma_karte.py` (Gewichte des Abteilungs-Motors aus
+`naehe_umsatz`). Wer einen Agenten, ein Werk oder einen Workflow hinzufügt, trägt ihn dort ein – `lib/firma-karte.test.ts`
+prüft Workflows, Linien und Rollen. Takte in der Datei sind Beschreibung; angezeigt wird immer der **gemessene** Lauf
+(Gehirn, Wachhund: Widerspruch in älteren Texten damit aufgelöst).
+
+**Live-Mechanik:** Seite lädt Startwerte über `loadZentrale` (`app/lib/zentrale-data.ts`), danach `useZentrale` im
+Browser: `GET /api/jarvis/zentrale?teil=schnell` alle 10 s (Lese-Funktion `signalwerk.zentrale_schnell()`, ~35 ms, nur
+Zeitfilter/Limits) und `?teil=langsam` alle 60 s (`dashboard_cache` „zentrale“ = `zentrale_langsam()`, Wachhund frischt
+alle 15 min über `zentrale_cache_refresh` auf; älter als 20 min → „Stand …“, wird im Abruf nicht neu gerechnet). Nur bei
+sichtbarem Tab, Fehler: 20 → 40 → 60 s. Nie live: observations, leads, watch_companies, prospects. Notbremse = genau die
+Bewertung wie `deliverability.py` (App-Spiegel `brake`), daneben die Bounce-Zahl 24 h mit eigener Farbe.
+
+**Ehrlichkeitsregel:** Grau heißt keine Daten oder nicht gebaut; „~“ heißt Ersatz-Puls (kein Herzschlag). Fehlende Daten
+werden nie mit Bewegung überdeckt. Leere Lernsegmente (heute Messen, Lehre) stehen ehrlich bei „0 gemessen“.
+
+**Navigation (genau 5):** JARVIS · Antworten · Kunden (Reiter Agenten) · Regler · Büro. Büro (`/dashboard/buero`) =
+Kacheln nach Bereichen (≤ 18) auf alle Detailseiten; `/dashboard/buero/bereich/<slug>` = früheres Office (Team, Kohorten,
+Gehirn lernt, Vorschläge), `/dashboard/buero/werke` = Werke-Details. Gehirn über den Kern oder die Büro-Kachel.
+Umleitungen: `/dashboard/firma` → `?bereich=strategie`, `/dashboard/firma/<b>` → `?bereich=<b>`, `/dashboard/werke` →
+`?s=lead#werke`, `/dashboard/kunden-agenten` → `/dashboard/kunden?tab=agenten`, `?teil=mehr` → Büro. Feinjustieren nur im
+Regler (Anker `#notaus #gehirn #werke #plaetze #laender #proben #versand #nachfass`).
 
 ## Grenzen (Gesetz und Geld des Inhabers, gelten auch für JARVIS)
 

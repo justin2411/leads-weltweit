@@ -6,6 +6,7 @@ import { db } from "@/lib/supabase";
 import { loadKnowledge, loadRoutines } from "@/lib/jarvis-context";
 import { requireOwner } from "../actions";
 import { GehirnView } from "./view";
+import { Lernschleife } from "./lernschleife";
 import { loadAb } from "@/lib/ab-data";
 
 type SP = Promise<Record<string, string | string[] | undefined>>;
@@ -28,9 +29,10 @@ export default async function Gehirn({ searchParams }: { searchParams: SP }) {
   const [brain, tasks, routines, knowledge, chatId, ab] = await Promise.all([loadBrain(), loadAgentTasks(), loadRoutines(), loadKnowledge(), gehirnSession(),
     loadAb().catch(() => null)]);
   const one = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string).slice(0, 200) : null);
-  return (
+  return (<>
+    <Lernschleife />
     <GehirnView now={new Date()} {...brain} tasks={tasks} workflows={CONFIG.workflows} env={envStatus()}
       legalFiles={legalTextsReady()} stripe={{ live: stripeEnabled("live"), test: stripeEnabled("test") }}
       routines={routines} knowledge={knowledge} routineError={one("rfehler")} openDoc={one("wissen")} chatId={chatId} ab={ab} />
-  );
+  </>);
 }

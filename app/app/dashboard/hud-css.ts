@@ -278,8 +278,6 @@ export const HUD_CSS = `
 .drag-box{display:grid;min-width:0}
 /* Beim Ziehen: Kinder der Agenten-Karten ohne Trefferfläche (sonst wechselt das Ziel zwischen Kugel, Ring und Text und
    Chrome verwirft das Ablegen), Karte springt nicht beim Überfahren */
-.jv-dragging .ag-drop>.ag *{pointer-events:none}
-.jv-dragging .ag-drop>.ag:hover{transform:none}
 .amp4.jt-drag{cursor:grab}
 /* JARVIS empfiehlt und Chat (Inhaber 04.10.2026) */
 .jrec{margin:0 0 12px}.jrec h2{display:flex;align-items:center;gap:6px;margin:0 0 6px;font-size:var(--fs-s);font-weight:700;color:var(--gold);letter-spacing:.04em}
@@ -315,7 +313,6 @@ export const HUD_CSS = `
 .ag-drop{position:relative;flex:1 0 150px;display:flex;min-width:0}
 .ag-drop>.ag{flex:1;min-width:0}
 .ag-hint{display:none}
-.jv-dragging .ag-drop>.ag{border-color:rgba(226,198,143,.7);box-shadow:0 0 0 2px rgba(226,198,143,.25),0 0 22px rgba(226,198,143,.25)}
 .ag-drop[data-over]>.ag{border-color:var(--gold);background:rgba(226,198,143,.14);box-shadow:0 0 0 2px var(--gold),0 0 26px rgba(226,198,143,.45)}
 .ag-drop[data-over] .ag-hint,.ag-drop.busy .ag-hint{display:grid;place-items:center;position:absolute;inset:0;padding:4px;border-radius:12px;background:rgba(2,6,15,.88);color:var(--gold);font-weight:700;font-size:var(--fs-m);text-align:center;pointer-events:none}
 
@@ -779,7 +776,6 @@ export const HUD_CSS = `
 .drag-box:hover .jrec-i{box-shadow:0 0 0 1px color-mix(in srgb,var(--tc) 50%,transparent),0 0 18px -6px var(--tc)}
 .drag-box:hover .jrec-grip{opacity:1}
 .is-dragged{opacity:.45}
-.jv-dragging,.jv-dragging *{cursor:grabbing!important;user-select:none!important;-webkit-user-select:none!important}
 .jv-ghost{position:fixed;left:0;top:0;z-index:200;pointer-events:none;max-width:280px;padding:8px 12px;border:1px solid var(--gold);border-radius:10px;background:#07101f;color:#fff;font:600 var(--fs-s) var(--sans),system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 12px 30px rgba(0,0,0,.55),0 0 18px -4px rgba(226,198,143,.6)}
 .jt-pick .sug{border-color:var(--gold);color:var(--gold)}
 .jt-pick .busy{opacity:.6}
@@ -870,4 +866,12 @@ a.ub-pt:hover{background:color-mix(in srgb,var(--pc) 22%,transparent)}
   .dash .pg-head{margin:0 0 12px}
   .dash .pg-head h1{font-size:var(--fs-l)}
 }
+
+/* Globaler Gegenblock (JARVIS-Zentrale 05.10.2026): „Bewegung reduzieren“ gilt für alle Bereiche (Gehirn, Website,
+   Speicher, Baukasten, Auswertung …) – keine Animation, keine Übergänge; Inhalte stehen sofort fertig da. */
+@media (prefers-reduced-motion:reduce){
+  .dash *,.dash *:before,.dash *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
+/* Versteckter Tab: Animationen anhalten (useZentrale setzt .jv-paused, SVG über pauseAnimations) */
+.dash .jv-paused *,.dash .jv-paused *:before,.dash .jv-paused *:after{animation-play-state:paused!important}
 `;

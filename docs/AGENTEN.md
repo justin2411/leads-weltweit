@@ -405,3 +405,10 @@ Agenten dürfen alles selbst machen, was die Hauptsitzung darf – ohne Rückfra
 - Keine Lead-Daten ins öffentliche Repo, kein Scraping verbotener Plattformen
 
 `fehler <id> "Braucht deine Entscheidung: …"` nur für genau diese Punkte. Alles andere: selbst lösen.
+
+## Rolle bei jedem Auftrag (JARVIS-Zentrale 05.10.2026)
+
+Jeder neue Auftrag setzt `agent_tasks.rolle`, wenn er einem Fach-Agenten gehört (Rollen und Bereiche:
+`app/lib/firma-karte.json`, Python `scripts/lib/firma_karte.py`). Ohne Rolle läuft er in der Zentrale ehrlich bei
+„Strategie (A1–A8)“. Das Dashboard setzt die Rolle beim Knopf „Auftrag an A1–A8“ eines Bereichs automatisch (Leitung).
+

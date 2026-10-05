@@ -12,11 +12,15 @@ import { execSync } from "node:child_process";
 
 export const WIDTHS = [1440, 760, 721, 390];
 export const PAGES = [
-  "/dashboard/jarvis", "/dashboard/jarvis?s=versand", "/dashboard/jarvis?teil=mehr", "/dashboard", "/dashboard/gehirn", "/dashboard/website", "/dashboard/website/auswertung", "/dashboard/baukasten",
+  "/dashboard/jarvis", "/dashboard/jarvis?s=versand", "/dashboard/jarvis?s=versand&t=set", "/dashboard/jarvis?teil=mehr", "/dashboard", "/dashboard/gehirn", "/dashboard/website", "/dashboard/website/auswertung", "/dashboard/baukasten",
   "/dashboard/regler", "/dashboard/speicher", "/dashboard/antworten", "/dashboard/versand", "/dashboard/kunden", "/dashboard/kunden-agenten",
-  "/dashboard/bestand", "/dashboard/proben", "/dashboard/werke", "/dashboard/hilfe", "/dashboard/kontakte",
+  "/dashboard/bestand", "/dashboard/proben", "/dashboard/hilfe", "/dashboard/kontakte",
   "/dashboard/finanzen", "/dashboard/vertrieb", "/dashboard/ziele",
-  "/dashboard/recht", "/dashboard/betrieb", "/dashboard/protokoll", "/dashboard/firma", "/dashboard/firma/vertrieb", "/dashboard/firma/qualitaet?p=rolle-test", "/dashboard/firma/strategie", "/dashboard/firma/produktion",
+  "/dashboard/recht", "/dashboard/betrieb", "/dashboard/protokoll", "/dashboard/firma",
+  // JARVIS-Zentrale (05.10.2026): Seitenfenster, Büro und Bereichs-Büros
+  "/dashboard/jarvis?bereich=vertrieb", "/dashboard/jarvis?s=lern&p=messen", "/dashboard/jarvis?s=planke&p=notbremse", "/dashboard/jarvis?s=du",
+  "/dashboard/buero", "/dashboard/buero/werke", "/dashboard/buero/bereich/vertrieb", "/dashboard/buero/bereich/qualitaet?p=rolle-test",
+  "/dashboard/buero/bereich/strategie", "/dashboard/buero/bereich/produktion", "/dashboard/kunden?tab=agenten",
 ];
 const TOL = 1;
 

@@ -9,7 +9,8 @@ import { tipTask, type Rec } from "@/lib/leitstand";
 import { KINDS, agentBoard, chatThread, isIdle, type AgentTask, marketLabel } from "@/lib/agents";
 import { chatToJarvis } from "../control-actions";
 import { Back } from "../v2";
-import { DragBox, Grip, type AgentPick } from "./dnd";
+/** Agent mit Zustand (frei/belegt) – früher aus dnd.tsx (Ziehen auf Agenten entfällt, Zentrale 05.10.2026). */
+export type AgentPick = { n: number; free: boolean; state: string };
 import { TipX } from "./dismiss";
 import { tipKey, tipReactKeys } from "@/lib/tips";
 import { Icon } from "@/app/icons";
@@ -38,23 +39,20 @@ export function Empfiehlt({ recs, href, agent, children }: { recs: Rec[]; href: 
   if (!recs.length && !children) return null;
   return (
     <section className="jrec" aria-label="JARVIS empfiehlt">
-      <h2><Icon name="trend-hoch" size={16} /> JARVIS empfiehlt <em className="jrec-how">auf A1–A8 ziehen</em></h2>
+      <h2><Icon name="trend-hoch" size={16} /> JARVIS empfiehlt </h2>
       {recs.length > 0 && <div className="jrec-l">
         {recs.map((r, i, all) => {
           // stabiler Schlüssel statt Index: nach dem X rückt die nächste Empfehlung nicht in den versteckten Knoten
           const key = tipReactKeys(all)[i];
           const task = tipTask(r);
           return (
-            <DragBox key={key} task={task} title={r.title} tip>
-              <div className={`jrec-i ${r.level}`}>
-                <Grip className="jrec-grip" />
+            <div key={key} className={`jrec-i ${r.level}`}>
                 <Link href={href(r)} scroll={false} className="jrec-t" draggable={false}><b>{r.title}</b><span>{r.short}</span></Link>
-                <Link href={giveHref(agent, task)} scroll={false} className="jrec-give" draggable={false} title={`als Auftrag „${KINDS[task.kind].label}${task.market ? ` · ${marketLabel(task.market)}` : ""}“ an Agent ${agent} (erster freier) – oder auf A1–A8 ziehen`}>
+                <Link href={giveHref(agent, task)} scroll={false} className="jrec-give" draggable={false} title={`als Auftrag „${KINDS[task.kind].label}${task.market ? ` · ${marketLabel(task.market)}` : ""}“ an Agent ${agent} (erster freier)`}>
                   <Icon name="an-agent" size={16} /><span>an A{agent}</span>
                 </Link>
                 <TipX k={tipKey(r)} level={r.level} title={r.title} />
-              </div>
-            </DragBox>
+            </div>
           );
         })}
       </div>}

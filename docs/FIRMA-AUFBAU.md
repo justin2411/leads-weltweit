@@ -4,6 +4,8 @@ Auftrag Inhaber 04.10.2026: „das gehirn soll ein komplettes unternehmen bauen,
 
 Das Gehirn (Geschäftsführung) baut bei jedem Aufwachen **einen** Bereich weiter: schwächste Ampel zuerst, Bereiche nah am Umsatz vor den anderen. Bereiche, Leitung und Übergaben: `signalwerk.departments`, `scripts/uebergaben.py`, `docs/JARVIS.md` „Firma“. Ziele: `signalwerk.company_goals` (Soll nur vom Inhaber oder als Vorschlag). Bauplan Gedächtnis, Lernschleife, Abteilungs-Motor und Premium-Ausbau: `docs/GEHIRN-AUFBAU.md`.
 
+Zuordnung Bereiche → Agenten → Werke → Flüsse: einzige Quelle `app/lib/firma-karte.json` (Zentrale, Abteilungs-Motor; Test erzwingt Einträge für neue Agenten/Werke).
+
 Keine Zahlen zu Leads oder Käufern in dieser Datei (Repo öffentlich). Zahlen stehen im Dashboard und in `brain_knowledge`.
 
 ## Regeln für jeden Schritt

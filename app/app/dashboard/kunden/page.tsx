@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { Fold } from "../fold";
+import { KundenAgentenListe } from "../kunden-agenten/liste";
 import { COUNTRIES, CONFIG, SEGMENT, loadLive } from "@/lib/dashboard-data";
 import { PACKAGES } from "@/lib/owner-settings";
 import { approveFirstDelivery, createCustomer, setSubscriptionPaused } from "../control-actions";
@@ -11,6 +13,8 @@ import { readParams, withQuery, type SP } from "../params";
 /** Kunden & Umsatz der Webagenturen: Abos, Umsatz pro Monat, Lieferungen. Testkäufe zählen nicht. */
 export default async function Kunden({ searchParams }: { searchParams: SP }) {
   await requireOwner();
+  // Reiter „Agenten“ (Kunden-Agenten ab Pro, früher eigener Menüpunkt)
+  if ((await searchParams).tab === "agenten") return (<><KundenTabs on="agenten" /><KundenAgentenListe /></>);
   const { land, countries, raw } = await readParams(searchParams);
   const liveAll = await loadLive();
   const live = onlySegment(liveAll, SEGMENT);
@@ -28,8 +32,8 @@ export default async function Kunden({ searchParams }: { searchParams: SP }) {
 
   return (
     <div className="v2">
+      <KundenTabs on="kunden" />
       <PageHead title="Kunden" icon="kunden">
-        <a className="pg-link" href="/dashboard/kunden-agenten"><Icon name="ansprechpartner" size={14} />Kunden-Agenten</a>
         <Chips base="/dashboard/kunden" param="land" value={land} options={COUNTRY_OPTS} params={raw} dots />
       </PageHead>
       <div className="kpis2 four">
@@ -115,5 +119,15 @@ export default async function Kunden({ searchParams }: { searchParams: SP }) {
         </Ctrl>
       </div>
     </div>
+  );
+}
+
+/** Reiter der Kunden-Seite: Kunden · Agenten (Kunden-Agenten ab Pro). */
+function KundenTabs({ on }: { on: "kunden" | "agenten" }) {
+  return (
+    <nav className="seg" aria-label="Kunden-Reiter" style={{ margin: "0 0 12px" }}>
+      <Link href="/dashboard/kunden" className={on === "kunden" ? "on" : ""} aria-current={on === "kunden" ? "page" : undefined}><Icon name="kunden" size={14} /> Kunden</Link>
+      <Link href="/dashboard/kunden?tab=agenten" className={on === "agenten" ? "on" : ""} aria-current={on === "agenten" ? "page" : undefined}><Icon name="ansprechpartner" size={14} /> Agenten</Link>
+    </nav>
   );
 }
