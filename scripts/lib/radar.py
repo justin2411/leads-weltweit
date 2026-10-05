@@ -114,32 +114,71 @@ def detect(row: dict, res: dict, cert: dict | None, today: dt.date) -> dict | No
 
 
 # ---------------------------------------------------------------------------- Texte (EN/FR, nur Belegtes)
-ALSO_EN = "The same check also found that "
-ALSO_FR = "Le même contrôle a aussi relevé que "
-ALSO_TYPES = ("website_not_mobile", "website_outdated")
+ALSO_TYPES = ("website_not_mobile", "website_outdated", "no_https", "website_broken")
+# Beleg des Kombi-Zustands immer mit Prüfdatum im Text (Premium-Labor 05.10.2026: „Zertifikat …, Website nicht
+# mobilfähig (geprüft am …)“). Heute gesehen -> „The same check on <Datum> also found that …“; nur bei einer früheren
+# Prüfung gesehen -> „Our earlier check on <Datum> found that …“ (allgemeiner Satz je Zustand, nur Belegtes).
+EARLIER_EN = {"website_not_mobile": "the homepage was not built for phones",
+              "website_outdated": "the site ran on an old version of its web technology",
+              "no_https": "the site had no working HTTPS encryption",
+              "website_broken": "the site did not show the business"}
+EARLIER_FR = {"website_not_mobile": "la page d'accueil n'était pas adaptée aux mobiles",
+              "website_outdated": "le site reposait sur une ancienne version de sa technique web",
+              "no_https": "le site n'avait pas de chiffrement HTTPS valide",
+              "website_broken": "le site ne présentait pas l'entreprise"}
 
 
-def also_text(ev: dict, fr: bool, domain: str) -> str:
-    """Satz mit den Befunden „nicht mobil“/„veraltet“ derselben Prüfung (Quellen-Scout 05.10.2026, Premium-Jagd):
-    Das datierte Radar-Ereignis bleibt der Anlass, der am selben Tag bestätigte Website-Zustand steht dazu im Lead –
-    so passt der Lead ehrlich zum Wunsch „veraltete“ bzw. „nicht mobilfähige Website“ (lib/wishes.py)."""
-    from extraktor.segments import WEB_EN, WEB_FR
+def _same_event(ev: dict, f: dict) -> bool:
+    """Ist der Befund das Ereignis selbst (kein zusätzlicher Zustand)?"""
+    sig = ev.get("signal_type")
+    return f.get("type") == sig or (sig == "no_https" and f.get("detail") == "certificate_expired")
+
+
+def earlier_on(row: dict) -> dt.date | None:
+    """Datum der früheren Prüfung, deren Befunde ein Radar-Lead übernimmt (ursprünglicher Lead)."""
+    return _date(row.get("lead_checked")) or _date((row.get("lead_details") or {}).get("checked_on"))
+
+
+def also_split(ev: dict, row: dict | None = None) -> tuple[list[str], list[str], dt.date | None]:
+    """(heute belegte Zusatz-Zustände, nur früher belegte, Datum der früheren Prüfung)."""
+    today = [t for t in ALSO_TYPES if any(isinstance(f, dict) and f.get("type") == t and not _same_event(ev, f)
+                                          for f in ev.get("findings") or [])]
+    old = [t for t in ALSO_TYPES if t in (ev.get("also") or []) and t not in today and t != ev.get("signal_type")]
+    return today, old, earlier_on(row or {})
+
+
+def also_text(ev: dict, fr: bool, domain: str, row: dict | None = None, today: dt.date | None = None) -> str:
+    """Sätze mit den Zusatz-Zuständen des Kombi-Anlasses, jeweils mit Prüfdatum (Beleg). Das datierte
+    Radar-Ereignis bleibt der Anlass; der Zustand belegt den Kombi-Anlass (lib/premium.py) und den Wunsch
+    „veraltete“/„nicht mobilfähige Website“ (lib/wishes.py)."""
+    from extraktor.segments import WEB_EN, WEB_FR, day, jour, uk_day
     words = WEB_FR if fr else WEB_EN
+    us = (row or {}).get("country") == "US"
+    d = jour if fr else (day if us else uk_day)
+    now_types, old_types, old_on = also_split(ev, row)
     parts: list[str] = []
-    for t in ALSO_TYPES:
+    for t in now_types:
         for f in ev.get("findings") or []:
-            if isinstance(f, dict) and f.get("type") == t and f.get("detail") in words:
+            if isinstance(f, dict) and f.get("type") == t and not _same_event(ev, f) and f.get("detail") in words:
                 p = words[f["detail"]].format(domain=domain, value=f.get("value") or "")
                 if p not in parts:
                     parts.append(p)
-    if not parts:
-        return ""
-    return " " + (ALSO_FR if fr else ALSO_EN) + (" ; " if fr else "; ").join(parts[:2]) + "."
+                break
+    out = ""
+    if parts:
+        on = f" {'du' if fr else 'on'} {d(today)}" if today else ""
+        lead_in = f"Le même contrôle{on} a aussi relevé que " if fr else f"The same check{on} also found that "
+        out += " " + lead_in + (" ; " if fr else "; ").join(parts[:2]) + "."
+    if old_types and old_on:
+        ph = [(EARLIER_FR if fr else EARLIER_EN)[t] for t in old_types[:2]]
+        out += (f" Notre contrôle du {d(old_on)} avait relevé que " + " ; ".join(ph) + "." if fr
+                else f" Our earlier check on {d(old_on)} found that " + "; ".join(ph) + ".")
+    return out
 
 
 def texts(row: dict, ev: dict, domain: str, today: dt.date) -> dict:
     t = _texts(row, ev, domain, today)
-    t["event_summary"] += also_text(ev, row["country"] == "FR", domain)
+    t["event_summary"] += also_text(ev, row["country"] == "FR", domain, row, today)
     return t
 
 
@@ -244,6 +283,13 @@ def candidates(db, country: str, limit: int, min_days: int = RECHECK_DAYS, part:
                                        "p_part": int(part), "p_parts": max(1, int(parts))}) or []
 
 
+def _dated_also(ev: dict, row: dict) -> list[str]:
+    """Zustände aus einer früheren Prüfung zählen für den Kombi-Anlass nur mit Prüfdatum (Beleg im Text);
+    ohne Datum fallen sie weg – nur strenger, nie lockerer."""
+    now_types, old_types, old_on = also_split(ev, row)
+    return [t for t in (ev.get("also") or []) if t not in old_types or old_on]
+
+
 def lead_row(row: dict, ev: dict, out: dict, today: dt.date) -> tuple[dict, dict]:
     """(Beobachtung, Lead) für ein Ereignis."""
     from lib import premium
@@ -254,7 +300,7 @@ def lead_row(row: dict, ev: dict, out: dict, today: dt.date) -> tuple[dict, dict
     dom = site_domain(url)
     t = texts(row, ev, dom, today)
     details = {"findings": ev["findings"], "checked_on": today.isoformat(), "radar_event": ev["key"],
-               "also": ev.get("also") or [], "listed_website": row.get("website"),
+               "also": _dated_also(ev, row), "listed_website": row.get("website"),
                **({"cert_not_after": ev["not_after"].isoformat()} if ev.get("not_after") else {}),
                **({"last_ok": ev["last_ok"].isoformat()} if ev.get("last_ok") else {})}
     obs = {"company_id": row["company_id"], "kind": "filing", "key": f"radar_{ev['signal_type']}",

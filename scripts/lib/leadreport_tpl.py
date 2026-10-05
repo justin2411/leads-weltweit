@@ -105,7 +105,8 @@ def report_data(data: bytes, country: str = "US", plans: list[dict] | None = Non
         age = premium_wert.alter(r.get("event_date", ""), period or dt.date.today(), lang)
         if age:
             lead["detectedAge"] = age
-        ev = premium_wert.beleg(sig, r.get("website") or "", r.get("source_url") or "", r.get("checked_on") or "", lang)
+        ev = premium_wert.beleg(sig, r.get("website") or "", r.get("source_url") or "", r.get("checked_on") or "", lang,
+                                 r.get("source") or "")
         if ev:
             lead["evidence"] = ev
         if lead["contact"] and (r.get("contact_source") or "").strip():

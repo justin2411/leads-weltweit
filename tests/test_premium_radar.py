@@ -239,5 +239,63 @@ class RadarAlsoWishTest(unittest.TestCase):
                                                       "event_summary": "Old version Ltd: certificate expired."}))
 
 
+class RadarBelegTest(unittest.TestCase):
+    """Premium-Labor 05.10.2026: jeder Kombi-Zustand steht mit Prüfdatum im Lead-Text (Beleg) – auch HTTPS und
+    kaputte Seite, auch aus einer früheren Prüfung; ohne Datum zählt ein früherer Zustand nicht für Kombi."""
+
+    def ev(self, sig="cert_expiring", findings=(), also=()):
+        return {"signal_type": sig, "not_after": dt.date(2026, 10, 20), "days_left": 15, "findings": list(findings),
+                "also": list(also), "event_date": dt.date(2026, 10, 20), "detail": "http_404",
+                "last_ok": dt.date(2026, 10, 3)}
+
+    def test_same_check_has_date_for_every_state(self):
+        f = [{"type": "no_https", "detail": "redirects_to_http", "value": ""}]
+        t = radar.texts({"name": "Example Ltd", "country": "UK"}, self.ev(findings=f), "example.com", TODAY)
+        self.assertIn("The same check on 5 October 2026 also found that Chrome shows", t["event_summary"])
+        t = radar.texts({"name": "Exemple", "country": "FR"}, self.ev(findings=f), "example.fr", TODAY)
+        self.assertIn("Le même contrôle du 5 octobre 2026 a aussi relevé que", t["event_summary"])
+
+    def test_event_itself_is_not_repeated(self):
+        f = [{"type": "no_https", "detail": "certificate_expired", "value": ""}]
+        ev = self.ev("no_https", findings=f, also=["no_https"])
+        t = radar.texts({"name": "Example Ltd", "country": "US"}, ev, "example.com", TODAY)
+        self.assertNotIn("also found", t["event_summary"])
+        self.assertNotIn("earlier check", t["event_summary"])
+
+    def test_earlier_state_with_date_and_wish(self):
+        from lib.wishes import matches
+        row = {"name": "Example Inc", "country": "US", "lead_checked": "2026-09-28"}
+        ev = self.ev(also=["website_not_mobile", "website_outdated"])
+        t = radar.texts(row, ev, "example.com", TODAY)
+        self.assertIn("Our earlier check on September 28, 2026 found that the homepage was not built for phones",
+                      t["event_summary"])
+        lead = {"signal_type": "cert_expiring", "event_summary": t["event_summary"]}
+        self.assertTrue(matches("not_mobile", lead))
+        self.assertTrue(matches("website_outdated", lead))
+        self.assertEqual(radar._dated_also(ev, row), ["website_not_mobile", "website_outdated"])
+
+    def test_earlier_state_without_date_not_counted(self):
+        row = {"name": "Example Ltd", "country": "UK"}
+        ev = self.ev(also=["website_not_mobile"])
+        t = radar.texts(row, ev, "example.com", TODAY)
+        self.assertNotIn("earlier check", t["event_summary"])
+        self.assertEqual(radar._dated_also(ev, row), [])
+
+    def test_broken_event_names_earlier_state(self):
+        row = {"name": "Example Ltd", "country": "UK", "lead_checked": "2026-10-02"}
+        f = [{"type": "website_broken", "detail": "http_404", "value": "404"}]
+        ev = self.ev("website_broken", findings=f, also=["no_https"])
+        t = radar.texts(row, ev, "example.com", TODAY)
+        self.assertIn("Our earlier check on 2 October 2026 found that the site had no working HTTPS encryption",
+                      t["event_summary"])
+
+    def test_pdf_why_keeps_dated_state(self):
+        from lib.leadreport import _short_why
+        f = [{"type": "website_not_mobile", "detail": "no_viewport", "value": ""}]
+        t = radar.texts({"name": "Example Ltd", "country": "UK"}, self.ev(findings=f), "example.com", TODAY)
+        why = _short_why(t["event_summary"], "Example Ltd", "")
+        self.assertIn("The same check on 5 October 2026 also found that the homepage is not built for phones", why)
+
+
 if __name__ == "__main__":
     unittest.main()

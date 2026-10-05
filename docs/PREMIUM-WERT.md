@@ -69,6 +69,13 @@ Grundregeln: keine Garantien, keine erfundenen Zahlen, nur belegte Spannen mit Q
 
 **Umgesetzt (05.10.2026):** Zahlen und Texte in `app/content/premium-wert.json` (Rechnung `app/lib/premium-wert.ts` = `scripts/lib/premium_wert.py`). Probe-PDF S2 US/UK/FR: Lead-Karte mit Alter, Beleg-Link und Abrufdatum, Quelle der Ansprechperson, Einstiegssatz; Seite „Was ein Kunde wert ist“ (UK ohne Projektspanne, da ungeprüft). Landingpage: Block „Lohnt sich das?“ nur als A/B-Variante (`page_variants.value_block = an`, Schritt `landing`, Element `value_block`).
 
+**Beleg je Premium-Lead (Premium-Labor 05.10.2026):** Jeder Zusatz-Zustand des Kombi-Anlasses steht mit Prüfdatum im
+Lead-Text, z. B. „…expires on 29 October 2026 (checked 5 October 2026). The same check on 5 October 2026 also found that
+the homepage is not built for phones.“ bzw. „Our earlier check on 28 September 2026 found that …“ (`lib/radar.py`
+`also_text`, auch HTTPS und kaputte Seite). Ein früherer Zustand ohne Prüfdatum zählt nicht mehr für den Kombi-Anlass
+(nur strenger). Website-Befund mit datiertem Registereintrag (Companies-House-Eigentümerwechsel): Beleg-Link im PDF ist
+der Registereintrag, nicht die Website (`premium_wert.beleg`). Vorher fehlte der Zustand bei ~25 % der Radar-Premium-Leads.
+
 ### Probe-PDF
 
 - Pro Lead eine **Lead-Karte**: Anlass, Datum mit Alter („vor 6 Tagen“), Beleg-Link mit Abrufdatum, Ansprechperson mit Quelle, geprüfter Kontakt, Einstiegssatz.

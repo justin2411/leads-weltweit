@@ -88,6 +88,14 @@ class LeadKarte(unittest.TestCase):
         self.assertEqual((b["label"], b["checked"]), ("explore.overturemaps.org", "vérifié le 4 oct. 2026"))
         self.assertIsNone(W.beleg("new_incorporation", "", "", "2026-10-04", "en"))
         self.assertIsNone(W.beleg("new_incorporation", "", "javascript:alert(1)", "", "en"))
+        # Eigentümerwechsel (Companies House) + Website-Befund: Beleg ist der datierte Registereintrag
+        psc = "https://find-and-update.company-information.service.gov.uk/company/00000000/persons-with-significant-control"
+        b = W.beleg("website_not_mobile", "ex.test", psc, "2026-10-04", "en",
+                    "Companies House PSC register + website check")
+        self.assertEqual(b["label"], "find-and-update.company-information.service.gov.uk")
+        # Radar: Website bleibt der Beleg
+        b = W.beleg("no_https", "ex.test", "http://ex.test/", "2026-10-04", "en", "Website check (change radar)")
+        self.assertEqual(b["url"], "https://ex.test")
 
     def test_report_data_probe(self):
         d = report_data(_csv(), "US", PLANS, None, "S2", dt.date(2026, 10, 5))
