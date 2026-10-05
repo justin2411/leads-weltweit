@@ -78,3 +78,19 @@ test("ungültiger oder unbekannter Token: 404, keine Sperre", async () => {
   assert.deepEqual(w.suppressed, []);
   assert.deepEqual(w.events, []);
 });
+
+test("Knopf ist groß und volle Breite (auch am Handy gut zu treffen)", async () => {
+  const html = await (await handleGet(URL_OK, world().deps)).text();
+  assert.match(html, /button\{display:block;width:100%;min-height:3\.5rem/);
+});
+
+test("Ein-Klick-POST mit Token nur in der URL und ohne Bestätigung: sofort gesperrt, kein Formular", async () => {
+  const w = world("FR");
+  const res = await handlePost(new Request(URL_OK, { method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" }, body: "List-Unsubscribe=One-Click" }), w.deps);
+  const html = await res.text();
+  assert.doesNotMatch(html, /<form/);
+  assert.match(html, /Vous êtes désinscrit/);
+  assert.equal(w.suppressed.length, 1);
+  assert.equal(w.events.length, 1);
+});
