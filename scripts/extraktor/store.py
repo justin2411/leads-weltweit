@@ -38,9 +38,10 @@ SOURCE_NAME = {
     "agence_bio": "Annuaire officiel des opérateurs bio (Agence Bio)",
     "charity_commission": "Register of Charities (Charity Commission for England and Wales)",
     "diagnostiqueurs": "Annuaire des diagnostiqueurs immobiliers (DGALN, official register)",
+    "ico_register": "Register of fee payers (Information Commissioner's Office)",
 }
 EVENT_KEY = {"fmcsa": "fmcsa_registration", "sec_form_d": "form_d", "companies_house": "incorporation",
-             "bodacc": "immatriculation", "overture": "no_website", "rge": "no_website", "agence_bio": "no_website", "charity_commission": "no_website", "diagnostiqueurs": "no_website", "careers": "open_roles", "ats_jobs": "open_roles",
+             "bodacc": "immatriculation", "overture": "no_website", "rge": "no_website", "agence_bio": "no_website", "charity_commission": "no_website", "diagnostiqueurs": "no_website", "ico_register": "no_website", "careers": "open_roles", "ats_jobs": "open_roles",
              "overture_web": "website_check",
              "find_tender": "contract_award", "us_award": "contract_award"}
 INDUSTRY = {"fmcsa": "Motor carrier"}
