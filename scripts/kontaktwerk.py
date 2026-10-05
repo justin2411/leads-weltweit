@@ -250,7 +250,7 @@ def process(row: dict, src: Sources, contact: dict, person: dict, rechecked: set
             out["fetched"] = True
             if pages:
                 final = next(iter(pages))
-                site = K.site_facts(pages, final, company, (reg or {}).get("name") or person.get("name"))
+                site = K.site_facts(pages, final, company, (reg or {}).get("name") or person.get("name"), reg)
         except (requests.RequestException, ValueError, UnicodeError) as e:
             out["error"] = f"web:{type(e).__name__}"
     elif (row.get("website") or "").strip():

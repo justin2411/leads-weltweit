@@ -119,6 +119,25 @@ class MergeTests(unittest.TestCase):
         self.assertIsNone(k["person"])
         self.assertEqual(k["stufe"], "widerspruch")  # Widerspruch geht vor (Kontakt allein reicht nicht)
 
+    def test_overture_id_is_no_register_number(self):
+        """Premium-Labor 05.10.2026: Overture-ID (UUID) ist keine Registernummer – kein falsches other_registry_id."""
+        pages = {"https://brightpixel.co.uk/": HOME, "https://brightpixel.co.uk/contact": CONTACT}
+        radar = {**UK_CO, "registry_source": "overture_web", "registry_id": "ddb40699-eb61-4c2a-9d3e-0a1b2c3d4e5f"}
+        site = K.site_facts(pages, "https://brightpixel.co.uk/", radar, "Sarah Thompson")
+        self.assertEqual(site["conflicts"], [])
+        self.assertTrue(site["verified"])
+        k = K.merge(radar, {"email": "hello@brightpixel.co.uk", "phone": "+442079460000"}, {}, None, site, TODAY)
+        self.assertNotIn("website_widerspruch:other_registry_id", k["hinweise"])
+        self.assertEqual(k["phone"]["belegt"], ["website"])
+        # Registertreffer (Name + PLZ) mit derselben Nummer: Website bestätigt; andere Nummer bleibt Widerspruch
+        same = K.site_facts(pages, "https://brightpixel.co.uk/", radar, "Sarah Thompson", {"id": "12345678"})
+        self.assertEqual(same["conflicts"], [])
+        other = K.site_facts(pages, "https://brightpixel.co.uk/", radar, "Sarah Thompson", {"id": "87654321"})
+        self.assertTrue(other["conflicts"][0].startswith("other_registry_id"))
+        # echte Registernummer im Bestand: unverändert streng
+        reg_co = {**UK_CO, "registry_source": "companies_house", "registry_id": "87654321"}
+        self.assertTrue(K.site_facts(pages, "https://brightpixel.co.uk/", reg_co, None)["conflicts"])
+
     def test_no_guessed_email(self):
         reg = K.fr_record(FR_RES, "id")
         k = K.merge(FR_CO, {"phone": "+33600000001"}, {}, reg, None, TODAY)
@@ -257,7 +276,7 @@ class RadarRegisterTests(unittest.TestCase):
         k = K.merge(FR_CO, FR_CONTACT, {}, reg, None, TODAY)
         self.assertEqual(k["person"]["name"], "Luc Morel")
         self.assertEqual(sorted(k["person"]["belege"])[:2], ["email_name", "plz"])
-        self.assertEqual(k["v"], 2)
+        self.assertEqual(k["v"], 3)
 
 
 class NachholenTests(unittest.TestCase):
