@@ -188,6 +188,16 @@ def load_charity(limit: int, stats: Counter, exclude: set[str] | None = None) ->
     return cands
 
 
+def load_ico(limit: int, stats: Counter, exclude: set[str] | None = None) -> list[dict]:
+    """S2 UK Premium: neu beim ICO eingetragene Verantwortliche (Register of fee payers, ≤ 30 Tage) mit Freemail,
+    ohne Website (Quellen-Scout R42). Telefon schon in Overture UK = dort schon bearbeitet."""
+    from extraktor.sources import uk_ico
+    cands = uk_ico.load(None, log=log, exclude=exclude, skip_phones=overture.phones("UK"))
+    cands = filters.dedupe([c for c in cands if not filters.pre_filter(c) and segments.fits("S2", c)[0]])[:limit]
+    stats["ico_UK"] = len(cands)
+    return cands
+
+
 def load_web(country: str, limit: int, stats: Counter, part: tuple[int, int] | None = None,
              min_conf: float = website_check.HIGH_CONF, no_phone: bool = False) -> list[dict]:
     """S2 Website-Prüfung: Overture-Firmen MIT Website, die dieser Teil in den letzten RECHECK_DAYS noch nicht
@@ -530,6 +540,11 @@ def dated_event(l: dict) -> str:
         return json.dumps({"dated_event": {"kind": "charity_registration", "date": ch["date"],
                                            "type": ch.get("type") or ""},
                            "checked_on": str(l["facts"].get("checked_on") or "")}, ensure_ascii=False)
+    ico = (l.get("facts") or {}).get("ico_new") or {}
+    if ico.get("date"):
+        return json.dumps({"dated_event": {"kind": "ico_registration", "date": ico["date"],
+                                           "tier": ico.get("tier") or ""},
+                           "checked_on": str(l["facts"].get("checked_on") or "")}, ensure_ascii=False)
     dg = (l.get("facts") or {}).get("diag_new") or {}
     if dg.get("date"):
         return json.dumps({"dated_event": {"kind": "diagnostiqueur_certification", "date": dg["date"],
@@ -683,6 +698,9 @@ def main(argv=None) -> int:
                          "ohne Angabe 2000, wenn --bio läuft = Linie s2-ukfr)")
     ap.add_argument("--charity", type=int, default=0,
                     help="S2 UK: so viele neu registrierte Charities ohne Website (Charity Commission, 0 = aus)")
+    ap.add_argument("--ico", type=int, default=None,
+                    help="S2 UK: so viele neu beim ICO eingetragene Verantwortliche ohne Website (0 = aus; ohne Angabe "
+                         "2000, wenn --charity läuft = Linie s2-ukfr)")
     ap.add_argument("--store", action="store_true", help="grüne Leads direkt in die Datenbank schreiben (mit --db)")
     ap.add_argument("--no-raw", action="store_true",
                     help="Speicher-Bremse ab 7 GB (werk_plan.py): nur grüne Leads speichern, keinen Rohbestand")
@@ -716,6 +734,8 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     if args.diag is None:
         args.diag = 2000 if args.bio > 0 else 0
+    if args.ico is None:
+        args.ico = 2000 if args.charity > 0 else 0
     deadline = time.monotonic() + args.deadline_min * 60 if args.deadline_min else 0
     only_prem = False  # Mischung (owner_settings.lead_mix) wird unten mit der Datenbank gelesen
     countries = [x.strip().upper() for x in args.countries.split(",") if x.strip()]
@@ -752,7 +772,8 @@ def main(argv=None) -> int:
         guard = filters.Guard(DB(), preload=("overture",) + (("rge",) if args.rge else ())
                                 + (("agence_bio",) if args.bio else ())
                                 + (("charity_commission",) if args.charity else ())
-                                + (("diagnostiqueurs",) if args.diag else ()))
+                                + (("diagnostiqueurs",) if args.diag else ())
+                                + (("ico_register",) if args.ico else ()))
         log(f"Datenbank: {len(guard.known)} Firmen schon bekannt")
     us = "US" in countries
     # --fmcsa-days 0 / --formd-days 0 = Quelle aus (Teile anderer Quellen laden sie nicht mit: spart Zeit und
@@ -841,6 +862,10 @@ def main(argv=None) -> int:
         # neu registrierte Charities (datiertes Ereignis, Quellen-Scout R38): ganz nach vorn
         ch = load_charity(args.charity, stats, {i for s_, i in guard.known if s_ == "charity_commission"})
         p["S2/UK"] = ch + p.get("S2/UK", [])
+    if "UK" in countries and "S2" in segs and args.ico > 0:
+        # neu beim ICO eingetragen (datiertes Ereignis, Quellen-Scout R42): ganz nach vorn
+        ic = load_ico(args.ico, stats, {i for s_, i in guard.known if s_ == "ico_register"})
+        p["S2/UK"] = ic + p.get("S2/UK", [])
     if guard.known:
         p = {k: [c for c in v if (c["source"], c["source_id"]) not in guard.known] for k, v in p.items()}
     if args.shard:

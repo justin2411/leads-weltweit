@@ -324,6 +324,61 @@ jobs:
           path: out/cache/uk_charity.json
           key: uk-charity-data-${{ steps.d.outputs.tag }}
 
+  uk-ico:
+    # Premium UK (Quellen-Scout R42, scripts/extraktor/sources/uk_ico.py): neu beim ICO eingetragene Verantwortliche
+    # (Register of fee payers, Eintragung ≤ 30 Tage) mit Kontakt aus dem Register. Täglicher Massendownload ohne Schlüssel
+    # (Download-Seite + ZIP, Crawl-delay 6 s): Merker je Tag VOR dem Abruf, jede Datei höchstens 1×/Tag. Die Teile (s2-ukfr) lesen nur den Zwischenspeicher.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - id: d
+        run: echo "tag=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+      - id: done
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/uk_ico_tag.txt
+          key: uk-ico-tag-${{ steps.d.outputs.tag }}
+          lookup-only: true
+      - uses: actions/checkout@v4
+        if: steps.done.outputs.cache-hit != 'true'
+      - name: Schalter Lead-Suche (config/pipeline.yaml)
+        id: gate
+        if: steps.done.outputs.cache-hit != 'true'
+        run: |
+          if grep -Eq '^lead_suche:\s*true' config/pipeline.yaml || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            mkdir -p out/cache && echo "${{ steps.d.outputs.tag }}" > out/cache/uk_ico_tag.txt
+            echo "an=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Lead-Suche pausiert (config/pipeline.yaml: lead_suche: false)" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Merker sichern (vor dem Abruf)
+        if: steps.gate.outputs.an == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: out/cache/uk_ico_tag.txt
+          key: uk-ico-tag-${{ steps.d.outputs.tag }}
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.an == 'true'
+        with: { python-version: "3.11" }
+      - run: pip install requests
+        if: steps.gate.outputs.an == 'true'
+      - name: ICO-Register laden (nur frische Einträge mit Kontakt behalten)
+        id: dl
+        if: steps.gate.outputs.an == 'true'
+        continue-on-error: true  # Merker bleibt gesetzt: kein zweiter Abruf am selben Tag
+        env:
+          PYTHONPATH: scripts
+          EXTRAKTOR_ICO: out/cache/uk_ico.json
+        run: |
+          python -m extraktor.sources.uk_ico | tee -a "$GITHUB_STEP_SUMMARY"
+          python -c "import json; print('neu beim ICO eingetragen, mit Kontakt (≤ 30 Tage):', len(json.load(open('out/cache/uk_ico.json'))))" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Ergebnis sichern
+        if: steps.dl.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: out/cache/uk_ico.json
+          key: uk-ico-data-${{ steps.d.outputs.tag }}
+
   plan:
     # Belegungsplan (Inhaber 03.10.2026: Plätze je Linie im Leitstand einstellen): app/lib/werk-linien.json +
     # owner_settings.slot_plan -> Matrix. Ohne Einstellung/Datenbank: Standardbelegung (wie bisher fest eingetragen).
@@ -449,6 +504,14 @@ jobs:
           key: uk-charity-data-${{ steps.m.outputs.monat }}-nie
           restore-keys: |
             uk-charity-data-
+      - name: Neue ICO-Eintragungen UK (Tagesabruf aus Job uk-ico, neuester Stand)
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 's2-ukfr')
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/uk_ico.json
+          key: uk-ico-data-${{ steps.m.outputs.monat }}-nie
+          restore-keys: |
+            uk-ico-data-
       - name: Neue Diagnostiqueurs FR (Tagesabruf aus Job fr-diag, neuester Stand)
         if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 's2-ukfr')
         uses: actions/cache/restore@v4

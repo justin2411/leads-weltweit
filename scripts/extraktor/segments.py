@@ -142,6 +142,17 @@ def fits(seg: str, c: dict) -> tuple[bool, str]:
         if not (f.get("diag_new") or {}).get("date"):
             return False, "no dated first certification"
         return True, "newly certified property diagnostician without a website"
+    if c["source"] == "ico_register":
+        # UK: neu beim ICO eingetragener Verantwortlicher (Register of fee payers) ohne Website (Quellen-Scout R42)
+        if seg != "S2":
+            return False, "source only carries the new-ICO-registration signal"
+        if c.get("website"):
+            return False, "a verified website exists"
+        if c.get("email") and not is_freemail(c["email"]):
+            return False, "uses an own email domain (likely has a site)"
+        if not (f.get("ico_new") or {}).get("date"):
+            return False, "no dated ICO registration"
+        return True, "newly registered with the ICO, without a website"
     if c["source"] == "charity_commission":
         # UK: neu registrierte Charity (Charity Commission) ohne Website (Quellen-Scout R38), gleiche Regel wie RGE
         if seg != "S2":
@@ -470,6 +481,24 @@ def texts_charity(c: dict) -> dict:
             "urgency_reason": why}
 
 
+def texts_ico(c: dict) -> dict:
+    """UK: neu beim ICO eingetragen (Register of fee payers, Datum der Eintragung) ohne Website – Englisch."""
+    f, name = c["facts"], c["name"]
+    today = f["checked_on"]
+    new = f.get("ico_new") or {}
+    when = dt.date.fromisoformat(new["date"])
+    signal = (f"{name} registered with the Information Commissioner's Office as a data controller on "
+              f"{when.strftime('%-d %B %Y')} (ICO register of fee payers) – typical for a business that is just "
+              f"starting to take on customers; we found no own website (checked {today.strftime('%-d %B %Y')}).")
+    info = f"{name}: newly registered with the ICO, based in {c['city']} ({c['zip']})."
+    opener = (f"Hello, I saw that {name} has just registered with the ICO – I couldn't find a website for it: "
+              f"would a simple site where customers can find and contact you be of interest?")
+    why = ("A business that has just registered to handle customer data is getting ready to win customers; without "
+           "a website it is hard to find and to check online.")
+    return {"signal": signal, "signal_date": when, "company_info": info, "opener": opener, "urgency": "high",
+            "urgency_reason": why}
+
+
 WEB_EN = {
     "no_https": "Chrome shows \u2018Not secure\u2019 on its website {domain}, because the site has no HTTPS encryption",
     "redirects_to_http": "Chrome shows \u2018Not secure\u2019 on its website {domain}, because the site has no HTTPS encryption",
@@ -658,6 +687,8 @@ def texts(seg: str, c: dict) -> dict:
         return texts_bio(c)
     if c["source"] == "charity_commission":
         return texts_charity(c)
+    if c["source"] == "ico_register":
+        return texts_ico(c)
     if c["source"] == "diagnostiqueurs":
         return texts_diag(c)
     if c["source"] == "overture_web":
