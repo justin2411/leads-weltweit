@@ -368,6 +368,13 @@ def main(argv=None) -> int:
         if args.apply:
             release_stale_held(db)
             refresh_dashboard_stock(db)
+            try:  # Gehirn-Weckruf (Inhaber 05.10.2026): wichtige Ereignisse für die JARVIS-Runden einreihen
+                import gehirn_weckruf
+                n = gehirn_weckruf.sammeln(db)
+                if n:
+                    print(f"⏰ {n} neue Ereignisse für das Gehirn (gehirn_weckruf)")
+            except Exception as exc:  # noqa: BLE001 - darf den Wachhund nie aufhalten
+                print(f"Gehirn-Weckruf nicht gesammelt: {type(exc).__name__}: {str(exc)[:160]}")
     for job in JOBS:
         if job["wf"] in started:
             print(f"✓  {job['wf']:<22} eben auf Wunsch gestartet")
