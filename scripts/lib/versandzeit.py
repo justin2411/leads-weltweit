@@ -124,8 +124,9 @@ def share(remaining: int, now: dt.datetime) -> int:
 
 
 def wachhund_jobs(plan: dict | None = None, inputs: dict | None = None) -> list[dict]:
-    """Ein Stundenjob für den Wachhund: rund um die Uhr, nachstarten, wenn 80 min kein Lauf begann."""
-    return [{"wf": "send.yml", "kind": "hourly", "window": (0, 23), "max_min": 80, "cond": "versand",
+    """Ein Stundenjob für den Wachhund: rund um die Uhr, nachstarten, wenn 70 min kein wirksamer Lauf begann
+    (Betrieb 05.10.2026: fehlgeschlagene Läufe und Probeläufe zählen nicht, scripts/takt.py)."""
+    return [{"wf": "send.yml", "kind": "hourly", "window": (0, 23), "max_min": 70, "cond": "versand",
              "gruppe": "alle", "inputs": dict(inputs or {}, gruppe="auto")}]
 
 

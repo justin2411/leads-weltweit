@@ -15,6 +15,11 @@ class FakeDB:
     def select_all(self, table, params):
         return self.rows
 
+    def select(self, table, params):
+        if "id" in params:  # Keyset-Blättern (Betrieb 05.10.2026): nach der letzten id
+            return []
+        return self.rows
+
     def update(self, table, match, values):
         self.updates.append((table, match, values))
         return []
@@ -36,11 +41,26 @@ class RefreshOnlyInitialTest(unittest.TestCase):
         seen = {}
 
         class DB(FakeDB):
-            def select_all(self, table, params):
+            def select(self, table, params):
                 seen.update(params)
                 return []
         drafts.refresh(DB([]))
         self.assertEqual(seen.get("kind"), "eq.initial")
+
+    def test_refresh_pages_by_id_not_offset(self):
+        """Betrieb 05.10.2026: offset 2000 mit eingebetteten Käufern lief in die Zeitüberschreitung."""
+        calls = []
+        rows = [{"id": i} for i in range(1, 251)] + [{"id": 300}]
+
+        class DB(FakeDB):
+            def select(self, table, params):
+                calls.append(dict(params))
+                after = int(params["id"][3:]) if "id" in params else 0
+                return [r for r in rows if r["id"] > after][: int(params["limit"])]
+        got = list(drafts._open_initial(DB([])))
+        self.assertEqual(len(got), 251)
+        self.assertEqual([c.get("id") for c in calls], [None, "gt.250"])
+        self.assertTrue(all("offset" not in c for c in calls))
 
 
 class NoDuplicateDraftTest(unittest.TestCase):

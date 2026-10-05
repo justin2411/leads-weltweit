@@ -27,6 +27,16 @@ jobs:
       - run: pip install requests pyyaml
       - name: Freie Linien starten (Mindestbelegung 30)
         run: python scripts/werk_belegung.py nachfuellen --apply --ref "${{ github.ref_name }}"
+      # Takt-Absicherung (Betrieb 05.10.2026): GitHub ließ nachts mails-senden und antworten stundenlang aus.
+      # Versand nur anstoßen, wenn > 70 min kein wirksamer Lauf, keiner läuft/wartet, send_paused aus und
+      # config/versand.yaml aktiv: true (Freigabe Inhaber 03./04.10.2026); Antworten nach > 25 min. Limits, Anteil
+      # je Lauf und Notbremse bleiben im Versand-Workflow. Fehler hier stoppen den Nachfüller nie.
+      - name: Takt Versand und Antworten
+        if: always()
+        continue-on-error: true
+        env:
+          SENDEN_AKTIV: ${{ vars.SENDEN_AKTIV }}
+        run: python scripts/takt.py --apply --ref main
       - name: Belegte Jobs
         if: always()
         run: python scripts/werk_belegung.py zaehlen | tee -a "$GITHUB_STEP_SUMMARY" || true
