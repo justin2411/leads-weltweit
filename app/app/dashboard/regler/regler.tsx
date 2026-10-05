@@ -9,10 +9,10 @@ import { Fold } from "../fold";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
-import { FOLLOWUP_DAYS_RANGE, MAX_AGE_RANGE, MAX_SAMPLE_TARGET, type OwnerSettings, type SettingKey } from "@/lib/owner-settings";
+import { FOLLOWUP_DAYS_RANGE, LEAD_MIX_STEP, MAX_AGE_RANGE, MAX_SAMPLE_TARGET, type OwnerSettings, type SettingKey } from "@/lib/owner-settings";
 import {
   CARDS, LEAD_COUNTRIES, MAX_AGE_NOTE, capHint, cardOf, countriesOn, countryOn, diff, draftFrom, fmtBerlin, laneRoom, leadMax, leadTotal,
-  maxAgeMatters, premiumShort, presetChips, presetPlan, scalePlan, setCountry, setLane, switchPreview, type CardKey, type Draft, type ReglerCtx, type StatusKind,
+  maxAgeMatters, mixLabel, mixText, premiumShort, presetChips, presetPlan, scalePlan, setCountry, setLane, switchPreview, type CardKey, type Draft, type ReglerCtx, type StatusKind,
 } from "@/lib/regler";
 import type { Entry } from "@/lib/regler-verlauf";
 import { Icon, type IconName } from "@/app/icons";
@@ -231,6 +231,16 @@ export function Regler({ ctx, saved, seen, cards, ready, premium = null, history
             const on = countryOn(plan, reg, c.id);
             return <Chip key={c.id} on={on} title={c.title} disabled={locked} onClick={() => set({ slot_plan: setCountry(plan, reg, c.id, !on) })}>{c.label}</Chip>;
           })}</div>
+        </div>
+        <div className="rg-k"><span>Mischung</span>
+          <div className="rg-row">
+            <Stepper label="Premium-Anteil" value={draft.lead_mix} min={0} max={100} step={LEAD_MIX_STEP} unit="%" changed={changedPart(k, "mischung")} disabled={locked}
+              minHint="nur normale Leads" maxHint="nur Premium" onChange={(n) => set({ lead_mix: n })} />
+            <div className="rg-chips">{[100, 70, 50].map((n) => (
+              <Chip key={n} pre on={draft.lead_mix === n} disabled={locked} title={mixLabel(n)} onClick={() => set({ lead_mix: n })}>{mixText(n)}</Chip>))}
+            </div>
+          </div>
+          <p className="rg-note">{mixLabel(draft.lead_mix)}{draft.lead_mix >= 100 ? " · Normal-Leads werden verworfen" : ""}</p>
         </div>
         <Link href="/dashboard/jarvis?s=lead&t=set" className="rg-fine">Feinsteuerung je Linie<Icon name="weiter" size={16} /></Link>
       </>);

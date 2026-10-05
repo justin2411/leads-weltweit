@@ -52,9 +52,15 @@ class FakeDB:
         self.updates: list[tuple[str, dict, dict]] = []
         self.inserts: list[tuple[str, dict]] = []
         self.rpc_handlers: dict = {}
+        # Mischung im Lead-Werk (owner_settings.lead_mix): ohne Zeile in der Attrappe 0 % Premium = Verhalten vor
+        # „Nur Premium“ (bestehende Tests); Tests für Nur Premium setzen lead_mix = 100 oder eine eigene Zeile
+        self.lead_mix = 0
 
     def select(self, table: str, params: dict | None = None) -> list[dict]:
         params = dict(params or {})
+        if table == "owner_settings" and params.get("key") == "eq.lead_mix" and \
+                not any(r.get("key") == "lead_mix" for r in self.tables.get("owner_settings", [])):
+            return [{"key": "lead_mix", "value": {"premium_pct": self.lead_mix}}]
         pool = params.pop("lead_pool_items.pool_id", None)  # Speicher-Filter (lib/pools.restrict, !inner-Einbettung)
         rows = [r for r in self.tables.get(table, []) if all(_match(r, k, v) for k, v in params.items())]
         if pool is not None:

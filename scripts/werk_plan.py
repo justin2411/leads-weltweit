@@ -207,6 +207,93 @@ def premium_shift(reg: dict, werk: str, plan: dict[str, int], reasons: dict[str,
         reasons[r] = f"Premium-Ertrag ({round(stats[r].get('premium_per_slot_h', 0.0))} je Platz·h) – +Platz von Standard-Linien"
 
 
+# Mischung im Lead-Werk (Inhaber 05.10.2026: „ab sofort brauchen wir nur noch premium leads die sollten wir jetzt
+# generieren auf voller leistung“ und „möchte auch beim lead werk einstellen wv normale leads und premium leads gemacht
+# werden“; owner_settings.lead_mix {"premium_pct": 0–100}, Standard 100). Lead-Linien tragen in werk-linien.json
+# `premium` = "ja" (Premium-Quelle) oder "basis" (Radar-Basis: Firmen mit Website für das Veränderungs-Radar).
+# 100 %: alle übrigen Lead-Linien 0 Plätze, Radar-Basis höchstens 1 (premium_only_plan). 1–99 %: Plätze des Lead-Werks
+# im Verhältnis Premium-Linien / übrige Linien (mix_plan). 0 %: Belegung wie bisher. Festgesetzte Linien bleiben;
+# Speicher-Bremse geht vor.
+PREMIUM_WHY = "Nur Premium (Inhaber 05.10.2026)"
+MIX_WHY = "Mischung"
+
+
+def mix_from(settings: dict | None) -> int:
+    """Premium-Anteil aus den gelesenen Einstellungen (fehlend/unlesbar = 100, nur strenger)."""
+    try:
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from lib.premium import mix_value
+        return mix_value((settings or {}).get("lead_mix"))
+    except Exception:  # noqa: BLE001
+        return 100
+
+
+def mix_plan(reg: dict, werk: str, plan: dict[str, int], why: dict[str, str], locks: dict | None, pct: int) -> int:
+    """1–99 %: Plätze des Lead-Werks zwischen aktiven Premium-Linien und aktiven übrigen Linien so verschieben, dass
+    der Premium-Anteil möglichst nahe pct liegt (je Linie bis max, Summe unverändert, festgesetzte Linien bleiben).
+    Gibt die Zahl verschobener Plätze."""
+    if werk != "lead-werk" or not 0 < pct < 100:
+        return 0
+    locks = locks if isinstance(locks, dict) else {}
+    lanes = {l["id"]: l for l in reg["lanes"] if l["werk"] == werk}
+    total = sum(plan.get(k, 0) for k in lanes)
+    target = round(total * pct / 100)
+    prem = [k for k in lanes if lanes[k].get("premium") == "ja"]
+    norm = [k for k in lanes if lanes[k].get("premium") != "ja"]
+    moved = 0
+    while True:
+        have = sum(plan.get(k, 0) for k in prem)
+        if have == target:
+            break
+        src, dst = (norm, prem) if have < target else (prem, norm)
+        give = [k for k in src if k not in locks and plan.get(k, 0) > 1]
+        room = [k for k in dst if k not in locks and 0 < plan.get(k, 0) < int(lanes[k]["max"])]
+        if not give or not room:
+            break
+        g = max(give, key=lambda k: (plan[k], k))
+        r = min(room, key=lambda k: (plan[k], k))
+        plan[g] -= 1
+        plan[r] += 1
+        moved += 1
+        why[r] = str(why.get(r) or "").split(f" – {MIX_WHY}")[0] + f" – {MIX_WHY} Premium {pct} %"
+        why[g] = str(why.get(g) or "").split(f" – {MIX_WHY}")[0] + f" – {MIX_WHY} Premium {pct} %"
+    return moved
+
+
+def premium_only_plan(reg: dict, werk: str, plan: dict[str, int], why: dict[str, str], locks: dict | None,
+                      cap: int) -> int:
+    """Nur-Premium-Belegung des Lead-Werks (in place): Linien ohne Premium auf 0, Radar-Basis höchstens 1, freie
+    Plätze an aktive Premium-Linien (gleichmäßig, bis max, nie über cap). Gibt die Zahl umverteilter Plätze."""
+    if werk != "lead-werk":
+        return 0
+    locks = locks if isinstance(locks, dict) else {}
+    lanes = [l for l in reg["lanes"] if l["werk"] == werk]
+    for l in lanes:
+        k, flag = l["id"], l.get("premium")
+        if k in locks or flag == "ja":
+            continue
+        lim = 1 if flag == "basis" else 0
+        if plan.get(k, 0) > lim:
+            plan[k] = lim
+            why[k] = (f"{PREMIUM_WHY}: Radar-Basis – höchstens 1 Platz" if lim
+                      else f"{PREMIUM_WHY}: Linie ohne Premium – 0 Plätze")
+    room = {l["id"]: int(l["max"]) - plan.get(l["id"], 0) for l in lanes
+            if l.get("premium") == "ja" and l["id"] not in locks and plan.get(l["id"], 0) > 0
+            and int(l["max"]) > plan.get(l["id"], 0)}
+    free, gain = cap - sum(plan.values()), {}
+    while free > 0 and room:
+        k = min(room, key=lambda x: (plan[x], x))
+        plan[k] += 1
+        gain[k] = gain.get(k, 0) + 1
+        free -= 1
+        room[k] -= 1
+        if room[k] <= 0:
+            del room[k]
+    for k, n in gain.items():
+        why[k] = str(why.get(k) or "") + f" – +{n} {PREMIUM_WHY}"
+    return sum(gain.values())
+
+
 def brake_level(db_bytes: int | None, last: str = "aus") -> str:
     """Stufe der Speicher-Bremse; ohne Messwert gilt die letzte Stufe weiter. Eine höhere Stufe bleibt, bis die
     Datenbank 0,2 GB unter deren Grenze liegt (kein Flattern um die Grenze)."""
@@ -455,10 +542,13 @@ def autopilot(reg: dict, werk: str, base: dict[str, int], stats: dict[str, dict]
     return plan, why
 
 
-def _min_tier(l: dict, s: dict | None) -> int | None:
+def _min_tier(l: dict, s: dict | None, nur_premium: bool = False) -> int | None:
     """Rang einer Linie für die Mindestbelegung (kleiner = zuerst), None = nicht auffüllen.
-    1 Premium-/Website-Linien US/UK/FR, 2 Kunden, 3 Prüfer, 4 andere Linien mit Vorrat im letzten Lauf."""
+    1 Premium-/Website-Linien US/UK/FR, 2 Kunden, 3 Prüfer, 4 andere Linien mit Vorrat im letzten Lauf.
+    nur_premium: Lead-Linien ohne `premium: ja` füllen nie auf (Inhaber 05.10.2026)."""
     lid = l["id"]
+    if nur_premium and l.get("werk") == "lead-werk":
+        return 1 if l.get("premium") == "ja" else None
     if (s or {}).get("premium_last") or "premium" in lid or \
             (lid.startswith("web-") and lane_countries(l) and lane_countries(l) <= {"US", "UK", "FR"}):
         return 1
@@ -473,7 +563,7 @@ def _min_tier(l: dict, s: dict | None) -> int | None:
 
 def fill_minimum(lanes: list[dict], plan: dict[str, int], why: dict[str, str], stats: dict[str, dict],
                  locks: dict, cap: int, other_sum: int, min_belegt: int = MIN_BELEGT,
-                 skip: set[str] | None = None, last: set[str] | None = None) -> int:
+                 skip: set[str] | None = None, last: set[str] | None = None, nur_premium: bool = False) -> int:
     """Werke immer ausgelastet (Inhaber 05.10.2026): liegen beide Werke zusammen unter `min_belegt` Plätzen, gehen
     die fehlenden Plätze an Linien mit Ertrag/Vorrat (Rang siehe _min_tier, im Rang reihum), je Linie bis max, nie
     über `cap` (total_slots - reserve - anderes Werk, bei Bremse kleiner). Nie: festgesetzte Linien, vom Inhaber auf
@@ -491,7 +581,7 @@ def fill_minimum(lanes: list[dict], plan: dict[str, int], why: dict[str, str], s
         if k in locks or k in skip or plan.get(k, 0) <= 0 or r.startswith(EMPTY_WHY) or "Wachplatz" in r \
                 or "durchgeprüft" in r or plan[k] >= int(l["max"]):
             continue
-        t = _min_tier(l, stats.get(k))
+        t = _min_tier(l, stats.get(k), nur_premium)
         if t is not None:
             tiers.setdefault(99 if k in last else t, []).append(l)
     added: dict[str, int] = {}
@@ -577,7 +667,7 @@ def read_inputs(werk: str, hours: int = 8) -> dict:
         return out
     seen = dt.datetime.now(dt.timezone.utc).isoformat()  # Lesezeitpunkt (nicht Quittungszeit)
     try:
-        rows = db.select("owner_settings", {"select": "key,value", "key": "in.(slot_plan,slot_autopilot,lane_reset)"}) or []
+        rows = db.select("owner_settings", {"select": "key,value", "key": "in.(slot_plan,slot_autopilot,lane_reset,lead_mix)"}) or []
         out["settings"] = {r["key"]: r["value"] for r in rows}
         out["settings_seen"] = seen
     except BaseException as e:  # noqa: BLE001
@@ -686,6 +776,16 @@ def decide(reg: dict, werk: str, inp: dict) -> dict:
     for k in ruht:
         if k in plan:
             plan[k], reasons[k] = 0, RUHT_WHY
+    pct = int(inp["mix_pct"]) if "mix_pct" in inp else mix_from(settings)
+    nur_premium = pct >= 100
+    mix_locks = {**(ap.get("locks") if isinstance(ap.get("locks"), dict) else {}), **{k: 0 for k in ruht}}
+    if nur_premium and werk == "lead-werk" and brake != "stopp":
+        cap = int(reg["total_slots"]) - int(reg["reserve"]) - sum(other.values())
+        if brake in ("drossel", "ohne-rohbestand"):
+            cap = min(cap, BRAKE_LEAD_MAX)
+        premium_only_plan(reg, werk, plan, reasons, mix_locks, cap)
+    elif werk == "lead-werk" and brake != "stopp":
+        mix_plan(reg, werk, plan, reasons, mix_locks, pct)
     if werk == "lead-werk" and brake in ("drossel", "ohne-rohbestand") and sum(plan.values()) > BRAKE_LEAD_MAX:
         # Bremse auch ohne Autopilot: die Linien mit den meisten Plätzen kürzen, jede aktive behält 1
         while sum(plan.values()) > BRAKE_LEAD_MAX and any(v > 1 for v in plan.values()):
@@ -698,7 +798,8 @@ def decide(reg: dict, werk: str, inp: dict) -> dict:
         reasons = {k: BRAKE_STOP_WHY for k in plan}
     extra = " --no-raw" if werk == "lead-werk" and brake in ("ohne-rohbestand", "stopp") else ""
     return {"plan": plan, "reasons": reasons, "mode": mode, "brake": brake, "extra": extra, "base": own,
-            "autopilot": ap, "stats": stats, "nach": nach_lanes(reg, inp.get("vorrang"), inp.get("stock"))}
+            "autopilot": ap, "stats": stats, "nach": nach_lanes(reg, inp.get("vorrang"), inp.get("stock")),
+            "nur_premium": nur_premium, "mix_pct": pct}
 
 
 def run_counts(reg: dict, res: dict, teile: dict[str, int] | None, taken: set[str]) -> tuple[dict[str, int], dict[str, str]]:
@@ -834,8 +935,9 @@ def main(argv: list[str] | None = None) -> int:
         try:
             from lib.owner_settings import ack
             s = inp["settings"]
-            ack(db, a.werk, ["slot_plan", "slot_autopilot"],
-                {"slot_plan": s.get("slot_plan") or {}, "slot_autopilot": s.get("slot_autopilot") or {"on": True, "locks": {}}},
+            ack(db, a.werk, ["slot_plan", "slot_autopilot"] + (["lead_mix"] if a.werk == "lead-werk" else []),
+                {"slot_plan": s.get("slot_plan") or {}, "slot_autopilot": s.get("slot_autopilot") or {"on": True, "locks": {}},
+                 "lead_mix": {"premium_pct": res.get("mix_pct", 100)}},
                 seen_at=inp.get("settings_seen"))
         except BaseException as e:  # noqa: BLE001
             print(f"Quittung nicht geschrieben ({type(e).__name__})", file=sys.stderr)

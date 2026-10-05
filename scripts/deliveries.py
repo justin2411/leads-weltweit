@@ -75,8 +75,11 @@ def week_start(today: dt.date | None = None) -> dt.date:
 
 def select_leads(leads: list[dict], sub: dict, already: set[str], details: dict[str, dict],
                  match=None, tags: dict[str, dict] | None = None, cfilter: dict | None = None,
-                 fb_weights: dict[str, float] | None = None) -> list[dict]:
+                 fb_weights: dict[str, float] | None = None, premium_only: bool = False) -> list[dict]:
     """Passende, noch nicht gelieferte Leads für ein Abo, höchstens max_per_week, max. 3 je Firma.
+
+    premium_only (Mischung 100 % = owner_settings.lead_mix, Inhaber 05.10.2026 „nur noch premium leads“; der Aufrufer
+    liest sie einmal je Lauf): nur Leads, die heute Premium sind (lib/premium.tier_now) – lieber weniger als aufgefüllt.
 
     tags/cfilter (BRAIN.md 5.3): Qualitätswert ab 60 und Abgleich mit customer_filters, falls vorhanden.
     """
@@ -103,6 +106,9 @@ def select_leads(leads: list[dict], sub: dict, already: set[str], details: dict[
         leads = sorted(leads, key=lambda l: -lead_priority(l, prefs, (tags or {}).get(l["id"])))  # stabil
         # Premium bleibt vorn: die Kundenwünsche sortieren nur innerhalb von Premium bzw. Standard (Inhaber 05.10.2026)
         leads = sorted(leads, key=lambda l: premium_key(l)[0])
+    if premium_only:
+        from lib.premium import tier_now
+        leads = [l for l in leads if tier_now(l) == "premium"]
     picked, per = [], {}
     for l in leads:
         if l["id"] in already or l["segment_id"] != sub["segment_id"] or l["country"] != country:
@@ -452,6 +458,8 @@ def cmd_prepare(args) -> int:
         return 0
     from lib.feedback import load_weights
     fb_weights = load_weights(db)  # Kunden-Feedback je Anlass (Feedback-Werk): nur Reihenfolge
+    from lib.premium import only_premium
+    nur_premium = only_premium(db)  # Mischung 100 % (Inhaber 05.10.2026): nur Premium-Leads liefern
     period = week_start()
     subs =db.select("subscriptions", {"status": "eq.active",
                                        "select": "*,customers(company_name,country,billing_email,status,"
@@ -507,7 +515,7 @@ def cmd_prepare(args) -> int:
                                                                  "select": "lead_ids,status,period_start"}), period)
         cf = db.select("customer_filters", {"customer_id": f"eq.{s['customer_id']}"})
         picked = select_leads(leads, s, already, details, tags=tags, cfilter=cf[0] if cf else None,
-                              fb_weights=fb_weights)
+                              fb_weights=fb_weights, premium_only=nur_premium)
         # „ohne Website“ vor der Lieferung nachprüfen (Inhaber 02.10.2026) und jeden Lead durch die Drei-Stufen-Freigabe
         # (Inhaber 03.10.2026); Durchgefallene raus, Lücke neu auffüllen – geliefert wird nur, was freigegeben ist
         from lib import release_gate
@@ -524,7 +532,7 @@ def cmd_prepare(args) -> int:
                 break
             leads = [l for l in leads if l["id"] not in bad]
             picked = select_leads(leads, s, already, details, tags=tags, cfilter=cf[0] if cf else None,
-                              fb_weights=fb_weights)
+                              fb_weights=fb_weights, premium_only=nur_premium)
         picked = [l for l in picked if l["id"] in released]
         enrich(db, picked, known)
         if len(picked) < 5:

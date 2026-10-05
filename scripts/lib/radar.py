@@ -462,13 +462,17 @@ def parse_countries(spec: str) -> tuple[list[str], dict[str, float]]:
 
 def run(db, countries: list[str], limit: int, fetcher, deadline: float = 0, workers: int = 16, log=print,
         today: dt.date | None = None, apply: bool = True, min_days: int = RECHECK_DAYS,
-        shard: tuple[int, int] = (0, 1), weights: dict[str, float] | None = None) -> dict:
+        shard: tuple[int, int] = (0, 1), weights: dict[str, float] | None = None, premium_only: bool = False) -> dict:
     """Radar je Land (gewichteter Anteil am Zeitfenster). Ergebnis je Land: Kandidaten, geprüft, Zustände,
     Ereignisse je Art, neue Leads, davon premium. apply=False: nur prüfen, nichts speichern (Test).
 
     weights: Zeitgewicht je Land (Standard 1). Premium-Labor 05.10.2026: UK/FR haben wenig Premium, das Radar ist dort
     die Hauptquelle; Länder mit kleinem Bestand zuerst, damit ihre Restzeit an die folgenden geht. Ändert nur die
-    Reihenfolge/Zeit, nie Prüfregeln oder Abrufgrenzen (1 Abruf je Seite und Tag, robots.txt)."""
+    Reihenfolge/Zeit, nie Prüfregeln oder Abrufgrenzen (1 Abruf je Seite und Tag, robots.txt).
+
+    premium_only (Inhaber 05.10.2026 „nur noch premium leads“): ein Ereignis wird nur dann ein neuer Lead, wenn er
+    Premium ist; sonst verworfen (`verworfen_standard`). Das Radar-Gedächtnis (website_audit/radar) wird immer
+    gespeichert – es ist die Grundlage, um eine spätere Veränderung zu erkennen."""
     today = today or dt.date.today()
     w = {c: max(0.0, float((weights or {}).get(c, 1.0))) for c in countries}
     report: dict = {}
@@ -503,6 +507,14 @@ def run(db, countries: list[str], limit: int, fetcher, deadline: float = 0, work
                 except Exception as exc:  # noqa: BLE001
                     log(f"Radar {co}: Zustand nicht gespeichert ({type(exc).__name__}: {str(exc)[:160]})")
             for row, out in events:
+                if premium_only:
+                    try:
+                        tier = lead_row(row, out["event"], out, today)[1]["premium"]["tier"]
+                    except Exception:  # noqa: BLE001 - im Zweifel nicht speichern (nur strenger)
+                        tier = "standard"
+                    if tier != "premium":
+                        stats["verworfen_standard"] += 1
+                        continue
                 try:
                     got = save_event(db, row, out["event"], out, today)
                 except Exception as exc:  # noqa: BLE001 - ein Lead darf die übrigen nicht mitreißen

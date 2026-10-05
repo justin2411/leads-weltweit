@@ -686,6 +686,9 @@ def main(argv=None) -> int:
     ap.add_argument("--store", action="store_true", help="grüne Leads direkt in die Datenbank schreiben (mit --db)")
     ap.add_argument("--no-raw", action="store_true",
                     help="Speicher-Bremse ab 7 GB (werk_plan.py): nur grüne Leads speichern, keinen Rohbestand")
+    ap.add_argument("--radar-basis", action="store_true",
+                    help="Nur Premium: grüne Standard-Leads dieser Linie trotzdem speichern – Firmen mit Website als "
+                         "Kandidaten des Veränderungs-Radars (web-uk/web-fr, Inhaber 05.10.2026)")
     ap.add_argument("--shard", default="", help="i/n: nur jeden n-ten Kandidaten ab i (parallele Teilläufe)")
     ap.add_argument("--out", default="out/extraktor")
     ap.add_argument("--us-overture", action="store_true",
@@ -714,6 +717,7 @@ def main(argv=None) -> int:
     if args.diag is None:
         args.diag = 2000 if args.bio > 0 else 0
     deadline = time.monotonic() + args.deadline_min * 60 if args.deadline_min else 0
+    only_prem = False  # Mischung (owner_settings.lead_mix) wird unten mit der Datenbank gelesen
     countries = [x.strip().upper() for x in args.countries.split(",") if x.strip()]
     # nur aktive Märkte befüllen (config/fokus.yaml, lib/laender; Inhaber 05.10.2026), HK nie
     ruht = [c for c in countries if c not in producing(countries)]
@@ -732,6 +736,17 @@ def main(argv=None) -> int:
         db0 = DB()
         if args.store and stop_if_paused(db0, "lead-werk", log):  # Schalter im Dashboard (Inhaber 03.10.2026)
             return 0
+        from lib import premium as _prem
+        from lib.owner_settings import ack
+        # Mischung im Lead-Werk (Inhaber 05.10.2026, Regler): 100 % = nur Premium – Standard-Leads und Rohbestand
+        # werden verworfen; unter 100 % regelt werk_plan.py die Mischung über die Plätze der Linien
+        pct = _prem.mix_pct(db0)
+        only_prem = pct >= 100
+        if args.store:
+            ack(db0, "lead-werk", ["lead_mix"], {"lead_mix": {"premium_pct": pct}})
+        log(f"Mischung: Premium {pct} % · Normal {100 - pct} %"
+            + (" – neue Standard-Leads und Rohbestand werden verworfen" if only_prem else "")
+            + (" (Radar-Basis: grüne Firmen mit Website bleiben)" if only_prem and args.radar_basis else ""))
         if args.store:  # Lebenszeichen fürs Dashboard (läuft/steht)
             hb = Heartbeat(db0, "lead-werk", os.environ.get("RUN_PART") or args.shard or ",".join(countries)).__enter__()
         guard = filters.Guard(DB(), preload=("overture",) + (("rge",) if args.rge else ())
@@ -812,7 +827,8 @@ def main(argv=None) -> int:
         rge = load_rge(args.rge, stats, {i for s_, i in guard.known if s_ == "rge"})
         new = [c for c in rge if c["facts"].get("rge_new")]
         stats["rge_new_FR"] = len(new)
-        p["S2/FR"] = new + p.get("S2/FR", []) + [c for c in rge if not c["facts"].get("rge_new")]
+        # Nur Premium: RGE-Firmen ohne neue Qualifikation haben kein datiertes Ereignis -> nie Premium, nicht prüfen
+        p["S2/FR"] = new + p.get("S2/FR", []) + ([] if only_prem else [c for c in rge if not c["facts"].get("rge_new")])
     if "FR" in countries and "S2" in segs and args.bio > 0:
         # neue Bio-Betriebe (datiertes Ereignis, Quellen-Scout R37): ganz nach vorn, wie neue RGE-Qualifikationen
         bio = load_bio(args.bio, stats, {i for s_, i in guard.known if s_ == "agence_bio"})
@@ -854,7 +870,8 @@ def main(argv=None) -> int:
         # Radar bekommt seinen Anteil am Zeitfenster wie eine weitere Branche
         shard = tuple(int(x) for x in args.shard.split("/")) if args.shard else (0, 1)
         radar_rep = radar.run(guard.db, rc, args.radar, fetcher, deadline=fair_deadline(deadline, len(keys) + 1),
-                              workers=args.workers, log=log, apply=args.store, shard=shard, weights=rw)
+                              workers=args.workers, log=log, apply=args.store, shard=shard, weights=rw,
+                              premium_only=only_prem)
         stats["radar"] = radar_rep
     for n, key in enumerate(keys):
         if deadline and time.monotonic() >= deadline:
@@ -871,7 +888,7 @@ def main(argv=None) -> int:
         if args.store and guard.db is not None:
             from extraktor.store import store_new
             try:
-                log(f"{key}: Datenbank {store_new(guard.db, guard, [row(l) for l in part if l['ampel'] != 'skip'], raw=not args.no_raw)}")
+                log(f"{key}: Datenbank {store_new(guard.db, guard, [row(l) for l in part if l['ampel'] != 'skip'], raw=not args.no_raw and not only_prem, premium_only=only_prem and not args.radar_basis)}")
             except Exception as exc:  # noqa: BLE001 - eine Branche darf die übrigen nicht mitreißen
                 failed.append(key)
                 log(f"{key}: Speichern fehlgeschlagen ({type(exc).__name__}: {str(exc)[:200]}), weiter mit der nächsten")

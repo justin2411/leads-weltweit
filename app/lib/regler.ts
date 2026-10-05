@@ -6,7 +6,7 @@
  * Grenzen kommen aus lib/owner-settings.ts (nie lockerer). Versand ist hier nur Pause/Status – nie einschaltbar.
  */
 import {
-  DEFAULTS, InputError, WERK_SWITCHES, slotCounts, validateFollowupDays, validateMaxAge, validateSampleTargets, validateSlotPlan, werkOn,
+  DEFAULTS, InputError, WERK_SWITCHES, mixPct, slotCounts, validateLeadMix, validateFollowupDays, validateMaxAge, validateSampleTargets, validateSlotPlan, werkOn,
   type Lane, type LaneRegistry, type OwnerSettings, type SettingKey, type WerkKey,
 } from "./owner-settings.ts";
 import { START_MAX_AGE_MIN, fmtBerlin, nextPickup, type StartKey, type StartRequest } from "./start-queue.ts";
@@ -32,7 +32,7 @@ export type Card = {
 };
 
 export const CARDS: readonly Card[] = [
-  { key: "lead-werk", icon: "lead-werk", name: "Lead-Werk", keys: ["werke_paused", "slot_plan", "slot_autopilot"], werk: "lead-werk", start: "lead-werk", cron: "23 */3 * * *", file: "lead-werk.yml" },
+  { key: "lead-werk", icon: "lead-werk", name: "Lead-Werk", keys: ["werke_paused", "slot_plan", "slot_autopilot", "lead_mix"], werk: "lead-werk", start: "lead-werk", cron: "23 */3 * * *", file: "lead-werk.yml" },
   { key: "kunden-werk", icon: "kunden-werk", name: "Kunden-Werk", keys: ["werke_paused", "slot_plan", "buyer_countries_off"], werk: "kunden-werk", start: "kunden-werk", cron: "41 */2 * * *", file: "kunden-werk.yml" },
   { key: "proben-vorrat", icon: "proben", name: "Proben-Vorrat", keys: ["werke_paused", "sample_targets", "sample_premium_targets", "sample_max_age_hours"], werk: "proben-vorrat", start: "proben-vorrat", cron: "23 * * * *", file: "proben-vorrat.yml" },
   { key: "antworten", icon: "antworten", name: "Antwort-Assistent", keys: ["werke_paused"], werk: "antworten", start: null, cron: "*/10 * * * *", file: "antworten.yml", note: WERK_SWITCHES.antworten.note },
@@ -325,6 +325,8 @@ export type Draft = {
   /** Autopilot der Plätze (Inhaber 03.10.2026: an): verteilt bei jedem Start innerhalb der Grundbelegung um */
   autopilot: boolean;
   slot_plan: Record<string, number>;
+  /** Mischung im Lead-Werk: Premium-Anteil 0–100 % (Rest = normale Leads), Standard 100 */
+  lead_mix: number;
   buyer_countries_off: string[];
   sample_targets: Record<string, number>;
   /** davon Premium-Proben (10/10 Premium-Leads) je Seite */
@@ -332,6 +334,11 @@ export type Draft = {
   sample_max_age_hours: number;
   followup_days: number;
 };
+
+/** „Premium 100 % · Normal 0 %“ */
+export const mixLabel = (pct: number) => `Premium ${pct} % · Normal ${100 - pct} %`;
+/** kurz für die Änderungsliste: „nur Premium“ / „70/30“ */
+export const mixText = (pct: number) => (pct >= 100 ? "nur Premium" : pct <= 0 ? "nur Normal" : `${pct}/${100 - pct}`);
 
 export const sampleDefault = (key: string, ctx: ReglerCtx) => (ctx.fokus.includes(key) ? ctx.proben.fokus_je_seite : ctx.proben.andere_je_seite);
 /** Premium-Soll ohne Einstellung: config/proben.yaml premium_<land>, sonst premium_andere (wie premium_targets in Python). */
@@ -348,6 +355,7 @@ export function draftFrom(s: OwnerSettings, ctx: ReglerCtx): Draft {
     on: Object.fromEntries(CARDS.map((c) => [c.key, werkOn(s, c.key).on])) as Record<CardKey, boolean>,
     autopilot: s.slot_autopilot?.on !== false,
     slot_plan: slotCounts(ctx.reg, s.slot_plan),
+    lead_mix: mixPct(s.lead_mix),
     buyer_countries_off: [...(s.buyer_countries_off ?? [])].sort(),
     sample_targets: Object.fromEntries(ctx.pages.map((k) => [k, s.sample_targets?.[k] ?? sampleDefault(k, ctx)])),
     sample_premium_targets: Object.fromEntries(ctx.pages.map((k) => [k, s.sample_premium_targets?.[k] ?? premiumDefault(k, ctx)])),
@@ -385,6 +393,10 @@ export function diff(saved: OwnerSettings, draft: Draft, ctx: ReglerCtx): Change
     if (c.key === "lead-werk" && base.autopilot !== draft.autopilot) {
       add({ card: c.key, key: "slot_autopilot", part: "autopilot", label: "Autopilot", from: base.autopilot, to: draft.autopilot,
         text: `Autopilot ${onOff(base.autopilot)} → ${onOff(draft.autopilot)}`, value: { on: draft.autopilot, locks: saved.slot_autopilot?.locks ?? {} } });
+    }
+    if (c.key === "lead-werk" && base.lead_mix !== draft.lead_mix) {
+      add({ card: c.key, key: "lead_mix", part: "mischung", label: "Mischung", from: base.lead_mix, to: draft.lead_mix,
+        text: `Mischung ${mixText(base.lead_mix)} → ${mixText(draft.lead_mix)}`, value: { premium_pct: draft.lead_mix } });
     }
     if (c.key === "lead-werk" && planChanged(leadLanes(reg))) {
       const n0 = leadTotal(base.slot_plan, reg), n1 = leadTotal(draft.slot_plan, reg);
@@ -493,6 +505,7 @@ export function validateValue(key: SettingKey, value: unknown, ctx: ReglerCtx, s
       if (rest.some((k) => !(k in old) || old[k] !== v[k])) throw new InputError("Seite ungültig");
       return { ...Object.fromEntries(rest.map((k) => [k, old[k]])), ...validateSampleTargets(v, ctx.pages.filter((k) => k in v)) };
     }
+    case "lead_mix": return validateLeadMix(value);
     case "sample_max_age_hours": return validateMaxAge(value);
     case "followup_days": return validateFollowupDays(value);
     case "buyer_countries_off": {
