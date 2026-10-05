@@ -165,9 +165,11 @@ class ZuordnungTest(unittest.TestCase):
     def test_seiten_zugeordnet(self):
         import re
         sql = self._sql()
-        block = sql[sql.index("insert into signalwerk.dashboard_bereiche"):]
-        block = block[:block.index("on conflict")]
-        seiten = dict(re.findall(r"\('([a-z0-9-]+)', '([a-z_]+)'\)", block))
+        # alle Einträge aus allen Migrationen (neue Seiten kommen mit eigener, additiver Migration dazu)
+        seiten: dict[str, str] = {}
+        for part in sql.split("insert into signalwerk.dashboard_bereiche")[1:]:
+            block = part[:part.index("on conflict")]
+            seiten.update(re.findall(r"\('([a-z0-9-]+)', '([a-z_]+)'\)", block))
         deps = set(re.findall(r"^\s*\('([a-z_]+)', '[^']+', '[^']+', '", sql[sql.index("insert into signalwerk.departments"):], re.M))
         pages = [p.parent.name for p in (self.ROOT / "app/app/dashboard").glob("*/page.tsx")]
         for page in pages:

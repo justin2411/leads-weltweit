@@ -84,6 +84,9 @@ function Rail({ v, dirty, startable, on, busy, onGo }: { v: CardView; dirty: boo
   );
 }
 
+/** Anker für Links aus der Zentrale (/dashboard/regler#…): Plätze, Länder, Proben, Versand, Nachfass. */
+const ANKER: Record<string, string> = { "lead-werk": "plaetze", "kunden-werk": "laender", "proben-vorrat": "proben", versand: "versand", nachfass: "nachfass" };
+
 export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatch }: {
   ctx: ReglerCtx; saved: OwnerSettings; seen: Partial<Record<SettingKey, string>>; cards: CardView[]; ready: Record<string, number>;
   history: HistoryView[]; error: string | null; dispatch: boolean;
@@ -283,7 +286,7 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
         <div className="rg-steps" aria-label="So wirkt eine Änderung"><span><b>1</b>einstellen</span><i>→</i><span><b>2</b>übernehmen</span><i>→</i><span><b>3</b>Werk wendet an</span></div>
       </div>
       {error && <p className="rg-err" role="alert">Einstellungen nicht lesbar – Speichern gesperrt ({error})</p>}
-      <div className="rg-grid">
+      <div className="rg-grid" id="werke">
         {CARDS.map((c) => {
           const v = cards.find((x) => x.key === c.key)!;
           const on = draft.on[c.key];
@@ -292,7 +295,7 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
           // an/aus gestellt, aber noch nicht übernommen: Vorschau statt Messwert
           const eff: { text: string; tone?: string } | null = on !== base.on[c.key] ? { text: switchPreview(c.key, on), tone: "pre" } : v.effect;
           return (
-            <section key={c.key} className={`rg-card${on ? "" : " off"}${dirty ? " dirty" : ""}`} aria-label={c.name}>
+            <section key={c.key} id={ANKER[c.key] ?? c.key} className={`rg-card${on ? "" : " off"}${dirty ? " dirty" : ""}`} aria-label={c.name}>
               <div className="rg-h">
                 <span className="rg-ic" aria-hidden><Icon name={c.icon} size={22} /></span>
                 <div style={{ minWidth: 0 }}>

@@ -49,8 +49,14 @@ MIN_GEPRUEFT = 20         # Fehlerquote erst ab dieser Menge bewerten
 BRIEF_MAX = 1000
 
 # Umsatznähe (Auftrag Inhaber: „Vertrieb/Antworten/Proben vor Infrastruktur“)
-GEWICHT = {"vertrieb": 1.0, "kundenservice": 1.0, "marketing": 1.0, "finanzen": 0.6, "strategie": 0.6,
-           "qualitaet": 0.5, "produktion": 0.5, "recht": 0.3}
+# Quelle: app/lib/firma-karte.json „naehe_umsatz“ (eine Zuordnung für App und Skripte); Rückfall = bisherige Werte
+_GEWICHT_ALT = {"vertrieb": 1.0, "kundenservice": 1.0, "marketing": 1.0, "finanzen": 0.6, "strategie": 0.6,
+                "qualitaet": 0.5, "produktion": 0.5, "recht": 0.3}
+try:
+    from lib.firma_karte import naehe_umsatz as _naehe  # noqa: E402
+    GEWICHT = {**_GEWICHT_ALT, **_naehe()}
+except Exception:  # noqa: BLE001 - Datei fehlt (z. B. Teil-Checkout): bisherige Gewichte
+    GEWICHT = dict(_GEWICHT_ALT)
 GEWICHT_SONST = 0.4
 
 GRENZEN = ("Grenzen: nur S2 × {scope}; Versand nie einschalten oder über die Limits erhöhen; Länder, Sperrliste, "

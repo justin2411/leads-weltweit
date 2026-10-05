@@ -3,20 +3,27 @@
 //  1. nebeneinanderliegende Kästen schließen oben und unten bündig ab (±1 px)
 //  2. jedes .x-btn-Zeichen sitzt mittig (±1 px)
 //  3. kein seitliches Scrollen bei 1440 / 760 / 390 px
-//  4. JARVIS-Fluss-Karte: keine Beschriftung berührt eine andere (Abzeichen, Mengen, Kreis-Texte)
+//  4. JARVIS-Werke-Karte (.jz-wk, sichtbare Fassung): Durchsatz-Texte liegen frei (keine Kachel darunter), Kacheln
+//     überlappen sich nicht; alte Fluss-Karte (.fl-map, Büro) wie bisher
 //  5. überall: kein absolut gesetztes Abzeichen (z. B. „vom Gehirn“ auf A1–A8) überdeckt Text in seinem Kasten
+//  6. nichts ragt links/rechts aus dem Bildschirm; in der Zentrale nichts aus seinem Panel (.p)
+//  7. Zentrale: zentrale Namen und Zahlen werden nicht gekürzt (Ellipsis/abgeschnitten = Fehler)
 import { createHmac } from "node:crypto";
 import { existsSync, mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { execSync } from "node:child_process";
 
-export const WIDTHS = [1440, 760, 721, 390];
+export const WIDTHS = [1440, 1180, 760, 721, 390];
 export const PAGES = [
-  "/dashboard/jarvis", "/dashboard/jarvis?s=versand", "/dashboard/jarvis?teil=mehr", "/dashboard", "/dashboard/gehirn", "/dashboard/website", "/dashboard/website/auswertung", "/dashboard/baukasten",
+  "/dashboard/jarvis", "/dashboard/jarvis?s=versand", "/dashboard/jarvis?s=versand&t=set", "/dashboard/jarvis?teil=mehr", "/dashboard", "/dashboard/gehirn", "/dashboard/website", "/dashboard/website/auswertung", "/dashboard/baukasten",
   "/dashboard/regler", "/dashboard/speicher", "/dashboard/antworten", "/dashboard/versand", "/dashboard/kunden", "/dashboard/kunden-agenten",
-  "/dashboard/bestand", "/dashboard/proben", "/dashboard/werke", "/dashboard/hilfe", "/dashboard/kontakte",
+  "/dashboard/bestand", "/dashboard/proben", "/dashboard/hilfe", "/dashboard/kontakte",
   "/dashboard/finanzen", "/dashboard/vertrieb", "/dashboard/ziele",
-  "/dashboard/recht", "/dashboard/betrieb", "/dashboard/protokoll", "/dashboard/firma", "/dashboard/firma/vertrieb", "/dashboard/firma/qualitaet?p=rolle-test", "/dashboard/firma/strategie", "/dashboard/firma/produktion",
+  "/dashboard/recht", "/dashboard/betrieb", "/dashboard/protokoll", "/dashboard/firma",
+  // JARVIS-Zentrale (05.10.2026): Seitenfenster, Büro und Bereichs-Büros
+  "/dashboard/jarvis?bereich=vertrieb", "/dashboard/jarvis?s=lern&p=messen", "/dashboard/jarvis?s=planke&p=notbremse", "/dashboard/jarvis?s=du",
+  "/dashboard/buero", "/dashboard/buero/werke", "/dashboard/buero/bereich/vertrieb", "/dashboard/buero/bereich/qualitaet?p=rolle-test",
+  "/dashboard/buero/bereich/strategie", "/dashboard/buero/bereich/produktion", "/dashboard/kunden?tab=agenten",
 ];
 const TOL = 1;
 
@@ -40,7 +47,7 @@ export function ownerCookie(secret, now = Date.now()) {
 
 /** Läuft im Browser: sammelt alle Verstöße einer Seite. */
 export function inspect(tol) {
-  const out = { scroll: null, x: [], uneven: [], flow: [], overlap: [], seen: { rows: 0, x: 0, labels: 0, badges: 0 } };
+  const out = { scroll: null, x: [], uneven: [], flow: [], overlap: [], aus: [], kurz: [], seen: { rows: 0, x: 0, labels: 0, badges: 0, namen: 0 } };
   const vw = document.documentElement.clientWidth;
   const sw = document.documentElement.scrollWidth;
   if (sw > vw + tol) {
@@ -73,7 +80,7 @@ export function inspect(tol) {
     const cs = getComputedStyle(g);
     const flexRow = cs.display.includes("flex") && cs.flexDirection.startsWith("row");
     if (!cs.display.includes("grid") && !flexRow) continue;
-    if (g.closest(".fl-map, svg, .tick, .ags")) continue;
+    if (g.closest(".fl-map, svg, .tick")) continue;
     const kids = [...g.children].filter((k) => !["BUTTON", "TEXTAREA", "INPUT", "SELECT"].includes(k.tagName) && visible(k) && !["absolute", "fixed"].includes(getComputedStyle(k).position) && boxy(k) && k.getBoundingClientRect().height >= 48);
     // Reihe = Kästen, die sich senkrecht zu mehr als der Hälfte überdecken (nicht nur „Oberkante ±8 px“ –
     // sonst fällt ein Versatz von 12 px durchs Raster und gilt als neue Reihe)
@@ -119,6 +126,41 @@ export function inspect(tol) {
       if (d < (a.r.width + b.r.width) / 2) out.flow.push(`Kreis ${a.n} überlappt Kreis ${b.n}`);
     }
     for (const x of [...badges, ...rates]) { const m = map.getBoundingClientRect(); if (x.r.left < m.left - tol || x.r.right > m.right + tol) out.flow.push(`${x.n} ragt aus der Karte`); }
+  }
+  // 4b. Werke-Karte der Zentrale (nur die sichtbare Fassung breit/hoch)
+  const wk = [...document.querySelectorAll(".jz-wk")].find(visible);
+  if (wk) {
+    const hit = (a, b, gap = 0) => a.left < b.right + gap && b.left < a.right + gap && a.top < b.bottom + gap && b.top < a.bottom + gap;
+    const tiles = [...wk.querySelectorAll(".jz-w")].filter(visible).map((e) => ({ n: e.getAttribute("aria-label")?.split(":")[0] ?? "?", r: e.getBoundingClientRect() }));
+    const rates = [...wk.querySelectorAll("text.rate")].filter((e) => getComputedStyle(e).display !== "none").map((e) => ({ n: `Durchsatz „${e.textContent.trim()}“`, r: e.getBoundingClientRect() })).filter((x) => x.r.width);
+    out.seen.labels += tiles.length + rates.length;
+    for (const t of rates) for (const k of tiles) if (hit(t.r, k.r, 1)) out.flow.push(`${t.n} liegt unter der Kachel ${k.n}`);
+    for (let i = 0; i < rates.length; i++) for (let j = i + 1; j < rates.length; j++) if (hit(rates[i].r, rates[j].r)) out.flow.push(`${rates[i].n} berührt ${rates[j].n}`);
+    for (let i = 0; i < tiles.length; i++) for (let j = i + 1; j < tiles.length; j++) if (hit(tiles[i].r, tiles[j].r)) out.flow.push(`Kachel ${tiles[i].n} überlappt Kachel ${tiles[j].n}`);
+  }
+  // 6. Aus dem Bildschirm / aus dem Panel (Elemente in abschneidenden Behältern oder fest positioniert zählen nicht)
+  const clipped = (e, stop) => {
+    for (let a = e.parentElement; a && a !== stop && a !== document.body; a = a.parentElement) {
+      const cs = getComputedStyle(a);
+      if (cs.position === "fixed" || /(hidden|auto|scroll|clip)/.test(cs.overflowX + cs.overflowY)) return true;
+    }
+    return false;
+  };
+  for (const e of document.querySelectorAll("main *")) {
+    if (e.closest("svg") || !visible(e) || getComputedStyle(e).position === "fixed" || e.closest(".drw, [role='dialog']")) continue;
+    const r = e.getBoundingClientRect();
+    if ((r.left < -tol || r.right > vw + tol) && !clipped(e, null)) { out.aus.push(`${label(e)} liegt bei x ${r.left.toFixed(0)}–${r.right.toFixed(0)} (Bildschirm 0–${vw})`); continue; }
+    const pnl = e.closest(".jz .p");
+    if (!pnl || pnl === e || clipped(e, pnl)) continue;
+    const pr = pnl.getBoundingClientRect();
+    if (r.left < pr.left - tol || r.right > pr.right + tol || r.top < pr.top - tol || r.bottom > pr.bottom + tol)
+      out.aus.push(`${label(e)} ragt aus dem Panel ${label(pnl)}`);
+  }
+  // 7. Gekürzte Namen/Zahlen in der Zentrale
+  for (const e of document.querySelectorAll(".jz-pl b.nm, .jz-pl b.z, .jz-w .kz > span:not(.tl), .jz-w b.z, .jz-b .nm, .jz-ziel b.z, .jz-ziel > span > span, .jz .ag-t")) {
+    if (!visible(e)) continue;
+    out.seen.namen++;
+    if (e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 2) out.kurz.push(`${label(e)} „${e.textContent.trim().slice(0, 24)}“ gekürzt (${e.scrollWidth}>${e.clientWidth} px)`);
   }
   // 5. Abzeichen über Text: absolut gesetzte, kleine Elemente mit Text dürfen keinen anderen Text im selben Kasten berühren
   const textRects = (root, skip) => {
@@ -170,9 +212,9 @@ export async function runChecks({ base, secret, pages = PAGES, widths = WIDTHS, 
         const status = res?.status() ?? 0;
         if (status >= 400) { errors.push(`${p} @${w}: HTTP ${status}`); continue; }
         const r = await page.evaluate(inspect, TOL);
-        const list = [...(r.scroll ? [`seitliches Scrollen: ${r.scroll}`] : []), ...r.x.map((x) => `X nicht mittig: ${x}`), ...r.uneven.map((x) => `nicht bündig: ${x}`), ...r.flow.map((x) => `Fluss-Karte: ${x}`), ...r.overlap.map((x) => `Überlappung: ${x}`)];
+        const list = [...(r.scroll ? [`seitliches Scrollen: ${r.scroll}`] : []), ...r.x.map((x) => `X nicht mittig: ${x}`), ...r.uneven.map((x) => `nicht bündig: ${x}`), ...r.flow.map((x) => `Fluss-Karte: ${x}`), ...r.overlap.map((x) => `Überlappung: ${x}`), ...r.aus.map((x) => `außerhalb: ${x}`), ...r.kurz.map((x) => `gekürzt: ${x}`)];
         for (const e of list) errors.push(`${p} @${w}: ${e}`);
-        log(`${list.length ? "✗" : "✓"} ${p} @${w}${list.length ? ` (${list.length})` : ""} · geprüft: ${r.seen.rows} Kasten-Reihen, ${r.seen.x} X, ${r.seen.labels} Karten-Texte, ${r.seen.badges} Abzeichen`);
+        log(`${list.length ? "✗" : "✓"} ${p} @${w}${list.length ? ` (${list.length})` : ""} · geprüft: ${r.seen.rows} Kasten-Reihen, ${r.seen.x} X, ${r.seen.labels} Karten-Texte, ${r.seen.badges} Abzeichen, ${r.seen.namen} Namen`);
         if (shots) await page.screenshot({ path: `${shots}/${tag}-${w}.png`, fullPage: true });
       }
       await ctx.close();

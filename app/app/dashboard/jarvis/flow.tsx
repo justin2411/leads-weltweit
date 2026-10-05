@@ -8,7 +8,6 @@ import type { ReactNode } from "react";
 import { ASPECT, POS, VIEW, WEB_STATIONS, edgePath, flow, type Edge, type Station, type StationId, type TickerItem } from "@/lib/fluss";
 import type { TipTask } from "@/lib/leitstand";
 import { WEB_INFO } from "@/lib/website-stats";
-import { DragBox } from "./dnd";
 import { AutoBadge } from "./auto-badge";
 import { SPARK_CSS, StationSpark, sparkText } from "./spark";
 import { Icon, type IconName } from "@/app/icons";
@@ -95,12 +94,12 @@ export function Ampeln({ items }: { items: Kpi[] }) {
     <div className={`amps4${items.length === 5 ? " k5" : ""}`}>
       {items.map((a) => {
         const tile = (
-          <Link key={a.label} href={a.href} scroll={false} title={a.tip} className={`amp4 t-${a.tone}${a.task ? " jt-drag" : ""}`}>
+          <Link key={a.label} href={a.href} scroll={false} title={a.tip} className={`amp4 t-${a.tone}`}>
             {a.icon ? <span className="amp4-ic" aria-hidden><Icon name={a.icon} size={20} /></span> : <i className="amp4-led" aria-hidden />}
             <span className="amp4-tx"><span className="amp4-l">{a.label}</span><b>{a.value}</b><em>{a.sub}</em></span>
           </Link>
         );
-        return a.task ? <DragBox key={a.label} task={a.task} title={`${a.label}: ${a.value}`}>{tile}</DragBox> : tile;
+        return tile;
       })}
     </div>
   );

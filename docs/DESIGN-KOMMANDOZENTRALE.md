@@ -25,8 +25,29 @@ Stand 04.10.2026. Ergänzt `docs/DESIGN.md` (Farben, Schriftskala) für `/dashbo
 
 ## Handy-Übersicht (umgesetzt 04.10.2026, Inhaber: „übersichtlicher“)
 
-- Untere Leiste: 5 feste Ziele nach Nutzung (JARVIS, Antworten mit Zähler, Versand, Kunden, Website) + „Mehr“-Blatt mit den übrigen Bereichen (`BottomNav` in `nav.tsx`, X = `x-btn`, 44 px). Desktop-Reiter unverändert.
-- JARVIS (seit 04.10.2026 abends): nur Puls, Braucht dich, Firma-Kacheln, Werke & Agenten; Details in den Bereichs-Offices `/dashboard/firma/<bereich>` und unter `?teil=mehr` (docs/JARVIS.md). Chat als schwebender Knopf über der unteren Leiste.
+- Untere Leiste (seit 05.10.2026): genau die 5 Menüpunkte wie am Rechner (JARVIS, Antworten, Kunden, Regler, Büro); das „Mehr“-Blatt entfällt, Büro ersetzt es. Desktop-Reiter unverändert.
+- JARVIS: seit 05.10.2026 die Zentrale „Organigramm live“ (unten, docs/JARVIS.md „Zentrale“). Chat als schwebender Knopf über der unteren Leiste.
 - Kontakte ≤ 760 px: Stufen als Reiter (`MobileTabs` in `mobile-tabs.tsx`) statt sechs gestapelter Kästen.
 - Leer-Zustand: `Leer` in `v2.tsx` (Symbol + 1 Satz), auf allen Seiten mit leeren Listen.
 - CSS der Handy-Bausteine in `mobile-css.ts` (Konstanten aus „use client“-Dateien sind auf dem Server nur Verweise).
+
+## JARVIS-Zentrale (05.10.2026)
+
+- **Raster:** 12 Spalten, Abstand 8 px, `align-items:stretch`; Karte 9 Spalten (Du + Gehirn, Bereiche, Werke), Leitplanken
+  3 Spalten, gleich hoch. Überschriften stehen im Kasten (`.p > h2`), der globale `.dash section`-Abstand ist genullt.
+- **Handy (< 760 px):** eine Spalte; Reihenfolge Gehirn → Leitplanken (3 × 2 Schilde) → Bereiche (3 × 3, Name beim
+  Antippen, Agenten als Zahl-Badge) → Werke als senkrechte Kette (zwei Bahnen nebeneinander). Jedes Ziel ≥ 44 px.
+- **Farben:** Nachtblau als Fläche, 1-px-Linien; Cyan = läuft; Gold nur Geld und Premium (Umsatz-Kachel, Premium-Labor,
+  Leitplanke Geld); Rot/Gelb/Grün nur Status; Grau = aus oder keine Daten (gestrichelt = nicht gebaut). Zahlen Monospace.
+- **Animation:** nur mit Bedeutung (Tabelle in docs/JARVIS.md). Partikel-Tempo aus echtem Durchsatz:
+  Dauer = clamp(8 s ÷ log10(1 + n/h), 0,8 s, 8 s), Anzahl = ceil(log10(1 + n/h) × 1,5), höchstens 3 je Kante und 40 gesamt
+  (Handy 2 / 20); 0/h = keine Partikel, Kante gedimmt. Ringe füllen einmal (300 ms), danach Gleiten (150 ms).
+  Nur SVG (`animateMotion`) und CSS, keine Canvas-Bibliothek.
+- **Versteckter Tab:** `svg.pauseAnimations()` + Klasse `.jv-paused` (`animation-play-state:paused`), keine Abrufe.
+- **prefers-reduced-motion:** globaler Gegenblock in `hud-css.ts` (alle Bereiche), in der Zentrale zusätzlich: keine
+  Partikel, Kantendicke = Durchsatz mit „n/h“ an der Kante, Puls als statischer Punkt, Ringe sofort gefüllt, nichts dreht.
+- **Schließen-X:** immer Klasse `x-btn` (nur das Zeichen, rahmenlos, exakt mittig).
+- **Prüfer:** `app/lib/layout-regeln.test.ts` (Kasten-Raster `align-items:stretch`, x-btn mittig, Gegenblock zu jeder
+  `@keyframes`, am Handy keine Schrift < 12 px, Raster 12/9+3), `npm run layout` im Browser (bündig, X mittig, kein
+  seitliches Scrollen, Abzeichen über Text) und **vor jedem Merge Bildschirmfotos in 390 px und 1440 px** für jarvis,
+  regler, buero und gehirn (`LAYOUT_SHOTS=… npm run layout` oder `ansicht.yml`).

@@ -136,8 +136,78 @@ export function makeFixtures(nowMs = Date.now()) {
     roleTask("rt4", "qualitaet", "fertig", "Ausreißer: 2 Quellen mit toter Website, Feld website korrigiert.", 1500, { bewertung: "wirkt" }),
   ];
   const cohorts = [3, 2, 1, 0].flatMap((w) => C.map((c, i) => ({ week: isoWeek(nowMs - w * 7 * 86_400_000), country: c, sent: 80 + i * 10, delivered: 78 + i * 10, replies: 1, positive: 0, samples: 0, customers: 0 })));
+  // JARVIS-Zentrale (05.10.2026): schneller Teil (zentrale_schnell) und Zwischenspeicher 'zentrale' – erfundene Zahlen
+  const zSchnell = {
+    now: iso(0),
+    beats: [
+      { werk: "lead-werk", last_beat: iso(2), plaetze: 10, processed_60m: 50000, green_60m: 4200 },
+      { werk: "pruefer-werk", last_beat: iso(1), plaetze: 1, processed_60m: 8000, green_60m: 7900 },
+      { werk: "kunden-werk", last_beat: iso(3), plaetze: 1, processed_60m: 900, green_60m: 300 },
+      { werk: "proben-vorrat", last_beat: iso(30), plaetze: 0, processed_60m: 15, green_60m: 0 },
+      { werk: "dauerpruefung", last_beat: iso(20), plaetze: 0, processed_60m: 500, green_60m: 480 },
+      { werk: "kontakt-werk", last_beat: iso(2), plaetze: 4, processed_60m: 120, green_60m: 6 },
+    ],
+    tasks: [
+      { id: "z1", agent: 1, rolle: "quellen", kind: "leads", market: "US", brief: "Leads US nachfüllen", status: "laeuft", progress: 40, step: "Quellen prüfen", created_by: "Abteilungs-Motor", created_at: iso(8), started_at: iso(5), finished_at: null, grund: "Vorrat knapp" },
+      { id: "z2", agent: 5, rolle: "trichter", kind: "gehirn", market: "UK", brief: "Antwortquote UK heben", status: "offen", progress: 0, step: null, created_by: "Gehirn", created_at: iso(4), started_at: null, finished_at: null, grund: "Umsatz: Antworten fehlen" },
+      { id: "z3", agent: 3, rolle: null, kind: "frage", market: null, brief: "Kontakt-Werk bauen", status: "laeuft", progress: 70, step: "Tests", created_by: "Inhaber Dashboard", created_at: iso(90), started_at: iso(60), finished_at: null, grund: null },
+    ],
+    handoffs: [{ id: "h2", created_at: iso(90), regel: "kaufinteresse", von: "vertrieb", an: "kundenservice", titel: "Kaufinteresse: Beispiel Studio Ltd", status: "wartet", market: "UK" }],
+    gaps: [
+      { slug: "vertrieb", ziel_key: "antwortquote", ist: 0, soll: 3, luecke: 1, rang: 1, titel: "Antwortquote 0 % → 3 % heben", grund: "Vertrieb: 100 % Lücke zum Ziel.", modus: "auftrag", updated_at: iso(20) },
+      { slug: "marketing", ziel_key: "proben_7d", ist: 2, soll: 5, luecke: 0.6, rang: 2, titel: "Proben 2/Woche → 5", grund: "Marketing: 60 % Lücke.", modus: "auftrag", updated_at: iso(20) },
+      { slug: "finanzen", ziel_key: "mrr", ist: 0, soll: 1290, luecke: 1, rang: 3, titel: "Umsatz 0 → 1.290/Monat", grund: "Finanzen: 100 % Lücke.", modus: "auftrag", updated_at: iso(20) },
+      { slug: "qualitaet", ziel_key: "lead_fehler", ist: 3.14, soll: 2, luecke: 0.36, rang: 5, titel: "Lead-Fehler 3,1 % → 2 %", grund: "Qualität: 36 % Lücke.", modus: "auftrag", updated_at: iso(20) },
+      { slug: "premium_labor", ziel_key: "premium_leads_7d", ist: null, soll: null, luecke: null, rang: 6, titel: null, grund: null, modus: "auftrag", updated_at: iso(20) },
+      { slug: "produktion", ziel_key: "gruen_7d", ist: 93615, soll: 3000, luecke: 0, rang: 7, titel: null, grund: null, modus: "auftrag", updated_at: iso(20) },
+    ],
+    owner: { send_paused: false, werke_paused: {}, followup_enabled: true, slot_plan: {}, sample_targets: {}, slot_autopilot: { on: true } },
+    brain_enabled: true,
+    plan_log: [
+      { werk: "lead-werk", at: iso(40), mode: "autopilot", bremse: "aus", plan: { "web-us": 4, "web-uk": 3, "web-fr": 3 }, reasons: { "web-us": "mehr grüne Leads je Lauf" } },
+      { werk: "lead-werk", at: iso(220), mode: "autopilot", bremse: "aus", plan: { "web-us": 2, "web-uk": 4, "web-fr": 4 }, reasons: {} },
+      { werk: "kunden-werk", at: iso(50), mode: "autopilot", bremse: "aus", plan: { kunden: 4 }, reasons: null },
+      { werk: "kontakt-werk", at: iso(30), mode: "inhaber", bremse: "aus", plan: { kontakt: 4 }, reasons: null },
+    ],
+    scout_last: iso(30),
+    msg: { sent_60m: 6, sent_24h: 153, sent_heute: 20, last_sent_at: iso(12), blocked_60m: 4, freigegeben: 9389 },
+    ev24: { sent: 156, bounced: 11, unsubscribed: 7, delivered: 3 },
+    replies: { offen: 2, heiss: 1 },
+    acks: { antworten: iso(5), "lead-werk": iso(1), kundenlieferung: iso(60 * 24) },
+    starts: [],
+    subs: { aktiv: 1, neueste: iso(60 * 24 * 7) },
+    held_60m: 3,
+    ticker: [
+      { at: iso(12), art: "decision", titel: "Betreff-Test UK gestartet", ref: "11" },
+      { at: iso(30), art: "task", titel: "380 neue grüne Leads", ref: "2" },
+      { at: iso(90), art: "positiv", titel: "Positive Antwort", ref: "e1" },
+    ],
+  };
+  const zLangsam = {
+    at: iso(3), lage: { mrr: 0, kunden: 0, mails_24h: 153, antworten_7d: 0, proben_7d: 2, gruen_7d: 93615, vorrat: 110 },
+    runs: {
+      "lead-werk": { processed_60m: 50000, green_60m: 4200, processed_24h: 2600000, green_24h: 241000, red_24h: 38000, last: iso(25) },
+      "pruefer-werk": { processed_60m: 8000, green_60m: 7900, processed_24h: 8100, green_24h: 8000, red_24h: 100, last: iso(2) },
+      "kunden-werk": { processed_60m: 0, green_60m: 0, processed_24h: 4200, green_24h: 1970, red_24h: 130, last: iso(160) },
+      "kontakt-werk": { processed_60m: 120, green_60m: 6, processed_24h: 2400, green_24h: 310, red_24h: 12, last: iso(20) },
+      stichprobe: { processed_60m: 0, green_60m: 0, processed_24h: 592, green_24h: 584, red_24h: 8, last: iso(600) },
+    },
+    tank: { US: 50, UK: 30, FR: 30 }, tank_24h: 3,
+    kpi: [0, 1, 2].flatMap((d) => [{ day: day(d), metric: "gehirn_score", value: 46.7 - d, updated_at: iso(60 * 24 * d + 30) }, { day: day(d), metric: "mrr_cents", value: 0, updated_at: iso(60 * 24 * d + 30) }]),
+    goals: [
+      { key: "mrr", titel: "Umsatz pro Monat", einheit: "€", soll: 1290, richtung: "hoch", sort: 1, quelle: "vorschlag", updated_at: iso(600) },
+      { key: "kunden", titel: "Kunden", einheit: "", soll: 10, richtung: "hoch", sort: 2, quelle: "vorschlag", updated_at: iso(600) },
+      { key: "antwortquote", titel: "Antwortquote", einheit: "%", soll: 3, richtung: "hoch", sort: 3, quelle: "inhaber", updated_at: iso(600) },
+      { key: "lead_fehler", titel: "Lead-Fehlerquote", einheit: "%", soll: 2, richtung: "runter", sort: 4, quelle: "vorschlag", updated_at: iso(600) },
+    ],
+    deliv: { day: day(0), at: iso(300), status: "gelb", gruende: ["Bounce-Quote 7 T 3.9 %"] },
+    lern: { messen: 0, lehre: 1, erwartungen: 2, eval: { created_at: iso(60), faelle: 32, richtig: 32, score: 100 }, last_decision: iso(12), messen_liste: [],
+      lehre_liste: [{ at: iso(40), titel: "Premium-Punktzahl sinkt mit dem Ereignisalter", vertrauen: 0.8 }] },
+    storage: { db_bytes: 5.16e9, at: iso(30) }, llm_heute: 0.17, sperre: { gesamt: 68, neu_24h: 7 }, cache_wachhund: iso(30),
+  };
   return {
     rpc: {
+      zentrale_schnell: zSchnell, zentrale_langsam: zLangsam,
       agent_role_kpi: roleKpi, cohort_funnel: cohorts, pruef_kpi: { now: iso(0), tage: pruef, leads: [], kaeufer: [], ausreisser: [] },
       pruef_bestand: [{ art: "lead", geprueft: 42000, score_avg: 71.4, mehrfach: 13000 }, { art: "kaeufer", geprueft: 9000, score_avg: 64.2, mehrfach: 1100 }],
       dashboard_live: live, dashboard_stock_refresh: stock, dashboard_activity: activity, dashboard_daily: daily,
@@ -161,7 +231,7 @@ export function makeFixtures(nowMs = Date.now()) {
       website_refresh: website, website_stats: webStats, dashboard_raw_stock: { at: iso(10), by_country: { US: 90000, UK: 40000, FR: 52000 } },
     },
     tables: {
-      dashboard_cache: [{ name: "stock", value: stock, updated_at: iso(1) }, { name: "website", value: website, updated_at: iso(1) }],
+      dashboard_cache: [{ name: "zentrale", value: zLangsam, updated_at: iso(3) }, { name: "stock", value: stock, updated_at: iso(1) }, { name: "website", value: website, updated_at: iso(1) }],
       kpi_daily: kpi, experiment_stats: expStats, company_goals: goals, customers, subscriptions, inbound_replies: replies,
       agent_roles: roles,
       // Feedback-Werk (Büro Qualität): erfundene Testzahlen

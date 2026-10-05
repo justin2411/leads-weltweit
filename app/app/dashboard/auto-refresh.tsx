@@ -19,10 +19,10 @@ export function AutoRefresh() {
   useEffect(() => {
     if (!on) return;
     const id = setInterval(() => {
-      // nicht mitten im Ziehen eines Hinweises auf einen Agenten (JARVIS) neu laden
-      if (document.visibilityState === "visible" && !document.documentElement.classList.contains("jv-dragging")) router.refresh();
+      // JARVIS-Zentrale lädt selbst live nach (useZentrale, 10 s/60 s) – dort kein ganzes Neuladen
+      if (document.visibilityState === "visible" && location.pathname !== "/dashboard/jarvis") router.refresh();
     }, 30_000);
-    const onVis = () => document.visibilityState === "visible" && router.refresh();
+    const onVis = () => document.visibilityState === "visible" && location.pathname !== "/dashboard/jarvis" && router.refresh();
     document.addEventListener("visibilitychange", onVis);
     return () => {
       clearInterval(id);

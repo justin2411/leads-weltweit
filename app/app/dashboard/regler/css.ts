@@ -149,4 +149,14 @@ export const REGLER_CSS = `
   .rg-x{min-height:44px}
   .rg-btns{flex:1 1 100%}.rg-btns button{flex:1 1 0;min-width:0;padding:4px 8px;font-size:14px;white-space:normal;line-height:1.15}
 }
+
+/* Schaltstelle oben (Zentrale 05.10.2026): Not-Aus Versand + Gehirn, bündig nebeneinander */
+.rg-top{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:stretch;margin:0 0 12px}
+.rg-top .rg-card{margin:0;display:flex;flex-direction:column;gap:12px}
+.rg-top form{margin:0}
+.rg-row2{display:flex;flex-wrap:wrap;gap:8px}
+.rg-stop,.rg-tog{min-height:44px;padding:0 16px;border-radius:22px;font:600 13px/1 inherit;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.rg-stop{border:1px solid #ff5e73;background:rgba(255,94,115,.12);color:#fff}
+.rg-tog{border:1px solid rgba(95,212,255,.5);background:rgba(95,212,255,.08);color:#d9ecff}
+@media (max-width:759px){.rg-top{grid-template-columns:minmax(0,1fr)}}
 `;

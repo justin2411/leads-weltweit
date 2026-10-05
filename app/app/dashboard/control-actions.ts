@@ -59,6 +59,9 @@ async function run(f: FormData, okMsg: string | (() => string), fn: () => Promis
   go(to, "ok", typeof okMsg === "function" ? okMsg() : okMsg);
 }
 
+/** Länder, die der Inhaber schalten darf: Test-Märkte mit allowed: true in countries.yaml (Spiegel ops-config.json). */
+const mailLaender = () => COUNTRIES.filter((c) => CONFIG.countries[c]?.allowed === true);
+
 // ------------------------------------------------------------------------------------------- Versand
 export async function setPaused(f: FormData) {
   const paused = f.get("paused") === "1";
@@ -68,7 +71,7 @@ export async function setPaused(f: FormData) {
 export async function toggleSendCountry(f: FormData) {
   await run(f, "gespeichert", async () => {
     const s = await loadOwnerSettings();
-    await setSetting("send_countries_off", toggleIn(s.send_countries_off, String(f.get("country")), COUNTRIES));
+    await setSetting("send_countries_off", toggleIn(s.send_countries_off, String(f.get("country")), mailLaender()));
   });
 }
 
@@ -106,7 +109,8 @@ export async function saveMaxAge(f: FormData) {
 export async function toggleBuyerCountry(f: FormData) {
   await run(f, "gespeichert", async () => {
     const s = await loadOwnerSettings();
-    await setSetting("buyer_countries_off", toggleIn(s.buyer_countries_off, String(f.get("country")), COUNTRIES));
+    // nur Länder mit Mail-Erlaubnis (countries.yaml allowed: true) sind wählbar – alle anderen bleiben gesperrt
+    await setSetting("buyer_countries_off", toggleIn(s.buyer_countries_off, String(f.get("country")), mailLaender()));
   });
 }
 
@@ -452,9 +456,13 @@ export async function createAgentTask(f: FormData) {
       if (e instanceof TaskError) throw new InputError(e.message);
       throw e;
     }
-    const { error } = await db().from("agent_tasks").insert({ ...t, created_by: BY });
+    // Rolle (Fach-Agent) nur, wenn sie in firma-karte.json steht – damit der Auftrag in der Zentrale beim richtigen Bereich läuft
+    const rolle = String(f.get("rolle") ?? "").trim();
+    const { AGENTEN } = await import("@/lib/firma-karte");
+    const mitRolle = rolle && AGENTEN.some((a) => a.id === `rolle:${rolle}`) ? { rolle } : {};
+    const { error } = await db().from("agent_tasks").insert({ ...t, ...mitRolle, created_by: BY });
     if (error) throw new Error(error.message);
-    await log("agent:create", `Agent ${t.agent}`, null, t);
+    await log("agent:create", `Agent ${t.agent}`, null, { ...t, ...mitRolle });
   });
 }
 

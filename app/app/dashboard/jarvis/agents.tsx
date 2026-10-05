@@ -8,7 +8,6 @@ import type { CSSProperties } from "react";
 import { AGENT_COUNT, FORM_MARKETS, KINDS, OWNER_KINDS, agentBoard, formDefaults, fromBrain, marketLabel, marketList, type AgentTask } from "@/lib/agents";
 import { cancelAgentTask, createAgentTask } from "../control-actions";
 import { Back } from "../v2";
-import { AgentDrop } from "./dnd";
 import { Icon } from "@/app/icons";
 import { jarvisLabel } from "@/lib/customer-agents";
 
@@ -18,16 +17,16 @@ const STATUS: Record<AgentTask["status"], string> = { offen: "startet bald", lae
 const statusText = (st: AgentTask["status"], startAt?: string) => (st === "offen" && startAt ? `startet um ${startAt}` : STATUS[st]);
 const when = (iso: string | null) => (iso ? new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)) : "–");
 
-export function AgentRow({ tasks, active, startAt, customerAgents }: { tasks: AgentTask[]; active: string | null; startAt?: string; customerAgents?: number | null }) {
+/** neu: Agent → Partikel „neuer Auftrag“ (Cyan, Gold bei Umsatz/Premium); kompakt: Handy (nur Kugeln). */
+export function AgentRow({ tasks, active, startAt, customerAgents, neu = {}, kompakt = false }: { tasks: AgentTask[]; active: string | null; startAt?: string; customerAgents?: number | null; neu?: Record<number, "cy" | "gold">; kompakt?: boolean }) {
   const board = agentBoard(tasks);
   return (
-    <div className="ags">
+    <div className={`ags${kompakt ? " kompakt" : ""}`}>
       {board.map((a) => {
         const c = a.current;
         const st = c?.status ?? "idle";
         return (
-          <AgentDrop key={a.n} n={a.n}>
-          <Link href={active === String(a.n) ? "/dashboard/jarvis" : `/dashboard/jarvis?a=${a.n}`} scroll={false} className={`ag st-${st} ${active === String(a.n) ? "on" : ""}`}
+          <Link key={a.n} href={active === String(a.n) ? "/dashboard/jarvis" : `/dashboard/jarvis?a=${a.n}`} scroll={false} className={`ag st-${st} ${active === String(a.n) ? "on" : ""}${neu[a.n] ? ` jz-neu${neu[a.n] === "gold" ? " gold" : ""}` : ""}`}
             style={{ "--p": `${c?.status === "laeuft" ? c.progress : c?.status === "fertig" ? 100 : 0}` } as V}
             title={c ? `Agent ${a.n}: ${KINDS[c.kind].label}${c.market ? ` ${marketLabel(c.market)}` : ""} – ${statusText(c.status, startAt)}` : `Agent ${a.n}: frei`}>
             <span className="ag-orb" aria-hidden><i className="ag-ring" /><i className="ag-arc" /><b>A{a.n}</b></span>
@@ -35,14 +34,13 @@ export function AgentRow({ tasks, active, startAt, customerAgents }: { tasks: Ag
             {c && fromBrain(c) && (c.status === "offen" || c.status === "laeuft") && <span className="ag-brain" title={`vom Gehirn${c.grund ? `: ${c.grund}` : ""}`}><Icon name="gehirn" size={12} /> vom Gehirn</span>}
             <span className="ag-s">{c ? (c.status === "laeuft" ? `${c.progress} %${c.step ? ` · ${c.step}` : ""}` : statusText(c.status, startAt)) : "bereit"}{a.queued > 0 ? ` · +${a.queued}` : ""}</span>
           </Link>
-          </AgentDrop>
         );
       })}
       <Link href={active === "neu" ? "/dashboard/jarvis" : "/dashboard/jarvis?a=neu"} scroll={false} className={`ag ag-new ${active === "neu" ? "on" : ""}`} title="Neuen Auftrag erteilen">
         <span className="ag-orb" aria-hidden><b><Icon name="mehr" size={22} /></b></span><span className="ag-t">Auftrag</span><span className="ag-s">erteilen</span>
       </Link>
       {/* Kunden-Agenten (Inhaber 04.10.2026): KI-Ansprechpartner je Kunde ab Pro */}
-      <Link href="/dashboard/kunden-agenten" className="ag ag-ka" title="KI-Ansprechpartner der Kunden ab Pro">
+      <Link href="/dashboard/kunden?tab=agenten" className="ag ag-ka" title="KI-Ansprechpartner der Kunden ab Pro">
         <span className="ag-orb" aria-hidden><b><Icon name="ansprechpartner" size={22} /></b></span>
         <span className="ag-t">{jarvisLabel(customerAgents ?? null)}</span><span className="ag-s">je Kunde ab Pro</span>
       </Link>
@@ -51,7 +49,7 @@ export function AgentRow({ tasks, active, startAt, customerAgents }: { tasks: Ag
 }
 
 /** Vorbelegung aus der Adresse (Hinweis „an Agent geben“): k = Art, m = Markt, b = Auftragstext. */
-export type Pre = { k?: unknown; m?: unknown; b?: unknown };
+export type Pre = { k?: unknown; m?: unknown; b?: unknown; r?: unknown };
 
 /** Formular „Neuer Auftrag“, schlau vorbelegt (formDefaults: Hinweis, Text, offener/letzter Auftrag des Agenten). */
 function NewTask({ agent, back, tasks, pre }: { agent: number | null; back: string; tasks: AgentTask[]; pre: Pre }) {
@@ -60,6 +58,7 @@ function NewTask({ agent, back, tasks, pre }: { agent: number | null; back: stri
   return (
     <form action={createAgentTask} className="agf" key={`${d.agent}-${d.kind}-${d.market}-${d.brief.length}`}>
       <Back to={back} />
+      {typeof pre.r === "string" && /^[a-z_]{2,30}$/.test(pre.r) && <input type="hidden" name="rolle" value={pre.r} />}
       <fieldset><legend>Agent</legend><div className="chips3">
         {Array.from({ length: AGENT_COUNT }, (_, i) => <label key={i}><input type="radio" name="agent" value={i + 1} defaultChecked={d.agent === i + 1} /><span>A{i + 1}</span></label>)}
       </div></fieldset>

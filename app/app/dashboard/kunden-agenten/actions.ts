@@ -16,6 +16,8 @@ import { requireOwner } from "../actions";
 
 const BY = "Inhaber Dashboard";
 const LIST = "/dashboard/kunden-agenten";
+/** Liste ist seit der Zentrale der Reiter „Agenten“ der Kunden-Seite (dort steht die Meldung ok/fehler). */
+const LISTE = "/dashboard/kunden?tab=agenten";
 
 function go(path: string, key: "ok" | "fehler", msg: string): never {
   const u = new URL(path, "http://x");
@@ -29,10 +31,10 @@ async function log(action: string, target: string, newValue: unknown, oldValue: 
 
 async function loadAgent(raw: unknown) {
   const id = String(raw ?? "");
-  if (!isUuid(id)) go(LIST, "fehler", "Agent unbekannt");
+  if (!isUuid(id)) go(LISTE, "fehler", "Agent unbekannt");
   const { data, error } = await db().from("customer_agents").select("id, customer_id, status, persona, profile, last_contact_at").eq("id", id).maybeSingle();
   if (error) throw new Error(error.message);
-  if (!data) go(LIST, "fehler", "Agent unbekannt");
+  if (!data) go(LISTE, "fehler", "Agent unbekannt");
   return data as { id: string; customer_id: string; status: string; persona: any; profile: unknown; last_contact_at: string | null };
 }
 
