@@ -85,6 +85,10 @@ class AgenceBio(unittest.TestCase):
         d = fr_bio.companies([item(1, 5, gerant="DUPONT")], TODAY)[0]
         self.assertEqual(fr_bio.to_candidate(d, TODAY)["person_name"], "")
 
+    def test_null_site_url_counts_as_no_site(self):
+        x = item(1, 5); x["siteWebs"] = [{"url": None}]
+        self.assertEqual(len(fr_bio.companies([x], TODAY)), 1)
+
     def test_placeholder_person_dropped(self):
         self.assertEqual(fr_bio.person("00000"), "")
         self.assertEqual(fr_bio.person("CHEIKH RABAH"), "Cheikh Rabah")

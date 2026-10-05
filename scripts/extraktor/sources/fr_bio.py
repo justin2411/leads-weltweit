@@ -103,7 +103,7 @@ def download(log=print, today: dt.date | None = None) -> list[dict]:
 
 
 def _has_site(item: dict) -> bool:
-    return any((s or {}).get("url", "").strip() for s in item.get("siteWebs") or [])
+    return any(str((s or {}).get("url") or "").strip() for s in item.get("siteWebs") or [])
 
 
 def _address(item: dict) -> dict | None:
