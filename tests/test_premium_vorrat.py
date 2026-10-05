@@ -178,6 +178,31 @@ class SwapTest(unittest.TestCase):
         self.assertFalse(self._discarded(db))
 
 
+    def test_reserve_blocks_swap(self):
+        """Premium-Labor 05.10.2026: FR hatte 59 freie Premium-Leads – kein Austausch unter die Reserve."""
+        import sample_stock as S
+        db = self._db(59)
+        with mock.patch.object(S, "stock_rows", return_value=self._stock()), mock.patch.object(S, "build_one") as b:
+            self.assertEqual(S.swap_for_premium(db, [("S2", "US")], True, log=lambda *_: None,
+                                                need={("S2", "US"): 5}, reserve=80), {})
+        b.assert_not_called()
+        self.assertEqual(self._discarded(db), [])
+
+    def test_reserve_caps_swaps(self):
+        import sample_stock as S
+        db = self._db(105)  # 105 - 80 = 25 -> höchstens 2 Austausche (je 10 Leads)
+        with mock.patch.object(S, "stock_rows", return_value=self._stock()), \
+             mock.patch.object(S, "build_one", return_value={"id": "n", "premium_n": 10}) as b:
+            got = S.swap_for_premium(db, [("S2", "US")], False, log=lambda *_: None, need={("S2", "US"): 5},
+                                     reserve=80)
+        self.assertEqual(got, {"S2/US": 2})
+        self.assertEqual(b.call_count, 2)
+
+    def test_reserve_in_config(self):
+        import sample_stock as S
+        self.assertGreaterEqual(int(S.settings().get("premium_reserve_leads", 0)), 10)
+
+
 class WishOrderTest(unittest.TestCase):
     def test_wish_extra_does_not_push_premium_back(self):
         import responder

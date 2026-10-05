@@ -469,7 +469,8 @@ def run(db, apply: bool, log=print) -> dict:
     need = {k: max(0, want_prem.get(k, 0) - have_prem[k] - prem_samples.get(k, 0)) for k in want}
     swapped = swap_for_premium(db, list(want), apply, log,
                                time_left=lambda: (time.monotonic() - t0) / 60 <= cfg["laufzeit_minuten"],
-                               hours=cfg["max_alter_stunden"], need=need)
+                               hours=cfg["max_alter_stunden"], need=need,
+                               reserve=int(cfg.get("premium_reserve_leads", PREMIUM_SWAP_RESERVE)))
     summary = {f"{s}/{c}": {"soll": t, "vorher": have[(s, c)], "neu": built.get((s, c), 0),
                             "premium_soll": want_prem.get((s, c), 0),
                             "premium_bereit": have_prem[(s, c)] + prem_samples.get((s, c), 0)
@@ -493,6 +494,12 @@ def run(db, apply: bool, log=print) -> dict:
 # (Leads wieder frei, nichts gelöscht). Nur bis zum Premium-Soll je Seite (`need`) – vorher ersetzte der Austausch
 # jede normale Probe und verbrauchte freie Premium-Leads, die Lieferungen und Mail-Tests (Beleg-Einstieg) brauchen.
 PREMIUM_SWAP_PER_RUN = 8
+# Reserve (Premium-Labor 05.10.2026): Der Austausch verbraucht nie die letzten freien Premium-Leads einer Seite.
+# Messung 05.10.: 6 Austausch-Proben um 16:23 MESZ zogen 60 der 119 freien S2/FR-Premium-Leads ab (→ 59), bei 0 aus
+# dem Vorrat abgerufenen Proben in 7 Tagen. Freie Premium-Leads brauchen Lieferungen (Pro 40/Woche) und der
+# Mail-Test „Beleg-Einstieg“. Nur der Austausch (Aufwertung bestehender Proben) wird gebremst – Vorrat-Soll,
+# Drei-Stufen-Freigabe und alle Prüfregeln bleiben unverändert. Wert in config/proben.yaml premium_reserve_leads.
+PREMIUM_SWAP_RESERVE = 80
 
 
 def premium_supply(db) -> dict[tuple[str, str], int]:
@@ -505,7 +512,8 @@ def premium_supply(db) -> dict[tuple[str, str], int]:
 
 
 def swap_for_premium(db, pairs, apply: bool, log=print, time_left=lambda: True, hours: int = 48,
-                     limit: int = PREMIUM_SWAP_PER_RUN, need: dict | None = None) -> dict[str, int]:
+                     limit: int = PREMIUM_SWAP_PER_RUN, need: dict | None = None,
+                     reserve: int = PREMIUM_SWAP_RESERVE) -> dict[str, int]:
     """Normale Proben durch Premium-Proben ersetzen, bis je Seite das Premium-Soll erreicht ist (`need` = fehlende
     Premium-Proben je (Segment, Land)). Ersetzt wird zuerst die Probe ohne Wunsch mit den wenigsten Premium-Leads."""
     need = {tuple(k): int(v) for k, v in (need or {}).items() if int(v) > 0}
@@ -517,8 +525,11 @@ def swap_for_premium(db, pairs, apply: bool, log=print, time_left=lambda: True, 
     left = limit
     # größter Premium-Nachschub zuerst: das knappe Bau-Budget je Lauf geht dorthin, wo Premium-Proben möglich sind
     for seg, cc in sorted(pairs, key=lambda p: -supply.get(tuple(p), 0)):
-        todo = need.get((seg, cc), 0)
+        # je Austausch 10 Premium-Leads; nie unter die Reserve freier Premium-Leads
+        todo = min(need.get((seg, cc), 0), max(0, supply.get((seg, cc), 0) - max(0, reserve)) // 10)
         if left <= 0 or todo <= 0 or supply.get((seg, cc), 0) < 10:
+            if need.get((seg, cc), 0) > 0 and supply.get((seg, cc), 0) - max(0, reserve) < 10:
+                log(f"  Austausch {seg}/{cc}: Reserve {reserve} freie Premium-Leads (frei {supply.get((seg, cc), 0)}) – kein Austausch")
             continue
         mine = [r for r in ready if r["segment_id"] == seg and r["country"] == cc]
         old = sorted((r for r in mine if not is_premium_sample(r)),
