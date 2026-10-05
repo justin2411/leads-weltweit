@@ -5,7 +5,6 @@
  * prefers-reduced-motion schaltet jede Animation ab (Gegenblock unten), .jv-paused hält sie bei verstecktem Tab an.
  */
 export const ZENTRALE_CSS = `
-.dash:has(.jz) .top .in{display:none}
 .dash:has(.jz) main{padding-top:8px}
 .jz{--cy:var(--ds-cy,#5fd4ff);--gd:var(--ds-gold,#e2c68f);--rt:var(--ds-rot,#ff5e73);--gb:var(--ds-gelb,#ffb547);--gn:var(--ds-gruen,#3ddc97);--gr:var(--ds-grau,#5d7290);
   --fl:var(--ds-flaeche,rgba(9,24,48,.62));--ln:var(--ds-linie,rgba(95,212,255,.18));display:grid;gap:8px;margin:0 auto;max-width:1440px;min-width:0}

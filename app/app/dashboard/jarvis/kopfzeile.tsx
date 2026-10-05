@@ -1,9 +1,8 @@
 "use client";
-/** B0 Kopfzeile der Zentrale: Marke, Uhr (Berlin, Minutentakt), Live-Punkt, Lage in einem Satz, „Braucht dich“, Antworten, Abmelden. */
+/** B0 Kopfzeile der Zentrale: Marke, Uhr (Berlin, Minutentakt), Live-Punkt, Lage in einem Satz, „Braucht dich“, Antworten (Abmelden steht in der Markenleiste darüber). */
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Icon } from "@/app/icons";
-import { logout } from "../actions";
 
 const WTAG = new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", weekday: "short" });
 const HM = new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit" });
@@ -41,7 +40,6 @@ export function Kopfzeile({ abruf, ok, lage, bd, antworten, heiss }: {
         <Link href="/dashboard/antworten" className="an" title="Offene Antworten" aria-label={`Antworten offen: ${antworten ?? "–"}`}>
           <Icon name="antworten" size={16} /><b className="z">{antworten ?? "–"}</b>{heiss > 0 && <i className="heiss" title={`${heiss} mit Kaufinteresse`} />}
         </Link>
-        <form action={logout}><button type="submit" title="Abmelden" aria-label="Abmelden"><Icon name="stopp" size={16} /></button></form>
       </div>
     </header>
   );
