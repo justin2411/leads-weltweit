@@ -157,6 +157,16 @@ def load_rge(limit: int, stats: Counter, exclude: set[str] | None = None) -> lis
     return cands
 
 
+def load_bio(limit: int, stats: Counter, exclude: set[str] | None = None) -> list[dict]:
+    """S2 FR Premium: neue Bio-Betriebe (Agence Bio, Ersteintrag ≤ 30 Tage) ohne Website (Quellen-Scout R37).
+    Telefon schon in Overture FR = dort schon bearbeitet. exclude: schon gespeicherte Agence-Bio-IDs."""
+    from extraktor.sources import fr_bio
+    cands = fr_bio.load(None, log=log, exclude=exclude, skip_phones=overture.phones("FR"))
+    cands = filters.dedupe([c for c in cands if not filters.pre_filter(c) and segments.fits("S2", c)[0]])[:limit]
+    stats["bio_FR"] = len(cands)
+    return cands
+
+
 def load_web(country: str, limit: int, stats: Counter, part: tuple[int, int] | None = None,
              min_conf: float = website_check.HIGH_CONF, no_phone: bool = False) -> list[dict]:
     """S2 Website-Prüfung: Overture-Firmen MIT Website, die dieser Teil in den letzten RECHECK_DAYS noch nicht
@@ -494,6 +504,11 @@ def run_segment(seg: str, pool: list[dict], per: int, fetcher, shared: Counter, 
 def dated_event(l: dict) -> str:
     """Beleg eines datierten Ereignisses ohne Website-Befund (RGE: neue Qualifikation laut ADEME) für
     lib/premium.py (`details.dated_event`); sonst leer."""
+    bio = (l.get("facts") or {}).get("bio_new") or {}
+    if bio.get("date"):
+        return json.dumps({"dated_event": {"kind": "bio_first_engagement", "date": bio["date"],
+                                           "organisme": bio.get("organisme") or ""},
+                           "checked_on": str(l["facts"].get("checked_on") or "")}, ensure_ascii=False)
     new = (l.get("facts") or {}).get("rge_new") or {}
     if not new.get("date"):
         return ""
@@ -630,6 +645,8 @@ def main(argv=None) -> int:
                     help="S2 ohne Website: Overture-Konfidenz ab (UK/FR zweite Stufe 0.4, nie tiefer)")
     ap.add_argument("--rge", type=int, default=0,
                     help="S2 FR: so viele Firmen ohne Website aus dem RGE-Verzeichnis (ADEME) laden (0 = aus)")
+    ap.add_argument("--bio", type=int, default=0,
+                    help="S2 FR: so viele neue Bio-Betriebe ohne Website aus dem Agence-Bio-Verzeichnis (0 = aus)")
     ap.add_argument("--store", action="store_true", help="grüne Leads direkt in die Datenbank schreiben (mit --db)")
     ap.add_argument("--no-raw", action="store_true",
                     help="Speicher-Bremse ab 7 GB (werk_plan.py): nur grüne Leads speichern, keinen Rohbestand")
@@ -674,7 +691,8 @@ def main(argv=None) -> int:
             return 0
         if args.store:  # Lebenszeichen fürs Dashboard (läuft/steht)
             hb = Heartbeat(db0, "lead-werk", os.environ.get("RUN_PART") or args.shard or ",".join(countries)).__enter__()
-        guard = filters.Guard(DB(), preload=("overture",) + (("rge",) if args.rge else ()))
+        guard = filters.Guard(DB(), preload=("overture",) + (("rge",) if args.rge else ())
+                                + (("agence_bio",) if args.bio else ()))
         log(f"Datenbank: {len(guard.known)} Firmen schon bekannt")
     us = "US" in countries
     # --fmcsa-days 0 / --formd-days 0 = Quelle aus (Teile anderer Quellen laden sie nicht mit: spart Zeit und
@@ -750,6 +768,10 @@ def main(argv=None) -> int:
         new = [c for c in rge if c["facts"].get("rge_new")]
         stats["rge_new_FR"] = len(new)
         p["S2/FR"] = new + p.get("S2/FR", []) + [c for c in rge if not c["facts"].get("rge_new")]
+    if "FR" in countries and "S2" in segs and args.bio > 0:
+        # neue Bio-Betriebe (datiertes Ereignis, Quellen-Scout R37): ganz nach vorn, wie neue RGE-Qualifikationen
+        bio = load_bio(args.bio, stats, {i for s_, i in guard.known if s_ == "agence_bio"})
+        p["S2/FR"] = bio + p.get("S2/FR", [])
     if guard.known:
         p = {k: [c for c in v if (c["source"], c["source_id"]) not in guard.known] for k, v in p.items()}
     if args.shard:

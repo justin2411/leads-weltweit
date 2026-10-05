@@ -120,6 +120,17 @@ def fits(seg: str, c: dict) -> tuple[bool, str]:
         if c.get("email") and not is_freemail(c["email"]):
             return False, "uses an own email domain (likely has a site)"
         return True, "RGE-certified tradesperson without a website"
+    if c["source"] == "agence_bio":
+        # FR: neuer Bio-Betrieb (Agence Bio) ohne Website (Quellen-Scout R37), gleiche Regel wie RGE
+        if seg != "S2":
+            return False, "source only carries the new-organic-business signal"
+        if c.get("website"):
+            return False, "a verified website exists"
+        if c.get("email") and not is_freemail(c["email"]):
+            return False, "uses an own email domain (likely has a site)"
+        if not (f.get("bio_new") or {}).get("date"):
+            return False, "no dated first organic certification"
+        return True, "newly certified organic business without a website"
     if c["source"] == "overture_web":
         if seg != "S2":
             return False, "source only carries the website quality signal"
@@ -381,6 +392,26 @@ def texts_rge(c: dict) -> dict:
             "urgency_reason": why}
 
 
+def texts_bio(c: dict) -> dict:
+    """FR: neuer Bio-Betrieb (Agence Bio, Ersteintrag mit Datum) ohne Website – nur Französisch (Lieferland FR)."""
+    f, name = c["facts"], c["name"]
+    today = f["checked_on"]
+    new = f.get("bio_new") or {}
+    when = dt.date.fromisoformat(new["date"])
+    metier = ((new.get("activites") or [""])[0] or "").strip().lower()
+    metier = metier if len(metier) <= 60 else ""
+    signal = (f"Aucun site web trouvé pour {name}, nouvel opérateur bio engagé depuis le {jour(when)} "
+              f"(annuaire officiel de l'Agence Bio)" + (f", activité : {metier}" if metier else "")
+              + f" ; nous n'avons trouvé aucun site propre (vérifié le {jour(today)}).")
+    info = f"{name} : nouvel opérateur bio" + (f" ({metier})" if metier else "") + f" à {c['city']} ({c['zip']})."
+    opener = (f"Bonjour, félicitations pour votre engagement en bio – je n'ai pas trouvé de site web pour {name} : "
+              f"un site simple pour présenter vos produits bio vous intéresserait-il ?")
+    why = ("Un nouveau producteur ou commerce bio cherche ses premiers clients : sans site web, il reste peu "
+           "visible pour ceux qui cherchent du bio local en ligne.")
+    return {"signal": signal, "signal_date": when, "company_info": info, "opener": opener, "urgency": "high",
+            "urgency_reason": why}
+
+
 WEB_EN = {
     "no_https": "Chrome shows \u2018Not secure\u2019 on its website {domain}, because the site has no HTTPS encryption",
     "redirects_to_http": "Chrome shows \u2018Not secure\u2019 on its website {domain}, because the site has no HTTPS encryption",
@@ -565,6 +596,8 @@ def texts(seg: str, c: dict) -> dict:
         return texts_overture(c)
     if c["source"] == "rge":
         return texts_rge(c)
+    if c["source"] == "agence_bio":
+        return texts_bio(c)
     if c["source"] == "overture_web":
         return texts_website(c)
     if c["source"] == "companies_house":
