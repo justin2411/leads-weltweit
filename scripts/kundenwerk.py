@@ -35,14 +35,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lib.fetch import host_blocked  # noqa: E402
 from lib import fr_webfit  # noqa: E402
+from lib.laender import active, is_active, pair_producing  # noqa: E402
 from lib.rules import check_prospect, country_rules, load_countries, normalize_domain  # noqa: E402
 
 TARGET = 1_000_000  # Inhaber 01.10.2026: „Kundenwerk soll erst bei 1mio Kunden aufhören“
 POOL = Path(os.environ.get("KUNDENWERK_POOL", "out/cache/kunden_pool.parquet"))
 # Länder, aus denen wir Leads liefern können (Overture-Code -> unser Code); IE/NL/BE/SE: Scout-Sprint 01.10.2026
 # FI/SG/HK/MX/BR: neue Mail-Länder (Inhaber 04.10.2026, docs/KALTMAIL-RECHT.md, Test in docs/QUELLEN-SCOUT.md)
-COUNTRIES = {"US": "US", "GB": "UK", "FR": "FR", "IE": "IE", "NL": "NL", "BE": "BE", "SE": "SE",
-             "FI": "FI", "SG": "SG", "HK": "HK", "MX": "MX", "BR": "BR"}
+# HK raus (Inhaber 05.10.2026): lib/laender.INACTIVE
+COUNTRIES = {k: v for k, v in {"US": "US", "GB": "UK", "FR": "FR", "IE": "IE", "NL": "NL", "BE": "BE", "SE": "SE",
+             "FI": "FI", "SG": "SG", "HK": "HK", "MX": "MX", "BR": "BR"}.items() if is_active(v)}
 # Overture-Kategorie (taxonomy.primary) -> Zielgruppe
 CATEGORIES = {
     "employment_agency": "S1",
@@ -75,7 +77,7 @@ CATEGORIES = {
 # in FR/IE/NL/BE/SE gibt es S12 nicht, dort sind sie Käufer für S2 (bauen Websites für kleine Firmen, wie
 # b2b_advertising_and_marketing_service/media_agency). Test: 95 Firmen -> 10 ok (FR 7/30, SE 3/15).
 SECOND = {"marketing_agency": "S2", "advertising_agency": "S2", "b2b_marketing_consultant": "S2"}
-SECOND_COUNTRIES = {"FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK", "MX", "BR"}  # nicht UK/US: dort bleibt S12 eigener Test, auch im S2-Fokuslauf
+SECOND_COUNTRIES = active({"FR", "IE", "NL", "BE", "SE", "FI", "SG", "MX", "BR"})  # nicht UK/US: dort bleibt S12 eigener Test, auch im S2-Fokuslauf
 # Namens-Pool (JARVIS-Agent „Käufer finden · UK/FR“, 04.10.2026): Overture-Orte AUSSERHALB der Kategorien oben
 # (Kategorie leer oder allgemein wie professional_service/design_service), deren Name eindeutig eine Webagentur nennt.
 # Test 04.10.2026 (ohne Speichern): UK 10/150, FR 3/48 mail-fähig; Rest meist Einzelunternehmer (nur Anruf/Brief).
@@ -257,7 +259,7 @@ def candidates(segments: dict[str, set[str]], hinten: set[str] | None = None) ->
     for r in rows:
         d = dict(zip(cols, r))
         seg, co = segment_for(d["category"], COUNTRIES.get(d["country"]), segments)
-        if not seg:
+        if not seg or not pair_producing(seg, co):  # ruhende Märkte nicht befüllen (Inhaber 05.10.2026, lib/laender)
             continue
         site = next((w for w in d["websites"] or [] if w and not NOT_OWN_SITE.search(w) and not host_blocked(w)), None)
         dom = normalize_domain(site) if site else ""

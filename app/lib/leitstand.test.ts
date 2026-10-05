@@ -173,12 +173,12 @@ test("JARVIS empfiehlt: kurz, mit Auftrag zuerst, Rest für die Chips", async ()
 
 test("tipTask: jeder Hinweis wird ein gültiger Auftrag (auch ohne eigenen), Märkte als Liste, IE/NL/BE nie", () => {
   // grüner Chip ohne Auftrag (Autopilot an): Leads, alle genannten Länder
-  const green = tipTask({ level: "gruen", title: "Ergiebigste Linie: Ohne Website FI·SG·HK·MX·BR (Overture)", text: "412 grüne je Platz-Stunde in den letzten 24 h. Der Autopilot gibt ihr freie Plätze.", href: "#pult" });
+  const green = tipTask({ level: "gruen", title: "Ergiebigste Linie: Ohne Website FI·SG·MX·BR (Overture)", text: "412 grüne je Platz-Stunde in den letzten 24 h. Der Autopilot gibt ihr freie Plätze.", href: "#pult" });
   assert.equal(green.kind, "leads");
-  assert.equal(green.market, "FI,SG,HK,MX,BR");
-  assert.match(green.brief, /^Ergiebigste Linie: Ohne Website FI·SG·HK·MX·BR \(Overture\): 412 grüne/);
+  assert.equal(green.market, "FI,SG,MX,BR");
+  assert.match(green.brief, /^Ergiebigste Linie: Ohne Website FI·SG·MX·BR \(Overture\): 412 grüne/);
   const v = validateTask({ agent: 6, kind: green.kind, market: green.market, brief: green.brief });
-  assert.equal(v.market, "FI,SG,HK,MX,BR");
+  assert.equal(v.market, "FI,SG,MX,BR");
   // FormData-Weg: ein Feld „FI,SG“ oder mehrere Felder – beides gültig
   assert.equal(validateTask({ agent: 6, kind: "leads", market: ["FI,SG"] }).market, "FI,SG");
   assert.equal(validateTask({ agent: 6, kind: "leads", market: ["SG", "FI"] }).market, "FI,SG");

@@ -90,7 +90,7 @@ export function brauchtDich(i: BdInput): BdPunkt[] {
     out.push(P({
       key: "s2neu", tone: "gold", href: "/dashboard/regler", cta: "Regler",
       title: "Platz „S2 neu“ steht auf 0",
-      reason: "Neue Länder FI·SG·HK·MX·BR bekommen keine Leads – absichtlich?",
+      reason: "Neue Länder FI·SG·MX·BR bekommen keine Leads – absichtlich?",
       detail: "owner_settings.slot_plan s2-neu = 0. Im Regler wieder auf 1 stellen oder so lassen.",
     }));
   }

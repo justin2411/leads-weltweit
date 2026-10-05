@@ -72,8 +72,11 @@ def targets(pages: list[dict], cfg: dict, focus: list[tuple[str, str]],
     ({"S2/US": 20}, Inhaber 03.10.2026), sonst config/proben.yaml."""
     from lib.owner_settings import sample_target
     out: dict[tuple[str, str], int] = {}
+    from lib.laender import pair_producing
     for p in sorted(pages, key=lambda p: ((p["segment_id"], p["country"]) not in focus, p["segment_id"], p["country"])):
         key = (p["segment_id"], p["country"])
+        if not pair_producing(*key, pairs=focus):  # ruhende Märkte nicht befüllen (Inhaber 05.10.2026), Vorrat bleibt
+            continue
         default = cfg["fokus_je_seite"] if key in focus else cfg["andere_je_seite"]
         out[key] = sample_target(default, overrides or {}, *key)
     return out

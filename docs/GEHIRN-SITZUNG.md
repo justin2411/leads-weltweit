@@ -30,6 +30,12 @@ in `signalwerk.decisions`. Ziel: **möglichst viele zahlende Kunden und maximale
 2. **Zahlen (letzte 24 h und 14 Tage):** `page_stats`, `experiment_stats`, `sample_requests`, `subscriptions`, `email_events`,
    Antworten, Käufe. Nichts schönen. `python scripts/prognose.py`: Prognose 30 Tage je Land (Mails → Antworten →
    Proben → Kunden, Spanne 80 %; ohne Antworten „noch keine Basis“ – nie eigene Annahmen einsetzen).
+2a. **Nur aktive Märkte befüllen** (Inhaber 05.10.2026: „immer das was wir gerade aktiv machen und was umsatz
+   bringt“): Speicher (`/dashboard/speicher`) ansehen. Werke füllen nur Segment × Land aus `config/fokus.yaml` `fokus`
+   (`scripts/lib/laender.py`); alles andere „ruht“ (Daten bleiben). Leerer oder fast leerer Tank eines aktiven Markts:
+   auffüllen (Plätze, Quelle), wenn das Land mail-erlaubt ist und eine Quelle liefert; sonst rausnehmen (aus Werken und
+   Anzeige, `lib/laender.INACTIVE` bzw. Fokus) – Entscheidung als `decisions`. Neue Märkte erst, wenn sie in
+   `config/fokus.yaml` stehen (Inhaber).
 3. **Sicherheit:** Spam-Beschwerde, Tages-Bounce > 5 %, drei fehlgeschlagene Stripe-Webhooks, Kundenbeschwerde,
    Rechtsunsicherheit → `brain_enabled = false`, Eintrag `decisions` (type `safety`), Ende.
 4. **Eine Sache verbessern** (die mit dem größten erwarteten Umsatzhebel, höchstens 3 Änderungen pro Sitzung):

@@ -274,9 +274,13 @@ class PoolTests(unittest.TestCase):
                    fi_ytj.row_of("1234567-8", "Pikseli Oy", "62100", "pikseli.fi", [], K.NOT_OWN_SITE,
                                  normalize_domain, is_freemail)]
             self.assertEqual(K.add_register_rows(con, pool, reg), 2)
-            with mock.patch.object(K, "POOL", pool):
+            with mock.patch.object(K, "POOL", pool), mock.patch("lib.laender.focus_pairs", return_value=[]):
                 cands = {d["domain"]: d for d in K.candidates(SEGS)}
             self.assertEqual(set(cands), {"pixel.example.com", "pixel.mx", "pikseli.fi"})
+            # mit Fokus S2/US,UK,FR (Inhaber 05.10.2026): ruhende Märkte MX/FI werden nicht befüllt
+            with mock.patch.object(K, "POOL", pool), \
+                    mock.patch("lib.laender.focus_pairs", return_value=[("S2", "US"), ("S2", "UK"), ("S2", "FR")]):
+                self.assertEqual({d["domain"] for d in K.candidates(SEGS)}, {"pixel.example.com"})
             self.assertEqual(cands["pikseli.fi"]["reg_form"], "Oy")
             self.assertIsNone(cands["pixel.example.com"]["reg_form"])
             self.assertEqual(cands["pixel.mx"]["segment"], "S2")

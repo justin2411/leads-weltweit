@@ -590,6 +590,11 @@ def read_inputs(werk: str, hours: int = 8) -> dict:
     except BaseException as e:  # noqa: BLE001
         print(f"Laufzahlen nicht lesbar ({type(e).__name__}) – ohne Autopilot", file=sys.stderr)
     try:
+        from lib.laender import focus_pairs
+        out["fokus"] = focus_pairs()  # aktive Märkte (Inhaber 05.10.2026): andere Linien ruhen
+    except BaseException as e:  # noqa: BLE001
+        print(f"Fokus nicht lesbar ({type(e).__name__}) – keine Linie ruht", file=sys.stderr)
+    try:
         from lib.fokus import laender_vorrang
         rule = laender_vorrang()
         if rule and werk == "lead-werk":
@@ -621,6 +626,26 @@ def read_inputs(werk: str, hours: int = 8) -> dict:
     return out
 
 
+RUHT_WHY = "ruht – kein aktiver Markt (config/fokus.yaml)"
+
+
+def resting_lanes(reg: dict, werk: str, pairs: list | None) -> set[str]:
+    """Linien von `werk`, deren Märkte alle ruhen (Inhaber 05.10.2026: „immer das was wir gerade aktiv machen und was
+    umsatz bringt“): kein Paar Segment × Land der Linie steht in config/fokus.yaml (lib/laender). pairs None/leer =
+    keine Fokus-Liste -> keine Linie ruht. Linien ohne Länderangabe ruhen nie."""
+    if not pairs:
+        return set()
+    on = {(str(s).upper(), str(c).upper()) for s, c in pairs}
+    out = set()
+    for l in reg["lanes"]:
+        cs, segs = lane_countries(l), lane_segments(l)
+        if l["werk"] != werk or not cs or not segs:
+            continue
+        if not any((s, c) in on for s in segs for c in cs):
+            out.add(l["id"])
+    return out
+
+
 def decide(reg: dict, werk: str, inp: dict) -> dict:
     """Belegung für diesen Start: Inhaber/Standard als Basis, Autopilot (falls an) und Bremse darüber."""
     settings = inp.get("settings")
@@ -637,6 +662,8 @@ def decide(reg: dict, werk: str, inp: dict) -> dict:
     mode = "standard" if why == "Standardbelegung" else "inhaber"
     plan = dict(own)
     stats: dict[str, dict] = {}
+    # ruhende Märkte (nicht in config/fokus.yaml) bekommen 0 Plätze; der Autopilot verteilt ihre Plätze um
+    ruht = resting_lanes(reg, werk, inp.get("fokus"))
     # Prüfer-Werk: feste Belegung (Inhaber 05.10.2026: „4 dauerhafte Prüfer“) – jeder Teil nutzt sein Zeitfenster immer
     # voll, der Autopilot würde ihn sonst als „voll ausgelastet“ ständig vergrößern; seine Plätze zählt er bei den anderen
     if settings is not None and ap.get("on") is not False and werk != "pruefer-werk":
@@ -645,8 +672,10 @@ def decide(reg: dict, werk: str, inp: dict) -> dict:
             reset = reset if isinstance(reset, dict) else {}
             stats = lane_stats(inp.get("rows") or [], werk, reset=reset)
             premium_on = werk == "lead-werk" and premium_weight(stats)
+            locks = dict(ap.get("locks") or {}) if isinstance(ap.get("locks"), dict) else {}
+            locks.update({k: 0 for k in ruht})
             plan, reasons = autopilot(reg, werk, own, stats,
-                                      ap.get("locks"), other, brake, prev=inp.get("prev_reasons"), reset=reset,
+                                      locks, other, brake, prev=inp.get("prev_reasons"), reset=reset,
                                       vorrang=inp.get("vorrang"), stock=inp.get("stock"))
             if premium_on:
                 premium_shift(reg, werk, plan, reasons, stats, ap.get("locks"))
@@ -654,6 +683,9 @@ def decide(reg: dict, werk: str, inp: dict) -> dict:
         except Exception as e:  # noqa: BLE001 – Autopilot darf nie einen Lauf verhindern
             print(f"Autopilot-Fehler ({type(e).__name__}: {e}) – Belegung wie eingestellt", file=sys.stderr)
             plan, mode = dict(own), mode
+    for k in ruht:
+        if k in plan:
+            plan[k], reasons[k] = 0, RUHT_WHY
     if werk == "lead-werk" and brake in ("drossel", "ohne-rohbestand") and sum(plan.values()) > BRAKE_LEAD_MAX:
         # Bremse auch ohne Autopilot: die Linien mit den meisten Plätzen kürzen, jede aktive behält 1
         while sum(plan.values()) > BRAKE_LEAD_MAX and any(v > 1 for v in plan.values()):

@@ -41,6 +41,7 @@ import unicodedata
 from collections import Counter
 from dataclasses import dataclass, field
 
+from lib.laender import active
 from lib.owner_rules import check as owner_check, load_rules
 
 STAGES = {1: "Trigger echt", 2: "Qualität & Vollständigkeit", 3: "auslieferbar", 4: "Inhaber-Regeln"}
@@ -52,7 +53,8 @@ CERT_EXPIRING = {"cert_expiring"}
 RELOCATION = {"relocation"}
 WEB_CHECKED = WEB_FINDINGS | CERT_EXPIRING  # Befunde auf der eigenen Website: Website, Domain und Quelle prüfen
 SEGMENT_SIGNALS = {"S2": WEB_FINDINGS | NO_SITE | INCORPORATION | CERT_EXPIRING | RELOCATION}
-DELIVERY_COUNTRIES = {"US", "UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK", "MX", "BR"}  # FI…BR: 04.10.2026
+# FI…BR: 04.10.2026; HK raus (Inhaber 05.10.2026): nicht mehr lieferbar (lib/laender.INACTIVE)
+DELIVERY_COUNTRIES = active({"US", "UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK", "MX", "BR"})
 NEVER_COUNTRIES = {"DE", "AT", "CH", "IT", "ES", "PL", "DK"}
 LANG = {"FR": "fr"}
 
