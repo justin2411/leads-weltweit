@@ -16,3 +16,6 @@ premium_us: 10
 premium_uk: 2
 premium_fr: 1
 premium_andere: 0
+# Reserve freier Premium-Leads je Seite, die der Premium-Austausch (normale Probe -> Premium-Probe) nie verbraucht
+# (Premium-Labor 05.10.2026: Austausch zog 60 von 119 freien S2/FR-Premium-Leads bei 0 abgerufenen Vorrat-Proben in 7 T).
+premium_reserve_leads: 80
