@@ -473,12 +473,14 @@ def _min_tier(l: dict, s: dict | None) -> int | None:
 
 def fill_minimum(lanes: list[dict], plan: dict[str, int], why: dict[str, str], stats: dict[str, dict],
                  locks: dict, cap: int, other_sum: int, min_belegt: int = MIN_BELEGT,
-                 skip: set[str] | None = None) -> int:
+                 skip: set[str] | None = None, last: set[str] | None = None) -> int:
     """Werke immer ausgelastet (Inhaber 05.10.2026): liegen beide Werke zusammen unter `min_belegt` Plätzen, gehen
     die fehlenden Plätze an Linien mit Ertrag/Vorrat (Rang siehe _min_tier, im Rang reihum), je Linie bis max, nie
     über `cap` (total_slots - reserve - anderes Werk, bei Bremse kleiner). Nie: festgesetzte Linien, vom Inhaber auf
-    0 gesetzte, leere, erschöpfte (Wachplatz) und Nachrang-Linien des Länder-Vorrangs. Gibt die Zahl neuer Plätze."""
+    0 gesetzte, leere, erschöpfte (Wachplatz) und Nachrang-Linien des Länder-Vorrangs (skip). `last`: Linien, die erst
+    ganz zuletzt auffüllen dürfen (Nachfüller: Nachrang-Linien, wenn alle anderen voll sind). Gibt die Zahl neuer Plätze."""
     skip = skip or set()
+    last = last or set()
     need = min(min_belegt - other_sum - sum(plan.values()), cap - sum(plan.values()))
     if need <= 0:
         return 0
@@ -491,7 +493,7 @@ def fill_minimum(lanes: list[dict], plan: dict[str, int], why: dict[str, str], s
             continue
         t = _min_tier(l, stats.get(k))
         if t is not None:
-            tiers.setdefault(t, []).append(l)
+            tiers.setdefault(99 if k in last else t, []).append(l)
     added: dict[str, int] = {}
     for t in sorted(tiers):
         group = tiers[t]
@@ -510,11 +512,25 @@ def fill_minimum(lanes: list[dict], plan: dict[str, int], why: dict[str, str], s
     return sum(added.values())
 
 
-def matrix(reg: dict, werk: str, n: dict[str, int], extra_args: str = "") -> list[dict]:
-    """Matrix-Einträge eines Werks: Name {linie}-{i}, Teil i von N (--shard), Argumente aus der Linie."""
+def lane_k(l: dict) -> int:
+    """Feste Aufteilung einer Lead-Linie (Teile-Läufe, 05.10.2026): immer --shard i/K mit K = max der Linie. So
+    bearbeiten mehrere Läufe derselben Linie nebeneinander verschiedene Teile, nie dieselben Firmen."""
+    return max(1, int(l.get("max") or 1))
+
+
+def matrix(reg: dict, werk: str, n: dict[str, int], extra_args: str = "",
+           shards: dict[str, list[int]] | None = None) -> list[dict]:
+    """Matrix-Einträge eines Werks: Name {linie}-{i}, Teil i von N (--shard), Argumente aus der Linie.
+    shards (Lead-Werk, Teile-Läufe): {Linie: Teil-Nummern} – diese Teile mit fester Aufteilung K = lane_k."""
     rows: list[dict] = []
     for l in reg["lanes"]:
         if l["werk"] != werk:
+            continue
+        if shards is not None and werk == "lead-werk":
+            kk = lane_k(l)
+            for i in shards.get(l["id"], []):
+                args = l["args"] + (f" --shard {i}/{kk}" if kk > 1 else "") + extra_args
+                rows.append({"name": f"{l['id']}-{i}", "workers": int(l.get("workers", 16)), "args": args})
             continue
         k = n.get(l["id"], 0)
         for i in range(k):
@@ -675,6 +691,33 @@ def run_counts(reg: dict, res: dict, teile: dict[str, int] | None, taken: set[st
     return out, note
 
 
+def pick_shards(reg: dict, counts: dict[str, int], claimed: dict[str, set[int] | None],
+                want: dict[str, list[int]] | None = None, last_used: dict[tuple[str, int], str] | None = None
+                ) -> dict[str, list[int]]:
+    """Teil-Nummern, die DIESER Lauf je Linie bearbeitet (feste Aufteilung K = lane_k). claimed = Teile anderer
+    Läufe ({Linie: Teile}, None = ganze Linie belegt); want = vom Nachfüller gewählte Teile (nur die, die noch frei
+    sind); sonst die freien Teile, die am längsten nicht liefen (last_used = {(Linie, Teil): Startzeit}).
+    Höchstens counts[Linie] Teile; nie ein Teil, den ein anderer Lauf belegt."""
+    last_used = last_used or {}
+    out: dict[str, list[int]] = {}
+    for l in reg["lanes"]:
+        k = l["id"]
+        if l["werk"] != "lead-werk" or int(counts.get(k, 0)) <= 0:
+            continue
+        taken = claimed.get(k, set())
+        if taken is None:
+            continue
+        free = [i for i in range(lane_k(l)) if i not in taken]
+        if want is not None and k in want:
+            free = [i for i in want[k] if i in free]
+        else:
+            free.sort(key=lambda i: (str(last_used.get((k, i)) or ""), i))
+        pick = free[: int(counts[k])]
+        if pick:
+            out[k] = sorted(pick)
+    return out
+
+
 def buffer_teile(reg: dict, werk: str, res: dict, teile: dict[str, int]) -> None:
     """Puffer-Teile vom Nachfüller (scripts/werk_belegung.py, Mindestbelegung 30) für Kunden-/Kontakt-/Prüfer-Werk:
     erhöht nur (nie unter den Plan), höchstens max der Linie; nie für Linien, die der Inhaber auf 0 gesetzt oder
@@ -708,6 +751,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dry", action="store_true", help="nur anzeigen (nichts protokollieren, nichts quittieren)")
     ap.add_argument("--teile", default=None, help="Linien-Lauf (Lead-Werk): „web-us:3,s2-ukfr:6“ – nur diese Linien; andere Werke: "
                          "„kunden:12“ = Puffer-Teile vom Nachfüller (nur mehr, nie über max)")
+    ap.add_argument("--shards", default="", help="Lead-Werk, Teile-Lauf vom Nachfüller: Teil-Nummern „3,4,5“ der Linie(n) in "
+                         "--teile (feste Aufteilung --shard i/K, K = max der Linie)")
     ap.add_argument("--github", action="store_true",
                     help="Lead-Werk: Linien, die ein anderer aktiver Lauf belegt, auslassen (GitHub-API)")
     a = ap.parse_args(argv)
@@ -715,21 +760,36 @@ def main(argv: list[str] | None = None) -> int:
     inp = read_inputs(a.werk) if (os.environ.get("SUPABASE_URL") or not a.dry) else {"settings": {}, "rows": []}
     res = decide(reg, a.werk, inp)
     run_plan = res["plan"]
+    shards = None
     if a.werk == "lead-werk" and (a.teile is not None or a.github):
         # Linien-Läufe (Nachfüller, 05.10.2026): protokolliert wird die ganze Belegung, gestartet nur der eigene Teil
         import werk_belegung as B
         teile = B.parse_teile(a.teile) if a.teile is not None else None
-        taken: set[str] = set()
+        claimed: dict = {}
+        last_used: dict = {}
         if a.github:
             try:
                 all_lanes = {l["id"] for l in reg["lanes"] if l["werk"] == "lead-werk"}
-                taken, clear = B.wait_for_claims(B.GitHub(), int(os.environ["GITHUB_RUN_ID"]), all_lanes)
+                gh = B.GitHub()
+                claimed, clear = B.wait_for_shard_claims(gh, int(os.environ["GITHUB_RUN_ID"]), all_lanes)
                 if not clear:
                     print("älterer Lauf ohne fertigen Plan – seine Linien gelten als belegt", file=sys.stderr)
+                last_used = B.shard_last_used(gh.recent_runs())
             except BaseException as e:  # noqa: BLE001 – lieber nichts starten als eine Linie doppelt bearbeiten
                 print(f"Andere Läufe nicht lesbar ({type(e).__name__}) – keine Linie gestartet", file=sys.stderr)
-                taken = set(res["plan"])
+                claimed = {k: None for k in res["plan"]}
+        taken = {k for k, v in claimed.items() if v is None}
         run_plan, note = run_counts(reg, res, teile, taken)
+        want = None
+        if a.shards.strip() and teile:
+            idx = [int(x) for x in re.findall(r"\d+", a.shards)]
+            want = {k: idx for k in teile}
+        shards = pick_shards(reg, run_plan, claimed, want, last_used)
+        for k in run_plan:
+            n = len(shards.get(k, []))
+            if run_plan[k] and n < run_plan[k]:
+                note[k] = f"{n} von {run_plan[k]} Teilen frei (andere laufen schon)"
+            run_plan[k] = n
         for k, v in note.items():
             print(f"  {k}: {v}")
     if a.werk != "lead-werk" and a.teile:
@@ -747,7 +807,7 @@ def main(argv: list[str] | None = None) -> int:
                 seen_at=inp.get("settings_seen"))
         except BaseException as e:  # noqa: BLE001
             print(f"Quittung nicht geschrieben ({type(e).__name__})", file=sys.stderr)
-    rows = matrix(reg, a.werk, run_plan, res["extra"])
+    rows = matrix(reg, a.werk, run_plan, res["extra"], shards)
     summary = ", ".join(f"{k} {v}" for k, v in res["plan"].items())
     gb = f", DB {inp['db_bytes'] / GB:.2f} GB" if inp.get("db_bytes") else ""
     print(f"{a.werk}: {len(rows)} Teile ({res['mode']}, Bremse {res['brake']}{gb}) – {summary}")

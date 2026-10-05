@@ -15,6 +15,14 @@ fill_minimum stockt nur NEU gestartete Lead-Linien auf; eine laufende Linie beko
 Aufteilung --shard i/k gilt je Lauf, ein zweiter Lauf würde dieselben Teile bearbeiten). Fehlt danach noch etwas bis
 MIN_BELEGT, ist das Kunden-Werk der Puffer (Eingabe `teile`, bis max seiner Linie).
 
+Teile-Läufe (05.10.2026, Nacht nur 18–20 Jobs: web-us lief mit 1 von 15 Teilen, galt aber als „belegt“): jede
+Lead-Linie hat eine feste Aufteilung --shard i/K (K = max der Linie, werk_plan.lane_k). Gezählt wird je Teil, nicht
+je Linie: hat eine laufende Linie freie Teile, startet der Nachfüller sie als weiteren Lauf (Eingabe shards, Titel
+„· Teile 3,4,5“, die am längsten nicht gelaufenen zuerst). Der Plan-Job jedes Laufs lässt Teile aus, die ein anderer
+Lauf belegt (shards_taken_by_others) – nie zwei Jobs auf demselben Teil. Alte Läufe (ohne „· Teile“) belegen ihre
+Linien ganz. Puffer bis MIN_BELEGT ist zuerst die ertragreichste Lead-Linie (Nachrang-Linien des Länder-Vorrangs
+ganz zuletzt), erst danach das Kunden-Werk.
+
 Grenzen (nie gelockert): Plätze je Linie höchstens max, alle Jobs zusammen höchstens total_slots - reserve,
 Speicher-Bremse aus dem Belegungsplan (stopp = keine Lead-Linie), Schalter config/pipeline.yaml lead_suche und
 Pause im Dashboard (owner_settings.werke_paused „lead-werk“; nicht lesbar = nichts starten). Keine doppelte
@@ -75,6 +83,98 @@ def run_claim(run: dict, jobs: list[dict] | None, all_lanes: set[str]) -> tuple[
     if holen or (plan and plan.get("status") == "completed"):
         return active, True
     return set(all_lanes), False
+
+
+SHARDS_RE = re.compile(r"·\s*Teile\b\s*([\d,]*)")  # Teile-Lauf: „lead-werk · Linie web-us · Teile 3,4,5“
+
+
+def title_shards(title: str | None) -> tuple[bool, list[int]]:
+    """(Teile-Lauf?, Teil-Nummern aus dem Titel). Teile-Läufe nutzen die feste Aufteilung K = max der Linie."""
+    m = SHARDS_RE.search(title or "")
+    return (True, [int(x) for x in m.group(1).split(",") if x.isdigit()]) if m else (False, [])
+
+
+def job_part(name: str) -> tuple[str, int] | None:
+    """(Linie, Teil-Nummer) eines holen-Jobs („holen (web-us-3, …)“ -> ("web-us", 3))."""
+    m = re.match(r"^holen \(([a-z0-9\-]+?)-(\d+)[,)]", name or "")
+    return (m.group(1), int(m.group(2))) if m else None
+
+
+Claims = dict  # {Linie: set(Teil-Nummern) | None}; None = ganze Linie belegt
+
+
+def _merge(into: Claims, add: Claims) -> None:
+    for k, v in add.items():
+        if v is None or into.get(k, set()) is None:
+            into[k] = None
+        else:
+            into[k] = set(into.get(k) or set()) | set(v)
+
+
+def run_shards(run: dict, jobs: list[dict] | None, all_lanes: set[str]) -> tuple[Claims, bool]:
+    """Welche Teile belegt ein aktiver Lead-Werk-Lauf? (Ansprüche, geklärt).
+    Teile-Lauf (Titel mit „· Teile“, feste Aufteilung): sobald holen-Jobs existieren, genau deren aktive Teile; davor
+    die Teile im Titel bzw. – ohne Liste – die ganzen Linien im Titel (ohne Linie: alle). Alter Lauf (Aufteilung
+    i/n je Lauf): ganze Linien wie run_claim – seine Teile passen nicht zur festen Aufteilung."""
+    title = run.get("display_title")
+    new, idx = title_shards(title)
+    if not new:
+        lanes, ok = run_claim(run, jobs, all_lanes)
+        return {k: None for k in lanes}, ok
+    lanes = title_lanes(title)
+    lanes = (lanes & all_lanes) if lanes is not None else set(all_lanes)
+    holen = [j for j in (jobs or []) if job_part(j.get("name", ""))]
+    if holen:
+        out: Claims = {}
+        for j in holen:
+            if j.get("status") in ACTIVE_JOB:
+                k, i = job_part(j["name"])
+                out.setdefault(k, set()).add(i)
+        return out, True
+    plan = next((j for j in (jobs or []) if j.get("name") == "plan"), None)
+    done = bool(plan and plan.get("status") == "completed")
+    if idx:
+        return {k: set(idx) for k in lanes}, True
+    return {k: None for k in lanes}, done and jobs is not None
+
+
+def shards_taken_by_others(self_id: int, runs: list[dict], jobs_of, all_lanes: set[str]) -> tuple[Claims, bool]:
+    """Teile, die ANDERE aktive Läufe belegen (Plan-Job eines Laufs). Ältere Läufe gewinnen (ihre Ansprüche zählen
+    immer), jüngere nur mit schon gestarteten holen-Jobs."""
+    taken: Claims = {}
+    clear = True
+    for r in runs:
+        rid = int(r.get("id") or 0)
+        if rid == int(self_id) or r.get("status") not in ACTIVE_RUN:
+            continue
+        jobs = jobs_of(rid)
+        if rid < int(self_id):
+            c, ok = run_shards(r, jobs, all_lanes)
+            clear = clear and ok
+        else:
+            new, _ = title_shards(r.get("display_title"))
+            c = {}
+            for j in jobs or []:
+                p = job_part(j.get("name", ""))
+                if p and j.get("status") in ACTIVE_JOB:
+                    if new:
+                        c.setdefault(p[0], set()).add(p[1])
+                    else:
+                        c[p[0]] = None
+        _merge(taken, c)
+    return taken, clear
+
+
+def shard_last_used(recent: list[dict]) -> dict[tuple[str, int], str]:
+    """{(Linie, Teil): letzte Startzeit} aus den Titeln der letzten Teile-Läufe (für die Reihum-Wahl)."""
+    out: dict[tuple[str, int], str] = {}
+    for r in recent or []:
+        new, idx = title_shards(r.get("display_title"))
+        t = str(r.get("created_at") or "")
+        for k in (title_lanes(r.get("display_title")) or set()) if new else set():
+            for i in idx:
+                out[(k, i)] = max(out.get((k, i), ""), t)
+    return out
 
 
 def lanes_taken_by_others(self_id: int, runs: list[dict], jobs_of, all_lanes: set[str]) -> tuple[set[str], bool]:
@@ -141,7 +241,7 @@ def recently_short(lane: str, recent: list[dict], now) -> bool:
     return r.get("status") == "completed" and en is not None and (en - st).total_seconds() / 60 < KURZLAUF_MIN
 
 
-def fill_plan(reg: dict, res: dict, stats: dict, busy_lanes: set[str], busy: int,
+def fill_plan(reg: dict, res: dict, stats: dict, busy_lanes, busy: int,
               min_belegt: int = W.MIN_BELEGT, now=None, recent: list[dict] | None = None
               ) -> tuple[dict[str, int], dict[str, str]]:
     """Welche Linien jetzt mit wie vielen Teilen starten. res = werk_plan.decide(…) für das Lead-Werk.
@@ -149,25 +249,36 @@ def fill_plan(reg: dict, res: dict, stats: dict, busy_lanes: set[str], busy: int
     alles unter total_slots - reserve, werden die letzten gekürzt. Linien, die eben kurz und ohne Ertrag liefen, ruhen
     PAUSE_LEER_MIN. Danach bis min_belegt auffüllen – nur die neu
     gestarteten Linien, nie über max, nie gesperrte/leere/erschöpfte/Nachrang-Linien, nie bei Speicher-Bremse."""
+    claims: Claims = busy_lanes if isinstance(busy_lanes, dict) else {k: None for k in busy_lanes}
     cap = int(reg["total_slots"]) - int(reg["reserve"]) - busy
     lanes = {l["id"]: l for l in reg["lanes"] if l["werk"] == "lead-werk"}
     why = dict(res.get("reasons") or {})
     now = now or dt.datetime.now(dt.timezone.utc)
-    cand = [k for k, v in (res.get("plan") or {}).items() if v > 0 and k in lanes and k not in busy_lanes
-            and not resting(stats.get(k), now) and not recently_short(k, recent or [], now)]
+    plan = res.get("plan") or {}
+    act = {k: len(claims[k]) for k in claims if claims[k] is not None}  # belegte Teile laufender Teile-Läufe
+    free = {k: W.lane_k(lanes[k]) - act.get(k, 0) for k in lanes}
+    cand = [k for k, v in plan.items() if v > 0 and k in lanes and claims.get(k, set()) is not None
+            and free[k] > 0 and not resting(stats.get(k), now) and not recently_short(k, recent or [], now)]
     tier = lambda k: W._min_tier(lanes[k], stats.get(k)) or 9  # noqa: E731
-    cand.sort(key=lambda k: (tier(k), -int(res["plan"][k]), k))
+    cand.sort(key=lambda k: (tier(k), -int(plan[k]), k))
     start: dict[str, int] = {}
     room = cap
     for k in cand:
-        n = min(int(res["plan"][k]), int(lanes[k]["max"]), room)
-        if n <= 0:
+        n = min(int(plan[k]) - act.get(k, 0), int(lanes[k]["max"]) - act.get(k, 0), free[k], room)
+        if n > 0:
+            start[k], room = n, room - n
+        if room <= 0:
             break
-        start[k], room = n, room - n
-    if start and res.get("brake", "aus") not in ("drossel", "ohne-rohbestand", "stopp"):
-        nach = set(res.get("nach") or ())  # Länder-Vorrang: Nachrang-Linien bekommen keine Zusatzplätze
-        W.fill_minimum([lanes[k] for k in start], start, why, stats,
-                       (res.get("autopilot") or {}).get("locks") or {}, cap, busy, min_belegt, nach)
+    if cand and res.get("brake", "aus") not in ("drossel", "ohne-rohbestand", "stopp"):
+        # Mindestbelegung: neue UND laufende Linien (freie Teile) auffüllen; Nachrang-Linien (Länder-Vorrang) erst
+        # ganz zuletzt – die ertragreichste Linie ist der Puffer, nicht das Kunden-Werk
+        tot = {k: act.get(k, 0) + start.get(k, 0) for k in cand}
+        tot = {k: v for k, v in tot.items() if v > 0}
+        mine = sum(act.get(k, 0) for k in tot)
+        nach = set(res.get("nach") or ())
+        W.fill_minimum([lanes[k] for k in tot], tot, why, stats, (res.get("autopilot") or {}).get("locks") or {},
+                       cap + mine, busy - mine, min_belegt, set(), nach)
+        start = {k: tot[k] - act.get(k, 0) for k in tot if tot[k] - act.get(k, 0) > 0}
     return start, {k: why.get(k, "") for k in start}
 
 
@@ -278,6 +389,9 @@ class GitHub:
             self._jobs[run_id] = js
         return self._jobs[run_id]
 
+    def recent_runs(self, n: int = 50) -> list[dict]:
+        return self._get(f"actions/workflows/{LEAD_WF}/runs", {"per_page": n}).get("workflow_runs", [])
+
     def dispatch(self, workflow: str, inputs: dict, ref: str = "main") -> None:
         r = self.s.post(f"https://api.github.com/repos/{self.repo}/actions/workflows/{workflow}/dispatches",
                         json={"ref": ref, "inputs": inputs}, timeout=30)
@@ -294,6 +408,22 @@ def wait_for_claims(gh: GitHub, self_id: int, all_lanes: set[str], wait_s: int =
         if clear or time.time() >= deadline:
             return taken, clear
         time.sleep(15)
+
+
+def wait_for_shard_claims(gh: GitHub, self_id: int, all_lanes: set[str], wait_s: int = 150) -> tuple[Claims, bool]:
+    """Plan-Job: Teile anderer Läufe; wartet bis zu wait_s, bis ältere Läufe ihre Teile kennen."""
+    deadline = time.time() + wait_s
+    while True:
+        runs = gh.active_runs(LEAD_WF)
+        taken, clear = shards_taken_by_others(self_id, runs, lambda rid: gh.jobs(rid, fresh=True), all_lanes)
+        if clear or time.time() >= deadline:
+            return taken, clear
+        time.sleep(15)
+
+
+def choose_shards(reg: dict, start: dict[str, int], claims: Claims, recent: list[dict]) -> dict[str, list[int]]:
+    """Teil-Nummern für die Teile-Läufe des Nachfüllers: freie Teile, die am längsten nicht liefen."""
+    return W.pick_shards(reg, start, claims, None, shard_last_used(recent))
 
 
 # ---------------------------------------------------------------------------------------------- Ablauf
@@ -344,21 +474,26 @@ def cmd_nachfuellen(gh: GitHub, apply: bool, ref: str = "main") -> int:
         return 0
     res = W.decide(reg, "lead-werk", inp)
     all_lanes = {l["id"] for l in reg["lanes"] if l["werk"] == "lead-werk"}
-    taken: set[str] = set()
+    claims: Claims = {}
     for r in runs:
         if r.get("path", "").endswith(LEAD_WF) or r.get("name") == "lead-werk":
-            lanes, _ = run_claim(r, gh.jobs(int(r["id"])), all_lanes)
-            taken |= lanes
-    recent = gh._get(f"actions/workflows/{LEAD_WF}/runs", {"per_page": 50}).get("workflow_runs", [])
-    start, reasons = fill_plan(reg, res, res.get("stats") or {}, taken, busy, recent=recent)
-    print(f"belegt {busy} Jobs, Linien laufen: {', '.join(sorted(taken)) or '–'} (Bremse {res['brake']})")
+            c, _ = run_shards(r, gh.jobs(int(r["id"])), all_lanes)
+            _merge(claims, c)
+    recent = gh.recent_runs()
+    start, reasons = fill_plan(reg, res, res.get("stats") or {}, claims, busy, recent=recent)
+    shards = choose_shards(reg, start, claims, recent)
+    start = {k: len(v) for k, v in shards.items()}
+    lauf = ", ".join(f"{k} {'ganz' if v is None else len(v)}" for k, v in sorted(claims.items()) if v is None or v)
+    print(f"belegt {busy} Jobs, Linien laufen: {lauf or '–'} (Bremse {res['brake']})")
     if not start:
         print("nichts nachzufüllen")
-    for k, n in start.items():
-        print(f"  starte {k}: {n} Teile – {reasons.get(k, '')}")
+    for k, idx in shards.items():
+        print(f"  starte {k}: Teile {','.join(map(str, idx))} von {W.lane_k(next(l for l in reg['lanes'] if l['id'] == k))}"
+              f" – {reasons.get(k, '')}")
         if apply:
             try:
-                gh.dispatch(LEAD_WF, {"linien": k, "teile": f"{k}:{n}"}, ref=ref)
+                gh.dispatch(LEAD_WF, {"linien": k, "teile": f"{k}:{len(idx)}", "shards": ",".join(map(str, idx))},
+                            ref=ref)
             except Exception as e:  # noqa: BLE001
                 print(f"  Start {k} fehlgeschlagen: {e}")
     ostart = fill_others(gh, reg, runs, busy, sum(start.values()), apply, ref)
