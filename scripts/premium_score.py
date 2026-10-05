@@ -161,6 +161,47 @@ def run(db, apply: bool, limit: int = 50000, today: dt.date | None = None, log=p
     return dict(stats)
 
 
+TEXT_SELECT = "id,company_id,country,signal_type,source_name,source_url,event_summary,opener,urgency_reason," \
+              "observation_ids,premium"
+
+
+def texte_batch(db, rows: list[dict]) -> list[tuple[str, dict]]:
+    """(id, Änderung) je Lead: neue Texte (falls belegt) und immer der Merker premium.texte (einmal je Lead)."""
+    from lib import radar
+    ev = _evidence(db, sorted({(r.get("observation_ids") or [None])[0] for r in rows} - {None}))
+    cos = sorted({r["company_id"] for r in rows if r.get("company_id")})
+    names = {}
+    for i in range(0, len(cos), 150):
+        for c in db.select("watch_companies", {"id": f"in.({','.join(cos[i:i + 150])})", "select": "id,name"}):
+            names[c["id"]] = c.get("name") or ""
+    out = []
+    for r in rows:
+        new = radar.refresh_combo(r, ev.get((r.get("observation_ids") or [None])[0]), names.get(r.get("company_id"), ""))
+        p = r.get("premium") if isinstance(r.get("premium"), dict) else {}
+        out.append((r["id"], {**new, "premium": {**p, "texte": "kombi" if new else "geprueft"}}))
+    return out
+
+
+def texte(db, apply: bool, limit: int = 5000, log=print) -> dict:
+    """Schritt 3: offene/reservierte Premium-Radar-Leads ohne Merker. Nur Texte aus vorhandenen Belegen, nie Stufe,
+    Punktzahl oder Status; die Drei-Stufen-Freigabe prüft die Texte beim nächsten Lauf unverändert."""
+    from lib.radar import SOURCE_NAME
+    rows = db.select_all("leads", {"status": "in.(new,reserved)", "source_name": f"eq.{SOURCE_NAME}",
+                                   "signal_type": "in.(cert_expiring,no_https)", "premium->>tier": "eq.premium",
+                                   "premium->>texte": "is.null", "select": TEXT_SELECT})[:limit]
+    stats: Counter = Counter()
+    for i in range(0, len(rows), 300):
+        part = rows[i:i + 300]
+        upd = texte_batch(db, part)
+        for (_, u), r in zip(upd, part):
+            stats[f"texte_{'neu' if 'opener' in u else 'gleich'}:{r.get('country')}"] += 1
+        if apply:
+            with ThreadPoolExecutor(8) as ex:
+                list(ex.map(lambda u: db.update("leads", {"id": u[0]}, u[1]), upd))
+    log(json.dumps(dict(stats), ensure_ascii=False, sort_keys=True))
+    return dict(stats)
+
+
 def counts(db, today: dt.date | None = None) -> dict:
     """Premium-Leads heute je Zielgruppe/Land (offen, frisch) – über signalwerk.premium_status()."""
     return {f"{r['segment_id']}/{r['country']}": r["premium_frei"] for r in db.rpc("premium_status", {}) or []}
@@ -172,7 +213,12 @@ def main(argv=None) -> int:
     ap.add_argument("--limit", type=int, default=50000)
     args = ap.parse_args(argv)
     from lib.db import DB
-    run(DB(), args.apply, args.limit)
+    db = DB()
+    run(db, args.apply, args.limit)
+    try:
+        texte(db, args.apply)
+    except Exception as exc:  # noqa: BLE001 - Texte nachtragen darf die Bewertung nie stoppen
+        print(f"texte: {type(exc).__name__}: {str(exc)[:160]}")
     return 0
 
 
