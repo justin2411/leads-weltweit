@@ -161,6 +161,8 @@ function build() {
       fokus_je_seite: num(proben, "fokus_je_seite", 6),
       andere_je_seite: num(proben, "andere_je_seite", 3),
       max_alter_stunden: num(proben, "max_alter_stunden", 48),
+      // Premium-Proben je Land (premium_us …), andere Länder premium_andere (Inhaber 05.10.2026)
+      premium: Object.fromEntries([...(proben ?? "").matchAll(/^premium_([a-z]+):\s*(\d+)\s*$/gm)].map((m) => [m[1] === "andere" ? "andere" : m[1].toUpperCase(), Number(m[2])])),
     },
     fokus: [...(fokus ?? "").matchAll(/^\s*-\s*(S\d+)\/([A-Z]{2})\s*$/gm)].map((m) => `${m[1]}/${m[2]}`),
     nur_fokus: bool(fokus, "nur_fokus", false),

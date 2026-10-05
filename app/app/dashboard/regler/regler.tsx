@@ -12,7 +12,7 @@ import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } f
 import { FOLLOWUP_DAYS_RANGE, MAX_AGE_RANGE, MAX_SAMPLE_TARGET, type OwnerSettings, type SettingKey } from "@/lib/owner-settings";
 import {
   CARDS, LEAD_COUNTRIES, MAX_AGE_NOTE, capHint, cardOf, countriesOn, countryOn, diff, draftFrom, fmtBerlin, laneRoom, leadMax, leadTotal,
-  maxAgeMatters, presetChips, presetPlan, scalePlan, setCountry, setLane, switchPreview, type CardKey, type Draft, type ReglerCtx, type StatusKind,
+  maxAgeMatters, premiumShort, presetChips, presetPlan, scalePlan, setCountry, setLane, switchPreview, type CardKey, type Draft, type ReglerCtx, type StatusKind,
 } from "@/lib/regler";
 import type { Entry } from "@/lib/regler-verlauf";
 import { Icon, type IconName } from "@/app/icons";
@@ -87,8 +87,10 @@ function Rail({ v, dirty, startable, on, busy, onGo }: { v: CardView; dirty: boo
 /** Anker für Links aus der Zentrale (/dashboard/regler#…): Plätze, Länder, Proben, Versand, Nachfass. */
 const ANKER: Record<string, string> = { "lead-werk": "plaetze", "kunden-werk": "laender", "proben-vorrat": "proben", versand: "versand", nachfass: "nachfass" };
 
-export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatch }: {
+export function Regler({ ctx, saved, seen, cards, ready, premium = null, history, error, dispatch }: {
   ctx: ReglerCtx; saved: OwnerSettings; seen: Partial<Record<SettingKey, string>>; cards: CardView[]; ready: Record<string, number>;
+  /** fertige Premium-Proben und freie Premium-Leads je Seite (null = nicht lesbar) */
+  premium?: Record<string, { ready: number; free: number }> | null;
   history: HistoryView[]; error: string | null; dispatch: boolean;
 }) {
   const router = useRouter();
@@ -251,14 +253,24 @@ export function Regler({ ctx, saved, seen, cards, ready, history, error, dispatc
     }
     if (k === "proben-vorrat") return (<>
       <Fold id="regler-proben-soll" head="rg-fold-h" open={ctx.pages.length <= 6} title="Soll je Seite" sum={`${ctx.pages.length} Seiten`}>
-      <div className="rg-pages">{ctx.pages.map((p) => (
+      <div className="rg-pages">{ctx.pages.map((p) => {
+        const pm = premium?.[p], ps = draft.sample_premium_targets[p] ?? 0, short = premiumShort(ps, pm?.free);
+        return (
         <div key={p} className="rg-page">
           <div><b>{p.split("/")[1]}</b><em title="fertige Proben / gespeichertes Soll">bereit {ready[p] ?? 0}/{base.sample_targets[p] ?? 0}</em></div>
           <div className="rg-soll"><span>Soll</span>
             <Stepper label={`Soll ${p}`} value={draft.sample_targets[p] ?? 0} min={0} max={MAX_SAMPLE_TARGET} step={5} changed={changedPart(k, `soll:${p}`)} disabled={locked}
               onChange={(n) => set({ sample_targets: { ...draft.sample_targets, [p]: n } })} />
           </div>
-        </div>))}
+          <div className="rg-prem">
+            <div><span>Premium</span><em title="fertige Proben mit 10/10 Premium-Leads / gespeichertes Premium-Soll">bereit {pm?.ready ?? "–"}/{base.sample_premium_targets[p] ?? 0}</em></div>
+            <Stepper label={`Premium ${p}`} value={ps} min={0} max={MAX_SAMPLE_TARGET} changed={changedPart(k, `premium:${p}`)} disabled={locked}
+              onChange={(n) => set({ sample_premium_targets: { ...draft.sample_premium_targets, [p]: n } })} />
+          </div>
+          <p className={`rg-free${short ? " warn" : ""}`} title="freie Premium-Leads (frisch ≤ 14 Tage); je Premium-Probe 10">
+            {pm ? `${pm.free.toLocaleString("de-DE")} Premium-Leads frei` : "Premium-Leads frei: –"}{short && ` · Soll braucht ${(ps * 10).toLocaleString("de-DE")}`}
+          </p>
+        </div>); })}
       </div>
       </Fold>
       {maxAgeMatters(ctx.pages) ? (

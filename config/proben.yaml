@@ -8,3 +8,11 @@ andere_je_seite: 3
 max_alter_stunden: 48
 # Höchstdauer eines Bau-Laufs in Minuten (der Rest folgt im nächsten Lauf).
 laufzeit_minuten: 40
+# Premium-Proben (Inhaber 05.10.2026: „bei proben vorrat möchte ich auch premium leads proben vorrat nehmen können“):
+# davon so viele Proben je Seite, in denen alle 10 Leads Premium sind (Standard je Land, im Regler einstellbar).
+# Klein gehalten, damit freie Premium-Leads für Lieferungen und den Mail-Test „Beleg-Einstieg“ bleiben
+# (frei 05.10.: US ~2.700, UK ~320, FR ~140). Andere Länder 0.
+premium_us: 10
+premium_uk: 2
+premium_fr: 1
+premium_andere: 0

@@ -51,7 +51,7 @@ export default async function Page() {
     <>
       <style dangerouslySetInnerHTML={{ __html: REGLER_CSS }} />
       <Schaltstelle paused={!!d.saved.send_paused} brain={zs ? zs.brain_enabled !== false : null} autopilot={d.saved.slot_autopilot?.on !== false} />
-      <Regler ctx={ctx} saved={d.saved} seen={d.updatedAt} cards={cards} ready={d.ready} history={history} error={d.error} dispatch={d.dispatch} />
+      <Regler ctx={ctx} saved={d.saved} seen={d.updatedAt} cards={cards} ready={d.ready} premium={d.premium} history={history} error={d.error} dispatch={d.dispatch} />
     </>
   );
 }

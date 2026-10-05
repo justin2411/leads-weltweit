@@ -15,6 +15,8 @@ export type OwnerSettings = {
   followup_enabled: boolean;
   followup_days: number | null;
   sample_targets: Record<string, number>;
+  /** Premium-Proben je Seite (Inhaber 05.10.2026): davon Proben mit 10/10 Premium-Leads; leer = config/proben.yaml. */
+  sample_premium_targets: Record<string, number>;
   sample_max_age_hours: number | null;
   buyer_countries_off: string[];
   /** Werke an/aus per Klick (Inhaber 03.10.2026): Werk -> pausiert seit (ISO). */
@@ -37,7 +39,7 @@ export type SettingKey = keyof OwnerSettings;
 
 export const DEFAULTS: OwnerSettings = {
   send_paused: false, send_countries_off: [], send_country_limits: {}, followup_enabled: true, followup_days: null,
-  sample_targets: {}, sample_max_age_hours: null, buyer_countries_off: [], werke_paused: {}, slot_plan: {},
+  sample_targets: {}, sample_premium_targets: {}, sample_max_age_hours: null, buyer_countries_off: [], werke_paused: {}, slot_plan: {},
   slot_autopilot: { on: true, locks: {} }, dismissed_tips: {}, llm_budget_eur: 30, website_autofix: true, website_ignored: {},
 };
 

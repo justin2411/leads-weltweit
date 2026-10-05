@@ -34,7 +34,7 @@ export type Card = {
 export const CARDS: readonly Card[] = [
   { key: "lead-werk", icon: "lead-werk", name: "Lead-Werk", keys: ["werke_paused", "slot_plan", "slot_autopilot"], werk: "lead-werk", start: "lead-werk", cron: "23 */3 * * *", file: "lead-werk.yml" },
   { key: "kunden-werk", icon: "kunden-werk", name: "Kunden-Werk", keys: ["werke_paused", "slot_plan", "buyer_countries_off"], werk: "kunden-werk", start: "kunden-werk", cron: "41 */2 * * *", file: "kunden-werk.yml" },
-  { key: "proben-vorrat", icon: "proben", name: "Proben-Vorrat", keys: ["werke_paused", "sample_targets", "sample_max_age_hours"], werk: "proben-vorrat", start: "proben-vorrat", cron: "23 * * * *", file: "proben-vorrat.yml" },
+  { key: "proben-vorrat", icon: "proben", name: "Proben-Vorrat", keys: ["werke_paused", "sample_targets", "sample_premium_targets", "sample_max_age_hours"], werk: "proben-vorrat", start: "proben-vorrat", cron: "23 * * * *", file: "proben-vorrat.yml" },
   { key: "antworten", icon: "antworten", name: "Antwort-Assistent", keys: ["werke_paused"], werk: "antworten", start: null, cron: "*/10 * * * *", file: "antworten.yml", note: WERK_SWITCHES.antworten.note },
   { key: "nachfass", icon: "nachfass", name: "Nachfassmails", keys: ["followup_enabled", "followup_days"], werk: "nachfass", start: null, cron: "17 12 * * *", file: "taeglich.yml" },
   // Versand rund um die Uhr (Inhaber 04.10.2026): stündlich :37, nächster Lauf aus lib/versandzeit.ts (cardNext)
@@ -315,7 +315,7 @@ export type ReglerCtx = {
   /** Länder des Kunden-Werks (wie toggleBuyerCountry: COUNTRIES aus dashboard-data) */
   buyerCountries: string[];
   /** config/proben.yaml (CONFIG.proben) und Fokus-Seiten (CONFIG.fokus) für Standardwerte */
-  proben: { fokus_je_seite: number; andere_je_seite: number; max_alter_stunden: number };
+  proben: { fokus_je_seite: number; andere_je_seite: number; max_alter_stunden: number; premium?: Record<string, number> };
   fokus: string[];
   /** Tage bis Nachfass ohne Einstellung (scripts/followups.py: 4) */
   followupDefault?: number;
@@ -327,11 +327,20 @@ export type Draft = {
   slot_plan: Record<string, number>;
   buyer_countries_off: string[];
   sample_targets: Record<string, number>;
+  /** davon Premium-Proben (10/10 Premium-Leads) je Seite */
+  sample_premium_targets: Record<string, number>;
   sample_max_age_hours: number;
   followup_days: number;
 };
 
 export const sampleDefault = (key: string, ctx: ReglerCtx) => (ctx.fokus.includes(key) ? ctx.proben.fokus_je_seite : ctx.proben.andere_je_seite);
+/** Premium-Soll ohne Einstellung: config/proben.yaml premium_<land>, sonst premium_andere (wie premium_targets in Python). */
+export const premiumDefault = (key: string, ctx: ReglerCtx) => {
+  const p = ctx.proben.premium ?? {};
+  return p[key.split("/")[1]] ?? p.andere ?? 0;
+};
+/** Gelber Hinweis: Premium-Soll braucht mehr freie Premium-Leads als da sind (je Probe 10). */
+export const premiumShort = (soll: number, frei: number | null | undefined) => frei !== null && frei !== undefined && soll * 10 > frei;
 
 /** Entwurf = wirksame Werte des Gespeicherten (Standardwerte ausgefüllt). */
 export function draftFrom(s: OwnerSettings, ctx: ReglerCtx): Draft {
@@ -341,6 +350,7 @@ export function draftFrom(s: OwnerSettings, ctx: ReglerCtx): Draft {
     slot_plan: slotCounts(ctx.reg, s.slot_plan),
     buyer_countries_off: [...(s.buyer_countries_off ?? [])].sort(),
     sample_targets: Object.fromEntries(ctx.pages.map((k) => [k, s.sample_targets?.[k] ?? sampleDefault(k, ctx)])),
+    sample_premium_targets: Object.fromEntries(ctx.pages.map((k) => [k, s.sample_premium_targets?.[k] ?? premiumDefault(k, ctx)])),
     sample_max_age_hours: s.sample_max_age_hours ?? ctx.proben.max_alter_stunden,
     followup_days: s.followup_days ?? ctx.followupDefault ?? 4,
   };
@@ -413,6 +423,9 @@ export function diff(saved: OwnerSettings, draft: Draft, ctx: ReglerCtx): Change
       const changed = ctx.pages.filter((k) => base.sample_targets[k] !== draft.sample_targets[k]);
       const value = { ...(saved.sample_targets ?? {}), ...Object.fromEntries(changed.map((k) => [k, draft.sample_targets[k]])) };
       for (const k of changed) add({ card: c.key, key: "sample_targets", part: `soll:${k}`, label: `Soll ${k}`, from: base.sample_targets[k], to: draft.sample_targets[k], value });
+      const pch = ctx.pages.filter((k) => base.sample_premium_targets[k] !== draft.sample_premium_targets[k]);
+      const pval = { ...(saved.sample_premium_targets ?? {}), ...Object.fromEntries(pch.map((k) => [k, draft.sample_premium_targets[k]])) };
+      for (const k of pch) add({ card: c.key, key: "sample_premium_targets", part: `premium:${k}`, label: `Premium ${k}`, from: base.sample_premium_targets[k], to: draft.sample_premium_targets[k], value: pval });
       if (base.sample_max_age_hours !== draft.sample_max_age_hours) {
         add({ card: c.key, key: "sample_max_age_hours", part: "verfall", label: "Verfall", from: base.sample_max_age_hours, to: draft.sample_max_age_hours, text: `Verfall ${base.sample_max_age_hours} → ${draft.sample_max_age_hours} h`, value: draft.sample_max_age_hours });
       }
@@ -474,8 +487,8 @@ export function validateValue(key: SettingKey, value: unknown, ctx: ReglerCtx, s
       }
       return { on: v.on, locks: out };
     }
-    case "sample_targets": {
-      const v = obj(value), old = saved?.sample_targets ?? {};
+    case "sample_targets": case "sample_premium_targets": {
+      const v = obj(value), old = saved?.[key] ?? {};
       const rest = Object.keys(v).filter((k) => !ctx.pages.includes(k));
       if (rest.some((k) => !(k in old) || old[k] !== v[k])) throw new InputError("Seite ungültig");
       return { ...Object.fromEntries(rest.map((k) => [k, old[k]])), ...validateSampleTargets(v, ctx.pages.filter((k) => k in v)) };
