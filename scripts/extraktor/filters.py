@@ -12,6 +12,7 @@ import re
 from collections import Counter
 
 from lib import websites as W
+from lib.laender import active
 
 PUBLIC = re.compile(r"\b(county of|city of|town of|village of|state of|department|dept\.? of|school district|"
                     r"public schools?|university|college|church|ministr(y|ies)|parish|diocese|fire (district|"
@@ -45,7 +46,8 @@ def shared_contacts(candidates: list[dict], extra: list[dict] | None = None) -> 
 
 
 # Länder mit Lead-Quellen; FI/SG/HK/MX/BR neu (Inhaber 04.10.2026, docs/KALTMAIL-RECHT.md)
-TARGET_COUNTRIES = ("US", "UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK", "MX", "BR")
+# HK raus (Inhaber 05.10.2026): zentrale Liste lib/laender.INACTIVE
+TARGET_COUNTRIES = active(("US", "UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK", "MX", "BR"))
 
 
 def pre_filter(c: dict) -> str | None:

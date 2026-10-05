@@ -17,7 +17,7 @@ import { Icon } from "@/app/icons";
 /** Versand & Ergebnisse je Zeitraum mit Vergleich, Klick auf Zahl/Balken → Firmen; darunter die Steuerung. */
 export default async function Versand({ searchParams }: { searchParams: SP }) {
   await requireOwner();
-  const { land, countries, z, raw } = await readParams(searchParams);
+  const { land, countries, z, raw, one } = await readParams(searchParams);
   const today = berlinDay(new Date());
   const p = period(z, today);
   const single = p.from === p.to;
@@ -179,7 +179,7 @@ export default async function Versand({ searchParams }: { searchParams: SP }) {
         </Ctrl>
       </div>
 
-      <Suspense fallback={<p className="muted">Entwürfe laden …</p>}><Freigaben /></Suspense>
+      <Suspense fallback={<p className="muted">Entwürfe laden …</p>}><Freigaben entw={one("entw") === "andere" ? "andere" : null} params={raw} /></Suspense>
     </div>
   );
 }

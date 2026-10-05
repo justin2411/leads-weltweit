@@ -47,7 +47,7 @@ SIZES = (1000, 2000, 5000)
 EXPORT_MAX = 5000
 HOURLY_GAP_MIN = 50       # bei neuen Leads: frühestens nach so vielen Minuten wieder
 DEFAULT_HOUR = 7          # täglich ohne Stunde: 7 Uhr deutscher Zeit
-MARKETS = ("US", "UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "HK", "MX", "BR")   # wie app/lib/agents.ts MARKETS
+MARKETS = ("US", "UK", "FR", "IE", "NL", "BE", "SE", "FI", "SG", "MX", "BR")   # wie app/lib/agents.ts MARKETS; HK raus 05.10.2026
 TASK_KINDS = ("leads", "kaeufer", "quelle", "pruefen", "frage")
 AGENT_COUNT = 8           # Agenten des Inhabers A1–A8 (wie app/lib/agents.ts AGENT_COUNT; 9 = Kunden-Agenten)
 BRIEF_MAX = 1000

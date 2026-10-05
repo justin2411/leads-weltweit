@@ -33,13 +33,14 @@ from extraktor import filters, qc, sc, segments  # noqa: E402
 from extraktor.model import CSV_COLUMNS  # noqa: E402
 from extraktor.sources import fmcsa, formd, fr_bodacc, overture, uk_ch, website_check  # noqa: E402
 from lib import websites as W  # noqa: E402
+from lib.laender import active, producing  # noqa: E402
 
 FORM_D_SEGMENTS = ("S1", "S5", "S9")
 FMCSA_SEGMENTS = ("S4", "S2", "S5")
 # Scout-Sprint 01.10.2026: S2 (Firmen ohne Website, Overture) auch in den übrigen Mail-Ländern aus countries.yaml
 S2_EXTRA = ("IE", "NL", "BE", "SE")
 # Neue Mail-Länder (Inhaber 04.10.2026, docs/KALTMAIL-RECHT.md): S2 ohne Website aus Overture, nur mit E-Mail
-S2_NEW = ("FI", "SG", "HK", "MX", "BR")
+S2_NEW = active(("FI", "SG", "HK", "MX", "BR"))  # HK raus (Inhaber 05.10.2026, lib/laender)
 
 
 def log(msg: str) -> None:
@@ -718,6 +719,11 @@ def main(argv=None) -> int:
     deadline = time.monotonic() + args.deadline_min * 60 if args.deadline_min else 0
     only_prem = False  # Mischung (owner_settings.lead_mix) wird unten mit der Datenbank gelesen
     countries = [x.strip().upper() for x in args.countries.split(",") if x.strip()]
+    # nur aktive Märkte befüllen (config/fokus.yaml, lib/laender; Inhaber 05.10.2026), HK nie
+    ruht = [c for c in countries if c not in producing(countries)]
+    countries = producing(countries)
+    if ruht:
+        log(f"Ruhende Märkte ausgelassen (nicht im Fokus): {','.join(ruht)}")
     segs = [s.strip().upper() for s in args.segments.split(",") if s.strip()]
     stats = Counter()
 

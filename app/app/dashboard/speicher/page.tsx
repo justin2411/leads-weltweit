@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
 import { berlin } from "@/lib/dashboard-logic";
 import {
-  ALL, LAYERS, PREMIUM_FOCUS, baukastenHref, big, buyerTanks, checkRows, dbFill, dbRing, fmtBytes, layerShares, leadTanks, logHeight,
+  ALL, LAYERS, PREMIUM_FOCUS, activeCountries, splitActive, baukastenHref, big, buyerTanks, checkRows, dbFill, dbRing, fmtBytes, layerShares, leadTanks, logHeight,
   premiumFree, premiumProben, premiumTanks, probenSummary, scaleTop, ticks, type LayerKey, type PremiumTank, type ProbeRow,
 } from "@/lib/storage";
 import { loadProben, loadStorage, type Storage } from "@/lib/storage-data";
@@ -17,6 +17,18 @@ import { Pools } from "./pools";
 import { TankScroller } from "./scroller";
 import { Fold } from "../fold";
 import { CountUp } from "./count-up";
+import opsConfig from "@/lib/ops-config.json";
+
+/** Ruhende Märkte (nicht in config/fokus.yaml): eingeklappt, nur Land und Zahl – Daten bleiben (Inhaber 05.10.2026). */
+function Ruht({ items }: { items: { country: string; n: number; href: string }[] }) {
+  if (!items.length) return null;
+  return (
+    <details className="sp-ruht">
+      <summary>ruht · {items.length} {items.length === 1 ? "Land" : "Länder"} <span>(nicht im Fokus, wird nicht befüllt)</span></summary>
+      <div>{items.map((t) => <Link key={t.country} href={t.href}><b>{t.country}</b> {big(t.n)}</Link>)}</div>
+    </details>
+  );
+}
 
 export const metadata = { title: "Speicher" };
 type SP = Promise<Record<string, string | string[] | undefined>>;
@@ -139,14 +151,15 @@ const BREMSE: Record<string, string> = { aus: "aus", hinweis: "Hinweis (ab 5,5 G
 
 function Body({ d, seg, proben, brake }: { d: Storage; seg: string; proben: ProbeRow[] | null; brake: { level: string; at: string } | null }) {
   // ------------------------------------------------------------- Kunden-Leads
-  const lt = leadTanks(d, seg);
+  const act = activeCountries((opsConfig as { fokus?: string[] }).fokus ?? [], seg);
+  const { active: lt, resting: lRest } = splitActive(leadTanks(d, seg, d.segments), act);
   const pt = premiumTanks(d, seg);
   const lTop = scaleTop(Math.max(0, ...lt.map((t) => t.total)));
   const lTicks = ticks(lTop);
   const freeAll = lt.reduce((a, t) => a + t.layers.frei, 0);
 
   // ------------------------------------------------------------- Käufer (nur mail-fähig zählt)
-  const bt = buyerTanks(d, d.segments, seg);
+  const { active: bt, resting: bRest } = splitActive(buyerTanks(d, d.segments, seg), act);
   const bTop = scaleTop(Math.max(0, ...bt.map((t) => t.mail)));
   const bTicks = ticks(bTop);
   const mailAll = bt.reduce((a, t) => a + t.mail, 0), callAll = bt.reduce((a, t) => a + t.callOnly, 0);
@@ -174,6 +187,7 @@ function Body({ d, seg, proben, brake }: { d: Storage; seg: string; proben: Prob
               sub={t.total > t.layers.frei ? <>von <b>{big(t.total)}</b></> : undefined} />
           ))}
         </TankScroller>
+        <Ruht items={lRest.map((t) => ({ country: t.country, n: t.layers.frei, href: baukastenHref(t.country, seg) }))} />
         <Legend items={[{ c: "var(--pr)", label: "Premium frei" }, ...STACK.slice().reverse().filter((k) => k !== "sonst" || lt.some((t) => t.layers.sonst > 0)).map((k) => ({ c: `var(--l-${k})`, label: LAYER[k].label }))]} />
       </section>
 
@@ -192,6 +206,7 @@ function Body({ d, seg, proben, brake }: { d: Storage; seg: string; proben: Prob
               title={t.mailCountry ? `mail-fähig ${t.mail.toLocaleString("de-DE")} · angeschrieben ${t.sent.toLocaleString("de-DE")} · in Arbeit ${t.queued.toLocaleString("de-DE")} · noch frei ${t.free.toLocaleString("de-DE")} · nur Anruf/Brief ${t.callOnly.toLocaleString("de-DE")}` : `kein Mail-Land dieser Zielgruppe · nur Anruf/Brief ${t.callOnly.toLocaleString("de-DE")}`} />
           ))}
         </TankScroller>
+        <Ruht items={bRest.map((t) => ({ country: t.country, n: t.mail, href: baukastenHref(t.country, seg, "kaeufer") }))} />
         <Legend items={[{ c: "var(--b-frei)", label: "noch frei" }, { c: "var(--b-queued)", label: "in Arbeit" }, { c: "var(--b-sent)", label: "angeschrieben" }]} />
       </section>
 

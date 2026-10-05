@@ -731,7 +731,7 @@ def main(argv=None) -> int:
     tm.set_defaults(fn=cmd_test_mail)
     a = sub.add_parser("add-customer")
     a.add_argument("--company", required=True)
-    a.add_argument("--country", required=True, choices=["UK", "US", "FR", "IE", "NL", "SE", "BE", "FI", "SG", "HK", "MX", "BR", "DE", "AT", "CH"])
+    a.add_argument("--country", required=True, choices=["UK", "US", "FR", "IE", "NL", "SE", "BE", "FI", "SG", "MX", "BR", "DE", "AT", "CH"])
     a.add_argument("--email", required=True, help="Lieferadresse des Kunden")
     a.add_argument("--segment", required=True)
     a.add_argument("--areas", default="", help="Regionen, mit ; getrennt (z. B. 'Greater Manchester;West Yorkshire')")

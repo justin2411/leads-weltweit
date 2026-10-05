@@ -180,7 +180,8 @@ test("Gehirn-Auftrag: frei, Fokus-Märkte, Grund, nie Verbotenes, höchstens 3 j
 });
 
 test("marketsIn/mailMarkets: alle genannten Länder, IE/NL/BE nie", () => {
-  assert.equal(marketsIn("Ohne Website FI·SG·HK·MX·BR (Overture)"), "FI,SG,HK,MX,BR");
+  assert.equal(marketsIn("Ohne Website FI·SG·MX·BR (Overture)"), "FI,SG,MX,BR");
+  assert.equal(marketsIn("Ohne Website FI·SG·HK (alt)"), "FI,SG");  // HK raus (Inhaber 05.10.2026)
   assert.equal(marketsIn("Käufer in Frankreich und UK"), "UK,FR");
   assert.equal(marketsIn("Leads reichen weit, Käufer sind der Hebel"), null);
   assert.equal(marketsIn("Irland, NL und Belgien"), null);
