@@ -36,9 +36,10 @@ SOURCE_NAME = {
     "us_award": "US federal contract award (USAspending.gov)",
     "rge": "Liste des entreprises RGE (ADEME, official register)",
     "agence_bio": "Annuaire officiel des opérateurs bio (Agence Bio)",
+    "charity_commission": "Register of Charities (Charity Commission for England and Wales)",
 }
 EVENT_KEY = {"fmcsa": "fmcsa_registration", "sec_form_d": "form_d", "companies_house": "incorporation",
-             "bodacc": "immatriculation", "overture": "no_website", "rge": "no_website", "agence_bio": "no_website", "careers": "open_roles", "ats_jobs": "open_roles",
+             "bodacc": "immatriculation", "overture": "no_website", "rge": "no_website", "agence_bio": "no_website", "charity_commission": "no_website", "careers": "open_roles", "ats_jobs": "open_roles",
              "overture_web": "website_check",
              "find_tender": "contract_award", "us_award": "contract_award"}
 INDUSTRY = {"fmcsa": "Motor carrier"}

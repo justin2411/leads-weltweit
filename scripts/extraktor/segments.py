@@ -131,6 +131,17 @@ def fits(seg: str, c: dict) -> tuple[bool, str]:
         if not (f.get("bio_new") or {}).get("date"):
             return False, "no dated first organic certification"
         return True, "newly certified organic business without a website"
+    if c["source"] == "charity_commission":
+        # UK: neu registrierte Charity (Charity Commission) ohne Website (Quellen-Scout R38), gleiche Regel wie RGE
+        if seg != "S2":
+            return False, "source only carries the new-charity signal"
+        if c.get("website"):
+            return False, "a verified website exists"
+        if c.get("email") and not is_freemail(c["email"]):
+            return False, "uses an own email domain (likely has a site)"
+        if not (f.get("charity_new") or {}).get("date"):
+            return False, "no dated charity registration"
+        return True, "newly registered charity without a website"
     if c["source"] == "overture_web":
         if seg != "S2":
             return False, "source only carries the website quality signal"
@@ -412,6 +423,24 @@ def texts_bio(c: dict) -> dict:
             "urgency_reason": why}
 
 
+def texts_charity(c: dict) -> dict:
+    """UK: neu registrierte Charity (Charity Commission, Datum der Eintragung) ohne Website – Englisch (Lieferland UK)."""
+    f, name = c["facts"], c["name"]
+    today = f["checked_on"]
+    new = f.get("charity_new") or {}
+    when = dt.date.fromisoformat(new["date"])
+    signal = (f"{name} was entered in the Register of Charities on {when.strftime('%-d %B %Y')} "
+              f"(Charity Commission for England and Wales); the register lists no website and we found "
+              f"no own site (checked {today.strftime('%-d %B %Y')}).")
+    info = f"{name}: newly registered charity in {c['city']} ({c['zip']})."
+    opener = (f"Hello, congratulations on registering {name} as a charity – I couldn't find a website for it: "
+              f"would a simple site for supporters, volunteers and donations be of interest?")
+    why = ("A newly registered charity needs to be found by donors, volunteers and funders; without a website "
+           "it is hard to check and support online.")
+    return {"signal": signal, "signal_date": when, "company_info": info, "opener": opener, "urgency": "high",
+            "urgency_reason": why}
+
+
 WEB_EN = {
     "no_https": "Chrome shows \u2018Not secure\u2019 on its website {domain}, because the site has no HTTPS encryption",
     "redirects_to_http": "Chrome shows \u2018Not secure\u2019 on its website {domain}, because the site has no HTTPS encryption",
@@ -598,6 +627,8 @@ def texts(seg: str, c: dict) -> dict:
         return texts_rge(c)
     if c["source"] == "agence_bio":
         return texts_bio(c)
+    if c["source"] == "charity_commission":
+        return texts_charity(c)
     if c["source"] == "overture_web":
         return texts_website(c)
     if c["source"] == "companies_house":
