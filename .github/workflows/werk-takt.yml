@@ -1,0 +1,25 @@
+# Werk-Takt (05.10.2026): GitHub ließ nachts die Zeitpläne von werk-nachfuellen und wachhund fast ganz aus, nur
+# 15–17 statt ≥ 30 belegte Jobs. Ein Lauf prüft ~50 min lang alle 10 min die Belegung und stößt bei < 30 Jobs den
+# Nachfüller an (Wachhund nach > 30 min), dann höchstens ein Selbst-Dispatch (scripts/werk_takt.py). Nie Versand.
+name: werk-takt
+on:
+  schedule:
+    - cron: "17 * * * *"   # Rückfall, falls die Kette einmal reißt
+  workflow_dispatch:
+concurrency: { group: werk-takt, cancel-in-progress: false }
+permissions:
+  actions: write
+  contents: read
+jobs:
+  takt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 58
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install requests pyyaml
+      - name: Belegung halten (5 Runden à 10 min)
+        run: python scripts/werk_takt.py --apply --runden 5 --pause-min 10 --ref "${{ github.ref_name }}"
