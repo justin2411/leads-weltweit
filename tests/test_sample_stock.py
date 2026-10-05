@@ -300,6 +300,14 @@ class PremiumStockTest(unittest.TestCase):
         order = re.search(r"order by\s+([^\n]+)", body).group(1)
         self.assertTrue(order.startswith("coalesce(s.premium_n, 0) desc"), order)
 
+    def test_claim_sql_only_premium_at_full_mix(self):
+        # Nur Premium (Inhaber 05.10.2026): bei lead_mix 100 % gibt der Abruf nur 10/10-Premium-Proben heraus
+        mig = sorted((Path(__file__).resolve().parents[1] / "supabase" / "migrations").glob("*.sql"))
+        last = [m for m in mig if "function signalwerk.claim_sample_stock" in m.read_text(encoding="utf-8").lower()][-1]
+        body = last.read_text(encoding="utf-8").lower().split("function signalwerk.claim_sample_stock")[-1]
+        self.assertIn("(v_mix < 100 or coalesce(s.premium_n, 0) >= 10)", body)
+        self.assertIn("v_mix := coalesce(v_mix, 100)", body)  # ohne Eintrag: Standard 100 = nur Premium
+
 
 class PlanTest(unittest.TestCase):
     def test_premium_targets_default_and_override(self):
