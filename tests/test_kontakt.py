@@ -296,6 +296,42 @@ class NachholenTests(unittest.TestCase):
         self.assertEqual((total.get("geprueft", 0), total.get("web_spaeter")), (0, 1))
         self.assertNotIn("kontakt", db.tables["leads"][0])
 
+    def test_nachholen_fr_register_saves_only_person(self):
+        """Premium-Labor 06.10.2026: FR-Registertreffer ohne Website-Abruf -> nur Person, Kontakt/Punkte unverändert."""
+        import kontaktwerk as KW
+        lead = {"lead_id": "L1", "company_id": "C1", "country": "FR", "premium_score": 85,
+                "premium": {"tier": "premium", "reasons": ["frisch_2_tage", "kombi:x", "beleg", "kontakt"]},
+                "name": FR_CO["name"], "address": FR_CO["address"], "website": "https://example.fr",
+                "phone_main": FR_CO["phone_main"], "registry_source": "overture_web", "registry_id": None,
+                "website_fetched_at": KW._now().isoformat()}
+        db = FakeDB({"leads": [{"id": "L1", "company_id": "C1"}], "observations": [], "lead_checks": [],
+                     "owner_settings": []})
+        db.rpc_handlers["kontakt_candidates"] = lambda a, p=None: [lead] if a["p_group"] == "nachholen" else []
+        total = KW.run(db, (0, 1), deadline_min=1, batch=10, apply=True, ch_key=None, log=lambda *a: None,
+                       src=FakeSources(reg=K.fr_record(FR_RES, "name_plz")))
+        self.assertEqual((total.get("geprueft", 0), total.get("person_neu")), (0, 1))
+        self.assertNotIn("kontakt", db.tables["leads"][0])
+        self.assertNotIn("premium", db.tables["leads"][0])
+        pers = [o for o in db.tables["observations"] if o.get("key") == "person"]
+        self.assertEqual(len(pers), 1)
+        self.assertTrue(pers[0]["details"]["name"])
+
+    def test_nachholen_never_overwrites_person(self):
+        import kontaktwerk as KW
+        db = FakeDB({"observations": []})
+        k = {"person_neu": True, "person": {"name": "Neu", "source": "Registre national des entreprises"}}
+        self.assertFalse(KW.save_person(db, {"company_id": "C1"}, k, {"name": "Alt"}))
+        self.assertFalse(KW.save_person(db, {"company_id": "C1"}, {"person_neu": False, "person": {"name": "X"}}, {}))
+        self.assertEqual(db.tables["observations"], [])
+
+    def test_migration_nachholen_fr_register(self):
+        mig = Path(__file__).resolve().parents[1] / "supabase/migrations/20261006150000_signalwerk_kontakt_nachholen_fr_register.sql"
+        sql = mig.read_text()
+        self.assertIn("array['new', 'reserved']", sql)
+        self.assertIn("'20 hours', 'FR'", sql)
+        self.assertNotIn("delete ", sql.lower())
+        self.assertNotIn("drop ", sql.lower())
+
     def test_migration_has_nachholen_group(self):
         mig = Path(__file__).resolve().parents[1] / "supabase/migrations/20261006100000_signalwerk_kontakt_radar_register.sql"
         sql = mig.read_text()
