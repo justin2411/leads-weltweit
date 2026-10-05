@@ -243,7 +243,7 @@ def stock_rows(db, statuses: str = "ready") -> list[dict]:
     return db.select_all("sample_stock", {"status": f"in.({statuses})", "order": "built_at.desc",
                                           "select": "id,segment_id,country,status,wish,wish_match,company_ids,score,"
                                                     "built_at,expires_at,storage_path,files_removed_at,sent_at,"
-                                                    "lead_ids,gate_checked_at"})
+                                                    "lead_ids,gate_checked_at,premium_n"})
 
 
 def verify_stock(db, apply: bool, log=print, max_hours: int = RECHECK_HOURS, fetcher=None) -> dict:
@@ -382,8 +382,12 @@ def run(db, apply: bool, log=print) -> dict:
                 break
             built[(seg, cc)] = built.get((seg, cc), 0) + 1
             prem_built[(seg, cc)] = prem_built.get((seg, cc), 0) + int(row.get("premium_n") or 0)
+    swapped = swap_for_premium(db, list(want), apply, log,
+                               time_left=lambda: (time.monotonic() - t0) / 60 <= cfg["laufzeit_minuten"],
+                               hours=cfg["max_alter_stunden"])
     summary = {f"{s}/{c}": {"soll": t, "vorher": have[(s, c)], "neu": built.get((s, c), 0),
-                            "premium_leads_neu": prem_built.get((s, c), 0)} for (s, c), t in want.items()}
+                            "premium_leads_neu": prem_built.get((s, c), 0),
+                            "premium_getauscht": swapped.get(f"{s}/{c}", 0)} for (s, c), t in want.items()}
     short = premium_short(summary, built)
     if short:
         log("Premium-Vorrat zu klein (mit Standard-Leads aufgefüllt): " + ", ".join(short))
@@ -392,6 +396,61 @@ def run(db, apply: bool, log=print) -> dict:
         from lib.run_stats import record, rows_from_stock_summary
         record(db, "proben-vorrat", rows_from_stock_summary(summary), None, log)
     return {"built": sum(built.values()), "missing": missing, "summary": summary, "premium_zu_klein": short}
+
+
+# Premium-Austausch (Gehirn 05.10.2026): S2-Proben verfallen nie nach Alter, der Vorrat war mit 110 Proben von vor
+# der Premium-Bewertung voll (premium_n leer) – neue Premium-Proben entstanden nie. Je Lauf höchstens so viele alte
+# Proben ersetzen: erst eine neue Probe bauen (volle Drei-Stufen-Freigabe), nur wenn sie mehr Premium-Leads hat,
+# die alte verwerfen (Leads wieder frei, nichts gelöscht). Sonst die neue verwerfen und aufhören.
+PREMIUM_SWAP_PER_RUN = 8
+
+
+def premium_supply(db) -> dict[tuple[str, str], int]:
+    """Freie frische Premium-Firmen je Zielgruppe × Land (signalwerk.premium_status)."""
+    try:
+        rows = db.rpc("premium_status", {}) or []
+    except Exception:  # noqa: BLE001 – ohne Zahlen kein Austausch
+        return {}
+    return {(r["segment_id"], r["country"]): int(r.get("premium_frei") or 0) for r in rows}
+
+
+def swap_for_premium(db, pairs, apply: bool, log=print, time_left=lambda: True, hours: int = 48,
+                     limit: int = PREMIUM_SWAP_PER_RUN) -> dict[str, int]:
+    """Alte Proben mit weniger als 10 Premium-Leads durch bessere ersetzen, solange freie Premium-Firmen da sind."""
+    supply = premium_supply(db)
+    ready = stock_rows(db, "ready")
+    out: dict[str, int] = {}
+    left = limit
+    for seg, cc in pairs:
+        if left <= 0 or supply.get((seg, cc), 0) < 10:
+            continue
+        mine = [r for r in ready if r["segment_id"] == seg and r["country"] == cc]
+        old = sorted((r for r in mine if int(r.get("premium_n") or 0) < 10),
+                     key=lambda r: (int(r.get("premium_n") or 0), str(r.get("built_at") or "")))
+        exclude = {c for r in mine for c in (r.get("company_ids") or [])}
+        for r in old:
+            if left <= 0 or not time_left():
+                break
+            try:
+                row = build_one(db, seg, cc, list(r.get("wish") or []), exclude, hours, apply, log)
+            except Exception as exc:  # noqa: BLE001
+                log(f"  Austausch {seg}/{cc}: {type(exc).__name__}: {str(exc)[:200]}")
+                break
+            if row is None:
+                break
+            left -= 1
+            if int(row.get("premium_n") or 0) <= int(r.get("premium_n") or 0):
+                if apply and row.get("id"):
+                    db.rpc("discard_sample_stock", {"p_stock": row["id"], "p_note": "Austausch: kein Premium-Gewinn"})
+                log(f"  Austausch {seg}/{cc}: neue Probe nicht besser – Ende")
+                break
+            if apply:
+                db.rpc("discard_sample_stock", {"p_stock": r["id"],
+                                                "p_note": f"ersetzt durch Premium-Probe ({row.get('premium_n')}/10)"})
+            out[f"{seg}/{cc}"] = out.get(f"{seg}/{cc}", 0) + 1
+            log(f"  Austausch {seg}/{cc}: alte Probe ({int(r.get('premium_n') or 0)}/10) ersetzt durch "
+                f"{row.get('premium_n')}/10")
+    return out
 
 
 def premium_short(summary: dict, built: dict) -> list[str]:

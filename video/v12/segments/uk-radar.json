@@ -1,0 +1,110 @@
+{
+ "key": "uk/web-agencies:radar",
+ "file": "v12-uk-radar",
+ "lang": "en",
+ "tts": "en-us",
+ "voice": "af_heart",
+ "speed": 1.04,
+ "film": "radar.html",
+ "industry": "web-agencies",
+ "ui": {
+  "locale": "en-GB",
+  "ill": "Illustrative example",
+  "scan": [
+   "Public registers",
+   "Company websites",
+   "Checked daily"
+  ],
+  "new": "New company",
+  "web": "Website doesn't load",
+  "proofhd": "Evidence",
+  "proofok": "Verified",
+  "pf": [
+   "Signal",
+   "Date",
+   "Source",
+   "Website check",
+   "Checked"
+  ],
+  "personhd": "Who to ask for",
+  "pk": [
+   "Phone",
+   "Email",
+   "Source"
+  ],
+  "valuehd": "What one lead costs elsewhere",
+  "srcl": "Source:",
+  "note": "Published figures · not a promise",
+  "area": "Across the UK",
+  "endfree": "10 free leads from across the UK",
+  "co": "Harbour Lane Bakery Ltd",
+  "domain": "harbourlanebakery.example",
+  "age": "Registered 6 days ago",
+  "pv": [
+   "New company registered",
+   "28 Sep 2026 · 6 days ago",
+   "Public company register",
+   "No response · domain registered",
+   "4 Oct 2026"
+  ],
+  "person": "Sam Whitfield",
+  "role": "Director · Harbour Lane Bakery Ltd",
+  "pc": [
+   "020 7946 0381",
+   "hello@harbourlanebakery.example",
+   "Public register"
+  ],
+  "vals": [
+   [
+    "Google Ads, average cost per lead",
+    "$70.11",
+    "WordStream 2025 · US data",
+    "search"
+   ],
+   [
+    "Google Ads, business services",
+    "$103.54",
+    "WordStream 2025 · US data",
+    "briefcase"
+   ]
+  ]
+ },
+ "script": [
+  {
+   "id": "radar",
+   "text": "Every day, our radar scans public registers and company websites across the UK.",
+   "pause": 0.35
+  },
+  {
+   "id": "found",
+   "text": "Here's one: a company registered six days ago. The domain exists, but the website doesn't load.",
+   "pause": 0.55
+  },
+  {
+   "id": "proof",
+   "text": "Every signal comes with proof: the source, the date, and when we checked it.",
+   "pause": 0.5
+  },
+  {
+   "id": "person",
+   "text": "Then the person to ask for: the director, from the public register, with the business phone and email.",
+   "pause": 0.55
+  },
+  {
+   "id": "value",
+   "text": "What does a lead cost elsewhere? In US data, a Google Ads lead averages about seventy dollars, and for business services, about a hundred.",
+   "pause": 0.4
+  },
+  {
+   "id": "note",
+   "text": "Published figures, not a promise. Do the maths with your own numbers.",
+   "pause": 0.5
+  },
+  {
+   "id": "end",
+   "text": "Start with ten free leads from across the UK, at nextgen-profit dot de.",
+   "pause": 0.3,
+   "say": "Start with ten free leads from across the UK, at next gen profit, dot D E."
+  }
+ ]
+}

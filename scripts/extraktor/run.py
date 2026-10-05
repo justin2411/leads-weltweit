@@ -491,6 +491,17 @@ def run_segment(seg: str, pool: list[dict], per: int, fetcher, shared: Counter, 
 # ---------------------------------------------------------------------------
 # Ausgabe
 # ---------------------------------------------------------------------------
+def dated_event(l: dict) -> str:
+    """Beleg eines datierten Ereignisses ohne Website-Befund (RGE: neue Qualifikation laut ADEME) für
+    lib/premium.py (`details.dated_event`); sonst leer."""
+    new = (l.get("facts") or {}).get("rge_new") or {}
+    if not new.get("date"):
+        return ""
+    return json.dumps({"dated_event": {"kind": "rge_qualification", "date": new["date"],
+                                       "domaines": new.get("domaines") or []},
+                       "checked_on": str(l["facts"].get("checked_on") or "")}, ensure_ascii=False)
+
+
 def row(l: dict) -> dict:
     q, s = l["qc"], l["sc"]
     return {
@@ -509,7 +520,7 @@ def row(l: dict) -> dict:
         "signal_type": (l.get("facts") or {}).get("signal_type", ""),
         "signal_evidence": json.dumps({"findings": l["facts"]["findings"], "checked_on": str(l["facts"]["checked_on"]),
                                        "listed_website": l["facts"].get("listed_website")}, ensure_ascii=False)
-        if (l.get("facts") or {}).get("findings") else "",
+        if (l.get("facts") or {}).get("findings") else dated_event(l),
     }
 
 
@@ -733,8 +744,12 @@ def main(argv=None) -> int:
             p[f"S2/{co}"] = [c for c in load_overture_s2(co, args.s2_limit * 4, stats, known, args.s2_min_conf)
                              if segments.fits("S2", c)[0]]
     if "FR" in countries and "S2" in segs and args.rge > 0:
-        # nach Overture anhängen: im gemeinsamen Teil zuerst die Overture-Firmen, dann RGE
-        p["S2/FR"] = p.get("S2/FR", []) + load_rge(args.rge, stats, {i for s_, i in guard.known if s_ == "rge"})
+        # nach Overture anhängen: im gemeinsamen Teil zuerst die Overture-Firmen, dann RGE – außer RGE-Firmen mit
+        # neuer Qualifikation (datiertes Ereignis, Premium-Jagd 05.10.2026): die kommen ganz nach vorn
+        rge = load_rge(args.rge, stats, {i for s_, i in guard.known if s_ == "rge"})
+        new = [c for c in rge if c["facts"].get("rge_new")]
+        stats["rge_new_FR"] = len(new)
+        p["S2/FR"] = new + p.get("S2/FR", []) + [c for c in rge if not c["facts"].get("rge_new")]
     if guard.known:
         p = {k: [c for c in v if (c["source"], c["source_id"]) not in guard.known] for k, v in p.items()}
     if args.shard:

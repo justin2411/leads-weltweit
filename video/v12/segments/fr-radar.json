@@ -1,0 +1,110 @@
+{
+ "key": "fr/agences-web:radar",
+ "file": "v12-fr-radar",
+ "lang": "fr",
+ "tts": "fr-fr",
+ "voice": "ff_siwis",
+ "speed": 1.06,
+ "film": "radar.html",
+ "industry": "web-agencies",
+ "ui": {
+  "locale": "fr-FR",
+  "ill": "Exemple illustratif",
+  "scan": [
+   "Registres publics",
+   "Sites des entreprises",
+   "Vérifié chaque jour"
+  ],
+  "area": "Partout en France",
+  "endfree": "10 pistes gratuites, partout en France",
+  "new": "Nouvelle société",
+  "web": "Le site ne s'affiche pas",
+  "proofhd": "Preuve",
+  "proofok": "Vérifié",
+  "pf": [
+   "Signal",
+   "Date",
+   "Source",
+   "Contrôle du site",
+   "Vérifié le"
+  ],
+  "personhd": "Interlocuteur",
+  "pk": [
+   "Téléphone",
+   "E-mail",
+   "Source"
+  ],
+  "valuehd": "Ce que peut valoir un client",
+  "srcl": "Source :",
+  "note": "Chiffres publiés · pas une promesse",
+  "co": "Boulangerie du Quai SAS",
+  "domain": "boulangerie-du-quai.example",
+  "age": "Immatriculée il y a 6 jours",
+  "pv": [
+   "Nouvelle immatriculation",
+   "28 sept. 2026 · il y a 6 jours",
+   "Registre public des entreprises",
+   "Aucune réponse · domaine enregistré",
+   "4 oct. 2026"
+  ],
+  "person": "Camille Laurent",
+  "role": "Présidente · Boulangerie du Quai SAS",
+  "pc": [
+   "01 99 00 52 17",
+   "contact@boulangerie-du-quai.example",
+   "Registre public"
+  ],
+  "vals": [
+   [
+    "Site internet par une agence",
+    "2 000 à 10 000 €",
+    "Codeur",
+    "monitor"
+   ],
+   [
+    "Site internet par un freelance",
+    "500 à 2 000 €",
+    "Codeur",
+    "user"
+   ]
+  ]
+ },
+ "script": [
+  {
+   "id": "radar",
+   "text": "Chaque jour, notre radar parcourt les registres publics et les sites des entreprises, partout en France.",
+   "pause": 0.35
+  },
+  {
+   "id": "found",
+   "text": "En voici une : une société immatriculée il y a six jours. Le nom de domaine existe, mais le site ne s'affiche pas.",
+   "pause": 0.55
+  },
+  {
+   "id": "proof",
+   "text": "Chaque signal a sa preuve : la source, la date, et le jour de notre vérification.",
+   "pause": 0.5
+  },
+  {
+   "id": "person",
+   "text": "Puis l'interlocuteur à demander, issu du registre, avec le téléphone et l'e-mail de l'entreprise.",
+   "pause": 0.55
+  },
+  {
+   "id": "value",
+   "text": "Combien peut valoir un client ? Selon Codeur, un site réalisé par une agence coûte de deux mille à dix mille euros.",
+   "pause": 0.4
+  },
+  {
+   "id": "note",
+   "text": "Des chiffres publiés, pas une promesse. Faites le calcul avec vos propres chiffres.",
+   "pause": 0.5
+  },
+  {
+   "id": "end",
+   "text": "Commencez avec dix pistes gratuites, partout en France, sur nextgen-profit point d e.",
+   "pause": 0.3,
+   "say": "Commencez avec dix pistes gratuites, partout en France, sur nekst djène profit, point dé e."
+  }
+ ]
+}

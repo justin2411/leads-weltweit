@@ -498,6 +498,15 @@ def best_first(rows: list[dict], fb_weights: dict[str, float] | None = None) -> 
     return rows
 
 
+def merge_wish_extra(extra: list[dict], rows: list[dict], exclude_companies: set[str] | None = None,
+                     fb_weights: dict[str, float] | None = None) -> list[dict]:
+    """Nachgeladene Wunsch-Kandidaten mit den übrigen gemeinsam sortieren (Premium zuerst). Vorher standen sie
+    vorangestellt vor allen Premium-Leads – Wunsch-Proben hatten 0/10 Premium (Gehirn 05.10.2026). Nur Reihenfolge."""
+    have = {r["id"] for r in rows}
+    add = [r for r in extra if r["id"] not in have and r.get("company_id") not in (exclude_companies or ())]
+    return best_first(add + rows, fb_weights)
+
+
 def regional_sample(db, seg: str, country: str, region: str | None,
                     wish: list[str] | None = None, mark: bool = True, picked_out: list | None = None,
                     exclude_companies: set[str] | None = None, gate_context: str = "probe"
@@ -535,10 +544,8 @@ def regional_sample(db, seg: str, country: str, region: str | None,
         from lib.wishes import signal_types
         types = signal_types(wish)
         if types:  # seltene Wunsch-Signale stehen evtl. nicht unter den neuesten Leads: gezielt nachladen
-            have = {r["id"] for r in rows}
             extra = strip(_newest(db, {**params, "signal_type": f"in.({','.join(types)})"}, SAMPLE_POOL // 2))
-            rows = [r for r in best_first(extra, fbw) if r["id"] not in have
-                    and r.get("company_id") not in (exclude_companies or ())] + rows
+            rows = merge_wish_extra(extra, rows, exclude_companies, fbw)
         rows = prefer(rows, wish, _sic_lookup(db, rows) if "fleet_warehouse" in wish else None)
     # Vollständigkeit nur blockweise für die nächsten Kandidaten prüfen (bei 90.000+ Leads war die Prüfung aller
     # Firmen zu langsam; Test 01.10.2026)
@@ -725,10 +732,11 @@ def brochure(segment: str | None, country: str | None) -> tuple[str, bytes] | No
 
 def sample_text(lang: str, region: str | None, has_files: bool, regional: bool = True, preview: str = "",
                 contacts: bool = False, segment: str | None = None, url: str | None = None,
-                tipp: str | None = None, schluss: str | None = None) -> str | None:
+                tipp: str | None = None, schluss: str | None = None, video: str = "") -> str | None:
     """Mail mit der Probe, im Namen des Inhabers (Inhaber 02.10.2026). Ziel: Abo über die Buchungsseite.
     Keine Preise im Text (stehen im PDF und auf der Seite), keine Zusagen, landesweit, keine Regionen.
-    tipp/schluss = Variante aus dem A/B-Test „Probe-Mail“ (scripts/lib/ab.py, geprüft), sonst Standard."""
+    tipp/schluss = Variante aus dem A/B-Test „Probe-Mail“ (scripts/lib/ab.py, geprüft), sonst Standard.
+    video = Zeile mit Link zum Radar-Film (nur S2 US/UK/FR, lib.premium_wert.video_zeile), steht vor dem Tarif-Link."""
     if not has_files:
         return None
     need_en, need_fr = SHORT_NEED.get(segment or "", ("a reason to buy from you right now",
@@ -743,6 +751,8 @@ def sample_text(lang: str, region: str | None, has_files: bool, regional: bool =
                     "la première minute de l'appel.",
             schluss or "Si elles vous conviennent, vous recevez de nouvelles pistes comme celles-ci chaque lundi.",
         ]
+        if video:
+            parts.append(video)
         parts.append(f"Choisissez votre formule : {url}" if url else
                      "Répondez simplement à cet e-mail et nous mettons tout en place.")
         if url:
@@ -758,6 +768,8 @@ def sample_text(lang: str, region: str | None, has_files: bool, regional: bool =
                     "the call.",
             schluss or "If they work for you, you get fresh leads like these every Monday.",
         ]
+        if video:
+            parts.append(video)
         parts.append(f"Choose your plan: {url}" if url else "Just reply to this email and we will set it up.")
         if url:
             parts.append("Any questions? Just reply to this email.")
@@ -779,9 +791,15 @@ def sample_mail(lang: str, region: str | None, files: list[tuple[str, bytes]], r
         tid, v = next(iter(marks.items()))
         url = f"{url}?ab={tid}.{v}"
     area = LAND.get((country or "").upper()) if lang != "fr" else None
+    from lib import premium_wert
+    film = premium_wert.video(segment, country)
+    vline = premium_wert.video_zeile(segment, country) if film else ""
     text = sample_text(lang, area, bool(files), regional, contacts=has_contacts(files), segment=segment, url=url,
-                       tipp=(ab or {}).get("tipp"), schluss=(ab or {}).get("schluss"))
+                       tipp=(ab or {}).get("tipp"), schluss=(ab or {}).get("schluss"), video=vline)
     blocks = {}
+    if text and vline:
+        from lib.html_email import link_p
+        blocks[vline] = link_p(vline, film["url"])
     if text and files is not None:
         b = brochure(segment, country)
         if b and all(n != b[0] for n, _ in files):

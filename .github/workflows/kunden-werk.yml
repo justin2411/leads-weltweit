@@ -158,7 +158,10 @@ jobs:
     needs: pool
     if: needs.pool.outputs.an == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 110
+    # Betrieb 05.10.2026: Nebenjobs halten den ganzen Lauf (concurrency kunden-werk) – der nächste Lauf wartete
+    # über 1 h hinter einem Nachzügler, 13 Plätze leer. Kürzeres Zeitfenster, Rest macht der nächste Lauf
+    # (idempotent, gleiche Gruppe -> nie doppelt gleichzeitig)
+    timeout-minutes: 45
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -174,7 +177,7 @@ jobs:
       # 4–7 von 100 neu mail-fähig); NL (KVK-Nummer -> KVK Open Dataset, nur BV/NV, 1 Abfrage/min je IP, --kvk-max 75)
       # wirkt erst, wenn NL wieder Mail-Land ist (nur Länder mit allowed + company_forms_only)
       - name: Regeln neu prüfen, dann Registernummer nachprüfen (S2 UK/SE/FI, S1 UK)
-        run: python scripts/kundenwerk.py nachpruefen --max 3000 --workers 16 --deadline-min 80 --kvk-max 75 | tee -a "$GITHUB_STEP_SUMMARY"
+        run: python scripts/kundenwerk.py nachpruefen --max 3000 --workers 16 --deadline-min 30 --kvk-max 25 | tee -a "$GITHUB_STEP_SUMMARY"
 
   fr_webdesign:
     # JARVIS-Auftrag 1e9a203d (04.10.2026, optout-muster-s2: 3 von 17 FR-Käufern ohne Webdesign meldeten sich ab):
@@ -184,7 +187,7 @@ jobs:
     needs: pool
     if: needs.pool.outputs.an == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 100
+    timeout-minutes: 40   # Betrieb 05.10.2026: Nachzügler nicht länger als die Teile (Rest im nächsten Lauf)
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -194,7 +197,7 @@ jobs:
         with: { python-version: "3.11" }
       - run: pip install -r requirements.txt
       - name: FR Webagenturen schärfen (S2)
-        run: python scripts/kundenwerk.py fr-webdesign --max 10000 --workers 16 --deadline-min 80 | tee -a "$GITHUB_STEP_SUMMARY"
+        run: python scripts/kundenwerk.py fr-webdesign --max 10000 --workers 16 --deadline-min 25 | tee -a "$GITHUB_STEP_SUMMARY"
 
   weiter:
     # sofort den nächsten Lauf starten (nur bei Schalter an und echter Laufzeit, sonst Cron/Wachhund)

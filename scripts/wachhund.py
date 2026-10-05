@@ -54,9 +54,10 @@ JOBS = [
     {"wf": "sync.yml", "kind": "daily", "at": "06:17", "grace": 45},
     {"wf": "taeglich.yml", "kind": "daily", "at": "12:17", "grace": 45},
     # Versand rund um die Uhr (Inhaber 04.10.2026): stündlich (Plan app/lib/versandzeit.json), nachstarten, wenn
-    # 80 min kein Lauf begann; send_paused und config/versand.yaml aktiv: false starten nie nach
+    # 70 min kein wirksamer Lauf begann (Betrieb 05.10.2026, scripts/takt.py); send_paused und config/versand.yaml aktiv: false starten nie nach
     *versandzeit.wachhund_jobs(inputs={
-        "freigabe": "Dauerfreigabe des Inhabers laut config/versand.yaml (Wachhund: geplanter Lauf ausgefallen)",
+        "freigabe": "Dauerfreigabe des Inhabers (03.10.2026: Versand an; 04.10.2026: rund um die Uhr) laut "
+                    "config/versand.yaml (Wachhund: geplanter Lauf ausgefallen)",
         "probelauf": "false"}),
     {"wf": "tagescheck.yml", "kind": "daily", "at": "17:37", "grace": 40, "inputs": {"mail": "true"}},
     {"wf": "freigabe-stichprobe.yml", "kind": "daily", "at": "05:07", "grace": 60},
@@ -343,6 +344,11 @@ def main(argv=None) -> int:
         r.raise_for_status()
         return r.json().get("workflow_runs", [])
 
+    def jobs_of(run_id) -> list[dict]:
+        r = requests.get(f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/jobs", headers=h, timeout=30)
+        r.raise_for_status()
+        return r.json().get("jobs", [])
+
     def running(wf: str) -> bool:
         try:
             return is_running(runs_of(wf))
@@ -369,7 +375,13 @@ def main(argv=None) -> int:
             print(f"-  {job['wf']:<22} {why}")
             continue
         runs = runs_of(job["wf"])
-        late, why = overdue(job, runs, now)
+        if job["wf"] in ("send.yml", "antworten.yml"):
+            # Betrieb 05.10.2026: fehlgeschlagene Läufe (und beim Versand Probeläufe) zählen nicht als gelaufen;
+            # gleiche Regel wie der Takt im Nachfüller (scripts/takt.py)
+            import takt
+            late, why = takt.decide({**job, "wirksam": job["wf"] == "send.yml"}, runs, now, jobs_of)
+        else:
+            late, why = overdue(job, runs, now)
         print(f"{'!' if late else '✓'}  {job['wf']:<22} {why}")
         if late and args.apply:
             ok, text = dispatch(job["wf"], job.get("inputs", {}))

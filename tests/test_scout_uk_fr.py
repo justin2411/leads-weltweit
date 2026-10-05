@@ -106,5 +106,62 @@ class RgeTests(unittest.TestCase):
             self.assertEqual(fr_rge.load(None, log=QUIET, skip_phones={overture.phone_key("+33637519632")}), [])
 
 
+def rge_new_rows(today):
+    """Erfundene Firmen (Premium-Jagd 05.10.2026): neue Qualifikation, alte, Zukunft, ADEME-Testeintrag."""
+    d = lambda n: (today - dt.timedelta(days=n)).isoformat()  # noqa: E731
+    base = {"siret": "90000000100011", "nom_entreprise": "ISOLATION EXEMPLE SAS", "adresse": "1 RUE DE L'EXEMPLE",
+            "code_postal": "75012", "commune": "PARIS", "telephone": "01 43 47 28 15",
+            "email": "isolation.exemple@gmail.com", "site_internet": "", "domaine": "Isolation des murs",
+            "lien_date_debut": d(400), "lien_date_fin": "2099-01-01"}
+    return [base, dict(base, domaine="Pompe à chaleur : chauffage", lien_date_debut=d(9)),
+            dict(base, siret="90000000200022", nom_entreprise="CHAUFFAGE EXEMPLE SARL", telephone="01 43 47 28 26",
+                 lien_date_debut=d(200)),                                                  # nur alte Qualifikation
+            dict(base, siret="90000000300033", nom_entreprise="FUTUR EXEMPLE SARL", telephone="01 43 47 28 37",
+                 lien_date_debut=d(-10)),                                                  # Start in der Zukunft
+            dict(base, siret="31324366900049", nom_entreprise="TEST 1", telephone="01 43 47 28 48",
+                 lien_date_debut=d(1))]                                                    # Testeintrag der ADEME
+
+
+class RgeNeueQualifikationTests(unittest.TestCase):
+    def test_fresh_qualification_is_dated_premium_event(self):
+        rows = fr_rge.companies(rge_new_rows(TODAY), today=TODAY)
+        self.assertEqual(sorted(r["siret"] for r in rows), ["90000000100011", "90000000200022", "90000000300033"])
+        by = {r["siret"]: fr_rge.to_candidate(r, today=TODAY) for r in rows}
+        c = by["90000000100011"]
+        self.assertEqual(c["facts"]["rge_new"]["date"], (TODAY - dt.timedelta(days=9)).isoformat())
+        self.assertEqual(c["facts"]["rge_new"]["domaines"], ["Pompe à chaleur : chauffage"])
+        self.assertEqual(c["event_date"], TODAY - dt.timedelta(days=9))
+        for s in ("90000000200022", "90000000300033"):
+            self.assertNotIn("rge_new", by[s]["facts"])
+            self.assertEqual(by[s]["event_date"], TODAY)
+        t = segments.texts("S2", c)
+        self.assertIn("Aucun site web trouvé", t["signal"])
+        self.assertIn("nouvelle qualification RGE", t["signal"])
+        self.assertEqual(t["signal_date"], c["event_date"])
+        c["evidence"] = {"mx": True}
+        self.assertEqual(qc.run(c, "S2")["status"], "green")
+        self.assertEqual(sc.run(c, "S2", t)["status"], "pass", t)
+
+    def test_new_first_and_premium_on_store(self):
+        import json
+        from extraktor import run
+        from extraktor.store import _premium
+        with mock.patch.object(fr_rge, "download", return_value=rge_new_rows(TODAY)):
+            got = fr_rge.load(None, log=QUIET)
+        self.assertEqual(got[0]["source_id"], "90000000100011")
+        new = got[0]
+        ev = json.loads(run.dated_event({"facts": new["facts"]}))
+        self.assertEqual(ev["dated_event"]["kind"], "rge_qualification")
+        self.assertEqual(run.dated_event({"facts": got[1]["facts"]}), "")
+        r = {"segment": "S2", "source": "rge", "signal_type": "", "signal_date": new["event_date"].isoformat(),
+             "source_url": new["source_url"], "signal_evidence": json.dumps(ev), "contact_name": "",
+             "phone": new["phone"], "email": new["email"]}
+        p = _premium(r)["premium"]
+        self.assertEqual(p["tier"], "premium", p)
+        self.assertTrue(any(x.startswith("kombi:") for x in p["reasons"]))
+        # ohne Ereignis-Beleg bleibt ein RGE-Lead Standard (Prüfdatum ist kein Ereignis)
+        self.assertEqual(_premium(dict(r, signal_evidence=""))["premium"]["tier"], "standard")
+
+
 if __name__ == "__main__":
     unittest.main()
