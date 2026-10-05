@@ -50,6 +50,26 @@ def db_with(sent=100, bounced=1, resend_sent=10, delivered=10):
                    "jarvis_sessions": [{"id": "sg", "title": "Gehirn", "kind": "gehirn"}], "jarvis_messages": []})
 
 
+class Scanner(unittest.TestCase):
+    def test_schnelle_abmeldungen_sind_scanner_und_gelb(self):
+        db = db_with()
+        sent = NOW - dt.timedelta(hours=3)
+        for i in range(5):
+            db.tables.setdefault("messages", []).append({"id": f"u{i}", "sent_at": sent.isoformat()})
+            delay = dt.timedelta(seconds=20) if i < 4 else dt.timedelta(hours=1)
+            db.tables["email_events"].append({"id": f"x{i}", "type": "unsubscribed", "message_id": f"u{i}",
+                                              "occurred_at": (sent + delay).isoformat()})
+        sc = Z.scanner(db)
+        self.assertEqual((sc["abmeldungen_7t"], sc["scanner_7t"], sc["mensch_7t"]), (5, 4, 1))
+        row = Z.run(db, env={}, resolve=resolver(), rec=rec(GOOD_DNS))
+        self.assertEqual(row["status"], "gelb")
+        self.assertIn("Link-Scanner", " ".join(row["gruende"]))
+        self.assertEqual(row["bounces"]["scanner"]["scanner_7t"], 4)
+
+    def test_ohne_abmeldungen_still(self):
+        self.assertEqual(Z.scanner(db_with())["quote"], None)
+
+
 class Bewertung(unittest.TestCase):
     def test_gruen_wenn_alles_passt(self):
         db = db_with()

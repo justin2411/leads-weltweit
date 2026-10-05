@@ -6,17 +6,21 @@
 > **Seit 04.10.2026 gilt:** Tests nur Webagenturen US/UK/FR (`config/fokus.yaml` `tests`, Inhaber: „beim gehirn bei a/b tests soll er das nur für webagencys usa, fr, und uk machen nichts mehr erst wenn ich ihm das freigebe das soll überall so sein, wir brauchen erstmal nichts anderes“).
 > Preis-Tests, neue Zielgruppen und Länder unten ruhen, bis der Inhaber sie freigibt.
 
-## Lagebild (05.10.2026, 02:40 Berliner Zeit)
-- **Engpass: Antworten/Probe-Wert.** ~350 Kaltmails, 0 menschliche Antworten, 0 Proben, 0 € MRR.
-- Fund: alle 110 fertigen Webagentur-Proben hatten 0/10 Premium – Vorrat vor der Bewertung gebaut, S2 verfällt nie;
-  Wunsch-Proben schoben Premium-Leads nach hinten. Premium frei: US 7.232, UK 12, FR 0.
-- Belegung: ~26 Werk-Jobs (Nachfüller greift); Kunden-Werk wartet auf einen Nachzügler-Job.
+## Lagebild (05.10.2026, 03:30 Berliner Zeit)
+- **Engpass: echte Menschen erreichen.** ~510 Kaltmails, 0 menschliche Antworten, 0 Proben, 0 € MRR.
+- Fund: 6 von 10 Abmeldungen kamen 5–50 s nach dem Versand – Link-Scanner der Empfänger, kein Mensch.
+  Auch die 40 „Mail-Klicks“ vom 04.10. kommen paarweise in derselben Sekunde, Minuten nach dem Versand = Scanner.
+  Echte Klickquote also ≈ 0; Abmeldungen bleiben trotzdem gesperrt (Regel).
+- Posteingang oder Spam: unbekannt – `seed_checks` leer, Secret `SEED_INBOXES` fehlt (Inhaber, kostenlos).
+- DNS grün (SPF, DKIM, DMARC p=none), keine Blocklisten. Antwortweg funktioniert (Abwesenheitsnotizen kommen an).
+- Käufer ok (S2): US 28.782, UK 2.623, FR 1.285. DB 5,1 GB.
 
 ## Nächster Schritt
-- Proben-Vorrat tauscht je Lauf bis 8 alte Proben gegen Premium-Proben (nur strenger, nichts gelöscht).
-- **Prüfpunkt Di 06.10., 12:00:** S2/US ≥ 40 von 50 Proben mit 10/10 Premium (`premium_status`).
-- **Prüfpunkt Mi 07.10., 20:00:** Antwortquote ≥ 0,3 %; sonst Beleg-Einstieg-Test (Agent 7).
-- Offen: Premium-Quelle UK/FR (UK 12, FR 0 frei).
+- Zustellbarkeits-Check zählt Link-Scanner-Abmeldungen (< 2 min) getrennt, gelb ab > 50 %.
+- **Prüfpunkt Di 06.10., 12:00:** S2/US ≥ 40 von 50 Proben mit 10/10 Premium.
+- **Prüfpunkt Mi 07.10., 20:00:** Antwortquote ≥ 0,3 % (nur Menschen); sonst Beleg-Einstieg-Test.
+- Offen beim Inhaber: `SEED_INBOXES` (Posteingangstest); Abmelde-Seite mit Bestätigungsklick gegen Scanner (Abmelderegel = Inhaber).
+- Offen: Premium-Quelle FR (Labor klärt).
 
 ## Nordstern
 Wiederkehrender Umsatz aus Lead-Abos. Kennzahl: **neuer Monatsumsatz (MRR) pro Woche**. Kosten nahe null.
