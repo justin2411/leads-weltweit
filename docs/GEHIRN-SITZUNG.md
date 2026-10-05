@@ -84,6 +84,18 @@ in `signalwerk.decisions`. Ziel: **möglichst viele zahlende Kunden und maximale
    worum es geht, kein „Sitzung …:“, keine Uhrzeit) und `kurz_grund` (1 Satz ≤ 160 Zeichen). Bei SQL selbst formulieren,
    in Skripten `lib.kurz.insert_decisions`. `subject`/`reasoning` nur für Details; keine Sitzungsprotokolle als Vorschlag.
 
+## Ereignis-Sitzung (Gehirn-Weckruf, Inhaber 05.10.2026)
+Die JARVIS-Runden (alle 15 min) lesen `python scripts/gehirn_weckruf.py offen`; ist die Liste nicht leer, startet eine
+kurze Ereignis-Sitzung (max. ca. 15 min). Der Grundtakt der normalen Sitzungen bleibt.
+- **Nur auf das Ereignis reagieren**, keine volle Runde:
+  - `antwort`: Hat Antwort-Assistent/Cockpit sie eingeordnet und beantwortet oder gemeldet, kam der Push beim Inhaber an?
+  - `probe`: Ging die Probe innerhalb von Minuten aus dem Vorrat raus (`sample_requests.status`, `sample_stock`)?
+  - `checkout` / `kunde`: Stripe-Webhook angekommen, Kunde und Abo angelegt, erste Lieferung als Vorschau beim Inhaber?
+  - `notbremse`: Ursache finden (Bounces, Beschwerde, Postfach); den Versand **nie selbst wieder einschalten**.
+- Danach eine Entscheidung mit `kurz_titel`/`kurz_grund` loggen und `python scripts/gehirn_weckruf.py erledigt <id|alle>`.
+  Danach liefert `offen` 20 min lang `[]`.
+- Alle Regeln dieser Anleitung und von CLAUDE.md gelten unverändert.
+
 ## Lernschleife (docs/GEHIRN-AUFBAU.md 2–4)
 - **Start:** `python scripts/brain_learn.py faellig` (Nachmessen macht der Wachhund) und `brain_learn.py lehren`
   (Vertrauen ≥ 0,7) lesen und anwenden; Lehren mit wenig Vertrauen nur als Hinweis.
