@@ -5,7 +5,7 @@ Neue Leads bekommen die Bewertung beim Speichern (extraktor/store.py, lib/radar.
   1. bewertet offene Leads (Status new) mit datiertem Ereignis der letzten FRESH_MID Tage, die noch keine
      Bewertung haben (Bestand vor dem 05.10.2026) – Ansprechperson und Kontakt aus den Beobachtungen der Firma,
      Belege (Website-Befunde) aus der Ereignis-Beobachtung;
-  2. stuft Leads, deren Ereignis inzwischen älter als FRESH_MID Tage ist, auf „standard“ zurück.
+  2. stuft Leads, deren Ereignis inzwischen älter als PREMIUM_MAX_AGE (14) Tage ist, auf „standard“ zurück.
 Nur Reihenfolge – ob ein Lead rausgeht, entscheidet allein die Drei-Stufen-Freigabe. Nichts wird gelöscht.
 
   python scripts/premium_score.py            # zählen, nichts schreiben
@@ -118,7 +118,7 @@ def run(db, apply: bool, limit: int = 50000, today: dt.date | None = None, log=p
                     with ThreadPoolExecutor(8) as ex:
                         list(ex.map(lambda u: db.update("leads", {"id": u[0]}, u[1]), upd))
     # veraltete Premium-Leads zurückstufen
-    since = (today - dt.timedelta(days=premium.FRESH_MID)).isoformat()
+    since = (today - dt.timedelta(days=premium.PREMIUM_MAX_AGE)).isoformat()
     old = db.select_all("leads", {"status": "eq.new", "premium_score": "not.is.null", "premium->>tier": "eq.premium",
                                   "event_date": f"lt.{since}",
                                   "select": "id,event_date,premium"})

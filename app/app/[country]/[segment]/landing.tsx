@@ -158,8 +158,8 @@ function cleanEvent(ev: string, company: string): string {
   return e ? e[0].toUpperCase() + e.slice(1) : "";
 }
 
-/** Premium heute (wie scripts/lib/premium.py tier_now): gespeicherte Stufe premium und Ereignis höchstens 30 Tage alt. */
-const PREMIUM_FRESH_DAYS = 30;
+/** Premium heute (wie scripts/lib/premium.py tier_now): gespeicherte Stufe premium und Ereignis höchstens 14 Tage alt. */
+const PREMIUM_FRESH_DAYS = 14;
 function isPremiumNow(l: { premium?: { tier?: string } | null; event_date?: string | null }, now: number): boolean {
   if (l.premium?.tier !== "premium" || !l.event_date) return false;
   const age = (now - Date.parse(String(l.event_date).slice(0, 10) + "T12:00:00Z")) / 864e5;

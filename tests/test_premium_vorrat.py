@@ -20,9 +20,11 @@ def lead(i, tier="premium", age=3, score=85, **kw):
 
 
 class TierTest(unittest.TestCase):
-    def test_premium_ages_out_after_30_days(self):
-        self.assertEqual(premium.tier_now(lead(1, age=30), TODAY), "premium")
-        self.assertEqual(premium.tier_now(lead(1, age=31), TODAY), "standard")
+    def test_premium_ages_out_after_14_days(self):
+        # Premium = frisch ≤ 14 Tage (Premium-Labor 05.10.2026, vorher 30 – lockerer als die Definition)
+        self.assertEqual(premium.tier_now(lead(1, age=14), TODAY), "premium")
+        self.assertEqual(premium.tier_now(lead(1, age=15), TODAY), "standard")
+        self.assertEqual(premium.tier_now(lead(1, age=30), TODAY), "standard")
         self.assertEqual(premium.tier_now(lead(1, tier="standard"), TODAY), "standard")
         self.assertEqual(premium.tier_now({"premium": {"tier": "premium"}}, TODAY), "standard")
 

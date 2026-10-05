@@ -137,6 +137,9 @@ class PremiumTests(unittest.TestCase):
         self.assertIsNone(K.premium_nachtrag(75, p, k))  # nur einmal
         self.assertIsNone(K.premium_nachtrag(None, None, k))  # noch nicht bewertet: Bewertung zählt die Person selbst
         self.assertIsNone(K.premium_nachtrag(60, {}, {"premium_punkt": False}))
+        # 15–30 Tage alt: Punkte ja, Premium nein (Premium = frisch ≤ 14 Tage)
+        s3, p3 = K.premium_nachtrag(60, {"tier": "standard", "reasons": ["frisch_20_tage", "beleg", "kontakt"]}, k)
+        self.assertEqual((s3, p3["tier"]), (75, "standard"))
         s2, p2 = K.premium_nachtrag(60, {"reasons": ["kontakt"]}, k)
         self.assertEqual((s2, p2["tier"]), (75, "standard"))  # ohne frisches Ereignis nie premium
 
