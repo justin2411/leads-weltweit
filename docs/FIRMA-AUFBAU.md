@@ -19,7 +19,7 @@ Keine Zahlen zu Leads oder Käufern in dieser Datei (Repo öffentlich). Zahlen s
 
 | Bereich | Hauptziel | Ampel | Läuft | Nächster Schritt |
 |---|---|---|---|---|
-| Vertrieb | Antwortquote | rot (noch keine Antworten) | Versand 24/7, A/B Betreff in US/UK/FR | Opt-out-Gründe auswerten, dann Einstieg testen (Auftrag A5, 05.10.) |
+| Vertrieb | Antwortquote | rot (noch keine Antworten) | Versand 24/7, A/B Betreff in US/UK/FR, Kontrollmails | Kontrollmails einordnen (Spam?), Opt-out-Gründe auswerten, dann Einstieg testen |
 | Marketing | Probe-Anfragen 7 T | gelb | Website-Agenten, Website-Check | erst nach ersten Antworten: Probe-Seite testen |
 | Produktion | grüne Leads 7 T | grün | Lead-, Kunden-Werk, Proben-Vorrat | Premium-Radar, Kontakt-Werk (A3) |
 | Qualität | Lead-Fehlerquote | gelb (Ausreißer > 5 % bei Käufern US/FR) | Freigabe, Dauerprüfung, Übergaben | Premium-Bewertung prüfen, sobald `premium.py` gemergt ist |
@@ -32,5 +32,6 @@ Keine Zahlen zu Leads oder Käufern in dieser Datei (Repo öffentlich). Zahlen s
 
 | Datum | Bereich | Schritt | Ziel / Prüfdatum |
 |---|---|---|---|
+| 05.10.2026 | Vertrieb | Kontrollmails mit einem Klick einordnen (#441), Meilenstein erste Probe geprüft (echt, S1) | ≥ 6 eingeordnet bis Mi 07.10. |
 | 05.10.2026 | Vertrieb | Beleg-Einstieg vorbereitet (nur US, 2 Belege, nur Firmen), SG-Auftrag ruht | Antwortquote US B ≥ 1 % bis 21.10. |
 | 05.10.2026 | Vertrieb | Auftrag A5: Opt-outs und Auto-Antworten auswerten, A/B-Entwurf Einstieg | Opt-out-Quote < 1 % bis 12.10. |

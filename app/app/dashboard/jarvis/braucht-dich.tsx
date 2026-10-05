@@ -8,8 +8,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Icon } from "@/app/icons";
-import { bdZaehler, type BdPunkt } from "@/lib/braucht-dich";
-import { decideSignatur, markDone } from "./braucht-dich-actions";
+import { SEED_LABEL, SEED_PLACEMENTS, bdZaehler, seedDomain, type BdPunkt, type BdSeed } from "@/lib/braucht-dich";
+import { decideSignatur, markDone, setSeedPlacement } from "./braucht-dich-actions";
 
 export function BrauchtDich({ items }: { items: BdPunkt[] }) {
   if (!items.length) return null;
@@ -46,11 +46,37 @@ function Row({ x }: { x: BdPunkt }) {
             <button type="button" className="bd-btn" disabled={busy} onClick={() => run(() => decideSignatur("behalten"))}>Behalten</button>
           </span>
         )}
+        {x.act === "einordnen" && <ul className="bd-seeds">{(x.seeds ?? []).map((s) => <SeedRow key={s.id} s={s} />)}</ul>}
         {msg && <em className={msg.ok ? "ok" : "bad"} role="status">{msg.text}</em>}
       </details>
       {ext
         ? <a className="bd-go" href={x.href} target="_blank" rel="noopener noreferrer">{x.cta}<Icon name="weiter" size={14} /></a>
         : <Link className="bd-go" href={x.href}>{x.cta}<Icon name="weiter" size={14} /></Link>}
+    </li>
+  );
+}
+
+/** Eine Kontrollmail: Land · Postfach-Domain · Betreff, darunter vier Knöpfe (Posteingang, Werbung, Spam, Fehlt). */
+function SeedRow({ s }: { s: BdSeed }) {
+  const router = useRouter();
+  const [busy, start] = useTransition();
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const when = new Date(s.at).toLocaleString("de-DE", { timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return (
+    <li className="bd-seed">
+      <span><b>{s.country}</b> · {seedDomain(s.seed)} · {when}{s.subject ? <> · „{s.subject}“</> : null}</span>
+      {msg?.ok ? <em className="ok" role="status">{msg.text}</em> : (
+        <span className="bd-two">
+          {SEED_PLACEMENTS.map((p) => (
+            <button key={p} type="button" className="bd-btn" disabled={busy} onClick={() => start(async () => {
+              const r = await setSeedPlacement(s.id, p);
+              setMsg(r.ok ? { ok: true, text: SEED_LABEL[p] } : { ok: false, text: r.error });
+              if (r.ok) router.refresh();
+            })}>{SEED_LABEL[p]}</button>
+          ))}
+        </span>
+      )}
+      {msg && !msg.ok && <em className="bad" role="status">{msg.text}</em>}
     </li>
   );
 }

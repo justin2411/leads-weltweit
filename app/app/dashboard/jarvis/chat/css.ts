@@ -204,6 +204,9 @@ export const SOFORT_CSS = `
 .bd-two{display:inline-flex;flex-wrap:wrap;gap:6px}
 .bd-btn{min-height:36px;padding:0 12px;border-radius:8px;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--text);font:inherit;font-size:13px}
 .bd-btn:hover{border-color:var(--pc)}
+.bd-seeds{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}
+.bd-seed{display:grid;gap:6px;padding:8px 0;border-top:1px solid var(--line);font-size:13px}
+.bd-seed>span:first-child{overflow-wrap:anywhere}
 .bd-go{flex:none;display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 10px;border-radius:8px;border:1px solid color-mix(in srgb,var(--pc) 50%,transparent);color:var(--pc)!important;font-size:12.5px;font-weight:600;text-decoration:none;white-space:nowrap}
 .bd-go:hover{background:color-mix(in srgb,var(--pc) 12%,transparent)}
 @media (max-width:520px){.bd-i{flex-wrap:wrap}.bd-d{flex:1 1 calc(100% - 18px)}.bd-go{margin-left:18px}}

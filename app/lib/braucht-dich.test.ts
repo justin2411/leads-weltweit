@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { BD_GRUND_MAX, BD_TITEL_MAX, bdZaehler, brauchtDich, type BdInput } from "./braucht-dich.ts";
+import { BD_GRUND_MAX, BD_TITEL_MAX, SEED_PLACEMENTS, bdZaehler, brauchtDich, seedDomain, type BdInput } from "./braucht-dich.ts";
 
 const OK: BdInput = { decisions: [], seedRows: 3, dispatch: true, legalOpen: 0, legalReady: true, signaturFiles: [], signaturDecided: false, slotPlan: { "s2-neu": 1 } };
 
@@ -40,4 +40,18 @@ test("alle Texte halten die Längen ein", () => {
 test("Zähler-Text", () => {
   assert.equal(bdZaehler(1), "1 braucht dich");
   assert.equal(bdZaehler(2), "2 brauchen dich");
+});
+
+test("Kontrollmails einordnen: Punkt nur mit offenen Kopien, Domain statt Adresse", () => {
+  assert.deepEqual(brauchtDich({ ...OK, seedOpen: [] }), []);
+  assert.deepEqual(brauchtDich({ ...OK, seedOpen: null }), []);
+  const seeds = Array.from({ length: 15 }, (_, n) => ({ id: `s${n}`, country: "US", seed: "x@gmail.com", at: "2026-10-05T09:00:00Z", subject: "Hi" }));
+  const [p] = brauchtDich({ ...OK, seedOpen: seeds });
+  assert.equal(p.key, "einordnen");
+  assert.equal(p.act, "einordnen");
+  assert.equal(p.seeds!.length, 12);
+  assert.match(p.title, /15 offen/);
+  assert.ok(p.title.length <= BD_TITEL_MAX && p.reason.length <= BD_GRUND_MAX);
+  assert.equal(seedDomain("Ich@Firma.DE"), "firma.de");
+  assert.deepEqual([...SEED_PLACEMENTS], ["inbox", "promotions", "spam", "missing"]);
 });

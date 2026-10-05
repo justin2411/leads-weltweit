@@ -9,15 +9,25 @@ import { kuerzen } from "./kurz-schreiben.ts";
 export const BD_TITEL_MAX = 60;
 export const BD_GRUND_MAX = 160;
 
-export type BdKey = "seed" | "dispatch" | "legal" | "signatur" | "s2neu" | `d${number}`;
+export type BdKey = "seed" | "einordnen" | "dispatch" | "legal" | "signatur" | "s2neu" | `d${number}`;
 export type BdPunkt = {
   key: BdKey; title: string; reason: string; href: string; cta: string; detail: string;
   /** Ampel-Ton (lib/ampel.ts): rot = blockiert, gold = wichtig, grey = optional */
   tone: "red" | "gold" | "grey";
   /** Aktion im Dashboard statt nur Link: Entscheidung erledigt / Signatur entscheiden */
-  act?: "erledigt" | "signatur";
+  act?: "erledigt" | "signatur" | "einordnen";
   decisionId?: number;
+  /** act "einordnen": offene Kontrollmails (nur Land, Postfach-Domain, Betreff) */
+  seeds?: BdSeed[];
 };
+
+/** Offene Kontrollmail (seed_checks ohne placement): wo liegt die Kopie im Postfach des Inhabers? */
+export type BdSeed = { id: string; country: string; seed: string; at: string; subject?: string | null };
+export const SEED_PLACEMENTS = ["inbox", "promotions", "spam", "missing"] as const;
+export type SeedPlacement = (typeof SEED_PLACEMENTS)[number];
+export const SEED_LABEL: Record<SeedPlacement, string> = { inbox: "Posteingang", promotions: "Werbung", spam: "Spam", missing: "Fehlt" };
+/** Nur die Domain des Kontrollpostfachs zeigen (gmail.com), nie die ganze Adresse. */
+export const seedDomain = (seed: string) => String(seed ?? "").split("@").pop()?.toLowerCase() || "?";
 
 export type BdDecision = { id: number | string; subject: string; reasoning?: string | null; action?: string | null; kurz_titel?: string | null; kurz_grund?: string | null };
 
@@ -26,6 +36,8 @@ export type BdInput = {
   decisions: BdDecision[] | null;
   /** Zeilen in seed_checks der letzten 8 Tage; null = nicht lesbar (dann kein Punkt) */
   seedRows: number | null;
+  /** offene Kontrollmails (älter als 20 min, letzte 3 Tage, ohne placement); null/undefined = nicht lesbar */
+  seedOpen?: BdSeed[] | null;
   /** GH_DISPATCH_TOKEN in Vercel gesetzt */
   dispatch: boolean;
   /** Rechtstexte: Anzahl Platzhalter/zu kurz (content/legal.ts) und settings.legal_ready (null = unbekannt) */
@@ -84,6 +96,15 @@ export function brauchtDich(i: BdInput): BdPunkt[] {
       title: "Kontrolladressen fehlen (SEED_INBOXES)",
       reason: "Ohne eigene Testpostfächer sehen wir nicht, ob Kaltmails im Posteingang oder im Spam landen.",
       detail: "GitHub-Secret SEED_INBOXES = eigene Adressen, kommagetrennt (je ein neues Gmail- und Outlook-Postfach). Nachweis danach in seed_checks (docs/EINRICHTUNG.md).",
+    }));
+  }
+  if (i.seedOpen?.length) {
+    const n = i.seedOpen.length;
+    out.push(P({
+      key: "einordnen", tone: "gold", act: "einordnen", seeds: i.seedOpen.slice(0, 12), href: "/dashboard/strategie", cta: "Strategie",
+      title: `Kontrollmails einordnen: ${n} offen`,
+      reason: "Ein Klick je Mail: Posteingang, Werbung oder Spam? Nur so sehen wir, ob Spam die Antworten verhindert.",
+      detail: "Kopien echter Erstmails an deine Kontrolladressen. Im Postfach nach dem Betreff suchen und hier einordnen.",
     }));
   }
   if (i.slotPlan && i.slotPlan["s2-neu"] === 0) {
