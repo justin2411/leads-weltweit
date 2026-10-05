@@ -61,6 +61,41 @@ class InspectTests(unittest.TestCase):
         self.assertEqual([f["detail"] for f in r["findings"]], ["no_https"])
         self.assertIn("phone_on_site", r["belongs"])
 
+    def test_no_https_needs_real_refusal_not_reset_or_dns_hiccup(self):
+        # Verbindungsabbruch oder DNS-Zeitfehler sagen nichts über HTTPS (Freigabe: seite_in_ordnung 13–14 %, 05.10.2026)
+        site = {"http://suzyspizza.com/robots.txt": Resp("http://suzyspizza.com/robots.txt", ""),
+                "http://suzyspizza.com/": Resp("http://suzyspizza.com/", MOBILE_HTML)}
+        for msg in ("('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+                    "Failed to resolve 'suzyspizza.com' ([Errno -3] Temporary failure in name resolution)",
+                    "('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"):
+            r = self.run_with({**site, "https://suzyspizza.com/robots.txt": requests.ConnectionError(msg)})
+            self.assertEqual(r["findings"], [], msg)
+            self.assertEqual(r["note"], "https_unknown", msg)
+        real = "HTTPSConnectionPool: Failed to establish a new connection: [Errno 111] Connection refused"
+        r = self.run_with({**site, "https://suzyspizza.com/robots.txt": requests.ConnectionError(real),
+                           "https://www.suzyspizza.com/robots.txt": requests.ConnectionError(
+                               "Failed to resolve 'www.suzyspizza.com' ([Errno -2] Name or service not known)")})
+        self.assertEqual([f["detail"] for f in r["findings"]], ["no_https"])
+
+    def test_no_https_is_confirmed_by_a_second_attempt(self):
+        # erst abgelehnt, beim zweiten Versuch gültiges HTTPS: kein Befund
+        calls = {"n": 0}
+        ok = Resp("https://suzyspizza.com/robots.txt", "")
+
+        def get(fetcher, url):
+            if url == "https://suzyspizza.com/robots.txt":
+                calls["n"] += 1
+                return (None, requests.ConnectionError("refused")) if calls["n"] == 1 else (ok, None)
+            if url == "https://suzyspizza.com/":
+                return Resp(url, MOBILE_HTML), None
+            if url == "http://suzyspizza.com/":
+                return Resp(url, MOBILE_HTML), None
+            return None, requests.ConnectionError("refused")
+        wc._get = get
+        r = wc.inspect(cand(), fetcher=None, today=TODAY)
+        self.assertEqual(calls["n"], 2)
+        self.assertNotIn("no_https", {f["type"] for f in r["findings"]})
+
     def test_no_finding_when_http_redirects_to_https(self):
         r = self.run_with({"http://suzyspizza.com/robots.txt": Resp("http://suzyspizza.com/robots.txt", ""),
                            "http://suzyspizza.com/": Resp("https://suzys-pizza-plano.com/", MOBILE_HTML)})

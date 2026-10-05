@@ -26,6 +26,13 @@ Visualisierung = JARVIS-Trichter ohne Scanner, Ziel-Ring 25.000 € mit Zeitstra
 **Offen beim Inhaber:** `SEED_INBOXES` (ja), Bestätigungsknopf Abmeldeseite (ja), Zweit-Domains (nach 1. Antwort),
 Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 
+## Lagebild (05.10.2026, 06:40 Berliner Zeit)
+- **„Ohne HTTPS“ war der fehleranfälligste Anlass – Ursache gefunden:** Zertifikatsfehler fallen in der Freigabe nur
+  zu 0,6 % durch, „gar kein HTTPS“ dagegen zu 14 % (US 77/566, UK 67/469, FR 8 %), fast alle „seite_in_ordnung“
+  1–2 Tage nach dem Fund. Grund: jeder Verbindungsfehler (Abbruch, Reset, DNS-Zeitfehler) zählte als „Port 443 zu“.
+- Behoben: „kein HTTPS“ nur noch bei echter Ablehnung/nicht vorhandenem Namen und bestätigt durch einen zweiten
+  Versuch; alles andere = keine Aussage, kein Lead. Strenger, nie lockerer; Freigabe unverändert.
+
 ## Lagebild (05.10.2026, 05:30 Berliner Zeit)
 - **Käufer-Nachschub ist kein Engpass** (gegengeprüft): freie ok-Käufer S2 (nie Erstmail) US 28.620, UK 2.485, FR 1.239;
   Tempo ~41/40/33 Erstmails pro Tag → Reichweite US ≈ 700, UK ≈ 57, FR ≈ 38 Tage. Dazu ~1.300 freigegebene Entwürfe je Land.
@@ -55,6 +62,7 @@ Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 - Käufer ok (S2): US 28.782, UK 2.623, FR 1.285. DB 5,1 GB.
 
 ## Nächster Schritt
+- **Prüfpunkt Do 08.10.:** Freigabe-Durchfall „no_https“ (Detail none, neue Leads ab 05.10.) < 3 % je Land; sonst Fund-Protokoll prüfen.
 - **Prüfpunkt Mo 12.10.:** Käufer-Reichweite UK und FR ≥ 21 Tage (Tagescheck). Darunter: Kunden-Werk-Plätze auf UK/FR-Quellen.
 - Zustellbarkeits-Check zählt Link-Scanner-Abmeldungen (< 2 min) getrennt, gelb ab > 50 %.
 - **Prüfpunkt Di 06.10., 12:00:** S2/US ≥ 25 von 50 Proben mit 10/10 Premium (angepasst von 40: Obergrenze ≈ 29

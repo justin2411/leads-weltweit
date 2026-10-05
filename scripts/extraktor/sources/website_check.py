@@ -419,11 +419,33 @@ def _https(fetcher, host: str, alt: str) -> tuple[str, str, str, str]:
         kind = _tls_problem(e)
         if kind:
             tls = tls or kind
-        elif isinstance(e, requests.ConnectionError) and not isinstance(e, (requests.Timeout, requests.exceptions.SSLError)):
+        elif _refused(e):
             refused += 1  # Port 443 lehnt ab / Name nicht auflösbar
         else:
-            return "unknown", host, "", ""  # Zeitüberschreitung, unklarer TLS-Fehler: keine Aussage
-    return ("bad_cert" if tls else "none"), host, "", tls
+            return "unknown", host, "", ""  # Zeitüberschreitung, Abbruch, unklarer TLS-Fehler: keine Aussage
+    if tls:
+        return "bad_cert", host, "", tls
+    # „kein HTTPS“ nur bestätigt: 13–14 % dieser Befunde (US/UK) hatten 1–2 Tage später gültiges HTTPS
+    # (Freigabe seite_in_ordnung, 05.10.2026) – einmalige Ablehnung reicht nicht, der Hauptname wird noch einmal versucht.
+    state, r, e = _robots(fetcher, f"https://{host}")
+    if state == "deny":
+        return "deny", host, "", ""
+    if state == "ok":
+        return "ok", host, (r.text if r.status_code < 400 else ""), ""
+    return ("none" if _refused(e) else "unknown"), host, "", ""
+
+
+# Nur echte Ablehnung (Port 443 zu) oder nicht auflösbarer Name zählt als „kein HTTPS“ – Verbindungsabbruch,
+# Zurücksetzen, Proxy- oder Zeitfehler sind keine Aussage über die Seite.
+# „Temporary failure in name resolution“ (DNS-Zeitfehler) zählt bewusst nicht.
+REFUSED = re.compile(r"connection refused|errno 111\b|errno 61\b|10061|name or service not known|nodename nor servname|"
+                     r"no address associated|^refused$", re.I)
+
+
+def _refused(e: Exception | None) -> bool:
+    if not isinstance(e, requests.ConnectionError) or isinstance(e, (requests.Timeout, requests.exceptions.SSLError)):
+        return False
+    return bool(REFUSED.search(str(e)))
 
 
 def inspect(c: dict, fetcher, today: dt.date | None = None) -> dict:
