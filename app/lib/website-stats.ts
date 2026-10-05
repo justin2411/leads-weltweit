@@ -103,6 +103,14 @@ export function isBot(ua: string | null | undefined): boolean {
   return BOT.test(s);
 }
 
+/**
+ * Checkout aus einem automatisierten Test (Inhaber 05.10.2026: „12 Checkouts = Test“)? Kennzeichen auto=1 aus dem
+ * Formular (navigator.webdriver, app/hit-beacon.tsx) oder ein Bot-/Headless-User-Agent. Zählt dann nur als is_test.
+ */
+export function isAutomatedCheckout(auto: unknown, ua: string | null | undefined): boolean {
+  return String(auto ?? "") === "1" || isBot(ua);
+}
+
 export type Beacon =
   | { kind: "legacy"; variant_id: string; type: "view" | "cta_click" }
   | { kind: "view"; variant_id: string; pv: string; src: Source; subj: "A" | "B" | null; device: Device; ref: string | null; um?: string | null; uc?: string | null }
@@ -110,6 +118,8 @@ export type Beacon =
   | { kind: "end"; variant_id: string; pv: string; depth: 0 | 25 | 50 | 75 | 100; dwell: Dwell; ds: number | null }
   /** Aufruf der Tarifseite /[country]/[segment]/start (älterer Beacon, nur eindeutige Besucher) */
   | { kind: "visit"; variant_id: string; page: "tarif" }
+  /** Landingpage über den Mail-Link wirklich angesehen (≥ 3 s sichtbar oder erste Interaktion, lib/page-viewed.ts) */
+  | { kind: "seen"; variant_id: string; pv: string; r: string }
   /** Trichter-Aufruf (Startseite, Tarif, Danke): Stufe, Gerät, Herkunft; Startseite ohne Variante */
   | { kind: "hit"; stage: HitStage; variant_id: string | null; pv: string; src: Source; ref: string | null; device: Device; um?: string | null; uc?: string | null;
       /** A/B je Schritt (nur Tarifseite): Marke der gesehenen Variante und Klick aus der Probe-Mail („<test>.<A|B>“, keine Person) */
@@ -218,6 +228,7 @@ export function parseBeacon(body: unknown): Beacon | null {
   if (t === "visit") return b.pg === "tarif" ? { kind: "visit", variant_id: variant_id.toLowerCase(), page: "tarif" } : null;
   if (!isUuid(b.pv)) return null;
   const pv = (b.pv as string).toLowerCase();
+  if (t === "seen") return typeof b.r === "string" && /^[A-Za-z0-9_-]{8,80}$/.test(b.r) ? { kind: "seen", variant_id: variant_id.toLowerCase(), pv, r: b.r } : null;
   const device = devOk;
   if (t === "view") {
     if (!SOURCES.includes(b.src as Source) || !device) return null;

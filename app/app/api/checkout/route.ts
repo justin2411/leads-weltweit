@@ -10,6 +10,7 @@ import { chargesGermanVat, normalizeBilling } from "@/lib/billing";
 import { pushAlarmSafe } from "@/lib/push";
 import { after } from "next/server";
 import { abPick, recordAb, unitKey, validMark } from "@/lib/ab-data";
+import { isAutomatedCheckout } from "@/lib/website-stats";
 
 export const dynamic = "force-dynamic";
 
@@ -112,7 +113,10 @@ export async function POST(req: Request) {
     return failPage(lang, pkg, page.slug, back);
   }
   // JARVIS-Station „Stripe“: gestartete Checkouts serverseitig zählen – Inhaber (Login-Cookie) nie mitzählen
-  if (mode === "live" && !(await isOwner().catch(() => false))) {
+  // Automatisierte Tests (navigator.webdriver → auto=1, Headless-/Bot-User-Agent) nur als is_test, nie gezählt
+  const autoTest = isAutomatedCheckout(f.get("auto"), req.headers.get("user-agent"));
+  if (mode === "live" && autoTest) await recordEvent(v.id, "checkout_started", { test: true }).catch(() => null);
+  else if (mode === "live" && !(await isOwner().catch(() => false))) {
     await recordEvent(v.id, "checkout_started");
     // Website-Trichter, Stufe „Stripe“: derselbe Tages-Hash wie im Browser (IP + User-Agent, nur Hash gespeichert)
     const key = await visitorKey(req.headers).catch(() => null);
@@ -125,7 +129,7 @@ export async function POST(req: Request) {
     ]);
   }
   // Sofort-Alarm aufs Handy (Web-Push, feuern und vergessen; ändert nichts am Checkout)
-  if (mode === "live") after(() => pushAlarmSafe("Checkout gestartet", `${page.slug} · ${pkg}`, "/dashboard/kunden", "checkout"));
+  if (mode === "live" && !autoTest) after(() => pushAlarmSafe("Checkout gestartet", `${page.slug} · ${pkg}`, "/dashboard/kunden", "checkout"));
   return Response.redirect(session.url, 303);
 }
 

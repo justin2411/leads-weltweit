@@ -17,14 +17,14 @@ import { agentEligible } from "@/lib/customer-agents";
 import { PlanAgentLine } from "../plan-agent";
 import { HitBeacon } from "@/app/hit-beacon";
 import { headers } from "next/headers";
-import { abPick, unitKey } from "@/lib/ab-data";
+import { abForce, abPick, unitKey } from "@/lib/ab-data";
 
 export const dynamic = "force-dynamic";
 // Verkaufsseite aus dem PDF-Report: nicht in Suchmaschinen, nicht in der Navigation
 export const metadata: Metadata = { title: `Start | ${BRAND}`, robots: { index: false, follow: false } };
 
 type Params = Promise<{ country: string; segment: string }>;
-type Search = Promise<{ vorschau?: string; v?: string; r?: string; ab?: string }>;
+type Search = Promise<{ vorschau?: string; v?: string; r?: string; ab?: string; abv?: string }>;
 
 const TXT = {
   en: {
@@ -211,9 +211,13 @@ export default async function StartPage({ params, searchParams }: { params: Para
   const who = await personalFor(sp.r, page);
   // A/B je Schritt (Tarifseite): Titel oder Einleitung je Besucher fest zugewiesen (?r= bzw. Hash der Anfrage, kein
   // Cookie); übernommene Gewinner gelten für alle. Inhaber-Vorschau sieht immer den Standard und zählt nie.
-  const unit = preview ? "" : unitKey(sp.r, await headers());
-  const [abTitle, abLede] = preview ? [null, null] : await Promise.all([
-    abPick("tarif", "titel", page.segment_id, page.country, unit), abPick("tarif", "lede", page.segment_id, page.country, unit)]);
+  // Live-Vorschau im Dashboard (?vorschau=1&abv=A|B, nur Inhaber): genau diese Variante zeigen, ohne Zuweisung/Marke
+  const forced = sp.vorschau === "1" && (sp.abv === "A" || sp.abv === "B") && (await isOwner()) ? sp.abv : null;
+  const unit = preview || forced ? "" : unitKey(sp.r, await headers());
+  const [abTitle, abLede] = forced
+    ? await Promise.all((["titel", "lede"] as const).map(async (el) => ({ value: await abForce("tarif", el, page.segment_id, page.country, forced), mark: null })))
+    : preview ? [null, null] : await Promise.all([
+      abPick("tarif", "titel", page.segment_id, page.country, unit), abPick("tarif", "lede", page.segment_id, page.country, unit)]);
   const title = typeof abTitle?.value === "string" ? abTitle.value : T.title;
   const lede = typeof abLede?.value === "string" ? abLede.value : T.lede;
   const mark = abTitle?.mark ?? abLede?.mark ?? null;

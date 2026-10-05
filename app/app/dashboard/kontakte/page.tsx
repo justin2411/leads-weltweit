@@ -16,6 +16,7 @@ function CardRow({ c, now }: { c: Card; now: Date }) {
       <span className="cm">
         <i style={{ background: COUNTRY_COLOR[c.country ?? ""] ?? "#c3bcae" }} />{c.country}
         {c.positive && <span className="pill t-gold">positiv</span>}
+        {c.viewed && c.stage !== "viewed" && <span className="pill t-blue" title="Seite über den Mail-Link angesehen">angesehen</span>}
         {c.source !== "Mail" && <span className="pill t-next">{c.source}</span>}
         <span className="ca" title={c.since}>{ago2(c.since, now)}</span>
       </span>

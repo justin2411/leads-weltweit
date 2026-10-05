@@ -144,6 +144,26 @@ export function PageSignals({ stage, variantId = null, enabled = true }: { stage
 }
 
 /**
+ * Checkouts aus automatisierten Tests nicht zählen (Inhaber 05.10.2026: „12 Checkouts = Test“): steuert ein
+ * Testwerkzeug den Browser (navigator.webdriver), bekommt jedes Formular an /api/checkout beim Absenden das
+ * Kennzeichen auto=1; der Server speichert den Checkout dann nur als is_test (zusätzlich zur Prüfung des User-Agents).
+ */
+export function useAutomationFlag() {
+  useEffect(() => {
+    if (!navigator.webdriver) return;
+    const onSubmit = (e: SubmitEvent) => {
+      const f = e.target instanceof HTMLFormElement ? e.target : null;
+      if (!f || !/\/api\/checkout$/.test(new URL(f.action, location.href).pathname) || f.querySelector("input[name=auto]")) return;
+      const i = document.createElement("input");
+      i.type = "hidden"; i.name = "auto"; i.value = "1";
+      f.appendChild(i);
+    };
+    document.addEventListener("submit", onSubmit, true);
+    return () => document.removeEventListener("submit", onSubmit, true);
+  }, []);
+}
+
+/**
  * Website-Trichter (Inhaber 04.10.2026): Aufruf von Startseite, Tarif oder Danke-Seite. Sendet Stufe, Gerät (grob aus
  * Bildschirmbreite/Touch) und Herkunft; beim Verlassen bzw. Wegschalten die sichtbaren Sekunden und die Scrolltiefe
  * (Stufen 25 %). Ohne Cookies, ohne Speicher im Browser; den Tages-Besucher-Hash bildet der Server (lib/web-hits.ts).
@@ -155,6 +175,7 @@ export function HitBeacon({ stage, variantId = null, enabled = true, ab, abFrom 
   ab?: string; abFrom?: string;
 }) {
   useSignals(stage, variantId, enabled);
+  useAutomationFlag();
   useEffect(() => {
     if (!enabled || navigator.webdriver) return;
     try {

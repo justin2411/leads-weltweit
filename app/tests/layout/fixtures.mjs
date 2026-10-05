@@ -216,7 +216,15 @@ export function makeFixtures(nowMs = Date.now()) {
       pruef_bestand: [{ art: "lead", geprueft: 42000, score_avg: 71.4, mehrfach: 13000 }, { art: "kaeufer", geprueft: 9000, score_avg: 64.2, mehrfach: 1100 }],
       dashboard_live: live, dashboard_stock_refresh: stock, dashboard_activity: activity, dashboard_daily: daily,
       dashboard_days: { sent: days.flatMap((d) => C.map((c) => ({ day: d, country: c, segment_id: "S2", n: 25 }))), events: [] },
-      dashboard_contacts: { counts: C.map((c) => ({ stage: "sent", country: c, n: 300 })), cards: [] },
+      dashboard_contacts: {
+        counts: C.flatMap((c) => [{ stage: "contacted", country: c, n: 300 }, { stage: "viewed", country: c, n: 12 }, { stage: "replied", country: c, n: 2 }, { stage: "out", country: c, n: 1 }]),
+        viewed: C.map((c) => ({ country: c, n: 14 })),
+        cards: C.flatMap((c, j) => [
+          { id: `00000000-0000-4000-8000-00000000c${j}01`, stage: "contacted", country: c, company: `Pixel Studio ${c}`, domain: "x.test", first_sent: iso(300), last_at: iso(300), positive: false, viewed: false },
+          { id: `00000000-0000-4000-8000-00000000c${j}02`, stage: "viewed", country: c, company: `Northwind Web Design ${c}`, domain: "x.test", first_sent: iso(400), last_at: iso(90), positive: false, viewed: true },
+          { id: `00000000-0000-4000-8000-00000000c${j}03`, stage: "replied", country: c, company: `Bright Agency ${c}`, domain: "x.test", first_sent: iso(900), last_at: iso(60), positive: true, viewed: true },
+          { id: `00000000-0000-4000-8000-00000000c${j}04`, stage: "out", country: c, company: `Old Site Co ${c}`, domain: "x.test", first_sent: iso(900), last_at: iso(200), positive: false, viewed: false },
+        ]) },
       dashboard_production: { leads: days.flatMap((d) => C.map((c) => ({ day: d, country: c, source: "overture", n: 400 }))), prospects: days.flatMap((d) => C.map((c) => ({ day: d, country: c, status: "ok", n: 100 }))),
         buyer_reasons: [], runs: [], run_reasons: [], run_stages: [] },
       dashboard_storage_refresh: { at: iso(5), db_bytes: 3.2e9, tables: [{ name: "observations", bytes: 1.4e9 }, { name: "leads", bytes: 0.9e9 }],

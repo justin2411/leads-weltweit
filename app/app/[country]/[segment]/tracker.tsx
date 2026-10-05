@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+import { SEEN_MS, validToken } from "@/lib/page-viewed";
+import { useAutomationFlag } from "@/app/hit-beacon";
 import { bin2, cleanLabel, depthBucket, deviceOf, dwellBucket, refHost, refKey, sourceOf, subjectOf, utmKey, type ElKind } from "@/lib/website-stats";
 
 const MAX_CLICKS = 30;
@@ -52,6 +54,7 @@ function elementOf(t: Element | null): { el: ElKind; node: Element | null } {
  * (der Server bildet für eindeutige Besucher nur einen täglich wechselnden Hash, lib/visitor.ts).
  */
 export function Tracker({ variantId, enabled }: { variantId: string; enabled: boolean }) {
+  useAutomationFlag();
   useEffect(() => {
     if (!enabled || navigator.webdriver || isPreview()) return;
     const pv = viewId();
@@ -72,6 +75,26 @@ export function Tracker({ variantId, enabled }: { variantId: string; enabled: bo
     const ref = refKey(q.get("utm_source"), host, location.host);
     const dev = deviceOf(window.innerWidth, window.matchMedia?.("(pointer:coarse)").matches ?? false);
     send({ type: "view", src, sv: src === "mail" ? subjectOf(q.get("sv")) : null, dev, ref, um: utmKey(q.get("utm_medium")), uc: utmKey(q.get("utm_campaign")) });
+
+    // „Seite angesehen“ (Mail-Link ?r=): erst nach SEEN_MS sichtbarer Seite oder erster Interaktion, einmal je Aufruf
+    const r = q.get("r");
+    let seenMs = 0;
+    let seenDone = !validToken(r);
+    const seenEvents = ["pointerdown", "keydown", "wheel", "touchstart"] as const;
+    const seen = () => {
+      if (seenDone) return;
+      seenDone = true;
+      clearInterval(seenTick);
+      seenEvents.forEach((e) => window.removeEventListener(e, seen, true));
+      send({ type: "seen", r });
+    };
+    const seenTick = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      seenMs += 500;
+      if (seenMs >= SEEN_MS) seen();
+    }, 500);
+    if (seenDone) clearInterval(seenTick);
+    else seenEvents.forEach((e) => window.addEventListener(e, seen, { capture: true, passive: true }));
 
     const doc = document.documentElement;
     let depth: 0 | 25 | 50 | 75 | 100 = 0;
@@ -106,6 +129,8 @@ export function Tracker({ variantId, enabled }: { variantId: string; enabled: bo
     document.addEventListener("visibilitychange", onVis);
     window.addEventListener("pagehide", end);
     return () => {
+      clearInterval(seenTick);
+      seenEvents.forEach((e) => window.removeEventListener(e, seen, true));
       window.removeEventListener("scroll", onScroll);
       document.removeEventListener("click", onClick, true);
       document.removeEventListener("visibilitychange", onVis);

@@ -52,6 +52,20 @@ export async function abPick(step: string, element: string, segment: string, cou
   return { value: won, mark: null };
 }
 
+/**
+ * Inhaber-Vorschau (Live-Vorschau der A/B-Tests im Dashboard): Wert einer bestimmten Variante des laufenden Tests,
+ * ohne Zuweisung und ohne Marke – zählt nie. undefined = Standard (bzw. übernommener Gewinner).
+ */
+export async function abForce(step: string, element: string, segment: string, country: string, variant: AbKey): Promise<unknown> {
+  const cc = String(country ?? "").toUpperCase();
+  const tests = await activeTests();
+  const t = tests.find((x) => x.status === "laeuft" && x.step === step && x.segment_id === segment && x.country === cc && x.element === element);
+  const won = overrides(tests, step, segment, cc)[element];
+  if (!t) return won;
+  const v = variantValue(t, variant);
+  return v === undefined ? won : v;
+}
+
 /** Gültige Marke aus einem Parameter „<test>.<A|B>“: Test läuft und gehört zu diesem Schritt. */
 export async function validMark(raw: unknown, step: string): Promise<{ testId: string; variant: AbKey } | null> {
   const p = parseAbParam(raw);
@@ -102,8 +116,18 @@ export async function loadAb(now: Date = new Date(), days = 30): Promise<AbData>
     db().rpc("ab_funnel", { p_segments: TEST_SCOPE.segmente, p_countries: TEST_SCOPE.laender, p_days: days }).abortSignal(t()),
   ]);
   const err = [tests, results, funnel].find((r) => r.error)?.error?.message ?? null;
+  const views = testsView(AB_REG, (tests.data ?? []) as AbTest[], (results.data ?? []) as AbResult[], now);
+  // Seiten-Varianten (Landingpage-Tests) für die Live-Vorschau: ?v=<variant_key> der Inhaber-Vorschau
+  const ids = views.flatMap((t) => t.variants.map((v) => v.variantId)).filter((x): x is string => !!x);
+  if (ids.length) {
+    try {
+      const { data } = await db().from("page_variants").select("id,variant_key").in("id", ids).abortSignal(t());
+      const key = new Map((data ?? []).map((r: { id: string; variant_key: string }) => [r.id, r.variant_key]));
+      for (const tv of views) for (const v of tv.variants) v.pageKey = v.variantId ? key.get(v.variantId) ?? null : null;
+    } catch { /* Vorschau fällt auf A/B zurück */ }
+  }
   return {
-    tests: testsView(AB_REG, (tests.data ?? []) as AbTest[], (results.data ?? []) as AbResult[], now),
+    tests: views,
     funnel: funnelView(AB_REG, (funnel.data ?? []) as { station: string; n: number; k: number }[]),
     days, error: err,
   };
