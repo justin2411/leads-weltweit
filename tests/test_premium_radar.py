@@ -208,5 +208,36 @@ class RadarLeadPassesGateTest(unittest.TestCase):
             self.assertTrue(reasons[0].startswith("nachpruefung_fehler"))
 
 
+class RadarAlsoWishTest(unittest.TestCase):
+    """Radar-Ereignis + am selben Tag bestätigter Befund „veraltet“/„nicht mobil“ -> passt zum Wunsch (Scout 05.10.2026)."""
+
+    def ev(self, findings):
+        return {"signal_type": "cert_expiring", "not_after": dt.date(2026, 10, 20), "days_left": 15,
+                "findings": findings, "event_date": dt.date(2026, 10, 20)}
+
+    def test_also_sentence_and_wish_match(self):
+        from lib.wishes import matches, signal_types
+        f = [{"type": "website_not_mobile", "detail": "no_viewport", "value": ""},
+             {"type": "website_outdated", "detail": "copyright", "value": "2014"}]
+        for cc in ("UK", "FR"):
+            t = radar.texts({"name": "Example Ltd", "country": cc}, self.ev(f), "example.com", TODAY)
+            lead = {"signal_type": "cert_expiring", "event_summary": t["event_summary"]}
+            self.assertTrue(matches("not_mobile", lead), cc)
+            self.assertTrue(matches("website_outdated", lead), cc)
+            self.assertTrue(matches("security", lead), cc)
+        self.assertIn("cert_expiring", signal_types(["website_outdated"]))
+
+    def test_no_also_finding_no_wish_match(self):
+        from lib.wishes import matches
+        t = radar.texts({"name": "Example Ltd", "country": "UK"}, self.ev([]), "example.com", TODAY)
+        self.assertNotIn("same check", t["event_summary"])
+        lead = {"signal_type": "cert_expiring", "event_summary": t["event_summary"]}
+        self.assertFalse(matches("not_mobile", lead))
+        self.assertFalse(matches("website_outdated", lead))
+        # nur der Zusatzsatz zählt, nicht ein zufälliges Wort im Text
+        self.assertFalse(matches("website_outdated", {"signal_type": "no_https",
+                                                      "event_summary": "Old version Ltd: certificate expired."}))
+
+
 if __name__ == "__main__":
     unittest.main()

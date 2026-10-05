@@ -114,7 +114,36 @@ def detect(row: dict, res: dict, cert: dict | None, today: dt.date) -> dict | No
 
 
 # ---------------------------------------------------------------------------- Texte (EN/FR, nur Belegtes)
+ALSO_EN = "The same check also found that "
+ALSO_FR = "Le même contrôle a aussi relevé que "
+ALSO_TYPES = ("website_not_mobile", "website_outdated")
+
+
+def also_text(ev: dict, fr: bool, domain: str) -> str:
+    """Satz mit den Befunden „nicht mobil“/„veraltet“ derselben Prüfung (Quellen-Scout 05.10.2026, Premium-Jagd):
+    Das datierte Radar-Ereignis bleibt der Anlass, der am selben Tag bestätigte Website-Zustand steht dazu im Lead –
+    so passt der Lead ehrlich zum Wunsch „veraltete“ bzw. „nicht mobilfähige Website“ (lib/wishes.py)."""
+    from extraktor.segments import WEB_EN, WEB_FR
+    words = WEB_FR if fr else WEB_EN
+    parts: list[str] = []
+    for t in ALSO_TYPES:
+        for f in ev.get("findings") or []:
+            if isinstance(f, dict) and f.get("type") == t and f.get("detail") in words:
+                p = words[f["detail"]].format(domain=domain, value=f.get("value") or "")
+                if p not in parts:
+                    parts.append(p)
+    if not parts:
+        return ""
+    return " " + (ALSO_FR if fr else ALSO_EN) + (" ; " if fr else "; ").join(parts[:2]) + "."
+
+
 def texts(row: dict, ev: dict, domain: str, today: dt.date) -> dict:
+    t = _texts(row, ev, domain, today)
+    t["event_summary"] += also_text(ev, row["country"] == "FR", domain)
+    return t
+
+
+def _texts(row: dict, ev: dict, domain: str, today: dt.date) -> dict:
     from extraktor.segments import day, jour, uk_day
     name, fr = row["name"], row["country"] == "FR"
     us = row["country"] == "US"
