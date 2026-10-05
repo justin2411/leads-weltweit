@@ -9,6 +9,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/supabase";
 import { loadZiele } from "@/lib/zentrale/data";
 import { ZielFehler, pruefeSoll } from "@/lib/zentrale/ziele";
+import { zentraleNeuRechnen } from "@/lib/zentrale-refresh-server";
 import { requireOwner } from "../actions";
 
 const BY = "Inhaber Dashboard";
@@ -37,6 +38,7 @@ export async function saveGoals(f: FormData) {
     if (error) redirect(`/dashboard/ziele?fehler=${encodeURIComponent("Speichern fehlgeschlagen")}`);
     await db().from("owner_log").insert({ action: `ziel:${c.key}`, target: c.key, old_value: c.old, new_value: c.soll, created_by: BY });
   }
+  if (changes.length) zentraleNeuRechnen(); // JARVIS zeigt die Ziele sofort als bestätigt (nicht erst nach dem Wachhund)
   revalidatePath("/dashboard", "layout");
   redirect(`/dashboard/ziele?ok=${encodeURIComponent(changes.length ? "übernommen" : "keine Änderung")}`);
 }

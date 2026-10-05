@@ -299,6 +299,8 @@ export const ZENTRALE_CSS = `
 .jz .drw .bd{margin:0;padding:0;border:0;background:none}
 
 /* Chat-Knopf: siehe kopf.tsx (.jfab) */
+.jz-stand{display:flex;align-items:center;gap:8px;margin:0;padding:8px 16px;border:1px solid var(--gb);border-radius:12px;background:rgba(255,181,71,.12);color:var(--gb);font-size:14px;font-weight:700}
+.jz-stand::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--gb);box-shadow:0 0 8px var(--gb)}
 .jz-funke{position:fixed;left:50%;top:80px;transform:translateX(-50%);z-index:50;margin:0;padding:8px 16px;border-radius:22px;border:1px solid var(--gd);background:rgba(40,30,10,.9);color:var(--gd);font-weight:700;box-shadow:0 0 24px var(--gd)}
 .dash nav.seg a{min-height:44px;display:inline-flex;align-items:center;gap:6px}
 

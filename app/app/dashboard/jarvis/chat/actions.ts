@@ -7,6 +7,7 @@
  * Nachrichten von der JARVIS-Routine (scripts/jarvis_chat.py, viermal pro Stunde) – hier wird nichts ausgeführt.
  */
 import { revalidatePath } from "next/cache";
+import { zentraleNeuRechnen } from "@/lib/zentrale-refresh-server";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/supabase";
 import { ChatInputError, checkBody, checkTitle, isChatMode, isSessionId, titleFrom, type ChatMessage, type ChatSession } from "@/lib/jarvis-chat";
@@ -137,6 +138,7 @@ export async function setLlmBudget(raw: string): Promise<ChatResult> {
     const { error } = await db().from("owner_settings").upsert({ key: "llm_budget_eur", value, updated_at: new Date().toISOString(), updated_by: BY });
     if (error) throw new Error(error.message);
     await db().from("owner_log").insert({ action: "setting:llm_budget_eur", target: null, old_value: old?.value ?? null, new_value: value, created_by: BY });
+    zentraleNeuRechnen();
     revalidatePath("/dashboard", "layout");
     return { ok: true };
   } catch (e) {

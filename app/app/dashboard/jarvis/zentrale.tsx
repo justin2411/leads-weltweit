@@ -125,6 +125,7 @@ export function Zentrale({ initial, recht, agentDrawer, chatNeu, trichter }: {
   return (
     <div className={`jz${fenster ? " has-drw" : ""}`} ref={root}>
       <Kopfzeile abruf={z.abruf} ok={z.ok} lage={satz} bd={bdN} antworten={s ? s.replies.offen : null} heiss={s?.replies.heiss ?? 0} />
+      {veraltet && l && <p className="jz-stand" role="status" title="Zahlen der Werke älter als 20 min – werden alle 5 min neu gerechnet">Stand {new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit" }).format(new Date(l.stand))}</p>}
       <Kennzahlen initial={trichter} extra={l?.extra} mrr={l?.mrr ?? null} kunden={l?.kunden ?? null} bestanden={l?.lage?.bestanden}
         laufend={s ? pl.laufend : null} gesamt={pl.gesamt} bewegung={bewegung} />
       <ZielRinge ziele={ziele} />
@@ -141,7 +142,6 @@ export function Zentrale({ initial, recht, agentDrawer, chatNeu, trichter }: {
         <Leitplanken planken={planken} />
       </div>
       <Ticker rows={s?.ticker ?? []} now={now} />
-      {veraltet && l && <p className="lock" style={{ margin: 0, fontSize: 12 }}>Zahlen der Werke: Stand {new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit" }).format(new Date(l.stand))}</p>}
       {funke && <p className="jz-funke" role="status">Neue Zahlung</p>}
       {fenster}
       <ChatKnopf neu={chatNeu} />
