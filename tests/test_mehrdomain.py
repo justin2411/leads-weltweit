@@ -128,6 +128,28 @@ class ScopedStopTests(unittest.TestCase):
         self.assertTrue(out[12].startswith("Domain np-leads.com"))
 
 
+    def test_box_reset_counts_only_newer_mails(self):
+        # Postfach-Neustart (Inhaber 05.10.2026): alte Rückläufer dieses Postfachs zählen nicht mehr, neue schon
+        boxes = mb.mailboxes(ENV)
+        old, new = "2026-10-04T10:00:00+00:00", "2026-10-05T14:00:00+00:00"
+        msgs = [{"id": f"b{i}", "status": "sent", "sent_at": old, "sent_from": "carl@np-mail.io"} for i in range(100)]
+        ev = [{"message_id": f"b{i}", "type": "bounced", "created_at": old, "messages": {"to_email": f"x{i}@y.com"}}
+              for i in range(10)]
+        db = FakeDB({"messages": msgs, "email_events": ev})
+        reset = dt.datetime(2026, 10, 5, 13, 30, tzinfo=dt.timezone.utc)
+        n = mb.box_of("carl@np-mail.io", boxes)
+        with mock.patch.dict(os.environ, ENV), mock.patch.object(dv, "window_start", lambda now: reset - dt.timedelta(days=5)):
+            self.assertIn(n, outreach.box_stops(db, boxes))                       # ohne Neustart: 10 % -> aus
+            with mock.patch.object(dv, "box_reset", lambda k: reset if k == n else None):
+                self.assertNotIn(n, outreach.box_stops(db, boxes))                # nach Neustart: zählt neu
+                fresh = [{"id": f"n{i}", "status": "sent", "sent_at": new, "sent_from": "carl@np-mail.io"}
+                         for i in range(100)]
+                fresh_ev = [{"message_id": f"n{i}", "type": "bounced", "created_at": new,
+                             "messages": {"to_email": f"n{i}@y.com"}} for i in range(6)]
+                db2 = FakeDB({"messages": msgs + fresh, "email_events": ev + fresh_ev})
+                self.assertIn(n, outreach.box_stops(db2, boxes))                  # neue 6 % -> wieder aus
+
+
 class DnsTests(unittest.TestCase):
     def rec(self, data):
         return lambda name, rtype: data.get((name, rtype), [])

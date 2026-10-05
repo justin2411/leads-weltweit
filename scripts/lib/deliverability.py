@@ -70,6 +70,17 @@ def window_start(now: dt.datetime, days: int = 30) -> dt.datetime:
     return start
 
 
+def box_reset(n: int) -> dt.datetime | None:
+    """Neustart der Notbremse für EIN Postfach: `postfach_neu_ab_<n>` in config/versand.yaml (Inhaber 05.10.2026:
+    „Postfach 3 wieder voll auslasten“). Ab diesem Zeitpunkt zählt nur dieses Postfach neu; Schwelle 5 %,
+    Mindestmenge 100 und Sofort-Stopp bei Spam-Beschwerde bleiben unverändert."""
+    raw = _cfg(f"postfach_neu_ab_{n}")
+    if not raw:
+        return None
+    reset = dt.datetime.fromisoformat(raw.strip('"').replace("Z", "+00:00"))
+    return reset if reset.tzinfo else reset.replace(tzinfo=dt.timezone.utc)
+
+
 def emergency_stop(sent: int, bounced: int, complained: int) -> str | None:
     """Grund für einen Versandstopp oder None."""
     if complained >= COMPLAINT_STOP:

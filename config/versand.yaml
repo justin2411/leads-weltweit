@@ -12,6 +12,9 @@ aufwaermphase: false
 # Notbremse zählt ab diesem Zeitpunkt neu (Inhaber 03.10.2026: „pass die notbremse an, das sie ab jetzt neu zählt“);
 # Schwelle 5 %, Mindestmenge 100 und Sofort-Stopp bei Spam-Beschwerde bleiben unverändert.
 notbremse_ab: 2026-10-03T06:52:00Z
+# Postfach 3 (Notbremse 05.10.: 6/101 = 5,9 %) zählt ab hier neu und sendet wieder voll (Inhaber 05.10.2026, Chat:
+# „Postfach 3 wieder voll auslasten“). Nur dieses Postfach; Schwelle 5 %, Mindestmenge 100, Spam-Stopp unverändert.
+postfach_neu_ab_3: 2026-10-05T13:30:00Z
 # Inhaber 03.10.2026: „wir starten mit 90 mails pro tag“; vor jeder Erstmail Frischeprüfung der Adresse (lib/freshness.py)
 # Inhaber 05.10.2026 (Chat): „ich will pro postfach 140 mails pro tag rausschicken, kaltmails sind gerade unser engpass gib dem gehirn diese freiheit“
 tagesziel: 140
