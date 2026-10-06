@@ -110,6 +110,8 @@ Frist des Anlasses (Premium-Labor 05.10.2026): „Zertifikat läuft ab“ ist nu
 
 Registerperson für Radar-Firmen (Premium-Labor 05.10.2026): Radar-Firmen tragen `registry_source = overture_web`; das Kontakt-Werk suchte Name + PLZ im offenen Register (FR recherche-entreprises, UK Companies House) nur für `overture`. Jetzt beide (`kontaktwerk.py` `NAME_SOURCES`), dazu Gruppe `nachholen`: frische Premium-Leads UK/FR mit Kontakt-Version < 2 einmal neu, nur wenn die Website im selben Lauf gelesen werden darf (20-h-Grenze). Vorher Person bei 8 % (UK) und 13 % (FR) der Premium-Leads, US 82 %; 0 von 491 Radar-Premium-Leads hatten eine Registerperson. Person zählt weiter nur mit zwei Belegen ohne Widerspruch (Register-Name + PLZ, genau ein Treffer).
 
+Frische zuerst innerhalb Premium (Premium-Labor 06.10.2026): Proben und Lieferungen sortieren Premium-Leads nach Punktzahl minus 3 je verbrauchtem Premium-Tag (`lib/premium.py` `days_left`, `AGE_ORDER_PER_DAY`; Restzeit bis 14 Tage bzw. bis `premium.gilt_bis`). Vorher stand ein 12 Tage alter 100-Punkte-Lead (FMCSA) immer vor einem 1 Tag alten Radar-Lead – US-Vorratsproben zeigten als neuesten Anlass im Schnitt einen von vor ~6 Tagen, UK/FR ~1,5. Nur Reihenfolge; Stufe, Schwelle und Freigabe unverändert.
+
 ### Länder (nur Mail-Länder aus `countries.yaml`)
 
 | Schritt | Länder | Versand |
