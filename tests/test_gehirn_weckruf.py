@@ -26,6 +26,7 @@ def welt() -> FakeDB:
             {"id": "r2", "received_at": NEU, "from_email": "b@agency.com", "intent": "out_of_office"},
             {"id": "r3", "received_at": ALT, "from_email": "c@agency.com", "intent": "buy"},
             {"id": "r4", "received_at": NEU, "from_email": "chef@example.org", "intent": "other"},
+            {"id": "r5", "received_at": NEU, "from_email": "portal@uni.example", "intent": "other"},
         ],
         "sample_requests": [
             {"id": "s1", "created_at": NEU, "is_test": False, "email": "x@web.fr", "company_name": "Web FR",
@@ -77,6 +78,18 @@ class ErkennenTest(unittest.TestCase):
             ("kunde", "customer:c1"), ("kunde", "subscription:u1"), ("kunde", "subscription:u3"),
             ("notbremse", "complaint:e1"),
         })
+
+    def test_fremde_post_weckt_nicht(self):
+        db = welt()
+        db.tables["inbound_replies"] += [
+            {"id": "r6", "received_at": NEU, "from_email": "d@agency.com", "intent": "other", "message_id": "m1"},
+            {"id": "r7", "received_at": NEU, "from_email": "e@agency.com", "intent": "other", "prospect_id": "p1"},
+            {"id": "r8", "received_at": NEU, "from_email": "f@agency.com", "intent": "question"},
+        ]
+        refs = self.refs(db)
+        self.assertNotIn(("antwort", "r5"), refs)  # Portal-Mail ohne Bezug
+        for ref in ("r6", "r7", "r8"):
+            self.assertIn(("antwort", ref), refs)
 
     def test_kurz_hoechstens_120(self):
         db = welt()

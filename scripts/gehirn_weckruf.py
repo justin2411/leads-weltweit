@@ -5,7 +5,9 @@
 (gleiche Regeln wie das Dashboard):
 
   antwort    inbound_replies, menschliche Antwort (ohne Abwesenheitsnotiz; Bounces/Auto-Antworten speichert der
-             Antwort-Assistent dort gar nicht), nicht vom Inhaber
+             Antwort-Assistent dort gar nicht), nicht vom Inhaber; ohne fremde Post: Absicht „other“ ohne Bezug zu
+             unseren Mails (keine message_id, kein prospect_id; z. B. private Portal-Mails im Hauptpostfach, Gehirn
+             06.10.2026). Nur der Weckruf – Antwort-Assistent, Abmelde-Erkennung und Sperrliste bleiben unberührt.
   probe      sample_requests mit is_test = false, nicht von der Inhaber-Adresse
   checkout   page_events_echt (= page_events ohne is_test), type = checkout_started
   kunde      customers / subscriptions, ohne Stripe-Testmodus (deliveries.is_test_customer)
@@ -65,12 +67,21 @@ def is_test_customer(c: dict) -> bool:
             and (bool(c.get("stripe_customer_id")) or "Stripe-Testmodus" in (c.get("notes") or "")))
 
 
+def fremde_post(r: dict) -> bool:
+    """Mail ohne Bezug zu unserem Versand und ohne Kauf-/Proben-/Fragen-Absicht (Absicht „other“, weder message_id
+    noch prospect_id) – weckt das Gehirn nicht. buy/sample/question/not_interested/unsubscribe wecken immer."""
+    return (r.get("intent") or "other") == "other" and not r.get("message_id") and not r.get("prospect_id")
+
+
 def _antworten(db, since: str, owner: set[str]) -> list[dict]:
     rows = db.select("inbound_replies", {"received_at": f"gte.{since}",
-                                         "select": "id,from_email,intent,summary_de,subject", "limit": "200"})
+                                         "select": "id,from_email,intent,summary_de,subject,message_id,prospect_id",
+                                         "limit": "200"})
     out = []
     for r in rows:
         if r.get("intent") == "out_of_office" or (r.get("from_email") or "").lower() in owner:
+            continue
+        if fremde_post(r):
             continue
         txt = r.get("summary_de") or r.get("subject") or ""
         out.append({"kind": "antwort", "ref": str(r["id"]),

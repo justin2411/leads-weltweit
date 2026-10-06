@@ -26,6 +26,18 @@ Visualisierung = JARVIS-Trichter ohne Scanner, Ziel-Ring 25.000 € mit Zeitstra
 **Offen beim Inhaber:** `SEED_INBOXES` (ja), Bestätigungsknopf Abmeldeseite (ja), Zweit-Domains (nach 1. Antwort),
 Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 
+## Lagebild (06.10.2026, 10:40 Berliner Zeit)
+- **Engpass bleibt Erstmail → Antwort/Besuch** (Trichter: „mail“). Laufende Tests (Betreff bis Mi 20:00, US-Reihenfolge
+  bis Fr) nicht gestört – kein neuer Text-Test.
+- **Weckruf ohne fremde Post:** private Portal-Mails im Hauptpostfach (Absicht „other“, ohne Bezug zu unseren Mails)
+  wecken das Gehirn nicht mehr. Abmelde-Erkennung, Antwort-Assistent und Sperrliste unverändert.
+- **FR-Umzüge (BODACC) noch ohne Ertrag:** seit 09:00 kein neuer FR-Premium-Lead; Linie s2-ukfr lief seit dem Merge
+  noch nicht. Speicher unter der 6-GB-Bremse.
+- **Werke unter 30 Plätzen:** fast alle Lead-Quellen sind durchgeprüft und ruhen, Käufer-Pool leer – mehr Läufe
+  brächten nichts. Abhilfe nur über neue Quellen (Scout/Premium-Labor).
+- pruef_kpi: Zeitüberschreitung nur bei kaltem Speicher (12,7 s kalt, 1 s warm) – kein Code-Fehler.
+- **Nächster Schritt:** Ertrag fr-moves messen; Betreff-Test Mi 07.10. auswerten, dann Nachfass-Schlussfrage US/UK.
+
 ## Lagebild (06.10.2026, 08:40 Berliner Zeit)
 - **Engpass bleibt Erstmail → Antwort**, und Versand läuft nur über ein Postfach. US-Rückläufer gefährden auch das.
 - **Ursache US eingegrenzt:** Rückläufer hängen am Postfach-Anbieter des Empfängers (eigener Server und Rackspace
