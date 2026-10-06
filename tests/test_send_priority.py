@@ -32,9 +32,36 @@ class SendPriorityTest(unittest.TestCase):
 
     def test_best_ids_limits_count(self):
         rows = [m(f"m{i}", "x@gmail.com" if i % 2 else "info@acme.com", f"2026-10-0{i}") for i in range(1, 7)]
-        ids = sp.best_ids(FakeDB({"messages": rows}), "e1", 3)
+        ids = sp.best_ids(FakeDB({"messages": rows}), "e1", 3, mx=lambda _d: None)
         self.assertEqual(len(ids), 3)
         self.assertEqual(ids, ["m2", "m4", "m6"])
+
+    def test_us_provider_order(self):
+        sp._PROVIDER_BONUS.clear()
+        mx = {"big.com": ["aspmx.l.google.com"], "small.com": ["mail.small.com"],
+              "rs.com": ["mx1.emailsrvr.com"]}.get
+        rows = [m("rs", "info@rs.com", "1", domain="rs.com"), m("small", "info@small.com", "2", domain="small.com"),
+                m("big", "info@big.com", "3", domain="big.com")]
+        ids = sp.best_ids(FakeDB({"messages": rows}), "e1", 3, mx=mx)
+        self.assertEqual(ids, ["big", "small", "rs"])
+        sp._PROVIDER_BONUS.clear()
+
+    def test_provider_only_us(self):
+        sp._PROVIDER_BONUS.clear()
+        mx = {"big.co.uk": ["aspmx.l.google.com"], "small.co.uk": ["mail.small.co.uk"]}.get
+        rows = [m("small", "info@small.co.uk", "1", domain="small.co.uk", country="UK", legal_form="Ltd"),
+                m("big", "info@big.co.uk", "2", domain="big.co.uk", country="UK", legal_form="Ltd")]
+        self.assertEqual(sp.best_ids(FakeDB({"messages": rows}), "e1", 2, mx=mx), ["small", "big"])
+        sp._PROVIDER_BONUS.clear()
+
+    def test_dns_error_neutral(self):
+        sp._PROVIDER_BONUS.clear()
+
+        def boom(_d):
+            raise OSError("dns")
+        rows = [m("a", "info@acme.com", "1"), m("b", "info@acme.com", "2")]
+        self.assertEqual(sp.best_ids(FakeDB({"messages": rows}), "e1", 2, mx=boom), ["a", "b"])
+        sp._PROVIDER_BONUS.clear()
 
 
 if __name__ == "__main__":
