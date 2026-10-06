@@ -93,6 +93,19 @@ class LeadKarte(unittest.TestCase):
         b = W.beleg("website_not_mobile", "ex.test", psc, "2026-10-04", "en",
                     "Companies House PSC register + website check")
         self.assertEqual(b["label"], "find-and-update.company-information.service.gov.uk")
+        # Registerquelle + Website-Prüfung (DECP FR, Environment Agency UK): Beleg ist der datierte Eintrag
+        decp = "https://tabular-api.data.gouv.fr/api/resources/r/data/?uid__exact=1_2"
+        b = W.beleg("website_outdated", "ex.test", decp, "2026-10-04", "fr",
+                    "Données essentielles de la commande publique (DECP) + website check")
+        self.assertEqual((b["url"], b["label"]), (decp, "tabular-api.data.gouv.fr"))
+        ea = "https://environment.data.gov.uk/public-register/waste-carriers-brokers/registration/X1"
+        b = W.beleg("no_https", "ex.test", ea, "2026-10-04", "en",
+                    "Environment Agency waste carriers register + website check")
+        self.assertEqual(b["url"], ea)
+        # ohne gültigen Register-Link bleibt die Website
+        b = W.beleg("no_https", "ex.test", "", "2026-10-04", "en",
+                    "Environment Agency waste carriers register + website check")
+        self.assertEqual(b["url"], "https://ex.test")
         # Radar: Website bleibt der Beleg
         b = W.beleg("no_https", "ex.test", "http://ex.test/", "2026-10-04", "en", "Website check (change radar)")
         self.assertEqual(b["url"], "https://ex.test")
