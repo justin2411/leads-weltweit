@@ -7,6 +7,7 @@ angeschrieben wird, entscheidet weiter config/versand.yaml (zurzeit aus).
   python scripts/kundenwerk.py pool                 # Overture-Auszug + offene Register (MX DENUE, FI YTJ) mit Website
   python scripts/kundenwerk.py run --shard 0/4 --max 3000
   python scripts/kundenwerk.py stand                # Zählung je Branche und Land
+  python scripts/kundenwerk.py uk-register --max 3000 # S2-Käufer UK aus Companies House (Website belegen, prüfen)
 
 Weg je Firma (wie scripts/prospects.py): eigene Website -> veröffentlichte Firmen-E-Mail (nur eigene Domain,
 allgemeine Adressen bevorzugt), Rechtsform/Registernummer -> Prüfregeln (lib.rules.check_prospect: Land erlaubt,
@@ -1170,6 +1171,182 @@ def cmd_frweb(args) -> int:
     return 0
 
 
+# ---------------------------------------------------------------------------
+# UK-Käufer S2 aus den Companies-House-Massendaten (JARVIS-Agent 2, 06.10.2026; extraktor/sources/uk_ch_buyers.py)
+# ---------------------------------------------------------------------------
+CH_SEEN = Path(os.environ.get("KUNDENWERK_CH_SEEN", "out/cache/kunden_ch_seen.json"))
+CH_SEEN_DAYS = 30  # Firma ohne gefundene Website frühestens nach 30 Tagen erneut versuchen (Abrufe höchstens 1×/Tag)
+CH_LIST_DIR = Path(os.environ.get("KUNDENWERK_CH_LIST", "out/cache/ch_s2"))
+CH_MARK = "Companies-House-Käuferquelle"
+
+
+def ch_company(r: dict) -> dict:
+    """Companies-House-Zeile -> Firma für lib.websites.score_match (Registernummer, Name, Sitz)."""
+    return {"name": r["name"], "country": "UK", "registry_id": r["n"], "postcode": r.get("pc") or "",
+            "city": r.get("city") or "", "address": ", ".join(x for x in (r.get("street"), r.get("city"), r.get("pc")) if x)}
+
+
+def ch_order(rows: list[dict], seen: dict[str, str], today: dt.date, shard: str = "", tail: bool = False) -> list[dict]:
+    """Feste Reihenfolge (md5 der Firmennummer), ohne Firmen, die in den letzten CH_SEEN_DAYS versucht wurden.
+    tail: vom Ende her (Probelauf, damit das Werk dieselben Seiten nicht am selben Tag erneut abruft)."""
+    cut = (today - dt.timedelta(days=CH_SEEN_DAYS)).isoformat()
+    out = [r for r in rows if seen.get(r["n"], "") < cut]
+    if shard:
+        i, n = (int(x) for x in shard.split("/"))
+        out = [r for r in out if int(hashlib.md5(r["n"].encode()).hexdigest(), 16) % n == i]
+    out.sort(key=lambda r: hashlib.md5(r["n"].encode()).hexdigest(), reverse=tail)
+    return out
+
+
+def ch_buyer(r: dict, site: dict) -> dict:
+    """Bestätigte Website + Registerdaten -> Kandidat für check_one (Rechtsform laut Register)."""
+    from extraktor.model import title_case
+    from extraktor.sources.uk_ch_buyers import category_for
+    website = site["url"]
+    return {"id": f"ch:{r['n']}", "name": title_case(r["name"]), "website": website,
+            "domain": normalize_domain(website), "emails": [], "phones": [], "street": title_case(r.get("street") or ""),
+            "city": title_case(r.get("city") or ""), "postcode": r.get("pc") or "", "region": None, "country": "UK",
+            "category": category_for(r["sic"]) or "software_development", "segment": "S2",
+            "reg_form": r["form"], "ch_number": r["n"],
+            "reg_note": f"Company No. {r['n']} (Companies House Massendaten, SIC {'/'.join(r['sic'])}; "
+                        f"Website belegt: {', '.join(site.get('evidence') or [])})"}
+
+
+def ch_find_site(r: dict, fetcher, known: set[str]) -> tuple[str, dict | None]:
+    """('bekannt'|'keine_website'|'gefunden', examine-Ergebnis). Nur Domains aus dem Namen (lib.websites), nur mit
+    Beleg auf der Seite selbst (verified: Registernummer, voller Name, Postleitzahl), nie Verzeichnisse."""
+    from enrich import MAX_EXAMINED, examine, resolves
+    from lib import websites as W
+    company = ch_company(r)
+    cands = [d for d in W.domain_candidates(company["name"], "UK") if not NOT_OWN_SITE.search(d)]
+    if any(normalize_domain(d) in known for d in cands):
+        return "bekannt", None  # Domain steht schon in prospects (meist dieselbe Firma aus Overture)
+    examined = 0
+    for dom in cands:
+        if not resolves(dom):
+            continue
+        site = examine("https://" + dom, company, fetcher)
+        if site is None:
+            continue
+        examined += 1
+        if site["verified"] and not site["conflicts"]:
+            return "gefunden", site
+        if examined >= MAX_EXAMINED:
+            break
+    return "keine_website", None
+
+
+def cmd_uk_register(args) -> int:
+    """S2-Käufer UK aus Companies House: Website finden und belegen, Webdesign-Nachweis, unveränderte Prüfregel.
+    Speichert nur Firmen mit bestätigter Website und Webdesign-Bezug (ok / call_only / rejected wie cmd_run)."""
+    from lib.db import DB
+    from lib.owner_settings import stop_if_paused, load as load_owner_settings
+    from lib import websites as W
+    from enrich import Fetcher
+    from extraktor.sources import uk_ch_buyers
+    started_at = dt.datetime.now(dt.timezone.utc).isoformat()
+    db = DB()
+    if stop_if_paused(db, "kunden-werk", log):
+        return 0
+    if not pair_producing("S2", "UK"):
+        log("S2/UK ruht (lib/laender) – nichts zu tun")
+        return 0
+    if "UK" in set(load_owner_settings(db)["buyer_countries_off"] or []):
+        log("Kunden-Werk UK im Dashboard ausgeschaltet – nichts zu tun")
+        return 0
+    cfg = load_countries()
+    generic = {g.lower() for g in cfg.get("generic_local_parts") or []}
+    blocked = {r["value"].lower() for r in db.select_all("suppression", {"select": "value"}) if r.get("value")}
+    known: set[str] = set(json.loads(KNOWN.read_text())["domains"]) if KNOWN.exists() else set()
+    seen: dict[str, str] = json.loads(CH_SEEN.read_text()) if CH_SEEN.exists() else {}
+    today = dt.date.today()
+    rows = uk_ch_buyers.load(CH_LIST_DIR, log=log)
+    todo = ch_order(rows, seen, today, args.shard, tail=args.tail)[:args.max]
+    if not KNOWN.exists():  # ohne Zwischenspeicher: Namens-Domains gezielt in prospects nachschlagen
+        from lib import websites as W
+        doms = sorted({normalize_domain(x) for r in todo for x in W.domain_candidates(r["name"], "UK")} - {""})
+        known |= known_domains(db, doms)
+    log(f"Companies House S2/UK: {len(rows)} Firmen in der Liste, {len(todo)} in diesem Lauf "
+        f"({len(seen)} schon versucht, {len(known)} Käufer-Domains bekannt)")
+    fetcher = Fetcher()
+    deadline = time.monotonic() + args.deadline_min * 60 if args.deadline_min else 0
+    stats, lock, batch, examples = Counter(), threading.Lock(), [], []
+
+    def forget(dom: str) -> None:
+        with fetcher.lock:  # Seiten nicht im Speicher halten (lange Läufe)
+            for k in [k for k in fetcher.cache if dom and dom in k]:
+                fetcher.cache.pop(k, None)
+
+    def work(r):
+        if deadline and time.monotonic() >= deadline:
+            stats["später"] += 1
+            return
+        try:
+            state, site = ch_find_site(r, fetcher, known)
+            if state != "gefunden":
+                with lock:
+                    stats[state] += 1
+                    seen[r["n"]] = today.isoformat()
+                return
+            d = ch_buyer(r, site)
+            res = site_scan(d["website"], fetcher)
+            ev = uk_ch_buyers.web_evidence(W.page_text(res.get("html") or ""))
+            if not ev:
+                with lock:
+                    stats["kein_webbezug"] += 1
+                    seen[r["n"]] = today.isoformat()
+                forget(d["domain"])
+                return
+            row = check_one(d, fetcher, cfg, generic, blocked)
+            row["check_reason"] = f"{row['check_reason']} | {CH_MARK}: Website „{ev}“"[:500]
+            forget(d["domain"])
+        except Exception as exc:  # noqa: BLE001 - eine Firma darf den Lauf nicht beenden
+            with lock:
+                stats["fehler"] += 1
+            log(f"Fehler {r['n']}: {type(exc).__name__}")
+            return
+        with lock:
+            seen[r["n"]] = today.isoformat()
+            known.add(row["domain"])
+            stats[row["check_status"]] += 1
+            stats[f"S2/UK:{row['check_status']}"] += 1
+            if len(examples) < 40:
+                examples.append(f"{row['check_status']}: {row['domain']} ({row.get('legal_form')}, {row.get('email') or '-'})")
+            batch.append(row)
+            if len(batch) >= 50 and not args.dry_run:
+                flush()
+
+    def flush():
+        part = batch[:]
+        batch.clear()
+        if part:
+            db.insert("prospects", part, upsert_on="domain", ignore_duplicates=True)
+
+    from lib.heartbeat import Heartbeat
+    with Heartbeat(db, "kunden-werk", "uk-register") as hb, ThreadPoolExecutor(max_workers=args.workers) as ex:
+        for k, _ in enumerate(ex.map(work, todo)):
+            if k % 100 == 0:
+                hb.update(processed=k, green=stats["ok"])
+    with lock:
+        if not args.dry_run:
+            flush()
+        # auch im Probelauf: die Seiten wurden heute abgerufen (höchstens 1×/Tag je Seite)
+        CH_SEEN.parent.mkdir(parents=True, exist_ok=True)
+        CH_SEEN.write_text(json.dumps(seen, separators=(",", ":")))
+    tried = sum(stats[k] for k in ("ok", "call_only", "rejected", "keine_website", "kein_webbezug", "bekannt"))
+    log(f"fertig{' (Probelauf, nichts gespeichert)' if args.dry_run else ''}: {tried} Firmen versucht – "
+        f"{stats['ok']} neue Käufer per E-Mail (ok), {stats['call_only']} nur Anruf/Brief, {stats['rejected']} ohne "
+        f"Kontaktweg, {stats['keine_website']} ohne belegte Website, {stats['kein_webbezug']} ohne Webdesign-Bezug, "
+        f"{stats['bekannt']} schon bekannt, {stats['fehler']} Fehler, {stats['später']} später")
+    for e in examples:
+        log(f"  {e}")
+    if not args.dry_run:
+        from lib.run_stats import record, rows_from_buyer_stats
+        record(db, "kunden-werk", rows_from_buyer_stats({k: v for k, v in stats.items() if "/" in k}, len(todo)),
+               started_at, log)
+    return 0
+
+
 def cmd_stand(args) -> int:
     from lib.db import DB
     db = DB()
@@ -1210,7 +1387,16 @@ def main(argv=None) -> int:
     w.add_argument("--workers", type=int, default=16)
     w.add_argument("--deadline-min", type=float, default=0)
     w.add_argument("--dry-run", action="store_true", help="nur zählen, nichts speichern")
+    u = sub.add_parser("uk-register", help="S2-Käufer UK aus Companies House (Website finden, belegen, prüfen)")
+    u.add_argument("--max", type=int, default=3000)
+    u.add_argument("--workers", type=int, default=16)
+    u.add_argument("--shard", default="")
+    u.add_argument("--deadline-min", type=float, default=0)
+    u.add_argument("--dry-run", action="store_true", help="nur zählen, nichts speichern")
+    u.add_argument("--tail", action="store_true", help="vom Ende der Reihenfolge (Probelauf)")
     args = ap.parse_args(argv)
+    if args.cmd == "uk-register":
+        return cmd_uk_register(args)
     if args.cmd == "fr-webdesign":
         return cmd_frweb(args)
     if args.cmd == "regeln":

@@ -206,9 +206,57 @@ jobs:
       - name: FR Webagenturen schärfen (S2)
         run: python scripts/kundenwerk.py fr-webdesign --max 10000 --workers 16 --deadline-min 25 | tee -a "$GITHUB_STEP_SUMMARY"
 
+  uk_register:
+    # JARVIS-Agent 2 (06.10.2026): Overture-Pool S2/UK durchgeprüft -> neue Käuferquelle Companies House „Free Company
+    # Data Product“ (BasicCompanyData, monatlich, ohne Konto/Schlüssel): aktive Ltd/PLC/LLP mit SIC 62012/63120/74100/
+    # 73110. Website nur über Domain-Varianten des Namens mit Beleg auf der Seite (Registernummer/Name/PLZ,
+    # lib.websites), robots.txt, 1 Anfrage/s je Domain; Firmen ohne Website frühestens nach 30 Tagen erneut
+    # (kunden_ch_seen.json). Nur mit Webdesign-Nachweis auf der Website, dann unveränderte Prüfregel. Sendet nie.
+    needs: pool
+    if: needs.pool.outputs.an == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - uses: actions/cache/restore@v4
+        with:
+          path: out/cache/kunden_known.json
+          key: kunden-known-${{ github.run_id }}
+      # Firmenliste (kompakt, ~20 MB) je Monat; ohne sie lädt der Schritt die Massendaten einmal (~500 MB)
+      - id: chlist
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/ch_s2
+          key: kunden-ch-s2-v1-${{ needs.pool.outputs.monat }}
+      - uses: actions/cache/restore@v4
+        with:
+          path: out/cache/kunden_ch_seen.json
+          key: kunden-ch-seen-${{ github.run_id }}
+          restore-keys: kunden-ch-seen-
+      - name: UK-Käufer aus Companies House prüfen und speichern (S2)
+        run: python scripts/kundenwerk.py uk-register --max 6000 --workers 16 --deadline-min 35 | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Firmenliste sichern
+        if: always() && steps.chlist.outputs.cache-hit != 'true' && hashFiles('out/cache/ch_s2/*.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: out/cache/ch_s2
+          key: kunden-ch-s2-v1-${{ needs.pool.outputs.monat }}
+      - name: Versuchte Firmen sichern
+        if: always() && hashFiles('out/cache/kunden_ch_seen.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: out/cache/kunden_ch_seen.json
+          key: kunden-ch-seen-${{ github.run_id }}
+
   weiter:
     # sofort den nächsten Lauf starten (nur bei Schalter an und echter Laufzeit, sonst Cron/Wachhund)
-    needs: [pool, plan, pruefen, nachpruefen, fr_webdesign]
+    needs: [pool, plan, pruefen, nachpruefen, fr_webdesign, uk_register]
     if: always() && needs.pool.outputs.an == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
