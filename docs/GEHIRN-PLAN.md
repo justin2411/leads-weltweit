@@ -26,6 +26,16 @@ Visualisierung = JARVIS-Trichter ohne Scanner, Ziel-Ring 25.000 € mit Zeitstra
 **Offen beim Inhaber:** `SEED_INBOXES` (ja), Bestätigungsknopf Abmeldeseite (ja), Zweit-Domains (nach 1. Antwort),
 Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 
+## Lagebild (06.10.2026, 04:40 Berliner Zeit)
+- **FR-Premium-Rückgang ist kein Verlust:** Der Proben-Vorrat baute 03:36 fünf FR-Proben mit 10/10 Premium – 50 Leads
+  reserviert. #487 hat keinen frischen FR-Premium-Lead unter die Schwelle gedrückt. Nichts geändert.
+- **Nur noch ein Postfach sendet:** Postfach-Notbremse hat Postfach 1 (seit 00:08) gestoppt, Postfach 3 liegt seit dem
+  Neustart über 5 % und stoppt beim nächsten Lauf. Versand fällt von ~290 auf ~140 Erstmails/Tag. Neustart nur Inhaber
+  („Braucht dich“). Nichts gelockert.
+- **Gegenmittel ohne Lockerung:** US hat deutlich mehr Rückläufer als UK/FR → Versand-Anteil US gesenkt (Länder-Grenze
+  im Regler 110 → 40, UK/FR unverändert), damit das letzte Postfach nicht auch in die Notbremse läuft.
+- Speicher 5,6 GB (Hinweis), Werke laufen, Stichproben FR/UK grün, US gelb.
+
 ## Lagebild (06.10.2026, 02:40 Berliner Zeit)
 - **FR-Fehlerquote 5,1 % ist kein Kundenfehler:** Das ist die Erstprüfung frischer Leads (Filter vor der Auslieferung).
   Im Vorrat FR praktisch fehlerfrei, Tagesstichprobe 2,0 % – kein Eingriff. Ampel nur nach Stichprobe/Vorrat lesen.
@@ -145,6 +155,9 @@ Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 - Käufer ok (S2): US 28.782, UK 2.623, FR 1.285. DB 5,1 GB.
 
 ## Nächster Schritt
+- **Prüfpunkt Sa 10.10., 10:00:** Zustellrate (gs_zustellrate) ≥ 0,96 und leads@ unter 5 % Rückläufern. Senden wieder
+  3 Postfächer (Inhaber-Neustart): US-Grenze zurück auf 110. Fällt leads@ trotzdem über 4,5 %: US vorerst auf 0.
+- **Prüfpunkt Do 08.10.:** Beleg-Einstieg US braucht ≥ 100 B-Mails – bei US 40/Tag dauert das länger; Start notfalls in UK.
 - **Prüfpunkt Mo 12.10.:** Funktion signalwerk.aufraeumen vorhanden (Inhaber bestätigt), Trockenlauf ohne Warnung.
 - **Prüfpunkt Mi 07.10., 12:00:** kpi-tag-Läufe 06.10. ohne Zeitüberschreitung; leads last_autovacuum < 24 h alt.
 - **Prüfpunkt Mi 07.10., 12:00:** kpi_daily hat für 05.10. und 06.10. je einen Abschluss (updated_at ab 23:00 deutscher
