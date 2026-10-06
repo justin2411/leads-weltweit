@@ -26,6 +26,16 @@ Visualisierung = JARVIS-Trichter ohne Scanner, Ziel-Ring 25.000 € mit Zeitstra
 **Offen beim Inhaber:** `SEED_INBOXES` (ja), Bestätigungsknopf Abmeldeseite (ja), Zweit-Domains (nach 1. Antwort),
 Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 
+## Lagebild (06.10.2026, 06:40 Berliner Zeit)
+- **„Neue Käufer steht still“ ist kein Ausfall:** Das Kunden-Werk läuft (13 Teile, alle 5 min), findet aber keine
+  ungeprüften Webagenturen in US/UK/FR mehr – der Käufer-Pool ist durchgeprüft. Bisher stand das als rot da, weil leere
+  Läufe nichts in run_stats schrieben. Jetzt: Zeile „Pool leer“, Ampel gelb „Quelle erschöpft“.
+- **Engpass der nächsten Woche: UK-Käufer.** Noch nicht angeschriebene mail-fähige Käufer reichen UK nur wenige Tage,
+  FR etwa zwei Wochen, US lange. Neue UK-Käuferquelle hat Vorrang (Auftrag an den Quellen-Agenten).
+- **Probe-Formular-Test verworfen:** Die „Probe anfordern“-Klicks UK fielen in dieselbe Zehntelsekunde wie Klicks auf
+  Fläche und Video – Link-Scanner, keine Menschen. Echte Formular-Starts: 1 → 1 Probe. Kein Verlust am Formular messbar.
+- Postfächer: info@ seit 00:08 gestoppt, webagency@ seit 03:52 ohne Versand – es sendet nur leads@. Neustart nur Inhaber.
+
 ## Lagebild (06.10.2026, 04:40 Berliner Zeit)
 - **FR-Premium-Rückgang ist kein Verlust:** Der Proben-Vorrat baute 03:36 fünf FR-Proben mit 10/10 Premium – 50 Leads
   reserviert. #487 hat keinen frischen FR-Premium-Lead unter die Schwelle gedrückt. Nichts geändert.
@@ -155,6 +165,9 @@ Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 - Käufer ok (S2): US 28.782, UK 2.623, FR 1.285. DB 5,1 GB.
 
 ## Nächster Schritt
+- **Prüfpunkt Di 06.10., 12:00:** Datenfluss „Neue Käufer“ gelb „Quelle erschöpft“ statt rot; run_stats hat
+  Kunden-Werk-Zeilen mit pool_leer. **Prüfpunkt Fr 09.10.:** neue UK-Käuferquelle liefert ≥ 300 Käufer mit Status ok,
+  sonst UK-Anteil im Versand zugunsten FR/US senken, bevor UK leerläuft.
 - **Prüfpunkt Sa 10.10., 10:00:** Zustellrate (gs_zustellrate) ≥ 0,96 und leads@ unter 5 % Rückläufern. Senden wieder
   3 Postfächer (Inhaber-Neustart): US-Grenze zurück auf 110. Fällt leads@ trotzdem über 4,5 %: US vorerst auf 0.
 - **Prüfpunkt Do 08.10.:** Beleg-Einstieg US braucht ≥ 100 B-Mails – bei US 40/Tag dauert das länger; Start notfalls in UK.

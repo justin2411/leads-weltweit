@@ -64,6 +64,31 @@ class JudgeTest(unittest.TestCase):
         self.assertTrue(tx["titel"].startswith("Rot:"))
 
 
+class PoolLeerTest(unittest.TestCase):
+    def test_exhausted_pool_is_yellow_with_own_text(self):
+        a = {x["station"]: x for x in df.judge(stand(kaeufer=25), T, empty={"kaeufer"})}["kaeufer"]
+        self.assertEqual(a["stufe"], "gelb")  # ohne Pool-leer wäre das rot (25 h ≥ 24 h)
+        self.assertTrue(a["erschoepft"])
+        tx = df.texts(a)
+        self.assertIn("erschöpft", tx["titel"])
+        self.assertLessEqual(len(tx["titel"]), 60)
+        self.assertLessEqual(len(tx["grund"]), 160)
+        self.assertLessEqual(len(tx["update"]), 400)
+        self.assertEqual({x["station"]: x for x in df.judge(stand(kaeufer=25), T)}["kaeufer"]["stufe"], "rot")
+        ok = {x["station"]: x for x in df.judge(stand(), T, empty={"kaeufer"})}["kaeufer"]
+        self.assertEqual(ok["stufe"], "ok")
+        self.assertNotIn("erschoepft", ok)
+
+    def test_pool_empty_needs_fresh_empty_runs_only(self):
+        def run(h, leer):
+            return {"werk": "kunden-werk", "finished_at": (T - dt.timedelta(hours=h)).isoformat(),
+                    "extra": {"pool_leer": True} if leer else {"lauf": {"ok": 3}}}
+        self.assertTrue(df.pool_empty(FakeDB({"run_stats": [run(0.2, True), run(1, True)]}), T))
+        self.assertFalse(df.pool_empty(FakeDB({"run_stats": [run(0.2, True), run(1, False)]}), T))
+        self.assertFalse(df.pool_empty(FakeDB({"run_stats": [run(5, True)]}), T))  # zu alt
+        self.assertFalse(df.pool_empty(FakeDB({"run_stats": []}), T))
+
+
 class StillstandTest(unittest.TestCase):
     def run_it(self, db, still, t=T):
         db.rpc_handlers["datenfluss_stand"] = lambda a, p: stand(**still)
