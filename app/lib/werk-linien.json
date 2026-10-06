@@ -34,7 +34,7 @@
       "what": "US-Firmen ohne Website mit E-Mail aus Overture (Neuzugänge im Monatsauszug)",
       "args": "--segments S2 --countries US --fmcsa-days 0 --formd-days 0 --us-overture --s2-limit 400000 --per 20000 --max-tries 20000" },
     { "id": "s2-ukfr", "premium": "ja", "werk": "lead-werk", "label": "Ohne Website UK·FR (Overture 2. Stufe + RGE)", "short": "OHNE·UKFR", "segment": "S2", "country": "UK,FR", "default": 2, "max": 6, "workers": 32,
-      "what": "Premium-Quellen ohne Website UK·FR: neu registrierte Charities UK, neue Bio-Betriebe FR, neue RGE-Qualifikationen FR (Nur Premium 05.10.2026: Overture-Teil aus, er bringt kein Premium)",
+      "what": "Premium-Quellen ohne Website UK·FR: neu registrierte Charities UK, neue Bio-Betriebe FR, neue RGE-Qualifikationen FR, Umzüge FR laut BODACC (DILA-Rohdaten, Scout R63) (Nur Premium 05.10.2026: Overture-Teil aus, er bringt kein Premium)",
       "args": "--segments S2 --countries UK,FR --fmcsa-days 0 --formd-days 0 --s2-min-conf 0.4 --s2-limit 0 --rge 20000 --bio 5000 --charity 2000 --per 40000 --max-tries 40000" },
     { "id": "s2-neu", "werk": "lead-werk", "label": "Ohne Website FI·SG·MX·BR (Overture)", "short": "OHNE·NEU", "segment": "S2", "country": "FI,SG,MX,BR", "default": 1, "max": 4, "workers": 16,
       "what": "Firmen ohne Website mit E-Mail in Finnland, Singapur, Hongkong, Mexiko, Brasilien (neue Mail-Länder 04.10.2026, je Land 1.200 je Teil und Lauf)",

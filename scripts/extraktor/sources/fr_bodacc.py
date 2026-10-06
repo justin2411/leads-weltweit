@@ -4,7 +4,7 @@ ABGESCHALTET (05.10.2026, CLAUDE.md §2 „robots.txt beachten“): bodacc-datad
 sperren in robots.txt `/api/` für alle Bots außer Googlebot – auch die Export-Schnittstelle, die hier genutzt wurde.
 `fetch()` ruft deshalb nichts mehr ab und liefert eine leere Liste (Hinweis im Log); bestehende Leads bleiben.
 Geprüfte Ersatzquellen (Logbuch docs/QUELLEN-SCOUT.md): DILA-Rohdaten echanges.dila.gouv.fr/OPENDATA/BODACC
-(von GitHub Actions aus nicht erreichbar: Verbindung wird zurückgesetzt), Ressourcen-Downloads auf
+(06.10.2026 von GitHub erreichbar, kein robots.txt: dort laufen seit Scout R63 die Umzüge, fr_bodacc_moves.py), Ressourcen-Downloads auf
 static.data.gouv.fr (robots.txt: Disallow /resources) und files.data.gouv.fr (Disallow /), Recherche d'entreprises
 (erlaubt, aber ohne Filter/Sortierung nach Gründungsdatum, kein Gründungs-Feed). Die Umwandlung einer
 BODACC-Meldung in einen Kandidaten (`to_candidate`, `dirigeant`) bleibt für eine erlaubte Quelle im selben Format.
