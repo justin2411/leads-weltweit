@@ -282,3 +282,9 @@ class TestCompleteOnlyS2(unittest.TestCase):
         data = (head + row).encode()
         self.assertNotIn(b"Acme", complete_only(data, "S5"))
         self.assertIn(b"Acme", complete_only(data, "S2"))
+
+
+def test_page_text_mailto_url_dekodiert():
+    from lib.websites import page_text
+    t = page_text('<a href="mailto:%20service@example.com">Mail</a><a href="tel:+1%20555%20123">Tel</a>')
+    assert "service@example.com" in t and "%20" not in t and "+1 555 123" in t

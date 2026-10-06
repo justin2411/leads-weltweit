@@ -17,7 +17,7 @@ import html as _html
 import json
 import re
 import unicodedata
-from urllib.parse import urljoin, urlparse
+from urllib.parse import unquote, urljoin, urlparse
 
 # ---------------------------------------------------------------------------
 # Firmennamen und Domain-Kandidaten
@@ -134,7 +134,8 @@ def page_text(page: str) -> str:
     """Sichtbarer Text (grob) inkl. entschlüsselter Cloudflare-E-Mails und mailto/tel-Zielen."""
     page = page or ""
     extra = [_decode_cfemail(h) for h in re.findall(r'data-cfemail=["\']([0-9a-fA-F]+)["\']', page)]
-    extra += re.findall(r'href=["\'](?:mailto|tel):([^"\'?]+)', page, re.I)
+    # mailto/tel-Ziele URL-dekodieren (Bounce 04.10.2026: „mailto:%20service@…“ wurde als Adresse „%20service@…“ übernommen)
+    extra += [unquote(x).strip() for x in re.findall(r'href=["\'](?:mailto|tel):([^"\'?]+)', page, re.I)]
     t = re.sub(r"<(script|style|noscript)[^>]*>.*?</\1>", " ", page, flags=re.I | re.S)
     t = re.sub(r"<br\s*/?>|</(p|div|li|h[1-6]|tr|td|address|span)>", "\n", t, flags=re.I)
     t = re.sub(r"<[^>]+>", " ", t)
