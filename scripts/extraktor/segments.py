@@ -185,6 +185,12 @@ def fits(seg: str, c: dict) -> tuple[bool, str]:
             ok = bool(c.get("person_name"))
             return ok, "named owner of a newly registered business" if ok else "no named owner"
         return False, "source does not carry this signal"
+    if c["source"] == "bodacc_move":
+        # FR: Umzug laut BODACC (Quellen-Scout R63, DILA-Rohdaten) – Anlass für Webagenturen, Kontakt nur von der
+        # eigenen Website
+        if seg != "S2":
+            return False, "source only carries the relocation signal"
+        return True, "company moved: website, legal notice and listings need the new address"
     if c["source"] in ("companies_house", "bodacc"):
         if seg == "S4":
             ok = insured_sector(c)
@@ -586,6 +592,32 @@ def texts_website(c: dict) -> dict:
             "urgency_reason": WEB_WHY[lang][kind]}
 
 
+def texts_move(c: dict) -> dict:
+    """S2/FR Umzug laut BODACC: Datum, neue Adresse, Befund der eigenen Website (falls vorhanden) – nur Belegtes."""
+    f, name = c["facts"], c["name"]
+    pub, moved = f["published_on"], f.get("moved") or "siège"
+    where = f"{c['street']}, {c['zip']} {c['city']}"
+    extra = ""
+    if f.get("findings"):
+        order = ("website_broken", "no_https", "website_not_mobile", "website_outdated")
+        x = sorted(f["findings"], key=lambda x: order.index(x["type"]) if x["type"] in order else 9)[0]
+        if x.get("detail") in WEB_FR:
+            extra = " ; de plus, " + WEB_FR[x["detail"]].format(domain=f.get("domain") or "", value=x.get("value") or "")
+    signal = (f"{name} (SIREN {f['siren']}) : transfert du {moved} publié au BODACC le {jour(pub)}, "
+              f"nouvelle adresse {where}{extra}.")
+    form = (f.get("form") or "société").lower()
+    site = f", site web {f['domain']}" if f.get("domain") else ""
+    info = (f"{name} est une {form} (SIREN {f['siren']}) installée à {c['city']} ({c['zip']}){site} : transfert du "
+            f"{moved} publié au BODACC le {jour(pub)}.")
+    opener = (f"Bonjour, j'ai vu au BODACC du {jour(pub)} que {name} a transféré son {moved} à {c['city']}. "
+              f"Votre site et vos fiches en ligne affichent-ils déjà la nouvelle adresse ?")
+    why = ("Après un transfert, le site, les mentions légales, la fiche Google et les annuaires doivent afficher la "
+           "nouvelle adresse, sinon les clients se trompent d'adresse."
+           + (" Le site présente en plus un défaut visible." if extra else ""))
+    return {"signal": signal, "signal_date": pub, "company_info": info, "opener": opener,
+            "urgency": "high" if extra else "medium", "urgency_reason": why}
+
+
 def texts_jobs(c: dict) -> dict:
     f, name = c["facts"], c["name"]
     n, oldest, titles = f["open_roles"], f.get("oldest_posted"), f.get("titles") or []
@@ -695,6 +727,8 @@ def texts(seg: str, c: dict) -> dict:
         return texts_website(c)
     if c["source"] == "companies_house":
         return texts_uk(seg, c)
+    if c["source"] == "bodacc_move":
+        return texts_move(c)
     if c["source"] == "bodacc":
         return texts_fr(seg, c)
     f, name, first = c["facts"], c["name"], (c.get("person_name") or "").split(" ")[0].title()
