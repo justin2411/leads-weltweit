@@ -24,6 +24,9 @@ def _r(x: float) -> int:
 
 
 WEB_SIGNALS = {"no_website", "website_outdated", "website_not_mobile", "no_https", "website_broken"}
+# Registerquelle + Website-Prüfung in einem Lead (z. B. „Données essentielles … (DECP) + website check“): Quell-Link ist
+# der datierte Registereintrag
+COMBINED_REGISTER = re.compile(r"\+\s*website check\s*$", re.I)
 
 
 @lru_cache(maxsize=1)
@@ -99,12 +102,15 @@ def alter(iso: str, heute: dt.date, lang: str) -> str:
 def beleg(signal: str, website: str, source_url: str, source_date: str, lang: str, source_name: str = "") -> dict | None:
     """Beleg-Link einer Lead-Karte: Website-Befund → die geprüfte Website selbst, sonst der Quell-Link; mit Abrufdatum.
     Website-Befund mit datiertem Registereintrag (z. B. Companies-House-Eigentümerwechsel): der Registereintrag ist
-    der Anlass und damit der Beleg (Premium-Labor 05.10.2026); den Website-Zustand nennt der Lead-Text mit Prüfdatum."""
+    der Anlass und damit der Beleg (Premium-Labor 05.10.2026); den Website-Zustand nennt der Lead-Text mit Prüfdatum.
+    Gleiches gilt für jede Registerquelle „… + website check“ (Premium-Labor 06.10.2026: DECP-Zuschlag FR,
+    Environment-Agency-Eintrag UK zeigten bisher nur die Website – der datierte Anlass war im PDF nicht belegt)."""
     from lib.premium import DATED_SOURCES
     site = (website or "").strip()
     url = (source_url or "").strip()
-    register = bool(DATED_SOURCES.search(source_name or "")) and "radar" not in (source_name or "").lower() \
-        and bool(re.match(r"^https?://", url))
+    name = source_name or ""
+    register = (bool(DATED_SOURCES.search(name)) or bool(COMBINED_REGISTER.search(name))) \
+        and "radar" not in name.lower() and bool(re.match(r"^https?://", url))
     if signal in WEB_SIGNALS and site and signal != "no_website" and not register:
         url = site if re.match(r"^https?://", site) else f"https://{site}"
     if not re.match(r"^https?://", url):
