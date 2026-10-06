@@ -18,6 +18,7 @@ on:
     paths: ["video/v3/segments/de-*.json", "video/v3/aussprache-de.json", ".github/workflows/stimme.yml"]
 permissions:
   contents: write
+concurrency: { group: werke, cancel-in-progress: false }   # Drossel 06.10.2026: ein schweres Werk zur Zeit
 jobs:
   stimme:
     runs-on: ubuntu-latest

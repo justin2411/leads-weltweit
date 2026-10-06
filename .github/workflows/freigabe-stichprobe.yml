@@ -5,9 +5,9 @@
 # Sendet nichts, löscht nichts, lädt keine Lead-Daten hoch (öffentliches Repo) – nur Zahlen in der Zusammenfassung.
 name: freigabe-stichprobe
 on:
-  schedule: [{ cron: "7 5 * * *" }]   # 07:07 MESZ
+  schedule: [{ cron: "23 5 * * *" }]   # 07:23 MESZ
   workflow_dispatch:
-concurrency: { group: freigabe-stichprobe, cancel-in-progress: false }
+concurrency: { group: takt, cancel-in-progress: false }   # Drossel 06.10.2026: leichte Zeitpläne nacheinander
 permissions:
   contents: read
 jobs:

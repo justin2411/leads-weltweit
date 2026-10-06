@@ -11,6 +11,7 @@ import { cleanText, validEmail, wishKeys, wishNote } from "@/content/sample-wish
 import { after } from "next/server";
 import { dispatchSampleWorkflow, previewFromStock, sendFromStock, STOCK_BUCKET, type StockDeps } from "@/lib/sample-stock";
 import { recordAbMarks } from "@/lib/ab-data";
+import { ACTIONS_DIRECT_DISPATCH } from "@/lib/drossel";
 import { pushAlarmSafe } from "@/lib/push";
 import { isOwnerAddress } from "@/lib/owner-address";
 
@@ -237,7 +238,8 @@ async function deliverNow(r: { id: string; email: string; company: string; segme
     await db().from("sample_requests").update({ claimed_at: null }).eq("id", r.id).eq("status", "new");
   } // bei "error" bleibt die Sperre 15 Minuten (finish_sample_stock gibt sie frei, wenn Resend sicher ablehnte)
   await sendConsentMail(r.email, r.m.subject, r.m.text, r.m.html).catch(() => null);
-  await dispatchSampleWorkflow(fetch, process.env.GH_DISPATCH_TOKEN).catch(() => false);
+  // Actions-Drossel (06.10.2026): Proben-Vorrat nicht sofort anstoßen – der Zeitplan (alle 3 h) übernimmt
+  if (ACTIONS_DIRECT_DISPATCH) await dispatchSampleWorkflow(fetch, process.env.GH_DISPATCH_TOKEN).catch(() => false);
 }
 
 /** Bestätigung der Probe-Anfrage: Text- und HTML-Version, ohne Preise und ohne Zeitversprechen.

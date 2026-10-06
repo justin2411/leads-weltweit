@@ -3,6 +3,7 @@ name: morgenbericht
 on:
   schedule: [{ cron: "47 4 * * *" }]
   workflow_dispatch:
+concurrency: { group: takt, cancel-in-progress: false }   # Drossel 06.10.2026: leichte Zeitpläne nacheinander
 jobs:
   doppelt:
     # Prüfung 04.10.2026: fiel der geplante Lauf aus, startet ihn der Wachhund nach (workflow_dispatch); kommt der

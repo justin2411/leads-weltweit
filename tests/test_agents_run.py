@@ -290,19 +290,17 @@ class WiringTest(unittest.TestCase):
         steps = wf["jobs"]["run"]["steps"]
         runs = " ".join(s.get("run") or "" for s in steps)
         self.assertIn("scripts/pools.py fill $APPLY", runs)
-        self.assertIn("gh workflow run wachhund.yml", runs)
-        self.assertEqual(wf["jobs"]["run"]["permissions"]["actions"], "write")
+        # Actions-Drossel (Inhaber 06.10.2026): kein Wachhund-Anstoß, ein Zeitplan alle 3 h, Agenten nach dem Speicher
+        self.assertNotIn("gh workflow run", runs)
+        self.assertNotIn("actions", wf["jobs"]["run"]["permissions"])
+        self.assertEqual(len(wf[True]["schedule"]), 1)
         cron = wf[True]["schedule"][0]["cron"]
         self.assertEqual(int(cron.split()[0]) % 2, 1)
-        self.assertIn(f"github.event.schedule == '{cron}'", wf["jobs"]["run"]["if"])
-        # eigene Agenten alle 15 min, Vorab-Check beendet ohne fälligen Agenten sofort
-        quick = wf[True]["schedule"][1]["cron"]
-        mins = [int(m) for m in quick.split()[0].split(",")]
-        self.assertEqual(len(mins), 4)
-        self.assertEqual({(b - a) for a, b in zip(mins, mins[1:])}, {15})
-        self.assertEqual(quick.split()[1:], ["*", "*", "*", "*"])
+        self.assertEqual(cron.split()[1], "1-23/3")
+        self.assertEqual(wf["concurrency"]["group"], "takt")
         ag = wf["jobs"]["agenten"]
-        self.assertIn(f"github.event.schedule != '{cron}'", ag["if"])
+        self.assertEqual(ag["needs"], "run")
+        self.assertEqual(ag["if"], "${{ !cancelled() }}")
         aruns = [s.get("run") or "" for s in ag["steps"]]
         self.assertTrue(any("agents_run.py --faellig" in r for r in aruns))
         self.assertTrue(any("scripts/agents_run.py $APPLY" in r for r in aruns))

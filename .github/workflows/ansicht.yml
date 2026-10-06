@@ -7,6 +7,7 @@ on:
     paths: [".github/ansicht.txt"]
 permissions:
   contents: write
+concurrency: { group: werke, cancel-in-progress: false }   # Drossel 06.10.2026: ein schweres Werk zur Zeit
 jobs:
   fotos:
     runs-on: ubuntu-latest

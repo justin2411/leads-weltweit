@@ -279,7 +279,7 @@ class WiringTest(unittest.TestCase):
         import yaml
         wf = yaml.safe_load((ROOT / ".github" / "workflows" / "dauerpruefung.yml").read_text())
         cron = (wf.get(True) or wf.get("on"))["schedule"][0]["cron"]
-        self.assertEqual(cron.split()[1:], ["*", "*", "*", "*"])
+        self.assertEqual(cron.split()[1:], ["2-23/3", "*", "*", "*"])   # Drossel 06.10.2026: alle 3 h
         self.assertNotEqual(cron.split()[0], "0")   # versetzt
         text = (ROOT / ".github" / "workflows" / "dauerpruefung.yml").read_text()
         self.assertIn("scripts/dauerpruefung.py run", text)

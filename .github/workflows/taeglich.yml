@@ -2,7 +2,7 @@
 # Nachfassmails -> Quellen aktualisieren -> Signale erkennen -> Website-Prüfung -> Proben -> neue Entwürfe (freigegeben).
 name: taeglich
 on:
-  schedule: [{ cron: "17 12 * * *" }]
+  schedule: [{ cron: "41 9 * * *" }]   # 11:41 MESZ (Drossel 06.10.2026: vor dem Lead-Werk 12:23 UTC)
   workflow_dispatch:
     inputs:
       uk_bulk:
@@ -10,7 +10,7 @@ on:
         description: "Neugründungen UK (Companies House) auch außerhalb des Montags importieren"
         type: boolean
         default: false
-concurrency: { group: recherche, cancel-in-progress: false }
+concurrency: { group: werke, cancel-in-progress: false }   # Drossel 06.10.2026: ein schweres Werk zur Zeit
 permissions:
   contents: write
 jobs:

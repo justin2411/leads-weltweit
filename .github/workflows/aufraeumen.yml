@@ -4,14 +4,14 @@
 # alte Laufzahlen/Herzschläge/Protokolle und verworfene Proben – nie Leads, Sperrliste, Nachrichten, Käufer, Kunden.
 name: aufraeumen
 on:
-  schedule: [{ cron: "41 2 * * *" }]   # 04:41 MESZ
+  schedule: [{ cron: "53 2 * * *" }]   # 04:53 MESZ
   workflow_dispatch:
     inputs:
       trocken:
         description: "nur Trockenlauf (nichts löschen)"
         type: boolean
         default: false
-concurrency: { group: aufraeumen, cancel-in-progress: false }
+concurrency: { group: takt, cancel-in-progress: false }   # Drossel 06.10.2026: leichte Zeitpläne nacheinander
 permissions:
   contents: read
 jobs:

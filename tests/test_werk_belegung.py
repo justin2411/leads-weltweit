@@ -13,6 +13,8 @@ import werk_belegung as B  # noqa: E402
 import werk_plan as W  # noqa: E402
 
 NOW = dt.datetime(2026, 10, 5, 0, 0, tzinfo=dt.timezone.utc)
+# Nachfüller-Logik ruht (Actions-Drossel 06.10.2026, MIN_BELEGT = 0); geprüft wird sie weiter mit dem alten Ziel 30
+MB = 30
 LEAD = None
 
 
@@ -75,7 +77,7 @@ class FillPlan(unittest.TestCase):
                  "web-north": "läuft (18 min je Teil) – unverändert", "s2-neu": "läuft (28 min je Teil)",
                  "s1-us-lca": "Quelle durchgeprüft (Ø 2 min) – 1 Wachplatz"}, nach={"web-us", "s2-us"})
         stats = {"web-north": {"cand_last": 900, "green_last": 50, "max_last": 18, "last_end": "2026-10-04T23:50:00+00:00"}}
-        start, _ = B.fill_plan(self.reg, r, stats, busy_lanes={"s2-ukfr"}, busy=12, now=NOW)
+        start, _ = B.fill_plan(self.reg, r, stats, busy_lanes={"s2-ukfr"}, busy=12, now=NOW, min_belegt=MB)
         self.assertNotIn("s2-ukfr", start)              # läuft schon -> nie doppelt
         self.assertEqual(start["web-us"], 1)            # Nachrang-Linie: keine Zusatzplätze
         self.assertEqual(start["s1-us-lca"], 1)         # Wachplatz bleibt 1
@@ -85,22 +87,22 @@ class FillPlan(unittest.TestCase):
 
     def test_never_over_total_slots(self):
         r = res({"web-north": 10, "s2-neu": 4})
-        start, _ = B.fill_plan(self.reg, r, {}, set(), busy=33, now=NOW)
+        start, _ = B.fill_plan(self.reg, r, {}, set(), busy=33, now=NOW, min_belegt=MB)
         self.assertLessEqual(33 + sum(start.values()), self.reg["total_slots"] - self.reg["reserve"])
-        self.assertEqual(B.fill_plan(self.reg, r, {}, set(), busy=38, now=NOW)[0], {})
+        self.assertEqual(B.fill_plan(self.reg, r, {}, set(), busy=38, now=NOW, min_belegt=MB)[0], {})
 
     def test_brake_and_locks_get_no_extra(self):
         r = res({"web-north": 2}, brake="drossel")
-        self.assertEqual(B.fill_plan(self.reg, r, {}, set(), busy=5, now=NOW)[0], {"web-north": 2})
-        self.assertEqual(B.fill_plan(self.reg, res({"web-north": 0}, brake="stopp"), {}, set(), busy=0, now=NOW)[0], {})
+        self.assertEqual(B.fill_plan(self.reg, r, {}, set(), busy=5, now=NOW, min_belegt=MB)[0], {"web-north": 2})
+        self.assertEqual(B.fill_plan(self.reg, res({"web-north": 0}, brake="stopp"), {}, set(), busy=0, now=NOW, min_belegt=MB)[0], {})
         r = res({"web-north": 2}, locks={"web-north": 2})
-        self.assertEqual(B.fill_plan(self.reg, r, {}, set(), busy=5, now=NOW)[0], {"web-north": 2})
+        self.assertEqual(B.fill_plan(self.reg, r, {}, set(), busy=5, now=NOW, min_belegt=MB)[0], {"web-north": 2})
 
     def test_short_lane_without_yield_rests(self):
         r = res({"web-uk": 1, "web-north": 1})
         stats = {"web-uk": {"max_last": 2, "green_last": 0, "last_end": "2026-10-04T23:40:00+00:00"},
                  "web-north": {"max_last": 2, "green_last": 0, "last_end": "2026-10-04T22:40:00+00:00"}}
-        start, _ = B.fill_plan(self.reg, r, stats, set(), busy=40 - 2 - 2, now=NOW)
+        start, _ = B.fill_plan(self.reg, r, stats, set(), busy=40 - 2 - 2, now=NOW, min_belegt=MB)
         self.assertNotIn("web-uk", start)   # vor 20 min kurz und leer -> ruht 60 min
         self.assertIn("web-north", start)   # vor 80 min -> wieder dran
 
@@ -111,7 +113,7 @@ class FillPlan(unittest.TestCase):
         self.assertTrue(B.recently_short("web-north", recent, NOW))
         self.assertFalse(B.recently_short("web-us", recent, NOW))
         self.assertFalse(B.recently_short("web-north", recent, NOW + dt.timedelta(minutes=15)))
-        start, _ = B.fill_plan(self.reg, res({"web-north": 3}), {}, set(), busy=36, now=NOW, recent=recent)
+        start, _ = B.fill_plan(self.reg, res({"web-north": 3}), {}, set(), busy=36, now=NOW, min_belegt=MB, recent=recent)
         self.assertEqual(start, {})
 
 
@@ -157,26 +159,30 @@ class Workflows(unittest.TestCase):
         self.assertIn("linien", wf[True]["workflow_dispatch"]["inputs"])
         self.assertIn("teile", wf[True]["workflow_dispatch"]["inputs"])
         self.assertIn("Linie", wf["run-name"])
-        self.assertIn("'lead-werk'", wf["concurrency"]["group"])  # Läufe für alle Linien weiter nacheinander
+        self.assertEqual(wf["concurrency"]["group"], "werke")  # Drossel 06.10.2026: ein schweres Werk zur Zeit
         plan = wf["jobs"]["plan"]
         self.assertEqual(plan["permissions"]["actions"], "read")
         self.assertIn("--github", plan["steps"][-1]["run"])
-        self.assertIn("werk-nachfuellen.yml", wf["jobs"]["weiter"]["steps"][-1]["run"])
+        self.assertNotIn("weiter", wf["jobs"])  # kein Selbst-Neustart, kein Nachfüller-Anstoß
 
     def test_nachfueller_and_kicks(self):
+        # Actions-Drossel (Inhaber 06.10.2026): Nachfüller ohne Zeitplan, niemand stößt ihn an, Skript startet nichts
         wf = _wf("werk-nachfuellen.yml")
-        self.assertEqual(wf["concurrency"]["group"], "werk-nachfuellen")
-        self.assertEqual(wf["permissions"]["actions"], "write")
+        self.assertEqual(set(wf[True]), {"workflow_dispatch"})
+        self.assertEqual(wf["concurrency"]["group"], "takt")
         run = " ".join(s.get("run", "") for s in wf["jobs"]["nachfuellen"]["steps"])
         self.assertIn("werk_belegung.py nachfuellen --apply", run)
         self.assertNotIn("send", run)
-        for name in ("kunden-werk.yml", "pruefer-werk.yml"):
-            steps = _wf(name)["jobs"]["weiter"]["steps"]
-            self.assertTrue(any("werk-nachfuellen.yml" in (s.get("run") or "") for s in steps), name)
+        self.assertNotIn("werk-takt.yml", run)
+        for name in ("kunden-werk.yml", "pruefer-werk.yml", "kontakt-werk.yml", "lead-werk.yml"):
+            code = "\n".join(l for l in (ROOT / ".github" / "workflows" / name).read_text(encoding="utf-8").splitlines()
+                             if not l.lstrip().startswith("#"))
+            self.assertNotIn("werk-nachfuellen.yml", code, name)
         import wachhund
-        job = next(j for j in wachhund.JOBS if j["wf"] == "werk-nachfuellen.yml")
-        self.assertEqual(job["cond"], "lead_suche")
-        self.assertEqual(wachhund.PAUSE_KEY["werk-nachfuellen.yml"], "lead-werk")
+        self.assertFalse(any(j["wf"] == "werk-nachfuellen.yml" for j in wachhund.JOBS))
+        self.assertFalse(B.drossel.DISPATCH_ERLAUBT)
+        with self.assertRaises(RuntimeError):
+            B.GitHub.dispatch(object(), "lead-werk.yml", {})  # Drossel greift vor jedem Aufruf
 
     def test_kunden_pool_uses_existing_cache(self):
         pool = _wf("kunden-werk.yml")["jobs"]["pool"]
@@ -199,21 +205,21 @@ class OtherWerke(unittest.TestCase):
     def test_brach_liegende_werke_starten_puffer_kunden(self):
         werke = [self.w("kunden-werk", "kunden", 14), self.w("kontakt-werk", "kontakt", 6),
                  self.w("pruefer-werk", "pruefer", 6)]
-        start, why = B.other_plan(werke, self.REG, busy=1, lead_sum=0)
+        start, why = B.other_plan(werke, self.REG, busy=1, lead_sum=0, min_belegt=MB)
         self.assertEqual(start["kontakt-werk"], 6)
         self.assertEqual(start["pruefer-werk"], 6)
         self.assertEqual(start["kunden-werk"], 16)  # 14 + Puffer, nie über max 16
         self.assertIn(W.MIN_WHY, why["kunden-werk"])
 
     def test_puffer_nur_bis_mindestbelegung(self):
-        start, _ = B.other_plan([self.w("kunden-werk", "kunden", 4)], self.REG, busy=20, lead_sum=0)
+        start, _ = B.other_plan([self.w("kunden-werk", "kunden", 4)], self.REG, busy=20, lead_sum=0, min_belegt=MB)
         self.assertEqual(start["kunden-werk"], 10)  # 20 + 10 = 30
 
     def test_nie_doppelt_pause_null_plaetze(self):
         werke = [self.w("kunden-werk", "kunden", 14, active=True),
                  self.w("kontakt-werk", "kontakt", 6, ok=False, why="pausiert durch Inhaber"),
                  self.w("pruefer-werk", "pruefer", 0)]
-        start, why = B.other_plan(werke, self.REG, busy=5, lead_sum=0)
+        start, why = B.other_plan(werke, self.REG, busy=5, lead_sum=0, min_belegt=MB)
         self.assertEqual(start, {})
         self.assertIn("läuft", why["kunden-werk"])
         self.assertIn("pausiert", why["kontakt-werk"])
@@ -222,11 +228,11 @@ class OtherWerke(unittest.TestCase):
     def test_nie_ueber_summe(self):
         cap = self.REG["total_slots"] - self.REG["reserve"]
         werke = [self.w("kunden-werk", "kunden", 14), self.w("kontakt-werk", "kontakt", 6)]
-        start, _ = B.other_plan(werke, self.REG, busy=cap - 8, lead_sum=0)
+        start, _ = B.other_plan(werke, self.REG, busy=cap - 8, lead_sum=0, min_belegt=MB)
         self.assertEqual(sum(start.values()), 8)
 
     def test_lead_starts_zaehlen_mit(self):
-        start, _ = B.other_plan([self.w("kunden-werk", "kunden", 4)], self.REG, busy=10, lead_sum=20)
+        start, _ = B.other_plan([self.w("kunden-werk", "kunden", 4)], self.REG, busy=10, lead_sum=20, min_belegt=MB)
         self.assertEqual(start["kunden-werk"], 4)  # 10 + 20 + 4 >= 30: kein Puffer
 
     def test_allowed(self):

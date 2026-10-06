@@ -14,6 +14,9 @@
 # scripts/werk_belegung.py) startet jede Linie als eigenen Lauf (Eingaben linien/teile) und neu, sobald sie fertig ist –
 # fertige Linien warten nicht mehr auf Nachzügler anderer Linien. Ohne Eingabe (Zeitplan, Wachhund, Dashboard) plant
 # der Lauf alle Linien wie bisher. Der Plan-Job lässt Linien aus, die ein anderer Lauf belegt (nie doppelt).
+# Actions-Drossel (Inhaber 06.10.2026: „fahr github actions erstmal runter“): alle 6 h, Gruppe „werke“ (ein schwerer
+# Lauf im Repo), Teile nacheinander (max-parallel 2, höchstens 5 Plätze laut Plan), Nebenquellen nacheinander nach den
+# Teilen, kein Selbst-Neustart, kein Anstoßen von Wachhund/Nachfüller.
 name: lead-werk
 # Teile-Läufe (05.10.2026, Mindestbelegung 30): jede Linie hat eine feste Aufteilung --shard i/K (K = max der Linie,
 # scripts/werk_plan.py lane_k). „· Teile“ im Titel kennzeichnet sie; der Nachfüller startet freie Teile einer laufenden
@@ -21,7 +24,7 @@ name: lead-werk
 run-name: ${{ inputs.linien && format('lead-werk · Linie {0} · Teile {1}', inputs.linien, inputs.shards) || 'lead-werk · Teile' }}
 on:
   schedule:
-    - cron: "23 */3 * * *"
+    - cron: "23 0,6,12,18 * * *"   # Drossel 06.10.2026: alle 6 h (vorher alle 3 h + Selbst-Neustart)
   workflow_dispatch:
     inputs:
       linien:
@@ -37,9 +40,8 @@ on:
         required: false
         default: ""
 # Linien-Läufe nebeneinander (Doppelbelegung verhindert der Plan-Job), Läufe für alle Linien nacheinander wie bisher
-concurrency:
-  group: ${{ inputs.linien && format('lead-werk-linie-{0}', github.run_id) || 'lead-werk' }}
-  cancel-in-progress: false
+# Drossel 06.10.2026: eine gemeinsame Gruppe für alle schweren Werke – nie zwei Werk-Läufe gleichzeitig
+concurrency: { group: werke, cancel-in-progress: false }
 permissions:
   contents: read
 jobs:
@@ -118,6 +120,9 @@ jobs:
           python -c "import sys; sys.path.insert(0, 'scripts'); from extraktor.sources import us_dol_lca as l; l.build()"
 
   uk-psc:
+    # Drossel 06.10.2026: nacheinander nach den Teilen (höchstens 2 Jobs gleichzeitig)
+    needs: holen
+    if: ${{ !cancelled() }}
     # Premium-Radar UK (Quellen-Scout 05.10.2026, scripts/lib/uk_psc_radar.py): Eigentümerwechsel laut Companies House
     # (PSC-Snapshot, ≤ 30 Tage) bei UK-S2-Firmen im Bestand + heute bestätigter Website-Zustand -> Premium-Leads.
     # Dazu neue Abfall-Beförderer laut Environment Agency (Quellen-Scout R44, scripts/lib/uk_ea_radar.py, je Tag der
@@ -182,6 +187,9 @@ jobs:
         run: python scripts/uk_psc_radar.py --apply | tee -a "$GITHUB_STEP_SUMMARY"
 
   fr-decp:
+    # Drossel 06.10.2026: nacheinander nach den Teilen (höchstens 2 Jobs gleichzeitig)
+    needs: uk-psc
+    if: ${{ !cancelled() }}
     # Premium-Radar FR (Quellen-Scout R50, scripts/lib/fr_decp_radar.py): öffentlicher Auftrag laut DECP
     # (data.gouv.fr Tabular-API, Zuschlag an PME ≤ 14 Tage) bei FR-S2-Firmen im Bestand + heute bestätigter
     # Website-Zustand bzw. „keine Website“ -> Premium-Leads. Kein Platz im Linienplan. Sendet nichts.
@@ -234,6 +242,9 @@ jobs:
         run: python scripts/fr_decp_radar.py --apply | tee -a "$GITHUB_STEP_SUMMARY"
 
   fr-bio:
+    # Drossel 06.10.2026: nacheinander nach den Teilen (höchstens 2 Jobs gleichzeitig)
+    needs: fr-decp
+    if: ${{ !cancelled() }}
     # Premium FR (Quellen-Scout R37, scripts/extraktor/sources/fr_bio.py): neue Bio-Betriebe laut Agence Bio
     # (Ersteintrag ≤ 30 Tage). Die Schnittstelle hat keinen Datumsfilter -> einmal am Tag alle Seiten, behalten werden
     # nur frische Einträge. Merker je Tag wird VOR dem Abruf gesichert: jede Seite höchstens 1×/Tag, auch wenn
@@ -290,6 +301,9 @@ jobs:
           key: fr-bio-data-${{ steps.d.outputs.tag }}
 
   fr-diag:
+    # Drossel 06.10.2026: nacheinander nach den Teilen (höchstens 2 Jobs gleichzeitig)
+    needs: fr-bio
+    if: ${{ !cancelled() }}
     # Premium FR (Quellen-Scout R40, scripts/extraktor/sources/fr_diag.py): neu zertifizierte Diagnostiqueurs
     # immobiliers (DGALN-Verzeichnis auf data.gouv.fr): Tagesdatei von heute gegen die von vor 31 Tagen (2 Dateien/Tag). Merker je Tag wird VOR dem Abruf gesichert: jede Seite höchstens 1×/Tag, auch wenn
     # mehrere Läufe gleichzeitig starten oder der Abruf scheitert. Die Teile (s2-ukfr) lesen nur den Zwischenspeicher.
@@ -345,6 +359,9 @@ jobs:
           key: fr-diag-data-${{ steps.d.outputs.tag }}
 
   fr-moves:
+    # Drossel 06.10.2026: nacheinander nach den Teilen (höchstens 2 Jobs gleichzeitig)
+    needs: fr-diag
+    if: ${{ !cancelled() }}
     # Premium FR (Quellen-Scout R63, scripts/extraktor/sources/fr_bodacc_moves.py): Umzüge (Sitz/Hauptbetrieb) von
     # Gesellschaften laut BODACC B aus den DILA-Rohdaten (echanges.dila.gouv.fr/OPENDATA, Licence Ouverte, kein
     # robots.txt; die gesperrte opendatasoft-/bodacc.fr-API wird nie genutzt). Merker je Tag wird VOR dem Abruf
@@ -401,6 +418,9 @@ jobs:
           key: fr-moves-data-${{ steps.d.outputs.tag }}
 
   uk-charity:
+    # Drossel 06.10.2026: nacheinander nach den Teilen (höchstens 2 Jobs gleichzeitig)
+    needs: fr-moves
+    if: ${{ !cancelled() }}
     # Premium UK (Quellen-Scout R38, scripts/extraktor/sources/uk_charity.py): neu registrierte Charities laut
     # Charity Commission (Registrierung ≤ 30 Tage) mit Vorsitz der Trustees. Täglicher Massendownload (OGL v3, ohne Schlüssel):
     # Merker je Tag VOR dem Abruf, jede Datei höchstens 1×/Tag. Die Teile (s2-ukfr) lesen nur den Zwischenspeicher.
@@ -456,6 +476,9 @@ jobs:
           key: uk-charity-data-${{ steps.d.outputs.tag }}
 
   uk-ico:
+    # Drossel 06.10.2026: nacheinander nach den Teilen (höchstens 2 Jobs gleichzeitig)
+    needs: uk-charity
+    if: ${{ !cancelled() }}
     # Premium UK (Quellen-Scout R42, scripts/extraktor/sources/uk_ico.py): neu beim ICO eingetragene Verantwortliche
     # (Register of fee payers, Eintragung ≤ 30 Tage) mit Kontakt aus dem Register. Täglicher Massendownload ohne Schlüssel
     # (Download-Seite + ZIP, Crawl-delay 6 s): Merker je Tag VOR dem Abruf, jede Datei höchstens 1×/Tag. Die Teile (s2-ukfr) lesen nur den Zwischenspeicher.
@@ -588,7 +611,7 @@ jobs:
           # Scout R16 (03.10.2026): Vorrat abgearbeitet (je Teil 1 Kandidat, 0 grün; S2 US 257.755 Leads) -> 18 -> 2 Teile
           # für Neuzugänge im Monatsauszug; die 16 Plätze und der von s2-north-0 gehen an die Website-Prüfung (US 5 -> 16, UK 2 -> 5,
           # FR 2 -> 5); US-S2 hat damit 18 statt 23 Teile, aber alle mit Ertrag
-      max-parallel: 38
+      max-parallel: 2   # Drossel 06.10.2026 (vorher 38)
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -997,64 +1020,3 @@ jobs:
           name: lead-werk-bericht-${{ matrix.name }}
           path: out/lead-werk/bericht.json
           retention-days: 7
-
-  weiter:
-    # sofort den nächsten Lauf starten (nur wenn der Schalter an ist und dieser Lauf echte Arbeit gemacht hat,
-    # sonst übernehmen Cron und Wachhund – so entsteht keine Schleife aus Fehlstarts)
-    needs: holen
-    if: always()
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      actions: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - name: Wachhund anstoßen, wenn GitHub ihn nicht startet
-        # Nachtschicht 04.10.2026: GitHub ließ die geplanten Läufe (Wachhund, Antwort-Assistent) nachts stundenlang
-        # aus. Das Lead-Werk startet sich selbst neu und hält so den Wachhund am Leben; der startet dann alles
-        # Überfällige nach (Antworten, Kunden-Werk, Proben). Nie Versand – den startet der Wachhund nur in seinen Grenzen.
-        # Prüfung 04.10.2026: GitHub-Aufrufe bis zu 3 Versuche (eine 503 ließ den Schritt sonst scheitern).
-        if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          retry() { for i in 1 2 3; do "$@" && return 0; [ "$i" -lt 3 ] && sleep 20; done; return 1; }
-          last=$(retry gh run list --workflow wachhund.yml --limit 1 --json createdAt -q '.[0].createdAt' || true)
-          if [ -n "$last" ]; then
-            mins=$(( ( $(date -u +%s) - $(date -u -d "$last" +%s) ) / 60 ))
-          else
-            mins=999
-          fi
-          if [ "$mins" -ge 30 ]; then
-            if retry gh workflow run wachhund.yml --ref "${{ github.ref_name }}"; then
-              echo "Wachhund angestoßen (letzter Lauf vor $mins min)" | tee -a "$GITHUB_STEP_SUMMARY"
-            else
-              echo "::warning::Wachhund nicht anstoßbar (GitHub antwortet nicht)"
-            fi
-          else
-            echo "Wachhund lief vor $mins min – nichts zu tun"
-          fi
-      - name: Nächsten Lauf starten
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          grep -Eq '^lead_suche:\s*true' config/pipeline.yaml || { echo "Schalter aus – kein Neustart"; exit 0; }
-          retry() { for i in 1 2 3; do "$@" && return 0; [ "$i" -lt 3 ] && sleep 20; done; return 1; }
-          # Prüfung 04.10.2026: bis zu 3 Versuche je GitHub-Aufruf; Startzeit unbekannt -> kein Sofort-Neustart
-          # (sonst Kette kurzer Selbststarts bei API-Störung); Cron und Wachhund übernehmen
-          start=$(retry gh run view ${{ github.run_id }} --json createdAt -q .createdAt || true)
-          if [ -n "$start" ]; then
-            mins=$(( ( $(date -u +%s) - $(date -u -d "$start" +%s) ) / 60 ))
-          else
-            mins=0
-          fi
-          # Nachfüller (05.10.2026): startet diese und jede andere freie Linie sofort neu (Mindestbelegung 30);
-          # kurze Läufe ohne Ertrag ruhen dort 60 min. Nur wenn er nicht startbar ist: alter Weg (ganzer Lauf).
-          if retry gh workflow run werk-nachfuellen.yml --ref "${{ github.ref_name }}"; then
-            echo "Nachfüller angestoßen (dieser Lauf lief $mins Minuten)" | tee -a "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          if [ "$mins" -lt 10 ]; then echo "Lauf nur $mins Minuten – kein Sofort-Neustart"; exit 0; fi
-          retry gh workflow run lead-werk.yml --ref "${{ github.ref_name }}"
-          echo "Nächster Lauf gestartet (dieser lief $mins Minuten)" | tee -a "$GITHUB_STEP_SUMMARY"

@@ -5,10 +5,10 @@
 name: zustellbarkeit
 on:
   schedule:
-    - cron: "10 4 * * *"   # 06:10 MESZ (Sommerzeit)
-    - cron: "10 5 * * *"   # 06:10 MEZ (Winterzeit); der Lauf der anderen Jahreszeit endet ohne Arbeit (--geplant)
+    - cron: "3 4 * * *"   # 06:03 MESZ (Sommerzeit)
+    - cron: "3 5 * * *"   # 06:03 MEZ (Winterzeit); der Lauf der anderen Jahreszeit endet ohne Arbeit (--geplant)
   workflow_dispatch:
-concurrency: { group: zustellbarkeit, cancel-in-progress: false }
+concurrency: { group: takt, cancel-in-progress: false }   # Drossel 06.10.2026: leichte Zeitpläne nacheinander
 permissions:
   contents: read
 jobs:

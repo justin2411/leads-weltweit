@@ -11,7 +11,7 @@ on:
       abo:
         description: "Abo-ID (nur für approve)"
         required: false
-concurrency: { group: kundenlieferung, cancel-in-progress: false }
+concurrency: { group: takt, cancel-in-progress: false }   # Drossel 06.10.2026: leichte Zeitpläne nacheinander
 jobs:
   liefern:
     runs-on: ubuntu-latest

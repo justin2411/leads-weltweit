@@ -31,6 +31,7 @@ import requests
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import wachhund  # noqa: E402
+from lib import drossel  # noqa: E402
 
 SEND_MAX_MIN = 70
 ANSWER_MAX_MIN = 25
@@ -137,7 +138,9 @@ def main(argv=None) -> int:
             continue
         late, why = decide(job, runs, now, jobs_of)
         lines.append(f"{'!' if late else '✓'}  {job['wf']:<14} {why}")
-        if late and args.apply:
+        if late and args.apply and not drossel.DISPATCH_ERLAUBT:
+            lines.append(f"   nicht angestoßen: {drossel.GRUND}")
+        elif late and args.apply:
             d = requests.post(f"{api}/workflows/{job['wf']}/dispatches",
                               json={"ref": args.ref, "inputs": job["inputs"]}, headers=h, timeout=30)
             lines.append("   angestoßen" if d.status_code < 300 else f"   Start fehlgeschlagen: GitHub {d.status_code}")

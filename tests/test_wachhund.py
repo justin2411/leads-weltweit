@@ -36,15 +36,15 @@ class WachhundTest(unittest.TestCase):
         self.assertFalse(w.overdue(job, [], dt.datetime(2026, 9, 29, 7, 0, tzinfo=UTC))[0])  # Dienstag
         self.assertFalse(w.overdue(job, [], dt.datetime(2026, 9, 28, 13, 0, tzinfo=UTC))[0])  # zu spät
 
-    def test_werke_run_continuously(self):
-        """Inhaber 01.10.2026: Werke sollen sofort wieder starten, sobald ein Lauf fertig ist."""
-        now = dt.datetime(2026, 10, 1, 19, 50, tzinfo=UTC)
-        for wf in ("kunden-werk.yml", "lead-werk.yml"):
+    def test_werke_no_longer_continuous(self):
+        """Actions-Drossel (Inhaber 06.10.2026): kein Dauerbetrieb – überfällig erst nach einem ausgelassenen Zeitplan."""
+        now = dt.datetime(2026, 10, 6, 19, 50, tzinfo=UTC)
+        for wf in ("kunden-werk.yml", "lead-werk.yml", "pruefer-werk.yml", "kontakt-werk.yml"):
             job = next(j for j in w.JOBS if j["wf"] == wf)
-            self.assertTrue(w.overdue(job, [run("2026-10-01T19:10:00Z")], now)[0])                  # fertig -> neu
-            self.assertFalse(w.overdue(job, [run("2026-10-01T17:31:00Z", "in_progress")], now)[0])  # läuft noch
-            self.assertFalse(w.overdue(job, [run("2026-10-01T19:40:00Z")], now)[0])                 # Absturz-Schutz
-            self.assertTrue(w.overdue(job, [], now)[0])
+            self.assertNotEqual(job["kind"], "continuous")
+            self.assertFalse(w.overdue(job, [run("2026-10-06T18:23:00Z")], now)[0])                 # fertig -> warten
+            self.assertGreaterEqual(job["max_min"], 6 * 60)
+        self.assertFalse(any(j["wf"] in ("werk-nachfuellen.yml", "kaeufer.yml") for j in w.JOBS))
 
     def test_send_respects_switch(self):
         job = next(j for j in w.JOBS if j["wf"] == "send.yml")

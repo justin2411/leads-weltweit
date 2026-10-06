@@ -28,6 +28,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import werk_belegung as B  # noqa: E402
 import werk_plan as W  # noqa: E402
+from lib import drossel  # noqa: E402
 
 TAKT_WF = "werk-takt.yml"
 WACHHUND_WF = "wachhund.yml"
@@ -86,6 +87,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--pause-min", type=float, default=10)
     ap.add_argument("--ref", default="main")
     a = ap.parse_args(argv)
+    if not drossel.DISPATCH_ERLAUBT:
+        # Actions-Drossel (Inhaber 06.10.2026): kein Takt, kein Selbst-Neustart
+        print(f"Werk-Takt aus: {drossel.GRUND}")
+        return 0
     on = switches_on((ROOT / "config/pipeline.yaml").read_text(encoding="utf-8"))
     gh = B.GitHub()
     for i in range(max(1, a.runden)):

@@ -32,21 +32,21 @@ export type Card = {
 };
 
 export const CARDS: readonly Card[] = [
-  { key: "lead-werk", icon: "lead-werk", name: "Lead-Werk", keys: ["werke_paused", "slot_plan", "slot_autopilot", "lead_mix"], werk: "lead-werk", start: "lead-werk", cron: "23 */3 * * *", file: "lead-werk.yml" },
-  { key: "kunden-werk", icon: "kunden-werk", name: "Kunden-Werk", keys: ["werke_paused", "slot_plan", "buyer_countries_off"], werk: "kunden-werk", start: "kunden-werk", cron: "41 */2 * * *", file: "kunden-werk.yml" },
-  { key: "proben-vorrat", icon: "proben", name: "Proben-Vorrat", keys: ["werke_paused", "sample_targets", "sample_premium_targets", "sample_max_age_hours"], werk: "proben-vorrat", start: "proben-vorrat", cron: "23 * * * *", file: "proben-vorrat.yml" },
-  { key: "antworten", icon: "antworten", name: "Antwort-Assistent", keys: ["werke_paused"], werk: "antworten", start: null, cron: "*/10 * * * *", file: "antworten.yml", note: WERK_SWITCHES.antworten.note },
-  { key: "nachfass", icon: "nachfass", name: "Nachfassmails", keys: ["followup_enabled", "followup_days"], werk: "nachfass", start: null, cron: "17 12 * * *", file: "taeglich.yml" },
+  { key: "lead-werk", icon: "lead-werk", name: "Lead-Werk", keys: ["werke_paused", "slot_plan", "slot_autopilot", "lead_mix"], werk: "lead-werk", start: "lead-werk", cron: "23 0,6,12,18 * * *", file: "lead-werk.yml" },
+  { key: "kunden-werk", icon: "kunden-werk", name: "Kunden-Werk", keys: ["werke_paused", "slot_plan", "buyer_countries_off"], werk: "kunden-werk", start: "kunden-werk", cron: "41 3,21 * * *", file: "kunden-werk.yml" },
+  { key: "proben-vorrat", icon: "proben", name: "Proben-Vorrat", keys: ["werke_paused", "sample_targets", "sample_premium_targets", "sample_max_age_hours"], werk: "proben-vorrat", start: "proben-vorrat", cron: "35 0-23/3 * * *", file: "proben-vorrat.yml" },
+  { key: "antworten", icon: "antworten", name: "Antwort-Assistent", keys: ["werke_paused"], werk: "antworten", start: null, cron: "7,37 * * * *", file: "antworten.yml", note: WERK_SWITCHES.antworten.note },
+  { key: "nachfass", icon: "nachfass", name: "Nachfassmails", keys: ["followup_enabled", "followup_days"], werk: "nachfass", start: null, cron: "41 9 * * *", file: "taeglich.yml" },
   // Versand rund um die Uhr (Inhaber 04.10.2026): stündlich :37, nächster Lauf aus lib/versandzeit.ts (cardNext)
   { key: "versand", icon: "versand", name: "Versand", keys: ["send_paused"], werk: "versand", start: null, cron: "37 * * * *", file: "send.yml" },
   { key: "kundenlieferung", icon: "lieferung", name: "Kundenlieferung", keys: ["werke_paused"], werk: "kundenlieferung", start: null, cron: "53 4 * * 1", file: "kundenlieferung.yml" },
   { key: "tagescheck", icon: "tagescheck", name: "Tagescheck", keys: ["werke_paused"], werk: "tagescheck", start: null, cron: "37 17 * * *", file: "tagescheck.yml" },
-  { key: "agenten", icon: "agent", name: "Agenten-Werk", keys: ["werke_paused"], werk: "agenten", start: null, cron: "29 * * * *", file: "agenten-werk.yml" },
-  { key: "dauerpruefung", icon: "freigabe", name: "Dauerprüfung", keys: ["werke_paused"], werk: "dauerpruefung", start: null, cron: "47 * * * *", file: "dauerpruefung.yml" },
+  { key: "agenten", icon: "agent", name: "Agenten-Werk", keys: ["werke_paused"], werk: "agenten", start: null, cron: "35 1-23/3 * * *", file: "agenten-werk.yml" },
+  { key: "dauerpruefung", icon: "freigabe", name: "Dauerprüfung", keys: ["werke_paused"], werk: "dauerpruefung", start: null, cron: "35 2-23/3 * * *", file: "dauerpruefung.yml" },
   // Prüfer-Werk (Inhaber 05.10.2026: „4 dauerhafte Prüfer der Leads“): Plätze der Linie „pruefer“, rund um die Uhr
-  { key: "pruefer-werk", icon: "freigabe", name: "Prüfer-Werk", keys: ["werke_paused", "slot_plan"], werk: "pruefer-werk", start: null, cron: "11 * * * *", file: "pruefer-werk.yml" },
+  { key: "pruefer-werk", icon: "freigabe", name: "Prüfer-Werk", keys: ["werke_paused", "slot_plan"], werk: "pruefer-werk", start: null, cron: "23 15 * * *", file: "pruefer-werk.yml" },
   // Kontakt-Werk (Inhaber 05.10.2026): Register + Firmenwebsite gegenprüfen, Plätze der Linie „kontakt“
-  { key: "kontakt-werk", icon: "freigabe", name: "Kontakt-Werk", keys: ["werke_paused", "slot_plan"], werk: "kontakt-werk", start: null, cron: "23 * * * *", file: "kontakt-werk.yml" },
+  { key: "kontakt-werk", icon: "freigabe", name: "Kontakt-Werk", keys: ["werke_paused", "slot_plan"], werk: "kontakt-werk", start: null, cron: "53 5 * * *", file: "kontakt-werk.yml" },
 ];
 export const cardOf = (k: CardKey): Card => CARDS.find((c) => c.key === k)!;
 export const isCardKey = (x: unknown): x is CardKey => typeof x === "string" && CARDS.some((c) => c.key === x);

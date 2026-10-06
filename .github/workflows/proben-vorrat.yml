@@ -5,7 +5,7 @@
 # workflow_dispatch sofort anstoßen, wenn kein Vorrat passte (Vercel-Variable GH_DISPATCH_TOKEN, optional).
 name: proben-vorrat
 on:
-  schedule: [{ cron: "23 * * * *" }]
+  schedule: [{ cron: "35 0-23/3 * * *" }]   # Drossel 06.10.2026: alle 3 h (vorher stündlich)
   workflow_dispatch:
     inputs:
       befehl:
@@ -14,7 +14,7 @@ on:
       probelauf:
         type: boolean
         default: false
-concurrency: { group: proben-vorrat, cancel-in-progress: false }
+concurrency: { group: takt, cancel-in-progress: false }   # Drossel 06.10.2026: leichte Zeitpläne nacheinander
 jobs:
   run:
     runs-on: ubuntu-latest

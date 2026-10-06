@@ -9,9 +9,9 @@
 name: kontakt-werk
 on:
   schedule:
-    - cron: "23 * * * *"   # Rückfall; normalerweise startet sich das Werk nach jedem Lauf selbst neu (Job „weiter“)
+    - cron: "53 5 * * *"   # Drossel 06.10.2026: 1× täglich (vorher stündlich + Selbst-Neustart)
   workflow_dispatch:
-concurrency: { group: kontakt-werk, cancel-in-progress: false }
+concurrency: { group: werke, cancel-in-progress: false }   # Drossel 06.10.2026: ein schweres Werk zur Zeit
 permissions:
   contents: read
 jobs:
@@ -57,7 +57,7 @@ jobs:
     timeout-minutes: 100
     strategy:
       fail-fast: false
-      max-parallel: 6
+      max-parallel: 2   # Drossel 06.10.2026
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     name: ${{ matrix.name }}
     env:
@@ -79,7 +79,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
-      actions: write
       contents: read
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -91,18 +90,3 @@ jobs:
       - run: pip install requests pyyaml
       - name: Kennzahlen (gegengeprüft, bestätigt, Personen neu – 24 h)
         run: python scripts/kontaktwerk.py kpi | tee -a "$GITHUB_STEP_SUMMARY" || true
-      - name: Nächsten Lauf starten
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          retry() { for i in 1 2 3; do "$@" && return 0; [ "$i" -lt 3 ] && sleep 20; done; return 1; }
-          start=$(retry gh run view ${{ github.run_id }} --json createdAt -q .createdAt || true)
-          if [ -n "$start" ]; then
-            mins=$(( ( $(date -u +%s) - $(date -u -d "$start" +%s) ) / 60 ))
-          else
-            mins=0
-          fi
-          # kurze Läufe (nichts zu tun, Fehler) nicht sofort wiederholen – Cron und Wachhund übernehmen
-          if [ "$mins" -lt 10 ]; then echo "Lauf nur $mins Minuten – kein Sofort-Neustart"; exit 0; fi
-          retry gh workflow run kontakt-werk.yml --ref "${{ github.ref_name }}"
-          echo "Nächster Lauf gestartet (dieser lief $mins Minuten)" | tee -a "$GITHUB_STEP_SUMMARY"

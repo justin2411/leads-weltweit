@@ -5,7 +5,7 @@
 # Keine Suchmaschinen, keine Plattformen. Sendet keine Mails.
 name: anreichern
 on:
-  schedule: [{ cron: "41 2,8,15,20 * * *" }]
+  schedule: [{ cron: "35 11 * * *" }]   # Drossel 06.10.2026: 1× täglich (vorher 4×)
   workflow_dispatch:
     inputs:
       limit:
@@ -14,7 +14,7 @@ on:
       alle_segmente:
         description: "auch Länder/Segmente ohne Live-Landingpage (true/false)"
         default: "false"
-concurrency: { group: recherche, cancel-in-progress: false }   # nicht parallel zu taeglich.yml (gleiche Firmen)
+concurrency: { group: werke, cancel-in-progress: false }   # Drossel 06.10.2026: ein schweres Werk zur Zeit (auch nie parallel zu taeglich.yml)
 permissions:
   contents: read
 jobs:

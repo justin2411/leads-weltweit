@@ -34,18 +34,18 @@ WORKFLOWS = {
     # Versand rund um die Uhr (Inhaber 04.10.2026): stündlich, erwartetes Alter aus dem Versandplan (send_max_age)
     "send.yml": ("Versand Kaltmails (24/7)", 3),
     "taeglich.yml": ("Automatiklauf (Nachfassmails, Entwürfe)", 27),
-    # läuft rund um die Uhr alle 10 min, Wachhund startet nach 20 min nach -> 1 h Toleranz (Prüfung 04.10.2026)
-    "antworten.yml": ("Antwort-Assistent + Web-Proben (24/7)", 1),
-    "proben-vorrat.yml": ("Proben-Vorrat + Web-Proben (24/7)", 3),
+    # Drossel 06.10.2026: alle 30 min, kein Nachstart mehr -> 2 h Toleranz (vorher alle 10 min, 1 h)
+    "antworten.yml": ("Antwort-Assistent + Web-Proben (24/7)", 2),
+    "proben-vorrat.yml": ("Proben-Vorrat + Web-Proben (alle 3 h)", 5),
     "morgenbericht.yml": ("Morgenbericht", 27),
     "sync.yml": ("Bounces/Ereignisse", 27),
-    "kaeufer.yml": ("Käufersuche", 27),
+    # kaeufer.yml: Drossel 06.10.2026 nur noch von Hand – kein Pflichtlauf
     "kundenlieferung.yml": ("Kundenlieferung (montags)", 24 * 7 + 3),
-    "wachhund.yml": ("Wachhund (startet ausgefallene Läufe nach)", 3),
-    "agenten-werk.yml": ("Agenten-Werk (Speicher + eigene Agenten)", 3),
-    "dauerpruefung.yml": ("Dauerprüfung (Prüf-Agenten ohne Tokens)", 3),
-    "pruefer-werk.yml": ("Prüfer-Werk (4 Prüfer, 24/7)", 3),
-    "kontakt-werk.yml": ("Kontakt-Werk (Register + Website, 24/7)", 3),
+    "wachhund.yml": ("Wachhund (stündlich, nur Anzeige – Drossel)", 3),
+    "agenten-werk.yml": ("Agenten-Werk (Speicher + eigene Agenten, alle 3 h)", 5),
+    "dauerpruefung.yml": ("Dauerprüfung (Prüf-Agenten ohne Tokens, alle 3 h)", 5),
+    "pruefer-werk.yml": ("Prüfer-Werk (1× täglich – Drossel)", 27),
+    "kontakt-werk.yml": ("Kontakt-Werk (Register + Website, 1× täglich)", 27),
     "zustellbarkeit.yml": ("Zustellbarkeits-Check (06:10)", 27),
 }
 
@@ -105,10 +105,11 @@ def check_workflows(c: Check) -> None:
         return
     wanted = dict(WORKFLOWS)
     if cfg("pipeline.yaml", "lead_suche") == "true":
-        wanted["anreichern.yml"] = ("Anreicherung", 12)
-        wanted["lead-werk.yml"] = ("Lead-Werk", 9)
+        # Drossel 06.10.2026: Anreicherung 1× täglich, Lead-Werk alle 6 h, Kunden-Werk 2× täglich (03:41/21:41 UTC)
+        wanted["anreichern.yml"] = ("Anreicherung", 27)
+        wanted["lead-werk.yml"] = ("Lead-Werk", 12)
     if cfg("pipeline.yaml", "kunden_suche") == "true":
-        wanted["kunden-werk.yml"] = ("Kunden-Werk", 6)
+        wanted["kunden-werk.yml"] = ("Kunden-Werk", 22)
     h = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
     for wf, (name, max_h) in wanted.items():
         if wf == "send.yml":

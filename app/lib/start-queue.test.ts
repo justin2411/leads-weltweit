@@ -4,8 +4,8 @@ import { readFileSync } from "node:fs";
 import { START_WORKFLOWS, WACHHUND_MINUTES, fmtBerlin, isStartKey, nextPickup, startState, type StartRequest } from "./start-queue.ts";
 
 test("nächste Abholung durch den Wachhund", () => {
-  assert.equal(nextPickup(new Date("2026-10-03T19:30:00Z")).toISOString(), "2026-10-03T19:41:00.000Z");
-  assert.equal(nextPickup(new Date("2026-10-03T19:41:00Z")).toISOString(), "2026-10-03T19:56:00.000Z"); // genau jetzt -> nächster
+  assert.equal(nextPickup(new Date("2026-10-03T19:30:00Z")).toISOString(), "2026-10-03T20:11:00.000Z");
+  assert.equal(nextPickup(new Date("2026-10-03T20:11:00Z")).toISOString(), "2026-10-03T21:11:00.000Z"); // genau jetzt -> nächster
   assert.equal(nextPickup(new Date("2026-10-03T19:57:30Z")).toISOString(), "2026-10-03T20:11:00.000Z");
   assert.equal(nextPickup(new Date("2026-10-03T23:58:00Z")).toISOString(), "2026-10-04T00:11:00.000Z");
 });
@@ -38,7 +38,7 @@ test("Startzustand", () => {
   const r = (status: StartRequest["status"], created_at: string, extra: Partial<StartRequest> = {}): StartRequest =>
     ({ id: created_at, created_at, workflow: "lead-werk", status, started_at: null, note: null, ...extra });
   assert.equal(startState([], "lead-werk", now), null);
-  assert.deepEqual(startState([r("offen", "2026-10-03T19:20:00Z")], "lead-werk", now), { tone: "wait", text: "Start angefordert – spätestens 21:41" });
+  assert.deepEqual(startState([r("offen", "2026-10-03T19:20:00Z")], "lead-werk", now), { tone: "wait", text: "Start angefordert – spätestens 22:11" });
   assert.equal(startState([r("gestartet", "2026-10-03T19:00:00Z", { started_at: "2026-10-03T19:11:00Z" }), r("offen", "2026-10-03T18:00:00Z")], "lead-werk", now)?.text, "gestartet 21:11");
   assert.equal(startState([r("fehler", "2026-10-03T19:00:00Z", { note: "GitHub 422" })], "lead-werk", now)?.tone, "bad");
   assert.equal(startState([r("offen", "2026-10-03T17:00:00Z")], "lead-werk", now)?.tone, "bad");     // > 2 h offen

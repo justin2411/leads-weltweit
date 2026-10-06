@@ -7,7 +7,7 @@
 # (öffentliches Repo) – nur Zahlen in der Zusammenfassung. Pause im Dashboard (werke_paused „dauerpruefung“).
 name: dauerpruefung
 on:
-  schedule: [{ cron: "47 * * * *" }]   # stündlich :47 (versetzt zu Proben-Vorrat :23 und Agenten :29)
+  schedule: [{ cron: "35 2-23/3 * * *" }]   # Drossel 06.10.2026: alle 3 h :35 (versetzt zu Proben-Vorrat und Agenten-Werk)
   workflow_dispatch:
     inputs:
       leads:
@@ -19,7 +19,7 @@ on:
       probelauf:
         type: boolean
         default: false
-concurrency: { group: dauerpruefung, cancel-in-progress: false }
+concurrency: { group: takt, cancel-in-progress: false }   # Drossel 06.10.2026: leichte Zeitpläne nacheinander
 permissions:
   contents: read
 jobs:

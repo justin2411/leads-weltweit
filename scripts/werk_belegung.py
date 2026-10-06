@@ -47,6 +47,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import werk_plan as W  # noqa: E402
+from lib import drossel  # noqa: E402
 
 ACTIVE_RUN = ("queued", "in_progress", "waiting", "requested", "pending")
 ACTIVE_JOB = ("queued", "in_progress", "waiting", "pending")
@@ -394,6 +395,8 @@ class GitHub:
         return self._get(f"actions/workflows/{LEAD_WF}/runs", {"per_page": n}).get("workflow_runs", [])
 
     def dispatch(self, workflow: str, inputs: dict, ref: str = "main") -> None:
+        if not drossel.DISPATCH_ERLAUBT:  # Actions-Drossel 06.10.2026: kein Selbst-/Fremdstart
+            raise RuntimeError(drossel.GRUND)
         r = self.s.post(f"https://api.github.com/repos/{self.repo}/actions/workflows/{workflow}/dispatches",
                         json={"ref": ref, "inputs": inputs}, timeout=30)
         if r.status_code >= 300:
@@ -544,6 +547,10 @@ def main(argv: list[str] | None = None) -> int:
     gh = GitHub()
     if a.befehl == "zaehlen":
         cmd_zaehlen(gh)
+        return 0
+    if not drossel.DISPATCH_ERLAUBT:
+        # Actions-Drossel (Inhaber 06.10.2026): der Nachfüller startet nichts mehr, bis die Werke umziehen
+        print(f"Nachfüller aus: {drossel.GRUND}")
         return 0
     return cmd_nachfuellen(gh, a.apply, a.ref)
 
