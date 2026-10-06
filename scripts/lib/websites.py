@@ -464,6 +464,62 @@ def person_from_legal_notice(text: str) -> dict | None:
     return None
 
 
+# Über-uns-/Kontaktseiten englischsprachiger Firmen (Premium-Labor 06.10.2026: nur 6 von 1.164 US-Radar-Premium-Leads
+# hatten einen Namen – US-Seiten haben kein Impressum, nennen den Inhaber aber ausdrücklich mit Rolle, z. B.
+# „Peter Murphy, President“, „Owner: Ann Lee“, „owned and operated by Daniel Lynch“). Nur mit ausdrücklicher Rolle,
+# nie aus Autoren-/Blog-Angaben; Kundenstimmen („Jane Doe, Owner of Other Co“) fallen weg, wenn die genannte Firma
+# nicht zur Domain passt. Nichts wird erraten.
+_EN_NAME = r"([A-Z][a-z'’\-]+(?:\s+[A-Z]\.)?(?:\s+(?:Mc|Mac|O')?[A-Z][a-z'’\-]+){1,2})"
+_EN_ROLE = r"(Co-Owner|Owner|Co-Founder|Founder|President|CEO|Principal|Proprietor|Managing Partner)"
+ABOUT_PATTERNS = [
+    ("label", re.compile(r"\b" + _EN_ROLE + r"\s*[:–—]\s*" + _EN_NAME)),
+    ("name_role", re.compile(_EN_NAME + r"\s*[,–—|-]?\s*(?:and\s+)?" + _EN_ROLE + r"\b(?!['’]s|\s*(?i:of\s+the\s+month))")),
+    ("by", re.compile(r"\b(?i:founded|owned(?:\s+and\s+operated)?|started)\s+(?i:by)\s+" + _EN_NAME)),
+]
+_ABOUT_ROLE_BY = {"founded": "Founder", "owned": "Owner", "started": "Founder"}
+NOT_A_PERSON_WORD = re.compile(r"\b(the|our|us|we|team|meet|about|home|welcome|staff|and|of|for|with|your|contact|"
+                               r"call|today|click|read|more|news|blog|posted|by|services?|solutions?|inc|llc|ltd|co)\b",
+                               re.I)
+BUSINESS_WORD = re.compile(r"(?i:agency|studio|studios|shop|store|firm|law|group|auto|repair|plumbing|construction|"
+                           r"design|graphics|media|marketing|consulting|realty|insurance|salon|cafe|restaurant|bar|"
+                           r"grill|bakery|farm|church|center|centre|clinic|dental|academy|school|club|associates)")
+_AFTER_ORG = re.compile(r"^\s*(?:,|of|at|@)\s*((?:[A-Z0-9][\w&'’.-]*\s*){1,5})")
+
+
+def _org_matches_site(org: str, site_url: str) -> bool:
+    dom = re.sub(r"[^a-z0-9]", "", site_domain(site_url).split(".")[0]) if site_url else ""
+    words = [re.sub(r"[^a-z0-9]", "", w.lower()) for w in org.split()]
+    return bool(dom) and any(len(w) >= 4 and w in dom for w in words)
+
+
+def person_from_about(text: str, site_url: str = "") -> dict | None:
+    """Inhaber/Gründer mit ausdrücklicher Rolle von Startseite, Über-uns- oder Kontaktseite (englisch).
+    Folgt der Rolle eine andere Firma („…, Owner of Smith Roofing“), muss sie zur Domain passen (sonst Kundenstimme)."""
+    dom = re.sub(r"[^a-z0-9]", "", site_domain(site_url).split(".")[0]) if site_url else ""
+    for kind, pat in ABOUT_PATTERNS:
+        for m in pat.finditer(text):
+            if kind == "label":
+                role, name = m.group(1), m.group(2)
+            elif kind == "name_role":
+                name, role = m.group(1), m.group(2)
+            else:
+                name = m.group(1)
+                role = _ABOUT_ROLE_BY[m.group(0).split()[0].lower()]
+            words = re.sub(r"\s+", " ", name).strip().split()
+            while len(words) > 2 and (words[0].lower() in dom or BUSINESS_WORD.fullmatch(words[0])
+                                      or NOT_A_PERSON_WORD.fullmatch(words[0])):
+                words = words[1:]  # „Midtown Agency Peter Murphy, President“: Firmenwort vor dem Namen weg
+            name = " ".join(words)
+            if NOT_A_NAME.search(name) or BUSINESS_WORD.search(name) or NOT_A_PERSON_WORD.search(name) or not (2 <= len(name.split()) <= 4) \
+                    or len(name) > 60:
+                continue
+            org = _AFTER_ORG.match(text[m.end():m.end() + 80]) if kind != "by" else None
+            if org and not _org_matches_site(org.group(1), site_url):
+                continue
+            return {"name": name, "role": role, "source": "Company website (about page)"}
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Zugehörigkeit prüfen (Punkte mit Belegen)
 # ---------------------------------------------------------------------------
