@@ -1,0 +1,5 @@
+# Selbstlernender Betrieb (scripts/optimize.py, täglich im Automatiklauf).
+# Inhaber 26.09.2026: „Umsatz/Neukunden maximieren, selbst lernen, neue Zielgruppen selbstständig aufbauen“.
+auto_start: true                 # neue Zielgruppen aus config/zielgruppen.yaml selbst starten
+max_aktive_zielgruppen: 8        # mehr verteilt das Tagesbudget zu dünn, um schnell etwas zu lernen
+neue_zielgruppe_alle_tage: 7     # höchstens eine neue Zielgruppe pro Woche (sofort, wenn eine gestoppt wurde)
