@@ -83,6 +83,9 @@ def run(db, apply: bool = False, batch: int = 2000, log=print, write_note: bool 
         if "aufraeumen" in str(e) and ("PGRST202" in str(e) or "Could not find" in str(e)):
             # Migration 20261005090000 noch nicht angewandt: nichts tun, Lauf bleibt grün
             log("Aufräum-Funktion fehlt in der Datenbank (Migration noch nicht angewandt) – nichts gelöscht")
+            # sichtbar im Lauf (gelbe Anmerkung), statt still grün: das Anwenden braucht die Bestätigung des Inhabers
+            print("::warning title=Aufräumen inaktiv::Funktion signalwerk.aufraeumen fehlt – Migration "
+                  "20261005090000 braucht die Bestätigung des Inhabers (Löschfunktion)")
             return {"vorher": vorher.get("db"), "nachher": vorher.get("db"), "plan": {}, "geloescht": {},
                     "fehlt": True}
         raise

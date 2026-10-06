@@ -26,6 +26,14 @@ Visualisierung = JARVIS-Trichter ohne Scanner, Ziel-Ring 25.000 € mit Zeitstra
 **Offen beim Inhaber:** `SEED_INBOXES` (ja), Bestätigungsknopf Abmeldeseite (ja), Zweit-Domains (nach 1. Antwort),
 Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 
+## Lagebild (06.10.2026, 02:40 Berliner Zeit)
+- **FR-Fehlerquote 5,1 % ist kein Kundenfehler:** Das ist die Erstprüfung frischer Leads (Filter vor der Auslieferung).
+  Im Vorrat FR praktisch fehlerfrei, Tagesstichprobe 2,0 % – kein Eingriff. Ampel nur nach Stichprobe/Vorrat lesen.
+- **Aufräumen lief nie:** Die Löschfunktion fehlt in der Datenbank; das Anlegen braucht die Bestätigung des Inhabers
+  („Braucht dich“). Nicht eilig (frühestens ab 17.10. etwas fällig). Das Skript warnt jetzt sichtbar statt still grün.
+- KPI-Abschluss 05.10. kam 01:56; Autovacuum leads läuft (00:10) – Abschluss 06.10. ist vorbereitet.
+- Versand 24 h: 270 Erstmails (Grenzen unverändert). Engpass bleibt die Kaltmail; Betreff-Test (Mi), Beleg-Einstieg (Do).
+
 ## Lagebild (06.10.2026, 00:40 Berliner Zeit)
 - **GitHub-Störung abgeklungen:** Werke, Nachfüller, Antworten und Wachhund laufen wieder (Status noch „minor“).
   CI auf main war bei 3d8089a rot (App-Build); lokal grün, fehlgeschlagener Job neu gestartet.
@@ -137,6 +145,7 @@ Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 - Käufer ok (S2): US 28.782, UK 2.623, FR 1.285. DB 5,1 GB.
 
 ## Nächster Schritt
+- **Prüfpunkt Mo 12.10.:** Funktion signalwerk.aufraeumen vorhanden (Inhaber bestätigt), Trockenlauf ohne Warnung.
 - **Prüfpunkt Mi 07.10., 12:00:** kpi-tag-Läufe 06.10. ohne Zeitüberschreitung; leads last_autovacuum < 24 h alt.
 - **Prüfpunkt Mi 07.10., 12:00:** kpi_daily hat für 05.10. und 06.10. je einen Abschluss (updated_at ab 23:00 deutscher
   Zeit oder Nachtrag bis 05:59); aufraeumen/premium-s5/zustellbarkeit je ≥ 1 Lauf am 06. und 07.10.
