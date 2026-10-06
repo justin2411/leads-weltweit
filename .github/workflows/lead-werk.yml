@@ -344,6 +344,62 @@ jobs:
           path: out/cache/fr_diag.json
           key: fr-diag-data-${{ steps.d.outputs.tag }}
 
+  fr-moves:
+    # Premium FR (Quellen-Scout R63, scripts/extraktor/sources/fr_bodacc_moves.py): Umzüge (Sitz/Hauptbetrieb) von
+    # Gesellschaften laut BODACC B aus den DILA-Rohdaten (echanges.dila.gouv.fr/OPENDATA, Licence Ouverte, kein
+    # robots.txt; die gesperrte opendatasoft-/bodacc.fr-API wird nie genutzt). Merker je Tag wird VOR dem Abruf
+    # gesichert: jede Datei höchstens 1×/Tag. Die Teile (s2-ukfr) lesen nur den Zwischenspeicher.
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - id: d
+        run: echo "tag=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+      - id: done
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/fr_moves_tag.txt
+          key: fr-moves-tag-${{ steps.d.outputs.tag }}
+          lookup-only: true
+      - uses: actions/checkout@v4
+        if: steps.done.outputs.cache-hit != 'true'
+      - name: Schalter Lead-Suche (config/pipeline.yaml)
+        id: gate
+        if: steps.done.outputs.cache-hit != 'true'
+        run: |
+          if grep -Eq '^lead_suche:\s*true' config/pipeline.yaml || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            mkdir -p out/cache && echo "${{ steps.d.outputs.tag }}" > out/cache/fr_moves_tag.txt
+            echo "an=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Lead-Suche pausiert (config/pipeline.yaml: lead_suche: false)" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Merker sichern (vor dem Abruf)
+        if: steps.gate.outputs.an == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: out/cache/fr_moves_tag.txt
+          key: fr-moves-tag-${{ steps.d.outputs.tag }}
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.an == 'true'
+        with: { python-version: "3.11" }
+      - run: pip install requests
+        if: steps.gate.outputs.an == 'true'
+      - name: BODACC-B-Ausgaben der letzten 30 Tage laden (nur Umzüge behalten)
+        id: dl
+        if: steps.gate.outputs.an == 'true'
+        continue-on-error: true  # Merker bleibt gesetzt: kein zweiter Abruf am selben Tag
+        env:
+          PYTHONPATH: scripts
+          EXTRAKTOR_MOVES: out/cache/fr_moves.json
+        run: |
+          python -m extraktor.sources.fr_bodacc_moves | tee -a "$GITHUB_STEP_SUMMARY"
+          python -c "import json; print('Umzüge von Gesellschaften (≤ 30 Tage):', len(json.load(open('out/cache/fr_moves.json'))))" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Ergebnis sichern
+        if: steps.dl.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: out/cache/fr_moves.json
+          key: fr-moves-data-${{ steps.d.outputs.tag }}
+
   uk-charity:
     # Premium UK (Quellen-Scout R38, scripts/extraktor/sources/uk_charity.py): neu registrierte Charities laut
     # Charity Commission (Registrierung ≤ 30 Tage) mit Vorsitz der Trustees. Täglicher Massendownload (OGL v3, ohne Schlüssel):
@@ -601,6 +657,14 @@ jobs:
           key: fr-diag-data-${{ steps.m.outputs.monat }}-nie
           restore-keys: |
             fr-diag-data-
+      - name: Umzüge FR laut BODACC (Tagesabruf aus Job fr-moves, neuester Stand)
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 's2-ukfr')
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/fr_moves.json
+          key: fr-moves-data-${{ steps.m.outputs.monat }}-nie
+          restore-keys: |
+            fr-moves-data-
       - name: Neue Bio-Betriebe FR (Tagesabruf aus Job fr-bio, neuester Stand)
         if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 's2-ukfr')
         uses: actions/cache/restore@v4
@@ -878,6 +942,14 @@ jobs:
           path: out/cache/dol_lca.json
           key: dol-lca-${{ needs.us-auszug.outputs.monat }}
           fail-on-cache-miss: true  # fehlt der Auszug, ist der Teil rot statt still leer (Scout 02.10.2026)
+      - name: Gedächtnis FR-Umzüge laden (jede BODACC-Meldung nur einmal anreichern)
+        if: steps.gate.outputs.an == 'true' && startsWith(matrix.name, 's2-ukfr')
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/fr_moves_seen.json
+          key: fr-moves-seen-${{ matrix.name }}-none
+          restore-keys: |
+            fr-moves-seen-${{ matrix.name }}-
       - name: Leads holen, prüfen, speichern
         if: steps.gate.outputs.an == 'true'
         run: python scripts/extraktor/run.py ${{ matrix.args }} --workers ${{ matrix.workers || 16 }} --db --store --out out/lead-werk --deadline-min 75
@@ -899,6 +971,12 @@ jobs:
             out/cache/usaspending.json
             out/cache/fr_rge.json
           key: lead-werk-${{ matrix.name }}-${{ steps.m.outputs.monat }}-${{ github.run_id }}
+      - name: Gedächtnis FR-Umzüge sichern
+        if: always() && steps.gate.outputs.an == 'true' && startsWith(matrix.name, 's2-ukfr') && hashFiles('out/cache/fr_moves_seen.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: out/cache/fr_moves_seen.json
+          key: fr-moves-seen-${{ matrix.name }}-${{ github.run_id }}
       - name: Gedächtnis der Website-Prüfung sichern
         if: always() && steps.gate.outputs.an == 'true' && startsWith(matrix.name, 'web-')
         uses: actions/cache/save@v4

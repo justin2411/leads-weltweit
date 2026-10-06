@@ -178,6 +178,30 @@ def load_diag(limit: int, stats: Counter, exclude: set[str] | None = None) -> li
     return cands
 
 
+def load_moves(limit: int, stats: Counter, exclude: set[str] | None = None) -> list[dict]:
+    """S2 FR Premium: Umzüge (Sitz/Hauptbetrieb) laut BODACC aus den DILA-Rohdaten (Quellen-Scout R63), neueste und
+    mit Ansprechperson zuerst. exclude: schon gespeicherte SIREN dieser Quelle."""
+    from extraktor.sources import fr_bodacc_moves
+    cands = fr_bodacc_moves.load(None, log=log, exclude=exclude)
+    cands = filters.dedupe([c for c in cands if not filters.pre_filter(c) and segments.fits("S2", c)[0]])[:limit]
+    stats["moves_FR"] = len(cands)
+    return cands
+
+
+def process_move(c: dict, fetcher) -> None:
+    """Umzug FR: Website und Kontakt über die kostenlose Anreicherung; gefundene eigene Website zusätzlich mit der
+    Website-Prüfung ansehen (Befund = Kombi-Anlass „Umzug + alte/unsichere Website“)."""
+    E.enrich(c, fetcher, need_website=True)
+    c["facts"]["checked_on"] = dt.date.today()
+    if not c.get("website"):
+        return
+    c["facts"]["listed_website"] = c["website"]
+    c["facts"]["domain"] = W.site_domain(c["website"])
+    res = website_check.inspect({**c, "facts": {**c["facts"]}}, fetcher)
+    if res["findings"]:
+        c["facts"]["findings"] = res["findings"]
+
+
 def load_charity(limit: int, stats: Counter, exclude: set[str] | None = None) -> list[dict]:
     """S2 UK Premium: neu registrierte Charities (Charity Commission, ≤ 30 Tage) ohne Website (Quellen-Scout R38).
     Telefon schon in Overture UK = dort schon bearbeitet. exclude: schon gespeicherte Charity-Nummern."""
@@ -479,6 +503,8 @@ def process(c: dict, seg: str, fetcher, shared: Counter, guard: filters.Guard) -
                 return {**c, "segment": seg, "ampel": "skip", "qc": {"status": "skip", "blocking": [why], "missing": [],
                                                                       "warnings": [], "evidence": []},
                         "sc": {"status": "skip", "problems": []}}
+        elif c["source"] == "bodacc_move":
+            process_move(c, fetcher)
         else:
             E.enrich(c, fetcher, need_website=True)
     except Exception as exc:  # noqa: BLE001 - ein Fehler bei einer Firma darf den Lauf nicht beenden
@@ -704,6 +730,8 @@ def main(argv=None) -> int:
     ap.add_argument("--diag", type=int, default=None,
                     help="S2 FR: so viele neu zertifizierte Diagnostiqueurs ohne Website (DGALN-Verzeichnis, 0 = aus; "
                          "ohne Angabe 2000, wenn --bio läuft = Linie s2-ukfr)")
+    ap.add_argument("--fr-moves", type=int, default=None,
+                    help="S2 FR: so viele Umzüge laut BODACC (DILA-Rohdaten, Job fr-moves) prüfen; Standard 2000 mit --bio")
     ap.add_argument("--charity", type=int, default=0,
                     help="S2 UK: so viele neu registrierte Charities ohne Website (Charity Commission, 0 = aus)")
     ap.add_argument("--ico", type=int, default=None,
@@ -744,6 +772,8 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     if args.diag is None:
         args.diag = 2000 if args.bio > 0 else 0
+    if args.fr_moves is None:
+        args.fr_moves = 2000 if args.bio > 0 else 0
     if args.ico is None:
         args.ico = 2000 if args.charity > 0 else 0
     deadline = time.monotonic() + args.deadline_min * 60 if args.deadline_min else 0
@@ -783,6 +813,7 @@ def main(argv=None) -> int:
                                 + (("agence_bio",) if args.bio else ())
                                 + (("charity_commission",) if args.charity else ())
                                 + (("diagnostiqueurs",) if args.diag else ())
+                                + (("bodacc_move",) if args.fr_moves else ())
                                 + (("ico_register",) if args.ico else ()))
         log(f"Datenbank: {len(guard.known)} Firmen schon bekannt")
     us = "US" in countries
@@ -868,6 +899,10 @@ def main(argv=None) -> int:
         # neu zertifizierte Diagnostiqueurs (datiertes Ereignis, Quellen-Scout R40): ganz nach vorn
         dg = load_diag(args.diag, stats, {i for s_, i in guard.known if s_ == "diagnostiqueurs"})
         p["S2/FR"] = dg + p.get("S2/FR", [])
+    if "FR" in countries and "S2" in segs and args.fr_moves > 0:
+        # Umzüge laut BODACC (datiertes Ereignis, Quellen-Scout R63): ganz nach vorn
+        mv = load_moves(args.fr_moves, stats, {i for s_, i in guard.known if s_ == "bodacc_move"})
+        p["S2/FR"] = mv + p.get("S2/FR", [])
     if "UK" in countries and "S2" in segs and args.charity > 0:
         # neu registrierte Charities (datiertes Ereignis, Quellen-Scout R38): ganz nach vorn
         ch = load_charity(args.charity, stats, {i for s_, i in guard.known if s_ == "charity_commission"})
@@ -930,6 +965,10 @@ def main(argv=None) -> int:
             except Exception as exc:  # noqa: BLE001 - eine Branche darf die übrigen nicht mitreißen
                 failed.append(key)
                 log(f"{key}: Speichern fehlgeschlagen ({type(exc).__name__}: {str(exc)[:200]}), weiter mit der nächsten")
+        moved = [l["facts"].get("notice") for l in part if l["source"] == "bodacc_move"]
+        if moved:  # FR-Umzüge: jede Meldung nur einmal anreichern (Gedächtnis des Teils, Quellen-Scout R63)
+            from extraktor.sources import fr_bodacc_moves
+            log(f"{key}: {fr_bodacc_moves.remember(moved)} Umzugsmeldungen ins Gedächtnis")
         write(out, leads, args.per)  # nach jeder Branche sichern (Abbruch kostet nur die laufende Branche)
         if args.web_check:
             website_check.save_seen()
