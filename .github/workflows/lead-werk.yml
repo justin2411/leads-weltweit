@@ -122,6 +122,8 @@ jobs:
     # (PSC-Snapshot, ≤ 30 Tage) bei UK-S2-Firmen im Bestand + heute bestätigter Website-Zustand -> Premium-Leads.
     # Dazu neue Abfall-Beförderer laut Environment Agency (Quellen-Scout R44, scripts/lib/uk_ea_radar.py, je Tag der
     # letzten 14 Tage genau ein Registerabruf), gleicher Bestand, gleiche Prüfung. Sendet nichts.
+    # Dazu neu beim ICO eingetragene Firmen (Quellen-Scout R58, scripts/lib/uk_ico_radar.py) aus dem Zwischenspeicher
+    # des Jobs uk-ico (kein eigener Abruf).
     # Läuft in jedem Lauf (Scout R51, 05.10.2026: Zeitplan-Läufe fielen 01.–04.10. alle aus, gleiche Ursache wie
     # fr-decp #472), aber höchstens einmal am Tag: Merker je Tag wird VOR dem Abruf gesichert (jede Registerdatei und
     # jede Startseite höchstens 1×/Tag, auch wenn mehrere Linien-Läufe gleichzeitig starten oder der Abruf scheitert).
@@ -166,6 +168,14 @@ jobs:
         with: { python-version: "3.11" }
       - run: pip install -r requirements.txt
         if: steps.gate.outputs.an == 'true'
+      - name: Frische ICO-Eintragungen (Job uk-ico, neuester Stand; Scout R58)
+        if: steps.gate.outputs.an == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: out/cache/uk_ico_radar.json
+          key: uk-ico-radar-${{ steps.d.outputs.tag }}
+          restore-keys: |
+            uk-ico-radar-
       - name: Eigentümerwechsel UK prüfen und speichern
         if: steps.gate.outputs.an == 'true'
         continue-on-error: true  # Merker bleibt gesetzt: kein zweiter Abruf am selben Tag
@@ -443,6 +453,12 @@ jobs:
         with:
           path: out/cache/uk_ico.json
           key: uk-ico-data-${{ steps.d.outputs.tag }}
+      - name: Radar-Auszug sichern (Scout R58, frische Eintragungen ohne Personendaten für uk-psc)
+        if: steps.dl.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: out/cache/uk_ico_radar.json
+          key: uk-ico-radar-${{ steps.d.outputs.tag }}
 
   plan:
     # Belegungsplan (Inhaber 03.10.2026: Plätze je Linie im Leitstand einstellen): app/lib/werk-linien.json +

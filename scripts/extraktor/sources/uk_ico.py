@@ -39,6 +39,10 @@ PAGE = SITE + "/about-the-ico/what-we-do/register-of-fee-payers/download-the-reg
 LINK = re.compile(r'href="(/media2/[^"]+/register-of-data-controllers-\d{4}-\d{2}-\d{2}\.zip)"')
 UA = {"User-Agent": "NextGenProfitBot/0.1 (+https://www.nextgen-profit.de)"}
 CACHE = Path(os.environ.get("EXTRAKTOR_ICO", "out/cache/uk_ico.json"))
+RADAR_CACHE = Path(os.environ.get("EXTRAKTOR_ICO_RADAR", "out/cache/uk_ico_radar.json"))
+RADAR_DAYS = 14  # Radar nur Premium-fähig (lib/premium.PREMIUM_MAX_AGE)
+RADAR_KEEP = ("Registration_number", "Organisation_name", "Trading_names", "Organisation_postcode",
+              "Start_date_of_registration", "Payment_tier", "Public_register_entry_URL")
 MAX_AGE = 20 * 3600
 NEW_DAYS = 30  # gespeichert wird bis 30 Tage (Reihenfolge); Premium zählt lib/premium.py nur bis 14 Tage
 FREEMAIL = re.compile(r"@(gmail|googlemail|hotmail|outlook|live|yahoo|icloud|me|aol|btinternet|sky|msn|protonmail|"
@@ -85,6 +89,18 @@ def select(rows, today: dt.date) -> list[dict]:
     return out
 
 
+def radar_rows(rows, today: dt.date) -> list[dict]:
+    """Frische Eintragungen (≤ RADAR_DAYS, keine Behörde, mit PLZ) nur mit Firmenfeldern – ohne Kontaktperson,
+    E-Mail und Telefon (Anlass für lib/uk_ico_radar.py, Kontakt kommt aus dem eigenen Bestand)."""
+    out = []
+    for r in rows:
+        age = fresh_age(r, today)
+        if age is None or age > RADAR_DAYS or not (r.get("Organisation_postcode") or "").strip():
+            continue
+        out.append({k: (r.get(k) or "").strip() for k in RADAR_KEEP})
+    return out
+
+
 def cached() -> list[dict]:
     try:
         return json.loads(CACHE.read_text(encoding="utf-8")) if CACHE.exists() else []
@@ -121,9 +137,13 @@ def download(log=print, today: dt.date | None = None) -> list[dict]:
             name = next(n for n in z.namelist() if n.endswith(".csv"))
             with z.open(name) as f:
                 text = io.TextIOWrapper(f, encoding="utf-8-sig", errors="replace", newline="")
-                out = select(csv.DictReader(text), today)
+                fresh = [r for r in csv.DictReader(text) if fresh_age(r, today) is not None]
+    out = select(fresh, today)
     CACHE.parent.mkdir(parents=True, exist_ok=True)
     CACHE.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
+    # Premium-Radar UK (Scout R58, lib/uk_ico_radar.py): alle frischen Eintragungen ohne Personendaten als Anlass für
+    # Firmen im eigenen Bestand – derselbe Abruf, keine zusätzliche Anfrage
+    RADAR_CACHE.write_text(json.dumps(radar_rows(fresh, today), ensure_ascii=False), encoding="utf-8")
     log(f"ICO-Register: {len(out)} neu eingetragene Verantwortliche mit Kontakt (≤ {NEW_DAYS} Tage)")
     return out
 
