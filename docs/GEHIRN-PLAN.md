@@ -26,6 +26,15 @@ Visualisierung = JARVIS-Trichter ohne Scanner, Ziel-Ring 25.000 € mit Zeitstra
 **Offen beim Inhaber:** `SEED_INBOXES` (ja), Bestätigungsknopf Abmeldeseite (ja), Zweit-Domains (nach 1. Antwort),
 Cloudflare R2 (später), Aufräum-SQL (nach Sichtung).
 
+## Lagebild (06.10.2026, 08:40 Berliner Zeit)
+- **Engpass bleibt Erstmail → Antwort**, und Versand läuft nur über ein Postfach. US-Rückläufer gefährden auch das.
+- **Ursache US eingegrenzt:** Rückläufer hängen am Postfach-Anbieter des Empfängers (eigener Server und Rackspace
+  deutlich schlechter als Google/M365) – nur in US, nicht in UK/FR.
+- **Schritt:** US-Erstmails an große Postfach-Anbieter zuerst (nur Reihenfolge, #499). Prüfen Fr 09.10.
+- Nicht verändert: Prüfregeln, Notbremse, Mengen, gestoppte Postfächer (Neustart nur Inhaber).
+- **Nächster Schritt:** Ergebnis A3 (US-Adressen) einarbeiten; danach Nachfass-Schlussfrage US/UK testen, sobald der
+  Betreff-Test (Mi 07.10.) entschieden ist – eine Sache pro Test.
+
 ## Lagebild (06.10.2026, 06:40 Berliner Zeit)
 - **„Neue Käufer steht still“ ist kein Ausfall:** Das Kunden-Werk läuft (13 Teile, alle 5 min), findet aber keine
   ungeprüften Webagenturen in US/UK/FR mehr – der Käufer-Pool ist durchgeprüft. Bisher stand das als rot da, weil leere
