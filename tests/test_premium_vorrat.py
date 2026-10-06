@@ -35,6 +35,33 @@ class TierTest(unittest.TestCase):
                          ["l4", "l3", "l2", "l1"])
 
 
+class FreshOrderTest(unittest.TestCase):
+    """Premium-Labor 06.10.2026: innerhalb Premium frische Anlässe zuerst (Restzeit), nur Reihenfolge."""
+
+    def test_days_left(self):
+        self.assertEqual(premium.days_left(lead(1, age=0), TODAY), 14)
+        self.assertEqual(premium.days_left(lead(1, age=12), TODAY), 2)
+        self.assertEqual(premium.days_left(lead(1, age=20), TODAY), 0)
+        until = (TODAY + dt.timedelta(days=4)).isoformat()
+        cert = lead(1, age=1, premium={"tier": "premium", "gilt_bis": until})
+        self.assertEqual(premium.days_left(cert, TODAY), 3)
+
+    def test_fresh_beats_old_high_score(self):
+        old = lead(1, age=12, score=100)
+        fresh = lead(2, age=1, score=75)
+        self.assertEqual([r["id"] for r in sorted([old, fresh], key=lambda r: premium.sort_key(r, TODAY))],
+                         ["l2", "l1"])
+        # gleich alt: weiter nach Punktzahl
+        a, b = lead(3, age=2, score=80), lead(4, age=2, score=95)
+        self.assertEqual([r["id"] for r in sorted([a, b], key=lambda r: premium.sort_key(r, TODAY))], ["l4", "l3"])
+
+    def test_never_changes_tier(self):
+        # alter Premium-Lead bleibt vor jedem Standard-Lead; Standard-Reihenfolge unverändert
+        rows = [lead(1, tier="standard", age=0, score=99), lead(2, age=14, score=70)]
+        self.assertEqual([r["id"] for r in sorted(rows, key=lambda r: premium.sort_key(r, TODAY))], ["l2", "l1"])
+        self.assertEqual(premium.tier_now(lead(2, age=14, score=70), TODAY), "premium")
+
+
 class StockTest(unittest.TestCase):
     def test_premium_short_reports_filled_samples(self):
         from sample_stock import premium_short

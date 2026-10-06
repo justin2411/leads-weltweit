@@ -36,6 +36,7 @@ import re
 FRESH_HIGH, FRESH_MID = 14, 30
 PREMIUM_MAX_AGE = FRESH_HIGH  # Premium nur mit Ereignis ≤ 14 Tage (nie lockern)
 PREMIUM_MIN = 70
+AGE_ORDER_PER_DAY = 3.0  # Reihenfolge innerhalb Premium: −3 Punkte je verbrauchtem Premium-Tag (nur Sortierung)
 POINTS = {"fresh_high": 35, "fresh_mid": 20, "combo": 25, "evidence": 10, "person": 15, "contact": 15}
 
 # Website-Zustände (gesehen beim Prüfen, kein Ereignisdatum)
@@ -214,15 +215,35 @@ def sort_key(row: dict, today: dt.date | None = None, weights: dict[str, float] 
     """Premium zuerst (nur Reihenfolge, schließt nichts aus): Stufe heute, dann Punktzahl; ohne Wert zuletzt.
     Standard-Leads füllen nur auf, wenn es keine 10 Premium-Leads gibt (Inhaber 05.10.2026, Übergang).
 
+    Frische (Premium-Labor 06.10.2026): innerhalb Premium zählt je fehlendem Resttag AGE_ORDER_PER_DAY Punkte weniger
+    (days_left). Vorher stand ein 12 Tage alter 100-Punkte-Lead immer vor einem 1 Tag alten 75-Punkte-Lead – US-Proben
+    zeigten im Schnitt Anlässe von vor ~6 Tagen, obwohl das Radar täglich frische Premium-Leads findet. Nur Reihenfolge.
+
     weights: Kunden-Feedback je Anlass (lib/feedback.py, Feedback-Werk 05.10.2026) – Umgewichtung der Punktzahl
     innerhalb derselben Stufe (0,8–1,25). Ändert nie die Stufe und nie, ob ein Lead rausgeht."""
     v = row.get("premium_score")
+    prem = tier_now(row, today) == "premium"
     if not isinstance(v, (int, float)):
-        return (0 if tier_now(row, today) == "premium" else 1, 1)
+        return (0 if prem else 1, 1)
     if weights:
         from lib.feedback import weight_for
         v = v * weight_for(row, weights)
-    return (0 if tier_now(row, today) == "premium" else 1, -round(v, 3))
+    if prem:  # Frische innerhalb Premium (Premium-Labor 06.10.2026): weniger Restzeit = weiter hinten
+        v -= AGE_ORDER_PER_DAY * (PREMIUM_MAX_AGE - days_left(row, today))
+    return (0 if prem else 1, -round(v, 3))
+
+
+def days_left(row: dict, today: dt.date | None = None) -> int:
+    """Wie viele Tage ein Premium-Lead noch Premium bleibt (0 … PREMIUM_MAX_AGE): bis das Ereignis 14 Tage alt ist
+    bzw. bis zur Frist des Anlasses (premium.gilt_bis, z. B. Ablauf des Zertifikats) – das Frühere zählt."""
+    today = today or dt.date.today()
+    ev = _date(row.get("event_date"))
+    left = PREMIUM_MAX_AGE - max(0, (today - ev).days) if ev else 0
+    p = row.get("premium") if isinstance(row.get("premium"), dict) else {}
+    until = _date(p.get("gilt_bis"))
+    if until is not None:
+        left = min(left, (until - today).days - 1)
+    return max(0, min(PREMIUM_MAX_AGE, left))
 
 
 def key_with(weights: dict[str, float] | None, today: dt.date | None = None):
