@@ -2,12 +2,13 @@
 # Sendet nie Mails.
 name: kaeufer
 on:
-  schedule: [{ cron: "13 5 * * *" }]   # täglich: Käufer-Vorrat auffüllen (vor dem Automatiklauf 12:17 UTC)
+  # Drossel 06.10.2026: kein Zeitplan mehr (andere Branchen ruhen, S2-Käufer liefert das Kunden-Werk) – nur von Hand
   workflow_dispatch:
     inputs:
       max:
         description: "Höchstzahl gefundener Adressen je Zielgruppe/Land"
         default: "100"
+concurrency: { group: werke, cancel-in-progress: false }   # Drossel 06.10.2026: ein schweres Werk zur Zeit
 jobs:
   doppelt:
     # Prüfung 04.10.2026: fiel der geplante Lauf aus, startet ihn der Wachhund nach (workflow_dispatch); kommt der
@@ -42,7 +43,7 @@ jobs:
     timeout-minutes: 240
     strategy:
       fail-fast: false
-      max-parallel: 6
+      max-parallel: 1   # Drossel 06.10.2026
       matrix:
         combo: [S1-UK, S2-UK, S9-UK, S3-UK, S4-UK, S5-UK, S1-US, S2-US, S9-US, S3-US, S4-US, S5-US, S1-FR, S2-FR, S9-FR]
     env:
@@ -75,7 +76,7 @@ jobs:
     timeout-minutes: 240
     strategy:
       fail-fast: false
-      max-parallel: 4
+      max-parallel: 1   # Drossel 06.10.2026
       matrix:
         area: ["UK|Greater Manchester", "UK|West Yorkshire", "UK|West Midlands", "UK|London", "UK|Bristol",
                "UK|Merseyside", "US|New York City", "US|Long Island", "FR|Lyon", "FR|Paris"]

@@ -17,8 +17,8 @@ export const RECENT_START_MIN = 15;
 export type StartKey = keyof typeof START_WORKFLOWS;
 export const isStartKey = (x: unknown): x is StartKey => typeof x === "string" && Object.hasOwn(START_WORKFLOWS, x);
 
-/** Minuten (UTC), zu denen der Wachhund läuft (.github/workflows/wachhund.yml: "11,41" und "26,56"). */
-export const WACHHUND_MINUTES = [11, 26, 41, 56];
+/** Minuten (UTC), zu denen der Wachhund läuft (.github/workflows/wachhund.yml: stündlich :11, Drossel 06.10.2026). */
+export const WACHHUND_MINUTES = [11];
 /** Ältere offene Wünsche verwirft der Wachhund (scripts/wachhund.py START_MAX_AGE_MIN). */
 export const START_MAX_AGE_MIN = 120;
 

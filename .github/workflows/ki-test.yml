@@ -6,6 +6,7 @@ on:
   push:
     branches: [claude/ki-antworten]
     paths: [.github/workflows/ki-test.yml, scripts/responder.py]
+concurrency: { group: werke, cancel-in-progress: false }   # Drossel 06.10.2026: ein schweres Werk zur Zeit
 jobs:
   test:
     runs-on: ubuntu-latest

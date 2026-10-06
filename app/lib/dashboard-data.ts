@@ -1,4 +1,5 @@
 import "server-only";
+import { ACTIONS_DIRECT_DISPATCH } from "@/lib/drossel";
 import { unstable_cache } from "next/cache";
 import { after } from "next/server";
 import { db } from "@/lib/supabase";
@@ -258,7 +259,8 @@ export async function loadOwnerLog(limit = 8) {
   return (data ?? []) as { action: string; target: string | null; new_value: unknown; created_at: string }[];
 }
 
-export const canDispatch = () => !!process.env.GH_DISPATCH_TOKEN?.trim();
+/** Sofortstart über GitHub – aus, solange die Actions-Drossel gilt (lib/drossel.ts). */
+export const canDispatch = () => ACTIONS_DIRECT_DISPATCH && !!process.env.GH_DISPATCH_TOKEN?.trim();
 
 /** Verlauf einer Firma: Stammdaten, Mails, Ereignisse, Website-Proben, Kunde. */
 export async function loadCompany(id: string) {

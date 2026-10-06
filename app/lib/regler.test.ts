@@ -203,12 +203,12 @@ test("Zustand: noch nie geändert, wartet, start angefordert, angewandt, pausier
   const upd = { sample_targets: "2026-10-03T19:40:00Z" };
   const w = status("proben-vorrat", { ...base, updatedAt: upd });
   assert.equal(w.kind, "wartet");
-  assert.equal(w.text, "wird angewandt um ca. 22:23");
+  assert.equal(w.text, "wird angewandt um ca. 23:35"); // Drossel 06.10.2026: Proben-Vorrat alle 3 h :35
   assert.equal(w.savedAt, "2026-10-03T19:40:00Z");
   const req = { workflow: "proben-vorrat", status: "offen" as const, created_at: "2026-10-03T19:41:00Z", started_at: null };
   const s = status("proben-vorrat", { ...base, updatedAt: upd, startRequests: [req] });
   assert.equal(s.kind, "start angefordert");
-  assert.equal(s.text, "Start angefordert – spätestens 21:56");
+  assert.equal(s.text, "Start angefordert – spätestens 22:11"); // Wachhund stündlich :11
   // alter offener Wunsch zählt nicht mehr
   assert.equal(status("proben-vorrat", { ...base, updatedAt: upd, startRequests: [{ ...req, created_at: "2026-10-03T16:00:00Z" }] }).kind, "wartet");
   assert.match(status("proben-vorrat", { ...base, updatedAt: upd, startRequests: [{ ...req, status: "gestartet", started_at: "2026-10-03T19:42:00Z" }] }).text, /^gestartet 21:42/);
@@ -316,9 +316,9 @@ test("Zustand: gemeinsamer Schlüssel ohne Quittung, Quittung mit altem Wert, ge
   const late: Ack = { werk: "proben-vorrat", key: "sample_targets", seen_at: "2026-10-03T19:40:05Z", value: { "S2/US": 30 } };
   assert.equal(status("proben-vorrat", { ...st, acks: [late] }).kind, "wartet");
   assert.equal(status("proben-vorrat", { ...st, acks: [{ ...late, value: { "S2/US": 50 } }] }).kind, "angewandt");
-  // gemessen erreicht: nur nach einem planmäßigen Lauf seit dem Speichern (19:40 -> Lauf 20:23 UTC)
+  // gemessen erreicht: nur nach einem planmäßigen Lauf seit dem Speichern (19:40 -> Lauf 21:35 UTC, Drossel alle 3 h)
   assert.equal(status("proben-vorrat", { ...st, reached: true }).kind, "wartet");
-  const later = new Date("2026-10-03T20:30:00Z");
+  const later = new Date("2026-10-03T21:40:00Z");
   const r = status("proben-vorrat", { ...st, now: later, reached: true });
   assert.equal(r.kind, "erreicht");
   assert.equal(status("proben-vorrat", { ...st, now: later, reached: false }).kind, "wartet");

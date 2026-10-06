@@ -24,23 +24,15 @@ def _wf(name: str) -> dict:
 class WorkflowRobustnessTest(unittest.TestCase):
     """Prüfung 04.10.2026: GitHub ließ geplante Läufe stundenlang aus, Nachstarts liefen doppelt oder zu lang."""
 
-    def test_wachhund_is_kicked_from_werke_and_antworten(self):
-        for name, job in (("lead-werk.yml", "weiter"), ("kunden-werk.yml", "weiter"), ("antworten.yml", "run")):
-            with self.subTest(name):
-                j = _wf(name)["jobs"][job]
-                kick = [s for s in j["steps"] if "gh workflow run wachhund.yml" in (s.get("run") or "")]
-                self.assertEqual(len(kick), 1)
-                self.assertEqual(kick[0]["if"], "always()")
-                self.assertEqual(j["permissions"]["actions"], "write")
-        self.assertIn("wachhund.yml", _wf("antworten.yml")["jobs"]["run"]["steps"][-1]["run"])
-
-    def test_restart_retries_and_survives_empty_answer(self):
-        for name in ("lead-werk.yml", "kunden-werk.yml"):
-            run = _wf(name)["jobs"]["weiter"]["steps"][-1]["run"]
-            self.assertIn("retry gh run view", run)
-            self.assertIn("mins=0", run)   # Startzeit unbekannt -> kein Sofort-Neustart (keine Startkette)
-            self.assertNotIn("mins=999", run)
-            self.assertIn(f"retry gh workflow run {name}", run)
+    def test_no_workflow_kicks_another_or_itself(self):
+        """Actions-Drossel (Inhaber 06.10.2026): kein Workflow startet andere Abläufe oder sich selbst."""
+        for f in sorted((ROOT / ".github" / "workflows").glob("*.yml")):
+            with self.subTest(f.name):
+                text = "\n".join(l for l in f.read_text(encoding="utf-8").splitlines() if not l.lstrip().startswith("#"))
+                self.assertNotIn("gh workflow run", text)
+                self.assertNotIn("/dispatches", text)
+                self.assertNotIn("repository_dispatch", text)
+                self.assertNotIn("workflow_run", text)
 
     def test_daily_runs_skip_after_wachhund_restart(self):
         for name in ("morgenbericht.yml", "tagescheck.yml", "kaeufer.yml", "taeglich.yml"):
@@ -74,10 +66,78 @@ class WorkflowRobustnessTest(unittest.TestCase):
         import tagescheck
         import wachhund
         job = next(j for j in wachhund.JOBS if j["wf"] == "antworten.yml")
-        self.assertEqual(job["max_min"], 20)
-        self.assertEqual(tagescheck.WORKFLOWS["antworten.yml"][1], 1)
+        self.assertEqual(job["max_min"], 45)                        # Drossel 06.10.2026: alle 30 min
+        self.assertEqual(tagescheck.WORKFLOWS["antworten.yml"][1], 2)
 
     def test_kaeufer_osm_cannot_hang(self):
         osm = next(s for s in _wf("kaeufer.yml")["jobs"]["suchen"]["steps"] if s.get("name") == "Kandidaten aus OpenStreetMap")
         self.assertEqual(osm["timeout-minutes"], 45)
         self.assertTrue(osm["continue-on-error"])
+
+
+class ActionsDrosselTest(unittest.TestCase):
+    """Actions-Drossel (Inhaber 06.10.2026: „fahr github actions erstmal runter“): höchstens 5 Jobs gleichzeitig im
+    Repo (werke 2 + takt 1 + Versand 1 + Antworten 1; CI nur bei Pull Requests), Zeitpläne höchstens stündlich."""
+
+    LIMIT = {"werke": 2, "takt": 1, "mails-senden": 1, "antworten": 1}
+
+    @staticmethod
+    def width(wf: dict) -> int:
+        """Höchstzahl gleichzeitiger Jobs eines Laufs: Jobs gleicher Tiefe im needs-Graph laufen nebeneinander."""
+        jobs = wf["jobs"]
+        depth: dict[str, int] = {}
+
+        def d(j: str) -> int:
+            if j not in depth:
+                needs = jobs[j].get("needs") or []
+                needs = [needs] if isinstance(needs, str) else needs
+                depth[j] = 1 + max((d(n) for n in needs), default=-1)
+            return depth[j]
+
+        per: dict[int, int] = {}
+        for j, jd in jobs.items():
+            par = (jd.get("strategy") or {}).get("max-parallel", 1 if not jd.get("strategy") else 99)
+            per[d(j)] = per.get(d(j), 0) + par
+        return max(per.values())
+
+    def test_groups_and_parallelism(self):
+        total = {}
+        for f in sorted((ROOT / ".github" / "workflows").glob("*.yml")):
+            if f.name == "ci.yml":
+                continue
+            wf = yaml.safe_load(f.read_text())
+            with self.subTest(f.name):
+                group = (wf.get("concurrency") or {}).get("group")
+                self.assertIn(group, self.LIMIT)
+                self.assertIs(wf["concurrency"]["cancel-in-progress"], False)
+                self.assertLessEqual(self.width(wf), self.LIMIT[group])
+                total[group] = max(total.get(group, 0), self.width(wf))
+                for j in wf["jobs"].values():
+                    self.assertNotIn("concurrency", j)  # nur Gruppen auf Workflow-Ebene (zählen sicher)
+        self.assertLessEqual(sum(total.values()), 5)
+
+    def test_crons_at_most_hourly_and_heavy_every_3_to_6_h(self):
+        for f in sorted((ROOT / ".github" / "workflows").glob("*.yml")):
+            wf = yaml.safe_load(f.read_text())
+            crons = [c["cron"] for c in (wf[True].get("schedule") or [])]
+            with self.subTest(f.name):
+                runs_per_hour = sum(len(c.split()[0].split(",")) for c in crons if c.split()[1] == "*")
+                self.assertLessEqual(runs_per_hour, 2 if f.name == "antworten.yml" else 1)
+                for c in crons:
+                    self.assertNotIn("/", c.split()[0])  # keine Minuten-Raster
+                if wf.get("concurrency", {}).get("group") == "werke":
+                    self.assertTrue(all(c.split()[1] != "*" for c in crons))
+        self.assertEqual(yaml.safe_load((ROOT / ".github/workflows/werk-nachfuellen.yml").read_text())[True].keys(),
+                         {"workflow_dispatch"})
+
+    def test_scripts_do_not_dispatch(self):
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from lib import drossel
+        import werk_plan
+        self.assertFalse(drossel.DISPATCH_ERLAUBT)
+        self.assertLessEqual(drossel.MAX_LAEUFE, 5)
+        self.assertLessEqual(drossel.MAX_PLAETZE, 5)
+        self.assertEqual(werk_plan.MIN_BELEGT, 0)
+        app = (ROOT / "app" / "lib" / "drossel.ts").read_text(encoding="utf-8")
+        self.assertIn("export const ACTIONS_DIRECT_DISPATCH = false;", app)

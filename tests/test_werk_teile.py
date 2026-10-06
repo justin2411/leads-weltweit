@@ -13,6 +13,8 @@ import werk_belegung as B  # noqa: E402
 import werk_plan as W  # noqa: E402
 
 NOW = dt.datetime(2026, 10, 5, 4, 0, tzinfo=dt.timezone.utc)
+# Nachfüller-Logik ruht (Actions-Drossel 06.10.2026, MIN_BELEGT = 0); geprüft wird sie weiter mit dem alten Ziel 30
+MB = 30
 
 
 def job(name, status="in_progress"):
@@ -101,7 +103,7 @@ class GapFill(unittest.TestCase):
 
     def test_running_lane_gets_free_parts(self):
         # web-us läuft mit 1 Teil, Plan 15 -> 14 weitere Teile, nie der laufende
-        start, _ = B.fill_plan(self.reg, res({"web-us": 15}), {}, {"web-us": {0}}, busy=20, now=NOW)
+        start, _ = B.fill_plan(self.reg, res({"web-us": 15}), {}, {"web-us": {0}}, busy=20, now=NOW, min_belegt=MB)
         self.assertEqual(start, {"web-us": 14})
         shards = B.choose_shards(self.reg, start, {"web-us": {0}}, [])
         self.assertNotIn(0, shards["web-us"])
@@ -114,24 +116,24 @@ class GapFill(unittest.TestCase):
                  "web-fr": "läuft (38 min je Teil)", "s2-ukfr": "voll ausgelastet", "radar": "läuft"},
                 nach={"web-us"})
         claims = {"web-us": {0}, "web-uk": {0}, "web-fr": {0}, "s2-ukfr": {0, 1, 2, 3, 4, 5}, "radar": {0, 1}}
-        start, _ = B.fill_plan(self.reg, r, {}, claims, busy=18, now=NOW)
+        start, _ = B.fill_plan(self.reg, r, {}, claims, busy=18, now=NOW, min_belegt=MB)
         self.assertEqual(18 + sum(start.values()), 30)
         self.assertNotIn("web-us", start)   # Vorrang-Linien haben genug freie Teile
         self.assertNotIn("s2-ukfr", start)  # alle 6 Teile laufen
         # sind UK/FR erschöpft (ruhen), ist web-us der Puffer
         stats = {k: {"max_last": 2, "green_last": 0, "last_end": "2026-10-05T03:50:00+00:00"} for k in ("web-uk", "web-fr")}
-        start, _ = B.fill_plan(self.reg, r, stats, claims, busy=18, now=NOW)
+        start, _ = B.fill_plan(self.reg, r, stats, claims, busy=18, now=NOW, min_belegt=MB)
         self.assertEqual(start, {"web-us": 12})
 
     def test_limits(self):
         r = res({"web-us": 21, "web-uk": 21})
-        start, _ = B.fill_plan(self.reg, r, {}, {"web-us": {0}}, busy=30, now=NOW)
+        start, _ = B.fill_plan(self.reg, r, {}, {"web-us": {0}}, busy=30, now=NOW, min_belegt=MB)
         self.assertEqual(30 + sum(start.values()), self.reg["total_slots"] - self.reg["reserve"])
-        self.assertEqual(B.fill_plan(self.reg, r, {}, {"web-us": None}, busy=38, now=NOW)[0], {})
+        self.assertEqual(B.fill_plan(self.reg, r, {}, {"web-us": None}, busy=38, now=NOW, min_belegt=MB)[0], {})
         # alte Läufe belegen die ganze Linie -> nie daneben starten
-        self.assertEqual(B.fill_plan(self.reg, r, {}, {"web-us": None, "web-uk": None}, busy=2, now=NOW)[0], {})
+        self.assertEqual(B.fill_plan(self.reg, r, {}, {"web-us": None, "web-uk": None}, busy=2, now=NOW, min_belegt=MB)[0], {})
         # Speicher-Bremse: keine Zusatzplätze über den Plan
-        start, _ = B.fill_plan(self.reg, res({"web-uk": 2}, brake="drossel"), {}, {"web-uk": {0}}, busy=2, now=NOW)
+        start, _ = B.fill_plan(self.reg, res({"web-uk": 2}, brake="drossel"), {}, {"web-uk": {0}}, busy=2, now=NOW, min_belegt=MB)
         self.assertEqual(start, {"web-uk": 1})
 
 

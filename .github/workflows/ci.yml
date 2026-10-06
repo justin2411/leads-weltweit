@@ -3,6 +3,8 @@ on:
   pull_request:
   push:
     branches: [main]
+# Drossel 06.10.2026: je Branch/PR höchstens ein CI-Lauf zur Zeit
+concurrency: { group: "ci-${{ github.ref }}", cancel-in-progress: false }
 jobs:
   python:
     runs-on: ubuntu-latest

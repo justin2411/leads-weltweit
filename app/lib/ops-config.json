@@ -570,35 +570,35 @@
       "file": "lead-werk.yml",
       "name": "Lead-Werk",
       "crons": [
-        "23 */3 * * *"
+        "23 0,6,12,18 * * *"
       ]
     },
     {
       "file": "kunden-werk.yml",
       "name": "Kunden-Werk",
       "crons": [
-        "41 */2 * * *"
+        "41 3,21 * * *"
       ]
     },
     {
       "file": "proben-vorrat.yml",
       "name": "Proben-Vorrat",
       "crons": [
-        "23 * * * *"
+        "35 0-23/3 * * *"
       ]
     },
     {
       "file": "antworten.yml",
       "name": "Antwort-Assistent",
       "crons": [
-        "*/10 * * * *"
+        "7,37 * * * *"
       ]
     },
     {
       "file": "taeglich.yml",
       "name": "Automatiklauf (Nachfass, Entwürfe)",
       "crons": [
-        "17 12 * * *"
+        "41 9 * * *"
       ]
     },
     {
@@ -619,8 +619,7 @@
       "file": "wachhund.yml",
       "name": "Wachhund",
       "crons": [
-        "11,41 * * * *",
-        "26,56 * * * *"
+        "11 * * * *"
       ]
     }
   ],
@@ -628,63 +627,62 @@
     {
       "file": "agenten-werk.yml",
       "crons": [
-        "29 * * * *",
-        "3,18,33,48 * * * *"
+        "35 1-23/3 * * *"
       ]
     },
     {
       "file": "anreichern.yml",
       "crons": [
-        "41 2,8,15,20 * * *"
+        "35 11 * * *"
       ]
     },
     {
       "file": "antworten.yml",
       "crons": [
-        "*/10 * * * *"
+        "7,37 * * * *"
       ]
     },
     {
       "file": "aufraeumen.yml",
       "crons": [
-        "41 2 * * *"
+        "53 2 * * *"
       ]
     },
     {
       "file": "dauerpruefung.yml",
       "crons": [
-        "47 * * * *"
+        "35 2-23/3 * * *"
       ]
     },
     {
       "file": "freigabe-stichprobe.yml",
       "crons": [
-        "7 5 * * *"
-      ]
-    },
-    {
-      "file": "kaeufer.yml",
-      "crons": [
-        "13 5 * * *"
+        "23 5 * * *"
       ]
     },
     {
       "file": "kontakt-werk.yml",
       "crons": [
-        "23 * * * *"
+        "53 5 * * *"
       ]
     },
     {
       "file": "kpi-tag.yml",
       "crons": [
-        "50 21 * * *",
-        "50 22 * * *"
+        "20 21 * * *",
+        "20 22 * * *"
+      ]
+    },
+    {
+      "file": "kunden-pool.yml",
+      "crons": [
+        "41 1 1,2 * *"
       ]
     },
     {
       "file": "kunden-werk.yml",
       "crons": [
-        "41 */2 * * *"
+        "41 3,21 * * *"
       ]
     },
     {
@@ -696,7 +694,7 @@
     {
       "file": "lead-werk.yml",
       "crons": [
-        "23 */3 * * *"
+        "23 0,6,12,18 * * *"
       ]
     },
     {
@@ -706,15 +704,21 @@
       ]
     },
     {
+      "file": "premium-s5.yml",
+      "crons": [
+        "53 10 * * *"
+      ]
+    },
+    {
       "file": "proben-vorrat.yml",
       "crons": [
-        "23 * * * *"
+        "35 0-23/3 * * *"
       ]
     },
     {
       "file": "pruefer-werk.yml",
       "crons": [
-        "11 * * * *"
+        "23 15 * * *"
       ]
     },
     {
@@ -732,7 +736,7 @@
     {
       "file": "taeglich.yml",
       "crons": [
-        "17 12 * * *"
+        "41 9 * * *"
       ]
     },
     {
@@ -744,8 +748,7 @@
     {
       "file": "wachhund.yml",
       "crons": [
-        "11,41 * * * *",
-        "26,56 * * * *"
+        "11 * * * *"
       ]
     },
     {
@@ -755,22 +758,10 @@
       ]
     },
     {
-      "file": "werk-nachfuellen.yml",
-      "crons": [
-        "4,14,24,34,44,54 * * * *"
-      ]
-    },
-    {
-      "file": "werk-takt.yml",
-      "crons": [
-        "17 * * * *"
-      ]
-    },
-    {
       "file": "zustellbarkeit.yml",
       "crons": [
-        "10 4 * * *",
-        "10 5 * * *"
+        "3 4 * * *",
+        "3 5 * * *"
       ]
     }
   ]

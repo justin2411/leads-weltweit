@@ -16,6 +16,7 @@ on:
       art:
         description: "kaltmail, probe, nachfass, probe-nachfass, willkommen oder lieferung"
         default: kaltmail
+concurrency: { group: takt, cancel-in-progress: false }   # Drossel 06.10.2026: leichte Zeitpläne nacheinander
 jobs:
   test:
     runs-on: ubuntu-latest

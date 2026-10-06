@@ -3,12 +3,13 @@
 # startet brachliegende Kunden-, Kontakt- und Prüfer-Werke (Kunden-Werk = Puffer) und füllt bis 30 belegte Jobs auf (scripts/werk_belegung.py). Angestoßen von jedem fertigen Werk-Lauf (Job „weiter“),
 # vom Wachhund und alle 10 min per Zeitplan. Grenzen unverändert: max je Linie, total_slots - reserve, Speicher-Bremse,
 # lead_suche (config/pipeline.yaml), Pause im Dashboard. Sendet nie, startet nie den Versand, lädt keine Lead-Daten hoch.
+# Actions-Drossel (Inhaber 06.10.2026: „fahr github actions erstmal runter“): AUS – kein Zeitplan, niemand stößt ihn
+# an, und scripts/werk_belegung.py / takt.py starten nichts (scripts/lib/drossel.py). Datei bleibt für den Umzug der
+# Werke auf einen eigenen Server; ein Handstart zählt nur die belegten Jobs.
 name: werk-nachfuellen
 on:
-  schedule:
-    - cron: "4,14,24,34,44,54 * * * *"
   workflow_dispatch:
-concurrency: { group: werk-nachfuellen, cancel-in-progress: false }
+concurrency: { group: takt, cancel-in-progress: false }   # Drossel 06.10.2026: leichte Zeitpläne nacheinander
 permissions:
   actions: write
   contents: read
@@ -40,11 +41,3 @@ jobs:
       - name: Belegte Jobs
         if: always()
         run: python scripts/werk_belegung.py zaehlen | tee -a "$GITHUB_STEP_SUMMARY" || true
-      # Werk-Takt am Leben halten (05.10.2026): läuft keiner, einen starten (concurrency werk-takt = nie zwei)
-      - name: Werk-Takt sichern
-        if: always()
-        continue-on-error: true
-        run: |
-          n=$(gh api "repos/${{ github.repository }}/actions/workflows/werk-takt.yml/runs?status=in_progress" -q '.total_count' || echo 1)
-          q=$(gh api "repos/${{ github.repository }}/actions/workflows/werk-takt.yml/runs?status=queued" -q '.total_count' || echo 1)
-          if [ "$n" = "0" ] && [ "$q" = "0" ]; then gh workflow run werk-takt.yml --ref "${{ github.ref_name }}" && echo "Werk-Takt gestartet"; else echo "Werk-Takt läuft"; fi

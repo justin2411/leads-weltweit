@@ -13,6 +13,7 @@ on:
 permissions:
   actions: read
   contents: read
+concurrency: { group: takt, cancel-in-progress: false }   # Drossel 06.10.2026: leichte Zeitpläne nacheinander
 jobs:
   doppelt:
     # Prüfung 04.10.2026: fiel der geplante Lauf aus, startet ihn der Wachhund nach (workflow_dispatch); kommt der

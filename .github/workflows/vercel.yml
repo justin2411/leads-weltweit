@@ -11,6 +11,7 @@ on:
       arg:
         description: "preview-add: Namen mit Komma; redeploy: Branch (z. B. main); site-setup: Website (z. B. physiotherapie-oehlke)"
         default: ""
+concurrency: { group: takt, cancel-in-progress: false }   # Drossel 06.10.2026: leichte Zeitpläne nacheinander
 jobs:
   vercel:
     runs-on: ubuntu-latest

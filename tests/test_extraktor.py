@@ -673,8 +673,9 @@ class GithubProTests(unittest.TestCase):
         reg = werk_plan.load_lines()
         cap = reg["total_slots"] - reg["reserve"]
         self.assertEqual(cap, 38)  # GitHub Pro: 40 gleichzeitig, 2 frei für die übrigen Abläufe
-        self.assertGreaterEqual(lead["holen"]["strategy"]["max-parallel"], cap)
-        self.assertGreaterEqual(kunden["pruefen"]["strategy"]["max-parallel"], max(l["max"] for l in reg["lanes"] if l["werk"] == "kunden-werk"))
+        # Actions-Drossel (Inhaber 06.10.2026): höchstens 2 Teile gleichzeitig je Werk
+        self.assertLessEqual(lead["holen"]["strategy"]["max-parallel"], 2)
+        self.assertLessEqual(kunden["pruefen"]["strategy"]["max-parallel"], 2)
         n, _ = werk_plan.counts(reg, None)
         include = werk_plan.matrix(reg, "lead-werk", n)
         n_kunden = len(werk_plan.matrix(reg, "kunden-werk", n))
@@ -685,9 +686,8 @@ class GithubProTests(unittest.TestCase):
                 i, k = e["args"].split("--shard ")[1].split()[0].split("/")
                 same = [x for x in include if x["name"].rsplit("-", 1)[0] == e["name"].rsplit("-", 1)[0]]
                 self.assertEqual(int(k), len(same), e["name"])  # jeder Teil einer Quelle genau einmal
-        for jobs, name in ((lead, "lead-werk.yml"), (kunden, "kunden-werk.yml")):
-            self.assertIn(f"gh workflow run {name}", jobs["weiter"]["steps"][-1]["run"])
-            self.assertEqual(jobs["weiter"]["permissions"]["actions"], "write")
+        for jobs in (lead, kunden):  # Drossel: kein Selbst-Neustart mehr (Job „weiter“ entfernt)
+            self.assertNotIn("weiter", jobs)
 
 
 class IrelandRegisterTests(unittest.TestCase):

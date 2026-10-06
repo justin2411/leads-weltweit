@@ -53,7 +53,7 @@ test("Zeitplan: Routinen zuerst, Workflows aus ops-config (YAML)", () => {
   assert.deepEqual(ROUTINEN_LISTE.map((r) => r.key), ["gehirn", "agent", "scout", "premium"]);
   const z = zeitplan((OPS as { zeitplan: { file: string; crons: string[] }[] }).zeitplan, now);
   assert.equal(z.haupt[0].name, "Gehirn-Sitzung");
-  assert.ok(z.haupt.some((t) => t.key === "w:lead-werk.yml" && t.proTag === 8));
+  assert.ok(z.haupt.some((t) => t.key === "w:lead-werk.yml" && t.proTag === 4));
   assert.ok(z.haupt.every((t) => t.marken.every((m) => m >= 0 && m < 1440)));
   assert.ok(!z.weitere.some((t) => t.key === "w:send.yml"));
   const lief = z.haupt.find((t) => t.key === "w:kundenlieferung.yml")!;

@@ -13,6 +13,53 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import werk_plan as W  # noqa: E402
 
+# Actions-Drossel (Inhaber 06.10.2026): decide() kürzt jede Belegung auf drossel.MAX_PLAETZE. Die Tests unten prüfen
+# die Verteilungslogik dahinter (Autopilot, Bremse, Mischung) – dafür hier ohne Kappung; DrosselTests prüft die Kappung.
+DROSSEL_CAP = W.drossel.MAX_PLAETZE
+
+
+def setUpModule():
+    W.drossel.MAX_PLAETZE = 10 ** 6
+
+
+def tearDownModule():
+    W.drossel.MAX_PLAETZE = DROSSEL_CAP
+
+
+class DrosselTests(unittest.TestCase):
+    """Inhaber 06.10.2026: „fahr github actions erstmal runter“ – höchstens 5 Plätze je Werk-Lauf, keine Mindestbelegung."""
+
+    def setUp(self):
+        W.drossel.MAX_PLAETZE = DROSSEL_CAP
+        self.reg = W.load_lines()
+
+    def tearDown(self):
+        W.drossel.MAX_PLAETZE = 10 ** 6
+
+    def test_constants(self):
+        self.assertEqual(DROSSEL_CAP, 5)
+        self.assertEqual(W.MIN_BELEGT, 0)
+        self.assertFalse(W.drossel.DISPATCH_ERLAUBT)
+
+    def test_decide_never_over_cap(self):
+        big = {l["id"]: l["max"] for l in self.reg["lanes"]}
+        for werk in ("lead-werk", "kunden-werk", "pruefer-werk", "kontakt-werk"):
+            for settings in (None, {"slot_autopilot": {"on": True}}, {"slot_plan": big, "slot_autopilot": {"on": False}},
+                             {"slot_plan": big, "slot_autopilot": {"on": True}, "lead_mix": 100}):
+                with self.subTest(werk=werk, settings=settings):
+                    res = W.decide(self.reg, werk, {"settings": settings, "rows": []})
+                    self.assertLessEqual(sum(res["plan"].values()), DROSSEL_CAP)
+                    self.assertLessEqual(len(W.matrix(self.reg, werk, res["plan"])), DROSSEL_CAP)
+
+    def test_cap_cuts_largest_lane_first(self):
+        plan, why = {"a": 4, "b": 3, "c": 1}, {"a": "", "b": "", "c": ""}
+        W.cap_drossel(plan, why)
+        self.assertEqual(plan, {"a": 2, "b": 2, "c": 1})
+        self.assertEqual(why["a"], W.DROSSEL_WHY)
+        plan = {"a": 1, "b": 1, "c": 1}
+        W.cap_drossel(plan, {}, cap=1)
+        self.assertEqual(plan, {"a": 1, "b": 0, "c": 0})
+
 
 class WerkPlanTests(unittest.TestCase):
     def setUp(self):
@@ -120,13 +167,14 @@ class MinBelegtTests(unittest.TestCase):
         return W.lane_stats(rows, "lead-werk")
 
     def test_constant(self):
-        self.assertEqual(W.MIN_BELEGT, 30)
+        self.assertEqual(W.MIN_BELEGT, 0)  # Actions-Drossel 06.10.2026; Logik unten mit min_belegt=30
 
     def test_fills_up_to_30_website_lanes_first(self):
         # ohne Minimum: 18 Lead-Plätze + 8 Kunden = 26 -> mit Minimum 30, Zusatz an web-us (Website US/UK/FR)
         p0, _ = W.autopilot(self.reg, "lead-werk", self.lead, self.stats(), other={"kunden": 8}, now=self.now,
                             min_belegt=0)
-        plan, why = W.autopilot(self.reg, "lead-werk", self.lead, self.stats(), other={"kunden": 8}, now=self.now)
+        plan, why = W.autopilot(self.reg, "lead-werk", self.lead, self.stats(), other={"kunden": 8}, now=self.now,
+                                min_belegt=30)
         self.assertLess(sum(p0.values()) + 8, 30)
         self.assertEqual(sum(plan.values()) + 8, 30)
         self.assertGreater(plan["web-us"], p0["web-us"])
@@ -138,11 +186,11 @@ class MinBelegtTests(unittest.TestCase):
     def test_kunden_werk_fills_when_lead_werk_low(self):
         rows = _rows("kunden", "k1", 4, 40, 500, werk="kunden-werk")
         plan, why = W.autopilot(self.reg, "kunden-werk", {"kunden": 4}, W.lane_stats(rows, "kunden-werk"),
-                                other={"web-us": 10})
+                                other={"web-us": 10}, min_belegt=30)
         self.assertEqual(plan["kunden"], 16)  # max der Linie (10 + 16 = 26, mehr geht nicht)
         self.assertIn(W.MIN_WHY, why["kunden"])
         plan, _ = W.autopilot(self.reg, "kunden-werk", {"kunden": 4}, W.lane_stats(rows, "kunden-werk"),
-                              other={"web-us": 24})
+                              other={"web-us": 24}, min_belegt=30)
         self.assertEqual(plan["kunden"], 6)
 
     def test_brake_and_locks_win(self):

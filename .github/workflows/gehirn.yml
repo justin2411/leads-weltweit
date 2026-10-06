@@ -9,7 +9,7 @@ on:
         description: "Entscheidungen schreiben (sonst nur Probelauf)"
         type: boolean
         default: false
-concurrency: { group: gehirn, cancel-in-progress: false }
+concurrency: { group: werke, cancel-in-progress: false }   # Drossel 06.10.2026: ein schweres Werk zur Zeit
 jobs:
   schleife:
     runs-on: ubuntu-latest

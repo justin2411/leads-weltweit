@@ -1,15 +1,15 @@
-# Wachhund: GitHub lässt geplante Läufe unter Last ausfallen (27./28.09.2026). Alle 30 Minuten prüfen, ob ein
-# Pflichtlauf überfällig ist, und ihn nachstarten (scripts/wachhund.py). Mehrere Zeitpläne, damit der Wachhund
-# selbst nicht ausfällt.
+# Wachhund: GitHub lässt geplante Läufe unter Last ausfallen (27./28.09.2026). Prüft, ob ein Pflichtlauf überfällig
+# ist (scripts/wachhund.py). Actions-Drossel (Inhaber 06.10.2026: „fahr github actions erstmal runter“): stündlich statt
+# alle 15 min, startet nichts mehr nach (nur Anzeige); Startwünsche des Inhabers aus dem Dashboard nur, solange im
+# Repo weniger als 5 Läufe aktiv sind. Die Datenbank-Schritte (Lernschleife, Übergaben, A/B …) laufen weiter.
 name: wachhund
 on:
   schedule:
-    - cron: "11,41 * * * *"
-    - cron: "26,56 * * * *"
+    - cron: "11 * * * *"
   workflow_dispatch:
-concurrency: { group: wachhund, cancel-in-progress: true }
+concurrency: { group: takt, cancel-in-progress: false }   # Drossel 06.10.2026: leichte Zeitpläne nacheinander
 permissions:
-  actions: write
+  actions: write   # nur für Startwünsche des Inhabers (start_requests)
   contents: read
 jobs:
   check:

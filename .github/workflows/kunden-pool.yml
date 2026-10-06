@@ -3,9 +3,13 @@
 # Gleicher Bau wie bisher (scripts/kundenwerk.py pool, Overture + offene Register, robots.txt, 1 Abruf/s).
 # Sendet nichts, lädt keine Dateien hoch (nur GitHub-Cache).
 name: kunden-pool
+# Actions-Drossel (Inhaber 06.10.2026): das Kunden-Werk stößt diesen Lauf nicht mehr an; er läuft am 1. und 2. jedes
+# Monats selbst (neuer Monatsschlüssel; schon gebaut = sofort fertig) in der Gruppe „werke“.
 on:
+  schedule:
+    - cron: "41 1 1,2 * *"
   workflow_dispatch:
-concurrency: { group: kunden-pool, cancel-in-progress: false }
+concurrency: { group: werke, cancel-in-progress: false }
 permissions:
   contents: read
 jobs:

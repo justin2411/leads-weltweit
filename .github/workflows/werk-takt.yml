@@ -1,19 +1,19 @@
 # Werk-Takt (05.10.2026): GitHub ließ nachts die Zeitpläne von werk-nachfuellen und wachhund fast ganz aus, nur
 # 15–17 statt ≥ 30 belegte Jobs. Ein Lauf prüft ~50 min lang alle 10 min die Belegung und stößt bei < 30 Jobs den
 # Nachfüller an (Wachhund nach > 30 min), dann höchstens ein Selbst-Dispatch (scripts/werk_takt.py). Nie Versand.
+# Actions-Drossel (Inhaber 06.10.2026): AUS – kein Zeitplan, kein Selbst-Neustart; scripts/werk_takt.py beendet sich
+# sofort (scripts/lib/drossel.py). Datei bleibt für den Umzug der Werke auf einen eigenen Server.
 name: werk-takt
 on:
-  schedule:
-    - cron: "17 * * * *"   # Rückfall, falls die Kette einmal reißt
   workflow_dispatch:
-concurrency: { group: werk-takt, cancel-in-progress: false }
+concurrency: { group: takt, cancel-in-progress: false }   # Drossel 06.10.2026: leichte Zeitpläne nacheinander
 permissions:
   actions: write
   contents: read
 jobs:
   takt:
     runs-on: ubuntu-latest
-    timeout-minutes: 58
+    timeout-minutes: 5
     env:
       GH_TOKEN: ${{ github.token }}
     steps:

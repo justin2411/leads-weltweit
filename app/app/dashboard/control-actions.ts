@@ -10,6 +10,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db, suppressEmail } from "@/lib/supabase";
 import { CONFIG, COUNTRIES, SEGMENT, canDispatch, loadOwnerSettings } from "@/lib/dashboard-data";
+import { ACTIONS_DIRECT_DISPATCH } from "@/lib/drossel";
 import {
   InputError, PACKAGES, WORKFLOWS, toggleIn, validateCountryLimits, validateCustomer, validateFollowupDays, validateMaxAge,
   validateNote, validateReplyKind, validateSampleTargets, validateSlotPlan, WERK_SWITCHES, toggleWerkPaused, type LaneRegistry,
@@ -220,7 +221,7 @@ export async function dispatchWorkflow(f: FormData) {
     const wf = WORKFLOWS[key];
     if (!wf) throw new InputError("unbekannter Ablauf");
     const token = process.env.GH_DISPATCH_TOKEN?.trim();
-    if (!canDispatch() || !token) throw new InputError("Starten braucht GH_DISPATCH_TOKEN in Vercel");
+    if (!canDispatch() || !token) throw new InputError(ACTIONS_DIRECT_DISPATCH ? "Starten braucht GH_DISPATCH_TOKEN in Vercel" : "GitHub Actions gedrosselt – kein Sofortstart");
     if (key === "versand" && (await loadOwnerSettings()).send_paused) throw new InputError("Versand ist pausiert");
     const inputs: Record<string, string> = { ...wf.inputs };
     if (key === "versand") inputs.freigabe = `${BY}, ${new Date().toISOString()}`;
@@ -248,7 +249,8 @@ async function startWerk(key: StartKey): Promise<string> {
   if (e1) throw new Error(e1.message);
   if (recent?.length) return `${spec.label} läuft bereits (gestartet ${fmtBerlin(recent[0].started_at)})`;
   const inputs: Record<string, string> = { ...spec.inputs };
-  const token = process.env.GH_DISPATCH_TOKEN?.trim();
+  // Actions-Drossel (06.10.2026): kein Sofortstart – immer als Wunsch für den Wachhund
+  const token = canDispatch() ? process.env.GH_DISPATCH_TOKEN?.trim() : undefined;
   let note: string | null = null;
   if (token) {
     if (await ghRunning(token, spec.file)) return `${spec.label} läuft bereits`;

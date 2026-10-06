@@ -2,6 +2,7 @@ import "server-only";
 import { db } from "@/lib/supabase";
 import { InputError, type OwnerSettings } from "@/lib/owner-settings";
 import { START_WORKFLOWS, fmtBerlin, nextPickup, type StartKey } from "@/lib/start-queue";
+import { ACTIONS_DIRECT_DISPATCH } from "@/lib/drossel";
 
 /**
  * Werk-Start (Direktstart) für Regler und JARVIS-Chat – ein gemeinsamer Pfad: mit GH_DISPATCH_TOKEN sofort
@@ -38,7 +39,8 @@ export async function startWerk(key: StartKey, s: OwnerSettings, by: string, via
   const { data: open, error: e0 } = await sb.from("start_requests").select("id").eq("workflow", key).eq("status", "offen").limit(5);
   if (e0) throw new Error(e0.message);
   const inputs: Record<string, string> = { ...spec.inputs };
-  const token = process.env.GH_DISPATCH_TOKEN?.trim();
+  // Actions-Drossel (06.10.2026): kein Sofortstart – immer als Wunsch für den Wachhund
+  const token = ACTIONS_DIRECT_DISPATCH ? process.env.GH_DISPATCH_TOKEN?.trim() : undefined;
   let note: string | null = null;
   if (token) {
     const r = await ghDispatch(token, spec.file, inputs);

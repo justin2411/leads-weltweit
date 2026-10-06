@@ -6,17 +6,20 @@
 # S2-Liste durchgeprüft ist (Lauf 06:17: 1 neue Firma).
 # Schalter: config/pipeline.yaml kunden_suche. Jeder Teil hört nach 90 Minuten auf, neue Firmen anzufangen
 # (--deadline-min), danach startet sich das Werk selbst neu (Job „weiter“); Cron und Wachhund bleiben als Rückfall.
+# Actions-Drossel (Inhaber 06.10.2026: „fahr github actions erstmal runter“): 2× täglich, Gruppe „werke“, Teile
+# höchstens 2 gleichzeitig (höchstens 5 laut Plan), Nebenjobs nacheinander danach, kein Selbst-Neustart, kein Anstoßen
+# von Wachhund/Nachfüller/Käufer-Liste (kunden-pool.yml läuft monatlich selbst).
 name: kunden-werk
 on:
   schedule:
-    - cron: "41 */2 * * *"
+    - cron: "41 3,21 * * *"   # Drossel 06.10.2026: 2× täglich (vorher alle 2 h + Selbst-Neustart)
   workflow_dispatch:
     inputs:
       teile:
         description: "Puffer vom Nachfüller (Mindestbelegung 30), z. B. kunden:12 – nur mehr Teile, nie über max"
         required: false
         default: ""
-concurrency: { group: kunden-werk, cancel-in-progress: false }
+concurrency: { group: werke, cancel-in-progress: false }   # Drossel: ein schweres Werk zur Zeit
 permissions:
   contents: read
 jobs:
@@ -24,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 150  # France-Num-Seiten: bis 50 min (1 Abruf/s)
     permissions:
-      actions: write   # Neubau der Käufer-Liste im Hintergrund anstoßen (kunden-pool.yml)
+      actions: read
       contents: read
     outputs:
       an: ${{ steps.gate.outputs.an }}
@@ -74,8 +77,8 @@ jobs:
         run: |
           echo "pool_key=${MATCHED:-$EXACT}" >> "$GITHUB_OUTPUT"
           if [ -n "$MATCHED" ] && [ "$MATCHED" != "$EXACT" ]; then
-            echo "Käufer-Liste $MATCHED genutzt, $EXACT wird im Hintergrund gebaut" | tee -a "$GITHUB_STEP_SUMMARY"
-            gh workflow run kunden-pool.yml --ref "${{ github.ref_name }}" || echo "::warning::Neubau nicht anstoßbar"
+            # Drossel 06.10.2026: kein Anstoßen mehr – kunden-pool.yml baut monatlich selbst (oder von Hand)
+            echo "Käufer-Liste $MATCHED genutzt, $EXACT baut kunden-pool.yml (monatlich/von Hand)" | tee -a "$GITHUB_STEP_SUMMARY"
           fi
       # Bekannte Käufer-Domains einmal je Lauf aktualisieren (nur neue seit dem letzten Lauf) und allen Teilen geben:
       # alle ~190.000 in jedem Teil zu laden brach unter Last ab (02.10.2026)
@@ -134,7 +137,7 @@ jobs:
       fail-fast: false
       # früher fest 8 (Inhaber 01.10.2026: „kunden auf 7 gleichzeitig“, dann „maximale Effizienz für GitHub Pro“);
       # jetzt aus dem Belegungsplan (Job plan)
-      max-parallel: 16
+      max-parallel: 2   # Drossel 06.10.2026 (vorher 16)
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -162,8 +165,8 @@ jobs:
     # scheitern -> Registernummer auf der eigenen Website (UK Company No., FR SIREN aus den Mentions légales), vom
     # Register bestätigt (Companies House Massendaten / Annuaire des entreprises), dann unveränderte Prüfregel.
     # Test 360 Firmen: S2 UK 16/160, S2 FR 23/100, S1 UK 11/100 neu mail-fähig. Ein Job (2 Plätze frei).
-    needs: pool
-    if: needs.pool.outputs.an == 'true'
+    needs: [pool, pruefen]   # Drossel 06.10.2026: Nebenjobs nacheinander nach den Teilen
+    if: ${{ !cancelled() && needs.pool.outputs.an == 'true' }}
     runs-on: ubuntu-latest
     # Betrieb 05.10.2026: Nebenjobs halten den ganzen Lauf (concurrency kunden-werk) – der nächste Lauf wartete
     # über 1 h hinter einem Nachzügler, 13 Plätze leer. Kürzeres Zeitfenster, Rest macht der nächste Lauf
@@ -191,8 +194,8 @@ jobs:
     # S2/FR bleibt nur mail-fähig mit Code NAF 6201Z/6202A/7311Z/7410Z (SIRENE) + Webdesign auf der eigenen Website,
     # keine Verkaufs-/Parkseiten. Prüft noch nicht markierte FR/S2-Käufer (Bestand einmal, danach nur Nachzügler),
     # stuft nicht passende auf rejected ab (Grund im check_reason), löscht nichts, sendet nie.
-    needs: pool
-    if: needs.pool.outputs.an == 'true'
+    needs: [pool, nachpruefen]   # Drossel 06.10.2026: nacheinander
+    if: ${{ !cancelled() && needs.pool.outputs.an == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 40   # Betrieb 05.10.2026: Nachzügler nicht länger als die Teile (Rest im nächsten Lauf)
     env:
@@ -212,8 +215,8 @@ jobs:
     # 73110. Website nur über Domain-Varianten des Namens mit Beleg auf der Seite (Registernummer/Name/PLZ,
     # lib.websites), robots.txt, 1 Anfrage/s je Domain; Firmen ohne Website frühestens nach 30 Tagen erneut
     # (kunden_ch_seen.json). Nur mit Webdesign-Nachweis auf der Website, dann unveränderte Prüfregel. Sendet nie.
-    needs: pool
-    if: needs.pool.outputs.an == 'true'
+    needs: [pool, fr_webdesign]   # Drossel 06.10.2026: nacheinander
+    if: ${{ !cancelled() && needs.pool.outputs.an == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 50
     env:
@@ -253,63 +256,3 @@ jobs:
         with:
           path: out/cache/kunden_ch_seen.json
           key: kunden-ch-seen-${{ github.run_id }}
-
-  weiter:
-    # sofort den nächsten Lauf starten (nur bei Schalter an und echter Laufzeit, sonst Cron/Wachhund)
-    needs: [pool, plan, pruefen, nachpruefen, fr_webdesign, uk_register]
-    if: always() && needs.pool.outputs.an == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      actions: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - name: Wachhund anstoßen, wenn GitHub ihn nicht startet
-        # Nachtschicht 04.10.2026: GitHub ließ die geplanten Läufe (Wachhund, Antwort-Assistent) nachts stundenlang
-        # aus. Auch das Kunden-Werk hält den Wachhund am Leben (Prüfung 04.10.2026),
-        # falls das Lead-Werk gestoppt ist (Speicher-Bremse). Nie Versand – den startet der Wachhund nur in seinen Grenzen.
-        # Prüfung 04.10.2026: GitHub-Aufrufe bis zu 3 Versuche (eine 503 ließ den Schritt sonst scheitern).
-        if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          retry() { for i in 1 2 3; do "$@" && return 0; [ "$i" -lt 3 ] && sleep 20; done; return 1; }
-          last=$(retry gh run list --workflow wachhund.yml --limit 1 --json createdAt -q '.[0].createdAt' || true)
-          if [ -n "$last" ]; then
-            mins=$(( ( $(date -u +%s) - $(date -u -d "$last" +%s) ) / 60 ))
-          else
-            mins=999
-          fi
-          if [ "$mins" -ge 30 ]; then
-            if retry gh workflow run wachhund.yml --ref "${{ github.ref_name }}"; then
-              echo "Wachhund angestoßen (letzter Lauf vor $mins min)" | tee -a "$GITHUB_STEP_SUMMARY"
-            else
-              echo "::warning::Wachhund nicht anstoßbar (GitHub antwortet nicht)"
-            fi
-          else
-            echo "Wachhund lief vor $mins min – nichts zu tun"
-          fi
-      - name: Nachfüller anstoßen (Mindestbelegung 30)
-        # 05.10.2026: freie Plätze sofort mit freien Lead-Linien füllen, nicht erst beim nächsten Zeitplan
-        if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run werk-nachfuellen.yml --ref "${{ github.ref_name }}" || echo "::warning::Nachfüller nicht anstoßbar"
-      - name: Nächsten Lauf starten
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          grep -Eq '^kunden_suche:\s*true' config/pipeline.yaml || { echo "Schalter aus – kein Neustart"; exit 0; }
-          retry() { for i in 1 2 3; do "$@" && return 0; [ "$i" -lt 3 ] && sleep 20; done; return 1; }
-          # Prüfung 04.10.2026: bis zu 3 Versuche je GitHub-Aufruf; Startzeit unbekannt -> kein Sofort-Neustart
-          # (sonst Kette kurzer Selbststarts bei API-Störung); Cron und Wachhund übernehmen
-          start=$(retry gh run view ${{ github.run_id }} --json createdAt -q .createdAt || true)
-          if [ -n "$start" ]; then
-            mins=$(( ( $(date -u +%s) - $(date -u -d "$start" +%s) ) / 60 ))
-          else
-            mins=0
-          fi
-          if [ "$mins" -lt 10 ]; then echo "Lauf nur $mins Minuten – kein Sofort-Neustart"; exit 0; fi
-          retry gh workflow run kunden-werk.yml --ref "${{ github.ref_name }}"
-          echo "Nächster Lauf gestartet (dieser lief $mins Minuten)" | tee -a "$GITHUB_STEP_SUMMARY"

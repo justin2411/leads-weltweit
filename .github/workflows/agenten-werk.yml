@@ -8,25 +8,24 @@
 # ist (kein pip install, wenige Sekunden). Handstart/Wachhund: beides.
 name: agenten-werk
 on:
+  # Drossel 06.10.2026: ein Zeitplan alle 3 h – Speicher füllen, danach fällige eigene Agenten (vorher stündlich +
+  # alle 15 min, dazu Wachhund-Anstoß)
   schedule:
-    - cron: "29 * * * *"           # Speicher füllen (Master-Pipeline) + Wachhund-Anstoß
-    - cron: "3,18,33,48 * * * *"   # eigene Agenten nach Zeitplan (15-Minuten-Raster)
+    - cron: "35 1-23/3 * * *"
   workflow_dispatch:
     inputs:
       probelauf:
         type: boolean
         default: false
+concurrency: { group: takt, cancel-in-progress: false }   # Drossel 06.10.2026: leichte Zeitpläne nacheinander
 defaults:
   run:
     shell: bash   # mit pipefail: ein Fehler vor „| tee“ lässt den Schritt scheitern
 jobs:
   run:
-    if: ${{ github.event_name != 'schedule' || github.event.schedule == '29 * * * *' }}
-    concurrency: { group: agenten-werk, cancel-in-progress: false }
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
-      actions: write   # Wachhund anstoßen
       contents: read
     env:
       SITE_URL: ${{ vars.SITE_URL || 'https://www.nextgen-profit.de' }}   # Push über /api/push
@@ -43,34 +42,11 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Speicher füllen (Master-Pipeline)
         run: python scripts/pools.py fill $APPLY | tee -a "$GITHUB_STEP_SUMMARY"
-      - name: Wachhund anstoßen, wenn GitHub ihn nicht startet
-        # wie lead-werk.yml/kunden-werk.yml: GitHub ließ geplante Läufe nachts stundenlang aus (04.10.2026).
-        # Nie Versand – den startet der Wachhund nur in seinen Grenzen. GitHub-Aufrufe bis zu 3 Versuche.
-        if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          retry() { for i in 1 2 3; do "$@" && return 0; [ "$i" -lt 3 ] && sleep 20; done; return 1; }
-          last=$(retry gh run list --workflow wachhund.yml --limit 1 --json createdAt -q '.[0].createdAt' || true)
-          if [ -n "$last" ]; then
-            mins=$(( ( $(date -u +%s) - $(date -u -d "$last" +%s) ) / 60 ))
-          else
-            mins=999
-          fi
-          if [ "$mins" -ge 30 ]; then
-            if retry gh workflow run wachhund.yml --ref "${{ github.ref_name }}"; then
-              echo "Wachhund angestoßen (letzter Lauf vor $mins min)" | tee -a "$GITHUB_STEP_SUMMARY"
-            else
-              echo "::warning::Wachhund nicht anstoßbar (GitHub antwortet nicht)"
-            fi
-          else
-            echo "Wachhund lief vor $mins min – nichts zu tun"
-          fi
   agenten:
     # Eigene Agenten aus dem Baukasten: alle 15 min prüfen, nur fällige laufen (agents_run.py: nie doppelt,
     # verpasste Termine einmal nachholen). Eigene Gruppe, damit ein langer Speicher-Lauf die Zeiten nicht verschiebt.
-    if: ${{ github.event_name != 'schedule' || github.event.schedule != '29 * * * *' }}
-    concurrency: { group: agenten-werk-agenten, cancel-in-progress: false }
+    needs: run   # Drossel 06.10.2026: nach dem Speicher-Lauf, nie zwei Jobs gleichzeitig
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:

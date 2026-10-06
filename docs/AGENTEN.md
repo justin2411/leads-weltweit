@@ -389,7 +389,8 @@ Agenten dürfen alles selbst machen, was die Hauptsitzung darf – ohne Rückfra
 - Code ändern, Tests, PR, bei grüner CI **selbst nach main mergen** (Deployment)
 - Datenbank: lesen, schreiben, nicht destruktive Migrationen anlegen **und anwenden**
 - Workflows starten (`gh workflow run` / dispatch), Belegungsplan, Regler, Speicher, Proben-Vorrat, eigene Agenten,
-  Master-Pipeline und Test-Flows einstellen; Werke an/aus
+  Master-Pipeline und Test-Flows einstellen; Werke an/aus. **Actions-Drossel (Inhaber 06.10.2026):** höchstens ein
+  Start je Runde und nur, wenn im Repo weniger als 5 Läufe aktiv sind; nie Schleifen, Nachfüller oder Werk-Takt
 - neue Quellen und Käuferquellen einbauen, Kategorien erweitern, neue Länder nach den Scout-Regeln aufnehmen
 - Vercel: neue Variablen anlegen und neu deployen (`vercel.yml`)
 - Auftrag zu groß für eine Runde: in Teilaufträge zerlegen (neue Zeilen in `agent_tasks`) und weiterarbeiten

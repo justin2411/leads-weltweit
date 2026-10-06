@@ -14,7 +14,7 @@ on:
         description: "Tagesabschluss wie der Zeitplan (Wachhund)"
         type: boolean
         default: false
-concurrency: { group: kpi-tag, cancel-in-progress: false }
+concurrency: { group: takt, cancel-in-progress: false }   # Drossel 06.10.2026: leichte Zeitpläne nacheinander
 permissions:
   contents: read
 jobs:

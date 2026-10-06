@@ -18,6 +18,10 @@ Regeln:
   - Sicherheitsnetz Baukasten: Leads, die nur an einer gelösten/geänderten Inhaber-Regel hängen, gehen zurück an die
     Freigabe (flow_release_stale_held)
 
+  - Actions-Drossel (Inhaber 06.10.2026, scripts/lib/drossel.py): keine Nachstarts mehr – der Wachhund zeigt
+    überfällige Läufe nur an. Startwünsche des Inhabers startet er nur, solange im Repo weniger als
+    drossel.MAX_LAEUFE Läufe aktiv sind (sonst bleiben sie offen bis zum nächsten Lauf)
+
   python scripts/wachhund.py            # nur anzeigen
   python scripts/wachhund.py --apply    # überfällige Läufe starten
 """
@@ -34,25 +38,26 @@ import requests
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-from lib import versandzeit  # noqa: E402
+from lib import drossel, versandzeit  # noqa: E402
 
 # (Datei, Art, Zeit/Minuten, Karenz in Minuten, Eingaben, Bedingung)
 #   hourly: (start_h, end_h) UTC-Fenster, Minuten ohne Lauf bis überfällig
 #   daily:  "HH:MM" UTC (oder in "tz", z. B. Europe/Berlin), Wochentage (0=Mo) oder None
+# Actions-Drossel (Inhaber 06.10.2026): Zeiten und Toleranzen passen zu den gedrosselten Zeitplänen; der Wachhund
+# startet nichts mehr nach (drossel.DISPATCH_ERLAUBT), die Liste dient nur der Anzeige „überfällig“.
 JOBS = [
     # Antworten rund um die Uhr alle 10 min (Nachtschicht 04.10.2026: US-Antworten kommen in unserer Nacht);
     # nach 20 statt 45 min nachstarten (Prüfung 04.10.2026: GitHub ließ geplante Läufe stundenlang aus)
-    {"wf": "antworten.yml", "kind": "hourly", "window": (0, 23), "max_min": 20, "inputs": {"probelauf": "false"}},
+    {"wf": "antworten.yml", "kind": "hourly", "window": (0, 23), "max_min": 45, "inputs": {"probelauf": "false"}},
     # Proben-Vorrat + Web-Proben rund um die Uhr (03.10.2026: Anfrage 18:30 wartete 5 h, weil GitHub Läufe ausließ)
-    {"wf": "proben-vorrat.yml", "kind": "hourly", "window": (0, 23), "max_min": 75, "inputs": {"befehl": "run"}},
+    {"wf": "proben-vorrat.yml", "kind": "hourly", "window": (0, 23), "max_min": 200, "inputs": {"befehl": "run"}},
     # Agenten-Werk (04.10.2026): Master-Pipeline füllt Speicher, eigene Agenten laufen nach Auslöser
-    {"wf": "agenten-werk.yml", "kind": "hourly", "window": (0, 23), "max_min": 90, "inputs": {"probelauf": "false"}},
+    {"wf": "agenten-werk.yml", "kind": "hourly", "window": (0, 23), "max_min": 200, "inputs": {"probelauf": "false"}},
     # Dauerprüfung (04.10.2026): Prüf-Agenten ohne Tokens, stündlich :47 – nachstarten nach 2 h ohne Lauf
-    {"wf": "dauerpruefung.yml", "kind": "hourly", "window": (0, 23), "max_min": 120, "inputs": {"probelauf": "false"}},
+    {"wf": "dauerpruefung.yml", "kind": "hourly", "window": (0, 23), "max_min": 200, "inputs": {"probelauf": "false"}},
     {"wf": "morgenbericht.yml", "kind": "daily", "at": "04:47", "grace": 45},
-    {"wf": "kaeufer.yml", "kind": "daily", "at": "05:13", "grace": 60},
     {"wf": "sync.yml", "kind": "daily", "at": "06:17", "grace": 45},
-    {"wf": "taeglich.yml", "kind": "daily", "at": "12:17", "grace": 45},
+    {"wf": "taeglich.yml", "kind": "daily", "at": "09:41", "grace": 45},
     # Versand rund um die Uhr (Inhaber 04.10.2026): stündlich (Plan app/lib/versandzeit.json), nachstarten, wenn
     # 70 min kein wirksamer Lauf begann (Betrieb 05.10.2026, scripts/takt.py); send_paused und config/versand.yaml aktiv: false starten nie nach
     *versandzeit.wachhund_jobs(inputs={
@@ -60,31 +65,25 @@ JOBS = [
                     "config/versand.yaml (Wachhund: geplanter Lauf ausgefallen)",
         "probelauf": "false"}),
     {"wf": "tagescheck.yml", "kind": "daily", "at": "17:37", "grace": 40, "inputs": {"mail": "true"}},
-    {"wf": "freigabe-stichprobe.yml", "kind": "daily", "at": "05:07", "grace": 60},
+    {"wf": "freigabe-stichprobe.yml", "kind": "daily", "at": "05:23", "grace": 60},
     # Website-Check der eigenen Seite (Inhaber 04.10.2026, /dashboard/website)
     {"wf": "website-check.yml", "kind": "daily", "at": "04:23", "grace": 90},
     {"wf": "kundenlieferung.yml", "kind": "daily", "at": "04:53", "grace": 60, "weekdays": [0], "until": "12:00"},
-    {"wf": "anreichern.yml", "kind": "daily", "at": "08:41", "grace": 60, "cond": "lead_suche"},
+    {"wf": "anreichern.yml", "kind": "daily", "at": "11:35", "grace": 60, "cond": "lead_suche"},
     # Tagesjobs ohne Nachstart (Gehirn 05.10.2026: GitHub startete Zeitplan-Läufe Stunden zu spät oder gar nicht –
     # kpi-tag kam 02:12/03:18 statt 23:50 und schrieb nichts; premium-s5 lief nie per Zeitplan). KPI-Abschluss in
     # deutscher Zeit (23:20, nachstarten ab 23:40, abschluss=true = gleiche Regel wie der Zeitplan).
     {"wf": "kpi-tag.yml", "kind": "daily", "at": "23:20", "tz": "Europe/Berlin", "grace": 20,
      "inputs": {"abschluss": "true"}},
-    {"wf": "aufraeumen.yml", "kind": "daily", "at": "02:41", "grace": 120},
-    {"wf": "premium-s5.yml", "kind": "daily", "at": "04:41", "grace": 90},
-    {"wf": "zustellbarkeit.yml", "kind": "daily", "at": "04:10", "grace": 90},
-    # Werke (24/7): GitHub ließ am 01.10.2026 die ersten geplanten Kunden-Werk-Läufe aus. Inhaber 01.10.2026: „Er soll
-    # schon eher wieder starten damit es immer zuverlässig durchläuft“ -> Dauerbetrieb: ist kein Lauf aktiv, startet
-    # der nächste sofort (Wachhund prüft alle 15 min); min_gap verhindert Dauerschleifen bei sofortigem Absturz.
-    {"wf": "lead-werk.yml", "kind": "continuous", "min_gap": 20, "cond": "lead_suche"},
-    {"wf": "kunden-werk.yml", "kind": "continuous", "min_gap": 20, "cond": "kunden_suche"},
-    # Prüfer-Werk (Inhaber 05.10.2026: „4 dauerhafte Prüfer der Leads“): rund um die Uhr, ohne Datei-Schalter
-    {"wf": "pruefer-werk.yml", "kind": "continuous", "min_gap": 20},
-    # Nachfüller (Inhaber 05.10.2026: „mind. 30 gleichzeitig“): startet freie Lead-Linien sofort neu; GitHub lässt
-    # seinen 10-min-Zeitplan unter Last aus -> nach 15 min ohne Lauf nachstarten. Pause/Schalter prüft er selbst.
-    {"wf": "werk-nachfuellen.yml", "kind": "hourly", "window": (0, 23), "max_min": 15, "cond": "lead_suche"},
-    # Kontakt-Werk (Inhaber 05.10.2026): Register + Website gegenprüfen, rund um die Uhr
-    {"wf": "kontakt-werk.yml", "kind": "continuous", "min_gap": 20},
+    {"wf": "aufraeumen.yml", "kind": "daily", "at": "02:53", "grace": 120},
+    {"wf": "premium-s5.yml", "kind": "daily", "at": "10:53", "grace": 90},
+    {"wf": "zustellbarkeit.yml", "kind": "daily", "at": "04:03", "grace": 90},
+    # Werke (Drossel 06.10.2026: kein Dauerbetrieb, kein Nachfüller mehr): Lead-Werk alle 6 h, Kunden-Werk 2× täglich,
+    # Prüfer- und Kontakt-Werk 1× täglich – überfällig erst nach einem ausgelassenen Zeitplan-Lauf
+    {"wf": "lead-werk.yml", "kind": "hourly", "window": (0, 23), "max_min": 6 * 60 + 90, "cond": "lead_suche"},
+    {"wf": "kunden-werk.yml", "kind": "hourly", "window": (0, 23), "max_min": 18 * 60 + 90, "cond": "kunden_suche"},
+    {"wf": "pruefer-werk.yml", "kind": "hourly", "window": (0, 23), "max_min": 24 * 60 + 90},
+    {"wf": "kontakt-werk.yml", "kind": "hourly", "window": (0, 23), "max_min": 24 * 60 + 90},
 ]
 
 
@@ -368,9 +367,22 @@ def main(argv=None) -> int:
             print(f"   Läufe von {wf} nicht lesbar: {type(exc).__name__}")
             return False
 
+    def repo_busy() -> int:
+        n = 0
+        for st in ("in_progress", "queued"):
+            r = requests.get(f"https://api.github.com/repos/{repo}/actions/runs", params={"status": st, "per_page": 1},
+                             headers=h, timeout=30)
+            r.raise_for_status()
+            n += int(r.json().get("total_count", 0))
+        return n
+
     if db is not None:
         try:
-            started += handle_starts(db, settings, dispatch, now, args.apply, running)
+            busy = repo_busy()
+            if busy - 1 >= drossel.MAX_LAEUFE:  # -1: dieser Wachhund-Lauf selbst
+                print(f"Startwünsche bleiben offen: {busy - 1} Läufe aktiv (Drossel: höchstens {drossel.MAX_LAEUFE})")
+            else:
+                started += handle_starts(db, settings, dispatch, now, args.apply, running)
         except Exception as exc:  # noqa: BLE001 - Startwünsche dürfen den Wachhund nie aufhalten
             print(f"Startwünsche nicht lesbar: {type(exc).__name__}: {str(exc)[:200]}")
         if args.apply:
@@ -402,7 +414,9 @@ def main(argv=None) -> int:
         else:
             late, why = overdue(job, runs, now)
         print(f"{'!' if late else '✓'}  {job['wf']:<22} {why}")
-        if late and args.apply:
+        if late and args.apply and not drossel.DISPATCH_ERLAUBT:
+            print(f"   kein Nachstart: {drossel.GRUND}")
+        elif late and args.apply:
             ok, text = dispatch(job["wf"], job.get("inputs", {}))
             if not ok:
                 print(f"   Start fehlgeschlagen: {text}")

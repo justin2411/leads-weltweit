@@ -50,6 +50,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+from lib import drossel  # noqa: E402
+
 LINES = ROOT / "app" / "lib" / "werk-linien.json"
 
 
@@ -88,8 +91,10 @@ TARGET_MIN = 30       # Ziel-Laufzeit je Teil (min): ein langsamer Teil soll das
 FULL_MIN = 55         # ab dieser Ø-Laufzeit gilt ein Teil als voll ausgelastet (Zeitfenster 75 min)
 EMPTY_WHY = "Vorrat leer"  # Anfang des Grundes leerer Linien (Dashboard erkennt die Linie daran, app/lib/leitstand.ts)
 PROBE_H = 4           # leere Linie: alle 4 h ein Prüfplatz (findet er Kandidaten, gilt wieder die Belegung)
-MIN_BELEGT = 30       # Inhaber 05.10.2026: „Werke immer laufen lassen, mind. 30 gleichzeitig“ (beide Werke zusammen)
-MIN_WHY = "Mindestbelegung 30"
+# Mindestbelegung aus (Inhaber 06.10.2026: „fahr github actions erstmal runter“): ersetzt „mind. 30 gleichzeitig“
+# (05.10.2026); höchstens drossel.MAX_PLAETZE Plätze je Werk-Lauf (cap_drossel)
+MIN_BELEGT = 0
+MIN_WHY = "Mindestbelegung"
 # Lead-Werk hoch (Inhaber 05.10.2026: „ne lead werk soll hochgefahren werden“): bei Mischung 100 % bekommt das Lead-Werk
 # mindestens LEAD_MIN_PREMIUM Plätze (Kunden-/Kontakt-Werk geben dafür ab, je aktiver Linie bleibt 1), verteilt nach
 # gemessenem Premium-Ertrag je Platz-Stunde (Höchstzahlverfahren). Radar-Basis (web-uk/web-fr) höchstens BASIS_MAX
@@ -903,10 +908,24 @@ def decide(reg: dict, werk: str, inp: dict) -> dict:
         # Speicher-Stopp (Prüfung 04.10.2026): alle Lead-Plätze 0, auch festgesetzte; Kunden-Werk unverändert
         plan = {k: 0 for k in plan}
         reasons = {k: BRAKE_STOP_WHY for k in plan}
+    cap_drossel(plan, reasons)
     extra = " --no-raw" if werk == "lead-werk" and brake in ("ohne-rohbestand", "stopp") else ""
     return {"plan": plan, "reasons": reasons, "mode": mode, "brake": brake, "extra": extra, "base": own,
             "autopilot": ap, "stats": stats, "nach": nach_lanes(reg, inp.get("vorrang"), inp.get("stock")),
             "nur_premium": nur_premium, "mix_pct": pct}
+
+
+DROSSEL_WHY = "Actions-Drossel – gekürzt"
+
+
+def cap_drossel(plan: dict[str, int], reasons: dict[str, str], cap: int | None = None) -> None:
+    """Actions-Drossel (Inhaber 06.10.2026): höchstens `cap` (drossel.MAX_PLAETZE) Plätze je Werk-Lauf. Kürzt die
+    Linie mit den meisten Plätzen (bei Gleichstand die weiter hinten stehende), bis die Summe passt – auch auf 0."""
+    cap = drossel.MAX_PLAETZE if cap is None else cap
+    while sum(plan.values()) > cap:
+        k = max(reversed(list(plan)), key=lambda x: plan[x])
+        plan[k] -= 1
+        reasons[k] = DROSSEL_WHY
 
 
 def run_counts(reg: dict, res: dict, teile: dict[str, int] | None, taken: set[str]) -> tuple[dict[str, int], dict[str, str]]:
