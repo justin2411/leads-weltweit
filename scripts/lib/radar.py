@@ -374,7 +374,7 @@ def legal_person(home_url: str, home_html: str, fetcher) -> dict | None:
     from lib import websites as W
     if not home_url or not home_html:
         return None
-    p = W.person_from_legal_notice(W.without_hosting(W.page_text(home_html[:200000])))
+    p = _person(W, home_html, home_url)
     if p:
         return {**p, "source_url": home_url}
     root = re.match(r"^https?://[^/]+", home_url)
@@ -395,10 +395,17 @@ def legal_person(home_url: str, home_html: str, fetcher) -> dict | None:
         page, _ = wc._get(fetcher, url)
         if page is None or page.status_code >= 400:
             continue
-        p = W.person_from_legal_notice(W.without_hosting(W.page_text((page.text or "")[:200000])))
+        p = _person(W, page.text or "", url)
         if p:
             return {**p, "source_url": url}
     return None
+
+
+def _person(W, html: str, url: str) -> dict | None:
+    """Impressum-Regel zuerst; sonst Inhaber/Gründer mit ausdrücklicher Rolle auf englischen Seiten
+    (websites.person_from_about, Premium-Labor 06.10.2026)."""
+    text = W.without_hosting(W.page_text(html[:200000]))
+    return W.person_from_legal_notice(text) or W.person_from_about(text, url)
 
 
 def radar_details(row: dict, out: dict, today: dt.date) -> dict:

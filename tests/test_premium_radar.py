@@ -465,6 +465,54 @@ class RadarLegalPersonTest(unittest.TestCase):
         self.assertIsNone(out["person"])
 
 
+class AboutPersonTest(unittest.TestCase):
+    """Premium-Labor 06.10.2026: US/UK-Radar-Leads nennen den Inhaber auf Über-uns-/Kontaktseiten mit Rolle
+    (Messung: 7 von 62 Radar-Premium-Seiten ohne Namen, alle von Hand bestätigt). Nur ausdrückliche Rolle."""
+
+    def about(self, text, url="https://midtownagency.example.com/about/"):
+        from lib import websites as W
+        return W.person_from_about(W.page_text(text), url)
+
+    def test_name_then_role(self):
+        p = self.about("<p>Midtown Agency</p><p>Peter Murphy, President</p><p>PO Box 1</p>")
+        self.assertEqual((p["name"], p["role"]), ("Peter Murphy", "President"))
+        self.assertEqual(p["source"], "Company website (about page)")
+
+    def test_team_card_and_label_and_owned_by(self):
+        p = self.about("<h2>Meet the Team</h2><div>Rico Yanes</div><div>Owner</div><div>Jen Tovar</div>")
+        self.assertEqual((p["name"], p["role"]), ("Rico Yanes", "Owner"))
+        p = self.about("<p>Owner: Ann Lee</p>")
+        self.assertEqual((p["name"], p["role"]), ("Ann Lee", "Owner"))
+        p = self.about("<p>The firm is wholly owned and operated by Daniel Lynch, a Registered Architect.</p>")
+        self.assertEqual((p["name"], p["role"]), ("Daniel Lynch", "Owner"))
+        p = self.about("<h1>About Us</h1><p>Keven Staley Co-Founder and CEO of The Cloud Geeks</p>",
+                       "https://thecloudgeeks.example.com/")
+        self.assertEqual((p["name"], p["role"]), ("Keven Staley", "Co-Founder"))
+
+    def test_testimonial_of_other_company_is_ignored(self):
+        self.assertIsNone(self.about("<blockquote>Great work! – Jane Doe, Owner of Smith Roofing</blockquote>",
+                                     "https://webcraft.example.com/"))
+        self.assertIsNone(self.about("<p>Mike Long, Owner at Harbour Bakes</p>", "https://webcraft.example.com/"))
+
+    def test_no_role_no_name_and_no_blog_author(self):
+        self.assertIsNone(self.about("<p>Harbour Bakes, run by Ann Lee</p>"))
+        self.assertIsNone(self.about('<script type="application/ld+json">{"author":{"name":"Ann Lee"}}</script>'))
+        self.assertIsNone(self.about("<p>Big Savings President's Day Sale</p>"))
+        self.assertIsNone(self.about("<p>Employee of the Month: Customer Service</p>"))
+
+    def test_legal_person_uses_about_page(self):
+        from extraktor.sources import website_check as wc
+        home = '<html><body>Adams Auto <a href="/about.html">About</a></body></html>'
+        about = "<p>Family run since 1998. Raymond Adams, Owner</p>"
+
+        def get(_f, u):
+            return (_Page(about) if u == "https://adamsauto.example.com/about.html" else _Page("", 404)), None
+        with mock.patch.object(wc, "_get", get), mock.patch.object(wc, "_robots", lambda f, r: ("ok", _Page(""), None)):
+            p = radar.legal_person("https://adamsauto.example.com/", home, object())
+        self.assertEqual((p["name"], p["role"]), ("Raymond Adams", "Owner"))
+        self.assertEqual(p["source_url"], "https://adamsauto.example.com/about.html")
+
+
 if __name__ == "__main__":
     unittest.main()
 
