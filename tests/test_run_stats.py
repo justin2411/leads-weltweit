@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from fakedb import FakeDB  # noqa: E402
-from lib.run_stats import record, rows_from_buyer_stats, rows_from_lead_report, rows_from_stock_summary  # noqa: E402
+from lib.run_stats import record, rows_from_buyer_stats, rows_from_lead_report, rows_from_stock_summary, rows_pool_empty  # noqa: E402
 
 
 class RunStatsTest(unittest.TestCase):
@@ -23,6 +23,11 @@ class RunStatsTest(unittest.TestCase):
         self.assertEqual((by["US"]["green"], by["US"]["yellow"], by["US"]["processed"]), (4, 6, 10))
         self.assertEqual(by["UK"]["red"], 1)
         self.assertEqual(by["US"]["extra"]["kandidaten_gesamt"], 30)
+
+    def test_pool_empty_row_is_recorded(self):
+        rows = rows_pool_empty(["S1", "S2"])
+        self.assertEqual(rows[0]["extra"], {"pool_leer": True, "fokus": ["S1", "S2"]})
+        self.assertEqual(record(FakeDB({}), "kunden-werk", rows), 1)
 
     def test_stock_summary_and_record(self):
         rows = rows_from_stock_summary({"S2/US": {"soll": 6, "vorher": 4, "neu": 2}})

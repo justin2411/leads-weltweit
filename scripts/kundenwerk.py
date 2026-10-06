@@ -724,8 +724,13 @@ def cmd_run(args) -> int:
     for k, v in sorted(stats.items()):
         if "/" in k:
             log(f"  {k} {v}")
-    from lib.run_stats import record, rows_from_buyer_stats
-    record(db, "kunden-werk", rows_from_buyer_stats(dict(stats), len(pool)), started_at, log)
+    from lib.run_stats import record, rows_from_buyer_stats, rows_pool_empty
+    rows = rows_from_buyer_stats(dict(stats), len(pool))
+    if not pool:
+        # Pool leer ist kein Ausfall: Datenfluss zeigt dann „Quelle erschöpft“ statt rot (Gehirn 06.10.2026)
+        log("Kandidaten-Pool leer: keine ungeprüften Käufer in den Fokus-Märkten – neue Quelle nötig")
+        rows = rows_pool_empty(sorted(keep))
+    record(db, "kunden-werk", rows, started_at, log)
     return 0
 
 

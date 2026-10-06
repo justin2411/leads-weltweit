@@ -108,9 +108,26 @@ def switched_off(settings: dict | None, rows: dict) -> dict[str, str]:
     return off
 
 
-def judge(rows: list[dict], t: dt.datetime, off: dict[str, str] | None = None) -> list[dict]:
-    """Je Station: stufe 'ok' | 'gelb' | 'rot' | 'aus' | 'keine_basis' mit still_h, intervall_h, grenze_h."""
-    off = off or {}
+POOL_FRESH = dt.timedelta(hours=3)  # so frisch muss die „Pool leer“-Meldung des Kunden-Werks sein
+
+
+def pool_empty(db, t: dt.datetime) -> bool:
+    """Kunden-Werk lief zuletzt (≤ 3 h) und fand keine ungeprüften Kandidaten mehr (run_stats extra.pool_leer)."""
+    try:
+        rows = db.select("run_stats", {"werk": "eq.kunden-werk", "select": "finished_at,extra",
+                                       "order": "finished_at.desc", "limit": "5"}) or []
+    except Exception:  # noqa: BLE001 - ohne Zähler bleibt die normale Bewertung
+        return False
+    fresh = [r for r in rows if (_ts(r.get("finished_at")) or t - 2 * POOL_FRESH) > t - POOL_FRESH]
+    return bool(fresh) and all((r.get("extra") or {}).get("pool_leer") for r in fresh)
+
+
+def judge(rows: list[dict], t: dt.datetime, off: dict[str, str] | None = None,
+          empty: set[str] | None = None) -> list[dict]:
+    """Je Station: stufe 'ok' | 'gelb' | 'rot' | 'aus' | 'keine_basis' mit still_h, intervall_h, grenze_h.
+    empty: Stationen, deren Werk läuft, aber keine Kandidaten mehr hat – höchstens gelb mit eigenem Grund
+    (Quelle erschöpft ist kein Ausfall, braucht aber eine neue Quelle)."""
+    off, empty = off or {}, empty or set()
     out = []
     for r in rows:
         key = r.get("station")
@@ -136,6 +153,10 @@ def judge(rows: list[dict], t: dt.datetime, off: dict[str, str] | None = None) -
             res["stufe"] = "rot"
         else:
             res["stufe"] = "gelb"
+        if key in empty and res["stufe"] == "rot":
+            res["stufe"] = "gelb"
+        if key in empty and res["stufe"] == "gelb":
+            res["erschoepft"] = True
         out.append(res)
     return out
 
@@ -143,6 +164,13 @@ def judge(rows: list[dict], t: dt.datetime, off: dict[str, str] | None = None) -
 def texts(a: dict) -> dict:
     """Kurztexte (Titel ≤ 60, Grund ≤ 160 Zeichen) und Gehirn-Update (≤ 3 Zeilen, ≤ 400 Zeichen)."""
     still, every = _h(a["still_h"]), _h(a["intervall_h"])
+    if a.get("erschoepft"):
+        titel = f"Gelb: {a['name']} – Quelle erschöpft"[:60]
+        grund = (f"Werk läuft, findet aber keine ungeprüften Kandidaten mehr (seit {still}). "
+                 f"Neue Käufer-Quelle für die Fokus-Märkte nötig.")[:160]
+        update = (f"Aufgefallen: {a['name']} seit {still} ohne Zuwachs – Kandidaten-Pool leer, kein Ausfall.\n"
+                  f"Nächster Schritt: neue Käufer-Quelle für die Fokus-Märkte erschließen.")
+        return {"titel": titel, "grund": grund, "update": update}
     titel = f"{'Rot' if a['stufe'] == 'rot' else 'Gelb'}: {a['name']} steht seit {still} still"[:60]
     grund = f"Kein Zuwachs seit {still}, üblich etwa alle {every}. Ursache prüfen: Läufe, Quelle, Schalter."[:160]
     update = (f"Aufgefallen: {a['name']} seit {still} ohne Zuwachs (üblich alle {every}).\n"
@@ -161,7 +189,8 @@ def stillstand(db, t: dt.datetime | None = None, apply: bool = False, settings: 
             settings = load(db)
         except Exception:  # noqa: BLE001 - ohne Einstellungen gelten nur die Datei-Schalter
             settings = {}
-    res = judge(rows, t, switched_off(settings, {r.get("station"): r for r in rows}))
+    res = judge(rows, t, switched_off(settings, {r.get("station"): r for r in rows}),
+                {"kaeufer"} if pool_empty(db, t) else set())
     if not apply:
         return res
     from lib.kurz import insert_decisions
@@ -184,7 +213,8 @@ def stillstand(db, t: dt.datetime | None = None, apply: bool = False, settings: 
         insert_decisions(db, {"type": "safety", "subject": subj, "status": "proposed",
                               "reasoning": tx["grund"], "kurz_titel": tx["titel"], "kurz_grund": tx["grund"],
                               "metrics": {"station": a["station"], "stufe": a["stufe"], "still_h": a["still_h"],
-                                          "intervall_h": a["intervall_h"], "grenze_h": a["grenze_h"]}})
+                                          "intervall_h": a["intervall_h"], "grenze_h": a["grenze_h"],
+                                          **({"erschoepft": True} if a.get("erschoepft") else {})}})
         a["aktion"] = "gemeldet"
         try:
             if chat is None:

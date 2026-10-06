@@ -52,6 +52,12 @@ def rows_from_buyer_stats(stats: dict, candidates: int) -> list[dict]:
     return rows
 
 
+def rows_pool_empty(segments: list[str]) -> list[dict]:
+    """kundenwerk.py ohne Kandidaten: eine Zeile mit extra.pool_leer, damit der Lauf sichtbar bleibt."""
+    return [{"segment_id": None, "country": None, "candidates": 0, "processed": 0, "green": 0, "yellow": 0, "red": 0,
+             "reasons": {}, "extra": {"pool_leer": True, "fokus": list(segments)}}]
+
+
 def rows_from_stock_summary(summary: dict) -> list[dict]:
     """sample_stock.run(): {"S2/US": {soll, vorher, neu}} -> Zeilen (green = neu gebaute Proben)."""
     out = []
