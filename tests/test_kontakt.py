@@ -186,6 +186,23 @@ class PremiumTests(unittest.TestCase):
         # teilweise belegt und schon mit Kontakt-Punkten: nichts zu tun
         self.assertIsNone(K.premium_nachtrag(85, radar, ok))
 
+    def test_premium_nachtrag_website_widerspruch(self):
+        # Premium-Labor 06.10.2026: Website gelesen, gehört aber einer anderen Firma/ist geparkt -> Kontakt nicht belegt
+        radar = {"tier": "premium", "reasons": ["frisch_0_tage", "kombi:website_outdated", "beleg", "kontakt"]}
+        for h in ("website_widerspruch:other_registry_id", "website_widerspruch:parked_or_placeholder"):
+            k = {"stufe": "leer", "premium_punkt": False, "quellen": [], "hinweise": [h],
+                 "phone": {"belegt": []}, "email": {"belegt": []}}
+            s, p = K.premium_nachtrag(85, radar, k)
+            self.assertEqual((s, p["tier"]), (70, "premium"))
+            self.assertIn("kontakt_unbelegt", p["reasons"])
+        # nur Hinweis ohne Widerspruch (z. B. Telefon nicht auf der Website) und nicht gelesen: nichts ändern
+        k2 = {"stufe": "leer", "quellen": [], "hinweise": ["telefon_nicht_auf_website"]}
+        self.assertIsNone(K.premium_nachtrag(85, radar, k2))
+        # teilweise belegt trotz Hinweis: nichts ändern (nur Stufe „leer“)
+        k3 = {"stufe": "teilweise", "quellen": [], "hinweise": ["website_widerspruch:parked_or_placeholder"],
+              "phone": {"belegt": ["register"]}}
+        self.assertIsNone(K.premium_nachtrag(85, radar, k3))
+
 
 class FakeSources:
     def __init__(self, reg=None, pages=None):
@@ -342,3 +359,36 @@ class NachholenTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class KontaktNachtragBestand(unittest.TestCase):
+    """premium_score.py Schritt 4: Bestand nach derselben Regel (Premium-Labor 06.10.2026)."""
+
+    def test_bestand(self):
+        import premium_score
+
+        class DB:
+            def __init__(self):
+                self.updates, self.q = [], None
+
+            def select_all(self, table, q):
+                self.q = q
+                return [{"id": "a", "country": "UK", "premium_score": 85,
+                         "premium": {"tier": "premium", "reasons": ["frisch_1_tage", "kombi:x", "beleg", "kontakt"]},
+                         "kontakt": {"stufe": "leer", "quellen": [],
+                                     "hinweise": ["website_widerspruch:other_registry_id"]}},
+                        {"id": "b", "country": "US", "premium_score": 85,
+                         "premium": {"tier": "premium", "reasons": ["frisch_1_tage", "kombi:x", "beleg", "kontakt"]},
+                         "kontakt": {"stufe": "leer", "quellen": [], "hinweise": []}}]
+
+            def update(self, table, match, cols):
+                self.updates.append((match["id"], cols))
+
+        db = DB()
+        st = premium_score.kontakt_nachtrag(db, apply=False, log=lambda *_: None)
+        self.assertEqual(st, {"kontakt_unbelegt:UK": 1})
+        self.assertEqual(db.updates, [])
+        self.assertEqual(db.q["kontakt->>stufe"], "eq.leer")
+        premium_score.kontakt_nachtrag(db, apply=True, log=lambda *_: None)
+        self.assertEqual([u[0] for u in db.updates], ["a"])
+        self.assertEqual(db.updates[0][1]["premium_score"], 70)

@@ -310,8 +310,15 @@ def merge(company: dict, contact: dict | None, person_now: dict | None, register
 
 def _contact_unbelegt(kontakt: dict) -> bool:
     """Website gelesen, aber weder Telefon noch E-Mail dort/auf der Domain belegt und keine Person (Stufe „leer“).
-    Premium-Labor 05.10.2026: 35 % (UK) bis 56 % (FR) der Radar-Premium-Leads – bekamen trotzdem 15 Kontakt-Punkte."""
-    return kontakt.get("stufe") == "leer" and "Company website" in (kontakt.get("quellen") or [])
+    Premium-Labor 05.10.2026: 35 % (UK) bis 56 % (FR) der Radar-Premium-Leads – bekamen trotzdem 15 Kontakt-Punkte.
+    Premium-Labor 06.10.2026: auch, wenn die Website gelesen wurde, aber einer anderen Firma gehört, geparkt ist oder
+    nur fremde Nummern zeigt (Hinweis „website_widerspruch:…“) – dann steht „Company website“ nicht in den Quellen,
+    der Kontakt ist aber erst recht nicht belegt (gemessen: 46 offene Premium-Leads US/UK/FR mit vollen Punkten).
+    Website nicht gelesen (kein Hinweis, keine Quelle): keine Aussage, nichts ändern. Nur strenger."""
+    if kontakt.get("stufe") != "leer":
+        return False
+    return "Company website" in (kontakt.get("quellen") or []) or \
+        any(str(h).startswith("website_widerspruch:") for h in (kontakt.get("hinweise") or []))
 
 
 def _contact_belegt(kontakt: dict) -> bool:

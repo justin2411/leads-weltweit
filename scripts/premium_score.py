@@ -8,6 +8,8 @@ Neue Leads bekommen die Bewertung beim Speichern (extraktor/store.py, lib/radar.
   2. stuft Leads, deren Ereignis inzwischen älter als PREMIUM_MAX_AGE (14) Tage ist, auf „standard“ zurück;
   3. trägt bei offenen Premium-Leads „Zertifikat läuft ab“ die Frist (premium.gilt_bis = Ablaufdatum aus der
      Ereignis-Beobachtung) nach und stuft sie ab dem Ablaufdatum zurück (Premium-Labor 05.10.2026).
+  4. nimmt offenen Premium-Leads die Kontakt-Punkte, wenn das Kontakt-Werk den Kontakt auf der Website nicht belegen
+     konnte (Stufe „leer“, lib/kontakt.premium_nachtrag; Premium-Labor 06.10.2026: auch bei Website-Widerspruch).
 Nur Reihenfolge – ob ein Lead rausgeht, entscheidet allein die Drei-Stufen-Freigabe. Nichts wird gelöscht.
 
   python scripts/premium_score.py            # zählen, nichts schreiben
@@ -202,6 +204,30 @@ def texte(db, apply: bool, limit: int = 5000, log=print) -> dict:
     return dict(stats)
 
 
+def kontakt_nachtrag(db, apply: bool, limit: int = 20000, log=print) -> dict:
+    """Schritt 4: offene/reservierte Premium-Leads mit Kontakt-Punkten, deren Kontakt-Prüfung „leer“ ergab. Gleiche
+    Regel wie beim Speichern im Kontakt-Werk (lib/kontakt.premium_nachtrag) – nur strenger, nie Status/Freigabe."""
+    from lib import kontakt as K
+    rows = db.select_all("leads", {"status": "in.(new,reserved)", "premium->>tier": "eq.premium",
+                                   "kontakt->>stufe": "eq.leer", "premium->reasons": 'cs.["kontakt"]',
+                                   "select": "id,country,premium_score,premium,kontakt"})[:limit]
+    stats: Counter = Counter()
+    upd = []
+    for r in rows:
+        nach = K.premium_nachtrag(r.get("premium_score"), r.get("premium"), r.get("kontakt") or {})
+        if not nach:
+            continue
+        stats[f"kontakt_unbelegt:{r.get('country')}"] += 1
+        if nach[1].get("tier") != "premium":
+            stats[f"kontakt_standard:{r.get('country')}"] += 1
+        upd.append((r["id"], {"premium_score": nach[0], "premium": nach[1]}))
+    if apply and upd:
+        with ThreadPoolExecutor(8) as ex:
+            list(ex.map(lambda u: db.update("leads", {"id": u[0]}, u[1]), upd))
+    log(json.dumps(dict(stats), ensure_ascii=False, sort_keys=True))
+    return dict(stats)
+
+
 def counts(db, today: dt.date | None = None) -> dict:
     """Premium-Leads heute je Zielgruppe/Land (offen, frisch) – über signalwerk.premium_status()."""
     return {f"{r['segment_id']}/{r['country']}": r["premium_frei"] for r in db.rpc("premium_status", {}) or []}
@@ -219,6 +245,10 @@ def main(argv=None) -> int:
         texte(db, args.apply)
     except Exception as exc:  # noqa: BLE001 - Texte nachtragen darf die Bewertung nie stoppen
         print(f"texte: {type(exc).__name__}: {str(exc)[:160]}")
+    try:
+        kontakt_nachtrag(db, args.apply)
+    except Exception as exc:  # noqa: BLE001 - darf die Bewertung nie stoppen
+        print(f"kontakt: {type(exc).__name__}: {str(exc)[:160]}")
     return 0
 
 
