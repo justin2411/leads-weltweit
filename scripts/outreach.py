@@ -694,6 +694,9 @@ def cmd_send(args) -> int:
     # A/B je Schritt (scripts/lib/ab.py): laufende Tests und übernommene Gewinner einmal je Lauf laden
     from lib import ab as ablib
     abx = ablib.Ctx(db)
+    if any(t.get("status") == "laeuft" and ablib.is_beleg_test(t) for t in abx.tests):
+        # Beleg-Einstieg (Auftrag c5da4536): freigegebene Premium-Anlässe, reserviert je Käufer
+        abx.belege = ablib.BelegQuelle(db, live)
     rows, zeit, mid = ab_send_order(abx, rows, until)
     seeded: set[str] = set()
     already = sum(sent_today.values())
@@ -903,6 +906,8 @@ def cmd_send(args) -> int:
         db.insert("email_events", {"message_id": m["id"], "resend_id": provider_fields.get("resend_id"), "type": "sent",
                                    "note": f"Freigabe: {args.owner_ok or 'Dauerfreigabe'}"})
         ab_after_send(db, m, p, orig, marks, sv)
+        if abx.belege is not None:
+            abx.belege.gesendet(m["id"])
         if not e.get("started_on"):
             db.update("experiments", {"id": e["id"]}, {"started_on": today, "status": "running"})
         db.update("experiments", {"id": e["id"]}, {"last_sent_on": today})
@@ -919,6 +924,8 @@ def cmd_send(args) -> int:
             stop = notbremse(db)
             if stop:
                 print(f"NOTBREMSE während des Versands nach {n_sent} Mails: {stop}")
+                if abx.belege is not None:
+                    abx.belege.freigeben_offen()
                 return 2
             for n, why in apply_box_rules(db, boxes, caps, box_checks).items():
                 if n not in off:
@@ -933,6 +940,8 @@ def cmd_send(args) -> int:
             if rest <= 0:
                 continue  # Anteil/Tagesmenge erreicht: keine Pause, die Schleife endet beim nächsten Eintrag
             time.sleep(window_pause(args.pause, left, rest) * random.uniform(0.6, 1.4))  # nicht im Takt senden
+    if abx.belege is not None:
+        abx.belege.freigeben_offen()  # Belege von Mails, die nicht rausgingen, wieder frei
     print(f"\n{'gesendet' if live else 'Probelauf, würde senden'}: {n_sent}")
     return 0
 

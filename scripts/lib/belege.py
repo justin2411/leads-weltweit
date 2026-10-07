@@ -6,7 +6,10 @@ Idee: Der erste Absatz der Kaltmail nennt 2 echte, freigegebene Premium-Anlässe
 Dieses Modul ist nur der reine, prüfbare Teil – es sendet nichts und schreibt nichts:
   * bereit(...)        Rechnet, ob ein Land genug freie Premium-Leads für den Test hat, ohne die Proben auszuhungern.
   * firma_ok(...)      Nur Firmennamen mit erkannter Kapitalgesellschaft (keine Personennamen von Einzelunternehmern).
-  * einstieg(...)      Baut den Einstiegssatz (EN/FR) aus 2 Leads, landesweit, ohne Stadt, ohne Personendaten.
+  * einstieg(...)      Baut den Beleg-Satz (EN/FR) aus 2 Leads, ohne Stadt, ohne Personendaten. Er wird an den
+                       Einstiegsabsatz angehängt (Platzhalter {belege} in Variante B, lib/ab.py); „across {Land}“
+                       steht schon im Satz davor. Kein „this week“ (Premium-Anlässe sind bis 14 Tage alt) und keine
+                       Aussage, die nicht für jeden Anlass stimmt (Zertifikat/Umzug: Website ist vorhanden).
 
 Engpass-Rechnung (Stand 05.10.2026, premium_status): frei US 2.700, UK 317, FR 142. Bei 100 Mails je Variante und
 2 Belegen je Mail braucht Variante B 200 Premium-Leads; die Hälfte des Bestands bleibt für Proben. Deshalb startet
@@ -86,8 +89,8 @@ def zeile(lead: dict, lang: str) -> str | None:
 
 
 def einstieg(leads: list[dict], country: str) -> str | None:
-    """Erster Absatz der Variante B. None, wenn keine 2 verschiedenen, vollständigen Belege da sind (dann bleibt die
-    Mail unverändert und zählt nicht – wie bei jedem A/B-Element)."""
+    """Beleg-Satz der Variante B (ersetzt {belege} im Einstiegsabsatz). None, wenn keine 2 verschiedenen, vollständigen
+    Belege da sind (dann bleibt die Mail unverändert und zählt nicht – wie bei jedem A/B-Element)."""
     cc = (country or "").upper()
     lang = "fr" if cc == "FR" else "en"
     seen, rows = set(), []
@@ -102,7 +105,27 @@ def einstieg(leads: list[dict], country: str) -> str | None:
     if len(rows) < BELEGE_JE_MAIL:
         return None
     if lang == "fr":
-        return (f"Deux exemples de cette semaine, partout en France : {rows[0]} et {rows[1]}. "
-                "Ce sont des entreprises qui ont besoin d'un site web maintenant.")
-    return (f"Two examples from this week, across {LAND.get(cc, 'your country')}: {rows[0]} and {rows[1]}. "
-            "Both are businesses that need a website right now.")
+        return f"Deux exemples récents : {rows[0]} et {rows[1]}."
+    return f"Two recent examples: {rows[0]} and {rows[1]}."
+
+
+# Nur für die Längenprüfung der Kontrolle A (kein echter Lead, wird nie gesendet): A und B werden gleich behandelt –
+# ein Käufer zählt nur, wenn auch eine typische Variante B die Schreibregeln (70–120 Wörter) bestehen würde.
+def _m(name: str, sig: str, d: str) -> dict:
+    return {"company_name": name, "signal_type": sig, "event_date": d}
+
+
+MUSTER = {
+    "US": [_m("Harbor Point Services LLC", "new_incorporation", "2026-10-01"),
+           _m("Northwind Supply Inc", "cert_expiring", "2026-10-04")],
+    "UK": [_m("Harbor Point Services Ltd", "new_incorporation", "2026-10-01"),
+           _m("Northwind Supply Ltd", "cert_expiring", "2026-10-04")],
+    "FR": [_m("Atelier Bois Menuiserie SAS", "no_https", "2026-10-03"),
+           _m("SARL Dupont Habitat", "relocation", "2026-09-30")],
+}
+
+
+def muster(country: str) -> str:
+    """Beleg-Satz mit typischer Länge (nur zur Prüfung, nie im Versand). Leer = Land ohne Muster (dann kein Test)."""
+    cc = (country or "").upper()
+    return einstieg(MUSTER.get(cc, []), cc) or ""

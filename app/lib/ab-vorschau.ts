@@ -19,6 +19,12 @@ export const BEISPIEL: Record<PeekCountry, { firma: string; kurz: string }> = {
   FR: { firma: "Exemple SARL", kurz: "Exemple" },
 };
 const LAND: Record<PeekCountry, string> = { US: "the US", UK: "the UK", FR: "toute la France" };
+/** Beleg-Einstieg ({belege}, scripts/lib/belege.py): im Versand 2 echte, freigegebene Premium-Anlässe; hier neutral. */
+const BELEG_BEISPIEL: Record<PeekCountry, string> = {
+  US: "Two recent examples: Example One LLC (newly registered, no website yet, Oct 1) and Example Two Inc (security certificate about to expire, Oct 4).",
+  UK: "Two recent examples: Example One Ltd (newly registered, no website yet, Oct 1) and Example Two Ltd (security certificate about to expire, Oct 4).",
+  FR: "Deux exemples récents : Exemple Un SAS (site sans HTTPS, 3 octobre) et Exemple Deux SARL (a déménagé, site avec l'ancienne adresse, 30 septembre).",
+};
 const cc = (c: string): PeekCountry => (c === "US" || c === "FR" ? c : "UK");
 const isFr = (c: string) => cc(c) === "FR";
 
@@ -39,6 +45,7 @@ export function fillPlaceholders(text: string, country: string): string {
     if (["firma", "firm", "company", "company_name", "name", "agentur", "agency"].includes(key)) return b.firma;
     if (["kurz", "short", "kurzname"].includes(key)) return b.kurz;
     if (["land", "area", "region", "ort", "country"].includes(key)) return LAND[cc(country)];
+    if (key === "belege") return BELEG_BEISPIEL[cc(country)];
     return "…";
   });
 }
