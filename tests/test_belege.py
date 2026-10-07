@@ -33,15 +33,20 @@ class BelegeTest(unittest.TestCase):
         t = B.einstieg([lead("John Smith Trucking"), lead("Blue Ridge Hauling LLC"),
                         lead("Blue Ridge Hauling LLC", d="2026-10-02"), lead("Acme Inc", "cert_expiring", "2026-10-04")],
                        "US")
-        self.assertEqual(t, "Two examples from this week, across the US: Blue Ridge Hauling LLC (registered, no website "
-                            "yet, Oct 1) and Acme Inc (security certificate about to expire, Oct 4). Both are "
-                            "businesses that need a website right now.")
+        # kein „this week“ (Premium bis 14 Tage) und keine Aussage, die nicht für jeden Anlass stimmt
+        self.assertEqual(t, "Two recent examples: Blue Ridge Hauling LLC (registered, no website yet, Oct 1) and "
+                            "Acme Inc (security certificate about to expire, Oct 4).")
         self.assertNotIn("Smith", t)
 
     def test_einstieg_fr(self):
         t = B.einstieg([lead("Atelier Bois SAS", "no_https", "2026-10-03"), lead("SARL Dupont", d="2026-09-30")], "FR")
-        self.assertIn("partout en France", t)
+        self.assertTrue(t.startswith("Deux exemples récents : "))
         self.assertIn("Atelier Bois SAS (site sans HTTPS, 3 octobre)", t)
+
+    def test_muster_nur_zur_pruefung(self):
+        self.assertTrue(B.muster("US").startswith("Two recent examples: "))
+        self.assertTrue(B.muster("UK").startswith("Two recent examples: "))
+        self.assertTrue(B.muster("FR").startswith("Deux exemples récents : "))
 
     def test_zu_wenig_belege(self):
         self.assertIsNone(B.einstieg([lead("Acme Inc")], "US"))

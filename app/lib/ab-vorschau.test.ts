@@ -8,6 +8,8 @@ test("Platzhalter: neutrales Beispiel je Land, unbekannte nie roh", () => {
   assert.equal(fillPlaceholders("{ company } across {area}", "US"), "Example LLC across the US");
   assert.equal(fillPlaceholders("Hallo {vorname}", "UK"), "Hallo …");
   assert.ok(!/\{|\}/.test(fillPlaceholders("{a}{b}{firma}", "US")));
+  assert.match(fillPlaceholders("x {belege}", "US"), /^x Two recent examples: Example One LLC/);
+  assert.match(fillPlaceholders("{belege}", "FR"), /^Deux exemples récents/);
 });
 
 test("Markierung wird zu <mark> und nur einmal gesetzt", () => {

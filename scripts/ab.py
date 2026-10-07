@@ -75,6 +75,10 @@ def anlegen(db, step_key: str, country: str, element: str, b, hypothese: str, a=
            "varianten": [{"key": "A", **({element: _value(step_key, element, a)} if a not in (None, "") else {})},
                          {"key": "B", element: _value(step_key, element, b)}],
            "status": "entwurf", "min_n": int(min_n or s["min_n"]), "created_by": by}
+    if ab.is_beleg_test(row):
+        errs = ab.beleg_check(row)
+        if errs:
+            raise AbError("; ".join(errs))
     return (db.insert("ab_tests", row) or [row])[0]
 
 
@@ -108,6 +112,25 @@ def _landing_setup(db, t: dict) -> list[dict]:
     return [{"key": "A", "variant_id": base["id"]}, {"key": "B", "variant_id": row.get("id"), t["element"]: b_val}]
 
 
+def _beleg_bereit(db, t: dict) -> None:
+    """Beleg-Einstieg nur, wo freie Premium-Leads ≥ 2 × Bedarf (lib.belege.bereit, heute nur US) und die Reservierung
+    (Migration beleg_reservierungen) da ist."""
+    from lib import belege
+    errs = ab.beleg_check(t)
+    if errs:
+        raise AbError("; ".join(errs))
+    rows = db.rpc("premium_status", {}) or []
+    frei = next((int(r.get("premium_frei") or 0) for r in rows
+                 if r.get("segment_id") == t["segment_id"] and r.get("country") == t["country"]), 0)
+    if not belege.bereit(frei, int(t.get("min_n") or 100)):
+        raise AbError(f"Beleg-Einstieg: nur {frei} freie Premium-Leads in {t['country']} "
+                      f"(nötig {belege.PUFFER_FAKTOR * belege.bedarf(int(t.get('min_n') or 100))})")
+    try:
+        db.select("beleg_reservierungen", {"select": "id", "limit": "1"})
+    except Exception as exc:  # noqa: BLE001
+        raise AbError("Beleg-Einstieg: Reservierung fehlt (Migration beleg_einstieg anwenden)") from exc
+
+
 def starten(db, test_id: str) -> dict:
     t = (db.select("ab_tests", {"id": f"eq.{test_id}", "select": "*"}) or [None])[0]
     if not t:
@@ -122,7 +145,9 @@ def starten(db, test_id: str) -> dict:
     if db.select("ab_tests", {"step": f"eq.{t['step']}", "country": f"eq.{t['country']}", "status": "eq.laeuft",
                               "select": "id"}):
         raise AbError("für diesen Schritt und dieses Land läuft schon ein Test (höchstens einer)")
-    upd = {"status": "laeuft", "gestartet": now().isoformat()}
+    if ab.is_beleg_test(t):
+        _beleg_bereit(db, t)
+    upd ={"status": "laeuft", "gestartet": now().isoformat()}
     if t["step"] == "landing":
         upd.update(varianten=_landing_setup(db, t), quelle="page_variants")
     db.update("ab_tests", {"id": t["id"]}, upd)

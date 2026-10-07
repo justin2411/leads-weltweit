@@ -269,6 +269,7 @@ class Ctx:
                 print(f"A/B-Tests nicht lesbar ({exc.__class__.__name__}) – ohne Tests weiter")
                 tests = []
         self.tests = tests or []
+        self.belege: BelegQuelle | None = None  # outreach.py setzt sie (Beleg-Einstieg); ohne Quelle keine Variante B
 
     def running(self, step_key: str, segment: str | None, country: str | None) -> dict | None:
         from lib.fokus import test_allowed
@@ -321,6 +322,11 @@ class Ctx:
             t = self.running(sk, segment, country)
             if not t or t["element"] not in ("betreff", "einstieg", "frage"):
                 continue
+            if is_beleg_test(t):
+                res = self._beleg(t, m, p, subject, body, firm, lint)
+                if res:
+                    subject, body, marks[str(t["id"])] = res
+                continue
             res_b = _apply(t, variant_value(t, "B"), subject, body, firm)
             res_a = _apply(t, variant_value(t, "A"), subject, body, firm)
             if not res_a or not res_b or not lint(*res_a) or not lint(*res_b):
@@ -329,6 +335,39 @@ class Ctx:
             subject, body = res_b if k == "B" else res_a
             marks[str(t["id"])] = k
         return subject, body, marks
+
+    def _beleg(self, t: dict, m: dict, p: dict, subject: str, body: str, firm: str, lint) -> tuple[str, str, str] | None:
+        """Beleg-Einstieg (Auftrag c5da4536): Variante B hängt 2 echte, freigegebene Premium-Anlässe aus dem Land des
+        Käufers an den Einstieg ({belege}). A und B gleich behandelt: der Käufer zählt nur, wenn das Land bereit ist
+        (freie Premium-Leads ≥ 400) und A sowie eine typische B-Fassung die Schreibregeln bestehen. Bei B müssen danach
+        echte Belege da sein, die Fassung mit ihnen die Regeln bestehen und die Reservierung für genau diesen Käufer
+        gelingen – sonst bleibt die Mail unverändert und zählt nicht."""
+        from lib import belege
+        src, cc = self.belege, (p.get("country") or "").upper()
+        muster = belege.muster(cc)
+        if src is None or not muster or not src.bereit(cc):
+            return None
+        vb = str(variant_value(t, "B") or "")
+        res_a = _apply(t, variant_value(t, "A"), subject, body, firm)
+        res_m = _apply(t, vb.replace(BELEGE, muster), subject, body, firm)
+        if not res_a or not res_m or not lint(*res_a) or not lint(*res_m):
+            return None
+        k = assign(t.get("salt") or "", p.get("id"))
+        if k == "A":
+            # gleich behandelt: A zählt nur, solange B-Käufer gerade Belege bekommen könnten
+            return (*res_a, "A") if src.vorrat(cc) else None
+        for _ in range(BELEG_VERSUCHE):
+            pick = src.ziehen(cc)
+            if not pick:
+                return None
+            text, ids = pick
+            res_b = _apply(t, vb.replace(BELEGE, text), subject, body, firm)
+            if not res_b or not lint(*res_b):
+                continue  # z. B. sehr lange Firmennamen: nächstes Paar (die Leads bleiben frei)
+            if not src.reservieren(p, m, t, ids):
+                return None
+            return (*res_b, "B")
+        return None
 
     def send_window(self, segment: str | None, country: str | None, unit) -> tuple[str | None, dict]:
         """Versandzeit-Test: 'frueh' (erste Hälfte des Fensters) oder 'spaet' (zweite Hälfte), sonst None."""
@@ -356,6 +395,174 @@ class Ctx:
                     except (TypeError, ValueError):
                         pass
         return min(vals)
+
+
+# ------------------------------------------------------------------------------------------- Beleg-Einstieg
+BELEGE = "{belege}"    # Platzhalter in Variante B (mail_einstieg), ersetzt durch lib.belege.einstieg()
+BELEG_VERSUCHE = 3     # so viele Beleg-Paare je Mail, falls ein Paar die Wortgrenze sprengt
+BELEG_SEITE = 40       # Kandidaten je Abruf (in einem Rutsch durch die Drei-Stufen-Freigabe)
+BELEG_SEITEN = 5       # höchstens so viele Abrufe je Land und Lauf
+BELEG_ALT_STUNDEN = 2  # nicht gesendete Reservierungen abgebrochener Läufe danach zurückgeben
+
+
+def is_beleg_test(t: dict) -> bool:
+    v = variant_value(t, "B")
+    return t.get("step") == "mail_einstieg" and t.get("element") == "einstieg" and isinstance(v, str) and BELEGE in v
+
+
+def beleg_check(t: dict) -> list[str]:
+    """Zusatzregeln eines Beleg-Tests (ab.py anlegen/starten): Platzhalter genau einmal in B, nie in A, A gesetzt."""
+    vb, va = variant_value(t, "B"), variant_value(t, "A")
+    errs = []
+    if str(vb or "").count(BELEGE) != 1:
+        errs.append("Beleg-Test: {belege} genau einmal in B")
+    if not va:
+        errs.append("Beleg-Test: A muss den heutigen Einstieg enthalten")
+    elif BELEGE in str(va):
+        errs.append("Beleg-Test: {belege} nie in A")
+    return errs
+
+
+class BelegQuelle:
+    """Freigegebene Premium-Leads für den Beleg-Einstieg (je Lauf ein Vorrat je Land).
+
+    Auswahl: S2, Land des Käufers, Status new, Premium (≥ 70 Punkte, Stufe premium, Ereignis ≤ 14 Tage), Anlass mit
+    Kurzform (lib.belege.ANLASS), Firmenname mit erkannter Kapitalgesellschaft (keine Personennamen), je Firma einmal.
+    Jeder Kandidat geht vorher durch die Drei-Stufen-Freigabe (lib.release_gate; im echten Lauf mit Live-Nachprüfung und
+    Protokoll, im Probelauf ohne Schreiben). Reservierung atomar per beleg_reservieren(): Leads 'new' → 'reserved' für
+    genau diesen Käufer (beleg_reservierungen), nie an andere. Ging die Mail nicht raus, gibt freigeben_offen() sie
+    zurück. Jeder Fehler (Tabelle fehlt, Netz) = keine Belege: die Mail bleibt unverändert und zählt nicht."""
+
+    def __init__(self, db, live: bool, log=print, gate=None, today: dt.date | None = None):
+        self.db, self.live, self.log, self.gate = db, live, log, gate
+        self.today = today or dt.datetime.now(dt.timezone.utc).date()
+        self._ready: dict[str, bool] = {}
+        self._pool: dict[str, list[dict]] = {}
+        self._offset: dict[str, int] = {}
+        self._used: set[str] = set()           # Firmen, die in diesem Lauf schon Kandidat waren (je Firma einmal)
+        self.offen: dict[str, list[str]] = {}  # message_id -> in diesem Lauf reserviert, noch nicht gesendet
+        if live:
+            try:  # Reservierungen abgebrochener Läufe zurückgeben (nie gesendete Mails)
+                db.rpc("beleg_freigeben", {"p_message": None, "p_stunden": BELEG_ALT_STUNDEN})
+            except Exception as exc:  # noqa: BLE001 - z. B. Migration fehlt: dann gar keine Belege
+                log(f"Beleg-Einstieg aus ({exc.__class__.__name__}) – Mails bleiben unverändert")
+                self._ready = {c: False for c in ("US", "UK", "FR")}
+
+    def bereit(self, cc: str) -> bool:
+        """Freie Premium-Leads im Land ≥ 2 × Bedarf (lib.belege.bereit, heute nur US)."""
+        from lib import belege
+        if cc not in self._ready:
+            try:
+                rows = self.db.rpc("premium_status", {}) or []
+                frei = next((int(r.get("premium_frei") or 0) for r in rows
+                             if r.get("segment_id") == "S2" and (r.get("country") or "").upper() == cc), 0)
+            except Exception as exc:  # noqa: BLE001
+                self.log(f"Beleg-Einstieg: Premium-Bestand nicht lesbar ({exc.__class__.__name__})")
+                frei = 0
+            self._ready[cc] = belege.bereit(frei)
+        return self._ready[cc]
+
+    def _fill(self, cc: str) -> None:
+        from lib import belege
+        lang = "fr" if cc == "FR" else "en"
+        need, cap = belege.BELEGE_JE_MAIL, BELEG_SEITE * BELEG_SEITEN
+        while len(self._pool.get(cc, [])) < need and self._offset.get(cc, 0) < cap:
+            off = self._offset.get(cc, 0)
+            self._offset[cc] = off + BELEG_SEITE
+            since = (self.today - dt.timedelta(days=14)).isoformat()
+            rows = self.db.select("leads", {
+                "segment_id": "eq.S2", "country": f"eq.{cc}", "status": "eq.new", "premium_score": "gte.70",
+                "premium->>tier": "eq.premium", "event_date": f"gte.{since}",
+                "signal_type": f"in.({','.join(sorted(belege.ANLASS[lang]))})",
+                "order": "premium_score.desc,event_date.desc,id.asc", "limit": str(BELEG_SEITE), "offset": str(off),
+                "select": "id,company_id,signal_type,event_date"}) or []
+            if not rows:
+                self._offset[cc] = cap
+                break
+            cids = sorted({r["company_id"] for r in rows if r.get("company_id")})
+            names = {c["id"]: c.get("name") or "" for c in (self.db.select(
+                "watch_companies", {"id": f"in.({','.join(cids)})", "select": "id,name"}) if cids else []) or []}
+            cand = []
+            for r in rows:
+                name = " ".join((names.get(r.get("company_id")) or "").split())
+                key = name.lower()
+                if not name or key in self._used:
+                    continue  # je Firma höchstens einmal im Lauf (auch über Seiten hinweg)
+                ld = {**r, "company_name": name, "country": cc}
+                if belege.zeile(ld, lang) is None:
+                    continue  # keine Kapitalgesellschaft, Anlass ohne Kurzform oder ohne Datum
+                self._used.add(key)
+                cand.append(ld)
+            if cand:
+                ok = self._release(cand, cc)
+                self._pool.setdefault(cc, []).extend(c for c in cand if c["id"] in ok)
+
+    def _release(self, cand: list[dict], cc: str) -> set[str]:
+        """Drei-Stufen-Freigabe (+ Inhaber-Regeln): nur freigegebene Leads sind Belege."""
+        if self.gate is not None:
+            return set(self.gate(cand, cc))
+        from lib import release_gate as G
+        vs = G.check(self.db, [c["id"] for c in cand], country=cc, live=self.live)
+        if self.live:
+            G.persist(self.db, vs, "beleg_einstieg", log=self.log)
+        return {v.lead_id for v in vs if v.ok}
+
+    def vorrat(self, cc: str) -> bool:
+        """Gibt es gerade mindestens ein Beleg-Paar (ohne es zu verbrauchen)?"""
+        from lib import belege
+        try:
+            self._fill(cc)
+        except Exception as exc:  # noqa: BLE001 - Belege dürfen den Versand nie stoppen
+            self.log(f"Beleg-Einstieg: Auswahl nicht möglich ({exc.__class__.__name__})")
+            self._offset[cc] = BELEG_SEITE * BELEG_SEITEN
+        return len(self._pool.get(cc, [])) >= belege.BELEGE_JE_MAIL
+
+    def ziehen(self, cc: str) -> tuple[str, list[str]] | None:
+        """(Beleg-Satz, Lead-IDs) aus 2 freigegebenen Leads verschiedener Firmen, oder None."""
+        from lib import belege
+        if not self.vorrat(cc):
+            return None
+        pool = self._pool[cc]
+        pick = [pool.pop(0) for _ in range(belege.BELEGE_JE_MAIL)]
+        text = belege.einstieg(pick, cc)
+        return (text, [x["id"] for x in pick]) if text else None
+
+    def reservieren(self, p: dict, m: dict, t: dict, ids: list[str]) -> bool:
+        """Leads atomar für genau diesen Käufer reservieren. Probelauf: nichts schreiben (nur Vorschau)."""
+        if not self.live:
+            return True
+        try:
+            self.db.rpc("beleg_freigeben", {"p_message": m["id"], "p_stunden": BELEG_ALT_STUNDEN})  # alter Versuch
+            got = self.db.rpc("beleg_reservieren", {"p_prospect": p["id"], "p_message": m["id"], "p_test": t["id"],
+                                                    "p_lead_ids": ids})
+        except Exception as exc:  # noqa: BLE001 - vergeben oder Tabelle fehlt: Mail unverändert
+            self.log(f"Beleg-Einstieg: Reservierung nicht möglich ({str(exc)[:80]})")
+            return False
+        if sorted(str(x) for x in (got or [])) != sorted(ids):
+            return False
+        self.offen[str(m["id"])] = list(ids)
+        return True
+
+    def gesendet(self, message_id) -> None:
+        """Mail ist raus: Reservierung bleibt dauerhaft für diesen Käufer."""
+        if self.offen.pop(str(message_id), None) is None:
+            return
+        try:
+            self.db.rpc("beleg_gesendet", {"p_message": str(message_id)})
+        except Exception as exc:  # noqa: BLE001 - Leads bleiben trotzdem 'reserved' (nie an andere)
+            self.log(f"Beleg-Einstieg: Versand nicht vermerkt ({exc.__class__.__name__})")
+
+    def freigeben_offen(self) -> int:
+        """Ende des Laufs: Reservierungen von Mails, die nicht rausgingen, zurückgeben (Leads wieder 'new')."""
+        n = 0
+        for mid in list(self.offen):
+            try:
+                self.db.rpc("beleg_freigeben", {"p_message": mid, "p_stunden": BELEG_ALT_STUNDEN})
+                n += 1
+            except Exception as exc:  # noqa: BLE001 - spätestens ein Lauf nach 2 h gibt sie zurück
+                self.log(f"Beleg-Einstieg: Rückgabe später ({exc.__class__.__name__})")
+            self.offen.pop(mid, None)
+        return n
 
 
 # ------------------------------------------------------------------------------------------- Datenbank
